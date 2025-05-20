@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { 
@@ -48,11 +47,6 @@ const navItems: NavItem[] = [
     title: "Verkocht Auto's particulier",
     href: "/inventory/consumer",
     icon: User,
-  },
-  {
-    title: "Voorraad ingekocht",
-    href: "/inventory/purchased",
-    icon: Box,
   },
   {
     title: "Leads",
