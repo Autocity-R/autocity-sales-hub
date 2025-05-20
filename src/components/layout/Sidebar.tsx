@@ -45,6 +45,11 @@ const navItems: NavItem[] = [
     icon: ShoppingCart,
   },
   {
+    title: "Verkocht Auto's particulier",
+    href: "/inventory/consumer",
+    icon: User,
+  },
+  {
     title: "Voorraad ingekocht",
     href: "/inventory/purchased",
     icon: Box,
