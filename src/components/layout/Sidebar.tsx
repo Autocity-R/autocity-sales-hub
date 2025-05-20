@@ -9,7 +9,10 @@ import {
   Truck, 
   User, 
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Box,
+  ShoppingCart,
+  Globe
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,6 +33,21 @@ const navItems: NavItem[] = [
     title: "Voorraad",
     href: "/inventory",
     icon: Database,
+  },
+  {
+    title: "Voorraad online",
+    href: "/inventory/online",
+    icon: Globe,
+  },
+  {
+    title: "Voorraad verkocht b2b",
+    href: "/inventory/b2b",
+    icon: ShoppingCart,
+  },
+  {
+    title: "Voorraad ingekocht",
+    href: "/inventory/purchased",
+    icon: Box,
   },
   {
     title: "Leads",
