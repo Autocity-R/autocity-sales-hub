@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { 
@@ -7,11 +8,14 @@ import {
   Settings, 
   Truck, 
   User, 
+  Users,
   ChevronLeft,
   ChevronRight,
-  Box,
+  Globe,
   ShoppingCart,
-  Globe
+  Shield,
+  Calendar,
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,6 +24,7 @@ type NavItem = {
   title: string;
   href: string;
   icon: React.ElementType;
+  indented?: boolean;
 };
 
 const navItems: NavItem[] = [
@@ -37,21 +42,41 @@ const navItems: NavItem[] = [
     title: "Voorraad online",
     href: "/inventory/online",
     icon: Globe,
+    indented: true,
   },
   {
     title: "Voorraad verkocht b2b",
     href: "/inventory/b2b",
     icon: ShoppingCart,
+    indented: true,
   },
   {
-    title: "Verkocht Auto's particulier",
+    title: "Voorraad verkocht particulier",
     href: "/inventory/consumer",
     icon: User,
+    indented: true,
   },
   {
     title: "Leads",
     href: "/leads",
     icon: User,
+  },
+  {
+    title: "Klanten bestand",
+    href: "/customers",
+    icon: Users,
+  },
+  {
+    title: "Klanten b2b",
+    href: "/customers/b2b",
+    icon: ShoppingCart,
+    indented: true,
+  },
+  {
+    title: "Klanten b2c",
+    href: "/customers/b2c",
+    icon: User,
+    indented: true,
   },
   {
     title: "Transport",
@@ -61,7 +86,17 @@ const navItems: NavItem[] = [
   {
     title: "Rapportages",
     href: "/reports",
-    icon: BarChart2,
+    icon: FileText,
+  },
+  {
+    title: "Garantie",
+    href: "/warranty",
+    icon: Shield,
+  },
+  {
+    title: "Agenda",
+    href: "/calendar",
+    icon: Calendar,
   },
   {
     title: "Instellingen",
@@ -103,6 +138,7 @@ const Sidebar = () => {
               to={item.href}
               className={cn(
                 "flex items-center px-3 py-3 text-sm font-medium rounded-md text-white hover:bg-autocity-blue-gray-800 transition-colors",
+                item.indented && !collapsed ? "ml-4 pl-4" : "",
                 window.location.pathname === item.href
                   ? "bg-autocity-blue-gray-800"
                   : ""

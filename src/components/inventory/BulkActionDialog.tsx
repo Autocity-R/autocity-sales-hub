@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ImportStatus, WorkshopStatus } from "@/pages/Inventory";
+import { ImportStatus, WorkshopStatus } from "@/types/inventory";
 import { Switch } from "@/components/ui/switch";
 
 interface BulkActionDialogProps {

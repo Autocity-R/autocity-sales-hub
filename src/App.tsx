@@ -23,8 +23,13 @@ const App = () => (
           <Route path="/inventory/b2b" element={<Inventory />} />
           <Route path="/inventory/consumer" element={<Inventory />} />
           <Route path="/leads" element={<Index />} />
+          <Route path="/customers" element={<Index />} />
+          <Route path="/customers/b2b" element={<Index />} />
+          <Route path="/customers/b2c" element={<Index />} />
           <Route path="/transport" element={<Index />} />
           <Route path="/reports" element={<Index />} />
+          <Route path="/warranty" element={<Index />} />
+          <Route path="/calendar" element={<Index />} />
           <Route path="/settings" element={<Index />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
