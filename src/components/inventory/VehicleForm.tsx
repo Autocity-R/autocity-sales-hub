@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -24,7 +25,7 @@ import {
 } from "@/components/ui/popover";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
-import { Vehicle, ImportStatus, WorkshopStatus, DamageStatus } from "@/types/inventory";
+import { Vehicle, ImportStatus, WorkshopStatus, DamageStatus, LocationStatus, SalesStatus } from "@/types/inventory";
 
 interface VehicleFormProps {
   onSubmit: (data: Omit<Vehicle, "id">) => void;
@@ -36,13 +37,19 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
   initialData
 }) => {
   const [formData, setFormData] = useState<Omit<Vehicle, "id">>({
-    licenseNumber: initialData?.licenseNumber || "",
+    brand: initialData?.brand || "",
     model: initialData?.model || "",
+    licenseNumber: initialData?.licenseNumber || "",
+    vin: initialData?.vin || "",
+    mileage: initialData?.mileage || 0,
     importStatus: initialData?.importStatus || "niet_gestart",
     arrived: initialData?.arrived || false,
     workshopStatus: initialData?.workshopStatus || "wachten",
+    location: initialData?.location || "showroom",
+    salesStatus: initialData?.salesStatus || "voorraad",
     showroomOnline: initialData?.showroomOnline || false,
     bpmRequested: initialData?.bpmRequested || false,
+    bpmStarted: initialData?.bpmStarted || false,
     damage: {
       description: initialData?.damage?.description || "",
       status: initialData?.damage?.status || "geen"
@@ -53,6 +60,8 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
     papersReceived: initialData?.papersReceived || false,
     papersDate: initialData?.papersDate || null,
     notes: initialData?.notes || "",
+    mainPhotoUrl: initialData?.mainPhotoUrl || null,
+    photos: initialData?.photos || []
   });
   
   const handleChange = (field: keyof Omit<Vehicle, "id" | "damage">, value: any) => {
@@ -76,7 +85,28 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Left column */}
         <div className="space-y-4">
-          {/* License & Model */}
+          {/* Brand & Model */}
+          <div className="space-y-2">
+            <Label htmlFor="brand">Merk *</Label>
+            <Input
+              id="brand"
+              value={formData.brand}
+              onChange={(e) => handleChange('brand', e.target.value)}
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="model">Model *</Label>
+            <Input
+              id="model"
+              value={formData.model}
+              onChange={(e) => handleChange('model', e.target.value)}
+              required
+            />
+          </div>
+          
+          {/* License & VIN */}
           <div className="space-y-2">
             <Label htmlFor="licenseNumber">Kenteken *</Label>
             <Input
@@ -88,11 +118,22 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="model">Model *</Label>
+            <Label htmlFor="vin">VIN (Chassisnummer) *</Label>
             <Input
-              id="model"
-              value={formData.model}
-              onChange={(e) => handleChange('model', e.target.value)}
+              id="vin"
+              value={formData.vin}
+              onChange={(e) => handleChange('vin', e.target.value)}
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="mileage">Kilometerstand *</Label>
+            <Input
+              id="mileage"
+              type="number"
+              value={formData.mileage}
+              onChange={(e) => handleChange('mileage', parseInt(e.target.value))}
               required
             />
           </div>
@@ -149,6 +190,41 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
         
         {/* Right column */}
         <div className="space-y-4">
+          {/* Location & Sales Status */}
+          <div className="space-y-2">
+            <Label>Locatie</Label>
+            <Select 
+              value={formData.location} 
+              onValueChange={(value: LocationStatus) => handleChange('location', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecteer locatie" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="showroom">Showroom</SelectItem>
+                <SelectItem value="opslag">Opslag</SelectItem>
+                <SelectItem value="calandstraat">Calandstraat</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label>Verkoopstatus</Label>
+            <Select 
+              value={formData.salesStatus} 
+              onValueChange={(value: SalesStatus) => handleChange('salesStatus', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecteer status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="voorraad">Voorraad</SelectItem>
+                <SelectItem value="verkocht_b2b">Verkocht B2B</SelectItem>
+                <SelectItem value="verkocht_b2c">Verkocht B2C</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
           {/* Checkboxes */}
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
@@ -171,6 +247,17 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
                 }
               />
               <Label htmlFor="bpmRequested">BPM aangevraagd</Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="bpmStarted"
+                checked={formData.bpmStarted}
+                onCheckedChange={(checked) => 
+                  handleChange('bpmStarted', Boolean(checked))
+                }
+              />
+              <Label htmlFor="bpmStarted">BPM gestart</Label>
             </div>
             
             <div className="flex items-center space-x-2">
