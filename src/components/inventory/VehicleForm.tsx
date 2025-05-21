@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -25,7 +24,7 @@ import {
 } from "@/components/ui/popover";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
-import { Vehicle, ImportStatus, WorkshopStatus, DamageStatus } from "@/pages/Inventory";
+import { Vehicle, ImportStatus, WorkshopStatus, DamageStatus } from "@/types/inventory";
 
 interface VehicleFormProps {
   onSubmit: (data: Omit<Vehicle, "id">) => void;
