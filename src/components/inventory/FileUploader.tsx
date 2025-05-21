@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from "react";
 import { FilePlus, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,12 +8,14 @@ interface FileUploaderProps {
   onFileUpload: (file: File) => void;
   acceptedFileTypes: string;
   maxSizeMB?: number;
+  isLoading?: boolean;
 }
 
 export const FileUploader: React.FC<FileUploaderProps> = ({
   onFileUpload,
   acceptedFileTypes,
   maxSizeMB = 10, // Default max size 10MB
+  isLoading = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -92,6 +95,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
     }, 1000);
   };
 
+  // Use either the passed isLoading prop or internal isUploading state
+  const showLoading = isLoading || isUploading;
+
   return (
     <div
       className={`
@@ -113,7 +119,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       />
       
       <div className="flex flex-col items-center py-2">
-        {isUploading ? (
+        {showLoading ? (
           <>
             <Upload className="h-6 w-6 text-muted-foreground animate-pulse" />
             <p className="text-sm text-muted-foreground mt-2">Uploaden...</p>
