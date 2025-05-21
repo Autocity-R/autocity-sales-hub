@@ -12,11 +12,20 @@ import { VehicleForm } from "@/components/inventory/VehicleForm";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
 import { ChatbotAssistant } from "@/components/inventory/ChatbotAssistant";
 import { BulkActionDialog } from "@/components/inventory/BulkActionDialog";
-import { Vehicle } from "@/types/inventory";
+import { Vehicle, SalesStatus } from "@/types/inventory";
 import { VehicleTable } from "@/components/inventory/VehicleTable";
 import { ContactsPanel } from "@/components/inventory/ContactsPanel";
 import { useChatbotCommands } from "@/hooks/useChatbotCommands";
-import { fetchVehicles, updateVehicle, createVehicle, sendEmail, bulkUpdateVehicles } from "@/services/inventoryService";
+import { 
+  fetchVehicles, 
+  updateVehicle, 
+  createVehicle, 
+  sendEmail, 
+  bulkUpdateVehicles, 
+  updateSalesStatus, 
+  deleteVehicle,
+  uploadVehiclePhoto
+} from "@/services/inventoryService";
 
 const Inventory = () => {
   const { toast } = useToast();
@@ -90,6 +99,10 @@ const Inventory = () => {
           title = "CMR naar leverancier verstuurd";
           description = "De CMR documenten zijn succesvol naar de leverancier verstuurd.";
           break;
+        case "bpm_huys":
+          title = "BPM Huys aanmelding verstuurd";
+          description = "De aanmelding is succesvol naar BPM Huys verstuurd.";
+          break;
         case "reminder_papers":
           title = "Herinnering verstuurd";
           description = "De herinneringsmail voor de papieren is succesvol verstuurd.";
@@ -136,6 +149,82 @@ const Inventory = () => {
     }
   });
 
+  // Sales status update mutation
+  const salesStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: SalesStatus }) => 
+      updateSalesStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      toast({
+        title: "Verkoopstatus bijgewerkt",
+        description: "De verkoopstatus van het voertuig is succesvol bijgewerkt.",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Fout bij bijwerken status",
+        description: "Er is iets misgegaan: " + error,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Delete vehicle mutation
+  const deleteMutation = useMutation({
+    mutationFn: deleteVehicle,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      toast({
+        title: "Voertuig verwijderd",
+        description: "Het voertuig is succesvol verwijderd uit het systeem.",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Fout bij verwijderen",
+        description: "Er is iets misgegaan: " + error,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Photo upload mutation
+  const photoUploadMutation = useMutation({
+    mutationFn: ({ vehicleId, file, isMain }: { vehicleId: string; file: File; isMain: boolean }) => 
+      uploadVehiclePhoto(vehicleId, file, isMain),
+    onSuccess: (photoUrl, { vehicleId, isMain }) => {
+      // After successful upload, find the vehicle and update its photos array
+      const currentVehicle = vehicles.find(v => v.id === vehicleId);
+      if (currentVehicle) {
+        const updatedVehicle = { 
+          ...currentVehicle,
+          photos: [...currentVehicle.photos, photoUrl]
+        };
+        
+        if (isMain || !currentVehicle.mainPhotoUrl) {
+          updatedVehicle.mainPhotoUrl = photoUrl;
+        }
+        
+        updateMutation.mutate(updatedVehicle);
+      }
+      
+      toast({
+        title: "Foto geüpload",
+        description: "De foto is succesvol geüpload.",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Fout bij uploaden foto",
+        description: "Er is iets misgegaan: " + error,
+        variant: "destructive",
+      });
+    }
+  });
+
   // Handle vehicle selection
   const handleSelectVehicle = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
@@ -155,6 +244,21 @@ const Inventory = () => {
   // Handle send email
   const handleSendEmail = (type: string, vehicleId: string) => {
     emailMutation.mutate({ type, vehicleIds: [vehicleId] });
+  };
+
+  // Handle sales status change
+  const handleSalesStatusChange = (vehicleId: string, status: SalesStatus) => {
+    salesStatusMutation.mutate({ id: vehicleId, status });
+  };
+
+  // Handle vehicle deletion
+  const handleDeleteVehicle = (vehicleId: string) => {
+    deleteMutation.mutate(vehicleId);
+  };
+
+  // Handle photo upload
+  const handlePhotoUpload = async (vehicleId: string, file: File, isMain: boolean) => {
+    await photoUploadMutation.mutateAsync({ vehicleId, file, isMain });
   };
 
   // Handle bulk action
@@ -223,8 +327,10 @@ const Inventory = () => {
 
   // Filter vehicles based on search term
   const filteredVehicles = vehicles.filter(vehicle => 
+    vehicle.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
     vehicle.licenseNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    vehicle.model.toLowerCase().includes(searchTerm.toLowerCase())
+    vehicle.vin.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -260,14 +366,14 @@ const Inventory = () => {
             <div className="flex items-center space-x-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input 
-                placeholder="Zoek op kenteken of model..." 
+                placeholder="Zoek op merk, model, kenteken of VIN..." 
                 className="max-w-sm" 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-hidden">
               <VehicleTable 
                 vehicles={filteredVehicles}
                 selectedVehicles={selectedVehicles}
@@ -275,6 +381,8 @@ const Inventory = () => {
                 toggleSelectVehicle={toggleSelectVehicle}
                 handleSelectVehicle={handleSelectVehicle}
                 handleSendEmail={handleSendEmail}
+                handleChangeStatus={handleSalesStatusChange}
+                handleDeleteVehicle={handleDeleteVehicle}
                 isLoading={isLoading}
                 error={error}
               />
@@ -305,6 +413,7 @@ const Inventory = () => {
             onUpdate={handleVehicleUpdate}
             onClose={() => setSelectedVehicle(null)}
             onSendEmail={handleSendEmail}
+            onPhotoUpload={(file, isMain) => handlePhotoUpload(selectedVehicle.id, file, isMain)}
           />
         )}
         

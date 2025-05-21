@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Vehicle, ImportStatus } from "@/types/inventory";
-import { CircleCheck, CircleX, ExternalLink, Mail } from "lucide-react";
+import { CircleCheck, CircleX, ExternalLink, Mail, MoreHorizontal } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { CustomCheckbox } from "@/components/ui/custom-checkbox";
 import { Car } from "lucide-react";
+import { Avatar } from "@/components/ui/avatar";
 
 interface VehicleTableProps {
   vehicles: Vehicle[];
@@ -30,6 +31,8 @@ interface VehicleTableProps {
   toggleSelectVehicle: (vehicleId: string, checked: boolean) => void;
   handleSelectVehicle: (vehicle: Vehicle) => void;
   handleSendEmail: (type: string, vehicleId: string) => void;
+  handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
+  handleDeleteVehicle?: (vehicleId: string) => void;
   isLoading: boolean;
   error: unknown;
 }
@@ -55,6 +58,8 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
   toggleSelectVehicle,
   handleSelectVehicle,
   handleSendEmail,
+  handleChangeStatus,
+  handleDeleteVehicle,
   isLoading,
   error
 }) => {
@@ -74,21 +79,23 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
             <TableHead className="w-[50px]">
               <CustomCheckbox disabled />
             </TableHead>
-            <TableHead className="w-[150px]">
-              <div className="flex items-center space-x-1">
-                <Car className="h-4 w-4" />
-                <span>Kenteken</span>
-              </div>
-            </TableHead>
+            <TableHead className="w-[70px]">Foto</TableHead>
+            <TableHead className="w-[100px]">Merk</TableHead>
             <TableHead>Model</TableHead>
-            <TableHead>Importstatus</TableHead>
+            <TableHead className="w-[120px]">Kenteken</TableHead>
+            <TableHead>VIN</TableHead>
+            <TableHead>KM Stand</TableHead>
+            <TableHead className="w-[150px]">Importstatus</TableHead>
+            <TableHead>Locatie</TableHead>
             <TableHead className="text-center">Aangekomen</TableHead>
+            <TableHead className="text-center">Papieren</TableHead>
+            <TableHead className="text-center">Online</TableHead>
             <TableHead></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           <TableRow>
-            <TableCell colSpan={6} className="h-24 text-center">
+            <TableCell colSpan={13} className="h-24 text-center">
               Geen voertuigen gevonden.
             </TableCell>
           </TableRow>
@@ -108,15 +115,17 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
               indeterminate={selectedVehicles.length > 0 && selectedVehicles.length < vehicles.length}
             />
           </TableHead>
-          <TableHead className="w-[150px]">
-            <div className="flex items-center space-x-1">
-              <Car className="h-4 w-4" />
-              <span>Kenteken</span>
-            </div>
-          </TableHead>
+          <TableHead className="w-[70px]">Foto</TableHead>
+          <TableHead className="w-[100px]">Merk</TableHead>
           <TableHead>Model</TableHead>
-          <TableHead>Importstatus</TableHead>
+          <TableHead className="w-[120px]">Kenteken</TableHead>
+          <TableHead>VIN</TableHead>
+          <TableHead>KM Stand</TableHead>
+          <TableHead className="w-[150px]">Importstatus</TableHead>
+          <TableHead>Locatie</TableHead>
           <TableHead className="text-center">Aangekomen</TableHead>
+          <TableHead className="text-center">Papieren</TableHead>
+          <TableHead className="text-center">Online</TableHead>
           <TableHead></TableHead>
         </TableRow>
       </TableHeader>
@@ -133,11 +142,48 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
                 onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, !!checked)}
               />
             </TableCell>
-            <TableCell className="font-medium">{vehicle.licenseNumber}</TableCell>
+            <TableCell>
+              {vehicle.mainPhotoUrl ? (
+                <Avatar className="w-12 h-12 rounded-md">
+                  <img 
+                    src={vehicle.mainPhotoUrl} 
+                    alt={`${vehicle.brand} ${vehicle.model}`} 
+                    className="object-cover w-full h-full rounded-md"
+                  />
+                </Avatar>
+              ) : (
+                <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
+                  <Car className="h-6 w-6 text-muted-foreground" />
+                </div>
+              )}
+            </TableCell>
+            <TableCell className="font-medium">{vehicle.brand}</TableCell>
             <TableCell>{vehicle.model}</TableCell>
+            <TableCell>{vehicle.licenseNumber}</TableCell>
+            <TableCell>{vehicle.vin}</TableCell>
+            <TableCell>{vehicle.mileage.toLocaleString('nl-NL')} km</TableCell>
             <TableCell>{renderImportStatusBadge(vehicle.importStatus)}</TableCell>
+            <TableCell>
+              <Badge variant="outline" className="capitalize">
+                {vehicle.location}
+              </Badge>
+            </TableCell>
             <TableCell className="text-center">
               {vehicle.arrived ? (
+                <CircleCheck className="h-5 w-5 text-green-500 mx-auto" />
+              ) : (
+                <CircleX className="h-5 w-5 text-red-500 mx-auto" />
+              )}
+            </TableCell>
+            <TableCell className="text-center">
+              {vehicle.papersReceived ? (
+                <CircleCheck className="h-5 w-5 text-green-500 mx-auto" />
+              ) : (
+                <CircleX className="h-5 w-5 text-red-500 mx-auto" />
+              )}
+            </TableCell>
+            <TableCell className="text-center">
+              {vehicle.showroomOnline ? (
                 <CircleCheck className="h-5 w-5 text-green-500 mx-auto" />
               ) : (
                 <CircleX className="h-5 w-5 text-red-500 mx-auto" />
@@ -151,7 +197,7 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
                     size="sm" 
                     className="float-right"
                   >
-                    <ExternalLink className="h-4 w-4" />
+                    <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
@@ -177,6 +223,55 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
                     <Mail className="h-4 w-4 mr-2" />
                     CMR naar leverancier
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    handleSendEmail("bpm_huys", vehicle.id);
+                  }}>
+                    <Mail className="h-4 w-4 mr-2" />
+                    BPM Huys aanmelden
+                  </DropdownMenuItem>
+                  
+                  {handleChangeStatus && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel>Verkoopstatus</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={(e) => {
+                        e.stopPropagation();
+                        handleChangeStatus(vehicle.id, 'verkocht_b2c');
+                      }}>
+                        Verkocht B2C
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => {
+                        e.stopPropagation();
+                        handleChangeStatus(vehicle.id, 'verkocht_b2b');
+                      }}>
+                        Verkocht B2B
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => {
+                        e.stopPropagation();
+                        handleChangeStatus(vehicle.id, 'voorraad');
+                      }}>
+                        Terug naar voorraad
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  
+                  {handleDeleteVehicle && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm('Weet je zeker dat je dit voertuig wilt verwijderen?')) {
+                            handleDeleteVehicle(vehicle.id);
+                          }
+                        }}
+                        className="text-red-500 focus:text-red-500"
+                      >
+                        Verwijderen
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </TableCell>

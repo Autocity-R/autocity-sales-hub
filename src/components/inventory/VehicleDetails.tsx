@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -44,7 +43,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Vehicle, ImportStatus, WorkshopStatus, DamageStatus } from "@/pages/Inventory";
+import { Vehicle, ImportStatus, WorkshopStatus, DamageStatus } from "@/types/inventory";
 import { FileUploader } from "@/components/inventory/FileUploader";
 
 // Add new types for file attachments
@@ -64,13 +63,15 @@ interface VehicleDetailsProps {
   onClose: () => void;
   onUpdate: (vehicle: Vehicle) => void;
   onSendEmail?: (type: string, vehicleId: string) => void;
+  onPhotoUpload?: (file: File, isMain: boolean) => Promise<void>;
 }
 
 export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   vehicle,
   onClose,
   onUpdate,
-  onSendEmail
+  onSendEmail,
+  onPhotoUpload
 }) => {
   const [editedVehicle, setEditedVehicle] = useState<Vehicle>({...vehicle});
   const [activeTab, setActiveTab] = useState<string>("details");

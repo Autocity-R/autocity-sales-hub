@@ -1,5 +1,5 @@
 
-import { Vehicle } from "@/types/inventory";
+import { Vehicle, SalesStatus } from "@/types/inventory";
 
 // Mock API for demonstration
 export const fetchVehicles = async (): Promise<Vehicle[]> => {
@@ -7,13 +7,19 @@ export const fetchVehicles = async (): Promise<Vehicle[]> => {
   return [
     {
       id: "1",
+      brand: "Audi",
+      model: "A4 2.0 TDI S Line",
       licenseNumber: "HNZ-60-N",
-      model: "Audi A4 2.0 TDI",
+      vin: "WAUZZZ8K9NA123456",
+      mileage: 45000,
       importStatus: "niet_gestart",
       arrived: false,
       workshopStatus: "wachten",
+      location: "opslag",
+      salesStatus: "voorraad",
       showroomOnline: false,
       bpmRequested: false,
+      bpmStarted: false,
       damage: {
         description: "Kras op voorportier",
         status: "licht"
@@ -23,17 +29,28 @@ export const fetchVehicles = async (): Promise<Vehicle[]> => {
       cmrDate: null,
       papersReceived: false,
       papersDate: null,
-      notes: ""
+      notes: "",
+      mainPhotoUrl: "https://images.unsplash.com/photo-1489824904134-891ab64532f1?q=80&w=800",
+      photos: [
+        "https://images.unsplash.com/photo-1489824904134-891ab64532f1?q=80&w=800",
+        "https://images.unsplash.com/photo-1489824904134-891ab64532f1?q=80&w=800"
+      ]
     },
     {
       id: "2",
+      brand: "BMW",
+      model: "3-serie 320d M Sport",
       licenseNumber: "AB-123-C",
-      model: "BMW 3-serie 320d",
+      vin: "WBA8E9C50GK123456",
+      mileage: 62000,
       importStatus: "onderweg",
       arrived: false,
       workshopStatus: "wachten",
+      location: "opslag",
+      salesStatus: "voorraad",
       showroomOnline: false,
       bpmRequested: true,
+      bpmStarted: true,
       damage: {
         description: "",
         status: "geen"
@@ -43,17 +60,28 @@ export const fetchVehicles = async (): Promise<Vehicle[]> => {
       cmrDate: new Date(2023, 5, 15),
       papersReceived: false,
       papersDate: null,
-      notes: "Verwacht eind deze week"
+      notes: "Verwacht eind deze week",
+      mainPhotoUrl: "https://images.unsplash.com/photo-1556189250-72ba954cfc2b?q=80&w=800",
+      photos: [
+        "https://images.unsplash.com/photo-1556189250-72ba954cfc2b?q=80&w=800",
+        "https://images.unsplash.com/photo-1556189250-72ba954cfc2b?q=80&w=800"
+      ]
     },
     {
       id: "3",
+      brand: "Mercedes",
+      model: "E-Klasse E220d AMG Line",
       licenseNumber: "ZX-789-Y",
-      model: "Mercedes E-Klasse",
+      vin: "WDD2130421A123456",
+      mileage: 38000,
       importStatus: "aangekomen",
       arrived: true,
       workshopStatus: "poetsen",
+      location: "showroom",
+      salesStatus: "voorraad",
       showroomOnline: false,
       bpmRequested: true,
+      bpmStarted: true,
       damage: {
         description: "Deuk in achterbumper",
         status: "middel"
@@ -63,7 +91,12 @@ export const fetchVehicles = async (): Promise<Vehicle[]> => {
       cmrDate: new Date(2023, 4, 20),
       papersReceived: true,
       papersDate: new Date(2023, 5, 1),
-      notes: "Klant heeft interesse getoond"
+      notes: "Klant heeft interesse getoond",
+      mainPhotoUrl: "https://images.unsplash.com/photo-1563720223489-c94d197a0a0e?q=80&w=800",
+      photos: [
+        "https://images.unsplash.com/photo-1563720223489-c94d197a0a0e?q=80&w=800",
+        "https://images.unsplash.com/photo-1563720223489-c94d197a0a0e?q=80&w=800"
+      ]
     }
   ];
 };
@@ -81,6 +114,20 @@ export const bulkUpdateVehicles = async (ids: string[], updates: Partial<Vehicle
   return []; // Would normally return updated vehicles
 };
 
+// Function to change sales status
+export const updateSalesStatus = async (id: string, status: SalesStatus): Promise<Vehicle> => {
+  // Simulating API call
+  console.log(`Changing vehicle ${id} status to ${status}`);
+  return { id } as Vehicle; // Would normally return updated vehicle
+};
+
+// Function to delete vehicle
+export const deleteVehicle = async (id: string): Promise<boolean> => {
+  // Simulating API call
+  console.log(`Deleting vehicle ${id}`);
+  return true;
+};
+
 // Mock create function
 export const createVehicle = async (vehicle: Omit<Vehicle, "id">): Promise<Vehicle> => {
   // Simulating API call
@@ -95,4 +142,17 @@ export const sendEmail = async (type: string, vehicleIds: string[]): Promise<boo
   // Simulating API call
   console.log(`Sending ${type} email for vehicles:`, vehicleIds);
   return true;
+};
+
+// Mock photo upload function
+export const uploadVehiclePhoto = async (vehicleId: string, file: File, isMain: boolean): Promise<string> => {
+  // Simulating API call
+  console.log(`Uploading photo for vehicle ${vehicleId}, main photo: ${isMain}`);
+  // Return a random image URL for demonstration purposes
+  const imageUrls = [
+    "https://images.unsplash.com/photo-1489824904134-891ab64532f1?q=80&w=800",
+    "https://images.unsplash.com/photo-1556189250-72ba954cfc2b?q=80&w=800",
+    "https://images.unsplash.com/photo-1563720223489-c94d197a0a0e?q=80&w=800"
+  ];
+  return imageUrls[Math.floor(Math.random() * imageUrls.length)];
 };

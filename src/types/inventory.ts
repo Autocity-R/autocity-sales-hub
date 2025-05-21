@@ -19,15 +19,31 @@ export type DamageStatus =
   | "zwaar" 
   | "total_loss";
 
+export type LocationStatus = 
+  | "showroom" 
+  | "opslag" 
+  | "calandstraat";
+
+export type SalesStatus = 
+  | "voorraad" 
+  | "verkocht_b2b" 
+  | "verkocht_b2c";
+
 export interface Vehicle {
   id: string;
-  licenseNumber: string;
+  brand: string;
   model: string;
+  licenseNumber: string;
+  vin: string;
+  mileage: number;
   importStatus: ImportStatus;
   arrived: boolean;
   workshopStatus: WorkshopStatus;
+  location: LocationStatus;
+  salesStatus: SalesStatus;
   showroomOnline: boolean;
   bpmRequested: boolean;
+  bpmStarted: boolean;
   damage: {
     description: string;
     status: DamageStatus;
@@ -38,6 +54,8 @@ export interface Vehicle {
   papersReceived: boolean;
   papersDate: Date | null;
   notes: string;
+  mainPhotoUrl: string | null;
+  photos: string[];
 }
 
 export interface Supplier {
@@ -45,11 +63,18 @@ export interface Supplier {
   name: string;
   country: string;
   contactPerson: string;
+  email: string;
+  phone: string;
+  address: string;
 }
 
 export interface Customer {
   id: string;
   name: string;
   type: "particulier" | "zakelijk";
-  contact: string;
+  contactPerson?: string;
+  email: string;
+  phone: string;
+  address: string;
+  purchasedVehicles?: string[]; // array of vehicle ids
 }
