@@ -37,7 +37,8 @@ export type LocationStatus =
 export type SalesStatus = 
   | "voorraad" 
   | "verkocht_b2b" 
-  | "verkocht_b2c";
+  | "verkocht_b2c"
+  | "afgeleverd";    // Added the "afgeleverd" status
 
 export type PaymentStatus =  // New type
   | "niet_betaald"
