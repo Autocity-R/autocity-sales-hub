@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -9,6 +8,7 @@ import { VehicleDetails } from "@/components/inventory/VehicleDetails";
 import { Button } from "@/components/ui/button";
 import { Vehicle, PaymentStatus, PaintStatus } from "@/types/inventory";
 import { PageHeader } from "@/components/ui/page-header";
+import { FileCategory, VehicleFile } from "@/types/files";
 import { 
   fetchB2CVehicles, 
   updateVehicle, 
@@ -17,7 +17,9 @@ import {
   updatePaymentStatus,
   uploadVehiclePhoto,
   updatePaintStatus,
-  markVehicleAsDelivered
+  markVehicleAsDelivered,
+  uploadVehicleFile,
+  fetchVehicleFiles
 } from "@/services/inventoryService";
 
 const InventoryB2C = () => {
@@ -32,6 +34,13 @@ const InventoryB2C = () => {
   const { data: vehicles = [], isLoading, error } = useQuery({
     queryKey: ["b2cVehicles"],
     queryFn: fetchB2CVehicles
+  });
+
+  // Fetch files for the selected vehicle
+  const { data: vehicleFiles = [] } = useQuery({
+    queryKey: ["vehicleFiles", selectedVehicle?.id],
+    queryFn: () => selectedVehicle ? fetchVehicleFiles(selectedVehicle.id) : Promise.resolve([]),
+    enabled: !!selectedVehicle
   });
   
   const updateVehicleMutation = useMutation({
@@ -262,6 +271,25 @@ const InventoryB2C = () => {
     setSelectedVehicles(checked ? vehicles.map(v => v.id) : []);
   };
 
+  // New mutation for uploading files
+  const uploadFileMutation = useMutation({
+    mutationFn: ({ file, category, vehicleId }: { file: File, category: FileCategory, vehicleId: string }) =>
+      uploadVehicleFile(file, category, vehicleId),
+    onSuccess: () => {
+      toast.success("Document geüpload");
+      queryClient.invalidateQueries({ queryKey: ["vehicleFiles"] });
+    },
+    onError: (error) => {
+      toast.error("Fout bij het uploaden van het document");
+      console.error("Error uploading file:", error);
+    }
+  });
+  
+  const handleUploadFile = async (file: File, category: FileCategory) => {
+    if (!selectedVehicle) return;
+    uploadFileMutation.mutate({ file, category, vehicleId: selectedVehicle.id });
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-4">
@@ -315,6 +343,8 @@ const InventoryB2C = () => {
           onPhotoUpload={handleUploadPhoto}
           onRemovePhoto={handleRemovePhoto}
           onSetMainPhoto={handleSetMainPhoto}
+          onFileUpload={handleUploadFile}
+          files={vehicleFiles}
         />
       )}
     </DashboardLayout>

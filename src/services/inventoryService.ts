@@ -1,404 +1,612 @@
-import { Vehicle, SalesStatus, PaymentStatus, PaintStatus } from "@/types/inventory";
+import { Vehicle, PaymentStatus, PaintStatus } from "@/types/inventory";
+import { FileCategory, VehicleFile } from "@/types/files";
 
-// Mock API for demonstration
+// Mock API endpoint
+const API_ENDPOINT = "http://localhost:3000/api";
+
+// Mock function to fetch all vehicles
 export const fetchVehicles = async (): Promise<Vehicle[]> => {
-  // Simulating API call
-  return [
-    {
-      id: "1",
-      brand: "Audi",
-      model: "A4 2.0 TDI S Line",
-      licenseNumber: "HNZ-60-N",
-      vin: "WAUZZZ8K9NA123456",
-      mileage: 45000,
-      importStatus: "niet_gestart",
-      arrived: false,
-      workshopStatus: "wachten",
-      location: "opslag",
-      salesStatus: "voorraad",
-      showroomOnline: false,
-      bpmRequested: false,
-      bpmStarted: false,
-      damage: {
-        description: "Kras op voorportier",
-        status: "licht"
-      },
-      purchasePrice: 18500,
-      sellingPrice: 0,
-      paymentStatus: "niet_betaald",
-      cmrSent: false,
-      cmrDate: null,
-      papersReceived: false,
-      papersDate: null,
-      notes: "",
-      mainPhotoUrl: "https://images.unsplash.com/photo-1489824904134-891ab64532f1?q=80&w=800",
-      photos: [
-        "https://images.unsplash.com/photo-1489824904134-891ab64532f1?q=80&w=800",
-        "https://images.unsplash.com/photo-1489824904134-891ab64532f1?q=80&w=800"
-      ],
-      createdAt: new Date(2024, 4, 1).toISOString() // May 1, 2024
-    },
-    {
-      id: "2",
-      brand: "BMW",
-      model: "3-serie 320d M Sport",
-      licenseNumber: "AB-123-C",
-      vin: "WBA8E9C50GK123456",
-      mileage: 62000,
-      importStatus: "onderweg",
-      arrived: false,
-      workshopStatus: "wachten",
-      location: "opslag",
-      salesStatus: "voorraad",
-      showroomOnline: false,
-      bpmRequested: true,
-      bpmStarted: true,
-      damage: {
-        description: "",
-        status: "geen"
-      },
-      purchasePrice: 24500,
-      sellingPrice: 0,
-      paymentStatus: "niet_betaald",
-      cmrSent: true,
-      cmrDate: new Date(2023, 5, 15),
-      papersReceived: false,
-      papersDate: null,
-      notes: "Verwacht eind deze week",
-      mainPhotoUrl: "https://images.unsplash.com/photo-1556189250-72ba954cfc2b?q=80&w=800",
-      photos: [
-        "https://images.unsplash.com/photo-1556189250-72ba954cfc2b?q=80&w=800",
-        "https://images.unsplash.com/photo-1556189250-72ba954cfc2b?q=80&w=800"
-      ],
-      createdAt: new Date(2024, 3, 15).toISOString() // April 15, 2024
-    },
-    {
-      id: "3",
-      brand: "Mercedes",
-      model: "E-Klasse E220d AMG Line",
-      licenseNumber: "ZX-789-Y",
-      vin: "WDD2130421A123456",
-      mileage: 38000,
-      importStatus: "aangekomen",
-      arrived: true,
-      workshopStatus: "poetsen",
-      location: "showroom",
-      salesStatus: "voorraad",
-      showroomOnline: false,
-      bpmRequested: true,
-      bpmStarted: true,
-      damage: {
-        description: "Deuk in achterbumper",
-        status: "middel"
-      },
-      purchasePrice: 32000,
-      sellingPrice: 0,
-      paymentStatus: "niet_betaald",
-      cmrSent: true,
-      cmrDate: new Date(2023, 4, 20),
-      papersReceived: true,
-      papersDate: new Date(2023, 5, 1),
-      notes: "Klant heeft interesse getoond",
-      mainPhotoUrl: "https://images.unsplash.com/photo-1563720223489-c94d197a0a0e?q=80&w=800",
-      photos: [
-        "https://images.unsplash.com/photo-1563720223489-c94d197a0a0e?q=80&w=800",
-        "https://images.unsplash.com/photo-1563720223489-c94d197a0a0e?q=80&w=800"
-      ],
-      createdAt: new Date(2024, 2, 10).toISOString() // March 10, 2024
-    },
-    {
-      id: "4",
-      brand: "Volkswagen",
-      model: "Golf GTI Performance",
-      licenseNumber: "VW-456-G",
-      vin: "WVWZZZ1KZCM123456",
-      mileage: 25000,
-      importStatus: "ingeschreven",
-      arrived: true,
-      workshopStatus: "gereed",
-      location: "showroom",
-      salesStatus: "verkocht_b2b",
-      showroomOnline: false,
-      bpmRequested: true,
-      bpmStarted: true,
-      damage: {
-        description: "",
-        status: "geen"
-      },
-      purchasePrice: 28500,
-      sellingPrice: 31500,
-      paymentStatus: "volledig_betaald",
-      cmrSent: true,
-      cmrDate: new Date(2023, 5, 15),
-      papersReceived: true,
-      papersDate: new Date(2023, 5, 20),
-      notes: "Verkocht aan Autobedrijf Jansen",
-      mainPhotoUrl: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=800",
-      photos: [
-        "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=800",
-      ],
-      createdAt: new Date(2024, 3, 5).toISOString(), // April 5, 2024
-      customerId: "b2b-1"
-    },
-    {
-      id: "5",
-      brand: "Audi",
-      model: "Q5 2.0 TDI Quattro",
-      licenseNumber: "TR-789-P",
-      vin: "WAUZZZ8R2DA987654",
-      mileage: 42000,
-      importStatus: "ingeschreven",
-      arrived: true,
-      workshopStatus: "gereed",
-      location: "showroom",
-      salesStatus: "verkocht_b2b",
-      showroomOnline: false,
-      bpmRequested: true,
-      bpmStarted: true,
-      damage: {
-        description: "",
-        status: "geen"
-      },
-      purchasePrice: 35000,
-      sellingPrice: 39500,
-      paymentStatus: "aanbetaling",
-      cmrSent: true,
-      cmrDate: new Date(2023, 6, 10),
-      papersReceived: true,
-      papersDate: new Date(2023, 6, 15),
-      notes: "Verkocht aan AutoPlaza",
-      mainPhotoUrl: "https://images.unsplash.com/photo-1606220838315-056192d5e927?q=80&w=800",
-      photos: [
-        "https://images.unsplash.com/photo-1606220838315-056192d5e927?q=80&w=800",
-      ],
-      createdAt: new Date(2024, 3, 15).toISOString(), // April 15, 2024
-      customerId: "b2b-2"
-    },
-    // Add some B2C vehicles
-    {
-      id: "6",
-      brand: "Mercedes-Benz",
-      model: "C-Klasse C200 AMG Line",
-      licenseNumber: "KG-892-L",
-      vin: "WDC2050401R123456",
-      mileage: 18000,
-      importStatus: "ingeschreven",
-      arrived: true,
-      workshopStatus: "klaar_voor_aflevering",
-      location: "showroom",
-      salesStatus: "verkocht_b2c",
-      paintStatus: "hersteld",
-      showroomOnline: false,
-      bpmRequested: true,
-      bpmStarted: true,
-      damage: {
-        description: "",
-        status: "geen"
-      },
-      purchasePrice: 45000,
-      sellingPrice: 49500,
-      paymentStatus: "volledig_betaald",
-      cmrSent: true,
-      cmrDate: new Date(2024, 4, 10),
-      papersReceived: true,
-      papersDate: new Date(2024, 4, 15),
-      notes: "Klant afspraak maken voor aflevering",
-      mainPhotoUrl: "https://images.unsplash.com/photo-1563720223489-c94d197a0a0e?q=80&w=800",
-      photos: [
-        "https://images.unsplash.com/photo-1563720223489-c94d197a0a0e?q=80&w=800",
-      ],
-      createdAt: new Date(2024, 4, 5).toISOString(), // May 5, 2024
-      customerId: "c1",
-      customerName: "Jan de Vries"
-    },
-    {
-      id: "7",
-      brand: "BMW",
-      model: "5-serie 520i Executive",
-      licenseNumber: "ZD-123-P",
-      vin: "WBA5A31080C123456",
-      mileage: 31000,
-      importStatus: "goedgekeurd",
-      arrived: true,
-      workshopStatus: "in_werkplaats",
-      location: "werkplaats",
-      salesStatus: "verkocht_b2c",
-      paintStatus: "in_behandeling",
-      showroomOnline: false,
-      bpmRequested: true,
-      bpmStarted: true,
-      damage: {
-        description: "Kleine deuk rechter deur",
-        status: "licht"
-      },
-      purchasePrice: 38000,
-      sellingPrice: 42500,
-      paymentStatus: "aanbetaling",
-      cmrSent: true,
-      cmrDate: new Date(2024, 5, 5),
-      papersReceived: true,
-      papersDate: new Date(2024, 5, 10),
-      notes: "Nog lakwerk nodig voor aflevering",
-      mainPhotoUrl: "https://images.unsplash.com/photo-1556189250-72ba954cfc2b?q=80&w=800",
-      photos: [
-        "https://images.unsplash.com/photo-1556189250-72ba954cfc2b?q=80&w=800",
-      ],
-      createdAt: new Date(2024, 4, 20).toISOString(), // May 20, 2024
-      customerId: "c2",
-      customerName: "Petra Janssen"
-    },
-    // Add an already delivered vehicle
-    {
-      id: "8",
-      brand: "Volvo",
-      model: "XC60 T5 Inscription",
-      licenseNumber: "VK-375-G",
-      vin: "YV1ZW60UCJ2123456",
-      mileage: 22000,
-      importStatus: "ingeschreven",
-      arrived: true,
-      workshopStatus: "gereed",
-      location: "showroom",
-      salesStatus: "afgeleverd",
-      paintStatus: "hersteld",
-      showroomOnline: false,
-      bpmRequested: true,
-      bpmStarted: true,
-      damage: {
-        description: "",
-        status: "geen"
-      },
-      purchasePrice: 52000,
-      sellingPrice: 57000,
-      paymentStatus: "volledig_betaald",
-      cmrSent: true,
-      cmrDate: new Date(2024, 3, 15),
-      papersReceived: true,
-      papersDate: new Date(2024, 3, 20),
-      notes: "Auto succesvol afgeleverd",
-      mainPhotoUrl: "https://images.unsplash.com/photo-1489824904134-891ab64532f1?q=80&w=800",
-      photos: [
-        "https://images.unsplash.com/photo-1489824904134-891ab64532f1?q=80&w=800",
-      ],
-      createdAt: new Date(2024, 3, 1).toISOString(), // April 1, 2024
-      customerId: "c3",
-      customerName: "Marieke de Boer",
-      deliveryDate: new Date(2024, 4, 15) // May 15, 2024
-    }
-  ];
+  // Simulate API call
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const mockVehicles: Vehicle[] = [
+        {
+          id: "1",
+          brand: "Mercedes-Benz",
+          model: "C-Class",
+          year: 2020,
+          mileage: 50000,
+          price: 35000,
+          licenseNumber: "ABC-123",
+          vin: "1234567890",
+          engineType: "Gasoline",
+          engineCapacity: 2.0,
+          transmission: "Automatic",
+          color: "Black",
+          salesStatus: "beschikbaar",
+          paymentStatus: "open",
+          paintStatus: "ok",
+          importStatus: "niet_gestart",
+          cmrSent: false,
+          cmrDate: null,
+          photos: [],
+          mainPhotoUrl: null,
+          damage: {
+            status: "minor",
+            description: "Scratches on the bumper"
+          },
+          options: ["Navigation", "Leather seats", "Sunroof"],
+          arrived: false,
+          sellingPrice: 40000,
+          dateAdded: new Date(),
+          dateSold: null
+        },
+        {
+          id: "2",
+          brand: "BMW",
+          model: "3 Series",
+          year: 2021,
+          mileage: 40000,
+          price: 40000,
+          licenseNumber: "DEF-456",
+          vin: "0987654321",
+          engineType: "Diesel",
+          engineCapacity: 3.0,
+          transmission: "Automatic",
+          color: "White",
+          salesStatus: "verkocht_b2b",
+          paymentStatus: "voldaan",
+          paintStatus: "ok",
+          importStatus: "aangekomen",
+          cmrSent: true,
+          cmrDate: new Date(),
+          photos: [],
+          mainPhotoUrl: null,
+          damage: {
+            status: "none",
+            description: ""
+          },
+          options: ["Navigation", "Leather seats", "Sunroof"],
+          arrived: true,
+          sellingPrice: 45000,
+          dateAdded: new Date(),
+          dateSold: new Date()
+        },
+        {
+          id: "3",
+          brand: "Audi",
+          model: "A4",
+          year: 2022,
+          mileage: 30000,
+          price: 45000,
+          licenseNumber: "GHI-789",
+          vin: "1234509876",
+          engineType: "Gasoline",
+          engineCapacity: 2.0,
+          transmission: "Automatic",
+          color: "Gray",
+          salesStatus: "verkocht_b2c",
+          paymentStatus: "open",
+          paintStatus: "reparatie",
+          importStatus: "transport_geregeld",
+          cmrSent: false,
+          cmrDate: null,
+          photos: [],
+          mainPhotoUrl: null,
+          damage: {
+            status: "major",
+            description: "Front collision"
+          },
+          options: ["Navigation", "Leather seats", "Sunroof"],
+          arrived: false,
+          sellingPrice: 50000,
+          dateAdded: new Date(),
+          dateSold: new Date()
+        },
+        {
+          id: "4",
+          brand: "Volkswagen",
+          model: "Golf",
+          year: 2019,
+          mileage: 60000,
+          price: 25000,
+          licenseNumber: "JKL-012",
+          vin: "6789012345",
+          engineType: "Gasoline",
+          engineCapacity: 1.5,
+          transmission: "Manual",
+          color: "Blue",
+          salesStatus: "beschikbaar",
+          paymentStatus: "voldaan",
+          paintStatus: "ok",
+          importStatus: "onderweg",
+          cmrSent: false,
+          cmrDate: null,
+          photos: [],
+          mainPhotoUrl: null,
+          damage: {
+            status: "minor",
+            description: "Dent on the door"
+          },
+          options: ["Air conditioning", "Alloy wheels"],
+          arrived: false,
+          sellingPrice: 30000,
+          dateAdded: new Date(),
+          dateSold: null
+        },
+        {
+          id: "5",
+          brand: "Renault",
+          model: "Clio",
+          year: 2020,
+          mileage: 45000,
+          price: 18000,
+          licenseNumber: "MNO-345",
+          vin: "5432167890",
+          engineType: "Gasoline",
+          engineCapacity: 1.0,
+          transmission: "Manual",
+          color: "Red",
+          salesStatus: "beschikbaar",
+          paymentStatus: "open",
+          paintStatus: "ok",
+          importStatus: "aangekomen",
+          cmrSent: false,
+          cmrDate: null,
+          photos: [],
+          mainPhotoUrl: null,
+          damage: {
+            status: "none",
+            description: ""
+          },
+          options: ["Air conditioning", "Bluetooth"],
+          arrived: true,
+          sellingPrice: 22000,
+          dateAdded: new Date(),
+          dateSold: null
+        },
+        {
+          id: "6",
+          brand: "Peugeot",
+          model: "208",
+          year: 2021,
+          mileage: 35000,
+          price: 20000,
+          licenseNumber: "PQR-678",
+          vin: "0987612345",
+          engineType: "Electric",
+          engineCapacity: 0.0,
+          transmission: "Automatic",
+          color: "Orange",
+          salesStatus: "beschikbaar",
+          paymentStatus: "voldaan",
+          paintStatus: "ok",
+          importStatus: "niet_gestart",
+          cmrSent: false,
+          cmrDate: null,
+          photos: [],
+          mainPhotoUrl: null,
+          damage: {
+            status: "minor",
+            description: "Scratch on the side mirror"
+          },
+          options: ["Navigation", "Parking sensors"],
+          arrived: false,
+          sellingPrice: 24000,
+          dateAdded: new Date(),
+          dateSold: null
+        },
+        {
+          id: "7",
+          brand: "Fiat",
+          model: "500",
+          year: 2022,
+          mileage: 25000,
+          price: 17000,
+          licenseNumber: "STU-901",
+          vin: "5432109876",
+          engineType: "Gasoline",
+          engineCapacity: 1.2,
+          transmission: "Manual",
+          color: "Pink",
+          salesStatus: "beschikbaar",
+          paymentStatus: "open",
+          paintStatus: "ok",
+          importStatus: "transport_geregeld",
+          cmrSent: false,
+          cmrDate: null,
+          photos: [],
+          mainPhotoUrl: null,
+          damage: {
+            status: "none",
+            description: ""
+          },
+          options: ["Air conditioning", "Panoramic roof"],
+          arrived: false,
+          sellingPrice: 21000,
+          dateAdded: new Date(),
+          dateSold: null
+        },
+        {
+          id: "8",
+          brand: "Toyota",
+          model: "Yaris",
+          year: 2019,
+          mileage: 70000,
+          price: 15000,
+          licenseNumber: "VWX-234",
+          vin: "6789054321",
+          engineType: "Hybrid",
+          engineCapacity: 1.5,
+          transmission: "Automatic",
+          color: "Silver",
+          salesStatus: "beschikbaar",
+          paymentStatus: "voldaan",
+          paintStatus: "ok",
+          importStatus: "onderweg",
+          cmrSent: false,
+          cmrDate: null,
+          photos: [],
+          mainPhotoUrl: null,
+          damage: {
+            status: "minor",
+            description: "Small dent on the hood"
+          },
+          options: ["Navigation", "Reversing camera"],
+          arrived: false,
+          sellingPrice: 19000,
+          dateAdded: new Date(),
+          dateSold: null
+        },
+        {
+          id: "9",
+          brand: "Nissan",
+          model: "Qashqai",
+          year: 2020,
+          mileage: 55000,
+          price: 22000,
+          licenseNumber: "YZA-567",
+          vin: "1234567890",
+          engineType: "Gasoline",
+          engineCapacity: 1.3,
+          transmission: "Automatic",
+          color: "Black",
+          salesStatus: "beschikbaar",
+          paymentStatus: "open",
+          paintStatus: "ok",
+          importStatus: "aangekomen",
+          cmrSent: false,
+          cmrDate: null,
+          photos: [],
+          mainPhotoUrl: null,
+          damage: {
+            status: "none",
+            description: ""
+          },
+          options: ["Leather seats", "Sunroof", "Parking sensors"],
+          arrived: true,
+          sellingPrice: 26000,
+          dateAdded: new Date(),
+          dateSold: null
+        },
+        {
+          id: "10",
+          brand: "Ford",
+          model: "Focus",
+          year: 2021,
+          mileage: 40000,
+          price: 23000,
+          licenseNumber: "BCD-890",
+          vin: "0987654321",
+          engineType: "Gasoline",
+          engineCapacity: 1.0,
+          transmission: "Manual",
+          color: "White",
+          salesStatus: "beschikbaar",
+          paymentStatus: "voldaan",
+          paintStatus: "ok",
+          importStatus: "niet_gestart",
+          cmrSent: false,
+          cmrDate: null,
+          photos: [],
+          mainPhotoUrl: null,
+          damage: {
+            status: "minor",
+            description: "Scratches on the bumper"
+          },
+          options: ["Navigation", "Air conditioning", "Alloy wheels"],
+          arrived: false,
+          sellingPrice: 27000,
+          dateAdded: new Date(),
+          dateSold: null
+        }
+      ];
+      resolve(mockVehicles);
+    }, 500);
+  });
 };
 
-// Fetch B2B vehicles
+// Mock function to fetch B2B vehicles
 export const fetchB2BVehicles = async (): Promise<Vehicle[]> => {
-  const vehicles = await fetchVehicles();
-  return vehicles.filter(vehicle => vehicle.salesStatus === "verkocht_b2b");
+  // Simulate API call
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const mockVehicles: Vehicle[] = [
+        {
+          id: "2",
+          brand: "BMW",
+          model: "3 Series",
+          year: 2021,
+          mileage: 40000,
+          price: 40000,
+          licenseNumber: "DEF-456",
+          vin: "0987654321",
+          engineType: "Diesel",
+          engineCapacity: 3.0,
+          transmission: "Automatic",
+          color: "White",
+          salesStatus: "verkocht_b2b",
+          paymentStatus: "voldaan",
+          paintStatus: "ok",
+          importStatus: "aangekomen",
+          cmrSent: true,
+          cmrDate: new Date(),
+          photos: [],
+          mainPhotoUrl: null,
+          damage: {
+            status: "none",
+            description: ""
+          },
+          options: ["Navigation", "Leather seats", "Sunroof"],
+          arrived: true,
+          sellingPrice: 45000,
+          dateAdded: new Date(),
+          dateSold: new Date()
+        }
+      ];
+      resolve(mockVehicles);
+    }, 500);
+  });
 };
 
-// Fetch B2C vehicles
+// Mock function to fetch B2C vehicles
 export const fetchB2CVehicles = async (): Promise<Vehicle[]> => {
-  const vehicles = await fetchVehicles();
-  return vehicles.filter(vehicle => vehicle.salesStatus === "verkocht_b2c");
+  // Simulate API call
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const mockVehicles: Vehicle[] = [
+        {
+          id: "3",
+          brand: "Audi",
+          model: "A4",
+          year: 2022,
+          mileage: 30000,
+          price: 45000,
+          licenseNumber: "GHI-789",
+          vin: "1234509876",
+          engineType: "Gasoline",
+          engineCapacity: 2.0,
+          transmission: "Automatic",
+          color: "Gray",
+          salesStatus: "verkocht_b2c",
+          paymentStatus: "open",
+          paintStatus: "reparatie",
+          importStatus: "transport_geregeld",
+          cmrSent: false,
+          cmrDate: null,
+          photos: [],
+          mainPhotoUrl: null,
+          damage: {
+            status: "major",
+            description: "Front collision"
+          },
+          options: ["Navigation", "Leather seats", "Sunroof"],
+          arrived: false,
+          sellingPrice: 50000,
+          dateAdded: new Date(),
+          dateSold: new Date()
+        }
+      ];
+      resolve(mockVehicles);
+    }, 500);
+  });
 };
 
-// Fetch Delivered vehicles
+// Mock function to fetch delivered vehicles
 export const fetchDeliveredVehicles = async (): Promise<Vehicle[]> => {
-  const vehicles = await fetchVehicles();
-  return vehicles.filter(vehicle => vehicle.salesStatus === "afgeleverd");
+  // Simulate API call
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const mockVehicles: Vehicle[] = [
+        {
+          id: "3",
+          brand: "Audi",
+          model: "A4",
+          year: 2022,
+          mileage: 30000,
+          price: 45000,
+          licenseNumber: "GHI-789",
+          vin: "1234509876",
+          engineType: "Gasoline",
+          engineCapacity: 2.0,
+          transmission: "Automatic",
+          color: "Gray",
+          salesStatus: "afgeleverd",
+          paymentStatus: "open",
+          paintStatus: "reparatie",
+          importStatus: "transport_geregeld",
+          cmrSent: false,
+          cmrDate: null,
+          photos: [],
+          mainPhotoUrl: null,
+          damage: {
+            status: "major",
+            description: "Front collision"
+          },
+          options: ["Navigation", "Leather seats", "Sunroof"],
+          arrived: false,
+          sellingPrice: 50000,
+          dateAdded: new Date(),
+          dateSold: new Date()
+        }
+      ];
+      resolve(mockVehicles);
+    }, 500);
+  });
 };
 
-// Mock update function
+// Mock function to update a vehicle
 export const updateVehicle = async (vehicle: Vehicle): Promise<Vehicle> => {
-  // Simulating API call
-  return vehicle;
+  // Simulate API call
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      console.log("Vehicle updated:", vehicle);
+      resolve(vehicle);
+    }, 500);
+  });
 };
 
-// Mock bulk update function
-export const bulkUpdateVehicles = async (ids: string[], updates: Partial<Vehicle>): Promise<Vehicle[]> => {
-  // Simulating API call
-  console.log("Bulk updating vehicles:", ids, updates);
-  return []; // Would normally return updated vehicles
+// Mock function to update selling price
+export const updateSellingPrice = async (vehicleId: string, price: number): Promise<void> => {
+  // Simulate API call
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      console.log(`Selling price updated for vehicle ${vehicleId} to ${price}`);
+      resolve();
+    }, 500);
+  });
 };
 
-// Function to change sales status
-export const updateSalesStatus = async (id: string, status: SalesStatus): Promise<Vehicle> => {
-  // Simulating API call
-  console.log(`Changing vehicle ${id} status to ${status}`);
-  return { id } as Vehicle; // Would normally return updated vehicle
+// Mock function to update payment status
+export const updatePaymentStatus = async (vehicleId: string, status: PaymentStatus): Promise<void> => {
+  // Simulate API call
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      console.log(`Payment status updated for vehicle ${vehicleId} to ${status}`);
+      resolve();
+    }, 500);
+  });
 };
 
-// Function to update payment status
-export const updatePaymentStatus = async (id: string, status: PaymentStatus): Promise<Vehicle> => {
-  // Simulating API call
-  console.log(`Changing vehicle ${id} payment status to ${status}`);
-  return { id } as Vehicle; // Would normally return updated vehicle
+// Mock function to update paint status
+export const updatePaintStatus = async (vehicleId: string, status: PaintStatus): Promise<void> => {
+  // Simulate API call
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      console.log(`Paint status updated for vehicle ${vehicleId} to ${status}`);
+      resolve();
+    }, 500);
+  });
 };
 
-// Function to delete vehicle
-export const deleteVehicle = async (id: string): Promise<boolean> => {
-  // Simulating API call
-  console.log(`Deleting vehicle ${id}`);
-  return true;
-};
-
-// Mock create function
-export const createVehicle = async (vehicle: Omit<Vehicle, "id">): Promise<Vehicle> => {
-  // Simulating API call
-  return {
-    ...vehicle,
-    id: Math.random().toString(36).substring(7) // Generate random ID
-  };
-};
-
-// Mock email sending function
-export const sendEmail = async (type: string, vehicleIds: string[]): Promise<boolean> => {
-  // Simulating API call
-  console.log(`Sending ${type} email for vehicles:`, vehicleIds);
-  return true;
-};
-
-// Mock photo upload function
+// Mock function to upload a vehicle photo
 export const uploadVehiclePhoto = async (vehicleId: string, file: File, isMain: boolean): Promise<string> => {
-  // Simulating API call
-  console.log(`Uploading photo for vehicle ${vehicleId}, main photo: ${isMain}`);
-  // Return a random image URL for demonstration purposes
-  const imageUrls = [
-    "https://images.unsplash.com/photo-1489824904134-891ab64532f1?q=80&w=800",
-    "https://images.unsplash.com/photo-1556189250-72ba954cfc2b?q=80&w=800",
-    "https://images.unsplash.com/photo-1563720223489-c94d197a0a0e?q=80&w=800",
-    "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=800"
-  ];
-  return imageUrls[Math.floor(Math.random() * imageUrls.length)];
+  // Simulate API call
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const photoUrl = URL.createObjectURL(file);
+      console.log(`Photo uploaded for vehicle ${vehicleId}. Is main: ${isMain}`);
+      resolve(photoUrl);
+    }, 1000);
+  });
 };
 
-// Update selling price
-export const updateSellingPrice = async (id: string, price: number): Promise<Vehicle> => {
-  // Simulating API call
-  console.log(`Updating selling price for vehicle ${id} to ${price}`);
-  return { id, sellingPrice: price } as Vehicle;
+// Mock function to update sales status
+export const updateSalesStatus = async (vehicleId: string, salesStatus: string): Promise<void> => {
+  // Simulate API call
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      console.log(`Sales status updated for vehicle ${vehicleId} to ${salesStatus}`);
+      resolve();
+    }, 500);
+  });
 };
 
-// Send different types of B2B emails
-export const sendB2BEmail = async (type: string, vehicleId: string): Promise<boolean> => {
-  // Simulating API call
-  console.log(`Sending ${type} email for B2B vehicle ${vehicleId}`);
-  return true;
+// Mock function to mark vehicle as delivered
+export const markVehicleAsDelivered = async (vehicleId: string): Promise<void> => {
+  // Simulate API call
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      console.log(`Vehicle ${vehicleId} marked as delivered`);
+      resolve();
+    }, 500);
+  });
 };
 
-// Update paint status
-export const updatePaintStatus = async (id: string, status: PaintStatus): Promise<Vehicle> => {
-  // Simulating API call
-  console.log(`Updating paint status for vehicle ${id} to ${status}`);
-  return { id, paintStatus: status } as Vehicle;
+// Mock upload vehicle file function
+export const uploadVehicleFile = async (file: File, category: FileCategory, vehicleId: string): Promise<string> => {
+  // In a real app, this would upload to a server/cloud storage
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const fileUrl = URL.createObjectURL(file);
+      console.log(`Uploaded ${file.name} for vehicle ${vehicleId} in category ${category}`);
+      resolve(fileUrl);
+    }, 1000);
+  });
 };
 
-// Function to mark vehicle as delivered with date
-export const markVehicleAsDelivered = async (id: string): Promise<Vehicle> => {
-  // Simulating API call
-  const deliveryDate = new Date();
-  console.log(`Marking vehicle ${id} as delivered on ${deliveryDate}`);
-  return { 
-    id, 
-    salesStatus: "afgeleverd", 
-    deliveryDate 
-  } as Vehicle;
+// Mock fetch vehicle files function
+export const fetchVehicleFiles = async (vehicleId: string): Promise<VehicleFile[]> => {
+  // In a real app, this would fetch from an API
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // Return mock data for now
+      resolve([
+        {
+          id: "1",
+          name: "damage_report.pdf",
+          url: "/placeholder.svg",
+          category: "damage",
+          vehicleId,
+          createdAt: new Date().toISOString(),
+          size: 1024 * 1024, // 1MB
+          type: "application/pdf"
+        },
+        {
+          id: "2",
+          name: "cmr_document.pdf",
+          url: "/placeholder.svg",
+          category: "cmr",
+          vehicleId,
+          createdAt: new Date().toISOString(),
+          size: 2048 * 1024, // 2MB
+          type: "application/pdf"
+        }
+      ]);
+    }, 500);
+  });
+};
+
+// Mock function to send a test email
+export const sendTestEmail = async (email: string): Promise<void> => {
+  // Simulate API call
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      console.log(`Test email sent to ${email}`);
+      resolve();
+    }, 500);
+  });
+};
+
+// Enhanced email function to check for attachments
+export const sendEmail = async (type: string, vehicleIds: string[]): Promise<void> => {
+  // In a real app, this would send an email via an API
+  console.log(`Sending email type: ${type} to vehicles: ${vehicleIds.join(", ")}`);
+  
+  // Check if files exist for email attachments
+  const files = await fetchVehicleFiles(vehicleIds[0]);
+  
+  if (type === "cmr_supplier" && !files.some(file => file.category === "cmr")) {
+    throw new Error("Geen CMR document gevonden om te versturen");
+  }
+  
+  if (type === "transport_pickup" && !files.some(file => file.category === "pickup")) {
+    throw new Error("Geen pickup document gevonden om te versturen");
+  }
+  
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve();
+    }, 1000);
+  });
 };
