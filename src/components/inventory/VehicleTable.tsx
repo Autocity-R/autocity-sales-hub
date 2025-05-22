@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Vehicle, ImportStatus } from "@/types/inventory";
-import { CircleCheck, CircleX, ExternalLink, Mail, MoreHorizontal, ArrowUp, ArrowDown } from "lucide-react";
+import { CircleCheck, CircleX, ExternalLink, Mail, MoreHorizontal, ArrowUp, ArrowDown, Plus } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -42,6 +42,11 @@ import { Car } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Contact, ContactType } from "@/types/customer";
+import ContactForm from "@/components/customers/ContactForm";
+import { getContactsByType } from "@/services/customerService";
 
 interface VehicleTableProps {
   vehicles: Vehicle[];
@@ -108,11 +113,15 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
   const [selectedB2BCustomer, setSelectedB2BCustomer] = useState<string>("");
   const [newB2BCustomer, setNewB2BCustomer] = useState({name: "", email: "", phone: ""});
   const [selectedB2CCustomer, setSelectedB2CCustomer] = useState({name: "", email: "", phone: ""});
+  const [activeTab, setActiveTab] = useState<string>("existing");
   
-  // Mock data for the selectors - in a real application, these would come from the API
+  // Fetch existing customers
+  const b2bCustomers = getContactsByType("b2b");
+  const b2cCustomers = getContactsByType("b2c");
+  
+  // Mock data for the transporters and suppliers - in a real application, these would come from the API
   const transporters = ["Transport A", "Transport B", "Transport C"];
   const suppliers = ["Supplier X", "Supplier Y", "Supplier Z"];
-  const b2bCustomers = ["Company A", "Company B", "Company C"];
 
   const renderSortIcon = (field: string) => {
     if (sortField !== field) return null;
@@ -136,12 +145,14 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
   const handleEmailClick = (type: "transport_pickup" | "cmr_supplier", vehicleId: string) => {
     setCurrentVehicleId(vehicleId);
     setDialogType(type);
+    setActiveTab("existing"); // Reset to existing tab
     setDialogOpen(true);
   };
 
   const handleStatusChange = (status: "verkocht_b2b" | "verkocht_b2c", vehicleId: string) => {
     setCurrentVehicleId(vehicleId);
     setDialogType(status);
+    setActiveTab("existing"); // Default to existing customers tab
     setDialogOpen(true);
   };
 
@@ -177,10 +188,10 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
         break;
         
       case "verkocht_b2c":
-        if (!selectedB2CCustomer.name || !selectedB2CCustomer.email) {
+        if (activeTab === "existing" && !selectedB2CCustomer.name) {
           toast({
-            title: "Klantgegevens ontbreken",
-            description: "Vul alle verplichte velden in.",
+            title: "Klant ontbreekt",
+            description: "Selecteer eerst een bestaande klant.",
             variant: "destructive"
           });
           return;
@@ -192,10 +203,10 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
         break;
         
       case "verkocht_b2b":
-        if (!selectedB2BCustomer && (!newB2BCustomer.name || !newB2BCustomer.email)) {
+        if (activeTab === "existing" && !selectedB2BCustomer) {
           toast({
             title: "B2B klant ontbreekt",
-            description: "Selecteer een bestaande klant of maak een nieuwe aan.",
+            description: "Selecteer eerst een bestaande klant.",
             variant: "destructive"
           });
           return;
@@ -214,6 +225,29 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
     setSelectedB2BCustomer("");
     setNewB2BCustomer({name: "", email: "", phone: ""});
     setSelectedB2CCustomer({name: "", email: "", phone: ""});
+    setActiveTab("existing");
+  };
+  
+  const handleContactFormSuccess = (contact: Contact) => {
+    // When a new contact is created successfully
+    toast({
+      title: "Contact aangemaakt",
+      description: `Contact "${contact.firstName} ${contact.lastName}" is succesvol aangemaakt.`
+    });
+    
+    // Select the newly created contact
+    if (contact.type === "b2b") {
+      setSelectedB2BCustomer(contact.id);
+    } else if (contact.type === "b2c") {
+      setSelectedB2CCustomer({
+        name: `${contact.firstName} ${contact.lastName}`,
+        email: contact.email,
+        phone: contact.phone
+      });
+    }
+    
+    // Switch back to existing tab to show selection
+    setActiveTab("existing");
   };
 
   if (isLoading) {
@@ -483,9 +517,9 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
         </TableBody>
       </Table>
 
-      {/* Dialogs for different actions */}
+      {/* Customer Selection Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-3xl">
           {dialogType === "transport_pickup" && (
             <>
               <DialogHeader>
@@ -561,115 +595,149 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
           {dialogType === "verkocht_b2c" && (
             <>
               <DialogHeader>
-                <DialogTitle>Verkocht particulier</DialogTitle>
+                <DialogTitle>Verkocht aan particuliere klant</DialogTitle>
                 <DialogDescription>
-                  Vul de gegevens van de particuliere klant in
+                  Koppel dit voertuig aan een particuliere klant
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="b2c-name">Naam*</Label>
-                  <Input 
-                    id="b2c-name" 
-                    value={selectedB2CCustomer.name} 
-                    onChange={(e) => setSelectedB2CCustomer({...selectedB2CCustomer, name: e.target.value})}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="b2c-email">E-mail*</Label>
-                  <Input 
-                    id="b2c-email" 
-                    type="email"
-                    value={selectedB2CCustomer.email} 
-                    onChange={(e) => setSelectedB2CCustomer({...selectedB2CCustomer, email: e.target.value})}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="b2c-phone">Telefoonnummer</Label>
-                  <Input 
-                    id="b2c-phone" 
-                    value={selectedB2CCustomer.phone} 
-                    onChange={(e) => setSelectedB2CCustomer({...selectedB2CCustomer, phone: e.target.value})}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                  Annuleren
-                </Button>
-                <Button onClick={handleDialogConfirm}>
-                  Voertuig als verkocht markeren
-                </Button>
-              </DialogFooter>
+              
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="existing">Bestaande klant</TabsTrigger>
+                  <TabsTrigger value="new">Nieuwe klant</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="existing" className="mt-4">
+                  <div className="space-y-4">
+                    <div className="grid gap-2">
+                      <Label>Selecteer een klant</Label>
+                      <div className="max-h-[300px] overflow-y-auto border rounded-md">
+                        <div className="p-2">
+                          {b2cCustomers.length > 0 ? (
+                            <div className="space-y-2">
+                              {b2cCustomers.map((customer) => (
+                                <div
+                                  key={customer.id}
+                                  className={`flex items-center justify-between p-2 border rounded cursor-pointer ${
+                                    selectedB2CCustomer.name === `${customer.firstName} ${customer.lastName}` 
+                                      ? "bg-primary/10 border-primary" 
+                                      : "hover:bg-muted"
+                                  }`}
+                                  onClick={() => setSelectedB2CCustomer({
+                                    name: `${customer.firstName} ${customer.lastName}`,
+                                    email: customer.email,
+                                    phone: customer.phone
+                                  })}
+                                >
+                                  <div>
+                                    <p className="font-medium">{customer.firstName} {customer.lastName}</p>
+                                    <p className="text-sm text-muted-foreground">{customer.email}</p>
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">{customer.phone}</div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-center text-muted-foreground py-4">
+                              Geen particuliere klanten gevonden
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="new" className="mt-4">
+                  <ContactForm contactType="b2c" onSuccess={handleContactFormSuccess} />
+                </TabsContent>
+              </Tabs>
+              
+              {activeTab === "existing" && (
+                <DialogFooter className="mt-4">
+                  <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                    Annuleren
+                  </Button>
+                  <Button 
+                    onClick={handleDialogConfirm}
+                    disabled={!selectedB2CCustomer.name}
+                  >
+                    Koppelen en markeren als verkocht
+                  </Button>
+                </DialogFooter>
+              )}
             </>
           )}
 
           {dialogType === "verkocht_b2b" && (
             <>
               <DialogHeader>
-                <DialogTitle>Verkocht B2B</DialogTitle>
+                <DialogTitle>Verkocht aan zakelijke klant</DialogTitle>
                 <DialogDescription>
-                  Selecteer een bestaande B2B klant of maak een nieuwe aan
+                  Koppel dit voertuig aan een zakelijke klant
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="b2b-customer">Bestaande klant</Label>
-                  <Select value={selectedB2BCustomer} onValueChange={setSelectedB2BCustomer}>
-                    <SelectTrigger id="b2b-customer">
-                      <SelectValue placeholder="Selecteer B2B klant" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {b2bCustomers.map(customer => (
-                        <SelectItem key={customer} value={customer}>
-                          {customer}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="existing">Bestaande klant</TabsTrigger>
+                  <TabsTrigger value="new">Nieuwe klant</TabsTrigger>
+                </TabsList>
                 
-                <div className="my-2">
-                  <p className="text-sm text-muted-foreground mb-2">Of maak een nieuwe B2B klant aan</p>
-                  
-                  <div className="grid gap-2 mt-2">
-                    <Label htmlFor="new-b2b-name">Naam*</Label>
-                    <Input 
-                      id="new-b2b-name" 
-                      value={newB2BCustomer.name} 
-                      onChange={(e) => setNewB2BCustomer({...newB2BCustomer, name: e.target.value})}
-                      disabled={!!selectedB2BCustomer}
-                    />
+                <TabsContent value="existing" className="mt-4">
+                  <div className="space-y-4">
+                    <div className="grid gap-2">
+                      <Label>Selecteer een zakelijke klant</Label>
+                      <div className="max-h-[300px] overflow-y-auto border rounded-md">
+                        <div className="p-2">
+                          {b2bCustomers.length > 0 ? (
+                            <div className="space-y-2">
+                              {b2bCustomers.map((customer) => (
+                                <div
+                                  key={customer.id}
+                                  className={`flex items-center justify-between p-2 border rounded cursor-pointer ${
+                                    selectedB2BCustomer === customer.id ? "bg-primary/10 border-primary" : "hover:bg-muted"
+                                  }`}
+                                  onClick={() => setSelectedB2BCustomer(customer.id)}
+                                >
+                                  <div>
+                                    <p className="font-medium">{customer.companyName}</p>
+                                    <p className="text-sm">{customer.firstName} {customer.lastName}</p>
+                                    <p className="text-sm text-muted-foreground">{customer.email}</p>
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">{customer.phone}</div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-center text-muted-foreground py-4">
+                              Geen zakelijke klanten gevonden
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="grid gap-2 mt-2">
-                    <Label htmlFor="new-b2b-email">E-mail*</Label>
-                    <Input 
-                      id="new-b2b-email" 
-                      type="email"
-                      value={newB2BCustomer.email} 
-                      onChange={(e) => setNewB2BCustomer({...newB2BCustomer, email: e.target.value})}
-                      disabled={!!selectedB2BCustomer}
-                    />
-                  </div>
-                  <div className="grid gap-2 mt-2">
-                    <Label htmlFor="new-b2b-phone">Telefoonnummer</Label>
-                    <Input 
-                      id="new-b2b-phone" 
-                      value={newB2BCustomer.phone} 
-                      onChange={(e) => setNewB2BCustomer({...newB2BCustomer, phone: e.target.value})}
-                      disabled={!!selectedB2BCustomer}
-                    />
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                  Annuleren
-                </Button>
-                <Button onClick={handleDialogConfirm}>
-                  Voertuig als verkocht markeren
-                </Button>
-              </DialogFooter>
+                </TabsContent>
+                
+                <TabsContent value="new" className="mt-4">
+                  <ContactForm contactType="b2b" onSuccess={handleContactFormSuccess} />
+                </TabsContent>
+              </Tabs>
+              
+              {activeTab === "existing" && (
+                <DialogFooter className="mt-4">
+                  <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                    Annuleren
+                  </Button>
+                  <Button 
+                    onClick={handleDialogConfirm}
+                    disabled={!selectedB2BCustomer}
+                  >
+                    Koppelen en markeren als verkocht
+                  </Button>
+                </DialogFooter>
+              )}
             </>
           )}
         </DialogContent>
