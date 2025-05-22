@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { 
@@ -44,13 +45,24 @@ const navItems: NavItem[] = [
     indented: true,
   },
   {
-    title: "Offline",
-    href: "/inventory/offline",
-    icon: Package,
+    title: "Voorraad verkocht b2b",
+    href: "/inventory/b2b",
+    icon: ShoppingCart,
     indented: true,
   },
   {
-    title: "Klanten & Leveranciers",
+    title: "Voorraad verkocht particulier",
+    href: "/inventory/consumer",
+    icon: User,
+    indented: true,
+  },
+  {
+    title: "Leads",
+    href: "/leads",
+    icon: User,
+  },
+  {
+    title: "Klanten bestand",
     href: "/customers",
     icon: Users,
   },
@@ -65,11 +77,6 @@ const navItems: NavItem[] = [
     href: "/customers/b2c",
     icon: User,
     indented: true,
-  },
-  {
-    title: "Leads",
-    href: "/leads",
-    icon: User,
   },
   {
     title: "Transport",

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Search, Users, ArrowUp, ArrowDown } from "lucide-react";
@@ -354,12 +353,17 @@ const Inventory = () => {
       case "offline":
         filtered = filtered.filter(v => v.arrived && !v.showroomOnline);
         break;
+      case "klanten":
+        // For the klanten tab, we don't need to filter vehicles
+        // Since we'll display the ContactsPanel instead
+        filtered = [];
+        break;
       default:
         break;
     }
     
     // Then apply search term filter
-    if (searchTerm) {
+    if (searchTerm && tab !== "klanten") {
       const searchTermLower = searchTerm.toLowerCase();
       filtered = filtered.filter(vehicle =>
         vehicle.brand.toLowerCase().includes(searchTermLower) ||
@@ -370,7 +374,7 @@ const Inventory = () => {
     }
     
     // Apply sorting if a sort field is selected
-    if (sortField) {
+    if (sortField && tab !== "klanten") {
       filtered.sort((a, b) => {
         let valueA: any;
         let valueB: any;
@@ -476,6 +480,7 @@ const Inventory = () => {
             <TabsTrigger value="voorraad">Voorraad</TabsTrigger>
             <TabsTrigger value="online">Online</TabsTrigger>
             <TabsTrigger value="offline">Offline</TabsTrigger>
+            <TabsTrigger value="klanten">Klanten & Leveranciers</TabsTrigger>
           </TabsList>
           
           <TabsContent value="voorraad" className="space-y-4">
@@ -565,6 +570,22 @@ const Inventory = () => {
                 sortField={sortField}
                 sortDirection={sortDirection}
               />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="klanten" className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Zoek klanten of leveranciers..." 
+                className="max-w-sm" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            <div className="rounded-md border p-4">
+              <ContactsPanel />
             </div>
           </TabsContent>
         </Tabs>
