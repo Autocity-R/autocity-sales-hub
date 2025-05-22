@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Users, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -15,15 +15,18 @@ import { Vehicle, SalesStatus } from "@/types/inventory";
 import { VehicleTable } from "@/components/inventory/VehicleTable";
 import { ContactsPanel } from "@/components/inventory/ContactsPanel";
 import { useChatbotCommands } from "@/hooks/useChatbotCommands";
+import { FileCategory } from "@/types/files";
 import { 
   fetchVehicles, 
   updateVehicle, 
-  createVehicle, 
-  sendEmail, 
-  bulkUpdateVehicles, 
+  createVehicle,
+  sendEmail,
+  bulkUpdateVehicles,
   updateSalesStatus, 
   deleteVehicle,
-  uploadVehiclePhoto
+  uploadVehiclePhoto,
+  uploadVehicleFile,
+  fetchVehicleFiles
 } from "@/services/inventoryService";
 
 const Inventory = () => {
@@ -41,6 +44,13 @@ const Inventory = () => {
   const { data: vehicles = [], isLoading, error } = useQuery({
     queryKey: ["vehicles"],
     queryFn: fetchVehicles
+  });
+  
+  // Fetch files for the selected vehicle
+  const { data: vehicleFiles = [] } = useQuery({
+    queryKey: ["vehicleFiles", selectedVehicle?.id],
+    queryFn: () => selectedVehicle ? fetchVehicleFiles(selectedVehicle.id) : Promise.resolve([]),
+    enabled: !!selectedVehicle
   });
 
   // Update vehicle mutation
@@ -220,6 +230,27 @@ const Inventory = () => {
     onError: (error) => {
       toast({
         title: "Fout bij uploaden foto",
+        description: "Er is iets misgegaan: " + error,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // New mutation for uploading files
+  const uploadFileMutation = useMutation({
+    mutationFn: ({ file, category, vehicleId }: { file: File, category: FileCategory, vehicleId: string }) =>
+      uploadVehicleFile(file, category, vehicleId),
+    onSuccess: () => {
+      toast({
+        title: "Document geüpload",
+        description: "Het document is succesvol geüpload.",
+        variant: "default",
+      });
+      queryClient.invalidateQueries({ queryKey: ["vehicleFiles"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Fout bij het uploaden van het document",
         description: "Er is iets misgegaan: " + error,
         variant: "destructive",
       });
@@ -492,6 +523,17 @@ const Inventory = () => {
   const [activeTab, setActiveTab] = useState("voorraad");
   const filteredVehicles = filterVehicles(vehicles, activeTab);
 
+  // Handle file upload
+  const handleFileUpload = (file: File, category: FileCategory) => {
+    if (selectedVehicle) {
+      uploadFileMutation.mutate({
+        file,
+        category,
+        vehicleId: selectedVehicle.id
+      });
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-4">
@@ -643,6 +685,8 @@ const Inventory = () => {
             onPhotoUpload={(file, isMain) => handlePhotoUpload(selectedVehicle.id, file, isMain)}
             onRemovePhoto={(photoUrl) => handleRemovePhoto(selectedVehicle.id, photoUrl)}
             onSetMainPhoto={(photoUrl) => handleSetMainPhoto(selectedVehicle.id, photoUrl)}
+            onFileUpload={handleFileUpload}
+            files={vehicleFiles}
           />
         )}
         

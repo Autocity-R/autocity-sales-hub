@@ -1,4 +1,4 @@
-import { Vehicle, PaymentStatus, PaintStatus } from "@/types/inventory";
+import { Vehicle, PaymentStatus, PaintStatus, DamageStatus, SalesStatus } from "@/types/inventory";
 import { FileCategory, VehicleFile } from "@/types/files";
 
 // Mock API endpoint
@@ -14,311 +14,311 @@ export const fetchVehicles = async (): Promise<Vehicle[]> => {
           id: "1",
           brand: "Mercedes-Benz",
           model: "C-Class",
-          year: 2020,
-          mileage: 50000,
-          price: 35000,
           licenseNumber: "ABC-123",
           vin: "1234567890",
-          engineType: "Gasoline",
-          engineCapacity: 2.0,
-          transmission: "Automatic",
-          color: "Black",
-          salesStatus: "beschikbaar",
-          paymentStatus: "open",
-          paintStatus: "ok",
+          mileage: 50000,
           importStatus: "niet_gestart",
+          arrived: false,
+          workshopStatus: "wachten",
+          location: "showroom",
+          salesStatus: "voorraad",
+          showroomOnline: false,
+          bpmRequested: false,
+          bpmStarted: false,
+          damage: {
+            description: "Scratches on the bumper",
+            status: "licht"
+          },
+          purchasePrice: 35000,
+          sellingPrice: 40000,
+          paymentStatus: "niet_betaald",
+          paintStatus: "geen_behandeling",
           cmrSent: false,
           cmrDate: null,
-          photos: [],
+          papersReceived: false,
+          papersDate: null,
+          notes: "",
           mainPhotoUrl: null,
-          damage: {
-            status: "minor",
-            description: "Scratches on the bumper"
-          },
-          options: ["Navigation", "Leather seats", "Sunroof"],
-          arrived: false,
-          sellingPrice: 40000,
-          dateAdded: new Date(),
-          dateSold: null
+          photos: []
         },
         {
           id: "2",
           brand: "BMW",
           model: "3 Series",
-          year: 2021,
-          mileage: 40000,
-          price: 40000,
           licenseNumber: "DEF-456",
           vin: "0987654321",
-          engineType: "Diesel",
-          engineCapacity: 3.0,
-          transmission: "Automatic",
-          color: "White",
-          salesStatus: "verkocht_b2b",
-          paymentStatus: "voldaan",
-          paintStatus: "ok",
+          mileage: 40000,
           importStatus: "aangekomen",
+          arrived: true,
+          workshopStatus: "gereed",
+          location: "showroom",
+          salesStatus: "verkocht_b2b",
+          showroomOnline: true,
+          bpmRequested: true,
+          bpmStarted: true,
+          damage: {
+            description: "",
+            status: "geen"
+          },
+          purchasePrice: 40000,
+          sellingPrice: 45000,
+          paymentStatus: "volledig_betaald",
+          paintStatus: "geen_behandeling",
           cmrSent: true,
           cmrDate: new Date(),
-          photos: [],
+          papersReceived: true,
+          papersDate: new Date(),
+          notes: "",
           mainPhotoUrl: null,
-          damage: {
-            status: "none",
-            description: ""
-          },
-          options: ["Navigation", "Leather seats", "Sunroof"],
-          arrived: true,
-          sellingPrice: 45000,
-          dateAdded: new Date(),
-          dateSold: new Date()
+          photos: []
         },
         {
           id: "3",
           brand: "Audi",
           model: "A4",
-          year: 2022,
-          mileage: 30000,
-          price: 45000,
           licenseNumber: "GHI-789",
           vin: "1234509876",
-          engineType: "Gasoline",
-          engineCapacity: 2.0,
-          transmission: "Automatic",
-          color: "Gray",
-          salesStatus: "verkocht_b2c",
-          paymentStatus: "open",
-          paintStatus: "reparatie",
+          mileage: 30000,
           importStatus: "transport_geregeld",
+          arrived: false,
+          workshopStatus: "wachten",
+          location: "onderweg",
+          salesStatus: "verkocht_b2c",
+          showroomOnline: false,
+          bpmRequested: false,
+          bpmStarted: false,
+          damage: {
+            description: "Front collision",
+            status: "zwaar"
+          },
+          purchasePrice: 45000,
+          sellingPrice: 50000,
+          paymentStatus: "niet_betaald",
+          paintStatus: "in_behandeling",
           cmrSent: false,
           cmrDate: null,
-          photos: [],
+          papersReceived: false,
+          papersDate: null,
+          notes: "",
           mainPhotoUrl: null,
-          damage: {
-            status: "major",
-            description: "Front collision"
-          },
-          options: ["Navigation", "Leather seats", "Sunroof"],
-          arrived: false,
-          sellingPrice: 50000,
-          dateAdded: new Date(),
-          dateSold: new Date()
+          photos: []
         },
         {
           id: "4",
           brand: "Volkswagen",
           model: "Golf",
-          year: 2019,
-          mileage: 60000,
-          price: 25000,
           licenseNumber: "JKL-012",
           vin: "6789012345",
-          engineType: "Gasoline",
-          engineCapacity: 1.5,
-          transmission: "Manual",
-          color: "Blue",
-          salesStatus: "beschikbaar",
-          paymentStatus: "voldaan",
-          paintStatus: "ok",
+          mileage: 60000,
           importStatus: "onderweg",
+          arrived: false,
+          workshopStatus: "poetsen",
+          location: "calandstraat",
+          salesStatus: "voorraad",
+          showroomOnline: true,
+          bpmRequested: false,
+          bpmStarted: false,
+          damage: {
+            description: "Dent on the door",
+            status: "licht"
+          },
+          purchasePrice: 25000,
+          sellingPrice: 30000,
+          paymentStatus: "volledig_betaald",
+          paintStatus: "geen_behandeling",
           cmrSent: false,
           cmrDate: null,
-          photos: [],
+          papersReceived: false,
+          papersDate: null,
+          notes: "",
           mainPhotoUrl: null,
-          damage: {
-            status: "minor",
-            description: "Dent on the door"
-          },
-          options: ["Air conditioning", "Alloy wheels"],
-          arrived: false,
-          sellingPrice: 30000,
-          dateAdded: new Date(),
-          dateSold: null
+          photos: []
         },
         {
           id: "5",
           brand: "Renault",
           model: "Clio",
-          year: 2020,
-          mileage: 45000,
-          price: 18000,
           licenseNumber: "MNO-345",
           vin: "5432167890",
-          engineType: "Gasoline",
-          engineCapacity: 1.0,
-          transmission: "Manual",
-          color: "Red",
-          salesStatus: "beschikbaar",
-          paymentStatus: "open",
-          paintStatus: "ok",
+          mileage: 45000,
           importStatus: "aangekomen",
+          arrived: true,
+          workshopStatus: "spuiten",
+          location: "werkplaats",
+          salesStatus: "voorraad",
+          showroomOnline: false,
+          bpmRequested: false,
+          bpmStarted: false,
+          damage: {
+            description: "",
+            status: "geen"
+          },
+          purchasePrice: 18000,
+          sellingPrice: 22000,
+          paymentStatus: "niet_betaald",
+          paintStatus: "geen_behandeling",
           cmrSent: false,
           cmrDate: null,
-          photos: [],
+          papersReceived: false,
+          papersDate: null,
+          notes: "",
           mainPhotoUrl: null,
-          damage: {
-            status: "none",
-            description: ""
-          },
-          options: ["Air conditioning", "Bluetooth"],
-          arrived: true,
-          sellingPrice: 22000,
-          dateAdded: new Date(),
-          dateSold: null
+          photos: []
         },
         {
           id: "6",
           brand: "Peugeot",
           model: "208",
-          year: 2021,
-          mileage: 35000,
-          price: 20000,
           licenseNumber: "PQR-678",
           vin: "0987612345",
-          engineType: "Electric",
-          engineCapacity: 0.0,
-          transmission: "Automatic",
-          color: "Orange",
-          salesStatus: "beschikbaar",
-          paymentStatus: "voldaan",
-          paintStatus: "ok",
+          mileage: 35000,
           importStatus: "niet_gestart",
+          arrived: false,
+          workshopStatus: "gereed",
+          location: "poetser",
+          salesStatus: "voorraad",
+          showroomOnline: true,
+          bpmRequested: false,
+          bpmStarted: false,
+          damage: {
+            description: "Scratch on the side mirror",
+            status: "licht"
+          },
+          purchasePrice: 20000,
+          sellingPrice: 24000,
+          paymentStatus: "volledig_betaald",
+          paintStatus: "geen_behandeling",
           cmrSent: false,
           cmrDate: null,
-          photos: [],
+          papersReceived: false,
+          papersDate: null,
+          notes: "",
           mainPhotoUrl: null,
-          damage: {
-            status: "minor",
-            description: "Scratch on the side mirror"
-          },
-          options: ["Navigation", "Parking sensors"],
-          arrived: false,
-          sellingPrice: 24000,
-          dateAdded: new Date(),
-          dateSold: null
+          photos: []
         },
         {
           id: "7",
           brand: "Fiat",
           model: "500",
-          year: 2022,
-          mileage: 25000,
-          price: 17000,
           licenseNumber: "STU-901",
           vin: "5432109876",
-          engineType: "Gasoline",
-          engineCapacity: 1.2,
-          transmission: "Manual",
-          color: "Pink",
-          salesStatus: "beschikbaar",
-          paymentStatus: "open",
-          paintStatus: "ok",
+          mileage: 25000,
           importStatus: "transport_geregeld",
+          arrived: false,
+          workshopStatus: "wachten",
+          location: "spuiter",
+          salesStatus: "voorraad",
+          showroomOnline: false,
+          bpmRequested: false,
+          bpmStarted: false,
+          damage: {
+            description: "",
+            status: "geen"
+          },
+          purchasePrice: 17000,
+          sellingPrice: 21000,
+          paymentStatus: "niet_betaald",
+          paintStatus: "geen_behandeling",
           cmrSent: false,
           cmrDate: null,
-          photos: [],
+          papersReceived: false,
+          papersDate: null,
+          notes: "",
           mainPhotoUrl: null,
-          damage: {
-            status: "none",
-            description: ""
-          },
-          options: ["Air conditioning", "Panoramic roof"],
-          arrived: false,
-          sellingPrice: 21000,
-          dateAdded: new Date(),
-          dateSold: null
+          photos: []
         },
         {
           id: "8",
           brand: "Toyota",
           model: "Yaris",
-          year: 2019,
-          mileage: 70000,
-          price: 15000,
           licenseNumber: "VWX-234",
           vin: "6789054321",
-          engineType: "Hybrid",
-          engineCapacity: 1.5,
-          transmission: "Automatic",
-          color: "Silver",
-          salesStatus: "beschikbaar",
-          paymentStatus: "voldaan",
-          paintStatus: "ok",
+          mileage: 70000,
           importStatus: "onderweg",
+          arrived: false,
+          workshopStatus: "poetsen",
+          location: "onderweg",
+          salesStatus: "voorraad",
+          showroomOnline: true,
+          bpmRequested: false,
+          bpmStarted: false,
+          damage: {
+            description: "Small dent on the hood",
+            status: "licht"
+          },
+          purchasePrice: 15000,
+          sellingPrice: 19000,
+          paymentStatus: "volledig_betaald",
+          paintStatus: "geen_behandeling",
           cmrSent: false,
           cmrDate: null,
-          photos: [],
+          papersReceived: false,
+          papersDate: null,
+          notes: "",
           mainPhotoUrl: null,
-          damage: {
-            status: "minor",
-            description: "Small dent on the hood"
-          },
-          options: ["Navigation", "Reversing camera"],
-          arrived: false,
-          sellingPrice: 19000,
-          dateAdded: new Date(),
-          dateSold: null
+          photos: []
         },
         {
           id: "9",
           brand: "Nissan",
           model: "Qashqai",
-          year: 2020,
-          mileage: 55000,
-          price: 22000,
           licenseNumber: "YZA-567",
           vin: "1234567890",
-          engineType: "Gasoline",
-          engineCapacity: 1.3,
-          transmission: "Automatic",
-          color: "Black",
-          salesStatus: "beschikbaar",
-          paymentStatus: "open",
-          paintStatus: "ok",
+          mileage: 55000,
           importStatus: "aangekomen",
+          arrived: true,
+          workshopStatus: "spuiten",
+          location: "oud_beijerland",
+          salesStatus: "voorraad",
+          showroomOnline: false,
+          bpmRequested: false,
+          bpmStarted: false,
+          damage: {
+            description: "",
+            status: "geen"
+          },
+          purchasePrice: 22000,
+          sellingPrice: 26000,
+          paymentStatus: "niet_betaald",
+          paintStatus: "geen_behandeling",
           cmrSent: false,
           cmrDate: null,
-          photos: [],
+          papersReceived: false,
+          papersDate: null,
+          notes: "",
           mainPhotoUrl: null,
-          damage: {
-            status: "none",
-            description: ""
-          },
-          options: ["Leather seats", "Sunroof", "Parking sensors"],
-          arrived: true,
-          sellingPrice: 26000,
-          dateAdded: new Date(),
-          dateSold: null
+          photos: []
         },
         {
           id: "10",
           brand: "Ford",
           model: "Focus",
-          year: 2021,
-          mileage: 40000,
-          price: 23000,
           licenseNumber: "BCD-890",
           vin: "0987654321",
-          engineType: "Gasoline",
-          engineCapacity: 1.0,
-          transmission: "Manual",
-          color: "White",
-          salesStatus: "beschikbaar",
-          paymentStatus: "voldaan",
-          paintStatus: "ok",
+          mileage: 40000,
           importStatus: "niet_gestart",
+          arrived: false,
+          workshopStatus: "gereed",
+          location: "showroom",
+          salesStatus: "voorraad",
+          showroomOnline: true,
+          bpmRequested: false,
+          bpmStarted: false,
+          damage: {
+            description: "Scratches on the bumper",
+            status: "licht"
+          },
+          purchasePrice: 23000,
+          sellingPrice: 27000,
+          paymentStatus: "volledig_betaald",
+          paintStatus: "geen_behandeling",
           cmrSent: false,
           cmrDate: null,
-          photos: [],
+          papersReceived: false,
+          papersDate: null,
+          notes: "",
           mainPhotoUrl: null,
-          damage: {
-            status: "minor",
-            description: "Scratches on the bumper"
-          },
-          options: ["Navigation", "Air conditioning", "Alloy wheels"],
-          arrived: false,
-          sellingPrice: 27000,
-          dateAdded: new Date(),
-          dateSold: null
+          photos: []
         }
       ];
       resolve(mockVehicles);
@@ -336,32 +336,32 @@ export const fetchB2BVehicles = async (): Promise<Vehicle[]> => {
           id: "2",
           brand: "BMW",
           model: "3 Series",
-          year: 2021,
-          mileage: 40000,
-          price: 40000,
           licenseNumber: "DEF-456",
           vin: "0987654321",
-          engineType: "Diesel",
-          engineCapacity: 3.0,
-          transmission: "Automatic",
-          color: "White",
-          salesStatus: "verkocht_b2b",
-          paymentStatus: "voldaan",
-          paintStatus: "ok",
+          mileage: 40000,
           importStatus: "aangekomen",
+          arrived: true,
+          workshopStatus: "gereed",
+          location: "showroom",
+          salesStatus: "verkocht_b2b",
+          showroomOnline: true,
+          bpmRequested: true,
+          bpmStarted: true,
+          damage: {
+            description: "",
+            status: "geen"
+          },
+          purchasePrice: 40000,
+          sellingPrice: 45000,
+          paymentStatus: "volledig_betaald",
+          paintStatus: "geen_behandeling",
           cmrSent: true,
           cmrDate: new Date(),
-          photos: [],
+          papersReceived: true,
+          papersDate: new Date(),
+          notes: "",
           mainPhotoUrl: null,
-          damage: {
-            status: "none",
-            description: ""
-          },
-          options: ["Navigation", "Leather seats", "Sunroof"],
-          arrived: true,
-          sellingPrice: 45000,
-          dateAdded: new Date(),
-          dateSold: new Date()
+          photos: []
         }
       ];
       resolve(mockVehicles);
@@ -379,32 +379,32 @@ export const fetchB2CVehicles = async (): Promise<Vehicle[]> => {
           id: "3",
           brand: "Audi",
           model: "A4",
-          year: 2022,
-          mileage: 30000,
-          price: 45000,
           licenseNumber: "GHI-789",
           vin: "1234509876",
-          engineType: "Gasoline",
-          engineCapacity: 2.0,
-          transmission: "Automatic",
-          color: "Gray",
-          salesStatus: "verkocht_b2c",
-          paymentStatus: "open",
-          paintStatus: "reparatie",
+          mileage: 30000,
           importStatus: "transport_geregeld",
+          arrived: false,
+          workshopStatus: "wachten",
+          location: "onderweg",
+          salesStatus: "verkocht_b2c",
+          showroomOnline: false,
+          bpmRequested: false,
+          bpmStarted: false,
+          damage: {
+            description: "Front collision",
+            status: "zwaar"
+          },
+          purchasePrice: 45000,
+          sellingPrice: 50000,
+          paymentStatus: "niet_betaald",
+          paintStatus: "in_behandeling",
           cmrSent: false,
           cmrDate: null,
-          photos: [],
+          papersReceived: false,
+          papersDate: null,
+          notes: "",
           mainPhotoUrl: null,
-          damage: {
-            status: "major",
-            description: "Front collision"
-          },
-          options: ["Navigation", "Leather seats", "Sunroof"],
-          arrived: false,
-          sellingPrice: 50000,
-          dateAdded: new Date(),
-          dateSold: new Date()
+          photos: []
         }
       ];
       resolve(mockVehicles);
@@ -422,32 +422,32 @@ export const fetchDeliveredVehicles = async (): Promise<Vehicle[]> => {
           id: "3",
           brand: "Audi",
           model: "A4",
-          year: 2022,
-          mileage: 30000,
-          price: 45000,
           licenseNumber: "GHI-789",
           vin: "1234509876",
-          engineType: "Gasoline",
-          engineCapacity: 2.0,
-          transmission: "Automatic",
-          color: "Gray",
-          salesStatus: "afgeleverd",
-          paymentStatus: "open",
-          paintStatus: "reparatie",
+          mileage: 30000,
           importStatus: "transport_geregeld",
+          arrived: false,
+          workshopStatus: "wachten",
+          location: "onderweg",
+          salesStatus: "afgeleverd",
+          showroomOnline: false,
+          bpmRequested: false,
+          bpmStarted: false,
+          damage: {
+            description: "Front collision",
+            status: "zwaar"
+          },
+          purchasePrice: 45000,
+          sellingPrice: 50000,
+          paymentStatus: "niet_betaald",
+          paintStatus: "in_behandeling",
           cmrSent: false,
           cmrDate: null,
-          photos: [],
+          papersReceived: false,
+          papersDate: null,
+          notes: "",
           mainPhotoUrl: null,
-          damage: {
-            status: "major",
-            description: "Front collision"
-          },
-          options: ["Navigation", "Leather seats", "Sunroof"],
-          arrived: false,
-          sellingPrice: 50000,
-          dateAdded: new Date(),
-          dateSold: new Date()
+          photos: []
         }
       ];
       resolve(mockVehicles);
@@ -462,6 +462,43 @@ export const updateVehicle = async (vehicle: Vehicle): Promise<Vehicle> => {
     setTimeout(() => {
       console.log("Vehicle updated:", vehicle);
       resolve(vehicle);
+    }, 500);
+  });
+};
+
+// New function: bulk update vehicles
+export const bulkUpdateVehicles = async (ids: string[], updates: Partial<Vehicle>): Promise<void> => {
+  // Simulate API call
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      console.log(`Bulk updated ${ids.length} vehicles with:`, updates);
+      resolve();
+    }, 500);
+  });
+};
+
+// New function: create a new vehicle
+export const createVehicle = async (vehicle: Omit<Vehicle, "id">): Promise<Vehicle> => {
+  // Simulate API call
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const newVehicle = {
+        ...vehicle,
+        id: Math.random().toString(36).substr(2, 9),
+      };
+      console.log("Vehicle created:", newVehicle);
+      resolve(newVehicle);
+    }, 500);
+  });
+};
+
+// New function: delete a vehicle
+export const deleteVehicle = async (vehicleId: string): Promise<void> => {
+  // Simulate API call
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      console.log(`Vehicle ${vehicleId} deleted`);
+      resolve();
     }, 500);
   });
 };
