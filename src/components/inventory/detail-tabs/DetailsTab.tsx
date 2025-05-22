@@ -3,9 +3,9 @@ import React from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { 
-  CalendarIcon, CircleCheck, Clock, Wrench
+  CalendarIcon, CircleCheck, MapPin
 } from "lucide-react";
-import { Vehicle, ImportStatus, WorkshopStatus, DamageStatus } from "@/types/inventory";
+import { Vehicle, ImportStatus, LocationStatus, DamageStatus } from "@/types/inventory";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,14 +43,14 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Left column */}
       <div className="space-y-5">
-        {/* License & Model */}
+        {/* Brand & Model */}
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="licenseNumber">Kenteken</Label>
+            <Label htmlFor="brand">Merk</Label>
             <Input
-              id="licenseNumber"
-              value={editedVehicle.licenseNumber}
-              onChange={(e) => handleChange('licenseNumber', e.target.value)}
+              id="brand"
+              value={editedVehicle.brand}
+              onChange={(e) => handleChange('brand', e.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -63,9 +63,29 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
           </div>
         </div>
         
+        {/* License & VIN */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="licenseNumber">Kenteken</Label>
+            <Input
+              id="licenseNumber"
+              value={editedVehicle.licenseNumber}
+              onChange={(e) => handleChange('licenseNumber', e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="vin">VIN</Label>
+            <Input
+              id="vin"
+              value={editedVehicle.vin}
+              onChange={(e) => handleChange('vin', e.target.value)}
+            />
+          </div>
+        </div>
+        
         {/* Import Status */}
         <div className="space-y-2">
-          <Label>Importstatus</Label>
+          <Label>Import status</Label>
           <Select 
             value={editedVehicle.importStatus} 
             onValueChange={(value: ImportStatus) => handleChange('importStatus', value)}
@@ -77,38 +97,49 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               <SelectItem value="niet_gestart">Niet gestart</SelectItem>
               <SelectItem value="transport_geregeld">Transport geregeld</SelectItem>
               <SelectItem value="onderweg">Onderweg</SelectItem>
-              <SelectItem value="aangekomen">Aangekomen</SelectItem>
-              <SelectItem value="afgemeld">Afgemeld</SelectItem>
+              <SelectItem value="aangekomen">Aangevraagd</SelectItem>
+              <SelectItem value="afgemeld">Goedgekeurd</SelectItem>
+              <SelectItem value="bpm_betaald">BPM Betaald</SelectItem>
+              <SelectItem value="herkeuring">Herkeuring</SelectItem>
+              <SelectItem value="ingeschreven">Ingeschreven</SelectItem>
             </SelectContent>
           </Select>
         </div>
         
-        {/* Workshop Status */}
+        {/* Location Status */}
         <div className="space-y-2">
-          <Label>Werkplaatsstatus</Label>
+          <Label>Locatie auto</Label>
           <ToggleGroup 
             type="single" 
-            value={editedVehicle.workshopStatus}
-            onValueChange={(value: WorkshopStatus) => {
-              if (value) handleChange('workshopStatus', value);
+            value={editedVehicle.location}
+            onValueChange={(value: LocationStatus) => {
+              if (value) handleChange('location', value);
             }}
-            className="justify-start"
+            className="justify-start flex flex-wrap"
           >
-            <ToggleGroupItem value="wachten" aria-label="Wachten">
-              <Clock className="h-4 w-4 mr-2" />
-              Wachten
+            <ToggleGroupItem value="showroom" aria-label="Showroom">
+              <MapPin className="h-4 w-4 mr-2" />
+              Showroom
             </ToggleGroupItem>
-            <ToggleGroupItem value="poetsen" aria-label="Poetsen">
-              <Wrench className="h-4 w-4 mr-2" />
-              Poetsen
+            <ToggleGroupItem value="werkplaats" aria-label="Werkplaats">
+              <MapPin className="h-4 w-4 mr-2" />
+              Werkplaats
             </ToggleGroupItem>
-            <ToggleGroupItem value="spuiten" aria-label="Spuiten">
-              <Wrench className="h-4 w-4 mr-2" />
-              Spuiten
+            <ToggleGroupItem value="poetser" aria-label="Poetser">
+              <MapPin className="h-4 w-4 mr-2" />
+              Poetser
             </ToggleGroupItem>
-            <ToggleGroupItem value="gereed" aria-label="Gereed">
-              <CircleCheck className="h-4 w-4 mr-2" />
-              Gereed
+            <ToggleGroupItem value="spuiter" aria-label="Spuiter">
+              <MapPin className="h-4 w-4 mr-2" />
+              Spuiter
+            </ToggleGroupItem>
+            <ToggleGroupItem value="calandstraat" aria-label="Calandstraat">
+              <MapPin className="h-4 w-4 mr-2" />
+              Calandstraat
+            </ToggleGroupItem>
+            <ToggleGroupItem value="oud_beijerland" aria-label="Oud Beijerland">
+              <MapPin className="h-4 w-4 mr-2" />
+              Oud Beijerland
             </ToggleGroupItem>
           </ToggleGroup>
         </div>
@@ -126,7 +157,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
         
         {/* Damage */}
         <div className="space-y-2">
-          <Label>Schadeomschrijving & status</Label>
+          <Label>Schadeomschrijving</Label>
           <Textarea
             value={editedVehicle.damage.description}
             onChange={(e) => handleDamageChange('description', e.target.value)}
@@ -153,18 +184,29 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
       
       {/* Right column */}
       <div className="space-y-5">
+        {/* Mileage */}
+        <div className="space-y-2">
+          <Label htmlFor="mileage">Kilometerstand</Label>
+          <Input
+            id="mileage"
+            type="number"
+            value={editedVehicle.mileage}
+            onChange={(e) => handleChange('mileage', parseInt(e.target.value))}
+          />
+        </div>
+        
         {/* Checkboxes row */}
         <div className="space-y-4">
           <div className="flex items-center space-x-2">
             <Checkbox
-              id="arrived"
-              checked={editedVehicle.arrived}
+              id="onInventory"
+              checked={editedVehicle.salesStatus === "voorraad"}
               onCheckedChange={(checked) => 
-                handleChange('arrived', Boolean(checked))
+                handleChange('salesStatus', checked ? "voorraad" : "verkocht_b2b")
               }
             />
-            <Label htmlFor="arrived" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-              Aangekomen
+            <Label htmlFor="onInventory" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              Op Voorraad
             </Label>
           </div>
           
@@ -177,7 +219,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               }
             />
             <Label htmlFor="bpmRequested" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-              BPM aangevraagd
+              BPM Huys aangemeld
             </Label>
           </div>
           

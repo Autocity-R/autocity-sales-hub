@@ -4,7 +4,10 @@ export type ImportStatus =
   | "transport_geregeld" 
   | "onderweg" 
   | "aangekomen" 
-  | "afgemeld";
+  | "afgemeld"
+  | "bpm_betaald"
+  | "herkeuring"
+  | "ingeschreven";
 
 export type WorkshopStatus = 
   | "wachten" 
@@ -22,7 +25,11 @@ export type DamageStatus =
 export type LocationStatus = 
   | "showroom" 
   | "opslag" 
-  | "calandstraat";
+  | "calandstraat"
+  | "werkplaats"
+  | "poetser"
+  | "spuiter"
+  | "oud_beijerland";
 
 export type SalesStatus = 
   | "voorraad" 
