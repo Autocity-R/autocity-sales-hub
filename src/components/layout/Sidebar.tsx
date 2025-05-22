@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { 
@@ -15,7 +14,8 @@ import {
   ShoppingCart,
   Shield,
   Calendar,
-  FileText
+  FileText,
+  Building
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,12 @@ const navItems: NavItem[] = [
     title: "Klanten bestand",
     href: "/customers",
     icon: Users,
+  },
+  {
+    title: "Leveranciers",
+    href: "/suppliers",
+    icon: Building,
+    indented: true,
   },
   {
     title: "Klanten b2b",
