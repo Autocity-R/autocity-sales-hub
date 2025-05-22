@@ -1,649 +1,411 @@
-import { Vehicle, PaymentStatus, PaintStatus, DamageStatus, SalesStatus } from "@/types/inventory";
-import { FileCategory, VehicleFile } from "@/types/files";
+import { Vehicle, SalesStatus, PaymentStatus, PaintStatus } from "@/types/inventory";
+import { FileCategory } from "@/types/files";
 
-// Mock API endpoint
-const API_ENDPOINT = "http://localhost:3000/api";
+// Mock data for inventory
+const mockVehicles: Vehicle[] = [
+  {
+    id: "1",
+    brand: "Volkswagen",
+    model: "Golf",
+    licenseNumber: "AB-123-C",
+    vin: "WVWZZZ1KZAM123456",
+    mileage: 85000,
+    importStatus: "ingeschreven",
+    arrived: true,
+    workshopStatus: "gereed",
+    location: "showroom",
+    salesStatus: "voorraad",
+    showroomOnline: true,
+    bpmRequested: true,
+    bpmStarted: true,
+    damage: {
+      description: "Kleine kras op rechter voorbumper",
+      status: "licht"
+    },
+    purchasePrice: 12500,
+    sellingPrice: 15995,
+    paymentStatus: "niet_betaald",
+    cmrSent: true,
+    cmrDate: new Date("2023-12-05"),
+    papersReceived: true,
+    papersDate: new Date("2023-12-10"),
+    notes: "Klant was zeer tevreden met de auto",
+    mainPhotoUrl: "/placeholder.svg",
+    photos: ["/placeholder.svg"],
+  },
+  {
+    id: "2",
+    brand: "BMW",
+    model: "X5",
+    licenseNumber: "XY-456-Z",
+    vin: "WBAKJ2C51BC123456",
+    mileage: 120000,
+    importStatus: "ingeschreven",
+    arrived: true,
+    workshopStatus: "gereed",
+    location: "showroom",
+    salesStatus: "verkocht_b2b",
+    showroomOnline: false,
+    bpmRequested: true,
+    bpmStarted: true,
+    damage: {
+      description: "Geen schade",
+      status: "geen"
+    },
+    purchasePrice: 35000,
+    sellingPrice: 42500,
+    paymentStatus: "volledig_betaald",
+    cmrSent: true,
+    cmrDate: new Date("2023-11-20"),
+    papersReceived: true,
+    papersDate: new Date("2023-11-25"),
+    notes: "Zakelijke lease",
+    mainPhotoUrl: "/placeholder.svg",
+    photos: ["/placeholder.svg"],
+    customerId: "b2b1",
+    customerName: "AutoLease B.V.",
+  },
+  {
+    id: "3",
+    brand: "Mercedes-Benz",
+    model: "C-Klasse",
+    licenseNumber: "AB-789-D",
+    vin: "WDD2050051R123456",
+    mileage: 65000,
+    importStatus: "ingeschreven",
+    arrived: true,
+    workshopStatus: "gereed",
+    location: "showroom",
+    salesStatus: "verkocht_b2c",
+    showroomOnline: false,
+    bpmRequested: true,
+    bpmStarted: true,
+    damage: {
+      description: "Lichte kras op achterbumper",
+      status: "licht"
+    },
+    purchasePrice: 28500,
+    sellingPrice: 34995,
+    paymentStatus: "volledig_betaald",
+    paintStatus: "hersteld",
+    cmrSent: true,
+    cmrDate: new Date("2023-10-15"),
+    papersReceived: false,
+    papersDate: null,
+    notes: "Nog wachten op deel 1 van het kentekenbewijs",
+    mainPhotoUrl: "/placeholder.svg",
+    photos: ["/placeholder.svg"],
+    customerId: "b2c1",
+    customerName: "Petra Jansen",
+  },
+];
 
-// Mock function to fetch all vehicles
+// Fetch all vehicles
 export const fetchVehicles = async (): Promise<Vehicle[]> => {
-  // Simulate API call
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(mockVehicles), 500);
+  });
+};
+
+// Fetch vehicles with status "voorraad"
+export const fetchInventoryVehicles = async (): Promise<Vehicle[]> => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const mockVehicles: Vehicle[] = [
-        {
-          id: "1",
-          brand: "Mercedes-Benz",
-          model: "C-Class",
-          licenseNumber: "ABC-123",
-          vin: "1234567890",
-          mileage: 50000,
-          importStatus: "niet_gestart",
-          arrived: false,
-          workshopStatus: "wachten",
-          location: "showroom",
-          salesStatus: "voorraad",
-          showroomOnline: false,
-          bpmRequested: false,
-          bpmStarted: false,
-          damage: {
-            description: "Scratches on the bumper",
-            status: "licht"
-          },
-          purchasePrice: 35000,
-          sellingPrice: 40000,
-          paymentStatus: "niet_betaald",
-          paintStatus: "geen_behandeling",
-          cmrSent: false,
-          cmrDate: null,
-          papersReceived: false,
-          papersDate: null,
-          notes: "",
-          mainPhotoUrl: null,
-          photos: []
-        },
-        {
-          id: "2",
-          brand: "BMW",
-          model: "3 Series",
-          licenseNumber: "DEF-456",
-          vin: "0987654321",
-          mileage: 40000,
-          importStatus: "aangekomen",
-          arrived: true,
-          workshopStatus: "gereed",
-          location: "showroom",
-          salesStatus: "verkocht_b2b",
-          showroomOnline: true,
-          bpmRequested: true,
-          bpmStarted: true,
-          damage: {
-            description: "",
-            status: "geen"
-          },
-          purchasePrice: 40000,
-          sellingPrice: 45000,
-          paymentStatus: "volledig_betaald",
-          paintStatus: "geen_behandeling",
-          cmrSent: true,
-          cmrDate: new Date(),
-          papersReceived: true,
-          papersDate: new Date(),
-          notes: "",
-          mainPhotoUrl: null,
-          photos: []
-        },
-        {
-          id: "3",
-          brand: "Audi",
-          model: "A4",
-          licenseNumber: "GHI-789",
-          vin: "1234509876",
-          mileage: 30000,
-          importStatus: "transport_geregeld",
-          arrived: false,
-          workshopStatus: "wachten",
-          location: "onderweg",
-          salesStatus: "verkocht_b2c",
-          showroomOnline: false,
-          bpmRequested: false,
-          bpmStarted: false,
-          damage: {
-            description: "Front collision",
-            status: "zwaar"
-          },
-          purchasePrice: 45000,
-          sellingPrice: 50000,
-          paymentStatus: "niet_betaald",
-          paintStatus: "in_behandeling",
-          cmrSent: false,
-          cmrDate: null,
-          papersReceived: false,
-          papersDate: null,
-          notes: "",
-          mainPhotoUrl: null,
-          photos: []
-        },
-        {
-          id: "4",
-          brand: "Volkswagen",
-          model: "Golf",
-          licenseNumber: "JKL-012",
-          vin: "6789012345",
-          mileage: 60000,
-          importStatus: "onderweg",
-          arrived: false,
-          workshopStatus: "poetsen",
-          location: "calandstraat",
-          salesStatus: "voorraad",
-          showroomOnline: true,
-          bpmRequested: false,
-          bpmStarted: false,
-          damage: {
-            description: "Dent on the door",
-            status: "licht"
-          },
-          purchasePrice: 25000,
-          sellingPrice: 30000,
-          paymentStatus: "volledig_betaald",
-          paintStatus: "geen_behandeling",
-          cmrSent: false,
-          cmrDate: null,
-          papersReceived: false,
-          papersDate: null,
-          notes: "",
-          mainPhotoUrl: null,
-          photos: []
-        },
-        {
-          id: "5",
-          brand: "Renault",
-          model: "Clio",
-          licenseNumber: "MNO-345",
-          vin: "5432167890",
-          mileage: 45000,
-          importStatus: "aangekomen",
-          arrived: true,
-          workshopStatus: "spuiten",
-          location: "werkplaats",
-          salesStatus: "voorraad",
-          showroomOnline: false,
-          bpmRequested: false,
-          bpmStarted: false,
-          damage: {
-            description: "",
-            status: "geen"
-          },
-          purchasePrice: 18000,
-          sellingPrice: 22000,
-          paymentStatus: "niet_betaald",
-          paintStatus: "geen_behandeling",
-          cmrSent: false,
-          cmrDate: null,
-          papersReceived: false,
-          papersDate: null,
-          notes: "",
-          mainPhotoUrl: null,
-          photos: []
-        },
-        {
-          id: "6",
-          brand: "Peugeot",
-          model: "208",
-          licenseNumber: "PQR-678",
-          vin: "0987612345",
-          mileage: 35000,
-          importStatus: "niet_gestart",
-          arrived: false,
-          workshopStatus: "gereed",
-          location: "poetser",
-          salesStatus: "voorraad",
-          showroomOnline: true,
-          bpmRequested: false,
-          bpmStarted: false,
-          damage: {
-            description: "Scratch on the side mirror",
-            status: "licht"
-          },
-          purchasePrice: 20000,
-          sellingPrice: 24000,
-          paymentStatus: "volledig_betaald",
-          paintStatus: "geen_behandeling",
-          cmrSent: false,
-          cmrDate: null,
-          papersReceived: false,
-          papersDate: null,
-          notes: "",
-          mainPhotoUrl: null,
-          photos: []
-        },
-        {
-          id: "7",
-          brand: "Fiat",
-          model: "500",
-          licenseNumber: "STU-901",
-          vin: "5432109876",
-          mileage: 25000,
-          importStatus: "transport_geregeld",
-          arrived: false,
-          workshopStatus: "wachten",
-          location: "spuiter",
-          salesStatus: "voorraad",
-          showroomOnline: false,
-          bpmRequested: false,
-          bpmStarted: false,
-          damage: {
-            description: "",
-            status: "geen"
-          },
-          purchasePrice: 17000,
-          sellingPrice: 21000,
-          paymentStatus: "niet_betaald",
-          paintStatus: "geen_behandeling",
-          cmrSent: false,
-          cmrDate: null,
-          papersReceived: false,
-          papersDate: null,
-          notes: "",
-          mainPhotoUrl: null,
-          photos: []
-        },
-        {
-          id: "8",
-          brand: "Toyota",
-          model: "Yaris",
-          licenseNumber: "VWX-234",
-          vin: "6789054321",
-          mileage: 70000,
-          importStatus: "onderweg",
-          arrived: false,
-          workshopStatus: "poetsen",
-          location: "onderweg",
-          salesStatus: "voorraad",
-          showroomOnline: true,
-          bpmRequested: false,
-          bpmStarted: false,
-          damage: {
-            description: "Small dent on the hood",
-            status: "licht"
-          },
-          purchasePrice: 15000,
-          sellingPrice: 19000,
-          paymentStatus: "volledig_betaald",
-          paintStatus: "geen_behandeling",
-          cmrSent: false,
-          cmrDate: null,
-          papersReceived: false,
-          papersDate: null,
-          notes: "",
-          mainPhotoUrl: null,
-          photos: []
-        },
-        {
-          id: "9",
-          brand: "Nissan",
-          model: "Qashqai",
-          licenseNumber: "YZA-567",
-          vin: "1234567890",
-          mileage: 55000,
-          importStatus: "aangekomen",
-          arrived: true,
-          workshopStatus: "spuiten",
-          location: "oud_beijerland",
-          salesStatus: "voorraad",
-          showroomOnline: false,
-          bpmRequested: false,
-          bpmStarted: false,
-          damage: {
-            description: "",
-            status: "geen"
-          },
-          purchasePrice: 22000,
-          sellingPrice: 26000,
-          paymentStatus: "niet_betaald",
-          paintStatus: "geen_behandeling",
-          cmrSent: false,
-          cmrDate: null,
-          papersReceived: false,
-          papersDate: null,
-          notes: "",
-          mainPhotoUrl: null,
-          photos: []
-        },
-        {
-          id: "10",
-          brand: "Ford",
-          model: "Focus",
-          licenseNumber: "BCD-890",
-          vin: "0987654321",
-          mileage: 40000,
-          importStatus: "niet_gestart",
-          arrived: false,
-          workshopStatus: "gereed",
-          location: "showroom",
-          salesStatus: "voorraad",
-          showroomOnline: true,
-          bpmRequested: false,
-          bpmStarted: false,
-          damage: {
-            description: "Scratches on the bumper",
-            status: "licht"
-          },
-          purchasePrice: 23000,
-          sellingPrice: 27000,
-          paymentStatus: "volledig_betaald",
-          paintStatus: "geen_behandeling",
-          cmrSent: false,
-          cmrDate: null,
-          papersReceived: false,
-          papersDate: null,
-          notes: "",
-          mainPhotoUrl: null,
-          photos: []
-        }
-      ];
-      resolve(mockVehicles);
+      const inventoryVehicles = mockVehicles.filter(v => v.salesStatus === "voorraad");
+      resolve(inventoryVehicles);
     }, 500);
   });
 };
 
-// Mock function to fetch B2B vehicles
+// Fetch vehicles with status "verkocht_b2b"
 export const fetchB2BVehicles = async (): Promise<Vehicle[]> => {
-  // Simulate API call
   return new Promise((resolve) => {
     setTimeout(() => {
-      const mockVehicles: Vehicle[] = [
-        {
-          id: "2",
-          brand: "BMW",
-          model: "3 Series",
-          licenseNumber: "DEF-456",
-          vin: "0987654321",
-          mileage: 40000,
-          importStatus: "aangekomen",
-          arrived: true,
-          workshopStatus: "gereed",
-          location: "showroom",
-          salesStatus: "verkocht_b2b",
-          showroomOnline: true,
-          bpmRequested: true,
-          bpmStarted: true,
-          damage: {
-            description: "",
-            status: "geen"
-          },
-          purchasePrice: 40000,
-          sellingPrice: 45000,
-          paymentStatus: "volledig_betaald",
-          paintStatus: "geen_behandeling",
-          cmrSent: true,
-          cmrDate: new Date(),
-          papersReceived: true,
-          papersDate: new Date(),
-          notes: "",
-          mainPhotoUrl: null,
-          photos: []
-        }
-      ];
-      resolve(mockVehicles);
+      const b2bVehicles = mockVehicles.filter(v => v.salesStatus === "verkocht_b2b");
+      resolve(b2bVehicles);
     }, 500);
   });
 };
 
-// Mock function to fetch B2C vehicles
+// Fetch vehicles with status "verkocht_b2c"
 export const fetchB2CVehicles = async (): Promise<Vehicle[]> => {
-  // Simulate API call
   return new Promise((resolve) => {
     setTimeout(() => {
-      const mockVehicles: Vehicle[] = [
-        {
-          id: "3",
-          brand: "Audi",
-          model: "A4",
-          licenseNumber: "GHI-789",
-          vin: "1234509876",
-          mileage: 30000,
-          importStatus: "transport_geregeld",
-          arrived: false,
-          workshopStatus: "wachten",
-          location: "onderweg",
-          salesStatus: "verkocht_b2c",
-          showroomOnline: false,
-          bpmRequested: false,
-          bpmStarted: false,
-          damage: {
-            description: "Front collision",
-            status: "zwaar"
-          },
-          purchasePrice: 45000,
-          sellingPrice: 50000,
-          paymentStatus: "niet_betaald",
-          paintStatus: "in_behandeling",
-          cmrSent: false,
-          cmrDate: null,
-          papersReceived: false,
-          papersDate: null,
-          notes: "",
-          mainPhotoUrl: null,
-          photos: []
-        }
-      ];
-      resolve(mockVehicles);
+      const b2cVehicles = mockVehicles.filter(v => v.salesStatus === "verkocht_b2c");
+      resolve(b2cVehicles);
     }, 500);
   });
 };
 
-// Mock function to fetch delivered vehicles
-export const fetchDeliveredVehicles = async (): Promise<Vehicle[]> => {
-  // Simulate API call
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const mockVehicles: Vehicle[] = [
-        {
-          id: "3",
-          brand: "Audi",
-          model: "A4",
-          licenseNumber: "GHI-789",
-          vin: "1234509876",
-          mileage: 30000,
-          importStatus: "transport_geregeld",
-          arrived: false,
-          workshopStatus: "wachten",
-          location: "onderweg",
-          salesStatus: "afgeleverd",
-          showroomOnline: false,
-          bpmRequested: false,
-          bpmStarted: false,
-          damage: {
-            description: "Front collision",
-            status: "zwaar"
-          },
-          purchasePrice: 45000,
-          sellingPrice: 50000,
-          paymentStatus: "niet_betaald",
-          paintStatus: "in_behandeling",
-          cmrSent: false,
-          cmrDate: null,
-          papersReceived: false,
-          papersDate: null,
-          notes: "",
-          mainPhotoUrl: null,
-          photos: []
-        }
-      ];
-      resolve(mockVehicles);
-    }, 500);
-  });
-};
-
-// Mock function to update a vehicle
+// Update vehicle
 export const updateVehicle = async (vehicle: Vehicle): Promise<Vehicle> => {
-  // Simulate API call
   return new Promise((resolve) => {
-    setTimeout(() => {
-      console.log("Vehicle updated:", vehicle);
-      resolve(vehicle);
-    }, 500);
+    setTimeout(() => resolve(vehicle), 500);
   });
 };
 
-// New function: bulk update vehicles
-export const bulkUpdateVehicles = async (ids: string[], updates: Partial<Vehicle>): Promise<void> => {
-  // Simulate API call
+// Send email for vehicle
+export const sendEmail = async (type: string, vehicleIds: string[]): Promise<boolean> => {
   return new Promise((resolve) => {
-    setTimeout(() => {
-      console.log(`Bulk updated ${ids.length} vehicles with:`, updates);
-      resolve();
-    }, 500);
+    setTimeout(() => resolve(true), 500);
   });
 };
 
-// New function: create a new vehicle
-export const createVehicle = async (vehicle: Omit<Vehicle, "id">): Promise<Vehicle> => {
-  // Simulate API call
+// Update selling price
+export const updateSellingPrice = async (vehicleId: string, price: number): Promise<Vehicle> => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const newVehicle = {
-        ...vehicle,
-        id: Math.random().toString(36).substr(2, 9),
+      const updatedVehicle = {
+        id: vehicleId,
+        sellingPrice: price,
       };
-      console.log("Vehicle created:", newVehicle);
-      resolve(newVehicle);
+      
+      resolve(updatedVehicle as Vehicle);
     }, 500);
   });
 };
 
-// New function: delete a vehicle
-export const deleteVehicle = async (vehicleId: string): Promise<void> => {
-  // Simulate API call
+// Update payment status
+export const updatePaymentStatus = async (vehicleId: string, status: PaymentStatus): Promise<Vehicle> => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      console.log(`Vehicle ${vehicleId} deleted`);
-      resolve();
+      const updatedVehicle = {
+        id: vehicleId,
+        paymentStatus: status,
+      };
+      
+      resolve(updatedVehicle as Vehicle);
     }, 500);
   });
 };
 
-// Mock function to update selling price
-export const updateSellingPrice = async (vehicleId: string, price: number): Promise<void> => {
-  // Simulate API call
+// Update paint status
+export const updatePaintStatus = async (vehicleId: string, status: PaintStatus): Promise<Vehicle> => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      console.log(`Selling price updated for vehicle ${vehicleId} to ${price}`);
-      resolve();
+      const updatedVehicle = {
+        id: vehicleId,
+        paintStatus: status,
+      };
+      
+      resolve(updatedVehicle as Vehicle);
     }, 500);
   });
 };
 
-// Mock function to update payment status
-export const updatePaymentStatus = async (vehicleId: string, status: PaymentStatus): Promise<void> => {
-  // Simulate API call
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      console.log(`Payment status updated for vehicle ${vehicleId} to ${status}`);
-      resolve();
-    }, 500);
-  });
-};
-
-// Mock function to update paint status
-export const updatePaintStatus = async (vehicleId: string, status: PaintStatus): Promise<void> => {
-  // Simulate API call
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      console.log(`Paint status updated for vehicle ${vehicleId} to ${status}`);
-      resolve();
-    }, 500);
-  });
-};
-
-// Mock function to upload a vehicle photo
+// Upload vehicle photo
 export const uploadVehiclePhoto = async (vehicleId: string, file: File, isMain: boolean): Promise<string> => {
-  // Simulate API call
   return new Promise((resolve) => {
     setTimeout(() => {
+      // In a real app, this would upload the file to a server
       const photoUrl = URL.createObjectURL(file);
-      console.log(`Photo uploaded for vehicle ${vehicleId}. Is main: ${isMain}`);
       resolve(photoUrl);
-    }, 1000);
-  });
-};
-
-// Mock function to update sales status
-export const updateSalesStatus = async (vehicleId: string, salesStatus: string): Promise<void> => {
-  // Simulate API call
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      console.log(`Sales status updated for vehicle ${vehicleId} to ${salesStatus}`);
-      resolve();
     }, 500);
   });
 };
 
-// Mock function to mark vehicle as delivered
-export const markVehicleAsDelivered = async (vehicleId: string): Promise<void> => {
-  // Simulate API call
+// Update sales status
+export const updateSalesStatus = async (vehicleId: string, status: SalesStatus): Promise<Vehicle> => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      console.log(`Vehicle ${vehicleId} marked as delivered`);
-      resolve();
+      const updatedVehicle = {
+        id: vehicleId,
+        salesStatus: status,
+      };
+      
+      resolve(updatedVehicle as Vehicle);
     }, 500);
   });
 };
 
-// Mock upload vehicle file function
+// Add missing functions
+export const createVehicle = async (vehicle: Omit<Vehicle, "id">): Promise<Vehicle> => {
+  // In a real app, this would be an API call
+  const newVehicle: Vehicle = {
+    id: Math.random().toString(36).substring(2, 9),
+    ...vehicle,
+    photos: vehicle.photos || [],
+  };
+  
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(newVehicle), 500);
+  });
+};
+
+export const deleteVehicle = async (id: string): Promise<boolean> => {
+  // In a real app, this would be an API call
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(true), 500);
+  });
+};
+
+export const bulkUpdateVehicles = async (vehicles: Vehicle[]): Promise<Vehicle[]> => {
+  // In a real app, this would be an API call
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(vehicles), 500);
+  });
+};
+
+export const markVehicleAsDelivered = async (vehicleId: string, deliveryDate = new Date()): Promise<Vehicle> => {
+  // In a real app, this would be an API call to update the vehicle status
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const updatedVehicle = {
+        id: vehicleId,
+        salesStatus: "afgeleverd" as SalesStatus,
+        deliveryDate: deliveryDate,
+      };
+      
+      resolve(updatedVehicle as Vehicle);
+    }, 500);
+  });
+};
+
+export const fetchDeliveredVehicles = async (): Promise<Vehicle[]> => {
+  // In a real app, this would be an API call to fetch vehicles with status "afgeleverd"
+  const deliveredVehicles: Vehicle[] = [
+    {
+      id: "del1",
+      brand: "Volkswagen",
+      model: "Golf",
+      licenseNumber: "AB-123-C",
+      vin: "WVWZZZ1KZAM123456",
+      mileage: 85000,
+      importStatus: "ingeschreven",
+      arrived: true,
+      workshopStatus: "gereed",
+      location: "showroom",
+      salesStatus: "afgeleverd",
+      showroomOnline: false,
+      bpmRequested: true,
+      bpmStarted: true,
+      damage: {
+        description: "Kleine kras op rechter voorbumper",
+        status: "licht"
+      },
+      purchasePrice: 12500,
+      sellingPrice: 15995,
+      paymentStatus: "volledig_betaald",
+      paintStatus: "geen_behandeling",
+      cmrSent: true,
+      cmrDate: new Date("2023-12-05"),
+      papersReceived: true,
+      papersDate: new Date("2023-12-10"),
+      notes: "Klant was zeer tevreden met de auto",
+      mainPhotoUrl: "/placeholder.svg",
+      photos: ["/placeholder.svg"],
+      customerName: "Jan de Vries",
+      deliveryDate: new Date("2023-12-15"),
+    },
+    {
+      id: "del2",
+      brand: "BMW",
+      model: "X5",
+      licenseNumber: "XY-456-Z",
+      vin: "WBAKJ2C51BC123456",
+      mileage: 120000,
+      importStatus: "ingeschreven",
+      arrived: true,
+      workshopStatus: "gereed",
+      location: "showroom",
+      salesStatus: "afgeleverd",
+      showroomOnline: false,
+      bpmRequested: true,
+      bpmStarted: true,
+      damage: {
+        description: "Geen schade",
+        status: "geen"
+      },
+      purchasePrice: 35000,
+      sellingPrice: 42500,
+      paymentStatus: "volledig_betaald",
+      paintStatus: "geen_behandeling",
+      cmrSent: true,
+      cmrDate: new Date("2023-11-20"),
+      papersReceived: true,
+      papersDate: new Date("2023-11-25"),
+      notes: "Zakelijke lease",
+      mainPhotoUrl: "/placeholder.svg",
+      photos: ["/placeholder.svg"],
+      customerName: "AutoLease B.V.",
+      deliveryDate: new Date("2023-12-01"),
+    },
+    {
+      id: "del3",
+      brand: "Mercedes-Benz",
+      model: "C-Klasse",
+      licenseNumber: "AB-789-D",
+      vin: "WDD2050051R123456",
+      mileage: 65000,
+      importStatus: "ingeschreven",
+      arrived: true,
+      workshopStatus: "gereed",
+      location: "showroom",
+      salesStatus: "afgeleverd",
+      showroomOnline: false,
+      bpmRequested: true,
+      bpmStarted: true,
+      damage: {
+        description: "Lichte kras op achterbumper",
+        status: "licht"
+      },
+      purchasePrice: 28500,
+      sellingPrice: 34995,
+      paymentStatus: "volledig_betaald",
+      paintStatus: "hersteld",
+      cmrSent: true,
+      cmrDate: new Date("2023-10-15"),
+      papersReceived: false,
+      papersDate: null,
+      notes: "Nog wachten op deel 1 van het kentekenbewijs",
+      mainPhotoUrl: "/placeholder.svg",
+      photos: ["/placeholder.svg"],
+      customerName: "Petra Jansen",
+      deliveryDate: new Date("2023-10-20"),
+    },
+  ];
+
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(deliveredVehicles), 500);
+  });
+};
+
+// Upload vehicle file
 export const uploadVehicleFile = async (file: File, category: FileCategory, vehicleId: string): Promise<string> => {
-  // In a real app, this would upload to a server/cloud storage
   return new Promise((resolve) => {
     setTimeout(() => {
+      // In a real app, this would upload the file to a server
       const fileUrl = URL.createObjectURL(file);
-      console.log(`Uploaded ${file.name} for vehicle ${vehicleId} in category ${category}`);
       resolve(fileUrl);
-    }, 1000);
+    }, 500);
   });
 };
 
-// Mock fetch vehicle files function
-export const fetchVehicleFiles = async (vehicleId: string): Promise<VehicleFile[]> => {
-  // In a real app, this would fetch from an API
+// Fetch vehicle files
+export const fetchVehicleFiles = async (vehicleId: string) => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      // Return mock data for now
-      resolve([
+      // Mock files for the vehicle
+      const files = [
         {
-          id: "1",
-          name: "damage_report.pdf",
-          url: "/placeholder.svg",
-          category: "damage",
+          id: "file1",
+          name: "Kentekenbewijs.pdf",
+          url: "/placeholder.pdf",
+          category: "registration" as FileCategory,
+          uploadDate: new Date("2023-11-15"),
           vehicleId,
-          createdAt: new Date().toISOString(),
-          size: 1024 * 1024, // 1MB
-          type: "application/pdf"
         },
         {
-          id: "2",
-          name: "cmr_document.pdf",
-          url: "/placeholder.svg",
-          category: "cmr",
+          id: "file2",
+          name: "Factuur.pdf",
+          url: "/placeholder.pdf",
+          category: "invoice" as FileCategory,
+          uploadDate: new Date("2023-11-16"),
           vehicleId,
-          createdAt: new Date().toISOString(),
-          size: 2048 * 1024, // 2MB
-          type: "application/pdf"
-        }
-      ]);
+        },
+      ];
+      
+      resolve(files);
     }, 500);
-  });
-};
-
-// Mock function to send a test email
-export const sendTestEmail = async (email: string): Promise<void> => {
-  // Simulate API call
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      console.log(`Test email sent to ${email}`);
-      resolve();
-    }, 500);
-  });
-};
-
-// Enhanced email function to check for attachments
-export const sendEmail = async (type: string, vehicleIds: string[]): Promise<void> => {
-  // In a real app, this would send an email via an API
-  console.log(`Sending email type: ${type} to vehicles: ${vehicleIds.join(", ")}`);
-  
-  // Check if files exist for email attachments
-  const files = await fetchVehicleFiles(vehicleIds[0]);
-  
-  if (type === "cmr_supplier" && !files.some(file => file.category === "cmr")) {
-    throw new Error("Geen CMR document gevonden om te versturen");
-  }
-  
-  if (type === "transport_pickup" && !files.some(file => file.category === "pickup")) {
-    throw new Error("Geen pickup document gevonden om te versturen");
-  }
-  
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve();
-    }, 1000);
   });
 };

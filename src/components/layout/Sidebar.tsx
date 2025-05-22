@@ -16,7 +16,8 @@ import {
   BarChart3,
   GanttChartIcon,
   ShieldIcon,
-  CheckCircle
+  CheckCircle,
+  Flag
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -105,7 +106,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
               className="w-full justify-start pl-8 text-white hover:text-white hover:bg-gray-800"
               size="sm"
             >
-              <CheckCircle className="mr-2 h-4 w-4" />
+              <Flag className="mr-2 h-4 w-4" />
               Afgeleverd
             </Button>
           </Link>

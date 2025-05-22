@@ -4,6 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
+import { nl } from "date-fns/locale";
 import { ChevronUp, ChevronDown, FileText } from "lucide-react";
 import { Vehicle } from "@/types/inventory";
 
@@ -39,6 +41,16 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
 
   const handleSort = (field: string) => {
     onSort(field);
+  };
+  
+  const formatPrice = (price: number | undefined) => {
+    if (!price) return "€ -";
+    return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(price);
+  };
+  
+  const formatMileage = (mileage: number | undefined) => {
+    if (!mileage) return "- km";
+    return new Intl.NumberFormat('nl-NL').format(mileage) + " km";
   };
 
   if (isLoading) {
@@ -79,15 +91,34 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
               {renderSortIcon("model")}
             </div>
           </TableHead>
+          <TableHead className="cursor-pointer" onClick={() => handleSort("mileage")}>
+            <div className="flex items-center">
+              Kilometerstand
+              {renderSortIcon("mileage")}
+            </div>
+          </TableHead>
           <TableHead className="cursor-pointer" onClick={() => handleSort("licenseNumber")}>
             <div className="flex items-center">
               Kenteken
               {renderSortIcon("licenseNumber")}
             </div>
           </TableHead>
-          <TableHead>
+          <TableHead className="cursor-pointer" onClick={() => handleSort("sellingPrice")}>
+            <div className="flex items-center">
+              Verkoopprijs
+              {renderSortIcon("sellingPrice")}
+            </div>
+          </TableHead>
+          <TableHead className="cursor-pointer" onClick={() => handleSort("customerName")}>
             <div className="flex items-center">
               Klantnaam
+              {renderSortIcon("customerName")}
+            </div>
+          </TableHead>
+          <TableHead className="cursor-pointer" onClick={() => handleSort("salesStatus")}>
+            <div className="flex items-center">
+              Klanttype
+              {renderSortIcon("salesStatus")}
             </div>
           </TableHead>
           <TableHead className="cursor-pointer" onClick={() => handleSort("deliveryDate")}>
@@ -106,7 +137,7 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
       <TableBody>
         {vehicles.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+            <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
               Geen afgeleverde voertuigen gevonden
             </TableCell>
           </TableRow>
@@ -127,10 +158,21 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
                 {vehicle.model}
               </TableCell>
               <TableCell className="align-middle">
+                {formatMileage(vehicle.mileage)}
+              </TableCell>
+              <TableCell className="align-middle">
                 {vehicle.licenseNumber}
               </TableCell>
               <TableCell className="align-middle">
+                {formatPrice(vehicle.sellingPrice)}
+              </TableCell>
+              <TableCell className="align-middle">
                 {vehicle.customerName || "Onbekend"}
+              </TableCell>
+              <TableCell className="align-middle">
+                <Badge variant="outline" className={vehicle.salesStatus === "verkocht_b2c" ? "bg-blue-50 text-blue-800" : "bg-purple-50 text-purple-800"}>
+                  {vehicle.salesStatus === "verkocht_b2c" ? "B2C" : "B2B"}
+                </Badge>
               </TableCell>
               <TableCell className="align-middle">
                 {formatDeliveryDate(vehicle.deliveryDate)}
