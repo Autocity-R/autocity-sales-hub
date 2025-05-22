@@ -1,3 +1,4 @@
+
 import React from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -157,21 +158,20 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
             />
           </div>
 
-          {editedVehicle.salesStatus === "verkocht_b2b" && (
-            <div className="space-y-2">
-              <Label htmlFor="sellingPrice" className="flex items-center">
-                <Euro className="h-4 w-4 mr-1 text-muted-foreground" />
-                <span>Verkoopprijs (€)</span>
-              </Label>
-              <Input
-                id="sellingPrice"
-                type="number"
-                value={editedVehicle.sellingPrice || ''}
-                onChange={(e) => handleChange('sellingPrice', parseFloat(e.target.value))}
-                className="border-green-200 focus:border-green-300"
-              />
-            </div>
-          )}
+          {/* Added Selling Price field - always visible in B2C view */}
+          <div className="space-y-2">
+            <Label htmlFor="sellingPrice" className="flex items-center">
+              <Euro className="h-4 w-4 mr-1 text-muted-foreground" />
+              <span>Verkoopprijs (€)</span>
+            </Label>
+            <Input
+              id="sellingPrice"
+              type="number"
+              value={editedVehicle.sellingPrice || ''}
+              onChange={(e) => handleChange('sellingPrice', parseFloat(e.target.value))}
+              className="border-green-200 focus:border-green-300"
+            />
+          </div>
         </div>
         
         {/* Damage */}
@@ -221,7 +221,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               id="onInventory"
               checked={editedVehicle.salesStatus === "voorraad"}
               onCheckedChange={(checked) => 
-                handleChange('salesStatus', checked ? "voorraad" : "verkocht_b2b")
+                handleChange('salesStatus', checked ? "voorraad" : "verkocht_b2c")
               }
             />
             <Label htmlFor="onInventory" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
@@ -229,7 +229,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
             </Label>
           </div>
           
-          {editedVehicle.salesStatus === "verkocht_b2b" && (
+          {editedVehicle.salesStatus === "verkocht_b2c" && (
             <div className="ml-6 mt-2 p-3 bg-green-50 border border-green-100 rounded-md">
               <Label className="text-sm font-medium mb-2 block">Betaalstatus</Label>
               <Select 

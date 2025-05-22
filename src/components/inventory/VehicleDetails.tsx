@@ -77,19 +77,25 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-[90%] sm:max-w-[75%] lg:max-w-[66%] xl:max-w-[50%] max-h-[90vh]">
-        <DialogHeader>
+      <DialogContent className="max-w-[90%] sm:max-w-[75%] lg:max-w-[66%] xl:max-w-[50%] max-h-[90vh] flex flex-col">
+        <DialogHeader className="sticky top-0 z-10 bg-background pb-2">
           <DialogTitle>
             {vehicle.brand} {vehicle.model}
           </DialogTitle>
           <DialogDescription>
             Details van voertuig bekijken en bewerken.
           </DialogDescription>
+          {/* Added a top save button for easier access */}
+          <div className="mt-2 flex justify-end">
+            <Button type="submit" onClick={handleSave} size="sm">
+              Opslaan
+            </Button>
+          </div>
         </DialogHeader>
         
-        <ScrollArea className="h-[calc(90vh-200px)]">
-          <Tabs defaultValue="details" className="space-y-4">
-            <TabsList className="sticky top-0 bg-background z-10">
+        <ScrollArea className="flex-grow -mx-6 px-6">
+          <Tabs defaultValue="details" className="space-y-4 py-2">
+            <TabsList className="sticky top-0 bg-background z-10 w-full">
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="photos">Foto's</TabsTrigger>
               <TabsTrigger value="files">Documenten</TabsTrigger>
@@ -135,9 +141,13 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
               )}
             </TabsContent>
           </Tabs>
+          
+          {/* Added spacing at the bottom to ensure content isn't hidden behind the sticky footer */}
+          <div className="h-16"></div>
         </ScrollArea>
         
-        <div className="flex justify-end space-x-2 mt-4 sticky bottom-0 bg-background pt-2">
+        {/* Made the action buttons sticky at the bottom */}
+        <div className="sticky bottom-0 left-0 right-0 flex justify-end gap-2 pt-4 mt-auto bg-background border-t border-border z-10">
           <Button type="button" variant="secondary" onClick={onClose}>
             Annuleren
           </Button>
