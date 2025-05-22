@@ -15,7 +15,15 @@ export type WorkshopStatus =
   | "wachten" 
   | "poetsen" 
   | "spuiten" 
-  | "gereed";
+  | "gereed"
+  | "klaar_voor_aflevering"  // Added for B2C
+  | "in_werkplaats"          // Added for B2C
+  | "wacht_op_onderdelen";   // Added for B2C
+
+export type PaintStatus =     // New type for B2C
+  | "geen_behandeling"
+  | "hersteld"
+  | "in_behandeling";
 
 export type DamageStatus = 
   | "geen" 
@@ -67,6 +75,7 @@ export interface Vehicle {
   purchasePrice: number;
   sellingPrice: number;    // Added selling price
   paymentStatus: PaymentStatus; // Added payment status
+  paintStatus?: PaintStatus; // Added paint status for B2C vehicles
   cmrSent: boolean;
   cmrDate: Date | null;
   papersReceived: boolean;
@@ -76,6 +85,8 @@ export interface Vehicle {
   photos: string[];
   createdAt?: string | Date;
   customerId?: string;      // Added customer reference
+  customerName?: string;    // Added customer name for display
+  deliveryDate?: Date | null; // Added delivery date
 }
 
 export interface Supplier {

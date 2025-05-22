@@ -16,6 +16,7 @@ import {
   BarChart3,
   GanttChartIcon,
   ShieldIcon,
+  CheckCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -60,7 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
         <div className="space-y-1">
           <Link to="/inventory">
             <Button
-              variant={isActive("/inventory") && !getSubActive(["/inventory/b2b", "/inventory/online", "/inventory/consumer"]) ? "default" : "ghost"}
+              variant={isActive("/inventory") && !getSubActive(["/inventory/b2b", "/inventory/online", "/inventory/consumer", "/inventory/delivered"]) ? "default" : "ghost"}
               className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
               size="sm"
             >
@@ -96,6 +97,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             >
               <UsersIcon className="mr-2 h-4 w-4" />
               Verkocht B2C
+            </Button>
+          </Link>
+          <Link to="/inventory/delivered">
+            <Button
+              variant={isActive("/inventory/delivered") ? "default" : "ghost"}
+              className="w-full justify-start pl-8 text-white hover:text-white hover:bg-gray-800"
+              size="sm"
+            >
+              <CheckCircle className="mr-2 h-4 w-4" />
+              Afgeleverd
             </Button>
           </Link>
           <Link to="/transport">
