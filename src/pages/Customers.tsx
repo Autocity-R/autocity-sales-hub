@@ -4,10 +4,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getContacts, getContactsByType } from "@/services/customerService";
 import ContactList from "@/components/customers/ContactList";
 import { ContactType } from "@/types/customer";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 
 const Customers = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname;
   
   // Determine active tab based on the current path
@@ -25,11 +28,21 @@ const Customers = () => {
   
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Klanten & Leveranciers</h1>
-        <p className="text-muted-foreground">
-          CRM-systeem voor het beheren van alle contacten
-        </p>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Klanten & Leveranciers</h1>
+          <p className="text-muted-foreground">
+            CRM-systeem voor het beheren van alle contacten
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={() => navigate("/")}
+          className="flex items-center gap-2"
+        >
+          <ArrowLeft size={16} />
+          Terug naar Dashboard
+        </Button>
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
