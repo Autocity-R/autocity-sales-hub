@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -39,12 +38,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   };
 
   return (
-    <div className={cn("min-h-screen w-64 bg-slate-50 border-r p-4", className)}>
+    <div className={cn("min-h-screen w-64 bg-black text-white border-r border-gray-800 p-4", className)}>
       <div className="space-y-1">
         <Link to="/">
           <Button
             variant={isActive("/") ? "default" : "ghost"}
-            className="w-full justify-start"
+            className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
             size="sm"
           >
             <HomeIcon className="mr-2 h-4 w-4" />
@@ -54,14 +53,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       </div>
 
       <div className="mt-8">
-        <h2 className="mb-2 px-2 text-xs font-semibold text-slate-500">
+        <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
           VOERTUIGEN
         </h2>
         <div className="space-y-1">
           <Link to="/inventory">
             <Button
               variant={isActive("/inventory") && !getSubActive(["/inventory/b2b", "/inventory/online", "/inventory/consumer"]) ? "default" : "ghost"}
-              className="w-full justify-start"
+              className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
               size="sm"
             >
               <CarIcon className="mr-2 h-4 w-4" />
@@ -71,7 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           <Link to="/inventory/online">
             <Button
               variant={isActive("/inventory/online") ? "default" : "ghost"}
-              className="w-full justify-start pl-8"
+              className="w-full justify-start pl-8 text-white hover:text-white hover:bg-gray-800"
               size="sm"
             >
               <ShoppingBagIcon className="mr-2 h-4 w-4" />
@@ -81,7 +80,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           <Link to="/inventory/b2b">
             <Button
               variant={isActive("/inventory/b2b") ? "default" : "ghost"}
-              className="w-full justify-start pl-8"
+              className="w-full justify-start pl-8 text-white hover:text-white hover:bg-gray-800"
               size="sm"
             >
               <BoxIcon className="mr-2 h-4 w-4" />
@@ -91,7 +90,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           <Link to="/inventory/consumer">
             <Button
               variant={isActive("/inventory/consumer") ? "default" : "ghost"}
-              className="w-full justify-start pl-8"
+              className="w-full justify-start pl-8 text-white hover:text-white hover:bg-gray-800"
               size="sm"
             >
               <UsersIcon className="mr-2 h-4 w-4" />
@@ -101,7 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           <Link to="/transport">
             <Button
               variant={isActive("/transport") ? "default" : "ghost"}
-              className="w-full justify-start"
+              className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
               size="sm"
             >
               <TruckIcon className="mr-2 h-4 w-4" />
@@ -112,14 +111,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       </div>
 
       <div className="mt-8">
-        <h2 className="mb-2 px-2 text-xs font-semibold text-slate-500">
+        <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
           KLANTEN
         </h2>
         <div className="space-y-1">
           <Link to="/customers">
             <Button
               variant={isActive("/customers") && !getSubActive(["/customers/b2b", "/customers/b2c", "/suppliers"]) ? "default" : "ghost"}
-              className="w-full justify-start"
+              className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
               size="sm"
             >
               <UsersIcon className="mr-2 h-4 w-4" />
@@ -129,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           <Link to="/customers/b2b">
             <Button
               variant={isActive("/customers/b2b") ? "default" : "ghost"}
-              className="w-full justify-start pl-8"
+              className="w-full justify-start pl-8 text-white hover:text-white hover:bg-gray-800"
               size="sm"
             >
               <BoxIcon className="mr-2 h-4 w-4" />
@@ -139,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           <Link to="/customers/b2c">
             <Button
               variant={isActive("/customers/b2c") ? "default" : "ghost"}
-              className="w-full justify-start pl-8"
+              className="w-full justify-start pl-8 text-white hover:text-white hover:bg-gray-800"
               size="sm"
             >
               <UsersIcon className="mr-2 h-4 w-4" />
@@ -149,7 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           <Link to="/suppliers">
             <Button
               variant={isActive("/suppliers") ? "default" : "ghost"}
-              className="w-full justify-start"
+              className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
               size="sm"
             >
               <TruckIcon className="mr-2 h-4 w-4" />
@@ -159,7 +158,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           <Link to="/leads">
             <Button
               variant={isActive("/leads") ? "default" : "ghost"}
-              className="w-full justify-start"
+              className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
               size="sm"
             >
               <BookIcon className="mr-2 h-4 w-4" />
@@ -170,14 +169,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       </div>
 
       <div className="mt-8">
-        <h2 className="mb-2 px-2 text-xs font-semibold text-slate-500">
+        <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
           ADMINISTRATIE
         </h2>
         <div className="space-y-1">
           <Link to="/reports">
             <Button
               variant={isActive("/reports") ? "default" : "ghost"}
-              className="w-full justify-start"
+              className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
               size="sm"
             >
               <BarChart3 className="mr-2 h-4 w-4" />
@@ -187,7 +186,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           <Link to="/warranty">
             <Button
               variant={isActive("/warranty") ? "default" : "ghost"}
-              className="w-full justify-start"
+              className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
               size="sm"
             >
               <ShieldIcon className="mr-2 h-4 w-4" />
@@ -197,7 +196,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           <Link to="/calendar">
             <Button
               variant={isActive("/calendar") ? "default" : "ghost"}
-              className="w-full justify-start"
+              className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
               size="sm"
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
@@ -212,7 +211,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           <Link to="/settings">
             <Button
               variant={isActive("/settings") ? "default" : "ghost"}
-              className="w-full justify-start"
+              className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
               size="sm"
             >
               <SettingsIcon className="mr-2 h-4 w-4" />
