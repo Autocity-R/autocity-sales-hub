@@ -165,7 +165,10 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
           </TabsContent>
           
           <TabsContent value="emails" className="space-y-4 mt-4">
-            <EmailsTab onSendEmail={handleSendEmail} />
+            <EmailsTab 
+              onSendEmail={handleSendEmail} 
+              vehicle={editedVehicle}
+            />
           </TabsContent>
         </Tabs>
         

@@ -1,116 +1,172 @@
-import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
-import { VehicleB2BTable } from "@/components/inventory/VehicleB2BTable";
+
+import React, { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { FileText, Mail, Plus } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { VehicleB2BTable } from "@/components/inventory/VehicleB2BTable";
+import { VehicleDetails } from "@/components/inventory/VehicleDetails";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Vehicle, PaymentStatus } from "@/types/inventory";
-import { fetchVehicles, updateVehiclePaymentStatus, updateVehicleSellingPrice } from "@/services/inventoryService";
+import { PageHeader } from "@/components/ui/page-header";
+import { 
+  fetchB2BVehicles, 
+  updateVehicle, 
+  sendEmail, 
+  updateSellingPrice,
+  updatePaymentStatus,
+  uploadVehiclePhoto
+} from "@/services/inventoryService";
 
 const InventoryB2B = () => {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
-  const [open, setOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const { toast } = useToast();
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-
-  useEffect(() => {
-    loadVehicles();
-  }, []);
-
-  const loadVehicles = async () => {
-    setIsLoading(true);
-    setError(null);
+  
+  const queryClient = useQueryClient();
+  
+  // Fetch B2B sold vehicles only
+  const { data: vehicles = [], isLoading, error } = useQuery({
+    queryKey: ["b2bVehicles"],
+    queryFn: fetchB2BVehicles
+  });
+  
+  const updateVehicleMutation = useMutation({
+    mutationFn: updateVehicle,
+    onSuccess: () => {
+      toast.success("Voertuig bijgewerkt");
+      queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
+    },
+    onError: (error) => {
+      toast.error("Fout bij het bijwerken van het voertuig");
+      console.error("Error updating vehicle:", error);
+    }
+  });
+  
+  const sendEmailMutation = useMutation({
+    mutationFn: ({ type, vehicleId }: { type: string; vehicleId: string }) => 
+      sendEmail(type, [vehicleId]),
+    onSuccess: () => {
+      toast.success("E-mail verzonden");
+    },
+    onError: (error) => {
+      toast.error("Fout bij het verzenden van e-mail");
+      console.error("Error sending email:", error);
+    }
+  });
+  
+  const updateSellingPriceMutation = useMutation({
+    mutationFn: ({ vehicleId, price }: { vehicleId: string; price: number }) => 
+      updateSellingPrice(vehicleId, price),
+    onSuccess: () => {
+      toast.success("Verkoopprijs bijgewerkt");
+      queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
+    },
+    onError: (error) => {
+      toast.error("Fout bij het bijwerken van de verkoopprijs");
+      console.error("Error updating selling price:", error);
+    }
+  });
+  
+  const updatePaymentStatusMutation = useMutation({
+    mutationFn: ({ vehicleId, status }: { vehicleId: string; status: PaymentStatus }) => 
+      updatePaymentStatus(vehicleId, status),
+    onSuccess: () => {
+      toast.success("Betaalstatus bijgewerkt");
+      queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
+    },
+    onError: (error) => {
+      toast.error("Fout bij het bijwerken van de betaalstatus");
+      console.error("Error updating payment status:", error);
+    }
+  });
+  
+  const handleUploadPhoto = async (file: File, isMain: boolean) => {
+    if (!selectedVehicle) return;
+    
     try {
-      const data = await fetchVehicles("b2b");
-      setVehicles(data);
+      const photoUrl = await uploadVehiclePhoto(selectedVehicle.id, file, isMain);
+      
+      // Update the vehicle with the new photo
+      const updatedPhotos = [...(selectedVehicle.photos || [])];
+      if (!updatedPhotos.includes(photoUrl)) {
+        updatedPhotos.push(photoUrl);
+      }
+      
+      const updatedVehicle = {
+        ...selectedVehicle,
+        photos: updatedPhotos,
+        mainPhotoUrl: isMain ? photoUrl : selectedVehicle.mainPhotoUrl
+      };
+      
+      updateVehicleMutation.mutate(updatedVehicle);
+      setSelectedVehicle(updatedVehicle);
     } catch (error) {
-      setError(error);
-      toast({
-        title: "Error",
-        description: "Failed to load vehicles.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+      toast.error("Fout bij het uploaden van de foto");
+      console.error("Error uploading photo:", error);
     }
   };
-
-  const toggleSelectAll = (checked: boolean) => {
-    if (checked) {
-      const allVehicleIds = vehicles.map((vehicle) => vehicle.id);
-      setSelectedVehicles(allVehicleIds);
-    } else {
-      setSelectedVehicles([]);
-    }
-  };
-
-  const toggleSelectVehicle = (vehicleId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedVehicles([...selectedVehicles, vehicleId]);
-    } else {
-      setSelectedVehicles(selectedVehicles.filter((id) => id !== vehicleId));
-    }
-  };
-
-  const handleSelectVehicle = (vehicle: Vehicle) => {
-    setSelectedVehicle(vehicle);
-    setOpen(true);
-  };
-
-  const handleSendEmail = async (type: string, vehicleId: string) => {
-    // Placeholder for send email function
-    toast({
-      title: "Email sent",
-      description: `Email of type ${type} sent for vehicle ${vehicleId}.`,
-    });
-  };
-
-  const handleUpdateSellingPrice = async (vehicleId: string, price: number) => {
+  
+  const handleRemovePhoto = async (photoUrl: string) => {
+    if (!selectedVehicle) return;
+    
     try {
-      await updateVehicleSellingPrice(vehicleId, price);
-      toast({
-        title: "Success",
-        description: "Selling price updated successfully.",
-      });
-      loadVehicles(); // Refresh the vehicle list
+      const updatedPhotos = selectedVehicle.photos.filter(url => url !== photoUrl);
+      let updatedMainPhoto = selectedVehicle.mainPhotoUrl;
+      
+      if (selectedVehicle.mainPhotoUrl === photoUrl) {
+        updatedMainPhoto = updatedPhotos.length > 0 ? updatedPhotos[0] : null;
+      }
+      
+      const updatedVehicle = {
+        ...selectedVehicle,
+        photos: updatedPhotos,
+        mainPhotoUrl: updatedMainPhoto
+      };
+      
+      updateVehicleMutation.mutate(updatedVehicle);
+      setSelectedVehicle(updatedVehicle);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update selling price.",
-        variant: "destructive",
-      });
+      toast.error("Fout bij het verwijderen van de foto");
+      console.error("Error removing photo:", error);
     }
   };
-
-  const handleUpdatePaymentStatus = async (vehicleId: string, status: PaymentStatus) => {
+  
+  const handleSetMainPhoto = async (photoUrl: string) => {
+    if (!selectedVehicle) return;
+    
     try {
-      await updateVehiclePaymentStatus(vehicleId, status);
-      toast({
-        title: "Success",
-        description: "Payment status updated successfully.",
-      });
-      loadVehicles(); // Refresh the vehicle list
+      const updatedVehicle = {
+        ...selectedVehicle,
+        mainPhotoUrl: photoUrl
+      };
+      
+      updateVehicleMutation.mutate(updatedVehicle);
+      setSelectedVehicle(updatedVehicle);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update payment status.",
-        variant: "destructive",
-      });
+      toast.error("Fout bij het instellen van de hoofdfoto");
+      console.error("Error setting main photo:", error);
     }
   };
-
+  
+  const handleUpdateVehicle = (updatedVehicle: Vehicle) => {
+    updateVehicleMutation.mutate(updatedVehicle);
+    setSelectedVehicle(null);
+  };
+  
+  const handleSendEmail = (type: string, vehicleId: string) => {
+    sendEmailMutation.mutate({ type, vehicleId });
+  };
+  
+  const handleUpdateSellingPrice = (vehicleId: string, price: number) => {
+    updateSellingPriceMutation.mutate({ vehicleId, price });
+  };
+  
+  const handleUpdatePaymentStatus = (vehicleId: string, status: PaymentStatus) => {
+    updatePaymentStatusMutation.mutate({ vehicleId, status });
+  };
+  
   const handleSort = (field: string) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -118,74 +174,111 @@ const InventoryB2B = () => {
       setSortField(field);
       setSortDirection("asc");
     }
-
-    const sortedVehicles = [...vehicles].sort((a, b) => {
-      const aValue = a[field as keyof Vehicle];
-      const bValue = b[field as keyof Vehicle];
-
-      if (aValue === null || aValue === undefined) return sortDirection === "asc" ? -1 : 1;
-      if (bValue === null || bValue === undefined) return sortDirection === "asc" ? 1 : -1;
-
-      if (typeof aValue === "number" && typeof bValue === "number") {
-        return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
-      }
-
-      if (typeof aValue === "string" && typeof bValue === "string") {
-        return sortDirection === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-      }
-
-      return 0;
-    });
-
-    setVehicles(sortedVehicles);
+  };
+  
+  // Sort vehicles based on sort field and direction
+  const sortedVehicles = [...vehicles].sort((a, b) => {
+    if (!sortField) return 0;
+    
+    // Handle nested fields
+    let aValue: any = a;
+    let bValue: any = b;
+    
+    const fields = sortField.split(".");
+    for (const field of fields) {
+      aValue = aValue?.[field];
+      bValue = bValue?.[field];
+    }
+    
+    if (aValue === undefined || bValue === undefined) return 0;
+    
+    // For numbers
+    if (typeof aValue === "number" && typeof bValue === "number") {
+      return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
+    }
+    
+    // For strings
+    if (typeof aValue === "string" && typeof bValue === "string") {
+      return sortDirection === "asc" 
+        ? aValue.localeCompare(bValue) 
+        : bValue.localeCompare(aValue);
+    }
+    
+    // For booleans
+    if (typeof aValue === "boolean" && typeof bValue === "boolean") {
+      return sortDirection === "asc" 
+        ? (aValue === bValue ? 0 : aValue ? 1 : -1)
+        : (aValue === bValue ? 0 : bValue ? 1 : -1);
+    }
+    
+    return 0;
+  });
+  
+  const toggleSelectVehicle = (vehicleId: string, checked: boolean) => {
+    setSelectedVehicles(prev => 
+      checked 
+        ? [...prev, vehicleId]
+        : prev.filter(id => id !== vehicleId)
+    );
+  };
+  
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedVehicles(checked ? vehicles.map(v => v.id) : []);
   };
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto py-10">
-        <div className="mb-4 flex items-center space-x-2">
-          <Link to="/inventory" className="text-blue-500 hover:underline">
-            Terug naar overzicht
-          </Link>
-          <h1 className="text-2xl font-bold">B2B Verkochte Voertuigen</h1>
+      <div className="space-y-4">
+        <PageHeader 
+          title="Verkocht B2B" 
+          description="Beheer uw verkochte voertuigen aan zakelijke klanten"
+        >
+          <div className="flex space-x-2">
+            <Button variant="outline" size="sm" disabled={selectedVehicles.length === 0}>
+              <FileText className="h-4 w-4 mr-2" />
+              Export selectie
+            </Button>
+            <Button variant="outline" size="sm" disabled={selectedVehicles.length === 0}>
+              <Mail className="h-4 w-4 mr-2" />
+              E-mail sturen
+            </Button>
+            <Button variant="default" size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Nieuw voertuig
+            </Button>
+          </div>
+        </PageHeader>
+        
+        <div className="bg-white rounded-md shadow">
+          <VehicleB2BTable 
+            vehicles={sortedVehicles}
+            selectedVehicles={selectedVehicles}
+            toggleSelectAll={toggleSelectAll}
+            toggleSelectVehicle={toggleSelectVehicle}
+            handleSelectVehicle={setSelectedVehicle}
+            handleSendEmail={handleSendEmail}
+            handleUpdateSellingPrice={handleUpdateSellingPrice}
+            handleUpdatePaymentStatus={handleUpdatePaymentStatus}
+            isLoading={isLoading}
+            error={error}
+            onSort={handleSort}
+            sortField={sortField}
+            sortDirection={sortDirection}
+          />
         </div>
-
-        <VehicleB2BTable
-          vehicles={vehicles}
-          selectedVehicles={selectedVehicles}
-          toggleSelectAll={toggleSelectAll}
-          toggleSelectVehicle={toggleSelectVehicle}
-          handleSelectVehicle={handleSelectVehicle}
-          handleSendEmail={handleSendEmail}
-          handleUpdateSellingPrice={handleUpdateSellingPrice}
-          handleUpdatePaymentStatus={handleUpdatePaymentStatus}
-          isLoading={isLoading}
-          error={error}
-          onSort={handleSort}
-          sortField={sortField}
-          sortDirection={sortDirection}
-        />
-
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Voertuig Details</DialogTitle>
-              <DialogDescription>
-                Details van het geselecteerde voertuig.
-              </DialogDescription>
-            </DialogHeader>
-            {selectedVehicle ? (
-              <div>
-                <p>Merk: {selectedVehicle.brand}</p>
-                <p>Model: {selectedVehicle.model}</p>
-                {/* Add more details here */}
-              </div>
-            ) : (
-              <p>Geen voertuig geselecteerd.</p>
-            )}
-          </DialogContent>
-        </Dialog>
       </div>
+      
+      {selectedVehicle && (
+        <VehicleDetails
+          vehicle={selectedVehicle}
+          onClose={() => setSelectedVehicle(null)}
+          onUpdate={handleUpdateVehicle}
+          onSendEmail={handleSendEmail}
+          onPhotoUpload={handleUploadPhoto}
+          onRemovePhoto={handleRemovePhoto}
+          onSetMainPhoto={handleSetMainPhoto}
+        />
+      )}
     </DashboardLayout>
   );
 };

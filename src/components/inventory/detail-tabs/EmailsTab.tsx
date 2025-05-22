@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Mail } from "lucide-react";
+import { Mail, AlertCircle, CheckCircle, Truck, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,7 @@ import { Vehicle } from "@/types/inventory";
 
 interface EmailsTabProps {
   onSendEmail: (type: string) => void;
-  vehicle?: Vehicle;  // Added vehicle prop
+  vehicle?: Vehicle;
 }
 
 export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle }) => {
@@ -29,7 +29,7 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle }) =>
               className="w-full justify-start" 
               onClick={() => onSendEmail("transport_pickup")}
             >
-              <Mail className="mr-2 h-4 w-4" />
+              <Truck className="mr-2 h-4 w-4" />
               Transport pickup document sturen
             </Button>
             
@@ -37,7 +37,7 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle }) =>
               className="w-full justify-start" 
               onClick={() => onSendEmail("cmr_supplier")}
             >
-              <Mail className="mr-2 h-4 w-4" />
+              <FileText className="mr-2 h-4 w-4" />
               CMR voor leverancier
             </Button>
           </div>
@@ -61,7 +61,7 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle }) =>
                   className="w-full justify-start" 
                   onClick={() => onSendEmail("vehicle_arrived")}
                 >
-                  <Mail className="mr-2 h-4 w-4" />
+                  <CheckCircle className="mr-2 h-4 w-4" />
                   Auto is binnengekomen
                 </Button>
               )}
@@ -70,9 +70,20 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle }) =>
                 className="w-full justify-start" 
                 onClick={() => onSendEmail("license_registration")}
               >
-                <Mail className="mr-2 h-4 w-4" />
+                <AlertCircle className="mr-2 h-4 w-4" />
                 Kenteken aanmelding update
               </Button>
+              
+              <div className="mt-2 p-3 bg-muted rounded-md">
+                <h5 className="text-sm font-medium mb-2">Kenteken registratie updates</h5>
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <div>• Aangemeld - Initiële melding naar klant</div>
+                  <div>• Goedgekeurd - RDW heeft voertuig goedgekeurd</div>
+                  <div>• BPM Betaald - BPM betaald en registratie volgt</div>
+                  <div>• Herkeuring - Voertuig moet opnieuw worden gekeurd</div>
+                  <div>• Ingeschreven - Kenteken is toegekend en klaar</div>
+                </div>
+              </div>
             </div>
           </div>
         )}
