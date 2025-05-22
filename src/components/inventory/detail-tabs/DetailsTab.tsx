@@ -1,4 +1,3 @@
-
 import React from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -95,10 +94,12 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="niet_gestart">Niet gestart</SelectItem>
+              <SelectItem value="aangemeld">Aangemeld</SelectItem>
+              <SelectItem value="goedgekeurd">Goedgekeurd</SelectItem>
               <SelectItem value="transport_geregeld">Transport geregeld</SelectItem>
               <SelectItem value="onderweg">Onderweg</SelectItem>
-              <SelectItem value="aangekomen">Aangevraagd</SelectItem>
-              <SelectItem value="afgemeld">Goedgekeurd</SelectItem>
+              <SelectItem value="aangekomen">Aangekomen</SelectItem>
+              <SelectItem value="afgemeld">Afgemeld</SelectItem>
               <SelectItem value="bpm_betaald">BPM Betaald</SelectItem>
               <SelectItem value="herkeuring">Herkeuring</SelectItem>
               <SelectItem value="ingeschreven">Ingeschreven</SelectItem>

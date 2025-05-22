@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/popover";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
-import { Vehicle, ImportStatus, WorkshopStatus, DamageStatus, LocationStatus, SalesStatus } from "@/types/inventory";
+import { Vehicle, ImportStatus, WorkshopStatus, DamageStatus, LocationStatus, SalesStatus, PaymentStatus } from "@/types/inventory";
 
 interface VehicleFormProps {
   onSubmit: (data: Omit<Vehicle, "id">) => void;
@@ -55,13 +55,16 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
       status: initialData?.damage?.status || "geen"
     },
     purchasePrice: initialData?.purchasePrice || 0,
+    sellingPrice: initialData?.sellingPrice || 0, // Add sellingPrice property
+    paymentStatus: initialData?.paymentStatus || "niet_betaald", // Add paymentStatus property
     cmrSent: initialData?.cmrSent || false,
     cmrDate: initialData?.cmrDate || null,
     papersReceived: initialData?.papersReceived || false,
     papersDate: initialData?.papersDate || null,
     notes: initialData?.notes || "",
     mainPhotoUrl: initialData?.mainPhotoUrl || null,
-    photos: initialData?.photos || []
+    photos: initialData?.photos || [],
+    customerId: initialData?.customerId || undefined
   });
   
   const handleChange = (field: keyof Omit<Vehicle, "id" | "damage">, value: any) => {

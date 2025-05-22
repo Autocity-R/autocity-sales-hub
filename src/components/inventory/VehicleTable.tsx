@@ -67,6 +67,8 @@ interface VehicleTableProps {
 export const renderImportStatusBadge = (status: ImportStatus) => {
   const statusMap: Record<ImportStatus, { label: string, variant: "default" | "outline" | "secondary" | "destructive" }> = {
     niet_gestart: { label: "Niet gestart", variant: "outline" },
+    aangemeld: { label: "Aangemeld", variant: "outline" }, // Added missing status
+    goedgekeurd: { label: "Goedgekeurd", variant: "secondary" }, // Added missing status
     transport_geregeld: { label: "Transport geregeld", variant: "secondary" },
     onderweg: { label: "Onderweg", variant: "secondary" },
     aangekomen: { label: "Aangekomen", variant: "default" },
