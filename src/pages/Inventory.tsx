@@ -257,9 +257,52 @@ const Inventory = () => {
     deleteMutation.mutate(vehicleId);
   };
 
-  // Handle photo upload
+  // Photo upload mutation
   const handlePhotoUpload = async (vehicleId: string, file: File, isMain: boolean) => {
     await photoUploadMutation.mutateAsync({ vehicleId, file, isMain });
+  };
+
+  // Handle photo removal
+  const handleRemovePhoto = async (vehicleId: string, photoUrl: string) => {
+    // Placeholder for actual API call
+    const currentVehicle = vehicles.find(v => v.id === vehicleId);
+    if (currentVehicle) {
+      const updatedVehicle = { 
+        ...currentVehicle,
+        photos: currentVehicle.photos.filter(url => url !== photoUrl)
+      };
+      
+      if (currentVehicle.mainPhotoUrl === photoUrl) {
+        updatedVehicle.mainPhotoUrl = updatedVehicle.photos.length > 0 ? updatedVehicle.photos[0] : null;
+      }
+      
+      updateMutation.mutate(updatedVehicle);
+      
+      toast({
+        title: "Foto verwijderd",
+        description: "De foto is succesvol verwijderd.",
+        variant: "default",
+      });
+    }
+  };
+
+  // Handle setting main photo
+  const handleSetMainPhoto = async (vehicleId: string, photoUrl: string) => {
+    const currentVehicle = vehicles.find(v => v.id === vehicleId);
+    if (currentVehicle) {
+      const updatedVehicle = { 
+        ...currentVehicle,
+        mainPhotoUrl: photoUrl
+      };
+      
+      updateMutation.mutate(updatedVehicle);
+      
+      toast({
+        title: "Hoofdfoto ingesteld",
+        description: "De hoofdfoto is succesvol bijgewerkt.",
+        variant: "default",
+      });
+    }
   };
 
   // Handle bulk action
@@ -598,6 +641,8 @@ const Inventory = () => {
             onClose={() => setSelectedVehicle(null)}
             onSendEmail={handleSendEmail}
             onPhotoUpload={(file, isMain) => handlePhotoUpload(selectedVehicle.id, file, isMain)}
+            onRemovePhoto={(photoUrl) => handleRemovePhoto(selectedVehicle.id, photoUrl)}
+            onSetMainPhoto={(photoUrl) => handleSetMainPhoto(selectedVehicle.id, photoUrl)}
           />
         )}
         
