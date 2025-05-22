@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Search, Users } from "lucide-react";
@@ -326,12 +325,17 @@ const Inventory = () => {
   const { handleChatbotCommand } = useChatbotCommands(vehicles, selectedVehicles);
 
   // Filter vehicles based on search term
-  const filteredVehicles = vehicles.filter(vehicle => 
-    vehicle.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    vehicle.licenseNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    vehicle.vin.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredVehicles = vehicles.filter(vehicle => {
+    if (!searchTerm) return true;
+    
+    const searchTermLower = searchTerm.toLowerCase();
+    
+    // Check if any of these fields contains the search term as a substring
+    return vehicle.brand.toLowerCase().includes(searchTermLower) ||
+           vehicle.model.toLowerCase().includes(searchTermLower) ||
+           vehicle.licenseNumber.toLowerCase().includes(searchTermLower) ||
+           vehicle.vin.toLowerCase().includes(searchTermLower);
+  });
 
   return (
     <DashboardLayout>

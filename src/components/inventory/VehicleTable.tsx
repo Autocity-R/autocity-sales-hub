@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Vehicle, ImportStatus } from "@/types/inventory";
 import { CircleCheck, CircleX, ExternalLink, Mail, MoreHorizontal } from "lucide-react";
@@ -44,6 +43,9 @@ export const renderImportStatusBadge = (status: ImportStatus) => {
     onderweg: { label: "Onderweg", variant: "secondary" },
     aangekomen: { label: "Aangekomen", variant: "default" },
     afgemeld: { label: "Afgemeld", variant: "destructive" },
+    bpm_betaald: { label: "BPM betaald", variant: "default" },
+    herkeuring: { label: "Herkeuring", variant: "secondary" },
+    ingeschreven: { label: "Ingeschreven", variant: "default" }
   };
   
   const { label, variant } = statusMap[status];
