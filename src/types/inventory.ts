@@ -63,6 +63,7 @@ export interface Vehicle {
   notes: string;
   mainPhotoUrl: string | null;
   photos: string[];
+  createdAt?: string | Date; // Added for stadagen calculation
 }
 
 export interface Supplier {

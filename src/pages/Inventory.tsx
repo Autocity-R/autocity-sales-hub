@@ -1,6 +1,7 @@
+
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Users } from "lucide-react";
+import { Plus, Search, Users, ArrowUp, ArrowDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,8 @@ const Inventory = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
   const [isBulkActionOpen, setIsBulkActionOpen] = useState(false);
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   
   // Fetch vehicles
   const { data: vehicles = [], isLoading, error } = useQuery({
@@ -324,18 +327,123 @@ const Inventory = () => {
   // Use the chatbot commands hook
   const { handleChatbotCommand } = useChatbotCommands(vehicles, selectedVehicles);
 
-  // Filter vehicles based on search term
-  const filteredVehicles = vehicles.filter(vehicle => {
-    if (!searchTerm) return true;
+  // Handle sorting
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      // Toggle direction if clicking the same field
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // Set new field and default to ascending
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  // Filter vehicles based on search term and active tab
+  const filterVehicles = (vehicles: Vehicle[], tab: string) => {
+    let filtered = [...vehicles];
     
-    const searchTermLower = searchTerm.toLowerCase();
+    // First apply tab-specific filters
+    switch (tab) {
+      case "voorraad":
+        // Show all vehicles (no filter)
+        break;
+      case "online":
+        filtered = filtered.filter(v => v.showroomOnline);
+        break;
+      case "offline":
+        filtered = filtered.filter(v => v.arrived && !v.showroomOnline);
+        break;
+      default:
+        break;
+    }
     
-    // Check if any of these fields contains the search term as a substring
-    return vehicle.brand.toLowerCase().includes(searchTermLower) ||
-           vehicle.model.toLowerCase().includes(searchTermLower) ||
-           vehicle.licenseNumber.toLowerCase().includes(searchTermLower) ||
-           vehicle.vin.toLowerCase().includes(searchTermLower);
-  });
+    // Then apply search term filter
+    if (searchTerm) {
+      const searchTermLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(vehicle =>
+        vehicle.brand.toLowerCase().includes(searchTermLower) ||
+        vehicle.model.toLowerCase().includes(searchTermLower) ||
+        vehicle.licenseNumber.toLowerCase().includes(searchTermLower) ||
+        vehicle.vin.toLowerCase().includes(searchTermLower)
+      );
+    }
+    
+    // Apply sorting if a sort field is selected
+    if (sortField) {
+      filtered.sort((a, b) => {
+        let valueA: any;
+        let valueB: any;
+        
+        // Extract the values based on sort field
+        switch (sortField) {
+          case "brand":
+            valueA = a.brand.toLowerCase();
+            valueB = b.brand.toLowerCase();
+            break;
+          case "model":
+            valueA = a.model.toLowerCase();
+            valueB = b.model.toLowerCase();
+            break;
+          case "licenseNumber":
+            valueA = a.licenseNumber.toLowerCase();
+            valueB = b.licenseNumber.toLowerCase();
+            break;
+          case "vin":
+            valueA = a.vin.toLowerCase();
+            valueB = b.vin.toLowerCase();
+            break;
+          case "mileage":
+            valueA = a.mileage;
+            valueB = b.mileage;
+            break;
+          case "importStatus":
+            valueA = a.importStatus;
+            valueB = b.importStatus;
+            break;
+          case "location":
+            valueA = a.location;
+            valueB = b.location;
+            break;
+          case "arrived":
+            valueA = a.arrived;
+            valueB = b.arrived;
+            break;
+          case "papersReceived":
+            valueA = a.papersReceived;
+            valueB = b.papersReceived;
+            break;
+          case "showroomOnline":
+            valueA = a.showroomOnline;
+            valueB = b.showroomOnline;
+            break;
+          case "staDagen":
+            // Calculate stay days (assuming a createdAt field exists, else we'll need to add it)
+            const now = new Date();
+            valueA = a.createdAt ? Math.floor((now.getTime() - new Date(a.createdAt).getTime()) / (1000 * 3600 * 24)) : 0;
+            valueB = b.createdAt ? Math.floor((now.getTime() - new Date(b.createdAt).getTime()) / (1000 * 3600 * 24)) : 0;
+            break;
+          default:
+            return 0;
+        }
+        
+        // Compare the values
+        if (valueA < valueB) {
+          return sortDirection === "asc" ? -1 : 1;
+        }
+        if (valueA > valueB) {
+          return sortDirection === "asc" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    
+    return filtered;
+  };
+
+  // Get active tab from URL or default to "voorraad"
+  const [activeTab, setActiveTab] = useState("voorraad");
+  const filteredVehicles = filterVehicles(vehicles, activeTab);
 
   return (
     <DashboardLayout>
@@ -358,12 +466,16 @@ const Inventory = () => {
           </div>
         </div>
         
-        <Tabs defaultValue="voorraad" className="w-full">
+        <Tabs
+          defaultValue="voorraad"
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="w-full"
+        >
           <TabsList>
             <TabsTrigger value="voorraad">Voorraad</TabsTrigger>
             <TabsTrigger value="online">Online</TabsTrigger>
-            <TabsTrigger value="verkocht">Verkocht</TabsTrigger>
-            <TabsTrigger value="klanten">Klanten & Leveranciers</TabsTrigger>
+            <TabsTrigger value="offline">Offline</TabsTrigger>
           </TabsList>
           
           <TabsContent value="voorraad" className="space-y-4">
@@ -389,24 +501,71 @@ const Inventory = () => {
                 handleDeleteVehicle={handleDeleteVehicle}
                 isLoading={isLoading}
                 error={error}
+                onSort={handleSort}
+                sortField={sortField}
+                sortDirection={sortDirection}
               />
             </div>
           </TabsContent>
           
           <TabsContent value="online" className="space-y-4">
-            <div className="p-8 text-center text-muted-foreground">
-              Online voertuigen worden hier weergegeven.
+            <div className="flex items-center space-x-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Zoek op merk, model, kenteken of VIN..." 
+                className="max-w-sm" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            <div className="rounded-md border overflow-hidden">
+              <VehicleTable 
+                vehicles={filteredVehicles}
+                selectedVehicles={selectedVehicles}
+                toggleSelectAll={toggleSelectAll}
+                toggleSelectVehicle={toggleSelectVehicle}
+                handleSelectVehicle={handleSelectVehicle}
+                handleSendEmail={handleSendEmail}
+                handleChangeStatus={handleSalesStatusChange}
+                handleDeleteVehicle={handleDeleteVehicle}
+                isLoading={isLoading}
+                error={error}
+                onSort={handleSort}
+                sortField={sortField}
+                sortDirection={sortDirection}
+              />
             </div>
           </TabsContent>
           
-          <TabsContent value="verkocht" className="space-y-4">
-            <div className="p-8 text-center text-muted-foreground">
-              Verkochte voertuigen worden hier weergegeven.
+          <TabsContent value="offline" className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Zoek op merk, model, kenteken of VIN..." 
+                className="max-w-sm" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-          </TabsContent>
-          
-          <TabsContent value="klanten" className="space-y-4">
-            <ContactsPanel />
+            
+            <div className="rounded-md border overflow-hidden">
+              <VehicleTable 
+                vehicles={filteredVehicles}
+                selectedVehicles={selectedVehicles}
+                toggleSelectAll={toggleSelectAll}
+                toggleSelectVehicle={toggleSelectVehicle}
+                handleSelectVehicle={handleSelectVehicle}
+                handleSendEmail={handleSendEmail}
+                handleChangeStatus={handleSalesStatusChange}
+                handleDeleteVehicle={handleDeleteVehicle}
+                isLoading={isLoading}
+                error={error}
+                onSort={handleSort}
+                sortField={sortField}
+                sortDirection={sortDirection}
+              />
+            </div>
           </TabsContent>
         </Tabs>
 

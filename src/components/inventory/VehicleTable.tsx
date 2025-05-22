@@ -1,6 +1,7 @@
+
 import React from "react";
 import { Vehicle, ImportStatus } from "@/types/inventory";
-import { CircleCheck, CircleX, ExternalLink, Mail, MoreHorizontal } from "lucide-react";
+import { CircleCheck, CircleX, ExternalLink, Mail, MoreHorizontal, ArrowUp, ArrowDown } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -34,6 +35,9 @@ interface VehicleTableProps {
   handleDeleteVehicle?: (vehicleId: string) => void;
   isLoading: boolean;
   error: unknown;
+  onSort?: (field: string) => void;
+  sortField?: string | null;
+  sortDirection?: "asc" | "desc";
 }
 
 export const renderImportStatusBadge = (status: ImportStatus) => {
@@ -53,6 +57,14 @@ export const renderImportStatusBadge = (status: ImportStatus) => {
   return <Badge variant={variant}>{label}</Badge>;
 };
 
+// Helper to calculate stay days
+const calculateStaDagen = (createdAt: Date | string | undefined): number => {
+  if (!createdAt) return 0;
+  const now = new Date();
+  const created = new Date(createdAt);
+  return Math.floor((now.getTime() - created.getTime()) / (1000 * 3600 * 24));
+};
+
 export const VehicleTable: React.FC<VehicleTableProps> = ({
   vehicles,
   selectedVehicles,
@@ -63,8 +75,30 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
   handleChangeStatus,
   handleDeleteVehicle,
   isLoading,
-  error
+  error,
+  onSort,
+  sortField,
+  sortDirection
 }) => {
+  const renderSortIcon = (field: string) => {
+    if (sortField !== field) return null;
+    
+    return sortDirection === "asc" ? 
+      <ArrowUp className="ml-1 h-4 w-4 inline" /> : 
+      <ArrowDown className="ml-1 h-4 w-4 inline" />;
+  };
+
+  const renderSortableHeader = (field: string, label: string) => {
+    return (
+      <div 
+        className="flex items-center cursor-pointer" 
+        onClick={() => onSort && onSort(field)}
+      >
+        {label} {renderSortIcon(field)}
+      </div>
+    );
+  };
+
   if (isLoading) {
     return <div className="p-8 text-center">Laden...</div>;
   }
@@ -82,22 +116,45 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
               <CustomCheckbox disabled />
             </TableHead>
             <TableHead className="w-[70px]">Foto</TableHead>
-            <TableHead className="w-[100px]">Merk</TableHead>
-            <TableHead>Model</TableHead>
-            <TableHead className="w-[120px]">Kenteken</TableHead>
-            <TableHead>VIN</TableHead>
-            <TableHead>KM Stand</TableHead>
-            <TableHead className="w-[150px]">Importstatus</TableHead>
-            <TableHead>Locatie</TableHead>
-            <TableHead className="text-center">Aangekomen</TableHead>
-            <TableHead className="text-center">Papieren</TableHead>
-            <TableHead className="text-center">Online</TableHead>
+            <TableHead className="w-[100px]">
+              {renderSortableHeader("brand", "Merk")}
+            </TableHead>
+            <TableHead>
+              {renderSortableHeader("model", "Model")}
+            </TableHead>
+            <TableHead className="w-[120px]">
+              {renderSortableHeader("licenseNumber", "Kenteken")}
+            </TableHead>
+            <TableHead>
+              {renderSortableHeader("vin", "VIN")}
+            </TableHead>
+            <TableHead>
+              {renderSortableHeader("mileage", "KM Stand")}
+            </TableHead>
+            <TableHead className="w-[150px]">
+              {renderSortableHeader("importStatus", "Importstatus")}
+            </TableHead>
+            <TableHead>
+              {renderSortableHeader("location", "Locatie")}
+            </TableHead>
+            <TableHead className="text-center">
+              {renderSortableHeader("arrived", "Aangekomen")}
+            </TableHead>
+            <TableHead className="text-center">
+              {renderSortableHeader("papersReceived", "Papieren")}
+            </TableHead>
+            <TableHead className="text-center">
+              {renderSortableHeader("showroomOnline", "Online")}
+            </TableHead>
+            <TableHead className="text-center w-[90px]">
+              {renderSortableHeader("staDagen", "Stadagen")}
+            </TableHead>
             <TableHead></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           <TableRow>
-            <TableCell colSpan={13} className="h-24 text-center">
+            <TableCell colSpan={14} className="h-24 text-center">
               Geen voertuigen gevonden.
             </TableCell>
           </TableRow>
@@ -118,16 +175,39 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
             />
           </TableHead>
           <TableHead className="w-[70px]">Foto</TableHead>
-          <TableHead className="w-[100px]">Merk</TableHead>
-          <TableHead>Model</TableHead>
-          <TableHead className="w-[120px]">Kenteken</TableHead>
-          <TableHead>VIN</TableHead>
-          <TableHead>KM Stand</TableHead>
-          <TableHead className="w-[150px]">Importstatus</TableHead>
-          <TableHead>Locatie</TableHead>
-          <TableHead className="text-center">Aangekomen</TableHead>
-          <TableHead className="text-center">Papieren</TableHead>
-          <TableHead className="text-center">Online</TableHead>
+          <TableHead className="w-[100px]">
+            {renderSortableHeader("brand", "Merk")}
+          </TableHead>
+          <TableHead>
+            {renderSortableHeader("model", "Model")}
+          </TableHead>
+          <TableHead className="w-[120px]">
+            {renderSortableHeader("licenseNumber", "Kenteken")}
+          </TableHead>
+          <TableHead>
+            {renderSortableHeader("vin", "VIN")}
+          </TableHead>
+          <TableHead>
+            {renderSortableHeader("mileage", "KM Stand")}
+          </TableHead>
+          <TableHead className="w-[150px]">
+            {renderSortableHeader("importStatus", "Importstatus")}
+          </TableHead>
+          <TableHead>
+            {renderSortableHeader("location", "Locatie")}
+          </TableHead>
+          <TableHead className="text-center">
+            {renderSortableHeader("arrived", "Aangekomen")}
+          </TableHead>
+          <TableHead className="text-center">
+            {renderSortableHeader("papersReceived", "Papieren")}
+          </TableHead>
+          <TableHead className="text-center">
+            {renderSortableHeader("showroomOnline", "Online")}
+          </TableHead>
+          <TableHead className="text-center w-[90px]">
+            {renderSortableHeader("staDagen", "Stadagen")}
+          </TableHead>
           <TableHead></TableHead>
         </TableRow>
       </TableHeader>
@@ -190,6 +270,9 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
               ) : (
                 <CircleX className="h-5 w-5 text-red-500 mx-auto" />
               )}
+            </TableCell>
+            <TableCell className="text-center">
+              {calculateStaDagen(vehicle.createdAt)} dagen
             </TableCell>
             <TableCell>
               <DropdownMenu>

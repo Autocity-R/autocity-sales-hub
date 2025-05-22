@@ -34,7 +34,8 @@ export const fetchVehicles = async (): Promise<Vehicle[]> => {
       photos: [
         "https://images.unsplash.com/photo-1489824904134-891ab64532f1?q=80&w=800",
         "https://images.unsplash.com/photo-1489824904134-891ab64532f1?q=80&w=800"
-      ]
+      ],
+      createdAt: new Date(2024, 4, 1).toISOString() // May 1, 2024
     },
     {
       id: "2",
@@ -65,7 +66,8 @@ export const fetchVehicles = async (): Promise<Vehicle[]> => {
       photos: [
         "https://images.unsplash.com/photo-1556189250-72ba954cfc2b?q=80&w=800",
         "https://images.unsplash.com/photo-1556189250-72ba954cfc2b?q=80&w=800"
-      ]
+      ],
+      createdAt: new Date(2024, 3, 15).toISOString() // April 15, 2024
     },
     {
       id: "3",
@@ -96,7 +98,8 @@ export const fetchVehicles = async (): Promise<Vehicle[]> => {
       photos: [
         "https://images.unsplash.com/photo-1563720223489-c94d197a0a0e?q=80&w=800",
         "https://images.unsplash.com/photo-1563720223489-c94d197a0a0e?q=80&w=800"
-      ]
+      ],
+      createdAt: new Date(2024, 2, 10).toISOString() // March 10, 2024
     }
   ];
 };
