@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -15,7 +14,8 @@ import {
   sendEmail, 
   updateSellingPrice,
   updatePaymentStatus,
-  uploadVehiclePhoto
+  uploadVehiclePhoto,
+  updateSalesStatus
 } from "@/services/inventoryService";
 
 const InventoryB2B = () => {
@@ -79,6 +79,21 @@ const InventoryB2B = () => {
     onError: (error) => {
       toast.error("Fout bij het bijwerken van de betaalstatus");
       console.error("Error updating payment status:", error);
+    }
+  });
+
+  // New mutation for marking vehicle as delivered
+  const markAsDeliveredMutation = useMutation({
+    mutationFn: (vehicleId: string) => 
+      // Change the sales status to "afgeleverd" or another appropriate status
+      updateSalesStatus(vehicleId, "afgeleverd"),
+    onSuccess: () => {
+      toast.success("Voertuig gemarkeerd als afgeleverd");
+      queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
+    },
+    onError: (error) => {
+      toast.error("Fout bij het markeren van het voertuig als afgeleverd");
+      console.error("Error marking vehicle as delivered:", error);
     }
   });
   
@@ -165,6 +180,11 @@ const InventoryB2B = () => {
   
   const handleUpdatePaymentStatus = (vehicleId: string, status: PaymentStatus) => {
     updatePaymentStatusMutation.mutate({ vehicleId, status });
+  };
+
+  // Handle marking a vehicle as delivered
+  const handleMarkAsDelivered = (vehicleId: string) => {
+    markAsDeliveredMutation.mutate(vehicleId);
   };
   
   const handleSort = (field: string) => {
@@ -259,6 +279,7 @@ const InventoryB2B = () => {
             handleSendEmail={handleSendEmail}
             handleUpdateSellingPrice={handleUpdateSellingPrice}
             handleUpdatePaymentStatus={handleUpdatePaymentStatus}
+            onMarkAsDelivered={handleMarkAsDelivered}
             isLoading={isLoading}
             error={error}
             onSort={handleSort}
