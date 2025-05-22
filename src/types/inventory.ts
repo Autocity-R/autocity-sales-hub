@@ -1,6 +1,8 @@
 
 export type ImportStatus = 
   | "niet_gestart" 
+  | "aangemeld"      // Added
+  | "goedgekeurd"    // Added
   | "transport_geregeld" 
   | "onderweg" 
   | "aangekomen" 
@@ -29,12 +31,18 @@ export type LocationStatus =
   | "werkplaats"
   | "poetser"
   | "spuiter"
+  | "onderweg"       // Added
   | "oud_beijerland";
 
 export type SalesStatus = 
   | "voorraad" 
   | "verkocht_b2b" 
   | "verkocht_b2c";
+
+export type PaymentStatus =  // New type
+  | "niet_betaald"
+  | "aanbetaling"
+  | "volledig_betaald";
 
 export interface Vehicle {
   id: string;
@@ -56,6 +64,8 @@ export interface Vehicle {
     status: DamageStatus;
   };
   purchasePrice: number;
+  sellingPrice: number;    // Added selling price
+  paymentStatus: PaymentStatus; // Added payment status
   cmrSent: boolean;
   cmrDate: Date | null;
   papersReceived: boolean;
@@ -63,7 +73,8 @@ export interface Vehicle {
   notes: string;
   mainPhotoUrl: string | null;
   photos: string[];
-  createdAt?: string | Date; // Added for stadagen calculation
+  createdAt?: string | Date;
+  customerId?: string;      // Added customer reference
 }
 
 export interface Supplier {

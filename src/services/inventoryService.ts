@@ -1,5 +1,5 @@
 
-import { Vehicle, SalesStatus } from "@/types/inventory";
+import { Vehicle, SalesStatus, PaymentStatus } from "@/types/inventory";
 
 // Mock API for demonstration
 export const fetchVehicles = async (): Promise<Vehicle[]> => {
@@ -25,6 +25,8 @@ export const fetchVehicles = async (): Promise<Vehicle[]> => {
         status: "licht"
       },
       purchasePrice: 18500,
+      sellingPrice: 0,
+      paymentStatus: "niet_betaald",
       cmrSent: false,
       cmrDate: null,
       papersReceived: false,
@@ -57,6 +59,8 @@ export const fetchVehicles = async (): Promise<Vehicle[]> => {
         status: "geen"
       },
       purchasePrice: 24500,
+      sellingPrice: 0,
+      paymentStatus: "niet_betaald",
       cmrSent: true,
       cmrDate: new Date(2023, 5, 15),
       papersReceived: false,
@@ -89,6 +93,8 @@ export const fetchVehicles = async (): Promise<Vehicle[]> => {
         status: "middel"
       },
       purchasePrice: 32000,
+      sellingPrice: 0,
+      paymentStatus: "niet_betaald",
       cmrSent: true,
       cmrDate: new Date(2023, 4, 20),
       papersReceived: true,
@@ -100,8 +106,48 @@ export const fetchVehicles = async (): Promise<Vehicle[]> => {
         "https://images.unsplash.com/photo-1563720223489-c94d197a0a0e?q=80&w=800"
       ],
       createdAt: new Date(2024, 2, 10).toISOString() // March 10, 2024
+    },
+    {
+      id: "4",
+      brand: "Volkswagen",
+      model: "Golf GTI Performance",
+      licenseNumber: "VW-456-G",
+      vin: "WVWZZZ1KZCM123456",
+      mileage: 25000,
+      importStatus: "aangemeld",
+      arrived: true,
+      workshopStatus: "gereed",
+      location: "showroom",
+      salesStatus: "verkocht_b2b",
+      showroomOnline: false,
+      bpmRequested: true,
+      bpmStarted: true,
+      damage: {
+        description: "",
+        status: "geen"
+      },
+      purchasePrice: 28500,
+      sellingPrice: 31500,
+      paymentStatus: "volledig_betaald",
+      cmrSent: true,
+      cmrDate: new Date(2023, 5, 15),
+      papersReceived: true,
+      papersDate: new Date(2023, 5, 20),
+      notes: "Verkocht aan Autobedrijf Jansen",
+      mainPhotoUrl: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=800",
+      photos: [
+        "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=800",
+      ],
+      createdAt: new Date(2024, 3, 5).toISOString(), // April 5, 2024
+      customerId: "b2b-1"
     }
   ];
+};
+
+// Fetch B2B vehicles
+export const fetchB2BVehicles = async (): Promise<Vehicle[]> => {
+  const vehicles = await fetchVehicles();
+  return vehicles.filter(vehicle => vehicle.salesStatus === "verkocht_b2b");
 };
 
 // Mock update function
@@ -121,6 +167,13 @@ export const bulkUpdateVehicles = async (ids: string[], updates: Partial<Vehicle
 export const updateSalesStatus = async (id: string, status: SalesStatus): Promise<Vehicle> => {
   // Simulating API call
   console.log(`Changing vehicle ${id} status to ${status}`);
+  return { id } as Vehicle; // Would normally return updated vehicle
+};
+
+// Function to update payment status
+export const updatePaymentStatus = async (id: string, status: PaymentStatus): Promise<Vehicle> => {
+  // Simulating API call
+  console.log(`Changing vehicle ${id} payment status to ${status}`);
   return { id } as Vehicle; // Would normally return updated vehicle
 };
 
@@ -155,7 +208,8 @@ export const uploadVehiclePhoto = async (vehicleId: string, file: File, isMain: 
   const imageUrls = [
     "https://images.unsplash.com/photo-1489824904134-891ab64532f1?q=80&w=800",
     "https://images.unsplash.com/photo-1556189250-72ba954cfc2b?q=80&w=800",
-    "https://images.unsplash.com/photo-1563720223489-c94d197a0a0e?q=80&w=800"
+    "https://images.unsplash.com/photo-1563720223489-c94d197a0a0e?q=80&w=800",
+    "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=800"
   ];
   return imageUrls[Math.floor(Math.random() * imageUrls.length)];
 };

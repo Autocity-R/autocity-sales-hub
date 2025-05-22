@@ -5,12 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Vehicle } from "@/types/inventory";
 
 interface EmailsTabProps {
   onSendEmail: (type: string) => void;
+  vehicle?: Vehicle;  // Added vehicle prop
 }
 
-export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail }) => {
+export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle }) => {
+  const isB2B = vehicle?.salesStatus === "verkocht_b2b";
+  const isVehicleArrived = vehicle?.arrived;
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-medium">E-mail functies</h3>
@@ -37,6 +42,40 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail }) => {
             </Button>
           </div>
         </div>
+        
+        {isB2B && (
+          <div className="border rounded-md p-4">
+            <h4 className="font-medium mb-4">Zakelijke klant</h4>
+            
+            <div className="space-y-3">
+              <Button 
+                className="w-full justify-start" 
+                onClick={() => onSendEmail("contract_b2b")}
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                Koopcontract sturen
+              </Button>
+              
+              {isVehicleArrived && (
+                <Button 
+                  className="w-full justify-start" 
+                  onClick={() => onSendEmail("vehicle_arrived")}
+                >
+                  <Mail className="mr-2 h-4 w-4" />
+                  Auto is binnengekomen
+                </Button>
+              )}
+              
+              <Button 
+                className="w-full justify-start" 
+                onClick={() => onSendEmail("license_registration")}
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                Kenteken aanmelding update
+              </Button>
+            </div>
+          </div>
+        )}
         
         <div className="border rounded-md p-4">
           <h4 className="font-medium mb-4">Herinneringen</h4>

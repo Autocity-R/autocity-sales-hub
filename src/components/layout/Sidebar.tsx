@@ -1,5 +1,6 @@
+
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { 
   BarChart2, 
   Database, 
@@ -113,6 +114,7 @@ const navItems: NavItem[] = [
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
 
   return (
     <aside
@@ -145,7 +147,7 @@ const Sidebar = () => {
               className={cn(
                 "flex items-center px-3 py-3 text-sm font-medium rounded-md text-white hover:bg-autocity-blue-gray-800 transition-colors",
                 item.indented && !collapsed ? "ml-4 pl-4" : "",
-                window.location.pathname === item.href
+                location.pathname === item.href
                   ? "bg-autocity-blue-gray-800"
                   : ""
               )}
