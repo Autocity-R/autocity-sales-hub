@@ -1,175 +1,226 @@
 
-import React, { useState } from "react";
+import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { 
-  BarChart2, 
-  Database, 
-  Package, 
-  Settings, 
-  Truck, 
-  User, 
-  Users,
-  ChevronLeft,
-  ChevronRight,
-  Globe,
-  ShoppingCart,
-  Shield,
-  Calendar,
-  FileText,
-  Building
+import {
+  BookIcon,
+  BoxIcon,
+  CalendarIcon,
+  CarIcon,
+  CreditCardIcon,
+  FileTextIcon,
+  HomeIcon,
+  SettingsIcon,
+  ShoppingBagIcon,
+  TruckIcon,
+  UsersIcon,
+  BarChart3,
+  GanttChartIcon,
+  ShieldIcon,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-type NavItem = {
-  title: string;
-  href: string;
-  icon: React.ElementType;
-  indented?: boolean;
-};
+interface SidebarProps {
+  className?: string;
+}
 
-const navItems: NavItem[] = [
-  {
-    title: "Dashboard",
-    href: "/",
-    icon: BarChart2,
-  },
-  {
-    title: "Voorraad",
-    href: "/inventory",
-    icon: Database,
-  },
-  {
-    title: "Online",
-    href: "/inventory/online",
-    icon: Globe,
-    indented: true,
-  },
-  {
-    title: "Voorraad verkocht b2b",
-    href: "/inventory/b2b",
-    icon: ShoppingCart,
-    indented: true,
-  },
-  {
-    title: "Voorraad verkocht particulier",
-    href: "/inventory/consumer",
-    icon: User,
-    indented: true,
-  },
-  {
-    title: "Leads",
-    href: "/leads",
-    icon: User,
-  },
-  {
-    title: "Klanten bestand",
-    href: "/customers",
-    icon: Users,
-  },
-  {
-    title: "Leveranciers",
-    href: "/suppliers",
-    icon: Building,
-    indented: true,
-  },
-  {
-    title: "Klanten b2b",
-    href: "/customers/b2b",
-    icon: ShoppingCart,
-    indented: true,
-  },
-  {
-    title: "Klanten b2c",
-    href: "/customers/b2c",
-    icon: User,
-    indented: true,
-  },
-  {
-    title: "Transport",
-    href: "/transport",
-    icon: Truck,
-  },
-  {
-    title: "Rapportages",
-    href: "/reports",
-    icon: FileText,
-  },
-  {
-    title: "Garantie",
-    href: "/warranty",
-    icon: Shield,
-  },
-  {
-    title: "Agenda",
-    href: "/calendar",
-    icon: Calendar,
-  },
-  {
-    title: "Instellingen",
-    href: "/settings",
-    icon: Settings,
-  },
-];
-
-const Sidebar = () => {
-  const [collapsed, setCollapsed] = useState(false);
+export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   const location = useLocation();
 
+  const isActive = (path: string) => {
+    if (path === "/") {
+      return location.pathname === "/";
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  const getSubActive = (paths: string[]) => {
+    return paths.some((path) => location.pathname === path);
+  };
+
   return (
-    <aside
-      className={cn(
-        "bg-autocity h-screen flex flex-col border-r transition-all duration-300",
-        collapsed ? "w-16" : "w-64"
-      )}
-    >
-      <div className="p-4 flex justify-center items-center border-b border-autocity-blue-gray-800">
-        {collapsed ? (
-          <div className="w-8 h-8 flex items-center justify-center">
-            <span className="text-xl font-bold text-white">A</span>
-          </div>
-        ) : (
-          <div className="flex items-center">
-            <img 
-              src="/lovable-uploads/8185527b-da48-494a-b7fa-309b4702b4c3.png" 
-              alt="AutoCity Logo"
-              className="h-8" 
-            />
-          </div>
-        )}
+    <div className={cn("min-h-screen w-64 bg-slate-50 border-r p-4", className)}>
+      <div className="space-y-1">
+        <Link to="/">
+          <Button
+            variant={isActive("/") ? "default" : "ghost"}
+            className="w-full justify-start"
+            size="sm"
+          >
+            <HomeIcon className="mr-2 h-4 w-4" />
+            Dashboard
+          </Button>
+        </Link>
       </div>
-      <div className="flex flex-col flex-1 py-4 overflow-y-auto">
-        <nav className="px-2 space-y-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={cn(
-                "flex items-center px-3 py-3 text-sm font-medium rounded-md text-white hover:bg-autocity-blue-gray-800 transition-colors",
-                item.indented && !collapsed ? "ml-4 pl-4" : "",
-                location.pathname === item.href
-                  ? "bg-autocity-blue-gray-800"
-                  : ""
-              )}
+
+      <div className="mt-8">
+        <h2 className="mb-2 px-2 text-xs font-semibold text-slate-500">
+          VOERTUIGEN
+        </h2>
+        <div className="space-y-1">
+          <Link to="/inventory">
+            <Button
+              variant={isActive("/inventory") && !getSubActive(["/inventory/b2b", "/inventory/online", "/inventory/consumer"]) ? "default" : "ghost"}
+              className="w-full justify-start"
+              size="sm"
             >
-              <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
-              {!collapsed && <span>{item.title}</span>}
-            </Link>
-          ))}
-        </nav>
+              <CarIcon className="mr-2 h-4 w-4" />
+              Voorraad
+            </Button>
+          </Link>
+          <Link to="/inventory/online">
+            <Button
+              variant={isActive("/inventory/online") ? "default" : "ghost"}
+              className="w-full justify-start pl-8"
+              size="sm"
+            >
+              <ShoppingBagIcon className="mr-2 h-4 w-4" />
+              Online
+            </Button>
+          </Link>
+          <Link to="/inventory/b2b">
+            <Button
+              variant={isActive("/inventory/b2b") ? "default" : "ghost"}
+              className="w-full justify-start pl-8"
+              size="sm"
+            >
+              <BoxIcon className="mr-2 h-4 w-4" />
+              Verkocht B2B
+            </Button>
+          </Link>
+          <Link to="/inventory/consumer">
+            <Button
+              variant={isActive("/inventory/consumer") ? "default" : "ghost"}
+              className="w-full justify-start pl-8"
+              size="sm"
+            >
+              <UsersIcon className="mr-2 h-4 w-4" />
+              Verkocht B2C
+            </Button>
+          </Link>
+          <Link to="/transport">
+            <Button
+              variant={isActive("/transport") ? "default" : "ghost"}
+              className="w-full justify-start"
+              size="sm"
+            >
+              <TruckIcon className="mr-2 h-4 w-4" />
+              Transport
+            </Button>
+          </Link>
+        </div>
       </div>
-      <div className="p-4 border-t border-autocity-blue-gray-800">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setCollapsed(!collapsed)}
-          className="w-full flex items-center justify-center text-white border-autocity-blue-gray-600 hover:bg-autocity-blue-gray-800 hover:text-white"
-        >
-          {collapsed ? <ChevronRight /> : <ChevronLeft />}
-        </Button>
+
+      <div className="mt-8">
+        <h2 className="mb-2 px-2 text-xs font-semibold text-slate-500">
+          KLANTEN
+        </h2>
+        <div className="space-y-1">
+          <Link to="/customers">
+            <Button
+              variant={isActive("/customers") && !getSubActive(["/customers/b2b", "/customers/b2c", "/suppliers"]) ? "default" : "ghost"}
+              className="w-full justify-start"
+              size="sm"
+            >
+              <UsersIcon className="mr-2 h-4 w-4" />
+              Alle Klanten
+            </Button>
+          </Link>
+          <Link to="/customers/b2b">
+            <Button
+              variant={isActive("/customers/b2b") ? "default" : "ghost"}
+              className="w-full justify-start pl-8"
+              size="sm"
+            >
+              <BoxIcon className="mr-2 h-4 w-4" />
+              Zakelijk
+            </Button>
+          </Link>
+          <Link to="/customers/b2c">
+            <Button
+              variant={isActive("/customers/b2c") ? "default" : "ghost"}
+              className="w-full justify-start pl-8"
+              size="sm"
+            >
+              <UsersIcon className="mr-2 h-4 w-4" />
+              Particulier
+            </Button>
+          </Link>
+          <Link to="/suppliers">
+            <Button
+              variant={isActive("/suppliers") ? "default" : "ghost"}
+              className="w-full justify-start"
+              size="sm"
+            >
+              <TruckIcon className="mr-2 h-4 w-4" />
+              Leveranciers
+            </Button>
+          </Link>
+          <Link to="/leads">
+            <Button
+              variant={isActive("/leads") ? "default" : "ghost"}
+              className="w-full justify-start"
+              size="sm"
+            >
+              <BookIcon className="mr-2 h-4 w-4" />
+              Leads
+            </Button>
+          </Link>
+        </div>
       </div>
-    </aside>
+
+      <div className="mt-8">
+        <h2 className="mb-2 px-2 text-xs font-semibold text-slate-500">
+          ADMINISTRATIE
+        </h2>
+        <div className="space-y-1">
+          <Link to="/reports">
+            <Button
+              variant={isActive("/reports") ? "default" : "ghost"}
+              className="w-full justify-start"
+              size="sm"
+            >
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Rapportages
+            </Button>
+          </Link>
+          <Link to="/warranty">
+            <Button
+              variant={isActive("/warranty") ? "default" : "ghost"}
+              className="w-full justify-start"
+              size="sm"
+            >
+              <ShieldIcon className="mr-2 h-4 w-4" />
+              Garantie
+            </Button>
+          </Link>
+          <Link to="/calendar">
+            <Button
+              variant={isActive("/calendar") ? "default" : "ghost"}
+              className="w-full justify-start"
+              size="sm"
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              Agenda
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <div className="space-y-1">
+          <Link to="/settings">
+            <Button
+              variant={isActive("/settings") ? "default" : "ghost"}
+              className="w-full justify-start"
+              size="sm"
+            >
+              <SettingsIcon className="mr-2 h-4 w-4" />
+              Instellingen
+            </Button>
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 };
-
-export default Sidebar;

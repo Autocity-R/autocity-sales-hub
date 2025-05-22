@@ -31,6 +31,8 @@ interface VehicleB2BTableProps {
   toggleSelectVehicle: (vehicleId: string, checked: boolean) => void;
   handleSelectVehicle: (vehicle: Vehicle) => void;
   handleSendEmail: (type: string, vehicleId: string) => void;
+  handleUpdateSellingPrice?: (vehicleId: string, price: number) => void;
+  handleUpdatePaymentStatus?: (vehicleId: string, status: PaymentStatus) => void;
   isLoading: boolean;
   error: unknown;
   onSort?: (field: string) => void;
@@ -76,6 +78,8 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
   toggleSelectVehicle,
   handleSelectVehicle,
   handleSendEmail,
+  handleUpdateSellingPrice,
+  handleUpdatePaymentStatus,
   isLoading,
   error,
   onSort,
@@ -134,6 +138,9 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
               {renderSortableHeader("vin", "VIN")}
             </TableHead>
             <TableHead>
+              {renderSortableHeader("sellingPrice", "Verkoopprijs")}
+            </TableHead>
+            <TableHead>
               {renderSortableHeader("importStatus", "Importstatus")}
             </TableHead>
             <TableHead>
@@ -144,9 +151,6 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
             </TableHead>
             <TableHead>
               {renderSortableHeader("paymentStatus", "Betaalstatus")}
-            </TableHead>
-            <TableHead>
-              {renderSortableHeader("sellingPrice", "Verkoopprijs")}
             </TableHead>
             <TableHead></TableHead>
           </TableRow>
@@ -190,6 +194,9 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
             {renderSortableHeader("vin", "VIN")}
           </TableHead>
           <TableHead>
+            {renderSortableHeader("sellingPrice", "Verkoopprijs")}
+          </TableHead>
+          <TableHead>
             {renderSortableHeader("importStatus", "Importstatus")}
           </TableHead>
           <TableHead>
@@ -200,9 +207,6 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
           </TableHead>
           <TableHead>
             {renderSortableHeader("paymentStatus", "Betaalstatus")}
-          </TableHead>
-          <TableHead>
-            {renderSortableHeader("sellingPrice", "Verkoopprijs")}
           </TableHead>
           <TableHead></TableHead>
         </TableRow>
@@ -240,6 +244,13 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
             <TableCell>{vehicle.mileage.toLocaleString('nl-NL')} km</TableCell>
             <TableCell>{vehicle.licenseNumber}</TableCell>
             <TableCell>{vehicle.vin}</TableCell>
+            <TableCell>
+              {vehicle.sellingPrice ? (
+                <span className="font-medium">€ {vehicle.sellingPrice.toLocaleString('nl-NL')}</span>
+              ) : (
+                <span className="text-muted-foreground">Niet ingesteld</span>
+              )}
+            </TableCell>
             <TableCell>{renderImportStatusBadge(vehicle.importStatus)}</TableCell>
             <TableCell>
               <Badge variant="outline" className="capitalize">
@@ -255,13 +266,6 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
             </TableCell>
             <TableCell>
               {renderPaymentStatusBadge(vehicle.paymentStatus || "niet_betaald")}
-            </TableCell>
-            <TableCell>
-              {vehicle.sellingPrice ? (
-                <span className="font-medium">€ {vehicle.sellingPrice.toLocaleString('nl-NL')}</span>
-              ) : (
-                <span className="text-muted-foreground">Niet ingesteld</span>
-              )}
             </TableCell>
             <TableCell>
               <DropdownMenu>
@@ -303,6 +307,27 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                   }}>
                     <Mail className="h-4 w-4 mr-2" />
                     Kenteken update
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Betaalstatus</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    handleUpdatePaymentStatus && handleUpdatePaymentStatus(vehicle.id, "niet_betaald");
+                  }}>
+                    Niet betaald
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    handleUpdatePaymentStatus && handleUpdatePaymentStatus(vehicle.id, "aanbetaling");
+                  }}>
+                    Aanbetaling
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    handleUpdatePaymentStatus && handleUpdatePaymentStatus(vehicle.id, "volledig_betaald");
+                  }}>
+                    Volledig betaald
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

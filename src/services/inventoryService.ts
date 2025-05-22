@@ -114,7 +114,7 @@ export const fetchVehicles = async (): Promise<Vehicle[]> => {
       licenseNumber: "VW-456-G",
       vin: "WVWZZZ1KZCM123456",
       mileage: 25000,
-      importStatus: "aangemeld",
+      importStatus: "ingeschreven",
       arrived: true,
       workshopStatus: "gereed",
       location: "showroom",
@@ -140,6 +140,40 @@ export const fetchVehicles = async (): Promise<Vehicle[]> => {
       ],
       createdAt: new Date(2024, 3, 5).toISOString(), // April 5, 2024
       customerId: "b2b-1"
+    },
+    {
+      id: "5",
+      brand: "Audi",
+      model: "Q5 2.0 TDI Quattro",
+      licenseNumber: "TR-789-P",
+      vin: "WAUZZZ8R2DA987654",
+      mileage: 42000,
+      importStatus: "ingeschreven",
+      arrived: true,
+      workshopStatus: "gereed",
+      location: "showroom",
+      salesStatus: "verkocht_b2b",
+      showroomOnline: false,
+      bpmRequested: true,
+      bpmStarted: true,
+      damage: {
+        description: "",
+        status: "geen"
+      },
+      purchasePrice: 35000,
+      sellingPrice: 39500,
+      paymentStatus: "aanbetaling",
+      cmrSent: true,
+      cmrDate: new Date(2023, 6, 10),
+      papersReceived: true,
+      papersDate: new Date(2023, 6, 15),
+      notes: "Verkocht aan AutoPlaza",
+      mainPhotoUrl: "https://images.unsplash.com/photo-1606220838315-056192d5e927?q=80&w=800",
+      photos: [
+        "https://images.unsplash.com/photo-1606220838315-056192d5e927?q=80&w=800",
+      ],
+      createdAt: new Date(2024, 3, 15).toISOString(), // April 15, 2024
+      customerId: "b2b-2"
     }
   ];
 };
@@ -212,4 +246,18 @@ export const uploadVehiclePhoto = async (vehicleId: string, file: File, isMain: 
     "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=800"
   ];
   return imageUrls[Math.floor(Math.random() * imageUrls.length)];
+};
+
+// Update selling price
+export const updateSellingPrice = async (id: string, price: number): Promise<Vehicle> => {
+  // Simulating API call
+  console.log(`Updating selling price for vehicle ${id} to ${price}`);
+  return { id, sellingPrice: price } as Vehicle;
+};
+
+// Send different types of B2B emails
+export const sendB2BEmail = async (type: string, vehicleId: string): Promise<boolean> => {
+  // Simulating API call
+  console.log(`Sending ${type} email for B2B vehicle ${vehicleId}`);
+  return true;
 };
