@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { 
@@ -39,30 +38,19 @@ const navItems: NavItem[] = [
     icon: Database,
   },
   {
-    title: "Voorraad online",
+    title: "Online",
     href: "/inventory/online",
     icon: Globe,
     indented: true,
   },
   {
-    title: "Voorraad verkocht b2b",
-    href: "/inventory/b2b",
-    icon: ShoppingCart,
+    title: "Offline",
+    href: "/inventory/offline",
+    icon: Package,
     indented: true,
   },
   {
-    title: "Voorraad verkocht particulier",
-    href: "/inventory/consumer",
-    icon: User,
-    indented: true,
-  },
-  {
-    title: "Leads",
-    href: "/leads",
-    icon: User,
-  },
-  {
-    title: "Klanten bestand",
+    title: "Klanten & Leveranciers",
     href: "/customers",
     icon: Users,
   },
@@ -77,6 +65,11 @@ const navItems: NavItem[] = [
     href: "/customers/b2c",
     icon: User,
     indented: true,
+  },
+  {
+    title: "Leads",
+    href: "/leads",
+    icon: User,
   },
   {
     title: "Transport",
