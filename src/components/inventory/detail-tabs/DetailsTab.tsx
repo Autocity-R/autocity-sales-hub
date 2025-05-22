@@ -2,7 +2,7 @@ import React from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { 
-  CalendarIcon, CircleCheck, MapPin
+  CalendarIcon, CircleCheck, MapPin, Euro
 } from "lucide-react";
 import { Vehicle, ImportStatus, LocationStatus, DamageStatus } from "@/types/inventory";
 import { Button } from "@/components/ui/button";
@@ -145,15 +145,33 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
           </ToggleGroup>
         </div>
         
-        {/* Purchase Price */}
-        <div className="space-y-2">
-          <Label htmlFor="purchasePrice">Inkoopprijs (€)</Label>
-          <Input
-            id="purchasePrice"
-            type="number"
-            value={editedVehicle.purchasePrice}
-            onChange={(e) => handleChange('purchasePrice', parseFloat(e.target.value))}
-          />
+        {/* Purchase Price & Selling Price */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="purchasePrice">Inkoopprijs (€)</Label>
+            <Input
+              id="purchasePrice"
+              type="number"
+              value={editedVehicle.purchasePrice}
+              onChange={(e) => handleChange('purchasePrice', parseFloat(e.target.value))}
+            />
+          </div>
+
+          {editedVehicle.salesStatus === "verkocht_b2b" && (
+            <div className="space-y-2">
+              <Label htmlFor="sellingPrice" className="flex items-center">
+                <Euro className="h-4 w-4 mr-1 text-muted-foreground" />
+                <span>Verkoopprijs (€)</span>
+              </Label>
+              <Input
+                id="sellingPrice"
+                type="number"
+                value={editedVehicle.sellingPrice || ''}
+                onChange={(e) => handleChange('sellingPrice', parseFloat(e.target.value))}
+                className="border-green-200 focus:border-green-300"
+              />
+            </div>
+          )}
         </div>
         
         {/* Damage */}
@@ -210,6 +228,25 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               Op Voorraad
             </Label>
           </div>
+          
+          {editedVehicle.salesStatus === "verkocht_b2b" && (
+            <div className="ml-6 mt-2 p-3 bg-green-50 border border-green-100 rounded-md">
+              <Label className="text-sm font-medium mb-2 block">Betaalstatus</Label>
+              <Select 
+                value={editedVehicle.paymentStatus || "niet_betaald"} 
+                onValueChange={(value) => handleChange('paymentStatus', value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Selecteer betaalstatus" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="niet_betaald">Niet betaald</SelectItem>
+                  <SelectItem value="aanbetaling">Aanbetaling</SelectItem>
+                  <SelectItem value="volledig_betaald">Volledig betaald</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           
           <div className="flex items-center space-x-2">
             <Checkbox
