@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -23,11 +22,12 @@ import {
 } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import { CalendarIcon, Car, User, AlertTriangle } from "lucide-react";
+import { CalendarIcon, Car, User, AlertTriangle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Vehicle } from "@/types/inventory";
 import { LoanCar, WarrantyClaim } from "@/types/warranty";
 import { fetchDeliveredVehiclesForWarranty, fetchLoanCars, createWarrantyClaim } from "@/services/warrantyService";
+import { createAppointment } from "@/services/calendarService";
 import { toast } from "@/hooks/use-toast";
 
 interface WarrantyFormProps {
@@ -45,16 +45,21 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Appointment scheduling state
+  const [scheduleAppointment, setScheduleAppointment] = useState(false);
+  const [appointmentDate, setAppointmentDate] = useState<Date>();
+  const [appointmentTime, setAppointmentTime] = useState("");
+  const [appointmentType, setAppointmentType] = useState<string>("onderhoud");
+  const [appointmentNotes, setAppointmentNotes] = useState("");
 
   const queryClient = useQueryClient();
 
-  // Fetch delivered vehicles for warranty
   const { data: vehicles = [], isLoading: vehiclesLoading } = useQuery({
     queryKey: ["deliveredVehiclesForWarranty"],
     queryFn: fetchDeliveredVehiclesForWarranty
   });
 
-  // Fetch available loan cars
   const { data: loanCars = [], isLoading: loanCarsLoading } = useQuery({
     queryKey: ["loanCars"],
     queryFn: fetchLoanCars
@@ -78,6 +83,15 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
       toast({
         title: "Fout", 
         description: "Voer een probleemomschrijving in",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (scheduleAppointment && (!appointmentDate || !appointmentTime)) {
+      toast({
+        title: "Fout",
+        description: "Vul alle afspraak gegevens in",
         variant: "destructive"
       });
       return;
@@ -109,16 +123,55 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         assignedTo: assignedTo || undefined
       };
 
-      await createWarrantyClaim(claimData);
+      const createdClaim = await createWarrantyClaim(claimData);
       
-      // Invalidate warranty claims query to refresh data
+      // Create appointment if requested
+      if (scheduleAppointment && appointmentDate && appointmentTime) {
+        const [hours, minutes] = appointmentTime.split(':');
+        const startTime = new Date(appointmentDate);
+        startTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        
+        const endTime = new Date(startTime);
+        endTime.setHours(startTime.getHours() + 1); // Default 1 hour appointment
+
+        const appointmentData = {
+          title: `Garantie reparatie: ${selectedVehicle.brand} ${selectedVehicle.model}`,
+          description: `Garantieclaim: ${problemDescription}`,
+          startTime,
+          endTime,
+          type: appointmentType as any,
+          status: "gepland" as any,
+          customerId: selectedVehicle.customerId,
+          customerName: selectedVehicle.customerName || "Onbekend",
+          customerEmail: selectedVehicle.customerEmail,
+          customerPhone: selectedVehicle.customerPhone,
+          vehicleId: selectedVehicle.id,
+          vehicleBrand: selectedVehicle.brand,
+          vehicleModel: selectedVehicle.model,
+          vehicleLicenseNumber: selectedVehicle.licenseNumber,
+          location: "Werkplaats",
+          notes: `Garantieclaim ID: ${createdClaim.id}${appointmentNotes ? `\n${appointmentNotes}` : ''}`,
+          createdBy: "Garantieafdeling",
+          assignedTo: assignedTo || undefined
+        };
+
+        await createAppointment(appointmentData);
+        
+        toast({
+          title: "Succesvol",
+          description: "Garantieclaim en afspraak zijn aangemaakt"
+        });
+      } else {
+        toast({
+          title: "Succesvol",
+          description: "Garantieclaim is aangemaakt"
+        });
+      }
+      
+      // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["warrantyClaims"] });
       queryClient.invalidateQueries({ queryKey: ["warrantyStats"] });
-      
-      toast({
-        title: "Succesvol",
-        description: "Garantieclaim is aangemaakt"
-      });
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
       
       onClose();
     } catch (error) {
@@ -142,7 +195,7 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Vehicle Selection */}
+      {/* Vehicle Selection - keep existing code */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -203,7 +256,7 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         </CardContent>
       </Card>
 
-      {/* Problem Details */}
+      {/* Problem Details - keep existing code */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -283,7 +336,97 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         </CardContent>
       </Card>
 
-      {/* Loan Car */}
+      {/* Appointment Scheduling - NEW */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Afspraak Inplannen
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="scheduleAppointment"
+              checked={scheduleAppointment}
+              onCheckedChange={setScheduleAppointment}
+            />
+            <Label htmlFor="scheduleAppointment">Afspraak inplannen voor reparatie</Label>
+          </div>
+
+          {scheduleAppointment && (
+            <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Datum Afspraak</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !appointmentDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {appointmentDate ? format(appointmentDate, "dd MMMM yyyy", { locale: nl }) : "Selecteer datum"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={appointmentDate}
+                        onSelect={setAppointmentDate}
+                        initialFocus
+                        className="pointer-events-auto"
+                        disabled={(date) => date < new Date()}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div>
+                  <Label htmlFor="appointmentTime">Tijd</Label>
+                  <Input
+                    id="appointmentTime"
+                    type="time"
+                    value={appointmentTime}
+                    onChange={(e) => setAppointmentTime(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="appointmentType">Type Afspraak</Label>
+                <Select value={appointmentType} onValueChange={setAppointmentType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="onderhoud">Onderhoud</SelectItem>
+                    <SelectItem value="intake">Intake</SelectItem>
+                    <SelectItem value="bezichtiging">Bezichtiging</SelectItem>
+                    <SelectItem value="overig">Overig</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="appointmentNotes">Extra Opmerkingen Afspraak</Label>
+                <Textarea
+                  id="appointmentNotes"
+                  placeholder="Specifieke instructies voor de afspraak..."
+                  value={appointmentNotes}
+                  onChange={(e) => setAppointmentNotes(e.target.value)}
+                  className="min-h-[60px]"
+                />
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Loan Car - keep existing code */}
       <Card>
         <CardHeader>
           <CardTitle>Leenauto</CardTitle>
@@ -323,7 +466,7 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         </CardContent>
       </Card>
 
-      {/* Additional Information */}
+      {/* Additional Information - keep existing code */}
       <Card>
         <CardHeader>
           <CardTitle>Aanvullende Informatie</CardTitle>
