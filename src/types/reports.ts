@@ -30,6 +30,19 @@ export interface VehicleTypeMetrics {
   percentage: number;
 }
 
+export interface FinancialMetrics {
+  totalRevenue: number;
+  totalCosts: number;
+  grossProfit: number;
+  netProfit: number;
+  grossMargin: number;
+  netMargin: number;
+  operatingExpenses: number;
+  ebitda: number;
+  cashFlow: number;
+  profitGrowth: number;
+}
+
 export interface PerformanceData {
   period: ReportPeriod;
   sales: SalesMetrics;
@@ -37,6 +50,7 @@ export interface PerformanceData {
   vehicleTypes: VehicleTypeMetrics[];
   turnoverRate: number;
   teamPerformance: TeamMember[];
+  financial: FinancialMetrics;
 }
 
 export interface TeamMember {

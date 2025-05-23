@@ -1,5 +1,5 @@
 
-import { PerformanceData, ReportPeriod, TeamMember, VehicleTypeMetrics } from "@/types/reports";
+import { PerformanceData, ReportPeriod, TeamMember, VehicleTypeMetrics, FinancialMetrics } from "@/types/reports";
 
 // Mock data for reports
 const mockTeamPerformance: TeamMember[] = [
@@ -36,6 +36,27 @@ const mockVehicleTypes: VehicleTypeMetrics[] = [
   { type: "Volkswagen", unitsSold: 33, revenue: 990000, margin: 12.3, percentage: 20.9 }
 ];
 
+const getFinancialMetrics = (baseMultiplier: number): FinancialMetrics => {
+  const totalRevenue = Math.round(6420000 * baseMultiplier);
+  const totalCosts = Math.round(4850000 * baseMultiplier);
+  const grossProfit = totalRevenue - totalCosts;
+  const operatingExpenses = Math.round(850000 * baseMultiplier);
+  const netProfit = grossProfit - operatingExpenses;
+  
+  return {
+    totalRevenue,
+    totalCosts,
+    grossProfit,
+    netProfit,
+    grossMargin: (grossProfit / totalRevenue) * 100,
+    netMargin: (netProfit / totalRevenue) * 100,
+    operatingExpenses,
+    ebitda: grossProfit - operatingExpenses + Math.round(120000 * baseMultiplier), // Add back depreciation
+    cashFlow: netProfit + Math.round(180000 * baseMultiplier), // Add non-cash expenses
+    profitGrowth: baseMultiplier > 1 ? 12.5 : baseMultiplier < 1 ? -8.2 : 15.8
+  };
+};
+
 export const getReportsData = (period: ReportPeriod): PerformanceData => {
   // Simulate different data based on period
   const baseMultiplier = period.type === 'year' ? 12 : period.type === 'month' ? 1 : 0.25;
@@ -67,7 +88,8 @@ export const getReportsData = (period: ReportPeriod): PerformanceData => {
       leadsAssigned: Math.round(tm.leadsAssigned * baseMultiplier),
       leadsConverted: Math.round(tm.leadsConverted * baseMultiplier),
       revenue: Math.round(tm.revenue * baseMultiplier)
-    }))
+    })),
+    financial: getFinancialMetrics(baseMultiplier)
   };
 };
 
@@ -112,10 +134,32 @@ export const getAvailablePeriods = (): ReportPeriod[] => {
 
 export const exportReportData = async (data: PerformanceData, format: 'excel' | 'csv' | 'pdf') => {
   // Simulate export functionality
-  const fileName = `rapport_${data.period.type}_${new Date().toISOString().split('T')[0]}.${format}`;
+  const fileName = `financieel_rapport_${data.period.type}_${new Date().toISOString().split('T')[0]}.${format}`;
   
-  console.log(`Exporting report as ${format}:`, data);
+  console.log(`Exporting financial report as ${format}:`, data);
   
   // In a real implementation, this would generate and download the file
   return fileName;
+};
+
+export const generateFinancialAdvice = (data: PerformanceData): string[] => {
+  const advice = [];
+  
+  if (data.financial.netMargin < 10) {
+    advice.push("Nettomarges onder 10% - overweeg kostenreductie of prijsoptimalisatie");
+  }
+  
+  if (data.financial.profitGrowth < 0) {
+    advice.push("Negatieve winstgroei - focus op efficiency en nieuwe marktopportuniteiten");
+  }
+  
+  if (data.financial.cashFlow < data.financial.netProfit * 0.8) {
+    advice.push("Cashflow onder verwachting - monitor debiteuren en voorraadniveaus");
+  }
+  
+  if (data.financial.grossMargin > 20) {
+    advice.push("Sterke brutomarge - uitstekende pricing strategie wordt gehandhaafd");
+  }
+  
+  return advice;
 };
