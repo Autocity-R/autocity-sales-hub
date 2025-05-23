@@ -1,14 +1,14 @@
+
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { FileText, Mail, Plus } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { VehicleB2CTable } from "@/components/inventory/VehicleB2CTable";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
 import { Button } from "@/components/ui/button";
-import { Vehicle, PaymentStatus, PaintStatus } from "@/types/inventory";
+import { Vehicle, PaymentStatus, PaintStatus, FileCategory } from "@/types/inventory";
 import { PageHeader } from "@/components/ui/page-header";
-import { FileCategory, VehicleFile } from "@/types/files";
 import { 
   fetchB2CVehicles, 
   updateVehicle, 
@@ -29,6 +29,7 @@ const InventoryB2C = () => {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   
   // Fetch B2C sold vehicles only
   const { data: vehicles = [], isLoading, error } = useQuery({
@@ -46,23 +47,33 @@ const InventoryB2C = () => {
   const updateVehicleMutation = useMutation({
     mutationFn: updateVehicle,
     onSuccess: () => {
-      toast.success("Voertuig bijgewerkt");
+      toast({
+        description: "Voertuig bijgewerkt"
+      });
       queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
     },
     onError: (error) => {
-      toast.error("Fout bij het bijwerken van het voertuig");
+      toast({
+        variant: "destructive",
+        description: "Fout bij het bijwerken van het voertuig"
+      });
       console.error("Error updating vehicle:", error);
     }
   });
   
   const sendEmailMutation = useMutation({
-    mutationFn: ({ type, vehicleId }: { type: string; vehicleId: string }) => 
-      sendEmail(type, [vehicleId]),
+    mutationFn: ({ type, vehicleIds }: { type: string; vehicleIds: string[] }) => 
+      sendEmail(type, vehicleIds),
     onSuccess: () => {
-      toast.success("E-mail verzonden");
+      toast({
+        description: "E-mail verzonden"
+      });
     },
     onError: (error) => {
-      toast.error("Fout bij het verzenden van e-mail");
+      toast({
+        variant: "destructive",
+        description: "Fout bij het verzenden van e-mail"
+      });
       console.error("Error sending email:", error);
     }
   });
@@ -71,11 +82,16 @@ const InventoryB2C = () => {
     mutationFn: ({ vehicleId, price }: { vehicleId: string; price: number }) => 
       updateSellingPrice(vehicleId, price),
     onSuccess: () => {
-      toast.success("Verkoopprijs bijgewerkt");
+      toast({
+        description: "Verkoopprijs bijgewerkt"
+      });
       queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
     },
     onError: (error) => {
-      toast.error("Fout bij het bijwerken van de verkoopprijs");
+      toast({
+        variant: "destructive",
+        description: "Fout bij het bijwerken van de verkoopprijs"
+      });
       console.error("Error updating selling price:", error);
     }
   });
@@ -84,11 +100,16 @@ const InventoryB2C = () => {
     mutationFn: ({ vehicleId, status }: { vehicleId: string; status: PaymentStatus }) => 
       updatePaymentStatus(vehicleId, status),
     onSuccess: () => {
-      toast.success("Betaalstatus bijgewerkt");
+      toast({
+        description: "Betaalstatus bijgewerkt"
+      });
       queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
     },
     onError: (error) => {
-      toast.error("Fout bij het bijwerken van de betaalstatus");
+      toast({
+        variant: "destructive",
+        description: "Fout bij het bijwerken van de betaalstatus"
+      });
       console.error("Error updating payment status:", error);
     }
   });
@@ -97,11 +118,16 @@ const InventoryB2C = () => {
     mutationFn: ({ vehicleId, status }: { vehicleId: string; status: PaintStatus }) => 
       updatePaintStatus(vehicleId, status),
     onSuccess: () => {
-      toast.success("Lakstatus bijgewerkt");
+      toast({
+        description: "Lakstatus bijgewerkt"
+      });
       queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
     },
     onError: (error) => {
-      toast.error("Fout bij het bijwerken van de lakstatus");
+      toast({
+        variant: "destructive",
+        description: "Fout bij het bijwerken van de lakstatus"
+      });
       console.error("Error updating paint status:", error);
     }
   });
@@ -109,12 +135,17 @@ const InventoryB2C = () => {
   const markAsDeliveredMutation = useMutation({
     mutationFn: (vehicleId: string) => markVehicleAsDelivered(vehicleId),
     onSuccess: () => {
-      toast.success("Voertuig gemarkeerd als afgeleverd");
+      toast({
+        description: "Voertuig gemarkeerd als afgeleverd"
+      });
       queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
       queryClient.invalidateQueries({ queryKey: ["deliveredVehicles"] });
     },
     onError: (error) => {
-      toast.error("Fout bij het markeren van het voertuig als afgeleverd");
+      toast({
+        variant: "destructive",
+        description: "Fout bij het markeren van het voertuig als afgeleverd"
+      });
       console.error("Error marking vehicle as delivered:", error);
     }
   });
@@ -140,7 +171,10 @@ const InventoryB2C = () => {
       updateVehicleMutation.mutate(updatedVehicle);
       setSelectedVehicle(updatedVehicle);
     } catch (error) {
-      toast.error("Fout bij het uploaden van de foto");
+      toast({
+        variant: "destructive",
+        description: "Fout bij het uploaden van de foto"
+      });
       console.error("Error uploading photo:", error);
     }
   };
@@ -165,7 +199,10 @@ const InventoryB2C = () => {
       updateVehicleMutation.mutate(updatedVehicle);
       setSelectedVehicle(updatedVehicle);
     } catch (error) {
-      toast.error("Fout bij het verwijderen van de foto");
+      toast({
+        variant: "destructive",
+        description: "Fout bij het verwijderen van de foto"
+      });
       console.error("Error removing photo:", error);
     }
   };
@@ -182,7 +219,10 @@ const InventoryB2C = () => {
       updateVehicleMutation.mutate(updatedVehicle);
       setSelectedVehicle(updatedVehicle);
     } catch (error) {
-      toast.error("Fout bij het instellen van de hoofdfoto");
+      toast({
+        variant: "destructive",
+        description: "Fout bij het instellen van de hoofdfoto"
+      });
       console.error("Error setting main photo:", error);
     }
   };
@@ -193,7 +233,7 @@ const InventoryB2C = () => {
   };
   
   const handleSendEmail = (type: string, vehicleId: string) => {
-    sendEmailMutation.mutate({ type, vehicleId });
+    sendEmailMutation.mutate({ type, vehicleIds: [vehicleId] });
   };
   
   const handleUpdateSellingPrice = (vehicleId: string, price: number) => {
@@ -276,11 +316,16 @@ const InventoryB2C = () => {
     mutationFn: ({ file, category, vehicleId }: { file: File, category: FileCategory, vehicleId: string }) =>
       uploadVehicleFile(file, category, vehicleId),
     onSuccess: () => {
-      toast.success("Document geüpload");
+      toast({
+        description: "Document geüpload"
+      });
       queryClient.invalidateQueries({ queryKey: ["vehicleFiles"] });
     },
     onError: (error) => {
-      toast.error("Fout bij het uploaden van het document");
+      toast({
+        variant: "destructive",
+        description: "Fout bij het uploaden van het document"
+      });
       console.error("Error uploading file:", error);
     }
   });

@@ -4,7 +4,7 @@ import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileUploader } from "@/components/inventory/FileUploader";
-import { VehicleFile, FileCategory } from "@/types/files";
+import { VehicleFile, FileCategory } from "@/types/inventory";
 
 interface FilesTabProps {
   files: VehicleFile[];

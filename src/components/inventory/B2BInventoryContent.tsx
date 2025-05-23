@@ -1,9 +1,8 @@
 
 import React from "react";
-import { Vehicle, PaymentStatus } from "@/types/inventory";
+import { Vehicle, PaymentStatus, VehicleFile, FileCategory } from "@/types/inventory";
 import { VehicleB2BTable } from "@/components/inventory/VehicleB2BTable";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
-import { FileCategory, VehicleFile } from "@/types/files";
 
 interface B2BInventoryContentProps {
   vehicles: Vehicle[];

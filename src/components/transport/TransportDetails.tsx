@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { FileText, X, Mail, Upload } from "lucide-react";
+import { FileText, X, Mail, Upload, CheckCircle } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Vehicle, ImportStatus, FileCategory } from "@/types/inventory";
 import { TransportFileUploader } from "./TransportFileUploader";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
+import { VehicleFile } from "@/types/inventory";
 
 interface TransportDetailsProps {
   vehicle: Vehicle;
@@ -224,7 +225,7 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
                   <div className="text-sm text-muted-foreground mb-2">
                     {updatedVehicle.cmrSent ? `Verstuurd op ${new Date(updatedVehicle.cmrDate || "").toLocaleDateString()}` : "Nog niet verstuurd"}
                   </div>
-                  {vehicleFiles.filter(file => file.category === "cmr").length > 0 && (
+                  {vehicleFiles && vehicleFiles.filter(file => file.category === "cmr").length > 0 && (
                     <Button variant="outline" size="sm">
                       <FileText className="mr-2 h-4 w-4" />
                       Download CMR
@@ -266,7 +267,7 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
                   <div className="text-sm text-muted-foreground mb-2">
                     Optioneel: alleen bij schade
                   </div>
-                  {vehicleFiles.filter(file => file.category === "damage").length > 0 && (
+                  {vehicleFiles && vehicleFiles.filter(file => file.category === "damage").length > 0 && (
                     <Button variant="outline" size="sm">
                       <FileText className="mr-2 h-4 w-4" />
                       Download schadeformulier

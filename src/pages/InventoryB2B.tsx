@@ -8,14 +8,14 @@ import { useB2BVehicleSelection } from "@/hooks/useB2BVehicleSelection";
 import { useB2BVehicleOperations } from "@/hooks/useB2BVehicleOperations";
 import { useVehiclePhotos } from "@/hooks/useVehiclePhotos";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
-import { FileCategory } from "@/types/inventory";
+import { FileCategory, VehicleFile } from "@/types/inventory";
 
 const InventoryB2B = () => {
   // Custom hooks for managing state and operations
   const { vehicles, isLoading, error, sortField, sortDirection, onSort } = useB2BVehicles();
   const { selectedVehicles, selectedVehicle, setSelectedVehicle, toggleSelectVehicle, toggleSelectAll } = useB2BVehicleSelection(vehicles);
   const { handleUpdateVehicle, handleSendEmail, handleUpdateSellingPrice, handleUpdatePaymentStatus, handleMarkAsDelivered, uploadFileMutation } = useB2BVehicleOperations();
-  const { vehicleFiles } = useVehicleFiles(selectedVehicle);
+  const { vehicleFiles = [] } = useVehicleFiles(selectedVehicle);
   const { handleUploadPhoto, handleRemovePhoto, handleSetMainPhoto } = useVehiclePhotos(selectedVehicle, setSelectedVehicle);
 
   const handleFileUpload = (file: File, category: FileCategory) => {

@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { X } from "lucide-react";
-import { Vehicle, FileCategory } from "@/types/inventory";
+import { Vehicle, FileCategory, VehicleFile } from "@/types/inventory";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -31,6 +31,7 @@ interface VehicleDetailsProps {
   onRemovePhoto: (photoUrl: string) => void;
   onSetMainPhoto: (photoUrl: string) => void;
   onFileUpload?: (file: File, category: FileCategory) => void;
+  files?: VehicleFile[];
 }
 
 export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
@@ -42,9 +43,11 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   onRemovePhoto,
   onSetMainPhoto,
   onFileUpload,
+  files,
 }) => {
   const [editedVehicle, setEditedVehicle] = useState<Vehicle>(vehicle);
   const { vehicleFiles } = useVehicleFiles(vehicle);
+  const filesData = files || vehicleFiles || [];
   
   const handleChange = (field: keyof Vehicle, value: any) => {
     setEditedVehicle(prev => ({
@@ -121,7 +124,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                 
                 <TabsContent value="files" className="h-full mt-0 p-0">
                   <FilesTab 
-                    files={vehicleFiles}
+                    files={filesData}
                     onFileUpload={onFileUpload || (() => {})}
                   />
                 </TabsContent>
