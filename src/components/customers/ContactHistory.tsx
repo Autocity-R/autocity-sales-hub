@@ -107,7 +107,7 @@ const ContactHistory: React.FC<ContactHistoryProps> = ({ history }) => {
                             {item.vehiclePrice && (
                               <p className="col-span-2 font-medium">
                                 <span className="text-muted-foreground">
-                                  {item.actionType === 'purchase' ? 'Aankoopprijs:' : 'Verkoopprijs:'}
+                                  {item.actionType === 'purchase' ? 'Inkoopprijs:' : 'Verkoopprijs:'}
                                 </span> 
                                 € {item.vehiclePrice.toLocaleString()}
                               </p>

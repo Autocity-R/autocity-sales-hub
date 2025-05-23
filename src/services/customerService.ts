@@ -200,7 +200,8 @@ const mockSupplierHistory: SupplierHistoryItem[] = [
     supplierId: "1",
     date: "2023-05-10T08:30:00Z",
     actionType: "purchase",
-    description: "Ordered 5 BMW vehicles",
+    description: "Bestelde 5 BMW voertuigen",
+    vehicleId: "v003",
     vehicleName: "BMW 3 Series",
     vehicleDetails: true,
     vehicleBrand: "BMW",
@@ -208,21 +209,22 @@ const mockSupplierHistory: SupplierHistoryItem[] = [
     vehicleYear: 2022,
     vehicleMileage: 25000,
     vehicleVin: "WBA8E9C06NCK12345",
-    vehiclePrice: 115000
+    vehiclePrice: 23000
   },
   {
     id: "sh2",
     supplierId: "1",
     date: "2023-06-15T11:45:00Z",
     actionType: "contact",
-    description: "Negotiated pricing for Q3",
+    description: "Onderhandeld over prijzen voor Q3",
   },
   {
     id: "sh3",
     supplierId: "2",
     date: "2023-04-20T14:15:00Z",
     actionType: "purchase",
-    description: "Purchased 3 Mercedes C-Class",
+    description: "Aangekocht 3 Mercedes C-Class voertuigen",
+    vehicleId: "v004",
     vehicleName: "Mercedes C-Class",
     vehicleDetails: true,
     vehicleBrand: "Mercedes",
@@ -230,7 +232,39 @@ const mockSupplierHistory: SupplierHistoryItem[] = [
     vehicleYear: 2023,
     vehicleMileage: 8000,
     vehicleVin: "WDD2050071R123456",
-    vehiclePrice: 108750
+    vehiclePrice: 36250
+  },
+  {
+    id: "sh4",
+    supplierId: "3",
+    date: "2023-07-05T09:30:00Z",
+    actionType: "purchase",
+    description: "Aangekocht Audi A4 Avant",
+    vehicleId: "v005",
+    vehicleName: "Audi A4 Avant",
+    vehicleDetails: true,
+    vehicleBrand: "Audi",
+    vehicleModel: "A4 Avant",
+    vehicleYear: 2021,
+    vehicleMileage: 32000,
+    vehicleVin: "WAUZZZ8E0EA123456",
+    vehiclePrice: 28500
+  },
+  {
+    id: "sh5",
+    supplierId: "1",
+    date: "2023-08-12T14:20:00Z",
+    actionType: "purchase",
+    description: "Aangekocht BMW X3",
+    vehicleId: "v006",
+    vehicleName: "BMW X3",
+    vehicleDetails: true,
+    vehicleBrand: "BMW",
+    vehicleModel: "X3",
+    vehicleYear: 2022,
+    vehicleMileage: 18500,
+    vehicleVin: "WBAXG9C04NDR12345",
+    vehiclePrice: 31200
   }
 ];
 
