@@ -83,7 +83,7 @@ const Reports = () => {
 
   const teamChartConfig = {
     deals: {
-      label: "Deals Closed",
+      label: "Gesloten Deals",
       color: "#8B5CF6",
     },
   };
@@ -116,14 +116,14 @@ const Reports = () => {
     { categorie: "Premium SUV", waarde: 45, kleur: "#8B5CF6", omzet: 2800000 },
     { categorie: "Luxury Sedan", waarde: 28, kleur: "#10B981", omzet: 1900000 },
     { categorie: "Sport Coupe", waarde: 18, kleur: "#F59E0B", omzet: 1200000 },
-    { categorie: "Hybrid", waarde: 9, kleur: "#EF4444", omzet: 600000 },
+    { categorie: "Hybride", waarde: 9, kleur: "#EF4444", omzet: 600000 },
   ];
 
   const COLORS = ['#8B5CF6', '#10B981', '#F59E0B', '#EF4444'];
 
   return (
     <ReportsLayout>
-      {/* Unieke Analytics Header */}
+      {/* Nederlandse Analytics Header */}
       <div className="bg-gradient-to-r from-slate-900 via-purple-900 to-indigo-900 rounded-xl p-8 mb-8 text-white shadow-2xl">
         <div className="flex justify-between items-start">
           <div>
@@ -131,7 +131,7 @@ const Reports = () => {
               <div className="p-3 bg-white/10 rounded-xl backdrop-blur">
                 <BarChart className="h-10 w-10" />
               </div>
-              Sales Performance Analytics
+              Verkoop Prestatie Analytics
             </h1>
             <p className="text-xl text-purple-200 mb-4">
               Diepgaande business intelligence & verkoop analyse voor {selectedPeriod.label.toLowerCase()}
@@ -176,15 +176,15 @@ const Reports = () => {
             <div className="flex items-center justify-between mb-4">
               <Euro className="h-10 w-10 text-emerald-200" />
               <div className="text-right">
-                <div className="text-xs text-emerald-200">YTD Growth</div>
+                <div className="text-xs text-emerald-200">YTD Groei</div>
                 <Badge className="bg-white/20 text-white">+18.5%</Badge>
               </div>
             </div>
             <h3 className="text-3xl font-bold mb-1">{formatCurrency(reportData.sales.totalRevenue)}</h3>
-            <p className="text-emerald-200">Totale Sales Revenue</p>
+            <p className="text-emerald-200">Totale Verkoop Omzet</p>
             <div className="mt-2 flex items-center text-xs">
               <ArrowUp className="w-3 h-3 mr-1" />
-              <span>Trending up vs. last period</span>
+              <span>Stijgende trend vs. vorige periode</span>
             </div>
           </CardContent>
         </Card>
@@ -194,15 +194,15 @@ const Reports = () => {
             <div className="flex items-center justify-between mb-4">
               <Target className="h-10 w-10 text-blue-200" />
               <div className="text-right">
-                <div className="text-xs text-blue-200">Target</div>
+                <div className="text-xs text-blue-200">Doel</div>
                 <Badge className="bg-white/20 text-white">125%</Badge>
               </div>
             </div>
             <h3 className="text-3xl font-bold mb-1">{formatPercentage(reportData.leads.conversionRate)}</h3>
-            <p className="text-blue-200">Lead Conversion Rate</p>
+            <p className="text-blue-200">Lead Conversie Ratio</p>
             <div className="mt-2 flex items-center text-xs">
               <Zap className="w-3 h-3 mr-1" />
-              <span>Above industry average</span>
+              <span>Boven industriegemiddelde</span>
             </div>
           </CardContent>
         </Card>
@@ -212,15 +212,15 @@ const Reports = () => {
             <div className="flex items-center justify-between mb-4">
               <Users className="h-10 w-10 text-purple-200" />
               <div className="text-right">
-                <div className="text-xs text-purple-200">Active</div>
+                <div className="text-xs text-purple-200">Actief</div>
                 <Badge className="bg-white/20 text-white">{reportData.leads.totalLeads}</Badge>
               </div>
             </div>
             <h3 className="text-3xl font-bold mb-1">{formatPercentage(reportData.leads.followUpRate)}</h3>
-            <p className="text-purple-200">Team Follow-up Rate</p>
+            <p className="text-purple-200">Team Opvolg Ratio</p>
             <div className="mt-2 flex items-center text-xs">
               <Star className="w-3 h-3 mr-1" />
-              <span>Excellent performance</span>
+              <span>Uitstekende prestatie</span>
             </div>
           </CardContent>
         </Card>
@@ -231,14 +231,14 @@ const Reports = () => {
               <Phone className="h-10 w-10 text-orange-200" />
               <div className="text-right">
                 <div className="text-xs text-orange-200">SLA</div>
-                <Badge className="bg-white/20 text-white">2h</Badge>
+                <Badge className="bg-white/20 text-white">2u</Badge>
               </div>
             </div>
-            <h3 className="text-3xl font-bold mb-1">{reportData.leads.responseTime}h</h3>
-            <p className="text-orange-200">Average Response Time</p>
+            <h3 className="text-3xl font-bold mb-1">{reportData.leads.responseTime}u</h3>
+            <p className="text-orange-200">Gemiddelde Reactietijd</p>
             <div className="mt-2 flex items-center text-xs">
               <Activity className="w-3 h-3 mr-1" />
-              <span>Within target range</span>
+              <span>Binnen doelbereik</span>
             </div>
           </CardContent>
         </Card>
@@ -252,7 +252,7 @@ const Reports = () => {
             <CardHeader className="bg-gradient-to-r from-gray-800 to-slate-800 text-white rounded-t-lg">
               <CardTitle className="flex items-center gap-3 text-xl">
                 <TrendingUp className="h-6 w-6" />
-                Sales Performance Trends & Margin Analysis
+                Verkoop Prestatie Trends & Marge Analyse
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -287,7 +287,7 @@ const Reports = () => {
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-green-600">+15.2%</div>
-                  <div className="text-sm text-gray-600">Groei YoY</div>
+                  <div className="text-sm text-gray-600">Groei JoJ</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-600">16.1%</div>
@@ -312,12 +312,12 @@ const Reports = () => {
                 <div className="flex items-start gap-3">
                   <Zap className="h-6 w-6 text-green-600 mt-1 flex-shrink-0" />
                   <div>
-                    <h4 className="font-bold text-green-800 mb-2">Revenue Opportunity Detected</h4>
+                    <h4 className="font-bold text-green-800 mb-2">Omzet Kans Gedetecteerd</h4>
                     <p className="text-sm text-green-700 leading-relaxed">
-                      Premium segment shows 22% growth potential. Focus marketing budget on luxury SUV inventory for Q4.
+                      Premium segment toont 22% groeipotentieel. Focus marketingbudget op luxe SUV voorraad voor Q4.
                     </p>
                     <div className="mt-2 text-xs text-green-600 font-medium">
-                      Potential Impact: +€450K revenue
+                      Potentiële Impact: +€450K omzet
                     </div>
                   </div>
                 </div>
@@ -327,12 +327,12 @@ const Reports = () => {
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="h-6 w-6 text-orange-600 mt-1 flex-shrink-0" />
                   <div>
-                    <h4 className="font-bold text-orange-800 mb-2">Performance Alert</h4>
+                    <h4 className="font-bold text-orange-800 mb-2">Prestatie Waarschuwing</h4>
                     <p className="text-sm text-orange-700 leading-relaxed">
-                      Lead response time increased 18% vs last month. Consider automated follow-up workflows.
+                      Lead reactietijd gestegen met 18% vs. vorige maand. Overweeg geautomatiseerde opvolg workflows.
                     </p>
                     <div className="mt-2 text-xs text-orange-600 font-medium">
-                      Action Required: Process Optimization
+                      Actie Vereist: Proces Optimalisatie
                     </div>
                   </div>
                 </div>
@@ -342,12 +342,12 @@ const Reports = () => {
                 <div className="flex items-start gap-3">
                   <Lightbulb className="h-6 w-6 text-blue-600 mt-1 flex-shrink-0" />
                   <div>
-                    <h4 className="font-bold text-blue-800 mb-2">Strategic Recommendation</h4>
+                    <h4 className="font-bold text-blue-800 mb-2">Strategische Aanbeveling</h4>
                     <p className="text-sm text-blue-700 leading-relaxed">
-                      Implement dynamic pricing model based on inventory turnover rates. Projected efficiency gain: +30%.
+                      Implementeer dynamisch prijsmodel gebaseerd op voorraad omloopsnelheid. Verwachte efficiëntiewinst: +30%.
                     </p>
                     <div className="mt-2 text-xs text-blue-600 font-medium">
-                      Implementation Complexity: Medium
+                      Implementatie Complexiteit: Gemiddeld
                     </div>
                   </div>
                 </div>
@@ -364,7 +364,7 @@ const Reports = () => {
           <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
             <CardTitle className="flex items-center gap-3">
               <Star className="h-6 w-6" />
-              Team Performance Leaderboard
+              Team Prestatie Ranking
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
@@ -375,7 +375,7 @@ const Reports = () => {
                   <XAxis type="number" />
                   <YAxis dataKey="naam" type="category" width={120} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="deals" fill="#8B5CF6" name="Deals Closed" />
+                  <Bar dataKey="deals" fill="#8B5CF6" name="Gesloten Deals" />
                 </RechartsBarChart>
               </ChartContainer>
             </div>
@@ -395,7 +395,7 @@ const Reports = () => {
                   </div>
                   <div className="text-right">
                     <div className="font-bold text-purple-600">{member.score}%</div>
-                    <div className="text-xs text-gray-500">Performance Score</div>
+                    <div className="text-xs text-gray-500">Prestatie Score</div>
                   </div>
                 </div>
               ))}
@@ -408,7 +408,7 @@ const Reports = () => {
           <CardHeader className="bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-t-lg">
             <CardTitle className="flex items-center gap-3">
               <PieChartIcon className="h-6 w-6" />
-              Product Portfolio Analysis
+              Product Portfolio Analyse
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
@@ -435,8 +435,8 @@ const Reports = () => {
                         return (
                           <div className="bg-white p-3 shadow-lg rounded-lg border">
                             <p className="font-medium">{data.categorie}</p>
-                            <p className="text-sm text-gray-600">Share: {data.waarde}%</p>
-                            <p className="text-sm text-gray-600">Revenue: {formatCurrency(data.omzet)}</p>
+                            <p className="text-sm text-gray-600">Aandeel: {data.waarde}%</p>
+                            <p className="text-sm text-gray-600">Omzet: {formatCurrency(data.omzet)}</p>
                           </div>
                         );
                       }
