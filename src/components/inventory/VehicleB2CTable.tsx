@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -170,73 +171,73 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
 
   return (
     <>
-      <div className="overflow-x-auto">
+      <div className="w-full overflow-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12">
+              <TableHead className="w-12 text-left">
                 <Checkbox 
                   checked={selectedVehicles.length === vehicles.length && vehicles.length > 0} 
                   onCheckedChange={toggleSelectAll} 
                   aria-label="Selecteer alle voertuigen"
                 />
               </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort("brand")}>
+              <TableHead className="cursor-pointer text-left whitespace-nowrap" onClick={() => handleSort("brand")}>
                 <div className="flex items-center">
                   Merk
                   {renderSortIcon("brand")}
                 </div>
               </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort("model")}>
+              <TableHead className="cursor-pointer text-left whitespace-nowrap" onClick={() => handleSort("model")}>
                 <div className="flex items-center">
                   Model
                   {renderSortIcon("model")}
                 </div>
               </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort("mileage")}>
+              <TableHead className="cursor-pointer text-left whitespace-nowrap" onClick={() => handleSort("mileage")}>
                 <div className="flex items-center">
                   Kilometerstand
                   {renderSortIcon("mileage")}
                 </div>
               </TableHead>
-              <TableHead>
+              <TableHead className="text-left whitespace-nowrap">
                 <div className="flex items-center">
                   VIN
                 </div>
               </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort("purchasePrice")}>
+              <TableHead className="cursor-pointer text-left whitespace-nowrap" onClick={() => handleSort("purchasePrice")}>
                 <div className="flex items-center">
                   Inkoop prijs
                   {renderSortIcon("purchasePrice")}
                 </div>
               </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort("sellingPrice")}>
+              <TableHead className="cursor-pointer text-left whitespace-nowrap" onClick={() => handleSort("sellingPrice")}>
                 <div className="flex items-center">
                   Verkoopprijs
                   {renderSortIcon("sellingPrice")}
                 </div>
               </TableHead>
-              <TableHead>
+              <TableHead className="text-left whitespace-nowrap">
                 <div className="flex items-center">
                   Klantnaam
                 </div>
               </TableHead>
-              <TableHead>
+              <TableHead className="text-left whitespace-nowrap">
                 <div className="flex items-center">
                   Import status
                 </div>
               </TableHead>
-              <TableHead>
+              <TableHead className="text-left whitespace-nowrap">
                 <div className="flex items-center">
                   Werkplaats status
                 </div>
               </TableHead>
-              <TableHead>
+              <TableHead className="text-left whitespace-nowrap">
                 <div className="flex items-center">
                   Lak status
                 </div>
               </TableHead>
-              <TableHead>
+              <TableHead className="text-left whitespace-nowrap">
                 <div className="flex items-center">
                   Locatie
                 </div>
@@ -256,47 +257,47 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
                 <ContextMenu key={vehicle.id}>
                   <ContextMenuTrigger>
                     <TableRow className="cursor-pointer hover:bg-muted/50">
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                      <TableCell onClick={(e) => e.stopPropagation()} className="text-left">
                         <Checkbox 
                           checked={selectedVehicles.includes(vehicle.id)} 
                           onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, checked === true)} 
                           aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
                         />
                       </TableCell>
-                      <TableCell className="font-medium" onClick={() => handleSelectVehicle(vehicle)}>
+                      <TableCell className="font-medium text-left" onClick={() => handleSelectVehicle(vehicle)}>
                         {vehicle.brand}
                       </TableCell>
-                      <TableCell onClick={() => handleSelectVehicle(vehicle)}>
+                      <TableCell onClick={() => handleSelectVehicle(vehicle)} className="text-left">
                         {vehicle.model}
                       </TableCell>
-                      <TableCell onClick={() => handleSelectVehicle(vehicle)}>
+                      <TableCell onClick={() => handleSelectVehicle(vehicle)} className="text-left">
                         {vehicle.mileage.toLocaleString()} km
                       </TableCell>
-                      <TableCell className="whitespace-nowrap" onClick={() => handleSelectVehicle(vehicle)}>
+                      <TableCell className="whitespace-nowrap text-left" onClick={() => handleSelectVehicle(vehicle)}>
                         {vehicle.vin}
                       </TableCell>
-                      <TableCell className="font-medium" onClick={() => handleSelectVehicle(vehicle)}>
+                      <TableCell className="font-medium text-left" onClick={() => handleSelectVehicle(vehicle)}>
                         {vehicle.purchasePrice ? `€ ${vehicle.purchasePrice.toLocaleString()}` : '-'}
                       </TableCell>
-                      <TableCell className="font-medium" onClick={() => handleSelectVehicle(vehicle)}>
+                      <TableCell className="font-medium text-left" onClick={() => handleSelectVehicle(vehicle)}>
                         € {vehicle.sellingPrice.toLocaleString()}
                       </TableCell>
-                      <TableCell onClick={() => handleSelectVehicle(vehicle)}>
+                      <TableCell onClick={() => handleSelectVehicle(vehicle)} className="text-left">
                         {vehicle.customerName || "Onbekend"}
                       </TableCell>
-                      <TableCell onClick={() => handleSelectVehicle(vehicle)}>
+                      <TableCell onClick={() => handleSelectVehicle(vehicle)} className="text-left">
                         {renderImportStatus(vehicle.importStatus)}
                       </TableCell>
-                      <TableCell onClick={() => handleSelectVehicle(vehicle)}>
+                      <TableCell onClick={() => handleSelectVehicle(vehicle)} className="text-left">
                         {renderWorkshopStatus(vehicle.workshopStatus)}
                       </TableCell>
-                      <TableCell onClick={() => handleSelectVehicle(vehicle)}>
+                      <TableCell onClick={() => handleSelectVehicle(vehicle)} className="text-left">
                         {renderPaintStatus(vehicle.paintStatus)}
                       </TableCell>
-                      <TableCell onClick={() => handleSelectVehicle(vehicle)}>
+                      <TableCell onClick={() => handleSelectVehicle(vehicle)} className="text-left">
                         {renderLocationStatus(vehicle.location)}
                       </TableCell>
-                      <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
