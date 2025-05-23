@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,8 @@ import {
   Edit,
   Save,
   X,
-  Heart
+  Heart,
+  Phone
 } from "lucide-react";
 import { WarrantyClaim } from "@/types/warranty";
 import { useToast } from "@/hooks/use-toast";
@@ -225,6 +227,32 @@ Het Garantieteam
               <div>
                 <p className="text-sm text-muted-foreground">Naam</p>
                 <p className="font-medium">{claim.customerName}</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Email</p>
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <a 
+                      href={`mailto:${claim.customerEmail || 'niet beschikbaar'}`}
+                      className="font-medium text-blue-600 hover:underline"
+                    >
+                      {claim.customerEmail || 'Niet beschikbaar'}
+                    </a>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Telefoon</p>
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <a 
+                      href={`tel:${claim.customerPhone || ''}`}
+                      className="font-medium text-blue-600 hover:underline"
+                    >
+                      {claim.customerPhone || 'Niet beschikbaar'}
+                    </a>
+                  </div>
+                </div>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Datum gemeld</p>
