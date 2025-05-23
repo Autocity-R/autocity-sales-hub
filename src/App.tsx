@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +15,7 @@ import InventoryB2C from "./pages/InventoryB2C";
 import InventoryDelivered from "./pages/InventoryDelivered";
 import Leads from "./pages/Leads";
 import Reports from "./pages/Reports";
+import Warranty from "./pages/Warranty";
 
 const queryClient = new QueryClient();
 
@@ -43,7 +43,7 @@ const App = () => (
           <Route path="/suppliers" element={<Customers />} />
           <Route path="/customers/:id" element={<CustomerDetail />} />
           
-          <Route path="/warranty" element={<Index />} />
+          <Route path="/warranty" element={<Warranty />} />
           <Route path="/calendar" element={<Index />} />
           <Route path="/settings" element={<Index />} />
           

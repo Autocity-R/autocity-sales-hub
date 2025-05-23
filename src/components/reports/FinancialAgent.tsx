@@ -21,15 +21,22 @@ import { FinancialMetrics } from "@/types/reports";
 import { generateFinancialAdvice } from "@/services/reportsService";
 import { PerformanceData } from "@/types/reports";
 
+interface Message {
+  id: number;
+  type: 'agent' | 'user';
+  content: string;
+  timestamp: Date;
+}
+
 interface FinancialAgentProps {
   reportData: PerformanceData;
 }
 
 export const FinancialAgent: React.FC<FinancialAgentProps> = ({ reportData }) => {
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      type: 'agent' as const,
+      type: 'agent',
       content: 'Hallo! Ik ben je Financial Agent AI. Ik heb de laatste financiële data geanalyseerd en heb enkele belangrijke inzichten voor je.',
       timestamp: new Date()
     }
@@ -54,9 +61,9 @@ export const FinancialAgent: React.FC<FinancialAgentProps> = ({ reportData }) =>
   const handleSendMessage = () => {
     if (!inputMessage.trim()) return;
     
-    const newMessage = {
+    const newMessage: Message = {
       id: Date.now(),
-      type: 'user' as const,
+      type: 'user',
       content: inputMessage,
       timestamp: new Date()
     };
@@ -66,9 +73,9 @@ export const FinancialAgent: React.FC<FinancialAgentProps> = ({ reportData }) =>
     
     // Simulate AI response
     setTimeout(() => {
-      const aiResponse = {
+      const aiResponse: Message = {
         id: Date.now() + 1,
-        type: 'agent' as const,
+        type: 'agent',
         content: generateAIResponse(inputMessage, reportData),
         timestamp: new Date()
       };
