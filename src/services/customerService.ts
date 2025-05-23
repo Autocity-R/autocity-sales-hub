@@ -1,4 +1,3 @@
-
 import { Contact, ContactType, CustomerHistoryItem, SupplierHistoryItem } from "@/types/customer";
 
 // Mock data for development
@@ -154,7 +153,14 @@ const mockCustomerHistory: CustomerHistoryItem[] = [
     actionType: "purchase",
     description: "Purchased Tesla Model 3",
     vehicleId: "v001",
-    vehicleName: "Tesla Model 3 (2022)"
+    vehicleName: "Tesla Model 3",
+    vehicleDetails: true,
+    vehicleBrand: "Tesla",
+    vehicleModel: "Model 3",
+    vehicleYear: 2022,
+    vehicleMileage: 12500,
+    vehicleVin: "5YJ3E1EA7MF123456",
+    vehiclePrice: 42950
   },
   {
     id: "h4",
@@ -177,7 +183,14 @@ const mockCustomerHistory: CustomerHistoryItem[] = [
     actionType: "purchase",
     description: "Purchased 3 Volkswagen Passat",
     vehicleId: "v002",
-    vehicleName: "Volkswagen Passat (2023)"
+    vehicleName: "Volkswagen Passat",
+    vehicleDetails: true,
+    vehicleBrand: "Volkswagen",
+    vehicleModel: "Passat",
+    vehicleYear: 2023,
+    vehicleMileage: 5000,
+    vehicleVin: "WVWZZZ3CZPE123456",
+    vehiclePrice: 38500
   }
 ];
 
@@ -188,7 +201,14 @@ const mockSupplierHistory: SupplierHistoryItem[] = [
     date: "2023-05-10T08:30:00Z",
     actionType: "purchase",
     description: "Ordered 5 BMW vehicles",
-    vehicleName: "BMW 3 Series"
+    vehicleName: "BMW 3 Series",
+    vehicleDetails: true,
+    vehicleBrand: "BMW",
+    vehicleModel: "3 Series",
+    vehicleYear: 2022,
+    vehicleMileage: 25000,
+    vehicleVin: "WBA8E9C06NCK12345",
+    vehiclePrice: 115000
   },
   {
     id: "sh2",
@@ -203,7 +223,14 @@ const mockSupplierHistory: SupplierHistoryItem[] = [
     date: "2023-04-20T14:15:00Z",
     actionType: "purchase",
     description: "Purchased 3 Mercedes C-Class",
-    vehicleName: "Mercedes C-Class (2023)"
+    vehicleName: "Mercedes C-Class",
+    vehicleDetails: true,
+    vehicleBrand: "Mercedes",
+    vehicleModel: "C-Class",
+    vehicleYear: 2023,
+    vehicleMileage: 8000,
+    vehicleVin: "WDD2050071R123456",
+    vehiclePrice: 108750
   }
 ];
 

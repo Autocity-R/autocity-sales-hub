@@ -31,6 +31,14 @@ export interface CustomerHistoryItem {
   description: string;
   vehicleId?: string;
   vehicleName?: string;
+  // Additional vehicle details
+  vehicleDetails?: boolean;
+  vehicleBrand?: string;
+  vehicleModel?: string;
+  vehicleYear?: number;
+  vehicleMileage?: number;
+  vehicleVin?: string;
+  vehiclePrice?: number;
 }
 
 export interface SupplierHistoryItem {
@@ -41,4 +49,12 @@ export interface SupplierHistoryItem {
   description: string;
   vehicleId?: string;
   vehicleName?: string;
+  // Additional vehicle details
+  vehicleDetails?: boolean;
+  vehicleBrand?: string;
+  vehicleModel?: string;
+  vehicleYear?: number;
+  vehicleMileage?: number;
+  vehicleVin?: string;
+  vehiclePrice?: number;
 }

@@ -15,7 +15,8 @@ import {
   ShoppingCart, 
   User, 
   CreditCard, 
-  FileText 
+  FileText,
+  Car
 } from "lucide-react";
 
 interface ContactHistoryProps {
@@ -76,10 +77,46 @@ const ContactHistory: React.FC<ContactHistoryProps> = ({ history }) => {
                   </span>
                 </div>
                 <p>{item.description}</p>
-                {item.vehicleName && (
-                  <p className="text-sm text-muted-foreground">
-                    Voertuig: {item.vehicleName}
-                  </p>
+                
+                {/* Enhanced vehicle information */}
+                {item.vehicleId && (
+                  <div className="mt-2 bg-muted/50 p-3 rounded-md border">
+                    <div className="flex items-start gap-2">
+                      <Car className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                      <div className="space-y-1 w-full">
+                        <p className="font-medium">{item.vehicleName}</p>
+                        
+                        {/* Display additional vehicle details if available */}
+                        {item.vehicleDetails && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                            {item.vehicleBrand && (
+                              <p><span className="text-muted-foreground">Merk:</span> {item.vehicleBrand}</p>
+                            )}
+                            {item.vehicleModel && (
+                              <p><span className="text-muted-foreground">Model:</span> {item.vehicleModel}</p>
+                            )}
+                            {item.vehicleYear && (
+                              <p><span className="text-muted-foreground">Bouwjaar:</span> {item.vehicleYear}</p>
+                            )}
+                            {item.vehicleMileage && (
+                              <p><span className="text-muted-foreground">Km stand:</span> {item.vehicleMileage.toLocaleString()} km</p>
+                            )}
+                            {item.vehicleVin && (
+                              <p className="col-span-2"><span className="text-muted-foreground">VIN:</span> {item.vehicleVin}</p>
+                            )}
+                            {item.vehiclePrice && (
+                              <p className="col-span-2 font-medium">
+                                <span className="text-muted-foreground">
+                                  {item.actionType === 'purchase' ? 'Aankoopprijs:' : 'Verkoopprijs:'}
+                                </span> 
+                                € {item.vehiclePrice.toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             </TimelineContent>
