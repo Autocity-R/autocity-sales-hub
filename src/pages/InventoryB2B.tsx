@@ -8,7 +8,7 @@ import { useB2BVehicleSelection } from "@/hooks/useB2BVehicleSelection";
 import { useB2BVehicleOperations } from "@/hooks/useB2BVehicleOperations";
 import { useVehiclePhotos } from "@/hooks/useVehiclePhotos";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
-import { FileCategory } from "@/types/files";
+import { FileCategory } from "@/types/inventory";
 
 const InventoryB2B = () => {
   // Custom hooks for managing state and operations

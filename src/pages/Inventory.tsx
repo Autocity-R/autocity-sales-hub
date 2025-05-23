@@ -11,11 +11,10 @@ import { VehicleForm } from "@/components/inventory/VehicleForm";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
 import { ChatbotAssistant } from "@/components/inventory/ChatbotAssistant";
 import { BulkActionDialog } from "@/components/inventory/BulkActionDialog";
-import { Vehicle, SalesStatus } from "@/types/inventory";
+import { Vehicle, SalesStatus, VehicleFile, FileCategory } from "@/types/inventory";
 import { VehicleTable } from "@/components/inventory/VehicleTable";
 import { ContactsPanel } from "@/components/inventory/ContactsPanel";
 import { useChatbotCommands } from "@/hooks/useChatbotCommands";
-import { FileCategory } from "@/types/files";
 import { 
   fetchVehicles, 
   updateVehicle, 

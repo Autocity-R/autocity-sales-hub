@@ -1,13 +1,5 @@
 
-export type FileCategory = "damage" | "cmr" | "pickup";
+// File types have been moved to src/types/inventory.ts
+// This file is kept for backward compatibility but should be deprecated
 
-export interface VehicleFile {
-  id: string;
-  name: string;
-  url: string;
-  category: FileCategory;
-  vehicleId: string;
-  createdAt: string;
-  size?: number;
-  type?: string;
-}
+export type { FileCategory, VehicleFile } from "@/types/inventory";

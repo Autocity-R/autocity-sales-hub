@@ -1,4 +1,3 @@
-
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Vehicle, ImportStatus } from "@/types/inventory";
@@ -15,15 +14,13 @@ export const useChatbotCommands = (vehicles: Vehicle[], selectedVehicles: string
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
       toast({
         title: "Voertuig bijgewerkt",
-        description: "De wijzigingen zijn succesvol opgeslagen.",
-        variant: "default",
+        description: "De wijzigingen zijn succesvol opgeslagen."
       });
     },
     onError: (error) => {
       toast({
         title: "Fout bij bijwerken",
-        description: "Er is iets misgegaan: " + error,
-        variant: "destructive",
+        description: "Er is iets misgegaan: " + error
       });
     }
   });
@@ -36,15 +33,13 @@ export const useChatbotCommands = (vehicles: Vehicle[], selectedVehicles: string
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
       toast({
         title: "Voertuigen bijgewerkt",
-        description: `${selectedVehicles.length} voertuigen zijn succesvol bijgewerkt.`,
-        variant: "default",
+        description: `${selectedVehicles.length} voertuigen zijn succesvol bijgewerkt.`
       });
     },
     onError: (error) => {
       toast({
         title: "Fout bij bulk-update",
-        description: "Er is iets misgegaan: " + error,
-        variant: "destructive",
+        description: "Er is iets misgegaan: " + error
       });
     }
   });
@@ -76,15 +71,13 @@ export const useChatbotCommands = (vehicles: Vehicle[], selectedVehicles: string
       
       toast({
         title,
-        description,
-        variant: "default",
+        description
       });
     },
     onError: (error) => {
       toast({
         title: "Fout bij versturen e-mail",
-        description: "Er is iets misgegaan: " + error,
-        variant: "destructive",
+        description: "Er is iets misgegaan: " + error
       });
     }
   });

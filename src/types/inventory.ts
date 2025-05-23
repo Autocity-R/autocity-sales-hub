@@ -109,3 +109,17 @@ export interface Customer {
   address: string;
   purchasedVehicles?: string[]; // array of vehicle ids
 }
+
+// Moving the FileCategory and VehicleFile types from files.ts to inventory.ts since they're related to vehicles
+export type FileCategory = "damage" | "cmr" | "pickup";
+
+export interface VehicleFile {
+  id: string;
+  name: string;
+  url: string;
+  category: FileCategory;
+  vehicleId: string;
+  createdAt: string;
+  size?: number;
+  type?: string;
+}
