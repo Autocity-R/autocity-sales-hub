@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { createAppointment } from "@/services/calendarService";
+import { getLeads } from "@/services/leadService";
 import { Appointment, AppointmentType, AppointmentStatus } from "@/types/calendar";
+import { Lead } from "@/types/leads";
 import { ArrowLeft, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -23,6 +25,7 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
   onSave,
   onCancel
 }) => {
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [formData, setFormData] = useState({
     title: appointment?.title || "",
     description: appointment?.description || "",
@@ -32,6 +35,7 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
     startTime: appointment?.startTime ? format(new Date(appointment.startTime), 'HH:mm') : "10:00",
     endDate: appointment?.endTime ? format(new Date(appointment.endTime), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
     endTime: appointment?.endTime ? format(new Date(appointment.endTime), 'HH:mm') : "11:00",
+    leadId: appointment?.leadId || "",
     customerName: appointment?.customerName || "",
     customerEmail: appointment?.customerEmail || "",
     customerPhone: appointment?.customerPhone || "",
@@ -43,6 +47,36 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
   
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Load leads on component mount
+  useEffect(() => {
+    const loadLeads = async () => {
+      try {
+        const leadsData = await getLeads();
+        setLeads(leadsData);
+      } catch (error) {
+        console.error('Error loading leads:', error);
+      }
+    };
+    loadLeads();
+  }, []);
+
+  // Auto-fill customer data when lead is selected
+  const handleLeadSelect = (leadId: string) => {
+    const selectedLead = leads.find(lead => lead.id === leadId);
+    if (selectedLead) {
+      setFormData(prev => ({
+        ...prev,
+        leadId: leadId,
+        customerName: `${selectedLead.firstName} ${selectedLead.lastName}`,
+        customerEmail: selectedLead.email,
+        customerPhone: selectedLead.phone,
+        vehicleBrand: selectedLead.interestedVehicle?.split(' ')[0] || "",
+        vehicleModel: selectedLead.interestedVehicle?.split(' ').slice(1).join(' ') || "",
+        title: prev.title || `${prev.type === 'proefrit' ? 'Proefrit' : 'Afspraak'} ${selectedLead.interestedVehicle || 'voertuig'}`
+      }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +93,7 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
         status: formData.status,
         startTime: startDateTime,
         endTime: endDateTime,
+        leadId: formData.leadId || undefined,
         customerName: formData.customerName,
         customerEmail: formData.customerEmail,
         customerPhone: formData.customerPhone,
@@ -145,6 +180,28 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="leadId">Lead Koppelen</Label>
+              <Select value={formData.leadId} onValueChange={handleLeadSelect}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecteer een lead (optioneel)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Geen lead gekoppeld</SelectItem>
+                  {leads.map((lead) => (
+                    <SelectItem key={lead.id} value={lead.id}>
+                      {lead.firstName} {lead.lastName} - {lead.interestedVehicle || 'Geen voertuig'} ({lead.status})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formData.leadId && (
+                <p className="text-sm text-muted-foreground">
+                  Klantgegevens worden automatisch ingevuld vanuit de geselecteerde lead
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
