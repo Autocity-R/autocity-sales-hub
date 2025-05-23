@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, Truck, FileText } from "lucide-react";
@@ -51,7 +50,7 @@ const Transport = () => {
 
   // Bulk update vehicles mutation
   const bulkUpdateMutation = useMutation({
-    mutationFn: bulkUpdateVehicles,
+    mutationFn: (vehicles: Vehicle[]) => bulkUpdateVehicles(vehicles),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
       toast({
@@ -180,7 +179,9 @@ const Transport = () => {
       .filter(v => vehicleIds.includes(v.id))
       .map(v => ({ ...v, importStatus: status }));
     
-    bulkUpdateMutation.mutate(vehiclesToUpdate);
+    if (vehiclesToUpdate.length > 0) {
+      bulkUpdateMutation.mutate(vehiclesToUpdate);
+    }
   };
 
   // Create new supplier

@@ -1,3 +1,4 @@
+
 import { Vehicle, PaymentStatus, PaintStatus, FileCategory, VehicleFile } from "@/types/inventory";
 import { Contact } from "@/types/customer";
 
@@ -227,4 +228,58 @@ export const changeVehicleStatus = async (vehicleId: string, status: 'verkocht_b
       } as unknown as Vehicle);
     }, 500);
   });
+};
+
+// Add new function for updating sales status (missing in original)
+export const updateSalesStatus = async (vehicleId: string, status: string): Promise<Vehicle> => {
+  try {
+    const response = await fetch(`${API_URL}/api/vehicles/${vehicleId}/sales-status`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status }),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error: any) {
+    console.error("Failed to update sales status:", error);
+    throw error;
+  }
+};
+
+// Add new function for fetching delivered vehicles (missing in original)
+export const fetchDeliveredVehicles = async (): Promise<Vehicle[]> => {
+  try {
+    const response = await fetch(`${API_URL}/api/vehicles?delivered=true`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error: any) {
+    console.error("Failed to fetch delivered vehicles:", error);
+    throw error;
+  }
+};
+
+// Add new function for bulk updating vehicles (missing in original)
+export const bulkUpdateVehicles = async (vehicles: Vehicle[]): Promise<Vehicle[]> => {
+  try {
+    const response = await fetch(`${API_URL}/api/vehicles/bulk`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ vehicles }),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error: any) {
+    console.error("Failed to bulk update vehicles:", error);
+    throw error;
+  }
 };

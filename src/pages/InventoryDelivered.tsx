@@ -50,7 +50,7 @@ const InventoryDelivered = () => {
   };
   
   // Filter vehicles based on search query and filters
-  const filteredVehicles = vehicles.filter(vehicle => {
+  const filteredVehicles = vehicles.filter((vehicle: Vehicle) => {
     // Search query filtering
     if (searchQuery) {
       const query = searchQuery.toLowerCase();

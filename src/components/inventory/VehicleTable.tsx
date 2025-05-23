@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Vehicle, ImportStatus } from "@/types/inventory";
 import { CircleCheck, CircleX, ExternalLink, Mail, MoreHorizontal, ArrowUp, ArrowDown, Plus } from "lucide-react";
@@ -182,7 +181,6 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
         if (!selectedSupplier) {
           toast({
             title: "Leverancier ontbreekt",
-            description: "Selecteer eerst een leverancier.",
             description: "Selecteer eerst een leverancier.",
             variant: "destructive"
           });

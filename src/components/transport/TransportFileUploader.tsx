@@ -2,14 +2,14 @@
 import React, { useState } from "react";
 import { FileUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FileCategory } from "@/types/inventory";
+import { FileCategory, VehicleFile } from "@/types/inventory";
 import { uploadVehicleFile } from "@/services/inventoryService";
 import { useToast } from "@/hooks/use-toast";
 
 interface TransportFileUploaderProps {
   vehicleId: string;
   category: FileCategory;
-  onFileUploaded: (fileUrl: string) => void;
+  onFileUploaded: (fileData: VehicleFile) => void;
 }
 
 export const TransportFileUploader: React.FC<TransportFileUploaderProps> = ({
@@ -28,8 +28,8 @@ export const TransportFileUploader: React.FC<TransportFileUploaderProps> = ({
     
     try {
       setIsUploading(true);
-      const fileUrl = await uploadVehicleFile(file, category, vehicleId);
-      onFileUploaded(fileUrl);
+      const fileData = await uploadVehicleFile(file, category, vehicleId);
+      onFileUploaded(fileData);
       toast({
         title: "Document geüpload",
         description: `${file.name} is succesvol geüpload.`,
