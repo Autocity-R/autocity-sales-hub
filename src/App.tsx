@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Inventory from "./pages/Inventory";
+import InventoryOnline from "./pages/InventoryOnline";
 import Transport from "./pages/Transport";
 import NotFound from "./pages/NotFound";
 import Customers from "./pages/Customers";
@@ -25,7 +26,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/inventory" element={<Inventory />} />
-          <Route path="/inventory/online" element={<Inventory />} />
+          <Route path="/inventory/online" element={<InventoryOnline />} />
           <Route path="/inventory/b2b" element={<InventoryB2B />} />
           <Route path="/inventory/consumer" element={<InventoryB2C />} />
           <Route path="/inventory/delivered" element={<InventoryDelivered />} />

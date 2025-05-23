@@ -1,4 +1,3 @@
-
 import { Vehicle, PaymentStatus, PaintStatus, FileCategory, VehicleFile, SalesStatus } from "@/types/inventory";
 import { Contact } from "@/types/customer";
 
@@ -176,6 +175,9 @@ const mockStockVehicles = mockVehicles.filter(v => v.salesStatus === 'voorraad')
 
 // Mock delivered vehicles
 const mockDeliveredVehicles = mockVehicles.filter(v => v.paymentStatus === 'volledig_betaald' && (v.salesStatus === 'verkocht_b2b' || v.salesStatus === 'verkocht_b2c'));
+
+// Mock online vehicles (showroomOnline = true and salesStatus = 'voorraad')
+const mockOnlineVehicles = mockVehicles.filter(v => v.showroomOnline === true && v.salesStatus === 'voorraad');
 
 export const fetchVehicles = async (): Promise<Vehicle[]> => {
   try {
@@ -514,5 +516,21 @@ export const bulkUpdateVehicles = async (vehicles: Vehicle[]): Promise<Vehicle[]
     console.error("Failed to bulk update vehicles:", error);
     // Return the input vehicles as if they were updated
     return vehicles;
+  }
+};
+
+// Add new function for fetching online vehicles
+export const fetchOnlineVehicles = async (): Promise<Vehicle[]> => {
+  try {
+    const response = await fetch(`${API_URL}/api/vehicles?online=true`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error: any) {
+    console.error("Failed to fetch online vehicles:", error);
+    // Return mock online vehicles
+    console.log("Returning mock online vehicles due to API failure");
+    return mockOnlineVehicles;
   }
 };
