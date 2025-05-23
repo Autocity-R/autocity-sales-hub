@@ -3,7 +3,7 @@ import React from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -16,8 +16,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronUp, ChevronDown, MoreHorizontal, Mail, Car } from "lucide-react";
+import { ChevronUp, ChevronDown, MoreHorizontal, Mail, Car, CircleCheck } from "lucide-react";
 import { Vehicle, PaymentStatus, PaintStatus } from "@/types/inventory";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
 
 interface VehicleB2CTableProps {
   vehicles: Vehicle[];
@@ -30,6 +31,7 @@ interface VehicleB2CTableProps {
   handleUpdatePaymentStatus: (vehicleId: string, status: PaymentStatus) => void;
   handleUpdatePaintStatus: (vehicleId: string, status: PaintStatus) => void;
   onMarkAsDelivered: (vehicleId: string) => void;
+  handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   isLoading: boolean;
   error: unknown;
   onSort: (field: string) => void;
@@ -48,6 +50,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
   handleUpdatePaymentStatus,
   handleUpdatePaintStatus,
   onMarkAsDelivered,
+  handleChangeStatus,
   isLoading,
   error,
   onSort,
@@ -250,69 +253,119 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
             </TableRow>
           ) : (
             vehicles.map((vehicle) => (
-              <TableRow key={vehicle.id} className="cursor-pointer hover:bg-muted/50">
-                <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
-                  <Checkbox 
-                    checked={selectedVehicles.includes(vehicle.id)} 
-                    onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, checked === true)} 
-                    aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
-                  />
-                </TableCell>
-                <TableCell className="align-middle font-medium" onClick={() => handleSelectVehicle(vehicle)}>
-                  {vehicle.brand}
-                </TableCell>
-                <TableCell className="align-middle" onClick={() => handleSelectVehicle(vehicle)}>
-                  {vehicle.model}
-                </TableCell>
-                <TableCell className="align-middle" onClick={() => handleSelectVehicle(vehicle)}>
-                  {vehicle.mileage.toLocaleString()} km
-                </TableCell>
-                <TableCell className="align-middle whitespace-nowrap" onClick={() => handleSelectVehicle(vehicle)}>
-                  {vehicle.vin}
-                </TableCell>
-                <TableCell className="align-middle font-medium" onClick={() => handleSelectVehicle(vehicle)}>
-                  {vehicle.purchasePrice ? `€ ${vehicle.purchasePrice.toLocaleString()}` : '-'}
-                </TableCell>
-                <TableCell className="align-middle font-medium" onClick={() => handleSelectVehicle(vehicle)}>
-                  € {vehicle.sellingPrice.toLocaleString()}
-                </TableCell>
-                <TableCell className="align-middle" onClick={() => handleSelectVehicle(vehicle)}>
-                  {vehicle.customerName || "Onbekend"}
-                </TableCell>
-                <TableCell className="align-middle" onClick={() => handleSelectVehicle(vehicle)}>
-                  {renderImportStatus(vehicle.importStatus)}
-                </TableCell>
-                <TableCell className="align-middle" onClick={() => handleSelectVehicle(vehicle)}>
-                  {renderWorkshopStatus(vehicle.workshopStatus)}
-                </TableCell>
-                <TableCell className="align-middle" onClick={() => handleSelectVehicle(vehicle)}>
-                  {renderPaintStatus(vehicle.paintStatus)}
-                </TableCell>
-                <TableCell className="align-middle" onClick={() => handleSelectVehicle(vehicle)}>
-                  {renderLocationStatus(vehicle.location)}
-                </TableCell>
-                <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-5 w-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleSendEmail("contract_b2c", vehicle.id)}>
-                        <Mail className="h-4 w-4 mr-2" />
-                        Stuur koopcontract
-                      </DropdownMenuItem>
-                      {vehicle.paymentStatus === "volledig_betaald" && (
-                        <DropdownMenuItem onClick={() => handleDeliveryConfirm(vehicle.id)}>
-                          <Car className="h-4 w-4 mr-2" />
-                          Auto afgeleverd
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
+              <ContextMenu key={vehicle.id}>
+                <ContextMenuTrigger>
+                  <TableRow className="cursor-pointer hover:bg-muted/50">
+                    <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox 
+                        checked={selectedVehicles.includes(vehicle.id)} 
+                        onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, checked === true)} 
+                        aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
+                      />
+                    </TableCell>
+                    <TableCell className="align-middle font-medium" onClick={() => handleSelectVehicle(vehicle)}>
+                      {vehicle.brand}
+                    </TableCell>
+                    <TableCell className="align-middle" onClick={() => handleSelectVehicle(vehicle)}>
+                      {vehicle.model}
+                    </TableCell>
+                    <TableCell className="align-middle" onClick={() => handleSelectVehicle(vehicle)}>
+                      {vehicle.mileage.toLocaleString()} km
+                    </TableCell>
+                    <TableCell className="align-middle whitespace-nowrap" onClick={() => handleSelectVehicle(vehicle)}>
+                      {vehicle.vin}
+                    </TableCell>
+                    <TableCell className="align-middle font-medium" onClick={() => handleSelectVehicle(vehicle)}>
+                      {vehicle.purchasePrice ? `€ ${vehicle.purchasePrice.toLocaleString()}` : '-'}
+                    </TableCell>
+                    <TableCell className="align-middle font-medium" onClick={() => handleSelectVehicle(vehicle)}>
+                      € {vehicle.sellingPrice.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="align-middle" onClick={() => handleSelectVehicle(vehicle)}>
+                      {vehicle.customerName || "Onbekend"}
+                    </TableCell>
+                    <TableCell className="align-middle" onClick={() => handleSelectVehicle(vehicle)}>
+                      {renderImportStatus(vehicle.importStatus)}
+                    </TableCell>
+                    <TableCell className="align-middle" onClick={() => handleSelectVehicle(vehicle)}>
+                      {renderWorkshopStatus(vehicle.workshopStatus)}
+                    </TableCell>
+                    <TableCell className="align-middle" onClick={() => handleSelectVehicle(vehicle)}>
+                      {renderPaintStatus(vehicle.paintStatus)}
+                    </TableCell>
+                    <TableCell className="align-middle" onClick={() => handleSelectVehicle(vehicle)}>
+                      {renderLocationStatus(vehicle.location)}
+                    </TableCell>
+                    <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-5 w-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleSendEmail("contract_b2c", vehicle.id)}>
+                            <Mail className="h-4 w-4 mr-2" />
+                            Stuur koopcontract
+                          </DropdownMenuItem>
+                          
+                          {handleChangeStatus && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuLabel>Verkoopstatus</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => handleChangeStatus(vehicle.id, "verkocht_b2b")}>
+                                Verkocht B2B
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleChangeStatus(vehicle.id, "verkocht_b2c")}>
+                                Verkocht Particulier
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleChangeStatus(vehicle.id, "voorraad")}>
+                                Terug naar voorraad
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          
+                          {vehicle.paymentStatus === "volledig_betaald" && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleDeliveryConfirm(vehicle.id)}>
+                                <Car className="h-4 w-4 mr-2" />
+                                Auto afgeleverd
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                </ContextMenuTrigger>
+                <ContextMenuContent className="w-56 bg-popover border shadow-md z-50">
+                  <ContextMenuItem onClick={() => handleSelectVehicle(vehicle)}>
+                    Bekijk details
+                  </ContextMenuItem>
+                  
+                  {handleChangeStatus && (
+                    <>
+                      <ContextMenuItem onClick={() => handleChangeStatus(vehicle.id, "verkocht_b2b")}>
+                        Markeer als verkocht B2B
+                      </ContextMenuItem>
+                      <ContextMenuItem onClick={() => handleChangeStatus(vehicle.id, "verkocht_b2c")}>
+                        Markeer als verkocht particulier
+                      </ContextMenuItem>
+                      <ContextMenuItem onClick={() => handleChangeStatus(vehicle.id, "voorraad")}>
+                        Zet terug naar voorraad
+                      </ContextMenuItem>
+                    </>
+                  )}
+                  
+                  {vehicle.paymentStatus === "volledig_betaald" && (
+                    <ContextMenuItem onClick={() => handleDeliveryConfirm(vehicle.id)}>
+                      <CircleCheck className="h-4 w-4 mr-2" />
+                      Markeer als afgeleverd
+                    </ContextMenuItem>
+                  )}
+                </ContextMenuContent>
+              </ContextMenu>
             ))
           )}
         </TableBody>

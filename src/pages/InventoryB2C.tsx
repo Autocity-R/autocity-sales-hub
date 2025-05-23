@@ -18,6 +18,7 @@ import {
   updatePaintStatus,
   markVehicleAsDelivered,
   uploadVehicleFile,
+  changeVehicleStatus,
 } from "@/services/inventoryService";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 
@@ -330,6 +331,32 @@ const InventoryB2C = () => {
     uploadFileMutation.mutate({ file, category, vehicleId: selectedVehicle.id });
   };
 
+  // Add new mutation for changing vehicle status
+  const changeVehicleStatusMutation = useMutation({
+    mutationFn: ({ vehicleId, status }: { vehicleId: string; status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad' }) => 
+      changeVehicleStatus(vehicleId, status),
+    onSuccess: () => {
+      toast({
+        description: "Voertuigstatus bijgewerkt"
+      });
+      queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        description: "Fout bij het bijwerken van de voertuigstatus"
+      });
+      console.error("Error updating vehicle status:", error);
+    }
+  });
+
+  // Add new handler for changing vehicle status
+  const handleChangeStatus = (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => {
+    changeVehicleStatusMutation.mutate({ vehicleId, status });
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-4">
@@ -365,6 +392,7 @@ const InventoryB2C = () => {
             handleUpdatePaymentStatus={handleUpdatePaymentStatus}
             handleUpdatePaintStatus={handleUpdatePaintStatus}
             onMarkAsDelivered={handleMarkAsDelivered}
+            handleChangeStatus={handleChangeStatus}
             isLoading={isLoading}
             error={error}
             onSort={handleSort}

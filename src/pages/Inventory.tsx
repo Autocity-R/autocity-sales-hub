@@ -17,6 +17,7 @@ import {
   uploadVehiclePhoto,
   markVehicleAsDelivered,
   uploadVehicleFile,
+  changeVehicleStatus,
 } from "@/services/inventoryService";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 
@@ -309,6 +310,33 @@ const Inventory = () => {
     if (!selectedVehicle) return;
     uploadFileMutation.mutate({ file, category, vehicleId: selectedVehicle.id });
   };
+
+  // Add new mutation for changing vehicle status
+  const changeVehicleStatusMutation = useMutation({
+    mutationFn: ({ vehicleId, status }: { vehicleId: string; status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad' }) => 
+      changeVehicleStatus(vehicleId, status),
+    onSuccess: () => {
+      toast({
+        description: "Voertuigstatus bijgewerkt"
+      });
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        description: "Fout bij het bijwerken van de voertuigstatus"
+      });
+      console.error("Error updating vehicle status:", error);
+    }
+  });
+
+  // Add new handler for changing vehicle status
+  const handleChangeStatus = (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => {
+    changeVehicleStatusMutation.mutate({ vehicleId, status });
+  };
+
   
   return (
     <DashboardLayout>
@@ -341,12 +369,13 @@ const Inventory = () => {
             toggleSelectVehicle={toggleSelectVehicle}
             handleSelectVehicle={setSelectedVehicle}
             handleSendEmail={handleSendEmail}
+            handleChangeStatus={handleChangeStatus}
             isLoading={isLoading}
             error={error}
             onSort={handleSort}
             sortField={sortField}
             sortDirection={sortDirection}
-            handleMarkAsDelivered={handleMarkAsDelivered} // Changed the prop name to match VehicleTableProps
+            handleMarkAsDelivered={handleMarkAsDelivered}
           />
         </div>
       </div>
@@ -361,7 +390,7 @@ const Inventory = () => {
           onRemovePhoto={handleRemovePhoto}
           onSetMainPhoto={handleSetMainPhoto}
           onFileUpload={handleUploadFile}
-          files={vehicleFiles} // Now passing the proper array from the hook
+          files={vehicleFiles}
         />
       )}
     </DashboardLayout>
