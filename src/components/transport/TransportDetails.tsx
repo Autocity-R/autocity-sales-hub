@@ -43,7 +43,7 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
   onFileUpload
 }) => {
   const [updatedVehicle, setUpdatedVehicle] = useState<Vehicle>(vehicle);
-  const { vehicleFiles } = useVehicleFiles(vehicle);
+  const { vehicleFiles = [] } = useVehicleFiles(vehicle);
   const [notes, setNotes] = useState(vehicle.notes || "");
 
   const handleImportStatusChange = (status: ImportStatus) => {
@@ -73,6 +73,12 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
     // In a real app, refresh the files list or add the new file to the state
     console.log("File uploaded:", fileUrl);
   };
+
+  // Get CMR files
+  const cmrFiles = vehicleFiles.filter(file => file.category === "cmr");
+  
+  // Get damage files
+  const damageFiles = vehicleFiles.filter(file => file.category === "damage");
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
@@ -225,7 +231,7 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
                   <div className="text-sm text-muted-foreground mb-2">
                     {updatedVehicle.cmrSent ? `Verstuurd op ${new Date(updatedVehicle.cmrDate || "").toLocaleDateString()}` : "Nog niet verstuurd"}
                   </div>
-                  {vehicleFiles && vehicleFiles.filter(file => file.category === "cmr").length > 0 && (
+                  {cmrFiles.length > 0 && (
                     <Button variant="outline" size="sm">
                       <FileText className="mr-2 h-4 w-4" />
                       Download CMR
@@ -267,7 +273,7 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
                   <div className="text-sm text-muted-foreground mb-2">
                     Optioneel: alleen bij schade
                   </div>
-                  {vehicleFiles && vehicleFiles.filter(file => file.category === "damage").length > 0 && (
+                  {damageFiles.length > 0 && (
                     <Button variant="outline" size="sm">
                       <FileText className="mr-2 h-4 w-4" />
                       Download schadeformulier

@@ -4,13 +4,15 @@ import { Vehicle, VehicleFile } from "@/types/inventory";
 import { fetchVehicleFiles } from "@/services/inventoryService";
 
 export const useVehicleFiles = (vehicle: Vehicle | null) => {
-  const { data: vehicleFiles = [] } = useQuery({
+  const { data: vehicleFiles = [], isLoading, error } = useQuery({
     queryKey: ["vehicleFiles", vehicle?.id],
     queryFn: () => vehicle ? fetchVehicleFiles(vehicle.id) : Promise.resolve([]),
-    enabled: !!vehicle
+    enabled: !!vehicle,
   });
 
   return {
-    vehicleFiles
+    vehicleFiles: Array.isArray(vehicleFiles) ? vehicleFiles : [],
+    isLoading,
+    error,
   };
 };
