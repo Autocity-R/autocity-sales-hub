@@ -14,6 +14,7 @@ import CustomerDetail from "./pages/CustomerDetail";
 import InventoryB2B from "./pages/InventoryB2B";
 import InventoryB2C from "./pages/InventoryB2C";
 import InventoryDelivered from "./pages/InventoryDelivered";
+import Leads from "./pages/Leads";
 
 const queryClient = new QueryClient();
 
@@ -31,7 +32,7 @@ const App = () => (
           <Route path="/inventory/consumer" element={<InventoryB2C />} />
           <Route path="/inventory/delivered" element={<InventoryDelivered />} />
           <Route path="/transport" element={<Transport />} />
-          <Route path="/leads" element={<Index />} />
+          <Route path="/leads" element={<Leads />} />
           
           {/* Customer management routes */}
           <Route path="/customers" element={<Customers />} />
