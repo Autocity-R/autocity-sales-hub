@@ -201,6 +201,12 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
                 VIN
               </div>
             </TableHead>
+            <TableHead className="cursor-pointer" onClick={() => handleSort("purchasePrice")}>
+              <div className="flex items-center">
+                Inkoop prijs
+                {renderSortIcon("purchasePrice")}
+              </div>
+            </TableHead>
             <TableHead className="cursor-pointer" onClick={() => handleSort("sellingPrice")}>
               <div className="flex items-center">
                 Verkoopprijs
@@ -238,7 +244,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
         <TableBody>
           {vehicles.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                 Geen voertuigen gevonden
               </TableCell>
             </TableRow>
@@ -263,6 +269,9 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
                 </TableCell>
                 <TableCell className="align-middle whitespace-nowrap" onClick={() => handleSelectVehicle(vehicle)}>
                   {vehicle.vin}
+                </TableCell>
+                <TableCell className="align-middle font-medium" onClick={() => handleSelectVehicle(vehicle)}>
+                  {vehicle.purchasePrice ? `€ ${vehicle.purchasePrice.toLocaleString()}` : '-'}
                 </TableCell>
                 <TableCell className="align-middle font-medium" onClick={() => handleSelectVehicle(vehicle)}>
                   € {vehicle.sellingPrice.toLocaleString()}

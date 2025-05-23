@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Vehicle, ImportStatus, PaymentStatus } from "@/types/inventory";
 import { 
@@ -99,7 +100,7 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
   handleSendEmail,
   handleUpdateSellingPrice,
   handleUpdatePaymentStatus,
-  onMarkAsDelivered, // Add new prop
+  onMarkAsDelivered,
   isLoading,
   error,
   onSort,
@@ -175,6 +176,9 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
               {renderSortableHeader("vin", "VIN")}
             </TableHead>
             <TableHead>
+              {renderSortableHeader("purchasePrice", "Inkoop prijs")}
+            </TableHead>
+            <TableHead>
               {renderSortableHeader("sellingPrice", "Verkoopprijs")}
             </TableHead>
             <TableHead>
@@ -194,7 +198,7 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
         </TableHeader>
         <TableBody>
           <TableRow>
-            <TableCell colSpan={13} className="h-24 text-center">
+            <TableCell colSpan={14} className="h-24 text-center">
               Geen B2B verkochte voertuigen gevonden.
             </TableCell>
           </TableRow>
@@ -230,6 +234,9 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
             </TableHead>
             <TableHead>
               {renderSortableHeader("vin", "VIN")}
+            </TableHead>
+            <TableHead>
+              {renderSortableHeader("purchasePrice", "Inkoop prijs")}
             </TableHead>
             <TableHead>
               {renderSortableHeader("sellingPrice", "Verkoopprijs")}
@@ -282,6 +289,9 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
               <TableCell>{vehicle.mileage.toLocaleString('nl-NL')} km</TableCell>
               <TableCell>{vehicle.licenseNumber}</TableCell>
               <TableCell>{vehicle.vin}</TableCell>
+              <TableCell className="font-medium">
+                {vehicle.purchasePrice ? `€ ${vehicle.purchasePrice.toLocaleString('nl-NL')}` : '-'}
+              </TableCell>
               <TableCell>
                 {vehicle.sellingPrice ? (
                   <span className="font-medium">€ {vehicle.sellingPrice.toLocaleString('nl-NL')}</span>

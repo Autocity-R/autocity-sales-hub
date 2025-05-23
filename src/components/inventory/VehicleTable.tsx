@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Vehicle, ImportStatus } from "@/types/inventory";
 import { CircleCheck, CircleX, ExternalLink, Mail, MoreHorizontal, ArrowUp, ArrowDown, Plus } from "lucide-react";
@@ -56,7 +57,7 @@ interface VehicleTableProps {
   handleSendEmail: (type: string, vehicleId: string) => void;
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   handleDeleteVehicle?: (vehicleId: string) => void;
-  handleMarkAsDelivered?: (vehicleId: string) => void; // Optional prop for marking as delivered
+  handleMarkAsDelivered?: (vehicleId: string) => void;
   isLoading: boolean;
   error: unknown;
   onSort?: (field: string) => void;
@@ -67,8 +68,8 @@ interface VehicleTableProps {
 export const renderImportStatusBadge = (status: ImportStatus) => {
   const statusMap: Record<ImportStatus, { label: string, variant: "default" | "outline" | "secondary" | "destructive" }> = {
     niet_gestart: { label: "Niet gestart", variant: "outline" },
-    aangemeld: { label: "Aangemeld", variant: "outline" }, // Added missing status
-    goedgekeurd: { label: "Goedgekeurd", variant: "secondary" }, // Added missing status
+    aangemeld: { label: "Aangemeld", variant: "outline" },
+    goedgekeurd: { label: "Goedgekeurd", variant: "secondary" },
     transport_geregeld: { label: "Transport geregeld", variant: "secondary" },
     onderweg: { label: "Onderweg", variant: "secondary" },
     aangekomen: { label: "Aangekomen", variant: "default" },
@@ -284,6 +285,12 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
               {renderSortableHeader("vin", "VIN")}
             </TableHead>
             <TableHead>
+              {renderSortableHeader("purchasePrice", "Inkoop prijs")}
+            </TableHead>
+            <TableHead>
+              {renderSortableHeader("sellingPrice", "Verkoop prijs")}
+            </TableHead>
+            <TableHead>
               {renderSortableHeader("mileage", "KM Stand")}
             </TableHead>
             <TableHead className="w-[150px]">
@@ -309,7 +316,7 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
         </TableHeader>
         <TableBody>
           <TableRow>
-            <TableCell colSpan={14} className="h-24 text-center">
+            <TableCell colSpan={16} className="h-24 text-center">
               Geen voertuigen gevonden.
             </TableCell>
           </TableRow>
@@ -342,6 +349,12 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
             </TableHead>
             <TableHead>
               {renderSortableHeader("vin", "VIN")}
+            </TableHead>
+            <TableHead>
+              {renderSortableHeader("purchasePrice", "Inkoop prijs")}
+            </TableHead>
+            <TableHead>
+              {renderSortableHeader("sellingPrice", "Verkoop prijs")}
             </TableHead>
             <TableHead>
               {renderSortableHeader("mileage", "KM Stand")}
@@ -399,6 +412,12 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
               <TableCell>{vehicle.model}</TableCell>
               <TableCell>{vehicle.licenseNumber}</TableCell>
               <TableCell>{vehicle.vin}</TableCell>
+              <TableCell className="font-medium">
+                {vehicle.purchasePrice ? `€ ${vehicle.purchasePrice.toLocaleString('nl-NL')}` : '-'}
+              </TableCell>
+              <TableCell className="font-medium">
+                {vehicle.sellingPrice ? `€ ${vehicle.sellingPrice.toLocaleString('nl-NL')}` : '-'}
+              </TableCell>
               <TableCell>{vehicle.mileage.toLocaleString('nl-NL')} km</TableCell>
               <TableCell>{renderImportStatusBadge(vehicle.importStatus)}</TableCell>
               <TableCell>
