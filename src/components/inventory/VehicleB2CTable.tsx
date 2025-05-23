@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -171,7 +170,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
 
   return (
     <>
-      <div className="w-full overflow-x-auto">
+      <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -182,62 +181,62 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
                   aria-label="Selecteer alle voertuigen"
                 />
               </TableHead>
-              <TableHead className="cursor-pointer whitespace-nowrap" onClick={() => handleSort("brand")}>
+              <TableHead className="cursor-pointer" onClick={() => handleSort("brand")}>
                 <div className="flex items-center">
                   Merk
                   {renderSortIcon("brand")}
                 </div>
               </TableHead>
-              <TableHead className="cursor-pointer whitespace-nowrap" onClick={() => handleSort("model")}>
+              <TableHead className="cursor-pointer" onClick={() => handleSort("model")}>
                 <div className="flex items-center">
                   Model
                   {renderSortIcon("model")}
                 </div>
               </TableHead>
-              <TableHead className="cursor-pointer whitespace-nowrap" onClick={() => handleSort("mileage")}>
+              <TableHead className="cursor-pointer" onClick={() => handleSort("mileage")}>
                 <div className="flex items-center">
                   Kilometerstand
                   {renderSortIcon("mileage")}
                 </div>
               </TableHead>
-              <TableHead className="whitespace-nowrap">
+              <TableHead>
                 <div className="flex items-center">
                   VIN
                 </div>
               </TableHead>
-              <TableHead className="cursor-pointer whitespace-nowrap" onClick={() => handleSort("purchasePrice")}>
+              <TableHead className="cursor-pointer" onClick={() => handleSort("purchasePrice")}>
                 <div className="flex items-center">
                   Inkoop prijs
                   {renderSortIcon("purchasePrice")}
                 </div>
               </TableHead>
-              <TableHead className="cursor-pointer whitespace-nowrap" onClick={() => handleSort("sellingPrice")}>
+              <TableHead className="cursor-pointer" onClick={() => handleSort("sellingPrice")}>
                 <div className="flex items-center">
                   Verkoopprijs
                   {renderSortIcon("sellingPrice")}
                 </div>
               </TableHead>
-              <TableHead className="whitespace-nowrap">
+              <TableHead>
                 <div className="flex items-center">
                   Klantnaam
                 </div>
               </TableHead>
-              <TableHead className="whitespace-nowrap">
+              <TableHead>
                 <div className="flex items-center">
                   Import status
                 </div>
               </TableHead>
-              <TableHead className="whitespace-nowrap">
+              <TableHead>
                 <div className="flex items-center">
                   Werkplaats status
                 </div>
               </TableHead>
-              <TableHead className="whitespace-nowrap">
+              <TableHead>
                 <div className="flex items-center">
                   Lak status
                 </div>
               </TableHead>
-              <TableHead className="whitespace-nowrap">
+              <TableHead>
                 <div className="flex items-center">
                   Locatie
                 </div>
@@ -256,8 +255,8 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
               vehicles.map((vehicle) => (
                 <ContextMenu key={vehicle.id}>
                   <ContextMenuTrigger>
-                    <TableRow className="cursor-pointer hover:bg-muted/50">
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableRow className="cursor-pointer">
+                      <TableCell onClick={(e) => e.stopPropagation()} className="p-4">
                         <Checkbox 
                           checked={selectedVehicles.includes(vehicle.id)} 
                           onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, checked === true)} 
@@ -273,7 +272,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
                       <TableCell onClick={() => handleSelectVehicle(vehicle)}>
                         {vehicle.mileage.toLocaleString()} km
                       </TableCell>
-                      <TableCell className="whitespace-nowrap" onClick={() => handleSelectVehicle(vehicle)}>
+                      <TableCell onClick={() => handleSelectVehicle(vehicle)}>
                         {vehicle.vin}
                       </TableCell>
                       <TableCell className="font-medium" onClick={() => handleSelectVehicle(vehicle)}>
@@ -297,7 +296,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
                       <TableCell onClick={() => handleSelectVehicle(vehicle)}>
                         {renderLocationStatus(vehicle.location)}
                       </TableCell>
-                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="text-right p-4" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
