@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { CalendarView } from "@/components/calendar/CalendarView";
+import { WeekView } from "@/components/calendar/WeekView";
 import { AppointmentForm } from "@/components/calendar/AppointmentForm";
 import { AppointmentsList } from "@/components/calendar/AppointmentsList";
 import { CalendarAIAssistant } from "@/components/calendar/CalendarAIAssistant";
