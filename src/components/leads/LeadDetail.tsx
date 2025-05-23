@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/ui/page-header";
-import { Lead } from "@/types/leads";
-import { getLeadActivities, getLeadEmails, getLeadProposals } from "@/services/leadService";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Lead, LeadStatus } from "@/types/leads";
+import { getLeadActivities, getLeadEmails, getLeadProposals, updateLeadStatus } from "@/services/leadService";
 import { LeadActivities } from "./LeadActivities";
 import { LeadCommunication } from "./LeadCommunication";
 import { LeadProposals } from "./LeadProposals";
@@ -18,20 +19,32 @@ import {
   Calendar,
   Euro,
   Clock,
-  TrendingUp
+  TrendingUp,
+  Bot,
+  UserCheck
 } from "lucide-react";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 interface LeadDetailProps {
   lead: Lead;
   onBack: () => void;
   onUpdate: (lead: Lead) => void;
+  onSendEmail?: () => void;
+  onOpenAI?: () => void;
 }
 
-export const LeadDetail: React.FC<LeadDetailProps> = ({ lead, onBack, onUpdate }) => {
+export const LeadDetail: React.FC<LeadDetailProps> = ({ 
+  lead, 
+  onBack, 
+  onUpdate, 
+  onSendEmail, 
+  onOpenAI 
+}) => {
   const [activities] = useState(getLeadActivities(lead.id));
   const [emails] = useState(getLeadEmails(lead.id));
   const [proposals] = useState(getLeadProposals(lead.id));
+  const { toast } = useToast();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -59,16 +72,53 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({ lead, onBack, onUpdate }
     }
   };
 
+  const handleStatusChange = (newStatus: LeadStatus) => {
+    const updatedLead = updateLeadStatus(lead.id, newStatus);
+    if (updatedLead) {
+      onUpdate(updatedLead);
+      toast({
+        title: "Status bijgewerkt",
+        description: `Lead status gewijzigd naar ${getStatusLabel(newStatus)}`,
+      });
+    }
+  };
+
+  const handleAssignToMe = () => {
+    // TODO: Implement assignment logic
+    const updatedLead = { ...lead, assignedTo: "Admin" };
+    onUpdate(updatedLead);
+    toast({
+      title: "Lead toegewezen",
+      description: "Lead is aan jou toegewezen",
+    });
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={`${lead.firstName} ${lead.lastName}`}
         description={lead.company || lead.email}
       >
-        <Button variant="outline" onClick={onBack} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Terug naar overzicht
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onOpenAI} className="gap-2">
+            <Bot className="h-4 w-4" />
+            AI Assistant
+          </Button>
+          <Button variant="outline" onClick={onSendEmail} className="gap-2">
+            <Mail className="h-4 w-4" />
+            Email Versturen
+          </Button>
+          {!lead.assignedTo && (
+            <Button variant="outline" onClick={handleAssignToMe} className="gap-2">
+              <UserCheck className="h-4 w-4" />
+              Toewijzen aan mij
+            </Button>
+          )}
+          <Button variant="outline" onClick={onBack} className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Terug naar overzicht
+          </Button>
+        </div>
       </PageHeader>
 
       {/* Lead Overview Cards */}
@@ -78,9 +128,25 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({ lead, onBack, onUpdate }
             <CardTitle className="text-sm font-medium">Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <Badge className={`${getStatusColor(lead.status)} text-white`}>
-              {getStatusLabel(lead.status)}
-            </Badge>
+            <div className="space-y-2">
+              <Badge className={`${getStatusColor(lead.status)} text-white`}>
+                {getStatusLabel(lead.status)}
+              </Badge>
+              <Select value={lead.status} onValueChange={handleStatusChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new">Nieuw</SelectItem>
+                  <SelectItem value="contacted">Gecontacteerd</SelectItem>
+                  <SelectItem value="qualified">Gekwalificeerd</SelectItem>
+                  <SelectItem value="proposal">Offerte</SelectItem>
+                  <SelectItem value="negotiation">Onderhandeling</SelectItem>
+                  <SelectItem value="won">Gewonnen</SelectItem>
+                  <SelectItem value="lost">Verloren</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
         </Card>
 
@@ -108,13 +174,18 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({ lead, onBack, onUpdate }
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Reactietijd</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Toegewezen aan</CardTitle>
+            <UserCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {lead.responseTime ? `${lead.responseTime}u` : 'Nog niet gereageerd'}
+            <div className="text-sm font-medium">
+              {lead.assignedTo || 'Niet toegewezen'}
             </div>
+            {lead.responseTime && (
+              <div className="text-xs text-muted-foreground">
+                Reactietijd: {lead.responseTime}u
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -154,6 +225,17 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({ lead, onBack, onUpdate }
               <div>
                 <span className="font-medium">Bron: </span>
                 <span>{lead.source}</span>
+              </div>
+              <div>
+                <span className="font-medium">Prioriteit: </span>
+                <Badge variant="outline" className={
+                  lead.priority === 'urgent' ? 'border-red-500 text-red-700' :
+                  lead.priority === 'high' ? 'border-orange-500 text-orange-700' :
+                  lead.priority === 'medium' ? 'border-yellow-500 text-yellow-700' :
+                  'border-green-500 text-green-700'
+                }>
+                  {lead.priority}
+                </Badge>
               </div>
             </div>
           </div>

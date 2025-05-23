@@ -8,9 +8,14 @@ import { format } from "date-fns";
 interface LeadPipelineProps {
   leads: Lead[];
   onLeadClick: (lead: Lead) => void;
+  onStatusClick?: (status: LeadStatus) => void;
 }
 
-export const LeadPipeline: React.FC<LeadPipelineProps> = ({ leads, onLeadClick }) => {
+export const LeadPipeline: React.FC<LeadPipelineProps> = ({ 
+  leads, 
+  onLeadClick, 
+  onStatusClick 
+}) => {
   const statusColumns: { status: LeadStatus; label: string; color: string }[] = [
     { status: 'new', label: 'Nieuw', color: 'bg-blue-500' },
     { status: 'contacted', label: 'Gecontacteerd', color: 'bg-yellow-500' },
@@ -38,7 +43,12 @@ export const LeadPipeline: React.FC<LeadPipelineProps> = ({ leads, onLeadClick }
           
           return (
             <div key={column.status} className="space-y-3">
-              <Card>
+              <Card 
+                className={`cursor-pointer hover:shadow-md transition-shadow ${
+                  onStatusClick ? 'hover:bg-accent' : ''
+                }`}
+                onClick={() => onStatusClick?.(column.status)}
+              >
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center justify-between">
                     <span>{column.label}</span>
@@ -89,6 +99,12 @@ export const LeadPipeline: React.FC<LeadPipelineProps> = ({ leads, onLeadClick }
                         {lead.budget && (
                           <p className="text-xs text-green-600 font-medium">
                             € {lead.budget.toLocaleString()}
+                          </p>
+                        )}
+                        
+                        {lead.assignedTo && (
+                          <p className="text-xs text-blue-600">
+                            👤 {lead.assignedTo}
                           </p>
                         )}
                         
