@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +31,8 @@ import {
   Mail,
   Edit,
   Save,
-  X
+  X,
+  Heart
 } from "lucide-react";
 import { WarrantyClaim } from "@/types/warranty";
 import { useToast } from "@/hooks/use-toast";
@@ -139,6 +139,36 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
     });
   };
 
+  const handleSendHappyCall = () => {
+    // In een echte implementatie zou dit een API call zijn naar de email service
+    const emailContent = `
+Beste ${claim.customerName},
+
+Wij hopen dat u tevreden bent met de afhandeling van uw garantieclaim voor uw ${claim.vehicleBrand} ${claim.vehicleModel} (${claim.vehicleLicenseNumber}).
+
+Uw voertuig is recent gerepareerd en wij willen graag weten hoe u onze service heeft ervaren. Uw feedback is zeer waardevol voor ons om onze dienstverlening te blijven verbeteren.
+
+Zou u zo vriendelijk willen zijn om een paar minuten te nemen voor de volgende vragen:
+- Hoe tevreden bent u met de snelheid van afhandeling?
+- Was de communicatie tijdens het proces duidelijk?
+- Zijn er nog zaken die u wilt melden of verbeterpunten?
+
+Als u een review wilt achterlaten over onze service, kunt u dat doen via: https://review.autogarantie.nl/review/${claim.id}
+
+Mocht u nog vragen hebben of ontevreden zijn over bepaalde aspecten, neem dan gerust contact met ons op.
+
+Met vriendelijke groet,
+Het Garantieteam
+    `;
+    
+    console.log("Happy Call email sent to:", claim.customerName, emailContent);
+    
+    toast({
+      title: "Happy Call verzonden",
+      description: `Follow-up email verzonden naar ${claim.customerName} voor feedback over de service.`,
+    });
+  };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -153,61 +183,59 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Voertuig Informatie */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Car className="h-5 w-5" />
-                  Voertuig Informatie
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <p className="text-sm text-muted-foreground">Merk & Model</p>
-                  <p className="font-medium">{claim.vehicleBrand} {claim.vehicleModel}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Kenteken</p>
-                  <p className="font-medium">{claim.vehicleLicenseNumber}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Leverdatum</p>
-                  <p className="font-medium">{formatDate(claim.deliveryDate)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Garantie periode</p>
-                  <p className="font-medium">
-                    {formatDate(claim.warrantyStartDate)} - {formatDate(claim.warrantyEndDate)}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Voertuig Informatie */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Car className="h-5 w-5" />
+                Voertuig Informatie
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <p className="text-sm text-muted-foreground">Merk & Model</p>
+                <p className="font-medium">{claim.vehicleBrand} {claim.vehicleModel}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Kenteken</p>
+                <p className="font-medium">{claim.vehicleLicenseNumber}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Leverdatum</p>
+                <p className="font-medium">{formatDate(claim.deliveryDate)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Garantie periode</p>
+                <p className="font-medium">
+                  {formatDate(claim.warrantyStartDate)} - {formatDate(claim.warrantyEndDate)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Klant Informatie */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Klant Informatie
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <p className="text-sm text-muted-foreground">Naam</p>
-                  <p className="font-medium">{claim.customerName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Datum gemeld</p>
-                  <p className="font-medium">{formatDate(claim.reportDate)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Toegewezen aan</p>
-                  <p className="font-medium">{claim.assignedTo || "Nog niet toegewezen"}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Klant Informatie */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Klant Informatie
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <p className="text-sm text-muted-foreground">Naam</p>
+                <p className="font-medium">{claim.customerName}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Datum gemeld</p>
+                <p className="font-medium">{formatDate(claim.reportDate)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Toegewezen aan</p>
+                <p className="font-medium">{claim.assignedTo || "Nog niet toegewezen"}</p>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Claim Details */}
           <Card>
@@ -364,11 +392,19 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
                 </Button>
               </>
             )}
-            {claim.status === "opgelost" && claim.resolutionDate && (
-              <div className="text-sm text-muted-foreground">
-                Opgelost op {formatDate(claim.resolutionDate)}
-                {claim.resolutionDescription && `: ${claim.resolutionDescription}`}
-              </div>
+            {claim.status === "opgelost" && (
+              <>
+                <Button variant="outline" onClick={handleSendHappyCall} className="border-pink-200 text-pink-700 hover:bg-pink-50">
+                  <Heart className="h-4 w-4 mr-2" />
+                  Happy Call
+                </Button>
+                {claim.resolutionDate && (
+                  <div className="text-sm text-muted-foreground flex items-center">
+                    Opgelost op {formatDate(claim.resolutionDate)}
+                    {claim.resolutionDescription && `: ${claim.resolutionDescription}`}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </DialogContent>
