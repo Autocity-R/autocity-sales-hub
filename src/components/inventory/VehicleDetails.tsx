@@ -20,7 +20,7 @@ import { EmailsTab } from "@/components/inventory/detail-tabs/EmailsTab";
 import { B2CEmailsTab } from "@/components/inventory/detail-tabs/B2CEmailsTab";
 import { PhotosTab } from "@/components/inventory/detail-tabs/PhotosTab";
 import { FilesTab } from "@/components/inventory/detail-tabs/FilesTab";
-import { VehicleFile, FileCategory } from "@/types/files";
+import { VehicleFile, FileCategory } from "@/types/inventory";
 
 interface VehicleDetailsProps {
   vehicle: Vehicle;
@@ -77,88 +77,92 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-[90%] sm:max-w-[75%] lg:max-w-[66%] xl:max-w-[50%] max-h-[90vh] flex flex-col">
-        <DialogHeader className="sticky top-0 z-10 bg-background pb-2">
-          <DialogTitle>
-            {vehicle.brand} {vehicle.model}
-          </DialogTitle>
-          <DialogDescription>
-            Details van voertuig bekijken en bewerken.
-          </DialogDescription>
-          {/* Added a top save button for easier access */}
-          <div className="mt-2 flex justify-end">
-            <Button type="submit" onClick={handleSave} size="sm">
+      <DialogContent className="max-w-[90%] sm:max-w-[75%] lg:max-w-[66%] xl:max-w-[50%] h-[90vh] p-0 flex flex-col">
+        <div className="flex flex-col h-full overflow-hidden">
+          {/* Sticky header */}
+          <DialogHeader className="sticky top-0 z-10 bg-background p-6 pb-2 border-b">
+            <DialogTitle>
+              {vehicle.brand} {vehicle.model}
+            </DialogTitle>
+            <DialogDescription>
+              Details van voertuig bekijken en bewerken.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {/* Scrollable content area */}
+          <div className="flex-1 overflow-hidden">
+            <Tabs defaultValue="details" className="h-full flex flex-col">
+              <div className="px-6 py-2 bg-background sticky top-0 z-[5]">
+                <TabsList className="w-full">
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="photos">Foto's</TabsTrigger>
+                  <TabsTrigger value="files">Documenten</TabsTrigger>
+                  <TabsTrigger value="emails">Emails</TabsTrigger>
+                </TabsList>
+                <Separator className="mt-2" />
+              </div>
+              
+              <ScrollArea className="flex-1 px-6 py-4">
+                <TabsContent value="details" className="h-full mt-0 p-0">
+                  <DetailsTab 
+                    editedVehicle={editedVehicle}
+                    handleChange={handleChange}
+                    handleDamageChange={handleDamageChange}
+                  />
+                </TabsContent>
+                
+                <TabsContent value="photos" className="h-full mt-0 p-0">
+                  <PhotosTab 
+                    vehicle={vehicle}
+                    onPhotoUpload={onPhotoUpload}
+                    onRemovePhoto={onRemovePhoto}
+                    onSetMainPhoto={onSetMainPhoto}
+                  />
+                </TabsContent>
+                
+                <TabsContent value="files" className="h-full mt-0 p-0">
+                  <FilesTab 
+                    files={files}
+                    onFileUpload={onFileUpload || (() => {})}
+                  />
+                </TabsContent>
+                
+                <TabsContent value="emails" className="h-full mt-0 p-0">
+                  {vehicle.salesStatus === "verkocht_b2c" ? (
+                    <B2CEmailsTab 
+                      vehicle={vehicle}
+                      onSendEmail={(type) => onSendEmail(type, vehicle.id)}
+                    />
+                  ) : (
+                    <EmailsTab 
+                      vehicle={vehicle}
+                      onSendEmail={(type) => onSendEmail(type, vehicle.id)}
+                    />
+                  )}
+                </TabsContent>
+                
+                {/* Add sufficient bottom padding to ensure content isn't hidden under the footer */}
+                <div className="h-20" />
+              </ScrollArea>
+            </Tabs>
+          </div>
+          
+          {/* Sticky footer */}
+          <div className="sticky bottom-0 left-0 right-0 flex justify-end gap-2 p-4 border-t bg-background z-10">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Annuleren
+            </Button>
+            <Button type="submit" onClick={handleSave}>
               Opslaan
             </Button>
           </div>
-        </DialogHeader>
-        
-        <ScrollArea className="flex-grow -mx-6 px-6">
-          <Tabs defaultValue="details" className="space-y-4 py-2">
-            <TabsList className="sticky top-0 bg-background z-10 w-full">
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="photos">Foto's</TabsTrigger>
-              <TabsTrigger value="files">Documenten</TabsTrigger>
-              <TabsTrigger value="emails">Emails</TabsTrigger>
-            </TabsList>
-            <Separator />
-            
-            <TabsContent value="details" className="space-y-4">
-              <DetailsTab 
-                editedVehicle={editedVehicle}
-                handleChange={handleChange}
-                handleDamageChange={handleDamageChange}
-              />
-            </TabsContent>
-            
-            <TabsContent value="photos">
-              <PhotosTab 
-                vehicle={vehicle}
-                onPhotoUpload={onPhotoUpload}
-                onRemovePhoto={onRemovePhoto}
-                onSetMainPhoto={onSetMainPhoto}
-              />
-            </TabsContent>
-            
-            <TabsContent value="files">
-              <FilesTab 
-                files={files}
-                onFileUpload={onFileUpload || (() => {})}
-              />
-            </TabsContent>
-            
-            <TabsContent value="emails">
-              {vehicle.salesStatus === "verkocht_b2c" ? (
-                <B2CEmailsTab 
-                  vehicle={vehicle}
-                  onSendEmail={(type) => onSendEmail(type, vehicle.id)}
-                />
-              ) : (
-                <EmailsTab 
-                  vehicle={vehicle}
-                  onSendEmail={(type) => onSendEmail(type, vehicle.id)}
-                />
-              )}
-            </TabsContent>
-          </Tabs>
-          
-          {/* Added spacing at the bottom to ensure content isn't hidden behind the sticky footer */}
-          <div className="h-16"></div>
-        </ScrollArea>
-        
-        {/* Made the action buttons sticky at the bottom */}
-        <div className="sticky bottom-0 left-0 right-0 flex justify-end gap-2 pt-4 mt-auto bg-background border-t border-border z-10">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Annuleren
-          </Button>
-          <Button type="submit" onClick={handleSave}>
-            Opslaan
-          </Button>
         </div>
-        
+
+        {/* Close button */}
         <Button
-          size="sm"
-          className="absolute top-2 right-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+          size="icon"
+          className="absolute right-2 top-2 h-8 w-8 rounded-sm"
+          variant="ghost"
           onClick={onClose}
         >
           <X className="h-4 w-4" />
