@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Vehicle, ImportStatus } from "@/types/inventory";
 import { CircleCheck, CircleX, ExternalLink, Mail, MoreHorizontal, ArrowUp, ArrowDown, Plus } from "lucide-react";
@@ -57,6 +56,7 @@ interface VehicleTableProps {
   handleSendEmail: (type: string, vehicleId: string) => void;
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   handleDeleteVehicle?: (vehicleId: string) => void;
+  handleMarkAsDelivered?: (vehicleId: string) => void; // Optional prop for marking as delivered
   isLoading: boolean;
   error: unknown;
   onSort?: (field: string) => void;
@@ -100,6 +100,7 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
   handleSendEmail,
   handleChangeStatus,
   handleDeleteVehicle,
+  handleMarkAsDelivered,
   isLoading,
   error,
   onSort,
@@ -180,6 +181,7 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
         if (!selectedSupplier) {
           toast({
             title: "Leverancier ontbreekt",
+            description: "Selecteer eerst een leverancier.",
             description: "Selecteer eerst een leverancier.",
             variant: "destructive"
           });
@@ -493,6 +495,15 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
                           Terug naar voorraad
                         </DropdownMenuItem>
                       </>
+                    )}
+
+                    {handleMarkAsDelivered && (
+                      <DropdownMenuItem onClick={(e) => {
+                        e.stopPropagation();
+                        handleMarkAsDelivered(vehicle.id);
+                      }}>
+                        Markeren als afgeleverd
+                      </DropdownMenuItem>
                     )}
                     
                     {handleDeleteVehicle && (

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileText, Mail, Plus } from "lucide-react";
@@ -19,8 +18,8 @@ import {
   updatePaintStatus,
   markVehicleAsDelivered,
   uploadVehicleFile,
-  fetchVehicleFiles
 } from "@/services/inventoryService";
+import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 
 const InventoryB2C = () => {
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
@@ -37,12 +36,8 @@ const InventoryB2C = () => {
     queryFn: fetchB2CVehicles
   });
 
-  // Fetch files for the selected vehicle
-  const { data: vehicleFiles = [] } = useQuery({
-    queryKey: ["vehicleFiles", selectedVehicle?.id],
-    queryFn: () => selectedVehicle ? fetchVehicleFiles(selectedVehicle.id) : Promise.resolve([]),
-    enabled: !!selectedVehicle
-  });
+  // Properly fetch files for selected vehicle using our hook
+  const { vehicleFiles } = useVehicleFiles(selectedVehicle);
   
   const updateVehicleMutation = useMutation({
     mutationFn: updateVehicle,
@@ -389,7 +384,7 @@ const InventoryB2C = () => {
           onRemovePhoto={handleRemovePhoto}
           onSetMainPhoto={handleSetMainPhoto}
           onFileUpload={handleUploadFile}
-          files={vehicleFiles}
+          files={vehicleFiles} // Now passing the proper array from the hook
         />
       )}
     </DashboardLayout>

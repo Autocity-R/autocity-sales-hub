@@ -10,8 +10,11 @@ export const useVehicleFiles = (vehicle: Vehicle | null) => {
     enabled: !!vehicle,
   });
 
+  // Ensure we always return a valid array
+  const safeVehicleFiles: VehicleFile[] = Array.isArray(vehicleFiles) ? vehicleFiles : [];
+
   return {
-    vehicleFiles: Array.isArray(vehicleFiles) ? vehicleFiles : [],
+    vehicleFiles: safeVehicleFiles,
     isLoading,
     error,
   };

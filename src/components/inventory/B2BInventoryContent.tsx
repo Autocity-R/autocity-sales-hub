@@ -82,7 +82,7 @@ export const B2BInventoryContent = ({
           onRemovePhoto={onRemovePhoto}
           onSetMainPhoto={onSetMainPhoto}
           onFileUpload={onFileUpload}
-          files={vehicleFiles}
+          files={vehicleFiles || []} // Ensure we pass an empty array if vehicleFiles is undefined
         />
       )}
     </>

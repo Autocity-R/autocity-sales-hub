@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileText, Mail, Plus } from "lucide-react";
@@ -18,8 +17,8 @@ import {
   uploadVehiclePhoto,
   markVehicleAsDelivered,
   uploadVehicleFile,
-  fetchVehicleFiles
 } from "@/services/inventoryService";
+import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 
 const Inventory = () => {
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
@@ -39,6 +38,9 @@ const Inventory = () => {
     queryKey: ["vehicles"],
     queryFn: fetchVehicles,
   });
+
+  // Get files for the selected vehicle
+  const { vehicleFiles } = useVehicleFiles(selectedVehicle);
   
   const updateVehicleMutation = useMutation({
     mutationFn: updateVehicle,
@@ -307,13 +309,6 @@ const Inventory = () => {
     if (!selectedVehicle) return;
     uploadFileMutation.mutate({ file, category, vehicleId: selectedVehicle.id });
   };
-
-  // Fetch files for the selected vehicle - ensure it returns an empty array if no vehicle selected
-  const { data: vehicleFiles = [] } = useQuery({
-    queryKey: ["vehicleFiles", selectedVehicle?.id],
-    queryFn: () => selectedVehicle ? fetchVehicleFiles(selectedVehicle.id) : Promise.resolve([]),
-    enabled: !!selectedVehicle
-  });
   
   return (
     <DashboardLayout>
@@ -351,7 +346,7 @@ const Inventory = () => {
             onSort={handleSort}
             sortField={sortField}
             sortDirection={sortDirection}
-            onMarkAsDelivered={handleMarkAsDelivered}
+            handleMarkAsDelivered={handleMarkAsDelivered} // Changed the prop name to match VehicleTableProps
           />
         </div>
       </div>
@@ -366,7 +361,7 @@ const Inventory = () => {
           onRemovePhoto={handleRemovePhoto}
           onSetMainPhoto={handleSetMainPhoto}
           onFileUpload={handleUploadFile}
-          files={vehicleFiles}
+          files={vehicleFiles} // Now passing the proper array from the hook
         />
       )}
     </DashboardLayout>

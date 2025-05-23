@@ -31,7 +31,7 @@ interface VehicleDetailsProps {
   onRemovePhoto: (photoUrl: string) => void;
   onSetMainPhoto: (photoUrl: string) => void;
   onFileUpload?: (file: File, category: FileCategory) => void;
-  files?: VehicleFile[];
+  files?: VehicleFile[]; // Make sure this is properly typed
 }
 
 export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
@@ -43,11 +43,13 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   onRemovePhoto,
   onSetMainPhoto,
   onFileUpload,
-  files,
+  files = [], // Default to an empty array for safety
 }) => {
   const [editedVehicle, setEditedVehicle] = useState<Vehicle>(vehicle);
-  const { vehicleFiles } = useVehicleFiles(vehicle);
-  const filesData = files || vehicleFiles || [];
+  
+  // If files prop is empty, try to use the hook as a fallback
+  const { vehicleFiles: hookVehicleFiles } = useVehicleFiles(vehicle);
+  const filesData = files && files.length > 0 ? files : hookVehicleFiles;
   
   const handleChange = (field: keyof Vehicle, value: any) => {
     setEditedVehicle(prev => ({
