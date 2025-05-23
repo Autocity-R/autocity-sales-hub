@@ -1,5 +1,4 @@
-
-import React from "react";
+import React, { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +15,7 @@ import {
   Star
 } from "lucide-react";
 import { WarrantyClaim } from "@/types/warranty";
+import { WarrantyClaimDetail } from "./WarrantyClaimDetail";
 
 interface WarrantyClaimsTableProps {
   claims: WarrantyClaim[];
@@ -30,6 +30,8 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
   error,
   showResolved = false
 }) => {
+  const [selectedClaim, setSelectedClaim] = useState<WarrantyClaim | null>(null);
+
   const formatDate = (date: Date | string) => {
     const dateObj = typeof date === "string" ? new Date(date) : date;
     return format(dateObj, "dd MMM yyyy", { locale: nl });
@@ -84,6 +86,22 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
     return diffDays;
   };
 
+  const handleUpdateClaim = (claimId: string, updates: Partial<WarrantyClaim>) => {
+    // In een echte implementatie zou dit een API call zijn
+    console.log("Updating claim:", claimId, updates);
+    // Hier zou je de claim updaten in de state of opnieuw fetchen
+  };
+
+  const handleResolveClaim = (claimId: string, resolutionData: {
+    resolutionDescription: string;
+    actualCost: number;
+    customerSatisfaction: number;
+  }) => {
+    // In een echte implementatie zou dit een API call zijn
+    console.log("Resolving claim:", claimId, resolutionData);
+    // Hier zou je de claim oplossen en opnieuw fetchen
+  };
+
   if (isLoading) {
     return (
       <div className="p-4">
@@ -105,135 +123,152 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Voertuig</TableHead>
-          <TableHead>Klant</TableHead>
-          <TableHead>Probleem</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Prioriteit</TableHead>
-          <TableHead>Leen Auto</TableHead>
-          <TableHead>Datum Gemeld</TableHead>
-          {showResolved ? (
-            <>
-              <TableHead>Opgelost</TableHead>
-              <TableHead>Kosten</TableHead>
-              <TableHead>Tevredenheid</TableHead>
-            </>
-          ) : (
-            <>
-              <TableHead>Dagen Open</TableHead>
-              <TableHead>Geschatte Kosten</TableHead>
-            </>
-          )}
-          <TableHead>Acties</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {claims.length === 0 ? (
+    <>
+      <Table>
+        <TableHeader>
           <TableRow>
-            <TableCell colSpan={showResolved ? 11 : 10} className="text-center py-8 text-muted-foreground">
-              Geen garantieclaims gevonden
-            </TableCell>
+            <TableHead>Voertuig</TableHead>
+            <TableHead>Klant</TableHead>
+            <TableHead>Probleem</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Prioriteit</TableHead>
+            <TableHead>Leen Auto</TableHead>
+            <TableHead>Datum Gemeld</TableHead>
+            {showResolved ? (
+              <>
+                <TableHead>Opgelost</TableHead>
+                <TableHead>Kosten</TableHead>
+                <TableHead>Tevredenheid</TableHead>
+              </>
+            ) : (
+              <>
+                <TableHead>Dagen Open</TableHead>
+                <TableHead>Geschatte Kosten</TableHead>
+              </>
+            )}
+            <TableHead>Acties</TableHead>
           </TableRow>
-        ) : (
-          claims.map((claim) => (
-            <TableRow key={claim.id} className="hover:bg-muted/50">
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Car className="h-4 w-4 text-blue-600" />
-                  <div>
-                    <div className="font-medium">{claim.vehicleBrand} {claim.vehicleModel}</div>
-                    <div className="text-sm text-muted-foreground">{claim.vehicleLicenseNumber}</div>
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="font-medium">{claim.customerName}</div>
-              </TableCell>
-              <TableCell>
-                <div className="max-w-xs truncate" title={claim.problemDescription}>
-                  {claim.problemDescription}
-                </div>
-              </TableCell>
-              <TableCell>
-                {getStatusBadge(claim.status)}
-              </TableCell>
-              <TableCell>
-                {getPriorityBadge(claim.priority)}
-              </TableCell>
-              <TableCell>
-                {claim.loanCarAssigned ? (
-                  <div className="flex items-center gap-1 text-green-600">
-                    <CheckCircle className="h-4 w-4" />
-                    <span className="text-sm">{claim.loanCarDetails?.licenseNumber || "Toegewezen"}</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 text-gray-500">
-                    <span className="text-sm">Niet toegewezen</span>
-                  </div>
-                )}
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{formatDate(claim.reportDate)}</span>
-                </div>
-              </TableCell>
-              {showResolved ? (
-                <>
-                  <TableCell>
-                    {claim.resolutionDate ? (
-                      <div className="flex items-center gap-1">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                        <span className="text-sm">{formatDate(claim.resolutionDate)}</span>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-medium text-red-600">
-                      {formatCurrency(claim.actualCost || claim.estimatedCost)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {claim.customerSatisfaction ? (
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 text-yellow-500" />
-                        <span>{claim.customerSatisfaction}/5</span>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                </>
-              ) : (
-                <>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4 text-orange-500" />
-                      <span className="text-sm">{getDaysInWarranty(claim)} dagen</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-medium text-orange-600">
-                      {formatCurrency(claim.estimatedCost)}
-                    </span>
-                  </TableCell>
-                </>
-              )}
-              <TableCell>
-                <Button variant="outline" size="sm">
-                  <Eye className="h-4 w-4 mr-1" />
-                  Details
-                </Button>
+        </TableHeader>
+        <TableBody>
+          {claims.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={showResolved ? 11 : 10} className="text-center py-8 text-muted-foreground">
+                Geen garantieclaims gevonden
               </TableCell>
             </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
+          ) : (
+            claims.map((claim) => (
+              <TableRow key={claim.id} className="hover:bg-muted/50">
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Car className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <div className="font-medium">{claim.vehicleBrand} {claim.vehicleModel}</div>
+                      <div className="text-sm text-muted-foreground">{claim.vehicleLicenseNumber}</div>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="font-medium">{claim.customerName}</div>
+                </TableCell>
+                <TableCell>
+                  <div className="max-w-xs truncate" title={claim.problemDescription}>
+                    {claim.problemDescription}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {getStatusBadge(claim.status)}
+                </TableCell>
+                <TableCell>
+                  {getPriorityBadge(claim.priority)}
+                </TableCell>
+                <TableCell>
+                  {claim.loanCarAssigned ? (
+                    <div className="flex items-center gap-1 text-green-600">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-sm">{claim.loanCarDetails?.licenseNumber || "Toegewezen"}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 text-gray-500">
+                      <span className="text-sm">Niet toegewezen</span>
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{formatDate(claim.reportDate)}</span>
+                  </div>
+                </TableCell>
+                {showResolved ? (
+                  <>
+                    <TableCell>
+                      {claim.resolutionDate ? (
+                        <div className="flex items-center gap-1">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span className="text-sm">{formatDate(claim.resolutionDate)}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-medium text-red-600">
+                        {formatCurrency(claim.actualCost || claim.estimatedCost)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {claim.customerSatisfaction ? (
+                        <div className="flex items-center gap-1">
+                          <Star className="h-4 w-4 text-yellow-500" />
+                          <span>{claim.customerSatisfaction}/5</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                  </>
+                ) : (
+                  <>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-4 w-4 text-orange-500" />
+                        <span className="text-sm">{getDaysInWarranty(claim)} dagen</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-medium text-orange-600">
+                        {formatCurrency(claim.estimatedCost)}
+                      </span>
+                    </TableCell>
+                  </>
+                )}
+                <TableCell>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setSelectedClaim(claim)}
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    Details
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+
+      {/* Warranty Claim Detail Dialog */}
+      {selectedClaim && (
+        <WarrantyClaimDetail
+          claim={selectedClaim}
+          isOpen={!!selectedClaim}
+          onClose={() => setSelectedClaim(null)}
+          onUpdate={handleUpdateClaim}
+          onResolve={handleResolveClaim}
+        />
+      )}
+    </>
   );
 };
