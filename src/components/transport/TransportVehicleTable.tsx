@@ -1,7 +1,16 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { ChevronRight, FileText, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
 import { Vehicle } from "@/types/inventory";
 
 interface TransportVehicleTableProps {
@@ -11,6 +20,7 @@ interface TransportVehicleTableProps {
   onSendPickupDocument: (vehicleId: string) => void;
   isLoading: boolean;
   error: unknown;
+  onSelectMultiple?: (vehicleIds: string[]) => void;
 }
 
 export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
@@ -19,8 +29,11 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
   onMarkAsArrived,
   onSendPickupDocument,
   isLoading,
-  error
+  error,
+  onSelectMultiple
 }) => {
+  const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
+  
   if (isLoading) {
     return (
       <div className="p-8 text-center">
@@ -49,9 +62,9 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
   const formatImportStatus = (status: string) => {
     switch (status) {
       case "niet_gestart":
-        return "Niet gestart";
+        return "Niet ready";
       case "transport_geregeld":
-        return "Transport geregeld";
+        return "Opdracht gegeven";
       case "onderweg":
         return "Onderweg";
       default:
@@ -61,78 +74,119 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
 
   const getPickupStatus = (vehicle: Vehicle) => {
     if (vehicle.cmrSent) {
-      return "Gereed";
+      return "Pickup ready";
     }
-    return "Niet gereed";
+    return "Niet ready";
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedVehicles(vehicles.map(v => v.id));
+      onSelectMultiple?.(vehicles.map(v => v.id));
+    } else {
+      setSelectedVehicles([]);
+      onSelectMultiple?.([]);
+    }
+  };
+
+  const handleSelectVehicle = (vehicleId: string, checked: boolean) => {
+    let newSelection: string[];
+    
+    if (checked) {
+      newSelection = [...selectedVehicles, vehicleId];
+    } else {
+      newSelection = selectedVehicles.filter(id => id !== vehicleId);
+    }
+    
+    setSelectedVehicles(newSelection);
+    onSelectMultiple?.(newSelection);
   };
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/50">
-          <tr>
-            <th className="px-4 py-3 text-left font-medium">Merk</th>
-            <th className="px-4 py-3 text-left font-medium">Model</th>
-            <th className="px-4 py-3 text-left font-medium">Kilometerstand</th>
-            <th className="px-4 py-3 text-left font-medium">Leverancier</th>
-            <th className="px-4 py-3 text-left font-medium">Land</th>
-            <th className="px-4 py-3 text-left font-medium">Pickup status</th>
-            <th className="px-4 py-3 text-left font-medium">Transport status</th>
-            <th className="px-4 py-3 text-center font-medium">Acties</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {vehicles.map((vehicle) => (
-            <tr 
-              key={vehicle.id}
-              className="hover:bg-muted/50 cursor-pointer"
-              onClick={() => onSelectVehicle(vehicle)}
-            >
-              <td className="px-4 py-3">{vehicle.brand}</td>
-              <td className="px-4 py-3">{vehicle.model}</td>
-              <td className="px-4 py-3">{vehicle.mileage} km</td>
-              <td className="px-4 py-3">Leverancier XYZ</td>
-              <td className="px-4 py-3">Duitsland</td>
-              <td className="px-4 py-3">{getPickupStatus(vehicle)}</td>
-              <td className="px-4 py-3">{formatImportStatus(vehicle.importStatus)}</td>
-              <td className="px-4 py-3 flex justify-center space-x-2">
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSendPickupDocument(vehicle.id);
-                  }}
-                  title="Verstuur pickup document"
-                >
-                  <FileText className="h-4 w-4" />
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onMarkAsArrived(vehicle.id);
-                  }}
-                  title="Voertuig binnenmelden"
-                >
-                  <CheckCircle className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectVehicle(vehicle);
-                  }}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          {onSelectMultiple && (
+            <TableHead className="w-[50px]">
+              <Checkbox 
+                checked={selectedVehicles.length === vehicles.length && vehicles.length > 0}
+                onCheckedChange={handleSelectAll}
+                aria-label="Selecteer alle voertuigen"
+              />
+            </TableHead>
+          )}
+          <TableHead>Merk</TableHead>
+          <TableHead>Model</TableHead>
+          <TableHead>Kilometerstand</TableHead>
+          <TableHead>Kenteken</TableHead>
+          <TableHead>VIN</TableHead>
+          <TableHead>Inkoopprijs</TableHead>
+          <TableHead>Pickup status</TableHead>
+          <TableHead>Transport status</TableHead>
+          <TableHead className="text-center">Acties</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {vehicles.map((vehicle) => (
+          <TableRow 
+            key={vehicle.id}
+            className="cursor-pointer hover:bg-muted/50"
+            onClick={() => onSelectVehicle(vehicle)}
+          >
+            {onSelectMultiple && (
+              <TableCell className="p-2" onClick={(e) => e.stopPropagation()}>
+                <Checkbox 
+                  checked={selectedVehicles.includes(vehicle.id)}
+                  onCheckedChange={(checked) => handleSelectVehicle(vehicle.id, !!checked)}
+                  aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
+                />
+              </TableCell>
+            )}
+            <TableCell>{vehicle.brand}</TableCell>
+            <TableCell>{vehicle.model}</TableCell>
+            <TableCell>{vehicle.mileage} km</TableCell>
+            <TableCell>{vehicle.licenseNumber || "Onbekend"}</TableCell>
+            <TableCell>{vehicle.vin}</TableCell>
+            <TableCell>€{vehicle.purchasePrice.toLocaleString('nl-NL')}</TableCell>
+            <TableCell>{getPickupStatus(vehicle)}</TableCell>
+            <TableCell>{formatImportStatus(vehicle.importStatus)}</TableCell>
+            <TableCell className="flex justify-center space-x-2">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSendPickupDocument(vehicle.id);
+                }}
+                title="Verstuur pickup document"
+              >
+                <FileText className="h-4 w-4" />
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMarkAsArrived(vehicle.id);
+                }}
+                title="Voertuig binnenmelden"
+              >
+                <CheckCircle className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectVehicle(vehicle);
+                }}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 };

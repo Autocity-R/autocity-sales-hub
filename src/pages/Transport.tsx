@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Vehicle, ImportStatus, Supplier } from "@/types/inventory";
-import { fetchVehicles, updateVehicle, sendEmail } from "@/services/inventoryService";
+import { Vehicle, ImportStatus, Supplier, FileCategory } from "@/types/inventory";
+import { fetchVehicles, updateVehicle, sendEmail, bulkUpdateVehicles, uploadVehicleFile } from "@/services/inventoryService";
 import { TransportVehicleTable } from "@/components/transport/TransportVehicleTable";
 import { TransportSupplierForm } from "@/components/transport/TransportSupplierForm";
 import { TransportDetails } from "@/components/transport/TransportDetails";
+import { TransportBulkActions } from "@/components/transport/TransportBulkActions";
 
 const Transport = () => {
   const { toast } = useToast();
@@ -19,6 +20,7 @@ const Transport = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
+  const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>([]);
 
   // Fetch vehicles that are not arrived yet
   const { data: vehicles = [], isLoading, error } = useQuery({
@@ -47,6 +49,27 @@ const Transport = () => {
     }
   });
 
+  // Bulk update vehicles mutation
+  const bulkUpdateMutation = useMutation({
+    mutationFn: bulkUpdateVehicles,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      toast({
+        title: "Voertuigen bijgewerkt",
+        description: "De wijzigingen zijn succesvol opgeslagen voor alle geselecteerde voertuigen.",
+        variant: "default",
+      });
+      setSelectedVehicleIds([]);
+    },
+    onError: (error) => {
+      toast({
+        title: "Fout bij bulk update",
+        description: "Er is iets misgegaan: " + error,
+        variant: "destructive",
+      });
+    }
+  });
+
   // Email sending mutation
   const emailMutation = useMutation({
     mutationFn: ({ type, vehicleIds }: { type: string, vehicleIds: string[] }) => 
@@ -61,6 +84,27 @@ const Transport = () => {
     onError: (error) => {
       toast({
         title: "Fout bij versturen pickup document",
+        description: "Er is iets misgegaan: " + error,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // File upload mutation
+  const fileUploadMutation = useMutation({
+    mutationFn: ({ file, category, vehicleId }: { file: File, category: FileCategory, vehicleId: string }) => 
+      uploadVehicleFile(file, category, vehicleId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicleFiles"] });
+      toast({
+        title: "Document geüpload",
+        description: "Het document is succesvol geüpload.",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Fout bij uploaden document",
         description: "Er is iets misgegaan: " + error,
         variant: "destructive",
       });
@@ -96,6 +140,47 @@ const Transport = () => {
       type: "transport_pickup", 
       vehicleIds: [vehicleId] 
     });
+  };
+
+  // Handle send email
+  const handleSendEmail = (type: string, vehicleId: string) => {
+    emailMutation.mutate({ 
+      type, 
+      vehicleIds: [vehicleId] 
+    });
+  };
+
+  // Handle file upload
+  const handleFileUpload = (file: File, category: FileCategory) => {
+    if (selectedVehicle) {
+      fileUploadMutation.mutate({ 
+        file, 
+        category, 
+        vehicleId: selectedVehicle.id 
+      });
+    }
+  };
+
+  // Handle multiple selection
+  const handleSelectMultiple = (vehicleIds: string[]) => {
+    setSelectedVehicleIds(vehicleIds);
+  };
+
+  // Handle bulk email sending
+  const handleSendBulkEmails = (vehicleIds: string[], transporterId: string) => {
+    emailMutation.mutate({ 
+      type: "transport_pickup", 
+      vehicleIds 
+    });
+  };
+
+  // Handle bulk status update
+  const handleUpdateBulkStatus = (vehicleIds: string[], status: ImportStatus) => {
+    const vehiclesToUpdate = vehicles
+      .filter(v => vehicleIds.includes(v.id))
+      .map(v => ({ ...v, importStatus: status }));
+    
+    bulkUpdateMutation.mutate(vehiclesToUpdate);
   };
 
   // Create new supplier
@@ -139,6 +224,14 @@ const Transport = () => {
           />
         </div>
         
+        {/* Bulk Actions */}
+        <TransportBulkActions
+          selectedVehicleIds={selectedVehicleIds}
+          onClearSelection={() => setSelectedVehicleIds([])}
+          onSendBulkEmails={handleSendBulkEmails}
+          onUpdateBulkStatus={handleUpdateBulkStatus}
+        />
+        
         <div className="rounded-md border overflow-hidden">
           <TransportVehicleTable 
             vehicles={filteredVehicles}
@@ -147,6 +240,7 @@ const Transport = () => {
             onSendPickupDocument={handleSendPickupDocument}
             isLoading={isLoading}
             error={error}
+            onSelectMultiple={handleSelectMultiple}
           />
         </div>
 
@@ -157,6 +251,8 @@ const Transport = () => {
             onUpdate={handleVehicleUpdate}
             onClose={() => setSelectedVehicle(null)}
             onSendPickupDocument={handleSendPickupDocument}
+            onSendEmail={handleSendEmail}
+            onFileUpload={handleFileUpload}
           />
         )}
         
