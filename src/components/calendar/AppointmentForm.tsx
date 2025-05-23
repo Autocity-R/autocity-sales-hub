@@ -189,7 +189,6 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
                   <SelectValue placeholder="Selecteer een lead (optioneel)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Geen lead gekoppeld</SelectItem>
                   {leads.map((lead) => (
                     <SelectItem key={lead.id} value={lead.id}>
                       {lead.firstName} {lead.lastName} - {lead.interestedVehicle || 'Geen voertuig'} ({lead.status})
