@@ -1,9 +1,8 @@
-
 import { Appointment, AppointmentType, AppointmentStatus } from "@/types/calendar";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-// Mock appointments data
+// Mock appointments data with lead connections
 const mockAppointments: Appointment[] = [
   {
     id: "app-1",
@@ -46,6 +45,7 @@ const mockAppointments: Appointment[] = [
     vehicleBrand: "Mercedes",
     vehicleModel: "E-Class",
     vehicleLicenseNumber: "EF-456-GH",
+    leadId: "lead3",
     location: "Bakker Group - Hoofdkantoor",
     notes: "Fleet delivery, contract getekend",
     confirmationSent: false,
@@ -53,6 +53,92 @@ const mockAppointments: Appointment[] = [
     assignedTo: "Sander Vermeulen",
     createdAt: new Date("2024-01-16T11:00:00"),
     updatedAt: new Date("2024-01-16T11:00:00")
+  },
+  {
+    id: "app-3",
+    title: "Proefrit Audi A4",
+    description: "Eerste proefrit voor Lisa Schmidt",
+    startTime: new Date("2024-01-25T13:30:00"),
+    endTime: new Date("2024-01-25T14:30:00"),
+    type: "proefrit",
+    status: "gepland",
+    customerName: "Lisa Schmidt",
+    customerEmail: "l.schmidt@hotmail.com",
+    customerPhone: "+31 6 87654321",
+    vehicleBrand: "Audi",
+    vehicleModel: "A4",
+    leadId: "lead2",
+    location: "Showroom",
+    notes: "Eerste auto, heeft financiering nodig. Klant komt om 13:30",
+    confirmationSent: true,
+    createdBy: "Sander Vermeulen",
+    assignedTo: "Sander Vermeulen",
+    createdAt: new Date("2024-01-18T10:15:00"),
+    updatedAt: new Date("2024-01-18T10:15:00")
+  },
+  {
+    id: "app-4",
+    title: "Bezichtiging BMW X5",
+    description: "Klant wil de BMW X5 bekijken",
+    startTime: new Date("2024-01-23T11:00:00"),
+    endTime: new Date("2024-01-23T12:00:00"),
+    type: "bezichtiging",
+    status: "bevestigd",
+    customerName: "Peter van der Berg",
+    customerEmail: "p.vandenberg@email.com",
+    customerPhone: "+31 6 55667788",
+    vehicleBrand: "BMW",
+    vehicleModel: "X5",
+    location: "Showroom",
+    notes: "Geïnteresseerd in zwarte uitvoering",
+    confirmationSent: true,
+    createdBy: "Pieter Jansen",
+    assignedTo: "Pieter Jansen",
+    createdAt: new Date("2024-01-19T14:20:00"),
+    updatedAt: new Date("2024-01-19T14:20:00")
+  },
+  {
+    id: "app-5",
+    title: "Onderhoud Mercedes C-Class",
+    description: "Regulier onderhoud voor bestaande klant",
+    startTime: new Date("2024-01-24T09:00:00"),
+    endTime: new Date("2024-01-24T11:00:00"),
+    type: "onderhoud",
+    status: "bevestigd",
+    customerName: "Sandra Jansen",
+    customerEmail: "sandra.jansen@gmail.com",
+    customerPhone: "+31 6 99887766",
+    vehicleBrand: "Mercedes",
+    vehicleModel: "C-Class",
+    vehicleLicenseNumber: "GH-789-IJ",
+    location: "Werkplaats",
+    notes: "Grote beurt + APK",
+    confirmationSent: true,
+    createdBy: "Technische dienst",
+    assignedTo: "Monteur Jan",
+    createdAt: new Date("2024-01-17T16:45:00"),
+    updatedAt: new Date("2024-01-17T16:45:00")
+  },
+  {
+    id: "app-6",
+    title: "Intake nieuw voertuig",
+    description: "Intake van nieuwe BMW i4 voor verkoop",
+    startTime: new Date("2024-01-26T10:30:00"),
+    endTime: new Date("2024-01-26T11:30:00"),
+    type: "intake",
+    status: "gepland",
+    customerName: "Leverancier AutoHouse",
+    customerEmail: "intake@autohouse.nl",
+    customerPhone: "+31 20 1234567",
+    vehicleBrand: "BMW",
+    vehicleModel: "i4",
+    location: "Inkomende goederen",
+    notes: "Elektrische BMW, volledig geïnspecteerd",
+    confirmationSent: false,
+    createdBy: "Inkoopafdeling",
+    assignedTo: "Pieter Jansen",
+    createdAt: new Date("2024-01-20T11:30:00"),
+    updatedAt: new Date("2024-01-20T11:30:00")
   }
 ];
 
