@@ -1,8 +1,8 @@
-
 import { Vehicle, PaymentStatus, PaintStatus, FileCategory, VehicleFile } from "@/types/inventory";
 import { Contact } from "@/types/customer";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+// Use import.meta.env instead of process.env for Vite projects
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 export const fetchVehicles = async (): Promise<Vehicle[]> => {
   try {
@@ -215,22 +215,25 @@ export const fetchVehicleFiles = async (vehicleId?: string): Promise<VehicleFile
 
 // Add new function to change vehicle status
 export const changeVehicleStatus = async (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad'): Promise<Vehicle> => {
-  // This would be an API call in a real application
-  console.log(`Changing vehicle ${vehicleId} status to ${status}`);
-  
-  // For now, we'll simulate the API call
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // The backend would handle moving the vehicle to the right collection
-      resolve({
-        id: vehicleId,
-        status: status
-      } as unknown as Vehicle);
-    }, 500);
-  });
+  try {
+    const response = await fetch(`${API_URL}/api/vehicles/${vehicleId}/status`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status }),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error: any) {
+    console.error("Failed to change vehicle status:", error);
+    throw error;
+  }
 };
 
-// Add new function for updating sales status (missing in original)
+// Add new function for updating sales status
 export const updateSalesStatus = async (vehicleId: string, status: string): Promise<Vehicle> => {
   try {
     const response = await fetch(`${API_URL}/api/vehicles/${vehicleId}/sales-status`, {
@@ -250,7 +253,7 @@ export const updateSalesStatus = async (vehicleId: string, status: string): Prom
   }
 };
 
-// Add new function for fetching delivered vehicles (missing in original)
+// Add new function for fetching delivered vehicles
 export const fetchDeliveredVehicles = async (): Promise<Vehicle[]> => {
   try {
     const response = await fetch(`${API_URL}/api/vehicles?delivered=true`);
@@ -264,7 +267,7 @@ export const fetchDeliveredVehicles = async (): Promise<Vehicle[]> => {
   }
 };
 
-// Add new function for bulk updating vehicles (missing in original)
+// Add new function for bulk updating vehicles
 export const bulkUpdateVehicles = async (vehicles: Vehicle[]): Promise<Vehicle[]> => {
   try {
     const response = await fetch(`${API_URL}/api/vehicles/bulk`, {

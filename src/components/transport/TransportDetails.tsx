@@ -69,9 +69,9 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
     });
   };
 
-  const handleFileUploaded = (fileUrl: string) => {
+  const handleFileUploaded = (fileData: VehicleFile) => {
     // In a real app, refresh the files list or add the new file to the state
-    console.log("File uploaded:", fileUrl);
+    console.log("File uploaded:", fileData);
   };
 
   // Get CMR files
