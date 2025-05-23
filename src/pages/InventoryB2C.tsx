@@ -380,7 +380,7 @@ const InventoryB2C = () => {
           </div>
         </PageHeader>
         
-        <div className="bg-white rounded-md shadow overflow-hidden">
+        <div className="bg-white rounded-md shadow">
           <VehicleB2CTable 
             vehicles={sortedVehicles}
             selectedVehicles={selectedVehicles}
