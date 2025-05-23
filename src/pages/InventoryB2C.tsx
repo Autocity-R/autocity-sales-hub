@@ -380,7 +380,7 @@ const InventoryB2C = () => {
           </div>
         </PageHeader>
         
-        <div className="bg-white rounded-md shadow">
+        <div className="bg-white rounded-md shadow overflow-hidden">
           <VehicleB2CTable 
             vehicles={sortedVehicles}
             selectedVehicles={selectedVehicles}
@@ -412,7 +412,7 @@ const InventoryB2C = () => {
           onRemovePhoto={handleRemovePhoto}
           onSetMainPhoto={handleSetMainPhoto}
           onFileUpload={handleUploadFile}
-          files={vehicleFiles} // Now passing the proper array from the hook
+          files={vehicleFiles}
         />
       )}
     </DashboardLayout>
