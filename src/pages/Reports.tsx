@@ -23,7 +23,11 @@ import {
   Download,
   RefreshCw,
   BarChart,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  Car,
+  Clock,
+  ShoppingCart,
+  Award
 } from "lucide-react";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, BarChart as RechartsBarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, LineChart, Line } from "recharts";
@@ -73,72 +77,79 @@ const Reports = () => {
     return `${value.toFixed(1)}%`;
   };
 
-  // Chart configurations
-  const salesChartConfig = {
-    omzet: {
-      label: "Omzet (€)",
-      color: "#8B5CF6",
+  // Automotive-specifieke data
+  const vehiclesSoldData = [
+    { maand: "Jan", verkocht: 42, omzet: 1680000, gemGemBedrag: 40000 },
+    { maand: "Feb", verkocht: 38, omzet: 1520000, gemGemBedrag: 40000 },
+    { maand: "Mar", verkocht: 45, omzet: 1800000, gemGemBedrag: 40000 },
+    { maand: "Apr", verkocht: 52, omzet: 2080000, gemGemBedrag: 40000 },
+    { maand: "Mei", verkocht: 48, omzet: 1920000, gemGemBedrag: 40000 },
+    { maand: "Jun", verkocht: 55, omzet: 2200000, gemGemBedrag: 40000 },
+  ];
+
+  const fastestSellingModels = [
+    { model: "BMW 3 Serie", gemStadagen: 12, verkocht: 28, marktaandeel: 18.7 },
+    { model: "Mercedes C-Klasse", gemStadagen: 15, verkocht: 25, marktaandeel: 16.7 },
+    { model: "Audi A4", gemStadagen: 18, verkocht: 22, marktaandeel: 14.7 },
+    { model: "VW Golf", gemStadagen: 22, verkocht: 20, marktaandeel: 13.3 },
+    { model: "BMW X3", gemStadagen: 25, verkocht: 18, marktaandeel: 12.0 },
+  ];
+
+  const inventoryTurnover = [
+    { categorie: "Premium SUV", voorraad: 45, verkocht: 38, omloopsnelheid: 84.4, stadagen: 14 },
+    { categorie: "Luxe Sedan", voorraad: 32, verkocht: 28, omloopsnelheid: 87.5, stadagen: 12 },
+    { categorie: "Sport Coupe", voorraad: 28, verkocht: 22, omloopsnelheid: 78.6, stadagen: 18 },
+    { categorie: "Hybride", voorraad: 15, verkocht: 12, omloopsnelheid: 80.0, stadagen: 16 },
+  ];
+
+  const periodicSalesComparison = [
+    { periode: "Q1 2024", verkocht: 125, groei: 12.5, topModel: "BMW 3 Serie" },
+    { periode: "Q2 2024", verkocht: 155, groei: 24.0, topModel: "Mercedes C-Klasse" },
+    { periode: "Q3 2024", verkocht: 142, groei: 13.6, topModel: "Audi A4" },
+    { periode: "Q4 2023", verkocht: 110, groei: -8.3, topModel: "VW Golf" },
+  ];
+
+  const brandPerformance = [
+    { merk: "BMW", verkocht: 89, omzet: 3560000, marge: 16.2, kleur: "#1f77b4" },
+    { merk: "Mercedes", verkocht: 76, omzet: 3800000, marge: 18.5, kleur: "#ff7f0e" },
+    { merk: "Audi", verkocht: 68, omzet: 2720000, marge: 15.8, kleur: "#2ca02c" },
+    { merk: "Volkswagen", verkocht: 52, omzet: 1560000, marge: 12.3, kleur: "#d62728" },
+  ];
+
+  const chartConfigs = {
+    salesTrend: {
+      verkocht: { label: "Verkochte Auto's", color: "#8B5CF6" },
+      omzet: { label: "Omzet (€)", color: "#10B981" },
+    },
+    brandPerformance: {
+      verkocht: { label: "Verkochte Eenheden", color: "#8B5CF6" },
+    },
+    inventory: {
+      omloopsnelheid: { label: "Omloopsnelheid (%)", color: "#3B82F6" },
     },
   };
 
-  const teamChartConfig = {
-    deals: {
-      label: "Gesloten Deals",
-      color: "#8B5CF6",
-    },
-  };
-
-  const productChartConfig = {
-    waarde: {
-      label: "Percentage",
-      color: "#8B5CF6",
-    },
-  };
-
-  // Unieke analytics data voor reports
-  const salesTrendData = [
-    { maand: "Jan", omzet: 1200000, deals: 45, margin: 12.5 },
-    { maand: "Feb", omzet: 1450000, deals: 52, margin: 14.2 },
-    { maand: "Mar", omzet: 1680000, deals: 48, margin: 15.8 },
-    { maand: "Apr", omzet: 1890000, deals: 61, margin: 16.3 },
-    { maand: "Mei", omzet: 2100000, deals: 58, margin: 17.1 },
-    { maand: "Jun", omzet: 1950000, deals: 55, margin: 16.8 },
-  ];
-
-  const teamPerformanceData = [
-    { naam: "Lisa v.d. Berg", deals: 28, omzet: 890000, score: 94 },
-    { naam: "Pieter Jansen", deals: 25, omzet: 750000, score: 87 },
-    { naam: "Sander Vermeulen", deals: 22, omzet: 680000, score: 82 },
-    { naam: "Emma de Vries", deals: 30, omzet: 920000, score: 96 },
-  ];
-
-  const productMixData = [
-    { categorie: "Premium SUV", waarde: 45, kleur: "#8B5CF6", omzet: 2800000 },
-    { categorie: "Luxury Sedan", waarde: 28, kleur: "#10B981", omzet: 1900000 },
-    { categorie: "Sport Coupe", waarde: 18, kleur: "#F59E0B", omzet: 1200000 },
-    { categorie: "Hybride", waarde: 9, kleur: "#EF4444", omzet: 600000 },
-  ];
-
-  const COLORS = ['#8B5CF6', '#10B981', '#F59E0B', '#EF4444'];
+  const COLORS = ['#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#3B82F6'];
 
   return (
     <ReportsLayout>
-      {/* Nederlandse Analytics Header */}
+      {/* Automotive Analytics Header */}
       <div className="bg-gradient-to-r from-slate-900 via-purple-900 to-indigo-900 rounded-xl p-8 mb-8 text-white shadow-2xl">
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-4xl font-bold mb-3 flex items-center gap-4">
               <div className="p-3 bg-white/10 rounded-xl backdrop-blur">
-                <BarChart className="h-10 w-10" />
+                <Car className="h-10 w-10" />
               </div>
-              Verkoop Prestatie Analytics
+              Automotive Verkoop Analytics
             </h1>
             <p className="text-xl text-purple-200 mb-4">
-              Diepgaande business intelligence & verkoop analyse voor {selectedPeriod.label.toLowerCase()}
+              Uitgebreide automotive verkoop- en voorraadanalyse voor {selectedPeriod.label.toLowerCase()}
             </p>
             <div className="flex gap-3">
-              <Badge className="bg-purple-500/20 text-purple-200 border-purple-400">Live Data</Badge>
-              <Badge className="bg-indigo-500/20 text-indigo-200 border-indigo-400">Real-time Updates</Badge>
+              <Badge className="bg-purple-500/20 text-purple-200 border-purple-400">Live Voorraad Data</Badge>
+              <Badge className="bg-indigo-500/20 text-indigo-200 border-indigo-400">Real-time Verkopen</Badge>
+              <Badge className="bg-green-500/20 text-green-200 border-green-400">Automotive Insights</Badge>
             </div>
           </div>
           <div className="flex flex-col gap-3">
@@ -169,40 +180,40 @@ const Reports = () => {
         </div>
       </div>
 
-      {/* Executive KPI Dashboard */}
+      {/* Automotive KPI Dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-0 shadow-xl transform hover:scale-105 transition-all">
+        <Card className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white border-0 shadow-xl transform hover:scale-105 transition-all">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <Euro className="h-10 w-10 text-emerald-200" />
+              <Car className="h-10 w-10 text-blue-200" />
               <div className="text-right">
-                <div className="text-xs text-emerald-200">YTD Groei</div>
+                <div className="text-xs text-blue-200">Deze Maand</div>
                 <Badge className="bg-white/20 text-white">+18.5%</Badge>
               </div>
             </div>
-            <h3 className="text-3xl font-bold mb-1">{formatCurrency(reportData.sales.totalRevenue)}</h3>
-            <p className="text-emerald-200">Totale Verkoop Omzet</p>
+            <h3 className="text-3xl font-bold mb-1">155</h3>
+            <p className="text-blue-200">Verkochte Voertuigen</p>
             <div className="mt-2 flex items-center text-xs">
               <ArrowUp className="w-3 h-3 mr-1" />
-              <span>Stijgende trend vs. vorige periode</span>
+              <span>Stijging vs. vorige maand</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white border-0 shadow-xl transform hover:scale-105 transition-all">
+        <Card className="bg-gradient-to-br from-green-500 to-emerald-600 text-white border-0 shadow-xl transform hover:scale-105 transition-all">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <Target className="h-10 w-10 text-blue-200" />
+              <Clock className="h-10 w-10 text-green-200" />
               <div className="text-right">
-                <div className="text-xs text-blue-200">Doel</div>
-                <Badge className="bg-white/20 text-white">125%</Badge>
+                <div className="text-xs text-green-200">Gemiddeld</div>
+                <Badge className="bg-white/20 text-white">Uitstekend</Badge>
               </div>
             </div>
-            <h3 className="text-3xl font-bold mb-1">{formatPercentage(reportData.leads.conversionRate)}</h3>
-            <p className="text-blue-200">Lead Conversie Ratio</p>
+            <h3 className="text-3xl font-bold mb-1">16</h3>
+            <p className="text-green-200">Gemiddelde Stadagen</p>
             <div className="mt-2 flex items-center text-xs">
               <Zap className="w-3 h-3 mr-1" />
-              <span>Boven industriegemiddelde</span>
+              <span>Snelle omloopsnelheid</span>
             </div>
           </CardContent>
         </Card>
@@ -210,17 +221,17 @@ const Reports = () => {
         <Card className="bg-gradient-to-br from-purple-500 to-pink-600 text-white border-0 shadow-xl transform hover:scale-105 transition-all">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <Users className="h-10 w-10 text-purple-200" />
+              <Award className="h-10 w-10 text-purple-200" />
               <div className="text-right">
-                <div className="text-xs text-purple-200">Actief</div>
-                <Badge className="bg-white/20 text-white">{reportData.leads.totalLeads}</Badge>
+                <div className="text-xs text-purple-200">Top Model</div>
+                <Badge className="bg-white/20 text-white">BMW</Badge>
               </div>
             </div>
-            <h3 className="text-3xl font-bold mb-1">{formatPercentage(reportData.leads.followUpRate)}</h3>
-            <p className="text-purple-200">Team Opvolg Ratio</p>
+            <h3 className="text-3xl font-bold mb-1">28</h3>
+            <p className="text-purple-200">BMW 3 Serie Verkocht</p>
             <div className="mt-2 flex items-center text-xs">
               <Star className="w-3 h-3 mr-1" />
-              <span>Uitstekende prestatie</span>
+              <span>Bestverkopend model</span>
             </div>
           </CardContent>
         </Card>
@@ -228,37 +239,37 @@ const Reports = () => {
         <Card className="bg-gradient-to-br from-orange-500 to-red-600 text-white border-0 shadow-xl transform hover:scale-105 transition-all">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <Phone className="h-10 w-10 text-orange-200" />
+              <ShoppingCart className="h-10 w-10 text-orange-200" />
               <div className="text-right">
-                <div className="text-xs text-orange-200">SLA</div>
-                <Badge className="bg-white/20 text-white">2u</Badge>
+                <div className="text-xs text-orange-200">Voorraad</div>
+                <Badge className="bg-white/20 text-white">120</Badge>
               </div>
             </div>
-            <h3 className="text-3xl font-bold mb-1">{reportData.leads.responseTime}u</h3>
-            <p className="text-orange-200">Gemiddelde Reactietijd</p>
+            <h3 className="text-3xl font-bold mb-1">85%</h3>
+            <p className="text-orange-200">Voorraad Omloopsnelheid</p>
             <div className="mt-2 flex items-center text-xs">
               <Activity className="w-3 h-3 mr-1" />
-              <span>Binnen doelbereik</span>
+              <span>Gezonde voorraadrotatie</span>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Analytics Grid */}
+      {/* Hoofdanalyse Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
-        {/* Sales Trend Analysis */}
+        {/* Verkopen Trend Analyse */}
         <div className="xl:col-span-2">
           <Card className="shadow-2xl border-0 bg-white">
-            <CardHeader className="bg-gradient-to-r from-gray-800 to-slate-800 text-white rounded-t-lg">
+            <CardHeader className="bg-gradient-to-r from-blue-800 to-indigo-800 text-white rounded-t-lg">
               <CardTitle className="flex items-center gap-3 text-xl">
                 <TrendingUp className="h-6 w-6" />
-                Verkoop Prestatie Trends & Marge Analyse
+                Maandelijkse Verkoop Prestaties & Trends
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div className="h-[400px]">
-                <ChartContainer config={salesChartConfig}>
-                  <AreaChart data={salesTrendData}>
+                <ChartContainer config={chartConfigs.salesTrend}>
+                  <AreaChart data={vehiclesSoldData}>
                     <defs>
                       <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.6}/>
@@ -271,40 +282,40 @@ const Reports = () => {
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <Area 
                       type="monotone" 
-                      dataKey="omzet" 
+                      dataKey="verkocht" 
                       stroke="#8B5CF6" 
                       fill="url(#salesGradient)"
                       strokeWidth={3}
-                      name="Omzet (€)"
+                      name="Verkochte Auto's"
                     />
                   </AreaChart>
                 </ChartContainer>
               </div>
               <div className="mt-4 grid grid-cols-3 gap-4 pt-4 border-t">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">{formatCurrency(1950000)}</div>
-                  <div className="text-sm text-gray-600">Gemiddelde Maand</div>
+                  <div className="text-2xl font-bold text-purple-600">47</div>
+                  <div className="text-sm text-gray-600">Gem. per Maand</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">+15.2%</div>
-                  <div className="text-sm text-gray-600">Groei JoJ</div>
+                  <div className="text-2xl font-bold text-green-600">+18.2%</div>
+                  <div className="text-sm text-gray-600">Groei dit Jaar</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">16.1%</div>
-                  <div className="text-sm text-gray-600">Gem. Marge</div>
+                  <div className="text-2xl font-bold text-blue-600">{formatCurrency(40000)}</div>
+                  <div className="text-sm text-gray-600">Gem. Verkoopprijs</div>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* AI Business Intelligence Panel */}
+        {/* Automotive AI Insights */}
         <div>
           <Card className="shadow-2xl border-0 bg-white h-fit">
-            <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-t-lg">
+            <CardHeader className="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-t-lg">
               <CardTitle className="flex items-center gap-3">
                 <Brain className="h-6 w-6" />
-                AI Business Intelligence
+                Automotive AI Insights
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
@@ -312,12 +323,12 @@ const Reports = () => {
                 <div className="flex items-start gap-3">
                   <Zap className="h-6 w-6 text-green-600 mt-1 flex-shrink-0" />
                   <div>
-                    <h4 className="font-bold text-green-800 mb-2">Omzet Kans Gedetecteerd</h4>
+                    <h4 className="font-bold text-green-800 mb-2">Voorraad Optimalisatie</h4>
                     <p className="text-sm text-green-700 leading-relaxed">
-                      Premium segment toont 22% groeipotentieel. Focus marketingbudget op luxe SUV voorraad voor Q4.
+                      BMW 3 Serie heeft slechts 12 stadagen gemiddeld. Verhoog voorraad van dit model met 25% voor optimale verkoop.
                     </p>
                     <div className="mt-2 text-xs text-green-600 font-medium">
-                      Potentiële Impact: +€450K omzet
+                      Potentiële Omzet Verhoging: +€320K
                     </div>
                   </div>
                 </div>
@@ -327,12 +338,12 @@ const Reports = () => {
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="h-6 w-6 text-orange-600 mt-1 flex-shrink-0" />
                   <div>
-                    <h4 className="font-bold text-orange-800 mb-2">Prestatie Waarschuwing</h4>
+                    <h4 className="font-bold text-orange-800 mb-2">Langzame Rotatie Waarschuwing</h4>
                     <p className="text-sm text-orange-700 leading-relaxed">
-                      Lead reactietijd gestegen met 18% vs. vorige maand. Overweeg geautomatiseerde opvolg workflows.
+                      BMW X3 heeft 25 stadagen gemiddeld. Overweeg prijsaanpassing of marketingcampagne voor snellere verkoop.
                     </p>
                     <div className="mt-2 text-xs text-orange-600 font-medium">
-                      Actie Vereist: Proces Optimalisatie
+                      Actie Vereist: Prijsstrategie Review
                     </div>
                   </div>
                 </div>
@@ -342,12 +353,12 @@ const Reports = () => {
                 <div className="flex items-start gap-3">
                   <Lightbulb className="h-6 w-6 text-blue-600 mt-1 flex-shrink-0" />
                   <div>
-                    <h4 className="font-bold text-blue-800 mb-2">Strategische Aanbeveling</h4>
+                    <h4 className="font-bold text-blue-800 mb-2">Seizoenspatroon Detectie</h4>
                     <p className="text-sm text-blue-700 leading-relaxed">
-                      Implementeer dynamisch prijsmodel gebaseerd op voorraad omloopsnelheid. Verwachte efficiëntiewinst: +30%.
+                      Q2 toont 24% groei. Plan voorraad inkoop voor Q2 2025 gebaseerd op dit seizoenspatroon.
                     </p>
                     <div className="mt-2 text-xs text-blue-600 font-medium">
-                      Implementatie Complexiteit: Gemiddeld
+                      Planning Aanbeveling: Verhoog Q2 Inkoop
                     </div>
                   </div>
                 </div>
@@ -357,45 +368,34 @@ const Reports = () => {
         </div>
       </div>
 
-      {/* Advanced Analytics Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Team Performance Leaderboard */}
+      {/* Snelst Verkopende Modellen & Merk Prestaties */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* Snelst Verkopende Modellen */}
         <Card className="shadow-2xl border-0 bg-white">
           <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
             <CardTitle className="flex items-center gap-3">
               <Star className="h-6 w-6" />
-              Team Prestatie Ranking
+              Snelst Verkopende Modellen
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="h-[320px]">
-              <ChartContainer config={teamChartConfig}>
-                <RechartsBarChart data={teamPerformanceData} layout="horizontal">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="naam" type="category" width={120} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="deals" fill="#8B5CF6" name="Gesloten Deals" />
-                </RechartsBarChart>
-              </ChartContainer>
-            </div>
-            <div className="mt-4 space-y-3">
-              {teamPerformanceData.map((member, index) => (
-                <div key={member.naam} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+            <div className="space-y-4">
+              {fastestSellingModels.map((model, index) => (
+                <div key={model.model} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-purple-50 rounded-lg border-l-4 border-purple-500">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
                       index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-400' : 'bg-blue-500'
                     }`}>
                       {index + 1}
                     </div>
                     <div>
-                      <div className="font-medium">{member.naam}</div>
-                      <div className="text-sm text-gray-600">{formatCurrency(member.omzet)}</div>
+                      <div className="font-bold text-gray-800">{model.model}</div>
+                      <div className="text-sm text-gray-600">{model.verkocht} verkocht • {model.marktaandeel}% marktaandeel</div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold text-purple-600">{member.score}%</div>
-                    <div className="text-xs text-gray-500">Prestatie Score</div>
+                    <div className="text-2xl font-bold text-purple-600">{model.gemStadagen}</div>
+                    <div className="text-xs text-gray-500">Gemiddelde Stadagen</div>
                   </div>
                 </div>
               ))}
@@ -403,29 +403,29 @@ const Reports = () => {
           </CardContent>
         </Card>
 
-        {/* Product Mix Analysis */}
+        {/* Merk Prestatie Analyse */}
         <Card className="shadow-2xl border-0 bg-white">
-          <CardHeader className="bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-t-lg">
+          <CardHeader className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-t-lg">
             <CardTitle className="flex items-center gap-3">
-              <PieChartIcon className="h-6 w-6" />
-              Product Portfolio Analyse
+              <Award className="h-6 w-6" />
+              Merk Prestatie Analyse
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <div className="h-[300px] mb-4">
-              <ChartContainer config={productChartConfig}>
+              <ChartContainer config={chartConfigs.brandPerformance}>
                 <RechartsPieChart>
                   <Pie
-                    data={productMixData}
+                    data={brandPerformance}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
                     outerRadius={120}
                     paddingAngle={5}
-                    dataKey="waarde"
+                    dataKey="verkocht"
                   >
-                    {productMixData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    {brandPerformance.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.kleur} />
                     ))}
                   </Pie>
                   <ChartTooltip 
@@ -434,9 +434,10 @@ const Reports = () => {
                         const data = payload[0].payload;
                         return (
                           <div className="bg-white p-3 shadow-lg rounded-lg border">
-                            <p className="font-medium">{data.categorie}</p>
-                            <p className="text-sm text-gray-600">Aandeel: {data.waarde}%</p>
+                            <p className="font-medium">{data.merk}</p>
+                            <p className="text-sm text-gray-600">Verkocht: {data.verkocht} auto's</p>
                             <p className="text-sm text-gray-600">Omzet: {formatCurrency(data.omzet)}</p>
+                            <p className="text-sm text-gray-600">Marge: {data.marge}%</p>
                           </div>
                         );
                       }
@@ -447,18 +448,109 @@ const Reports = () => {
               </ChartContainer>
             </div>
             <div className="space-y-3">
-              {productMixData.map((product, index) => (
-                <div key={product.categorie} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              {brandPerformance.map((brand, index) => (
+                <div key={brand.merk} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div 
                       className="w-4 h-4 rounded-full" 
-                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                      style={{ backgroundColor: brand.kleur }}
                     />
-                    <span className="font-medium">{product.categorie}</span>
+                    <div>
+                      <div className="font-medium">{brand.merk}</div>
+                      <div className="text-sm text-gray-600">{brand.verkocht} voertuigen</div>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold">{product.waarde}%</div>
-                    <div className="text-xs text-gray-600">{formatCurrency(product.omzet)}</div>
+                    <div className="font-bold">{formatCurrency(brand.omzet)}</div>
+                    <div className="text-xs text-gray-600">Marge: {brand.marge}%</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Voorraad Rotatie & Periode Vergelijking */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Voorraad Rotatie Analyse */}
+        <Card className="shadow-2xl border-0 bg-white">
+          <CardHeader className="bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-t-lg">
+            <CardTitle className="flex items-center gap-3">
+              <Activity className="h-6 w-6" />
+              Voorraad Rotatie Analyse
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              {inventoryTurnover.map((item, index) => (
+                <div key={item.categorie} className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="font-bold text-gray-800">{item.categorie}</div>
+                    <Badge className={`${
+                      item.omloopsnelheid > 85 ? 'bg-green-500' : 
+                      item.omloopsnelheid > 75 ? 'bg-yellow-500' : 'bg-red-500'
+                    } text-white`}>
+                      {item.omloopsnelheid.toFixed(1)}%
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <div className="text-gray-600">Voorraad</div>
+                      <div className="font-medium">{item.voorraad}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-600">Verkocht</div>
+                      <div className="font-medium">{item.verkocht}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-600">Stadagen</div>
+                      <div className="font-medium">{item.stadagen} dagen</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Periode Vergelijking */}
+        <Card className="shadow-2xl border-0 bg-white">
+          <CardHeader className="bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-t-lg">
+            <CardTitle className="flex items-center gap-3">
+              <Calendar className="h-6 w-6" />
+              Kwartaal Prestatie Vergelijking
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              {periodicSalesComparison.map((period, index) => (
+                <div key={period.periode} className="p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-lg border">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="font-bold text-gray-800">{period.periode}</div>
+                    <div className="flex items-center gap-2">
+                      {period.groei > 0 ? (
+                        <ArrowUp className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <ArrowDown className="w-4 h-4 text-red-600" />
+                      )}
+                      <Badge className={`${
+                        period.groei > 15 ? 'bg-green-500' :
+                        period.groei > 5 ? 'bg-yellow-500' : 'bg-red-500'
+                      } text-white`}>
+                        {period.groei > 0 ? '+' : ''}{period.groei}%
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-gray-600">Verkocht</div>
+                      <div className="font-medium text-lg">{period.verkocht} auto's</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-600">Top Model</div>
+                      <div className="font-medium">{period.topModel}</div>
+                    </div>
                   </div>
                 </div>
               ))}
