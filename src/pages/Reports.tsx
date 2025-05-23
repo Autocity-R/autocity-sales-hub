@@ -15,7 +15,9 @@ import {
   Calendar,
   Clock,
   Target,
-  Activity
+  Activity,
+  FileText,
+  PieChart
 } from "lucide-react";
 import { getReportsData, getAvailablePeriods, exportReportData } from "@/services/reportsService";
 import { PerformanceData, ReportPeriod } from "@/types/reports";
@@ -25,7 +27,7 @@ import { TeamPerformanceTable } from "@/components/reports/TeamPerformanceTable"
 import { VehicleTypesChart } from "@/components/reports/VehicleTypesChart";
 
 const Reports = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState<ReportPeriod>(getAvailablePeriods()[1]); // Default to current month
+  const [selectedPeriod, setSelectedPeriod] = useState<ReportPeriod>(getAvailablePeriods()[1]);
   const [reportData, setReportData] = useState<PerformanceData>(getReportsData(getAvailablePeriods()[1]));
   const { toast } = useToast();
 
@@ -68,19 +70,33 @@ const Reports = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
+      {/* Reports Header Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 rounded-lg mb-6">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Rapportages</h1>
-            <p className="text-muted-foreground">
-              Performance analytics en data-inzichten voor {selectedPeriod.label.toLowerCase()}
+            <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
+              <FileText className="h-8 w-8" />
+              Business Rapportages & Analytics
+            </h1>
+            <p className="text-blue-100 text-lg">
+              Gedetailleerde performance analyse voor {selectedPeriod.label.toLowerCase()}
             </p>
+            <div className="mt-4 flex items-center gap-4 text-sm">
+              <Badge variant="secondary" className="bg-blue-500/20 text-white border-blue-400">
+                <Calendar className="w-3 h-3 mr-1" />
+                {selectedPeriod.label}
+              </Badge>
+              <Badge variant="secondary" className="bg-blue-500/20 text-white border-blue-400">
+                <Activity className="w-3 h-3 mr-1" />
+                Live Data
+              </Badge>
+            </div>
           </div>
           
-          <div className="flex gap-3">
+          {/* Controls Section */}
+          <div className="flex flex-col gap-3">
             <Select value={selectedPeriod.label} onValueChange={handlePeriodChange}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-48 bg-white text-gray-900">
                 <Calendar className="w-4 h-4 mr-2" />
                 <SelectValue />
               </SelectTrigger>
@@ -93,113 +109,171 @@ const Reports = () => {
               </SelectContent>
             </Select>
             
-            <Button variant="outline" onClick={() => handleExport('excel')}>
-              <Download className="w-4 h-4 mr-2" />
-              Excel
-            </Button>
-            <Button variant="outline" onClick={() => handleExport('csv')}>
-              <Download className="w-4 h-4 mr-2" />
-              CSV
-            </Button>
-            <Button variant="outline" onClick={() => handleExport('pdf')}>
-              <Download className="w-4 h-4 mr-2" />
-              PDF
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => handleExport('excel')}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Download className="w-3 h-3 mr-1" />
+                Excel
+              </Button>
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => handleExport('csv')}
+                className="bg-orange-600 hover:bg-orange-700 text-white"
+              >
+                <Download className="w-3 h-3 mr-1" />
+                CSV
+              </Button>
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => handleExport('pdf')}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                <Download className="w-3 h-3 mr-1" />
+                PDF
+              </Button>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Key Metrics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Totale Omzet</CardTitle>
-              <Euro className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(reportData.sales.totalRevenue)}</div>
-              <p className="text-xs text-muted-foreground">
-                Marge: {formatPercentage(reportData.sales.averageMargin)}
-              </p>
-            </CardContent>
-          </Card>
+      {/* Key Performance Indicators */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Totale Omzet</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-700">{formatCurrency(reportData.sales.totalRevenue)}</div>
+            <p className="text-xs text-muted-foreground flex items-center mt-1">
+              <TrendingUp className="w-3 h-3 mr-1" />
+              Marge: {formatPercentage(reportData.sales.averageMargin)}
+            </p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Verkochte Auto's</CardTitle>
-              <Car className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{reportData.sales.totalUnits}</div>
-              <p className="text-xs text-muted-foreground">
-                Omloopsnelheid: {reportData.turnoverRate} dagen
-              </p>
-            </CardContent>
-          </Card>
+        <Card className="border-l-4 border-l-blue-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Verkochte Voertuigen</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-700">{reportData.sales.totalUnits}</div>
+            <p className="text-xs text-muted-foreground flex items-center mt-1">
+              <Car className="w-3 h-3 mr-1" />
+              Omloop: {reportData.turnoverRate} dagen
+            </p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Lead Conversie</CardTitle>
-              <Target className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatPercentage(reportData.leads.conversionRate)}</div>
-              <p className="text-xs text-muted-foreground">
-                {reportData.leads.totalLeads} leads totaal
-              </p>
-            </CardContent>
-          </Card>
+        <Card className="border-l-4 border-l-purple-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Lead Conversie</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-700">{formatPercentage(reportData.leads.conversionRate)}</div>
+            <p className="text-xs text-muted-foreground flex items-center mt-1">
+              <Target className="w-3 h-3 mr-1" />
+              {reportData.leads.totalLeads} leads
+            </p>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Reactietijd</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{reportData.leads.responseTime}u</div>
-              <p className="text-xs text-muted-foreground">
-                Gemiddelde opvolging
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="border-l-4 border-l-orange-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Reactietijd</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-700">{reportData.leads.responseTime}u</div>
+            <p className="text-xs text-muted-foreground flex items-center mt-1">
+              <Clock className="w-3 h-3 mr-1" />
+              Gemiddeld
+            </p>
+          </CardContent>
+        </Card>
 
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ReportsCharts data={reportData} />
-          <VehicleTypesChart vehicleTypes={reportData.vehicleTypes} />
-        </div>
+        <Card className="border-l-4 border-l-indigo-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Opvolg Ratio</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-indigo-700">{formatPercentage(reportData.leads.followUpRate)}</div>
+            <p className="text-xs text-muted-foreground flex items-center mt-1">
+              <Users className="w-3 h-3 mr-1" />
+              Team gemiddelde
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* Lead Performance Metrics */}
-        <Card>
+      {/* Charts and Analytics Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Lead Performance Overzicht
+              <BarChart3 className="h-5 w-5 text-blue-600" />
+              Verkoop Trends & Performance
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{reportData.leads.totalLeads}</div>
-                <div className="text-sm text-muted-foreground">Totale Leads</div>
+            <ReportsCharts data={reportData} />
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PieChart className="h-5 w-5 text-green-600" />
+              Voertuig Categorieën
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <VehicleTypesChart vehicleTypes={reportData.vehicleTypes} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Detailed Analytics Section */}
+      <div className="space-y-6">
+        {/* Lead Performance Deep Dive */}
+        <Card className="shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-purple-600" />
+              Lead Performance Analyse
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <div className="text-3xl font-bold text-blue-600">{reportData.leads.totalLeads}</div>
+                <div className="text-sm text-gray-600 mt-1">Totale Leads</div>
+                <div className="text-xs text-blue-500 mt-1">Inkomende aanvragen</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{formatPercentage(reportData.leads.followUpRate)}</div>
-                <div className="text-sm text-muted-foreground">Opvolg Ratio</div>
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <div className="text-3xl font-bold text-green-600">{formatPercentage(reportData.leads.followUpRate)}</div>
+                <div className="text-sm text-gray-600 mt-1">Opvolg Ratio</div>
+                <div className="text-xs text-green-500 mt-1">Contact gemaakt</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-orange-600">{reportData.leads.avgDaysToClose}</div>
-                <div className="text-sm text-muted-foreground">Dagen tot Afsluiting</div>
+              <div className="text-center p-4 bg-orange-50 rounded-lg">
+                <div className="text-3xl font-bold text-orange-600">{reportData.leads.avgDaysToClose}</div>
+                <div className="text-sm text-gray-600 mt-1">Dagen tot Deal</div>
+                <div className="text-xs text-orange-500 mt-1">Gemiddelde cyclus</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">{reportData.leads.responseTime}u</div>
-                <div className="text-sm text-muted-foreground">Gemiddelde Reactietijd</div>
+              <div className="text-center p-4 bg-purple-50 rounded-lg">
+                <div className="text-3xl font-bold text-purple-600">{reportData.leads.responseTime}u</div>
+                <div className="text-sm text-gray-600 mt-1">Reactietijd</div>
+                <div className="text-xs text-purple-500 mt-1">Eerste contact</div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Team Performance */}
+        {/* Team Performance Table */}
         <TeamPerformanceTable teamMembers={reportData.teamPerformance} />
       </div>
     </DashboardLayout>
