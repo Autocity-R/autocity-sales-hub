@@ -1,3 +1,4 @@
+
 import { Vehicle, PaymentStatus, PaintStatus, FileCategory, VehicleFile, SalesStatus } from "@/types/inventory";
 import { Contact } from "@/types/customer";
 
@@ -130,6 +131,37 @@ const mockVehicles: Vehicle[] = [
     photos: ["https://placehold.co/600x400?text=Mercedes+C+Class"],
     customerId: "dealer-1",
     customerName: "ABC Auto Dealership",
+  },
+  // Adding a new vehicle for transport testing
+  {
+    id: "5",
+    brand: "Toyota",
+    model: "Corolla",
+    licenseNumber: "GH-345-I",
+    vin: "JTDDL35E903234567",
+    mileage: 45000,
+    importStatus: "transport_geregeld",
+    arrived: false,
+    workshopStatus: "wachten",
+    location: "onderweg",
+    salesStatus: "voorraad",
+    showroomOnline: false,
+    bpmRequested: false,
+    bpmStarted: false,
+    damage: {
+      description: "To be inspected upon arrival",
+      status: "geen",
+    },
+    purchasePrice: 12000,
+    sellingPrice: 15000,
+    paymentStatus: "niet_betaald",
+    cmrSent: true,
+    cmrDate: new Date("2023-04-25"),
+    papersReceived: false,
+    papersDate: null,
+    notes: "Vehicle currently in transit from Germany, expected arrival in 3 days.",
+    mainPhotoUrl: "https://placehold.co/600x400?text=Toyota+Corolla",
+    photos: ["https://placehold.co/600x400?text=Toyota+Corolla"],
   }
 ];
 
