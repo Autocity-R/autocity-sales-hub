@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -143,8 +144,6 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
           status: "gepland" as any,
           customerId: selectedVehicle.customerId,
           customerName: selectedVehicle.customerName || "Onbekend",
-          customerEmail: selectedVehicle.customerEmail,
-          customerPhone: selectedVehicle.customerPhone,
           vehicleId: selectedVehicle.id,
           vehicleBrand: selectedVehicle.brand,
           vehicleModel: selectedVehicle.model,
@@ -195,7 +194,7 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Vehicle Selection - keep existing code */}
+      {/* Vehicle Selection */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -256,7 +255,7 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         </CardContent>
       </Card>
 
-      {/* Problem Details - keep existing code */}
+      {/* Problem Details */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -336,7 +335,7 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         </CardContent>
       </Card>
 
-      {/* Appointment Scheduling - NEW */}
+      {/* Appointment Scheduling */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -426,7 +425,7 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         </CardContent>
       </Card>
 
-      {/* Loan Car - keep existing code */}
+      {/* Loan Car */}
       <Card>
         <CardHeader>
           <CardTitle>Leenauto</CardTitle>
@@ -466,7 +465,7 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         </CardContent>
       </Card>
 
-      {/* Additional Information - keep existing code */}
+      {/* Additional Information */}
       <Card>
         <CardHeader>
           <CardTitle>Aanvullende Informatie</CardTitle>
