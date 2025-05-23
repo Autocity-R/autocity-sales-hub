@@ -26,7 +26,7 @@ import {
   PieChart as PieChartIcon
 } from "lucide-react";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart as RechartsBarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, LineChart, Line } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, BarChart as RechartsBarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, LineChart, Line } from "recharts";
 import { getReportsData, getAvailablePeriods, exportReportData } from "@/services/reportsService";
 import { ReportPeriod } from "@/types/reports";
 import { useToast } from "@/hooks/use-toast";
@@ -71,6 +71,28 @@ const Reports = () => {
 
   const formatPercentage = (value: number) => {
     return `${value.toFixed(1)}%`;
+  };
+
+  // Chart configurations
+  const salesChartConfig = {
+    omzet: {
+      label: "Omzet (€)",
+      color: "#8B5CF6",
+    },
+  };
+
+  const teamChartConfig = {
+    deals: {
+      label: "Deals Closed",
+      color: "#8B5CF6",
+    },
+  };
+
+  const productChartConfig = {
+    waarde: {
+      label: "Percentage",
+      color: "#8B5CF6",
+    },
   };
 
   // Unieke analytics data voor reports
@@ -235,7 +257,7 @@ const Reports = () => {
             </CardHeader>
             <CardContent className="p-6">
               <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ChartContainer config={salesChartConfig}>
                   <AreaChart data={salesTrendData}>
                     <defs>
                       <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
@@ -256,7 +278,7 @@ const Reports = () => {
                       name="Omzet (€)"
                     />
                   </AreaChart>
-                </ResponsiveContainer>
+                </ChartContainer>
               </div>
               <div className="mt-4 grid grid-cols-3 gap-4 pt-4 border-t">
                 <div className="text-center">
@@ -347,7 +369,7 @@ const Reports = () => {
           </CardHeader>
           <CardContent className="p-6">
             <div className="h-[320px]">
-              <ResponsiveContainer width="100%" height="100%">
+              <ChartContainer config={teamChartConfig}>
                 <RechartsBarChart data={teamPerformanceData} layout="horizontal">
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" />
@@ -355,7 +377,7 @@ const Reports = () => {
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar dataKey="deals" fill="#8B5CF6" name="Deals Closed" />
                 </RechartsBarChart>
-              </ResponsiveContainer>
+              </ChartContainer>
             </div>
             <div className="mt-4 space-y-3">
               {teamPerformanceData.map((member, index) => (
@@ -391,7 +413,7 @@ const Reports = () => {
           </CardHeader>
           <CardContent className="p-6">
             <div className="h-[300px] mb-4">
-              <ResponsiveContainer width="100%" height="100%">
+              <ChartContainer config={productChartConfig}>
                 <RechartsPieChart>
                   <Pie
                     data={productMixData}
@@ -422,7 +444,7 @@ const Reports = () => {
                     }}
                   />
                 </RechartsPieChart>
-              </ResponsiveContainer>
+              </ChartContainer>
             </div>
             <div className="space-y-3">
               {productMixData.map((product, index) => (
