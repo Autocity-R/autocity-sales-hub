@@ -58,6 +58,7 @@ const App = () => (
           <Route path="/settings/privacy" element={<Settings />} />
           <Route path="/settings/users" element={<Settings />} />
           <Route path="/settings/users/new" element={<Settings />} />
+          <Route path="/settings/loan-cars" element={<Settings />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

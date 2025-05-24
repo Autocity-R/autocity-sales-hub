@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -10,7 +9,8 @@ import {
   Key,
   Database,
   Users,
-  UserPlus
+  UserPlus,
+  Car
 } from "lucide-react";
 
 // Persoonlijke instellingen
@@ -70,6 +70,12 @@ const adminMenuItems = [
     icon: UserPlus,
     href: "/settings/users/new",
     description: "Voeg nieuwe gebruikers toe aan het systeem"
+  },
+  {
+    title: "Leenauto Beheer",
+    icon: Car,
+    href: "/settings/loan-cars",
+    description: "Beheer leenauto's en beschikbaarheid"
   }
 ];
 

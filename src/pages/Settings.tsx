@@ -10,6 +10,7 @@ import { NotificationSettings } from "@/components/settings/NotificationSettings
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
 import { APISettings } from "@/components/settings/APISettings";
 import { AccountPreferences } from "@/components/settings/AccountPreferences";
+import { LoanCarManagement } from "@/components/settings/LoanCarManagement";
 
 const Settings = () => {
   const location = useLocation();
@@ -30,6 +31,8 @@ const Settings = () => {
         return <APISettings />;
       case "/settings/privacy":
         return <AccountPreferences />;
+      case "/settings/loan-cars":
+        return <LoanCarManagement />;
       case "/settings":
       case "/settings/personal":
       default:
@@ -53,6 +56,8 @@ const Settings = () => {
         return "API Sleutels";
       case "/settings/privacy":
         return "Data & Privacy";
+      case "/settings/loan-cars":
+        return "Leenauto Beheer";
       default:
         return "Persoonlijke Instellingen";
     }
@@ -74,6 +79,8 @@ const Settings = () => {
         return "Beheer API sleutels voor externe systeemkoppelingen";
       case "/settings/privacy":
         return "Data export en privacy instellingen";
+      case "/settings/loan-cars":
+        return "Beheer leenauto's en hun beschikbaarheid";
       default:
         return "Beheer je persoonlijke accountgegevens";
     }
