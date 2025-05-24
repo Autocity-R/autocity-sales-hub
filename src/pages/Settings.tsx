@@ -1,11 +1,11 @@
 
 import React from "react";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import SettingsLayout from "@/components/layout/SettingsLayout";
 import { UserSettings } from "@/components/settings/UserSettings";
 
 const Settings = () => {
   return (
-    <DashboardLayout>
+    <SettingsLayout>
       <div className="p-6">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Instellingen</h1>
@@ -15,7 +15,7 @@ const Settings = () => {
         </div>
         <UserSettings />
       </div>
-    </DashboardLayout>
+    </SettingsLayout>
   );
 };
 
