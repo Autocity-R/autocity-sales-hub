@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
@@ -26,7 +25,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { format, startOfDay, endOfDay, addDays, subDays } from "date-fns";
+import { format, startOfDay, endOfDay, addDays, subDays, startOfWeek, endOfWeek } from "date-fns";
 
 const Calendar = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -69,6 +68,14 @@ const Calendar = () => {
     const tomorrow = endOfDay(new Date());
     const aptDate = new Date(apt.startTime);
     return aptDate >= today && aptDate <= tomorrow;
+  });
+
+  // Get this week's appointments
+  const thisWeekAppointments = appointments.filter(apt => {
+    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
+    const aptDate = new Date(apt.startTime);
+    return aptDate >= weekStart && aptDate <= weekEnd;
   });
 
   const confirmedAppointments = appointments.filter(apt => apt.status === "bevestigd");
@@ -209,6 +216,7 @@ const Calendar = () => {
         <Tabs defaultValue="calendar" className="space-y-4">
           <TabsList>
             <TabsTrigger value="calendar">Kalender</TabsTrigger>
+            <TabsTrigger value="week">Deze Week</TabsTrigger>
             <TabsTrigger value="list">Lijst</TabsTrigger>
             <TabsTrigger value="today">Vandaag</TabsTrigger>
           </TabsList>
@@ -218,6 +226,16 @@ const Calendar = () => {
               appointments={appointments}
               view={calendarView}
               onViewChange={setCalendarView}
+              onAppointmentClick={setSelectedAppointment}
+              isLoading={isLoading}
+            />
+          </TabsContent>
+
+          <TabsContent value="week">
+            <WeekView
+              appointments={thisWeekAppointments}
+              currentDate={new Date()}
+              onDateChange={(date) => setCalendarView({ ...calendarView, date })}
               onAppointmentClick={setSelectedAppointment}
               isLoading={isLoading}
             />

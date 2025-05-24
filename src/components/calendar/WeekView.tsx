@@ -8,7 +8,9 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Calendar as CalendarIcon,
-  Clock
+  Clock,
+  User,
+  Car
 } from "lucide-react";
 import { 
   format, 
@@ -66,6 +68,17 @@ export const WeekView: React.FC<WeekViewProps> = ({
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "gepland": return "Gepland";
+      case "bevestigd": return "Bevestigd";
+      case "uitgevoerd": return "Uitgevoerd";
+      case "geannuleerd": return "Geannuleerd";
+      case "no_show": return "No Show";
+      default: return status;
+    }
+  };
+
   const getTypeColor = (type: string) => {
     switch (type) {
       case "proefrit": return "border-l-blue-500";
@@ -75,6 +88,19 @@ export const WeekView: React.FC<WeekViewProps> = ({
       case "intake": return "border-l-indigo-500";
       case "bezichtiging": return "border-l-pink-500";
       default: return "border-l-gray-500";
+    }
+  };
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case "proefrit": return "Proefrit";
+      case "aflevering": return "Aflevering";
+      case "ophalen": return "Ophalen";
+      case "onderhoud": return "Onderhoud";
+      case "intake": return "Intake";
+      case "bezichtiging": return "Bezichtiging";
+      case "overig": return "Overig";
+      default: return type;
     }
   };
 
@@ -147,7 +173,7 @@ export const WeekView: React.FC<WeekViewProps> = ({
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="space-y-2 min-h-[200px]">
+                <div className="space-y-3 min-h-[250px]">
                   {dayAppointments.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-4">
                       Geen afspraken
@@ -156,43 +182,68 @@ export const WeekView: React.FC<WeekViewProps> = ({
                     dayAppointments.map((appointment) => (
                       <div
                         key={appointment.id}
-                        className={`p-2 border-l-4 ${getTypeColor(appointment.type)} bg-muted/50 rounded cursor-pointer hover:bg-muted transition-colors`}
+                        className={`p-3 border-l-4 ${getTypeColor(appointment.type)} bg-muted/50 rounded cursor-pointer hover:bg-muted transition-colors`}
                         onClick={() => onAppointmentClick(appointment)}
                       >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            <span className="text-xs font-medium">
-                              {format(new Date(appointment.startTime), 'HH:mm')}
-                            </span>
+                        <div className="space-y-2">
+                          {/* Time and Status */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              <span className="text-xs font-medium">
+                                {format(new Date(appointment.startTime), 'HH:mm')}
+                              </span>
+                            </div>
                             <Badge 
                               className={`${getStatusColor(appointment.status)} text-white text-xs`}
                               style={{ fontSize: '10px', padding: '1px 4px' }}
                             >
-                              {appointment.status}
+                              {getStatusLabel(appointment.status)}
                             </Badge>
                           </div>
                           
+                          {/* Appointment Type */}
+                          <div className="flex items-center justify-between">
+                            <Badge variant="outline" className="text-xs">
+                              {getTypeLabel(appointment.type)}
+                            </Badge>
+                            {appointment.leadId && (
+                              <Badge variant="secondary" className="text-xs">
+                                Lead
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {/* Title */}
                           <h4 className="text-xs font-semibold truncate" title={appointment.title}>
                             {appointment.title}
                           </h4>
                           
+                          {/* Customer */}
                           {appointment.customerName && (
-                            <p className="text-xs text-muted-foreground truncate" title={appointment.customerName}>
-                              {appointment.customerName}
-                            </p>
+                            <div className="flex items-center gap-1">
+                              <User className="h-3 w-3 text-muted-foreground" />
+                              <p className="text-xs text-muted-foreground truncate" title={appointment.customerName}>
+                                {appointment.customerName}
+                              </p>
+                            </div>
                           )}
                           
+                          {/* Vehicle */}
                           {appointment.vehicleBrand && (
-                            <p className="text-xs text-muted-foreground truncate">
-                              {appointment.vehicleBrand} {appointment.vehicleModel}
-                            </p>
+                            <div className="flex items-center gap-1">
+                              <Car className="h-3 w-3 text-muted-foreground" />
+                              <p className="text-xs text-muted-foreground truncate">
+                                {appointment.vehicleBrand} {appointment.vehicleModel}
+                              </p>
+                            </div>
                           )}
 
-                          {appointment.leadId && (
-                            <Badge variant="outline" className="text-xs">
-                              Lead: {appointment.leadId}
-                            </Badge>
+                          {/* Location */}
+                          {appointment.location && (
+                            <p className="text-xs text-muted-foreground truncate" title={appointment.location}>
+                              📍 {appointment.location}
+                            </p>
                           )}
                         </div>
                       </div>

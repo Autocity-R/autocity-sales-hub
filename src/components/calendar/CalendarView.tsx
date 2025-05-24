@@ -13,6 +13,7 @@ import {
   Clock
 } from "lucide-react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, isSameDay } from "date-fns";
+import { nl } from "date-fns/locale";
 
 interface CalendarViewProps {
   appointments: Appointment[];
@@ -52,6 +53,19 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     }
   };
 
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case "proefrit": return "Proefrit";
+      case "aflevering": return "Aflevering";
+      case "ophalen": return "Ophalen";
+      case "onderhoud": return "Onderhoud";
+      case "intake": return "Intake";
+      case "bezichtiging": return "Bezichtiging";
+      case "overig": return "Overig";
+      default: return type;
+    }
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -73,7 +87,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <CalendarIcon className="h-5 w-5" />
-              {format(view.date, 'MMMM yyyy')}
+              {format(view.date, 'MMMM yyyy', { locale: nl })}
             </CardTitle>
             <div className="flex items-center gap-2">
               <Button
@@ -82,6 +96,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 onClick={() => navigateMonth('prev')}
               >
                 <ChevronLeft className="h-4 w-4" />
+                Vorige
               </Button>
               <Button
                 variant="outline"
@@ -95,6 +110,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 size="sm"
                 onClick={() => navigateMonth('next')}
               >
+                Volgende
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -105,7 +121,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             mode="single"
             selected={view.date}
             onSelect={(date) => date && onViewChange({ ...view, date })}
-            className="w-full"
+            className="w-full pointer-events-auto"
+            locale={nl}
             modifiers={{
               hasAppointments: (date) => getAppointmentsForDate(date).length > 0
             }}
@@ -125,7 +142,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              Afspraken op {format(view.date, 'dd MMMM yyyy')}
+              Afspraken op {format(view.date, 'dd MMMM yyyy', { locale: nl })}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -156,6 +173,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                             <Badge className={`${getStatusColor(appointment.status)} text-white`}>
                               {appointment.status}
                             </Badge>
+                            {appointment.leadId && (
+                              <Badge variant="outline" className="text-xs">
+                                Lead: {appointment.leadId}
+                              </Badge>
+                            )}
                           </div>
                           <div className="text-sm text-muted-foreground space-y-1">
                             <p>
@@ -174,7 +196,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                         </div>
                         <div className="text-right">
                           <Badge variant="outline">
-                            {appointment.type}
+                            {getTypeLabel(appointment.type)}
                           </Badge>
                         </div>
                       </div>
