@@ -48,7 +48,19 @@ const App = () => (
           
           <Route path="/warranty" element={<Warranty />} />
           <Route path="/calendar" element={<Calendar />} />
+          
+          {/* Settings routes */}
           <Route path="/settings" element={<Settings />} />
+          <Route path="/settings/personal" element={<Settings />} />
+          <Route path="/settings/email" element={<Settings />} />
+          <Route path="/settings/notifications" element={<Settings />} />
+          <Route path="/settings/security" element={<Settings />} />
+          <Route path="/settings/language" element={<Settings />} />
+          <Route path="/settings/theme" element={<Settings />} />
+          <Route path="/settings/api" element={<Settings />} />
+          <Route path="/settings/privacy" element={<Settings />} />
+          <Route path="/settings/users" element={<Settings />} />
+          <Route path="/settings/users/new" element={<Settings />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

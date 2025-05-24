@@ -10,10 +10,13 @@ import {
   Globe, 
   Palette,
   Key,
-  Database
+  Database,
+  Users,
+  UserPlus
 } from "lucide-react";
 
-const settingsMenuItems = [
+// Persoonlijke instellingen
+const personalMenuItems = [
   {
     title: "Persoonlijke Gegevens",
     icon: User,
@@ -37,7 +40,11 @@ const settingsMenuItems = [
     icon: Shield,
     href: "/settings/security",
     description: "Wachtwoord en beveiligingsinstellingen"
-  },
+  }
+];
+
+// Systeem instellingen
+const systemMenuItems = [
   {
     title: "Taal & Regio",
     icon: Globe,
@@ -64,22 +71,35 @@ const settingsMenuItems = [
   }
 ];
 
+// Admin menu items (alleen voor hoofdgebruiker)
+const adminMenuItems = [
+  {
+    title: "Gebruikersbeheer",
+    icon: Users,
+    href: "/settings/users",
+    description: "Beheer gebruikerstoegang en rechten"
+  },
+  {
+    title: "Nieuwe Gebruiker",
+    icon: UserPlus,
+    href: "/settings/users/new",
+    description: "Voeg nieuwe gebruikers toe aan het systeem"
+  }
+];
+
 export const SettingsSidebar = () => {
   const location = useLocation();
+  
+  // Simuleer admin check - in productie zou dit uit een auth context komen
+  const isAdmin = true; // TODO: Vervang door echte admin check
 
-  return (
-    <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Instellingen
-        </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Beheer je account en voorkeuren
-        </p>
-      </div>
-      
-      <nav className="p-4 space-y-2">
-        {settingsMenuItems.map((item) => {
+  const MenuSection = ({ title, items }: { title: string, items: typeof personalMenuItems }) => (
+    <div className="mb-6">
+      <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 px-3">
+        {title}
+      </h3>
+      <div className="space-y-1">
+        {items.map((item) => {
           const isActive = location.pathname === item.href || 
             (item.href === "/settings/personal" && location.pathname === "/settings");
           
@@ -116,6 +136,25 @@ export const SettingsSidebar = () => {
             </Link>
           );
         })}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
+      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Instellingen
+        </h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          Beheer je account en voorkeuren
+        </p>
+      </div>
+      
+      <nav className="p-4">
+        <MenuSection title="Persoonlijk" items={personalMenuItems} />
+        <MenuSection title="Systeem" items={systemMenuItems} />
+        {isAdmin && <MenuSection title="Beheer" items={adminMenuItems} />}
       </nav>
     </div>
   );
