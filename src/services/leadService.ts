@@ -1,5 +1,4 @@
-
-import { Lead, LeadActivity, LeadEmail, LeadProposal, LeadStatus, LeadSource, LeadPriority, ActivityType } from "@/types/leads";
+import { Lead, LeadActivity, LeadEmail, LeadProposal, LeadStatus, LeadSource, LeadPriority, ActivityType, LeadFollowUpTrigger } from "@/types/leads";
 
 // Mock data voor leads
 const mockLeads: Lead[] = [
@@ -102,11 +101,21 @@ const mockEmails: LeadEmail[] = [
     id: "email1",
     leadId: "lead3",
     subject: "Offerte Mercedes E-Class - Bakker Group",
-    content: "Beste Mark, hierbij de gevraagde offerte...",
+    content: "Beste Mark,\n\nHierbij de gevraagde offerte voor de Mercedes E-Class.\n\nWe bieden u de volgende opties aan:\n\n1. Mercedes E-Class 220d Business Solution Plus\n   - Nieuwprijs: €44.500\n   - Lease vanaf €425 per maand\n   - Incl. onderhoud en verzekering\n\n2. Mercedes E-Class 300e Plug-in Hybrid\n   - Nieuwprijs: €52.900\n   - Lease vanaf €495 per maand\n   - Voordeel van 4% bijtelling\n\nAlle prijzen zijn exclusief BTW. De lease is gebaseerd op 48 maanden en 20.000 km per jaar.\n\nGraag hoor ik van u wat uw voorkeur heeft. Ik sta klaar om eventuele vragen te beantwoorden.\n\nMet vriendelijke groet,\nPieter Jansen\nAccount Manager\nAuto Dealership\n\nTel: +31 6 12345678\nEmail: p.jansen@autodealership.nl",
     sentAt: "2024-01-16T16:30:00Z",
     opened: true,
     clicked: true,
     replied: false
+  },
+  {
+    id: "email2",
+    leadId: "lead2",
+    subject: "Welkom bij Auto Dealership - Uw interesse in Audi A4",
+    content: "Beste Lisa,\n\nHartelijk dank voor uw interesse in de Audi A4. Wat fijn dat u overweegt om bij ons uw eerste auto aan te schaffen!\n\nNa ons telefoongesprek van vandaag begrijp ik dat u op zoek bent naar:\n- Audi A4 Avant\n- Budget rond €28.000\n- Financieringsmogelijkheden\n- Betrouwbare auto voor dagelijks gebruik\n\nIk ga voor u uitzoeken welke opties er beschikbaar zijn en zal u binnenkort een overzicht sturen met geschikte voertuigen.\n\nMocht u nog vragen hebben, aarzel dan niet om contact op te nemen.\n\nMet vriendelijke groet,\nSander Vermeulen\nVerkoopadviseur\nAuto Dealership\n\nTel: +31 6 87654321\nEmail: s.vermeulen@autodealership.nl",
+    sentAt: "2024-01-13T14:20:00Z",
+    opened: true,
+    clicked: false,
+    replied: true
   }
 ];
 

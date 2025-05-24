@@ -71,3 +71,16 @@ export interface LeadProposal {
   sentAt?: string;
   notes?: string;
 }
+
+export interface LeadFollowUpTrigger {
+  id: string;
+  leadId: string;
+  type: 'proefrit' | 'bezichtiging' | 'voorstel' | 'algemeen';
+  description: string;
+  scheduledDate: string;
+  priority: 'low' | 'medium' | 'high';
+  completed: boolean;
+  completedDate?: string;
+  createdBy: string;
+  createdAt: string;
+}

@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { LeadEmail } from "@/types/leads";
+import { LeadEmailDetail } from "./LeadEmailDetail";
 import { Plus, Mail, Eye, MousePointer, Reply } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +19,7 @@ interface LeadCommunicationProps {
 
 export const LeadCommunication: React.FC<LeadCommunicationProps> = ({ leadId, emails }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedEmail, setSelectedEmail] = useState<LeadEmail | null>(null);
   const [newEmail, setNewEmail] = useState({
     subject: '',
     content: ''
@@ -110,7 +112,11 @@ export const LeadCommunication: React.FC<LeadCommunicationProps> = ({ leadId, em
           emails.map((email) => {
             const status = getEmailStatus(email);
             return (
-              <Card key={email.id}>
+              <Card 
+                key={email.id} 
+                className="cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => setSelectedEmail(email)}
+              >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -134,12 +140,25 @@ export const LeadCommunication: React.FC<LeadCommunicationProps> = ({ leadId, em
                       : email.content
                     }
                   </div>
+                  
+                  <div className="mt-2 text-xs text-blue-600 hover:text-blue-800">
+                    Klik om volledige email te bekijken
+                  </div>
                 </CardContent>
               </Card>
             );
           })
         )}
       </div>
+
+      {/* Email Detail Modal */}
+      {selectedEmail && (
+        <LeadEmailDetail
+          email={selectedEmail}
+          isOpen={!!selectedEmail}
+          onClose={() => setSelectedEmail(null)}
+        />
+      )}
     </div>
   );
 };

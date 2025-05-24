@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +10,7 @@ import { getLeadActivities, getLeadEmails, getLeadProposals, updateLeadStatus } 
 import { LeadActivities } from "./LeadActivities";
 import { LeadCommunication } from "./LeadCommunication";
 import { LeadProposals } from "./LeadProposals";
+import { LeadFollowUp } from "./LeadFollowUp";
 import { 
   ArrowLeft, 
   Mail, 
@@ -34,6 +34,21 @@ interface LeadDetailProps {
   onOpenAI?: () => void;
 }
 
+// Mock follow-ups data - in real app would come from service
+const mockFollowUps = [
+  {
+    id: "fu1",
+    leadId: "lead3",
+    type: "proefrit" as const,
+    description: "Follow-up na proefrit Mercedes E-Class. Klant was zeer tevreden en wil graag meer informatie over financieringsmogelijkheden.",
+    scheduledDate: "2024-01-18T14:00:00Z",
+    priority: "high" as const,
+    completed: false,
+    createdBy: "Pieter Jansen",
+    createdAt: "2024-01-16T16:30:00Z"
+  }
+];
+
 export const LeadDetail: React.FC<LeadDetailProps> = ({ 
   lead, 
   onBack, 
@@ -44,6 +59,7 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
   const [activities] = useState(getLeadActivities(lead.id));
   const [emails] = useState(getLeadEmails(lead.id));
   const [proposals] = useState(getLeadProposals(lead.id));
+  const [followUps] = useState(mockFollowUps.filter(fu => fu.leadId === lead.id));
   const { toast } = useToast();
 
   const getStatusColor = (status: string) => {
@@ -251,7 +267,7 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
 
       {/* Tabs for Activities, Communication, etc. */}
       <Tabs defaultValue="activities" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="activities">
             Activiteiten ({activities.length})
           </TabsTrigger>
@@ -260,6 +276,9 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
           </TabsTrigger>
           <TabsTrigger value="proposals">
             Offertes ({proposals.length})
+          </TabsTrigger>
+          <TabsTrigger value="followup">
+            Follow-up ({followUps.length})
           </TabsTrigger>
           <TabsTrigger value="timeline">
             Timeline
@@ -276,6 +295,10 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
 
         <TabsContent value="proposals">
           <LeadProposals leadId={lead.id} proposals={proposals} />
+        </TabsContent>
+
+        <TabsContent value="followup">
+          <LeadFollowUp leadId={lead.id} followUps={followUps} />
         </TabsContent>
 
         <TabsContent value="timeline">
