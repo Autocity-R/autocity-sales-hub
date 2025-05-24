@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { LeadSearchRequest } from "@/types/leads";
 import { getSearchRequests, getSearchRequestStats, createSearchRequest } from "@/services/leadService";
+import { LeadSearchRequestDetail } from "./LeadSearchRequestDetail";
 import { Plus, Search, Car, Calendar, User, Phone, Mail, Clock, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +19,7 @@ export const LeadSearchRequests: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<LeadSearchRequest | null>(null);
   const [newRequest, setNewRequest] = useState({
     leadName: '',
     leadEmail: '',
@@ -146,6 +147,10 @@ export const LeadSearchRequests: React.FC = () => {
       notifyWhenAvailable: true
     });
     setIsDialogOpen(false);
+  };
+
+  const handleRequestClick = (request: LeadSearchRequest) => {
+    setSelectedRequest(request);
   };
 
   return (
@@ -423,7 +428,7 @@ export const LeadSearchRequests: React.FC = () => {
         </Select>
       </div>
 
-      {/* Search Requests List */}
+      {/* Search Requests List - Now Clickable */}
       <div className="space-y-4">
         {filteredRequests.length === 0 ? (
           <Card>
@@ -433,7 +438,11 @@ export const LeadSearchRequests: React.FC = () => {
           </Card>
         ) : (
           filteredRequests.map((request) => (
-            <Card key={request.id} className="hover:shadow-md transition-shadow">
+            <Card 
+              key={request.id} 
+              className="hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => handleRequestClick(request)}
+            >
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -523,6 +532,15 @@ export const LeadSearchRequests: React.FC = () => {
           ))
         )}
       </div>
+
+      {/* Detail Modal */}
+      {selectedRequest && (
+        <LeadSearchRequestDetail
+          request={selectedRequest}
+          isOpen={!!selectedRequest}
+          onClose={() => setSelectedRequest(null)}
+        />
+      )}
     </div>
   );
 };
