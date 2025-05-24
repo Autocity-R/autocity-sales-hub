@@ -5,6 +5,11 @@ import SettingsLayout from "@/components/layout/SettingsLayout";
 import { UserSettings } from "@/components/settings/UserSettings";
 import { UserManagement } from "@/components/settings/UserManagement";
 import { NewUserForm } from "@/components/settings/NewUserForm";
+import { EmailSettings } from "@/components/settings/EmailSettings";
+import { NotificationSettings } from "@/components/settings/NotificationSettings";
+import { SecuritySettings } from "@/components/settings/SecuritySettings";
+import { APISettings } from "@/components/settings/APISettings";
+import { AccountPreferences } from "@/components/settings/AccountPreferences";
 
 const Settings = () => {
   const location = useLocation();
@@ -15,15 +20,18 @@ const Settings = () => {
         return <UserManagement />;
       case "/settings/users/new":
         return <NewUserForm />;
+      case "/settings/email":
+        return <EmailSettings />;
+      case "/settings/notifications":
+        return <NotificationSettings />;
+      case "/settings/security":
+        return <SecuritySettings />;
+      case "/settings/api":
+        return <APISettings />;
+      case "/settings/privacy":
+        return <AccountPreferences />;
       case "/settings":
       case "/settings/personal":
-      case "/settings/email":
-      case "/settings/notifications":
-      case "/settings/security":
-      case "/settings/language":
-      case "/settings/theme":
-      case "/settings/api":
-      case "/settings/privacy":
       default:
         return <UserSettings />;
     }
@@ -35,8 +43,18 @@ const Settings = () => {
         return "Gebruikersbeheer";
       case "/settings/users/new":
         return "Nieuwe Gebruiker";
+      case "/settings/email":
+        return "Email Instellingen";
+      case "/settings/notifications":
+        return "Notificatie Instellingen";
+      case "/settings/security":
+        return "Beveiliging";
+      case "/settings/api":
+        return "API Sleutels";
+      case "/settings/privacy":
+        return "Data & Privacy";
       default:
-        return "Instellingen";
+        return "Persoonlijke Instellingen";
     }
   };
 
@@ -46,8 +64,18 @@ const Settings = () => {
         return "Beheer alle gebruikers en hun toegangsrechten";
       case "/settings/users/new":
         return "Voeg een nieuwe gebruiker toe aan het systeem";
+      case "/settings/email":
+        return "Koppel Gmail accounts voor CRM communicatie";
+      case "/settings/notifications":
+        return "Beheer herinneringen voor leads en email vermeldingen";
+      case "/settings/security":
+        return "Wijzig je wachtwoord en beveiligingsinstellingen";
+      case "/settings/api":
+        return "Beheer API sleutels voor externe systeemkoppelingen";
+      case "/settings/privacy":
+        return "Data export en privacy instellingen";
       default:
-        return "Beheer je accountgegevens en voorkeuren";
+        return "Beheer je persoonlijke accountgegevens";
     }
   };
 

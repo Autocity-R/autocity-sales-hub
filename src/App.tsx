@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -55,8 +54,6 @@ const App = () => (
           <Route path="/settings/email" element={<Settings />} />
           <Route path="/settings/notifications" element={<Settings />} />
           <Route path="/settings/security" element={<Settings />} />
-          <Route path="/settings/language" element={<Settings />} />
-          <Route path="/settings/theme" element={<Settings />} />
           <Route path="/settings/api" element={<Settings />} />
           <Route path="/settings/privacy" element={<Settings />} />
           <Route path="/settings/users" element={<Settings />} />

@@ -7,8 +7,6 @@ import {
   Mail, 
   Bell, 
   Shield, 
-  Globe, 
-  Palette,
   Key,
   Database,
   Users,
@@ -27,41 +25,29 @@ const personalMenuItems = [
     title: "Email Instellingen",
     icon: Mail,
     href: "/settings/email",
-    description: "Koppel en beheer email accounts"
+    description: "Koppel Gmail accounts voor CRM communicatie"
   },
   {
     title: "Notificaties",
     icon: Bell,
     href: "/settings/notifications",
-    description: "Beheer je notificatie voorkeuren"
+    description: "Herinneringen voor leads en email vermeldingen"
   },
   {
     title: "Beveiliging",
     icon: Shield,
     href: "/settings/security",
-    description: "Wachtwoord en beveiligingsinstellingen"
+    description: "Wachtwoord wijzigen en beveiligingsinstellingen"
   }
 ];
 
-// Systeem instellingen
+// Systeem instellingen (alleen API sleutels en Data & Privacy)
 const systemMenuItems = [
-  {
-    title: "Taal & Regio",
-    icon: Globe,
-    href: "/settings/language",
-    description: "Taal en tijdzone instellingen"
-  },
-  {
-    title: "Thema",
-    icon: Palette,
-    href: "/settings/theme",
-    description: "Pas het uiterlijk aan"
-  },
   {
     title: "API Sleutels",
     icon: Key,
     href: "/settings/api",
-    description: "Beheer API toegang"
+    description: "Beheer API toegang voor systeemkoppelingen"
   },
   {
     title: "Data & Privacy",
