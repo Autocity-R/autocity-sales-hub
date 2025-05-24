@@ -26,6 +26,7 @@ import {
   Bot
 } from "lucide-react";
 import { format } from "date-fns";
+import { LeadSearchRequests } from "@/components/leads/LeadSearchRequests";
 
 const Leads = () => {
   const [leads] = useState<Lead[]>(getLeads());
@@ -211,6 +212,7 @@ const Leads = () => {
           <TabsList>
             <TabsTrigger value="list">Lijstweergave</TabsTrigger>
             <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+            <TabsTrigger value="search">Zoekopdrachten</TabsTrigger>
           </TabsList>
 
           <TabsContent value="list" className="space-y-4">
@@ -324,6 +326,10 @@ const Leads = () => {
               onLeadClick={setSelectedLead}
               onStatusClick={handleStatusFilterClick}
             />
+          </TabsContent>
+
+          <TabsContent value="search">
+            <LeadSearchRequests />
           </TabsContent>
         </Tabs>
 

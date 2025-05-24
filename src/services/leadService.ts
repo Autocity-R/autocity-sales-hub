@@ -1,4 +1,4 @@
-import { Lead, LeadActivity, LeadEmail, LeadProposal, LeadStatus, LeadSource, LeadPriority, ActivityType, LeadFollowUpTrigger } from "@/types/leads";
+import { Lead, LeadActivity, LeadEmail, LeadProposal, LeadStatus, LeadSource, LeadPriority, ActivityType, LeadFollowUpTrigger, LeadSearchRequest } from "@/types/leads";
 
 // Mock data voor leads
 const mockLeads: Lead[] = [
@@ -133,6 +133,84 @@ const mockProposals: LeadProposal[] = [
   }
 ];
 
+const mockSearchRequests: LeadSearchRequest[] = [
+  {
+    id: "search1",
+    leadId: "lead1",
+    leadName: "Jan de Vries",
+    leadEmail: "jan.devries@gmail.com",
+    leadPhone: "+31 6 12345678",
+    requestedBrand: "BMW",
+    requestedModel: "X5",
+    requestedYear: "2023",
+    requestedFuelType: "Diesel",
+    requestedTransmission: "Automaat",
+    minPrice: 40000,
+    maxPrice: 60000,
+    maxKilometers: 50000,
+    status: "active",
+    priority: "high",
+    requestDate: "2024-01-15T09:30:00Z",
+    expiryDate: "2024-03-15T09:30:00Z",
+    notes: "Klant wil graag zwarte BMW X5, bij voorkeur met panoramadak",
+    assignedTo: "Pieter Jansen",
+    createdBy: "Pieter Jansen",
+    createdAt: "2024-01-15T09:30:00Z",
+    updatedAt: "2024-01-15T09:30:00Z",
+    notifyWhenAvailable: true
+  },
+  {
+    id: "search2",
+    leadId: "lead2",
+    leadName: "Lisa Schmidt",
+    leadEmail: "l.schmidt@hotmail.com",
+    leadPhone: "+31 6 87654321",
+    requestedBrand: "Audi",
+    requestedModel: "A3",
+    requestedYear: "2022",
+    requestedFuelType: "Benzine",
+    requestedTransmission: "Handgeschakeld",
+    minPrice: 25000,
+    maxPrice: 35000,
+    maxKilometers: 30000,
+    status: "active",
+    priority: "medium",
+    requestDate: "2024-01-12T14:20:00Z",
+    expiryDate: "2024-02-12T14:20:00Z",
+    notes: "Eerste auto, zoekt betrouwbare Audi A3 in goede staat",
+    assignedTo: "Sander Vermeulen",
+    createdBy: "Sander Vermeulen",
+    createdAt: "2024-01-12T14:20:00Z",
+    updatedAt: "2024-01-12T14:20:00Z",
+    notifyWhenAvailable: true
+  },
+  {
+    id: "search3",
+    leadId: "lead3",
+    leadName: "Mark Bakker",
+    leadEmail: "mark@bakkergroup.nl",
+    leadPhone: "+31 6 11223344",
+    requestedBrand: "Mercedes",
+    requestedModel: "E-Class",
+    requestedYear: "2023",
+    requestedFuelType: "Hybrid",
+    requestedTransmission: "Automaat",
+    minPrice: 50000,
+    maxPrice: 70000,
+    maxKilometers: 20000,
+    status: "fulfilled",
+    priority: "high",
+    requestDate: "2024-01-10T11:45:00Z",
+    notes: "Fleet voertuig voor bedrijf, zoekt meerdere exemplaren",
+    assignedTo: "Pieter Jansen",
+    createdBy: "Pieter Jansen",
+    createdAt: "2024-01-10T11:45:00Z",
+    updatedAt: "2024-01-16T16:30:00Z",
+    notifyWhenAvailable: false,
+    lastNotified: "2024-01-16T16:30:00Z"
+  }
+];
+
 export const getLeads = (): Lead[] => {
   return mockLeads.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 };
@@ -221,5 +299,62 @@ export const getLeadStats = () => {
     total,
     byStatus,
     avgResponseTime: Math.round(avgResponseTime || 0)
+  };
+};
+
+export const getSearchRequests = (): LeadSearchRequest[] => {
+  return mockSearchRequests.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+};
+
+export const getSearchRequestsByStatus = (status: string): LeadSearchRequest[] => {
+  if (status === "all") return mockSearchRequests;
+  return mockSearchRequests.filter(request => request.status === status);
+};
+
+export const getSearchRequestsByAssignee = (assignee: string): LeadSearchRequest[] => {
+  if (assignee === "all") return mockSearchRequests;
+  return mockSearchRequests.filter(request => request.assignedTo === assignee);
+};
+
+export const createSearchRequest = (requestData: Omit<LeadSearchRequest, 'id' | 'createdAt' | 'updatedAt'>): LeadSearchRequest => {
+  const newRequest: LeadSearchRequest = {
+    ...requestData,
+    id: `search${mockSearchRequests.length + 1}`,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  
+  mockSearchRequests.push(newRequest);
+  return newRequest;
+};
+
+export const updateSearchRequestStatus = (requestId: string, status: LeadSearchRequest['status']): LeadSearchRequest | undefined => {
+  const request = mockSearchRequests.find(r => r.id === requestId);
+  if (request) {
+    request.status = status;
+    request.updatedAt = new Date().toISOString();
+  }
+  return request;
+};
+
+export const getSearchRequestStats = () => {
+  const total = mockSearchRequests.length;
+  const byStatus = mockSearchRequests.reduce((acc, request) => {
+    acc[request.status] = (acc[request.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  
+  const activeRequests = mockSearchRequests.filter(r => r.status === 'active').length;
+  const expiringSoon = mockSearchRequests.filter(r => 
+    r.status === 'active' && 
+    r.expiryDate && 
+    new Date(r.expiryDate) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  ).length;
+  
+  return {
+    total,
+    byStatus,
+    activeRequests,
+    expiringSoon
   };
 };

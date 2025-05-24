@@ -1,4 +1,3 @@
-
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'proposal' | 'negotiation' | 'won' | 'lost';
 export type LeadSource = 'website' | 'facebook' | 'autotrack' | 'marktplaats' | 'referral' | 'phone' | 'other';
 export type LeadPriority = 'low' | 'medium' | 'high' | 'urgent';
@@ -83,4 +82,39 @@ export interface LeadFollowUpTrigger {
   completedDate?: string;
   createdBy: string;
   createdAt: string;
+}
+
+export interface LeadSearchRequest {
+  id: string;
+  leadId: string;
+  leadName: string;
+  leadEmail: string;
+  leadPhone: string;
+  
+  // Zoekopdracht details
+  requestedBrand: string;
+  requestedModel: string;
+  requestedYear?: string;
+  requestedFuelType?: string;
+  requestedTransmission?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  maxKilometers?: number;
+  
+  // Status en tracking
+  status: 'active' | 'fulfilled' | 'expired' | 'cancelled';
+  priority: LeadPriority;
+  requestDate: string;
+  expiryDate?: string;
+  notes: string;
+  
+  // Verkoper info
+  assignedTo: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  
+  // Notificaties
+  notifyWhenAvailable: boolean;
+  lastNotified?: string;
 }
