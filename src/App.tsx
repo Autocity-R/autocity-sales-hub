@@ -18,6 +18,7 @@ import Leads from "./pages/Leads";
 import Reports from "./pages/Reports";
 import Warranty from "./pages/Warranty";
 import Calendar from "./pages/Calendar";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -47,7 +48,7 @@ const App = () => (
           
           <Route path="/warranty" element={<Warranty />} />
           <Route path="/calendar" element={<Calendar />} />
-          <Route path="/settings" element={<Index />} />
+          <Route path="/settings" element={<Settings />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
