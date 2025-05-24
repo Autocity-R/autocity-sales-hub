@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -6,6 +5,7 @@ import { nl } from "date-fns/locale";
 import { FileText, Search, Filter } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { VehicleDeliveredTable } from "@/components/inventory/VehicleDeliveredTable";
+import { DeliveredVehicleDetails } from "@/components/inventory/DeliveredVehicleDetails";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,7 @@ import { Calendar } from "@/components/ui/calendar";
 
 const InventoryDelivered = () => {
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null); // New state for selected vehicle details
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -47,6 +48,10 @@ const InventoryDelivered = () => {
       setSortField(field);
       setSortDirection("asc");
     }
+  };
+  
+  const handleVehicleClick = (vehicle: Vehicle) => {
+    setSelectedVehicle(vehicle);
   };
   
   // Filter vehicles based on search query and filters
@@ -254,8 +259,17 @@ const InventoryDelivered = () => {
             onSort={handleSort}
             sortField={sortField}
             sortDirection={sortDirection}
+            onVehicleClick={handleVehicleClick}
           />
         </div>
+        
+        {/* Vehicle Details Modal */}
+        {selectedVehicle && (
+          <DeliveredVehicleDetails
+            vehicle={selectedVehicle}
+            onClose={() => setSelectedVehicle(null)}
+          />
+        )}
       </div>
     </DashboardLayout>
   );

@@ -20,6 +20,7 @@ interface VehicleDeliveredTableProps {
   onSort: (field: string) => void;
   sortField: string | null;
   sortDirection: "asc" | "desc";
+  onVehicleClick: (vehicle: Vehicle) => void; // New prop for handling vehicle click
 }
 
 export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
@@ -32,7 +33,8 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
   error,
   onSort,
   sortField,
-  sortDirection
+  sortDirection,
+  onVehicleClick
 }) => {
   const renderSortIcon = (field: string) => {
     if (sortField !== field) return null;
@@ -143,8 +145,12 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
           </TableRow>
         ) : (
           vehicles.map((vehicle) => (
-            <TableRow key={vehicle.id} className="hover:bg-muted/50">
-              <TableCell className="align-middle">
+            <TableRow 
+              key={vehicle.id} 
+              className="hover:bg-muted/50 cursor-pointer"
+              onClick={() => onVehicleClick(vehicle)}
+            >
+              <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
                 <Checkbox 
                   checked={selectedVehicles.includes(vehicle.id)} 
                   onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, checked === true)} 
