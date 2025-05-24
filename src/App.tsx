@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,6 +19,7 @@ import Reports from "./pages/Reports";
 import Warranty from "./pages/Warranty";
 import Calendar from "./pages/Calendar";
 import Settings from "./pages/Settings";
+import LoanCars from "./pages/LoanCars";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +48,7 @@ const App = () => (
           <Route path="/customers/:id" element={<CustomerDetail />} />
           
           <Route path="/warranty" element={<Warranty />} />
+          <Route path="/loan-cars" element={<LoanCars />} />
           <Route path="/calendar" element={<Calendar />} />
           
           {/* Settings routes */}

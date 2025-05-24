@@ -206,6 +206,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
               Garantie
             </Button>
           </Link>
+          <Link to="/loan-cars">
+            <Button
+              variant={isActive("/loan-cars") ? "default" : "ghost"}
+              className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+              size="sm"
+            >
+              <CarIcon className="mr-2 h-4 w-4" />
+              Leen auto beheer
+            </Button>
+          </Link>
           <Link to="/calendar">
             <Button
               variant={isActive("/calendar") ? "default" : "ghost"}
