@@ -1,3 +1,4 @@
+
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 
@@ -23,16 +24,16 @@ export const generateContract = async (
   const basePrice = vehicle.sellingPrice || 0;
   let finalPrice = basePrice;
   let btwAmount = 0;
-  let bpmAmount = 0;
+  let priceExclBtw = 0;
 
   if (isB2B) {
-    if (options.btwType === "inclusive" && options.vehicleType === "btw") {
-      btwAmount = Math.round((basePrice / 1.21) * 0.21);
-    }
-    if (!options.bpmIncluded) {
-      bpmAmount = 1000; // Simplified BPM calculation
-      finalPrice += bpmAmount;
-    }
+    // For B2B, calculate BTW breakdown
+    priceExclBtw = Math.round(basePrice / 1.21);
+    btwAmount = basePrice - priceExclBtw;
+    finalPrice = basePrice;
+  } else {
+    // For B2C, price is typically inclusive
+    finalPrice = basePrice;
   }
 
   // Bedrijfsgegevens
@@ -58,7 +59,7 @@ export const generateContract = async (
     basePrice, 
     finalPrice, 
     btwAmount, 
-    bpmAmount,
+    priceExclBtw,
     signatureUrl
   );
 
@@ -71,7 +72,7 @@ export const generateContract = async (
     basePrice, 
     finalPrice, 
     btwAmount, 
-    bpmAmount
+    priceExclBtw
   );
 
   const fileName = `koopcontract_${vehicle.licenseNumber}_${currentDate.replace(/\//g, '-')}.pdf`;
@@ -94,7 +95,7 @@ const generateHtmlContract = (
   basePrice: number,
   finalPrice: number,
   btwAmount: number,
-  bpmAmount: number,
+  priceExclBtw: number,
   signatureUrl?: string
 ): string => {
   const isB2B = contractType === "b2b";
@@ -203,26 +204,29 @@ const generateHtmlContract = (
             padding-bottom: 8px;
         }
         
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 25px;
+        .info-vertical {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
         
         .info-item {
-            margin-bottom: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
         }
         
         .info-label {
             font-weight: 600;
             color: #000000;
-            display: inline-block;
-            min-width: 140px;
+            font-size: 14px;
         }
         
         .info-value {
             color: #333333;
             font-weight: 500;
+            font-size: 14px;
+            padding-left: 0;
         }
         
         .vehicle-section {
@@ -251,6 +255,12 @@ const generateHtmlContract = (
             color: #000000;
             margin-bottom: 20px;
             text-align: center;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
         }
         
         .price-section {
@@ -447,36 +457,30 @@ const generateHtmlContract = (
         
         <div class="contract-info">
             <h3>Contractgegevens</h3>
-            <div class="info-grid">
-                <div>
-                    <div class="info-item">
-                        <span class="info-label">Contractnummer:</span>
-                        <span class="info-value">AC-${vehicle.licenseNumber}-${Date.now().toString().slice(-6)}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Datum:</span>
-                        <span class="info-value">${currentDate}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Type verkoop:</span>
-                        <span class="info-value">${isB2B ? 'Zakelijke verkoop (B2B)' : 'Particuliere verkoop (B2C)'}</span>
-                    </div>
+            <div class="info-vertical">
+                <div class="info-item">
+                    <span class="info-label">Contractnummer:</span>
+                    <span class="info-value">AC-${vehicle.licenseNumber}-${Date.now().toString().slice(-6)}</span>
                 </div>
-                <div>
-                    <div class="info-item">
-                        <span class="info-label">Verkoper:</span>
-                        <span class="info-value">${vehicle.salespersonName || 'AutoCity'}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Klant:</span>
-                        <span class="info-value">${vehicle.customerName || '[Klantnaam]'}</span>
-                    </div>
-                    ${vehicle.customerContact?.email ? `
-                    <div class="info-item">
-                        <span class="info-label">Email:</span>
-                        <span class="info-value">${vehicle.customerContact.email}</span>
-                    </div>
-                    ` : ''}
+                <div class="info-item">
+                    <span class="info-label">Datum:</span>
+                    <span class="info-value">${currentDate}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Type verkoop:</span>
+                    <span class="info-value">${isB2B ? 'Zakelijke verkoop (B2B)' : 'Particuliere verkoop (B2C)'}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Klant:</span>
+                    <span class="info-value">${isB2B ? (vehicle.customerName || '[Bedrijfsnaam]') : (vehicle.customerContact?.name || '[Voor- en achternaam]')}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Adres:</span>
+                    <span class="info-value">[Adres van klant]</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Email:</span>
+                    <span class="info-value">${vehicle.customerContact?.email || '[Email adres]'}</span>
                 </div>
             </div>
         </div>
@@ -514,18 +518,26 @@ const generateHtmlContract = (
         </div>
         
         <div class="price-section">
-            <h2 class="price-title">Financiële Specificatie</h2>
+            <h2 class="price-title">Prijsopbouw</h2>
             <div class="price-breakdown">
-                <div class="price-item">
-                    <span class="price-label">Verkoopprijs voertuig</span>
-                    <span class="price-value">€ ${basePrice.toLocaleString('nl-NL')}</span>
-                </div>
                 ${isB2B ? `
                     <div class="price-item">
-                        <span class="price-label">Voertuig type</span>
-                        <span class="price-value">${options.vehicleType === 'marge' ? 'Marge regeling' : 'BTW voertuig'}</span>
+                        <span class="price-label">Bedrag exclusief BTW</span>
+                        <span class="price-value">€ ${priceExclBtw.toLocaleString('nl-NL')}</span>
+                    </div>
+                    <div class="price-item">
+                        <span class="price-label">BTW (21%)</span>
+                        <span class="price-value">€ ${btwAmount.toLocaleString('nl-NL')}</span>
+                    </div>
+                    <div class="price-item">
+                        <span class="price-label">Bedrag inclusief BTW</span>
+                        <span class="price-value">€ ${basePrice.toLocaleString('nl-NL')}</span>
                     </div>
                 ` : `
+                    <div class="price-item">
+                        <span class="price-label">Verkoopprijs voertuig (inclusief BTW)</span>
+                        <span class="price-value">€ ${basePrice.toLocaleString('nl-NL')}</span>
+                    </div>
                     <div class="price-item">
                         <span class="price-label">Afleverpakket</span>
                         <span class="price-value">${options.deliveryPackage}</span>
@@ -547,7 +559,6 @@ const generateHtmlContract = (
                 <p>• Het voertuig wordt geleverd in de staat waarin het zich bevindt op moment van ondertekening</p>
                 <p>• Levering vindt plaats na volledige betaling van het aankoopbedrag</p>
                 <p>• ${isB2B ? 'Zakelijke levering conform BOVAG voorwaarden' : 'Particuliere verkoop met consumentenbescherming'}</p>
-                <p>• Garantie conform wettelijke bepalingen voor ${isB2B ? 'zakelijke' : 'particuliere'} verkoop</p>
                 ${options.maxDamageAmount ? `<p>• Maximaal geaccepteerde schade: € ${options.maxDamageAmount}</p>` : ''}
             </div>
         </div>
@@ -583,11 +594,11 @@ const generateHtmlContract = (
         <div class="signature-section">
             <div class="signature-box">
                 <div class="signature-line"></div>
-                <div class="signature-label">Verkoper<br>${companyInfo.name}</div>
+                <div class="signature-label">Verkoper<br>${companyInfo.tradeName}</div>
             </div>
             <div class="signature-box">
                 <div class="signature-line"></div>
-                <div class="signature-label">Koper<br>${vehicle.customerName || '[Klantnaam]'}</div>
+                <div class="signature-label">Koper<br>${isB2B ? (vehicle.customerName || '[Bedrijfsnaam]') : (vehicle.customerContact?.name || '[Voor- en achternaam]')}</div>
             </div>
         </div>
         
@@ -610,7 +621,7 @@ const generateTextContract = (
   basePrice: number,
   finalPrice: number,
   btwAmount: number,
-  bpmAmount: number
+  priceExclBtw: number
 ): string => {
   const isB2B = contractType === "b2b";
   
@@ -618,16 +629,20 @@ const generateTextContract = (
 KOOPOVEREENKOMST PERSONENAUTO
 
 VERKOPER:
-${companyInfo.name} (${companyInfo.tradeName})
+${companyInfo.tradeName}
 ${companyInfo.address}
 ${companyInfo.postalCode} ${companyInfo.city}, ${companyInfo.country}
 Telefoon: ${companyInfo.phone}
 BTW-nummer: ${companyInfo.btw}
 IBAN: ${companyInfo.iban}
 
-KOPER:
-${isB2B ? 'Zakelijke klant:' : 'Particuliere klant:'} ${vehicle.customerName || '[Klantnaam]'}
-${vehicle.customerContact?.email ? `Email: ${vehicle.customerContact.email}` : ''}
+CONTRACTGEGEVENS:
+Contractnummer: AC-${vehicle.licenseNumber}-${Date.now().toString().slice(-6)}
+Datum: ${currentDate}
+Type verkoop: ${isB2B ? 'Zakelijke verkoop (B2B)' : 'Particuliere verkoop (B2C)'}
+Klant: ${isB2B ? (vehicle.customerName || '[Bedrijfsnaam]') : (vehicle.customerContact?.name || '[Voor- en achternaam]')}
+Adres: [Adres van klant]
+Email: ${vehicle.customerContact?.email || '[Email adres]'}
 
 VOERTUIGGEGEVENS:
 Merk en model: ${vehicle.brand} ${vehicle.model}
@@ -637,12 +652,13 @@ Chassisnummer: ${vehicle.vin}
 Kilometerstand: ${vehicle.mileage?.toLocaleString('nl-NL')} km
 ${vehicle.year ? `Bouwjaar: ${vehicle.year}` : ''}
 
-FINANCIËLE BEPALINGEN:
-Verkoopprijs: € ${basePrice.toLocaleString('nl-NL')}
+PRIJSOPBOUW:
 ${isB2B ? `
-${options.vehicleType === "marge" ? 'Marge regeling van toepassing' : 'BTW voertuig'}
-${options.maxDamageAmount ? `Maximaal geaccepteerde schade: € ${options.maxDamageAmount}` : ''}
+Bedrag exclusief BTW: € ${priceExclBtw.toLocaleString('nl-NL')}
+BTW (21%): € ${btwAmount.toLocaleString('nl-NL')}
+Bedrag inclusief BTW: € ${basePrice.toLocaleString('nl-NL')}
 ` : `
+Verkoopprijs voertuig (inclusief BTW): € ${basePrice.toLocaleString('nl-NL')}
 Afleverpakket: ${options.deliveryPackage}
 Betalingsvoorwaarden: ${options.paymentTerms}
 `}
@@ -653,7 +669,7 @@ LEVERINGSVOORWAARDEN:
 - Het voertuig wordt geleverd in de staat waarin het zich bevindt
 - Levering vindt plaats na volledige betaling
 - ${isB2B ? 'Zakelijke verkoop conform BOVAG voorwaarden' : 'Particuliere verkoop met consumentenbescherming'}
-- Garantie volgens wettelijke bepalingen
+${options.maxDamageAmount ? `- Maximaal geaccepteerde schade: € ${options.maxDamageAmount}` : ''}
 
 ${options.additionalClauses ? `
 AANVULLENDE CLAUSULES:
@@ -689,7 +705,7 @@ Voertuig: ${vehicle.brand} ${vehicle.model}${vehicle.color ? ` (${vehicle.color}
 Kenteken: ${vehicle.licenseNumber}
 Kilometerstand: ${vehicle.mileage?.toLocaleString('nl-NL')} km
 Prijs: € ${basePrice.toLocaleString('nl-NL')}
-${isB2B ? `BTW: ${options.btwType}, Type: ${options.vehicleType}` : `Pakket: ${options.deliveryPackage}`}
+${isB2B ? `BTW opbouw beschikbaar` : `Pakket: ${options.deliveryPackage}`}
 Klant: ${vehicle.customerName || 'Niet ingesteld'}
   `.trim();
 };
