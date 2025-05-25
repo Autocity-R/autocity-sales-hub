@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Edit, Save, Plus, Paperclip } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Trash2, Edit, Save, Plus, Paperclip, ChevronDown, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface EmailTemplate {
   id: string;
@@ -70,6 +72,9 @@ export const EmailTemplateManagement: React.FC = () => {
     linkedButton: "",
     hasAttachment: false
   });
+
+  const [newButtonOpen, setNewButtonOpen] = useState(false);
+  const [editButtonOpen, setEditButtonOpen] = useState(false);
 
   const availableVariables = [
     "voertuig_merk", "voertuig_model", "voertuig_vin", "voertuig_kenteken", 
@@ -181,6 +186,61 @@ export const EmailTemplateManagement: React.FC = () => {
     return VEHICLE_ACTION_BUTTONS.filter(btn => !linkedButtons.includes(btn.value));
   };
 
+  const ButtonDropdown = ({ 
+    value, 
+    onValueChange, 
+    availableButtons,
+    placeholder = "Selecteer een knop",
+    open,
+    onOpenChange
+  }: {
+    value: string;
+    onValueChange: (value: string) => void;
+    availableButtons: typeof VEHICLE_ACTION_BUTTONS;
+    placeholder?: string;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+  }) => (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between"
+        >
+          {value ? getButtonLabel(value) : placeholder}
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0" align="start">
+        <ScrollArea className="h-[200px]">
+          <div className="p-1">
+            {availableButtons.map((button) => (
+              <Button
+                key={button.value}
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start text-sm font-normal",
+                  value === button.value && "bg-accent"
+                )}
+                onClick={() => {
+                  onValueChange(button.value);
+                  onOpenChange(false);
+                }}
+              >
+                {value === button.value && (
+                  <Check className="mr-2 h-4 w-4" />
+                )}
+                {button.label}
+              </Button>
+            ))}
+          </div>
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+
   return (
     <div className="space-y-6">
       <div>
@@ -276,21 +336,13 @@ export const EmailTemplateManagement: React.FC = () => {
                 </div>
                 <div>
                   <Label htmlFor="linked-button">Gekoppelde Knop</Label>
-                  <Select 
-                    value={newTemplate.linkedButton || ""} 
+                  <ButtonDropdown
+                    value={newTemplate.linkedButton || ""}
                     onValueChange={(value) => setNewTemplate({ ...newTemplate, linkedButton: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecteer een knop" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getAvailableButtons().map((button) => (
-                        <SelectItem key={button.value} value={button.value}>
-                          {button.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    availableButtons={getAvailableButtons()}
+                    open={newButtonOpen}
+                    onOpenChange={setNewButtonOpen}
+                  />
                 </div>
               </div>
 
@@ -396,25 +448,16 @@ export const EmailTemplateManagement: React.FC = () => {
                 </div>
                 <div>
                   <Label>Gekoppelde Knop</Label>
-                  <Select 
-                    value={editingTemplate.linkedButton} 
+                  <ButtonDropdown
+                    value={editingTemplate.linkedButton}
                     onValueChange={(value) => setEditingTemplate({ ...editingTemplate, linkedButton: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getAvailableButtons(editingTemplate.id).map((button) => (
-                        <SelectItem key={button.value} value={button.value}>
-                          {button.label}
-                        </SelectItem>
-                      ))}
-                      {/* Also include the currently selected button */}
-                      <SelectItem value={editingTemplate.linkedButton}>
-                        {getButtonLabel(editingTemplate.linkedButton)}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                    availableButtons={[
+                      ...getAvailableButtons(editingTemplate.id),
+                      VEHICLE_ACTION_BUTTONS.find(btn => btn.value === editingTemplate.linkedButton)!
+                    ]}
+                    open={editButtonOpen}
+                    onOpenChange={setEditButtonOpen}
+                  />
                 </div>
               </div>
 
