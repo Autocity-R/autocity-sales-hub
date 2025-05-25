@@ -83,7 +83,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
 
   return (
     <>
-      <div className="overflow-x-auto">
+      <div className="rounded-md border">
         <Table className="table-fixed w-full">
           <VehicleB2CTableHeader
             selectedVehicles={selectedVehicles}
