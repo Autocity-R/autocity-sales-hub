@@ -374,7 +374,7 @@ const generateHtmlContract = (
         }
         
         .terms-content {
-            font-size: 12px;
+            font-size: ${isB2B ? '11px' : '12px'};
             line-height: 1.5;
             color: #4b5563;
         }
@@ -462,7 +462,7 @@ const generateHtmlContract = (
             }
             
             .terms-content {
-                font-size: 11px;
+                font-size: ${isB2B ? '10px' : '11px'};
             }
         }
     </style>
@@ -641,18 +641,27 @@ const generateHtmlContract = (
             <div class="section-header">Leveringsvoorwaarden</div>
             <div class="section-content">
                 <div class="terms-content">
-                    <p>Het voertuig wordt geleverd zoals gezien, gereden en akkoord bevonden door koper.</p>
-                    <p>Levering vindt plaats na volledige betaling van het aankoopbedrag en op het moment van fysieke overdracht of registratie bij RDW op naam van koper.</p>
-                    <p>Het risico van verlies of beschadiging gaat over op koper op het moment van levering.</p>
-                    ${!isB2B && downPaymentPercentage > 0 ? `<p>Klant dient de aanbetaling van ${downPaymentPercentage}% (€ ${downPaymentAmount.toLocaleString('nl-NL')}) per bank te voldoen.</p>` : ''}
-                    
-                    ${!isB2B && options.tradeInVehicle ? `
-                    <p><strong>Inruilvoertuigen:</strong><br>
-                    Indien sprake is van inruil, verklaart koper dat het inruilvoertuig eigendom is van hem/haar en vrij is van beslagen of verborgen gebreken, tenzij vooraf gemeld. AutoCity behoudt zich het recht voor inruilvoertuigen te weigeren bij onjuiste opgave.</p>
-                    ` : ''}
-                    
-                    <p><strong>Toepasselijk recht en geschillen:</strong><br>
-                    Op deze overeenkomst is uitsluitend Nederlands recht van toepassing. Geschillen worden bij voorkeur in onderling overleg opgelost. Indien nodig zal het geschil worden voorgelegd aan de bevoegde rechter te Rotterdam.</p>
+                    ${isB2B ? `
+                        <p>Deze voorwaarden zijn van toepassing op alle aanbiedingen, overeenkomsten en leveringen van voertuigen door Autocity aan zakelijke klanten, tenzij schriftelijk anders overeengekomen.</p>
+                        <p>Het eigendom van het voertuig gaat pas over op koper na volledige betaling van het factuurbedrag.</p>
+                        <p>Autocity behoudt zich het eigendomsrecht voor totdat alle verplichtingen uit hoofde van de overeenkomst zijn voldaan.</p>
+                        <p>Het voertuig wordt verkocht in de staat waarin het zich bevindt, zonder garantie, tenzij schriftelijk anders is overeengekomen.</p>
+                        <p>In geval van overmacht aan de zijde van Autocity worden de verplichtingen opgeschort voor de duur van de overmachtssituatie.</p>
+                        <p>Indien van toepassing worden aanvullende afspraken vastgelegd in het koopcontract of leverdocument.</p>
+                    ` : `
+                        <p>Het voertuig wordt geleverd zoals gezien, gereden en akkoord bevonden door koper.</p>
+                        <p>Levering vindt plaats na volledige betaling van het aankoopbedrag en op het moment van fysieke overdracht of registratie bij RDW op naam van koper.</p>
+                        <p>Het risico van verlies of beschadiging gaat over op koper op het moment van levering.</p>
+                        ${downPaymentPercentage > 0 ? `<p>Klant dient de aanbetaling van ${downPaymentPercentage}% (€ ${downPaymentAmount.toLocaleString('nl-NL')}) per bank te voldoen.</p>` : ''}
+                        
+                        ${options.tradeInVehicle ? `
+                        <p><strong>Inruilvoertuigen:</strong><br>
+                        Indien sprake is van inruil, verklaart koper dat het inruilvoertuig eigendom is van hem/haar en vrij is van beslagen of verborgen gebreken, tenzij vooraf gemeld. AutoCity behoudt zich het recht voor inruilvoertuigen te weigeren bij onjuiste opgave.</p>
+                        ` : ''}
+                        
+                        <p><strong>Toepasselijk recht en geschillen:</strong><br>
+                        Op deze overeenkomst is uitsluitend Nederlands recht van toepassing. Geschillen worden bij voorkeur in onderling overleg opgelost. Indien nodig zal het geschil worden voorgelegd aan de bevoegde rechter te Rotterdam.</p>
+                    `}
                 </div>
             </div>
         </div>
@@ -676,14 +685,6 @@ const generateHtmlContract = (
                     <p>${options.specialAgreements.replace(/\n/g, '</p><p>')}</p>
                 </div>
             </div>
-        </div>
-        ` : ''}
-        
-        ${signatureUrl ? `
-        <div class="digital-signature">
-            <h3>Digitaal Ondertekenen</h3>
-            <p>Klik op onderstaande knop om dit contract digitaal te ondertekenen:</p>
-            <a href="${signatureUrl}" class="signature-button">Contract Ondertekenen</a>
         </div>
         ` : ''}
         
@@ -763,12 +764,20 @@ Betalingsvoorwaarden: ${options.paymentTerms ? PAYMENT_TERMS_LABELS[options.paym
 TOTAAL TE BETALEN: € ${finalPrice.toLocaleString('nl-NL')}
 
 LEVERINGSVOORWAARDEN:
+${isB2B ? `
+Deze voorwaarden zijn van toepassing op alle aanbiedingen, overeenkomsten en leveringen van voertuigen door Autocity aan zakelijke klanten, tenzij schriftelijk anders overeengekomen.
+Het eigendom van het voertuig gaat pas over op koper na volledige betaling van het factuurbedrag.
+Autocity behoudt zich het eigendomsrecht voor totdat alle verplichtingen uit hoofde van de overeenkomst zijn voldaan.
+Het voertuig wordt verkocht in de staat waarin het zich bevindt, zonder garantie, tenzij schriftelijk anders is overeengekomen.
+In geval van overmacht aan de zijde van Autocity worden de verplichtingen opgeschort voor de duur van de overmachtssituatie.
+Indien van toepassing worden aanvullende afspraken vastgelegd in het koopcontract of leverdocument.
+` : `
 - Het voertuig wordt geleverd zoals gezien, gereden en akkoord bevonden door koper
 - Levering vindt plaats na volledige betaling en op het moment van fysieke overdracht of registratie bij RDW op naam van koper
 - Het risico van verlies of beschadiging gaat over op koper op het moment van levering
-${!isB2B && downPaymentPercentage > 0 ? `- Klant dient de aanbetaling van ${downPaymentPercentage}% (€ ${downPaymentAmount.toLocaleString('nl-NL')}) per bank te voldoen.` : ''}
+${downPaymentPercentage > 0 ? `- Klant dient de aanbetaling van ${downPaymentPercentage}% (€ ${downPaymentAmount.toLocaleString('nl-NL')}) per bank te voldoen.` : ''}
 
-${!isB2B && options.tradeInVehicle ? `
+${options.tradeInVehicle ? `
 INRUILVOERTUIGEN:
 Indien sprake is van inruil, verklaart koper dat het inruilvoertuig eigendom is van hem/haar en vrij is van beslagen of verborgen gebreken, tenzij vooraf gemeld.
 AutoCity behoudt zich het recht voor inruilvoertuigen te weigeren bij onjuiste opgave.
@@ -777,6 +786,7 @@ AutoCity behoudt zich het recht voor inruilvoertuigen te weigeren bij onjuiste o
 TOEPASSELIJK RECHT EN GESCHILLEN:
 Op deze overeenkomst is uitsluitend Nederlands recht van toepassing.
 Geschillen worden bij voorkeur in onderling overleg opgelost. Indien nodig zal het geschil worden voorgelegd aan de bevoegde rechter te Rotterdam.
+`}
 
 ${options.additionalClauses ? `
 AANVULLENDE CLAUSULES:
