@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
-import { FileText, Send, X, Eye, Mail, PenTool } from "lucide-react";
+import { FileText, Send, X, Eye, Mail, PenTool, Plus, Trash2, Car } from "lucide-react";
 import { generateContract } from "@/services/contractService";
 import { createSignatureSession, generateSignatureUrl } from "@/services/digitalSignatureService";
 import { useToast } from "@/hooks/use-toast";
@@ -46,6 +45,7 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
   const [contractPreview, setContractPreview] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showTradeInForm, setShowTradeInForm] = useState(false);
 
   const handlePreview = async () => {
     setLoading(true);
@@ -109,6 +109,33 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
   const handleSendEmail = () => {
     onSendContract(options);
     onClose();
+  };
+
+  const handleAddTradeIn = () => {
+    setShowTradeInForm(true);
+  };
+
+  const handleRemoveTradeIn = () => {
+    setOptions(prev => {
+      const { tradeInVehicle, ...rest } = prev;
+      return rest;
+    });
+    setShowTradeInForm(false);
+  };
+
+  const handleTradeInChange = (field: string, value: string | number) => {
+    setOptions(prev => ({
+      ...prev,
+      tradeInVehicle: {
+        ...prev.tradeInVehicle,
+        brand: prev.tradeInVehicle?.brand || "",
+        model: prev.tradeInVehicle?.model || "",
+        mileage: prev.tradeInVehicle?.mileage || 0,
+        licenseNumber: prev.tradeInVehicle?.licenseNumber || "",
+        tradeInPrice: prev.tradeInVehicle?.tradeInPrice || 0,
+        [field]: value
+      }
+    }));
   };
 
   const isB2B = contractType === "b2b";
@@ -348,6 +375,97 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* Trade-in Vehicle Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h5 className="font-medium">Inruil voertuig</h5>
+                  {!options.tradeInVehicle && !showTradeInForm ? (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleAddTradeIn}
+                      className="flex items-center gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Inruil voertuig toevoegen
+                    </Button>
+                  ) : null}
+                </div>
+
+                {(showTradeInForm || options.tradeInVehicle) && (
+                  <div className="border rounded-lg p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Car className="h-4 w-4" />
+                        <span className="font-medium">Inruil voertuig details</span>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={handleRemoveTradeIn}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Merk</Label>
+                        <Input
+                          value={options.tradeInVehicle?.brand || ""}
+                          onChange={(e) => handleTradeInChange("brand", e.target.value)}
+                          placeholder="Bijv. Volkswagen"
+                        />
+                      </div>
+                      <div>
+                        <Label>Model</Label>
+                        <Input
+                          value={options.tradeInVehicle?.model || ""}
+                          onChange={(e) => handleTradeInChange("model", e.target.value)}
+                          placeholder="Bijv. Golf"
+                        />
+                      </div>
+                      <div>
+                        <Label>Kenteken</Label>
+                        <Input
+                          value={options.tradeInVehicle?.licenseNumber || ""}
+                          onChange={(e) => handleTradeInChange("licenseNumber", e.target.value)}
+                          placeholder="Bijv. 12-ABC-3"
+                        />
+                      </div>
+                      <div>
+                        <Label>Kilometerstand</Label>
+                        <Input
+                          type="number"
+                          value={options.tradeInVehicle?.mileage || ""}
+                          onChange={(e) => handleTradeInChange("mileage", parseInt(e.target.value) || 0)}
+                          placeholder="120000"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Label>Inruilprijs (€)</Label>
+                        <Input
+                          type="number"
+                          value={options.tradeInVehicle?.tradeInPrice || ""}
+                          onChange={(e) => handleTradeInChange("tradeInPrice", parseInt(e.target.value) || 0)}
+                          placeholder="5000"
+                        />
+                      </div>
+                    </div>
+
+                    {options.tradeInVehicle?.brand && options.tradeInVehicle?.tradeInPrice > 0 && (
+                      <div className="bg-muted p-3 rounded">
+                        <p className="text-sm">
+                          <strong>Inruil:</strong> {options.tradeInVehicle.brand} {options.tradeInVehicle.model} - 
+                          €{options.tradeInVehicle.tradeInPrice.toLocaleString('nl-NL')}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -46,6 +46,7 @@ export const generateContract = async (
   // Calculate prices based on options
   const basePrice = vehicle.sellingPrice || 0;
   let deliveryPackagePrice = 0;
+  let tradeInPrice = 0;
   let finalPrice = basePrice;
   let btwAmount = 0;
   let priceExclBtw = 0;
@@ -58,7 +59,13 @@ export const generateContract = async (
     finalPrice = basePrice + deliveryPackagePrice;
   }
 
-  // Calculate down payment for B2C
+  // Calculate trade-in for B2C
+  if (!isB2B && options.tradeInVehicle) {
+    tradeInPrice = options.tradeInVehicle.tradeInPrice;
+    finalPrice = finalPrice - tradeInPrice;
+  }
+
+  // Calculate down payment for B2C (based on final price after trade-in)
   if (!isB2B && options.paymentTerms) {
     if (options.paymentTerms === "aanbetaling_5") {
       downPaymentPercentage = 5;
@@ -101,6 +108,7 @@ export const generateContract = async (
     btwAmount, 
     priceExclBtw,
     deliveryPackagePrice,
+    tradeInPrice,
     downPaymentAmount,
     downPaymentPercentage,
     signatureUrl
@@ -117,6 +125,7 @@ export const generateContract = async (
     btwAmount, 
     priceExclBtw,
     deliveryPackagePrice,
+    tradeInPrice,
     downPaymentAmount,
     downPaymentPercentage
   );
@@ -143,6 +152,7 @@ const generateHtmlContract = (
   btwAmount: number,
   priceExclBtw: number,
   deliveryPackagePrice: number,
+  tradeInPrice: number,
   downPaymentAmount: number,
   downPaymentPercentage: number,
   signatureUrl?: string
@@ -580,6 +590,30 @@ const generateHtmlContract = (
                         </div>
                     </div>
                     ` : ''}
+                    ${!isB2B && options.tradeInVehicle ? `
+                    <div class="vehicle-grid" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #f3f4f6;">
+                        <div>
+                            <div class="info-item">
+                                <span class="info-label">Inruil merk/model:</span>
+                                <span class="info-value">${options.tradeInVehicle.brand} ${options.tradeInVehicle.model}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Inruil kenteken:</span>
+                                <span class="info-value">${options.tradeInVehicle.licenseNumber}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="info-item">
+                                <span class="info-label">Inruil km stand:</span>
+                                <span class="info-value">${options.tradeInVehicle.mileage.toLocaleString('nl-NL')} km</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Inruilprijs:</span>
+                                <span class="info-value">€ ${options.tradeInVehicle.tradeInPrice.toLocaleString('nl-NL')}</span>
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
         </div>
@@ -609,6 +643,12 @@ const generateHtmlContract = (
                     <div class="price-item">
                         <span class="price-label">Afleverpakket</span>
                         <span class="price-value">€ ${deliveryPackagePrice.toLocaleString('nl-NL')}</span>
+                    </div>
+                    ` : ''}
+                    ${tradeInPrice > 0 ? `
+                    <div class="price-item">
+                        <span class="price-label">Inruilprijs</span>
+                        <span class="price-value">-€ ${tradeInPrice.toLocaleString('nl-NL')}</span>
                     </div>
                     ` : ''}
                 `}
@@ -691,6 +731,7 @@ const generateTextContract = (
   btwAmount: number,
   priceExclBtw: number,
   deliveryPackagePrice: number,
+  tradeInPrice: number,
   downPaymentAmount: number,
   downPaymentPercentage: number
 ): string => {
@@ -725,6 +766,11 @@ ${vehicle.year ? `Bouwjaar: ${vehicle.year}` : ''}
 ${!isB2B && options.deliveryPackage ? `
 Afleverpakket: ${DELIVERY_PACKAGE_LABELS[options.deliveryPackage as keyof typeof DELIVERY_PACKAGE_LABELS]}
 Pakket prijs: € ${deliveryPackagePrice.toLocaleString('nl-NL')}` : ''}
+${!isB2B && options.tradeInVehicle ? `
+Inruil voertuig: ${options.tradeInVehicle.brand} ${options.tradeInVehicle.model}
+Inruil kenteken: ${options.tradeInVehicle.licenseNumber}
+Inruil km stand: ${options.tradeInVehicle.mileage.toLocaleString('nl-NL')} km
+Inruilprijs: € ${options.tradeInVehicle.tradeInPrice.toLocaleString('nl-NL')}` : ''}
 
 PRIJSOPBOUW:
 ${isB2B ? `
@@ -734,6 +780,7 @@ Bedrag inclusief BTW: € ${basePrice.toLocaleString('nl-NL')}
 ` : `
 Verkoopprijs voertuig (inclusief BTW): € ${basePrice.toLocaleString('nl-NL')}
 ${deliveryPackagePrice > 0 ? `Afleverpakket: € ${deliveryPackagePrice.toLocaleString('nl-NL')}` : ''}
+${tradeInPrice > 0 ? `Inruilprijs: -€ ${tradeInPrice.toLocaleString('nl-NL')}` : ''}
 Betalingsvoorwaarden: ${options.paymentTerms ? PAYMENT_TERMS_LABELS[options.paymentTerms as keyof typeof PAYMENT_TERMS_LABELS] : ''}
 `}
 
