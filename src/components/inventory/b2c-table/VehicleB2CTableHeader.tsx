@@ -47,7 +47,7 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
   return (
     <TableHeader>
       <TableRow>
-        <TableHead className="w-4 px-2">
+        <TableHead className="w-[50px]">
           <CustomCheckbox 
             checked={isAllSelected}
             indeterminate={isIndeterminate}
