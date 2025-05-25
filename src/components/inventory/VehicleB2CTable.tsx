@@ -96,7 +96,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
           <TableBody>
             {vehicles.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">
                   Geen voertuigen gevonden
                 </TableCell>
               </TableRow>

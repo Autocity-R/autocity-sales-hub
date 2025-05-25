@@ -33,62 +33,65 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
   return (
     <TableHeader>
       <TableRow>
-        <TableHead className="w-12 p-4">
+        <TableHead className="w-[50px]">
           <Checkbox 
             checked={selectedVehicles.length === vehiclesLength && vehiclesLength > 0} 
             onCheckedChange={toggleSelectAll} 
             aria-label="Selecteer alle voertuigen"
           />
         </TableHead>
-        <TableHead className="cursor-pointer p-4 text-left w-32" onClick={() => handleSort("brand")}>
+        <TableHead className="w-[70px]">
+          Foto
+        </TableHead>
+        <TableHead className="cursor-pointer" onClick={() => handleSort("brand")}>
           <div className="flex items-center">
             Merk
             {renderSortIcon("brand")}
           </div>
         </TableHead>
-        <TableHead className="cursor-pointer p-4 text-left w-32" onClick={() => handleSort("model")}>
+        <TableHead className="cursor-pointer" onClick={() => handleSort("model")}>
           <div className="flex items-center">
             Model
             {renderSortIcon("model")}
           </div>
         </TableHead>
-        <TableHead className="cursor-pointer p-4 text-left w-32" onClick={() => handleSort("mileage")}>
+        <TableHead className="cursor-pointer" onClick={() => handleSort("mileage")}>
           <div className="flex items-center">
             Kilometerstand
             {renderSortIcon("mileage")}
           </div>
         </TableHead>
-        <TableHead className="p-4 text-left w-40">
+        <TableHead>
           VIN
         </TableHead>
-        <TableHead className="cursor-pointer p-4 text-left w-32" onClick={() => handleSort("purchasePrice")}>
+        <TableHead className="cursor-pointer" onClick={() => handleSort("purchasePrice")}>
           <div className="flex items-center">
             Inkoop prijs
             {renderSortIcon("purchasePrice")}
           </div>
         </TableHead>
-        <TableHead className="cursor-pointer p-4 text-left w-32" onClick={() => handleSort("sellingPrice")}>
+        <TableHead className="cursor-pointer" onClick={() => handleSort("sellingPrice")}>
           <div className="flex items-center">
             Verkoopprijs
             {renderSortIcon("sellingPrice")}
           </div>
         </TableHead>
-        <TableHead className="p-4 text-left w-32">
+        <TableHead>
           Klantnaam
         </TableHead>
-        <TableHead className="p-4 text-left w-32">
+        <TableHead>
           Import status
         </TableHead>
-        <TableHead className="p-4 text-left w-32">
+        <TableHead>
           Werkplaats status
         </TableHead>
-        <TableHead className="p-4 text-left w-28">
+        <TableHead>
           Lak status
         </TableHead>
-        <TableHead className="p-4 text-left w-28">
+        <TableHead>
           Locatie
         </TableHead>
-        <TableHead className="w-12 text-center p-4">
+        <TableHead className="text-center">
           Acties
         </TableHead>
       </TableRow>
