@@ -20,7 +20,7 @@ interface VehicleDeliveredTableProps {
   onSort: (field: string) => void;
   sortField: string | null;
   sortDirection: "asc" | "desc";
-  onVehicleClick: (vehicle: Vehicle) => void; // New prop for handling vehicle click
+  onVehicleClick: (vehicle: Vehicle) => void;
 }
 
 export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
@@ -117,6 +117,12 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
               {renderSortIcon("customerName")}
             </div>
           </TableHead>
+          <TableHead className="cursor-pointer" onClick={() => handleSort("salespersonName")}>
+            <div className="flex items-center">
+              Verkoper
+              {renderSortIcon("salespersonName")}
+            </div>
+          </TableHead>
           <TableHead className="cursor-pointer" onClick={() => handleSort("salesStatus")}>
             <div className="flex items-center">
               Klanttype
@@ -139,7 +145,7 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
       <TableBody>
         {vehicles.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+            <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
               Geen afgeleverde voertuigen gevonden
             </TableCell>
           </TableRow>
@@ -174,6 +180,9 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
               </TableCell>
               <TableCell className="align-middle">
                 {vehicle.customerName || "Onbekend"}
+              </TableCell>
+              <TableCell className="align-middle">
+                {vehicle.salespersonName || "Onbekend"}
               </TableCell>
               <TableCell className="align-middle">
                 <Badge variant="outline" className={vehicle.salesStatus === "verkocht_b2c" ? "bg-blue-50 text-blue-800" : "bg-purple-50 text-purple-800"}>

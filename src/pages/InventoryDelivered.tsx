@@ -1,8 +1,9 @@
+
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import { FileText, Search, Filter } from "lucide-react";
+import { FileText, Search, Filter, CalendarIcon } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { VehicleDeliveredTable } from "@/components/inventory/VehicleDeliveredTable";
 import { DeliveredVehicleDetails } from "@/components/inventory/DeliveredVehicleDetails";
@@ -25,15 +26,17 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 const InventoryDelivered = () => {
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null); // New state for selected vehicle details
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [customerTypeFilter, setCustomerTypeFilter] = useState<string>("all");
-  const [dateFilter, setDateFilter] = useState<Date | null>(null);
+  const [dateFromFilter, setDateFromFilter] = useState<Date | null>(null);
+  const [dateToFilter, setDateToFilter] = useState<Date | null>(null);
   
   // Fetch delivered vehicles
   const { data: vehicles = [], isLoading, error } = useQuery({
@@ -64,6 +67,7 @@ const InventoryDelivered = () => {
         vehicle.model,
         vehicle.licenseNumber,
         vehicle.customerName || "",
+        vehicle.salespersonName || "",
       ];
       if (!searchFields.some(field => field.toLowerCase().includes(query))) {
         return false;
@@ -80,13 +84,15 @@ const InventoryDelivered = () => {
       }
     }
     
-    // Date filtering
-    if (dateFilter && vehicle.deliveryDate) {
+    // Date range filtering
+    if ((dateFromFilter || dateToFilter) && vehicle.deliveryDate) {
       const deliveryDate = new Date(vehicle.deliveryDate);
-      if (
-        deliveryDate.getFullYear() !== dateFilter.getFullYear() ||
-        deliveryDate.getMonth() !== dateFilter.getMonth()
-      ) {
+      
+      if (dateFromFilter && deliveryDate < dateFromFilter) {
+        return false;
+      }
+      
+      if (dateToFilter && deliveryDate > dateToFilter) {
         return false;
       }
     }
@@ -154,14 +160,16 @@ const InventoryDelivered = () => {
   const clearFilters = () => {
     setSearchQuery("");
     setCustomerTypeFilter("all");
-    setDateFilter(null);
+    setDateFromFilter(null);
+    setDateToFilter(null);
   };
   
   // Show active filters count
   const activeFiltersCount = [
     searchQuery !== "",
     customerTypeFilter !== "all",
-    dateFilter !== null,
+    dateFromFilter !== null,
+    dateToFilter !== null,
   ].filter(Boolean).length;
 
   return (
@@ -185,7 +193,7 @@ const InventoryDelivered = () => {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Zoeken op kenteken, klant, merk..."
+              placeholder="Zoeken op kenteken, klant, verkoper..."
               className="pl-8"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -225,16 +233,60 @@ const InventoryDelivered = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <h4 className="font-medium leading-none">Aflevermaand</h4>
-                  <Calendar
-                    mode="single"
-                    selected={dateFilter}
-                    onSelect={setDateFilter}
-                    className="rounded-md border p-3 pointer-events-auto"
-                    classNames={{
-                      day_selected: "bg-primary text-primary-foreground"
-                    }}
-                  />
+                  <h4 className="font-medium leading-none">Afleveringsperiode</h4>
+                  <div className="grid gap-2">
+                    <div className="space-y-1">
+                      <label className="text-sm text-muted-foreground">Van datum</label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !dateFromFilter && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dateFromFilter ? format(dateFromFilter, "d MMM yyyy", { locale: nl }) : "Selecteer datum"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={dateFromFilter || undefined}
+                            onSelect={setDateFromFilter}
+                            className="rounded-md border p-3 pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <label className="text-sm text-muted-foreground">Tot datum</label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !dateToFilter && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dateToFilter ? format(dateToFilter, "d MMM yyyy", { locale: nl }) : "Selecteer datum"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={dateToFilter || undefined}
+                            onSelect={setDateToFilter}
+                            className="rounded-md border p-3 pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
                 </div>
                 
                 <div className="flex justify-between">
