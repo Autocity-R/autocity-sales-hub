@@ -1,4 +1,3 @@
-
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 
@@ -20,6 +19,35 @@ export interface SignatureSession {
 
 // Mock storage - in productie zou dit in een database staan
 let signatureSessions: SignatureSession[] = [];
+
+// Initialize with a test session for demo purposes
+const initializeTestSession = () => {
+  const testSession: SignatureSession = {
+    id: "test_session_demo",
+    vehicleId: "test-4",
+    contractType: "b2b",
+    contractOptions: {
+      btwType: "exclusive",
+      bpmIncluded: false,
+      vehicleType: "btw",
+      maxDamageAmount: 1000,
+      deliveryPackage: "standard",
+      paymentTerms: "immediate",
+      additionalClauses: "Voertuig wordt geleverd inclusief alle originele papieren en sleutels.",
+      specialAgreements: "Aflevering binnen 5 werkdagen na ondertekening contract."
+    },
+    token: "demo_token_123456789",
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 dagen geldig
+    status: "pending",
+    createdAt: new Date()
+  };
+  
+  signatureSessions.push(testSession);
+  console.log("Test session initialized with token:", testSession.token);
+};
+
+// Initialize test session on service load
+initializeTestSession();
 
 export const createSignatureSession = async (
   vehicle: Vehicle,
@@ -46,7 +74,11 @@ export const createSignatureSession = async (
 export const getSignatureSession = (token: string): SignatureSession | null => {
   const session = signatureSessions.find(s => s.token === token);
   
-  if (!session) return null;
+  if (!session) {
+    console.log("Session not found for token:", token);
+    console.log("Available sessions:", signatureSessions.map(s => s.token));
+    return null;
+  }
   
   // Check if expired
   if (new Date() > session.expiresAt) {
