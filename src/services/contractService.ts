@@ -46,6 +46,7 @@ ${vehicle.customerContact ? `Email: ${vehicle.customerContact.email}` : ''}
 
 Voertuig gegevens:
 Merk en model: ${vehicle.brand} ${vehicle.model}
+${vehicle.color ? `Kleur: ${vehicle.color}` : ''}
 Kenteken: ${vehicle.licenseNumber}
 VIN-nummer: ${vehicle.vin}
 Kilometerstand: ${vehicle.mileage?.toLocaleString()} km
@@ -115,8 +116,9 @@ export const getContractPreview = (
   
   return `
 Koopcontract ${isB2B ? 'B2B' : 'B2C'}
-Voertuig: ${vehicle.brand} ${vehicle.model}
+Voertuig: ${vehicle.brand} ${vehicle.model}${vehicle.color ? ` (${vehicle.color})` : ''}
 Kenteken: ${vehicle.licenseNumber}
+Kilometerstand: ${vehicle.mileage?.toLocaleString()} km
 Prijs: €${basePrice.toLocaleString()}
 ${isB2B ? `BTW: ${options.btwType}, Type: ${options.vehicleType}` : `Pakket: ${options.deliveryPackage}`}
   `.trim();

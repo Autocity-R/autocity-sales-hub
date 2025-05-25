@@ -1,3 +1,4 @@
+
 export type ImportStatus = 
   | "niet_gestart" 
   | "aangemeld"      // Added
@@ -72,6 +73,7 @@ export interface Vehicle {
   id: string;
   brand: string;
   model: string;
+  color?: string;  // Added color field
   licenseNumber: string;
   vin: string;
   mileage: number;

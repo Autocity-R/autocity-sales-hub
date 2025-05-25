@@ -67,7 +67,13 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
                 <span className="font-medium">Voertuig:</span> {vehicle.brand} {vehicle.model}
               </div>
               <div>
+                <span className="font-medium">Kleur:</span> {vehicle.color || "Niet opgegeven"}
+              </div>
+              <div>
                 <span className="font-medium">Kenteken:</span> {vehicle.licenseNumber}
+              </div>
+              <div>
+                <span className="font-medium">Kilometerstand:</span> {vehicle.mileage?.toLocaleString()} km
               </div>
               <div>
                 <span className="font-medium">VIN:</span> {vehicle.vin}

@@ -64,6 +64,15 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               onChange={(e) => handleChange('model', e.target.value)}
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="color">Kleur</Label>
+            <Input
+              id="color"
+              value={editedVehicle.color || ""}
+              onChange={(e) => handleChange('color', e.target.value)}
+              placeholder="Bijv. Zwart, Wit, Zilver"
+            />
+          </div>
         </div>
         
         {/* License & VIN */}
