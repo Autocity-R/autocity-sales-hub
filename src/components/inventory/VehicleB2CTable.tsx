@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -241,7 +242,11 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
                   Locatie
                 </div>
               </TableHead>
-              <TableHead className="w-12 text-center"></TableHead>
+              <TableHead className="w-12 text-center">
+                <div className="flex items-center justify-center">
+                  Acties
+                </div>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
