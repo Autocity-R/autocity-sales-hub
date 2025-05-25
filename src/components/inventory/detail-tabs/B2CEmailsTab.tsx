@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { Mail, AlertCircle, CheckCircle, Calendar, FileText, Settings } from "lucide-react";
+import { Mail, AlertCircle, CheckCircle, Calendar, FileText, Settings, PenTool } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -26,7 +26,7 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
   };
 
   const handleSendContract = (options: ContractOptions) => {
-    onSendEmail("contract_b2c", options);
+    onSendEmail("contract_b2c_digital", options);
   };
 
   const renderEmailButton = (buttonType: string, icon: React.ReactNode, label: string, variant: "default" | "outline" = "default") => {
@@ -66,9 +66,9 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
           
           <div className="space-y-3">
             {renderEmailButton(
-              "contract_b2c", 
-              <Mail className="mr-2 h-4 w-4" />, 
-              "Koopcontract sturen (B2C)"
+              "contract_b2c_digital", 
+              <PenTool className="mr-2 h-4 w-4" />, 
+              "Koopcontract B2C - Digitaal"
             )}
             
             {renderEmailButton(
