@@ -10,7 +10,8 @@ import {
   ArrowDown, 
   Euro,
   Truck,
-  User
+  User,
+  Building
 } from "lucide-react";
 import {
   Table,
@@ -183,6 +184,9 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
               {renderSortableHeader("sellingPrice", "Verkoopprijs")}
             </TableHead>
             <TableHead>
+              {renderSortableHeader("customerName", "Klant")}
+            </TableHead>
+            <TableHead>
               {renderSortableHeader("salespersonName", "Verkoper")}
             </TableHead>
             <TableHead>
@@ -202,7 +206,7 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
         </TableHeader>
         <TableBody>
           <TableRow>
-            <TableCell colSpan={15} className="h-24 text-center">
+            <TableCell colSpan={16} className="h-24 text-center">
               Geen B2B verkochte voertuigen gevonden.
             </TableCell>
           </TableRow>
@@ -244,6 +248,9 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
             </TableHead>
             <TableHead>
               {renderSortableHeader("sellingPrice", "Verkoopprijs")}
+            </TableHead>
+            <TableHead>
+              {renderSortableHeader("customerName", "Klant")}
             </TableHead>
             <TableHead>
               {renderSortableHeader("salespersonName", "Verkoper")}
@@ -304,6 +311,16 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                   <span className="font-medium">€ {vehicle.sellingPrice.toLocaleString('nl-NL')}</span>
                 ) : (
                   <span className="text-muted-foreground">Niet ingesteld</span>
+                )}
+              </TableCell>
+              <TableCell>
+                {vehicle.customerName ? (
+                  <div className="flex items-center space-x-1">
+                    <Building className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">{vehicle.customerName}</span>
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground text-sm">Geen klant</span>
                 )}
               </TableCell>
               <TableCell>
