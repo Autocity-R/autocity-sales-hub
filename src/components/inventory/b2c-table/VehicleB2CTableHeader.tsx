@@ -1,4 +1,3 @@
-
 import React from "react";
 import { TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -33,7 +32,7 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
   return (
     <TableHeader>
       <TableRow>
-        <TableHead className="w-12 pl-4">
+        <TableHead className="w-8 pl-2">
           <Checkbox 
             checked={selectedVehicles.length === vehiclesLength && vehiclesLength > 0} 
             onCheckedChange={toggleSelectAll} 
