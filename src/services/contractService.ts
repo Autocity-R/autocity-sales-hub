@@ -121,7 +121,7 @@ const generateHtmlContract = (
             line-height: 1.5;
             color: #1a1a1a;
             background: white;
-            font-size: 14px;
+            font-size: 15px;
         }
         
         .contract {
@@ -136,31 +136,31 @@ const generateHtmlContract = (
         .header {
             background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 16px 20px;
-            margin: -10mm -10mm 16px -10mm;
+            padding: 18px 22px;
+            margin: -10mm -10mm 18px -10mm;
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
             position: relative;
-            min-height: 90px;
+            min-height: 100px;
         }
         
         .logo-section {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 18px;
             flex: 0 0 auto;
         }
         
         .logo-container {
             background: white;
-            padding: 8px;
-            border-radius: 8px;
+            padding: 10px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 90px;
-            height: 90px;
+            width: 100px;
+            height: 100px;
         }
         
         .logo-container img {
@@ -172,20 +172,20 @@ const generateHtmlContract = (
         .header-center {
             flex: 1;
             text-align: center;
-            padding: 0 25px;
+            padding: 0 30px;
         }
         
         .header-title {
-            font-size: 32px;
+            font-size: 36px;
             font-weight: 700;
             color: white;
             text-transform: uppercase;
-            letter-spacing: 3px;
-            margin-bottom: 8px;
+            letter-spacing: 4px;
+            margin-bottom: 10px;
         }
         
         .contract-date {
-            font-size: 14px;
+            font-size: 16px;
             color: #cccccc;
             font-weight: 500;
         }
@@ -193,77 +193,77 @@ const generateHtmlContract = (
         .company-info {
             flex: 0 0 auto;
             text-align: right;
-            font-size: 11px;
+            font-size: 13px;
             color: #cccccc;
-            line-height: 1.4;
-            max-width: 220px;
+            line-height: 1.5;
+            max-width: 240px;
         }
         
         .company-info div {
-            margin-bottom: 3px;
+            margin-bottom: 4px;
         }
         
         .main-content {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 16px;
+            gap: 18px;
+            margin-bottom: 18px;
         }
         
         .section {
             background: white;
             border: 2px solid #000000;
-            border-radius: 8px;
+            border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-            margin-bottom: 10px;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 12px;
         }
         
         .section-header {
             background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 10px 15px;
+            padding: 12px 18px;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 16px;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.2px;
         }
         
         .section-content {
-            padding: 15px;
+            padding: 18px;
         }
         
         .contract-details {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
         }
         
         .info-item {
             display: flex;
             flex-direction: column;
-            gap: 3px;
+            gap: 4px;
         }
         
         .info-label {
             font-weight: 600;
             color: #4b5563;
-            font-size: 11px;
+            font-size: 12px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.6px;
         }
         
         .info-value {
             color: #1a1a1a;
             font-weight: 500;
-            font-size: 13px;
-            padding: 2px 0;
+            font-size: 15px;
+            padding: 3px 0;
         }
         
         .vehicle-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 12px;
         }
         
         .price-section {
@@ -280,9 +280,9 @@ const generateHtmlContract = (
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 15px;
+            padding: 10px 18px;
             border-bottom: 1px solid #f3f4f6;
-            font-size: 13px;
+            font-size: 15px;
         }
         
         .price-item:last-child {
@@ -302,12 +302,12 @@ const generateHtmlContract = (
         .price-total {
             background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 12px 15px;
-            font-size: 16px;
+            padding: 15px 18px;
+            font-size: 18px;
             font-weight: 700;
             text-align: center;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.2px;
         }
         
         .full-width-section {
@@ -315,21 +315,21 @@ const generateHtmlContract = (
         }
         
         .terms-content {
-            font-size: 13px;
-            line-height: 1.5;
+            font-size: 15px;
+            line-height: 1.6;
             color: #4b5563;
         }
         
         .terms-content p {
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
         
         .signature-section {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 25px;
-            margin-top: 20px;
-            padding-top: 15px;
+            gap: 30px;
+            margin-top: 25px;
+            padding-top: 20px;
             border-top: 2px solid #000000;
         }
         
@@ -339,61 +339,61 @@ const generateHtmlContract = (
         
         .signature-line {
             border-bottom: 2px solid #1a1a1a;
-            height: 40px;
-            margin-bottom: 10px;
+            height: 50px;
+            margin-bottom: 12px;
         }
         
         .signature-label {
             font-weight: 600;
             color: #1a1a1a;
-            font-size: 13px;
+            font-size: 15px;
         }
         
         .digital-signature {
             background: linear-gradient(135deg, #f8f9fa, #f1f3f4);
             border: 2px solid #000000;
-            border-radius: 8px;
-            padding: 15px;
+            border-radius: 10px;
+            padding: 18px;
             text-align: center;
-            margin: 15px 0;
+            margin: 18px 0;
             grid-column: 1 / -1;
         }
         
         .digital-signature h3 {
             color: #1a1a1a;
-            margin-bottom: 8px;
-            font-size: 14px;
+            margin-bottom: 10px;
+            font-size: 16px;
         }
         
         .signature-button {
             background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 10px 20px;
+            padding: 12px 24px;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
             text-decoration: none;
             display: inline-block;
-            margin-top: 8px;
-            font-size: 13px;
+            margin-top: 10px;
+            font-size: 15px;
         }
         
         .footer {
-            margin-top: 15px;
-            padding-top: 10px;
+            margin-top: 18px;
+            padding-top: 12px;
             border-top: 1px solid #e5e7eb;
-            font-size: 12px;
+            font-size: 14px;
             color: #6b7280;
             text-align: center;
-            line-height: 1.5;
+            line-height: 1.6;
         }
         
         @media print {
             .contract {
                 margin: 0;
                 padding: 8mm;
-                font-size: 12px;
+                font-size: 14px;
             }
             
             .digital-signature {
@@ -401,30 +401,30 @@ const generateHtmlContract = (
             }
             
             .header {
-                padding: 12px 16px;
-                margin: -8mm -8mm 12px -8mm;
+                padding: 14px 18px;
+                margin: -8mm -8mm 14px -8mm;
             }
             
             .main-content {
-                gap: 12px;
-                margin-bottom: 12px;
+                gap: 14px;
+                margin-bottom: 14px;
             }
             
             .section {
-                margin-bottom: 8px;
+                margin-bottom: 10px;
             }
             
             .section-content {
-                padding: 12px;
+                padding: 14px;
             }
             
             .signature-section {
-                margin-top: 16px;
-                padding-top: 12px;
+                margin-top: 18px;
+                padding-top: 14px;
             }
             
             .signature-line {
-                height: 30px;
+                height: 35px;
             }
         }
     </style>
@@ -478,7 +478,7 @@ const generateHtmlContract = (
                         </div>
                         <div class="info-item">
                             <span class="info-label">Adres:</span>
-                            <span class="info-value">${vehicle.customerContact?.address || '[Adres klant]'}</span>
+                            <span class="info-value">[Adres klant]</span>
                         </div>
                     </div>
                 </div>
