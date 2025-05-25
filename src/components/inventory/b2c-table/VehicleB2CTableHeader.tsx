@@ -59,9 +59,7 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
           </div>
         </TableHead>
         <TableHead>
-          <div className="flex items-center">
-            VIN
-          </div>
+          VIN
         </TableHead>
         <TableHead className="cursor-pointer" onClick={() => handleSort("purchasePrice")}>
           <div className="flex items-center">
@@ -76,34 +74,22 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
           </div>
         </TableHead>
         <TableHead>
-          <div className="flex items-center">
-            Klantnaam
-          </div>
+          Klantnaam
         </TableHead>
         <TableHead>
-          <div className="flex items-center">
-            Import status
-          </div>
+          Import status
         </TableHead>
         <TableHead>
-          <div className="flex items-center">
-            Werkplaats status
-          </div>
+          Werkplaats status
         </TableHead>
         <TableHead>
-          <div className="flex items-center">
-            Lak status
-          </div>
+          Lak status
         </TableHead>
         <TableHead>
-          <div className="flex items-center">
-            Locatie
-          </div>
+          Locatie
         </TableHead>
         <TableHead className="w-12 text-center">
-          <div className="flex items-center justify-center">
-            Acties
-          </div>
+          Acties
         </TableHead>
       </TableRow>
     </TableHeader>
