@@ -10,7 +10,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
-import { FileText, Send, X } from "lucide-react";
+import { FileText, Send, X, Eye, Mail, PenTool } from "lucide-react";
+import { generateContract } from "@/services/contractService";
+import { createSignatureSession, generateSignatureUrl } from "@/services/digitalSignatureService";
+import { useToast } from "@/hooks/use-toast";
 
 interface ContractConfigDialogProps {
   isOpen: boolean;
@@ -27,6 +30,7 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
   contractType,
   onSendContract
 }) => {
+  const { toast } = useToast();
   const [options, setOptions] = useState<ContractOptions>({
     btwType: "inclusive",
     bpmIncluded: false,
@@ -37,13 +41,121 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
     additionalClauses: "",
     specialAgreements: ""
   });
+  
+  const [deliveryMethod, setDeliveryMethod] = useState<"email" | "digital">("digital");
+  const [contractPreview, setContractPreview] = useState<any>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSend = () => {
+  const handlePreview = async () => {
+    setLoading(true);
+    try {
+      const contract = await generateContract(vehicle, contractType, options);
+      setContractPreview(contract);
+      setShowPreview(true);
+    } catch (error) {
+      console.error("Error generating preview:", error);
+      toast({
+        title: "Fout",
+        description: "Kon contractvoorbeeld niet genereren",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendDigital = async () => {
+    if (!vehicle.customerContact?.email) {
+      toast({
+        title: "Geen klant email",
+        description: "Voeg eerst een klant email toe aan dit voertuig",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Create signature session
+      const session = await createSignatureSession(vehicle, contractType, options);
+      const signatureUrl = generateSignatureUrl(session);
+      
+      // Generate contract with signature URL
+      const contract = await generateContract(vehicle, contractType, options, signatureUrl);
+      
+      // Simulate sending email with contract and signature link
+      console.log("Digitaal contract verzonden naar:", vehicle.customerContact.email);
+      console.log("Ondertekeningslink:", signatureUrl);
+      
+      toast({
+        title: "Contract verzonden",
+        description: `Digitaal contract met ondertekeningslink verzonden naar ${vehicle.customerContact.email}`,
+      });
+      
+      onClose();
+    } catch (error) {
+      console.error("Error sending digital contract:", error);
+      toast({
+        title: "Fout",
+        description: "Kon digitaal contract niet verzenden",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendEmail = () => {
     onSendContract(options);
     onClose();
   };
 
   const isB2B = contractType === "b2b";
+
+  if (showPreview && contractPreview) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Contract Voorbeeld
+              <Button variant="ghost" size="sm" onClick={() => setShowPreview(false)} className="ml-auto">
+                Terug naar configuratie
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div 
+              className="border rounded-lg p-4 bg-white max-h-[60vh] overflow-y-auto"
+              dangerouslySetInnerHTML={{ __html: contractPreview.htmlContent }}
+            />
+            
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowPreview(false)}>
+                Bewerken
+              </Button>
+              <Button onClick={deliveryMethod === "digital" ? handleSendDigital : handleSendEmail}>
+                {deliveryMethod === "digital" ? (
+                  <>
+                    <PenTool className="h-4 w-4 mr-2" />
+                    Voor Digitale Ondertekening Versturen
+                  </>
+                ) : (
+                  <>
+                    <Mail className="h-4 w-4 mr-2" />
+                    Per Email Versturen
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -80,6 +192,46 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
               </div>
               <div>
                 <span className="font-medium">Verkoopprijs:</span> €{vehicle.sellingPrice?.toLocaleString() || "0"}
+              </div>
+            </div>
+          </div>
+
+          {/* Delivery Method Selection */}
+          <div className="space-y-4">
+            <h4 className="font-medium">Verzendmethode</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div 
+                className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
+                  deliveryMethod === "digital" 
+                    ? "border-blue-500 bg-blue-50" 
+                    : "border-gray-200 hover:border-gray-300"
+                }`}
+                onClick={() => setDeliveryMethod("digital")}
+              >
+                <div className="flex items-center space-x-2 mb-2">
+                  <PenTool className="h-5 w-5 text-blue-600" />
+                  <span className="font-medium">Digitale Ondertekening</span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  Klant kan contract digitaal ondertekenen via een veilige link
+                </p>
+              </div>
+              
+              <div 
+                className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
+                  deliveryMethod === "email" 
+                    ? "border-green-500 bg-green-50" 
+                    : "border-gray-200 hover:border-gray-300"
+                }`}
+                onClick={() => setDeliveryMethod("email")}
+              >
+                <div className="flex items-center space-x-2 mb-2">
+                  <Mail className="h-5 w-5 text-green-600" />
+                  <span className="font-medium">Email Bijlage</span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  Contract als PDF bijlage in email
+                </p>
               </div>
             </div>
           </div>
@@ -135,7 +287,7 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
                     setOptions(prev => ({ ...prev, bpmIncluded: checked as boolean }))
                   }
                 />
-                <Label htmlFor="bpm-included">BPM inbegrepen in prijs</Label>
+                <Label htmlFor="bmp-included">BPM inbegrepen in prijs</Label>
               </div>
 
               <div>
@@ -235,9 +387,24 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
             <Button variant="outline" onClick={onClose}>
               Annuleren
             </Button>
-            <Button onClick={handleSend} className="gap-2">
-              <Send className="h-4 w-4" />
-              Contract Versturen
+            <Button variant="outline" onClick={handlePreview} disabled={loading}>
+              <Eye className="h-4 w-4 mr-2" />
+              Voorbeeld
+            </Button>
+            <Button onClick={deliveryMethod === "digital" ? handleSendDigital : handleSendEmail} disabled={loading}>
+              {loading ? "Bezig..." : (
+                deliveryMethod === "digital" ? (
+                  <>
+                    <PenTool className="h-4 w-4 mr-2" />
+                    Voor Ondertekening Versturen
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Contract Versturen
+                  </>
+                )
+              )}
             </Button>
           </div>
         </div>

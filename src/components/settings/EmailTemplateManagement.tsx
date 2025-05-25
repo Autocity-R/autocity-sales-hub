@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Edit, Save, Paperclip, ChevronDown, Check } from "lucide-react";
+import { Trash2, Edit, Save, Paperclip, ChevronDown, Check, PenTool } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
@@ -34,6 +33,8 @@ const VEHICLE_ACTION_BUTTONS = [
   { value: "license_registration", label: "Kenteken aanmelding update" },
   { value: "contract_b2b", label: "Koopcontract sturen (B2B)" },
   { value: "contract_b2c", label: "Koopcontract sturen (B2C)" },
+  { value: "contract_b2b_digital", label: "Digitaal Koopcontract B2B" },
+  { value: "contract_b2c_digital", label: "Digitaal Koopcontract B2C" },
   { value: "rdw_approved", label: "Auto is goedgekeurd door RDW" },
   { value: "bpm_paid", label: "BPM is betaald" },
   { value: "car_registered", label: "Auto is ingeschreven" },
@@ -67,7 +68,7 @@ export const EmailTemplateManagement: React.FC = () => {
 
   const availableVariables = [
     "voertuig_merk", "voertuig_model", "voertuig_vin", "voertuig_kenteken", 
-    "voertuig_locatie", "voertuig_kilometerstand", "voertuig_jaar",
+    "voertuig_locatie", "voertuig_kilometerstand", "voertuig_jaar", "voertuig_prijs",
     "klant_naam", "klant_email", "klant_telefoon", "klant_adres",
     "leverancier_naam", "leverancier_email", "leverancier_telefoon",
     "transporteur_naam", "transporteur_email", "transporteur_telefoon",
@@ -77,7 +78,7 @@ export const EmailTemplateManagement: React.FC = () => {
 
   const attachmentTypes = [
     { value: "auto-upload", label: "Auto-upload documenten (CMR/Pickup uit voertuig bestanden)" },
-    { value: "generated-contract", label: "Gegenereerd koopcontract" },
+    { value: "generated-contract", label: "Gegenereerd koopcontract (met digitale ondertekening)" },
     { value: "static-file", label: "Statisch bestand" }
   ];
 
@@ -255,6 +256,9 @@ export const EmailTemplateManagement: React.FC = () => {
                 {value === button.value && (
                   <Check className="mr-2 h-4 w-4" />
                 )}
+                {button.value.includes("digital") && (
+                  <PenTool className="mr-2 h-3 w-3 text-blue-600" />
+                )}
                 {button.label}
               </Button>
             ))}
@@ -270,7 +274,7 @@ export const EmailTemplateManagement: React.FC = () => {
         <h2 className="text-2xl font-bold">Email Template Beheer</h2>
         <p className="text-muted-foreground mt-2">
           Beheer email templates die gekoppeld zijn aan voertuig actieknoppen. 
-          Wanneer een knop wordt gebruikt, wordt automatisch de gekoppelde email verstuurd.
+          Templates met digitale ondertekening worden automatisch voorzien van ondertekeningslinks.
         </p>
       </div>
 
@@ -289,12 +293,15 @@ export const EmailTemplateManagement: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div className="space-y-2">
                       <CardTitle className="flex items-center gap-2">
+                        {template.linkedButton.includes("digital") && (
+                          <PenTool className="h-4 w-4 text-blue-600" />
+                        )}
                         {template.name}
                         {template.hasAttachment && (
                           <Badge variant="secondary" className="gap-1">
                             <Paperclip className="h-3 w-3" />
                             {template.attachmentType === "auto-upload" && template.staticAttachmentType}
-                            {template.attachmentType === "generated-contract" && "Koopcontract"}
+                            {template.attachmentType === "generated-contract" && "Digitaal Contract"}
                             {template.attachmentType === "static-file" && template.staticAttachmentType}
                           </Badge>
                         )}
@@ -303,6 +310,12 @@ export const EmailTemplateManagement: React.FC = () => {
                         <Badge variant="outline">
                           {getButtonLabel(template.linkedButton)}
                         </Badge>
+                        {template.linkedButton.includes("digital") && (
+                          <Badge variant="secondary" className="gap-1 bg-blue-100 text-blue-800">
+                            <PenTool className="h-3 w-3" />
+                            Digitale Ondertekening
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -387,9 +400,15 @@ export const EmailTemplateManagement: React.FC = () => {
                   id="template-content"
                   value={newTemplate.content || ""}
                   onChange={(e) => setNewTemplate({ ...newTemplate, content: e.target.value })}
-                  placeholder="Inhoud van de email"
+                  placeholder="Inhoud van de email - gebruik [ONDERTEKENINGSLINK] voor digitale contracten"
                   className="min-h-[200px]"
                 />
+                {newTemplate.linkedButton?.includes("digital") && (
+                  <p className="text-sm text-blue-600 mt-2">
+                    <PenTool className="h-3 w-3 inline mr-1" />
+                    Digitaal contract: Gebruik [ONDERTEKENINGSLINK] in de tekst voor de ondertekeningslink
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center space-x-2">
@@ -400,7 +419,9 @@ export const EmailTemplateManagement: React.FC = () => {
                   onChange={(e) => setNewTemplate({ 
                     ...newTemplate, 
                     hasAttachment: e.target.checked,
-                    attachmentType: e.target.checked ? newTemplate.attachmentType : undefined,
+                    attachmentType: e.target.checked ? (
+                      newTemplate.linkedButton?.includes("contract") ? "generated-contract" : newTemplate.attachmentType
+                    ) : undefined,
                     staticAttachmentType: e.target.checked ? newTemplate.staticAttachmentType : undefined
                   })}
                 />
@@ -456,8 +477,8 @@ export const EmailTemplateManagement: React.FC = () => {
                   {newTemplate.attachmentType === "generated-contract" && (
                     <div className="p-3 bg-blue-50 rounded-md">
                       <p className="text-sm text-blue-800">
-                        <strong>Koopcontract:</strong> Bij deze optie wordt automatisch een koopcontract gegenereerd 
-                        met voertuig- en klantgegevens. De gebruiker kan opties configureren voordat de email wordt verzonden.
+                        <strong>Digitaal Koopcontract:</strong> Een professioneel contract wordt automatisch gegenereerd 
+                        met voertuig- en klantgegevens. Voor digitale contracten wordt ook een beveiligde ondertekeningslink toegevoegd.
                       </p>
                     </div>
                   )}
@@ -491,7 +512,8 @@ export const EmailTemplateManagement: React.FC = () => {
             <CardHeader>
               <CardTitle>Beschikbare Variabelen</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Klik op een variabele om deze toe te voegen aan de email inhoud
+                Klik op een variabele om deze toe te voegen aan de email inhoud. 
+                Voor digitale contracten kunt u [ONDERTEKENINGSLINK] gebruiken.
               </p>
             </CardHeader>
             <CardContent>
@@ -507,6 +529,14 @@ export const EmailTemplateManagement: React.FC = () => {
                     {`{${variable}}`}
                   </Button>
                 ))}
+              </div>
+              
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <h4 className="font-medium text-blue-900 mb-2">Speciale Variabelen voor Digitale Contracten</h4>
+                <div className="space-y-1 text-sm text-blue-800">
+                  <p><code>[ONDERTEKENINGSLINK]</code> - Wordt vervangen door de veilige ondertekeningslink</p>
+                  <p><code>{`{voertuig_prijs}`}</code> - Verkoopprijs van het voertuig</p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -558,6 +588,12 @@ export const EmailTemplateManagement: React.FC = () => {
                   onChange={(e) => setEditingTemplate({ ...editingTemplate, content: e.target.value })}
                   className="min-h-[200px]"
                 />
+                {editingTemplate.linkedButton?.includes("digital") && (
+                  <p className="text-sm text-blue-600 mt-2">
+                    <PenTool className="h-3 w-3 inline mr-1" />
+                    Digitaal contract: Gebruik [ONDERTEKENINGSLINK] in de tekst voor de ondertekeningslink
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center space-x-2">
@@ -624,8 +660,8 @@ export const EmailTemplateManagement: React.FC = () => {
                   {editingTemplate.attachmentType === "generated-contract" && (
                     <div className="p-3 bg-blue-50 rounded-md">
                       <p className="text-sm text-blue-800">
-                        <strong>Koopcontract:</strong> Bij deze optie wordt automatisch een koopcontract gegenereerd 
-                        met voertuig- en klantgegevens. De gebruiker kan opties configureren voordat de email wordt verzonden.
+                        <strong>Digitaal Koopcontract:</strong> Een professioneel contract wordt automatisch gegenereerd 
+                        met voertuig- en klantgegevens. Voor digitale contracten wordt ook een beveiligde ondertekeningslink toegevoegd.
                       </p>
                     </div>
                   )}

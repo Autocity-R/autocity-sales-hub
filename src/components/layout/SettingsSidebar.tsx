@@ -1,160 +1,93 @@
 
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import { NavLink } from "react-router-dom";
 import { 
   User, 
+  Users, 
   Mail, 
   Bell, 
   Shield, 
-  Key,
-  Database,
-  Users,
-  UserPlus,
+  Settings, 
   Car,
-  Settings
+  FileText,
+  PenTool
 } from "lucide-react";
 
-// Persoonlijke instellingen
-const personalMenuItems = [
+const settingsItems = [
   {
-    title: "Persoonlijke Gegevens",
+    name: "Gebruiker Instellingen",
+    href: "/settings?tab=general",
     icon: User,
-    href: "/settings/personal",
-    description: "Beheer je profiel en contactgegevens"
   },
   {
-    title: "Email Instellingen",
-    icon: Mail,
-    href: "/settings/email",
-    description: "Koppel Gmail accounts voor CRM communicatie"
-  },
-  {
-    title: "Notificaties",
-    icon: Bell,
-    href: "/settings/notifications",
-    description: "Herinneringen voor leads en email vermeldingen"
-  },
-  {
-    title: "Beveiliging",
-    icon: Shield,
-    href: "/settings/security",
-    description: "Wachtwoord wijzigen en beveiligingsinstellingen"
-  }
-];
-
-// Systeem instellingen
-const systemMenuItems = [
-  {
-    title: "Email Templates",
-    icon: Settings,
-    href: "/settings/email-templates",
-    description: "Beheer email templates voor communicatie"
-  },
-  {
-    title: "API Sleutels",
-    icon: Key,
-    href: "/settings/api",
-    description: "Beheer API toegang voor systeemkoppelingen"
-  },
-  {
-    title: "Data & Privacy",
-    icon: Database,
-    href: "/settings/privacy",
-    description: "Data export en privacy instellingen"
-  }
-];
-
-// Admin menu items (alleen voor hoofdgebruiker)
-const adminMenuItems = [
-  {
-    title: "Gebruikersbeheer",
+    name: "Gebruikersbeheer",
+    href: "/settings?tab=users",
     icon: Users,
-    href: "/settings/users",
-    description: "Beheer gebruikerstoegang en rechten"
   },
   {
-    title: "Nieuwe Gebruiker",
-    icon: UserPlus,
-    href: "/settings/users/new",
-    description: "Voeg nieuwe gebruikers toe aan het systeem"
+    name: "Email Templates",
+    href: "/settings?tab=email-templates",
+    icon: Mail,
   },
   {
-    title: "Leenauto Beheer",
+    name: "Contract Beheer",
+    href: "/settings?tab=contracts",
+    icon: PenTool,
+  },
+  {
+    name: "Email Instellingen",
+    href: "/settings?tab=email",
+    icon: Mail,
+  },
+  {
+    name: "Notificaties",
+    href: "/settings?tab=notifications",
+    icon: Bell,
+  },
+  {
+    name: "API Instellingen",
+    href: "/settings?tab=api",
+    icon: Settings,
+  },
+  {
+    name: "Leenauto's",
+    href: "/settings?tab=loan-cars",
     icon: Car,
-    href: "/settings/loan-cars",
-    description: "Beheer leenauto's en beschikbaarheid"
-  }
+  },
+  {
+    name: "Beveiliging",
+    href: "/settings?tab=security",
+    icon: Shield,
+  },
 ];
 
-export const SettingsSidebar = () => {
-  const location = useLocation();
-  
-  // Simuleer admin check - in productie zou dit uit een auth context komen
-  const isAdmin = true; // TODO: Vervang door echte admin check
-
-  const MenuSection = ({ title, items }: { title: string, items: typeof personalMenuItems }) => (
-    <div className="mb-6">
-      <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 px-3">
-        {title}
-      </h3>
-      <div className="space-y-1">
-        {items.map((item) => {
-          const isActive = location.pathname === item.href || 
-            (item.href === "/settings/personal" && location.pathname === "/settings");
-          
-          return (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={cn(
-                "flex items-start gap-3 p-3 rounded-lg transition-colors group",
-                isActive
-                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-              )}
-            >
-              <item.icon className={cn(
-                "h-5 w-5 mt-0.5 flex-shrink-0",
-                isActive 
-                  ? "text-blue-600 dark:text-blue-400" 
-                  : "text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300"
-              )} />
-              <div className="flex-1 min-w-0">
-                <div className={cn(
-                  "font-medium text-sm",
-                  isActive 
-                    ? "text-blue-700 dark:text-blue-300" 
-                    : "text-gray-900 dark:text-white"
-                )}>
-                  {item.title}
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  {item.description}
-                </div>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
-    </div>
-  );
-
+export const SettingsSidebar: React.FC = () => {
   return (
-    <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Instellingen
-        </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Beheer je account en voorkeuren
-        </p>
+    <div className="w-64 bg-white shadow-sm border-r">
+      <div className="p-6">
+        <h2 className="text-lg font-semibold text-gray-900">Instellingen</h2>
+        <p className="text-sm text-gray-600 mt-1">Beheer uw account en voorkeuren</p>
       </div>
-      
-      <nav className="p-4">
-        <MenuSection title="Persoonlijk" items={personalMenuItems} />
-        <MenuSection title="Systeem" items={systemMenuItems} />
-        {isAdmin && <MenuSection title="Beheer" items={adminMenuItems} />}
+      <nav className="px-3 pb-6">
+        <ul className="space-y-1">
+          {settingsItems.map((item) => (
+            <li key={item.name}>
+              <NavLink
+                to={item.href}
+                className={({ isActive }) =>
+                  `flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    isActive
+                      ? "bg-red-50 text-red-700 border-r-2 border-red-700"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  }`
+                }
+              >
+                <item.icon className="mr-3 h-5 w-5" />
+                {item.name}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
       </nav>
     </div>
   );

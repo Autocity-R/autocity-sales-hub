@@ -25,6 +25,24 @@ let emailTemplates: EmailTemplate[] = [
     hasAttachment: true,
     attachmentType: "auto-upload",
     staticAttachmentType: "Pickup Document"
+  },
+  {
+    id: "3",
+    name: "Koopcontract B2B - Digitaal",
+    subject: "Koopcontract voor ondertekening - {voertuig_merk} {voertuig_model}",
+    content: "Beste {klant_naam},\n\nBijgevoegd vindt u het koopcontract voor uw voertuig:\n\n- Voertuig: {voertuig_merk} {voertuig_model}\n- Kenteken: {voertuig_kenteken}\n- Verkoopprijs: €{voertuig_prijs}\n\nU kunt het contract digitaal ondertekenen via onderstaande link:\n[ONDERTEKENINGSLINK]\n\nDe link is 7 dagen geldig. Na ondertekening ontvangt u automatisch een bevestiging.\n\nMet vriendelijke groet,\nAutoCity\nTel: 010-2623980",
+    linkedButton: "contract_b2b_digital",
+    hasAttachment: true,
+    attachmentType: "generated-contract"
+  },
+  {
+    id: "4",
+    name: "Koopcontract B2C - Digitaal", 
+    subject: "Uw autocontract voor digitale ondertekening - {voertuig_merk} {voertuig_model}",
+    content: "Beste {klant_naam},\n\nHartelijk dank voor uw aankoop bij AutoCity!\n\nBijgevoegd vindt u het koopcontract voor:\n- {voertuig_merk} {voertuig_model} ({voertuig_kenteken})\n- Kilometer: {voertuig_kilometerstand} km\n- Totaalprijs: €{voertuig_prijs}\n\nU kunt het contract eenvoudig digitaal ondertekenen via deze beveiligde link:\n[ONDERTEKENINGSLINK]\n\nNa ondertekening plannen wij graag de aflevering met u in.\n\nVragen? Bel ons op 010-2623980\n\nMet vriendelijke groet,\nHet AutoCity team",
+    linkedButton: "contract_b2c_digital",
+    hasAttachment: true,
+    attachmentType: "generated-contract"
   }
 ];
 
@@ -40,6 +58,8 @@ export const determineRecipient = (buttonValue: string, vehicleData: Vehicle): {
       return vehicleData.supplierContact || null;
     case "contract_b2b":
     case "contract_b2c":
+    case "contract_b2b_digital":
+    case "contract_b2c_digital":
     case "vehicle_arrived":
     case "rdw_approved":
     case "bpm_paid":
@@ -62,7 +82,8 @@ export const determineRecipient = (buttonValue: string, vehicleData: Vehicle): {
 export const sendEmailWithTemplate = async (
   buttonValue: string, 
   vehicleData: Vehicle,
-  contractOptions?: ContractOptions
+  contractOptions?: ContractOptions,
+  signatureUrl?: string
 ): Promise<boolean> => {
   const template = getEmailTemplateByButton(buttonValue);
   
@@ -79,8 +100,13 @@ export const sendEmailWithTemplate = async (
 
   try {
     // Vervang variabelen in de template
-    const processedSubject = replaceVariables(template.subject, vehicleData, recipient);
-    const processedContent = replaceVariables(template.content, vehicleData, recipient);
+    let processedSubject = replaceVariables(template.subject, vehicleData, recipient);
+    let processedContent = replaceVariables(template.content, vehicleData, recipient);
+    
+    // Add signature URL for digital contracts
+    if (signatureUrl && (buttonValue.includes("digital") || buttonValue.includes("contract"))) {
+      processedContent = processedContent.replace("[ONDERTEKENINGSLINK]", signatureUrl);
+    }
 
     console.log(`Email verzonden met template: ${template.name}`);
     console.log(`Naar: ${recipient.name} (${recipient.email})`);
@@ -89,7 +115,7 @@ export const sendEmailWithTemplate = async (
     
     // Handle attachments based on template type
     if (template.hasAttachment) {
-      const attachments = await getEmailAttachments(template, vehicleData, contractOptions);
+      const attachments = await getEmailAttachments(template, vehicleData, contractOptions, signatureUrl);
       if (attachments.length > 0) {
         console.log(`Bijlagen (${attachments.length}):`, attachments.map(a => a.name));
       } else if (template.attachmentType === "auto-upload") {
@@ -116,7 +142,8 @@ export const sendEmailWithTemplate = async (
 const getEmailAttachments = async (
   template: EmailTemplate, 
   vehicleData: Vehicle,
-  contractOptions?: ContractOptions
+  contractOptions?: ContractOptions,
+  signatureUrl?: string
 ): Promise<{ name: string; url: string; content?: string }[]> => {
   const attachments: { name: string; url: string; content?: string }[] = [];
 
@@ -138,7 +165,7 @@ const getEmailAttachments = async (
       // Generate contract document
       if (contractOptions) {
         const contractType = template.linkedButton.includes("b2b") ? "b2b" : "b2c";
-        const contract = await generateContract(vehicleData, contractType, contractOptions);
+        const contract = await generateContract(vehicleData, contractType, contractOptions, signatureUrl);
         
         attachments.push({
           name: contract.fileName,
@@ -184,6 +211,7 @@ const replaceVariables = (text: string, vehicleData: Vehicle, recipient?: { emai
   result = result.replace(/{voertuig_locatie}/g, vehicleData.location || '');
   result = result.replace(/{voertuig_kilometerstand}/g, vehicleData.mileage?.toString() || '');
   result = result.replace(/{voertuig_jaar}/g, vehicleData.year?.toString() || '');
+  result = result.replace(/{voertuig_prijs}/g, vehicleData.sellingPrice?.toLocaleString('nl-NL') || '0');
   
   // Vervang klant/leverancier/transporteur variabelen
   if (recipient) {

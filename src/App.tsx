@@ -1,75 +1,52 @@
 
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Index from "@/pages/Index";
+import Transport from "@/pages/Transport";
+import Inventory from "@/pages/Inventory";
+import InventoryB2B from "@/pages/InventoryB2B";
+import InventoryB2C from "@/pages/InventoryB2C";
+import InventoryDelivered from "@/pages/InventoryDelivered";
+import InventoryOnline from "@/pages/InventoryOnline";
+import LoanCars from "@/pages/LoanCars";
+import Leads from "@/pages/Leads";
+import Calendar from "@/pages/Calendar";
+import Customers from "@/pages/Customers";
+import CustomerDetail from "@/pages/CustomerDetail";
+import Reports from "@/pages/Reports";
+import Warranty from "@/pages/Warranty";
+import Settings from "@/pages/Settings";
+import NotFound from "@/pages/NotFound";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import Inventory from "./pages/Inventory";
-import InventoryOnline from "./pages/InventoryOnline";
-import Transport from "./pages/Transport";
-import NotFound from "./pages/NotFound";
-import Customers from "./pages/Customers";
-import CustomerDetail from "./pages/CustomerDetail";
-import InventoryB2B from "./pages/InventoryB2B";
-import InventoryB2C from "./pages/InventoryB2C";
-import InventoryDelivered from "./pages/InventoryDelivered";
-import Leads from "./pages/Leads";
-import Reports from "./pages/Reports";
-import Warranty from "./pages/Warranty";
-import Calendar from "./pages/Calendar";
-import Settings from "./pages/Settings";
-import LoanCars from "./pages/LoanCars";
+import { DigitalSignaturePage } from "@/components/contracts/DigitalSignaturePage";
+import "./App.css";
 
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
+function App() {
+  return (
+    <>
+      <Router>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/inventory" element={<Inventory />} />
-          <Route path="/inventory/online" element={<InventoryOnline />} />
-          <Route path="/inventory/b2b" element={<InventoryB2B />} />
-          <Route path="/inventory/consumer" element={<InventoryB2C />} />
-          <Route path="/inventory/delivered" element={<InventoryDelivered />} />
           <Route path="/transport" element={<Transport />} />
-          <Route path="/leads" element={<Leads />} />
-          <Route path="/reports" element={<Reports />} />
-          
-          {/* Customer management routes */}
-          <Route path="/customers" element={<Customers />} />
-          <Route path="/customers/b2b" element={<Customers />} />
-          <Route path="/customers/b2c" element={<Customers />} />
-          <Route path="/suppliers" element={<Customers />} />
-          <Route path="/customers/:id" element={<CustomerDetail />} />
-          
-          <Route path="/warranty" element={<Warranty />} />
+          <Route path="/inventory" element={<Inventory />} />
+          <Route path="/inventory/b2b" element={<InventoryB2B />} />
+          <Route path="/inventory/b2c" element={<InventoryB2C />} />
+          <Route path="/inventory/delivered" element={<InventoryDelivered />} />
+          <Route path="/inventory/online" element={<InventoryOnline />} />
           <Route path="/loan-cars" element={<LoanCars />} />
+          <Route path="/leads" element={<Leads />} />
           <Route path="/calendar" element={<Calendar />} />
-          
-          {/* Settings routes */}
+          <Route path="/customers" element={<Customers />} />
+          <Route path="/customers/:id" element={<CustomerDetail />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/warranty" element={<Warranty />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/settings/personal" element={<Settings />} />
-          <Route path="/settings/email" element={<Settings />} />
-          <Route path="/settings/email-templates" element={<Settings />} />
-          <Route path="/settings/notifications" element={<Settings />} />
-          <Route path="/settings/security" element={<Settings />} />
-          <Route path="/settings/api" element={<Settings />} />
-          <Route path="/settings/privacy" element={<Settings />} />
-          <Route path="/settings/users" element={<Settings />} />
-          <Route path="/settings/users/new" element={<Settings />} />
-          <Route path="/settings/loan-cars" element={<Settings />} />
-          
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/contract/sign/:token" element={<DigitalSignaturePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+      </Router>
+      <Toaster />
+    </>
+  );
+}
 
 export default App;
