@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Mail, Plus, Edit, Trash2, Eye, Save, Copy, Palette, Settings } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Mail, Plus, Edit, Trash2, Eye, Save, Copy, Palette, Settings, FileText, Paperclip } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface EmailTemplate {
@@ -25,6 +25,12 @@ interface EmailTemplate {
   fromEmailId: string;
   dashboardButton?: string;
   templateStyle: "basic" | "professional" | "modern" | "corporate";
+  attachments: {
+    includeCMR: boolean;
+    includeInvoice: boolean;
+    includeDamageReport: boolean;
+    includePickupDocument: boolean;
+  };
 }
 
 interface EmailAccount {
@@ -48,7 +54,7 @@ export const EmailTemplateManagement = () => {
     { id: "3", email: "transport@autodealerx.nl", provider: "Gmail", isActive: true }
   ];
 
-  // Dashboard knoppen configuratie
+  // Dashboard knoppen configuratie - uitgebreid met CMR knop
   const dashboardButtons = [
     { id: "transport_pickup", label: "Transport Ophalen", category: "transport" },
     { id: "transport_delivery", label: "Transport Afleveren", category: "transport" },
@@ -57,7 +63,8 @@ export const EmailTemplateManagement = () => {
     { id: "b2c_rdw_update", label: "B2C RDW Update", category: "b2c" },
     { id: "b2c_delivery", label: "B2C Aflevering", category: "b2c" },
     { id: "supplier_payment", label: "Leverancier Betaling", category: "leverancier" },
-    { id: "supplier_documents", label: "Leverancier Documenten", category: "leverancier" }
+    { id: "supplier_documents", label: "Leverancier Documenten", category: "leverancier" },
+    { id: "supplier_cmr", label: "CMR naar Leverancier", category: "leverancier" }
   ];
 
   // Template stijlen
@@ -140,7 +147,7 @@ export const EmailTemplateManagement = () => {
     return baseStyles[style as keyof typeof baseStyles] || baseStyles.basic;
   };
 
-  // Mock data met uitgebreide templates
+  // Mock data met uitgebreide templates inclusief CMR template voor leveranciers
   const [templates, setTemplates] = useState<EmailTemplate[]>([
     {
       id: "1",
@@ -154,7 +161,13 @@ export const EmailTemplateManagement = () => {
       createdAt: "2024-01-15",
       fromEmailId: "3",
       dashboardButton: "transport_pickup",
-      templateStyle: "professional"
+      templateStyle: "professional",
+      attachments: {
+        includeCMR: false,
+        includeInvoice: false,
+        includeDamageReport: false,
+        includePickupDocument: true
+      }
     },
     {
       id: "2", 
@@ -168,7 +181,13 @@ export const EmailTemplateManagement = () => {
       createdAt: "2024-01-16",
       fromEmailId: "1",
       dashboardButton: "b2b_contract",
-      templateStyle: "corporate"
+      templateStyle: "corporate",
+      attachments: {
+        includeCMR: false,
+        includeInvoice: false,
+        includeDamageReport: false,
+        includePickupDocument: false
+      }
     },
     {
       id: "3",
@@ -182,7 +201,33 @@ export const EmailTemplateManagement = () => {
       createdAt: "2024-01-17",
       fromEmailId: "2",
       dashboardButton: "b2c_rdw_update",
-      templateStyle: "modern"
+      templateStyle: "modern",
+      attachments: {
+        includeCMR: false,
+        includeInvoice: false,
+        includeDamageReport: false,
+        includePickupDocument: false
+      }
+    },
+    {
+      id: "4",
+      name: "CMR naar Leverancier",
+      category: "leverancier",
+      subject: "CMR Document - {{voertuig.kenteken}} {{voertuig.merk}} {{voertuig.model}}",
+      content: "Beste {{leverancier.naam}},\n\nIn de bijlage treft u het CMR document aan voor het voertuig:\n\nMerk: {{voertuig.merk}}\nModel: {{voertuig.model}}\nKenteken: {{voertuig.kenteken}}\nVIN: {{voertuig.vin}}\n\nHet voertuig is succesvol aangekomen op onze locatie.\n\nBij vragen kunt u contact opnemen.\n\nMet vriendelijke groet,\n{{bedrijf.naam}}\n{{bedrijf.telefoon}}",
+      htmlContent: "",
+      variables: ["leverancier.naam", "voertuig.merk", "voertuig.model", "voertuig.kenteken", "voertuig.vin", "bedrijf.naam", "bedrijf.telefoon"],
+      isActive: true,
+      createdAt: "2024-01-18",
+      fromEmailId: "2",
+      dashboardButton: "supplier_cmr",
+      templateStyle: "professional",
+      attachments: {
+        includeCMR: true,
+        includeInvoice: false,
+        includeDamageReport: false,
+        includePickupDocument: false
+      }
     }
   ]);
 
@@ -192,6 +237,7 @@ export const EmailTemplateManagement = () => {
     { category: "Verkoper", variables: ["verkoper.naam", "verkoper.email", "verkoper.telefoon"] },
     { category: "Bedrijf", variables: ["bedrijf.naam", "bedrijf.email", "bedrijf.telefoon", "bedrijf.adres"] },
     { category: "Transport", variables: ["transporteur.naam", "ophaaladres", "ophaaldatum", "ophaaltijd"] },
+    { category: "Leverancier", variables: ["leverancier.naam", "leverancier.email", "leverancier.telefoon", "leverancier.adres"] },
     { category: "Datum", variables: ["datum.vandaag", "datum.volgende_week"] }
   ];
 
@@ -240,7 +286,13 @@ export const EmailTemplateManagement = () => {
       isActive: true,
       createdAt: new Date().toISOString().split('T')[0],
       fromEmailId: emailAccounts.find(acc => acc.isActive)?.id || "",
-      templateStyle: "basic"
+      templateStyle: "basic",
+      attachments: {
+        includeCMR: false,
+        includeInvoice: false,
+        includeDamageReport: false,
+        includePickupDocument: false
+      }
     };
     setTemplates(prev => [...prev, newTemplate]);
     setSelectedTemplate(newTemplate);
@@ -294,7 +346,7 @@ export const EmailTemplateManagement = () => {
             Email Template Beheer
           </CardTitle>
           <CardDescription>
-            Beheer alle email templates met professionele sjablonen voor transport, klanten en leveranciers
+            Beheer alle email templates met professionele sjablonen en automatische bijlagen voor transport, klanten en leveranciers
           </CardDescription>
         </CardHeader>
       </Card>
@@ -346,6 +398,12 @@ export const EmailTemplateManagement = () => {
                             <Badge className={getCategoryBadgeColor(template.category)}>
                               {getCategoryName(template.category)}
                             </Badge>
+                            {(template.attachments.includeCMR || template.attachments.includeInvoice || template.attachments.includeDamageReport || template.attachments.includePickupDocument) && (
+                              <Badge variant="outline" className="text-xs">
+                                <Paperclip className="h-3 w-3 mr-1" />
+                                Bijlagen
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-sm text-gray-500 truncate">
                             {template.subject}
@@ -527,6 +585,87 @@ export const EmailTemplateManagement = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+
+                      {/* Bijlagen sectie */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          Automatische Bijlagen
+                        </Label>
+                        <div className="grid grid-cols-2 gap-3 p-3 border rounded-md">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="includeCMR"
+                              checked={selectedTemplate.attachments.includeCMR}
+                              onCheckedChange={(checked) =>
+                                setSelectedTemplate({
+                                  ...selectedTemplate,
+                                  attachments: {
+                                    ...selectedTemplate.attachments,
+                                    includeCMR: Boolean(checked)
+                                  }
+                                })
+                              }
+                              disabled={!isEditing}
+                            />
+                            <Label htmlFor="includeCMR" className="text-sm">CMR Document</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="includeInvoice"
+                              checked={selectedTemplate.attachments.includeInvoice}
+                              onCheckedChange={(checked) =>
+                                setSelectedTemplate({
+                                  ...selectedTemplate,
+                                  attachments: {
+                                    ...selectedTemplate.attachments,
+                                    includeInvoice: Boolean(checked)
+                                  }
+                                })
+                              }
+                              disabled={!isEditing}
+                            />
+                            <Label htmlFor="includeInvoice" className="text-sm">Factuur</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="includeDamageReport"
+                              checked={selectedTemplate.attachments.includeDamageReport}
+                              onCheckedChange={(checked) =>
+                                setSelectedTemplate({
+                                  ...selectedTemplate,
+                                  attachments: {
+                                    ...selectedTemplate.attachments,
+                                    includeDamageReport: Boolean(checked)
+                                  }
+                                })
+                              }
+                              disabled={!isEditing}
+                            />
+                            <Label htmlFor="includeDamageReport" className="text-sm">Schadeformulier</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="includePickupDocument"
+                              checked={selectedTemplate.attachments.includePickupDocument}
+                              onCheckedChange={(checked) =>
+                                setSelectedTemplate({
+                                  ...selectedTemplate,
+                                  attachments: {
+                                    ...selectedTemplate.attachments,
+                                    includePickupDocument: Boolean(checked)
+                                  }
+                                })
+                              }
+                              disabled={!isEditing}
+                            />
+                            <Label htmlFor="includePickupDocument" className="text-sm">Pickup Document</Label>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          Geselecteerde documenten worden automatisch als bijlage toegevoegd aan de email als ze beschikbaar zijn voor het voertuig.
+                        </p>
                       </div>
 
                       <div className="space-y-2">
