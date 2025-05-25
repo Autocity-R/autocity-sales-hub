@@ -107,6 +107,13 @@ export interface Vehicle {
   salespersonId?: string;   // Added salesperson reference
   salespersonName?: string; // Added salesperson name for display
   
+  // Contract information
+  contractId?: string;      // Reference to the generated contract
+  contractUrl?: string;     // Link to the stored contract document
+  contractType?: "b2b" | "b2c"; // Type of contract
+  contractDate?: Date | null; // Date when contract was generated
+  contractOptions?: any;    // The options used when generating the contract
+  
   // Contact informatie voor email verzending
   customerContact?: ContactInfo;    // Klant contact informatie
   supplierContact?: ContactInfo;    // Leverancier contact informatie  

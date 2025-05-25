@@ -164,6 +164,48 @@ const mockVehicles: Vehicle[] = [
   }
 ];
 
+// Mock contract data for delivered vehicles
+const mockContracts = [
+  {
+    vehicleId: "3", // Audi A4
+    contractId: "contract-3-123456",
+    contractUrl: "https://example.com/contracts/contract-3-123456.pdf",
+    contractType: "b2c" as const,
+    contractDate: new Date("2023-04-10"),
+    contractOptions: {
+      deliveryPackage: "12_maanden_autocity",
+      paymentTerms: "aanbetaling_10"
+    }
+  },
+  {
+    vehicleId: "4", // Mercedes C Class
+    contractId: "contract-4-789012",
+    contractUrl: "https://example.com/contracts/contract-4-789012.pdf", 
+    contractType: "b2b" as const,
+    contractDate: new Date("2023-02-18"),
+    contractOptions: {
+      bpmIncluded: true,
+      maxDamageAmount: 2500
+    }
+  }
+];
+
+// Update mock vehicles with contract information
+const enhancedMockVehicles = mockVehicles.map(vehicle => {
+  const contractInfo = mockContracts.find(c => c.vehicleId === vehicle.id);
+  if (contractInfo) {
+    return {
+      ...vehicle,
+      contractId: contractInfo.contractId,
+      contractUrl: contractInfo.contractUrl,
+      contractType: contractInfo.contractType,
+      contractDate: contractInfo.contractDate,
+      contractOptions: contractInfo.contractOptions
+    };
+  }
+  return vehicle;
+});
+
 // Mock B2C vehicles
 const mockB2CVehicles = mockVehicles.filter(v => v.salesStatus === 'verkocht_b2c');
 
@@ -508,8 +550,8 @@ export const fetchDeliveredVehicles = async (): Promise<Vehicle[]> => {
     return await response.json();
   } catch (error: any) {
     console.error("Failed to fetch delivered vehicles:", error);
-    // Return mock delivered vehicles
-    return mockDeliveredVehicles;
+    // Return mock delivered vehicles with contract information
+    return enhancedMockVehicles.filter(v => v.paymentStatus === 'volledig_betaald' && (v.salesStatus === 'verkocht_b2b' || v.salesStatus === 'verkocht_b2c'));
   }
 };
 
