@@ -1,11 +1,12 @@
 
 import React from "react";
-import { Mail, AlertCircle, CheckCircle, Calendar, FileText } from "lucide-react";
+import { Mail, AlertCircle, CheckCircle, Calendar, FileText, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Vehicle } from "@/types/inventory";
+import { isButtonLinkedToTemplate } from "@/services/emailTemplateService";
 
 interface B2CEmailsTabProps {
   onSendEmail: (type: string) => void;
@@ -16,6 +17,24 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
   const isB2C = vehicle?.salesStatus === "verkocht_b2c";
   const isVehicleArrived = vehicle?.arrived;
 
+  const renderEmailButton = (buttonType: string, icon: React.ReactNode, label: string, variant: "default" | "outline" = "default") => {
+    const hasTemplate = isButtonLinkedToTemplate(buttonType);
+    
+    return (
+      <Button 
+        className="w-full justify-start" 
+        variant={hasTemplate ? variant : "outline"}
+        onClick={() => onSendEmail(buttonType)}
+        disabled={!hasTemplate}
+        title={hasTemplate ? `Verstuur: ${label}` : `Geen email template gekoppeld aan ${label}`}
+      >
+        {icon}
+        {label}
+        {!hasTemplate && <Settings className="ml-auto h-4 w-4 text-muted-foreground" />}
+      </Button>
+    );
+  };
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-medium">E-mail functies</h3>
@@ -25,46 +44,35 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
           <h4 className="font-medium mb-4">Particuliere klant</h4>
           
           <div className="space-y-3">
-            <Button 
-              className="w-full justify-start" 
-              onClick={() => onSendEmail("contract_b2c")}
-            >
-              <Mail className="mr-2 h-4 w-4" />
-              Koopcontract sturen
-            </Button>
+            {renderEmailButton(
+              "contract_b2c", 
+              <Mail className="mr-2 h-4 w-4" />, 
+              "Koopcontract sturen (B2C)"
+            )}
             
-            <Button 
-              className="w-full justify-start" 
-              onClick={() => onSendEmail("rdw_approved")}
-            >
-              <CheckCircle className="mr-2 h-4 w-4" />
-              Auto is goedgekeurd door RDW
-            </Button>
+            {renderEmailButton(
+              "rdw_approved", 
+              <CheckCircle className="mr-2 h-4 w-4" />, 
+              "Auto is goedgekeurd door RDW"
+            )}
             
-            <Button 
-              className="w-full justify-start" 
-              onClick={() => onSendEmail("bpm_paid")}
-            >
-              <CheckCircle className="mr-2 h-4 w-4" />
-              BPM is betaald
-            </Button>
+            {renderEmailButton(
+              "bpm_paid", 
+              <CheckCircle className="mr-2 h-4 w-4" />, 
+              "BPM is betaald"
+            )}
             
-            <Button 
-              className="w-full justify-start" 
-              onClick={() => onSendEmail("car_registered")}
-            >
-              <CheckCircle className="mr-2 h-4 w-4" />
-              Auto is ingeschreven
-            </Button>
+            {renderEmailButton(
+              "car_registered", 
+              <CheckCircle className="mr-2 h-4 w-4" />, 
+              "Auto is ingeschreven"
+            )}
             
-            <Button 
-              className="w-full justify-start" 
-              onClick={() => onSendEmail("delivery_appointment")}
-              variant="default"
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              Aflevering: plan een afspraak
-            </Button>
+            {renderEmailButton(
+              "delivery_appointment", 
+              <Calendar className="mr-2 h-4 w-4" />, 
+              "Aflevering: plan een afspraak"
+            )}
             
             <div className="mt-2 p-3 bg-muted rounded-md">
               <h5 className="text-sm font-medium mb-2">Import status updates</h5>
@@ -84,21 +92,17 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
           <h4 className="font-medium mb-4">Status updates</h4>
           
           <div className="space-y-3">
-            <Button 
-              className="w-full justify-start" 
-              onClick={() => onSendEmail("vehicle_arrived")}
-            >
-              <CheckCircle className="mr-2 h-4 w-4" />
-              Auto is binnengekomen
-            </Button>
+            {renderEmailButton(
+              "vehicle_arrived", 
+              <CheckCircle className="mr-2 h-4 w-4" />, 
+              "Auto is binnengekomen"
+            )}
             
-            <Button 
-              className="w-full justify-start" 
-              onClick={() => onSendEmail("workshop_update")}
-            >
-              <AlertCircle className="mr-2 h-4 w-4" />
-              Werkplaats update
-            </Button>
+            {renderEmailButton(
+              "workshop_update", 
+              <AlertCircle className="mr-2 h-4 w-4" />, 
+              "Werkplaats update"
+            )}
           </div>
         </div>
       )}
@@ -107,13 +111,11 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
         <h4 className="font-medium mb-4">Documenten</h4>
         
         <div className="space-y-3">
-          <Button 
-            className="w-full justify-start" 
-            onClick={() => onSendEmail("documents_reminder")}
-          >
-            <FileText className="mr-2 h-4 w-4" />
-            Herinnering documenten
-          </Button>
+          {renderEmailButton(
+            "reminder_papers", 
+            <FileText className="mr-2 h-4 w-4" />, 
+            "Herinnering documenten"
+          )}
         </div>
       </div>
       
@@ -130,15 +132,19 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
         <Separator className="my-4" />
         
         <div className="space-y-3">
-          <Button 
-            variant="outline" 
-            className="w-full justify-start"
-            onClick={() => onSendEmail("payment_reminder")}
-          >
-            <Mail className="mr-2 h-4 w-4" />
-            Handmatig betalingsherinnering sturen
-          </Button>
+          {renderEmailButton(
+            "payment_reminder", 
+            <Mail className="mr-2 h-4 w-4" />, 
+            "Handmatig betalingsherinnering sturen",
+            "outline"
+          )}
         </div>
+      </div>
+      
+      <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-md">
+        <p className="font-medium mb-1">Let op:</p>
+        <p>Knoppen met een ⚙️ icoon hebben nog geen email template gekoppeld. 
+        Ga naar Instellingen → Email Templates om templates aan knoppen te koppelen.</p>
       </div>
     </div>
   );

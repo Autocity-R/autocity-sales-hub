@@ -1,11 +1,12 @@
 
 import React from "react";
-import { Mail, AlertCircle, CheckCircle, Truck, FileText } from "lucide-react";
+import { Mail, AlertCircle, CheckCircle, Truck, FileText, Calendar, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Vehicle } from "@/types/inventory";
+import { isButtonLinkedToTemplate } from "@/services/emailTemplateService";
 
 interface EmailsTabProps {
   onSendEmail: (type: string) => void;
@@ -16,6 +17,24 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle }) =>
   const isB2B = vehicle?.salesStatus === "verkocht_b2b";
   const isVehicleArrived = vehicle?.arrived;
 
+  const renderEmailButton = (buttonType: string, icon: React.ReactNode, label: string, variant: "default" | "outline" = "default") => {
+    const hasTemplate = isButtonLinkedToTemplate(buttonType);
+    
+    return (
+      <Button 
+        className="w-full justify-start" 
+        variant={hasTemplate ? variant : "outline"}
+        onClick={() => onSendEmail(buttonType)}
+        disabled={!hasTemplate}
+        title={hasTemplate ? `Verstuur: ${label}` : `Geen email template gekoppeld aan ${label}`}
+      >
+        {icon}
+        {label}
+        {!hasTemplate && <Settings className="ml-auto h-4 w-4 text-muted-foreground" />}
+      </Button>
+    );
+  };
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-medium">E-mail functies</h3>
@@ -25,21 +44,23 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle }) =>
           <h4 className="font-medium mb-4">Transport & Documenten</h4>
           
           <div className="space-y-3">
-            <Button 
-              className="w-full justify-start" 
-              onClick={() => onSendEmail("transport_pickup")}
-            >
-              <Truck className="mr-2 h-4 w-4" />
-              Transport pickup document sturen
-            </Button>
+            {renderEmailButton(
+              "transport_pickup", 
+              <Truck className="mr-2 h-4 w-4" />, 
+              "Transport pickup document sturen"
+            )}
             
-            <Button 
-              className="w-full justify-start" 
-              onClick={() => onSendEmail("cmr_supplier")}
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              CMR voor leverancier
-            </Button>
+            {renderEmailButton(
+              "cmr_supplier", 
+              <FileText className="mr-2 h-4 w-4" />, 
+              "CMR voor Leverancier"
+            )}
+            
+            {renderEmailButton(
+              "bpm_huys", 
+              <Mail className="mr-2 h-4 w-4" />, 
+              "BPM Huys aanmelden"
+            )}
           </div>
         </div>
         
@@ -48,31 +69,23 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle }) =>
             <h4 className="font-medium mb-4">Zakelijke klant</h4>
             
             <div className="space-y-3">
-              <Button 
-                className="w-full justify-start" 
-                onClick={() => onSendEmail("contract_b2b")}
-              >
-                <Mail className="mr-2 h-4 w-4" />
-                Koopcontract sturen
-              </Button>
-              
-              {isVehicleArrived && (
-                <Button 
-                  className="w-full justify-start" 
-                  onClick={() => onSendEmail("vehicle_arrived")}
-                >
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Auto is binnengekomen
-                </Button>
+              {renderEmailButton(
+                "contract_b2b", 
+                <Mail className="mr-2 h-4 w-4" />, 
+                "Koopcontract sturen (B2B)"
               )}
               
-              <Button 
-                className="w-full justify-start" 
-                onClick={() => onSendEmail("license_registration")}
-              >
-                <AlertCircle className="mr-2 h-4 w-4" />
-                Kenteken aanmelding update
-              </Button>
+              {isVehicleArrived && renderEmailButton(
+                "vehicle_arrived", 
+                <CheckCircle className="mr-2 h-4 w-4" />, 
+                "Auto is binnengekomen"
+              )}
+              
+              {renderEmailButton(
+                "license_registration", 
+                <AlertCircle className="mr-2 h-4 w-4" />, 
+                "Kenteken aanmelding update"
+              )}
               
               <div className="mt-2 p-3 bg-muted rounded-md">
                 <h5 className="text-sm font-medium mb-2">Kenteken registratie updates</h5>
@@ -101,15 +114,19 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle }) =>
           <Separator className="my-4" />
           
           <div className="space-y-3">
-            <Button 
-              variant="outline" 
-              className="w-full justify-start"
-              onClick={() => onSendEmail("reminder_papers")}
-            >
-              <Mail className="mr-2 h-4 w-4" />
-              Handmatig herinnering sturen
-            </Button>
+            {renderEmailButton(
+              "reminder_papers", 
+              <Mail className="mr-2 h-4 w-4" />, 
+              "Handmatig herinnering sturen",
+              "outline"
+            )}
           </div>
+        </div>
+        
+        <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-md">
+          <p className="font-medium mb-1">Let op:</p>
+          <p>Knoppen met een ⚙️ icoon hebben nog geen email template gekoppeld. 
+          Ga naar Instellingen → Email Templates om templates aan knoppen te koppelen.</p>
         </div>
       </div>
     </div>

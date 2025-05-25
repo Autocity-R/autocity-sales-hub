@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,9 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2, Edit, Save, Plus, Paperclip, ChevronDown, Check } from "lucide-react";
+import { Trash2, Edit, Save, Paperclip, ChevronDown, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
@@ -16,16 +15,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-
-interface EmailTemplate {
-  id: string;
-  name: string;
-  subject: string;
-  content: string;
-  linkedButton: string;
-  hasAttachment: boolean;
-  attachmentType?: string;
-}
+import { 
+  getAllEmailTemplates, 
+  addEmailTemplate, 
+  updateEmailTemplate, 
+  deleteEmailTemplate 
+} from "@/services/emailTemplateService";
+import { EmailTemplate } from "@/types/email";
 
 // Alle beschikbare knoppen uit het voertuigenmenu die emails kunnen versturen
 const VEHICLE_ACTION_BUTTONS = [
@@ -47,27 +43,7 @@ const VEHICLE_ACTION_BUTTONS = [
 
 export const EmailTemplateManagement: React.FC = () => {
   const { toast } = useToast();
-  const [templates, setTemplates] = useState<EmailTemplate[]>([
-    {
-      id: "1",
-      name: "CMR Leverancier",
-      subject: "CMR Document - {voertuig_merk} {voertuig_model}",
-      content: "Beste leverancier,\n\nBijgevoegd vindt u het CMR document voor:\n- Voertuig: {voertuig_merk} {voertuig_model}\n- VIN: {voertuig_vin}\n- Kenteken: {voertuig_kenteken}\n\nMet vriendelijke groet,\n{gebruiker_naam}",
-      linkedButton: "cmr_supplier",
-      hasAttachment: true,
-      attachmentType: "CMR"
-    },
-    {
-      id: "2", 
-      name: "Transport Pickup",
-      subject: "Pickup Document - {voertuig_merk} {voertuig_model}",
-      content: "Beste transporteur,\n\nHierbij het pickup document voor:\n- Voertuig: {voertuig_merk} {voertuig_model}\n- Locatie: {voertuig_locatie}\n- VIN: {voertuig_vin}\n\nGraag contact opnemen voor planning.\n\nMet vriendelijke groet,\n{gebruiker_naam}",
-      linkedButton: "transport_pickup",
-      hasAttachment: true,
-      attachmentType: "Pickup Document"
-    }
-  ]);
-  
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [newTemplate, setNewTemplate] = useState<Partial<EmailTemplate>>({
     name: "",
@@ -80,12 +56,18 @@ export const EmailTemplateManagement: React.FC = () => {
   const [newButtonOpen, setNewButtonOpen] = useState(false);
   const [editButtonOpen, setEditButtonOpen] = useState(false);
 
+  // Load templates on component mount
+  useEffect(() => {
+    setTemplates(getAllEmailTemplates());
+  }, []);
+
   const availableVariables = [
     "voertuig_merk", "voertuig_model", "voertuig_vin", "voertuig_kenteken", 
     "voertuig_locatie", "voertuig_kilometerstand", "voertuig_jaar",
     "klant_naam", "klant_email", "klant_telefoon", "klant_adres",
     "leverancier_naam", "leverancier_email", "leverancier_telefoon",
     "transporteur_naam", "transporteur_email", "transporteur_telefoon",
+    "ontvanger_naam", "ontvanger_email",
     "gebruiker_naam", "gebruiker_email", "bedrijf_naam", "datum_vandaag"
   ];
 
@@ -110,17 +92,16 @@ export const EmailTemplateManagement: React.FC = () => {
       return;
     }
 
-    const template: EmailTemplate = {
-      id: Date.now().toString(),
+    const template = addEmailTemplate({
       name: newTemplate.name!,
       subject: newTemplate.subject!,
       content: newTemplate.content!,
       linkedButton: newTemplate.linkedButton!,
       hasAttachment: newTemplate.hasAttachment || false,
       attachmentType: newTemplate.attachmentType
-    };
+    });
 
-    setTemplates([...templates, template]);
+    setTemplates(getAllEmailTemplates());
     setNewTemplate({ name: "", subject: "", content: "", linkedButton: "", hasAttachment: false });
     
     toast({
@@ -145,7 +126,8 @@ export const EmailTemplateManagement: React.FC = () => {
       return;
     }
 
-    setTemplates(templates.map(t => t.id === editingTemplate.id ? editingTemplate : t));
+    updateEmailTemplate(editingTemplate.id, editingTemplate);
+    setTemplates(getAllEmailTemplates());
     setEditingTemplate(null);
     
     toast({
@@ -155,7 +137,8 @@ export const EmailTemplateManagement: React.FC = () => {
   };
 
   const handleDeleteTemplate = (id: string) => {
-    setTemplates(templates.filter(t => t.id !== id));
+    deleteEmailTemplate(id);
+    setTemplates(getAllEmailTemplates());
     toast({
       title: "Template verwijderd",
       description: "Template is succesvol verwijderd"

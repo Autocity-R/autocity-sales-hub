@@ -1,4 +1,3 @@
-
 export type ImportStatus = 
   | "niet_gestart" 
   | "aangemeld"      // Added
@@ -55,6 +54,12 @@ export type PaymentStatus =  // New type
 
 export type UserRole = "Admin" | "Verkoper" | "Financieel" | "Werkplaats";
 
+export interface ContactInfo {
+  name: string;
+  email: string;
+  phone?: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -99,6 +104,12 @@ export interface Vehicle {
   deliveryDate?: Date | null; // Added delivery date
   salespersonId?: string;   // Added salesperson reference
   salespersonName?: string; // Added salesperson name for display
+  
+  // Contact informatie voor email verzending
+  customerContact?: ContactInfo;    // Klant contact informatie
+  supplierContact?: ContactInfo;    // Leverancier contact informatie  
+  transporterContact?: ContactInfo; // Transporteur contact informatie
+  year?: number; // Toegevoegd voor email templates
 }
 
 export interface Supplier {
