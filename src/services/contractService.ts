@@ -1,4 +1,3 @@
-
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 
@@ -626,7 +625,7 @@ const generateHtmlContract = (
                     <p>Het voertuig wordt geleverd als omschreven bij verkoop en de extra omschrijvingen in het contract</p>
                     <p>Levering vindt plaats na volledige betaling van het aankoopbedrag</p>
                     ${!isB2B && downPaymentPercentage > 0 ? `<p>Klant dient de aanbetaling van ${downPaymentPercentage}% (€ ${downPaymentAmount.toLocaleString('nl-NL')}) per bank te voldoen.</p>` : ''}
-                    ${options.maxDamageAmount ? `<p>Maximaal geaccepteerde schade: € ${options.maxDamageAmount}</p>` : ''}
+                    ${isB2B && options.maxDamageAmount ? `<p>Maximaal geaccepteerde schade: € ${options.maxDamageAmount}</p>` : ''}
                 </div>
             </div>
         </div>
@@ -744,7 +743,7 @@ LEVERINGSVOORWAARDEN:
 - Het voertuig wordt geleverd als omschreven bij verkoop en de extra omschrijvingen in het contract
 - Levering vindt plaats na volledige betaling
 ${!isB2B && downPaymentPercentage > 0 ? `- Klant dient de aanbetaling van ${downPaymentPercentage}% (€ ${downPaymentAmount.toLocaleString('nl-NL')}) per bank te voldoen.` : ''}
-${options.maxDamageAmount ? `- Maximaal geaccepteerde schade: € ${options.maxDamageAmount}` : ''}
+${isB2B && options.maxDamageAmount ? `- Maximaal geaccepteerde schade: € ${options.maxDamageAmount}` : ''}
 
 ${options.additionalClauses ? `
 AANVULLENDE CLAUSULES:
