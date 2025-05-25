@@ -27,7 +27,7 @@ interface EmailTemplate {
   attachmentType?: string;
 }
 
-// Alle beschikbare knoppen uit het voertuigenmenu
+// Alle beschikbare knoppen uit het voertuigenmenu die emails kunnen versturen
 const VEHICLE_ACTION_BUTTONS = [
   { value: "transport_pickup", label: "Transport pickup document sturen" },
   { value: "cmr_supplier", label: "CMR voor Leverancier" },
