@@ -36,8 +36,8 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
     bpmIncluded: false,
     vehicleType: "btw",
     maxDamageAmount: 500,
-    deliveryPackage: "standard",
-    paymentTerms: "immediate",
+    deliveryPackage: "garantie_wettelijk",
+    paymentTerms: "aanbetaling_5",
     additionalClauses: "",
     specialAgreements: ""
   });
@@ -322,9 +322,11 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="standard">Standaard aflevering</SelectItem>
-                      <SelectItem value="premium">Premium pakket</SelectItem>
-                      <SelectItem value="deluxe">Deluxe pakket</SelectItem>
+                      <SelectItem value="garantie_wettelijk">Garantie wettelijk</SelectItem>
+                      <SelectItem value="6_maanden_autocity">6 Maanden Autocity garantie</SelectItem>
+                      <SelectItem value="12_maanden_autocity">12 Maanden Autocity garantie</SelectItem>
+                      <SelectItem value="12_maanden_bovag">12 Maanden Bovag garantie</SelectItem>
+                      <SelectItem value="12_maanden_bovag_vervangend">12 Maanden Bovag garantie (inclusief vervangend vervoer)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -341,9 +343,8 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="immediate">Direct bij aflevering</SelectItem>
-                      <SelectItem value="financing">Financiering</SelectItem>
-                      <SelectItem value="installments">Termijnbetaling</SelectItem>
+                      <SelectItem value="aanbetaling_5">Aanbetaling 5%</SelectItem>
+                      <SelectItem value="aanbetaling_10">Aanbetaling 10%</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
