@@ -1,5 +1,5 @@
 
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Index from "@/pages/Index";
 import Transport from "@/pages/Transport";
 import Inventory from "@/pages/Inventory";
@@ -23,27 +23,25 @@ import "./App.css";
 function App() {
   return (
     <>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/transport" element={<Transport />} />
-          <Route path="/inventory" element={<Inventory />} />
-          <Route path="/inventory/b2b" element={<InventoryB2B />} />
-          <Route path="/inventory/b2c" element={<InventoryB2C />} />
-          <Route path="/inventory/delivered" element={<InventoryDelivered />} />
-          <Route path="/inventory/online" element={<InventoryOnline />} />
-          <Route path="/loan-cars" element={<LoanCars />} />
-          <Route path="/leads" element={<Leads />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/customers" element={<Customers />} />
-          <Route path="/customers/:id" element={<CustomerDetail />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/warranty" element={<Warranty />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/contract/sign/:token" element={<DigitalSignaturePage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Router>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/transport" element={<Transport />} />
+        <Route path="/inventory" element={<Inventory />} />
+        <Route path="/inventory/b2b" element={<InventoryB2B />} />
+        <Route path="/inventory/b2c" element={<InventoryB2C />} />
+        <Route path="/inventory/delivered" element={<InventoryDelivered />} />
+        <Route path="/inventory/online" element={<InventoryOnline />} />
+        <Route path="/loan-cars" element={<LoanCars />} />
+        <Route path="/leads" element={<Leads />} />
+        <Route path="/calendar" element={<Calendar />} />
+        <Route path="/customers" element={<Customers />} />
+        <Route path="/customers/:id" element={<CustomerDetail />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/warranty" element={<Warranty />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/contract/sign/:token" element={<DigitalSignaturePage />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
       <Toaster />
     </>
   );
