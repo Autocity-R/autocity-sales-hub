@@ -30,6 +30,7 @@ function App() {
         <Route path="/inventory" element={<Inventory />} />
         <Route path="/inventory/b2b" element={<InventoryB2B />} />
         <Route path="/inventory/b2c" element={<InventoryB2C />} />
+        <Route path="/inventory/consumer" element={<InventoryB2C />} />
         <Route path="/inventory/delivered" element={<InventoryDelivered />} />
         <Route path="/inventory/online" element={<InventoryOnline />} />
         <Route path="/loan-cars" element={<LoanCars />} />
