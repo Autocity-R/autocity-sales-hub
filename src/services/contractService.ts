@@ -117,15 +117,16 @@ const generateHtmlContract = (
         
         body {
             font-family: 'Inter', sans-serif;
-            line-height: 1.5;
+            line-height: 1.4;
             color: #1a1a1a;
             background: white;
+            font-size: 12px;
         }
         
         .contract {
             max-width: 210mm;
             margin: 0 auto;
-            padding: 15mm;
+            padding: 10mm;
             background: white;
             min-height: 297mm;
         }
@@ -133,8 +134,8 @@ const generateHtmlContract = (
         .header {
             background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 25px;
-            margin: -15mm -15mm 25px -15mm;
+            padding: 15px;
+            margin: -10mm -10mm 15px -10mm;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -150,13 +151,13 @@ const generateHtmlContract = (
         
         .logo-container {
             background: white;
-            padding: 15px;
-            border-radius: 8px;
+            padding: 10px;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 120px;
-            height: 120px;
+            width: 80px;
+            height: 80px;
         }
         
         .logo-container img {
@@ -166,7 +167,7 @@ const generateHtmlContract = (
         }
         
         .header-title {
-            font-size: 36px;
+            font-size: 28px;
             font-weight: 700;
             color: white;
             text-transform: uppercase;
@@ -177,52 +178,52 @@ const generateHtmlContract = (
         
         .contract-date {
             text-align: right;
-            font-size: 14px;
+            font-size: 12px;
             color: #cccccc;
             font-weight: 500;
             flex: 1;
         }
         
         .section {
-            margin-bottom: 25px;
+            margin-bottom: 15px;
             background: white;
             border: 1px solid #e5e7eb;
-            border-radius: 8px;
+            border-radius: 6px;
             overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
         
         .section-header {
             background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            border-bottom: 2px solid #FF6B35;
-            padding: 15px 20px;
+            border-bottom: 2px solid #000000;
+            padding: 8px 12px;
             font-weight: 600;
             color: #1a1a1a;
-            font-size: 16px;
+            font-size: 12px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
         
         .section-content {
-            padding: 20px;
+            padding: 12px;
         }
         
         .contract-details {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 6px;
         }
         
         .info-item {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 2px;
         }
         
         .info-label {
             font-weight: 600;
             color: #4b5563;
-            font-size: 13px;
+            font-size: 10px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -230,21 +231,21 @@ const generateHtmlContract = (
         .info-value {
             color: #1a1a1a;
             font-weight: 500;
-            font-size: 15px;
-            padding: 4px 0;
+            font-size: 11px;
+            padding: 2px 0;
         }
         
         .vehicle-section {
-            background: linear-gradient(135deg, #fff8f0, #fef3e2);
-            border: 2px solid #FF6B35;
+            background: linear-gradient(135deg, #f8f9fa, #f1f3f4);
+            border: 2px solid #000000;
         }
         
         .vehicle-header {
-            background: linear-gradient(135deg, #FF6B35, #E5521F);
+            background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 15px 20px;
+            padding: 8px 12px;
             font-weight: 600;
-            font-size: 18px;
+            font-size: 12px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -252,20 +253,20 @@ const generateHtmlContract = (
         .vehicle-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            gap: 12px;
         }
         
         .price-section {
             background: white;
-            border: 2px solid #1a1a1a;
+            border: 2px solid #000000;
         }
         
         .price-header {
-            background: linear-gradient(135deg, #1a1a1a, #333333);
+            background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 15px 20px;
+            padding: 8px 12px;
             font-weight: 600;
-            font-size: 18px;
+            font-size: 12px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -278,9 +279,9 @@ const generateHtmlContract = (
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 20px;
+            padding: 6px 12px;
             border-bottom: 1px solid #f3f4f6;
-            font-size: 14px;
+            font-size: 11px;
         }
         
         .price-item:last-child {
@@ -298,10 +299,10 @@ const generateHtmlContract = (
         }
         
         .price-total {
-            background: linear-gradient(135deg, #FF6B35, #E5521F);
+            background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 15px 20px;
-            font-size: 18px;
+            padding: 8px 12px;
+            font-size: 14px;
             font-weight: 700;
             text-align: center;
             text-transform: uppercase;
@@ -309,22 +310,22 @@ const generateHtmlContract = (
         }
         
         .terms-content {
-            font-size: 14px;
-            line-height: 1.6;
+            font-size: 11px;
+            line-height: 1.4;
             color: #4b5563;
         }
         
         .terms-content p {
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
         
         .signature-section {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 50px;
-            margin-top: 40px;
-            padding-top: 25px;
-            border-top: 2px solid #FF6B35;
+            gap: 30px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 2px solid #000000;
         }
         
         .signature-box {
@@ -333,63 +334,86 @@ const generateHtmlContract = (
         
         .signature-line {
             border-bottom: 2px solid #1a1a1a;
-            height: 60px;
-            margin-bottom: 10px;
+            height: 40px;
+            margin-bottom: 8px;
         }
         
         .signature-label {
             font-weight: 600;
             color: #1a1a1a;
-            font-size: 14px;
+            font-size: 11px;
         }
         
         .digital-signature {
-            background: linear-gradient(135deg, #fff8f0, #fef3e2);
-            border: 2px solid #FF6B35;
-            border-radius: 8px;
-            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa, #f1f3f4);
+            border: 2px solid #000000;
+            border-radius: 6px;
+            padding: 12px;
             text-align: center;
-            margin: 20px 0;
+            margin: 15px 0;
         }
         
         .digital-signature h3 {
-            color: #E5521F;
-            margin-bottom: 10px;
-            font-size: 16px;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+            font-size: 12px;
         }
         
         .signature-button {
-            background: linear-gradient(135deg, #FF6B35, #E5521F);
+            background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 12px 24px;
+            padding: 8px 16px;
             border: none;
-            border-radius: 6px;
+            border-radius: 4px;
             font-weight: 600;
             cursor: pointer;
             text-decoration: none;
             display: inline-block;
-            margin-top: 10px;
-            font-size: 14px;
+            margin-top: 8px;
+            font-size: 11px;
         }
         
         .footer {
-            margin-top: 30px;
-            padding-top: 20px;
+            margin-top: 15px;
+            padding-top: 10px;
             border-top: 1px solid #e5e7eb;
-            font-size: 12px;
+            font-size: 10px;
             color: #6b7280;
             text-align: center;
-            line-height: 1.5;
+            line-height: 1.4;
         }
         
         @media print {
             .contract {
                 margin: 0;
-                padding: 10mm;
+                padding: 5mm;
+                font-size: 10px;
             }
             
             .digital-signature {
                 display: none;
+            }
+            
+            .header {
+                padding: 10px;
+                margin: -5mm -5mm 10px -5mm;
+            }
+            
+            .section {
+                margin-bottom: 8px;
+            }
+            
+            .section-content {
+                padding: 8px;
+            }
+            
+            .signature-section {
+                margin-top: 15px;
+                padding-top: 10px;
+            }
+            
+            .signature-line {
+                height: 30px;
             }
         }
     </style>
