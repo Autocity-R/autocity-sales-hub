@@ -31,14 +31,14 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
     <ContextMenu>
       <ContextMenuTrigger>
         <TableRow className="cursor-pointer hover:bg-gray-50">
-          <TableCell className="w-[50px]" onClick={(e) => e.stopPropagation()}>
+          <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
             <Checkbox 
               checked={selectedVehicles.includes(vehicle.id)} 
               onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, checked === true)} 
               aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
             />
           </TableCell>
-          <TableCell className="w-[70px]" onClick={() => handleSelectVehicle(vehicle)}>
+          <TableCell className="w-16" onClick={() => handleSelectVehicle(vehicle)}>
             {vehicle.mainPhotoUrl ? (
               <img 
                 src={vehicle.mainPhotoUrl} 
@@ -84,7 +84,7 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
           <TableCell onClick={() => handleSelectVehicle(vehicle)}>
             {renderLocationStatus(vehicle.location)}
           </TableCell>
-          <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+          <TableCell className="text-center w-20" onClick={(e) => e.stopPropagation()}>
             <VehicleActionsDropdown
               vehicle={vehicle}
               handleSendEmail={handleSendEmail}

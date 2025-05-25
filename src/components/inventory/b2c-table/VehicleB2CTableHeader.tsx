@@ -33,14 +33,14 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
   return (
     <TableHeader>
       <TableRow>
-        <TableHead className="w-[50px]">
+        <TableHead className="w-12">
           <Checkbox 
             checked={selectedVehicles.length === vehiclesLength && vehiclesLength > 0} 
             onCheckedChange={toggleSelectAll} 
             aria-label="Selecteer alle voertuigen"
           />
         </TableHead>
-        <TableHead className="w-[70px]">
+        <TableHead className="w-16">
           Foto
         </TableHead>
         <TableHead className="cursor-pointer" onClick={() => handleSort("brand")}>
@@ -91,7 +91,7 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
         <TableHead>
           Locatie
         </TableHead>
-        <TableHead className="text-center">
+        <TableHead className="text-center w-20">
           Acties
         </TableHead>
       </TableRow>
