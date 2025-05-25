@@ -3,9 +3,9 @@ import React from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { 
-  CalendarIcon, CircleCheck, MapPin, Euro, User
+  CalendarIcon, CircleCheck, MapPin, Euro, User, Wrench, Palette
 } from "lucide-react";
-import { Vehicle, ImportStatus, LocationStatus, DamageStatus } from "@/types/inventory";
+import { Vehicle, ImportStatus, LocationStatus, DamageStatus, WorkshopStatus, PaintStatus } from "@/types/inventory";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -119,6 +119,52 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
             </SelectContent>
           </Select>
         </div>
+
+        {/* Workshop Status */}
+        <div className="space-y-2">
+          <Label className="flex items-center">
+            <Wrench className="h-4 w-4 mr-1 text-muted-foreground" />
+            Werkplaats status
+          </Label>
+          <Select 
+            value={editedVehicle.workshopStatus} 
+            onValueChange={(value: WorkshopStatus) => handleChange('workshopStatus', value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecteer werkplaats status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="wachten">Wachten</SelectItem>
+              <SelectItem value="poetsen">Poetsen</SelectItem>
+              <SelectItem value="spuiten">Spuiten</SelectItem>
+              <SelectItem value="gereed">Gereed</SelectItem>
+              <SelectItem value="klaar_voor_aflevering">Klaar voor aflevering</SelectItem>
+              <SelectItem value="in_werkplaats">In werkplaats</SelectItem>
+              <SelectItem value="wacht_op_onderdelen">Wacht op onderdelen</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Paint Status */}
+        <div className="space-y-2">
+          <Label className="flex items-center">
+            <Palette className="h-4 w-4 mr-1 text-muted-foreground" />
+            Lak status
+          </Label>
+          <Select 
+            value={editedVehicle.paintStatus || "geen_behandeling"} 
+            onValueChange={(value: PaintStatus) => handleChange('paintStatus', value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecteer lak status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="geen_behandeling">Geen behandeling</SelectItem>
+              <SelectItem value="in_behandeling">In behandeling</SelectItem>
+              <SelectItem value="hersteld">Hersteld</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         
         {/* Location Status */}
         <div className="space-y-2">
@@ -170,7 +216,6 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
             />
           </div>
 
-          {/* Added Selling Price field - always visible in B2C view */}
           <div className="space-y-2">
             <Label htmlFor="sellingPrice" className="flex items-center">
               <Euro className="h-4 w-4 mr-1 text-muted-foreground" />

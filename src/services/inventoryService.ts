@@ -4,7 +4,7 @@ import { Contact } from "@/types/customer";
 // Use import.meta.env instead of process.env for Vite projects
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-// Mock data to use when API fails
+// Enhanced mock data with more B2C vehicles and proper paintStatus
 const mockVehicles: Vehicle[] = [
   {
     id: "1",
@@ -16,6 +16,7 @@ const mockVehicles: Vehicle[] = [
     importStatus: "niet_gestart",
     arrived: true,
     workshopStatus: "gereed",
+    paintStatus: "geen_behandeling",
     location: "showroom",
     salesStatus: "voorraad",
     showroomOnline: true,
@@ -46,6 +47,7 @@ const mockVehicles: Vehicle[] = [
     importStatus: "aangekomen",
     arrived: true,
     workshopStatus: "gereed",
+    paintStatus: "hersteld",
     location: "showroom",
     salesStatus: "voorraad",
     showroomOnline: true,
@@ -76,6 +78,7 @@ const mockVehicles: Vehicle[] = [
     importStatus: "aangekomen",
     arrived: true,
     workshopStatus: "gereed",
+    paintStatus: "geen_behandeling",
     location: "showroom",
     salesStatus: "verkocht_b2c",
     showroomOnline: false,
@@ -109,6 +112,7 @@ const mockVehicles: Vehicle[] = [
     importStatus: "aangekomen",
     arrived: true,
     workshopStatus: "gereed",
+    paintStatus: "hersteld",
     location: "showroom",
     salesStatus: "verkocht_b2b",
     showroomOnline: false,
@@ -131,7 +135,6 @@ const mockVehicles: Vehicle[] = [
     customerId: "dealer-1",
     customerName: "ABC Auto Dealership",
   },
-  // Adding a new vehicle for transport testing
   {
     id: "5",
     brand: "Toyota",
@@ -142,6 +145,7 @@ const mockVehicles: Vehicle[] = [
     importStatus: "transport_geregeld",
     arrived: false,
     workshopStatus: "wachten",
+    paintStatus: "geen_behandeling",
     location: "onderweg",
     salesStatus: "voorraad",
     showroomOnline: false,
@@ -161,6 +165,73 @@ const mockVehicles: Vehicle[] = [
     notes: "Vehicle currently in transit from Germany, expected arrival in 3 days.",
     mainPhotoUrl: "https://placehold.co/600x400?text=Toyota+Corolla",
     photos: ["https://placehold.co/600x400?text=Toyota+Corolla"],
+  },
+  // Add more B2C vehicles
+  {
+    id: "6",
+    brand: "Opel",
+    model: "Corsa",
+    licenseNumber: "JK-567-L",
+    vin: "W0L0AHL0808123456",
+    mileage: 75000,
+    importStatus: "aangekomen",
+    arrived: true,
+    workshopStatus: "in_werkplaats",
+    paintStatus: "in_behandeling",
+    location: "werkplaats",
+    salesStatus: "verkocht_b2c",
+    showroomOnline: false,
+    bpmRequested: true,
+    bpmStarted: true,
+    damage: {
+      description: "Small paint damage on front bumper",
+      status: "licht",
+    },
+    purchasePrice: 8000,
+    sellingPrice: 11000,
+    paymentStatus: "aanbetaling",
+    cmrSent: true,
+    cmrDate: new Date("2023-03-15"),
+    papersReceived: true,
+    papersDate: new Date("2023-03-20"),
+    notes: "Customer made down payment, paint work in progress.",
+    mainPhotoUrl: "https://placehold.co/600x400?text=Opel+Corsa",
+    photos: ["https://placehold.co/600x400?text=Opel+Corsa"],
+    customerId: "cust-2",
+    customerName: "Maria Johnson",
+  },
+  {
+    id: "7",
+    brand: "Ford",
+    model: "Focus",
+    licenseNumber: "MN-890-P",
+    vin: "WF0SXXWPXS1234567",
+    mileage: 60000,
+    importStatus: "aangekomen",
+    arrived: true,
+    workshopStatus: "klaar_voor_aflevering",
+    paintStatus: "hersteld",
+    location: "showroom",
+    salesStatus: "verkocht_b2c",
+    showroomOnline: false,
+    bpmRequested: true,
+    bpmStarted: true,
+    damage: {
+      description: "No damage",
+      status: "geen",
+    },
+    purchasePrice: 14000,
+    sellingPrice: 17500,
+    paymentStatus: "volledig_betaald",
+    cmrSent: true,
+    cmrDate: new Date("2023-04-01"),
+    papersReceived: true,
+    papersDate: new Date("2023-04-05"),
+    notes: "Vehicle ready for delivery, customer contacted.",
+    mainPhotoUrl: "https://placehold.co/600x400?text=Ford+Focus",
+    photos: ["https://placehold.co/600x400?text=Ford+Focus"],
+    customerId: "cust-3",
+    customerName: "Peter van der Berg",
   }
 ];
 
@@ -206,7 +277,7 @@ const enhancedMockVehicles = mockVehicles.map(vehicle => {
   return vehicle;
 });
 
-// Mock B2C vehicles
+// Mock B2C vehicles - now with more vehicles
 const mockB2CVehicles = mockVehicles.filter(v => v.salesStatus === 'verkocht_b2c');
 
 // Mock B2B vehicles
