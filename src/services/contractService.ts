@@ -46,6 +46,7 @@ export const generateContract = async (
     phone: "010-2623980",
     iban: "NL24ABNA0595583911",
     btw: "NL8563 08 791B01",
+    kvk: "65900073",
     website: "www.auto-city.nl"
   };
 
@@ -117,16 +118,16 @@ const generateHtmlContract = (
         
         body {
             font-family: 'Inter', sans-serif;
-            line-height: 1.3;
+            line-height: 1.2;
             color: #1a1a1a;
             background: white;
-            font-size: 11px;
+            font-size: 10px;
         }
         
         .contract {
             max-width: 210mm;
             margin: 0 auto;
-            padding: 8mm;
+            padding: 5mm;
             background: white;
             min-height: 297mm;
             page-break-inside: avoid;
@@ -135,30 +136,31 @@ const generateHtmlContract = (
         .header {
             background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 12px;
-            margin: -8mm -8mm 12px -8mm;
+            padding: 8px 12px;
+            margin: -5mm -5mm 8px -5mm;
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             position: relative;
+            min-height: 60px;
         }
         
         .logo-section {
             display: flex;
             align-items: center;
-            gap: 15px;
-            flex: 1;
+            gap: 8px;
+            flex: 0 0 auto;
         }
         
         .logo-container {
             background: white;
-            padding: 8px;
-            border-radius: 6px;
+            padding: 4px;
+            border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 70px;
-            height: 70px;
+            width: 60px;
+            height: 60px;
         }
         
         .logo-container img {
@@ -167,58 +169,74 @@ const generateHtmlContract = (
             object-fit: contain;
         }
         
+        .header-center {
+            flex: 1;
+            text-align: center;
+            padding: 0 20px;
+        }
+        
         .header-title {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 700;
             color: white;
             text-transform: uppercase;
             letter-spacing: 2px;
-            text-align: center;
-            flex: 2;
+            margin-bottom: 4px;
         }
         
         .contract-date {
-            text-align: right;
-            font-size: 11px;
+            font-size: 10px;
             color: #cccccc;
             font-weight: 500;
-            flex: 1;
+        }
+        
+        .company-info {
+            flex: 0 0 auto;
+            text-align: right;
+            font-size: 8px;
+            color: #cccccc;
+            line-height: 1.3;
+            max-width: 180px;
+        }
+        
+        .company-info div {
+            margin-bottom: 1px;
         }
         
         .main-content {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 12px;
+            gap: 8px;
+            margin-bottom: 8px;
         }
         
         .section {
             background: white;
             border: 1px solid #e5e7eb;
-            border-radius: 6px;
+            border-radius: 4px;
             overflow: hidden;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-            margin-bottom: 10px;
+            margin-bottom: 6px;
         }
         
         .section-header {
             background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 6px 10px;
+            padding: 4px 8px;
             font-weight: 600;
-            font-size: 11px;
+            font-size: 9px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
         
         .section-content {
-            padding: 10px;
+            padding: 6px;
         }
         
         .contract-details {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 3px;
         }
         
         .info-item {
@@ -230,7 +248,7 @@ const generateHtmlContract = (
         .info-label {
             font-weight: 600;
             color: #4b5563;
-            font-size: 9px;
+            font-size: 7px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -238,14 +256,14 @@ const generateHtmlContract = (
         .info-value {
             color: #1a1a1a;
             font-weight: 500;
-            font-size: 10px;
+            font-size: 8px;
             padding: 1px 0;
         }
         
         .vehicle-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
+            gap: 6px;
         }
         
         .price-section {
@@ -262,9 +280,9 @@ const generateHtmlContract = (
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 4px 10px;
+            padding: 3px 8px;
             border-bottom: 1px solid #f3f4f6;
-            font-size: 10px;
+            font-size: 8px;
         }
         
         .price-item:last-child {
@@ -284,8 +302,8 @@ const generateHtmlContract = (
         .price-total {
             background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 6px 10px;
-            font-size: 12px;
+            padding: 4px 8px;
+            font-size: 10px;
             font-weight: 700;
             text-align: center;
             text-transform: uppercase;
@@ -297,21 +315,21 @@ const generateHtmlContract = (
         }
         
         .terms-content {
-            font-size: 10px;
-            line-height: 1.3;
+            font-size: 8px;
+            line-height: 1.2;
             color: #4b5563;
         }
         
         .terms-content p {
-            margin-bottom: 3px;
+            margin-bottom: 2px;
         }
         
         .signature-section {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-top: 15px;
-            padding-top: 10px;
+            gap: 15px;
+            margin-top: 10px;
+            padding-top: 6px;
             border-top: 2px solid #000000;
         }
         
@@ -321,61 +339,61 @@ const generateHtmlContract = (
         
         .signature-line {
             border-bottom: 2px solid #1a1a1a;
-            height: 30px;
-            margin-bottom: 6px;
+            height: 20px;
+            margin-bottom: 4px;
         }
         
         .signature-label {
             font-weight: 600;
             color: #1a1a1a;
-            font-size: 10px;
+            font-size: 8px;
         }
         
         .digital-signature {
             background: linear-gradient(135deg, #f8f9fa, #f1f3f4);
             border: 2px solid #000000;
-            border-radius: 6px;
-            padding: 10px;
+            border-radius: 4px;
+            padding: 6px;
             text-align: center;
-            margin: 10px 0;
+            margin: 6px 0;
             grid-column: 1 / -1;
         }
         
         .digital-signature h3 {
             color: #1a1a1a;
-            margin-bottom: 6px;
-            font-size: 11px;
+            margin-bottom: 4px;
+            font-size: 9px;
         }
         
         .signature-button {
             background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 6px 12px;
+            padding: 4px 8px;
             border: none;
-            border-radius: 4px;
+            border-radius: 3px;
             font-weight: 600;
             cursor: pointer;
             text-decoration: none;
             display: inline-block;
-            margin-top: 6px;
-            font-size: 10px;
+            margin-top: 4px;
+            font-size: 8px;
         }
         
         .footer {
-            margin-top: 10px;
-            padding-top: 8px;
+            margin-top: 6px;
+            padding-top: 4px;
             border-top: 1px solid #e5e7eb;
-            font-size: 9px;
+            font-size: 7px;
             color: #6b7280;
             text-align: center;
-            line-height: 1.3;
+            line-height: 1.2;
         }
         
         @media print {
             .contract {
                 margin: 0;
-                padding: 5mm;
-                font-size: 9px;
+                padding: 3mm;
+                font-size: 8px;
             }
             
             .digital-signature {
@@ -383,30 +401,30 @@ const generateHtmlContract = (
             }
             
             .header {
-                padding: 8px;
-                margin: -5mm -5mm 8px -5mm;
+                padding: 6px 8px;
+                margin: -3mm -3mm 6px -3mm;
             }
             
             .main-content {
-                gap: 8px;
-                margin-bottom: 8px;
-            }
-            
-            .section {
+                gap: 6px;
                 margin-bottom: 6px;
             }
             
+            .section {
+                margin-bottom: 4px;
+            }
+            
             .section-content {
-                padding: 6px;
+                padding: 4px;
             }
             
             .signature-section {
-                margin-top: 10px;
-                padding-top: 8px;
+                margin-top: 6px;
+                padding-top: 4px;
             }
             
             .signature-line {
-                height: 25px;
+                height: 15px;
             }
         }
     </style>
@@ -419,9 +437,21 @@ const generateHtmlContract = (
                     <img src="/lovable-uploads/5ed4e40f-e743-47d8-ae24-9c02f8deab82.png" alt="AutoCity Logo" />
                 </div>
             </div>
-            <div class="header-title">KOOPCONTRACT</div>
-            <div class="contract-date">
-                Datum: ${currentDate}
+            <div class="header-center">
+                <div class="header-title">KOOPCONTRACT</div>
+                <div class="contract-date">Datum: ${currentDate}</div>
+            </div>
+            <div class="company-info">
+                <div><strong>${companyInfo.tradeName}</strong></div>
+                <div>${companyInfo.name}</div>
+                <div>${companyInfo.address}</div>
+                <div>${companyInfo.postalCode} ${companyInfo.city}</div>
+                <div>${companyInfo.country}</div>
+                <div>Tel: ${companyInfo.phone}</div>
+                <div>IBAN: ${companyInfo.iban}</div>
+                <div>BTW: ${companyInfo.btw}</div>
+                <div>KVK: ${companyInfo.kvk}</div>
+                <div>${companyInfo.website}</div>
             </div>
         </div>
         
@@ -435,20 +465,12 @@ const generateHtmlContract = (
                             <span class="info-value">AC-${vehicle.licenseNumber}-${Date.now().toString().slice(-6)}</span>
                         </div>
                         <div class="info-item">
-                            <span class="info-label">Datum:</span>
-                            <span class="info-value">${currentDate}</span>
-                        </div>
-                        <div class="info-item">
                             <span class="info-label">Type verkoop:</span>
                             <span class="info-value">${isB2B ? 'Zakelijke verkoop (B2B)' : 'Particuliere verkoop (B2C)'}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Klant:</span>
                             <span class="info-value">${isB2B ? (vehicle.customerName || '[Bedrijfsnaam]') : (vehicle.customerContact?.name || '[Voor- en achternaam]')}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Adres:</span>
-                            <span class="info-value">[Adres van klant]</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Email:</span>
