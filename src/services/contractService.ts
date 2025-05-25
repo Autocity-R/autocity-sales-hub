@@ -643,7 +643,7 @@ const generateHtmlContract = (
                 <div class="terms-content">
                     <p>Het voertuig wordt geleverd zoals gezien, gereden en akkoord bevonden door koper.</p>
                     <p>Levering vindt plaats na volledige betaling van het aankoopbedrag en op het moment van fysieke overdracht of registratie bij RDW op naam van koper.</p>
-                    <p>Het risiko van verlies of beschadiging gaat over op koper op het moment van levering.</p>
+                    <p>Het risico van verlies of beschadiging gaat over op koper op het moment van levering.</p>
                     ${!isB2B && downPaymentPercentage > 0 ? `<p>Klant dient de aanbetaling van ${downPaymentPercentage}% (€ ${downPaymentAmount.toLocaleString('nl-NL')}) per bank te voldoen.</p>` : ''}
                     
                     ${!isB2B && options.tradeInVehicle ? `
