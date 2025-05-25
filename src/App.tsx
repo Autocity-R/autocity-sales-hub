@@ -37,6 +37,9 @@ function App() {
         <Route path="/leads" element={<Leads />} />
         <Route path="/calendar" element={<Calendar />} />
         <Route path="/customers" element={<Customers />} />
+        <Route path="/customers/b2b" element={<Customers />} />
+        <Route path="/customers/b2c" element={<Customers />} />
+        <Route path="/suppliers" element={<Customers />} />
         <Route path="/customers/:id" element={<CustomerDetail />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/warranty" element={<Warranty />} />
