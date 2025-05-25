@@ -1,3 +1,4 @@
+
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 
@@ -8,6 +9,30 @@ export interface GeneratedContract {
   pdfUrl?: string;
   signatureUrl?: string; // URL voor digitale ondertekening
 }
+
+// Delivery package pricing
+const DELIVERY_PACKAGE_PRICES = {
+  "garantie_wettelijk": 0,
+  "6_maanden_autocity": 595,
+  "12_maanden_autocity": 995,
+  "12_maanden_bovag": 1195,
+  "12_maanden_bovag_vervangend": 1495
+};
+
+// Delivery package labels
+const DELIVERY_PACKAGE_LABELS = {
+  "garantie_wettelijk": "Garantie wettelijk",
+  "6_maanden_autocity": "6 Maanden Autocity garantie",
+  "12_maanden_autocity": "12 Maanden Autocity garantie",
+  "12_maanden_bovag": "12 Maanden Bovag garantie",
+  "12_maanden_bovag_vervangend": "12 Maanden Bovag garantie (inclusief vervangend vervoer)"
+};
+
+// Payment terms labels
+const PAYMENT_TERMS_LABELS = {
+  "aanbetaling_5": "Aanbetaling 5%",
+  "aanbetaling_10": "Aanbetaling 10%"
+};
 
 export const generateContract = async (
   vehicle: Vehicle, 
@@ -21,17 +46,33 @@ export const generateContract = async (
   
   // Calculate prices based on options
   const basePrice = vehicle.sellingPrice || 0;
+  let deliveryPackagePrice = 0;
   let finalPrice = basePrice;
   let btwAmount = 0;
   let priceExclBtw = 0;
+  let downPaymentAmount = 0;
+  let downPaymentPercentage = 0;
+
+  // Calculate delivery package price for B2C
+  if (!isB2B && options.deliveryPackage) {
+    deliveryPackagePrice = DELIVERY_PACKAGE_PRICES[options.deliveryPackage as keyof typeof DELIVERY_PACKAGE_PRICES] || 0;
+    finalPrice = basePrice + deliveryPackagePrice;
+  }
+
+  // Calculate down payment for B2C
+  if (!isB2B && options.paymentTerms) {
+    if (options.paymentTerms === "aanbetaling_5") {
+      downPaymentPercentage = 5;
+    } else if (options.paymentTerms === "aanbetaling_10") {
+      downPaymentPercentage = 10;
+    }
+    downPaymentAmount = Math.round((finalPrice * downPaymentPercentage) / 100);
+  }
 
   if (isB2B) {
     // For B2B, calculate BTW breakdown
     priceExclBtw = Math.round(basePrice / 1.21);
     btwAmount = basePrice - priceExclBtw;
-    finalPrice = basePrice;
-  } else {
-    // For B2C, price is typically inclusive
     finalPrice = basePrice;
   }
 
@@ -60,6 +101,9 @@ export const generateContract = async (
     finalPrice, 
     btwAmount, 
     priceExclBtw,
+    deliveryPackagePrice,
+    downPaymentAmount,
+    downPaymentPercentage,
     signatureUrl
   );
 
@@ -72,7 +116,10 @@ export const generateContract = async (
     basePrice, 
     finalPrice, 
     btwAmount, 
-    priceExclBtw
+    priceExclBtw,
+    deliveryPackagePrice,
+    downPaymentAmount,
+    downPaymentPercentage
   );
 
   const fileName = `koopcontract_${vehicle.licenseNumber}_${currentDate.replace(/\//g, '-')}.pdf`;
@@ -96,6 +143,9 @@ const generateHtmlContract = (
   finalPrice: number,
   btwAmount: number,
   priceExclBtw: number,
+  deliveryPackagePrice: number,
+  downPaymentAmount: number,
+  downPaymentPercentage: number,
   signatureUrl?: string
 ): string => {
   const isB2B = contractType === "b2b";
@@ -519,6 +569,18 @@ const generateHtmlContract = (
                             </div>
                         </div>
                     </div>
+                    ${!isB2B && options.deliveryPackage ? `
+                    <div class="vehicle-grid" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #f3f4f6;">
+                        <div class="info-item">
+                            <span class="info-label">Afleverpakket:</span>
+                            <span class="info-value">${DELIVERY_PACKAGE_LABELS[options.deliveryPackage as keyof typeof DELIVERY_PACKAGE_LABELS]}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Pakket prijs:</span>
+                            <span class="info-value">€ ${deliveryPackagePrice.toLocaleString('nl-NL')}</span>
+                        </div>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
         </div>
@@ -544,6 +606,12 @@ const generateHtmlContract = (
                         <span class="price-label">Verkoopprijs voertuig (inclusief BTW)</span>
                         <span class="price-value">€ ${basePrice.toLocaleString('nl-NL')}</span>
                     </div>
+                    ${deliveryPackagePrice > 0 ? `
+                    <div class="price-item">
+                        <span class="price-label">Afleverpakket</span>
+                        <span class="price-value">€ ${deliveryPackagePrice.toLocaleString('nl-NL')}</span>
+                    </div>
+                    ` : ''}
                 `}
             </div>
             <div class="price-total">
@@ -557,6 +625,7 @@ const generateHtmlContract = (
                 <div class="terms-content">
                     <p>Het voertuig wordt geleverd als omschreven bij verkoop en de extra omschrijvingen in het contract</p>
                     <p>Levering vindt plaats na volledige betaling van het aankoopbedrag</p>
+                    ${!isB2B && downPaymentPercentage > 0 ? `<p>Klant dient de aanbetaling van ${downPaymentPercentage}% (€ ${downPaymentAmount.toLocaleString('nl-NL')}) per bank te voldoen.</p>` : ''}
                     ${options.maxDamageAmount ? `<p>Maximaal geaccepteerde schade: € ${options.maxDamageAmount}</p>` : ''}
                 </div>
             </div>
@@ -621,7 +690,10 @@ const generateTextContract = (
   basePrice: number,
   finalPrice: number,
   btwAmount: number,
-  priceExclBtw: number
+  priceExclBtw: number,
+  deliveryPackagePrice: number,
+  downPaymentAmount: number,
+  downPaymentPercentage: number
 ): string => {
   const isB2B = contractType === "b2b";
   
@@ -651,6 +723,9 @@ Kenteken: ${vehicle.licenseNumber}
 Chassisnummer: ${vehicle.vin}
 Kilometerstand: ${vehicle.mileage?.toLocaleString('nl-NL')} km
 ${vehicle.year ? `Bouwjaar: ${vehicle.year}` : ''}
+${!isB2B && options.deliveryPackage ? `
+Afleverpakket: ${DELIVERY_PACKAGE_LABELS[options.deliveryPackage as keyof typeof DELIVERY_PACKAGE_LABELS]}
+Pakket prijs: € ${deliveryPackagePrice.toLocaleString('nl-NL')}` : ''}
 
 PRIJSOPBOUW:
 ${isB2B ? `
@@ -659,8 +734,8 @@ BTW (21%): € ${btwAmount.toLocaleString('nl-NL')}
 Bedrag inclusief BTW: € ${basePrice.toLocaleString('nl-NL')}
 ` : `
 Verkoopprijs voertuig (inclusief BTW): € ${basePrice.toLocaleString('nl-NL')}
-Afleverpakket: ${options.deliveryPackage}
-Betalingsvoorwaarden: ${options.paymentTerms}
+${deliveryPackagePrice > 0 ? `Afleverpakket: € ${deliveryPackagePrice.toLocaleString('nl-NL')}` : ''}
+Betalingsvoorwaarden: ${options.paymentTerms ? PAYMENT_TERMS_LABELS[options.paymentTerms as keyof typeof PAYMENT_TERMS_LABELS] : ''}
 `}
 
 TOTAAL TE BETALEN: € ${finalPrice.toLocaleString('nl-NL')}
@@ -668,6 +743,7 @@ TOTAAL TE BETALEN: € ${finalPrice.toLocaleString('nl-NL')}
 LEVERINGSVOORWAARDEN:
 - Het voertuig wordt geleverd als omschreven bij verkoop en de extra omschrijvingen in het contract
 - Levering vindt plaats na volledige betaling
+${!isB2B && downPaymentPercentage > 0 ? `- Klant dient de aanbetaling van ${downPaymentPercentage}% (€ ${downPaymentAmount.toLocaleString('nl-NL')}) per bank te voldoen.` : ''}
 ${options.maxDamageAmount ? `- Maximaal geaccepteerde schade: € ${options.maxDamageAmount}` : ''}
 
 ${options.additionalClauses ? `
