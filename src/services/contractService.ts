@@ -1,4 +1,3 @@
-
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 
@@ -108,7 +107,7 @@ const generateHtmlContract = (
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Koopovereenkomst - ${vehicle.brand} ${vehicle.model}</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
         * {
             margin: 0;
@@ -118,180 +117,153 @@ const generateHtmlContract = (
         
         body {
             font-family: 'Inter', sans-serif;
-            line-height: 1.6;
-            color: #333333;
+            line-height: 1.5;
+            color: #1a1a1a;
             background: white;
         }
         
         .contract {
             max-width: 210mm;
             margin: 0 auto;
-            padding: 20mm;
+            padding: 15mm;
             background: white;
             min-height: 297mm;
         }
         
         .header {
+            background: #1e3a5f;
+            color: white;
+            padding: 20px;
+            margin: -15mm -15mm 25px -15mm;
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 30px;
-            border-bottom: 3px solid #FF7A00;
-            padding-bottom: 20px;
+            align-items: center;
         }
         
         .logo-section {
-            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
         
         .logo {
-            width: 160px;
-            height: 60px;
-            background: linear-gradient(135deg, #000000, #333333);
+            background: white;
+            padding: 8px 16px;
             border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
+            color: #1e3a5f;
             font-weight: 700;
             font-size: 24px;
-            margin-bottom: 15px;
-            letter-spacing: -1px;
+            letter-spacing: -0.5px;
         }
         
-        .company-info {
-            text-align: right;
-            flex: 1;
-        }
-        
-        .company-name {
+        .header-title {
             font-size: 28px;
             font-weight: 700;
-            color: #000000;
-            margin-bottom: 8px;
+            color: white;
         }
         
-        .company-details {
+        .contract-date {
+            text-align: right;
             font-size: 14px;
-            color: #666666;
-            line-height: 1.5;
+            color: #e0e7ff;
         }
         
         .title {
             text-align: center;
-            font-size: 32px;
-            font-weight: 700;
-            color: #000000;
-            margin: 40px 0;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        
-        .contract-info {
-            background: #f8f9fa;
-            border-left: 4px solid #FF7A00;
-            border-radius: 0 8px 8px 0;
-            padding: 25px;
-            margin-bottom: 30px;
-        }
-        
-        .contract-info h3 {
-            color: #000000;
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #FF7A00;
-            padding-bottom: 8px;
-        }
-        
-        .info-vertical {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        
-        .info-item {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        
-        .info-label {
-            font-weight: 600;
-            color: #000000;
-            font-size: 14px;
-        }
-        
-        .info-value {
-            color: #333333;
-            font-weight: 500;
-            font-size: 14px;
-            padding-left: 0;
-        }
-        
-        .vehicle-section {
-            background: linear-gradient(135deg, #fff7ed, #fed7aa);
-            border: 2px solid #FF7A00;
-            border-radius: 12px;
-            padding: 30px;
-            margin-bottom: 30px;
-            position: relative;
-        }
-        
-        .vehicle-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #FF7A00, #ff9500);
-            border-radius: 12px 12px 0 0;
-        }
-        
-        .vehicle-title {
             font-size: 24px;
-            font-weight: 700;
-            color: #000000;
-            margin-bottom: 20px;
-            text-align: center;
+            font-weight: 600;
+            color: #1e3a5f;
+            margin: 30px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #1e3a5f;
+            padding-bottom: 10px;
+        }
+        
+        .section {
+            margin-bottom: 25px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .section-header {
+            background: #f8fafc;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 12px 20px;
+            font-weight: 600;
+            color: #1e3a5f;
+            font-size: 16px;
+        }
+        
+        .section-content {
+            padding: 20px;
         }
         
         .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 25px;
+            gap: 20px;
+        }
+        
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+        
+        .info-label {
+            font-weight: 500;
+            color: #4b5563;
+            font-size: 13px;
+        }
+        
+        .info-value {
+            color: #1a1a1a;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        .vehicle-section {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border: 2px solid #0ea5e9;
+            margin-bottom: 25px;
+        }
+        
+        .vehicle-header {
+            background: #0ea5e9;
+            color: white;
+            padding: 15px 20px;
+            font-weight: 600;
+            font-size: 18px;
         }
         
         .price-section {
             background: white;
-            border: 3px solid #000000;
-            border-radius: 12px;
-            padding: 25px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 2px solid #1e3a5f;
         }
         
-        .price-title {
-            font-size: 20px;
+        .price-header {
+            background: #1e3a5f;
+            color: white;
+            padding: 15px 20px;
             font-weight: 600;
-            color: #000000;
-            margin-bottom: 20px;
-            text-align: center;
-            border-bottom: 2px solid #FF7A00;
-            padding-bottom: 10px;
+            font-size: 18px;
         }
         
         .price-breakdown {
-            margin-bottom: 20px;
+            padding: 0;
         }
         
         .price-item {
             display: flex;
             justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid #e5e7eb;
-            font-size: 16px;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 14px;
         }
         
         .price-item:last-child {
@@ -300,43 +272,27 @@ const generateHtmlContract = (
         
         .price-label {
             font-weight: 500;
-            color: #333333;
+            color: #4b5563;
         }
         
         .price-value {
             font-weight: 600;
-            color: #000000;
+            color: #1a1a1a;
         }
         
         .price-total {
-            background: linear-gradient(135deg, #000000, #333333);
+            background: #1e3a5f;
             color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-top: 20px;
-            text-align: center;
-            font-size: 24px;
-            font-weight: 700;
-            border: 2px solid #FF7A00;
-        }
-        
-        .terms-section {
-            margin-bottom: 30px;
-        }
-        
-        .terms-title {
+            padding: 15px 20px;
             font-size: 18px;
-            font-weight: 600;
-            color: #000000;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #FF7A00;
-            padding-bottom: 8px;
+            font-weight: 700;
+            text-align: center;
         }
         
         .terms-content {
-            font-size: 15px;
-            line-height: 1.7;
-            color: #333333;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #4b5563;
         }
         
         .terms-content p {
@@ -347,9 +303,9 @@ const generateHtmlContract = (
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 50px;
-            margin-top: 50px;
-            padding-top: 30px;
-            border-top: 3px solid #FF7A00;
+            margin-top: 40px;
+            padding-top: 25px;
+            border-top: 2px solid #1e3a5f;
         }
         
         .signature-box {
@@ -357,74 +313,60 @@ const generateHtmlContract = (
         }
         
         .signature-line {
-            border-bottom: 3px solid #000000;
-            height: 70px;
-            margin-bottom: 15px;
+            border-bottom: 2px solid #1e3a5f;
+            height: 60px;
+            margin-bottom: 10px;
         }
         
         .signature-label {
             font-weight: 600;
-            color: #000000;
-            font-size: 16px;
+            color: #1e3a5f;
+            font-size: 14px;
         }
         
         .digital-signature {
             background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-            border: 3px solid #3b82f6;
-            border-radius: 12px;
-            padding: 25px;
+            border: 2px solid #3b82f6;
+            border-radius: 8px;
+            padding: 20px;
             text-align: center;
-            margin: 25px 0;
+            margin: 20px 0;
         }
         
         .digital-signature h3 {
             color: #1e40af;
-            margin-bottom: 15px;
-            font-size: 18px;
+            margin-bottom: 10px;
+            font-size: 16px;
         }
         
         .signature-button {
             background: linear-gradient(135deg, #3b82f6, #1d4ed8);
             color: white;
-            padding: 15px 30px;
+            padding: 12px 24px;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             font-weight: 600;
             cursor: pointer;
             text-decoration: none;
             display: inline-block;
-            margin-top: 15px;
-            font-size: 16px;
-        }
-        
-        .qr-code {
-            margin: 20px auto;
-            width: 120px;
-            height: 120px;
-            background: #f3f4f6;
-            border: 2px solid #d1d5db;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            color: #6b7280;
+            margin-top: 10px;
+            font-size: 14px;
         }
         
         .footer {
-            margin-top: 40px;
-            padding-top: 25px;
-            border-top: 2px solid #e5e7eb;
-            font-size: 13px;
-            color: #666666;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #6b7280;
             text-align: center;
-            line-height: 1.6;
+            line-height: 1.5;
         }
         
         @media print {
             .contract {
                 margin: 0;
-                padding: 15mm;
+                padding: 10mm;
             }
             
             .digital-signature {
@@ -437,27 +379,17 @@ const generateHtmlContract = (
     <div class="contract">
         <div class="header">
             <div class="logo-section">
-                <div class="logo">AutoCity</div>
+                <div class="logo">AUTOCITY</div>
+                <div class="header-title">KOOPCONTRACT</div>
             </div>
-            <div class="company-info">
-                <div class="company-name">${companyInfo.tradeName}</div>
-                <div class="company-details">
-                    ${companyInfo.address}<br>
-                    ${companyInfo.postalCode} ${companyInfo.city}<br>
-                    ${companyInfo.country}<br><br>
-                    Tel: ${companyInfo.phone}<br>
-                    BTW: ${companyInfo.btw}<br>
-                    IBAN: ${companyInfo.iban}<br>
-                    ${companyInfo.website}
-                </div>
+            <div class="contract-date">
+                Datum: ${currentDate}
             </div>
         </div>
         
-        <h1 class="title">Koopovereenkomst Personenauto</h1>
-        
-        <div class="contract-info">
-            <h3>Contractgegevens</h3>
-            <div class="info-vertical">
+        <div class="section">
+            <div class="section-header">Contractgegevens</div>
+            <div class="section-content">
                 <div class="info-item">
                     <span class="info-label">Contractnummer:</span>
                     <span class="info-value">AC-${vehicle.licenseNumber}-${Date.now().toString().slice(-6)}</span>
@@ -485,40 +417,46 @@ const generateHtmlContract = (
             </div>
         </div>
         
-        <div class="vehicle-section">
-            <h2 class="vehicle-title">${vehicle.brand} ${vehicle.model}${vehicle.color ? ` - ${vehicle.color}` : ''}</h2>
-            <div class="info-grid">
-                <div>
-                    <div class="info-item">
-                        <span class="info-label">Kenteken:</span>
-                        <span class="info-value">${vehicle.licenseNumber}</span>
+        <div class="section vehicle-section">
+            <div class="vehicle-header">Voertuig</div>
+            <div class="section-content">
+                <div class="info-grid">
+                    <div>
+                        <div class="info-item">
+                            <span class="info-label">Merk:</span>
+                            <span class="info-value">${vehicle.brand}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Model:</span>
+                            <span class="info-value">${vehicle.model}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Kenteken:</span>
+                            <span class="info-value">${vehicle.licenseNumber}</span>
+                        </div>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">Chassisnummer:</span>
-                        <span class="info-value">${vehicle.vin}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Kilometerstand:</span>
-                        <span class="info-value">${vehicle.mileage?.toLocaleString('nl-NL')} km</span>
-                    </div>
-                </div>
-                <div>
-                    ${vehicle.year ? `
-                    <div class="info-item">
-                        <span class="info-label">Bouwjaar:</span>
-                        <span class="info-value">${vehicle.year}</span>
-                    </div>
-                    ` : ''}
-                    <div class="info-item">
-                        <span class="info-label">Brandstof:</span>
-                        <span class="info-value">Benzine</span>
+                    <div>
+                        <div class="info-item">
+                            <span class="info-label">VIN:</span>
+                            <span class="info-value">${vehicle.vin}</span>
+                        </div>
+                        ${vehicle.year ? `
+                        <div class="info-item">
+                            <span class="info-label">Bouwjaar:</span>
+                            <span class="info-value">${vehicle.year}</span>
+                        </div>
+                        ` : ''}
+                        <div class="info-item">
+                            <span class="info-label">KM Stand:</span>
+                            <span class="info-value">${vehicle.mileage?.toLocaleString('nl-NL')} km</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
         
-        <div class="price-section">
-            <h2 class="price-title">Prijsopbouw</h2>
+        <div class="section price-section">
+            <div class="price-header">Netto</div>
             <div class="price-breakdown">
                 ${isB2B ? `
                     <div class="price-item">
@@ -538,45 +476,51 @@ const generateHtmlContract = (
                         <span class="price-label">Verkoopprijs voertuig (inclusief BTW)</span>
                         <span class="price-value">€ ${basePrice.toLocaleString('nl-NL')}</span>
                     </div>
-                    <div class="price-item">
-                        <span class="price-label">Afleverpakket</span>
-                        <span class="price-value">${options.deliveryPackage}</span>
-                    </div>
-                    <div class="price-item">
-                        <span class="price-label">Betalingsvoorwaarden</span>
-                        <span class="price-value">${options.paymentTerms}</span>
-                    </div>
                 `}
             </div>
             <div class="price-total">
-                Totaal te betalen: € ${finalPrice.toLocaleString('nl-NL')}
+                Totaal: € ${finalPrice.toLocaleString('nl-NL')}
             </div>
         </div>
         
-        <div class="terms-section">
-            <h3 class="terms-title">Leveringsvoorwaarden</h3>
-            <div class="terms-content">
-                <p>• Het voertuig wordt geleverd in de staat waarin het zich bevindt op moment van ondertekening</p>
-                <p>• Levering vindt plaats na volledige betaling van het aankoopbedrag</p>
-                <p>• ${isB2B ? 'Zakelijke levering conform BOVAG voorwaarden' : 'Particuliere verkoop met consumentenbescherming'}</p>
-                ${options.maxDamageAmount ? `<p>• Maximaal geaccepteerde schade: € ${options.maxDamageAmount}</p>` : ''}
+        <div class="section">
+            <div class="section-header">Leveringsafspraken</div>
+            <div class="section-content">
+                <div class="terms-content">
+                    <p>Aflevering op locatie</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-header">Leveringsvoorwaarden</div>
+            <div class="section-content">
+                <div class="terms-content">
+                    <p>Het voertuig wordt geleverd als omschreven bij verkoop en de extra omschrijvingen in het contract</p>
+                    <p>Levering vindt plaats na volledige betaling van het aankoopbedrag</p>
+                    ${options.maxDamageAmount ? `<p>Maximaal geaccepteerde schade: € ${options.maxDamageAmount}</p>` : ''}
+                </div>
             </div>
         </div>
         
         ${options.additionalClauses ? `
-        <div class="terms-section">
-            <h3 class="terms-title">Aanvullende Contractclausules</h3>
-            <div class="terms-content">
-                <p>${options.additionalClauses.replace(/\n/g, '</p><p>')}</p>
+        <div class="section">
+            <div class="section-header">Aanvullende Contractclausules</div>
+            <div class="section-content">
+                <div class="terms-content">
+                    <p>${options.additionalClauses.replace(/\n/g, '</p><p>')}</p>
+                </div>
             </div>
         </div>
         ` : ''}
         
         ${options.specialAgreements ? `
-        <div class="terms-section">
-            <h3 class="terms-title">Speciale Afspraken</h3>
-            <div class="terms-content">
-                <p>${options.specialAgreements.replace(/\n/g, '</p><p>')}</p>
+        <div class="section">
+            <div class="section-header">Speciale Afspraken</div>
+            <div class="section-content">
+                <div class="terms-content">
+                    <p>${options.specialAgreements.replace(/\n/g, '</p><p>')}</p>
+                </div>
             </div>
         </div>
         ` : ''}
@@ -586,15 +530,61 @@ const generateHtmlContract = (
             <h3>Digitaal Ondertekenen</h3>
             <p>Klik op onderstaande knop om dit contract digitaal te ondertekenen:</p>
             <a href="${signatureUrl}" class="signature-button">Contract Ondertekenen</a>
-            <div class="qr-code">QR-CODE</div>
-            <p style="font-size: 12px; color: #6b7280;">Scan de QR-code met uw telefoon</p>
         </div>
         ` : ''}
+        
+        <div class="section">
+            <div class="section-header">Klantgegevens</div>
+            <div class="section-content">
+                <div class="info-grid">
+                    <div>
+                        <div class="info-item">
+                            <span class="info-label">J. Men ink</span>
+                            <span class="info-value"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Autocity</span>
+                            <span class="info-value"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Thurledeweg 61a</span>
+                            <span class="info-value"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">3044 ER Rotterdam</span>
+                            <span class="info-value"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">010-2523990</span>
+                            <span class="info-value"></span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="info-item">
+                            <span class="info-label">ABN AMRO 0595585911</span>
+                            <span class="info-value"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">HPM Cars VOF</span>
+                            <span class="info-value"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">HPM Cars VOF Ej 55613791B01</span>
+                            <span class="info-value"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">KvK 65257090</span>
+                            <span class="info-value"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         
         <div class="signature-section">
             <div class="signature-box">
                 <div class="signature-line"></div>
-                <div class="signature-label">Verkoper<br>${companyInfo.tradeName}</div>
+                <div class="signature-label">Verkoper<br>AutoCity</div>
             </div>
             <div class="signature-box">
                 <div class="signature-line"></div>
@@ -603,8 +593,7 @@ const generateHtmlContract = (
         </div>
         
         <div class="footer">
-            Deze overeenkomst is opgesteld conform de Nederlandse wetgeving en BOVAG voorwaarden.<br>
-            AutoCity is ingeschreven bij de Kamer van Koophandel Rotterdam
+            www.auto-city.nl
         </div>
     </div>
 </body>
@@ -666,9 +655,8 @@ Betalingsvoorwaarden: ${options.paymentTerms}
 TOTAAL TE BETALEN: € ${finalPrice.toLocaleString('nl-NL')}
 
 LEVERINGSVOORWAARDEN:
-- Het voertuig wordt geleverd in de staat waarin het zich bevindt
+- Het voertuig wordt geleverd als omschreven bij verkoop en de extra omschrijvingen in het contract
 - Levering vindt plaats na volledige betaling
-- ${isB2B ? 'Zakelijke verkoop conform BOVAG voorwaarden' : 'Particuliere verkoop met consumentenbescherming'}
 ${options.maxDamageAmount ? `- Maximaal geaccepteerde schade: € ${options.maxDamageAmount}` : ''}
 
 ${options.additionalClauses ? `
