@@ -145,17 +145,18 @@ const generateHtmlContract = (
             display: flex;
             align-items: center;
             gap: 20px;
+            flex: 1;
         }
         
         .logo-container {
             background: white;
-            padding: 12px;
+            padding: 15px;
             border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 80px;
-            height: 80px;
+            width: 120px;
+            height: 120px;
         }
         
         .logo-container img {
@@ -165,11 +166,13 @@ const generateHtmlContract = (
         }
         
         .header-title {
-            font-size: 32px;
+            font-size: 36px;
             font-weight: 700;
             color: white;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 2px;
+            text-align: center;
+            flex: 2;
         }
         
         .contract-date {
@@ -177,6 +180,7 @@ const generateHtmlContract = (
             font-size: 14px;
             color: #cccccc;
             font-weight: 500;
+            flex: 1;
         }
         
         .section {
@@ -397,8 +401,8 @@ const generateHtmlContract = (
                 <div class="logo-container">
                     <img src="/lovable-uploads/5ed4e40f-e743-47d8-ae24-9c02f8deab82.png" alt="AutoCity Logo" />
                 </div>
-                <div class="header-title">Koopcontract</div>
             </div>
+            <div class="header-title">KOOPCONTRACT</div>
             <div class="contract-date">
                 Datum: ${currentDate}
             </div>
