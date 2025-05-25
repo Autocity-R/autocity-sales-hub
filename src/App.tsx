@@ -17,6 +17,7 @@ import Warranty from "@/pages/Warranty";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 import TestContract from "@/pages/TestContract";
+import ContractPreview from "@/pages/ContractPreview";
 import { Toaster } from "@/components/ui/toaster";
 import { DigitalSignaturePage } from "@/components/contracts/DigitalSignaturePage";
 import "./App.css";
@@ -45,6 +46,7 @@ function App() {
         <Route path="/warranty" element={<Warranty />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/test-contract" element={<TestContract />} />
+        <Route path="/contract-preview" element={<ContractPreview />} />
         <Route path="/contract/sign/:token" element={<DigitalSignaturePage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
