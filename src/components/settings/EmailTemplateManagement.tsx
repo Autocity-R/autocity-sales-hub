@@ -11,6 +11,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Edit, Save, Plus, Paperclip, ChevronDown, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 interface EmailTemplate {
   id: string;
