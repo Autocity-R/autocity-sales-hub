@@ -31,14 +31,14 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
     <ContextMenu>
       <ContextMenuTrigger>
         <TableRow className="cursor-pointer hover:bg-gray-50">
-          <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
+          <TableCell className="w-12 pl-4" onClick={(e) => e.stopPropagation()}>
             <Checkbox 
               checked={selectedVehicles.includes(vehicle.id)} 
               onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, checked === true)} 
               aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
             />
           </TableCell>
-          <TableCell className="w-16" onClick={() => handleSelectVehicle(vehicle)}>
+          <TableCell className="w-16 px-2" onClick={() => handleSelectVehicle(vehicle)}>
             {vehicle.mainPhotoUrl ? (
               <img 
                 src={vehicle.mainPhotoUrl} 
@@ -51,40 +51,40 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
               </div>
             )}
           </TableCell>
-          <TableCell className="font-medium" onClick={() => handleSelectVehicle(vehicle)}>
+          <TableCell className="font-medium px-4" onClick={() => handleSelectVehicle(vehicle)}>
             {vehicle.brand}
           </TableCell>
-          <TableCell onClick={() => handleSelectVehicle(vehicle)}>
+          <TableCell className="px-4" onClick={() => handleSelectVehicle(vehicle)}>
             {vehicle.model}
           </TableCell>
-          <TableCell onClick={() => handleSelectVehicle(vehicle)}>
+          <TableCell className="px-4" onClick={() => handleSelectVehicle(vehicle)}>
             {vehicle.mileage.toLocaleString()} km
           </TableCell>
-          <TableCell onClick={() => handleSelectVehicle(vehicle)}>
+          <TableCell className="px-4" onClick={() => handleSelectVehicle(vehicle)}>
             {vehicle.vin}
           </TableCell>
-          <TableCell className="font-medium" onClick={() => handleSelectVehicle(vehicle)}>
+          <TableCell className="font-medium px-4" onClick={() => handleSelectVehicle(vehicle)}>
             {vehicle.purchasePrice ? `€ ${vehicle.purchasePrice.toLocaleString()}` : '-'}
           </TableCell>
-          <TableCell className="font-medium" onClick={() => handleSelectVehicle(vehicle)}>
+          <TableCell className="font-medium px-4" onClick={() => handleSelectVehicle(vehicle)}>
             € {vehicle.sellingPrice.toLocaleString()}
           </TableCell>
-          <TableCell onClick={() => handleSelectVehicle(vehicle)}>
+          <TableCell className="px-4" onClick={() => handleSelectVehicle(vehicle)}>
             {vehicle.customerName || "Onbekend"}
           </TableCell>
-          <TableCell onClick={() => handleSelectVehicle(vehicle)}>
+          <TableCell className="px-4" onClick={() => handleSelectVehicle(vehicle)}>
             {renderImportStatus(vehicle.importStatus)}
           </TableCell>
-          <TableCell onClick={() => handleSelectVehicle(vehicle)}>
+          <TableCell className="px-4" onClick={() => handleSelectVehicle(vehicle)}>
             {renderWorkshopStatus(vehicle.workshopStatus)}
           </TableCell>
-          <TableCell onClick={() => handleSelectVehicle(vehicle)}>
+          <TableCell className="px-4" onClick={() => handleSelectVehicle(vehicle)}>
             {renderPaintStatus(vehicle.paintStatus)}
           </TableCell>
-          <TableCell onClick={() => handleSelectVehicle(vehicle)}>
+          <TableCell className="px-4" onClick={() => handleSelectVehicle(vehicle)}>
             {renderLocationStatus(vehicle.location)}
           </TableCell>
-          <TableCell className="text-center w-20" onClick={(e) => e.stopPropagation()}>
+          <TableCell className="text-center w-20 px-4" onClick={(e) => e.stopPropagation()}>
             <VehicleActionsDropdown
               vehicle={vehicle}
               handleSendEmail={handleSendEmail}
