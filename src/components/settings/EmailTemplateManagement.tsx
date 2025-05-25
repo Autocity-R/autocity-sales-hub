@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -474,11 +475,11 @@ export const EmailTemplateManagement = () => {
                         <div className="space-y-2">
                           <Label htmlFor="dashboardButton">Dashboard Knop</Label>
                           <Select
-                            value={selectedTemplate.dashboardButton || ""}
+                            value={selectedTemplate.dashboardButton || "none"}
                             onValueChange={(value) =>
                               setSelectedTemplate({
                                 ...selectedTemplate,
-                                dashboardButton: value || undefined
+                                dashboardButton: value === "none" ? undefined : value
                               })
                             }
                             disabled={!isEditing}
@@ -487,7 +488,7 @@ export const EmailTemplateManagement = () => {
                               <SelectValue placeholder="Selecteer knop" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">Geen koppeling</SelectItem>
+                              <SelectItem value="none">Geen koppeling</SelectItem>
                               {dashboardButtons
                                 .filter(btn => btn.category === selectedTemplate.category)
                                 .map((button) => (
