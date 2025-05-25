@@ -6,6 +6,7 @@ import { UserSettings } from "@/components/settings/UserSettings";
 import { UserManagement } from "@/components/settings/UserManagement";
 import { NewUserForm } from "@/components/settings/NewUserForm";
 import { EmailSettings } from "@/components/settings/EmailSettings";
+import { EmailTemplateManagement } from "@/components/settings/EmailTemplateManagement";
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
 import { APISettings } from "@/components/settings/APISettings";
@@ -23,6 +24,8 @@ const Settings = () => {
         return <NewUserForm />;
       case "/settings/email":
         return <EmailSettings />;
+      case "/settings/email-templates":
+        return <EmailTemplateManagement />;
       case "/settings/notifications":
         return <NotificationSettings />;
       case "/settings/security":
@@ -48,6 +51,8 @@ const Settings = () => {
         return "Nieuwe Gebruiker";
       case "/settings/email":
         return "Email Instellingen";
+      case "/settings/email-templates":
+        return "Email Templates";
       case "/settings/notifications":
         return "Notificatie Instellingen";
       case "/settings/security":
@@ -71,6 +76,8 @@ const Settings = () => {
         return "Voeg een nieuwe gebruiker toe aan het systeem";
       case "/settings/email":
         return "Koppel Gmail accounts voor CRM communicatie";
+      case "/settings/email-templates":
+        return "Beheer email templates voor transport, klanten en leveranciers";
       case "/settings/notifications":
         return "Beheer herinneringen voor leads en email vermeldingen";
       case "/settings/security":

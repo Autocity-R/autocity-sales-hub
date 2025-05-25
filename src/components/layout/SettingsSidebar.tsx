@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -10,7 +11,8 @@ import {
   Database,
   Users,
   UserPlus,
-  Car
+  Car,
+  Settings
 } from "lucide-react";
 
 // Persoonlijke instellingen
@@ -41,8 +43,14 @@ const personalMenuItems = [
   }
 ];
 
-// Systeem instellingen (alleen API sleutels en Data & Privacy)
+// Systeem instellingen
 const systemMenuItems = [
+  {
+    title: "Email Templates",
+    icon: Settings,
+    href: "/settings/email-templates",
+    description: "Beheer email templates voor communicatie"
+  },
   {
     title: "API Sleutels",
     icon: Key,

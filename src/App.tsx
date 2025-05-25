@@ -55,6 +55,7 @@ const App = () => (
           <Route path="/settings" element={<Settings />} />
           <Route path="/settings/personal" element={<Settings />} />
           <Route path="/settings/email" element={<Settings />} />
+          <Route path="/settings/email-templates" element={<Settings />} />
           <Route path="/settings/notifications" element={<Settings />} />
           <Route path="/settings/security" element={<Settings />} />
           <Route path="/settings/api" element={<Settings />} />
