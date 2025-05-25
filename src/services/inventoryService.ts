@@ -194,6 +194,21 @@ export const fetchVehicles = async (): Promise<Vehicle[]> => {
   }
 };
 
+export const fetchVehicle = async (vehicleId: string): Promise<Vehicle | null> => {
+  try {
+    const response = await fetch(`${API_URL}/api/vehicles/${vehicleId}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error: any) {
+    console.error("Failed to fetch vehicle:", error);
+    // Return mock vehicle when API fails
+    const vehicle = mockVehicles.find(v => v.id === vehicleId);
+    return vehicle || null;
+  }
+};
+
 export const fetchB2CVehicles = async (): Promise<Vehicle[]> => {
   try {
     const response = await fetch(`${API_URL}/api/vehicles?status=verkocht_b2c`);

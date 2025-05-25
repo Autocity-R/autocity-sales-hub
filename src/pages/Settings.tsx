@@ -1,6 +1,6 @@
 
 import React from "react";
-import { SettingsLayout } from "@/components/layout/SettingsLayout";
+import SettingsLayout from "@/components/layout/SettingsLayout";
 import { UserManagement } from "@/components/settings/UserManagement";
 import { EmailTemplateManagement } from "@/components/settings/EmailTemplateManagement";
 import { ContractManagement } from "@/components/contracts/ContractManagement";
