@@ -557,6 +557,22 @@ const generateHtmlContract = (
                             </div>
                         </div>
                     </div>
+                    ${isB2B && options.bpmIncluded ? `
+                    <div class="vehicle-grid" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #f3f4f6;">
+                        <div class="info-item">
+                            <span class="info-label">Levering:</span>
+                            <span class="info-value">Voertuig wordt geleverd inclusief NL kenteken</span>
+                        </div>
+                    </div>
+                    ` : ''}
+                    ${isB2B && options.maxDamageAmount && options.maxDamageAmount > 0 ? `
+                    <div class="vehicle-grid" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #f3f4f6;">
+                        <div class="info-item">
+                            <span class="info-label">Maximaal schade bedrag:</span>
+                            <span class="info-value">€ ${options.maxDamageAmount.toLocaleString('nl-NL')}</span>
+                        </div>
+                    </div>
+                    ` : ''}
                     ${!isB2B && options.deliveryPackage ? `
                     <div class="vehicle-grid" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #f3f4f6;">
                         <div class="info-item">
@@ -740,6 +756,8 @@ Kenteken: ${vehicle.licenseNumber}
 Chassisnummer: ${vehicle.vin}
 Kilometerstand: ${vehicle.mileage?.toLocaleString('nl-NL')} km
 ${vehicle.year ? `Bouwjaar: ${vehicle.year}` : ''}
+${isB2B && options.bpmIncluded ? `Voertuig wordt geleverd inclusief NL kenteken` : ''}
+${isB2B && options.maxDamageAmount && options.maxDamageAmount > 0 ? `Maximaal schade bedrag: € ${options.maxDamageAmount.toLocaleString('nl-NL')}` : ''}
 ${!isB2B && options.deliveryPackage ? `
 Afleverpakket: ${DELIVERY_PACKAGE_LABELS[options.deliveryPackage as keyof typeof DELIVERY_PACKAGE_LABELS]}
 Pakket prijs: € ${deliveryPackagePrice.toLocaleString('nl-NL')}` : ''}
