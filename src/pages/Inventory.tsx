@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { FileText, Mail, Plus } from "lucide-react";
+import { FileText, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { VehicleTable } from "@/components/inventory/VehicleTable";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
+import { AddVehicleDialog } from "@/components/inventory/AddVehicleDialog";
 import { Button } from "@/components/ui/button";
 import { Vehicle, PaymentStatus, FileCategory } from "@/types/inventory";
 import { PageHeader } from "@/components/ui/page-header";
@@ -337,6 +338,14 @@ const Inventory = () => {
     changeVehicleStatusMutation.mutate({ vehicleId, status });
   };
 
+  const handleVehicleAdded = (newVehicle: Vehicle) => {
+    // Invalidate and refetch vehicles list
+    queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+    
+    toast({
+      description: `Voertuig ${newVehicle.brand} ${newVehicle.model} toegevoegd`
+    });
+  };
   
   return (
     <DashboardLayout>
@@ -354,10 +363,7 @@ const Inventory = () => {
               <Mail className="h-4 w-4 mr-2" />
               E-mail sturen
             </Button>
-            <Button variant="default" size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Nieuw voertuig
-            </Button>
+            <AddVehicleDialog onVehicleAdded={handleVehicleAdded} />
           </div>
         </PageHeader>
         

@@ -24,6 +24,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { SupplierSelector } from "./SupplierSelector";
 import { cn } from "@/lib/utils";
 import { Vehicle, ImportStatus, WorkshopStatus, DamageStatus, LocationStatus, SalesStatus, PaymentStatus } from "@/types/inventory";
 
@@ -36,9 +37,10 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
   onSubmit,
   initialData
 }) => {
-  const [formData, setFormData] = useState<Omit<Vehicle, "id">>({
+  const [formData, setFormData] = useState<Omit<Vehicle, "id"> & { supplierId?: string }>({
     brand: initialData?.brand || "",
     model: initialData?.model || "",
+    color: initialData?.color || "",
     licenseNumber: initialData?.licenseNumber || "",
     vin: initialData?.vin || "",
     mileage: initialData?.mileage || 0,
@@ -55,8 +57,8 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
       status: initialData?.damage?.status || "geen"
     },
     purchasePrice: initialData?.purchasePrice || 0,
-    sellingPrice: initialData?.sellingPrice || 0, // Add sellingPrice property
-    paymentStatus: initialData?.paymentStatus || "niet_betaald", // Add paymentStatus property
+    sellingPrice: initialData?.sellingPrice || 0,
+    paymentStatus: initialData?.paymentStatus || "niet_betaald",
     cmrSent: initialData?.cmrSent || false,
     cmrDate: initialData?.cmrDate || null,
     papersReceived: initialData?.papersReceived || false,
@@ -64,10 +66,11 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
     notes: initialData?.notes || "",
     mainPhotoUrl: initialData?.mainPhotoUrl || null,
     photos: initialData?.photos || [],
-    customerId: initialData?.customerId || undefined
+    customerId: initialData?.customerId || undefined,
+    supplierId: ""
   });
   
-  const handleChange = (field: keyof Omit<Vehicle, "id" | "damage">, value: any) => {
+  const handleChange = (field: keyof Omit<Vehicle, "id" | "damage"> | "supplierId", value: any) => {
     setFormData({ ...formData, [field]: value });
   };
 
@@ -80,14 +83,23 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    
+    // Remove supplierId from the data before submitting (it's not part of Vehicle type)
+    const { supplierId, ...vehicleData } = formData;
+    
+    onSubmit(vehicleData);
   };
   
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left column */}
         <div className="space-y-4">
+          <SupplierSelector
+            value={formData.supplierId}
+            onValueChange={(value) => handleChange('supplierId', value)}
+          />
+          
           {/* Brand & Model */}
           <div className="space-y-2">
             <Label htmlFor="brand">Merk *</Label>
@@ -106,6 +118,15 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
               value={formData.model}
               onChange={(e) => handleChange('model', e.target.value)}
               required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="color">Kleur</Label>
+            <Input
+              id="color"
+              value={formData.color || ""}
+              onChange={(e) => handleChange('color', e.target.value)}
             />
           </div>
           
@@ -141,6 +162,30 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
             />
           </div>
           
+          {/* Purchase Price */}
+          <div className="space-y-2">
+            <Label htmlFor="purchasePrice">Inkoopprijs (€)</Label>
+            <Input
+              id="purchasePrice"
+              type="number"
+              value={formData.purchasePrice}
+              onChange={(e) => handleChange('purchasePrice', parseFloat(e.target.value))}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="sellingPrice">Verkoopprijs (€)</Label>
+            <Input
+              id="sellingPrice"
+              type="number"
+              value={formData.sellingPrice}
+              onChange={(e) => handleChange('sellingPrice', parseFloat(e.target.value))}
+            />
+          </div>
+        </div>
+        
+        {/* Right column */}
+        <div className="space-y-4">
           {/* Import Status */}
           <div className="space-y-2">
             <Label>Importstatus</Label>
@@ -153,10 +198,15 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="niet_gestart">Niet gestart</SelectItem>
+                <SelectItem value="aangemeld">Aangemeld</SelectItem>
+                <SelectItem value="goedgekeurd">Goedgekeurd</SelectItem>
                 <SelectItem value="transport_geregeld">Transport geregeld</SelectItem>
                 <SelectItem value="onderweg">Onderweg</SelectItem>
                 <SelectItem value="aangekomen">Aangekomen</SelectItem>
                 <SelectItem value="afgemeld">Afgemeld</SelectItem>
+                <SelectItem value="bpm_betaald">BPM betaald</SelectItem>
+                <SelectItem value="herkeuring">Herkeuring</SelectItem>
+                <SelectItem value="ingeschreven">Ingeschreven</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -170,7 +220,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
               onValueChange={(value: WorkshopStatus) => {
                 if (value) handleChange('workshopStatus', value);
               }}
-              className="justify-start"
+              className="justify-start grid grid-cols-2 gap-2"
             >
               <ToggleGroupItem value="wachten">Wachten</ToggleGroupItem>
               <ToggleGroupItem value="poetsen">Poetsen</ToggleGroupItem>
@@ -179,20 +229,6 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
             </ToggleGroup>
           </div>
           
-          {/* Purchase Price */}
-          <div className="space-y-2">
-            <Label htmlFor="purchasePrice">Inkoopprijs (€)</Label>
-            <Input
-              id="purchasePrice"
-              type="number"
-              value={formData.purchasePrice}
-              onChange={(e) => handleChange('purchasePrice', parseFloat(e.target.value))}
-            />
-          </div>
-        </div>
-        
-        {/* Right column */}
-        <div className="space-y-4">
           {/* Location & Sales Status */}
           <div className="space-y-2">
             <Label>Locatie</Label>
@@ -207,6 +243,11 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
                 <SelectItem value="showroom">Showroom</SelectItem>
                 <SelectItem value="opslag">Opslag</SelectItem>
                 <SelectItem value="calandstraat">Calandstraat</SelectItem>
+                <SelectItem value="werkplaats">Werkplaats</SelectItem>
+                <SelectItem value="poetser">Poetser</SelectItem>
+                <SelectItem value="spuiter">Spuiter</SelectItem>
+                <SelectItem value="onderweg">Onderweg</SelectItem>
+                <SelectItem value="oud_beijerland">Oud Beijerland</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -224,12 +265,30 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
                 <SelectItem value="voorraad">Voorraad</SelectItem>
                 <SelectItem value="verkocht_b2b">Verkocht B2B</SelectItem>
                 <SelectItem value="verkocht_b2c">Verkocht B2C</SelectItem>
+                <SelectItem value="afgeleverd">Afgeleverd</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Betaalstatus</Label>
+            <Select 
+              value={formData.paymentStatus} 
+              onValueChange={(value: PaymentStatus) => handleChange('paymentStatus', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecteer betaalstatus" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="niet_betaald">Niet betaald</SelectItem>
+                <SelectItem value="aanbetaling">Aanbetaling</SelectItem>
+                <SelectItem value="volledig_betaald">Volledig betaald</SelectItem>
               </SelectContent>
             </Select>
           </div>
           
           {/* Checkboxes */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="arrived"
@@ -358,32 +417,32 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
               </div>
             )}
           </div>
-          
-          {/* Damage */}
-          <div className="space-y-2">
-            <Label>Schadeomschrijving</Label>
-            <Textarea
-              value={formData.damage.description}
-              onChange={(e) => handleDamageChange('description', e.target.value)}
-              placeholder="Beschrijf eventuele schade..."
-            />
-            <Select 
-              value={formData.damage.status} 
-              onValueChange={(value: DamageStatus) => handleDamageChange('status', value)}
-            >
-              <SelectTrigger className="mt-2">
-                <SelectValue placeholder="Selecteer schade status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="geen">Geen schade</SelectItem>
-                <SelectItem value="licht">Lichte schade</SelectItem>
-                <SelectItem value="middel">Middelmatige schade</SelectItem>
-                <SelectItem value="zwaar">Zware schade</SelectItem>
-                <SelectItem value="total_loss">Total loss</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
+      </div>
+      
+      {/* Damage section - full width */}
+      <div className="space-y-2">
+        <Label>Schadeomschrijving</Label>
+        <Textarea
+          value={formData.damage.description}
+          onChange={(e) => handleDamageChange('description', e.target.value)}
+          placeholder="Beschrijf eventuele schade..."
+        />
+        <Select 
+          value={formData.damage.status} 
+          onValueChange={(value: DamageStatus) => handleDamageChange('status', value)}
+        >
+          <SelectTrigger className="mt-2">
+            <SelectValue placeholder="Selecteer schade status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="geen">Geen schade</SelectItem>
+            <SelectItem value="licht">Lichte schade</SelectItem>
+            <SelectItem value="middel">Middelmatige schade</SelectItem>
+            <SelectItem value="zwaar">Zware schade</SelectItem>
+            <SelectItem value="total_loss">Total loss</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       
       {/* Notes */}
