@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -17,7 +16,8 @@ import {
   GanttChartIcon,
   ShieldIcon,
   CheckCircle,
-  Flag
+  Flag,
+  Bot
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -194,6 +194,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             >
               <BarChart3 className="mr-2 h-4 w-4" />
               Rapportages
+            </Button>
+          </Link>
+          <Link to="/ai-agents">
+            <Button
+              variant={isActive("/ai-agents") ? "default" : "ghost"}
+              className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+              size="sm"
+            >
+              <Bot className="mr-2 h-4 w-4" />
+              AI Agents
             </Button>
           </Link>
           <Link to="/warranty">

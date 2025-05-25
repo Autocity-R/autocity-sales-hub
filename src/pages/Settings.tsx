@@ -10,6 +10,7 @@ import { NotificationSettings } from "@/components/settings/NotificationSettings
 import { APISettings } from "@/components/settings/APISettings";
 import { LoanCarManagement } from "@/components/settings/LoanCarManagement";
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
+import { AIAgentManagement } from "@/components/settings/AIAgentManagement";
 import { useSearchParams } from "react-router-dom";
 
 const Settings = () => {
@@ -22,6 +23,8 @@ const Settings = () => {
         return <UserSettings />;
       case "users":
         return <UserManagement />;
+      case "ai-agents":
+        return <AIAgentManagement />;
       case "email-templates":
         return <EmailTemplateManagement />;
       case "contracts":

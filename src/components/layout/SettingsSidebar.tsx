@@ -10,7 +10,8 @@ import {
   Settings, 
   Car,
   FileText,
-  PenTool
+  PenTool,
+  Bot
 } from "lucide-react";
 
 const settingsItems = [
@@ -23,6 +24,11 @@ const settingsItems = [
     name: "Gebruikersbeheer",
     href: "/settings?tab=users",
     icon: Users,
+  },
+  {
+    name: "AI Agent Beheer",
+    href: "/settings?tab=ai-agents",
+    icon: Bot,
   },
   {
     name: "Email Templates",

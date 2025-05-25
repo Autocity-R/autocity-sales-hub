@@ -8,6 +8,7 @@ import InventoryB2C from "@/pages/InventoryB2C";
 import InventoryDelivered from "@/pages/InventoryDelivered";
 import InventoryOnline from "@/pages/InventoryOnline";
 import LoanCars from "@/pages/LoanCars";
+import AIAgents from "@/pages/AIAgents";
 import Leads from "@/pages/Leads";
 import Calendar from "@/pages/Calendar";
 import Customers from "@/pages/Customers";
@@ -35,6 +36,7 @@ function App() {
         <Route path="/inventory/delivered" element={<InventoryDelivered />} />
         <Route path="/inventory/online" element={<InventoryOnline />} />
         <Route path="/loan-cars" element={<LoanCars />} />
+        <Route path="/ai-agents" element={<AIAgents />} />
         <Route path="/leads" element={<Leads />} />
         <Route path="/calendar" element={<Calendar />} />
         <Route path="/customers" element={<Customers />} />
