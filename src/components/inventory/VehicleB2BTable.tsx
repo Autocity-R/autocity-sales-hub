@@ -9,7 +9,8 @@ import {
   ArrowUp, 
   ArrowDown, 
   Euro,
-  Truck
+  Truck,
+  User
 } from "lucide-react";
 import {
   Table,
@@ -182,6 +183,9 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
               {renderSortableHeader("sellingPrice", "Verkoopprijs")}
             </TableHead>
             <TableHead>
+              {renderSortableHeader("salespersonName", "Verkoper")}
+            </TableHead>
+            <TableHead>
               {renderSortableHeader("importStatus", "Importstatus")}
             </TableHead>
             <TableHead>
@@ -198,7 +202,7 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
         </TableHeader>
         <TableBody>
           <TableRow>
-            <TableCell colSpan={14} className="h-24 text-center">
+            <TableCell colSpan={15} className="h-24 text-center">
               Geen B2B verkochte voertuigen gevonden.
             </TableCell>
           </TableRow>
@@ -240,6 +244,9 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
             </TableHead>
             <TableHead>
               {renderSortableHeader("sellingPrice", "Verkoopprijs")}
+            </TableHead>
+            <TableHead>
+              {renderSortableHeader("salespersonName", "Verkoper")}
             </TableHead>
             <TableHead>
               {renderSortableHeader("importStatus", "Importstatus")}
@@ -297,6 +304,16 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                   <span className="font-medium">€ {vehicle.sellingPrice.toLocaleString('nl-NL')}</span>
                 ) : (
                   <span className="text-muted-foreground">Niet ingesteld</span>
+                )}
+              </TableCell>
+              <TableCell>
+                {vehicle.salespersonName ? (
+                  <div className="flex items-center space-x-1">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{vehicle.salespersonName}</span>
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground text-sm">Niet toegewezen</span>
                 )}
               </TableCell>
               <TableCell>{renderImportStatusBadge(vehicle.importStatus)}</TableCell>

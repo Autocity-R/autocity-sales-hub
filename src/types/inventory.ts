@@ -53,6 +53,16 @@ export type PaymentStatus =  // New type
   | "aanbetaling"
   | "volledig_betaald";
 
+export type UserRole = "Admin" | "Verkoper" | "Financieel" | "Werkplaats";
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  isActive: boolean;
+}
+
 export interface Vehicle {
   id: string;
   brand: string;
@@ -87,6 +97,8 @@ export interface Vehicle {
   customerId?: string;      // Added customer reference
   customerName?: string;    // Added customer name for display
   deliveryDate?: Date | null; // Added delivery date
+  salespersonId?: string;   // Added salesperson reference
+  salespersonName?: string; // Added salesperson name for display
 }
 
 export interface Supplier {
