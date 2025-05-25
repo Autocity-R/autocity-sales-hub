@@ -1,30 +1,51 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Mail, AlertCircle, CheckCircle, Calendar, FileText, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Vehicle } from "@/types/inventory";
+import { ContractOptions } from "@/types/email";
 import { isButtonLinkedToTemplate } from "@/services/emailTemplateService";
+import { ContractConfigDialog } from "../ContractConfigDialog";
 
 interface B2CEmailsTabProps {
-  onSendEmail: (type: string) => void;
+  onSendEmail: (type: string, contractOptions?: ContractOptions) => void;
   vehicle?: Vehicle;
 }
 
 export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle }) => {
+  const [contractDialogOpen, setContractDialogOpen] = useState(false);
+  
   const isB2C = vehicle?.salesStatus === "verkocht_b2c";
   const isVehicleArrived = vehicle?.arrived;
 
+  const handleContractClick = () => {
+    setContractDialogOpen(true);
+  };
+
+  const handleSendContract = (options: ContractOptions) => {
+    onSendEmail("contract_b2c", options);
+  };
+
   const renderEmailButton = (buttonType: string, icon: React.ReactNode, label: string, variant: "default" | "outline" = "default") => {
     const hasTemplate = isButtonLinkedToTemplate(buttonType);
+    const isContractButton = buttonType.includes("contract");
+    
+    const handleClick = () => {
+      if (isContractButton) {
+        handleContractClick();
+      } else {
+        onSendEmail(buttonType);
+      }
+    };
     
     return (
       <Button 
         className="w-full justify-start" 
         variant={hasTemplate ? variant : "outline"}
-        onClick={() => onSendEmail(buttonType)}
+        onClick={handleClick}
         disabled={!hasTemplate}
         title={hasTemplate ? `Verstuur: ${label}` : `Geen email template gekoppeld aan ${label}`}
       >
@@ -146,6 +167,17 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
         <p>Knoppen met een ⚙️ icoon hebben nog geen email template gekoppeld. 
         Ga naar Instellingen → Email Templates om templates aan knoppen te koppelen.</p>
       </div>
+
+      {/* Contract Configuration Dialog */}
+      {vehicle && (
+        <ContractConfigDialog
+          isOpen={contractDialogOpen}
+          onClose={() => setContractDialogOpen(false)}
+          vehicle={vehicle}
+          contractType="b2c"
+          onSendContract={handleSendContract}
+        />
+      )}
     </div>
   );
 };

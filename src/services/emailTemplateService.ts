@@ -1,6 +1,8 @@
-
 import { EmailTemplate } from "@/types/email";
-import { Vehicle } from "@/types/inventory";
+import { Vehicle, VehicleFile } from "@/types/inventory";
+import { ContractOptions } from "@/types/email";
+import { generateContract } from "./contractService";
+import { fetchVehicleFiles } from "./inventoryService";
 
 // Mock email templates - in productie zou dit vanuit een API komen
 let emailTemplates: EmailTemplate[] = [
@@ -11,7 +13,8 @@ let emailTemplates: EmailTemplate[] = [
     content: "Beste leverancier,\n\nBijgevoegd vindt u het CMR document voor:\n- Voertuig: {voertuig_merk} {voertuig_model}\n- VIN: {voertuig_vin}\n- Kenteken: {voertuig_kenteken}\n\nMet vriendelijke groet,\n{gebruiker_naam}",
     linkedButton: "cmr_supplier",
     hasAttachment: true,
-    attachmentType: "CMR"
+    attachmentType: "auto-upload",
+    staticAttachmentType: "CMR"
   },
   {
     id: "2", 
@@ -20,7 +23,8 @@ let emailTemplates: EmailTemplate[] = [
     content: "Beste transporteur,\n\nHierbij het pickup document voor:\n- Voertuig: {voertuig_merk} {voertuig_model}\n- Locatie: {voertuig_locatie}\n- VIN: {voertuig_vin}\n\nGraag contact opnemen voor planning.\n\nMet vriendelijke groet,\n{gebruiker_naam}",
     linkedButton: "transport_pickup",
     hasAttachment: true,
-    attachmentType: "Pickup Document"
+    attachmentType: "auto-upload",
+    staticAttachmentType: "Pickup Document"
   }
 ];
 
@@ -55,7 +59,11 @@ export const determineRecipient = (buttonValue: string, vehicleData: Vehicle): {
   }
 };
 
-export const sendEmailWithTemplate = async (buttonValue: string, vehicleData: Vehicle): Promise<boolean> => {
+export const sendEmailWithTemplate = async (
+  buttonValue: string, 
+  vehicleData: Vehicle,
+  contractOptions?: ContractOptions
+): Promise<boolean> => {
   const template = getEmailTemplateByButton(buttonValue);
   
   if (!template) {
@@ -79,8 +87,15 @@ export const sendEmailWithTemplate = async (buttonValue: string, vehicleData: Ve
     console.log(`Onderwerp: ${processedSubject}`);
     console.log(`Inhoud: ${processedContent}`);
     
+    // Handle attachments based on template type
     if (template.hasAttachment) {
-      console.log(`Bijlage: ${template.attachmentType}`);
+      const attachments = await getEmailAttachments(template, vehicleData, contractOptions);
+      if (attachments.length > 0) {
+        console.log(`Bijlagen (${attachments.length}):`, attachments.map(a => a.name));
+      } else if (template.attachmentType === "auto-upload") {
+        console.warn(`Geen documenten gevonden voor ${template.staticAttachmentType} van voertuig ${vehicleData.id}`);
+        return false;
+      }
     }
 
     // Hier zou de daadwerkelijke email verzending plaatsvinden
@@ -88,13 +103,73 @@ export const sendEmailWithTemplate = async (buttonValue: string, vehicleData: Ve
     //   to: recipient.email, 
     //   subject: processedSubject, 
     //   content: processedContent,
-    //   attachments: template.hasAttachment ? [template.attachmentType] : []
+    //   attachments: attachments
     // });
     
     return true;
   } catch (error) {
     console.error("Fout bij verzenden email:", error);
     return false;
+  }
+};
+
+const getEmailAttachments = async (
+  template: EmailTemplate, 
+  vehicleData: Vehicle,
+  contractOptions?: ContractOptions
+): Promise<{ name: string; url: string; content?: string }[]> => {
+  const attachments: { name: string; url: string; content?: string }[] = [];
+
+  if (!template.hasAttachment) return attachments;
+
+  switch (template.attachmentType) {
+    case "auto-upload":
+      // Get documents from vehicle files
+      const files = await fetchVehicleFiles(vehicleData.id);
+      const relevantFiles = getRelevantDocuments(files, template.staticAttachmentType || "");
+      
+      attachments.push(...relevantFiles.map(file => ({
+        name: file.name,
+        url: file.url
+      })));
+      break;
+
+    case "generated-contract":
+      // Generate contract document
+      if (contractOptions) {
+        const contractType = template.linkedButton.includes("b2b") ? "b2b" : "b2c";
+        const contract = await generateContract(vehicleData, contractType, contractOptions);
+        
+        attachments.push({
+          name: contract.fileName,
+          url: contract.pdfUrl || "",
+          content: contract.content
+        });
+      }
+      break;
+
+    case "static-file":
+      // Handle static files (legacy support)
+      if (template.staticAttachmentType) {
+        attachments.push({
+          name: template.staticAttachmentType,
+          url: `https://example.com/static/${template.staticAttachmentType}`
+        });
+      }
+      break;
+  }
+
+  return attachments;
+};
+
+const getRelevantDocuments = (files: VehicleFile[], documentType: string): VehicleFile[] => {
+  switch (documentType) {
+    case "CMR":
+      return files.filter(file => file.category === "cmr");
+    case "Pickup Document":
+      return files.filter(file => file.category === "pickup");
+    default:
+      return [];
   }
 };
 

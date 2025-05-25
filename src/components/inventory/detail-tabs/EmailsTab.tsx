@@ -1,30 +1,55 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Mail, AlertCircle, CheckCircle, Truck, FileText, Calendar, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Vehicle } from "@/types/inventory";
+import { ContractOptions } from "@/types/email";
 import { isButtonLinkedToTemplate } from "@/services/emailTemplateService";
+import { ContractConfigDialog } from "../ContractConfigDialog";
 
 interface EmailsTabProps {
-  onSendEmail: (type: string) => void;
+  onSendEmail: (type: string, contractOptions?: ContractOptions) => void;
   vehicle?: Vehicle;
 }
 
 export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle }) => {
+  const [contractDialogOpen, setContractDialogOpen] = useState(false);
+  const [contractType, setContractType] = useState<"b2b" | "b2c">("b2b");
+  
   const isB2B = vehicle?.salesStatus === "verkocht_b2b";
   const isVehicleArrived = vehicle?.arrived;
 
+  const handleContractClick = (type: "b2b" | "b2c") => {
+    setContractType(type);
+    setContractDialogOpen(true);
+  };
+
+  const handleSendContract = (options: ContractOptions) => {
+    const buttonType = contractType === "b2b" ? "contract_b2b" : "contract_b2c";
+    onSendEmail(buttonType, options);
+  };
+
   const renderEmailButton = (buttonType: string, icon: React.ReactNode, label: string, variant: "default" | "outline" = "default") => {
     const hasTemplate = isButtonLinkedToTemplate(buttonType);
+    const isContractButton = buttonType.includes("contract");
+    
+    const handleClick = () => {
+      if (isContractButton) {
+        const type = buttonType.includes("b2b") ? "b2b" : "b2c";
+        handleContractClick(type);
+      } else {
+        onSendEmail(buttonType);
+      }
+    };
     
     return (
       <Button 
         className="w-full justify-start" 
         variant={hasTemplate ? variant : "outline"}
-        onClick={() => onSendEmail(buttonType)}
+        onClick={handleClick}
         disabled={!hasTemplate}
         title={hasTemplate ? `Verstuur: ${label}` : `Geen email template gekoppeld aan ${label}`}
       >
@@ -129,6 +154,17 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle }) =>
           Ga naar Instellingen → Email Templates om templates aan knoppen te koppelen.</p>
         </div>
       </div>
+
+      {/* Contract Configuration Dialog */}
+      {vehicle && (
+        <ContractConfigDialog
+          isOpen={contractDialogOpen}
+          onClose={() => setContractDialogOpen(false)}
+          vehicle={vehicle}
+          contractType={contractType}
+          onSendContract={handleSendContract}
+        />
+      )}
     </div>
   );
 };

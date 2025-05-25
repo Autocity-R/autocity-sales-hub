@@ -50,7 +50,9 @@ export const EmailTemplateManagement: React.FC = () => {
     subject: "",
     content: "",
     linkedButton: "",
-    hasAttachment: false
+    hasAttachment: false,
+    attachmentType: "auto-upload",
+    staticAttachmentType: ""
   });
 
   const [newButtonOpen, setNewButtonOpen] = useState(false);
@@ -71,11 +73,34 @@ export const EmailTemplateManagement: React.FC = () => {
     "gebruiker_naam", "gebruiker_email", "bedrijf_naam", "datum_vandaag"
   ];
 
+  const attachmentTypes = [
+    { value: "auto-upload", label: "Auto-upload documenten (CMR/Pickup uit voertuig bestanden)" },
+    { value: "generated-contract", label: "Gegenereerd koopcontract" },
+    { value: "static-file", label: "Statisch bestand" }
+  ];
+
+  const staticDocumentTypes = [
+    { value: "CMR", label: "CMR Documenten" },
+    { value: "Pickup Document", label: "Pickup Documenten" },
+    { value: "Insurance", label: "Verzekeringsdocumenten" },
+    { value: "Registration", label: "Kenteken documenten" }
+  ];
+
   const handleSaveTemplate = () => {
     if (!newTemplate.name || !newTemplate.subject || !newTemplate.content || !newTemplate.linkedButton) {
       toast({
         title: "Fout",
         description: "Alle velden zijn verplicht",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate attachment configuration
+    if (newTemplate.hasAttachment && newTemplate.attachmentType === "auto-upload" && !newTemplate.staticAttachmentType) {
+      toast({
+        title: "Fout",
+        description: "Selecteer een document type voor auto-upload bijlagen",
         variant: "destructive"
       });
       return;
@@ -98,11 +123,20 @@ export const EmailTemplateManagement: React.FC = () => {
       content: newTemplate.content!,
       linkedButton: newTemplate.linkedButton!,
       hasAttachment: newTemplate.hasAttachment || false,
-      attachmentType: newTemplate.attachmentType
+      attachmentType: newTemplate.attachmentType,
+      staticAttachmentType: newTemplate.staticAttachmentType
     });
 
     setTemplates(getAllEmailTemplates());
-    setNewTemplate({ name: "", subject: "", content: "", linkedButton: "", hasAttachment: false });
+    setNewTemplate({ 
+      name: "", 
+      subject: "", 
+      content: "", 
+      linkedButton: "", 
+      hasAttachment: false,
+      attachmentType: "auto-upload",
+      staticAttachmentType: ""
+    });
     
     toast({
       title: "Template opgeslagen",
@@ -257,7 +291,9 @@ export const EmailTemplateManagement: React.FC = () => {
                         {template.hasAttachment && (
                           <Badge variant="secondary" className="gap-1">
                             <Paperclip className="h-3 w-3" />
-                            {template.attachmentType}
+                            {template.attachmentType === "auto-upload" && template.staticAttachmentType}
+                            {template.attachmentType === "generated-contract" && "Koopcontract"}
+                            {template.attachmentType === "static-file" && template.staticAttachmentType}
                           </Badge>
                         )}
                       </CardTitle>
@@ -362,21 +398,79 @@ export const EmailTemplateManagement: React.FC = () => {
                   onChange={(e) => setNewTemplate({ 
                     ...newTemplate, 
                     hasAttachment: e.target.checked,
-                    attachmentType: e.target.checked ? newTemplate.attachmentType : undefined
+                    attachmentType: e.target.checked ? newTemplate.attachmentType : undefined,
+                    staticAttachmentType: e.target.checked ? newTemplate.staticAttachmentType : undefined
                   })}
                 />
                 <Label htmlFor="has-attachment">Document bijvoegen</Label>
               </div>
 
               {newTemplate.hasAttachment && (
-                <div>
-                  <Label htmlFor="attachment-type">Document Type</Label>
-                  <Input
-                    id="attachment-type"
-                    value={newTemplate.attachmentType || ""}
-                    onChange={(e) => setNewTemplate({ ...newTemplate, attachmentType: e.target.value })}
-                    placeholder="Bijv: CMR, Contract, Factuur"
-                  />
+                <div className="space-y-4 p-4 border rounded-md bg-muted/20">
+                  <div>
+                    <Label htmlFor="attachment-type">Bijlage Type</Label>
+                    <Select 
+                      value={newTemplate.attachmentType || "auto-upload"} 
+                      onValueChange={(value: "auto-upload" | "generated-contract" | "static-file") => 
+                        setNewTemplate({ ...newTemplate, attachmentType: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {attachmentTypes.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {newTemplate.attachmentType === "auto-upload" && (
+                    <div>
+                      <Label htmlFor="static-attachment-type">Document Type</Label>
+                      <Select 
+                        value={newTemplate.staticAttachmentType || ""} 
+                        onValueChange={(value) => 
+                          setNewTemplate({ ...newTemplate, staticAttachmentType: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecteer document type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {staticDocumentTypes.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>
+                              {type.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {newTemplate.attachmentType === "generated-contract" && (
+                    <div className="p-3 bg-blue-50 rounded-md">
+                      <p className="text-sm text-blue-800">
+                        <strong>Koopcontract:</strong> Bij deze optie wordt automatisch een koopcontract gegenereerd 
+                        met voertuig- en klantgegevens. De gebruiker kan opties configureren voordat de email wordt verzonden.
+                      </p>
+                    </div>
+                  )}
+
+                  {newTemplate.attachmentType === "static-file" && (
+                    <div>
+                      <Label htmlFor="static-file-name">Bestandsnaam</Label>
+                      <Input
+                        id="static-file-name"
+                        value={newTemplate.staticAttachmentType || ""}
+                        onChange={(e) => setNewTemplate({ ...newTemplate, staticAttachmentType: e.target.value })}
+                        placeholder="Bijv: Algemene_voorwaarden.pdf"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -417,7 +511,6 @@ export const EmailTemplateManagement: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Edit Template Dialog */}
       {editingTemplate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -473,20 +566,79 @@ export const EmailTemplateManagement: React.FC = () => {
                   onChange={(e) => setEditingTemplate({ 
                     ...editingTemplate, 
                     hasAttachment: e.target.checked,
-                    attachmentType: e.target.checked ? editingTemplate.attachmentType : undefined
+                    attachmentType: e.target.checked ? editingTemplate.attachmentType : undefined,
+                    staticAttachmentType: e.target.checked ? editingTemplate.staticAttachmentType : undefined
                   })}
                 />
                 <Label htmlFor="edit-has-attachment">Document bijvoegen</Label>
               </div>
 
               {editingTemplate.hasAttachment && (
-                <div>
-                  <Label>Document Type</Label>
-                  <Input
-                    value={editingTemplate.attachmentType || ""}
-                    onChange={(e) => setEditingTemplate({ ...editingTemplate, attachmentType: e.target.value })}
-                    placeholder="Bijv: CMR, Contract, Factuur"
-                  />
+                <div className="space-y-4 p-4 border rounded-md bg-muted/20">
+                  <div>
+                    <Label htmlFor="attachment-type">Bijlage Type</Label>
+                    <Select 
+                      value={editingTemplate.attachmentType || "auto-upload"} 
+                      onValueChange={(value: "auto-upload" | "generated-contract" | "static-file") => 
+                        setEditingTemplate({ ...editingTemplate, attachmentType: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {attachmentTypes.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {editingTemplate.attachmentType === "auto-upload" && (
+                    <div>
+                      <Label htmlFor="static-attachment-type">Document Type</Label>
+                      <Select 
+                        value={editingTemplate.staticAttachmentType || ""} 
+                        onValueChange={(value) => 
+                          setEditingTemplate({ ...editingTemplate, staticAttachmentType: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecteer document type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {staticDocumentTypes.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>
+                              {type.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {editingTemplate.attachmentType === "generated-contract" && (
+                    <div className="p-3 bg-blue-50 rounded-md">
+                      <p className="text-sm text-blue-800">
+                        <strong>Koopcontract:</strong> Bij deze optie wordt automatisch een koopcontract gegenereerd 
+                        met voertuig- en klantgegevens. De gebruiker kan opties configureren voordat de email wordt verzonden.
+                      </p>
+                    </div>
+                  )}
+
+                  {editingTemplate.attachmentType === "static-file" && (
+                    <div>
+                      <Label htmlFor="static-file-name">Bestandsnaam</Label>
+                      <Input
+                        id="static-file-name"
+                        value={editingTemplate.staticAttachmentType || ""}
+                        onChange={(e) => setEditingTemplate({ ...editingTemplate, staticAttachmentType: e.target.value })}
+                        placeholder="Bijv: Algemene_voorwaarden.pdf"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
