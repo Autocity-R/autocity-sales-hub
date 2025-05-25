@@ -47,7 +47,7 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
   return (
     <TableHeader>
       <TableRow>
-        <TableHead className="w-[50px]">
+        <TableHead className="w-12">
           <CustomCheckbox 
             checked={isAllSelected}
             indeterminate={isIndeterminate}
@@ -55,47 +55,47 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
             aria-label="Selecteer alle voertuigen"
           />
         </TableHead>
-        <TableHead className="w-[70px]">Foto</TableHead>
-        <TableHead>
+        <TableHead className="w-16">Foto</TableHead>
+        <TableHead className="min-w-20">
           {renderSortableHeader("brand", "Merk")}
         </TableHead>
-        <TableHead>
+        <TableHead className="min-w-24">
           {renderSortableHeader("model", "Model")}
         </TableHead>
-        <TableHead>
-          {renderSortableHeader("mileage", "KM Stand")}
+        <TableHead className="hidden md:table-cell min-w-20">
+          {renderSortableHeader("mileage", "KM")}
         </TableHead>
-        <TableHead>
+        <TableHead className="hidden md:table-cell min-w-28">
           {renderSortableHeader("licenseNumber", "Kenteken")}
         </TableHead>
-        <TableHead>
+        <TableHead className="hidden lg:table-cell min-w-32">
           {renderSortableHeader("vin", "VIN")}
         </TableHead>
-        <TableHead>
-          {renderSortableHeader("purchasePrice", "Inkoop prijs")}
+        <TableHead className="hidden xl:table-cell">
+          {renderSortableHeader("purchasePrice", "Inkoop")}
         </TableHead>
-        <TableHead>
-          {renderSortableHeader("sellingPrice", "Verkoopprijs")}
+        <TableHead className="hidden sm:table-cell">
+          {renderSortableHeader("sellingPrice", "Verkoop")}
         </TableHead>
-        <TableHead>
+        <TableHead className="hidden lg:table-cell min-w-24">
           {renderSortableHeader("customerName", "Klant")}
         </TableHead>
-        <TableHead>
+        <TableHead className="hidden xl:table-cell">
           {renderSortableHeader("salespersonName", "Verkoper")}
         </TableHead>
-        <TableHead>
-          {renderSortableHeader("importStatus", "Importstatus")}
+        <TableHead className="hidden xl:table-cell min-w-32">
+          {renderSortableHeader("importStatus", "Import")}
         </TableHead>
-        <TableHead>
+        <TableHead className="hidden xl:table-cell">
           {renderSortableHeader("location", "Locatie")}
         </TableHead>
-        <TableHead className="text-center">
-          {renderSortableHeader("papersReceived", "Papieren")}
+        <TableHead className="hidden lg:table-cell text-center w-20">
+          {renderSortableHeader("papersReceived", "Pap.")}
         </TableHead>
-        <TableHead>
-          {renderSortableHeader("paymentStatus", "Betaalstatus")}
+        <TableHead className="hidden sm:table-cell">
+          {renderSortableHeader("paymentStatus", "Status")}
         </TableHead>
-        <TableHead></TableHead>
+        <TableHead className="w-12"></TableHead>
       </TableRow>
     </TableHeader>
   );

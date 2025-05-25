@@ -263,291 +263,294 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
 
   if (vehicles.length === 0) {
     return (
-      <Table className="w-full">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[50px]">
-              <CustomCheckbox disabled />
-            </TableHead>
-            <TableHead className="w-[70px]">Foto</TableHead>
-            <TableHead className="w-[100px]">
-              {renderSortableHeader("brand", "Merk")}
-            </TableHead>
-            <TableHead>
-              {renderSortableHeader("model", "Model")}
-            </TableHead>
-            <TableHead className="w-[120px]">
-              {renderSortableHeader("licenseNumber", "Kenteken")}
-            </TableHead>
-            <TableHead>
-              {renderSortableHeader("vin", "VIN")}
-            </TableHead>
-            <TableHead>
-              {renderSortableHeader("purchasePrice", "Inkoop prijs")}
-            </TableHead>
-            <TableHead>
-              {renderSortableHeader("sellingPrice", "Verkoop prijs")}
-            </TableHead>
-            <TableHead>
-              {renderSortableHeader("mileage", "KM Stand")}
-            </TableHead>
-            <TableHead className="w-[150px]">
-              {renderSortableHeader("importStatus", "Importstatus")}
-            </TableHead>
-            <TableHead>
-              {renderSortableHeader("location", "Locatie")}
-            </TableHead>
-            <TableHead className="text-center">
-              {renderSortableHeader("arrived", "Aangekomen")}
-            </TableHead>
-            <TableHead className="text-center">
-              {renderSortableHeader("papersReceived", "Papieren")}
-            </TableHead>
-            <TableHead className="text-center">
-              {renderSortableHeader("showroomOnline", "Online")}
-            </TableHead>
-            <TableHead className="text-center w-[90px]">
-              {renderSortableHeader("staDagen", "Stadagen")}
-            </TableHead>
-            <TableHead></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow>
-            <TableCell colSpan={16} className="h-24 text-center">
-              Geen voertuigen gevonden.
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+      <div className="w-full overflow-hidden">
+        <Table className="w-full">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-12">
+                <CustomCheckbox disabled />
+              </TableHead>
+              <TableHead className="w-16">Foto</TableHead>
+              <TableHead className="min-w-20">
+                {renderSortableHeader("brand", "Merk")}
+              </TableHead>
+              <TableHead className="min-w-24">
+                {renderSortableHeader("model", "Model")}
+              </TableHead>
+              <TableHead className="hidden md:table-cell min-w-28">
+                {renderSortableHeader("licenseNumber", "Kenteken")}
+              </TableHead>
+              <TableHead className="hidden lg:table-cell min-w-32">
+                {renderSortableHeader("vin", "VIN")}
+              </TableHead>
+              <TableHead className="hidden xl:table-cell">
+                {renderSortableHeader("purchasePrice", "Inkoop")}
+              </TableHead>
+              <TableHead className="hidden sm:table-cell">
+                {renderSortableHeader("sellingPrice", "Verkoop")}
+              </TableHead>
+              <TableHead className="hidden lg:table-cell">
+                {renderSortableHeader("mileage", "KM")}
+              </TableHead>
+              <TableHead className="hidden xl:table-cell min-w-32">
+                {renderSortableHeader("importStatus", "Import")}
+              </TableHead>
+              <TableHead className="hidden xl:table-cell">
+                {renderSortableHeader("location", "Locatie")}
+              </TableHead>
+              <TableHead className="hidden xl:table-cell text-center w-20">
+                {renderSortableHeader("arrived", "Aang.")}
+              </TableHead>
+              <TableHead className="hidden lg:table-cell text-center w-20">
+                {renderSortableHeader("papersReceived", "Pap.")}
+              </TableHead>
+              <TableHead className="hidden md:table-cell text-center w-20">
+                {renderSortableHeader("showroomOnline", "Online")}
+              </TableHead>
+              <TableHead className="hidden lg:table-cell text-center w-20">
+                {renderSortableHeader("staDagen", "Dagen")}
+              </TableHead>
+              <TableHead className="w-12"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow>
+              <TableCell colSpan={16} className="h-24 text-center">
+                Geen voertuigen gevonden.
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
     );
   }
 
   return (
     <>
-      <Table className="w-full">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[50px]">
-              <CustomCheckbox 
-                onCheckedChange={(checked) => toggleSelectAll(!!checked)}
-                checked={selectedVehicles.length === vehicles.length && vehicles.length > 0}
-                indeterminate={selectedVehicles.length > 0 && selectedVehicles.length < vehicles.length}
-              />
-            </TableHead>
-            <TableHead className="w-[70px]">Foto</TableHead>
-            <TableHead className="w-[100px]">
-              {renderSortableHeader("brand", "Merk")}
-            </TableHead>
-            <TableHead>
-              {renderSortableHeader("model", "Model")}
-            </TableHead>
-            <TableHead className="w-[120px]">
-              {renderSortableHeader("licenseNumber", "Kenteken")}
-            </TableHead>
-            <TableHead>
-              {renderSortableHeader("vin", "VIN")}
-            </TableHead>
-            <TableHead>
-              {renderSortableHeader("purchasePrice", "Inkoop prijs")}
-            </TableHead>
-            <TableHead>
-              {renderSortableHeader("sellingPrice", "Verkoop prijs")}
-            </TableHead>
-            <TableHead>
-              {renderSortableHeader("mileage", "KM Stand")}
-            </TableHead>
-            <TableHead className="w-[150px]">
-              {renderSortableHeader("importStatus", "Importstatus")}
-            </TableHead>
-            <TableHead>
-              {renderSortableHeader("location", "Locatie")}
-            </TableHead>
-            <TableHead className="text-center">
-              {renderSortableHeader("arrived", "Aangekomen")}
-            </TableHead>
-            <TableHead className="text-center">
-              {renderSortableHeader("papersReceived", "Papieren")}
-            </TableHead>
-            <TableHead className="text-center">
-              {renderSortableHeader("showroomOnline", "Online")}
-            </TableHead>
-            <TableHead className="text-center w-[90px]">
-              {renderSortableHeader("staDagen", "Stadagen")}
-            </TableHead>
-            <TableHead></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {vehicles.map((vehicle) => (
-            <TableRow 
-              key={vehicle.id}
-              className="cursor-pointer hover:bg-muted"
-              onClick={() => handleSelectVehicle(vehicle)}
-            >
-              <TableCell onClick={(e) => e.stopPropagation()}>
+      <div className="w-full overflow-hidden">
+        <Table className="w-full">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-12">
                 <CustomCheckbox 
-                  checked={selectedVehicles.includes(vehicle.id)}
-                  onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, !!checked)}
+                  onCheckedChange={(checked) => toggleSelectAll(!!checked)}
+                  checked={selectedVehicles.length === vehicles.length && vehicles.length > 0}
+                  indeterminate={selectedVehicles.length > 0 && selectedVehicles.length < vehicles.length}
                 />
-              </TableCell>
-              <TableCell>
-                {vehicle.mainPhotoUrl ? (
-                  <Avatar className="w-12 h-12 rounded-md">
-                    <img 
-                      src={vehicle.mainPhotoUrl} 
-                      alt={`${vehicle.brand} ${vehicle.model}`} 
-                      className="object-cover w-full h-full rounded-md"
-                    />
-                  </Avatar>
-                ) : (
-                  <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
-                    <Car className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                )}
-              </TableCell>
-              <TableCell className="font-medium">{vehicle.brand}</TableCell>
-              <TableCell>{vehicle.model}</TableCell>
-              <TableCell>{vehicle.licenseNumber}</TableCell>
-              <TableCell>{vehicle.vin}</TableCell>
-              <TableCell className="font-medium">
-                {vehicle.purchasePrice ? `€ ${vehicle.purchasePrice.toLocaleString('nl-NL')}` : '-'}
-              </TableCell>
-              <TableCell className="font-medium">
-                {vehicle.sellingPrice ? `€ ${vehicle.sellingPrice.toLocaleString('nl-NL')}` : '-'}
-              </TableCell>
-              <TableCell>{vehicle.mileage.toLocaleString('nl-NL')} km</TableCell>
-              <TableCell>{renderImportStatusBadge(vehicle.importStatus)}</TableCell>
-              <TableCell>
-                <Badge variant="outline" className="capitalize">
-                  {vehicle.location}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-center">
-                {vehicle.arrived ? (
-                  <CircleCheck className="h-5 w-5 text-green-500 mx-auto" />
-                ) : (
-                  <CircleX className="h-5 w-5 text-red-500 mx-auto" />
-                )}
-              </TableCell>
-              <TableCell className="text-center">
-                {vehicle.papersReceived ? (
-                  <CircleCheck className="h-5 w-5 text-green-500 mx-auto" />
-                ) : (
-                  <CircleX className="h-5 w-5 text-red-500 mx-auto" />
-                )}
-              </TableCell>
-              <TableCell className="text-center">
-                {vehicle.showroomOnline ? (
-                  <CircleCheck className="h-5 w-5 text-green-500 mx-auto" />
-                ) : (
-                  <CircleX className="h-5 w-5 text-red-500 mx-auto" />
-                )}
-              </TableCell>
-              <TableCell className="text-center">
-                {calculateStaDagen(vehicle.createdAt)} dagen
-              </TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="float-right"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuLabel>Snelle acties</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={(e) => {
-                      e.stopPropagation();
-                      handleSelectVehicle(vehicle);
-                    }}>
-                      Details bekijken
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={(e) => {
-                      e.stopPropagation();
-                      handleEmailClick("transport_pickup", vehicle.id);
-                    }}>
-                      <Mail className="h-4 w-4 mr-2" />
-                      Pickup document sturen
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={(e) => {
-                      e.stopPropagation();
-                      handleEmailClick("cmr_supplier", vehicle.id);
-                    }}>
-                      <Mail className="h-4 w-4 mr-2" />
-                      CMR naar leverancier
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={(e) => {
-                      e.stopPropagation();
-                      handleSendEmail("bpm_huys", vehicle.id);
-                    }}>
-                      <Mail className="h-4 w-4 mr-2" />
-                      BPM Huys aanmelden
-                    </DropdownMenuItem>
-                    
-                    {handleChangeStatus && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Verkoopstatus</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation();
-                          handleStatusChange("verkocht_b2c", vehicle.id);
-                        }}>
-                          Verkocht particulier
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation();
-                          handleStatusChange("verkocht_b2b", vehicle.id);
-                        }}>
-                          Verkocht B2B
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation();
-                          handleChangeStatus(vehicle.id, 'voorraad');
-                        }}>
-                          Terug naar voorraad
-                        </DropdownMenuItem>
-                      </>
-                    )}
-
-                    {handleMarkAsDelivered && (
+              </TableHead>
+              <TableHead className="w-16">Foto</TableHead>
+              <TableHead className="min-w-20">
+                {renderSortableHeader("brand", "Merk")}
+              </TableHead>
+              <TableHead className="min-w-24">
+                {renderSortableHeader("model", "Model")}
+              </TableHead>
+              <TableHead className="hidden md:table-cell min-w-28">
+                {renderSortableHeader("licenseNumber", "Kenteken")}
+              </TableHead>
+              <TableHead className="hidden lg:table-cell min-w-32">
+                {renderSortableHeader("vin", "VIN")}
+              </TableHead>
+              <TableHead className="hidden xl:table-cell">
+                {renderSortableHeader("purchasePrice", "Inkoop")}
+              </TableHead>
+              <TableHead className="hidden sm:table-cell">
+                {renderSortableHeader("sellingPrice", "Verkoop")}
+              </TableHead>
+              <TableHead className="hidden lg:table-cell">
+                {renderSortableHeader("mileage", "KM")}
+              </TableHead>
+              <TableHead className="hidden xl:table-cell min-w-32">
+                {renderSortableHeader("importStatus", "Import")}
+              </TableHead>
+              <TableHead className="hidden xl:table-cell">
+                {renderSortableHeader("location", "Locatie")}
+              </TableHead>
+              <TableHead className="hidden xl:table-cell text-center w-20">
+                {renderSortableHeader("arrived", "Aang.")}
+              </TableHead>
+              <TableHead className="hidden lg:table-cell text-center w-20">
+                {renderSortableHeader("papersReceived", "Pap.")}
+              </TableHead>
+              <TableHead className="hidden md:table-cell text-center w-20">
+                {renderSortableHeader("showroomOnline", "Online")}
+              </TableHead>
+              <TableHead className="hidden lg:table-cell text-center w-20">
+                {renderSortableHeader("staDagen", "Dagen")}
+              </TableHead>
+              <TableHead className="w-12"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {vehicles.map((vehicle) => (
+              <TableRow 
+                key={vehicle.id}
+                className="cursor-pointer hover:bg-muted"
+                onClick={() => handleSelectVehicle(vehicle)}
+              >
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <CustomCheckbox 
+                    checked={selectedVehicles.includes(vehicle.id)}
+                    onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, !!checked)}
+                  />
+                </TableCell>
+                <TableCell>
+                  {vehicle.mainPhotoUrl ? (
+                    <Avatar className="w-12 h-12 rounded-md">
+                      <img 
+                        src={vehicle.mainPhotoUrl} 
+                        alt={`${vehicle.brand} ${vehicle.model}`} 
+                        className="object-cover w-full h-full rounded-md"
+                      />
+                    </Avatar>
+                  ) : (
+                    <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
+                      <Car className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell className="font-medium truncate">{vehicle.brand}</TableCell>
+                <TableCell className="truncate">{vehicle.model}</TableCell>
+                <TableCell className="hidden md:table-cell">{vehicle.licenseNumber}</TableCell>
+                <TableCell className="hidden lg:table-cell truncate">{vehicle.vin}</TableCell>
+                <TableCell className="hidden xl:table-cell font-medium">
+                  {vehicle.purchasePrice ? `€ ${vehicle.purchasePrice.toLocaleString('nl-NL')}` : '-'}
+                </TableCell>
+                <TableCell className="hidden sm:table-cell font-medium">
+                  {vehicle.sellingPrice ? `€ ${vehicle.sellingPrice.toLocaleString('nl-NL')}` : '-'}
+                </TableCell>
+                <TableCell className="hidden lg:table-cell">{vehicle.mileage.toLocaleString('nl-NL')} km</TableCell>
+                <TableCell className="hidden xl:table-cell">{renderImportStatusBadge(vehicle.importStatus)}</TableCell>
+                <TableCell className="hidden xl:table-cell">
+                  <Badge variant="outline" className="capitalize">
+                    {vehicle.location}
+                  </Badge>
+                </TableCell>
+                <TableCell className="hidden xl:table-cell text-center">
+                  {vehicle.arrived ? (
+                    <CircleCheck className="h-5 w-5 text-green-500 mx-auto" />
+                  ) : (
+                    <CircleX className="h-5 w-5 text-red-500 mx-auto" />
+                  )}
+                </TableCell>
+                <TableCell className="hidden lg:table-cell text-center">
+                  {vehicle.papersReceived ? (
+                    <CircleCheck className="h-5 w-5 text-green-500 mx-auto" />
+                  ) : (
+                    <CircleX className="h-5 w-5 text-red-500 mx-auto" />
+                  )}
+                </TableCell>
+                <TableCell className="hidden md:table-cell text-center">
+                  {vehicle.showroomOnline ? (
+                    <CircleCheck className="h-5 w-5 text-green-500 mx-auto" />
+                  ) : (
+                    <CircleX className="h-5 w-5 text-red-500 mx-auto" />
+                  )}
+                </TableCell>
+                <TableCell className="hidden lg:table-cell text-center">
+                  {calculateStaDagen(vehicle.createdAt)} dagen
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="float-right"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuLabel>Snelle acties</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={(e) => {
                         e.stopPropagation();
-                        handleMarkAsDelivered(vehicle.id);
+                        handleSelectVehicle(vehicle);
                       }}>
-                        Markeren als afgeleverd
+                        Details bekijken
                       </DropdownMenuItem>
-                    )}
-                    
-                    {handleDeleteVehicle && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={(e) => {
+                      <DropdownMenuItem onClick={(e) => {
+                        e.stopPropagation();
+                        handleEmailClick("transport_pickup", vehicle.id);
+                      }}>
+                        <Mail className="h-4 w-4 mr-2" />
+                        Pickup document sturen
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => {
+                        e.stopPropagation();
+                        handleEmailClick("cmr_supplier", vehicle.id);
+                      }}>
+                        <Mail className="h-4 w-4 mr-2" />
+                        CMR naar leverancier
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => {
+                        e.stopPropagation();
+                        handleSendEmail("bpm_huys", vehicle.id);
+                      }}>
+                        <Mail className="h-4 w-4 mr-2" />
+                        BPM Huys aanmelden
+                      </DropdownMenuItem>
+                      
+                      {handleChangeStatus && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>Verkoopstatus</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={(e) => {
                             e.stopPropagation();
-                            if (window.confirm('Weet je zeker dat je dit voertuig wilt verwijderen?')) {
-                              handleDeleteVehicle(vehicle.id);
-                            }
-                          }}
-                          className="text-red-500 focus:text-red-500"
-                        >
-                          Verwijderen
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                            handleStatusChange("verkocht_b2c", vehicle.id);
+                          }}>
+                            Verkocht particulier
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            handleStatusChange("verkocht_b2b", vehicle.id);
+                          }}>
+                            Verkocht B2B
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            handleChangeStatus(vehicle.id, 'voorraad');
+                          }}>
+                            Terug naar voorraad
+                          </DropdownMenuItem>
+                        </>
+                      )}
 
-      {/* Customer Selection Dialog */}
+                      {handleMarkAsDelivered && (
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkAsDelivered(vehicle.id);
+                        }}>
+                          Markeren als afgeleverd
+                        </DropdownMenuItem>
+                      )}
+                      
+                      {handleDeleteVehicle && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm('Weet je zeker dat je dit voertuig wilt verwijderen?')) {
+                                handleDeleteVehicle(vehicle.id);
+                              }
+                            }}
+                            className="text-red-500 focus:text-red-500"
+                          >
+                            Verwijderen
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-3xl">
           {dialogType === "transport_pickup" && (
@@ -726,13 +729,14 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
                                 <div
                                   key={customer.id}
                                   className={`flex items-center justify-between p-2 border rounded cursor-pointer ${
-                                    selectedB2BCustomer === customer.id ? "bg-primary/10 border-primary" : "hover:bg-muted"
+                                    selectedB2BCustomer === customer.id 
+                                      ? "bg-primary/10 border-primary" 
+                                      : "hover:bg-muted"
                                   }`}
                                   onClick={() => setSelectedB2BCustomer(customer.id)}
                                 >
                                   <div>
-                                    <p className="font-medium">{customer.companyName}</p>
-                                    <p className="text-sm">{customer.firstName} {customer.lastName}</p>
+                                    <p className="font-medium">{customer.companyName || `${customer.firstName} ${customer.lastName}`}</p>
                                     <p className="text-sm text-muted-foreground">{customer.email}</p>
                                   </div>
                                   <div className="text-sm text-muted-foreground">{customer.phone}</div>

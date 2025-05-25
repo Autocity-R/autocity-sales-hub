@@ -83,7 +83,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
 
   return (
     <>
-      <div className="rounded-md border overflow-hidden">
+      <div className="w-full overflow-hidden">
         <Table>
           <VehicleB2CTableHeader
             selectedVehicles={selectedVehicles}
