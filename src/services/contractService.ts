@@ -118,16 +118,16 @@ const generateHtmlContract = (
         
         body {
             font-family: 'Inter', sans-serif;
-            line-height: 1.2;
+            line-height: 1.4;
             color: #1a1a1a;
             background: white;
-            font-size: 10px;
+            font-size: 12px;
         }
         
         .contract {
             max-width: 210mm;
             margin: 0 auto;
-            padding: 5mm;
+            padding: 8mm;
             background: white;
             min-height: 297mm;
             page-break-inside: avoid;
@@ -136,31 +136,31 @@ const generateHtmlContract = (
         .header {
             background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 8px 12px;
-            margin: -5mm -5mm 8px -5mm;
+            padding: 12px 16px;
+            margin: -8mm -8mm 12px -8mm;
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
             position: relative;
-            min-height: 60px;
+            min-height: 80px;
         }
         
         .logo-section {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
             flex: 0 0 auto;
         }
         
         .logo-container {
             background: white;
-            padding: 4px;
-            border-radius: 4px;
+            padding: 6px;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 60px;
-            height: 60px;
+            width: 80px;
+            height: 80px;
         }
         
         .logo-container img {
@@ -176,16 +176,16 @@ const generateHtmlContract = (
         }
         
         .header-title {
-            font-size: 20px;
+            font-size: 26px;
             font-weight: 700;
             color: white;
             text-transform: uppercase;
             letter-spacing: 2px;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
         }
         
         .contract-date {
-            font-size: 10px;
+            font-size: 12px;
             color: #cccccc;
             font-weight: 500;
         }
@@ -193,62 +193,62 @@ const generateHtmlContract = (
         .company-info {
             flex: 0 0 auto;
             text-align: right;
-            font-size: 8px;
+            font-size: 10px;
             color: #cccccc;
-            line-height: 1.3;
-            max-width: 180px;
+            line-height: 1.4;
+            max-width: 200px;
         }
         
         .company-info div {
-            margin-bottom: 1px;
+            margin-bottom: 2px;
         }
         
         .main-content {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 8px;
+            gap: 12px;
+            margin-bottom: 12px;
         }
         
         .section {
             background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 4px;
+            border: 2px solid #000000;
+            border-radius: 6px;
             overflow: hidden;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-            margin-bottom: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 8px;
         }
         
         .section-header {
             background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 4px 8px;
+            padding: 8px 12px;
             font-weight: 600;
-            font-size: 9px;
+            font-size: 12px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
         }
         
         .section-content {
-            padding: 6px;
+            padding: 12px;
         }
         
         .contract-details {
             display: flex;
             flex-direction: column;
-            gap: 3px;
+            gap: 6px;
         }
         
         .info-item {
             display: flex;
             flex-direction: column;
-            gap: 1px;
+            gap: 2px;
         }
         
         .info-label {
             font-weight: 600;
             color: #4b5563;
-            font-size: 7px;
+            font-size: 10px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -256,14 +256,14 @@ const generateHtmlContract = (
         .info-value {
             color: #1a1a1a;
             font-weight: 500;
-            font-size: 8px;
-            padding: 1px 0;
+            font-size: 11px;
+            padding: 2px 0;
         }
         
         .vehicle-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 6px;
+            gap: 8px;
         }
         
         .price-section {
@@ -280,9 +280,9 @@ const generateHtmlContract = (
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 3px 8px;
+            padding: 6px 12px;
             border-bottom: 1px solid #f3f4f6;
-            font-size: 8px;
+            font-size: 11px;
         }
         
         .price-item:last-child {
@@ -302,8 +302,8 @@ const generateHtmlContract = (
         .price-total {
             background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 4px 8px;
-            font-size: 10px;
+            padding: 8px 12px;
+            font-size: 14px;
             font-weight: 700;
             text-align: center;
             text-transform: uppercase;
@@ -315,21 +315,21 @@ const generateHtmlContract = (
         }
         
         .terms-content {
-            font-size: 8px;
-            line-height: 1.2;
+            font-size: 11px;
+            line-height: 1.4;
             color: #4b5563;
         }
         
         .terms-content p {
-            margin-bottom: 2px;
+            margin-bottom: 4px;
         }
         
         .signature-section {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 10px;
-            padding-top: 6px;
+            gap: 20px;
+            margin-top: 16px;
+            padding-top: 12px;
             border-top: 2px solid #000000;
         }
         
@@ -339,61 +339,61 @@ const generateHtmlContract = (
         
         .signature-line {
             border-bottom: 2px solid #1a1a1a;
-            height: 20px;
-            margin-bottom: 4px;
+            height: 30px;
+            margin-bottom: 8px;
         }
         
         .signature-label {
             font-weight: 600;
             color: #1a1a1a;
-            font-size: 8px;
+            font-size: 11px;
         }
         
         .digital-signature {
             background: linear-gradient(135deg, #f8f9fa, #f1f3f4);
             border: 2px solid #000000;
-            border-radius: 4px;
-            padding: 6px;
+            border-radius: 6px;
+            padding: 12px;
             text-align: center;
-            margin: 6px 0;
+            margin: 12px 0;
             grid-column: 1 / -1;
         }
         
         .digital-signature h3 {
             color: #1a1a1a;
-            margin-bottom: 4px;
-            font-size: 9px;
+            margin-bottom: 6px;
+            font-size: 12px;
         }
         
         .signature-button {
             background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 4px 8px;
+            padding: 8px 16px;
             border: none;
-            border-radius: 3px;
+            border-radius: 4px;
             font-weight: 600;
             cursor: pointer;
             text-decoration: none;
             display: inline-block;
-            margin-top: 4px;
-            font-size: 8px;
+            margin-top: 6px;
+            font-size: 11px;
         }
         
         .footer {
-            margin-top: 6px;
-            padding-top: 4px;
+            margin-top: 12px;
+            padding-top: 8px;
             border-top: 1px solid #e5e7eb;
-            font-size: 7px;
+            font-size: 10px;
             color: #6b7280;
             text-align: center;
-            line-height: 1.2;
+            line-height: 1.4;
         }
         
         @media print {
             .contract {
                 margin: 0;
-                padding: 3mm;
-                font-size: 8px;
+                padding: 5mm;
+                font-size: 10px;
             }
             
             .digital-signature {
@@ -401,30 +401,30 @@ const generateHtmlContract = (
             }
             
             .header {
-                padding: 6px 8px;
-                margin: -3mm -3mm 6px -3mm;
+                padding: 8px 12px;
+                margin: -5mm -5mm 8px -5mm;
             }
             
             .main-content {
-                gap: 6px;
-                margin-bottom: 6px;
+                gap: 8px;
+                margin-bottom: 8px;
             }
             
             .section {
-                margin-bottom: 4px;
+                margin-bottom: 6px;
             }
             
             .section-content {
-                padding: 4px;
+                padding: 8px;
             }
             
             .signature-section {
-                margin-top: 6px;
-                padding-top: 4px;
+                margin-top: 12px;
+                padding-top: 8px;
             }
             
             .signature-line {
-                height: 15px;
+                height: 25px;
             }
         }
     </style>
@@ -544,15 +544,6 @@ const generateHtmlContract = (
             </div>
             <div class="price-total">
                 Totaal: € ${finalPrice.toLocaleString('nl-NL')}
-            </div>
-        </div>
-        
-        <div class="section full-width-section">
-            <div class="section-header">Leveringsafspraken</div>
-            <div class="section-content">
-                <div class="terms-content">
-                    <p>Aflevering op locatie</p>
-                </div>
             </div>
         </div>
         
