@@ -1,7 +1,7 @@
 
 import React from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
+import { CustomCheckbox } from "@/components/ui/custom-checkbox";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { CircleCheck, CircleX, MoreHorizontal, Car, User, Building, Truck, Mail } from "lucide-react";
 import { Vehicle, PaymentStatus, PaintStatus, ImportStatus } from "@/types/inventory";
@@ -73,8 +73,8 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
     <ContextMenu>
       <ContextMenuTrigger>
         <TableRow className="cursor-pointer hover:bg-muted" onClick={() => handleSelectVehicle(vehicle)}>
-          <TableCell onClick={(e) => e.stopPropagation()}>
-            <Checkbox 
+          <TableCell className="w-4 px-2" onClick={(e) => e.stopPropagation()}>
+            <CustomCheckbox 
               checked={selectedVehicles.includes(vehicle.id)}
               onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, checked === true)} 
               aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}

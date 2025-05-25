@@ -1,7 +1,7 @@
 
 import React from "react";
 import { TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
+import { CustomCheckbox } from "@/components/ui/custom-checkbox";
 import { ArrowUp, ArrowDown } from "lucide-react";
 
 interface VehicleB2CTableHeaderProps {
@@ -41,12 +41,16 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
     );
   };
 
+  const isAllSelected = selectedVehicles.length === vehiclesLength && vehiclesLength > 0;
+  const isIndeterminate = selectedVehicles.length > 0 && selectedVehicles.length < vehiclesLength;
+
   return (
     <TableHeader>
       <TableRow>
-        <TableHead className="w-[50px]">
-          <Checkbox 
-            checked={selectedVehicles.length === vehiclesLength && vehiclesLength > 0} 
+        <TableHead className="w-4 px-2">
+          <CustomCheckbox 
+            checked={isAllSelected}
+            indeterminate={isIndeterminate}
             onCheckedChange={toggleSelectAll} 
             aria-label="Selecteer alle voertuigen"
           />
