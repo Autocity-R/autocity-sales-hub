@@ -177,16 +177,16 @@ const generateHtmlContract = (
         
         body {
             font-family: 'Inter', sans-serif;
-            line-height: 1.5;
+            line-height: 1.4;
             color: #1a1a1a;
             background: white;
-            font-size: 15px;
+            font-size: 14px;
         }
         
         .contract {
             max-width: 210mm;
             margin: 0 auto;
-            padding: 10mm;
+            padding: 8mm;
             background: white;
             min-height: 297mm;
             page-break-inside: avoid;
@@ -195,31 +195,31 @@ const generateHtmlContract = (
         .header {
             background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 18px 22px;
-            margin: -10mm -10mm 18px -10mm;
+            padding: 15px 18px;
+            margin: -8mm -8mm 15px -8mm;
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
             position: relative;
-            min-height: 100px;
+            min-height: 85px;
         }
         
         .logo-section {
             display: flex;
             align-items: center;
-            gap: 18px;
+            gap: 15px;
             flex: 0 0 auto;
         }
         
         .logo-container {
             background: white;
-            padding: 10px;
-            border-radius: 10px;
+            padding: 8px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 100px;
-            height: 100px;
+            width: 80px;
+            height: 80px;
         }
         
         .logo-container img {
@@ -231,20 +231,20 @@ const generateHtmlContract = (
         .header-center {
             flex: 1;
             text-align: center;
-            padding: 0 30px;
+            padding: 0 25px;
         }
         
         .header-title {
-            font-size: 36px;
+            font-size: 28px;
             font-weight: 700;
             color: white;
             text-transform: uppercase;
-            letter-spacing: 4px;
-            margin-bottom: 10px;
+            letter-spacing: 3px;
+            margin-bottom: 8px;
         }
         
         .contract-date {
-            font-size: 16px;
+            font-size: 14px;
             color: #cccccc;
             font-weight: 500;
         }
@@ -252,77 +252,77 @@ const generateHtmlContract = (
         .company-info {
             flex: 0 0 auto;
             text-align: right;
-            font-size: 13px;
+            font-size: 11px;
             color: #cccccc;
-            line-height: 1.5;
-            max-width: 240px;
+            line-height: 1.4;
+            max-width: 200px;
         }
         
         .company-info div {
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
         
         .main-content {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 18px;
-            margin-bottom: 18px;
+            gap: 15px;
+            margin-bottom: 15px;
         }
         
         .section {
             background: white;
             border: 2px solid #000000;
-            border-radius: 10px;
+            border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
-            margin-bottom: 12px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 10px;
         }
         
         .section-header {
             background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 12px 18px;
+            padding: 10px 15px;
             font-weight: 600;
-            font-size: 16px;
+            font-size: 14px;
             text-transform: uppercase;
-            letter-spacing: 1.2px;
+            letter-spacing: 1px;
         }
         
         .section-content {
-            padding: 18px;
+            padding: 15px;
         }
         
         .contract-details {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
         }
         
         .info-item {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 3px;
         }
         
         .info-label {
             font-weight: 600;
             color: #4b5563;
-            font-size: 12px;
+            font-size: 11px;
             text-transform: uppercase;
-            letter-spacing: 0.6px;
+            letter-spacing: 0.5px;
         }
         
         .info-value {
             color: #1a1a1a;
             font-weight: 500;
-            font-size: 15px;
-            padding: 3px 0;
+            font-size: 13px;
+            padding: 2px 0;
         }
         
         .vehicle-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 10px;
         }
         
         .price-section {
@@ -339,9 +339,9 @@ const generateHtmlContract = (
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 18px;
+            padding: 8px 15px;
             border-bottom: 1px solid #f3f4f6;
-            font-size: 15px;
+            font-size: 13px;
         }
         
         .price-item:last-child {
@@ -361,12 +361,12 @@ const generateHtmlContract = (
         .price-total {
             background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 15px 18px;
-            font-size: 18px;
+            padding: 12px 15px;
+            font-size: 16px;
             font-weight: 700;
             text-align: center;
             text-transform: uppercase;
-            letter-spacing: 1.2px;
+            letter-spacing: 1px;
         }
         
         .full-width-section {
@@ -374,85 +374,69 @@ const generateHtmlContract = (
         }
         
         .terms-content {
-            font-size: 15px;
-            line-height: 1.6;
+            font-size: 12px;
+            line-height: 1.5;
             color: #4b5563;
         }
         
         .terms-content p {
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         
-        .signature-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-top: 25px;
-            padding-top: 20px;
-            border-top: 2px solid #000000;
+        .terms-content ul {
+            margin: 8px 0;
+            padding-left: 18px;
         }
         
-        .signature-box {
-            text-align: center;
-        }
-        
-        .signature-line {
-            border-bottom: 2px solid #1a1a1a;
-            height: 50px;
-            margin-bottom: 12px;
-        }
-        
-        .signature-label {
-            font-weight: 600;
-            color: #1a1a1a;
-            font-size: 15px;
+        .terms-content li {
+            margin-bottom: 4px;
         }
         
         .digital-signature {
             background: linear-gradient(135deg, #f8f9fa, #f1f3f4);
             border: 2px solid #000000;
-            border-radius: 10px;
-            padding: 18px;
+            border-radius: 8px;
+            padding: 15px;
             text-align: center;
-            margin: 18px 0;
+            margin: 15px 0;
             grid-column: 1 / -1;
         }
         
         .digital-signature h3 {
             color: #1a1a1a;
-            margin-bottom: 10px;
-            font-size: 16px;
+            margin-bottom: 8px;
+            font-size: 14px;
         }
         
         .signature-button {
             background: linear-gradient(135deg, #000000, #1a1a1a);
             color: white;
-            padding: 12px 24px;
+            padding: 10px 20px;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             font-weight: 600;
             cursor: pointer;
             text-decoration: none;
             display: inline-block;
-            margin-top: 10px;
-            font-size: 15px;
+            margin-top: 8px;
+            font-size: 13px;
         }
         
         .footer {
-            margin-top: 18px;
-            padding-top: 12px;
+            margin-top: 15px;
+            padding-top: 10px;
             border-top: 1px solid #e5e7eb;
-            font-size: 14px;
+            font-size: 12px;
             color: #6b7280;
             text-align: center;
-            line-height: 1.6;
+            line-height: 1.5;
         }
         
         @media print {
             .contract {
                 margin: 0;
-                padding: 8mm;
-                font-size: 14px;
+                padding: 6mm;
+                font-size: 12px;
             }
             
             .digital-signature {
@@ -460,30 +444,25 @@ const generateHtmlContract = (
             }
             
             .header {
-                padding: 14px 18px;
-                margin: -8mm -8mm 14px -8mm;
+                padding: 12px 15px;
+                margin: -6mm -6mm 12px -6mm;
             }
             
             .main-content {
-                gap: 14px;
-                margin-bottom: 14px;
+                gap: 12px;
+                margin-bottom: 12px;
             }
             
             .section {
-                margin-bottom: 10px;
+                margin-bottom: 8px;
             }
             
             .section-content {
-                padding: 14px;
+                padding: 12px;
             }
             
-            .signature-section {
-                margin-top: 18px;
-                padding-top: 14px;
-            }
-            
-            .signature-line {
-                height: 35px;
+            .terms-content {
+                font-size: 11px;
             }
         }
     </style>
@@ -579,7 +558,7 @@ const generateHtmlContract = (
                         </div>
                     </div>
                     ${!isB2B && options.deliveryPackage ? `
-                    <div class="vehicle-grid" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #f3f4f6;">
+                    <div class="vehicle-grid" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #f3f4f6;">
                         <div class="info-item">
                             <span class="info-label">Afleverpakket:</span>
                             <span class="info-value">${DELIVERY_PACKAGE_LABELS[options.deliveryPackage as keyof typeof DELIVERY_PACKAGE_LABELS]}</span>
@@ -591,7 +570,7 @@ const generateHtmlContract = (
                     </div>
                     ` : ''}
                     ${!isB2B && options.tradeInVehicle ? `
-                    <div class="vehicle-grid" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #f3f4f6;">
+                    <div class="vehicle-grid" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #f3f4f6;">
                         <div>
                             <div class="info-item">
                                 <span class="info-label">Inruil merk/model:</span>
@@ -662,10 +641,18 @@ const generateHtmlContract = (
             <div class="section-header">Leveringsvoorwaarden</div>
             <div class="section-content">
                 <div class="terms-content">
-                    <p>Het voertuig wordt geleverd als omschreven bij verkoop en de extra omschrijvingen in het contract</p>
-                    <p>Levering vindt plaats na volledige betaling van het aankoopbedrag</p>
+                    <p>Het voertuig wordt geleverd zoals gezien, gereden en akkoord bevonden door koper.</p>
+                    <p>Levering vindt plaats na volledige betaling van het aankoopbedrag en op het moment van fysieke overdracht of registratie bij RDW op naam van koper.</p>
+                    <p>Het risiko van verlies of beschadiging gaat over op koper op het moment van levering.</p>
                     ${!isB2B && downPaymentPercentage > 0 ? `<p>Klant dient de aanbetaling van ${downPaymentPercentage}% (€ ${downPaymentAmount.toLocaleString('nl-NL')}) per bank te voldoen.</p>` : ''}
-                    ${isB2B && options.maxDamageAmount ? `<p>Maximaal geaccepteerde schade: € ${options.maxDamageAmount}</p>` : ''}
+                    
+                    ${!isB2B && options.tradeInVehicle ? `
+                    <p><strong>Inruilvoertuigen:</strong><br>
+                    Indien sprake is van inruil, verklaart koper dat het inruilvoertuig eigendom is van hem/haar en vrij is van beslagen of verborgen gebreken, tenzij vooraf gemeld. AutoCity behoudt zich het recht voor inruilvoertuigen te weigeren bij onjuiste opgave.</p>
+                    ` : ''}
+                    
+                    <p><strong>Toepasselijk recht en geschillen:</strong><br>
+                    Op deze overeenkomst is uitsluitend Nederlands recht van toepassing. Geschillen worden bij voorkeur in onderling overleg opgelost. Indien nodig zal het geschil worden voorgelegd aan de bevoegde rechter te Rotterdam.</p>
                 </div>
             </div>
         </div>
@@ -699,17 +686,6 @@ const generateHtmlContract = (
             <a href="${signatureUrl}" class="signature-button">Contract Ondertekenen</a>
         </div>
         ` : ''}
-        
-        <div class="signature-section">
-            <div class="signature-box">
-                <div class="signature-line"></div>
-                <div class="signature-label">Verkoper<br>AutoCity</div>
-            </div>
-            <div class="signature-box">
-                <div class="signature-line"></div>
-                <div class="signature-label">Koper<br>${isB2B ? (vehicle.customerName || '[Bedrijfsnaam]') : (vehicle.customerContact?.name || '[Voor- en achternaam]')}</div>
-            </div>
-        </div>
         
         <div class="footer">
             www.auto-city.nl
@@ -787,10 +763,20 @@ Betalingsvoorwaarden: ${options.paymentTerms ? PAYMENT_TERMS_LABELS[options.paym
 TOTAAL TE BETALEN: € ${finalPrice.toLocaleString('nl-NL')}
 
 LEVERINGSVOORWAARDEN:
-- Het voertuig wordt geleverd als omschreven bij verkoop en de extra omschrijvingen in het contract
-- Levering vindt plaats na volledige betaling
+- Het voertuig wordt geleverd zoals gezien, gereden en akkoord bevonden door koper
+- Levering vindt plaats na volledige betaling en op het moment van fysieke overdracht of registratie bij RDW op naam van koper
+- Het risico van verlies of beschadiging gaat over op koper op het moment van levering
 ${!isB2B && downPaymentPercentage > 0 ? `- Klant dient de aanbetaling van ${downPaymentPercentage}% (€ ${downPaymentAmount.toLocaleString('nl-NL')}) per bank te voldoen.` : ''}
-${isB2B && options.maxDamageAmount ? `- Maximaal geaccepteerde schade: € ${options.maxDamageAmount}` : ''}
+
+${!isB2B && options.tradeInVehicle ? `
+INRUILVOERTUIGEN:
+Indien sprake is van inruil, verklaart koper dat het inruilvoertuig eigendom is van hem/haar en vrij is van beslagen of verborgen gebreken, tenzij vooraf gemeld.
+AutoCity behoudt zich het recht voor inruilvoertuigen te weigeren bij onjuiste opgave.
+` : ''}
+
+TOEPASSELIJK RECHT EN GESCHILLEN:
+Op deze overeenkomst is uitsluitend Nederlands recht van toepassing.
+Geschillen worden bij voorkeur in onderling overleg opgelost. Indien nodig zal het geschil worden voorgelegd aan de bevoegde rechter te Rotterdam.
 
 ${options.additionalClauses ? `
 AANVULLENDE CLAUSULES:
