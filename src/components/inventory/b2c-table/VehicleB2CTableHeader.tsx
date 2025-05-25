@@ -40,52 +40,52 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
             aria-label="Selecteer alle voertuigen"
           />
         </TableHead>
-        <TableHead className="cursor-pointer p-4" onClick={() => handleSort("brand")}>
+        <TableHead className="cursor-pointer p-4 text-left" onClick={() => handleSort("brand")}>
           <div className="flex items-center">
             Merk
             {renderSortIcon("brand")}
           </div>
         </TableHead>
-        <TableHead className="cursor-pointer p-4" onClick={() => handleSort("model")}>
+        <TableHead className="cursor-pointer p-4 text-left" onClick={() => handleSort("model")}>
           <div className="flex items-center">
             Model
             {renderSortIcon("model")}
           </div>
         </TableHead>
-        <TableHead className="cursor-pointer p-4" onClick={() => handleSort("mileage")}>
+        <TableHead className="cursor-pointer p-4 text-left" onClick={() => handleSort("mileage")}>
           <div className="flex items-center">
             Kilometerstand
             {renderSortIcon("mileage")}
           </div>
         </TableHead>
-        <TableHead className="p-4">
+        <TableHead className="p-4 text-left">
           VIN
         </TableHead>
-        <TableHead className="cursor-pointer p-4" onClick={() => handleSort("purchasePrice")}>
+        <TableHead className="cursor-pointer p-4 text-left" onClick={() => handleSort("purchasePrice")}>
           <div className="flex items-center">
             Inkoop prijs
             {renderSortIcon("purchasePrice")}
           </div>
         </TableHead>
-        <TableHead className="cursor-pointer p-4" onClick={() => handleSort("sellingPrice")}>
+        <TableHead className="cursor-pointer p-4 text-left" onClick={() => handleSort("sellingPrice")}>
           <div className="flex items-center">
             Verkoopprijs
             {renderSortIcon("sellingPrice")}
           </div>
         </TableHead>
-        <TableHead className="p-4">
+        <TableHead className="p-4 text-left">
           Klantnaam
         </TableHead>
-        <TableHead className="p-4">
+        <TableHead className="p-4 text-left">
           Import status
         </TableHead>
-        <TableHead className="p-4">
+        <TableHead className="p-4 text-left">
           Werkplaats status
         </TableHead>
-        <TableHead className="p-4">
+        <TableHead className="p-4 text-left">
           Lak status
         </TableHead>
-        <TableHead className="p-4">
+        <TableHead className="p-4 text-left">
           Locatie
         </TableHead>
         <TableHead className="w-12 text-center p-4">
