@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronUp, ChevronDown, MoreHorizontal, Mail, Truck } from "lucide-react";
+import { ChevronUp, ChevronDown, MoreHorizontal, Mail, Truck, Car } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuTrigger, 
@@ -13,7 +13,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { Vehicle } from "@/types/inventory";
+import { Vehicle, ImportStatus } from "@/types/inventory";
+import { Avatar } from "@/components/ui/avatar";
 
 interface VehicleTableProps {
   vehicles: Vehicle[];
@@ -30,6 +31,24 @@ interface VehicleTableProps {
   sortField: string | null;
   sortDirection: "asc" | "desc";
 }
+
+const renderImportStatusBadge = (status: ImportStatus) => {
+  const statusMap: Record<ImportStatus, { label: string, variant: "default" | "outline" | "secondary" | "destructive" }> = {
+    niet_gestart: { label: "Niet gestart", variant: "outline" },
+    aangemeld: { label: "Aangemeld", variant: "outline" },
+    goedgekeurd: { label: "Goedgekeurd", variant: "secondary" },
+    transport_geregeld: { label: "Transport geregeld", variant: "secondary" },
+    onderweg: { label: "Onderweg", variant: "secondary" },
+    aangekomen: { label: "Aangekomen", variant: "default" },
+    afgemeld: { label: "Afgemeld", variant: "destructive" },
+    bpm_betaald: { label: "BPM betaald", variant: "default" },
+    herkeuring: { label: "Herkeuring", variant: "secondary" },
+    ingeschreven: { label: "Ingeschreven", variant: "default" }
+  };
+  
+  const { label, variant } = statusMap[status];
+  return <Badge variant={variant}>{label}</Badge>;
+};
 
 // Memoized row component to prevent unnecessary re-renders
 const VehicleRow = memo<{
@@ -63,6 +82,15 @@ const VehicleRow = memo<{
     };
   }, []);
 
+  const calculateStandingDays = (createdAt: string | Date | undefined) => {
+    if (!createdAt) return 0;
+    const created = new Date(createdAt);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - created.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
   return (
     <TableRow 
       className="hover:bg-muted/50 cursor-pointer"
@@ -75,14 +103,26 @@ const VehicleRow = memo<{
           aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
         />
       </TableCell>
-      <TableCell className="align-middle font-medium truncate">
+      <TableCell className="align-middle">
+        {vehicle.mainPhotoUrl ? (
+          <Avatar className="w-12 h-12 rounded-md">
+            <img 
+              src={vehicle.mainPhotoUrl} 
+              alt={`${vehicle.brand} ${vehicle.model}`} 
+              className="object-cover w-full h-full rounded-md"
+            />
+          </Avatar>
+        ) : (
+          <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
+            <Car className="h-6 w-6 text-muted-foreground" />
+          </div>
+        )}
+      </TableCell>
+      <TableCell className="align-middle font-medium">
         {vehicle.brand}
       </TableCell>
-      <TableCell className="align-middle truncate">
-        {vehicle.model}
-      </TableCell>
       <TableCell className="align-middle">
-        {formatMileage(vehicle.mileage)}
+        {vehicle.model}
       </TableCell>
       <TableCell className="align-middle">
         {vehicle.licenseNumber}
@@ -97,13 +137,40 @@ const VehicleRow = memo<{
         {formatPrice(vehicle.sellingPrice)}
       </TableCell>
       <TableCell className="align-middle">
+        {formatMileage(vehicle.mileage)}
+      </TableCell>
+      <TableCell className="align-middle">
+        {renderImportStatusBadge(vehicle.importStatus)}
+      </TableCell>
+      <TableCell className="align-middle">
         <Badge variant="outline" className="capitalize">
           {vehicle.location}
         </Badge>
       </TableCell>
+      <TableCell className="align-middle text-center">
+        {vehicle.arrived ? (
+          <Badge variant="default" className="bg-green-100 text-green-800">Ja</Badge>
+        ) : (
+          <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Nee</Badge>
+        )}
+      </TableCell>
+      <TableCell className="align-middle text-center">
+        {vehicle.papersReceived ? (
+          <Badge variant="default" className="bg-green-100 text-green-800">Ja</Badge>
+        ) : (
+          <Badge variant="outline" className="bg-red-100 text-red-800">Nee</Badge>
+        )}
+      </TableCell>
+      <TableCell className="align-middle text-center">
+        {vehicle.showroomOnline ? (
+          <Badge variant="default" className="bg-blue-100 text-blue-800">Online</Badge>
+        ) : (
+          <Badge variant="outline">Offline</Badge>
+        )}
+      </TableCell>
       <TableCell className="align-middle">
-        <Badge variant="default">
-          Beschikbaar
+        <Badge variant="secondary">
+          {calculateStandingDays(vehicle.createdAt)} dagen
         </Badge>
       </TableCell>
       <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
@@ -189,7 +256,7 @@ export const VehicleTable = memo<VehicleTableProps>(({
 
   return (
     <div className="w-full overflow-x-auto">
-      <Table className="w-full min-w-[1200px]">
+      <Table className="w-full min-w-[1600px]">
         <TableHeader>
           <TableRow>
             <TableHead className="w-12">
@@ -199,6 +266,7 @@ export const VehicleTable = memo<VehicleTableProps>(({
                 aria-label="Selecteer alle voertuigen"
               />
             </TableHead>
+            <TableHead className="w-16">Foto</TableHead>
             <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("brand")}>
               <div className="flex items-center">
                 Merk
@@ -209,12 +277,6 @@ export const VehicleTable = memo<VehicleTableProps>(({
               <div className="flex items-center">
                 Model
                 {renderSortIcon("model")}
-              </div>
-            </TableHead>
-            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("mileage")}>
-              <div className="flex items-center">
-                KM
-                {renderSortIcon("mileage")}
               </div>
             </TableHead>
             <TableHead className="min-w-28 cursor-pointer" onClick={() => handleSort("licenseNumber")}>
@@ -241,14 +303,47 @@ export const VehicleTable = memo<VehicleTableProps>(({
                 {renderSortIcon("sellingPrice")}
               </div>
             </TableHead>
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("mileage")}>
+              <div className="flex items-center">
+                KM Stand
+                {renderSortIcon("mileage")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-32 cursor-pointer" onClick={() => handleSort("importStatus")}>
+              <div className="flex items-center">
+                Importstatus
+                {renderSortIcon("importStatus")}
+              </div>
+            </TableHead>
             <TableHead className="min-w-24 cursor-pointer" onClick={() => handleSort("location")}>
               <div className="flex items-center">
                 Locatie
                 {renderSortIcon("location")}
               </div>
             </TableHead>
-            <TableHead className="min-w-20">
-              Status
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("arrived")}>
+              <div className="flex items-center">
+                Aangekomen
+                {renderSortIcon("arrived")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("papersReceived")}>
+              <div className="flex items-center">
+                Papieren
+                {renderSortIcon("papersReceived")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("showroomOnline")}>
+              <div className="flex items-center">
+                Online
+                {renderSortIcon("showroomOnline")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("createdAt")}>
+              <div className="flex items-center">
+                Standagen
+                {renderSortIcon("createdAt")}
+              </div>
             </TableHead>
             <TableHead className="w-12">Acties</TableHead>
           </TableRow>
@@ -256,7 +351,7 @@ export const VehicleTable = memo<VehicleTableProps>(({
         <TableBody>
           {vehicles.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={16} className="text-center py-8 text-muted-foreground">
                 Geen voertuigen gevonden
               </TableCell>
             </TableRow>

@@ -62,40 +62,34 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
         <TableHead className="min-w-24">
           {renderSortableHeader("model", "Model")}
         </TableHead>
-        <TableHead className="hidden md:table-cell min-w-20">
-          {renderSortableHeader("mileage", "KM")}
+        <TableHead className="min-w-20">
+          {renderSortableHeader("mileage", "Kilometerstand")}
         </TableHead>
-        <TableHead className="hidden md:table-cell min-w-28">
-          {renderSortableHeader("licenseNumber", "Kenteken")}
-        </TableHead>
-        <TableHead className="hidden lg:table-cell min-w-32">
+        <TableHead className="min-w-32">
           {renderSortableHeader("vin", "VIN")}
         </TableHead>
-        <TableHead className="hidden xl:table-cell">
-          {renderSortableHeader("purchasePrice", "Inkoop")}
+        <TableHead className="min-w-28">
+          {renderSortableHeader("purchasePrice", "Inkoopprijs")}
         </TableHead>
-        <TableHead className="hidden sm:table-cell">
-          {renderSortableHeader("sellingPrice", "Verkoop")}
+        <TableHead className="min-w-28">
+          {renderSortableHeader("sellingPrice", "Verkoopprijs")}
         </TableHead>
-        <TableHead className="hidden lg:table-cell min-w-24">
-          {renderSortableHeader("customerName", "Klant")}
+        <TableHead className="min-w-24">
+          {renderSortableHeader("customerName", "Klantnaam")}
         </TableHead>
-        <TableHead className="hidden xl:table-cell">
-          {renderSortableHeader("salespersonName", "Verkoper")}
+        <TableHead className="min-w-32">
+          {renderSortableHeader("importStatus", "Import status")}
         </TableHead>
-        <TableHead className="hidden xl:table-cell min-w-32">
-          {renderSortableHeader("importStatus", "Import")}
+        <TableHead className="min-w-28">
+          {renderSortableHeader("workshopStatus", "Werkplaats status")}
         </TableHead>
-        <TableHead className="hidden xl:table-cell">
+        <TableHead className="min-w-24">
+          {renderSortableHeader("paintStatus", "Lak status")}
+        </TableHead>
+        <TableHead className="min-w-24">
           {renderSortableHeader("location", "Locatie")}
         </TableHead>
-        <TableHead className="hidden lg:table-cell text-center w-20">
-          {renderSortableHeader("papersReceived", "Pap.")}
-        </TableHead>
-        <TableHead className="hidden sm:table-cell">
-          {renderSortableHeader("paymentStatus", "Status")}
-        </TableHead>
-        <TableHead className="w-12"></TableHead>
+        <TableHead className="w-12">Acties</TableHead>
       </TableRow>
     </TableHeader>
   );

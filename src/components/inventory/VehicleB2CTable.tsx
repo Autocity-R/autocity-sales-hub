@@ -84,7 +84,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
   return (
     <>
       <div className="w-full overflow-x-auto">
-        <Table className="w-full min-w-[1200px]">
+        <Table className="w-full min-w-[1400px]">
           <VehicleB2CTableHeader
             selectedVehicles={selectedVehicles}
             vehiclesLength={vehicles.length}
@@ -96,7 +96,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
           <TableBody>
             {vehicles.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                   Geen voertuigen gevonden
                 </TableCell>
               </TableRow>
