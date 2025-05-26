@@ -1,7 +1,7 @@
 
 import React from "react";
 import { format } from "date-fns";
-import { CheckCircle, Clock, AlertCircle, Car, User } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, Car, User, Play } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Task, TaskStatus } from "@/types/tasks";
 interface TaskListProps {
   tasks: Task[];
   onCompleteTask: (taskId: string) => void;
+  onStartTask: (taskId: string) => void;
   onTaskSelect: (task: Task) => void;
   statusFilter: TaskStatus | "all";
   onStatusFilterChange: (status: TaskStatus | "all") => void;
@@ -19,6 +20,7 @@ interface TaskListProps {
 export const TaskList: React.FC<TaskListProps> = ({
   tasks,
   onCompleteTask,
+  onStartTask,
   onTaskSelect,
   statusFilter,
   onStatusFilterChange
@@ -138,17 +140,33 @@ export const TaskList: React.FC<TaskListProps> = ({
                 </div>
 
                 {task.status !== "voltooid" && (
-                  <div className="mt-4 flex justify-end">
-                    <Button 
-                      size="sm" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onCompleteTask(task.id);
-                      }}
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Markeer als voltooid
-                    </Button>
+                  <div className="mt-4 flex justify-end space-x-2">
+                    {task.status === "toegewezen" && (
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onStartTask(task.id);
+                        }}
+                      >
+                        <Play className="h-4 w-4 mr-2" />
+                        Start taak
+                      </Button>
+                    )}
+                    
+                    {(task.status === "in_uitvoering" || task.status === "toegewezen") && (
+                      <Button 
+                        size="sm" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCompleteTask(task.id);
+                        }}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Markeer als voltooid
+                      </Button>
+                    )}
                   </div>
                 )}
               </CardContent>
