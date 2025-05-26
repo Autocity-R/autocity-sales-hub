@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -158,7 +159,11 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
             </TableRow>
           ) : (
             claims.map((claim) => (
-              <TableRow key={claim.id} className="hover:bg-muted/50">
+              <TableRow 
+                key={claim.id} 
+                className="hover:bg-muted/50 cursor-pointer"
+                onClick={() => setSelectedClaim(claim)}
+              >
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Car className="h-4 w-4 text-blue-600" />
@@ -243,7 +248,7 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
                     </TableCell>
                   </>
                 )}
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <Button 
                     variant="outline" 
                     size="sm"
