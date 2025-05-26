@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -133,10 +132,10 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
                 {renderSortIcon("location")}
               </div>
             </TableHead>
-            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("available")}>
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("status")}>
               <div className="flex items-center">
                 Status
-                {renderSortIcon("available")}
+                {renderSortIcon("status")}
               </div>
             </TableHead>
             <TableHead className="w-12">Acties</TableHead>
@@ -190,8 +189,8 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
                   </Badge>
                 </TableCell>
                 <TableCell className="align-middle">
-                  <Badge variant={vehicle.available ? "default" : "secondary"}>
-                    {vehicle.available ? "Beschikbaar" : "Niet beschikbaar"}
+                  <Badge variant={vehicle.status === 'voorraad' ? "default" : "secondary"}>
+                    {vehicle.status === 'voorraad' ? "Beschikbaar" : "Niet beschikbaar"}
                   </Badge>
                 </TableCell>
                 <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>

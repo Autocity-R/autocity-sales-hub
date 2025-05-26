@@ -17,7 +17,8 @@ import {
   ShieldIcon,
   CheckCircle,
   Flag,
-  Bot
+  Bot,
+  ClipboardList
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -118,6 +119,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             >
               <TruckIcon className="mr-2 h-4 w-4" />
               Transport
+            </Button>
+          </Link>
+          <Link to="/tasks">
+            <Button
+              variant={isActive("/tasks") ? "default" : "ghost"}
+              className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+              size="sm"
+            >
+              <ClipboardList className="mr-2 h-4 w-4" />
+              Taken Schema
             </Button>
           </Link>
         </div>

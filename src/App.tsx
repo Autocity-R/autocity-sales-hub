@@ -11,6 +11,7 @@ import LoanCars from "@/pages/LoanCars";
 import AIAgents from "@/pages/AIAgents";
 import Leads from "@/pages/Leads";
 import Calendar from "@/pages/Calendar";
+import TaskManagement from "@/pages/TaskManagement";
 import Customers from "@/pages/Customers";
 import CustomerDetail from "@/pages/CustomerDetail";
 import Reports from "@/pages/Reports";
@@ -39,6 +40,7 @@ function App() {
         <Route path="/ai-agents" element={<AIAgents />} />
         <Route path="/leads" element={<Leads />} />
         <Route path="/calendar" element={<Calendar />} />
+        <Route path="/tasks" element={<TaskManagement />} />
         <Route path="/customers" element={<Customers />} />
         <Route path="/customers/b2b" element={<Customers />} />
         <Route path="/customers/b2c" element={<Customers />} />
