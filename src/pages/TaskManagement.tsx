@@ -64,11 +64,18 @@ const TaskManagement = () => {
   };
 
   const getStatusCounts = () => {
+    // Filter alleen actieve taken (niet voltooid, geannuleerd of uitgesteld)
+    const activeTasks = tasks.filter(t => 
+      t.status !== "voltooid" && 
+      t.status !== "geannuleerd" && 
+      t.status !== "uitgesteld"
+    );
+    
     const counts = {
       toegewezen: tasks.filter(t => t.status === "toegewezen").length,
       in_uitvoering: tasks.filter(t => t.status === "in_uitvoering").length,
       voltooid: tasks.filter(t => t.status === "voltooid").length,
-      total: tasks.length
+      total: activeTasks.length // Alleen actieve taken tellen
     };
     return counts;
   };
@@ -76,7 +83,12 @@ const TaskManagement = () => {
   const statusCounts = getStatusCounts();
 
   const handleStatCardClick = (status: TaskStatus | "all") => {
-    setStatusFilter(status);
+    if (status === "all") {
+      // Voor "all" laten we alleen actieve taken zien
+      setStatusFilter("all");
+    } else {
+      setStatusFilter(status);
+    }
   };
 
   if (isLoading) {
@@ -120,12 +132,12 @@ const TaskManagement = () => {
             onClick={() => handleStatCardClick("all")}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Totaal Taken</CardTitle>
+              <CardTitle className="text-sm font-medium">Actieve Taken</CardTitle>
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{statusCounts.total}</div>
-              <p className="text-xs text-muted-foreground mt-1">Klik om alle taken te bekijken</p>
+              <p className="text-xs text-muted-foreground mt-1">Taken die nog uitgevoerd moeten worden</p>
             </CardContent>
           </Card>
           

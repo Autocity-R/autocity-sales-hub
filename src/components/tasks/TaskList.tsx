@@ -67,7 +67,11 @@ export const TaskList: React.FC<TaskListProps> = ({
   };
 
   const filteredTasks = statusFilter === "all" 
-    ? tasks 
+    ? tasks.filter(task => 
+        task.status !== "voltooid" && 
+        task.status !== "geannuleerd" && 
+        task.status !== "uitgesteld"
+      )
     : tasks.filter(task => task.status === statusFilter);
 
   return (
@@ -79,7 +83,7 @@ export const TaskList: React.FC<TaskListProps> = ({
             <SelectValue placeholder="Filter op status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Alle taken</SelectItem>
+            <SelectItem value="all">Actieve taken</SelectItem>
             <SelectItem value="toegewezen">Toegewezen</SelectItem>
             <SelectItem value="in_uitvoering">In uitvoering</SelectItem>
             <SelectItem value="voltooid">Voltooid</SelectItem>
