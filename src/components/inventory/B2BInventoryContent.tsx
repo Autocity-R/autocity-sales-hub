@@ -26,6 +26,7 @@ interface B2BInventoryContentProps {
   onRemovePhoto: (photoUrl: string) => void;
   onSetMainPhoto: (photoUrl: string) => void;
   onFileUpload: (file: File, category: FileCategory) => void;
+  onOpenContractConfig: (vehicle: Vehicle, type: "b2b" | "b2c") => void;
 }
 
 export const B2BInventoryContent = ({
@@ -49,7 +50,8 @@ export const B2BInventoryContent = ({
   onPhotoUpload,
   onRemovePhoto,
   onSetMainPhoto,
-  onFileUpload
+  onFileUpload,
+  onOpenContractConfig
 }: B2BInventoryContentProps) => {
   return (
     <>

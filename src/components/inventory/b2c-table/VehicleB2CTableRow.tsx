@@ -16,6 +16,7 @@ interface VehicleB2CTableRowProps {
   handleSendEmail: (type: string, vehicleId: string) => void;
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   onDeliveryConfirm: (vehicleId: string) => void;
+  onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c") => void;
 }
 
 const renderImportStatusBadge = (status: ImportStatus) => {
@@ -71,7 +72,8 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
   handleSelectVehicle,
   handleSendEmail,
   handleChangeStatus,
-  onDeliveryConfirm
+  onDeliveryConfirm,
+  onOpenContractConfig
 }) => {
   const formatPrice = (price: number | undefined) => {
     if (!price) return "€ -";
