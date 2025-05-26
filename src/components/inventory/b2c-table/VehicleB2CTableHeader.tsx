@@ -63,37 +63,31 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
           {renderSortableHeader("model", "Model")}
         </TableHead>
         <TableHead className="min-w-20">
-          {renderSortableHeader("licensePlate", "Kenteken")}
+          {renderSortableHeader("mileage", "Kilometerstand")}
         </TableHead>
         <TableHead className="min-w-32">
           {renderSortableHeader("vin", "VIN")}
         </TableHead>
         <TableHead className="min-w-28">
-          {renderSortableHeader("purchasePrice", "Inkoopprijs")}
+          {renderSortableHeader("purchasePrice", "Inkoop prijs")}
         </TableHead>
         <TableHead className="min-w-28">
           {renderSortableHeader("sellingPrice", "Verkoopprijs")}
         </TableHead>
-        <TableHead className="min-w-20">
-          {renderSortableHeader("mileage", "Kilometerstand")}
+        <TableHead className="min-w-24">
+          {renderSortableHeader("customerName", "Klantnaam")}
         </TableHead>
         <TableHead className="min-w-32">
           {renderSortableHeader("importStatus", "Import status")}
         </TableHead>
+        <TableHead className="min-w-32">
+          {renderSortableHeader("workshopStatus", "Werkplaats status")}
+        </TableHead>
+        <TableHead className="min-w-24">
+          {renderSortableHeader("paintStatus", "Lak status")}
+        </TableHead>
         <TableHead className="min-w-24">
           {renderSortableHeader("location", "Locatie")}
-        </TableHead>
-        <TableHead className="min-w-24">
-          {renderSortableHeader("arrivalDate", "Aangekomen")}
-        </TableHead>
-        <TableHead className="min-w-24">
-          {renderSortableHeader("documentsStatus", "Papieren")}
-        </TableHead>
-        <TableHead className="min-w-20">
-          {renderSortableHeader("onlineStatus", "Online")}
-        </TableHead>
-        <TableHead className="min-w-24">
-          {renderSortableHeader("daysInStock", "Sta dagen")}
         </TableHead>
         <TableHead className="w-12">Acties</TableHead>
       </TableRow>
