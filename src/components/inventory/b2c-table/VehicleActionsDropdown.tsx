@@ -2,7 +2,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Mail, Car, FileText } from "lucide-react";
+import { MoreHorizontal, Mail, Car, FileText, Check } from "lucide-react";
 import { Vehicle, PaymentStatus } from "@/types/inventory";
 
 interface VehicleActionsDropdownProps {
@@ -10,13 +10,15 @@ interface VehicleActionsDropdownProps {
   onSendEmail: (type: string, vehicleId: string) => void;
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   onDeliveryConfirm: (vehicleId: string) => void;
+  onMarkAsArrived?: (vehicleId: string) => void;
 }
 
 export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
   vehicle,
   onSendEmail,
   handleChangeStatus,
-  onDeliveryConfirm
+  onDeliveryConfirm,
+  onMarkAsArrived
 }) => {
   return (
     <DropdownMenu>
@@ -35,14 +37,6 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
           <Mail className="h-4 w-4 mr-2" />
           Stuur koopcontract B2B
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onSendEmail("vehicle_arrived", vehicle.id)}>
-          <Mail className="h-4 w-4 mr-2" />
-          Auto aangekomen
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onSendEmail("rdw_approved", vehicle.id)}>
-          <Mail className="h-4 w-4 mr-2" />
-          RDW goedgekeurd
-        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onSendEmail("delivery_appointment", vehicle.id)}>
           <Mail className="h-4 w-4 mr-2" />
           Aflevering afspraak
@@ -55,6 +49,17 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
           <Mail className="h-4 w-4 mr-2" />
           BPM Huys aanmelden
         </DropdownMenuItem>
+        
+        {!vehicle.arrived && onMarkAsArrived && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Status acties</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => onMarkAsArrived(vehicle.id)}>
+              <Check className="h-4 w-4 mr-2" />
+              Markeer als aangekomen
+            </DropdownMenuItem>
+          </>
+        )}
         
         {handleChangeStatus && (
           <>

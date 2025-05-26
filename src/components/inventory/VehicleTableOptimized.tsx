@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronUp, ChevronDown, MoreHorizontal, Mail, Truck, Car, FileText } from "lucide-react";
+import { ChevronUp, ChevronDown, MoreHorizontal, Mail, Truck, Car, FileText, Check } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuTrigger, 
@@ -24,6 +24,7 @@ interface VehicleTableProps {
   handleSendEmail: (type: string, vehicleId: string) => void;
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   handleMarkAsDelivered?: (vehicleId: string) => void;
+  handleMarkAsArrived?: (vehicleId: string) => void;
   isLoading: boolean;
   error: unknown;
   onSort: (field: string) => void;
@@ -58,6 +59,7 @@ const VehicleRow = memo<{
   onSendEmail: (type: string, vehicleId: string) => void;
   onChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   onMarkAsDelivered?: (vehicleId: string) => void;
+  onMarkAsArrived?: (vehicleId: string) => void;
 }>(({ 
   vehicle, 
   isSelected, 
@@ -65,7 +67,8 @@ const VehicleRow = memo<{
   onSelectVehicle, 
   onSendEmail, 
   onChangeStatus, 
-  onMarkAsDelivered 
+  onMarkAsDelivered,
+  onMarkAsArrived 
 }) => {
   const formatPrice = useMemo(() => {
     return (price: number | undefined) => {
@@ -181,10 +184,6 @@ const VehicleRow = memo<{
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuLabel>E-mail acties</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => onSendEmail("inquiry", vehicle.id)}>
-              <Mail className="h-4 w-4 mr-2" />
-              Interesse e-mail
-            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onSendEmail("contract_b2c_digital", vehicle.id)}>
               <Mail className="h-4 w-4 mr-2" />
               Koopcontract B2C
@@ -192,14 +191,6 @@ const VehicleRow = memo<{
             <DropdownMenuItem onClick={() => onSendEmail("contract_b2b_digital", vehicle.id)}>
               <Mail className="h-4 w-4 mr-2" />
               Koopcontract B2B
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onSendEmail("vehicle_arrived", vehicle.id)}>
-              <Mail className="h-4 w-4 mr-2" />
-              Auto aangekomen
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onSendEmail("rdw_approved", vehicle.id)}>
-              <Mail className="h-4 w-4 mr-2" />
-              RDW goedgekeurd
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onSendEmail("delivery_appointment", vehicle.id)}>
               <Mail className="h-4 w-4 mr-2" />
@@ -217,6 +208,18 @@ const VehicleRow = memo<{
               <Mail className="h-4 w-4 mr-2" />
               BPM Huys aanmelden
             </DropdownMenuItem>
+            
+            {!vehicle.arrived && onMarkAsArrived && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Status acties</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => onMarkAsArrived(vehicle.id)}>
+                  <Check className="h-4 w-4 mr-2" />
+                  Markeer als aangekomen
+                </DropdownMenuItem>
+              </>
+            )}
+            
             {onChangeStatus && (
               <>
                 <DropdownMenuSeparator />
@@ -257,6 +260,7 @@ export const VehicleTable = memo<VehicleTableProps>(({
   handleSendEmail,
   handleChangeStatus,
   handleMarkAsDelivered,
+  handleMarkAsArrived,
   isLoading,
   error,
   onSort,
@@ -400,6 +404,7 @@ export const VehicleTable = memo<VehicleTableProps>(({
                 onSendEmail={handleSendEmail}
                 onChangeStatus={handleChangeStatus}
                 onMarkAsDelivered={handleMarkAsDelivered}
+                onMarkAsArrived={handleMarkAsArrived}
               />
             ))
           )}
