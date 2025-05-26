@@ -1,95 +1,35 @@
+
 import React from "react";
-import { Vehicle, ImportStatus } from "@/types/inventory";
-import { CircleCheck, CircleX, ExternalLink, Mail, MoreHorizontal, ArrowUp, ArrowDown, Plus } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuLabel,
+import { Button } from "@/components/ui/button";
+import { ChevronUp, ChevronDown, MoreHorizontal, Mail, Euro, Truck } from "lucide-react";
+import { 
+  DropdownMenu, 
+  DropdownMenuTrigger, 
+  DropdownMenuContent, 
   DropdownMenuItem,
-  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { CustomCheckbox } from "@/components/ui/custom-checkbox";
-import { Car } from "lucide-react";
-import { Avatar } from "@/components/ui/avatar";
-import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import { Contact, ContactType } from "@/types/customer";
-import ContactForm from "@/components/customers/ContactForm";
-import { getContactsByType } from "@/services/customerService";
+import { Vehicle } from "@/types/inventory";
 
 interface VehicleTableProps {
   vehicles: Vehicle[];
   selectedVehicles: string[];
   toggleSelectAll: (checked: boolean) => void;
-  toggleSelectVehicle: (vehicleId: string, checked: boolean) => void;
+  toggleSelectVehicle: (id: string, checked: boolean) => void;
   handleSelectVehicle: (vehicle: Vehicle) => void;
   handleSendEmail: (type: string, vehicleId: string) => void;
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
-  handleDeleteVehicle?: (vehicleId: string) => void;
   handleMarkAsDelivered?: (vehicleId: string) => void;
   isLoading: boolean;
   error: unknown;
-  onSort?: (field: string) => void;
-  sortField?: string | null;
-  sortDirection?: "asc" | "desc";
+  onSort: (field: string) => void;
+  sortField: string | null;
+  sortDirection: "asc" | "desc";
 }
-
-export const renderImportStatusBadge = (status: ImportStatus) => {
-  const statusMap: Record<ImportStatus, { label: string, variant: "default" | "outline" | "secondary" | "destructive" }> = {
-    niet_gestart: { label: "Niet gestart", variant: "outline" },
-    aangemeld: { label: "Aangemeld", variant: "outline" },
-    goedgekeurd: { label: "Goedgekeurd", variant: "secondary" },
-    transport_geregeld: { label: "Transport geregeld", variant: "secondary" },
-    onderweg: { label: "Onderweg", variant: "secondary" },
-    aangekomen: { label: "Aangekomen", variant: "default" },
-    afgemeld: { label: "Afgemeld", variant: "destructive" },
-    bpm_betaald: { label: "BPM betaald", variant: "default" },
-    herkeuring: { label: "Herkeuring", variant: "secondary" },
-    ingeschreven: { label: "Ingeschreven", variant: "default" }
-  };
-  
-  const { label, variant } = statusMap[status];
-  
-  return <Badge variant={variant}>{label}</Badge>;
-};
-
-// Helper to calculate stay days
-const calculateStaDagen = (createdAt: Date | string | undefined): number => {
-  if (!createdAt) return 0;
-  const now = new Date();
-  const created = new Date(createdAt);
-  return Math.floor((now.getTime() - created.getTime()) / (1000 * 3600 * 24));
-};
 
 export const VehicleTable: React.FC<VehicleTableProps> = ({
   vehicles,
@@ -99,7 +39,6 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
   handleSelectVehicle,
   handleSendEmail,
   handleChangeStatus,
-  handleDeleteVehicle,
   handleMarkAsDelivered,
   isLoading,
   error,
@@ -107,438 +46,185 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
   sortField,
   sortDirection
 }) => {
-  const { toast } = useToast();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogType, setDialogType] = useState<"transport_pickup" | "cmr_supplier" | "verkocht_b2c" | "verkocht_b2b">();
-  const [currentVehicleId, setCurrentVehicleId] = useState<string>("");
-  const [selectedTransporter, setSelectedTransporter] = useState<string>("");
-  const [selectedSupplier, setSelectedSupplier] = useState<string>("");
-  const [selectedB2BCustomer, setSelectedB2BCustomer] = useState<string>("");
-  const [newB2BCustomer, setNewB2BCustomer] = useState({name: "", email: "", phone: ""});
-  const [selectedB2CCustomer, setSelectedB2CCustomer] = useState({name: "", email: "", phone: ""});
-  const [activeTab, setActiveTab] = useState<string>("existing");
-  
-  // Fetch existing customers
-  const b2bCustomers = getContactsByType("b2b");
-  const b2cCustomers = getContactsByType("b2c");
-  
-  // Mock data for the transporters and suppliers - in a real application, these would come from the API
-  const transporters = ["Transport A", "Transport B", "Transport C"];
-  const suppliers = ["Supplier X", "Supplier Y", "Supplier Z"];
-
   const renderSortIcon = (field: string) => {
     if (sortField !== field) return null;
-    
-    return sortDirection === "asc" ? 
-      <ArrowUp className="ml-1 h-4 w-4 inline" /> : 
-      <ArrowDown className="ml-1 h-4 w-4 inline" />;
+    return sortDirection === "asc" ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />;
   };
 
-  const renderSortableHeader = (field: string, label: string) => {
-    return (
-      <div 
-        className="flex items-center cursor-pointer" 
-        onClick={() => onSort && onSort(field)}
-      >
-        {label} {renderSortIcon(field)}
-      </div>
-    );
+  const handleSort = (field: string) => {
+    onSort(field);
   };
 
-  const handleEmailClick = (type: "transport_pickup" | "cmr_supplier", vehicleId: string) => {
-    setCurrentVehicleId(vehicleId);
-    setDialogType(type);
-    setActiveTab("existing"); // Reset to existing tab
-    setDialogOpen(true);
+  const formatPrice = (price: number | undefined) => {
+    if (!price) return "€ -";
+    return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(price);
   };
 
-  const handleStatusChange = (status: "verkocht_b2b" | "verkocht_b2c", vehicleId: string) => {
-    setCurrentVehicleId(vehicleId);
-    setDialogType(status);
-    setActiveTab("existing"); // Default to existing customers tab
-    setDialogOpen(true);
-  };
-
-  const handleDialogConfirm = () => {
-    if (!dialogType || !currentVehicleId) return;
-    
-    // Handle different dialog confirmations
-    switch(dialogType) {
-      case "transport_pickup":
-        if (!selectedTransporter) {
-          toast({
-            title: "Transporteur ontbreekt",
-            description: "Selecteer eerst een transporteur.",
-            variant: "destructive"
-          });
-          return;
-        }
-        // Send email with transporter info
-        handleSendEmail("transport_pickup", currentVehicleId);
-        break;
-        
-      case "cmr_supplier":
-        if (!selectedSupplier) {
-          toast({
-            title: "Leverancier ontbreekt",
-            description: "Selecteer eerst een leverancier.",
-            variant: "destructive"
-          });
-          return;
-        }
-        // Send email with supplier info
-        handleSendEmail("cmr_supplier", currentVehicleId);
-        break;
-        
-      case "verkocht_b2c":
-        if (activeTab === "existing" && !selectedB2CCustomer.name) {
-          toast({
-            title: "Klant ontbreekt",
-            description: "Selecteer eerst een bestaande klant.",
-            variant: "destructive"
-          });
-          return;
-        }
-        // Update vehicle status to B2C with customer info
-        if (handleChangeStatus) {
-          handleChangeStatus(currentVehicleId, "verkocht_b2c");
-        }
-        break;
-        
-      case "verkocht_b2b":
-        if (activeTab === "existing" && !selectedB2BCustomer) {
-          toast({
-            title: "B2B klant ontbreekt",
-            description: "Selecteer eerst een bestaande klant.",
-            variant: "destructive"
-          });
-          return;
-        }
-        // Update vehicle status to B2B with customer info
-        if (handleChangeStatus) {
-          handleChangeStatus(currentVehicleId, "verkocht_b2b");
-        }
-        break;
-    }
-    
-    // Reset state and close dialog
-    setDialogOpen(false);
-    setSelectedTransporter("");
-    setSelectedSupplier("");
-    setSelectedB2BCustomer("");
-    setNewB2BCustomer({name: "", email: "", phone: ""});
-    setSelectedB2CCustomer({name: "", email: "", phone: ""});
-    setActiveTab("existing");
-  };
-  
-  const handleContactFormSuccess = (contact: Contact) => {
-    // When a new contact is created successfully
-    toast({
-      title: "Contact aangemaakt",
-      description: `Contact "${contact.firstName} ${contact.lastName}" is succesvol aangemaakt.`
-    });
-    
-    // Select the newly created contact
-    if (contact.type === "b2b") {
-      setSelectedB2BCustomer(contact.id);
-    } else if (contact.type === "b2c") {
-      setSelectedB2CCustomer({
-        name: `${contact.firstName} ${contact.lastName}`,
-        email: contact.email,
-        phone: contact.phone
-      });
-    }
-    
-    // Switch back to existing tab to show selection
-    setActiveTab("existing");
+  const formatMileage = (mileage: number | undefined) => {
+    if (!mileage) return "- km";
+    return new Intl.NumberFormat('nl-NL').format(mileage) + " km";
   };
 
   if (isLoading) {
-    return <div className="p-8 text-center">Laden...</div>;
+    return <div className="p-4 text-center">Laden...</div>;
   }
 
   if (error) {
-    return <div className="p-8 text-center text-destructive">Er is een fout opgetreden bij het laden van de gegevens.</div>;
-  }
-
-  if (vehicles.length === 0) {
-    return (
-      <div className="w-full overflow-hidden">
-        <Table className="w-full">
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <CustomCheckbox disabled />
-              </TableHead>
-              <TableHead className="w-16">Foto</TableHead>
-              <TableHead className="min-w-20">
-                {renderSortableHeader("brand", "Merk")}
-              </TableHead>
-              <TableHead className="min-w-24">
-                {renderSortableHeader("model", "Model")}
-              </TableHead>
-              <TableHead className="hidden md:table-cell min-w-28">
-                {renderSortableHeader("licenseNumber", "Kenteken")}
-              </TableHead>
-              <TableHead className="hidden lg:table-cell min-w-32">
-                {renderSortableHeader("vin", "VIN")}
-              </TableHead>
-              <TableHead className="hidden xl:table-cell">
-                {renderSortableHeader("purchasePrice", "Inkoop")}
-              </TableHead>
-              <TableHead className="hidden sm:table-cell">
-                {renderSortableHeader("sellingPrice", "Verkoop")}
-              </TableHead>
-              <TableHead className="hidden lg:table-cell">
-                {renderSortableHeader("mileage", "KM")}
-              </TableHead>
-              <TableHead className="hidden xl:table-cell min-w-32">
-                {renderSortableHeader("importStatus", "Import")}
-              </TableHead>
-              <TableHead className="hidden xl:table-cell">
-                {renderSortableHeader("location", "Locatie")}
-              </TableHead>
-              <TableHead className="hidden xl:table-cell text-center w-20">
-                {renderSortableHeader("arrived", "Aang.")}
-              </TableHead>
-              <TableHead className="hidden lg:table-cell text-center w-20">
-                {renderSortableHeader("papersReceived", "Pap.")}
-              </TableHead>
-              <TableHead className="hidden md:table-cell text-center w-20">
-                {renderSortableHeader("showroomOnline", "Online")}
-              </TableHead>
-              <TableHead className="hidden lg:table-cell text-center w-20">
-                {renderSortableHeader("staDagen", "Dagen")}
-              </TableHead>
-              <TableHead className="w-12"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow>
-              <TableCell colSpan={16} className="h-24 text-center">
-                Geen voertuigen gevonden.
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-    );
+    return <div className="p-4 text-red-500">Fout bij het laden van voertuigen</div>;
   }
 
   return (
-    <>
-      <div className="w-full overflow-hidden">
-        <Table className="w-full">
-          <TableHeader>
+    <div className="w-full overflow-x-auto">
+      <Table className="w-full min-w-[1200px]">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-12">
+              <Checkbox 
+                checked={selectedVehicles.length === vehicles.length && vehicles.length > 0} 
+                onCheckedChange={toggleSelectAll} 
+                aria-label="Selecteer alle voertuigen"
+              />
+            </TableHead>
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("brand")}>
+              <div className="flex items-center">
+                Merk
+                {renderSortIcon("brand")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-24 cursor-pointer" onClick={() => handleSort("model")}>
+              <div className="flex items-center">
+                Model
+                {renderSortIcon("model")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("mileage")}>
+              <div className="flex items-center">
+                KM
+                {renderSortIcon("mileage")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-28 cursor-pointer" onClick={() => handleSort("licenseNumber")}>
+              <div className="flex items-center">
+                Kenteken
+                {renderSortIcon("licenseNumber")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-32 cursor-pointer" onClick={() => handleSort("vin")}>
+              <div className="flex items-center">
+                VIN
+                {renderSortIcon("vin")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-28 cursor-pointer" onClick={() => handleSort("purchasePrice")}>
+              <div className="flex items-center">
+                Inkoopprijs
+                {renderSortIcon("purchasePrice")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-28 cursor-pointer" onClick={() => handleSort("sellingPrice")}>
+              <div className="flex items-center">
+                Verkoopprijs
+                {renderSortIcon("sellingPrice")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-24 cursor-pointer" onClick={() => handleSort("location")}>
+              <div className="flex items-center">
+                Locatie
+                {renderSortIcon("location")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("available")}>
+              <div className="flex items-center">
+                Status
+                {renderSortIcon("available")}
+              </div>
+            </TableHead>
+            <TableHead className="w-12">Acties</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {vehicles.length === 0 ? (
             <TableRow>
-              <TableHead className="w-12">
-                <CustomCheckbox 
-                  onCheckedChange={(checked) => toggleSelectAll(!!checked)}
-                  checked={selectedVehicles.length === vehicles.length && vehicles.length > 0}
-                  indeterminate={selectedVehicles.length > 0 && selectedVehicles.length < vehicles.length}
-                />
-              </TableHead>
-              <TableHead className="w-16">Foto</TableHead>
-              <TableHead className="min-w-20">
-                {renderSortableHeader("brand", "Merk")}
-              </TableHead>
-              <TableHead className="min-w-24">
-                {renderSortableHeader("model", "Model")}
-              </TableHead>
-              <TableHead className="hidden md:table-cell min-w-28">
-                {renderSortableHeader("licenseNumber", "Kenteken")}
-              </TableHead>
-              <TableHead className="hidden lg:table-cell min-w-32">
-                {renderSortableHeader("vin", "VIN")}
-              </TableHead>
-              <TableHead className="hidden xl:table-cell">
-                {renderSortableHeader("purchasePrice", "Inkoop")}
-              </TableHead>
-              <TableHead className="hidden sm:table-cell">
-                {renderSortableHeader("sellingPrice", "Verkoop")}
-              </TableHead>
-              <TableHead className="hidden lg:table-cell">
-                {renderSortableHeader("mileage", "KM")}
-              </TableHead>
-              <TableHead className="hidden xl:table-cell min-w-32">
-                {renderSortableHeader("importStatus", "Import")}
-              </TableHead>
-              <TableHead className="hidden xl:table-cell">
-                {renderSortableHeader("location", "Locatie")}
-              </TableHead>
-              <TableHead className="hidden xl:table-cell text-center w-20">
-                {renderSortableHeader("arrived", "Aang.")}
-              </TableHead>
-              <TableHead className="hidden lg:table-cell text-center w-20">
-                {renderSortableHeader("papersReceived", "Pap.")}
-              </TableHead>
-              <TableHead className="hidden md:table-cell text-center w-20">
-                {renderSortableHeader("showroomOnline", "Online")}
-              </TableHead>
-              <TableHead className="hidden lg:table-cell text-center w-20">
-                {renderSortableHeader("staDagen", "Dagen")}
-              </TableHead>
-              <TableHead className="w-12"></TableHead>
+              <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                Geen voertuigen gevonden
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {vehicles.map((vehicle) => (
+          ) : (
+            vehicles.map((vehicle) => (
               <TableRow 
-                key={vehicle.id}
-                className="cursor-pointer hover:bg-muted"
+                key={vehicle.id} 
+                className="hover:bg-muted/50 cursor-pointer"
                 onClick={() => handleSelectVehicle(vehicle)}
               >
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                  <CustomCheckbox 
-                    checked={selectedVehicles.includes(vehicle.id)}
-                    onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, !!checked)}
+                <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
+                  <Checkbox 
+                    checked={selectedVehicles.includes(vehicle.id)} 
+                    onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, checked === true)} 
+                    aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
                   />
                 </TableCell>
-                <TableCell>
-                  {vehicle.mainPhotoUrl ? (
-                    <Avatar className="w-12 h-12 rounded-md">
-                      <img 
-                        src={vehicle.mainPhotoUrl} 
-                        alt={`${vehicle.brand} ${vehicle.model}`} 
-                        className="object-cover w-full h-full rounded-md"
-                      />
-                    </Avatar>
-                  ) : (
-                    <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
-                      <Car className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                  )}
+                <TableCell className="align-middle font-medium truncate">
+                  {vehicle.brand}
                 </TableCell>
-                <TableCell className="font-medium truncate">{vehicle.brand}</TableCell>
-                <TableCell className="truncate">{vehicle.model}</TableCell>
-                <TableCell className="hidden md:table-cell">{vehicle.licenseNumber}</TableCell>
-                <TableCell className="hidden lg:table-cell truncate">{vehicle.vin}</TableCell>
-                <TableCell className="hidden xl:table-cell font-medium">
-                  {vehicle.purchasePrice ? `€ ${vehicle.purchasePrice.toLocaleString('nl-NL')}` : '-'}
+                <TableCell className="align-middle truncate">
+                  {vehicle.model}
                 </TableCell>
-                <TableCell className="hidden sm:table-cell font-medium">
-                  {vehicle.sellingPrice ? `€ ${vehicle.sellingPrice.toLocaleString('nl-NL')}` : '-'}
+                <TableCell className="align-middle">
+                  {formatMileage(vehicle.mileage)}
                 </TableCell>
-                <TableCell className="hidden lg:table-cell">{vehicle.mileage.toLocaleString('nl-NL')} km</TableCell>
-                <TableCell className="hidden xl:table-cell">{renderImportStatusBadge(vehicle.importStatus)}</TableCell>
-                <TableCell className="hidden xl:table-cell">
+                <TableCell className="align-middle">
+                  {vehicle.licenseNumber}
+                </TableCell>
+                <TableCell className="align-middle truncate max-w-32">
+                  {vehicle.vin}
+                </TableCell>
+                <TableCell className="align-middle">
+                  {formatPrice(vehicle.purchasePrice)}
+                </TableCell>
+                <TableCell className="align-middle">
+                  {formatPrice(vehicle.sellingPrice)}
+                </TableCell>
+                <TableCell className="align-middle">
                   <Badge variant="outline" className="capitalize">
                     {vehicle.location}
                   </Badge>
                 </TableCell>
-                <TableCell className="hidden xl:table-cell text-center">
-                  {vehicle.arrived ? (
-                    <CircleCheck className="h-5 w-5 text-green-500 mx-auto" />
-                  ) : (
-                    <CircleX className="h-5 w-5 text-red-500 mx-auto" />
-                  )}
+                <TableCell className="align-middle">
+                  <Badge variant={vehicle.available ? "default" : "secondary"}>
+                    {vehicle.available ? "Beschikbaar" : "Niet beschikbaar"}
+                  </Badge>
                 </TableCell>
-                <TableCell className="hidden lg:table-cell text-center">
-                  {vehicle.papersReceived ? (
-                    <CircleCheck className="h-5 w-5 text-green-500 mx-auto" />
-                  ) : (
-                    <CircleX className="h-5 w-5 text-red-500 mx-auto" />
-                  )}
-                </TableCell>
-                <TableCell className="hidden md:table-cell text-center">
-                  {vehicle.showroomOnline ? (
-                    <CircleCheck className="h-5 w-5 text-green-500 mx-auto" />
-                  ) : (
-                    <CircleX className="h-5 w-5 text-red-500 mx-auto" />
-                  )}
-                </TableCell>
-                <TableCell className="hidden lg:table-cell text-center">
-                  {calculateStaDagen(vehicle.createdAt)} dagen
-                </TableCell>
-                <TableCell>
+                <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="float-right"
-                      >
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                      <DropdownMenuLabel>Snelle acties</DropdownMenuLabel>
+                      <DropdownMenuLabel>Acties</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={(e) => {
-                        e.stopPropagation();
-                        handleSelectVehicle(vehicle);
-                      }}>
-                        Details bekijken
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => {
-                        e.stopPropagation();
-                        handleEmailClick("transport_pickup", vehicle.id);
-                      }}>
+                      <DropdownMenuItem onClick={() => handleSendEmail("inquiry", vehicle.id)}>
                         <Mail className="h-4 w-4 mr-2" />
-                        Pickup document sturen
+                        E-mail sturen
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => {
-                        e.stopPropagation();
-                        handleEmailClick("cmr_supplier", vehicle.id);
-                      }}>
-                        <Mail className="h-4 w-4 mr-2" />
-                        CMR naar leverancier
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => {
-                        e.stopPropagation();
-                        handleSendEmail("bpm_huys", vehicle.id);
-                      }}>
-                        <Mail className="h-4 w-4 mr-2" />
-                        BPM Huys aanmelden
-                      </DropdownMenuItem>
-                      
                       {handleChangeStatus && (
                         <>
                           <DropdownMenuSeparator />
-                          <DropdownMenuLabel>Verkoopstatus</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={(e) => {
-                            e.stopPropagation();
-                            handleStatusChange("verkocht_b2c", vehicle.id);
-                          }}>
-                            Verkocht particulier
+                          <DropdownMenuItem onClick={() => handleChangeStatus(vehicle.id, "verkocht_b2c")}>
+                            Verkocht B2C
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => {
-                            e.stopPropagation();
-                            handleStatusChange("verkocht_b2b", vehicle.id);
-                          }}>
+                          <DropdownMenuItem onClick={() => handleChangeStatus(vehicle.id, "verkocht_b2b")}>
                             Verkocht B2B
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => {
-                            e.stopPropagation();
-                            handleChangeStatus(vehicle.id, 'voorraad');
-                          }}>
-                            Terug naar voorraad
                           </DropdownMenuItem>
                         </>
                       )}
-
                       {handleMarkAsDelivered && (
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation();
-                          handleMarkAsDelivered(vehicle.id);
-                        }}>
-                          Markeren als afgeleverd
-                        </DropdownMenuItem>
-                      )}
-                      
-                      {handleDeleteVehicle && (
                         <>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (window.confirm('Weet je zeker dat je dit voertuig wilt verwijderen?')) {
-                                handleDeleteVehicle(vehicle.id);
-                              }
-                            }}
-                            className="text-red-500 focus:text-red-500"
-                          >
-                            Verwijderen
+                          <DropdownMenuItem onClick={() => handleMarkAsDelivered(vehicle.id)}>
+                            <Truck className="h-4 w-4 mr-2" />
+                            Afgeleverd
                           </DropdownMenuItem>
                         </>
                       )}
@@ -546,236 +232,10 @@ export const VehicleTable: React.FC<VehicleTableProps> = ({
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl">
-          {dialogType === "transport_pickup" && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Pickup document versturen</DialogTitle>
-                <DialogDescription>
-                  Selecteer de transporteur om het pickup document te versturen
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="transporter">Transporteur</Label>
-                  <Select value={selectedTransporter} onValueChange={setSelectedTransporter}>
-                    <SelectTrigger id="transporter">
-                      <SelectValue placeholder="Selecteer transporteur" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {transporters.map(transporter => (
-                        <SelectItem key={transporter} value={transporter}>
-                          {transporter}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                  Annuleren
-                </Button>
-                <Button onClick={handleDialogConfirm}>
-                  Document versturen
-                </Button>
-              </DialogFooter>
-            </>
+            ))
           )}
-
-          {dialogType === "cmr_supplier" && (
-            <>
-              <DialogHeader>
-                <DialogTitle>CMR naar leverancier</DialogTitle>
-                <DialogDescription>
-                  Selecteer de leverancier om het CMR document te versturen
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="supplier">Leverancier</Label>
-                  <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
-                    <SelectTrigger id="supplier">
-                      <SelectValue placeholder="Selecteer leverancier" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {suppliers.map(supplier => (
-                        <SelectItem key={supplier} value={supplier}>
-                          {supplier}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                  Annuleren
-                </Button>
-                <Button onClick={handleDialogConfirm}>
-                  Document versturen
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-
-          {dialogType === "verkocht_b2c" && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Verkocht aan particuliere klant</DialogTitle>
-                <DialogDescription>
-                  Koppel dit voertuig aan een particuliere klant
-                </DialogDescription>
-              </DialogHeader>
-              
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="existing">Bestaande klant</TabsTrigger>
-                  <TabsTrigger value="new">Nieuwe klant</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="existing" className="mt-4">
-                  <div className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label>Selecteer een klant</Label>
-                      <div className="max-h-[300px] overflow-y-auto border rounded-md">
-                        <div className="p-2">
-                          {b2cCustomers.length > 0 ? (
-                            <div className="space-y-2">
-                              {b2cCustomers.map((customer) => (
-                                <div
-                                  key={customer.id}
-                                  className={`flex items-center justify-between p-2 border rounded cursor-pointer ${
-                                    selectedB2CCustomer.name === `${customer.firstName} ${customer.lastName}` 
-                                      ? "bg-primary/10 border-primary" 
-                                      : "hover:bg-muted"
-                                  }`}
-                                  onClick={() => setSelectedB2CCustomer({
-                                    name: `${customer.firstName} ${customer.lastName}`,
-                                    email: customer.email,
-                                    phone: customer.phone
-                                  })}
-                                >
-                                  <div>
-                                    <p className="font-medium">{customer.firstName} {customer.lastName}</p>
-                                    <p className="text-sm text-muted-foreground">{customer.email}</p>
-                                  </div>
-                                  <div className="text-sm text-muted-foreground">{customer.phone}</div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-center text-muted-foreground py-4">
-                              Geen particuliere klanten gevonden
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="new" className="mt-4">
-                  <ContactForm contactType="b2c" onSuccess={handleContactFormSuccess} />
-                </TabsContent>
-              </Tabs>
-              
-              {activeTab === "existing" && (
-                <DialogFooter className="mt-4">
-                  <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                    Annuleren
-                  </Button>
-                  <Button 
-                    onClick={handleDialogConfirm}
-                    disabled={!selectedB2CCustomer.name}
-                  >
-                    Koppelen en markeren als verkocht
-                  </Button>
-                </DialogFooter>
-              )}
-            </>
-          )}
-
-          {dialogType === "verkocht_b2b" && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Verkocht aan zakelijke klant</DialogTitle>
-                <DialogDescription>
-                  Koppel dit voertuig aan een zakelijke klant
-                </DialogDescription>
-              </DialogHeader>
-              
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="existing">Bestaande klant</TabsTrigger>
-                  <TabsTrigger value="new">Nieuwe klant</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="existing" className="mt-4">
-                  <div className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label>Selecteer een zakelijke klant</Label>
-                      <div className="max-h-[300px] overflow-y-auto border rounded-md">
-                        <div className="p-2">
-                          {b2bCustomers.length > 0 ? (
-                            <div className="space-y-2">
-                              {b2bCustomers.map((customer) => (
-                                <div
-                                  key={customer.id}
-                                  className={`flex items-center justify-between p-2 border rounded cursor-pointer ${
-                                    selectedB2BCustomer === customer.id 
-                                      ? "bg-primary/10 border-primary" 
-                                      : "hover:bg-muted"
-                                  }`}
-                                  onClick={() => setSelectedB2BCustomer(customer.id)}
-                                >
-                                  <div>
-                                    <p className="font-medium">{customer.companyName || `${customer.firstName} ${customer.lastName}`}</p>
-                                    <p className="text-sm text-muted-foreground">{customer.email}</p>
-                                  </div>
-                                  <div className="text-sm text-muted-foreground">{customer.phone}</div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-center text-muted-foreground py-4">
-                              Geen zakelijke klanten gevonden
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="new" className="mt-4">
-                  <ContactForm contactType="b2b" onSuccess={handleContactFormSuccess} />
-                </TabsContent>
-              </Tabs>
-              
-              {activeTab === "existing" && (
-                <DialogFooter className="mt-4">
-                  <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                    Annuleren
-                  </Button>
-                  <Button 
-                    onClick={handleDialogConfirm}
-                    disabled={!selectedB2BCustomer}
-                  >
-                    Koppelen en markeren als verkocht
-                  </Button>
-                </DialogFooter>
-              )}
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
+        </TableBody>
+      </Table>
+    </div>
   );
 };
