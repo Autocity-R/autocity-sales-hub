@@ -341,7 +341,7 @@ export const VehicleTable = memo<VehicleTableProps>(({
             </TableHead>
             <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("createdAt")}>
               <div className="flex items-center">
-                Standagen
+                Sta dagen
                 {renderSortIcon("createdAt")}
               </div>
             </TableHead>
