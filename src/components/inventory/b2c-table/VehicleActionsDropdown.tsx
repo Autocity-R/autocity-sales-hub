@@ -2,7 +2,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Mail, Car } from "lucide-react";
+import { MoreHorizontal, Mail, Car, FileText } from "lucide-react";
 import { Vehicle, PaymentStatus } from "@/types/inventory";
 
 interface VehicleActionsDropdownProps {
@@ -26,9 +26,30 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => onSendEmail("contract_b2c", vehicle.id)}>
+        <DropdownMenuLabel>E-mail acties</DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => onSendEmail("contract_b2c_digital", vehicle.id)}>
           <Mail className="h-4 w-4 mr-2" />
-          Stuur koopcontract
+          Stuur koopcontract B2C
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onSendEmail("contract_b2b_digital", vehicle.id)}>
+          <Mail className="h-4 w-4 mr-2" />
+          Stuur koopcontract B2B
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onSendEmail("vehicle_arrived", vehicle.id)}>
+          <Mail className="h-4 w-4 mr-2" />
+          Auto aangekomen
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onSendEmail("rdw_approved", vehicle.id)}>
+          <Mail className="h-4 w-4 mr-2" />
+          RDW goedgekeurd
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onSendEmail("delivery_appointment", vehicle.id)}>
+          <Mail className="h-4 w-4 mr-2" />
+          Aflevering afspraak
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onSendEmail("payment_reminder", vehicle.id)}>
+          <Mail className="h-4 w-4 mr-2" />
+          Betaalherinnering
         </DropdownMenuItem>
         
         {handleChangeStatus && (

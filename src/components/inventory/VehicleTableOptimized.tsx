@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronUp, ChevronDown, MoreHorizontal, Mail, Truck, Car } from "lucide-react";
+import { ChevronUp, ChevronDown, MoreHorizontal, Mail, Truck, Car, FileText } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuTrigger, 
@@ -181,20 +181,51 @@ const VehicleRow = memo<{
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuLabel>Acties</DropdownMenuLabel>
-            <DropdownMenuSeparator />
+            <DropdownMenuLabel>E-mail acties</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => onSendEmail("inquiry", vehicle.id)}>
               <Mail className="h-4 w-4 mr-2" />
-              E-mail sturen
+              Interesse e-mail
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSendEmail("contract_b2c_digital", vehicle.id)}>
+              <Mail className="h-4 w-4 mr-2" />
+              Koopcontract B2C
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSendEmail("contract_b2b_digital", vehicle.id)}>
+              <Mail className="h-4 w-4 mr-2" />
+              Koopcontract B2B
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSendEmail("vehicle_arrived", vehicle.id)}>
+              <Mail className="h-4 w-4 mr-2" />
+              Auto aangekomen
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSendEmail("rdw_approved", vehicle.id)}>
+              <Mail className="h-4 w-4 mr-2" />
+              RDW goedgekeurd
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSendEmail("delivery_appointment", vehicle.id)}>
+              <Mail className="h-4 w-4 mr-2" />
+              Aflevering afspraak
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSendEmail("cmr_supplier", vehicle.id)}>
+              <Mail className="h-4 w-4 mr-2" />
+              CMR Leverancier
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSendEmail("transport_pickup", vehicle.id)}>
+              <Mail className="h-4 w-4 mr-2" />
+              Transport Pickup
             </DropdownMenuItem>
             {onChangeStatus && (
               <>
                 <DropdownMenuSeparator />
+                <DropdownMenuLabel>Verkoopstatus</DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => onChangeStatus(vehicle.id, "verkocht_b2c")}>
                   Verkocht B2C
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onChangeStatus(vehicle.id, "verkocht_b2b")}>
                   Verkocht B2B
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onChangeStatus(vehicle.id, "voorraad")}>
+                  Terug naar voorraad
                 </DropdownMenuItem>
               </>
             )}
