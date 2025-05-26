@@ -11,6 +11,7 @@ interface VehicleActionsDropdownProps {
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   onDeliveryConfirm: (vehicleId: string) => void;
   onMarkAsArrived?: (vehicleId: string) => void;
+  onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c") => void;
 }
 
 export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
@@ -18,10 +19,17 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
   onSendEmail,
   handleChangeStatus,
   onDeliveryConfirm,
-  onMarkAsArrived
+  onMarkAsArrived,
+  onOpenContractConfig
 }) => {
   // Check if vehicle is sold to determine if contract emails should be shown
   const isVehicleSold = vehicle.salesStatus === 'verkocht_b2b' || vehicle.salesStatus === 'verkocht_b2c';
+  
+  const handleContractAction = (contractType: "b2b" | "b2c") => {
+    if (onOpenContractConfig) {
+      onOpenContractConfig(vehicle, contractType);
+    }
+  };
   
   return (
     <DropdownMenu>
@@ -36,12 +44,12 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
         {/* Only show contract emails for sold vehicles */}
         {isVehicleSold && (
           <>
-            <DropdownMenuItem onClick={() => onSendEmail("contract_b2c_digital", vehicle.id)}>
-              <Mail className="h-4 w-4 mr-2" />
+            <DropdownMenuItem onClick={() => handleContractAction("b2c")}>
+              <FileText className="h-4 w-4 mr-2" />
               Stuur koopcontract B2C
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onSendEmail("contract_b2b_digital", vehicle.id)}>
-              <Mail className="h-4 w-4 mr-2" />
+            <DropdownMenuItem onClick={() => handleContractAction("b2b")}>
+              <FileText className="h-4 w-4 mr-2" />
               Stuur koopcontract B2B
             </DropdownMenuItem>
           </>

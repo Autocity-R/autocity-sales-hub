@@ -28,6 +28,7 @@ interface VehicleB2CTableProps {
   handleUpdatePaintStatus: (vehicleId: string, status: PaintStatus) => void;
   onMarkAsDelivered: (vehicleId: string) => void;
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
+  onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c") => void;
   isLoading: boolean;
   error: unknown;
   onSort: (field: string) => void;
@@ -44,6 +45,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
   handleSendEmail,
   onMarkAsDelivered,
   handleChangeStatus,
+  onOpenContractConfig,
   isLoading,
   error,
   onSort,
@@ -111,6 +113,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
                   handleSendEmail={handleSendEmail}
                   handleChangeStatus={handleChangeStatus}
                   onDeliveryConfirm={handleDeliveryConfirm}
+                  onOpenContractConfig={onOpenContractConfig}
                 />
               ))
             )}

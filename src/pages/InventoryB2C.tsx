@@ -1,17 +1,24 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FileText, Mail, Plus } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { VehicleB2CTable } from "@/components/inventory/VehicleB2CTable";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
+import { ContractConfigDialog } from "@/components/inventory/ContractConfigDialog";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { fetchB2CVehicles } from "@/services/inventoryService";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { useB2CVehicleHandlers } from "@/hooks/useB2CVehicleHandlers";
+import { Vehicle } from "@/types/inventory";
+import { ContractOptions } from "@/types/email";
 
 const InventoryB2C = () => {
+  const [contractDialogOpen, setContractDialogOpen] = useState(false);
+  const [contractVehicle, setContractVehicle] = useState<Vehicle | null>(null);
+  const [contractType, setContractType] = useState<"b2b" | "b2c">("b2c");
+
   // Fetch B2C sold vehicles only
   const { data: vehicles = [], isLoading, error } = useQuery({
     queryKey: ["b2cVehicles"],
@@ -43,6 +50,23 @@ const InventoryB2C = () => {
 
   // Properly fetch files for selected vehicle using our hook
   const { vehicleFiles } = useVehicleFiles(selectedVehicle);
+
+  const handleOpenContractConfig = (vehicle: Vehicle, type: "b2b" | "b2c") => {
+    setContractVehicle(vehicle);
+    setContractType(type);
+    setContractDialogOpen(true);
+  };
+
+  const handleSendContract = (options: ContractOptions) => {
+    if (!contractVehicle) return;
+    
+    // Determine email type based on contract type
+    const emailType = contractType === "b2b" ? "contract_b2b_digital" : "contract_b2c_digital";
+    handleSendEmail(emailType, contractVehicle.id);
+    
+    setContractDialogOpen(false);
+    setContractVehicle(null);
+  };
   
   // Sort vehicles based on sort field and direction
   const sortedVehicles = [...vehicles].sort((a, b) => {
@@ -118,6 +142,7 @@ const InventoryB2C = () => {
             handleUpdatePaintStatus={handleUpdatePaintStatus}
             onMarkAsDelivered={handleMarkAsDelivered}
             handleChangeStatus={handleChangeStatus}
+            onOpenContractConfig={handleOpenContractConfig}
             isLoading={isLoading}
             error={error}
             onSort={handleSort}
@@ -138,6 +163,19 @@ const InventoryB2C = () => {
           onSetMainPhoto={handleSetMainPhoto}
           onFileUpload={handleUploadFile}
           files={vehicleFiles}
+        />
+      )}
+
+      {contractVehicle && (
+        <ContractConfigDialog
+          isOpen={contractDialogOpen}
+          onClose={() => {
+            setContractDialogOpen(false);
+            setContractVehicle(null);
+          }}
+          vehicle={contractVehicle}
+          contractType={contractType}
+          onSendContract={handleSendContract}
         />
       )}
     </DashboardLayout>
