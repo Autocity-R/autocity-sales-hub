@@ -20,6 +20,9 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
   onDeliveryConfirm,
   onMarkAsArrived
 }) => {
+  // Check if vehicle is sold to determine if contract emails should be shown
+  const isVehicleSold = vehicle.salesStatus === 'verkocht_b2b' || vehicle.salesStatus === 'verkocht_b2c';
+  
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -29,14 +32,21 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>E-mail acties</DropdownMenuLabel>
-        <DropdownMenuItem onClick={() => onSendEmail("contract_b2c_digital", vehicle.id)}>
-          <Mail className="h-4 w-4 mr-2" />
-          Stuur koopcontract B2C
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onSendEmail("contract_b2b_digital", vehicle.id)}>
-          <Mail className="h-4 w-4 mr-2" />
-          Stuur koopcontract B2B
-        </DropdownMenuItem>
+        
+        {/* Only show contract emails for sold vehicles */}
+        {isVehicleSold && (
+          <>
+            <DropdownMenuItem onClick={() => onSendEmail("contract_b2c_digital", vehicle.id)}>
+              <Mail className="h-4 w-4 mr-2" />
+              Stuur koopcontract B2C
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSendEmail("contract_b2b_digital", vehicle.id)}>
+              <Mail className="h-4 w-4 mr-2" />
+              Stuur koopcontract B2B
+            </DropdownMenuItem>
+          </>
+        )}
+        
         <DropdownMenuItem onClick={() => onSendEmail("delivery_appointment", vehicle.id)}>
           <Mail className="h-4 w-4 mr-2" />
           Aflevering afspraak

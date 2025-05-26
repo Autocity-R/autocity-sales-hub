@@ -93,6 +93,9 @@ const VehicleRow = memo<{
     return diffDays;
   };
 
+  // Check if vehicle is sold to determine if contract emails should be shown
+  const isVehicleSold = vehicle.salesStatus === 'verkocht_b2b' || vehicle.salesStatus === 'verkocht_b2c';
+
   return (
     <TableRow 
       className="hover:bg-muted/50 cursor-pointer"
@@ -184,14 +187,21 @@ const VehicleRow = memo<{
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuLabel>E-mail acties</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => onSendEmail("contract_b2c_digital", vehicle.id)}>
-              <Mail className="h-4 w-4 mr-2" />
-              Koopcontract B2C
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onSendEmail("contract_b2b_digital", vehicle.id)}>
-              <Mail className="h-4 w-4 mr-2" />
-              Koopcontract B2B
-            </DropdownMenuItem>
+            
+            {/* Only show contract emails for sold vehicles */}
+            {isVehicleSold && (
+              <>
+                <DropdownMenuItem onClick={() => onSendEmail("contract_b2c_digital", vehicle.id)}>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Koopcontract B2C
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onSendEmail("contract_b2b_digital", vehicle.id)}>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Koopcontract B2B
+                </DropdownMenuItem>
+              </>
+            )}
+            
             <DropdownMenuItem onClick={() => onSendEmail("delivery_appointment", vehicle.id)}>
               <Mail className="h-4 w-4 mr-2" />
               Aflevering afspraak

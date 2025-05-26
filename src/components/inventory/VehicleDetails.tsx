@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -20,6 +19,7 @@ import { EmailsTab } from "@/components/inventory/detail-tabs/EmailsTab";
 import { B2CEmailsTab } from "@/components/inventory/detail-tabs/B2CEmailsTab";
 import { PhotosTab } from "@/components/inventory/detail-tabs/PhotosTab";
 import { FilesTab } from "@/components/inventory/detail-tabs/FilesTab";
+import { ContactsTab } from "@/components/inventory/detail-tabs/ContactsTab";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 
 interface VehicleDetailsProps {
@@ -31,7 +31,7 @@ interface VehicleDetailsProps {
   onRemovePhoto: (photoUrl: string) => void;
   onSetMainPhoto: (photoUrl: string) => void;
   onFileUpload?: (file: File, category: FileCategory) => void;
-  files?: VehicleFile[]; // Make sure this is properly typed
+  files?: VehicleFile[];
 }
 
 export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
@@ -43,7 +43,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   onRemovePhoto,
   onSetMainPhoto,
   onFileUpload,
-  files = [], // Default to an empty array for safety
+  files = [],
 }) => {
   const [editedVehicle, setEditedVehicle] = useState<Vehicle>(vehicle);
   
@@ -99,6 +99,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
               <div className="px-6 py-2 bg-background sticky top-0 z-[5]">
                 <TabsList className="w-full">
                   <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="contacts">Contacten</TabsTrigger>
                   <TabsTrigger value="photos">Foto's</TabsTrigger>
                   <TabsTrigger value="files">Documenten</TabsTrigger>
                   <TabsTrigger value="emails">Emails</TabsTrigger>
@@ -112,6 +113,13 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                     editedVehicle={editedVehicle}
                     handleChange={handleChange}
                     handleDamageChange={handleDamageChange}
+                  />
+                </TabsContent>
+                
+                <TabsContent value="contacts" className="h-full mt-0 p-0">
+                  <ContactsTab 
+                    vehicle={editedVehicle}
+                    onUpdate={setEditedVehicle}
                   />
                 </TabsContent>
                 
