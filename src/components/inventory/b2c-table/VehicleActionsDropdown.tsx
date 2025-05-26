@@ -51,6 +51,10 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
           <Mail className="h-4 w-4 mr-2" />
           Betaalherinnering
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onSendEmail("bpm_huys", vehicle.id)}>
+          <Mail className="h-4 w-4 mr-2" />
+          BPM Huys aanmelden
+        </DropdownMenuItem>
         
         {handleChangeStatus && (
           <>

@@ -1,4 +1,3 @@
-
 import React, { memo, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -213,6 +212,10 @@ const VehicleRow = memo<{
             <DropdownMenuItem onClick={() => onSendEmail("transport_pickup", vehicle.id)}>
               <Mail className="h-4 w-4 mr-2" />
               Transport Pickup
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSendEmail("bpm_huys", vehicle.id)}>
+              <Mail className="h-4 w-4 mr-2" />
+              BPM Huys aanmelden
             </DropdownMenuItem>
             {onChangeStatus && (
               <>
