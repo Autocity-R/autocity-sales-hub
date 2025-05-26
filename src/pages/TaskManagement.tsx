@@ -1,18 +1,16 @@
 
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Calendar, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { Plus, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Task, TaskStatus } from "@/types/tasks";
 import { fetchTasks, updateTaskStatus } from "@/services/taskService";
 import { TaskForm } from "@/components/tasks/TaskForm";
-import { TaskCalendar } from "@/components/tasks/TaskCalendar";
 import { TaskList } from "@/components/tasks/TaskList";
 
 const TaskManagement = () => {
@@ -113,7 +111,7 @@ const TaskManagement = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Totaal Taken</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{statusCounts.total}</div>
@@ -151,31 +149,14 @@ const TaskManagement = () => {
           </Card>
         </div>
 
-        {/* Main Content */}
-        <Tabs defaultValue="lijst" className="w-full">
-          <TabsList>
-            <TabsTrigger value="lijst">Takenlijst</TabsTrigger>
-            <TabsTrigger value="kalender">Kalender</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="lijst" className="space-y-4">
-            <TaskList 
-              tasks={tasks}
-              onCompleteTask={handleCompleteTask}
-              onTaskSelect={setSelectedTask}
-              statusFilter={statusFilter}
-              onStatusFilterChange={setStatusFilter}
-            />
-          </TabsContent>
-          
-          <TabsContent value="kalender">
-            <TaskCalendar 
-              tasks={tasks}
-              onTaskSelect={setSelectedTask}
-              onCompleteTask={handleCompleteTask}
-            />
-          </TabsContent>
-        </Tabs>
+        {/* Task List */}
+        <TaskList 
+          tasks={tasks}
+          onCompleteTask={handleCompleteTask}
+          onTaskSelect={setSelectedTask}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+        />
 
         {/* Task Form Dialog */}
         {showTaskForm && (
