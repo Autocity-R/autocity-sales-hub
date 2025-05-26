@@ -71,8 +71,8 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
   }
 
   return (
-    <div className="w-full overflow-hidden">
-      <Table>
+    <div className="w-full overflow-x-auto">
+      <Table className="w-full min-w-[1200px]">
         <TableHeader>
           <TableRow>
             <TableHead className="w-12">
@@ -94,49 +94,49 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
                 {renderSortIcon("model")}
               </div>
             </TableHead>
-            <TableHead className="hidden md:table-cell cursor-pointer" onClick={() => handleSort("mileage")}>
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("mileage")}>
               <div className="flex items-center">
                 KM
                 {renderSortIcon("mileage")}
               </div>
             </TableHead>
-            <TableHead className="hidden md:table-cell cursor-pointer" onClick={() => handleSort("licenseNumber")}>
+            <TableHead className="min-w-28 cursor-pointer" onClick={() => handleSort("licenseNumber")}>
               <div className="flex items-center">
                 Kenteken
                 {renderSortIcon("licenseNumber")}
               </div>
             </TableHead>
-            <TableHead className="hidden sm:table-cell cursor-pointer" onClick={() => handleSort("sellingPrice")}>
+            <TableHead className="min-w-28 cursor-pointer" onClick={() => handleSort("sellingPrice")}>
               <div className="flex items-center">
                 Prijs
                 {renderSortIcon("sellingPrice")}
               </div>
             </TableHead>
-            <TableHead className="hidden lg:table-cell cursor-pointer" onClick={() => handleSort("customerName")}>
+            <TableHead className="min-w-32 cursor-pointer" onClick={() => handleSort("customerName")}>
               <div className="flex items-center">
                 Klant
                 {renderSortIcon("customerName")}
               </div>
             </TableHead>
-            <TableHead className="hidden xl:table-cell cursor-pointer" onClick={() => handleSort("salespersonName")}>
+            <TableHead className="min-w-28 cursor-pointer" onClick={() => handleSort("salespersonName")}>
               <div className="flex items-center">
                 Verkoper
                 {renderSortIcon("salespersonName")}
               </div>
             </TableHead>
-            <TableHead className="hidden lg:table-cell cursor-pointer" onClick={() => handleSort("salesStatus")}>
+            <TableHead className="min-w-24 cursor-pointer" onClick={() => handleSort("salesStatus")}>
               <div className="flex items-center">
                 Type
                 {renderSortIcon("salesStatus")}
               </div>
             </TableHead>
-            <TableHead className="hidden xl:table-cell cursor-pointer" onClick={() => handleSort("deliveryDate")}>
+            <TableHead className="min-w-28 cursor-pointer" onClick={() => handleSort("deliveryDate")}>
               <div className="flex items-center">
                 Aflevering
                 {renderSortIcon("deliveryDate")}
               </div>
             </TableHead>
-            <TableHead className="hidden lg:table-cell">
+            <TableHead className="min-w-20">
               <div className="flex items-center">
                 Docs
               </div>
@@ -170,30 +170,30 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
                 <TableCell className="align-middle truncate">
                   {vehicle.model}
                 </TableCell>
-                <TableCell className="hidden md:table-cell align-middle">
+                <TableCell className="align-middle">
                   {formatMileage(vehicle.mileage)}
                 </TableCell>
-                <TableCell className="hidden md:table-cell align-middle">
+                <TableCell className="align-middle">
                   {vehicle.licenseNumber}
                 </TableCell>
-                <TableCell className="hidden sm:table-cell align-middle">
+                <TableCell className="align-middle">
                   {formatPrice(vehicle.sellingPrice)}
                 </TableCell>
-                <TableCell className="hidden lg:table-cell align-middle truncate">
+                <TableCell className="align-middle truncate">
                   {vehicle.customerName || "Onbekend"}
                 </TableCell>
-                <TableCell className="hidden xl:table-cell align-middle truncate">
+                <TableCell className="align-middle truncate">
                   {vehicle.salespersonName || "Onbekend"}
                 </TableCell>
-                <TableCell className="hidden lg:table-cell align-middle">
+                <TableCell className="align-middle">
                   <Badge variant="outline" className={vehicle.salesStatus === "verkocht_b2c" ? "bg-blue-50 text-blue-800" : "bg-purple-50 text-purple-800"}>
                     {vehicle.salesStatus === "verkocht_b2c" ? "B2C" : "B2B"}
                   </Badge>
                 </TableCell>
-                <TableCell className="hidden xl:table-cell align-middle">
+                <TableCell className="align-middle">
                   {formatDeliveryDate(vehicle.deliveryDate)}
                 </TableCell>
-                <TableCell className="hidden lg:table-cell align-middle">
+                <TableCell className="align-middle">
                   {vehicle.papersReceived ? (
                     <Badge variant="outline" className="bg-green-100 text-green-800 flex items-center">
                       <FileText className="h-3 w-3 mr-1" />
