@@ -149,7 +149,7 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
         <VehicleActionsDropdown
           vehicle={vehicle}
           onSendEmail={handleSendEmail}
-          onChangeStatus={handleChangeStatus}
+          handleChangeStatus={handleChangeStatus}
           onDeliveryConfirm={onDeliveryConfirm}
         />
       </TableCell>

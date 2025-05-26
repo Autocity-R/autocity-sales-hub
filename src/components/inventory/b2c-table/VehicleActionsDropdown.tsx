@@ -7,14 +7,14 @@ import { Vehicle, PaymentStatus } from "@/types/inventory";
 
 interface VehicleActionsDropdownProps {
   vehicle: Vehicle;
-  handleSendEmail: (type: string, vehicleId: string) => void;
+  onSendEmail: (type: string, vehicleId: string) => void;
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   onDeliveryConfirm: (vehicleId: string) => void;
 }
 
 export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
   vehicle,
-  handleSendEmail,
+  onSendEmail,
   handleChangeStatus,
   onDeliveryConfirm
 }) => {
@@ -26,7 +26,7 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => handleSendEmail("contract_b2c", vehicle.id)}>
+        <DropdownMenuItem onClick={() => onSendEmail("contract_b2c", vehicle.id)}>
           <Mail className="h-4 w-4 mr-2" />
           Stuur koopcontract
         </DropdownMenuItem>
