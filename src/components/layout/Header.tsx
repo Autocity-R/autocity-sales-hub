@@ -11,11 +11,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 const Header = () => {
   return (
     <header className="border-b bg-white dark:bg-gray-950 sticky top-0 z-30">
       <div className="flex h-16 items-center px-4 md:px-6">
+        <SidebarTrigger className="mr-4" />
         <div className="hidden md:flex md:flex-1">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
