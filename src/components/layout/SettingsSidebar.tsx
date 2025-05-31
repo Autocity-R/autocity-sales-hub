@@ -11,7 +11,8 @@ import {
   Car,
   FileText,
   PenTool,
-  Bot
+  Bot,
+  Calendar
 } from "lucide-react";
 
 const settingsItems = [
@@ -29,6 +30,11 @@ const settingsItems = [
     name: "AI Agent Beheer",
     href: "/settings?tab=ai-agents",
     icon: Bot,
+  },
+  {
+    name: "Agenda Instellingen",
+    href: "/settings?tab=calendar",
+    icon: Calendar,
   },
   {
     name: "Email Templates",

@@ -3,20 +3,19 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { createAppointment, sendAppointmentConfirmation } from "@/services/calendarService";
+import { supabase } from "@/integrations/supabase/client";
 import { Appointment } from "@/types/calendar";
 import { 
   Bot, 
   Send, 
   Calendar,
   Clock,
-  User,
-  Car,
   MapPin,
-  Sparkles
+  Sparkles,
+  AlertTriangle,
+  CheckCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, addDays, addHours } from "date-fns";
@@ -27,10 +26,12 @@ interface CalendarAIAssistantProps {
 }
 
 interface AIResponse {
-  type: 'message' | 'appointment_suggestion' | 'confirmation';
+  type: 'message' | 'appointment_suggestion' | 'availability_check' | 'conflict_warning';
   content: string;
   appointmentData?: Partial<Appointment>;
-  action?: 'create' | 'confirm_send';
+  action?: 'create' | 'check_availability' | 'suggest_times';
+  conflicts?: any[];
+  suggestions?: any[];
 }
 
 export const CalendarAIAssistant: React.FC<CalendarAIAssistantProps> = ({
@@ -40,18 +41,42 @@ export const CalendarAIAssistant: React.FC<CalendarAIAssistantProps> = ({
   const [messages, setMessages] = useState<Array<{role: 'user' | 'assistant', content: string, response?: AIResponse}>>([
     {
       role: 'assistant',
-      content: 'Hallo! Ik ben je AI agenda-assistent. Ik kan je helpen met het inplannen van afspraken, het versturen van bevestigingen en het beheren van je agenda. Wat kan ik voor je doen?'
+      content: 'Hallo! Ik ben je AI agenda-assistent met Google Calendar integratie. Ik kan je helpen met het inplannen van afspraken, het controleren van beschikbaarheid en het beheren van je agenda. Wat kan ik voor je doen?'
     }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Mock AI response generator - in real implementation this would call an AI service
-  const generateAIResponse = (userMessage: string): AIResponse => {
+  // Enhanced AI response generator with Google Calendar integration
+  const generateAIResponse = async (userMessage: string): Promise<AIResponse> => {
     const message = userMessage.toLowerCase();
     
-    // Check if user wants to schedule a test drive
+    // Check availability first
+    if (message.includes('beschikbaar') || message.includes('vrij')) {
+      const appointmentData: Partial<Appointment> = {
+        startTime: addDays(new Date(), 1),
+        endTime: addHours(addDays(new Date(), 1), 1),
+      };
+
+      return {
+        type: 'availability_check',
+        content: 'Ik ga de beschikbaarheid controleren...',
+        appointmentData,
+        action: 'check_availability'
+      };
+    }
+
+    // Suggest times
+    if (message.includes('tijden') || message.includes('voorstel')) {
+      return {
+        type: 'message',
+        content: 'Ik ga beschikbare tijden voor je zoeken...',
+        action: 'suggest_times'
+      };
+    }
+
+    // Schedule a test drive
     if (message.includes('proefrit') || message.includes('testrit')) {
       const appointmentData: Partial<Appointment> = {
         title: "Proefrit",
@@ -65,13 +90,13 @@ export const CalendarAIAssistant: React.FC<CalendarAIAssistantProps> = ({
 
       return {
         type: 'appointment_suggestion',
-        content: 'Ik heb een proefrit afspraak voorbereid. Wil je dat ik deze inplan?',
+        content: 'Ik heb een proefrit afspraak voorbereid en ga controleren op conflicten. Wil je dat ik deze inplan?',
         appointmentData,
         action: 'create'
       };
     }
 
-    // Check if user wants to schedule a delivery
+    // Schedule a delivery
     if (message.includes('aflevering') || message.includes('bezorgen')) {
       const appointmentData: Partial<Appointment> = {
         title: "Voertuig Aflevering",
@@ -85,25 +110,16 @@ export const CalendarAIAssistant: React.FC<CalendarAIAssistantProps> = ({
 
       return {
         type: 'appointment_suggestion',
-        content: 'Ik heb een aflevering afspraak voorbereid. Zal ik deze inplannen?',
+        content: 'Ik heb een aflevering afspraak voorbereid. Deze wordt automatisch gesynchroniseerd met Google Calendar. Zal ik deze inplannen?',
         appointmentData,
         action: 'create'
       };
     }
 
-    // Check if user wants to send confirmations
-    if (message.includes('bevestiging') || message.includes('email')) {
-      return {
-        type: 'confirmation',
-        content: 'Ik kan afspraakbevestigingen versturen naar klanten. Welke afspraak wil je bevestigen?',
-        action: 'confirm_send'
-      };
-    }
-
-    // Default response
+    // Default response with Google Calendar context
     return {
       type: 'message',
-      content: 'Ik kan je helpen met:\n• Afspraken inplannen voor proefritten\n• Aflevering afspraken maken\n• Bevestigingsmails versturen\n• Agenda beheer\n\nZeg bijvoorbeeld: "Plan een proefrit in voor BMW X3 morgen om 14:00" of "Verstuur bevestiging voor afspraak vandaag"'
+      content: 'Ik kan je helpen met:\n• Afspraken inplannen (automatisch gesynchroniseerd met Google Calendar)\n• Beschikbaarheid controleren\n• Conflicten detecteren\n• Tijdslot suggesties\n• Bevestigingsmails versturen\n\nZeg bijvoorbeeld: "Plan een proefrit in voor BMW X3 morgen om 14:00" of "Controleer beschikbaarheid vrijdag 10:00"'
     };
   };
 
@@ -120,7 +136,7 @@ export const CalendarAIAssistant: React.FC<CalendarAIAssistantProps> = ({
 
     try {
       // Generate AI response
-      const aiResponse = generateAIResponse(userMessage);
+      const aiResponse = await generateAIResponse(userMessage);
       
       // Add AI response
       setMessages([...newMessages, {
@@ -142,27 +158,60 @@ export const CalendarAIAssistant: React.FC<CalendarAIAssistantProps> = ({
 
   const handleCreateAppointment = async (appointmentData: Partial<Appointment>) => {
     try {
-      const appointment = await createAppointment({
-        title: appointmentData.title || "Nieuwe Afspraak",
-        type: appointmentData.type || "overig",
-        status: appointmentData.status || "gepland",
-        startTime: appointmentData.startTime || new Date(),
-        endTime: appointmentData.endTime || addHours(new Date(), 1),
-        location: appointmentData.location || "Showroom",
-        createdBy: "AI Assistant",
-        assignedTo: "AI Assistant"
-      } as Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Niet ingelogd",
+          description: "Je moet ingelogd zijn om afspraken te maken",
+          variant: "destructive",
+        });
+        return;
+      }
 
-      onAppointmentCreated?.(appointment);
+      // Use AI calendar operations for smart scheduling
+      const { data, error } = await supabase.functions.invoke('ai-calendar-operations', {
+        body: {
+          action: 'create_appointment',
+          agentId: 'calendar-assistant',
+          appointmentData: {
+            ...appointmentData,
+            assignedTo: "AI Assistant"
+          },
+          userId: user.id,
+          conflictResolution: 'reject'
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data.success) {
+        if (data.error === 'scheduling_conflict') {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `⚠️ Er is een conflict gedetecteerd met ${data.conflicts.length} bestaande afspraak(en). Wil je een ander tijdstip kiezen?`,
+            response: {
+              type: 'conflict_warning',
+              content: 'Conflict gedetecteerd',
+              conflicts: data.conflicts
+            }
+          }]);
+          return;
+        }
+        throw new Error(data.error);
+      }
+
+      onAppointmentCreated?.(data.appointment);
       
       toast({
         title: "Afspraak Aangemaakt",
-        description: `${appointment.title} is succesvol ingepland`,
+        description: `${data.appointment.title} is succesvol ingepland en gesynchroniseerd`,
       });
 
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: `Perfect! Ik heb de afspraak "${appointment.title}" aangemaakt voor ${format(new Date(appointment.startTime), 'dd MMMM yyyy')} om ${format(new Date(appointment.startTime), 'HH:mm')}.`
+        content: `✅ Perfect! Ik heb de afspraak "${data.appointment.title}" aangemaakt voor ${format(new Date(data.appointment.startTime), 'dd MMMM yyyy')} om ${format(new Date(data.appointment.startTime), 'HH:mm')}. ${data.appointment.google_event_id ? 'De afspraak is automatisch gesynchroniseerd met Google Calendar.' : ''}`
       }]);
 
     } catch (error) {
@@ -172,6 +221,46 @@ export const CalendarAIAssistant: React.FC<CalendarAIAssistantProps> = ({
         description: "Kon afspraak niet aanmaken",
         variant: "destructive",
       });
+
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, er ging iets mis bij het aanmaken van de afspraak. Probeer het opnieuw of neem contact op met de beheerder.'
+      }]);
+    }
+  };
+
+  const handleCheckAvailability = async (appointmentData: Partial<Appointment>) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-calendar-operations', {
+        body: {
+          action: 'check_availability',
+          agentId: 'calendar-assistant',
+          appointmentData,
+        }
+      });
+
+      if (error) throw error;
+
+      const message = data.available 
+        ? `✅ Het tijdslot ${format(new Date(appointmentData.startTime!), 'dd MMM HH:mm')} - ${format(new Date(appointmentData.endTime!), 'HH:mm')} is beschikbaar!`
+        : `❌ Het tijdslot is niet beschikbaar. Er zijn ${data.conflicts.length} conflicterende afspraken.`;
+
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: message,
+        response: {
+          type: 'availability_check',
+          content: message,
+          conflicts: data.conflicts
+        }
+      }]);
+
+    } catch (error) {
+      console.error('Error checking availability:', error);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, kon beschikbaarheid niet controleren. Probeer het opnieuw.'
+      }]);
     }
   };
 
@@ -182,6 +271,9 @@ export const CalendarAIAssistant: React.FC<CalendarAIAssistantProps> = ({
           <DialogTitle className="flex items-center gap-2">
             <Bot className="h-5 w-5" />
             AI Agenda Assistent
+            <Badge variant="outline" className="text-green-700 border-green-300">
+              Google Calendar Sync
+            </Badge>
           </DialogTitle>
         </DialogHeader>
 
@@ -222,8 +314,36 @@ export const CalendarAIAssistant: React.FC<CalendarAIAssistantProps> = ({
                         size="sm"
                       >
                         <Sparkles className="h-4 w-4" />
-                        Afspraak Inplannen
+                        Afspraak Inplannen + Google Sync
                       </Button>
+                    </div>
+                  )}
+
+                  {message.response?.type === 'availability_check' && message.response.appointmentData && (
+                    <div className="mt-3">
+                      <Button
+                        onClick={() => handleCheckAvailability(message.response!.appointmentData!)}
+                        className="gap-2"
+                        size="sm"
+                        variant="outline"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        Controleer Beschikbaarheid
+                      </Button>
+                    </div>
+                  )}
+
+                  {message.response?.type === 'conflict_warning' && message.response.conflicts && (
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center gap-2 text-orange-600">
+                        <AlertTriangle className="h-4 w-4" />
+                        <span className="font-medium">Conflicten gedetecteerd:</span>
+                      </div>
+                      {message.response.conflicts.map((conflict: any, idx: number) => (
+                        <div key={idx} className="text-sm bg-orange-50 p-2 rounded">
+                          {conflict.title} - {format(new Date(conflict.startTime), 'HH:mm')}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -275,18 +395,18 @@ export const CalendarAIAssistant: React.FC<CalendarAIAssistantProps> = ({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setInput("Plan een aflevering in voor overmorgen")}
+              onClick={() => setInput("Controleer beschikbaarheid vrijdag 10:00")}
               disabled={isLoading}
             >
-              Aflevering Plannen
+              Beschikbaarheid Controleren
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setInput("Verstuur bevestiging naar klant")}
+              onClick={() => setInput("Plan een aflevering in voor overmorgen")}
               disabled={isLoading}
             >
-              Bevestiging Versturen
+              Aflevering Plannen
             </Button>
           </div>
         </div>

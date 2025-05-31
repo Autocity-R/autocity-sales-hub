@@ -11,6 +11,7 @@ import { APISettings } from "@/components/settings/APISettings";
 import { LoanCarManagement } from "@/components/settings/LoanCarManagement";
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
 import { AIAgentManagement } from "@/components/settings/AIAgentManagement";
+import { CalendarSettings } from "@/components/settings/CalendarSettings";
 import { useSearchParams } from "react-router-dom";
 
 const Settings = () => {
@@ -25,6 +26,8 @@ const Settings = () => {
         return <UserManagement />;
       case "ai-agents":
         return <AIAgentManagement />;
+      case "calendar":
+        return <CalendarSettings />;
       case "email-templates":
         return <EmailTemplateManagement />;
       case "contracts":
