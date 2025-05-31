@@ -18,18 +18,127 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    const authHeader = req.headers.get('Authorization')!;
+    const url = new URL(req.url);
+    const action = url.searchParams.get('action');
+
+    console.log('Google OAuth request:', { method: req.method, action, url: req.url });
+
+    // Handle callback without authentication (Google redirects here)
+    if (action === 'callback') {
+      console.log('OAuth callback handling');
+      const code = url.searchParams.get('code');
+      const state = url.searchParams.get('state'); // user_id:mode
+      
+      if (!code || !state) {
+        throw new Error('Missing code or state parameter');
+      }
+
+      const [userId, mode] = state.split(':');
+      const isCompanyMode = mode === 'company';
+
+      console.log('Processing OAuth callback:', { userId, mode, isCompanyMode });
+
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: Deno.env.get('GOOGLE_CLIENT_ID')!,
+          client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET')!,
+          code,
+          grant_type: 'authorization_code',
+          redirect_uri: `${Deno.env.get('SUPABASE_URL')}/functions/v1/google-oauth?action=callback`,
+        }),
+      });
+
+      const tokens = await tokenResponse.json();
+      console.log('Token exchange result:', { success: !!tokens.access_token });
+      
+      if (!tokens.access_token) {
+        throw new Error('Failed to get access token');
+      }
+
+      // Get user's primary calendar
+      const calendarResponse = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary', {
+        headers: { 'Authorization': `Bearer ${tokens.access_token}` },
+      });
+      
+      const calendar = await calendarResponse.json();
+
+      // Get user's email from Google
+      const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { 'Authorization': `Bearer ${tokens.access_token}` },
+      });
+      
+      const userInfo = await userInfoResponse.json();
+      console.log('User info:', { email: userInfo.email });
+
+      // Store tokens in appropriate table
+      const expiresAt = new Date(Date.now() + (tokens.expires_in * 1000));
+      
+      if (isCompanyMode) {
+        console.log('Storing company calendar settings');
+        // Store in company_calendar_settings
+        const { error } = await supabase
+          .from('company_calendar_settings')
+          .upsert({
+            company_id: 'auto-city',
+            google_access_token: tokens.access_token,
+            google_refresh_token: tokens.refresh_token,
+            google_token_expires_at: expiresAt.toISOString(),
+            google_calendar_id: calendar.id,
+            calendar_name: calendar.summary,
+            calendar_email: userInfo.email,
+            sync_enabled: true,
+            managed_by_user_id: userId,
+          });
+
+        if (error) {
+          console.error('Database error:', error);
+          throw error;
+        }
+        console.log('Company calendar settings saved successfully');
+      } else {
+        console.log('Storing user calendar settings');
+        // Store in user_calendar_settings (legacy mode)
+        const { error } = await supabase
+          .from('user_calendar_settings')
+          .upsert({
+            user_id: userId,
+            google_access_token: tokens.access_token,
+            google_refresh_token: tokens.refresh_token,
+            google_token_expires_at: expiresAt.toISOString(),
+            google_calendar_id: calendar.id,
+            calendar_name: calendar.summary,
+            sync_enabled: true,
+          });
+
+        if (error) {
+          console.error('Database error:', error);
+          throw error;
+        }
+      }
+
+      // Redirect to success page
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': `${Deno.env.get('SITE_URL')}/settings?tab=calendar&status=connected`,
+        },
+      });
+    }
+
+    // All other actions require authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Unauthorized - missing authorization header');
+    }
+
     const token = authHeader.replace('Bearer ', '');
     const { data: { user } } = await supabase.auth.getUser(token);
 
     if (!user) {
       throw new Error('Unauthorized');
     }
-
-    const url = new URL(req.url);
-    const action = url.searchParams.get('action');
-
-    console.log('Google OAuth request:', { method: req.method, action, url: req.url });
 
     // Handle GET request for getting auth URL (company mode)
     if (req.method === 'GET' && !action) {
@@ -71,109 +180,6 @@ serve(async (req) => {
 
         return new Response(JSON.stringify({ authUrl }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      case 'callback': {
-        console.log('OAuth callback handling');
-        const code = url.searchParams.get('code');
-        const state = url.searchParams.get('state'); // user_id:mode
-        
-        if (!code || !state) {
-          throw new Error('Missing code or state parameter');
-        }
-
-        const [userId, mode] = state.split(':');
-        const isCompanyMode = mode === 'company';
-
-        console.log('Processing OAuth callback:', { userId, mode, isCompanyMode });
-
-        const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            client_id: Deno.env.get('GOOGLE_CLIENT_ID')!,
-            client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET')!,
-            code,
-            grant_type: 'authorization_code',
-            redirect_uri: `${Deno.env.get('SUPABASE_URL')}/functions/v1/google-oauth?action=callback`,
-          }),
-        });
-
-        const tokens = await tokenResponse.json();
-        console.log('Token exchange result:', { success: !!tokens.access_token });
-        
-        if (!tokens.access_token) {
-          throw new Error('Failed to get access token');
-        }
-
-        // Get user's primary calendar
-        const calendarResponse = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary', {
-          headers: { 'Authorization': `Bearer ${tokens.access_token}` },
-        });
-        
-        const calendar = await calendarResponse.json();
-
-        // Get user's email from Google
-        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-          headers: { 'Authorization': `Bearer ${tokens.access_token}` },
-        });
-        
-        const userInfo = await userInfoResponse.json();
-        console.log('User info:', { email: userInfo.email });
-
-        // Store tokens in appropriate table
-        const expiresAt = new Date(Date.now() + (tokens.expires_in * 1000));
-        
-        if (isCompanyMode) {
-          console.log('Storing company calendar settings');
-          // Store in company_calendar_settings
-          const { error } = await supabase
-            .from('company_calendar_settings')
-            .upsert({
-              company_id: 'auto-city',
-              google_access_token: tokens.access_token,
-              google_refresh_token: tokens.refresh_token,
-              google_token_expires_at: expiresAt.toISOString(),
-              google_calendar_id: calendar.id,
-              calendar_name: calendar.summary,
-              calendar_email: userInfo.email,
-              sync_enabled: true,
-              managed_by_user_id: userId,
-            });
-
-          if (error) {
-            console.error('Database error:', error);
-            throw error;
-          }
-          console.log('Company calendar settings saved successfully');
-        } else {
-          console.log('Storing user calendar settings');
-          // Store in user_calendar_settings (legacy mode)
-          const { error } = await supabase
-            .from('user_calendar_settings')
-            .upsert({
-              user_id: userId,
-              google_access_token: tokens.access_token,
-              google_refresh_token: tokens.refresh_token,
-              google_token_expires_at: expiresAt.toISOString(),
-              google_calendar_id: calendar.id,
-              calendar_name: calendar.summary,
-              sync_enabled: true,
-            });
-
-          if (error) {
-            console.error('Database error:', error);
-            throw error;
-          }
-        }
-
-        // Redirect to success page
-        return new Response(null, {
-          status: 302,
-          headers: {
-            'Location': `${Deno.env.get('SITE_URL')}/settings?tab=calendar&status=connected`,
-          },
         });
       }
 
