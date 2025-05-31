@@ -1,26 +1,38 @@
 
-import React from "react";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import Header from "./Header";
-import { AppSidebar } from "./AppSidebar";
+import { useState } from "react";
+import { Sidebar } from "./Sidebar";
+import { Header } from "./Header";
+import { AuthHeader } from "./AuthHeader";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AppSidebar />
-        <SidebarInset className="flex flex-col flex-1 overflow-hidden">
-          <Header />
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50">
+      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
+      
+      <div className="lg:pl-72">
+        <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+          <Header setSidebarOpen={setSidebarOpen} />
+          <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
+            <div className="flex flex-1"></div>
+            <div className="flex items-center gap-x-4 lg:gap-x-6">
+              <AuthHeader />
+            </div>
+          </div>
+        </div>
+        
+        <main className="py-10">
+          <div className="px-4 sm:px-6 lg:px-8">
             {children}
-          </main>
-        </SidebarInset>
+          </div>
+        </main>
       </div>
-    </SidebarProvider>
+    </div>
   );
 };
 

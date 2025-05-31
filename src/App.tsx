@@ -20,38 +20,133 @@ import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 import TestContract from "@/pages/TestContract";
 import ContractPreview from "@/pages/ContractPreview";
+import Auth from "@/pages/Auth";
 import { Toaster } from "@/components/ui/toaster";
 import { DigitalSignaturePage } from "@/components/contracts/DigitalSignaturePage";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import "./App.css";
 
 function App() {
   return (
     <>
       <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/transport" element={<Transport />} />
-        <Route path="/inventory" element={<Inventory />} />
-        <Route path="/inventory/b2b" element={<InventoryB2B />} />
-        <Route path="/inventory/b2c" element={<InventoryB2C />} />
-        <Route path="/inventory/consumer" element={<InventoryB2C />} />
-        <Route path="/inventory/delivered" element={<InventoryDelivered />} />
-        <Route path="/inventory/online" element={<InventoryOnline />} />
-        <Route path="/loan-cars" element={<LoanCars />} />
-        <Route path="/ai-agents" element={<AIAgents />} />
-        <Route path="/leads" element={<Leads />} />
-        <Route path="/calendar" element={<Calendar />} />
-        <Route path="/tasks" element={<TaskManagement />} />
-        <Route path="/customers" element={<Customers />} />
-        <Route path="/customers/b2b" element={<Customers />} />
-        <Route path="/customers/b2c" element={<Customers />} />
-        <Route path="/suppliers" element={<Customers />} />
-        <Route path="/customers/:id" element={<CustomerDetail />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/warranty" element={<Warranty />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/test-contract" element={<TestContract />} />
-        <Route path="/contract-preview" element={<ContractPreview />} />
+        <Route path="/auth" element={<Auth />} />
         <Route path="/contract/sign/:token" element={<DigitalSignaturePage />} />
+        <Route path="/" element={
+          <ProtectedRoute>
+            <Index />
+          </ProtectedRoute>
+        } />
+        <Route path="/transport" element={
+          <ProtectedRoute>
+            <Transport />
+          </ProtectedRoute>
+        } />
+        <Route path="/inventory" element={
+          <ProtectedRoute>
+            <Inventory />
+          </ProtectedRoute>
+        } />
+        <Route path="/inventory/b2b" element={
+          <ProtectedRoute>
+            <InventoryB2B />
+          </ProtectedRoute>
+        } />
+        <Route path="/inventory/b2c" element={
+          <ProtectedRoute>
+            <InventoryB2C />
+          </ProtectedRoute>
+        } />
+        <Route path="/inventory/consumer" element={
+          <ProtectedRoute>
+            <InventoryB2C />
+          </ProtectedRoute>
+        } />
+        <Route path="/inventory/delivered" element={
+          <ProtectedRoute>
+            <InventoryDelivered />
+          </ProtectedRoute>
+        } />
+        <Route path="/inventory/online" element={
+          <ProtectedRoute>
+            <InventoryOnline />
+          </ProtectedRoute>
+        } />
+        <Route path="/loan-cars" element={
+          <ProtectedRoute>
+            <LoanCars />
+          </ProtectedRoute>
+        } />
+        <Route path="/ai-agents" element={
+          <ProtectedRoute>
+            <AIAgents />
+          </ProtectedRoute>
+        } />
+        <Route path="/leads" element={
+          <ProtectedRoute>
+            <Leads />
+          </ProtectedRoute>
+        } />
+        <Route path="/calendar" element={
+          <ProtectedRoute>
+            <Calendar />
+          </ProtectedRoute>
+        } />
+        <Route path="/tasks" element={
+          <ProtectedRoute>
+            <TaskManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/customers" element={
+          <ProtectedRoute>
+            <Customers />
+          </ProtectedRoute>
+        } />
+        <Route path="/customers/b2b" element={
+          <ProtectedRoute>
+            <Customers />
+          </ProtectedRoute>
+        } />
+        <Route path="/customers/b2c" element={
+          <ProtectedRoute>
+            <Customers />
+          </ProtectedRoute>
+        } />
+        <Route path="/suppliers" element={
+          <ProtectedRoute>
+            <Customers />
+          </ProtectedRoute>
+        } />
+        <Route path="/customers/:id" element={
+          <ProtectedRoute>
+            <CustomerDetail />
+          </ProtectedRoute>
+        } />
+        <Route path="/reports" element={
+          <ProtectedRoute>
+            <Reports />
+          </ProtectedRoute>
+        } />
+        <Route path="/warranty" element={
+          <ProtectedRoute>
+            <Warranty />
+          </ProtectedRoute>
+        } />
+        <Route path="/settings" element={
+          <ProtectedRoute requireAdmin={true}>
+            <Settings />
+          </ProtectedRoute>
+        } />
+        <Route path="/test-contract" element={
+          <ProtectedRoute>
+            <TestContract />
+          </ProtectedRoute>
+        } />
+        <Route path="/contract-preview" element={
+          <ProtectedRoute>
+            <ContractPreview />
+          </ProtectedRoute>
+        } />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster />
