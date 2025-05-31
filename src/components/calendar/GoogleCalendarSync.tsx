@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,22 +90,33 @@ export const GoogleCalendarSync: React.FC<GoogleCalendarSyncProps> = ({
 
     setIsLoading(true);
     try {
-      // Get the authorization URL from our edge function
+      console.log('Starting Google Calendar connection...');
+      
+      // Get the authorization URL from our edge function with proper URL parameters
       const { data, error } = await supabase.functions.invoke('google-oauth', {
-        body: { action: 'get_auth_url', company_mode: true }
+        method: 'GET',
+        // Send as query parameters, not in body
       });
 
-      if (error) throw error;
+      console.log('Edge function response:', { data, error });
 
-      if (data.authUrl) {
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
+
+      if (data?.authUrl) {
+        console.log('Redirecting to Google OAuth:', data.authUrl);
         // Redirect to Google OAuth
         window.location.href = data.authUrl;
+      } else {
+        throw new Error('No authorization URL received');
       }
     } catch (error) {
       console.error('Connection error:', error);
       toast({
         title: "Verbindingsfout",
-        description: "Kon niet verbinden met Google Calendar. Probeer het opnieuw.",
+        description: `Kon niet verbinden met Google Calendar: ${error.message}`,
         variant: "destructive",
       });
     } finally {
