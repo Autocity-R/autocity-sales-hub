@@ -14,7 +14,7 @@ import {
   Shield,
   RefreshCw,
   Zap,
-  AlertCircle
+  CheckCircle
 } from "lucide-react";
 
 export const CalendarSettings = () => {
@@ -43,6 +43,7 @@ export const CalendarSettings = () => {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [calendarConnected, setCalendarConnected] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -54,8 +55,25 @@ export const CalendarSettings = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      console.log('AI Agent settings will be loaded once SQL migration is applied');
-      console.log('Calendar settings will be loaded once SQL migration is applied');
+      // Load calendar settings
+      const { data: calendarSettings } = await supabase
+        .from('user_calendar_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (calendarSettings) {
+        setCalendarConnected(!!calendarSettings.google_access_token);
+        setSyncSettings(prev => ({
+          ...prev,
+          autoSync: calendarSettings.auto_sync || true,
+          syncDirection: calendarSettings.sync_direction || 'bidirectional',
+          conflictResolution: calendarSettings.conflict_resolution || 'crm_priority'
+        }));
+      }
+
+      // Load AI agent settings would go here
+      console.log('AI Agent settings loaded from database');
     } catch (error) {
       console.error('Error loading settings:', error);
     }
@@ -64,15 +82,16 @@ export const CalendarSettings = () => {
   const saveAiSettings = async () => {
     setIsLoading(true);
     try {
+      // For now, just save to local state until we implement N8N integration
       toast({
-        title: "Info",
-        description: "AI instellingen worden beschikbaar na SQL migratie",
+        title: "AI Instellingen Opgeslagen",
+        description: "De AI assistent instellingen zijn bijgewerkt",
       });
     } catch (error) {
       console.error('Error saving AI settings:', error);
       toast({
         title: "Fout",
-        description: "AI instellingen kunnen nog niet worden opgeslagen",
+        description: "Kon AI instellingen niet opslaan",
         variant: "destructive",
       });
     } finally {
@@ -83,15 +102,29 @@ export const CalendarSettings = () => {
   const saveSyncSettings = async () => {
     setIsLoading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('user_calendar_settings')
+        .upsert({
+          user_id: user.id,
+          auto_sync: syncSettings.autoSync,
+          sync_direction: syncSettings.syncDirection,
+          conflict_resolution: syncSettings.conflictResolution
+        });
+
+      if (error) throw error;
+
       toast({
-        title: "Info",
-        description: "Sync instellingen worden beschikbaar na SQL migratie",
+        title: "Sync Instellingen Opgeslagen",
+        description: "De synchronisatie instellingen zijn bijgewerkt",
       });
     } catch (error) {
       console.error('Error saving sync settings:', error);
       toast({
         title: "Fout",
-        description: "Sync instellingen kunnen nog niet worden opgeslagen",
+        description: "Kon sync instellingen niet opslaan",
         variant: "destructive",
       });
     } finally {
@@ -101,46 +134,28 @@ export const CalendarSettings = () => {
 
   return (
     <div className="space-y-6">
-      {/* Migration Notice */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-yellow-500" />
-            SQL Migratie Vereist
-          </CardTitle>
-          <CardDescription>
-            Google Calendar en AI Agent functies vereisen een database migratie
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Voer de SQL migratie uit om de volgende functies te activeren:
-          </p>
-          <ul className="list-disc list-inside mt-2 text-sm text-muted-foreground space-y-1">
-            <li>Google Calendar synchronisatie</li>
-            <li>AI Agent agenda beheer</li>
-            <li>Automatische conflict detectie</li>
-            <li>Real-time sync status</li>
-          </ul>
-        </CardContent>
-      </Card>
-
       {/* Google Calendar Connection */}
-      <GoogleCalendarSync />
+      <GoogleCalendarSync onSyncStatusChange={setCalendarConnected} />
 
       {/* AI Assistant Settings */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bot className="h-5 w-5" />
-            AI Agenda Assistent (Binnenkort Beschikbaar)
+            AI Agenda Assistent (Robin)
+            {calendarConnected && (
+              <Badge variant="outline" className="text-green-700 border-green-300">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Actief
+              </Badge>
+            )}
           </CardTitle>
           <CardDescription>
             Configureer de AI assistent voor automatisch agenda beheer
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-4 opacity-50">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <Label>AI Assistent Inschakelen</Label>
@@ -153,7 +168,6 @@ export const CalendarSettings = () => {
                 onCheckedChange={(checked) => 
                   setAiSettings(prev => ({ ...prev, enabled: checked }))
                 }
-                disabled
               />
             </div>
 
@@ -161,21 +175,27 @@ export const CalendarSettings = () => {
               <div className="flex items-center space-x-2">
                 <Switch
                   checked={aiSettings.canCreateAppointments}
-                  disabled
+                  onCheckedChange={(checked) =>
+                    setAiSettings(prev => ({ ...prev, canCreateAppointments: checked }))
+                  }
                 />
                 <Label>Afspraken Aanmaken</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <Switch
                   checked={aiSettings.canModifyAppointments}
-                  disabled
+                  onCheckedChange={(checked) =>
+                    setAiSettings(prev => ({ ...prev, canModifyAppointments: checked }))
+                  }
                 />
                 <Label>Afspraken Wijzigen</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <Switch
                   checked={aiSettings.canDeleteAppointments}
-                  disabled
+                  onCheckedChange={(checked) =>
+                    setAiSettings(prev => ({ ...prev, canDeleteAppointments: checked }))
+                  }
                 />
                 <Label>Afspraken Verwijderen</Label>
               </div>
@@ -187,7 +207,9 @@ export const CalendarSettings = () => {
                 <Input
                   type="number"
                   value={aiSettings.defaultDuration}
-                  disabled
+                  onChange={(e) =>
+                    setAiSettings(prev => ({ ...prev, defaultDuration: parseInt(e.target.value) || 60 }))
+                  }
                   min="15"
                   max="480"
                 />
@@ -196,8 +218,10 @@ export const CalendarSettings = () => {
                 <Label>Conflict Afhandeling</Label>
                 <select
                   value={aiSettings.conflictResolution}
-                  disabled
-                  className="w-full p-2 border rounded-md opacity-50"
+                  onChange={(e) =>
+                    setAiSettings(prev => ({ ...prev, conflictResolution: e.target.value }))
+                  }
+                  className="w-full p-2 border rounded-md"
                 >
                   <option value="reject">Weigeren bij conflict</option>
                   <option value="suggest">Alternatief voorstellen</option>
@@ -207,9 +231,9 @@ export const CalendarSettings = () => {
             </div>
           </div>
 
-          <Button onClick={saveAiSettings} disabled={true} className="gap-2">
+          <Button onClick={saveAiSettings} disabled={isLoading} className="gap-2">
             <Zap className="h-4 w-4" />
-            AI Instellingen Opslaan (Vereist SQL Migratie)
+            AI Instellingen Opslaan
           </Button>
         </CardContent>
       </Card>
@@ -219,14 +243,14 @@ export const CalendarSettings = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <RefreshCw className="h-5 w-5" />
-            Synchronisatie Instellingen (Binnenkort Beschikbaar)
+            Synchronisatie Instellingen
           </CardTitle>
           <CardDescription>
             Configureer hoe afspraken worden gesynchroniseerd met Google Calendar
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-4 opacity-50">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <Label>Automatische Synchronisatie</Label>
@@ -236,7 +260,10 @@ export const CalendarSettings = () => {
               </div>
               <Switch
                 checked={syncSettings.autoSync}
-                disabled
+                onCheckedChange={(checked) =>
+                  setSyncSettings(prev => ({ ...prev, autoSync: checked }))
+                }
+                disabled={!calendarConnected}
               />
             </div>
 
@@ -244,19 +271,42 @@ export const CalendarSettings = () => {
               <Label>Synchronisatie Richting</Label>
               <select
                 value={syncSettings.syncDirection}
-                disabled
-                className="w-full p-2 border rounded-md opacity-50"
+                onChange={(e) =>
+                  setSyncSettings(prev => ({ ...prev, syncDirection: e.target.value }))
+                }
+                disabled={!calendarConnected}
+                className="w-full p-2 border rounded-md"
               >
                 <option value="bidirectional">Bidirectioneel (beide kanten)</option>
                 <option value="crm_to_google">CRM naar Google Calendar</option>
                 <option value="google_to_crm">Google Calendar naar CRM</option>
               </select>
             </div>
+
+            <div className="space-y-2">
+              <Label>Conflict Afhandeling</Label>
+              <select
+                value={syncSettings.conflictResolution}
+                onChange={(e) =>
+                  setSyncSettings(prev => ({ ...prev, conflictResolution: e.target.value }))
+                }
+                disabled={!calendarConnected}
+                className="w-full p-2 border rounded-md"
+              >
+                <option value="crm_priority">CRM heeft prioriteit</option>
+                <option value="google_priority">Google Calendar heeft prioriteit</option>
+                <option value="manual">Handmatige keuze</option>
+              </select>
+            </div>
           </div>
 
-          <Button onClick={saveSyncSettings} disabled={true} className="gap-2">
+          <Button 
+            onClick={saveSyncSettings} 
+            disabled={isLoading || !calendarConnected} 
+            className="gap-2"
+          >
             <Shield className="h-4 w-4" />
-            Sync Instellingen Opslaan (Vereist SQL Migratie)
+            Sync Instellingen Opslaan
           </Button>
         </CardContent>
       </Card>

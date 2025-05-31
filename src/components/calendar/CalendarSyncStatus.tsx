@@ -71,7 +71,6 @@ export const CalendarSyncStatus: React.FC<CalendarSyncStatusProps> = ({
   const handleSync = async () => {
     setIsSyncing(true);
     try {
-      // This will work once the SQL migration is applied
       const { data, error } = await supabase.functions.invoke('calendar-sync', {
         body: {
           action: 'sync_to_google',
@@ -98,7 +97,7 @@ export const CalendarSyncStatus: React.FC<CalendarSyncStatusProps> = ({
       setCurrentStatus('error');
       toast({
         title: "Synchronisatiefout",
-        description: "Google Calendar koppeling is nog niet actief. Configureer eerst je Google Calendar in Instellingen.",
+        description: "Kon afspraak niet synchroniseren met Google Calendar",
         variant: "destructive",
       });
     } finally {

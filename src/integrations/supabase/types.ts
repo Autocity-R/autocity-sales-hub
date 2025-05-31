@@ -9,7 +9,306 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      ai_agent_chat_logs: {
+        Row: {
+          action_taken: string | null
+          ai_agent_id: string
+          appointment_created: string | null
+          created_at: string
+          id: string
+          intent_detected: string | null
+          message_content: string
+          message_type: string
+          metadata: Json | null
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          action_taken?: string | null
+          ai_agent_id: string
+          appointment_created?: string | null
+          created_at?: string
+          id?: string
+          intent_detected?: string | null
+          message_content: string
+          message_type: string
+          metadata?: Json | null
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          action_taken?: string | null
+          ai_agent_id?: string
+          appointment_created?: string | null
+          created_at?: string
+          id?: string
+          intent_detected?: string | null
+          message_content?: string
+          message_type?: string
+          metadata?: Json | null
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_agent_chat_logs_ai_agent_id_fkey"
+            columns: ["ai_agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_agent_chat_logs_appointment_created_fkey"
+            columns: ["appointment_created"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_agents: {
+        Row: {
+          capabilities: string[]
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          permissions: Json | null
+          persona: string
+          system_prompt: string
+          updated_at: string
+        }
+        Insert: {
+          capabilities: string[]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          permissions?: Json | null
+          persona: string
+          system_prompt: string
+          updated_at?: string
+        }
+        Update: {
+          capabilities?: string[]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          permissions?: Json | null
+          persona?: string
+          system_prompt?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      appointments: {
+        Row: {
+          ai_agent_id: string | null
+          assignedto: string | null
+          confirmationsent: boolean | null
+          created_at: string
+          created_by_ai: boolean | null
+          createdby: string
+          customeremail: string | null
+          customerid: string | null
+          customername: string | null
+          customerphone: string | null
+          description: string | null
+          endtime: string
+          google_calendar_id: string | null
+          google_event_id: string | null
+          id: string
+          last_synced_at: string | null
+          leadid: string | null
+          location: string | null
+          notes: string | null
+          remindersent: boolean | null
+          starttime: string
+          status: string
+          sync_status: string | null
+          title: string
+          type: string
+          updated_at: string
+          vehiclebrand: string | null
+          vehicleid: string | null
+          vehiclelicensenumber: string | null
+          vehiclemodel: string | null
+        }
+        Insert: {
+          ai_agent_id?: string | null
+          assignedto?: string | null
+          confirmationsent?: boolean | null
+          created_at?: string
+          created_by_ai?: boolean | null
+          createdby: string
+          customeremail?: string | null
+          customerid?: string | null
+          customername?: string | null
+          customerphone?: string | null
+          description?: string | null
+          endtime: string
+          google_calendar_id?: string | null
+          google_event_id?: string | null
+          id?: string
+          last_synced_at?: string | null
+          leadid?: string | null
+          location?: string | null
+          notes?: string | null
+          remindersent?: boolean | null
+          starttime: string
+          status?: string
+          sync_status?: string | null
+          title: string
+          type: string
+          updated_at?: string
+          vehiclebrand?: string | null
+          vehicleid?: string | null
+          vehiclelicensenumber?: string | null
+          vehiclemodel?: string | null
+        }
+        Update: {
+          ai_agent_id?: string | null
+          assignedto?: string | null
+          confirmationsent?: boolean | null
+          created_at?: string
+          created_by_ai?: boolean | null
+          createdby?: string
+          customeremail?: string | null
+          customerid?: string | null
+          customername?: string | null
+          customerphone?: string | null
+          description?: string | null
+          endtime?: string
+          google_calendar_id?: string | null
+          google_event_id?: string | null
+          id?: string
+          last_synced_at?: string | null
+          leadid?: string | null
+          location?: string | null
+          notes?: string | null
+          remindersent?: boolean | null
+          starttime?: string
+          status?: string
+          sync_status?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          vehiclebrand?: string | null
+          vehicleid?: string | null
+          vehiclelicensenumber?: string | null
+          vehiclemodel?: string | null
+        }
+        Relationships: []
+      }
+      calendar_sync_logs: {
+        Row: {
+          appointment_id: string | null
+          created_at: string
+          error_message: string | null
+          google_event_id: string | null
+          id: string
+          performed_by_ai_agent_id: string | null
+          performed_by_user_id: string | null
+          sync_action: string
+          sync_data: Json | null
+          sync_direction: string
+          sync_status: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          google_event_id?: string | null
+          id?: string
+          performed_by_ai_agent_id?: string | null
+          performed_by_user_id?: string | null
+          sync_action: string
+          sync_data?: Json | null
+          sync_direction: string
+          sync_status: string
+        }
+        Update: {
+          appointment_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          google_event_id?: string | null
+          id?: string
+          performed_by_ai_agent_id?: string | null
+          performed_by_user_id?: string | null
+          sync_action?: string
+          sync_data?: Json | null
+          sync_direction?: string
+          sync_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_sync_logs_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_sync_logs_performed_by_ai_agent_id_fkey"
+            columns: ["performed_by_ai_agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_calendar_settings: {
+        Row: {
+          auto_sync: boolean | null
+          calendar_name: string | null
+          conflict_resolution: string | null
+          created_at: string
+          google_access_token: string | null
+          google_calendar_id: string | null
+          google_refresh_token: string | null
+          google_token_expires_at: string | null
+          id: string
+          sync_direction: string | null
+          sync_enabled: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_sync?: boolean | null
+          calendar_name?: string | null
+          conflict_resolution?: string | null
+          created_at?: string
+          google_access_token?: string | null
+          google_calendar_id?: string | null
+          google_refresh_token?: string | null
+          google_token_expires_at?: string | null
+          id?: string
+          sync_direction?: string | null
+          sync_enabled?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_sync?: boolean | null
+          calendar_name?: string | null
+          conflict_resolution?: string | null
+          created_at?: string
+          google_access_token?: string | null
+          google_calendar_id?: string | null
+          google_refresh_token?: string | null
+          google_token_expires_at?: string | null
+          id?: string
+          sync_direction?: string | null
+          sync_enabled?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

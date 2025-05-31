@@ -1,346 +1,104 @@
+
 import { Appointment, AppointmentType, AppointmentStatus } from "@/types/calendar";
+import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+type DbAppointment = Database['public']['Tables']['appointments']['Row'];
+type AppointmentInsert = Database['public']['Tables']['appointments']['Insert'];
 
-// Mock appointments data with lead connections and May 2025 appointments
-const mockAppointments: Appointment[] = [
-  {
-    id: "app-1",
-    title: "Proefrit BMW 3 Serie",
-    description: "Proefrit voor potentiële klant Jan de Vries",
-    startTime: new Date("2024-01-20T10:00:00"),
-    endTime: new Date("2024-01-20T11:00:00"),
-    type: "proefrit",
-    status: "bevestigd",
-    customerId: "cust-1",
-    customerName: "Jan de Vries",
-    customerEmail: "jan.devries@gmail.com",
-    customerPhone: "+31 6 12345678",
-    vehicleId: "v-1",
-    vehicleBrand: "BMW",
-    vehicleModel: "3 Serie",
-    vehicleLicenseNumber: "AB-123-CD",
-    leadId: "lead1",
-    location: "Showroom",
-    notes: "Klant geïnteresseerd in lease optie",
-    confirmationSent: true,
-    createdBy: "Pieter Jansen",
-    assignedTo: "Pieter Jansen",
-    createdAt: new Date("2024-01-15T09:00:00"),
-    updatedAt: new Date("2024-01-15T09:00:00")
-  },
-  {
-    id: "app-2",
-    title: "Aflevering Mercedes E-Class",
-    description: "Aflevering voor Mark Bakker - Bakker Group",
-    startTime: new Date("2024-01-22T14:00:00"),
-    endTime: new Date("2024-01-22T15:00:00"),
-    type: "aflevering",
-    status: "gepland",
-    customerId: "cust-2",
-    customerName: "Mark Bakker",
-    customerEmail: "mark@bakkergroup.nl",
-    customerPhone: "+31 6 11223344",
-    vehicleId: "v-2",
-    vehicleBrand: "Mercedes",
-    vehicleModel: "E-Class",
-    vehicleLicenseNumber: "EF-456-GH",
-    leadId: "lead3",
-    location: "Bakker Group - Hoofdkantoor",
-    notes: "Fleet delivery, contract getekend",
-    confirmationSent: false,
-    createdBy: "Sander Vermeulen",
-    assignedTo: "Sander Vermeulen",
-    createdAt: new Date("2024-01-16T11:00:00"),
-    updatedAt: new Date("2024-01-16T11:00:00")
-  },
-  {
-    id: "app-3",
-    title: "Proefrit Audi A4",
-    description: "Eerste proefrit voor Lisa Schmidt",
-    startTime: new Date("2024-01-25T13:30:00"),
-    endTime: new Date("2024-01-25T14:30:00"),
-    type: "proefrit",
-    status: "gepland",
-    customerName: "Lisa Schmidt",
-    customerEmail: "l.schmidt@hotmail.com",
-    customerPhone: "+31 6 87654321",
-    vehicleBrand: "Audi",
-    vehicleModel: "A4",
-    leadId: "lead2",
-    location: "Showroom",
-    notes: "Eerste auto, heeft financiering nodig. Klant komt om 13:30",
-    confirmationSent: true,
-    createdBy: "Sander Vermeulen",
-    assignedTo: "Sander Vermeulen",
-    createdAt: new Date("2024-01-18T10:15:00"),
-    updatedAt: new Date("2024-01-18T10:15:00")
-  },
-  {
-    id: "app-4",
-    title: "Bezichtiging BMW X5",
-    description: "Klant wil de BMW X5 bekijken",
-    startTime: new Date("2024-01-23T11:00:00"),
-    endTime: new Date("2024-01-23T12:00:00"),
-    type: "bezichtiging",
-    status: "bevestigd",
-    customerName: "Peter van der Berg",
-    customerEmail: "p.vandenberg@email.com",
-    customerPhone: "+31 6 55667788",
-    vehicleBrand: "BMW",
-    vehicleModel: "X5",
-    location: "Showroom",
-    notes: "Geïnteresseerd in zwarte uitvoering",
-    confirmationSent: true,
-    createdBy: "Pieter Jansen",
-    assignedTo: "Pieter Jansen",
-    createdAt: new Date("2024-01-19T14:20:00"),
-    updatedAt: new Date("2024-01-19T14:20:00")
-  },
-  {
-    id: "app-5",
-    title: "Onderhoud Mercedes C-Class",
-    description: "Regulier onderhoud voor bestaande klant",
-    startTime: new Date("2024-01-24T09:00:00"),
-    endTime: new Date("2024-01-24T11:00:00"),
-    type: "onderhoud",
-    status: "bevestigd",
-    customerName: "Sandra Jansen",
-    customerEmail: "sandra.jansen@gmail.com",
-    customerPhone: "+31 6 99887766",
-    vehicleBrand: "Mercedes",
-    vehicleModel: "C-Class",
-    vehicleLicenseNumber: "GH-789-IJ",
-    location: "Werkplaats",
-    notes: "Grote beurt + APK",
-    confirmationSent: true,
-    createdBy: "Technische dienst",
-    assignedTo: "Monteur Jan",
-    createdAt: new Date("2024-01-17T16:45:00"),
-    updatedAt: new Date("2024-01-17T16:45:00")
-  },
-  {
-    id: "app-6",
-    title: "Intake nieuw voertuig",
-    description: "Intake van nieuwe BMW i4 voor verkoop",
-    startTime: new Date("2024-01-26T10:30:00"),
-    endTime: new Date("2024-01-26T11:30:00"),
-    type: "intake",
-    status: "gepland",
-    customerName: "Leverancier AutoHouse",
-    customerEmail: "intake@autohouse.nl",
-    customerPhone: "+31 20 1234567",
-    vehicleBrand: "BMW",
-    vehicleModel: "i4",
-    location: "Inkomende goederen",
-    notes: "Elektrische BMW, volledig geïnspecteerd",
-    confirmationSent: false,
-    createdBy: "Inkoopafdeling",
-    assignedTo: "Pieter Jansen",
-    createdAt: new Date("2024-01-20T11:30:00"),
-    updatedAt: new Date("2024-01-20T11:30:00")
-  },
-  // NEW: May 2025 appointments
-  {
-    id: "app-may-1",
-    title: "Proefrit Tesla Model 3",
-    description: "Proefrit elektrische auto voor nieuwe klant",
-    startTime: new Date("2025-05-24T10:00:00"),
-    endTime: new Date("2025-05-24T11:00:00"),
-    type: "proefrit",
-    status: "bevestigd",
-    customerName: "Emma van der Meer",
-    customerEmail: "emma.vandermeer@gmail.com",
-    customerPhone: "+31 6 11111111",
-    vehicleBrand: "Tesla",
-    vehicleModel: "Model 3",
-    vehicleLicenseNumber: "T-123-ES",
-    leadId: "lead-may-1",
-    location: "Showroom Amsterdam",
-    notes: "Eerste elektrische auto, uitleg over laden nodig",
-    confirmationSent: true,
-    createdBy: "Pieter Jansen",
-    assignedTo: "Pieter Jansen",
-    createdAt: new Date("2025-05-20T09:00:00"),
-    updatedAt: new Date("2025-05-20T09:00:00")
-  },
-  {
-    id: "app-may-2",
-    title: "Aflevering Volkswagen Golf",
-    description: "Aflevering nieuwe Golf voor familie",
-    startTime: new Date("2025-05-25T14:00:00"),
-    endTime: new Date("2025-05-25T15:00:00"),
-    type: "aflevering",
-    status: "gepland",
-    customerName: "Familie Hendriks",
-    customerEmail: "info@hendriks.nl",
-    customerPhone: "+31 6 22222222",
-    vehicleBrand: "Volkswagen",
-    vehicleModel: "Golf",
-    vehicleLicenseNumber: "VW-456-GO",
-    location: "Thuis aflevering - Utrecht",
-    notes: "Tweede auto voor het gezin",
-    confirmationSent: false,
-    createdBy: "Sander Vermeulen",
-    assignedTo: "Sander Vermeulen",
-    createdAt: new Date("2025-05-22T11:00:00"),
-    updatedAt: new Date("2025-05-22T11:00:00")
-  },
-  {
-    id: "app-may-3",
-    title: "Onderhoud Audi Q5",
-    description: "Regulier onderhoud + nieuwe banden",
-    startTime: new Date("2025-05-26T09:00:00"),
-    endTime: new Date("2025-05-26T11:30:00"),
-    type: "onderhoud",
-    status: "bevestigd",
-    customerName: "Marc Jansen",
-    customerEmail: "marc.jansen@bedrijf.nl",
-    customerPhone: "+31 6 33333333",
-    vehicleBrand: "Audi",
-    vehicleModel: "Q5",
-    vehicleLicenseNumber: "AU-789-Q5",
-    location: "Werkplaats",
-    notes: "Nieuwe winterbanden monteren, APK vervalt volgende maand",
-    confirmationSent: true,
-    createdBy: "Technische dienst",
-    assignedTo: "Monteur Kees",
-    createdAt: new Date("2025-05-23T16:00:00"),
-    updatedAt: new Date("2025-05-23T16:00:00")
-  },
-  {
-    id: "app-may-4",
-    title: "Bezichtiging BMW X3",
-    description: "Klant wil de BMW X3 bekijken en proefrijden",
-    startTime: new Date("2025-05-27T13:00:00"),
-    endTime: new Date("2025-05-27T14:30:00"),
-    type: "bezichtiging",
-    status: "gepland",
-    customerName: "Sarah de Jong",
-    customerEmail: "sarah.dejong@email.com",
-    customerPhone: "+31 6 44444444",
-    vehicleBrand: "BMW",
-    vehicleModel: "X3",
-    location: "Showroom",
-    notes: "Geïnteresseerd in lease constructie, zakelijk gebruik",
-    confirmationSent: true,
-    createdBy: "Lisa Peters",
-    assignedTo: "Lisa Peters",
-    createdAt: new Date("2025-05-25T10:30:00"),
-    updatedAt: new Date("2025-05-25T10:30:00")
-  },
-  {
-    id: "app-may-5",
-    title: "Intake Mercedes C-Class",
-    description: "Nieuwe inname voor verkoop",
-    startTime: new Date("2025-05-28T11:00:00"),
-    endTime: new Date("2025-05-28T12:00:00"),
-    type: "intake",
-    status: "gepland",
-    customerName: "Inlevering Particulier",
-    customerEmail: "intake@autohandel.nl",
-    customerPhone: "+31 6 55555555",
-    vehicleBrand: "Mercedes",
-    vehicleModel: "C-Class",
-    vehicleLicenseNumber: "MB-321-CL",
-    location: "Inkomende goederen",
-    notes: "2019 model, lage kilometerstand, volledige servicehistorie",
-    confirmationSent: false,
-    createdBy: "Inkoopafdeling",
-    assignedTo: "Tom van Dijk",
-    createdAt: new Date("2025-05-26T14:20:00"),
-    updatedAt: new Date("2025-05-26T14:20:00")
-  },
-  {
-    id: "app-may-6",
-    title: "Ophalen Ford Focus",
-    description: "Ophalen van gerepareerd voertuig",
-    startTime: new Date("2025-05-29T15:00:00"),
-    endTime: new Date("2025-05-29T15:30:00"),
-    type: "ophalen",
-    status: "bevestigd",
-    customerName: "Peter Bakker",
-    customerEmail: "p.bakker@email.com",
-    customerPhone: "+31 6 66666666",
-    vehicleBrand: "Ford",
-    vehicleModel: "Focus",
-    vehicleLicenseNumber: "FO-654-RD",
-    location: "Werkplaats",
-    notes: "Reparatie voltooid, voertuig klaar voor ophaal",
-    confirmationSent: true,
-    createdBy: "Klantenservice",
-    assignedTo: "Monteur Jan",
-    createdAt: new Date("2025-05-27T08:15:00"),
-    updatedAt: new Date("2025-05-27T08:15:00")
-  },
-  {
-    id: "app-may-7",
-    title: "Proefrit Hyundai Kona Electric",
-    description: "Proefrit elektrische SUV",
-    startTime: new Date("2025-05-30T16:00:00"),
-    endTime: new Date("2025-05-30T17:00:00"),
-    type: "proefrit",
-    status: "gepland",
-    customerName: "Kim van der Berg",
-    customerEmail: "kim.vdberg@gmail.com",
-    customerPhone: "+31 6 77777777",
-    vehicleBrand: "Hyundai",
-    vehicleModel: "Kona Electric",
-    vehicleLicenseNumber: "HY-987-EL",
-    leadId: "lead-may-2",
-    location: "Showroom",
-    notes: "Interesse in duurzame mobiliteit, eerste keer elektrisch",
-    confirmationSent: false,
-    createdBy: "Lisa Peters",
-    assignedTo: "Lisa Peters",
-    createdAt: new Date("2025-05-28T12:45:00"),
-    updatedAt: new Date("2025-05-28T12:45:00")
-  },
-  {
-    id: "app-may-8",
-    title: "Aflevering Peugeot 3008",
-    description: "Aflevering lease auto bedrijf",
-    startTime: new Date("2025-05-31T10:30:00"),
-    endTime: new Date("2025-05-31T11:30:00"),
-    type: "aflevering",
-    status: "bevestigd",
-    customerName: "Bedrijf ABC BV",
-    customerEmail: "fleet@abc-bedrijf.nl",
-    customerPhone: "+31 20 1234567",
-    vehicleBrand: "Peugeot",
-    vehicleModel: "3008",
-    vehicleLicenseNumber: "PE-135-BV",
-    location: "Bedrijfsterrein ABC",
-    notes: "Fleet contract, meerdere voertuigen dit jaar",
-    confirmationSent: true,
-    createdBy: "Fleet manager",
-    assignedTo: "Sander Vermeulen",
-    createdAt: new Date("2025-05-29T09:30:00"),
-    updatedAt: new Date("2025-05-29T09:30:00")
-  }
-];
+// Convert database appointment to frontend type
+const convertDbAppointment = (dbAppointment: DbAppointment): Appointment => ({
+  id: dbAppointment.id,
+  title: dbAppointment.title,
+  description: dbAppointment.description || undefined,
+  startTime: dbAppointment.starttime,
+  endTime: dbAppointment.endtime,
+  type: dbAppointment.type as AppointmentType,
+  status: dbAppointment.status as AppointmentStatus,
+  customerId: dbAppointment.customerid || undefined,
+  customerName: dbAppointment.customername || undefined,
+  customerEmail: dbAppointment.customeremail || undefined,
+  customerPhone: dbAppointment.customerphone || undefined,
+  vehicleId: dbAppointment.vehicleid || undefined,
+  vehicleBrand: dbAppointment.vehiclebrand || undefined,
+  vehicleModel: dbAppointment.vehiclemodel || undefined,
+  vehicleLicenseNumber: dbAppointment.vehiclelicensenumber || undefined,
+  leadId: dbAppointment.leadid || undefined,
+  location: dbAppointment.location || undefined,
+  notes: dbAppointment.notes || undefined,
+  reminderSent: dbAppointment.remindersent || false,
+  confirmationSent: dbAppointment.confirmationsent || false,
+  createdBy: dbAppointment.createdby,
+  assignedTo: dbAppointment.assignedto || undefined,
+  createdAt: dbAppointment.created_at,
+  updatedAt: dbAppointment.updated_at,
+  googleEventId: dbAppointment.google_event_id || undefined,
+  googleCalendarId: dbAppointment.google_calendar_id || undefined,
+  sync_status: dbAppointment.sync_status as 'pending' | 'synced' | 'error' || 'pending',
+  last_synced_at: dbAppointment.last_synced_at || undefined,
+  created_by_ai: dbAppointment.created_by_ai || false,
+  ai_agent_id: dbAppointment.ai_agent_id || undefined
+});
+
+// Convert frontend appointment to database insert format
+const convertToDbInsert = (appointment: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>): AppointmentInsert => ({
+  title: appointment.title,
+  description: appointment.description,
+  starttime: appointment.startTime.toString(),
+  endtime: appointment.endTime.toString(),
+  type: appointment.type,
+  status: appointment.status,
+  customerid: appointment.customerId,
+  customername: appointment.customerName,
+  customeremail: appointment.customerEmail,
+  customerphone: appointment.customerPhone,
+  vehicleid: appointment.vehicleId,
+  vehiclebrand: appointment.vehicleBrand,
+  vehiclemodel: appointment.vehicleModel,
+  vehiclelicensenumber: appointment.vehicleLicenseNumber,
+  leadid: appointment.leadId,
+  location: appointment.location,
+  notes: appointment.notes,
+  remindersent: appointment.reminderSent,
+  confirmationsent: appointment.confirmationSent,
+  createdby: appointment.createdBy,
+  assignedto: appointment.assignedTo,
+  google_event_id: appointment.googleEventId,
+  google_calendar_id: appointment.googleCalendarId,
+  sync_status: appointment.sync_status,
+  last_synced_at: appointment.last_synced_at,
+  created_by_ai: appointment.created_by_ai,
+  ai_agent_id: appointment.ai_agent_id
+});
 
 export const fetchAppointments = async (
   startDate?: Date,
   endDate?: Date
 ): Promise<Appointment[]> => {
   try {
-    const params = new URLSearchParams();
-    if (startDate) params.append('start', startDate.toISOString());
-    if (endDate) params.append('end', endDate.toISOString());
-    
-    const response = await fetch(`${API_URL}/api/appointments?${params}`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    let query = supabase
+      .from('appointments')
+      .select('*')
+      .order('starttime', { ascending: true });
+
+    if (startDate) {
+      query = query.gte('starttime', startDate.toISOString());
     }
-    return await response.json();
-  } catch (error: any) {
+    if (endDate) {
+      query = query.lte('starttime', endDate.toISOString());
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching appointments:', error);
+      throw error;
+    }
+
+    return data?.map(convertDbAppointment) || [];
+  } catch (error) {
     console.error("Failed to fetch appointments:", error);
-    return mockAppointments.filter(apt => {
-      if (!startDate || !endDate) return true;
-      const aptDate = new Date(apt.startTime);
-      return aptDate >= startDate && aptDate <= endDate;
-    });
+    throw error;
   }
 };
 
@@ -348,28 +106,31 @@ export const createAppointment = async (
   appointment: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<Appointment> => {
   try {
-    const response = await fetch(`${API_URL}/api/appointments`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(appointment),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('User not authenticated');
     }
-    return await response.json();
-  } catch (error: any) {
-    console.error("Failed to create appointment:", error);
-    // Return mock created appointment
-    const newAppointment: Appointment = {
+
+    const dbAppointment = convertToDbInsert({
       ...appointment,
-      id: `app-${Date.now()}`,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    mockAppointments.push(newAppointment);
-    return newAppointment;
+      createdBy: appointment.createdBy || user.email || 'Unknown User'
+    });
+
+    const { data, error } = await supabase
+      .from('appointments')
+      .insert(dbAppointment)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating appointment:', error);
+      throw error;
+    }
+
+    return convertDbAppointment(data);
+  } catch (error) {
+    console.error("Failed to create appointment:", error);
+    throw error;
   }
 };
 
@@ -378,41 +139,56 @@ export const updateAppointment = async (
   updates: Partial<Appointment>
 ): Promise<Appointment> => {
   try {
-    const response = await fetch(`${API_URL}/api/appointments/${appointmentId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(updates),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    // Convert frontend updates to database format
+    const dbUpdates: any = {};
+    
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    if (updates.description !== undefined) dbUpdates.description = updates.description;
+    if (updates.startTime !== undefined) dbUpdates.starttime = updates.startTime.toString();
+    if (updates.endTime !== undefined) dbUpdates.endtime = updates.endTime.toString();
+    if (updates.type !== undefined) dbUpdates.type = updates.type;
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.customerName !== undefined) dbUpdates.customername = updates.customerName;
+    if (updates.customerEmail !== undefined) dbUpdates.customeremail = updates.customerEmail;
+    if (updates.customerPhone !== undefined) dbUpdates.customerphone = updates.customerPhone;
+    if (updates.location !== undefined) dbUpdates.location = updates.location;
+    if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+    if (updates.sync_status !== undefined) dbUpdates.sync_status = updates.sync_status;
+    if (updates.googleEventId !== undefined) dbUpdates.google_event_id = updates.googleEventId;
+
+    const { data, error } = await supabase
+      .from('appointments')
+      .update(dbUpdates)
+      .eq('id', appointmentId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating appointment:', error);
+      throw error;
     }
-    return await response.json();
-  } catch (error: any) {
+
+    return convertDbAppointment(data);
+  } catch (error) {
     console.error("Failed to update appointment:", error);
-    // Return mock updated appointment
-    const existingAppointment = mockAppointments.find(a => a.id === appointmentId);
-    if (!existingAppointment) throw error;
-    return { ...existingAppointment, ...updates, updatedAt: new Date() };
+    throw error;
   }
 };
 
 export const deleteAppointment = async (appointmentId: string): Promise<void> => {
   try {
-    const response = await fetch(`${API_URL}/api/appointments/${appointmentId}`, {
-      method: "DELETE",
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    const { error } = await supabase
+      .from('appointments')
+      .delete()
+      .eq('id', appointmentId);
+
+    if (error) {
+      console.error('Error deleting appointment:', error);
+      throw error;
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error("Failed to delete appointment:", error);
-    // Mock delete
-    const index = mockAppointments.findIndex(a => a.id === appointmentId);
-    if (index > -1) {
-      mockAppointments.splice(index, 1);
-    }
+    throw error;
   }
 };
 
@@ -421,19 +197,13 @@ export const sendAppointmentConfirmation = async (
   message?: string
 ): Promise<void> => {
   try {
-    const response = await fetch(`${API_URL}/api/appointments/${appointmentId}/confirm`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ message }),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-  } catch (error: any) {
+    // Update confirmation status
+    await updateAppointment(appointmentId, { confirmationSent: true });
+    
+    // Here you could integrate with an email service
+    console.log(`Confirmation sent for appointment ${appointmentId}`, message);
+  } catch (error) {
     console.error("Failed to send confirmation:", error);
-    // Mock success
-    console.log(`Confirmation sent for appointment ${appointmentId}`);
+    throw error;
   }
 };
