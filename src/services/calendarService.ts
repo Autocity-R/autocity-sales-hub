@@ -1,4 +1,3 @@
-
 import { Appointment, AppointmentType, AppointmentStatus } from "@/types/calendar";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
@@ -66,7 +65,7 @@ const convertToDbInsert = (appointment: Omit<Appointment, 'id' | 'createdAt' | '
   google_event_id: appointment.googleEventId,
   google_calendar_id: appointment.googleCalendarId,
   sync_status: appointment.sync_status,
-  last_synced_at: appointment.last_synced_at,
+  last_synced_at: typeof appointment.last_synced_at === 'string' ? appointment.last_synced_at : appointment.last_synced_at?.toISOString(),
   created_by_ai: appointment.created_by_ai,
   ai_agent_id: appointment.ai_agent_id
 });
@@ -159,6 +158,9 @@ export const updateAppointment = async (
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
     if (updates.sync_status !== undefined) dbUpdates.sync_status = updates.sync_status;
     if (updates.googleEventId !== undefined) dbUpdates.google_event_id = updates.googleEventId;
+    if (updates.last_synced_at !== undefined) {
+      dbUpdates.last_synced_at = typeof updates.last_synced_at === 'string' ? updates.last_synced_at : updates.last_synced_at?.toISOString();
+    }
 
     const { data, error } = await supabase
       .from('appointments')
