@@ -44,8 +44,8 @@ const convertDbAppointment = (dbAppointment: DbAppointment): Appointment => ({
 const convertToDbInsert = (appointment: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>): AppointmentInsert => ({
   title: appointment.title,
   description: appointment.description,
-  starttime: appointment.startTime.toString(),
-  endtime: appointment.endTime.toString(),
+  starttime: typeof appointment.startTime === 'string' ? appointment.startTime : appointment.startTime.toISOString(),
+  endtime: typeof appointment.endTime === 'string' ? appointment.endTime : appointment.endTime.toISOString(),
   type: appointment.type,
   status: appointment.status,
   customerid: appointment.customerId,
@@ -144,8 +144,12 @@ export const updateAppointment = async (
     
     if (updates.title !== undefined) dbUpdates.title = updates.title;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
-    if (updates.startTime !== undefined) dbUpdates.starttime = updates.startTime.toString();
-    if (updates.endTime !== undefined) dbUpdates.endtime = updates.endTime.toString();
+    if (updates.startTime !== undefined) {
+      dbUpdates.starttime = typeof updates.startTime === 'string' ? updates.startTime : updates.startTime.toISOString();
+    }
+    if (updates.endTime !== undefined) {
+      dbUpdates.endtime = typeof updates.endTime === 'string' ? updates.endTime : updates.endTime.toISOString();
+    }
     if (updates.type !== undefined) dbUpdates.type = updates.type;
     if (updates.status !== undefined) dbUpdates.status = updates.status;
     if (updates.customerName !== undefined) dbUpdates.customername = updates.customerName;
