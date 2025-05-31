@@ -26,8 +26,7 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  Settings,
-  Sync
+  Settings
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, startOfDay, endOfDay, addDays, subDays, startOfWeek, endOfWeek } from "date-fns";
@@ -87,10 +86,10 @@ const Calendar = () => {
 
   const confirmedAppointments = appointments.filter(apt => apt.status === "bevestigd");
   const pendingAppointments = appointments.filter(apt => apt.status === "gepland");
-  const syncedAppointments = appointments.filter(apt => apt.sync_status === "synced");
-  const pendingSyncAppointments = appointments.filter(apt => 
-    apt.sync_status === "pending" || !apt.sync_status
-  );
+  
+  // For now, these will show 0 until SQL migration is applied
+  const syncedAppointments = appointments.filter(apt => false); // Will use sync_status === "synced" after migration
+  const pendingSyncAppointments = appointments.filter(apt => false); // Will use sync_status === "pending" after migration
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -227,7 +226,7 @@ const Calendar = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Google Sync</CardTitle>
-              <Sync className="h-4 w-4 text-muted-foreground" />
+              <RefreshCw className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">{syncedAppointments.length}</div>
@@ -235,6 +234,7 @@ const Calendar = () => {
               {pendingSyncAppointments.length > 0 && (
                 <p className="text-xs text-orange-600">{pendingSyncAppointments.length} wachten</p>
               )}
+              <p className="text-xs text-blue-600">SQL migratie vereist</p>
             </CardContent>
           </Card>
           
@@ -324,8 +324,8 @@ const Calendar = () => {
                             </Badge>
                             <CalendarSyncStatus
                               appointmentId={appointment.id}
-                              googleEventId={appointment.google_event_id}
-                              syncStatus={appointment.sync_status}
+                              googleEventId={appointment.googleEventId}
+                              syncStatus="pending"
                               onSyncComplete={loadAppointments}
                             />
                           </div>
@@ -355,26 +355,36 @@ const Calendar = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {/* Sync summary */}
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-yellow-800">
+                      <AlertCircle className="h-4 w-4" />
+                      <strong>SQL Migratie Vereist</strong>
+                    </div>
+                    <p className="text-sm text-yellow-700 mt-1">
+                      Voer de SQL migratie uit om Google Calendar synchronisatie te activeren
+                    </p>
+                  </div>
+
+                  {/* Preview of what sync status will look like */}
                   <div className="grid grid-cols-3 gap-4">
                     <div className="text-center p-4 bg-green-50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">{syncedAppointments.length}</div>
+                      <div className="text-2xl font-bold text-green-600">0</div>
                       <div className="text-sm text-green-700">Gesynchroniseerd</div>
                     </div>
                     <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                      <div className="text-2xl font-bold text-yellow-600">{pendingSyncAppointments.length}</div>
+                      <div className="text-2xl font-bold text-yellow-600">0</div>
                       <div className="text-sm text-yellow-700">Wachten op sync</div>
                     </div>
                     <div className="text-center p-4 bg-blue-50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">{appointments.filter(a => a.created_by_ai).length}</div>
+                      <div className="text-2xl font-bold text-blue-600">0</div>
                       <div className="text-sm text-blue-700">Door AI aangemaakt</div>
                     </div>
                   </div>
 
-                  {/* Recent appointments with sync status */}
+                  {/* Recent appointments preview */}
                   <div className="space-y-2">
                     <h4 className="font-medium">Recente Afspraken</h4>
-                    {appointments.slice(0, 10).map((appointment) => (
+                    {appointments.slice(0, 5).map((appointment) => (
                       <div key={appointment.id} className="flex items-center justify-between p-3 border rounded">
                         <div>
                           <div className="font-medium">{appointment.title}</div>
@@ -384,8 +394,8 @@ const Calendar = () => {
                         </div>
                         <CalendarSyncStatus
                           appointmentId={appointment.id}
-                          googleEventId={appointment.google_event_id}
-                          syncStatus={appointment.sync_status}
+                          googleEventId={appointment.googleEventId}
+                          syncStatus="pending"
                           onSyncComplete={loadAppointments}
                         />
                       </div>

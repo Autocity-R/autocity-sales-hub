@@ -31,9 +31,13 @@ export interface Appointment {
   createdAt: Date | string;
   updatedAt: Date | string;
   
-  // Google Calendar integration
+  // Google Calendar integration (will be available after SQL migration)
   googleEventId?: string;
   googleCalendarId?: string;
+  sync_status?: 'pending' | 'synced' | 'error';
+  last_synced_at?: Date | string;
+  created_by_ai?: boolean;
+  ai_agent_id?: string;
 }
 
 export type AppointmentType = 

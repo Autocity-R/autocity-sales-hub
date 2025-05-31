@@ -5,11 +5,10 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  Sync, 
+  RefreshCw, 
   CheckCircle, 
   AlertCircle, 
   Clock, 
-  RefreshCw,
   ExternalLink 
 } from "lucide-react";
 
@@ -39,7 +38,7 @@ export const CalendarSyncStatus: React.FC<CalendarSyncStatusProps> = ({
       case 'pending':
         return <Clock className="h-4 w-4 text-yellow-500" />;
       default:
-        return <Sync className="h-4 w-4 text-gray-500" />;
+        return <RefreshCw className="h-4 w-4 text-gray-500" />;
     }
   };
 
@@ -72,6 +71,7 @@ export const CalendarSyncStatus: React.FC<CalendarSyncStatusProps> = ({
   const handleSync = async () => {
     setIsSyncing(true);
     try {
+      // This will work once the SQL migration is applied
       const { data, error } = await supabase.functions.invoke('calendar-sync', {
         body: {
           action: 'sync_to_google',
@@ -98,7 +98,7 @@ export const CalendarSyncStatus: React.FC<CalendarSyncStatusProps> = ({
       setCurrentStatus('error');
       toast({
         title: "Synchronisatiefout",
-        description: "Kon afspraak niet synchroniseren met Google Calendar",
+        description: "Google Calendar koppeling is nog niet actief. Configureer eerst je Google Calendar in Instellingen.",
         variant: "destructive",
       });
     } finally {
@@ -130,7 +130,7 @@ export const CalendarSyncStatus: React.FC<CalendarSyncStatusProps> = ({
           {isSyncing ? (
             <RefreshCw className="h-3 w-3 animate-spin" />
           ) : (
-            <Sync className="h-3 w-3" />
+            <RefreshCw className="h-3 w-3" />
           )}
           Sync
         </Button>
