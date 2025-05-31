@@ -13,7 +13,9 @@ import {
   AlertCircle,
   ExternalLink,
   Settings,
-  Clock
+  Clock,
+  Building2,
+  Shield
 } from "lucide-react";
 
 interface GoogleCalendarSyncProps {
@@ -24,34 +26,50 @@ export const GoogleCalendarSync: React.FC<GoogleCalendarSyncProps> = ({
   onSyncStatusChange
 }) => {
   const [isConnected, setIsConnected] = useState(false);
-  const [calendarSettings, setCalendarSettings] = useState<any>(null);
+  const [companyCalendarSettings, setCompanyCalendarSettings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncEnabled, setSyncEnabled] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     loadCalendarSettings();
+    checkUserRole();
   }, []);
 
-  const loadCalendarSettings = async () => {
+  const checkUserRole = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      setIsAdmin(profile?.role === 'admin' || profile?.role === 'owner');
+    } catch (error) {
+      console.error('Error checking user role:', error);
+    }
+  };
+
+  const loadCalendarSettings = async () => {
+    try {
       const { data: settings, error } = await supabase
-        .from('user_calendar_settings')
+        .from('company_calendar_settings')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('company_id', 'auto-city')
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Error loading calendar settings:', error);
+        console.error('Error loading company calendar settings:', error);
         return;
       }
 
       if (settings) {
-        setCalendarSettings(settings);
+        setCompanyCalendarSettings(settings);
         setIsConnected(!!settings.google_access_token);
         setSyncEnabled(settings.sync_enabled || false);
         onSyncStatusChange?.(!!settings.google_access_token);
@@ -62,11 +80,20 @@ export const GoogleCalendarSync: React.FC<GoogleCalendarSyncProps> = ({
   };
 
   const handleConnect = async () => {
+    if (!isAdmin) {
+      toast({
+        title: "Toegang geweigerd",
+        description: "Alleen beheerders kunnen de calendar verbinden",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       // Get the authorization URL from our edge function
       const { data, error } = await supabase.functions.invoke('google-oauth', {
-        body: { action: 'get_auth_url' }
+        body: { action: 'get_auth_url', company_mode: true }
       });
 
       if (error) throw error;
@@ -88,25 +115,31 @@ export const GoogleCalendarSync: React.FC<GoogleCalendarSyncProps> = ({
   };
 
   const handleDisconnect = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    if (!isAdmin) {
+      toast({
+        title: "Toegang geweigerd",
+        description: "Alleen beheerders kunnen de calendar ontkoppelen",
+        variant: "destructive",
+      });
+      return;
+    }
 
+    try {
       const { error } = await supabase
-        .from('user_calendar_settings')
+        .from('company_calendar_settings')
         .delete()
-        .eq('user_id', user.id);
+        .eq('company_id', 'auto-city');
 
       if (error) throw error;
 
       setIsConnected(false);
-      setCalendarSettings(null);
+      setCompanyCalendarSettings(null);
       setSyncEnabled(false);
       onSyncStatusChange?.(false);
 
       toast({
         title: "Verbinding verbroken",
-        description: "Google Calendar is losgekoppeld van je account",
+        description: "Google Calendar is losgekoppeld van de centrale calendar",
       });
     } catch (error) {
       console.error('Disconnect error:', error);
@@ -119,14 +152,26 @@ export const GoogleCalendarSync: React.FC<GoogleCalendarSyncProps> = ({
   };
 
   const handleToggleSync = async (enabled: boolean) => {
+    if (!isAdmin) {
+      toast({
+        title: "Toegang geweigerd",
+        description: "Alleen beheerders kunnen sync instellingen wijzigen",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const { error } = await supabase
-        .from('user_calendar_settings')
-        .update({ sync_enabled: enabled })
-        .eq('user_id', user.id);
+        .from('company_calendar_settings')
+        .update({ 
+          sync_enabled: enabled,
+          managed_by_user_id: user.id
+        })
+        .eq('company_id', 'auto-city');
 
       if (error) throw error;
 
@@ -134,7 +179,7 @@ export const GoogleCalendarSync: React.FC<GoogleCalendarSyncProps> = ({
       toast({
         title: enabled ? "Synchronisatie ingeschakeld" : "Synchronisatie uitgeschakeld",
         description: enabled 
-          ? "Afspraken worden nu automatisch gesynchroniseerd met Google Calendar"
+          ? "Afspraken worden nu automatisch gesynchroniseerd met de centrale Google Calendar"
           : "Automatische synchronisatie is gestopt",
       });
     } catch (error) {
@@ -164,7 +209,8 @@ export const GoogleCalendarSync: React.FC<GoogleCalendarSyncProps> = ({
           const { data: syncResult } = await supabase.functions.invoke('calendar-sync', {
             body: {
               action: 'sync_to_google',
-              appointmentId: appointment.id
+              appointmentId: appointment.id,
+              company_mode: true
             }
           });
 
@@ -178,7 +224,7 @@ export const GoogleCalendarSync: React.FC<GoogleCalendarSyncProps> = ({
 
       toast({
         title: "Synchronisatie voltooid",
-        description: `${syncedCount} afspraken gesynchroniseerd met Google Calendar`,
+        description: `${syncedCount} afspraken gesynchroniseerd met de centrale Google Calendar`,
       });
     } catch (error) {
       console.error('Manual sync error:', error);
@@ -196,8 +242,8 @@ export const GoogleCalendarSync: React.FC<GoogleCalendarSyncProps> = ({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Calendar className="h-5 w-5" />
-          Google Calendar Integratie
+          <Building2 className="h-5 w-5" />
+          Centrale Google Calendar Integratie
           {isConnected && (
             <Badge variant="outline" className="text-green-700 border-green-300">
               <CheckCircle className="h-3 w-3 mr-1" />
@@ -211,11 +257,19 @@ export const GoogleCalendarSync: React.FC<GoogleCalendarSyncProps> = ({
           <div className="text-center space-y-4">
             <div className="flex items-center justify-center gap-2 text-muted-foreground">
               <AlertCircle className="h-4 w-4" />
-              <span>Google Calendar nog niet verbonden</span>
+              <span>Centrale Google Calendar nog niet verbonden</span>
+            </div>
+            <div className="bg-blue-50 p-4 rounded-md text-sm">
+              <p className="text-blue-800 mb-2">
+                <strong>Let op:</strong> Dit koppelt de centrale calendar voor het hele team (info@auto-city.nl)
+              </p>
+              <p className="text-blue-700">
+                Zorg ervoor dat je ingelogd bent met het info@auto-city.nl account voordat je verbindt.
+              </p>
             </div>
             <Button 
               onClick={handleConnect} 
-              disabled={isLoading}
+              disabled={isLoading || !isAdmin}
               className="gap-2"
             >
               {isLoading ? (
@@ -223,46 +277,74 @@ export const GoogleCalendarSync: React.FC<GoogleCalendarSyncProps> = ({
               ) : (
                 <ExternalLink className="h-4 w-4" />
               )}
-              Verbind Google Calendar
+              Verbind Centrale Google Calendar
             </Button>
+            {!isAdmin && (
+              <p className="text-sm text-muted-foreground">
+                <Shield className="h-3 w-3 inline mr-1" />
+                Alleen beheerders kunnen de calendar verbinden
+              </p>
+            )}
             <p className="text-sm text-muted-foreground">
-              Synchroniseer automatisch je afspraken met Google Calendar
+              Synchroniseer automatisch alle team afspraken met de centrale Google Calendar
             </p>
           </div>
         ) : (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-medium">Google Calendar: {calendarSettings?.calendar_name || 'Primary'}</h4>
+                <h4 className="font-medium flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Centrale Calendar: {companyCalendarSettings?.calendar_name || 'Auto City Team'}
+                </h4>
                 <p className="text-sm text-muted-foreground">
-                  Laatste synchronisatie: {calendarSettings?.updated_at ? 
-                    new Date(calendarSettings.updated_at).toLocaleString('nl-NL') : 
+                  Email: {companyCalendarSettings?.calendar_email || 'info@auto-city.nl'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Laatste synchronisatie: {companyCalendarSettings?.updated_at ? 
+                    new Date(companyCalendarSettings.updated_at).toLocaleString('nl-NL') : 
                     'Nog nooit'
                   }
                 </p>
               </div>
-              <Button onClick={handleDisconnect} variant="outline" size="sm">
-                Verbreek verbinding
-              </Button>
+              {isAdmin && (
+                <Button onClick={handleDisconnect} variant="outline" size="sm">
+                  Verbreek verbinding
+                </Button>
+              )}
             </div>
 
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-medium">Automatische synchronisatie</h4>
                 <p className="text-sm text-muted-foreground">
-                  Sync afspraken automatisch bij wijzigingen
+                  Sync alle team afspraken automatisch bij wijzigingen
                 </p>
               </div>
               <Switch
                 checked={syncEnabled}
                 onCheckedChange={handleToggleSync}
+                disabled={!isAdmin}
               />
+            </div>
+
+            <div className="bg-green-50 p-4 rounded-md">
+              <h5 className="font-medium text-green-800 mb-2">Team Calendar Toegang:</h5>
+              <p className="text-sm text-green-700 mb-2">
+                Voor volledige team toegang, deel de calendar met alle teamleden:
+              </p>
+              <ol className="text-sm text-green-700 list-decimal list-inside space-y-1">
+                <li>Open Google Calendar met info@auto-city.nl account</li>
+                <li>Ga naar calendar instellingen</li>
+                <li>Voeg teamleden toe met "Wijzigen en beheren van gebeurtenissen" rechten</li>
+                <li>Team kan nu alle afspraken zien en bewerken</li>
+              </ol>
             </div>
 
             <div className="flex gap-2">
               <Button 
                 onClick={handleManualSync}
-                disabled={isSyncing}
+                disabled={isSyncing || !isAdmin}
                 variant="outline"
                 className="gap-2 flex-1"
               >
@@ -282,6 +364,13 @@ export const GoogleCalendarSync: React.FC<GoogleCalendarSyncProps> = ({
                 Open Google Calendar
               </Button>
             </div>
+
+            {!isAdmin && (
+              <div className="text-sm text-muted-foreground bg-gray-50 p-3 rounded-md">
+                <Shield className="h-4 w-4 inline mr-2" />
+                Alleen beheerders kunnen sync instellingen wijzigen
+              </div>
+            )}
           </div>
         )}
       </CardContent>

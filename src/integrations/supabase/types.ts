@@ -9,6 +9,57 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_agent_calendar_settings: {
+        Row: {
+          agent_id: string
+          agent_name: string
+          can_check_availability: boolean | null
+          can_create_appointments: boolean | null
+          can_delete_appointments: boolean | null
+          can_modify_appointments: boolean | null
+          conflict_resolution: string | null
+          created_at: string
+          default_appointment_duration: number | null
+          id: string
+          updated_at: string
+          working_days: string[] | null
+          working_hours_end: string | null
+          working_hours_start: string | null
+        }
+        Insert: {
+          agent_id: string
+          agent_name: string
+          can_check_availability?: boolean | null
+          can_create_appointments?: boolean | null
+          can_delete_appointments?: boolean | null
+          can_modify_appointments?: boolean | null
+          conflict_resolution?: string | null
+          created_at?: string
+          default_appointment_duration?: number | null
+          id?: string
+          updated_at?: string
+          working_days?: string[] | null
+          working_hours_end?: string | null
+          working_hours_start?: string | null
+        }
+        Update: {
+          agent_id?: string
+          agent_name?: string
+          can_check_availability?: boolean | null
+          can_create_appointments?: boolean | null
+          can_delete_appointments?: boolean | null
+          can_modify_appointments?: boolean | null
+          conflict_resolution?: string | null
+          created_at?: string
+          default_appointment_duration?: number | null
+          id?: string
+          updated_at?: string
+          working_days?: string[] | null
+          working_hours_end?: string | null
+          working_hours_start?: string | null
+        }
+        Relationships: []
+      }
       ai_agent_chat_logs: {
         Row: {
           action_taken: string | null
@@ -261,6 +312,93 @@ export type Database = {
           },
         ]
       }
+      company_calendar_settings: {
+        Row: {
+          auto_sync: boolean | null
+          calendar_email: string | null
+          calendar_name: string | null
+          company_id: string
+          conflict_resolution: string | null
+          created_at: string
+          google_access_token: string | null
+          google_calendar_id: string | null
+          google_refresh_token: string | null
+          google_token_expires_at: string | null
+          id: string
+          managed_by_user_id: string | null
+          sync_direction: string | null
+          sync_enabled: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          auto_sync?: boolean | null
+          calendar_email?: string | null
+          calendar_name?: string | null
+          company_id?: string
+          conflict_resolution?: string | null
+          created_at?: string
+          google_access_token?: string | null
+          google_calendar_id?: string | null
+          google_refresh_token?: string | null
+          google_token_expires_at?: string | null
+          id?: string
+          managed_by_user_id?: string | null
+          sync_direction?: string | null
+          sync_enabled?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          auto_sync?: boolean | null
+          calendar_email?: string | null
+          calendar_name?: string | null
+          company_id?: string
+          conflict_resolution?: string | null
+          created_at?: string
+          google_access_token?: string | null
+          google_calendar_id?: string | null
+          google_refresh_token?: string | null
+          google_token_expires_at?: string | null
+          id?: string
+          managed_by_user_id?: string | null
+          sync_direction?: string | null
+          sync_enabled?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email: string
+          first_name?: string | null
+          id: string
+          last_name?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_calendar_settings: {
         Row: {
           auto_sync: boolean | null
@@ -307,7 +445,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_user_calendar_settings_profile"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

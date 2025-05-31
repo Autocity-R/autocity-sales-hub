@@ -15,7 +15,9 @@ import {
   Shield,
   RefreshCw,
   Zap,
-  CheckCircle
+  CheckCircle,
+  Info,
+  Users
 } from "lucide-react";
 
 export const CalendarSettings = () => {
@@ -45,45 +47,109 @@ export const CalendarSettings = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [companyCalendarInfo, setCompanyCalendarInfo] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     loadSettings();
+    checkUserRole();
   }, []);
 
-  const loadSettings = async () => {
+  const checkUserRole = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Load calendar settings
-      const { data: calendarSettings } = await supabase
-        .from('user_calendar_settings')
-        .select('*')
-        .eq('user_id', user.id)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
         .single();
 
-      if (calendarSettings) {
-        setCalendarConnected(!!calendarSettings.google_access_token);
+      setIsAdmin(profile?.role === 'admin' || profile?.role === 'owner');
+    } catch (error) {
+      console.error('Error checking user role:', error);
+    }
+  };
+
+  const loadSettings = async () => {
+    try {
+      // Load company calendar settings
+      const { data: companySettings } = await supabase
+        .from('company_calendar_settings')
+        .select('*')
+        .eq('company_id', 'auto-city')
+        .single();
+
+      if (companySettings) {
+        setCompanyCalendarInfo(companySettings);
+        setCalendarConnected(!!companySettings.google_access_token);
         setSyncSettings(prev => ({
           ...prev,
-          autoSync: calendarSettings.auto_sync || true,
-          syncDirection: calendarSettings.sync_direction || 'bidirectional',
-          conflictResolution: calendarSettings.conflict_resolution || 'crm_priority'
+          autoSync: companySettings.auto_sync || true,
+          syncDirection: companySettings.sync_direction || 'bidirectional',
+          conflictResolution: companySettings.conflict_resolution || 'crm_priority'
         }));
       }
 
-      // Load AI agent settings would go here
-      console.log('AI Agent settings loaded from database');
+      // Load AI agent calendar settings
+      const { data: aiAgentSettings } = await supabase
+        .from('ai_agent_calendar_settings')
+        .select('*')
+        .eq('agent_id', 'calendar-assistant')
+        .single();
+
+      if (aiAgentSettings) {
+        setAiSettings(prev => ({
+          ...prev,
+          canCreateAppointments: aiAgentSettings.can_create_appointments,
+          canModifyAppointments: aiAgentSettings.can_modify_appointments,
+          canDeleteAppointments: aiAgentSettings.can_delete_appointments,
+          defaultDuration: aiAgentSettings.default_appointment_duration,
+          conflictResolution: aiAgentSettings.conflict_resolution,
+          workingHours: {
+            start: aiAgentSettings.working_hours_start,
+            end: aiAgentSettings.working_hours_end,
+            workDays: aiAgentSettings.working_days
+          }
+        }));
+      }
+
+      console.log('Settings loaded successfully');
     } catch (error) {
       console.error('Error loading settings:', error);
     }
   };
 
   const saveAiSettings = async () => {
+    if (!isAdmin) {
+      toast({
+        title: "Toegang geweigerd",
+        description: "Alleen beheerders kunnen AI instellingen wijzigen",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // For now, just save to local state until we implement N8N integration
+      const { error } = await supabase
+        .from('ai_agent_calendar_settings')
+        .update({
+          can_create_appointments: aiSettings.canCreateAppointments,
+          can_modify_appointments: aiSettings.canModifyAppointments,
+          can_delete_appointments: aiSettings.canDeleteAppointments,
+          default_appointment_duration: aiSettings.defaultDuration,
+          conflict_resolution: aiSettings.conflictResolution,
+          working_hours_start: aiSettings.workingHours.start,
+          working_hours_end: aiSettings.workingHours.end,
+          working_days: aiSettings.workingHours.workDays
+        })
+        .eq('agent_id', 'calendar-assistant');
+
+      if (error) throw error;
+
       toast({
         title: "AI Instellingen Opgeslagen",
         description: "De AI assistent instellingen zijn bijgewerkt",
@@ -101,18 +167,28 @@ export const CalendarSettings = () => {
   };
 
   const saveSyncSettings = async () => {
+    if (!isAdmin) {
+      toast({
+        title: "Toegang geweigerd",
+        description: "Alleen beheerders kunnen sync instellingen wijzigen",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const { error } = await supabase
-        .from('user_calendar_settings')
+        .from('company_calendar_settings')
         .upsert({
-          user_id: user.id,
+          company_id: 'auto-city',
           auto_sync: syncSettings.autoSync,
           sync_direction: syncSettings.syncDirection,
-          conflict_resolution: syncSettings.conflictResolution
+          conflict_resolution: syncSettings.conflictResolution,
+          managed_by_user_id: user.id
         });
 
       if (error) throw error;
@@ -135,6 +211,31 @@ export const CalendarSettings = () => {
 
   return (
     <div className="space-y-6">
+      {/* Info Card voor centrale calendar */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-blue-800">
+            <Info className="h-5 w-5" />
+            Centrale Team Calendar (info@auto-city.nl)
+          </CardTitle>
+          <CardDescription className="text-blue-700">
+            Deze calendar wordt gebruikt door het hele team en de AI assistent. 
+            Alle afspraken worden hier centraal beheerd.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-blue-600" />
+            <span className="text-sm text-blue-800">
+              {calendarConnected 
+                ? `Verbonden met ${companyCalendarInfo?.calendar_email || 'info@auto-city.nl'}`
+                : 'Nog niet verbonden'
+              }
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Google Calendar Connection */}
       <GoogleCalendarSync onSyncStatusChange={setCalendarConnected} />
 
@@ -144,7 +245,7 @@ export const CalendarSettings = () => {
           <CardTitle className="flex items-center gap-2">
             <Bot className="h-5 w-5" />
             AI Agenda Assistent (Robin)
-            {calendarConnected && (
+            {calendarConnected && aiSettings.enabled && (
               <Badge variant="outline" className="text-green-700 border-green-300">
                 <CheckCircle className="h-3 w-3 mr-1" />
                 Actief
@@ -152,7 +253,7 @@ export const CalendarSettings = () => {
             )}
           </CardTitle>
           <CardDescription>
-            Configureer de AI assistent voor automatisch agenda beheer
+            Configureer de AI assistent voor automatisch agenda beheer op de centrale calendar
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -161,7 +262,7 @@ export const CalendarSettings = () => {
               <div className="space-y-1">
                 <Label>AI Assistent Inschakelen</Label>
                 <p className="text-sm text-muted-foreground">
-                  Laat de AI assistent afspraken beheren
+                  Laat de AI assistent afspraken beheren op de centrale calendar
                 </p>
               </div>
               <Switch
@@ -169,6 +270,7 @@ export const CalendarSettings = () => {
                 onCheckedChange={(checked) => 
                   setAiSettings(prev => ({ ...prev, enabled: checked }))
                 }
+                disabled={!isAdmin}
               />
             </div>
 
@@ -179,6 +281,7 @@ export const CalendarSettings = () => {
                   onCheckedChange={(checked) =>
                     setAiSettings(prev => ({ ...prev, canCreateAppointments: checked }))
                   }
+                  disabled={!isAdmin}
                 />
                 <Label>Afspraken Aanmaken</Label>
               </div>
@@ -188,6 +291,7 @@ export const CalendarSettings = () => {
                   onCheckedChange={(checked) =>
                     setAiSettings(prev => ({ ...prev, canModifyAppointments: checked }))
                   }
+                  disabled={!isAdmin}
                 />
                 <Label>Afspraken Wijzigen</Label>
               </div>
@@ -197,6 +301,7 @@ export const CalendarSettings = () => {
                   onCheckedChange={(checked) =>
                     setAiSettings(prev => ({ ...prev, canDeleteAppointments: checked }))
                   }
+                  disabled={!isAdmin}
                 />
                 <Label>Afspraken Verwijderen</Label>
               </div>
@@ -213,6 +318,7 @@ export const CalendarSettings = () => {
                   }
                   min="15"
                   max="480"
+                  disabled={!isAdmin}
                 />
               </div>
               <div className="space-y-2">
@@ -223,6 +329,7 @@ export const CalendarSettings = () => {
                     setAiSettings(prev => ({ ...prev, conflictResolution: e.target.value }))
                   }
                   className="w-full p-2 border rounded-md"
+                  disabled={!isAdmin}
                 >
                   <option value="reject">Weigeren bij conflict</option>
                   <option value="suggest">Alternatief voorstellen</option>
@@ -230,9 +337,20 @@ export const CalendarSettings = () => {
                 </select>
               </div>
             </div>
+
+            {!isAdmin && (
+              <div className="text-sm text-muted-foreground bg-gray-50 p-3 rounded-md">
+                <Info className="h-4 w-4 inline mr-2" />
+                Alleen beheerders kunnen AI instellingen wijzigen
+              </div>
+            )}
           </div>
 
-          <Button onClick={saveAiSettings} disabled={isLoading} className="gap-2">
+          <Button 
+            onClick={saveAiSettings} 
+            disabled={isLoading || !isAdmin} 
+            className="gap-2"
+          >
             <Zap className="h-4 w-4" />
             AI Instellingen Opslaan
           </Button>
@@ -247,7 +365,7 @@ export const CalendarSettings = () => {
             Synchronisatie Instellingen
           </CardTitle>
           <CardDescription>
-            Configureer hoe afspraken worden gesynchroniseerd met Google Calendar
+            Configureer hoe afspraken worden gesynchroniseerd met de centrale Google Calendar
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -264,7 +382,7 @@ export const CalendarSettings = () => {
                 onCheckedChange={(checked) =>
                   setSyncSettings(prev => ({ ...prev, autoSync: checked }))
                 }
-                disabled={!calendarConnected}
+                disabled={!calendarConnected || !isAdmin}
               />
             </div>
 
@@ -275,7 +393,7 @@ export const CalendarSettings = () => {
                 onChange={(e) =>
                   setSyncSettings(prev => ({ ...prev, syncDirection: e.target.value }))
                 }
-                disabled={!calendarConnected}
+                disabled={!calendarConnected || !isAdmin}
                 className="w-full p-2 border rounded-md"
               >
                 <option value="bidirectional">Bidirectioneel (beide kanten)</option>
@@ -291,7 +409,7 @@ export const CalendarSettings = () => {
                 onChange={(e) =>
                   setSyncSettings(prev => ({ ...prev, conflictResolution: e.target.value }))
                 }
-                disabled={!calendarConnected}
+                disabled={!calendarConnected || !isAdmin}
                 className="w-full p-2 border rounded-md"
               >
                 <option value="crm_priority">CRM heeft prioriteit</option>
@@ -299,11 +417,18 @@ export const CalendarSettings = () => {
                 <option value="manual">Handmatige keuze</option>
               </select>
             </div>
+
+            {!isAdmin && (
+              <div className="text-sm text-muted-foreground bg-gray-50 p-3 rounded-md">
+                <Info className="h-4 w-4 inline mr-2" />
+                Alleen beheerders kunnen sync instellingen wijzigen
+              </div>
+            )}
           </div>
 
           <Button 
             onClick={saveSyncSettings} 
-            disabled={isLoading || !calendarConnected} 
+            disabled={isLoading || !calendarConnected || !isAdmin} 
             className="gap-2"
           >
             <Shield className="h-4 w-4" />

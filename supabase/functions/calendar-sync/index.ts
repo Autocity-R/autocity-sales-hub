@@ -36,17 +36,17 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { action, appointmentId, eventData } = await req.json();
+    const { action, appointmentId, eventData, company_mode } = await req.json();
 
-    // Get user's calendar settings
+    // Get company calendar settings instead of user-specific settings
     const { data: calendarSettings, error: settingsError } = await supabase
-      .from('user_calendar_settings')
+      .from('company_calendar_settings')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('company_id', 'auto-city')
       .single();
 
     if (settingsError || !calendarSettings) {
-      throw new Error('No calendar settings found. Please connect your Google Calendar first.');
+      throw new Error('No company calendar settings found. Please connect the central Google Calendar first.');
     }
 
     // Check if token needs refresh
@@ -55,13 +55,17 @@ serve(async (req) => {
 
     if (tokenExpiresAt <= new Date()) {
       // Refresh token
-      const refreshResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/google-oauth?action=refresh_token`, {
+      const refreshResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/google-oauth`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ refresh_token: calendarSettings.google_refresh_token }),
+        body: JSON.stringify({ 
+          action: 'refresh_token',
+          refresh_token: calendarSettings.google_refresh_token,
+          company_mode: true
+        }),
       });
 
       const refreshData = await refreshResponse.json();
@@ -88,20 +92,20 @@ serve(async (req) => {
           summary: appointment.title,
           description: appointment.description || appointment.notes,
           start: {
-            dateTime: appointment.startTime,
+            dateTime: appointment.starttime,
             timeZone: 'Europe/Amsterdam',
           },
           end: {
-            dateTime: appointment.endTime,
+            dateTime: appointment.endtime,
             timeZone: 'Europe/Amsterdam',
           },
           location: appointment.location,
         };
 
-        if (appointment.customerEmail) {
+        if (appointment.customeremail) {
           googleEvent.attendees = [{
-            email: appointment.customerEmail,
-            displayName: appointment.customerName,
+            email: appointment.customeremail,
+            displayName: appointment.customername,
           }];
         }
 
@@ -162,7 +166,7 @@ serve(async (req) => {
 
         if (updateError) throw updateError;
 
-        // Log sync action
+        // Log sync action to calendar_sync_logs
         await supabase
           .from('calendar_sync_logs')
           .insert({
@@ -211,14 +215,14 @@ serve(async (req) => {
         const appointmentData = {
           title: googleEvent.summary,
           description: googleEvent.description,
-          startTime: googleEvent.start.dateTime,
-          endTime: googleEvent.end.dateTime,
+          starttime: googleEvent.start.dateTime,
+          endtime: googleEvent.end.dateTime,
           location: googleEvent.location,
           google_event_id: googleEventId,
           google_calendar_id: calendarSettings.google_calendar_id,
           sync_status: 'synced',
           last_synced_at: new Date().toISOString(),
-          createdBy: user.email || 'Google Calendar Sync',
+          createdby: 'Central Google Calendar Sync',
           type: 'overig',
           status: 'gepland',
         };

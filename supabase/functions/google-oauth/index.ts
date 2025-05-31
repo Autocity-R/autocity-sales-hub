@@ -41,7 +41,7 @@ serve(async (req) => {
           `scope=${encodeURIComponent('https://www.googleapis.com/auth/calendar')}&` +
           `access_type=offline&` +
           `prompt=consent&` +
-          `state=${user.id}`;
+          `state=${user.id}:company`;
 
         return new Response(JSON.stringify({ authUrl }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -50,11 +50,14 @@ serve(async (req) => {
 
       case 'callback': {
         const code = url.searchParams.get('code');
-        const state = url.searchParams.get('state'); // user_id
+        const state = url.searchParams.get('state'); // user_id:mode
         
         if (!code || !state) {
           throw new Error('Missing code or state parameter');
         }
+
+        const [userId, mode] = state.split(':');
+        const isCompanyMode = mode === 'company';
 
         const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
           method: 'POST',
@@ -81,24 +84,54 @@ serve(async (req) => {
         
         const calendar = await calendarResponse.json();
 
-        // Store tokens in database
+        // Get user's email from Google
+        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+          headers: { 'Authorization': `Bearer ${tokens.access_token}` },
+        });
+        
+        const userInfo = await userInfoResponse.json();
+
+        // Store tokens in appropriate table
         const expiresAt = new Date(Date.now() + (tokens.expires_in * 1000));
         
-        const { error } = await supabase
-          .from('user_calendar_settings')
-          .upsert({
-            user_id: state,
-            google_access_token: tokens.access_token,
-            google_refresh_token: tokens.refresh_token,
-            google_token_expires_at: expiresAt.toISOString(),
-            google_calendar_id: calendar.id,
-            calendar_name: calendar.summary,
-            sync_enabled: true,
-          });
+        if (isCompanyMode) {
+          // Store in company_calendar_settings
+          const { error } = await supabase
+            .from('company_calendar_settings')
+            .upsert({
+              company_id: 'auto-city',
+              google_access_token: tokens.access_token,
+              google_refresh_token: tokens.refresh_token,
+              google_token_expires_at: expiresAt.toISOString(),
+              google_calendar_id: calendar.id,
+              calendar_name: calendar.summary,
+              calendar_email: userInfo.email,
+              sync_enabled: true,
+              managed_by_user_id: userId,
+            });
 
-        if (error) {
-          console.error('Database error:', error);
-          throw error;
+          if (error) {
+            console.error('Database error:', error);
+            throw error;
+          }
+        } else {
+          // Store in user_calendar_settings (legacy mode)
+          const { error } = await supabase
+            .from('user_calendar_settings')
+            .upsert({
+              user_id: userId,
+              google_access_token: tokens.access_token,
+              google_refresh_token: tokens.refresh_token,
+              google_token_expires_at: expiresAt.toISOString(),
+              google_calendar_id: calendar.id,
+              calendar_name: calendar.summary,
+              sync_enabled: true,
+            });
+
+          if (error) {
+            console.error('Database error:', error);
+            throw error;
+          }
         }
 
         // Redirect to success page
@@ -111,7 +144,7 @@ serve(async (req) => {
       }
 
       case 'refresh_token': {
-        const { refresh_token } = await req.json();
+        const { refresh_token, company_mode } = await req.json();
         
         const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
           method: 'POST',
@@ -132,16 +165,31 @@ serve(async (req) => {
 
         const expiresAt = new Date(Date.now() + (tokens.expires_in * 1000));
         
-        const { error } = await supabase
-          .from('user_calendar_settings')
-          .update({
-            google_access_token: tokens.access_token,
-            google_token_expires_at: expiresAt.toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('user_id', user.id);
+        if (company_mode) {
+          // Update company calendar settings
+          const { error } = await supabase
+            .from('company_calendar_settings')
+            .update({
+              google_access_token: tokens.access_token,
+              google_token_expires_at: expiresAt.toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('company_id', 'auto-city');
 
-        if (error) throw error;
+          if (error) throw error;
+        } else {
+          // Update user calendar settings (legacy)
+          const { error } = await supabase
+            .from('user_calendar_settings')
+            .update({
+              google_access_token: tokens.access_token,
+              google_token_expires_at: expiresAt.toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', user.id);
+
+          if (error) throw error;
+        }
 
         return new Response(JSON.stringify({ 
           access_token: tokens.access_token,
