@@ -140,6 +140,14 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
+    // Define the combined scopes we need
+    const requiredScopes = [
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+      'openid'
+    ].join(' ');
+
     // Handle GET request for getting auth URL (company mode)
     if (req.method === 'GET' && !action) {
       console.log('GET request for auth URL - company mode');
@@ -150,12 +158,12 @@ serve(async (req) => {
         `client_id=${clientId}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
         `response_type=code&` +
-        `scope=${encodeURIComponent('https://www.googleapis.com/auth/calendar')}&` +
+        `scope=${encodeURIComponent(requiredScopes)}&` +
         `access_type=offline&` +
         `prompt=consent&` +
         `state=${user.id}:company`;
 
-      console.log('Generated auth URL for company mode');
+      console.log('Generated auth URL for company mode with scopes:', requiredScopes);
 
       return new Response(JSON.stringify({ authUrl }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -173,7 +181,7 @@ serve(async (req) => {
           `client_id=${clientId}&` +
           `redirect_uri=${encodeURIComponent(redirectUri)}&` +
           `response_type=code&` +
-          `scope=${encodeURIComponent('https://www.googleapis.com/auth/calendar')}&` +
+          `scope=${encodeURIComponent(requiredScopes)}&` +
           `access_type=offline&` +
           `prompt=consent&` +
           `state=${user.id}:company`;
@@ -250,7 +258,7 @@ serve(async (req) => {
           `client_id=${clientId}&` +
           `redirect_uri=${encodeURIComponent(redirectUri)}&` +
           `response_type=code&` +
-          `scope=${encodeURIComponent('https://www.googleapis.com/auth/calendar')}&` +
+          `scope=${encodeURIComponent(requiredScopes)}&` +
           `access_type=offline&` +
           `prompt=consent&` +
           `state=${user.id}:company`;
