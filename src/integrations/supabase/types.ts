@@ -314,6 +314,7 @@ export type Database = {
       }
       company_calendar_settings: {
         Row: {
+          auth_type: string | null
           auto_sync: boolean | null
           calendar_email: string | null
           calendar_name: string | null
@@ -326,11 +327,13 @@ export type Database = {
           google_token_expires_at: string | null
           id: string
           managed_by_user_id: string | null
+          service_account_email: string | null
           sync_direction: string | null
           sync_enabled: boolean | null
           updated_at: string
         }
         Insert: {
+          auth_type?: string | null
           auto_sync?: boolean | null
           calendar_email?: string | null
           calendar_name?: string | null
@@ -343,11 +346,13 @@ export type Database = {
           google_token_expires_at?: string | null
           id?: string
           managed_by_user_id?: string | null
+          service_account_email?: string | null
           sync_direction?: string | null
           sync_enabled?: boolean | null
           updated_at?: string
         }
         Update: {
+          auth_type?: string | null
           auto_sync?: boolean | null
           calendar_email?: string | null
           calendar_name?: string | null
@@ -360,6 +365,7 @@ export type Database = {
           google_token_expires_at?: string | null
           id?: string
           managed_by_user_id?: string | null
+          service_account_email?: string | null
           sync_direction?: string | null
           sync_enabled?: boolean | null
           updated_at?: string

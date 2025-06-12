@@ -14,6 +14,8 @@ export interface CompanyCalendarSettings {
   auto_sync: boolean;
   sync_direction: string;
   conflict_resolution: string;
+  auth_type?: string;
+  service_account_email?: string;
   managed_by_user_id?: string;
   created_at: string;
   updated_at: string;
