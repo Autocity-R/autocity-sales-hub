@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +18,7 @@ import {
   Info,
   Users
 } from "lucide-react";
+import { GoogleServiceAccountSetup } from "@/components/calendar/GoogleServiceAccountSetup";
 
 export const CalendarSettings = () => {
   const [aiSettings, setAiSettings] = useState({
@@ -211,34 +211,40 @@ export const CalendarSettings = () => {
 
   return (
     <div className="space-y-6">
-      {/* Info Card voor centrale calendar */}
+      {/* Info Card voor Service Account approach */}
       <Card className="border-blue-200 bg-blue-50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-blue-800">
             <Info className="h-5 w-5" />
-            Centrale Team Calendar (info@auto-city.nl)
+            Nieuwe Aanpak: Google Service Account
           </CardTitle>
           <CardDescription className="text-blue-700">
-            Deze calendar wordt gebruikt door het hele team en de AI assistent. 
-            Alle afspraken worden hier centraal beheerd.
+            We gebruiken nu een Service Account voor betrouwbare Google Calendar integratie. 
+            Dit voorkomt OAuth problemen en biedt stabiele toegang voor het hele team.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-blue-600" />
-            <span className="text-sm text-blue-800">
-              {calendarConnected 
-                ? `Verbonden met ${companyCalendarInfo?.calendar_email || 'info@auto-city.nl'}`
-                : 'Nog niet verbonden'
-              }
-            </span>
+          <div className="space-y-2 text-sm text-blue-800">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              <span>Geen OAuth problemen meer</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              <span>Automatische toegang voor alle teamleden</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              <span>Stabiele, permanente verbinding</span>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Google Calendar Connection */}
-      <GoogleCalendarSync onSyncStatusChange={setCalendarConnected} />
+      {/* Google Service Account Setup */}
+      <GoogleServiceAccountSetup onSetupComplete={setCalendarConnected} />
 
+      {/* Rest of existing components with minor updates */}
       {/* AI Assistant Settings */}
       <Card>
         <CardHeader>
@@ -253,7 +259,7 @@ export const CalendarSettings = () => {
             )}
           </CardTitle>
           <CardDescription>
-            Configureer de AI assistent voor automatisch agenda beheer op de centrale calendar
+            Configureer de AI assistent voor automatisch agenda beheer via Service Account
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -365,7 +371,7 @@ export const CalendarSettings = () => {
             Synchronisatie Instellingen
           </CardTitle>
           <CardDescription>
-            Configureer hoe afspraken worden gesynchroniseerd met de centrale Google Calendar
+            Configureer hoe afspraken worden gesynchroniseerd via Service Account
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

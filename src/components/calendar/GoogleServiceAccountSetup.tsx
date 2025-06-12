@@ -1,0 +1,293 @@
+
+import React, { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { 
+  Shield,
+  CheckCircle,
+  AlertCircle,
+  ExternalLink,
+  Settings,
+  Building2,
+  Key,
+  Users
+} from "lucide-react";
+
+interface GoogleServiceAccountSetupProps {
+  onSetupComplete?: (connected: boolean) => void;
+}
+
+export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps> = ({
+  onSetupComplete
+}) => {
+  const [isConnected, setIsConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [companyCalendarSettings, setCompanyCalendarSettings] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    loadCalendarSettings();
+    checkUserRole();
+  }, []);
+
+  const checkUserRole = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      setIsAdmin(profile?.role === 'admin' || profile?.role === 'owner');
+    } catch (error) {
+      console.error('Error checking user role:', error);
+    }
+  };
+
+  const loadCalendarSettings = async () => {
+    try {
+      const { data: settings, error } = await supabase
+        .from('company_calendar_settings')
+        .select('*')
+        .eq('company_id', 'auto-city')
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading company calendar settings:', error);
+        return;
+      }
+
+      if (settings) {
+        setCompanyCalendarSettings(settings);
+        setIsConnected(settings.auth_type === 'service_account');
+        onSetupComplete?.(settings.auth_type === 'service_account');
+      }
+    } catch (error) {
+      console.error('Error loading calendar settings:', error);
+    }
+  };
+
+  const handleSetupServiceAccount = async () => {
+    if (!isAdmin) {
+      toast({
+        title: "Toegang geweigerd",
+        description: "Alleen beheerders kunnen de Service Account configureren",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      console.log('Setting up Google Service Account...');
+      
+      const { data, error } = await supabase.functions.invoke('google-service-auth', {
+        body: { action: 'setup_service_account' }
+      });
+
+      console.log('Service Account setup response:', { data, error });
+
+      if (error) {
+        console.error('Service Account setup error:', error);
+        throw error;
+      }
+
+      if (data?.success) {
+        setIsConnected(true);
+        setCompanyCalendarSettings({
+          ...companyCalendarSettings,
+          auth_type: 'service_account',
+          calendar_name: data.calendar.name,
+          calendar_email: data.calendar.email
+        });
+        onSetupComplete?.(true);
+
+        toast({
+          title: "Service Account Geconfigureerd",
+          description: "Google Calendar is nu verbonden via Service Account",
+        });
+      } else {
+        throw new Error(data?.error || 'Service Account setup failed');
+      }
+    } catch (error) {
+      console.error('Service Account setup error:', error);
+      toast({
+        title: "Configuratiefout",
+        description: `Kon Service Account niet configureren: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!isAdmin) {
+      toast({
+        title: "Toegang geweigerd",
+        description: "Alleen beheerders kunnen de Service Account ontkoppelen",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('company_calendar_settings')
+        .delete()
+        .eq('company_id', 'auto-city');
+
+      if (error) throw error;
+
+      setIsConnected(false);
+      setCompanyCalendarSettings(null);
+      onSetupComplete?.(false);
+
+      toast({
+        title: "Service Account Ontkoppeld",
+        description: "Google Calendar Service Account is losgekoppeld",
+      });
+    } catch (error) {
+      console.error('Disconnect error:', error);
+      toast({
+        title: "Fout",
+        description: "Kon Service Account niet ontkoppelen",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Shield className="h-5 w-5" />
+          Google Calendar Service Account
+          {isConnected && (
+            <Badge variant="outline" className="text-green-700 border-green-300">
+              <CheckCircle className="h-3 w-3 mr-1" />
+              Actief
+            </Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!isConnected ? (
+          <div className="space-y-4">
+            <Alert>
+              <Key className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Service Account Voordelen:</strong>
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>Geen OAuth problemen meer</li>
+                  <li>Automatische toegang voor alle teamleden</li>
+                  <li>Stabiele, permanente verbinding</li>
+                  <li>Geen handmatige goedkeuring per gebruiker</li>
+                </ul>
+              </AlertDescription>
+            </Alert>
+
+            <div className="bg-blue-50 p-4 rounded-md text-sm">
+              <p className="text-blue-800 mb-2">
+                <strong>Vereiste setup door inkoop@auto-city.nl:</strong>
+              </p>
+              <ol className="text-blue-700 list-decimal list-inside space-y-1">
+                <li>Google Cloud Console: Service Account aanmaken</li>
+                <li>Domain-wide delegation inschakelen</li>
+                <li>JSON credentials downloaden en als secret toevoegen</li>
+                <li>Calendar toegang configureren voor Service Account</li>
+              </ol>
+            </div>
+
+            <Button 
+              onClick={handleSetupServiceAccount} 
+              disabled={isLoading || !isAdmin}
+              className="gap-2 w-full"
+            >
+              {isLoading ? (
+                <Settings className="h-4 w-4 animate-spin" />
+              ) : (
+                <Shield className="h-4 w-4" />
+              )}
+              Service Account Configureren
+            </Button>
+
+            {!isAdmin && (
+              <p className="text-sm text-muted-foreground">
+                <AlertCircle className="h-3 w-3 inline mr-1" />
+                Alleen beheerders kunnen de Service Account configureren
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-medium flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Service Account Actief
+                </h4>
+                <p className="text-sm text-muted-foreground">
+                  Calendar: {companyCalendarSettings?.calendar_name || 'Auto City Team'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Email: {companyCalendarSettings?.calendar_email || 'info@auto-city.nl'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Service Account: {companyCalendarSettings?.service_account_email || 'Geconfigureerd'}
+                </p>
+              </div>
+              {isAdmin && (
+                <Button onClick={handleDisconnect} variant="outline" size="sm">
+                  Ontkoppelen
+                </Button>
+              )}
+            </div>
+
+            <div className="bg-green-50 p-4 rounded-md">
+              <h5 className="font-medium text-green-800 mb-2 flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Team Toegang:
+              </h5>
+              <p className="text-sm text-green-700 mb-2">
+                Alle teamleden hebben nu automatisch toegang tot de centrale calendar:
+              </p>
+              <ul className="text-sm text-green-700 list-disc list-inside space-y-1">
+                <li>Afspraken worden automatisch gesynchroniseerd</li>
+                <li>Geen individuele Google account koppeling nodig</li>
+                <li>Stabiele verbinding zonder token expiratie</li>
+                <li>Centrale controle en beheer</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => window.open('https://calendar.google.com', '_blank')}
+                variant="outline"
+                className="gap-2 flex-1"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Open Google Calendar
+              </Button>
+            </div>
+
+            {!isAdmin && (
+              <div className="text-sm text-muted-foreground bg-gray-50 p-3 rounded-md">
+                <Shield className="h-4 w-4 inline mr-2" />
+                Service Account wordt beheerd door beheerders
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};

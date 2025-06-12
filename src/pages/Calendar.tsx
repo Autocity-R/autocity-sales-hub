@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
@@ -12,7 +11,7 @@ import { AppointmentForm } from "@/components/calendar/AppointmentForm";
 import { AppointmentsList } from "@/components/calendar/AppointmentsList";
 import { CalendarAIAssistant } from "@/components/calendar/CalendarAIAssistant";
 import { AppointmentDetail } from "@/components/calendar/AppointmentDetail";
-import { GoogleCalendarSync } from "@/components/calendar/GoogleCalendarSync";
+import { GoogleServiceAccountSetup } from "@/components/calendar/GoogleServiceAccountSetup";
 import { CalendarSyncStatus } from "@/components/calendar/CalendarSyncStatus";
 import { fetchAppointments } from "@/services/calendarService";
 import { Appointment, CalendarView as CalendarViewType } from "@/types/calendar";
@@ -153,7 +152,7 @@ const Calendar = () => {
       <div className="space-y-6">
         <PageHeader
           title="Agenda"
-          description="Beheer alle afspraken met Google Calendar integratie"
+          description="Beheer alle afspraken met Google Calendar Service Account integratie"
         >
           <div className="flex gap-2">
             <Button 
@@ -162,7 +161,7 @@ const Calendar = () => {
               className="gap-2"
             >
               <Settings className="h-4 w-4" />
-              Google Calendar
+              Service Account
               {googleCalendarConnected && (
                 <Badge variant="outline" className="text-green-700 border-green-300">
                   <CheckCircle className="h-3 w-3" />
@@ -249,10 +248,10 @@ const Calendar = () => {
           </Card>
         </div>
 
-        {/* Google Calendar Sync Status */}
+        {/* Google Service Account Setup */}
         {showGoogleSync && (
-          <GoogleCalendarSync
-            onSyncStatusChange={setGoogleCalendarConnected}
+          <GoogleServiceAccountSetup
+            onSetupComplete={setGoogleCalendarConnected}
           />
         )}
 
