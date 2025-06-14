@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +13,8 @@ import {
   Settings,
   Building2,
   Key,
-  Users
+  Users,
+  Lock
 } from "lucide-react";
 
 interface GoogleServiceAccountSetupProps {
@@ -28,6 +28,7 @@ export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps>
   const [isLoading, setIsLoading] = useState(false);
   const [companyCalendarSettings, setCompanyCalendarSettings] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [authType, setAuthType] = useState<string>('oauth');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -67,19 +68,20 @@ export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps>
 
       if (settings) {
         setCompanyCalendarSettings(settings);
-        setIsConnected(settings.auth_type === 'service_account');
-        onSetupComplete?.(settings.auth_type === 'service_account');
+        setAuthType(settings.auth_type || 'oauth');
+        setIsConnected(settings.auth_type === 'workload_identity' && !!settings.service_account_email);
+        onSetupComplete?.(settings.auth_type === 'workload_identity' && !!settings.service_account_email);
       }
     } catch (error) {
       console.error('Error loading calendar settings:', error);
     }
   };
 
-  const handleSetupServiceAccount = async () => {
+  const handleSetupWorkloadIdentity = async () => {
     if (!isAdmin) {
       toast({
         title: "Toegang geweigerd",
-        description: "Alleen beheerders kunnen de Service Account configureren",
+        description: "Alleen beheerders kunnen de Workload Identity configureren",
         variant: "destructive",
       });
       return;
@@ -87,43 +89,53 @@ export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps>
 
     setIsLoading(true);
     try {
-      console.log('Setting up Google Service Account...');
+      console.log('Setting up Workload Identity Federation...');
       
       const { data, error } = await supabase.functions.invoke('google-service-auth', {
-        body: { action: 'setup_service_account' }
+        body: { action: 'setup_workload_identity' }
       });
 
-      console.log('Service Account setup response:', { data, error });
+      console.log('Workload Identity setup response:', { data, error });
 
       if (error) {
-        console.error('Service Account setup error:', error);
+        console.error('Workload Identity setup error:', error);
         throw error;
       }
 
       if (data?.success) {
         setIsConnected(true);
+        setAuthType('workload_identity');
         setCompanyCalendarSettings({
           ...companyCalendarSettings,
-          auth_type: 'service_account',
+          auth_type: 'workload_identity',
           calendar_name: data.calendar.name,
           calendar_email: data.calendar.email
         });
         onSetupComplete?.(true);
 
         toast({
-          title: "Service Account Geconfigureerd",
-          description: "Google Calendar is nu verbonden via Service Account",
+          title: "Workload Identity Geconfigureerd",
+          description: "Google Calendar is nu verbonden via Workload Identity Federation",
         });
       } else {
-        throw new Error(data?.error || 'Service Account setup failed');
+        throw new Error(data?.error || 'Workload Identity setup failed');
       }
     } catch (error) {
-      console.error('Service Account setup error:', error);
-      toast({
-        title: "Configuratiefout",
-        description: `Kon Service Account niet configureren: ${error.message}`,
-        variant: "destructive",
-      });
+      console.error('Workload Identity setup error:', error);
+      
+      if (error.message?.includes('configuration not found')) {
+        toast({
+          title: "Configuratie Ontbreekt",
+          description: "GOOGLE_WORKLOAD_IDENTITY_PROVIDER en GOOGLE_SERVICE_ACCOUNT_EMAIL moeten worden geconfigureerd in Supabase secrets",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Configuratiefout",
+          description: `Kon Workload Identity niet configureren: ${error.message}`,
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -133,7 +145,7 @@ export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps>
     if (!isAdmin) {
       toast({
         title: "Toegang geweigerd",
-        description: "Alleen beheerders kunnen de Service Account ontkoppelen",
+        description: "Alleen beheerders kunnen de verbinding ontkoppelen",
         variant: "destructive",
       });
       return;
@@ -152,14 +164,14 @@ export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps>
       onSetupComplete?.(false);
 
       toast({
-        title: "Service Account Ontkoppeld",
-        description: "Google Calendar Service Account is losgekoppeld",
+        title: "Verbinding Verbroken",
+        description: "Google Calendar Workload Identity is losgekoppeld",
       });
     } catch (error) {
       console.error('Disconnect error:', error);
       toast({
         title: "Fout",
-        description: "Kon Service Account niet ontkoppelen",
+        description: "Kon verbinding niet verbreken",
         variant: "destructive",
       });
     }
@@ -169,8 +181,8 @@ export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Shield className="h-5 w-5" />
-          Google Calendar Service Account
+          <Lock className="h-5 w-5" />
+          Google Calendar Workload Identity
           {isConnected && (
             <Badge variant="outline" className="text-green-700 border-green-300">
               <CheckCircle className="h-3 w-3 mr-1" />
@@ -183,47 +195,59 @@ export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps>
         {!isConnected ? (
           <div className="space-y-4">
             <Alert>
-              <Key className="h-4 w-4" />
+              <Shield className="h-4 w-4" />
               <AlertDescription>
-                <strong>Service Account Voordelen:</strong>
+                <strong>Workload Identity Voordelen:</strong>
                 <ul className="list-disc list-inside mt-2 space-y-1">
-                  <li>Geen OAuth problemen meer</li>
-                  <li>Automatische toegang voor alle teamleden</li>
-                  <li>Stabiele, permanente verbinding</li>
-                  <li>Geen handmatige goedkeuring per gebruiker</li>
+                  <li>Geen Service Account keys nodig</li>
+                  <li>Voldoet aan Google security best practices</li>
+                  <li>Automatische token management</li>
+                  <li>Werkt met Organization Policies</li>
+                  <li>Veiligere authenticatie via OIDC</li>
                 </ul>
               </AlertDescription>
             </Alert>
 
             <div className="bg-blue-50 p-4 rounded-md text-sm">
               <p className="text-blue-800 mb-2">
-                <strong>Vereiste setup door inkoop@auto-city.nl:</strong>
+                <strong>Vereiste setup in Google Cloud:</strong>
               </p>
               <ol className="text-blue-700 list-decimal list-inside space-y-1">
-                <li>Google Cloud Console: Service Account aanmaken</li>
-                <li>Domain-wide delegation inschakelen</li>
-                <li>JSON credentials downloaden en als secret toevoegen</li>
-                <li>Calendar toegang configureren voor Service Account</li>
+                <li>Identity Pool aanmaken in IAM & Admin</li>
+                <li>Identity Provider configureren voor Supabase</li>
+                <li>Service Account aanmaken (zonder keys!)</li>
+                <li>Calendar API access configureren</li>
+                <li>Workload Identity binding instellen</li>
               </ol>
             </div>
 
+            <div className="bg-yellow-50 p-4 rounded-md text-sm">
+              <p className="text-yellow-800 mb-2">
+                <strong>Supabase Secrets Configuratie:</strong>
+              </p>
+              <ul className="text-yellow-700 list-disc list-inside space-y-1">
+                <li><code>GOOGLE_WORKLOAD_IDENTITY_PROVIDER</code>: projects/PROJECT_ID/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID</li>
+                <li><code>GOOGLE_SERVICE_ACCOUNT_EMAIL</code>: service-account@project.iam.gserviceaccount.com</li>
+              </ul>
+            </div>
+
             <Button 
-              onClick={handleSetupServiceAccount} 
+              onClick={handleSetupWorkloadIdentity} 
               disabled={isLoading || !isAdmin}
               className="gap-2 w-full"
             >
               {isLoading ? (
                 <Settings className="h-4 w-4 animate-spin" />
               ) : (
-                <Shield className="h-4 w-4" />
+                <Lock className="h-4 w-4" />
               )}
-              Service Account Configureren
+              Workload Identity Configureren
             </Button>
 
             {!isAdmin && (
               <p className="text-sm text-muted-foreground">
                 <AlertCircle className="h-3 w-3 inline mr-1" />
-                Alleen beheerders kunnen de Service Account configureren
+                Alleen beheerders kunnen Workload Identity configureren
               </p>
             )}
           </div>
@@ -233,7 +257,7 @@ export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps>
               <div>
                 <h4 className="font-medium flex items-center gap-2">
                   <Building2 className="h-4 w-4" />
-                  Service Account Actief
+                  Workload Identity Actief
                 </h4>
                 <p className="text-sm text-muted-foreground">
                   Calendar: {companyCalendarSettings?.calendar_name || 'Auto City Team'}
@@ -243,6 +267,9 @@ export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps>
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Service Account: {companyCalendarSettings?.service_account_email || 'Geconfigureerd'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Auth Type: {authType === 'workload_identity' ? 'Workload Identity Federation' : 'OAuth'}
                 </p>
               </div>
               {isAdmin && (
@@ -254,17 +281,18 @@ export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps>
 
             <div className="bg-green-50 p-4 rounded-md">
               <h5 className="font-medium text-green-800 mb-2 flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Team Toegang:
+                <Shield className="h-4 w-4" />
+                Veilige Team Toegang:
               </h5>
               <p className="text-sm text-green-700 mb-2">
-                Alle teamleden hebben nu automatisch toegang tot de centrale calendar:
+                Workload Identity Federation biedt enterprise-grade beveiliging:
               </p>
               <ul className="text-sm text-green-700 list-disc list-inside space-y-1">
-                <li>Afspraken worden automatisch gesynchroniseerd</li>
-                <li>Geen individuele Google account koppeling nodig</li>
-                <li>Stabiele verbinding zonder token expiratie</li>
-                <li>Centrale controle en beheer</li>
+                <li>Geen lange-termijn credentials opgeslagen</li>
+                <li>Automatische token rotatie</li>
+                <li>Audit logs voor alle API calls</li>
+                <li>Voldoet aan security compliance</li>
+                <li>Werkt met Google Organization Policies</li>
               </ul>
             </div>
 
@@ -282,7 +310,7 @@ export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps>
             {!isAdmin && (
               <div className="text-sm text-muted-foreground bg-gray-50 p-3 rounded-md">
                 <Shield className="h-4 w-4 inline mr-2" />
-                Service Account wordt beheerd door beheerders
+                Workload Identity wordt beheerd door beheerders
               </div>
             )}
           </div>

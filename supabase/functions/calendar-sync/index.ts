@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -46,15 +45,23 @@ serve(async (req) => {
       .single();
 
     if (settingsError || !calendarSettings) {
-      throw new Error('Company calendar not configured. Please set up Service Account first.');
+      throw new Error('Company calendar not configured. Please set up Workload Identity first.');
     }
 
-    // Get fresh access token using service account
-    const accessToken = await getServiceAccountToken();
+    // Get fresh access token using Workload Identity
+    let accessToken: string;
+    
+    if (calendarSettings.auth_type === 'workload_identity') {
+      accessToken = await getWorkloadIdentityToken();
+    } else {
+      throw new Error('Only Workload Identity authentication is supported');
+    }
 
     switch (action) {
       case 'sync_to_google': {
-        // Get appointment from database
+        // Use the accessToken from Workload Identity
+        
+        // Create or update event logic remains the same
         const { data: appointment, error: apptError } = await supabase
           .from('appointments')
           .select('*')
@@ -215,47 +222,17 @@ serve(async (req) => {
   }
 });
 
-// Helper function to get service account access token
-async function getServiceAccountToken(): Promise<string> {
-  const serviceAccountKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
-  if (!serviceAccountKey) {
-    throw new Error('Google Service Account credentials not configured');
-  }
-
-  const credentials = JSON.parse(serviceAccountKey);
-  
-  const now = Math.floor(Date.now() / 1000);
-  const exp = now + 3600;
-
-  const payload = {
-    iss: credentials.client_email,
-    scope: 'https://www.googleapis.com/auth/calendar',
-    aud: 'https://oauth2.googleapis.com/token',
-    exp: exp,
-    iat: now,
-    sub: 'info@auto-city.nl'
-  };
-
-  // In production, you would use proper JWT signing here
-  // For now, we'll use Google's client libraries approach
-  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion: await createJWTAssertion(credentials, payload)
-    }),
+// Helper function to get Workload Identity access token
+async function getWorkloadIdentityToken(): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('google-service-auth', {
+    body: { action: 'get_access_token' }
   });
 
-  const tokenData = await tokenResponse.json();
-  
-  if (!tokenData.access_token) {
-    throw new Error('Failed to get service account access token');
+  if (error || !data?.access_token) {
+    throw new Error('Failed to get Workload Identity access token');
   }
 
-  return tokenData.access_token;
+  return data.access_token;
 }
 
 async function createJWTAssertion(credentials: any, payload: any) {
