@@ -13,6 +13,7 @@ import { CalendarAIAssistant } from "@/components/calendar/CalendarAIAssistant";
 import { AppointmentDetail } from "@/components/calendar/AppointmentDetail";
 import { GoogleServiceAccountSetup } from "@/components/calendar/GoogleServiceAccountSetup";
 import { CalendarSyncStatus } from "@/components/calendar/CalendarSyncStatus";
+import { GoogleCalendarTest } from "@/components/calendar/GoogleCalendarTest";
 import { fetchAppointments } from "@/services/calendarService";
 import { Appointment, CalendarView as CalendarViewType } from "@/types/calendar";
 import { 
@@ -25,7 +26,8 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  Settings
+  Settings,
+  TestTube
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, startOfDay, endOfDay, addDays, subDays, startOfWeek, endOfWeek } from "date-fns";
@@ -44,7 +46,6 @@ const Calendar = () => {
   });
   const { toast } = useToast();
 
-  // Load appointments
   const loadAppointments = async () => {
     setIsLoading(true);
     try {
@@ -67,7 +68,6 @@ const Calendar = () => {
     loadAppointments();
   }, [calendarView.date]);
 
-  // Get stats for dashboard cards
   const todayAppointments = appointments.filter(apt => {
     const today = startOfDay(new Date());
     const tomorrow = endOfDay(new Date());
@@ -75,7 +75,6 @@ const Calendar = () => {
     return aptDate >= today && aptDate <= tomorrow;
   });
 
-  // Get this week's appointments
   const thisWeekAppointments = appointments.filter(apt => {
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
     const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
@@ -85,8 +84,6 @@ const Calendar = () => {
 
   const confirmedAppointments = appointments.filter(apt => apt.status === "bevestigd");
   const pendingAppointments = appointments.filter(apt => apt.status === "gepland");
-  
-  // Now these will show actual synced/pending counts
   const syncedAppointments = appointments.filter(apt => apt.sync_status === "synced");
   const pendingSyncAppointments = appointments.filter(apt => apt.sync_status === "pending");
 
@@ -187,7 +184,6 @@ const Calendar = () => {
           </div>
         </PageHeader>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -248,14 +244,12 @@ const Calendar = () => {
           </Card>
         </div>
 
-        {/* Google Service Account Setup */}
         {showGoogleSync && (
           <GoogleServiceAccountSetup
             onSetupComplete={setGoogleCalendarConnected}
           />
         )}
 
-        {/* Main Calendar Content */}
         <Tabs defaultValue="calendar" className="space-y-4">
           <TabsList>
             <TabsTrigger value="calendar">Kalender</TabsTrigger>
@@ -263,6 +257,7 @@ const Calendar = () => {
             <TabsTrigger value="list">Lijst</TabsTrigger>
             <TabsTrigger value="today">Vandaag</TabsTrigger>
             <TabsTrigger value="sync">Sync Status</TabsTrigger>
+            <TabsTrigger value="test">🧪 Test</TabsTrigger>
           </TabsList>
 
           <TabsContent value="calendar">
@@ -365,7 +360,6 @@ const Calendar = () => {
                     </div>
                   ) : (
                     <>
-                      {/* Sync stats */}
                       <div className="grid grid-cols-3 gap-4">
                         <div className="text-center p-4 bg-green-50 rounded-lg">
                           <div className="text-2xl font-bold text-green-600">{syncedAppointments.length}</div>
@@ -381,7 +375,6 @@ const Calendar = () => {
                         </div>
                       </div>
 
-                      {/* Recent appointments with sync status */}
                       <div className="space-y-2">
                         <h4 className="font-medium">Recente Afspraken</h4>
                         {appointments.slice(0, 5).map((appointment) => (
@@ -407,9 +400,12 @@ const Calendar = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="test">
+            <GoogleCalendarTest />
+          </TabsContent>
         </Tabs>
 
-        {/* AI Assistant Modal */}
         {showAIAssistant && (
           <CalendarAIAssistant
             onClose={() => setShowAIAssistant(false)}
