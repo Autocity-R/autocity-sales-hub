@@ -3,13 +3,14 @@ import React, { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { manualSyncToGoogle } from "@/services/calendarService";
 import { 
   RefreshCw, 
   CheckCircle, 
   AlertCircle, 
   Clock, 
-  ExternalLink 
+  ExternalLink,
+  Zap 
 } from "lucide-react";
 
 interface CalendarSyncStatusProps {
@@ -29,6 +30,10 @@ export const CalendarSyncStatus: React.FC<CalendarSyncStatusProps> = ({
   const [currentStatus, setCurrentStatus] = useState(syncStatus || 'pending');
   const { toast } = useToast();
 
+  useEffect(() => {
+    setCurrentStatus(syncStatus || 'pending');
+  }, [syncStatus]);
+
   const getSyncStatusIcon = () => {
     switch (currentStatus) {
       case 'synced':
@@ -45,11 +50,11 @@ export const CalendarSyncStatus: React.FC<CalendarSyncStatusProps> = ({
   const getSyncStatusLabel = () => {
     switch (currentStatus) {
       case 'synced':
-        return 'Gesynchroniseerd';
+        return 'Auto-sync ✓';
       case 'error':
         return 'Sync fout';
       case 'pending':
-        return 'Wacht op sync';
+        return 'Auto-sync...';
       default:
         return 'Niet gesynchroniseerd';
     }
@@ -62,38 +67,29 @@ export const CalendarSyncStatus: React.FC<CalendarSyncStatusProps> = ({
       case 'error':
         return 'bg-red-100 text-red-800 border-red-200';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
-  const handleSync = async () => {
+  const handleManualSync = async () => {
     setIsSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('calendar-sync', {
-        body: {
-          action: 'sync_to_google',
-          appointmentId: appointmentId,
-        }
-      });
+      const success = await manualSyncToGoogle(appointmentId);
 
-      if (error) {
-        throw error;
-      }
-
-      if (data?.success) {
+      if (success) {
         setCurrentStatus('synced');
         toast({
-          title: "Synchronisatie Voltooid",
+          title: "Handmatige Sync Voltooid",
           description: "Afspraak succesvol gesynchroniseerd met Google Calendar",
         });
         onSyncComplete?.();
       } else {
-        throw new Error(data?.error || 'Synchronisatie mislukt');
+        throw new Error('Synchronisatie mislukt');
       }
     } catch (error) {
-      console.error('Sync error:', error);
+      console.error('Manual sync error:', error);
       setCurrentStatus('error');
       toast({
         title: "Synchronisatiefout",
@@ -118,20 +114,22 @@ export const CalendarSyncStatus: React.FC<CalendarSyncStatusProps> = ({
         <span className="ml-1">{getSyncStatusLabel()}</span>
       </Badge>
 
-      {currentStatus === 'pending' || currentStatus === 'error' ? (
+      {/* Alleen handmatige sync knop tonen als automatische sync gefaald heeft */}
+      {currentStatus === 'error' ? (
         <Button
-          onClick={handleSync}
+          onClick={handleManualSync}
           disabled={isSyncing}
           size="sm"
           variant="outline"
           className="gap-1"
+          title="Probeer handmatig te synchroniseren"
         >
           {isSyncing ? (
             <RefreshCw className="h-3 w-3 animate-spin" />
           ) : (
-            <RefreshCw className="h-3 w-3" />
+            <Zap className="h-3 w-3" />
           )}
-          Sync
+          Opnieuw
         </Button>
       ) : googleEventId ? (
         <Button

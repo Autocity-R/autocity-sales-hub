@@ -1,9 +1,35 @@
+
 import { Appointment, AppointmentType, AppointmentStatus } from "@/types/calendar";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 
 type DbAppointment = Database['public']['Tables']['appointments']['Row'];
 type AppointmentInsert = Database['public']['Tables']['appointments']['Insert'];
+
+// Auto-sync function to Google Calendar
+const autoSyncToGoogle = async (appointmentId: string) => {
+  try {
+    console.log('Auto-syncing appointment to Google Calendar:', appointmentId);
+    
+    const { data, error } = await supabase.functions.invoke('calendar-sync', {
+      body: {
+        action: 'sync_to_google',
+        appointmentId: appointmentId,
+      }
+    });
+
+    if (error) {
+      console.error('Auto-sync failed:', error);
+      return;
+    }
+
+    if (data?.success) {
+      console.log('Auto-sync successful for appointment:', appointmentId);
+    }
+  } catch (error) {
+    console.error('Auto-sync error:', error);
+  }
+};
 
 // Convert database appointment to frontend type
 const convertDbAppointment = (dbAppointment: DbAppointment): Appointment => ({
@@ -64,7 +90,7 @@ const convertToDbInsert = (appointment: Omit<Appointment, 'id' | 'createdAt' | '
   assignedto: appointment.assignedTo,
   google_event_id: appointment.googleEventId,
   google_calendar_id: appointment.googleCalendarId,
-  sync_status: appointment.sync_status,
+  sync_status: appointment.sync_status || 'pending',
   last_synced_at: typeof appointment.last_synced_at === 'string' ? appointment.last_synced_at : appointment.last_synced_at?.toISOString(),
   created_by_ai: appointment.created_by_ai,
   ai_agent_id: appointment.ai_agent_id
@@ -112,7 +138,8 @@ export const createAppointment = async (
 
     const dbAppointment = convertToDbInsert({
       ...appointment,
-      createdBy: appointment.createdBy || user.email || 'Unknown User'
+      createdBy: appointment.createdBy || user.email || 'Unknown User',
+      sync_status: 'pending' // Nieuwe afspraken starten als pending voor auto-sync
     });
 
     const { data, error } = await supabase
@@ -126,7 +153,14 @@ export const createAppointment = async (
       throw error;
     }
 
-    return convertDbAppointment(data);
+    const createdAppointment = convertDbAppointment(data);
+
+    // Automatisch synchroniseren naar Google Calendar na aanmaken
+    setTimeout(() => {
+      autoSyncToGoogle(createdAppointment.id);
+    }, 1000); // Kleine delay om database commit te laten gebeuren
+
+    return createdAppointment;
   } catch (error) {
     console.error("Failed to create appointment:", error);
     throw error;
@@ -162,6 +196,11 @@ export const updateAppointment = async (
       dbUpdates.last_synced_at = typeof updates.last_synced_at === 'string' ? updates.last_synced_at : updates.last_synced_at?.toISOString();
     }
 
+    // Als dit geen sync-gerelateerde update is, reset sync status naar pending voor auto-sync
+    if (!updates.sync_status && !updates.googleEventId && !updates.last_synced_at) {
+      dbUpdates.sync_status = 'pending';
+    }
+
     const { data, error } = await supabase
       .from('appointments')
       .update(dbUpdates)
@@ -174,7 +213,16 @@ export const updateAppointment = async (
       throw error;
     }
 
-    return convertDbAppointment(data);
+    const updatedAppointment = convertDbAppointment(data);
+
+    // Automatisch synchroniseren naar Google Calendar na wijziging (maar niet als dit al een sync update was)
+    if (!updates.sync_status && !updates.googleEventId && !updates.last_synced_at) {
+      setTimeout(() => {
+        autoSyncToGoogle(appointmentId);
+      }, 1000); // Kleine delay om database commit te laten gebeuren
+    }
+
+    return updatedAppointment;
   } catch (error) {
     console.error("Failed to update appointment:", error);
     throw error;
@@ -183,6 +231,18 @@ export const updateAppointment = async (
 
 export const deleteAppointment = async (appointmentId: string): Promise<void> => {
   try {
+    // Eerst proberen om het event uit Google Calendar te verwijderen
+    try {
+      await supabase.functions.invoke('calendar-sync', {
+        body: {
+          action: 'delete_from_google',
+          appointmentId: appointmentId,
+        }
+      });
+    } catch (syncError) {
+      console.warn('Could not delete from Google Calendar, proceeding with local delete:', syncError);
+    }
+
     const { error } = await supabase
       .from('appointments')
       .delete()
@@ -211,5 +271,26 @@ export const sendAppointmentConfirmation = async (
   } catch (error) {
     console.error("Failed to send confirmation:", error);
     throw error;
+  }
+};
+
+// Handmatige sync functie voor als automatisch faal
+export const manualSyncToGoogle = async (appointmentId: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('calendar-sync', {
+      body: {
+        action: 'sync_to_google',
+        appointmentId: appointmentId,
+      }
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return data?.success || false;
+  } catch (error) {
+    console.error('Manual sync failed:', error);
+    return false;
   }
 };
