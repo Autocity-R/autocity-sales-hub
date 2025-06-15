@@ -123,7 +123,12 @@ export const getAgentSystemData = async (
         .select('*')
         .order('created_at', { ascending: false })
         .limit(maxItems);
-      systemData.contacts = contacts || [];
+
+      // Map returned data to satisfy Contact[] typing, especially for type
+      systemData.contacts = (contacts || []).map((c) => ({
+        ...c,
+        type: c.type as 'supplier' | 'b2b' | 'b2c', // Enforce type literal
+      }));
       console.log('👥 Loaded contacts:', contacts?.length || 0);
     }
 
@@ -157,7 +162,12 @@ export const getAgentSystemData = async (
         .select('*')
         .order('created_at', { ascending: false })
         .limit(maxItems);
-      systemData.contracts = contracts || [];
+
+      // Map returned data to satisfy Contract[] typing, especially for type
+      systemData.contracts = (contracts || []).map((ctr) => ({
+        ...ctr,
+        type: ctr.type as 'b2b' | 'b2c', // Enforce type literal
+      }));
       console.log('📄 Loaded contracts:', contracts?.length || 0);
     }
 
@@ -492,4 +502,3 @@ export const performAgentCRMOperation = async (
     return { success: false, error: error.message };
   }
 };
-
