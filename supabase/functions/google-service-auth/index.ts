@@ -48,11 +48,11 @@ serve(async (req) => {
       throw new Error('Insufficient permissions - admin/owner role required');
     }
 
-    const { action } = await req.json();
+    const { action, impersonate_email } = await req.json();
 
     switch (action) {
       case 'setup_service_account': {
-        console.log('Setting up Google Service Account for company calendar');
+        console.log('Setting up Google Service Account for company calendar with Domain-wide delegation');
         
         // Get Service Account key from Supabase secrets
         const serviceAccountKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
@@ -73,17 +73,18 @@ serve(async (req) => {
           throw new Error('Service Account key is missing required fields (private_key, client_email, project_id)');
         }
 
-        // Get access token using Service Account
-        const accessToken = await getServiceAccountToken(credentials);
+        // Get access token using Service Account with Domain-wide delegation
+        const accessToken = await getServiceAccountToken(credentials, 'info@auto-city.nl');
         
-        // Test calendar access
+        // Test calendar access by impersonating the main account
         const calendarResponse = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary', {
           headers: { 'Authorization': `Bearer ${accessToken}` },
         });
         
         if (!calendarResponse.ok) {
           const errorData = await calendarResponse.json();
-          throw new Error(`Calendar access failed: ${errorData.error?.message || 'Unknown error'}`);
+          console.error('Calendar access failed:', errorData);
+          throw new Error(`Calendar access failed with Domain-wide delegation: ${errorData.error?.message || 'Unknown error'}. Make sure Domain-wide delegation is configured correctly.`);
         }
 
         const calendar = await calendarResponse.json();
@@ -93,9 +94,9 @@ serve(async (req) => {
           .from('company_calendar_settings')
           .upsert({
             company_id: 'auto-city',
-            google_calendar_id: calendar.id,
-            calendar_name: calendar.summary,
-            calendar_email: credentials.client_email,
+            google_calendar_id: 'primary',
+            calendar_name: calendar.summary || 'Auto City Calendar',
+            calendar_email: 'info@auto-city.nl', // The impersonated email
             sync_enabled: true,
             auth_type: 'service_account',
             managed_by_user_id: user.id,
@@ -110,18 +111,19 @@ serve(async (req) => {
         return new Response(JSON.stringify({ 
           success: true,
           calendar: {
-            id: calendar.id,
-            name: calendar.summary,
-            email: credentials.client_email
+            id: 'primary',
+            name: calendar.summary || 'Auto City Calendar',
+            email: 'info@auto-city.nl'
           },
-          authType: 'service_account'
+          authType: 'service_account',
+          domainWideDelegation: true
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       case 'get_access_token': {
-        console.log('Getting fresh access token via Service Account');
+        console.log('Getting fresh access token via Service Account with Domain-wide delegation');
         
         const serviceAccountKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
         
@@ -130,11 +132,13 @@ serve(async (req) => {
         }
 
         const credentials = JSON.parse(serviceAccountKey);
-        const accessToken = await getServiceAccountToken(credentials);
+        const emailToImpersonate = impersonate_email || 'info@auto-city.nl';
+        const accessToken = await getServiceAccountToken(credentials, emailToImpersonate);
 
         return new Response(JSON.stringify({ 
           access_token: accessToken,
-          expires_in: 3600
+          expires_in: 3600,
+          impersonate_email: emailToImpersonate
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -152,8 +156,8 @@ serve(async (req) => {
   }
 });
 
-// Helper function to get access token using Service Account
-async function getServiceAccountToken(credentials: any): Promise<string> {
+// Helper function to get access token using Service Account with Domain-wide delegation
+async function getServiceAccountToken(credentials: any, impersonateEmail: string): Promise<string> {
   try {
     const now = Math.floor(Date.now() / 1000);
     const expires = now + 3600; // 1 hour
@@ -165,14 +169,17 @@ async function getServiceAccountToken(credentials: any): Promise<string> {
       kid: credentials.private_key_id
     };
 
-    // Create JWT payload
+    // Create JWT payload with Domain-wide delegation
     const payload = {
       iss: credentials.client_email,
+      sub: impersonateEmail, // This enables impersonation via Domain-wide delegation
       scope: 'https://www.googleapis.com/auth/calendar',
       aud: 'https://oauth2.googleapis.com/token',
       exp: expires,
       iat: now
     };
+
+    console.log('Creating JWT with impersonation for:', impersonateEmail);
 
     // Create JWT assertion
     const jwt = await createJWTAssertion(header, payload, credentials.private_key);
@@ -192,12 +199,14 @@ async function getServiceAccountToken(credentials: any): Promise<string> {
     const tokenData = await tokenResponse.json();
     
     if (!tokenResponse.ok) {
-      throw new Error(`Token exchange failed: ${tokenData.error_description || tokenData.error}`);
+      console.error('Token exchange failed:', tokenData);
+      throw new Error(`Token exchange failed with Domain-wide delegation: ${tokenData.error_description || tokenData.error}`);
     }
 
+    console.log('Successfully obtained access token with Domain-wide delegation');
     return tokenData.access_token;
   } catch (error) {
-    console.error('Service Account token error:', error);
+    console.error('Service Account token error with Domain-wide delegation:', error);
     throw error;
   }
 }

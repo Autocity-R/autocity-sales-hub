@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -33,7 +34,7 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    console.log('Test: Starting Google Calendar test with Service Account');
+    console.log('Test: Starting Google Calendar test with Service Account and Domain-wide delegation');
 
     // Get Service Account key from Supabase secrets
     const serviceAccountKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
@@ -53,12 +54,13 @@ serve(async (req) => {
       throw new Error('Invalid Service Account key format');
     }
 
-    // Get access token using Service Account
-    const accessToken = await getServiceAccountToken(credentials);
-    console.log('Test: Access token obtained successfully');
+    // Get access token using Service Account with Domain-wide delegation
+    const impersonateEmail = 'info@auto-city.nl';
+    const accessToken = await getServiceAccountToken(credentials, impersonateEmail);
+    console.log('Test: Access token obtained successfully with Domain-wide delegation');
 
-    // First, let's check which calendars are available
-    console.log('Test: Fetching available calendars...');
+    // Test calendar access via Domain-wide delegation
+    console.log('Test: Testing calendar access via Domain-wide delegation...');
     const calendarListResponse = await fetch(
       'https://www.googleapis.com/calendar/v3/users/me/calendarList',
       {
@@ -69,9 +71,9 @@ serve(async (req) => {
     );
 
     const calendarList = await calendarListResponse.json();
-    console.log('Test: Available calendars:', calendarList);
+    console.log('Test: Available calendars via Domain-wide delegation:', calendarList);
 
-    // Create a simple test event for today
+    // Create a simple test event for today in primary calendar
     const today = new Date();
     const startTime = new Date(today);
     startTime.setHours(14, 0, 0, 0); // 2 PM today
@@ -80,8 +82,8 @@ serve(async (req) => {
     endTime.setHours(15, 0, 0, 0); // 3 PM today
 
     const testEvent = {
-      summary: `🧪 SERVICE ACCOUNT TEST - ${new Date().toLocaleString('nl-NL')}`,
-      description: `Dit is een test event in de Service Account calendar om te controleren of de sync werkt.\n\nAangemaakt op: ${new Date().toLocaleString('nl-NL')}\nService Account: ${credentials.client_email}`,
+      summary: `🧪 DOMAIN-WIDE DELEGATION TEST - ${new Date().toLocaleString('nl-NL')}`,
+      description: `Dit is een test event in de primary calendar via Domain-wide delegation om te controleren of de sync werkt.\n\nAangemaakt op: ${new Date().toLocaleString('nl-NL')}\nService Account: ${credentials.client_email}\nImpersonating: ${impersonateEmail}`,
       start: {
         dateTime: startTime.toISOString(),
         timeZone: 'Europe/Amsterdam',
@@ -90,16 +92,16 @@ serve(async (req) => {
         dateTime: endTime.toISOString(),
         timeZone: 'Europe/Amsterdam',
       },
-      location: 'Service Account Calendar - Auto City',
+      location: 'Primary Calendar via Domain-wide Delegation - Auto City',
       colorId: '2', // Green color to make it stand out
     };
 
     console.log('Test: Creating event with data:', testEvent);
 
-    // TARGET CALENDAR: gebruik Service Account email (primary calendar)
-    const targetCalendar = 'primary'; // Service Account's own calendar
+    // TARGET CALENDAR: gebruik primary calendar via Domain-wide delegation
+    const targetCalendar = 'primary';
     
-    console.log(`Test: Creating event in Service Account calendar (primary)`);
+    console.log(`Test: Creating event in primary calendar via Domain-wide delegation`);
     
     let createResponse = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendar)}/events`,
@@ -114,17 +116,18 @@ serve(async (req) => {
     );
 
     let responseData = await createResponse.json();
-    console.log('Test: Service Account calendar response:', responseData);
+    console.log('Test: Primary calendar response via Domain-wide delegation:', responseData);
 
     if (!createResponse.ok) {
-      console.error('Test: Service Account calendar failed:', responseData);
+      console.error('Test: Primary calendar failed via Domain-wide delegation:', responseData);
       
       return new Response(JSON.stringify({ 
         success: false,
         error: `Failed to create test event: ${responseData.error?.message || 'Unknown error'}`,
-        details: `Service Account calendar is niet toegankelijk. Controleer de configuratie.`,
+        details: `Primary calendar is niet toegankelijk via Domain-wide delegation. Controleer de Domain-wide delegation configuratie.`,
         debugInfo: {
           serviceAccount: credentials.client_email,
+          impersonateEmail: impersonateEmail,
           targetCalendar: targetCalendar,
           error: responseData,
           availableCalendars: calendarList.items?.map(cal => ({
@@ -142,19 +145,19 @@ serve(async (req) => {
 
     console.log('Test: Successfully created test event with ID:', responseData.id);
 
-    const serviceAccountEmail = credentials.client_email;
-
     return new Response(JSON.stringify({ 
       success: true,
-      message: `Test event succesvol aangemaakt in Service Account calendar! 🎉`,
+      message: `Test event succesvol aangemaakt in primary calendar via Domain-wide delegation! 🎉`,
       eventId: responseData.id,
       eventLink: responseData.htmlLink,
       eventTime: `${startTime.toLocaleString('nl-NL')} - ${endTime.toLocaleString('nl-NL')}`,
-      calendarUsed: serviceAccountEmail,
-      targetCalendar: serviceAccountEmail,
+      calendarUsed: impersonateEmail,
+      targetCalendar: 'primary',
+      domainWideDelegation: true,
       credentials: {
         clientEmail: credentials.client_email,
-        projectId: credentials.project_id
+        projectId: credentials.project_id,
+        impersonateEmail: impersonateEmail
       },
       availableCalendars: calendarList.items?.map(cal => ({
         id: cal.id,
@@ -164,14 +167,13 @@ serve(async (req) => {
       })) || [],
       calendarAccessible: true,
       sharingInstructions: {
-        calendarId: serviceAccountEmail,
+        calendarId: impersonateEmail,
         steps: [
-          "1. Open calendar.google.com",
-          "2. Klik op '+' naast 'Other calendars'",
-          "3. Selecteer 'Subscribe to calendar'",
-          `4. Voer in: ${serviceAccountEmail}`,
-          "5. Klik 'Add calendar'",
-          "6. De Service Account calendar is nu zichtbaar in jouw Google Calendar"
+          "1. De calendar is nu toegankelijk via info@auto-city.nl",
+          "2. Alle medewerkers kunnen de calendar zien als ze ingelogd zijn met hun Auto City Google account",
+          "3. Events worden aangemaakt in de primary calendar van info@auto-city.nl",
+          "4. Domain-wide delegation zorgt ervoor dat het Service Account namens de organisatie kan handelen",
+          "5. Geen handmatige sharing meer nodig - alles werkt via de organisatie account"
         ]
       }
     }), {
@@ -183,7 +185,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       success: false,
       error: error.message,
-      details: 'Controleer de logs voor meer informatie'
+      details: 'Controleer de logs voor meer informatie. Mogelijk is Domain-wide delegation niet correct geconfigureerd.'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -191,8 +193,8 @@ serve(async (req) => {
   }
 });
 
-// Helper function to get Service Account access token
-async function getServiceAccountToken(credentials: any): Promise<string> {
+// Helper function to get Service Account access token with Domain-wide delegation
+async function getServiceAccountToken(credentials: any, impersonateEmail: string): Promise<string> {
   try {
     const now = Math.floor(Date.now() / 1000);
     const expires = now + 3600; // 1 hour
@@ -204,9 +206,10 @@ async function getServiceAccountToken(credentials: any): Promise<string> {
       kid: credentials.private_key_id
     };
 
-    // Create JWT payload
+    // Create JWT payload with Domain-wide delegation
     const payload = {
       iss: credentials.client_email,
+      sub: impersonateEmail, // This enables impersonation via Domain-wide delegation
       scope: 'https://www.googleapis.com/auth/calendar',
       aud: 'https://oauth2.googleapis.com/token',
       exp: expires,
