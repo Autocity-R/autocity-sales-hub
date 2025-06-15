@@ -32,7 +32,8 @@ export const CalendarSyncStatus: React.FC<CalendarSyncStatusProps> = ({
 
   useEffect(() => {
     setCurrentStatus(syncStatus || 'pending');
-  }, [syncStatus]);
+    console.log('📊 Sync status for appointment', appointmentId, ':', syncStatus);
+  }, [syncStatus, appointmentId]);
 
   const getSyncStatusIcon = () => {
     switch (currentStatus) {
@@ -41,7 +42,7 @@ export const CalendarSyncStatus: React.FC<CalendarSyncStatusProps> = ({
       case 'error':
         return <AlertCircle className="h-4 w-4 text-red-500" />;
       case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-500" />;
+        return <Clock className="h-4 w-4 text-yellow-500 animate-pulse" />;
       default:
         return <RefreshCw className="h-4 w-4 text-gray-500" />;
     }
@@ -75,6 +76,8 @@ export const CalendarSyncStatus: React.FC<CalendarSyncStatusProps> = ({
 
   const handleManualSync = async () => {
     setIsSyncing(true);
+    console.log('🔄 Manual sync triggered for appointment:', appointmentId);
+    
     try {
       const success = await manualSyncToGoogle(appointmentId);
 
@@ -114,7 +117,7 @@ export const CalendarSyncStatus: React.FC<CalendarSyncStatusProps> = ({
         <span className="ml-1">{getSyncStatusLabel()}</span>
       </Badge>
 
-      {/* Alleen handmatige sync knop tonen als automatische sync gefaald heeft */}
+      {/* Handmatige sync knop tonen als automatische sync gefaald heeft */}
       {currentStatus === 'error' ? (
         <Button
           onClick={handleManualSync}

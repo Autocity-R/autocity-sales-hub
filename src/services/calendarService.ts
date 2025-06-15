@@ -1,4 +1,3 @@
-
 import { Appointment, AppointmentType, AppointmentStatus } from "@/types/calendar";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
@@ -9,7 +8,7 @@ type AppointmentInsert = Database['public']['Tables']['appointments']['Insert'];
 // Auto-sync function to Google Calendar
 const autoSyncToGoogle = async (appointmentId: string) => {
   try {
-    console.log('Auto-syncing appointment to Google Calendar:', appointmentId);
+    console.log('🔄 Starting auto-sync for appointment:', appointmentId);
     
     const { data, error } = await supabase.functions.invoke('calendar-sync', {
       body: {
@@ -19,15 +18,46 @@ const autoSyncToGoogle = async (appointmentId: string) => {
     });
 
     if (error) {
-      console.error('Auto-sync failed:', error);
+      console.error('❌ Auto-sync failed with error:', error);
+      
+      // Update appointment status to error
+      await supabase
+        .from('appointments')
+        .update({ sync_status: 'error' })
+        .eq('id', appointmentId);
+      
       return;
     }
 
     if (data?.success) {
-      console.log('Auto-sync successful for appointment:', appointmentId);
+      console.log('✅ Auto-sync successful for appointment:', appointmentId);
+      
+      // Update appointment status to synced
+      await supabase
+        .from('appointments')
+        .update({ 
+          sync_status: 'synced',
+          google_event_id: data.googleEventId,
+          last_synced_at: new Date().toISOString()
+        })
+        .eq('id', appointmentId);
+    } else {
+      console.error('❌ Auto-sync returned unsuccessful response:', data);
+      
+      // Update appointment status to error
+      await supabase
+        .from('appointments')
+        .update({ sync_status: 'error' })
+        .eq('id', appointmentId);
     }
   } catch (error) {
-    console.error('Auto-sync error:', error);
+    console.error('❌ Auto-sync error:', error);
+    
+    // Update appointment status to error
+    await supabase
+      .from('appointments')
+      .update({ sync_status: 'error' })
+      .eq('id', appointmentId);
   }
 };
 
@@ -142,6 +172,8 @@ export const createAppointment = async (
       sync_status: 'pending' // Nieuwe afspraken starten als pending voor auto-sync
     });
 
+    console.log('📝 Creating appointment with data:', dbAppointment);
+
     const { data, error } = await supabase
       .from('appointments')
       .insert(dbAppointment)
@@ -154,11 +186,11 @@ export const createAppointment = async (
     }
 
     const createdAppointment = convertDbAppointment(data);
+    console.log('✅ Appointment created successfully:', createdAppointment.id);
 
     // Automatisch synchroniseren naar Google Calendar na aanmaken
-    setTimeout(() => {
-      autoSyncToGoogle(createdAppointment.id);
-    }, 1000); // Kleine delay om database commit te laten gebeuren
+    console.log('🚀 Triggering auto-sync for new appointment...');
+    autoSyncToGoogle(createdAppointment.id);
 
     return createdAppointment;
   } catch (error) {
@@ -201,6 +233,8 @@ export const updateAppointment = async (
       dbUpdates.sync_status = 'pending';
     }
 
+    console.log('📝 Updating appointment:', appointmentId, 'with data:', dbUpdates);
+
     const { data, error } = await supabase
       .from('appointments')
       .update(dbUpdates)
@@ -217,9 +251,8 @@ export const updateAppointment = async (
 
     // Automatisch synchroniseren naar Google Calendar na wijziging (maar niet als dit al een sync update was)
     if (!updates.sync_status && !updates.googleEventId && !updates.last_synced_at) {
-      setTimeout(() => {
-        autoSyncToGoogle(appointmentId);
-      }, 1000); // Kleine delay om database commit te laten gebeuren
+      console.log('🚀 Triggering auto-sync for updated appointment...');
+      autoSyncToGoogle(appointmentId);
     }
 
     return updatedAppointment;
