@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -45,23 +46,21 @@ serve(async (req) => {
       .single();
 
     if (settingsError || !calendarSettings) {
-      throw new Error('Company calendar not configured. Please set up Workload Identity first.');
+      throw new Error('Company calendar not configured. Please set up Service Account first.');
     }
 
-    // Get fresh access token using Workload Identity
+    // Get fresh access token using Service Account
     let accessToken: string;
     
-    if (calendarSettings.auth_type === 'workload_identity') {
-      accessToken = await getWorkloadIdentityToken();
+    if (calendarSettings.auth_type === 'service_account') {
+      accessToken = await getServiceAccountToken();
     } else {
-      throw new Error('Only Workload Identity authentication is supported');
+      throw new Error('Only Service Account authentication is supported');
     }
 
     switch (action) {
       case 'sync_to_google': {
-        // Use the accessToken from Workload Identity
-        
-        // Create or update event logic remains the same
+        // Get appointment details
         const { data: appointment, error: apptError } = await supabase
           .from('appointments')
           .select('*')
@@ -222,24 +221,20 @@ serve(async (req) => {
   }
 });
 
-// Helper function to get Workload Identity access token
-async function getWorkloadIdentityToken(): Promise<string> {
+// Helper function to get Service Account access token
+async function getServiceAccountToken(): Promise<string> {
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  );
+
   const { data, error } = await supabase.functions.invoke('google-service-auth', {
     body: { action: 'get_access_token' }
   });
 
   if (error || !data?.access_token) {
-    throw new Error('Failed to get Workload Identity access token');
+    throw new Error('Failed to get Service Account access token');
   }
 
   return data.access_token;
-}
-
-async function createJWTAssertion(credentials: any, payload: any) {
-  const header = { alg: "RS256", typ: "JWT" };
-  
-  const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  
-  return `${encodedHeader}.${encodedPayload}.signature_placeholder`;
 }

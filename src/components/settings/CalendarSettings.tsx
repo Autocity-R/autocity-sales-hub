@@ -5,7 +5,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { GoogleCalendarSync } from "@/components/calendar/GoogleCalendarSync";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -16,7 +15,8 @@ import {
   Zap,
   CheckCircle,
   Info,
-  Users
+  Users,
+  Key
 } from "lucide-react";
 import { GoogleServiceAccountSetup } from "@/components/calendar/GoogleServiceAccountSetup";
 
@@ -84,7 +84,7 @@ export const CalendarSettings = () => {
 
       if (companySettings) {
         setCompanyCalendarInfo(companySettings);
-        setCalendarConnected(!!companySettings.google_access_token);
+        setCalendarConnected(companySettings.auth_type === 'service_account');
         setSyncSettings(prev => ({
           ...prev,
           autoSync: companySettings.auto_sync || true,
@@ -212,26 +212,26 @@ export const CalendarSettings = () => {
   return (
     <div className="space-y-6">
       {/* Info Card voor Service Account approach */}
-      <Card className="border-blue-200 bg-blue-50">
+      <Card className="border-green-200 bg-green-50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-blue-800">
-            <Info className="h-5 w-5" />
-            Nieuwe Aanpak: Google Service Account
+          <CardTitle className="flex items-center gap-2 text-green-800">
+            <Key className="h-5 w-5" />
+            Google Service Account Implementatie
           </CardTitle>
-          <CardDescription className="text-blue-700">
-            We gebruiken nu een Service Account voor betrouwbare Google Calendar integratie. 
-            Dit voorkomt OAuth problemen en biedt stabiele toegang voor het hele team.
+          <CardDescription className="text-green-700">
+            We gebruiken nu een Google Service Account voor betrouwbare Calendar integratie. 
+            Dit biedt directe API toegang zonder OAuth complexiteit.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2 text-sm text-blue-800">
+          <div className="space-y-2 text-sm text-green-800">
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
-              <span>Geen OAuth problemen meer</span>
+              <span>Directe API toegang zonder OAuth flow</span>
             </div>
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4" />
-              <span>Automatische toegang voor alle teamleden</span>
+              <span>Betrouwbare server-to-server authenticatie</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4" />
@@ -244,7 +244,6 @@ export const CalendarSettings = () => {
       {/* Google Service Account Setup */}
       <GoogleServiceAccountSetup onSetupComplete={setCalendarConnected} />
 
-      {/* Rest of existing components with minor updates */}
       {/* AI Assistant Settings */}
       <Card>
         <CardHeader>
@@ -268,7 +267,7 @@ export const CalendarSettings = () => {
               <div className="space-y-1">
                 <Label>AI Assistent Inschakelen</Label>
                 <p className="text-sm text-muted-foreground">
-                  Laat de AI assistent afspraken beheren op de centrale calendar
+                  Laat de AI assistent afspraken beheren met Service Account toegang
                 </p>
               </div>
               <Switch
