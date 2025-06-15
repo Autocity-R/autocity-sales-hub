@@ -55,7 +55,7 @@ serve(async (req) => {
     }
 
     // Get access token using Service Account with Domain-wide delegation
-    const impersonateEmail = 'info@auto-city.nl';
+    const impersonateEmail = 'inkoop@auto-city.nl';
     const accessToken = await getServiceAccountToken(credentials, impersonateEmail);
     console.log('Test: Access token obtained successfully with Domain-wide delegation');
 
@@ -169,9 +169,9 @@ serve(async (req) => {
       sharingInstructions: {
         calendarId: impersonateEmail,
         steps: [
-          "1. De calendar is nu toegankelijk via info@auto-city.nl",
+          "1. De calendar is nu toegankelijk via inkoop@auto-city.nl",
           "2. Alle medewerkers kunnen de calendar zien als ze ingelogd zijn met hun Auto City Google account",
-          "3. Events worden aangemaakt in de primary calendar van info@auto-city.nl",
+          "3. Events worden aangemaakt in de primary calendar van inkoop@auto-city.nl",
           "4. Domain-wide delegation zorgt ervoor dat het Service Account namens de organisatie kan handelen",
           "5. Geen handmatige sharing meer nodig - alles werkt via de organisatie account"
         ]

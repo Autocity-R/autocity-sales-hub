@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -9,7 +8,7 @@ const corsHeaders = {
 
 // TARGET CALENDAR terug naar primary met Domain-wide delegation
 const TARGET_CALENDAR = 'primary';
-const IMPERSONATE_EMAIL = 'info@auto-city.nl'; // Email van de hoofdaccount die we impersoneren
+const IMPERSONATE_EMAIL = 'inkoop@auto-city.nl'; // Email van de hoofdaccount die we impersoneren
 
 interface CalendarEvent {
   id?: string;

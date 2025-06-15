@@ -74,7 +74,7 @@ serve(async (req) => {
         }
 
         // Get access token using Service Account with Domain-wide delegation
-        const accessToken = await getServiceAccountToken(credentials, 'info@auto-city.nl');
+        const accessToken = await getServiceAccountToken(credentials, 'inkoop@auto-city.nl');
         
         // Test calendar access by impersonating the main account
         const calendarResponse = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary', {
@@ -96,7 +96,7 @@ serve(async (req) => {
             company_id: 'auto-city',
             google_calendar_id: 'primary',
             calendar_name: calendar.summary || 'Auto City Calendar',
-            calendar_email: 'info@auto-city.nl', // The impersonated email
+            calendar_email: 'inkoop@auto-city.nl', // The impersonated email
             sync_enabled: true,
             auth_type: 'service_account',
             managed_by_user_id: user.id,
@@ -113,7 +113,7 @@ serve(async (req) => {
           calendar: {
             id: 'primary',
             name: calendar.summary || 'Auto City Calendar',
-            email: 'info@auto-city.nl'
+            email: 'inkoop@auto-city.nl'
           },
           authType: 'service_account',
           domainWideDelegation: true
@@ -132,7 +132,7 @@ serve(async (req) => {
         }
 
         const credentials = JSON.parse(serviceAccountKey);
-        const emailToImpersonate = impersonate_email || 'info@auto-city.nl';
+        const emailToImpersonate = impersonate_email || 'inkoop@auto-city.nl';
         const accessToken = await getServiceAccountToken(credentials, emailToImpersonate);
 
         return new Response(JSON.stringify({ 
