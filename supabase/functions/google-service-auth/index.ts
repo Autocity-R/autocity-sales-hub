@@ -13,9 +13,10 @@ serve(async (req) => {
   }
 
   try {
+    // Use service role key for database operations to bypass RLS
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
     const authHeader = req.headers.get('Authorization');
@@ -23,11 +24,28 @@ serve(async (req) => {
       throw new Error('Unauthorized - missing authorization header');
     }
 
+    // Verify user authentication with anon key client
+    const anonSupabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user } } = await supabase.auth.getUser(token);
+    const { data: { user } } = await anonSupabase.auth.getUser(token);
 
     if (!user) {
       throw new Error('Unauthorized');
+    }
+
+    // Check if user is admin/owner
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile || !['admin', 'owner'].includes(profile.role)) {
+      throw new Error('Insufficient permissions - admin/owner role required');
     }
 
     const { action } = await req.json();
@@ -70,7 +88,7 @@ serve(async (req) => {
 
         const calendar = await calendarResponse.json();
 
-        // Store Service Account setup in company_calendar_settings
+        // Store Service Account setup in company_calendar_settings using service role
         const { error } = await supabase
           .from('company_calendar_settings')
           .upsert({
@@ -84,7 +102,10 @@ serve(async (req) => {
             service_account_email: credentials.client_email,
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Database error:', error);
+          throw error;
+        }
 
         return new Response(JSON.stringify({ 
           success: true,
