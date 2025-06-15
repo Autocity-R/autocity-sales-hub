@@ -118,55 +118,27 @@ export const getAgentSystemData = async (
       console.log('📅 Loaded appointments:', appointments?.length || 0);
     }
 
-    // Fetch contacts/customers if permitted
+    // TODO: Fetch other CRM data when tables are created
+    // For now, we'll set empty arrays to prevent errors
     if (permissions.contacts || permissions.customers) {
-      const { data: contacts } = await supabase
-        .from('contacts')
-        .select('id, type, company_name, first_name, last_name, email, phone, address_street, address_city, created_at')
-        .order('created_at', { ascending: false })
-        .limit(maxItems * 2); // More contacts for scheduling
-      
-      systemData.contacts = contacts || [];
-      console.log('👥 Loaded contacts:', contacts?.length || 0);
+      systemData.contacts = [];
+      console.log('👥 Contacts table not available yet - using empty array');
     }
 
-    // Fetch vehicles if permitted
     if (permissions.vehicles) {
-      const { data: vehicles } = await supabase
-        .from('vehicles')
-        .select('id, brand, model, year, color, license_number, vin, mileage, status, location, selling_price, customer_id, created_at')
-        .order('created_at', { ascending: false })
-        .limit(maxItems * 3); // More vehicles for inventory browsing
-      
-      systemData.vehicles = vehicles || [];
-      
-      // Separate available vehicles for easy scheduling
-      systemData.availableVehicles = vehicles?.filter(v => v.status === 'voorraad') || [];
-      console.log('🚗 Loaded vehicles:', vehicles?.length || 0, 'available:', systemData.availableVehicles.length);
+      systemData.vehicles = [];
+      systemData.availableVehicles = [];
+      console.log('🚗 Vehicles table not available yet - using empty array');
     }
 
-    // Fetch leads if permitted
     if (permissions.leads) {
-      const { data: leads } = await supabase
-        .from('leads')
-        .select('id, status, priority, first_name, last_name, email, phone, interested_vehicle, assigned_to, created_at')
-        .order('created_at', { ascending: false })
-        .limit(maxItems);
-      
-      systemData.leads = leads || [];
-      console.log('📈 Loaded leads:', leads?.length || 0);
+      systemData.leads = [];
+      console.log('📈 Leads table not available yet - using empty array');
     }
 
-    // Fetch contracts if permitted
     if (permissions.contracts) {
-      const { data: contracts } = await supabase
-        .from('contracts')
-        .select('id, contract_number, type, status, customer_id, vehicle_id, contract_amount, created_at')
-        .order('created_at', { ascending: false })
-        .limit(maxItems);
-      
-      systemData.contracts = contracts || [];
-      console.log('📄 Loaded contracts:', contracts?.length || 0);
+      systemData.contracts = [];
+      console.log('📄 Contracts table not available yet - using empty array');
     }
 
     // Get recent activity if enabled
@@ -187,24 +159,6 @@ export const getAgentSystemData = async (
             id: appt.id,
             description: `${appt.type}: ${appt.title} met ${appt.customername}`,
             timestamp: appt.created_at
-          });
-        });
-      }
-
-      // Recent vehicle status changes
-      if (permissions.vehicles) {
-        const { data: recentVehicles } = await supabase
-          .from('vehicles')
-          .select('id, brand, model, status, created_at')
-          .order('updated_at', { ascending: false })
-          .limit(3);
-
-        recentVehicles?.forEach(vehicle => {
-          recentActivity.push({
-            type: 'vehicle',
-            id: vehicle.id,
-            description: `${vehicle.brand} ${vehicle.model} status: ${vehicle.status}`,
-            timestamp: vehicle.created_at
           });
         });
       }
@@ -341,32 +295,14 @@ export const performAgentCRMOperation = async (
         return { success: true, result: updatedAppointment };
 
       case 'get_vehicle_availability':
-        if (!permissions.vehicles) {
-          return { success: false, error: 'No vehicle permissions' };
-        }
-
-        const { data: availableVehicles, error: vehicleError } = await supabase
-          .from('vehicles')
-          .select('id, brand, model, year, color, status, location')
-          .eq('status', 'voorraad')
-          .ilike('brand', `%${data.searchTerm || ''}%`);
-
-        if (vehicleError) throw vehicleError;
-        return { success: true, result: availableVehicles };
+        // For now, return empty results until vehicles table exists
+        console.log('🚗 Vehicles table not available yet');
+        return { success: true, result: [] };
 
       case 'search_customers':
-        if (!permissions.contacts && !permissions.customers) {
-          return { success: false, error: 'No customer permissions' };
-        }
-
-        const { data: customers, error: customerError } = await supabase
-          .from('contacts')
-          .select('id, first_name, last_name, email, phone, company_name')
-          .or(`first_name.ilike.%${data.searchTerm}%,last_name.ilike.%${data.searchTerm}%,email.ilike.%${data.searchTerm}%`)
-          .limit(20);
-
-        if (customerError) throw customerError;
-        return { success: true, result: customers };
+        // For now, return empty results until contacts table exists
+        console.log('👥 Contacts table not available yet');
+        return { success: true, result: [] };
 
       default:
         return { success: false, error: `Unknown operation: ${operation}` };

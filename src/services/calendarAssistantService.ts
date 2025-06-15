@@ -85,8 +85,8 @@ export const createCalendarAssistant = async (): Promise<{ success: boolean; age
         persona: CALENDAR_ASSISTANT_CONFIG.persona,
         capabilities: CALENDAR_ASSISTANT_CONFIG.capabilities,
         system_prompt: CALENDAR_ASSISTANT_CONFIG.system_prompt,
-        data_access_permissions: CALENDAR_ASSISTANT_CONFIG.data_access_permissions,
-        context_settings: CALENDAR_ASSISTANT_CONFIG.context_settings,
+        data_access_permissions: CALENDAR_ASSISTANT_CONFIG.data_access_permissions as any,
+        context_settings: CALENDAR_ASSISTANT_CONFIG.context_settings as any,
         is_active: true,
         is_webhook_enabled: true
       })

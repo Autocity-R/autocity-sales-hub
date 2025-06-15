@@ -1,5 +1,27 @@
 import { supabase } from "@/integrations/supabase/client";
-import { WebhookPayload, WebhookOptions, WebhookResult } from "@/services/webhookService";
+
+// Define webhook types locally since they're not exported from webhookService
+export interface WebhookPayload {
+  agentId: string;
+  message: string;
+  sessionId: string;
+  workflowType: string;
+  userContext?: any;
+}
+
+export interface WebhookOptions {
+  retries?: number;
+  timeout?: number;
+  headers?: Record<string, string>;
+}
+
+export interface WebhookResult {
+  success: boolean;
+  data?: any;
+  error?: string;
+  message?: string;
+  processingTime?: number;
+}
 
 export const triggerEnhancedWebhook = async (
   webhookUrl: string,
