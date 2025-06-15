@@ -1,158 +1,248 @@
-
 import { supabase } from "@/integrations/supabase/client";
-import { getAgentSystemData, SystemDataAccess } from "./systemDataService";
-import { triggerWebhook as originalTriggerWebhook, WebhookPayload, WebhookResponse } from "./webhookService";
-
-export interface EnhancedWebhookPayload extends WebhookPayload {
-  systemData?: any;
-  agentConfig?: {
-    dataAccess: SystemDataAccess;
-    contextSettings: any;
-    capabilities: string[];
-  };
-  userInfo?: {
-    id: string;
-    email: string;
-    name: string;
-  };
-}
+import { WebhookPayload, WebhookOptions, WebhookResult } from "@/services/webhookService";
 
 export const triggerEnhancedWebhook = async (
   webhookUrl: string,
   payload: WebhookPayload,
-  options: {
-    timeout?: number;
-    retries?: number;
-    headers?: Record<string, string>;
-  } = {}
-): Promise<WebhookResponse> => {
-  try {
-    // Get agent details with data access permissions
-    const { data: agent } = await supabase
-      .from('ai_agents')
-      .select('id, name, capabilities, data_access_permissions, context_settings')
-      .eq('id', payload.agentId)
-      .single();
+  options: WebhookOptions = {}
+): Promise<WebhookResult> => {
+  const startTime = Date.now();
+  let attempt = 0;
+  const maxRetries = options.retries || 3;
 
-    if (!agent) {
-      console.error('Agent not found:', payload.agentId);
-      return originalTriggerWebhook(webhookUrl, payload, options);
-    }
+  while (attempt <= maxRetries) {
+    try {
+      console.log(`🔄 Enhanced webhook attempt ${attempt + 1}/${maxRetries + 1} to:`, webhookUrl);
 
-    // Parse to correct SystemDataAccess type if needed
-    const data_access_permissions: SystemDataAccess =
-      typeof agent.data_access_permissions === "string"
+      // Get agent details and permissions
+      const { data: agent, error: agentError } = await supabase
+        .from('ai_agents')
+        .select('id, name, data_access_permissions, context_settings, capabilities')
+        .eq('id', payload.agentId)
+        .single();
+
+      if (agentError || !agent) {
+        throw new Error(`Agent not found: ${payload.agentId}`);
+      }
+
+      // Parse permissions safely
+      const permissions = typeof agent.data_access_permissions === 'string' 
         ? JSON.parse(agent.data_access_permissions)
         : agent.data_access_permissions || {};
-    const context_settings =
-      typeof agent.context_settings === "string"
+
+      const contextSettings = typeof agent.context_settings === 'string'
         ? JSON.parse(agent.context_settings)
         : agent.context_settings || {};
 
-    // Get current user info
-    const { data: { user } } = await supabase.auth.getUser();
-    let userInfo = null;
-    
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('email, first_name, last_name')
-        .eq('id', user.id)
-        .single();
-      
-      userInfo = {
-        id: user.id,
-        email: profile?.email || user.email || '',
-        name: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim()
+      console.log('🤖 Agent permissions:', permissions);
+
+      // Get comprehensive system data based on permissions
+      const { getAgentSystemData } = await import('./systemDataService');
+      const systemData = await getAgentSystemData(payload.agentId, permissions, contextSettings);
+
+      // Enhance payload with full CRM context
+      const enhancedPayload = {
+        ...payload,
+        agent: {
+          id: agent.id,
+          name: agent.name,
+          capabilities: agent.capabilities || [],
+          permissions: permissions
+        },
+        systemData: systemData,
+        context: {
+          ...payload.userContext,
+          crmData: systemData,
+          agentCapabilities: agent.capabilities,
+          timestamp: new Date().toISOString(),
+          totalAppointments: systemData.appointments?.length || 0,
+          totalContacts: systemData.contacts?.length || 0,
+          totalVehicles: systemData.vehicles?.length || 0,
+          availableVehicles: systemData.availableVehicles?.length || 0,
+          recentActivity: systemData.recentActivity || []
+        },
+        // Add helpful context for n8n workflows
+        workflow: {
+          type: payload.workflowType,
+          suggestedActions: getSuggestedActions(payload.message, systemData, permissions),
+          dataOverview: {
+            appointments: {
+              upcoming: systemData.appointments?.filter(a => new Date(a.starttime) > new Date()).length || 0,
+              today: systemData.appointments?.filter(a => {
+                const today = new Date().toDateString();
+                return new Date(a.starttime).toDateString() === today;
+              }).length || 0
+            },
+            vehicles: {
+              available: systemData.availableVehicles?.length || 0,
+              total: systemData.vehicles?.length || 0
+            },
+            contacts: {
+              total: systemData.contacts?.length || 0,
+              customers: systemData.contacts?.filter(c => c.type === 'b2c').length || 0,
+              business: systemData.contacts?.filter(c => c.type === 'b2b').length || 0
+            }
+          }
+        }
       };
-    }
 
-    // Get system data based on agent permissions
-    const systemData = await getAgentSystemData(
-      agent.id,
-      data_access_permissions,
-      context_settings
-    );
+      console.log('📤 Sending enhanced payload with CRM data:', {
+        agentName: agent.name,
+        dataTypes: Object.keys(systemData),
+        appointmentsCount: systemData.appointments?.length || 0,
+        contactsCount: systemData.contacts?.length || 0,
+        vehiclesCount: systemData.vehicles?.length || 0
+      });
 
-    // Create enhanced payload
-    const enhancedPayload: EnhancedWebhookPayload = {
-      ...payload,
-      systemData,
-      agentConfig: {
-        dataAccess: data_access_permissions,
-        contextSettings: context_settings,
-        capabilities: agent.capabilities || []
-      },
-      userInfo
-    };
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'CRM-AI-Agent/1.0',
+          ...options.headers,
+        },
+        body: JSON.stringify(enhancedPayload),
+        signal: AbortSignal.timeout(options.timeout || 30000),
+      });
 
-    console.log('🚀 Triggering enhanced webhook with system data:', {
-      agent: agent.name,
-      systemDataKeys: Object.keys(systemData),
-      userInfo: userInfo?.email
-    });
+      const responseData = await response.text();
+      let parsedData: any = responseData;
 
-    // Log the enhanced payload for debugging
-    await logEnhancedWebhookCall({
-      agentId: agent.id,
-      webhookUrl,
-      payload: enhancedPayload,
-      systemDataSummary: {
-        // Only report appointments, rest not guaranteed to exist
-        appointments: Array.isArray(systemData.appointments) ? systemData.appointments.length : 0,
-        recentActivity: Array.isArray(systemData.recentActivity) ? systemData.recentActivity.length : 0
+      try {
+        parsedData = JSON.parse(responseData);
+      } catch {
+        // Keep as text if not JSON
       }
-    });
 
-    return originalTriggerWebhook(webhookUrl, enhancedPayload, options);
+      const processingTime = Date.now() - startTime;
 
-  } catch (error) {
-    console.error('Error creating enhanced webhook payload:', error);
-    // Fallback to original webhook trigger
-    return originalTriggerWebhook(webhookUrl, payload, options);
+      // Log the enhanced webhook call
+      await logWebhookCall(
+        payload.agentId,
+        webhookUrl,
+        enhancedPayload,
+        parsedData,
+        response.status,
+        response.ok,
+        processingTime,
+        attempt
+      );
+
+      if (response.ok) {
+        console.log('✅ Enhanced webhook successful with full CRM data');
+        return {
+          success: true,
+          data: parsedData,
+          message: parsedData?.message || 'Webhook executed successfully with CRM context',
+          processingTime
+        };
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+    } catch (error) {
+      attempt++;
+      const processingTime = Date.now() - startTime;
+      
+      console.error(`❌ Enhanced webhook attempt ${attempt} failed:`, error);
+
+      if (attempt > maxRetries) {
+        await logWebhookCall(
+          payload.agentId,
+          webhookUrl,
+          payload,
+          null,
+          0,
+          false,
+          processingTime,
+          attempt - 1,
+          error.message
+        );
+
+        return {
+          success: false,
+          error: error.message,
+          message: 'Failed to execute webhook after multiple retries',
+          processingTime
+        };
+      }
+
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+    }
   }
+
+  return {
+    success: false,
+    error: 'Max retries exceeded',
+    message: 'Webhook failed after all retry attempts'
+  };
 };
 
-const logEnhancedWebhookCall = async (logData: {
-  agentId: string;
-  webhookUrl: string;
-  payload: EnhancedWebhookPayload;
-  systemDataSummary: any;
-}) => {
+// Helper function to suggest actions based on message content and available data
+const getSuggestedActions = (message: string, systemData: any, permissions: any): string[] => {
+  const suggestions: string[] = [];
+  const lowerMessage = message.toLowerCase();
+
+  if (permissions.appointments) {
+    if (lowerMessage.includes('afspraak') || lowerMessage.includes('inplan')) {
+      suggestions.push('create_appointment');
+    }
+    if (lowerMessage.includes('beschikbaar') || lowerMessage.includes('vrij')) {
+      suggestions.push('check_availability');
+    }
+  }
+
+  if (permissions.vehicles) {
+    if (lowerMessage.includes('auto') || lowerMessage.includes('voertuig') || lowerMessage.includes('car')) {
+      suggestions.push('search_vehicles');
+    }
+    if (lowerMessage.includes('voorraad') || lowerMessage.includes('beschikbare')) {
+      suggestions.push('list_available_vehicles');
+    }
+  }
+
+  if (permissions.contacts) {
+    if (lowerMessage.includes('klant') || lowerMessage.includes('contact') || lowerMessage.includes('customer')) {
+      suggestions.push('search_customers');
+    }
+  }
+
+  return suggestions;
+};
+
+// Log webhook calls for auditing and debugging
+const logWebhookCall = async (
+  agentId: string,
+  webhookUrl: string,
+  payload: any,
+  response: any,
+  statusCode: number,
+  success: boolean,
+  processingTime: number,
+  attempt: number,
+  errorMessage?: string
+) => {
   try {
     await supabase
-      .from('ai_webhook_logs')
+      .from('ai_agent_webhook_logs')
       .insert({
-        agent_id: logData.agentId,
-        webhook_url: logData.webhookUrl,
+        agent_id: agentId,
+        webhook_url: webhookUrl,
         request_payload: {
-          ...logData.payload,
-          systemDataSummary: logData.systemDataSummary
-        } as any,
-        success: true,
-        status_code: 200,
-        processing_time_ms: 0,
-        retry_attempt: 0
+          message: payload.message,
+          sessionId: payload.sessionId,
+          workflowType: payload.workflowType,
+          timestamp: new Date().toISOString()
+        },
+        response_data: response,
+        status_code: statusCode,
+        success: success,
+        processing_time_ms: processingTime,
+        attempt_number: attempt + 1,
+        error_message: errorMessage || null
       });
   } catch (error) {
-    console.error('Error logging enhanced webhook call:', error);
+    console.error('Failed to log webhook call:', error);
   }
-};
-
-export const testEnhancedWebhook = async (
-  agentId: string,
-  webhookUrl: string
-): Promise<WebhookResponse> => {
-  const testPayload: WebhookPayload = {
-    sessionId: 'test_session_' + Date.now(),
-    message: 'Dit is een test bericht om de enhanced webhook functionaliteit te testen.',
-    workflowType: 'test',
-    agentId: agentId,
-    userContext: { test: true }
-  };
-
-  return triggerEnhancedWebhook(webhookUrl, testPayload, {
-    timeout: 30000,
-    retries: 1
-  });
 };

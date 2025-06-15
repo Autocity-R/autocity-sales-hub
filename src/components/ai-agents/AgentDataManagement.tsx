@@ -32,7 +32,6 @@ const fetchAgentsWithData = async (): Promise<Agent[]> => {
   return (
     data?.map(agent => ({
       ...agent,
-      // force parsing to match SystemDataAccess for type safety
       data_access_permissions: typeof agent.data_access_permissions === "string"
         ? JSON.parse(agent.data_access_permissions)
         : agent.data_access_permissions || {
@@ -41,6 +40,9 @@ const fetchAgentsWithData = async (): Promise<Agent[]> => {
             vehicles: false,
             appointments: false,
             contracts: false,
+            contacts: false,
+            warranty: false,
+            loan_cars: false,
           },
       context_settings: typeof agent.context_settings === "string"
         ? JSON.parse(agent.context_settings)
@@ -63,7 +65,10 @@ export const AgentDataManagement = () => {
     customers: false,
     vehicles: false,
     appointments: false,
-    contracts: false
+    contracts: false,
+    contacts: false,
+    warranty: false,
+    loan_cars: false
   });
   const [contextSettings, setContextSettings] = useState({
     include_recent_activity: true,
@@ -115,7 +120,10 @@ export const AgentDataManagement = () => {
         customers: false,
         vehicles: false,
         appointments: false,
-        contracts: false
+        contracts: false,
+        contacts: false,
+        warranty: false,
+        loan_cars: false
       });
       setContextSettings(selectedAgentData.context_settings || {
         include_recent_activity: true,
@@ -139,9 +147,12 @@ export const AgentDataManagement = () => {
     switch (type) {
       case 'leads': return <Users className="h-4 w-4" />;
       case 'customers': return <Users className="h-4 w-4" />;
+      case 'contacts': return <Users className="h-4 w-4" />;
       case 'vehicles': return <Car className="h-4 w-4" />;
       case 'appointments': return <Calendar className="h-4 w-4" />;
       case 'contracts': return <FileText className="h-4 w-4" />;
+      case 'warranty': return <FileText className="h-4 w-4" />;
+      case 'loan_cars': return <Car className="h-4 w-4" />;
       default: return <Database className="h-4 w-4" />;
     }
   };
@@ -149,10 +160,13 @@ export const AgentDataManagement = () => {
   const getDataTypeLabel = (type: string) => {
     switch (type) {
       case 'leads': return 'Leads';
-      case 'customers': return 'Klanten';
+      case 'customers': return 'Klanten (Legacy)';
+      case 'contacts': return 'Contacten/Klanten';
       case 'vehicles': return 'Voertuigen';
       case 'appointments': return 'Afspraken';
       case 'contracts': return 'Contracten';
+      case 'warranty': return 'Garantie Claims';
+      case 'loan_cars': return 'Leen Auto\'s';
       default: return type;
     }
   };
@@ -175,7 +189,7 @@ export const AgentDataManagement = () => {
             Agent Data Toegang
           </CardTitle>
           <CardDescription>
-            Beheer welke data elke AI agent kan benaderen en gebruiken
+            Beheer welke CRM data elke AI agent kan benaderen en gebruiken voor n8n workflows
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -216,7 +230,7 @@ export const AgentDataManagement = () => {
 
                 {/* Data Access Permissions */}
                 <div>
-                  <h3 className="text-lg font-medium mb-4">Data Toegang Permissies</h3>
+                  <h3 className="text-lg font-medium mb-4">CRM Data Toegang Permissies</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {Object.entries(permissions).map(([dataType, hasAccess]) => (
                       <div key={dataType} className="flex items-center justify-between p-3 border rounded-lg">
@@ -329,18 +343,18 @@ export const AgentDataManagement = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5" />
-              Data Toegang Overzicht
+              CRM Data Toegang Overzicht
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {Object.entries(permissions).map(([dataType, hasAccess]) => (
                 <div key={dataType} className={`p-3 rounded-lg border ${hasAccess ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
                   <div className="flex items-center gap-2 mb-2">
                     {getDataTypeIcon(dataType)}
-                    <span className="font-medium">{getDataTypeLabel(dataType)}</span>
+                    <span className="font-medium text-sm">{getDataTypeLabel(dataType)}</span>
                   </div>
-                  <Badge variant={hasAccess ? "default" : "secondary"}>
+                  <Badge variant={hasAccess ? "default" : "secondary"} className="text-xs">
                     {hasAccess ? "Toegang" : "Geen toegang"}
                   </Badge>
                 </div>
