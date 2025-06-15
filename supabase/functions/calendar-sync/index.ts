@@ -48,19 +48,23 @@ serve(async (req) => {
 
     console.log('Calendar sync action:', action, 'for appointment:', appointmentId);
 
-    // Get company calendar settings using service role
-    const { data: calendarSettings, error: settingsError } = await supabase
+    // Get company calendar settings using service role - fix the query to handle multiple rows
+    const { data: calendarSettingsArray, error: settingsError } = await supabase
       .from('company_calendar_settings')
       .select('*')
       .eq('company_id', 'auto-city')
-      .single();
+      .eq('auth_type', 'service_account')
+      .order('created_at', { ascending: false })
+      .limit(1);
 
-    console.log('Calendar settings query result:', { calendarSettings, settingsError });
+    console.log('Calendar settings query result:', { calendarSettingsArray, settingsError });
 
-    if (settingsError || !calendarSettings) {
+    if (settingsError || !calendarSettingsArray || calendarSettingsArray.length === 0) {
       console.error('Calendar settings error:', settingsError);
       throw new Error('Company calendar not configured. Please set up Service Account first.');
     }
+
+    const calendarSettings = calendarSettingsArray[0];
 
     if (!calendarSettings.auth_type || calendarSettings.auth_type !== 'service_account') {
       throw new Error('Service Account authentication not configured');
