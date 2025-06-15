@@ -1,23 +1,53 @@
 
 import React from "react";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AIAgentChat } from "@/components/ai-agents/AIAgentChat";
+import { WebhookConfiguration } from "@/components/ai-agents/WebhookConfiguration";
+import { Bot, Zap, Settings } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 const AIAgents = () => {
   return (
-    <DashboardLayout>
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            AI Agents
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Chat met AI agents die toegang hebben tot uw CRM systeem
-          </p>
-        </div>
-        <AIAgentChat />
+    <div className="min-h-screen bg-gray-50/50">
+      <PageHeader 
+        title="AI Agents" 
+        description="Beheer en chat met AI agents die gekoppeld zijn aan n8n workflows"
+        icon={Bot}
+      />
+      
+      <div className="container mx-auto p-6">
+        <Tabs defaultValue="chat" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="chat" className="flex items-center gap-2">
+              <Bot className="h-4 w-4" />
+              AI Chat
+            </TabsTrigger>
+            <TabsTrigger value="webhooks" className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Webhooks
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Instellingen
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="chat">
+            <AIAgentChat />
+          </TabsContent>
+
+          <TabsContent value="webhooks">
+            <WebhookConfiguration />
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <div className="text-center py-12 text-muted-foreground">
+              Agent instellingen komen binnenkort beschikbaar
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
-    </DashboardLayout>
+    </div>
   );
 };
 

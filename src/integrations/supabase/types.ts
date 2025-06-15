@@ -117,6 +117,56 @@ export type Database = {
           },
         ]
       }
+      ai_agent_webhooks: {
+        Row: {
+          agent_id: string
+          created_at: string
+          headers: Json | null
+          id: string
+          is_active: boolean | null
+          retry_count: number | null
+          timeout_seconds: number | null
+          updated_at: string
+          webhook_name: string
+          webhook_url: string
+          workflow_type: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          headers?: Json | null
+          id?: string
+          is_active?: boolean | null
+          retry_count?: number | null
+          timeout_seconds?: number | null
+          updated_at?: string
+          webhook_name: string
+          webhook_url: string
+          workflow_type: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          headers?: Json | null
+          id?: string
+          is_active?: boolean | null
+          retry_count?: number | null
+          timeout_seconds?: number | null
+          updated_at?: string
+          webhook_name?: string
+          webhook_url?: string
+          workflow_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_agent_webhooks_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_agents: {
         Row: {
           capabilities: string[]
@@ -124,11 +174,14 @@ export type Database = {
           created_by: string | null
           id: string
           is_active: boolean | null
+          is_webhook_enabled: boolean | null
           name: string
           permissions: Json | null
           persona: string
           system_prompt: string
           updated_at: string
+          webhook_config: Json | null
+          webhook_url: string | null
         }
         Insert: {
           capabilities: string[]
@@ -136,11 +189,14 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean | null
+          is_webhook_enabled?: boolean | null
           name: string
           permissions?: Json | null
           persona: string
           system_prompt: string
           updated_at?: string
+          webhook_config?: Json | null
+          webhook_url?: string | null
         }
         Update: {
           capabilities?: string[]
@@ -148,13 +204,171 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean | null
+          is_webhook_enabled?: boolean | null
           name?: string
           permissions?: Json | null
           persona?: string
           system_prompt?: string
           updated_at?: string
+          webhook_config?: Json | null
+          webhook_url?: string | null
         }
         Relationships: []
+      }
+      ai_chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          message_type: string
+          processing_time_ms: number | null
+          session_id: string
+          webhook_response: Json | null
+          webhook_triggered: boolean | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          message_type: string
+          processing_time_ms?: number | null
+          session_id: string
+          webhook_response?: Json | null
+          webhook_triggered?: boolean | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          message_type?: string
+          processing_time_ms?: number | null
+          session_id?: string
+          webhook_response?: Json | null
+          webhook_triggered?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ai_chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_chat_sessions: {
+        Row: {
+          agent_id: string
+          context: Json | null
+          created_at: string
+          ended_at: string | null
+          id: string
+          session_token: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          agent_id: string
+          context?: Json | null
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          session_token: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          agent_id?: string
+          context?: Json | null
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          session_token?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_chat_sessions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_webhook_logs: {
+        Row: {
+          agent_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          processing_time_ms: number | null
+          request_payload: Json
+          response_payload: Json | null
+          retry_attempt: number | null
+          session_id: string | null
+          status_code: number | null
+          success: boolean | null
+          webhook_id: string | null
+          webhook_url: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          processing_time_ms?: number | null
+          request_payload: Json
+          response_payload?: Json | null
+          retry_attempt?: number | null
+          session_id?: string | null
+          status_code?: number | null
+          success?: boolean | null
+          webhook_id?: string | null
+          webhook_url: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          processing_time_ms?: number | null
+          request_payload?: Json
+          response_payload?: Json | null
+          retry_attempt?: number | null
+          session_id?: string | null
+          status_code?: number | null
+          success?: boolean | null
+          webhook_id?: string | null
+          webhook_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_webhook_logs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_webhook_logs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ai_chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_webhook_logs_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agent_webhooks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       appointments: {
         Row: {

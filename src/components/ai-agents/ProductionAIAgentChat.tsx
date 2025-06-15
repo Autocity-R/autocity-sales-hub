@@ -1,0 +1,301 @@
+
+import React, { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Send, Bot, User, Settings, Zap, AlertCircle, CheckCircle } from "lucide-react";
+import { useAIChat } from "@/hooks/useAIChat";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
+
+interface AIAgent {
+  id: string;
+  name: string;
+  persona: string;
+  is_active: boolean;
+  is_webhook_enabled?: boolean;
+  webhook_config?: any;
+}
+
+const fetchAIAgents = async (): Promise<AIAgent[]> => {
+  const { data, error } = await supabase
+    .from('ai_agents')
+    .select('*')
+    .eq('is_active', true)
+    .order('name');
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const ProductionAIAgentChat = () => {
+  const [selectedAgent, setSelectedAgent] = useState<string>("");
+  const [message, setMessage] = useState("");
+
+  const { data: agents = [], isLoading: agentsLoading } = useQuery({
+    queryKey: ['ai-agents'],
+    queryFn: fetchAIAgents,
+  });
+
+  const {
+    session,
+    messages,
+    isLoading: chatLoading,
+    isInitializing,
+    sendMessage,
+    endSession,
+    reinitialize,
+  } = useAIChat(selectedAgent);
+
+  const selectedAgentData = agents.find(agent => agent.id === selectedAgent);
+
+  const handleSendMessage = async () => {
+    if (!message.trim() || !selectedAgent || chatLoading) return;
+    
+    await sendMessage(message);
+    setMessage("");
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const handleAgentChange = (agentId: string) => {
+    if (session) {
+      endSession();
+    }
+    setSelectedAgent(agentId);
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      {/* Agent Selection & Configuration */}
+      <Card className="lg:col-span-1">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5" />
+            AI Agents
+          </CardTitle>
+          <CardDescription>
+            Selecteer een AI agent die is gekoppeld aan n8n workflows
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Select value={selectedAgent} onValueChange={handleAgentChange} disabled={agentsLoading}>
+            <SelectTrigger>
+              <SelectValue placeholder="Kies een AI agent" />
+            </SelectTrigger>
+            <SelectContent>
+              {agents.map((agent) => (
+                <SelectItem key={agent.id} value={agent.id}>
+                  <div className="flex items-center gap-2">
+                    {agent.name}
+                    {agent.is_webhook_enabled && (
+                      <Zap className="h-3 w-3 text-green-600" />
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {selectedAgentData && (
+            <div className="space-y-3">
+              <div className="p-3 bg-muted rounded-lg">
+                <h4 className="font-medium flex items-center gap-2">
+                  {selectedAgentData.name}
+                  <Badge variant={selectedAgentData.is_webhook_enabled ? "default" : "secondary"}>
+                    {selectedAgentData.is_webhook_enabled ? (
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                    ) : (
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                    )}
+                    {selectedAgentData.is_webhook_enabled ? "Webhook Active" : "No Webhook"}
+                  </Badge>
+                </h4>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {selectedAgentData.persona}
+                </p>
+              </div>
+
+              {selectedAgentData.is_webhook_enabled && selectedAgentData.webhook_config && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <h5 className="font-medium text-green-800 flex items-center gap-1">
+                    <Zap className="h-4 w-4" />
+                    n8n Configuration
+                  </h5>
+                  <div className="text-sm text-green-700 mt-1 space-y-1">
+                    <div>Timeout: {selectedAgentData.webhook_config.timeout}s</div>
+                    <div>Retries: {selectedAgentData.webhook_config.retries}</div>
+                    <div>Rate Limit: {selectedAgentData.webhook_config.rate_limit}/min</div>
+                  </div>
+                </div>
+              )}
+
+              {session && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h5 className="font-medium text-blue-800">Actieve Sessie</h5>
+                  <div className="text-sm text-blue-700 mt-1">
+                    <div>ID: {session.sessionToken}</div>
+                    <div>Status: {session.status}</div>
+                    <div>Berichten: {messages.length}</div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={endSession}
+                    className="mt-2"
+                  >
+                    Sessie Beëindigen
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <h4 className="font-medium text-sm">Alle Agents:</h4>
+            {agents.map((agent) => (
+              <div key={agent.id} className="flex items-center justify-between text-sm">
+                <span className="truncate">{agent.name}</span>
+                <div className="flex items-center gap-1">
+                  {agent.is_webhook_enabled ? (
+                    <Zap className="h-3 w-3 text-green-600" />
+                  ) : (
+                    <Settings className="h-3 w-3 text-gray-400" />
+                  )}
+                  <Badge 
+                    variant={agent.is_active ? "default" : "secondary"}
+                    className="text-xs"
+                  >
+                    {agent.is_active ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Chat Interface */}
+      <Card className="lg:col-span-3 flex flex-col h-[600px]">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5" />
+            Production AI Agent Chat
+          </CardTitle>
+          <CardDescription>
+            Deze chat triggert echte n8n workflows via webhooks
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex-1 flex flex-col">
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto mb-4 space-y-4 p-4 border rounded-lg bg-gray-50">
+            {!selectedAgent ? (
+              <div className="text-center text-gray-500 py-8">
+                <Bot className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p>Selecteer een AI agent om te beginnen</p>
+              </div>
+            ) : isInitializing ? (
+              <div className="text-center text-gray-500 py-8">
+                <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p>Sessie wordt geïnitialiseerd...</p>
+              </div>
+            ) : (
+              messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex items-start gap-3 ${
+                    msg.messageType === "user" ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  {msg.messageType === "assistant" && (
+                    <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                      <Bot className="h-4 w-4 text-white" />
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[70%] rounded-lg p-3 ${
+                      msg.messageType === "user"
+                        ? "bg-blue-500 text-white"
+                        : "bg-white border"
+                    }`}
+                  >
+                    <p>{msg.content}</p>
+                    <div className="flex items-center justify-between mt-2 text-xs opacity-70">
+                      <span>{new Date(msg.createdAt).toLocaleTimeString()}</span>
+                      {msg.webhookTriggered && (
+                        <Badge variant="outline" className="ml-2">
+                          <Zap className="h-3 w-3 mr-1" />
+                          n8n
+                          {msg.processingTime && ` (${msg.processingTime}ms)`}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  {msg.messageType === "user" && (
+                    <div className="w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center flex-shrink-0">
+                      <User className="h-4 w-4 text-white" />
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+            
+            {chatLoading && (
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                  <Bot className="h-4 w-4 text-white" />
+                </div>
+                <div className="bg-white border rounded-lg p-3">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"></div>
+                    <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Input */}
+          <div className="flex items-center gap-2">
+            <Input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder={
+                selectedAgent 
+                  ? selectedAgentData?.is_webhook_enabled
+                    ? "Typ je bericht (triggert n8n workflow)..."
+                    : "Agent heeft geen webhook geconfigureerd"
+                  : "Selecteer eerst een AI agent"
+              }
+              disabled={!selectedAgent || chatLoading || isInitializing || !selectedAgentData?.is_webhook_enabled}
+              className="flex-1"
+            />
+            <Button
+              onClick={handleSendMessage}
+              disabled={!selectedAgent || !message.trim() || chatLoading || isInitializing || !selectedAgentData?.is_webhook_enabled}
+              size="icon"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {selectedAgentData && !selectedAgentData.is_webhook_enabled && (
+            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+              <AlertCircle className="h-4 w-4 inline mr-1" />
+              Deze agent heeft geen webhook geconfigureerd. Configureer eerst een n8n webhook.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
