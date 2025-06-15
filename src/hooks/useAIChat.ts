@@ -1,8 +1,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { createChatSession, addChatMessage, getChatMessages, endChatSession, ChatSession, ChatMessage } from '@/services/chatSessionService';
-import { triggerWebhook, getAgentWebhooks, WebhookPayload } from '@/services/webhookService';
+import { getAgentWebhooks, WebhookPayload } from '@/services/webhookService';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useAIChat = (agentId: string) => {
   const { toast } = useToast();
@@ -19,11 +20,44 @@ export const useAIChat = (agentId: string) => {
       const newSession = await createChatSession(agentId);
       setSession(newSession);
       
-      // Add welcome message
+      // Add welcome message with context about agent capabilities
+      const { data: agent } = await supabase.from('ai_agents')
+        .select('name, capabilities, data_access_permissions')
+        .eq('id', agentId)
+        .single();
+      
+      const capabilities = agent?.capabilities || [];
+      const dataAccess = agent?.data_access_permissions || {};
+      
+      let welcomeText = `Hallo! Ik ben ${agent?.name || 'je AI agent'}. `;
+      
+      if (capabilities.length > 0) {
+        welcomeText += `Ik kan je helpen met: ${capabilities.join(', ')}. `;
+      }
+      
+      const accessList = Object.entries(dataAccess)
+        .filter(([_, hasAccess]) => hasAccess)
+        .map(([key, _]) => {
+          switch(key) {
+            case 'leads': return 'leads';
+            case 'customers': return 'klanten';
+            case 'vehicles': return 'voertuigen';
+            case 'appointments': return 'afspraken';
+            case 'contracts': return 'contracten';
+            default: return key;
+          }
+        });
+      
+      if (accessList.length > 0) {
+        welcomeText += `Ik heb toegang tot de volgende gegevens: ${accessList.join(', ')}. `;
+      }
+      
+      welcomeText += 'Hoe kan ik je vandaag helpen?';
+      
       const welcomeMessage = await addChatMessage(
         newSession.id,
         'assistant',
-        'Hallo! Ik ben je AI agent. Hoe kan ik je vandaag helpen?'
+        welcomeText
       );
       setMessages([welcomeMessage]);
     } catch (error) {
@@ -72,11 +106,25 @@ export const useAIChat = (agentId: string) => {
         message: content,
         workflowType: webhook.workflow_type,
         agentId: agentId,
-        userContext: session.context,
+        userContext: {
+          ...session.context,
+          currentMessage: content,
+          sessionToken: session.sessionToken,
+          messageHistory: messages.slice(-5).map(m => ({
+            type: m.messageType,
+            content: m.content,
+            timestamp: m.createdAt
+          }))
+        },
       };
 
-      // Trigger webhook
-      const webhookResult = await triggerWebhook(
+      console.log('🔄 Sending enhanced webhook payload:', payload);
+
+      // Import and use enhanced webhook trigger
+      const { triggerEnhancedWebhook } = await import('@/services/enhancedWebhookService');
+      
+      // Trigger enhanced webhook with system data
+      const webhookResult = await triggerEnhancedWebhook(
         webhook.webhook_url,
         payload,
         {
@@ -92,7 +140,7 @@ export const useAIChat = (agentId: string) => {
       const assistantMessage = await addChatMessage(
         session.id,
         'assistant',
-        webhookResult.message || 'Ik heb je verzoek verwerkt.',
+        webhookResult.message || 'Ik heb je verzoek verwerkt en de relevante gegevens geanalyseerd.',
         true,
         webhookResult.data,
         processingTime
@@ -106,6 +154,8 @@ export const useAIChat = (agentId: string) => {
           description: 'Er was een probleem met de workflow verwerking.',
           variant: 'destructive',
         });
+      } else {
+        console.log('✅ Enhanced webhook successful with system data');
       }
 
     } catch (error) {
@@ -126,7 +176,7 @@ export const useAIChat = (agentId: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [session, agentId, toast]);
+  }, [session, agentId, toast, messages]);
 
   const endSession = useCallback(async () => {
     if (!session) return;

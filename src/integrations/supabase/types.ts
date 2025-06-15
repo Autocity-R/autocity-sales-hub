@@ -117,6 +117,47 @@ export type Database = {
           },
         ]
       }
+      ai_agent_contexts: {
+        Row: {
+          agent_id: string
+          context_type: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          priority: number | null
+          query_template: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          context_type: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          priority?: number | null
+          query_template: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          context_type?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          priority?: number | null
+          query_template?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_agent_contexts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_agent_webhooks: {
         Row: {
           agent_id: string
@@ -170,8 +211,10 @@ export type Database = {
       ai_agents: {
         Row: {
           capabilities: string[]
+          context_settings: Json | null
           created_at: string
           created_by: string | null
+          data_access_permissions: Json | null
           id: string
           is_active: boolean | null
           is_webhook_enabled: boolean | null
@@ -185,8 +228,10 @@ export type Database = {
         }
         Insert: {
           capabilities: string[]
+          context_settings?: Json | null
           created_at?: string
           created_by?: string | null
+          data_access_permissions?: Json | null
           id?: string
           is_active?: boolean | null
           is_webhook_enabled?: boolean | null
@@ -200,8 +245,10 @@ export type Database = {
         }
         Update: {
           capabilities?: string[]
+          context_settings?: Json | null
           created_at?: string
           created_by?: string | null
+          data_access_permissions?: Json | null
           id?: string
           is_active?: boolean | null
           is_webhook_enabled?: boolean | null

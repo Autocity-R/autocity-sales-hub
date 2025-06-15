@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, Bot, User, Settings, Zap, AlertCircle, CheckCircle } from "lucide-react";
+import { Send, Bot, User, Settings, Zap, AlertCircle, CheckCircle, Database, Activity } from "lucide-react";
 import { useAIChat } from "@/hooks/useAIChat";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +17,8 @@ interface AIAgent {
   is_active: boolean;
   is_webhook_enabled?: boolean;
   webhook_config?: any;
+  data_access_permissions?: any;
+  capabilities?: string[];
 }
 
 const fetchAIAgents = async (): Promise<AIAgent[]> => {
@@ -72,6 +74,22 @@ export const ProductionAIAgentChat = () => {
     setSelectedAgent(agentId);
   };
 
+  const getDataAccessSummary = (permissions: any) => {
+    if (!permissions) return [];
+    return Object.entries(permissions)
+      .filter(([_, hasAccess]) => hasAccess)
+      .map(([key, _]) => {
+        switch(key) {
+          case 'leads': return 'Leads';
+          case 'customers': return 'Klanten';
+          case 'vehicles': return 'Voertuigen';
+          case 'appointments': return 'Afspraken';
+          case 'contracts': return 'Contracten';
+          default: return key;
+        }
+      });
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
       {/* Agent Selection & Configuration */}
@@ -82,7 +100,7 @@ export const ProductionAIAgentChat = () => {
             AI Agents
           </CardTitle>
           <CardDescription>
-            Selecteer een AI agent die is gekoppeld aan n8n workflows
+            Selecteer een AI agent met systeem data toegang
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -123,16 +141,51 @@ export const ProductionAIAgentChat = () => {
                 </p>
               </div>
 
-              {selectedAgentData.is_webhook_enabled && selectedAgentData.webhook_config && (
+              {/* Capabilities */}
+              {selectedAgentData.capabilities && selectedAgentData.capabilities.length > 0 && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h5 className="font-medium text-blue-800 flex items-center gap-1">
+                    <Settings className="h-4 w-4" />
+                    Capabilities
+                  </h5>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {selectedAgentData.capabilities.map((capability, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {capability}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Data Access */}
+              {selectedAgentData.data_access_permissions && (
                 <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                   <h5 className="font-medium text-green-800 flex items-center gap-1">
+                    <Database className="h-4 w-4" />
+                    Data Toegang
+                  </h5>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {getDataAccessSummary(selectedAgentData.data_access_permissions).map((dataType, index) => (
+                      <Badge key={index} variant="outline" className="text-xs text-green-700">
+                        {dataType}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Webhook Configuration */}
+              {selectedAgentData.is_webhook_enabled && selectedAgentData.webhook_config && (
+                <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                  <h5 className="font-medium text-purple-800 flex items-center gap-1">
                     <Zap className="h-4 w-4" />
                     n8n Configuration
                   </h5>
-                  <div className="text-sm text-green-700 mt-1 space-y-1">
-                    <div>Timeout: {selectedAgentData.webhook_config.timeout}s</div>
-                    <div>Retries: {selectedAgentData.webhook_config.retries}</div>
-                    <div>Rate Limit: {selectedAgentData.webhook_config.rate_limit}/min</div>
+                  <div className="text-sm text-purple-700 mt-1 space-y-1">
+                    <div>Timeout: {selectedAgentData.webhook_config.timeout || 30}s</div>
+                    <div>Retries: {selectedAgentData.webhook_config.retries || 3}</div>
+                    <div>Rate Limit: {selectedAgentData.webhook_config.rate_limit || 60}/min</div>
                   </div>
                 </div>
               )}
@@ -169,6 +222,9 @@ export const ProductionAIAgentChat = () => {
                   ) : (
                     <Settings className="h-3 w-3 text-gray-400" />
                   )}
+                  {agent.data_access_permissions && Object.values(agent.data_access_permissions).some(Boolean) && (
+                    <Database className="h-3 w-3 text-blue-600" />
+                  )}
                   <Badge 
                     variant={agent.is_active ? "default" : "secondary"}
                     className="text-xs"
@@ -186,11 +242,11 @@ export const ProductionAIAgentChat = () => {
       <Card className="lg:col-span-3 flex flex-col h-[600px]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5" />
-            Production AI Agent Chat
+            <Activity className="h-5 w-5" />
+            Enhanced AI Agent Chat
           </CardTitle>
           <CardDescription>
-            Deze chat triggert echte n8n workflows via webhooks
+            Deze chat triggert n8n workflows met volledig systeem data context
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col">
@@ -229,13 +285,22 @@ export const ProductionAIAgentChat = () => {
                     <p>{msg.content}</p>
                     <div className="flex items-center justify-between mt-2 text-xs opacity-70">
                       <span>{new Date(msg.createdAt).toLocaleTimeString()}</span>
-                      {msg.webhookTriggered && (
-                        <Badge variant="outline" className="ml-2">
-                          <Zap className="h-3 w-3 mr-1" />
-                          n8n
-                          {msg.processingTime && ` (${msg.processingTime}ms)`}
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {msg.webhookTriggered && (
+                          <Badge variant="outline" className="ml-2">
+                            <Zap className="h-3 w-3 mr-1" />
+                            n8n + Data
+                            {msg.processingTime && ` (${msg.processingTime}ms)`}
+                          </Badge>
+                        )}
+                        {selectedAgentData?.data_access_permissions && 
+                         Object.values(selectedAgentData.data_access_permissions).some(Boolean) && (
+                          <Badge variant="outline" className="bg-green-50">
+                            <Database className="h-3 w-3 mr-1" />
+                            System Data
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                   {msg.messageType === "user" && (
@@ -272,7 +337,7 @@ export const ProductionAIAgentChat = () => {
               placeholder={
                 selectedAgent 
                   ? selectedAgentData?.is_webhook_enabled
-                    ? "Typ je bericht (triggert n8n workflow)..."
+                    ? "Typ je bericht (triggert n8n workflow met systeem data)..."
                     : "Agent heeft geen webhook geconfigureerd"
                   : "Selecteer eerst een AI agent"
               }
@@ -292,6 +357,14 @@ export const ProductionAIAgentChat = () => {
             <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
               <AlertCircle className="h-4 w-4 inline mr-1" />
               Deze agent heeft geen webhook geconfigureerd. Configureer eerst een n8n webhook.
+            </div>
+          )}
+
+          {selectedAgentData && selectedAgentData.data_access_permissions && 
+           getDataAccessSummary(selectedAgentData.data_access_permissions).length > 0 && (
+            <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
+              <Database className="h-4 w-4 inline mr-1" />
+              Agent heeft toegang tot: {getDataAccessSummary(selectedAgentData.data_access_permissions).join(', ')}
             </div>
           )}
         </CardContent>
