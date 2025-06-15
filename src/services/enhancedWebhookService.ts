@@ -247,7 +247,7 @@ const logWebhookCall = async (
 ) => {
   try {
     await supabase
-      .from('ai_agent_webhook_logs')
+      .from('ai_webhook_logs')
       .insert({
         agent_id: agentId,
         webhook_url: webhookUrl,
@@ -257,11 +257,11 @@ const logWebhookCall = async (
           workflowType: payload.workflowType,
           timestamp: new Date().toISOString()
         },
-        response_data: response,
+        response_payload: response,
         status_code: statusCode,
         success: success,
         processing_time_ms: processingTime,
-        attempt_number: attempt + 1,
+        retry_attempt: attempt + 1,
         error_message: errorMessage || null
       });
   } catch (error) {
