@@ -6,8 +6,11 @@ import { WebhookConfiguration } from "@/components/ai-agents/WebhookConfiguratio
 import { AgentDataManagement } from "@/components/ai-agents/AgentDataManagement";
 import { Bot, Zap, Settings, Database } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { useAuth } from "@/contexts/AuthContext";
 
 const AIAgents = () => {
+  const { isAdmin } = useAuth();
+
   return (
     <div className="min-h-screen bg-gray-50/50">
       <PageHeader 
@@ -18,19 +21,23 @@ const AIAgents = () => {
       
       <div className="container mx-auto p-6">
         <Tabs defaultValue="chat" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className={isAdmin ? "grid w-full grid-cols-4" : "grid w-full grid-cols-2"}>
             <TabsTrigger value="chat" className="flex items-center gap-2">
               <Bot className="h-4 w-4" />
               AI Chat
             </TabsTrigger>
-            <TabsTrigger value="webhooks" className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              Webhooks
-            </TabsTrigger>
-            <TabsTrigger value="data" className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              Data Toegang
-            </TabsTrigger>
+            {isAdmin && (
+              <>
+                <TabsTrigger value="webhooks" className="flex items-center gap-2">
+                  <Zap className="h-4 w-4" />
+                  Webhooks
+                </TabsTrigger>
+                <TabsTrigger value="data" className="flex items-center gap-2">
+                  <Database className="h-4 w-4" />
+                  Data Toegang
+                </TabsTrigger>
+              </>
+            )}
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Instellingen
@@ -41,13 +48,17 @@ const AIAgents = () => {
             <AIAgentChat />
           </TabsContent>
 
-          <TabsContent value="webhooks">
-            <WebhookConfiguration />
-          </TabsContent>
+          {isAdmin && (
+            <>
+              <TabsContent value="webhooks">
+                <WebhookConfiguration />
+              </TabsContent>
 
-          <TabsContent value="data">
-            <AgentDataManagement />
-          </TabsContent>
+              <TabsContent value="data">
+                <AgentDataManagement />
+              </TabsContent>
+            </>
+          )}
 
           <TabsContent value="settings">
             <div className="text-center py-12 text-muted-foreground">

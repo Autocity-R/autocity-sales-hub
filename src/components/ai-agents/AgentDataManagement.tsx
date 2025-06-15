@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { SystemDataAccess, getAgentContexts, createAgentContext, updateAgentDataPermissions } from "@/services/systemDataService";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Agent {
   id: string;
@@ -54,6 +55,7 @@ const fetchAgentsWithData = async (): Promise<Agent[]> => {
 
 export const AgentDataManagement = () => {
   const { toast } = useToast();
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [selectedAgent, setSelectedAgent] = useState<string>("");
   const [permissions, setPermissions] = useState<SystemDataAccess>({
@@ -154,6 +156,15 @@ export const AgentDataManagement = () => {
       default: return type;
     }
   };
+
+  if (!isAdmin) {
+    return (
+      <div className="text-center p-8">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Toegang geweigerd</h3>
+        <p className="text-gray-600">Je hebt geen rechten om agent data permissies te beheren.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

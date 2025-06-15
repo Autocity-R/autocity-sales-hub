@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { triggerWebhook } from "@/services/webhookService";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface WebhookConfig {
   id?: string;
@@ -54,6 +55,7 @@ const fetchWebhooks = async (agentId: string) => {
 
 export const WebhookConfiguration = () => {
   const { toast } = useToast();
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [selectedAgent, setSelectedAgent] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
@@ -170,6 +172,15 @@ export const WebhookConfiguration = () => {
     if (!editingWebhook) return;
     saveWebhookMutation.mutate(editingWebhook);
   };
+
+  if (!isAdmin) {
+    return (
+      <div className="text-center p-8">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Toegang geweigerd</h3>
+        <p className="text-gray-600">Je hebt geen rechten om webhooks te beheren.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
