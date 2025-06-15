@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface SystemDataAccess {
@@ -146,8 +145,8 @@ export const updateAgentDataPermissions = async (
     const { error } = await supabase
       .from('ai_agents')
       .update({
-        data_access_permissions: permissions,
-        context_settings: contextSettings
+        data_access_permissions: permissions as any, // Fix: cast to any to satisfy Supabase Json typing
+        context_settings: contextSettings as any      // Fix: cast to any to satisfy Supabase Json typing
       })
       .eq('id', agentId);
 
