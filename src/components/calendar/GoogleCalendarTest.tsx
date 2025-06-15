@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { TestTube, Calendar, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
+import { TestTube, Calendar, CheckCircle, AlertCircle, ExternalLink, Info } from "lucide-react";
 
 export const GoogleCalendarTest: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -111,13 +111,28 @@ export const GoogleCalendarTest: React.FC = () => {
                 <p className="text-green-700">{testResult.message}</p>
                 <p><strong>Event ID:</strong> {testResult.eventId}</p>
                 <p><strong>Tijd:</strong> {testResult.eventTime}</p>
+                <p><strong>Calendar gebruikt:</strong> {testResult.calendarUsed}</p>
                 <p><strong>Service Account:</strong> {testResult.credentials?.clientEmail}</p>
+                
+                {testResult.availableCalendars && testResult.availableCalendars.length > 0 && (
+                  <div className="mt-3">
+                    <p><strong>Beschikbare Calendars:</strong></p>
+                    <ul className="ml-4 space-y-1">
+                      {testResult.availableCalendars.map((cal: any, index: number) => (
+                        <li key={index} className="text-xs">
+                          • {cal.summary} ({cal.id}) - {cal.accessRole}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
                 {testResult.eventLink && (
                   <a 
                     href={testResult.eventLink} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                    className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 mt-2"
                   >
                     <ExternalLink className="h-3 w-3" />
                     Open in Google Calendar
@@ -128,10 +143,40 @@ export const GoogleCalendarTest: React.FC = () => {
               <div className="space-y-2 text-sm">
                 <p className="text-red-700">{testResult.error}</p>
                 <p className="text-red-600">{testResult.details}</p>
+                
+                {testResult.availableCalendars && (
+                  <div className="mt-3">
+                    <p><strong>Beschikbare Calendars:</strong></p>
+                    <ul className="ml-4 space-y-1">
+                      {testResult.availableCalendars.map((cal: any, index: number) => (
+                        <li key={index} className="text-xs">
+                          • {cal.summary} ({cal.id}) - {cal.accessRole}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {testResult.debugInfo && (
+                  <div className="mt-3 p-3 bg-gray-100 rounded">
+                    <p className="text-xs"><strong>Debug Info:</strong></p>
+                    <p className="text-xs">Service Account: {testResult.debugInfo.serviceAccount}</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
+
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start gap-2">
+            <Info className="h-4 w-4 text-blue-600 mt-0.5" />
+            <div className="text-sm text-blue-800">
+              <strong>Tip:</strong> Als het event wordt aangemaakt maar je ziet het niet in jouw persoonlijke Google Calendar, 
+              dan wordt het event aangemaakt in de Service Account calendar. Controleer de "Calendar gebruikt" informatie hierboven.
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

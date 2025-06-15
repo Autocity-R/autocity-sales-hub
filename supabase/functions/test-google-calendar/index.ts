@@ -49,6 +49,7 @@ serve(async (req) => {
     try {
       credentials = JSON.parse(serviceAccountKey);
       console.log('Test: Service Account key parsed successfully');
+      console.log('Test: Using service account:', credentials.client_email);
     } catch (error) {
       throw new Error('Invalid Service Account key format');
     }
@@ -56,6 +57,20 @@ serve(async (req) => {
     // Get access token using Service Account
     const accessToken = await getServiceAccountToken(credentials);
     console.log('Test: Access token obtained successfully');
+
+    // First, let's check which calendars are available
+    console.log('Test: Fetching available calendars...');
+    const calendarListResponse = await fetch(
+      'https://www.googleapis.com/calendar/v3/users/me/calendarList',
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    const calendarList = await calendarListResponse.json();
+    console.log('Test: Available calendars:', calendarList);
 
     // Create a simple test event for today
     const today = new Date();
@@ -66,8 +81,8 @@ serve(async (req) => {
     endTime.setHours(15, 0, 0, 0); // 3 PM today
 
     const testEvent = {
-      summary: 'Test Event - Google Calendar Sync Test',
-      description: 'Dit is een test event om te controleren of de Google Calendar sync werkt',
+      summary: `🧪 TEST EVENT - ${new Date().toLocaleString('nl-NL')}`,
+      description: `Dit is een test event om te controleren of de Google Calendar sync werkt.\n\nAangemaakt op: ${new Date().toLocaleString('nl-NL')}\nService Account: ${credentials.client_email}`,
       start: {
         dateTime: startTime.toISOString(),
         timeZone: 'Europe/Amsterdam',
@@ -77,12 +92,13 @@ serve(async (req) => {
         timeZone: 'Europe/Amsterdam',
       },
       location: 'Test Locatie - Auto City',
+      colorId: '2', // Green color to make it stand out
     };
 
     console.log('Test: Creating event with data:', testEvent);
 
-    // Create event in Google Calendar
-    const createResponse = await fetch(
+    // Try to create event in primary calendar first
+    let createResponse = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/primary/events`,
       {
         method: 'POST',
@@ -94,12 +110,49 @@ serve(async (req) => {
       }
     );
 
-    const responseData = await createResponse.json();
-    console.log('Test: Google Calendar API response:', responseData);
+    let responseData = await createResponse.json();
+    console.log('Test: Primary calendar response:', responseData);
+
+    // If primary calendar fails, try the service account email as calendar ID
+    if (!createResponse.ok) {
+      console.log('Test: Primary calendar failed, trying service account calendar...');
+      
+      createResponse = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.client_email)}/events`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(testEvent),
+        }
+      );
+
+      responseData = await createResponse.json();
+      console.log('Test: Service account calendar response:', responseData);
+    }
 
     if (!createResponse.ok) {
-      console.error('Test: Google Calendar API error:', responseData);
-      throw new Error(`Failed to create test event: ${responseData.error?.message || 'Unknown error'}`);
+      console.error('Test: Both calendar attempts failed:', responseData);
+      
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: `Failed to create test event: ${responseData.error?.message || 'Unknown error'}`,
+        details: 'Probeerde zowel primary calendar als service account calendar',
+        availableCalendars: calendarList.items?.map(cal => ({
+          id: cal.id,
+          summary: cal.summary,
+          accessRole: cal.accessRole
+        })) || [],
+        debugInfo: {
+          serviceAccount: credentials.client_email,
+          primaryCalendarError: responseData
+        }
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     console.log('Test: Successfully created test event with ID:', responseData.id);
@@ -110,10 +163,16 @@ serve(async (req) => {
       eventId: responseData.id,
       eventLink: responseData.htmlLink,
       eventTime: `${startTime.toLocaleString('nl-NL')} - ${endTime.toLocaleString('nl-NL')}`,
+      calendarUsed: responseData.organizer?.email || 'primary',
       credentials: {
         clientEmail: credentials.client_email,
         projectId: credentials.project_id
-      }
+      },
+      availableCalendars: calendarList.items?.map(cal => ({
+        id: cal.id,
+        summary: cal.summary,
+        accessRole: cal.accessRole
+      })) || []
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
