@@ -39,6 +39,16 @@ export const triggerEnhancedWebhook = async (
       return originalTriggerWebhook(webhookUrl, payload, options);
     }
 
+    // Parse to correct SystemDataAccess type if needed
+    const data_access_permissions: SystemDataAccess =
+      typeof agent.data_access_permissions === "string"
+        ? JSON.parse(agent.data_access_permissions)
+        : agent.data_access_permissions || {};
+    const context_settings =
+      typeof agent.context_settings === "string"
+        ? JSON.parse(agent.context_settings)
+        : agent.context_settings || {};
+
     // Get current user info
     const { data: { user } } = await supabase.auth.getUser();
     let userInfo = null;
@@ -60,8 +70,8 @@ export const triggerEnhancedWebhook = async (
     // Get system data based on agent permissions
     const systemData = await getAgentSystemData(
       agent.id,
-      agent.data_access_permissions || {},
-      agent.context_settings || {}
+      data_access_permissions,
+      context_settings
     );
 
     // Create enhanced payload
@@ -69,8 +79,8 @@ export const triggerEnhancedWebhook = async (
       ...payload,
       systemData,
       agentConfig: {
-        dataAccess: agent.data_access_permissions || {},
-        contextSettings: agent.context_settings || {},
+        dataAccess: data_access_permissions,
+        contextSettings: context_settings,
         capabilities: agent.capabilities || []
       },
       userInfo
@@ -88,11 +98,9 @@ export const triggerEnhancedWebhook = async (
       webhookUrl,
       payload: enhancedPayload,
       systemDataSummary: {
-        leads: systemData.leads?.length || 0,
-        appointments: systemData.appointments?.length || 0,
-        customers: systemData.customers?.length || 0,
-        vehicles: systemData.vehicles?.length || 0,
-        recentActivity: systemData.recentActivity?.length || 0
+        // Only report appointments, rest not guaranteed to exist
+        appointments: Array.isArray(systemData.appointments) ? systemData.appointments.length : 0,
+        recentActivity: Array.isArray(systemData.recentActivity) ? systemData.recentActivity.length : 0
       }
     });
 

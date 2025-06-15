@@ -19,9 +19,6 @@ export interface AgentContext {
 }
 
 export interface SystemData {
-  leads?: any[];
-  customers?: any[];
-  vehicles?: any[];
   appointments?: any[];
   contracts?: any[];
   recentActivity?: any[];
@@ -44,20 +41,10 @@ export const getAgentSystemData = async (
       .eq('is_active', true)
       .order('priority');
 
-    // Execute context queries
+    // Only appointments supported!
     if (contexts) {
       for (const context of contexts) {
         try {
-          if (context.context_type === 'lead_data' && permissions.leads) {
-            const { data: leads } = await supabase
-              .from('leads')
-              .select('id, first_name, last_name, email, phone, status, interested_vehicle, budget, created_at')
-              .in('status', ['new', 'contacted', 'qualified', 'interested'])
-              .order('created_at', { ascending: false })
-              .limit(maxItems);
-            systemData.leads = leads || [];
-          }
-
           if (context.context_type === 'appointment_data' && permissions.appointments) {
             const { data: appointments } = await supabase
               .from('appointments')
@@ -73,48 +60,9 @@ export const getAgentSystemData = async (
       }
     }
 
-    // Get additional data based on permissions
-    if (permissions.customers) {
-      const { data: customers } = await supabase
-        .from('customers')
-        .select('id, first_name, last_name, email, phone, company, created_at')
-        .order('created_at', { ascending: false })
-        .limit(Math.min(maxItems, 5));
-      systemData.customers = customers || [];
-    }
-
-    if (permissions.vehicles) {
-      const { data: vehicles } = await supabase
-        .from('vehicles')
-        .select('id, brand, model, license_number, status, price, created_at')
-        .in('status', ['available', 'reserved', 'sold'])
-        .order('created_at', { ascending: false })
-        .limit(Math.min(maxItems, 5));
-      systemData.vehicles = vehicles || [];
-    }
-
     // Get recent activity if enabled
     if (contextSettings?.include_recent_activity) {
       const recentActivity = [];
-      
-      // Recent leads
-      if (permissions.leads) {
-        const { data: recentLeads } = await supabase
-          .from('leads')
-          .select('id, first_name, last_name, status, created_at')
-          .order('created_at', { ascending: false })
-          .limit(3);
-        
-        recentLeads?.forEach(lead => {
-          recentActivity.push({
-            type: 'lead',
-            id: lead.id,
-            description: `Nieuwe lead: ${lead.first_name} ${lead.last_name}`,
-            timestamp: lead.created_at,
-            status: lead.status
-          });
-        });
-      }
 
       // Recent appointments
       if (permissions.appointments) {
@@ -123,7 +71,7 @@ export const getAgentSystemData = async (
           .select('id, title, customername, created_at')
           .order('created_at', { ascending: false })
           .limit(3);
-        
+
         recentAppts?.forEach(appt => {
           recentActivity.push({
             type: 'appointment',

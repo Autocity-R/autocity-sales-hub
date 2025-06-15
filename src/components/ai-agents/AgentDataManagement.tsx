@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,9 +26,30 @@ const fetchAgentsWithData = async (): Promise<Agent[]> => {
     .from('ai_agents')
     .select('id, name, data_access_permissions, context_settings, capabilities')
     .eq('is_active', true);
-  
+
   if (error) throw error;
-  return data || [];
+  return (
+    data?.map(agent => ({
+      ...agent,
+      // force parsing to match SystemDataAccess for type safety
+      data_access_permissions: typeof agent.data_access_permissions === "string"
+        ? JSON.parse(agent.data_access_permissions)
+        : agent.data_access_permissions || {
+            leads: false,
+            customers: false,
+            vehicles: false,
+            appointments: false,
+            contracts: false,
+          },
+      context_settings: typeof agent.context_settings === "string"
+        ? JSON.parse(agent.context_settings)
+        : agent.context_settings || {
+            include_recent_activity: true,
+            max_context_items: 10,
+            preferred_data_sources: []
+          },
+    })) || []
+  );
 };
 
 export const AgentDataManagement = () => {
