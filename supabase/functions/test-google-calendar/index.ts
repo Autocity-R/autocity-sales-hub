@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -102,6 +101,41 @@ serve(async (req) => {
     
     console.log(`Test: Trying to create event in target calendar: ${targetCalendar}`);
     
+    // First, let's try to get information about the target calendar
+    console.log('Test: Checking target calendar access...');
+    try {
+      const calendarInfoResponse = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendar)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        }
+      );
+      
+      const calendarInfo = await calendarInfoResponse.json();
+      console.log('Test: Target calendar info:', calendarInfo);
+      
+      if (!calendarInfoResponse.ok) {
+        console.log('Test: Cannot access target calendar, trying ACL check...');
+        
+        // Check calendar ACL (Access Control List)
+        const aclResponse = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendar)}/acl`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          }
+        );
+        
+        const aclInfo = await aclResponse.json();
+        console.log('Test: Target calendar ACL:', aclInfo);
+      }
+    } catch (aclError) {
+      console.log('Test: Error checking calendar access:', aclError);
+    }
+    
     let createResponse = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendar)}/events`,
       {
@@ -143,16 +177,24 @@ serve(async (req) => {
       return new Response(JSON.stringify({ 
         success: false,
         error: `Failed to create test event: ${responseData.error?.message || 'Unknown error'}`,
-        details: `Probeerde eerst ${targetCalendar}, daarna primary calendar`,
-        availableCalendars: calendarList.items?.map(cal => ({
-          id: cal.id,
-          summary: cal.summary,
-          accessRole: cal.accessRole
-        })) || [],
+        details: `Target calendar (${targetCalendar}) is niet toegankelijk. Controleer de calendar permissions.`,
         debugInfo: {
           serviceAccount: credentials.client_email,
           targetCalendar: targetCalendar,
-          primaryCalendarError: responseData
+          targetCalendarError: responseData,
+          availableCalendars: calendarList.items?.map(cal => ({
+            id: cal.id,
+            summary: cal.summary,
+            accessRole: cal.accessRole,
+            primary: cal.primary
+          })) || [],
+          troubleshooting: [
+            `1. Ga naar calendar.google.com met inkoop@auto-city.nl account`,
+            `2. Ga naar Settings -> jouw calendar -> "Share with specific people"`,
+            `3. Voeg toe: ${credentials.client_email}`,
+            `4. Geef "Make changes to events" rechten`,
+            `5. Wacht 1-2 minuten en probeer opnieuw`
+          ]
         }
       }), {
         status: 500,
@@ -167,7 +209,9 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       success: true,
-      message: `Test event succesvol aangemaakt in ${calendarUsed === targetCalendar ? 'inkoop@auto-city.nl calendar' : 'Service Account calendar'}!`,
+      message: calendarUsed === targetCalendar ? 
+        `Test event succesvol aangemaakt in inkoop@auto-city.nl calendar! 🎉` :
+        `Test event aangemaakt in Service Account calendar (inkoop@auto-city.nl niet toegankelijk)`,
       eventId: responseData.id,
       eventLink: responseData.htmlLink,
       eventTime: `${startTime.toLocaleString('nl-NL')} - ${endTime.toLocaleString('nl-NL')}`,
@@ -180,8 +224,10 @@ serve(async (req) => {
       availableCalendars: calendarList.items?.map(cal => ({
         id: cal.id,
         summary: cal.summary,
-        accessRole: cal.accessRole
-      })) || []
+        accessRole: cal.accessRole,
+        primary: cal.primary
+      })) || [],
+      calendarAccessible: calendarUsed === targetCalendar
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
