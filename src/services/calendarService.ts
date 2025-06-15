@@ -6,10 +6,13 @@ import { Database } from "@/integrations/supabase/types";
 type DbAppointment = Database['public']['Tables']['appointments']['Row'];
 type AppointmentInsert = Database['public']['Tables']['appointments']['Insert'];
 
-// Auto-sync function to Google Calendar with better error handling
-const autoSyncToGoogle = async (appointmentId: string) => {
+// Auto-sync function to Google Calendar with better error handling and retry logic
+const autoSyncToGoogle = async (appointmentId: string, retryCount = 0) => {
+  const maxRetries = 3;
+  const retryDelay = 2000; // 2 seconds
+  
   try {
-    console.log('🔄 Starting auto-sync for appointment:', appointmentId);
+    console.log(`🔄 Starting auto-sync for appointment: ${appointmentId} (attempt ${retryCount + 1})`);
     
     const { data, error } = await supabase.functions.invoke('calendar-sync', {
       body: {
@@ -20,14 +23,7 @@ const autoSyncToGoogle = async (appointmentId: string) => {
 
     if (error) {
       console.error('❌ Auto-sync failed with supabase error:', error);
-      
-      // Update appointment status to error
-      await supabase
-        .from('appointments')
-        .update({ sync_status: 'error' })
-        .eq('id', appointmentId);
-      
-      return;
+      throw error;
     }
 
     if (data?.success) {
@@ -45,22 +41,46 @@ const autoSyncToGoogle = async (appointmentId: string) => {
         .eq('id', appointmentId);
     } else {
       console.error('❌ Auto-sync returned unsuccessful response:', data);
-      
-      // Update appointment status to error
+      throw new Error('Sync returned unsuccessful response');
+    }
+  } catch (error) {
+    console.error(`❌ Auto-sync error (attempt ${retryCount + 1}):`, error);
+    
+    if (retryCount < maxRetries) {
+      console.log(`🔄 Retrying auto-sync in ${retryDelay}ms...`);
+      setTimeout(() => {
+        autoSyncToGoogle(appointmentId, retryCount + 1);
+      }, retryDelay);
+    } else {
+      console.error('❌ Max retries reached, marking as error');
+      // Update appointment status to error after max retries
       await supabase
         .from('appointments')
         .update({ sync_status: 'error' })
         .eq('id', appointmentId);
     }
-  } catch (error) {
-    console.error('❌ Auto-sync error:', error);
-    
-    // Update appointment status to error
-    await supabase
-      .from('appointments')
-      .update({ sync_status: 'error' })
-      .eq('id', appointmentId);
   }
+};
+
+// Helper function to ensure proper datetime format
+const ensureValidDateTime = (dateTime: Date | string): string => {
+  if (typeof dateTime === 'string') {
+    // Check if it's already a valid ISO string
+    const date = new Date(dateTime);
+    if (isNaN(date.getTime())) {
+      throw new Error(`Invalid datetime string: ${dateTime}`);
+    }
+    return date.toISOString();
+  }
+  
+  if (dateTime instanceof Date) {
+    if (isNaN(dateTime.getTime())) {
+      throw new Error(`Invalid Date object: ${dateTime}`);
+    }
+    return dateTime.toISOString();
+  }
+  
+  throw new Error(`Invalid datetime type: ${typeof dateTime}`);
 };
 
 // Convert database appointment to frontend type
@@ -101,8 +121,8 @@ const convertDbAppointment = (dbAppointment: DbAppointment): Appointment => ({
 const convertToDbInsert = (appointment: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>): AppointmentInsert => ({
   title: appointment.title,
   description: appointment.description,
-  starttime: typeof appointment.startTime === 'string' ? appointment.startTime : appointment.startTime.toISOString(),
-  endtime: typeof appointment.endTime === 'string' ? appointment.endTime : appointment.endTime.toISOString(),
+  starttime: ensureValidDateTime(appointment.startTime),
+  endtime: ensureValidDateTime(appointment.endTime),
   type: appointment.type,
   status: appointment.status,
   customerid: appointment.customerId,
@@ -168,6 +188,14 @@ export const createAppointment = async (
       throw new Error('User not authenticated');
     }
 
+    // Validate datetime inputs before conversion
+    console.log('📝 Creating appointment with datetime:', {
+      startTime: appointment.startTime,
+      endTime: appointment.endTime,
+      startType: typeof appointment.startTime,
+      endType: typeof appointment.endTime
+    });
+
     const dbAppointment = convertToDbInsert({
       ...appointment,
       createdBy: appointment.createdBy || user.email || 'Unknown User',
@@ -190,11 +218,11 @@ export const createAppointment = async (
     const createdAppointment = convertDbAppointment(data);
     console.log('✅ Appointment created successfully:', createdAppointment.id);
 
-    // Automatisch synchroniseren naar Google Calendar na aanmaken - but wait 1 second for DB to settle
-    console.log('🚀 Triggering auto-sync for new appointment in 1 second...');
+    // Automatisch synchroniseren naar Google Calendar na aanmaken - but wait 2 seconds for DB to settle
+    console.log('🚀 Triggering auto-sync for new appointment in 2 seconds...');
     setTimeout(() => {
       autoSyncToGoogle(createdAppointment.id);
-    }, 1000);
+    }, 2000);
 
     return createdAppointment;
   } catch (error) {
@@ -214,10 +242,10 @@ export const updateAppointment = async (
     if (updates.title !== undefined) dbUpdates.title = updates.title;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
     if (updates.startTime !== undefined) {
-      dbUpdates.starttime = typeof updates.startTime === 'string' ? updates.startTime : updates.startTime.toISOString();
+      dbUpdates.starttime = ensureValidDateTime(updates.startTime);
     }
     if (updates.endTime !== undefined) {
-      dbUpdates.endtime = typeof updates.endTime === 'string' ? updates.endTime : updates.endTime.toISOString();
+      dbUpdates.endtime = ensureValidDateTime(updates.endTime);
     }
     if (updates.type !== undefined) dbUpdates.type = updates.type;
     if (updates.status !== undefined) dbUpdates.status = updates.status;
@@ -255,10 +283,10 @@ export const updateAppointment = async (
 
     // Automatisch synchroniseren naar Google Calendar na wijziging (maar niet als dit al een sync update was)
     if (!updates.sync_status && !updates.googleEventId && !updates.last_synced_at) {
-      console.log('🚀 Triggering auto-sync for updated appointment in 1 second...');
+      console.log('🚀 Triggering auto-sync for updated appointment in 2 seconds...');
       setTimeout(() => {
         autoSyncToGoogle(appointmentId);
-      }, 1000);
+      }, 2000);
     }
 
     return updatedAppointment;
@@ -313,9 +341,11 @@ export const sendAppointmentConfirmation = async (
   }
 };
 
-// Handmatige sync functie voor als automatisch faal
+// Handmatige sync functie voor als automatisch faalt
 export const manualSyncToGoogle = async (appointmentId: string): Promise<boolean> => {
   try {
+    console.log('🔄 Manual sync triggered for appointment:', appointmentId);
+    
     const { data, error } = await supabase.functions.invoke('calendar-sync', {
       body: {
         action: 'sync_to_google',
@@ -324,10 +354,17 @@ export const manualSyncToGoogle = async (appointmentId: string): Promise<boolean
     });
 
     if (error) {
+      console.error('Manual sync failed with error:', error);
       throw error;
     }
 
-    return data?.success || false;
+    if (data?.success) {
+      console.log('✅ Manual sync successful:', data);
+      return true;
+    } else {
+      console.error('❌ Manual sync unsuccessful:', data);
+      return false;
+    }
   } catch (error) {
     console.error('Manual sync failed:', error);
     return false;

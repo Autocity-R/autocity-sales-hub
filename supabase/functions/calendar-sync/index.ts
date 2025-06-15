@@ -9,7 +9,7 @@ const corsHeaders = {
 
 // TARGET CALENDAR naar primary met Domain-wide delegation
 const TARGET_CALENDAR = 'primary';
-const IMPERSONATE_EMAIL = 'inkoop@auto-city.nl'; // Email van de hoofdaccount die we impersoneren
+const IMPERSONATE_EMAIL = 'inkoop@auto-city.nl';
 
 interface CalendarEvent {
   id?: string;
@@ -48,7 +48,7 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { action, appointmentId, eventData } = await req.json();
+    const { action, appointmentId } = await req.json();
 
     console.log('🔄 Calendar sync action:', action, 'for appointment:', appointmentId);
     console.log('🎯 Target calendar (Domain-wide delegation):', TARGET_CALENDAR, 'impersonating:', IMPERSONATE_EMAIL);
@@ -75,7 +75,7 @@ serve(async (req) => {
       throw new Error('Service Account authentication not configured');
     }
 
-    // Get fresh access token using Service Account with Domain-wide delegation
+    // Get fresh access token using Service Account with Domain-wide delegation DIRECTLY
     let accessToken: string;
     
     try {
@@ -102,16 +102,31 @@ serve(async (req) => {
         }
 
         console.log('📅 Creating Google Calendar event for appointment:', appointment.title);
+        console.log('🕐 Raw appointment times:', {
+          starttime: appointment.starttime,
+          endtime: appointment.endtime,
+          startType: typeof appointment.starttime,
+          endType: typeof appointment.endtime
+        });
+
+        // Convert database timestamps to proper Google Calendar format
+        const startDateTime = formatDateTimeForGoogle(appointment.starttime);
+        const endDateTime = formatDateTimeForGoogle(appointment.endtime);
+
+        console.log('🕐 Converted times for Google:', {
+          startDateTime,
+          endDateTime
+        });
 
         const googleEvent: CalendarEvent = {
           summary: appointment.title,
           description: `${appointment.description || appointment.notes || ''}\n\nKlant: ${appointment.customername}\nEmail: ${appointment.customeremail || ''}\nTelefoon: ${appointment.customerphone || ''}`,
           start: {
-            dateTime: appointment.starttime,
+            dateTime: startDateTime,
             timeZone: 'Europe/Amsterdam',
           },
           end: {
-            dateTime: appointment.endtime,
+            dateTime: endDateTime,
             timeZone: 'Europe/Amsterdam',
           },
           location: appointment.location || 'Auto City Showroom',
@@ -123,6 +138,8 @@ serve(async (req) => {
             displayName: appointment.customername,
           }];
         }
+
+        console.log('📋 Google Event payload:', JSON.stringify(googleEvent, null, 2));
 
         let googleEventId = appointment.google_event_id;
         let syncAction = 'update';
@@ -142,9 +159,19 @@ serve(async (req) => {
             }
           );
 
+          console.log('📡 Google Calendar API response status:', createResponse.status);
+
           if (!createResponse.ok) {
-            const errorData = await createResponse.json();
-            console.error('❌ Google Calendar create error:', errorData);
+            const errorText = await createResponse.text();
+            console.error('❌ Google Calendar create error response:', errorText);
+            
+            let errorData;
+            try {
+              errorData = JSON.parse(errorText);
+            } catch {
+              errorData = { error: { message: errorText } };
+            }
+            
             throw new Error(`Failed to create Google Calendar event: ${errorData.error?.message || 'Unknown error'}`);
           }
 
@@ -152,6 +179,7 @@ serve(async (req) => {
           googleEventId = createdEvent.id;
           syncAction = 'create';
           console.log('✅ Created Google Calendar event with ID:', googleEventId);
+          console.log('📋 Created event details:', JSON.stringify(createdEvent, null, 2));
         } else {
           // Update existing event in primary calendar via Domain-wide delegation
           console.log('📝 Updating existing Google Calendar event:', googleEventId);
@@ -167,12 +195,25 @@ serve(async (req) => {
             }
           );
 
+          console.log('📡 Google Calendar API update response status:', updateResponse.status);
+
           if (!updateResponse.ok) {
-            const errorData = await updateResponse.json();
-            console.error('❌ Google Calendar update error:', errorData);
+            const errorText = await updateResponse.text();
+            console.error('❌ Google Calendar update error response:', errorText);
+            
+            let errorData;
+            try {
+              errorData = JSON.parse(errorText);
+            } catch {
+              errorData = { error: { message: errorText } };
+            }
+            
             throw new Error(`Failed to update Google Calendar event: ${errorData.error?.message || 'Unknown error'}`);
           }
+          
+          const updatedEvent = await updateResponse.json();
           console.log('✅ Updated Google Calendar event successfully');
+          console.log('📋 Updated event details:', JSON.stringify(updatedEvent, null, 2));
         }
 
         // Update appointment with Google event ID using service role
@@ -227,17 +268,29 @@ serve(async (req) => {
 
         if (appointment?.google_event_id) {
           console.log('🗑️ Deleting Google Calendar event:', appointment.google_event_id);
+          
+          // Get fresh access token for delete operation
+          const deleteAccessToken = await getServiceAccountToken();
+          
           const deleteResponse = await fetch(
             `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(TARGET_CALENDAR)}/events/${appointment.google_event_id}`,
             {
               method: 'DELETE',
-              headers: { 'Authorization': `Bearer ${accessToken}` },
+              headers: { 'Authorization': `Bearer ${deleteAccessToken}` },
             }
           );
 
           if (!deleteResponse.ok && deleteResponse.status !== 404) {
-            const errorData = await deleteResponse.json();
-            console.error('❌ Failed to delete from Google Calendar:', errorData);
+            const errorText = await deleteResponse.text();
+            console.error('❌ Failed to delete from Google Calendar:', errorText);
+            
+            let errorData;
+            try {
+              errorData = JSON.parse(errorText);
+            } catch {
+              errorData = { error: { message: errorText } };
+            }
+            
             throw new Error(`Failed to delete Google Calendar event: ${errorData.error?.message || 'Unknown error'}`);
           }
 
@@ -279,40 +332,149 @@ serve(async (req) => {
   }
 });
 
-// Helper function to get Service Account access token with Domain-wide delegation
+// Helper function to format datetime for Google Calendar API
+function formatDateTimeForGoogle(dateTimeInput: string | Date): string {
+  try {
+    // Ensure we have a proper Date object
+    const date = typeof dateTimeInput === 'string' ? new Date(dateTimeInput) : dateTimeInput;
+    
+    if (isNaN(date.getTime())) {
+      throw new Error(`Invalid date: ${dateTimeInput}`);
+    }
+    
+    // Convert to ISO string and ensure it's in the correct format
+    // Google Calendar expects: YYYY-MM-DDTHH:mm:ss.sssZ or YYYY-MM-DDTHH:mm:ss+HH:mm
+    const isoString = date.toISOString();
+    console.log(`🕐 Formatted ${dateTimeInput} to ${isoString}`);
+    
+    return isoString;
+  } catch (error) {
+    console.error(`❌ Error formatting datetime ${dateTimeInput}:`, error);
+    throw new Error(`Failed to format datetime: ${error.message}`);
+  }
+}
+
+// Helper function to get Service Account access token with Domain-wide delegation DIRECTLY
 async function getServiceAccountToken(): Promise<string> {
   try {
-    console.log('🔄 Calling google-service-auth function for access token...');
+    console.log('🔄 Getting Service Account token directly...');
     
-    const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/google-service-auth`, {
+    const serviceAccountKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
+    
+    if (!serviceAccountKey) {
+      throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY not found in environment');
+    }
+
+    let credentials;
+    try {
+      credentials = JSON.parse(serviceAccountKey);
+    } catch (error) {
+      throw new Error('Invalid Service Account key format');
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const expires = now + 3600; // 1 hour
+
+    // Create JWT header
+    const header = {
+      alg: "RS256",
+      typ: "JWT",
+      kid: credentials.private_key_id
+    };
+
+    // Create JWT payload with Domain-wide delegation
+    const payload = {
+      iss: credentials.client_email,
+      sub: IMPERSONATE_EMAIL, // This enables impersonation via Domain-wide delegation
+      scope: 'https://www.googleapis.com/auth/calendar',
+      aud: 'https://oauth2.googleapis.com/token',
+      exp: expires,
+      iat: now
+    };
+
+    console.log('🔑 Creating JWT with impersonation for:', IMPERSONATE_EMAIL);
+
+    // Create JWT assertion
+    const jwt = await createJWTAssertion(header, payload, credentials.private_key);
+
+    // Exchange JWT for access token
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({ 
-        action: 'get_access_token',
-        impersonate_email: IMPERSONATE_EMAIL
+      body: new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion: jwt
       }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ google-service-auth function error:', errorText);
-      throw new Error(`Failed to get access token: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
+    const tokenData = await tokenResponse.json();
     
-    if (!data?.access_token) {
-      console.error('❌ No access token in response:', data);
-      throw new Error('No access token received from google-service-auth function');
+    if (!tokenResponse.ok) {
+      console.error('❌ Token exchange failed:', tokenData);
+      throw new Error(`Token exchange failed: ${tokenData.error_description || tokenData.error}`);
     }
 
-    console.log('✅ Successfully obtained access token via google-service-auth function');
-    return data.access_token;
+    console.log('✅ Successfully obtained access token directly');
+    return tokenData.access_token;
   } catch (error) {
-    console.error('❌ Service account token error:', error);
+    console.error('❌ Service Account token error:', error);
     throw error;
   }
+}
+
+// Helper to create JWT assertion with proper RS256 signing
+async function createJWTAssertion(header: any, payload: any, privateKey: string): Promise<string> {
+  // Base64url encode header and payload
+  const encodedHeader = base64UrlEncode(JSON.stringify(header));
+  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+  
+  // Create signature input
+  const signatureInput = `${encodedHeader}.${encodedPayload}`;
+  
+  // Clean up private key
+  const cleanPrivateKey = privateKey
+    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+    .replace(/-----END PRIVATE KEY-----/g, '')
+    .replace(/\s/g, '');
+  
+  // Convert to Uint8Array
+  const keyData = Uint8Array.from(atob(cleanPrivateKey), c => c.charCodeAt(0));
+  
+  // Import the private key
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    keyData,
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      hash: 'SHA-256',
+    },
+    false,
+    ['sign']
+  );
+  
+  // Sign the input
+  const encoder = new TextEncoder();
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    cryptoKey,
+    encoder.encode(signatureInput)
+  );
+  
+  // Encode signature
+  const encodedSignature = base64UrlEncode(signature);
+  
+  return `${signatureInput}.${encodedSignature}`;
+}
+
+// Helper function for base64url encoding
+function base64UrlEncode(data: string | ArrayBuffer): string {
+  let base64;
+  if (typeof data === 'string') {
+    base64 = btoa(data);
+  } else {
+    base64 = btoa(String.fromCharCode(...new Uint8Array(data)));
+  }
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
