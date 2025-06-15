@@ -124,8 +124,8 @@ const logWebhookCall = async (logData: {
       .insert({
         agent_id: logData.payload.agentId,
         webhook_url: logData.webhookUrl,
-        request_payload: logData.payload,
-        response_payload: logData.response,
+        request_payload: logData.payload as any,
+        response_payload: logData.response as any,
         success: logData.success,
         status_code: logData.statusCode,
         error_message: logData.errorMessage,

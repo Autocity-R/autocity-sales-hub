@@ -46,7 +46,7 @@ export const createChatSession = async (agentId: string): Promise<ChatSession> =
     id: data.id,
     agentId: data.agent_id,
     sessionToken: data.session_token,
-    status: data.status,
+    status: data.status as 'active' | 'ended' | 'error',
     context: data.context,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
@@ -80,7 +80,7 @@ export const addChatMessage = async (
   return {
     id: data.id,
     sessionId: data.session_id,
-    messageType: data.message_type,
+    messageType: data.message_type as 'user' | 'assistant' | 'system',
     content: data.content,
     webhookTriggered: data.webhook_triggered,
     webhookResponse: data.webhook_response,
@@ -101,7 +101,7 @@ export const getChatMessages = async (sessionId: string): Promise<ChatMessage[]>
   return (data || []).map(msg => ({
     id: msg.id,
     sessionId: msg.session_id,
-    messageType: msg.message_type,
+    messageType: msg.message_type as 'user' | 'assistant' | 'system',
     content: msg.content,
     webhookTriggered: msg.webhook_triggered,
     webhookResponse: msg.webhook_response,
