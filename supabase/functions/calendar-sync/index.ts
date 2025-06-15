@@ -23,14 +23,22 @@ serve(async (req) => {
   }
 
   try {
+    // Use service role key for database operations to bypass RLS
     const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const authHeader = req.headers.get('Authorization')!;
+    
+    // Verify user authentication with anon key client
+    const anonSupabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    const authHeader = req.headers.get('Authorization')!;
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user } } = await supabase.auth.getUser(token);
+    const { data: { user } } = await anonSupabase.auth.getUser(token);
 
     if (!user) {
       throw new Error('Unauthorized');
@@ -38,29 +46,40 @@ serve(async (req) => {
 
     const { action, appointmentId, eventData } = await req.json();
 
-    // Get company calendar settings
+    console.log('Calendar sync action:', action, 'for appointment:', appointmentId);
+
+    // Get company calendar settings using service role
     const { data: calendarSettings, error: settingsError } = await supabase
       .from('company_calendar_settings')
       .select('*')
       .eq('company_id', 'auto-city')
       .single();
 
+    console.log('Calendar settings query result:', { calendarSettings, settingsError });
+
     if (settingsError || !calendarSettings) {
+      console.error('Calendar settings error:', settingsError);
       throw new Error('Company calendar not configured. Please set up Service Account first.');
+    }
+
+    if (!calendarSettings.auth_type || calendarSettings.auth_type !== 'service_account') {
+      throw new Error('Service Account authentication not configured');
     }
 
     // Get fresh access token using Service Account
     let accessToken: string;
     
-    if (calendarSettings.auth_type === 'service_account') {
+    try {
       accessToken = await getServiceAccountToken();
-    } else {
-      throw new Error('Only Service Account authentication is supported');
+      console.log('Got access token successfully');
+    } catch (tokenError) {
+      console.error('Failed to get access token:', tokenError);
+      throw new Error('Failed to get Service Account access token');
     }
 
     switch (action) {
       case 'sync_to_google': {
-        // Get appointment details
+        // Get appointment details using service role
         const { data: appointment, error: apptError } = await supabase
           .from('appointments')
           .select('*')
@@ -68,8 +87,11 @@ serve(async (req) => {
           .single();
 
         if (apptError || !appointment) {
+          console.error('Appointment query error:', apptError);
           throw new Error('Appointment not found');
         }
+
+        console.log('Creating Google Calendar event for appointment:', appointment.title);
 
         const googleEvent: CalendarEvent = {
           summary: appointment.title,
@@ -97,6 +119,7 @@ serve(async (req) => {
 
         if (!googleEventId) {
           // Create new event
+          console.log('Creating new Google Calendar event');
           const createResponse = await fetch(
             `https://www.googleapis.com/calendar/v3/calendars/primary/events`,
             {
@@ -109,15 +132,19 @@ serve(async (req) => {
             }
           );
 
-          const createdEvent = await createResponse.json();
           if (!createResponse.ok) {
-            throw new Error(`Failed to create Google Calendar event: ${createdEvent.error?.message}`);
+            const errorData = await createResponse.json();
+            console.error('Google Calendar create error:', errorData);
+            throw new Error(`Failed to create Google Calendar event: ${errorData.error?.message}`);
           }
 
+          const createdEvent = await createResponse.json();
           googleEventId = createdEvent.id;
           syncAction = 'create';
+          console.log('Created Google Calendar event with ID:', googleEventId);
         } else {
           // Update existing event
+          console.log('Updating existing Google Calendar event:', googleEventId);
           const updateResponse = await fetch(
             `https://www.googleapis.com/calendar/v3/calendars/primary/events/${googleEventId}`,
             {
@@ -132,11 +159,13 @@ serve(async (req) => {
 
           if (!updateResponse.ok) {
             const errorData = await updateResponse.json();
+            console.error('Google Calendar update error:', errorData);
             throw new Error(`Failed to update Google Calendar event: ${errorData.error?.message}`);
           }
+          console.log('Updated Google Calendar event successfully');
         }
 
-        // Update appointment with Google event ID
+        // Update appointment with Google event ID using service role
         const { error: updateError } = await supabase
           .from('appointments')
           .update({
@@ -147,7 +176,10 @@ serve(async (req) => {
           })
           .eq('id', appointmentId);
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Failed to update appointment:', updateError);
+          throw updateError;
+        }
 
         // Log sync action
         await supabase
@@ -161,6 +193,8 @@ serve(async (req) => {
             performed_by_user_id: user.id,
             sync_data: { appointment, googleEvent },
           });
+
+        console.log('Sync completed successfully');
 
         return new Response(JSON.stringify({ 
           success: true, 
@@ -233,6 +267,7 @@ async function getServiceAccountToken(): Promise<string> {
   });
 
   if (error || !data?.access_token) {
+    console.error('Service account token error:', error);
     throw new Error('Failed to get Service Account access token');
   }
 
