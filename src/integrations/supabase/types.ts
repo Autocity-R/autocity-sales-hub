@@ -633,6 +633,207 @@ export type Database = {
         }
         Relationships: []
       }
+      contacts: {
+        Row: {
+          address_city: string | null
+          address_street: string | null
+          company_name: string | null
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          phone: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          address_city?: string | null
+          address_street?: string | null
+          company_name?: string | null
+          created_at?: string
+          email: string
+          first_name: string
+          id?: string
+          last_name: string
+          phone?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          address_city?: string | null
+          address_street?: string | null
+          company_name?: string | null
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          phone?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      contracts: {
+        Row: {
+          contract_amount: number | null
+          contract_number: string
+          created_at: string
+          customer_id: string | null
+          id: string
+          status: string
+          type: string
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          contract_amount?: number | null
+          contract_number: string
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          status: string
+          type: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          contract_amount?: number | null
+          contract_number?: string
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          status?: string
+          type?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          email: string | null
+          first_name: string | null
+          id: string
+          interested_vehicle: string | null
+          last_name: string | null
+          phone: string | null
+          priority: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          interested_vehicle?: string | null
+          last_name?: string | null
+          phone?: string | null
+          priority: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          interested_vehicle?: string | null
+          last_name?: string | null
+          phone?: string | null
+          priority?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_interested_vehicle_fkey"
+            columns: ["interested_vehicle"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loan_cars: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          end_date: string | null
+          id: string
+          notes: string | null
+          start_date: string | null
+          status: string
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_cars_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loan_cars_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           company: string | null
@@ -718,6 +919,103 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicles: {
+        Row: {
+          brand: string
+          color: string | null
+          created_at: string
+          customer_id: string | null
+          id: string
+          license_number: string | null
+          location: string | null
+          mileage: number | null
+          model: string
+          selling_price: number | null
+          status: string
+          updated_at: string
+          vin: string | null
+          year: number | null
+        }
+        Insert: {
+          brand: string
+          color?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          license_number?: string | null
+          location?: string | null
+          mileage?: number | null
+          model: string
+          selling_price?: number | null
+          status?: string
+          updated_at?: string
+          vin?: string | null
+          year?: number | null
+        }
+        Update: {
+          brand?: string
+          color?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          license_number?: string | null
+          location?: string | null
+          mileage?: number | null
+          model?: string
+          selling_price?: number | null
+          status?: string
+          updated_at?: string
+          vin?: string | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warranty_claims: {
+        Row: {
+          claim_amount: number | null
+          claim_status: string
+          created_at: string
+          description: string | null
+          id: string
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          claim_amount?: number | null
+          claim_status?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          claim_amount?: number | null
+          claim_status?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_claims_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]
