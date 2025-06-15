@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -6,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// TARGET CALENDAR terug naar primary met Domain-wide delegation
+// TARGET CALENDAR naar primary met Domain-wide delegation
 const TARGET_CALENDAR = 'primary';
 const IMPERSONATE_EMAIL = 'inkoop@auto-city.nl'; // Email van de hoofdaccount die we impersoneren
 
@@ -49,10 +50,10 @@ serve(async (req) => {
 
     const { action, appointmentId, eventData } = await req.json();
 
-    console.log('Calendar sync action:', action, 'for appointment:', appointmentId);
-    console.log('Target calendar (Domain-wide delegation):', TARGET_CALENDAR, 'impersonating:', IMPERSONATE_EMAIL);
+    console.log('🔄 Calendar sync action:', action, 'for appointment:', appointmentId);
+    console.log('🎯 Target calendar (Domain-wide delegation):', TARGET_CALENDAR, 'impersonating:', IMPERSONATE_EMAIL);
 
-    // Get company calendar settings using service role - fix the query to handle multiple rows
+    // Get company calendar settings using service role
     const { data: calendarSettingsArray, error: settingsError } = await supabase
       .from('company_calendar_settings')
       .select('*')
@@ -61,10 +62,10 @@ serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(1);
 
-    console.log('Calendar settings query result:', { calendarSettingsArray, settingsError });
+    console.log('📋 Calendar settings query result:', { calendarSettingsArray, settingsError });
 
     if (settingsError || !calendarSettingsArray || calendarSettingsArray.length === 0) {
-      console.error('Calendar settings error:', settingsError);
+      console.error('❌ Calendar settings error:', settingsError);
       throw new Error('Company calendar not configured. Please set up Service Account first.');
     }
 
@@ -78,11 +79,12 @@ serve(async (req) => {
     let accessToken: string;
     
     try {
+      console.log('🔑 Getting fresh access token with Domain-wide delegation...');
       accessToken = await getServiceAccountToken();
-      console.log('Got access token successfully with Domain-wide delegation');
+      console.log('✅ Got access token successfully with Domain-wide delegation');
     } catch (tokenError) {
-      console.error('Failed to get access token:', tokenError);
-      throw new Error('Failed to get Service Account access token with Domain-wide delegation');
+      console.error('❌ Failed to get access token:', tokenError);
+      throw new Error(`Failed to get Service Account access token: ${tokenError.message}`);
     }
 
     switch (action) {
@@ -95,15 +97,15 @@ serve(async (req) => {
           .single();
 
         if (apptError || !appointment) {
-          console.error('Appointment query error:', apptError);
+          console.error('❌ Appointment query error:', apptError);
           throw new Error('Appointment not found');
         }
 
-        console.log('Creating Google Calendar event for appointment:', appointment.title, 'in primary calendar via Domain-wide delegation');
+        console.log('📅 Creating Google Calendar event for appointment:', appointment.title);
 
         const googleEvent: CalendarEvent = {
           summary: appointment.title,
-          description: appointment.description || appointment.notes,
+          description: `${appointment.description || appointment.notes || ''}\n\nKlant: ${appointment.customername}\nEmail: ${appointment.customeremail || ''}\nTelefoon: ${appointment.customerphone || ''}`,
           start: {
             dateTime: appointment.starttime,
             timeZone: 'Europe/Amsterdam',
@@ -112,7 +114,7 @@ serve(async (req) => {
             dateTime: appointment.endtime,
             timeZone: 'Europe/Amsterdam',
           },
-          location: appointment.location,
+          location: appointment.location || 'Auto City Showroom',
         };
 
         if (appointment.customeremail) {
@@ -127,7 +129,7 @@ serve(async (req) => {
 
         if (!googleEventId) {
           // Create new event in primary calendar via Domain-wide delegation
-          console.log('Creating new Google Calendar event in primary calendar via Domain-wide delegation');
+          console.log('➕ Creating new Google Calendar event in primary calendar...');
           const createResponse = await fetch(
             `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(TARGET_CALENDAR)}/events`,
             {
@@ -142,17 +144,17 @@ serve(async (req) => {
 
           if (!createResponse.ok) {
             const errorData = await createResponse.json();
-            console.error('Google Calendar create error:', errorData);
-            throw new Error(`Failed to create Google Calendar event in primary calendar: ${errorData.error?.message}`);
+            console.error('❌ Google Calendar create error:', errorData);
+            throw new Error(`Failed to create Google Calendar event: ${errorData.error?.message || 'Unknown error'}`);
           }
 
           const createdEvent = await createResponse.json();
           googleEventId = createdEvent.id;
           syncAction = 'create';
-          console.log('Created Google Calendar event with ID:', googleEventId, 'in primary calendar via Domain-wide delegation');
+          console.log('✅ Created Google Calendar event with ID:', googleEventId);
         } else {
           // Update existing event in primary calendar via Domain-wide delegation
-          console.log('Updating existing Google Calendar event:', googleEventId, 'in primary calendar via Domain-wide delegation');
+          console.log('📝 Updating existing Google Calendar event:', googleEventId);
           const updateResponse = await fetch(
             `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(TARGET_CALENDAR)}/events/${googleEventId}`,
             {
@@ -167,10 +169,10 @@ serve(async (req) => {
 
           if (!updateResponse.ok) {
             const errorData = await updateResponse.json();
-            console.error('Google Calendar update error:', errorData);
-            throw new Error(`Failed to update Google Calendar event in primary calendar: ${errorData.error?.message}`);
+            console.error('❌ Google Calendar update error:', errorData);
+            throw new Error(`Failed to update Google Calendar event: ${errorData.error?.message || 'Unknown error'}`);
           }
-          console.log('Updated Google Calendar event successfully in primary calendar via Domain-wide delegation');
+          console.log('✅ Updated Google Calendar event successfully');
         }
 
         // Update appointment with Google event ID using service role
@@ -178,14 +180,14 @@ serve(async (req) => {
           .from('appointments')
           .update({
             google_event_id: googleEventId,
-            google_calendar_id: IMPERSONATE_EMAIL, // Store the impersonated email
+            google_calendar_id: IMPERSONATE_EMAIL,
             sync_status: 'synced',
             last_synced_at: new Date().toISOString(),
           })
           .eq('id', appointmentId);
 
         if (updateError) {
-          console.error('Failed to update appointment:', updateError);
+          console.error('❌ Failed to update appointment:', updateError);
           throw updateError;
         }
 
@@ -202,7 +204,7 @@ serve(async (req) => {
             sync_data: { appointment, googleEvent, targetCalendar: TARGET_CALENDAR, impersonateEmail: IMPERSONATE_EMAIL },
           });
 
-        console.log('Sync completed successfully to primary calendar via Domain-wide delegation');
+        console.log('🎉 Sync completed successfully to primary calendar via Domain-wide delegation');
 
         return new Response(JSON.stringify({ 
           success: true, 
@@ -210,7 +212,7 @@ serve(async (req) => {
           syncAction,
           targetCalendar: TARGET_CALENDAR,
           impersonateEmail: IMPERSONATE_EMAIL,
-          message: 'Event successfully synced to primary calendar via Domain-wide delegation'
+          message: `Event successfully synced to ${IMPERSONATE_EMAIL} primary calendar`
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -224,6 +226,7 @@ serve(async (req) => {
           .single();
 
         if (appointment?.google_event_id) {
+          console.log('🗑️ Deleting Google Calendar event:', appointment.google_event_id);
           const deleteResponse = await fetch(
             `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(TARGET_CALENDAR)}/events/${appointment.google_event_id}`,
             {
@@ -233,8 +236,12 @@ serve(async (req) => {
           );
 
           if (!deleteResponse.ok && deleteResponse.status !== 404) {
-            throw new Error(`Failed to delete Google Calendar event from primary calendar`);
+            const errorData = await deleteResponse.json();
+            console.error('❌ Failed to delete from Google Calendar:', errorData);
+            throw new Error(`Failed to delete Google Calendar event: ${errorData.error?.message || 'Unknown error'}`);
           }
+
+          console.log('✅ Successfully deleted from Google Calendar');
 
           // Log sync action
           await supabase
@@ -249,7 +256,10 @@ serve(async (req) => {
             });
         }
 
-        return new Response(JSON.stringify({ success: true }), {
+        return new Response(JSON.stringify({ 
+          success: true,
+          message: 'Event successfully deleted from Google Calendar'
+        }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -258,8 +268,11 @@ serve(async (req) => {
         throw new Error('Invalid action');
     }
   } catch (error) {
-    console.error('Calendar sync error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('❌ Calendar sync error:', error);
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      details: 'Check function logs for more information'
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -268,22 +281,38 @@ serve(async (req) => {
 
 // Helper function to get Service Account access token with Domain-wide delegation
 async function getServiceAccountToken(): Promise<string> {
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  );
+  try {
+    console.log('🔄 Calling google-service-auth function for access token...');
+    
+    const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/google-service-auth`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      },
+      body: JSON.stringify({ 
+        action: 'get_access_token',
+        impersonate_email: IMPERSONATE_EMAIL
+      }),
+    });
 
-  const { data, error } = await supabase.functions.invoke('google-service-auth', {
-    body: { 
-      action: 'get_access_token',
-      impersonate_email: IMPERSONATE_EMAIL // Pass the email to impersonate
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ google-service-auth function error:', errorText);
+      throw new Error(`Failed to get access token: ${response.status} ${response.statusText}`);
     }
-  });
 
-  if (error || !data?.access_token) {
-    console.error('Service account token error:', error);
-    throw new Error('Failed to get Service Account access token with Domain-wide delegation');
+    const data = await response.json();
+    
+    if (!data?.access_token) {
+      console.error('❌ No access token in response:', data);
+      throw new Error('No access token received from google-service-auth function');
+    }
+
+    console.log('✅ Successfully obtained access token via google-service-auth function');
+    return data.access_token;
+  } catch (error) {
+    console.error('❌ Service account token error:', error);
+    throw error;
   }
-
-  return data.access_token;
 }

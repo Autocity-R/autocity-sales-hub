@@ -1,3 +1,4 @@
+
 import { Appointment, AppointmentType, AppointmentStatus } from "@/types/calendar";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
@@ -5,7 +6,7 @@ import { Database } from "@/integrations/supabase/types";
 type DbAppointment = Database['public']['Tables']['appointments']['Row'];
 type AppointmentInsert = Database['public']['Tables']['appointments']['Insert'];
 
-// Auto-sync function to Google Calendar
+// Auto-sync function to Google Calendar with better error handling
 const autoSyncToGoogle = async (appointmentId: string) => {
   try {
     console.log('🔄 Starting auto-sync for appointment:', appointmentId);
@@ -18,7 +19,7 @@ const autoSyncToGoogle = async (appointmentId: string) => {
     });
 
     if (error) {
-      console.error('❌ Auto-sync failed with error:', error);
+      console.error('❌ Auto-sync failed with supabase error:', error);
       
       // Update appointment status to error
       await supabase
@@ -30,14 +31,15 @@ const autoSyncToGoogle = async (appointmentId: string) => {
     }
 
     if (data?.success) {
-      console.log('✅ Auto-sync successful for appointment:', appointmentId);
+      console.log('✅ Auto-sync successful for appointment:', appointmentId, 'Google Event ID:', data.googleEventId);
       
-      // Update appointment status to synced
+      // Update appointment status to synced with the returned Google event ID
       await supabase
         .from('appointments')
         .update({ 
           sync_status: 'synced',
           google_event_id: data.googleEventId,
+          google_calendar_id: data.impersonateEmail || 'inkoop@auto-city.nl',
           last_synced_at: new Date().toISOString()
         })
         .eq('id', appointmentId);
@@ -188,9 +190,11 @@ export const createAppointment = async (
     const createdAppointment = convertDbAppointment(data);
     console.log('✅ Appointment created successfully:', createdAppointment.id);
 
-    // Automatisch synchroniseren naar Google Calendar na aanmaken
-    console.log('🚀 Triggering auto-sync for new appointment...');
-    autoSyncToGoogle(createdAppointment.id);
+    // Automatisch synchroniseren naar Google Calendar na aanmaken - but wait 1 second for DB to settle
+    console.log('🚀 Triggering auto-sync for new appointment in 1 second...');
+    setTimeout(() => {
+      autoSyncToGoogle(createdAppointment.id);
+    }, 1000);
 
     return createdAppointment;
   } catch (error) {
@@ -251,8 +255,10 @@ export const updateAppointment = async (
 
     // Automatisch synchroniseren naar Google Calendar na wijziging (maar niet als dit al een sync update was)
     if (!updates.sync_status && !updates.googleEventId && !updates.last_synced_at) {
-      console.log('🚀 Triggering auto-sync for updated appointment...');
-      autoSyncToGoogle(appointmentId);
+      console.log('🚀 Triggering auto-sync for updated appointment in 1 second...');
+      setTimeout(() => {
+        autoSyncToGoogle(appointmentId);
+      }, 1000);
     }
 
     return updatedAppointment;
