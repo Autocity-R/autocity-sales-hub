@@ -7,8 +7,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// TARGET CALENDAR voor alle sync operaties
-const TARGET_CALENDAR = 'inkoop@auto-city.nl';
+// TARGET CALENDAR gewijzigd naar Service Account voor alle sync operaties
+const TARGET_CALENDAR = 'auto-city-calendar-service@lovable-calendar-integratie.iam.gserviceaccount.com';
 
 interface CalendarEvent {
   id?: string;
@@ -50,7 +50,7 @@ serve(async (req) => {
     const { action, appointmentId, eventData } = await req.json();
 
     console.log('Calendar sync action:', action, 'for appointment:', appointmentId);
-    console.log('Target calendar:', TARGET_CALENDAR);
+    console.log('Target calendar (Service Account):', TARGET_CALENDAR);
 
     // Get company calendar settings using service role - fix the query to handle multiple rows
     const { data: calendarSettingsArray, error: settingsError } = await supabase
@@ -99,7 +99,7 @@ serve(async (req) => {
           throw new Error('Appointment not found');
         }
 
-        console.log('Creating Google Calendar event for appointment:', appointment.title, 'in calendar:', TARGET_CALENDAR);
+        console.log('Creating Google Calendar event for appointment:', appointment.title, 'in Service Account calendar:', TARGET_CALENDAR);
 
         const googleEvent: CalendarEvent = {
           summary: appointment.title,
@@ -126,8 +126,8 @@ serve(async (req) => {
         let syncAction = 'update';
 
         if (!googleEventId) {
-          // Create new event in TARGET_CALENDAR
-          console.log('Creating new Google Calendar event in:', TARGET_CALENDAR);
+          // Create new event in Service Account Calendar
+          console.log('Creating new Google Calendar event in Service Account calendar:', TARGET_CALENDAR);
           const createResponse = await fetch(
             `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(TARGET_CALENDAR)}/events`,
             {
@@ -143,16 +143,16 @@ serve(async (req) => {
           if (!createResponse.ok) {
             const errorData = await createResponse.json();
             console.error('Google Calendar create error:', errorData);
-            throw new Error(`Failed to create Google Calendar event in ${TARGET_CALENDAR}: ${errorData.error?.message}`);
+            throw new Error(`Failed to create Google Calendar event in Service Account calendar: ${errorData.error?.message}`);
           }
 
           const createdEvent = await createResponse.json();
           googleEventId = createdEvent.id;
           syncAction = 'create';
-          console.log('Created Google Calendar event with ID:', googleEventId, 'in calendar:', TARGET_CALENDAR);
+          console.log('Created Google Calendar event with ID:', googleEventId, 'in Service Account calendar:', TARGET_CALENDAR);
         } else {
-          // Update existing event in TARGET_CALENDAR
-          console.log('Updating existing Google Calendar event:', googleEventId, 'in calendar:', TARGET_CALENDAR);
+          // Update existing event in Service Account Calendar
+          console.log('Updating existing Google Calendar event:', googleEventId, 'in Service Account calendar:', TARGET_CALENDAR);
           const updateResponse = await fetch(
             `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(TARGET_CALENDAR)}/events/${googleEventId}`,
             {
@@ -168,9 +168,9 @@ serve(async (req) => {
           if (!updateResponse.ok) {
             const errorData = await updateResponse.json();
             console.error('Google Calendar update error:', errorData);
-            throw new Error(`Failed to update Google Calendar event in ${TARGET_CALENDAR}: ${errorData.error?.message}`);
+            throw new Error(`Failed to update Google Calendar event in Service Account calendar: ${errorData.error?.message}`);
           }
-          console.log('Updated Google Calendar event successfully in:', TARGET_CALENDAR);
+          console.log('Updated Google Calendar event successfully in Service Account calendar:', TARGET_CALENDAR);
         }
 
         // Update appointment with Google event ID using service role
@@ -202,13 +202,14 @@ serve(async (req) => {
             sync_data: { appointment, googleEvent, targetCalendar: TARGET_CALENDAR },
           });
 
-        console.log('Sync completed successfully to:', TARGET_CALENDAR);
+        console.log('Sync completed successfully to Service Account calendar:', TARGET_CALENDAR);
 
         return new Response(JSON.stringify({ 
           success: true, 
           googleEventId,
           syncAction,
-          targetCalendar: TARGET_CALENDAR
+          targetCalendar: TARGET_CALENDAR,
+          message: 'Event successfully synced to Service Account calendar'
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -231,7 +232,7 @@ serve(async (req) => {
           );
 
           if (!deleteResponse.ok && deleteResponse.status !== 404) {
-            throw new Error(`Failed to delete Google Calendar event from ${TARGET_CALENDAR}`);
+            throw new Error(`Failed to delete Google Calendar event from Service Account calendar`);
           }
 
           // Log sync action

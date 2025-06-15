@@ -15,7 +15,9 @@ import {
   Building2,
   Key,
   Users,
-  Lock
+  Lock,
+  Calendar,
+  Copy
 } from "lucide-react";
 
 interface GoogleServiceAccountSetupProps {
@@ -110,7 +112,8 @@ export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps>
           ...companyCalendarSettings,
           auth_type: 'service_account',
           calendar_name: data.calendar.name,
-          calendar_email: data.calendar.email
+          calendar_email: data.calendar.email,
+          service_account_email: data.calendar.email
         });
         onSetupComplete?.(true);
 
@@ -178,6 +181,16 @@ export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps>
     }
   };
 
+  const copyCalendarEmail = async () => {
+    if (companyCalendarSettings?.service_account_email) {
+      await navigator.clipboard.writeText(companyCalendarSettings.service_account_email);
+      toast({
+        title: "Gekopieerd!",
+        description: "Service Account email is gekopieerd naar clipboard",
+      });
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -205,6 +218,7 @@ export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps>
                   <li>Geen token refresh problemen</li>
                   <li>Geschikt voor server-to-server communicatie</li>
                   <li>Eenvoudige setup en onderhoud</li>
+                  <li>Eigen calendar die gedeeld kan worden met team</li>
                 </ul>
               </AlertDescription>
             </Alert>
@@ -267,9 +281,21 @@ export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps>
                 <p className="text-sm text-muted-foreground">
                   Calendar: {companyCalendarSettings?.calendar_name || 'Google Calendar'}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  Service Account: {companyCalendarSettings?.service_account_email || 'Geconfigureerd'}
-                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-sm text-muted-foreground">
+                    Service Account: {companyCalendarSettings?.service_account_email || 'Geconfigureerd'}
+                  </p>
+                  {companyCalendarSettings?.service_account_email && (
+                    <Button
+                      onClick={copyCalendarEmail}
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">
                   Auth Type: {authType === 'service_account' ? 'Service Account' : 'OAuth'}
                 </p>
@@ -283,19 +309,34 @@ export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps>
 
             <div className="bg-green-50 p-4 rounded-md">
               <h5 className="font-medium text-green-800 mb-2 flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                Betrouwbare Team Toegang:
+                <Calendar className="h-4 w-4" />
+                Service Account Calendar Delen:
               </h5>
               <p className="text-sm text-green-700 mb-2">
-                Service Account authenticatie biedt stabiele toegang:
+                Deze Service Account heeft zijn eigen Google Calendar die als centrale calendar fungeert.
               </p>
-              <ul className="text-sm text-green-700 list-disc list-inside space-y-1">
-                <li>Directe API communicatie</li>
-                <li>Geen OAuth token problemen</li>
-                <li>Automatische authenticatie</li>
-                <li>Stabiele lange-termijn toegang</li>
-                <li>Geschikt voor server applicaties</li>
-              </ul>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-green-800">Voor medewerkers:</p>
+                <ol className="text-sm text-green-700 list-decimal list-inside space-y-1">
+                  <li>Open <strong>calendar.google.com</strong></li>
+                  <li>Klik op <strong>"+"</strong> naast "Other calendars"</li>
+                  <li>Selecteer <strong>"Subscribe to calendar"</strong></li>
+                  <li>Voer in: <code className="bg-green-100 px-1 rounded">{companyCalendarSettings?.service_account_email}</code></li>
+                  <li>Klik <strong>"Add calendar"</strong></li>
+                  <li>De Auto City agenda is nu zichtbaar in jouw Google Calendar!</li>
+                </ol>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 p-4 rounded-md">
+              <h5 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Team Instructies:
+              </h5>
+              <p className="text-sm text-blue-700">
+                Stuur deze instructies naar nieuwe teamleden zodat zij ook toegang krijgen tot de centrale agenda.
+                Alle CRM afspraken worden automatisch gesynchroniseerd naar deze calendar.
+              </p>
             </div>
 
             <div className="flex gap-2">

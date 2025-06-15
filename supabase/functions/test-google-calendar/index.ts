@@ -33,7 +33,7 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    console.log('Test: Starting Google Calendar test');
+    console.log('Test: Starting Google Calendar test with Service Account');
 
     // Get Service Account key from Supabase secrets
     const serviceAccountKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
@@ -80,8 +80,8 @@ serve(async (req) => {
     endTime.setHours(15, 0, 0, 0); // 3 PM today
 
     const testEvent = {
-      summary: `🧪 TEST EVENT - ${new Date().toLocaleString('nl-NL')}`,
-      description: `Dit is een test event om te controleren of de Google Calendar sync werkt.\n\nAangemaakt op: ${new Date().toLocaleString('nl-NL')}\nService Account: ${credentials.client_email}`,
+      summary: `🧪 SERVICE ACCOUNT TEST - ${new Date().toLocaleString('nl-NL')}`,
+      description: `Dit is een test event in de Service Account calendar om te controleren of de sync werkt.\n\nAangemaakt op: ${new Date().toLocaleString('nl-NL')}\nService Account: ${credentials.client_email}`,
       start: {
         dateTime: startTime.toISOString(),
         timeZone: 'Europe/Amsterdam',
@@ -90,51 +90,16 @@ serve(async (req) => {
         dateTime: endTime.toISOString(),
         timeZone: 'Europe/Amsterdam',
       },
-      location: 'Test Locatie - Auto City',
+      location: 'Service Account Calendar - Auto City',
       colorId: '2', // Green color to make it stand out
     };
 
     console.log('Test: Creating event with data:', testEvent);
 
-    // TARGET CALENDAR: inkoop@auto-city.nl
-    const targetCalendar = 'inkoop@auto-city.nl';
+    // TARGET CALENDAR: gebruik Service Account email (primary calendar)
+    const targetCalendar = 'primary'; // Service Account's own calendar
     
-    console.log(`Test: Trying to create event in target calendar: ${targetCalendar}`);
-    
-    // First, let's try to get information about the target calendar
-    console.log('Test: Checking target calendar access...');
-    try {
-      const calendarInfoResponse = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendar)}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        }
-      );
-      
-      const calendarInfo = await calendarInfoResponse.json();
-      console.log('Test: Target calendar info:', calendarInfo);
-      
-      if (!calendarInfoResponse.ok) {
-        console.log('Test: Cannot access target calendar, trying ACL check...');
-        
-        // Check calendar ACL (Access Control List)
-        const aclResponse = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendar)}/acl`,
-          {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-            },
-          }
-        );
-        
-        const aclInfo = await aclResponse.json();
-        console.log('Test: Target calendar ACL:', aclInfo);
-      }
-    } catch (aclError) {
-      console.log('Test: Error checking calendar access:', aclError);
-    }
+    console.log(`Test: Creating event in Service Account calendar (primary)`);
     
     let createResponse = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendar)}/events`,
@@ -149,52 +114,25 @@ serve(async (req) => {
     );
 
     let responseData = await createResponse.json();
-    console.log('Test: Target calendar response:', responseData);
-
-    // If target calendar fails, try primary calendar as fallback
-    if (!createResponse.ok) {
-      console.log('Test: Target calendar failed, trying primary calendar...');
-      
-      createResponse = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/primary/events`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(testEvent),
-        }
-      );
-
-      responseData = await createResponse.json();
-      console.log('Test: Primary calendar response:', responseData);
-    }
+    console.log('Test: Service Account calendar response:', responseData);
 
     if (!createResponse.ok) {
-      console.error('Test: Both calendar attempts failed:', responseData);
+      console.error('Test: Service Account calendar failed:', responseData);
       
       return new Response(JSON.stringify({ 
         success: false,
         error: `Failed to create test event: ${responseData.error?.message || 'Unknown error'}`,
-        details: `Target calendar (${targetCalendar}) is niet toegankelijk. Controleer de calendar permissions.`,
+        details: `Service Account calendar is niet toegankelijk. Controleer de configuratie.`,
         debugInfo: {
           serviceAccount: credentials.client_email,
           targetCalendar: targetCalendar,
-          targetCalendarError: responseData,
+          error: responseData,
           availableCalendars: calendarList.items?.map(cal => ({
             id: cal.id,
             summary: cal.summary,
             accessRole: cal.accessRole,
             primary: cal.primary
-          })) || [],
-          troubleshooting: [
-            `1. Ga naar calendar.google.com met inkoop@auto-city.nl account`,
-            `2. Ga naar Settings -> jouw calendar -> "Share with specific people"`,
-            `3. Voeg toe: ${credentials.client_email}`,
-            `4. Geef "Make changes to events" rechten`,
-            `5. Wacht 1-2 minuten en probeer opnieuw`
-          ]
+          })) || []
         }
       }), {
         status: 500,
@@ -204,19 +142,16 @@ serve(async (req) => {
 
     console.log('Test: Successfully created test event with ID:', responseData.id);
 
-    const calendarUsed = responseData.organizer?.email === targetCalendar ? targetCalendar : 
-                        (responseData.organizer?.email || 'primary');
+    const serviceAccountEmail = credentials.client_email;
 
     return new Response(JSON.stringify({ 
       success: true,
-      message: calendarUsed === targetCalendar ? 
-        `Test event succesvol aangemaakt in inkoop@auto-city.nl calendar! 🎉` :
-        `Test event aangemaakt in Service Account calendar (inkoop@auto-city.nl niet toegankelijk)`,
+      message: `Test event succesvol aangemaakt in Service Account calendar! 🎉`,
       eventId: responseData.id,
       eventLink: responseData.htmlLink,
       eventTime: `${startTime.toLocaleString('nl-NL')} - ${endTime.toLocaleString('nl-NL')}`,
-      calendarUsed: calendarUsed,
-      targetCalendar: targetCalendar,
+      calendarUsed: serviceAccountEmail,
+      targetCalendar: serviceAccountEmail,
       credentials: {
         clientEmail: credentials.client_email,
         projectId: credentials.project_id
@@ -227,7 +162,18 @@ serve(async (req) => {
         accessRole: cal.accessRole,
         primary: cal.primary
       })) || [],
-      calendarAccessible: calendarUsed === targetCalendar
+      calendarAccessible: true,
+      sharingInstructions: {
+        calendarId: serviceAccountEmail,
+        steps: [
+          "1. Open calendar.google.com",
+          "2. Klik op '+' naast 'Other calendars'",
+          "3. Selecteer 'Subscribe to calendar'",
+          `4. Voer in: ${serviceAccountEmail}`,
+          "5. Klik 'Add calendar'",
+          "6. De Service Account calendar is nu zichtbaar in jouw Google Calendar"
+        ]
+      }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
