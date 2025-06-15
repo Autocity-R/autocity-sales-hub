@@ -97,9 +97,13 @@ serve(async (req) => {
 
     console.log('Test: Creating event with data:', testEvent);
 
-    // Try to create event in primary calendar first
+    // TARGET CALENDAR: inkoop@auto-city.nl
+    const targetCalendar = 'inkoop@auto-city.nl';
+    
+    console.log(`Test: Trying to create event in target calendar: ${targetCalendar}`);
+    
     let createResponse = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events`,
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendar)}/events`,
       {
         method: 'POST',
         headers: {
@@ -111,14 +115,14 @@ serve(async (req) => {
     );
 
     let responseData = await createResponse.json();
-    console.log('Test: Primary calendar response:', responseData);
+    console.log('Test: Target calendar response:', responseData);
 
-    // If primary calendar fails, try the service account email as calendar ID
+    // If target calendar fails, try primary calendar as fallback
     if (!createResponse.ok) {
-      console.log('Test: Primary calendar failed, trying service account calendar...');
+      console.log('Test: Target calendar failed, trying primary calendar...');
       
       createResponse = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.client_email)}/events`,
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events`,
         {
           method: 'POST',
           headers: {
@@ -130,7 +134,7 @@ serve(async (req) => {
       );
 
       responseData = await createResponse.json();
-      console.log('Test: Service account calendar response:', responseData);
+      console.log('Test: Primary calendar response:', responseData);
     }
 
     if (!createResponse.ok) {
@@ -139,7 +143,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ 
         success: false,
         error: `Failed to create test event: ${responseData.error?.message || 'Unknown error'}`,
-        details: 'Probeerde zowel primary calendar als service account calendar',
+        details: `Probeerde eerst ${targetCalendar}, daarna primary calendar`,
         availableCalendars: calendarList.items?.map(cal => ({
           id: cal.id,
           summary: cal.summary,
@@ -147,6 +151,7 @@ serve(async (req) => {
         })) || [],
         debugInfo: {
           serviceAccount: credentials.client_email,
+          targetCalendar: targetCalendar,
           primaryCalendarError: responseData
         }
       }), {
@@ -157,13 +162,17 @@ serve(async (req) => {
 
     console.log('Test: Successfully created test event with ID:', responseData.id);
 
+    const calendarUsed = responseData.organizer?.email === targetCalendar ? targetCalendar : 
+                        (responseData.organizer?.email || 'primary');
+
     return new Response(JSON.stringify({ 
       success: true,
-      message: 'Test event succesvol aangemaakt in Google Calendar!',
+      message: `Test event succesvol aangemaakt in ${calendarUsed === targetCalendar ? 'inkoop@auto-city.nl calendar' : 'Service Account calendar'}!`,
       eventId: responseData.id,
       eventLink: responseData.htmlLink,
       eventTime: `${startTime.toLocaleString('nl-NL')} - ${endTime.toLocaleString('nl-NL')}`,
-      calendarUsed: responseData.organizer?.email || 'primary',
+      calendarUsed: calendarUsed,
+      targetCalendar: targetCalendar,
       credentials: {
         clientEmail: credentials.client_email,
         projectId: credentials.project_id
