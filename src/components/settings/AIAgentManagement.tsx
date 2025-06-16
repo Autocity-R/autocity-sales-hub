@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,50 +7,63 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Plus, Settings, Trash2, Key, Eye, EyeOff } from "lucide-react";
+import { Bot, Plus, Trash2, Eye, EyeOff, Zap, CheckCircle, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAIAgents } from "@/hooks/useAIAgents";
+import { Link } from "react-router-dom";
 
-interface AIAgent {
-  id: string;
+interface NewAgent {
   name: string;
   description: string;
-  provider: "openai" | "anthropic" | "google" | "custom";
+  provider: string;
   model: string;
   apiKey: string;
   systemPrompt: string;
-  isActive: boolean;
   permissions: string[];
-  createdAt: Date;
 }
 
 export const AIAgentManagement = () => {
   const { toast } = useToast();
-  const [agents, setAgents] = useState<AIAgent[]>([
-    {
-      id: "1",
-      name: "Verkoop Assistent",
-      description: "AI agent gespecialiseerd in verkoop en lead management",
-      provider: "openai",
-      model: "gpt-4",
-      apiKey: "sk-1234567890abcdef",
-      systemPrompt: "Je bent een verkoop assistent voor een autohandel CRM systeem...",
-      isActive: true,
-      permissions: ["leads", "customers", "inventory"],
-      createdAt: new Date("2024-01-15")
-    }
-  ]);
+  const {
+    agents,
+    isLoading,
+    refetch,
+    createAgent,
+    updateAgent,
+    deleteAgent,
+    isCreating,
+    isUpdating,
+    isDeleting,
+  } = useAIAgents();
 
-  const [newAgent, setNewAgent] = useState({
+  const [newAgent, setNewAgent] = useState<NewAgent>({
     name: "",
     description: "",
     provider: "",
     model: "",
     apiKey: "",
     systemPrompt: "",
-    permissions: [] as string[]
+    permissions: []
   });
 
   const [showApiKeys, setShowApiKeys] = useState<{[key: string]: boolean}>({});
+
+  // Force refresh on component mount and tab visibility
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('🔄 Tab became visible, refreshing AI agents...');
+        refetch();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    refetch(); // Initial refresh
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refetch]);
 
   const availablePermissions = [
     { id: "inventory", label: "Voorraad Beheer" },
@@ -90,20 +103,18 @@ export const AIAgentManagement = () => {
       return;
     }
 
-    const agent: AIAgent = {
-      id: Date.now().toString(),
+    createAgent({
       name: newAgent.name,
       description: newAgent.description,
-      provider: newAgent.provider as AIAgent["provider"],
+      provider: newAgent.provider as any,
       model: newAgent.model,
       apiKey: newAgent.apiKey,
       systemPrompt: newAgent.systemPrompt,
       isActive: true,
       permissions: newAgent.permissions,
       createdAt: new Date()
-    };
+    });
 
-    setAgents(prev => [...prev, agent]);
     setNewAgent({
       name: "",
       description: "",
@@ -113,27 +124,17 @@ export const AIAgentManagement = () => {
       systemPrompt: "",
       permissions: []
     });
+  };
 
-    toast({
-      title: "AI Agent Aangemaakt",
-      description: `${agent.name} is succesvol aangemaakt en geactiveerd.`,
+  const toggleAgentStatus = (agentId: string, currentStatus: boolean) => {
+    updateAgent({
+      id: agentId,
+      updates: { isActive: !currentStatus }
     });
   };
 
-  const toggleAgentStatus = (agentId: string) => {
-    setAgents(prev => prev.map(agent => 
-      agent.id === agentId 
-        ? { ...agent, isActive: !agent.isActive }
-        : agent
-    ));
-  };
-
-  const deleteAgent = (agentId: string) => {
-    setAgents(prev => prev.filter(agent => agent.id !== agentId));
-    toast({
-      title: "AI Agent Verwijderd",
-      description: "De AI agent is verwijderd uit het systeem.",
-    });
+  const handleDeleteAgent = (agentId: string) => {
+    deleteAgent(agentId);
   };
 
   const togglePermission = (permission: string) => {
@@ -145,74 +146,138 @@ export const AIAgentManagement = () => {
     }));
   };
 
+  const handleRefresh = () => {
+    refetch();
+    toast({
+      title: "🔄 Data Bijgewerkt",
+      description: "AI agents zijn opnieuw geladen van de database.",
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>AI agents laden...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {/* Header with refresh and navigation */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-bold tracking-tight">AI Agents Beheer</h2>
+          <p className="text-muted-foreground">
+            Beheer alle AI agents en hun webhook configuraties
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Vernieuwen
+          </Button>
+          <Link to="/ai-agents?tab=webhooks">
+            <Button variant="outline" size="sm">
+              <Zap className="h-4 w-4 mr-2" />
+              Webhook Configuratie
+            </Button>
+          </Link>
+        </div>
+      </div>
+
       {/* Existing Agents */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bot className="h-5 w-5" />
-            AI Agents Beheer
+            Bestaande AI Agents ({agents.length})
           </CardTitle>
           <CardDescription>
-            Beheer alle AI agents die toegang hebben tot het CRM systeem
+            Overzicht van alle AI agents met hun webhook status
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {agents.map((agent) => (
-            <div key={agent.id} className="border rounded-lg p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="font-semibold">{agent.name}</h3>
-                    <Badge variant={agent.isActive ? "default" : "secondary"}>
-                      {agent.isActive ? "Actief" : "Inactief"}
-                    </Badge>
-                    <Badge variant="outline">{agent.provider}</Badge>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-2">{agent.description}</p>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <span>Model: {agent.model}</span>
-                    <span>Aangemaakt: {agent.createdAt.toLocaleDateString()}</span>
-                  </div>
-                  <div className="mt-2">
-                    <span className="text-sm font-medium">API Sleutel: </span> 
-                    <span className="text-sm font-mono">
-                      {showApiKeys[agent.id] ? agent.apiKey : maskApiKey(agent.apiKey)}
-                    </span>
-                  </div>
-                  <div className="mt-2">
-                    <span className="text-sm font-medium">Toegang: </span> 
-                    {agent.permissions.map(permission => (
-                      <Badge key={permission} variant="outline" className="mr-1">
-                        {availablePermissions.find(p => p.id === permission)?.label}
+          {agents.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Nog geen AI agents aangemaakt</p>
+            </div>
+          ) : (
+            agents.map((agent) => (
+              <div key={agent.id} className="border rounded-lg p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-semibold">{agent.name}</h3>
+                      <Badge variant={agent.isActive ? "default" : "secondary"}>
+                        {agent.isActive ? "Actief" : "Inactief"}
                       </Badge>
-                    ))}
+                      <Badge variant="outline">{agent.provider}</Badge>
+                      {agent.is_webhook_enabled && agent.webhook_url && (
+                        <Badge variant="default" className="bg-green-600">
+                          <Zap className="h-3 w-3 mr-1" />
+                          Webhook Actief
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 mb-2">{agent.description}</p>
+                    <div className="flex items-center gap-4 text-sm text-gray-500 mb-2">
+                      <span>Model: {agent.model}</span>
+                      <span>Aangemaakt: {agent.createdAt.toLocaleDateString()}</span>
+                    </div>
+                    
+                    {/* Webhook Status */}
+                    {agent.webhook_url && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Zap className="h-4 w-4" />
+                          <span className="text-sm font-medium">Webhook Status:</span>
+                          <Badge variant={agent.is_webhook_enabled ? "default" : "secondary"}>
+                            {agent.is_webhook_enabled ? "Ingeschakeld" : "Uitgeschakeld"}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-600 font-mono">
+                          {agent.webhook_url}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="mt-2">
+                      <span className="text-sm font-medium">Toegang: </span> 
+                      {agent.permissions.map(permission => (
+                        <Badge key={permission} variant="outline" className="mr-1">
+                          {availablePermissions.find(p => p.id === permission)?.label}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toggleApiKeyVisibility(agent.id)}
-                  >
-                    {showApiKeys[agent.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                  <Switch
-                    checked={agent.isActive}
-                    onCheckedChange={() => toggleAgentStatus(agent.id)}
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => deleteAgent(agent.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={agent.isActive}
+                      onCheckedChange={() => toggleAgentStatus(agent.id, agent.isActive)}
+                      disabled={isUpdating}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteAgent(agent.id)}
+                      disabled={isDeleting}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
 
@@ -224,22 +289,22 @@ export const AIAgentManagement = () => {
             Nieuwe AI Agent Aanmaken
           </CardTitle>
           <CardDescription>
-            Configureer een nieuwe AI agent met volledige toegang tot het CRM systeem
+            Configureer een nieuwe AI agent met database integratie
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="agentName">Agent Naam</Label>
+              <Label htmlFor="agentName">Agent Naam *</Label>
               <Input
                 id="agentName"
-                placeholder="bijv. Verkoop Assistent"
+                placeholder="bijv. Calendar Assistant"
                 value={newAgent.name}
                 onChange={(e) => setNewAgent(prev => ({ ...prev, name: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="provider">AI Provider</Label>
+              <Label htmlFor="provider">AI Provider *</Label>
               <Select 
                 value={newAgent.provider} 
                 onValueChange={(value) => setNewAgent(prev => ({ ...prev, provider: value, model: "" }))}
@@ -279,7 +344,7 @@ export const AIAgentManagement = () => {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="apiKey">API Sleutel</Label>
+              <Label htmlFor="apiKey">API Sleutel *</Label>
               <Input
                 id="apiKey"
                 type="password"
@@ -328,9 +393,13 @@ export const AIAgentManagement = () => {
             </div>
           </div>
 
-          <Button onClick={handleCreateAgent} className="w-full">
+          <Button 
+            onClick={handleCreateAgent} 
+            className="w-full"
+            disabled={isCreating || !newAgent.name || !newAgent.provider || !newAgent.apiKey}
+          >
             <Plus className="h-4 w-4 mr-2" />
-            AI Agent Aanmaken
+            {isCreating ? "Aanmaken..." : "AI Agent Aanmaken"}
           </Button>
         </CardContent>
       </Card>

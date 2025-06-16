@@ -188,7 +188,7 @@ export const checkWebhookStatus = async (agentId: string): Promise<boolean> => {
   }
 };
 
-// Fixed function to properly save webhook configuration
+// Enhanced function with comprehensive debugging and verification
 export const saveWebhookConfiguration = async (data: {
   agentId: string;
   webhookUrl: string;
@@ -201,7 +201,26 @@ export const saveWebhookConfiguration = async (data: {
   headers: any;
 }) => {
   try {
-    console.log('💾 Starting webhook save process:', data);
+    console.log('💾 Starting enhanced webhook save process:', data);
+
+    // Pre-save verification: Check current state
+    const { data: currentAgent, error: checkError } = await supabase
+      .from('ai_agents')
+      .select('id, name, webhook_url, is_webhook_enabled, webhook_config')
+      .eq('id', data.agentId)
+      .single();
+
+    if (checkError) {
+      console.error('❌ Error checking current agent state:', checkError);
+      throw checkError;
+    }
+
+    console.log('🔍 Current agent state before save:', {
+      id: currentAgent.id,
+      name: currentAgent.name,
+      webhook_url: currentAgent.webhook_url,
+      is_webhook_enabled: currentAgent.is_webhook_enabled
+    });
 
     // Ensure we store the webhook URL even when disabled, but set enabled flag correctly
     const webhookUrlToStore = data.webhookUrl.trim() || null;
@@ -216,7 +235,7 @@ export const saveWebhookConfiguration = async (data: {
     });
 
     // Step 1: Update the ai_agents table FIRST with proper values
-    const { error: agentError } = await supabase
+    const { data: updateResult, error: agentError } = await supabase
       .from('ai_agents')
       .update({
         webhook_url: webhookUrlToStore,
@@ -224,17 +243,15 @@ export const saveWebhookConfiguration = async (data: {
         webhook_config: data.config,
         updated_at: new Date().toISOString()
       })
-      .eq('id', data.agentId);
+      .eq('id', data.agentId)
+      .select('id, name, webhook_url, is_webhook_enabled, webhook_config');
 
     if (agentError) {
       console.error('❌ Failed to update ai_agents table:', agentError);
       throw agentError;
     }
 
-    console.log('✅ ai_agents table updated successfully with:', {
-      webhook_url: webhookUrlToStore,
-      is_webhook_enabled: enabledFlag
-    });
+    console.log('✅ ai_agents table updated successfully:', updateResult);
 
     // Step 2: Handle ai_agent_webhooks table
     if (webhookUrlToStore) {
@@ -254,7 +271,7 @@ export const saveWebhookConfiguration = async (data: {
       
       if (existingWebhook) {
         // Update existing webhook
-        const { error } = await supabase
+        const { data: webhookUpdateResult, error } = await supabase
           .from('ai_agent_webhooks')
           .update({
             webhook_name: data.webhookName,
@@ -266,13 +283,16 @@ export const saveWebhookConfiguration = async (data: {
             headers: data.headers,
             updated_at: new Date().toISOString()
           })
-          .eq('agent_id', data.agentId);
+          .eq('agent_id', data.agentId)
+          .select();
         
         webhookError = error;
-        if (!error) console.log('✅ Webhook record updated successfully');
+        if (!error) {
+          console.log('✅ Webhook record updated successfully:', webhookUpdateResult);
+        }
       } else {
         // Create new webhook
-        const { error } = await supabase
+        const { data: webhookCreateResult, error } = await supabase
           .from('ai_agent_webhooks')
           .insert({
             agent_id: data.agentId,
@@ -283,10 +303,13 @@ export const saveWebhookConfiguration = async (data: {
             retry_count: data.retryCount,
             timeout_seconds: data.timeoutSeconds,
             headers: data.headers,
-          });
+          })
+          .select();
         
         webhookError = error;
-        if (!error) console.log('✅ New webhook record created successfully');
+        if (!error) {
+          console.log('✅ New webhook record created successfully:', webhookCreateResult);
+        }
       }
 
       if (webhookError) {
@@ -307,27 +330,63 @@ export const saveWebhookConfiguration = async (data: {
       }
     }
 
-    // Step 3: Verify the changes were applied with a fresh query
-    console.log('🔍 Verifying changes...');
+    // Step 3: Comprehensive verification with multiple checks
+    console.log('🔍 Performing comprehensive verification...');
+    
+    // Wait a moment for database consistency
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     const { data: verifyData, error: verifyError } = await supabase
       .from('ai_agents')
-      .select('id, name, webhook_url, is_webhook_enabled, webhook_config')
+      .select('id, name, webhook_url, is_webhook_enabled, webhook_config, updated_at')
       .eq('id', data.agentId)
       .single();
 
     if (verifyError) {
       console.error('❌ Failed to verify changes:', verifyError);
-    } else {
-      console.log('✅ Final verification - Agent webhook status:', {
-        id: verifyData.id,
-        name: verifyData.name,
-        webhook_url: verifyData.webhook_url,
-        is_webhook_enabled: verifyData.is_webhook_enabled,
-        has_config: !!verifyData.webhook_config
-      });
+      throw verifyError;
     }
 
-    return { success: true };
+    console.log('✅ Final verification - Agent webhook status:', {
+      id: verifyData.id,
+      name: verifyData.name,
+      webhook_url: verifyData.webhook_url,
+      is_webhook_enabled: verifyData.is_webhook_enabled,
+      has_config: !!verifyData.webhook_config,
+      updated_at: verifyData.updated_at,
+      verification_match: {
+        url_matches: verifyData.webhook_url === webhookUrlToStore,
+        enabled_matches: verifyData.is_webhook_enabled === enabledFlag
+      }
+    });
+
+    // Additional check: Verify the data persists after a small delay
+    setTimeout(async () => {
+      try {
+        const { data: delayedVerify } = await supabase
+          .from('ai_agents')
+          .select('webhook_url, is_webhook_enabled')
+          .eq('id', data.agentId)
+          .single();
+        
+        console.log('🔍 Delayed verification (500ms later):', {
+          webhook_url: delayedVerify?.webhook_url,
+          is_webhook_enabled: delayedVerify?.is_webhook_enabled,
+          still_matches: delayedVerify?.is_webhook_enabled === enabledFlag
+        });
+      } catch (err) {
+        console.error('❌ Delayed verification failed:', err);
+      }
+    }, 500);
+
+    return { 
+      success: true, 
+      agentData: verifyData,
+      changes: {
+        webhook_url: webhookUrlToStore,
+        is_webhook_enabled: enabledFlag
+      }
+    };
   } catch (error) {
     console.error('❌ Error in saveWebhookConfiguration:', error);
     throw error;

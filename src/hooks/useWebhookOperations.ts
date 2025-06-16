@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -64,6 +64,47 @@ export const useWebhookOperations = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Set up real-time subscription for ai_agents table
+  useEffect(() => {
+    console.log('🔄 Setting up real-time subscription for ai_agents...');
+    
+    const channel = supabase
+      .channel('ai_agents_webhook_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ai_agents'
+        },
+        (payload) => {
+          console.log('🔄 Real-time update received for ai_agents:', payload);
+          // Invalidate and refetch agents data
+          queryClient.invalidateQueries({ queryKey: ['ai-agents'] });
+          queryClient.invalidateQueries({ queryKey: ['ai-agents-management'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ai_agent_webhooks'
+        },
+        (payload) => {
+          console.log('🔄 Real-time update received for ai_agent_webhooks:', payload);
+          // Invalidate and refetch webhook data
+          queryClient.invalidateQueries({ queryKey: ['agent-webhooks'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🔄 Cleaning up real-time subscription...');
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   const { data: agents = [], refetch: refetchAgents, isLoading: agentsLoading } = useQuery({
     queryKey: ['ai-agents'],
     queryFn: fetchAgents,
@@ -95,20 +136,34 @@ export const useWebhookOperations = () => {
         description: "Webhook is succesvol geconfigureerd en actief voor alle gebruikers.",
       });
       
-      // Force immediate cache invalidation
-      await queryClient.invalidateQueries({ queryKey: ['ai-agents'] });
-      await queryClient.invalidateQueries({ queryKey: ['agent-webhooks'] });
+      // Aggressive cache invalidation for immediate UI updates
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['ai-agents'] }),
+        queryClient.invalidateQueries({ queryKey: ['ai-agents-management'] }),
+        queryClient.invalidateQueries({ queryKey: ['agent-webhooks'] }),
+      ]);
       
-      // Force multiple refetches with proper timing
+      // Force multiple refetches with staggered timing for maximum reliability
       console.log('🔄 Forcing immediate agent refetch after webhook save...');
       setTimeout(async () => {
         await refetchAgents();
         
         // Additional verification refetch
         setTimeout(async () => {
-          console.log('🔄 Verification refetch to ensure data consistency...');
+          console.log('🔄 Final verification refetch to ensure data consistency...');
           await refetchAgents();
-        }, 2000);
+          
+          // Verify the specific agent was updated
+          const updatedAgents = await fetchAgents();
+          const updatedAgent = updatedAgents.find(a => a.id === variables.agentId);
+          console.log('🔍 Verification - Updated agent webhook status:', {
+            agentId: variables.agentId,
+            webhook_url: updatedAgent?.webhook_url,
+            is_webhook_enabled: updatedAgent?.is_webhook_enabled,
+            expected_enabled: variables.enabled,
+            match: updatedAgent?.is_webhook_enabled === variables.enabled
+          });
+        }, 1000);
       }, 500);
     },
     onError: (error: any) => {
@@ -172,11 +227,28 @@ export const useWebhookOperations = () => {
     });
   };
 
-  // Function to manually refresh agents data
+  // Enhanced function to manually refresh agents data with debugging
   const forceRefreshAgents = async () => {
     console.log('🔄 Force refreshing agents data...');
-    await queryClient.invalidateQueries({ queryKey: ['ai-agents'] });
+    
+    // Clear all related cache entries
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['ai-agents'] }),
+      queryClient.invalidateQueries({ queryKey: ['ai-agents-management'] }),
+      queryClient.invalidateQueries({ queryKey: ['agent-webhooks'] }),
+    ]);
+    
+    // Force fresh fetch
     await refetchAgents();
+    
+    // Log current state for debugging
+    const currentAgents = await fetchAgents();
+    console.log('🔍 Current agents after refresh:', currentAgents.map(a => ({
+      id: a.id,
+      name: a.name,
+      webhook_url: a.webhook_url,
+      is_webhook_enabled: a.is_webhook_enabled
+    })));
   };
 
   return {
