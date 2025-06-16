@@ -188,7 +188,7 @@ export const checkWebhookStatus = async (agentId: string): Promise<boolean> => {
   }
 };
 
-// New function to save webhook with proper conflict handling
+// Updated function to properly save webhook configuration to both tables
 export const saveWebhookConfiguration = async (data: {
   agentId: string;
   webhookUrl: string;
@@ -201,7 +201,9 @@ export const saveWebhookConfiguration = async (data: {
   headers: any;
 }) => {
   try {
-    // First update the agent
+    console.log('💾 Starting webhook save process:', data);
+
+    // Step 1: Update the ai_agents table FIRST
     const { error: agentError } = await supabase
       .from('ai_agents')
       .update({
@@ -212,57 +214,107 @@ export const saveWebhookConfiguration = async (data: {
       })
       .eq('id', data.agentId);
 
-    if (agentError) throw agentError;
-
-    // Check if webhook already exists
-    const { data: existingWebhook } = await supabase
-      .from('ai_agent_webhooks')
-      .select('id')
-      .eq('agent_id', data.agentId)
-      .maybeSingle();
-
-    let webhookError;
-    
-    if (existingWebhook) {
-      // Update existing webhook
-      const { error } = await supabase
-        .from('ai_agent_webhooks')
-        .update({
-          webhook_name: data.webhookName,
-          webhook_url: data.webhookUrl,
-          workflow_type: data.workflowType,
-          is_active: data.enabled,
-          retry_count: data.retryCount,
-          timeout_seconds: data.timeoutSeconds,
-          headers: data.headers,
-          updated_at: new Date().toISOString()
-        })
-        .eq('agent_id', data.agentId);
-      
-      webhookError = error;
-    } else {
-      // Create new webhook
-      const { error } = await supabase
-        .from('ai_agent_webhooks')
-        .insert({
-          agent_id: data.agentId,
-          webhook_name: data.webhookName,
-          webhook_url: data.webhookUrl,
-          workflow_type: data.workflowType,
-          is_active: data.enabled,
-          retry_count: data.retryCount,
-          timeout_seconds: data.timeoutSeconds,
-          headers: data.headers,
-        });
-      
-      webhookError = error;
+    if (agentError) {
+      console.error('❌ Failed to update ai_agents table:', agentError);
+      throw agentError;
     }
 
-    if (webhookError) throw webhookError;
+    console.log('✅ ai_agents table updated successfully');
+
+    // Step 2: Handle ai_agent_webhooks table
+    if (data.enabled && data.webhookUrl) {
+      // Check if webhook record exists
+      const { data: existingWebhook, error: checkError } = await supabase
+        .from('ai_agent_webhooks')
+        .select('id')
+        .eq('agent_id', data.agentId)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('❌ Error checking existing webhook:', checkError);
+        throw checkError;
+      }
+
+      let webhookError;
+      
+      if (existingWebhook) {
+        // Update existing webhook
+        const { error } = await supabase
+          .from('ai_agent_webhooks')
+          .update({
+            webhook_name: data.webhookName,
+            webhook_url: data.webhookUrl,
+            workflow_type: data.workflowType,
+            is_active: data.enabled,
+            retry_count: data.retryCount,
+            timeout_seconds: data.timeoutSeconds,
+            headers: data.headers,
+            updated_at: new Date().toISOString()
+          })
+          .eq('agent_id', data.agentId);
+        
+        webhookError = error;
+        if (!error) console.log('✅ Webhook record updated successfully');
+      } else {
+        // Create new webhook
+        const { error } = await supabase
+          .from('ai_agent_webhooks')
+          .insert({
+            agent_id: data.agentId,
+            webhook_name: data.webhookName,
+            webhook_url: data.webhookUrl,
+            workflow_type: data.workflowType,
+            is_active: data.enabled,
+            retry_count: data.retryCount,
+            timeout_seconds: data.timeoutSeconds,
+            headers: data.headers,
+          });
+        
+        webhookError = error;
+        if (!error) console.log('✅ New webhook record created successfully');
+      }
+
+      if (webhookError) {
+        console.error('❌ Failed to update ai_agent_webhooks table:', webhookError);
+        throw webhookError;
+      }
+    } else {
+      // If webhook is disabled, deactivate all webhook records for this agent
+      const { error: deactivateError } = await supabase
+        .from('ai_agent_webhooks')
+        .update({ is_active: false })
+        .eq('agent_id', data.agentId);
+
+      if (deactivateError) {
+        console.error('❌ Failed to deactivate webhook records:', deactivateError);
+        // Don't throw here, just log the error as the main update succeeded
+      } else {
+        console.log('✅ Webhook records deactivated');
+      }
+    }
+
+    // Step 3: Verify the changes were applied
+    const { data: verifyData, error: verifyError } = await supabase
+      .from('ai_agents')
+      .select('id, name, webhook_url, is_webhook_enabled, webhook_config')
+      .eq('id', data.agentId)
+      .single();
+
+    if (verifyError) {
+      console.error('❌ Failed to verify changes:', verifyError);
+    } else {
+      console.log('✅ Final verification - Agent webhook status:', {
+        id: verifyData.id,
+        name: verifyData.name,
+        webhook_url: verifyData.webhook_url,
+        is_webhook_enabled: verifyData.is_webhook_enabled,
+        has_config: !!verifyData.webhook_config
+      });
+    }
 
     return { success: true };
   } catch (error) {
-    console.error('Error saving webhook configuration:', error);
+    console.error('❌ Error in saveWebhookConfiguration:', error);
     throw error;
   }
 };

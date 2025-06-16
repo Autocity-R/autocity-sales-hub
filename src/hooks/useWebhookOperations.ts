@@ -26,12 +26,25 @@ interface Webhook {
 }
 
 const fetchAgents = async (): Promise<Agent[]> => {
+  console.log('🔄 Fetching agents with webhook status...');
   const { data, error } = await supabase
     .from('ai_agents')
     .select('id, name, webhook_url, is_webhook_enabled, webhook_config')
-    .eq('is_active', true);
+    .eq('is_active', true)
+    .order('name');
 
-  if (error) throw error;
+  if (error) {
+    console.error('❌ Error fetching agents:', error);
+    throw error;
+  }
+  
+  console.log('✅ Fetched agents:', data?.map(a => ({
+    id: a.id,
+    name: a.name,
+    has_webhook: !!a.webhook_url,
+    enabled: a.is_webhook_enabled
+  })));
+  
   return data || [];
 };
 
@@ -51,10 +64,11 @@ export const useWebhookOperations = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: agents = [], refetch: refetchAgents } = useQuery({
+  const { data: agents = [], refetch: refetchAgents, isLoading: agentsLoading } = useQuery({
     queryKey: ['ai-agents'],
     queryFn: fetchAgents,
-    refetchInterval: 5000,
+    refetchInterval: 3000, // Refresh every 3 seconds to see updates faster
+    refetchIntervalInBackground: true,
   });
 
   const saveWebhookMutation = useMutation({
@@ -69,22 +83,26 @@ export const useWebhookOperations = () => {
       timeoutSeconds: number;
       headers: any;
     }) => {
-      console.log('💾 Saving webhook configuration:', data);
+      console.log('💾 Saving webhook configuration via mutation:', data);
       return await saveWebhookConfiguration(data);
     },
-    onSuccess: () => {
+    onSuccess: (result, variables) => {
+      console.log('✅ Webhook save mutation successful:', result);
+      
       toast({
         title: "✅ Webhook Configuratie Opgeslagen",
-        description: "Webhook is succesvol geconfigureerd en blijft actief voor alle gebruikers.",
+        description: "Webhook is succesvol geconfigureerd en actief voor alle gebruikers.",
       });
       
+      // Invalidate and refetch all relevant queries
       queryClient.invalidateQueries({ queryKey: ['ai-agents'] });
       queryClient.invalidateQueries({ queryKey: ['agent-webhooks'] });
-      queryClient.invalidateQueries({ queryKey: ['agents-with-data'] });
       
+      // Force an immediate refetch of agents to show the updated status
       setTimeout(() => {
+        console.log('🔄 Forcing agent refetch after webhook save...');
         refetchAgents();
-      }, 1000);
+      }, 500);
     },
     onError: (error: any) => {
       console.error('❌ Save webhook error:', error);
@@ -150,6 +168,7 @@ export const useWebhookOperations = () => {
   return {
     agents,
     refetchAgents,
+    agentsLoading,
     saveWebhookMutation,
     testWebhookMutation,
     getWebhooks,
