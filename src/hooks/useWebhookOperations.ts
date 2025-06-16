@@ -41,8 +41,8 @@ const fetchAgents = async (): Promise<Agent[]> => {
   console.log('✅ Fetched agents:', data?.map(a => ({
     id: a.id,
     name: a.name,
-    has_webhook: !!a.webhook_url,
-    enabled: a.is_webhook_enabled
+    webhook_url: a.webhook_url,
+    is_webhook_enabled: a.is_webhook_enabled
   })));
   
   return data || [];
@@ -67,7 +67,7 @@ export const useWebhookOperations = () => {
   const { data: agents = [], refetch: refetchAgents, isLoading: agentsLoading } = useQuery({
     queryKey: ['ai-agents'],
     queryFn: fetchAgents,
-    staleTime: 0, // Always consider data stale to force refetch
+    staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   });
@@ -95,21 +95,21 @@ export const useWebhookOperations = () => {
         description: "Webhook is succesvol geconfigureerd en actief voor alle gebruikers.",
       });
       
-      // Force immediate invalidation and refetch of all related queries
+      // Force immediate cache invalidation
       await queryClient.invalidateQueries({ queryKey: ['ai-agents'] });
       await queryClient.invalidateQueries({ queryKey: ['agent-webhooks'] });
       
-      // Force a direct refetch with a small delay to ensure DB changes are committed
+      // Force multiple refetches with proper timing
+      console.log('🔄 Forcing immediate agent refetch after webhook save...');
       setTimeout(async () => {
-        console.log('🔄 Forcing immediate agent refetch after webhook save...');
         await refetchAgents();
         
-        // Double-check by refetching again after a moment
+        // Additional verification refetch
         setTimeout(async () => {
-          console.log('🔄 Secondary refetch to ensure data consistency...');
+          console.log('🔄 Verification refetch to ensure data consistency...');
           await refetchAgents();
-        }, 1000);
-      }, 200);
+        }, 2000);
+      }, 500);
     },
     onError: (error: any) => {
       console.error('❌ Save webhook error:', error);

@@ -188,7 +188,7 @@ export const checkWebhookStatus = async (agentId: string): Promise<boolean> => {
   }
 };
 
-// Updated function to properly save webhook configuration to both tables
+// Fixed function to properly save webhook configuration
 export const saveWebhookConfiguration = async (data: {
   agentId: string;
   webhookUrl: string;
@@ -203,12 +203,24 @@ export const saveWebhookConfiguration = async (data: {
   try {
     console.log('💾 Starting webhook save process:', data);
 
-    // Step 1: Update the ai_agents table FIRST
+    // Ensure we store the webhook URL even when disabled, but set enabled flag correctly
+    const webhookUrlToStore = data.webhookUrl.trim() || null;
+    const enabledFlag = data.enabled && !!webhookUrlToStore;
+
+    console.log('🔧 Processing webhook data:', {
+      agentId: data.agentId,
+      webhookUrl: webhookUrlToStore,
+      enabled: enabledFlag,
+      originalEnabled: data.enabled,
+      hasUrl: !!webhookUrlToStore
+    });
+
+    // Step 1: Update the ai_agents table FIRST with proper values
     const { error: agentError } = await supabase
       .from('ai_agents')
       .update({
-        webhook_url: data.webhookUrl,
-        is_webhook_enabled: data.enabled,
+        webhook_url: webhookUrlToStore,
+        is_webhook_enabled: enabledFlag,
         webhook_config: data.config,
         updated_at: new Date().toISOString()
       })
@@ -219,10 +231,13 @@ export const saveWebhookConfiguration = async (data: {
       throw agentError;
     }
 
-    console.log('✅ ai_agents table updated successfully');
+    console.log('✅ ai_agents table updated successfully with:', {
+      webhook_url: webhookUrlToStore,
+      is_webhook_enabled: enabledFlag
+    });
 
     // Step 2: Handle ai_agent_webhooks table
-    if (data.enabled && data.webhookUrl) {
+    if (webhookUrlToStore) {
       // Check if webhook record exists
       const { data: existingWebhook, error: checkError } = await supabase
         .from('ai_agent_webhooks')
@@ -243,9 +258,9 @@ export const saveWebhookConfiguration = async (data: {
           .from('ai_agent_webhooks')
           .update({
             webhook_name: data.webhookName,
-            webhook_url: data.webhookUrl,
+            webhook_url: webhookUrlToStore,
             workflow_type: data.workflowType,
-            is_active: data.enabled,
+            is_active: enabledFlag,
             retry_count: data.retryCount,
             timeout_seconds: data.timeoutSeconds,
             headers: data.headers,
@@ -262,9 +277,9 @@ export const saveWebhookConfiguration = async (data: {
           .insert({
             agent_id: data.agentId,
             webhook_name: data.webhookName,
-            webhook_url: data.webhookUrl,
+            webhook_url: webhookUrlToStore,
             workflow_type: data.workflowType,
-            is_active: data.enabled,
+            is_active: enabledFlag,
             retry_count: data.retryCount,
             timeout_seconds: data.timeoutSeconds,
             headers: data.headers,
@@ -279,7 +294,7 @@ export const saveWebhookConfiguration = async (data: {
         throw webhookError;
       }
     } else {
-      // If webhook is disabled, deactivate all webhook records for this agent
+      // If no webhook URL, deactivate all webhook records for this agent
       const { error: deactivateError } = await supabase
         .from('ai_agent_webhooks')
         .update({ is_active: false })
@@ -287,13 +302,13 @@ export const saveWebhookConfiguration = async (data: {
 
       if (deactivateError) {
         console.error('❌ Failed to deactivate webhook records:', deactivateError);
-        // Don't throw here, just log the error as the main update succeeded
       } else {
         console.log('✅ Webhook records deactivated');
       }
     }
 
-    // Step 3: Verify the changes were applied
+    // Step 3: Verify the changes were applied with a fresh query
+    console.log('🔍 Verifying changes...');
     const { data: verifyData, error: verifyError } = await supabase
       .from('ai_agents')
       .select('id, name, webhook_url, is_webhook_enabled, webhook_config')
