@@ -187,3 +187,82 @@ export const checkWebhookStatus = async (agentId: string): Promise<boolean> => {
     return false;
   }
 };
+
+// New function to save webhook with proper conflict handling
+export const saveWebhookConfiguration = async (data: {
+  agentId: string;
+  webhookUrl: string;
+  enabled: boolean;
+  config: any;
+  webhookName: string;
+  workflowType: string;
+  retryCount: number;
+  timeoutSeconds: number;
+  headers: any;
+}) => {
+  try {
+    // First update the agent
+    const { error: agentError } = await supabase
+      .from('ai_agents')
+      .update({
+        webhook_url: data.webhookUrl,
+        is_webhook_enabled: data.enabled,
+        webhook_config: data.config,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', data.agentId);
+
+    if (agentError) throw agentError;
+
+    // Check if webhook already exists
+    const { data: existingWebhook } = await supabase
+      .from('ai_agent_webhooks')
+      .select('id')
+      .eq('agent_id', data.agentId)
+      .maybeSingle();
+
+    let webhookError;
+    
+    if (existingWebhook) {
+      // Update existing webhook
+      const { error } = await supabase
+        .from('ai_agent_webhooks')
+        .update({
+          webhook_name: data.webhookName,
+          webhook_url: data.webhookUrl,
+          workflow_type: data.workflowType,
+          is_active: data.enabled,
+          retry_count: data.retryCount,
+          timeout_seconds: data.timeoutSeconds,
+          headers: data.headers,
+          updated_at: new Date().toISOString()
+        })
+        .eq('agent_id', data.agentId);
+      
+      webhookError = error;
+    } else {
+      // Create new webhook
+      const { error } = await supabase
+        .from('ai_agent_webhooks')
+        .insert({
+          agent_id: data.agentId,
+          webhook_name: data.webhookName,
+          webhook_url: data.webhookUrl,
+          workflow_type: data.workflowType,
+          is_active: data.enabled,
+          retry_count: data.retryCount,
+          timeout_seconds: data.timeoutSeconds,
+          headers: data.headers,
+        });
+      
+      webhookError = error;
+    }
+
+    if (webhookError) throw webhookError;
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving webhook configuration:', error);
+    throw error;
+  }
+};

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { saveWebhookConfiguration } from "@/services/webhookService";
 import { Link } from "react-router-dom";
 
 interface Agent {
@@ -110,46 +110,18 @@ export const WebhookConfiguration = () => {
         config: data.config
       });
 
-      // Update agent with webhook URL and enabled status
-      const { error: agentError } = await supabase
-        .from('ai_agents')
-        .update({
-          webhook_url: data.webhookUrl,
-          is_webhook_enabled: data.enabled,
-          webhook_config: data.config,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', data.agentId);
-
-      if (agentError) {
-        console.error('❌ Agent update error:', agentError);
-        throw agentError;
-      }
-
-      // Create or update webhook record
-      const { error: webhookError } = await supabase
-        .from('ai_agent_webhooks')
-        .upsert({
-          agent_id: data.agentId,
-          webhook_name: `${selectedAgentData?.name || 'Agent'} Webhook`,
-          webhook_url: data.webhookUrl,
-          workflow_type: workflowType,
-          is_active: data.enabled,
-          retry_count: retryCount,
-          timeout_seconds: timeoutSeconds,
-          headers: JSON.parse(customHeaders || '{}'),
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'agent_id'
-        });
-
-      if (webhookError) {
-        console.error('❌ Webhook update error:', webhookError);
-        throw webhookError;
-      }
-
-      console.log('✅ Webhook configuration saved successfully');
-      return true;
+      // Use the new saveWebhookConfiguration function
+      return await saveWebhookConfiguration({
+        agentId: data.agentId,
+        webhookUrl: data.webhookUrl,
+        enabled: data.enabled,
+        config: data.config,
+        webhookName: `${selectedAgentData?.name || 'Agent'} Webhook`,
+        workflowType,
+        retryCount,
+        timeoutSeconds,
+        headers: JSON.parse(customHeaders || '{}'),
+      });
     },
     onSuccess: () => {
       toast({

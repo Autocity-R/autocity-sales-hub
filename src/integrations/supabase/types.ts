@@ -202,7 +202,7 @@ export type Database = {
           {
             foreignKeyName: "ai_agent_webhooks_agent_id_fkey"
             columns: ["agent_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "ai_agents"
             referencedColumns: ["id"]
           },
