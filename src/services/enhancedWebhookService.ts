@@ -288,7 +288,16 @@ const logWebhookCall = async (
   errorMessage?: string
 ) => {
   try {
-    await supabase
+    console.log('📝 Attempting to log webhook call...', {
+      agentId,
+      webhookUrl,
+      statusCode,
+      success,
+      processingTime,
+      attempt
+    });
+
+    const { error } = await supabase
       .from('ai_webhook_logs')
       .insert({
         agent_id: agentId,
@@ -306,7 +315,13 @@ const logWebhookCall = async (
         retry_attempt: attempt + 1,
         error_message: errorMessage || null
       });
+
+    if (error) {
+      console.error('❌ Failed to log webhook call:', error);
+    } else {
+      console.log('✅ Webhook call logged successfully');
+    }
   } catch (error) {
-    console.error('Failed to log webhook call:', error);
+    console.error('❌ Exception while logging webhook call:', error);
   }
 };
