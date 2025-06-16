@@ -129,20 +129,37 @@ export const triggerEnhancedWebhook = async (
       });
 
       const responseData = await response.text();
+      console.log('🔍 RAW n8n response data:', responseData);
+      console.log('🔍 Response headers:', response.headers);
+      console.log('🔍 Response status:', response.status);
+      
       let parsedData: any = responseData;
 
       // Try to parse as JSON first
       try {
         parsedData = JSON.parse(responseData);
-        console.log('✅ Received JSON response:', parsedData);
-      } catch {
+        console.log('✅ Successfully parsed JSON response:', parsedData);
+        console.log('🔍 JSON response structure:', {
+          hasMessage: !!parsedData.message,
+          hasData: !!parsedData.data,
+          hasSuccess: !!parsedData.success,
+          messageValue: parsedData.message,
+          dataValue: parsedData.data,
+          keys: Object.keys(parsedData || {})
+        });
+      } catch (parseError) {
         // If it's not JSON, treat as plain text and create proper response object
-        console.log('📝 Received plain text response:', responseData);
+        console.log('📝 Response is plain text, not JSON:', responseData);
+        console.log('🔍 Plain text length:', responseData.length);
+        console.log('🔍 Trimmed text:', responseData.trim());
+        
         parsedData = {
           success: true,
           message: responseData.trim() || 'Response received from webhook',
-          data: { rawText: responseData }
+          data: { rawText: responseData.trim() }
         };
+        
+        console.log('🔧 Created parsed data object:', parsedData);
       }
 
       const processingTime = Date.now() - startTime;
@@ -161,10 +178,27 @@ export const triggerEnhancedWebhook = async (
 
       if (response.ok) {
         console.log('✅ Enhanced webhook successful with full CRM data');
+        
+        // Extract the message to return
+        let returnMessage = 'Webhook executed successfully with CRM context';
+        
+        if (parsedData?.message && parsedData.message.trim()) {
+          returnMessage = parsedData.message.trim();
+          console.log('🎯 Using message from parsed data:', returnMessage);
+        } else if (typeof parsedData === 'string' && parsedData.trim()) {
+          returnMessage = parsedData.trim();
+          console.log('🎯 Using parsed data as string:', returnMessage);
+        } else if (responseData && responseData.trim()) {
+          returnMessage = responseData.trim();
+          console.log('🎯 Using raw response data:', returnMessage);
+        }
+        
+        console.log('🎯 Final return message will be:', returnMessage);
+        
         return {
           success: true,
           data: parsedData,
-          message: parsedData?.message || responseData || 'Webhook executed successfully with CRM context',
+          message: returnMessage,
           processingTime
         };
       } else {

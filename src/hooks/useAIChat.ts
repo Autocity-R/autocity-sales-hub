@@ -42,16 +42,33 @@ export const useAIChat = (agentId: string) => {
   const sendMessage = useCallback(async (content: string) => {
     if (!session || !content.trim()) return;
 
+    console.log('📤 sendMessage called with:', {
+      sessionId: session.id,
+      agentId,
+      content,
+      messagesCount: messages.length
+    });
+
     setIsLoading(true);
 
     try {
       // Add user message
+      console.log('➕ Adding user message to chat...');
       await addUserMessage(session.id, content);
 
       // Process webhook message
+      console.log('🔄 Processing webhook message...');
       const webhookResult = await processWebhookMessage(agentId, session, content, messages);
       
+      console.log('📥 Webhook result received in sendMessage:', {
+        success: webhookResult.success,
+        message: webhookResult.message,
+        hasData: !!webhookResult.data,
+        processingTime: webhookResult.processingTime
+      });
+      
       // Add assistant response
+      console.log('➕ Adding assistant message to chat...');
       await addAssistantMessage(
         session.id,
         webhookResult.message,
@@ -60,8 +77,10 @@ export const useAIChat = (agentId: string) => {
         webhookResult.processingTime
       );
 
+      console.log('✅ Message flow completed successfully');
+
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error('❌ Failed to send message:', error);
       
       await addAssistantMessage(
         session.id,

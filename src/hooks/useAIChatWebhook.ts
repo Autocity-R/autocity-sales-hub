@@ -15,9 +15,16 @@ export const useAIChatWebhook = () => {
     messages: ChatMessage[]
   ) => {
     const startTime = Date.now();
+    console.log('🚀 Starting processWebhookMessage with:', {
+      agentId,
+      sessionId: session.id,
+      messageContent: content,
+      messagesCount: messages.length
+    });
 
     // Check webhook status using unified approach (ai_agents table)
     const hasWebhook = await checkWebhookStatus(agentId);
+    console.log('🔍 Webhook status check result:', hasWebhook);
     
     if (!hasWebhook) {
       return {
@@ -33,6 +40,8 @@ export const useAIChatWebhook = () => {
       .select('webhook_url, webhook_config')
       .eq('id', agentId)
       .single();
+
+    console.log('🔍 Agent data from database:', agentData);
 
     if (!agentData?.webhook_url) {
       return {
@@ -74,6 +83,8 @@ export const useAIChatWebhook = () => {
         }
       }
       
+      console.log('🔧 Webhook config:', webhookConfig);
+      
       // Trigger enhanced webhook with safe property access
       const webhookResult = await triggerEnhancedWebhook(
         agentData.webhook_url,
@@ -84,6 +95,15 @@ export const useAIChatWebhook = () => {
           headers: (typeof webhookConfig.headers === 'object' && webhookConfig.headers !== null) ? webhookConfig.headers : {},
         }
       );
+
+      console.log('🎯 Webhook result received:', {
+        success: webhookResult.success,
+        hasMessage: !!webhookResult.message,
+        hasData: !!webhookResult.data,
+        messageValue: webhookResult.message,
+        dataValue: webhookResult.data,
+        processingTime: webhookResult.processingTime
+      });
 
       const processingTime = Date.now() - startTime;
 
@@ -97,19 +117,50 @@ export const useAIChatWebhook = () => {
         console.log('✅ Unified webhook approach successful');
       }
 
-      // Improved message handling - ensure we always have a message to display
+      // Enhanced message handling with detailed debugging
       let displayMessage = 'Ik heb je verzoek verwerkt via de geconfigureerde workflow.';
       
-      if (webhookResult.message && webhookResult.message.trim()) {
-        displayMessage = webhookResult.message;
-        console.log('📝 Using webhook message:', displayMessage);
-      } else if (webhookResult.data && typeof webhookResult.data === 'string' && webhookResult.data.trim()) {
-        displayMessage = webhookResult.data;
-        console.log('📝 Using webhook data as message:', displayMessage);
-      } else if (webhookResult.data && webhookResult.data.rawText && webhookResult.data.rawText.trim()) {
-        displayMessage = webhookResult.data.rawText;
-        console.log('📝 Using raw text from webhook data:', displayMessage);
+      console.log('🔍 Starting message extraction process...');
+      
+      // Priority 1: Check webhook result message
+      if (webhookResult.message && typeof webhookResult.message === 'string' && webhookResult.message.trim()) {
+        displayMessage = webhookResult.message.trim();
+        console.log('✅ Using webhook result message:', displayMessage);
       }
+      // Priority 2: Check if data is a direct string
+      else if (webhookResult.data && typeof webhookResult.data === 'string' && webhookResult.data.trim()) {
+        displayMessage = webhookResult.data.trim();
+        console.log('✅ Using webhook data as string:', displayMessage);
+      }
+      // Priority 3: Check if data has a message property
+      else if (webhookResult.data && typeof webhookResult.data === 'object' && webhookResult.data.message && webhookResult.data.message.trim()) {
+        displayMessage = webhookResult.data.message.trim();
+        console.log('✅ Using webhook data.message:', displayMessage);
+      }
+      // Priority 4: Check if data has rawText property
+      else if (webhookResult.data && typeof webhookResult.data === 'object' && webhookResult.data.rawText && webhookResult.data.rawText.trim()) {
+        displayMessage = webhookResult.data.rawText.trim();
+        console.log('✅ Using webhook data.rawText:', displayMessage);
+      }
+      // Priority 5: Try to extract any text from data object
+      else if (webhookResult.data && typeof webhookResult.data === 'object') {
+        const dataKeys = Object.keys(webhookResult.data);
+        console.log('🔍 Available data keys:', dataKeys);
+        
+        for (const key of dataKeys) {
+          const value = webhookResult.data[key];
+          if (typeof value === 'string' && value.trim()) {
+            displayMessage = value.trim();
+            console.log(`✅ Using webhook data.${key}:`, displayMessage);
+            break;
+          }
+        }
+      }
+      else {
+        console.log('⚠️ No suitable message found, using default message');
+      }
+
+      console.log('🎯 Final display message will be:', displayMessage);
 
       return {
         success: webhookResult.success,
@@ -119,7 +170,7 @@ export const useAIChatWebhook = () => {
       };
 
     } catch (error) {
-      console.error('Webhook processing error:', error);
+      console.error('❌ Webhook processing error:', error);
       return {
         success: false,
         message: 'Sorry, er is een fout opgetreden bij het verwerken van je bericht. Probeer het opnieuw.',
