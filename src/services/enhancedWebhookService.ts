@@ -1,28 +1,9 @@
 
 import { supabase } from "@/integrations/supabase/client";
-
-// Define webhook types locally since they're not exported from webhookService
-export interface WebhookPayload {
-  agentId: string;
-  message: string;
-  sessionId: string;
-  workflowType: string;
-  userContext?: any;
-}
-
-export interface WebhookOptions {
-  retries?: number;
-  timeout?: number;
-  headers?: Record<string, string>;
-}
-
-export interface WebhookResult {
-  success: boolean;
-  data?: any;
-  error?: string;
-  message?: string;
-  processingTime?: number;
-}
+import { WebhookPayload, WebhookOptions, WebhookResult } from "@/types/webhook";
+import { getSuggestedActions } from "./webhookHelpers";
+import { logWebhookCall } from "./webhookLogger";
+import { parseWebhookResponse } from "./webhookResponseParser";
 
 export const triggerEnhancedWebhook = async (
   webhookUrl: string,
@@ -129,39 +110,10 @@ export const triggerEnhancedWebhook = async (
       });
 
       const responseData = await response.text();
-      console.log('🔍 RAW n8n response data:', responseData);
       console.log('🔍 Response headers:', response.headers);
       console.log('🔍 Response status:', response.status);
       
-      let parsedData: any = responseData;
-
-      // Enhanced response parsing to handle all n8n formats
-      try {
-        parsedData = JSON.parse(responseData);
-        console.log('✅ Successfully parsed JSON response:', parsedData);
-        console.log('🔍 JSON response structure:', {
-          hasMessage: !!parsedData.message,
-          hasData: !!parsedData.data,
-          hasSuccess: !!parsedData.success,
-          messageValue: parsedData.message,
-          dataValue: parsedData.data,
-          keys: Object.keys(parsedData || {})
-        });
-      } catch (parseError) {
-        // If it's not JSON, treat as plain text and create proper response object
-        console.log('📝 Response is plain text, not JSON:', responseData);
-        console.log('🔍 Plain text length:', responseData.length);
-        console.log('🔍 Trimmed text:', responseData.trim());
-        
-        parsedData = {
-          success: true,
-          message: responseData.trim() || 'Response received from webhook',
-          data: { rawText: responseData.trim() }
-        };
-        
-        console.log('🔧 Created parsed data object:', parsedData);
-      }
-
+      const { parsedData, returnMessage } = parseWebhookResponse(responseData);
       const processingTime = Date.now() - startTime;
 
       // Log the enhanced webhook call
@@ -178,88 +130,6 @@ export const triggerEnhancedWebhook = async (
 
       if (response.ok) {
         console.log('✅ Enhanced webhook successful with full CRM data');
-        
-        // FLEXIBLE message extraction - try ALL possible paths
-        let returnMessage = 'Webhook executed successfully with CRM context';
-        
-        console.log('🔍 Starting FLEXIBLE message extraction...');
-        console.log('🔍 Raw parsedData:', parsedData);
-        
-        // Priority 1: Direct message property
-        if (parsedData?.message && typeof parsedData.message === 'string' && parsedData.message.trim()) {
-          returnMessage = parsedData.message.trim();
-          console.log('✅ Found message in parsedData.message:', returnMessage);
-        }
-        // Priority 2: Check if response is directly a string (n8n simple response)
-        else if (typeof parsedData === 'string' && parsedData.trim()) {
-          returnMessage = parsedData.trim();
-          console.log('✅ Using parsedData as direct string:', returnMessage);
-        }
-        // Priority 3: Check nested data.message
-        else if (parsedData?.data?.message && typeof parsedData.data.message === 'string' && parsedData.data.message.trim()) {
-          returnMessage = parsedData.data.message.trim();
-          console.log('✅ Found message in parsedData.data.message:', returnMessage);
-        }
-        // Priority 4: Check rawText property
-        else if (parsedData?.data?.rawText && typeof parsedData.data.rawText === 'string' && parsedData.data.rawText.trim()) {
-          returnMessage = parsedData.data.rawText.trim();
-          console.log('✅ Found message in parsedData.data.rawText:', returnMessage);
-        }
-        // Priority 5: Try to find ANY text-like property in the response
-        else if (parsedData && typeof parsedData === 'object') {
-          console.log('🔍 Searching for any text property in response object...');
-          
-          // Check common property names that might contain the AI response
-          const textProperties = ['text', 'content', 'output', 'response', 'result', 'answer', 'reply'];
-          
-          for (const prop of textProperties) {
-            if (parsedData[prop] && typeof parsedData[prop] === 'string' && parsedData[prop].trim()) {
-              returnMessage = parsedData[prop].trim();
-              console.log(`✅ Found message in parsedData.${prop}:`, returnMessage);
-              break;
-            }
-          }
-          
-          // If still no message found, check nested objects
-          if (returnMessage === 'Webhook executed successfully with CRM context') {
-            console.log('🔍 Checking nested objects for text content...');
-            
-            const checkNested = (obj: any, path: string = ''): string | null => {
-              if (typeof obj === 'string' && obj.trim()) {
-                return obj.trim();
-              }
-              
-              if (obj && typeof obj === 'object') {
-                for (const [key, value] of Object.entries(obj)) {
-                  if (typeof value === 'string' && value.trim() && value.length > 10) {
-                    console.log(`✅ Found text in ${path}.${key}:`, value.trim());
-                    return value.trim();
-                  }
-                  
-                  if (value && typeof value === 'object') {
-                    const nested = checkNested(value, `${path}.${key}`);
-                    if (nested) return nested;
-                  }
-                }
-              }
-              
-              return null;
-            };
-            
-            const nestedText = checkNested(parsedData);
-            if (nestedText) {
-              returnMessage = nestedText;
-            }
-          }
-        }
-        // Priority 6: Use raw response text if still nothing found
-        else if (responseData && responseData.trim()) {
-          returnMessage = responseData.trim();
-          console.log('✅ Using raw response data as fallback:', returnMessage);
-        }
-        
-        console.log('🎯 Final extracted message:', returnMessage);
-        console.log('🎯 Message length:', returnMessage.length);
         
         return {
           success: true,
@@ -310,84 +180,5 @@ export const triggerEnhancedWebhook = async (
   };
 };
 
-// Helper function to suggest actions based on message content and available data
-const getSuggestedActions = (message: string, systemData: any, permissions: any): string[] => {
-  const suggestions: string[] = [];
-  const lowerMessage = message.toLowerCase();
-
-  if (permissions.appointments) {
-    if (lowerMessage.includes('afspraak') || lowerMessage.includes('inplan')) {
-      suggestions.push('create_appointment');
-    }
-    if (lowerMessage.includes('beschikbaar') || lowerMessage.includes('vrij')) {
-      suggestions.push('check_availability');
-    }
-  }
-
-  if (permissions.vehicles) {
-    if (lowerMessage.includes('auto') || lowerMessage.includes('voertuig') || lowerMessage.includes('car')) {
-      suggestions.push('search_vehicles');
-    }
-    if (lowerMessage.includes('voorraad') || lowerMessage.includes('beschikbare')) {
-      suggestions.push('list_available_vehicles');
-    }
-  }
-
-  if (permissions.contacts) {
-    if (lowerMessage.includes('klant') || lowerMessage.includes('contact') || lowerMessage.includes('customer')) {
-      suggestions.push('search_customers');
-    }
-  }
-
-  return suggestions;
-};
-
-const logWebhookCall = async (
-  agentId: string,
-  webhookUrl: string,
-  payload: any,
-  response: any,
-  statusCode: number,
-  success: boolean,
-  processingTime: number,
-  attempt: number,
-  errorMessage?: string
-) => {
-  try {
-    console.log('📝 Attempting to log webhook call...', {
-      agentId,
-      webhookUrl,
-      statusCode,
-      success,
-      processingTime,
-      attempt
-    });
-
-    const { error } = await supabase
-      .from('ai_webhook_logs')
-      .insert({
-        agent_id: agentId,
-        webhook_url: webhookUrl,
-        request_payload: {
-          message: payload.message,
-          sessionId: payload.sessionId,
-          workflowType: payload.workflowType,
-          timestamp: new Date().toISOString()
-        },
-        response_payload: response,
-        status_code: statusCode,
-        success: success,
-        processing_time_ms: processingTime,
-        retry_attempt: attempt + 1,
-        error_message: errorMessage || null
-      });
-
-    if (error) {
-      console.error('❌ Failed to log webhook call:', error);
-    } else {
-      console.log('✅ Webhook call logged successfully');
-    }
-  } catch (error) {
-    console.error('❌ Exception while logging webhook call:', error);
-  }
-};
+// Re-export types for backward compatibility
+export type { WebhookPayload, WebhookOptions, WebhookResult } from "@/types/webhook";
