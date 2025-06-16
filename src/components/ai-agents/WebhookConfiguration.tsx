@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -104,12 +103,43 @@ export const WebhookConfiguration = () => {
       rate_limit: 60
     };
 
-    const enableWebhook = !!webhookUrl;
+    // Preserve existing webhook status when modifying URL
+    // Only change status if:
+    // 1. There's no URL (should disable)
+    // 2. This is a new webhook and URL is provided (should enable)
+    // 3. User explicitly toggled the status
+    const currentlyEnabled = selectedAgentData?.is_webhook_enabled || false;
+    const hasExistingWebhook = !!selectedAgentData?.webhook_url;
+    
+    let enableWebhook: boolean;
+    
+    if (!webhookUrl.trim()) {
+      // No URL provided - always disable
+      enableWebhook = false;
+      console.log('🔧 No URL provided, disabling webhook');
+    } else if (hasExistingWebhook) {
+      // Existing webhook with URL - preserve current status
+      enableWebhook = currentlyEnabled;
+      console.log('🔧 Existing webhook found, preserving status:', currentlyEnabled);
+    } else {
+      // New webhook with URL - enable by default
+      enableWebhook = true;
+      console.log('🔧 New webhook with URL, enabling by default');
+    }
+
+    console.log('💾 Saving webhook with preserved status:', {
+      agentId: selectedAgent,
+      webhookUrl: webhookUrl.trim(),
+      currentlyEnabled,
+      hasExistingWebhook,
+      finalEnabledStatus: enableWebhook
+    });
+
     setIsWebhookEnabled(enableWebhook);
 
     await saveWebhookMutation.mutateAsync({
       agentId: selectedAgent,
-      webhookUrl,
+      webhookUrl: webhookUrl.trim(),
       enabled: enableWebhook,
       config,
       webhookName: `${selectedAgentData?.name || 'Agent'} Webhook`,
@@ -137,6 +167,12 @@ export const WebhookConfiguration = () => {
 
   const handleToggleWebhook = async (enabled: boolean) => {
     if (!selectedAgent) return;
+    
+    console.log('🔄 Explicitly toggling webhook status:', {
+      agentId: selectedAgent,
+      newStatus: enabled,
+      hasUrl: !!webhookUrl
+    });
     
     setIsWebhookEnabled(enabled);
     

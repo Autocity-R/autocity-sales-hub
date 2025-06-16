@@ -188,7 +188,7 @@ export const checkWebhookStatus = async (agentId: string): Promise<boolean> => {
   }
 };
 
-// Enhanced saveWebhookConfiguration with proper synchronization
+// Enhanced saveWebhookConfiguration with proper error handling and status preservation
 export const saveWebhookConfiguration = async (data: {
   agentId: string;
   webhookUrl: string;
@@ -201,33 +201,42 @@ export const saveWebhookConfiguration = async (data: {
   headers: any;
 }) => {
   try {
-    console.log('💾 Starting unified webhook save process:', data);
+    console.log('💾 Starting webhook save with status preservation:', {
+      agentId: data.agentId,
+      webhookUrl: data.webhookUrl,
+      enabled: data.enabled,
+      preservingStatus: true
+    });
 
     const webhookUrlToStore = data.webhookUrl.trim() || null;
-    const enabledFlag = data.enabled && !!webhookUrlToStore;
 
-    // Step 1: Update ai_agents table FIRST (source of truth)
+    // Step 1: Update ai_agents table with better error handling
     const { data: agentUpdate, error: agentError } = await supabase
       .from('ai_agents')
       .update({
         webhook_url: webhookUrlToStore,
-        is_webhook_enabled: enabledFlag,
+        is_webhook_enabled: data.enabled,
         webhook_config: data.config,
         updated_at: new Date().toISOString()
       })
       .eq('id', data.agentId)
       .select('id, name, webhook_url, is_webhook_enabled')
-      .single();
+      .maybeSingle();
 
     if (agentError) {
       console.error('❌ Failed to update ai_agents table:', agentError);
-      throw agentError;
+      throw new Error(`Database update failed: ${agentError.message}`);
+    }
+
+    if (!agentUpdate) {
+      console.error('❌ No agent found with ID:', data.agentId);
+      throw new Error(`Agent with ID ${data.agentId} not found`);
     }
 
     console.log('✅ ai_agents table updated successfully:', agentUpdate);
 
     // Step 2: Handle ai_agent_webhooks table (detailed configuration)
-    if (webhookUrlToStore && enabledFlag) {
+    if (webhookUrlToStore && data.enabled) {
       // Check if webhook record exists
       const { data: existingWebhook } = await supabase
         .from('ai_agent_webhooks')
@@ -253,7 +262,9 @@ export const saveWebhookConfiguration = async (data: {
 
         if (updateError) {
           console.error('❌ Failed to update webhook record:', updateError);
-          throw updateError;
+          // Don't throw here, main record is already updated
+        } else {
+          console.log('✅ Webhook record updated successfully');
         }
       } else {
         // Create new webhook
@@ -272,7 +283,9 @@ export const saveWebhookConfiguration = async (data: {
 
         if (insertError) {
           console.error('❌ Failed to create webhook record:', insertError);
-          throw insertError;
+          // Don't throw here, main record is already updated
+        } else {
+          console.log('✅ Webhook record created successfully');
         }
       }
     } else {
@@ -284,10 +297,12 @@ export const saveWebhookConfiguration = async (data: {
 
       if (deactivateError) {
         console.error('❌ Failed to deactivate webhook records:', deactivateError);
+      } else {
+        console.log('✅ Webhook records deactivated successfully');
       }
     }
 
-    // Step 3: Verify synchronization using our new function
+    // Step 3: Verify synchronization
     const { data: syncVerification } = await supabase
       .rpc('verify_webhook_sync', { agent_uuid: data.agentId });
 
@@ -305,7 +320,7 @@ export const saveWebhookConfiguration = async (data: {
       agentData: agentUpdate,
       changes: {
         webhook_url: webhookUrlToStore,
-        is_webhook_enabled: enabledFlag
+        is_webhook_enabled: data.enabled
       }
     };
   } catch (error) {
