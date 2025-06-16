@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { createChatSession, addChatMessage, getChatMessages, endChatSession, ChatSession, ChatMessage } from '@/services/chatSessionService';
-import { getAgentWebhooks, WebhookPayload } from '@/services/webhookService';
+import { checkWebhookStatus, WebhookPayload } from '@/services/webhookService';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -83,11 +83,11 @@ export const useAIChat = (agentId: string) => {
       const userMessage = await addChatMessage(session.id, 'user', content);
       setMessages(prev => [...prev, userMessage]);
 
-      // Get agent webhooks
-      const webhooks = await getAgentWebhooks(agentId);
+      // Check webhook status using unified approach (ai_agents table)
+      const hasWebhook = await checkWebhookStatus(agentId);
       
-      if (webhooks.length === 0) {
-        // Fallback response if no webhooks configured
+      if (!hasWebhook) {
+        // Fallback response if no webhook configured
         const fallbackMessage = await addChatMessage(
           session.id,
           'assistant',
@@ -97,14 +97,28 @@ export const useAIChat = (agentId: string) => {
         return;
       }
 
-      // Determine which webhook to use (for now, use the first active one)
-      const webhook = webhooks[0];
+      // Get webhook URL from ai_agents table (unified approach)
+      const { data: agentData } = await supabase
+        .from('ai_agents')
+        .select('webhook_url, webhook_config')
+        .eq('id', agentId)
+        .single();
+
+      if (!agentData?.webhook_url) {
+        const fallbackMessage = await addChatMessage(
+          session.id,
+          'assistant',
+          'Webhook is ingeschakeld maar geen URL geconfigureerd. Controleer de configuratie.'
+        );
+        setMessages(prev => [...prev, fallbackMessage]);
+        return;
+      }
       
       // Prepare webhook payload
       const payload: WebhookPayload = {
         sessionId: session.id,
         message: content,
-        workflowType: webhook.workflow_type,
+        workflowType: 'chat_interaction',
         agentId: agentId,
         userContext: {
           ...session.context,
@@ -118,19 +132,22 @@ export const useAIChat = (agentId: string) => {
         },
       };
 
-      console.log('🔄 Sending enhanced webhook payload:', payload);
+      console.log('🔄 Sending webhook payload via unified approach:', payload);
 
       // Import and use enhanced webhook trigger
       const { triggerEnhancedWebhook } = await import('@/services/enhancedWebhookService');
       
-      // Trigger enhanced webhook with system data
+      // Get webhook configuration from ai_agents table
+      const webhookConfig = agentData.webhook_config || {};
+      
+      // Trigger enhanced webhook
       const webhookResult = await triggerEnhancedWebhook(
-        webhook.webhook_url,
+        agentData.webhook_url,
         payload,
         {
-          timeout: webhook.timeout_seconds * 1000,
-          retries: webhook.retry_count,
-          headers: webhook.headers as Record<string, string>,
+          timeout: (webhookConfig.timeout || 30) * 1000,
+          retries: webhookConfig.retries || 3,
+          headers: webhookConfig.headers || {},
         }
       );
 
@@ -140,7 +157,7 @@ export const useAIChat = (agentId: string) => {
       const assistantMessage = await addChatMessage(
         session.id,
         'assistant',
-        webhookResult.message || 'Ik heb je verzoek verwerkt en de relevante gegevens geanalyseerd.',
+        webhookResult.message || 'Ik heb je verzoek verwerkt via de geconfigureerde workflow.',
         true,
         webhookResult.data,
         processingTime
@@ -155,7 +172,7 @@ export const useAIChat = (agentId: string) => {
           variant: 'destructive',
         });
       } else {
-        console.log('✅ Enhanced webhook successful with system data');
+        console.log('✅ Unified webhook approach successful');
       }
 
     } catch (error) {

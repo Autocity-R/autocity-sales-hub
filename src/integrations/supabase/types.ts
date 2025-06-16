@@ -1025,7 +1025,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      verify_webhook_sync: {
+        Args: { agent_uuid: string }
+        Returns: {
+          agent_id: string
+          agent_name: string
+          agents_webhook_enabled: boolean
+          agents_webhook_url: string
+          webhooks_count: number
+          active_webhooks_count: number
+          is_synchronized: boolean
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

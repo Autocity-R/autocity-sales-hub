@@ -25,8 +25,9 @@ interface Webhook {
   headers: any;
 }
 
+// Unified agent fetching - use ai_agents as single source of truth
 const fetchAgents = async (): Promise<Agent[]> => {
-  console.log('🔄 Fetching agents with webhook status...');
+  console.log('🔄 Fetching agents from ai_agents table (unified approach)...');
   const { data, error } = await supabase
     .from('ai_agents')
     .select('id, name, webhook_url, is_webhook_enabled, webhook_config')
@@ -38,7 +39,7 @@ const fetchAgents = async (): Promise<Agent[]> => {
     throw error;
   }
   
-  console.log('✅ Fetched agents:', data?.map(a => ({
+  console.log('✅ Fetched agents (unified):', data?.map(a => ({
     id: a.id,
     name: a.name,
     webhook_url: a.webhook_url,
@@ -64,12 +65,12 @@ export const useWebhookOperations = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Set up real-time subscription for ai_agents table
+  // Set up real-time subscription for ai_agents table changes
   useEffect(() => {
-    console.log('🔄 Setting up real-time subscription for ai_agents...');
+    console.log('🔄 Setting up unified real-time subscription...');
     
     const channel = supabase
-      .channel('ai_agents_webhook_changes')
+      .channel('unified_webhook_changes')
       .on(
         'postgres_changes',
         {
@@ -78,8 +79,7 @@ export const useWebhookOperations = () => {
           table: 'ai_agents'
         },
         (payload) => {
-          console.log('🔄 Real-time update received for ai_agents:', payload);
-          // Invalidate and refetch agents data
+          console.log('🔄 Real-time update for ai_agents (unified):', payload);
           queryClient.invalidateQueries({ queryKey: ['ai-agents'] });
           queryClient.invalidateQueries({ queryKey: ['ai-agents-management'] });
         }
@@ -92,15 +92,16 @@ export const useWebhookOperations = () => {
           table: 'ai_agent_webhooks'
         },
         (payload) => {
-          console.log('🔄 Real-time update received for ai_agent_webhooks:', payload);
-          // Invalidate and refetch webhook data
+          console.log('🔄 Real-time update for ai_agent_webhooks:', payload);
           queryClient.invalidateQueries({ queryKey: ['agent-webhooks'] });
+          // Also refresh agents since webhooks can affect agent status
+          queryClient.invalidateQueries({ queryKey: ['ai-agents'] });
         }
       )
       .subscribe();
 
     return () => {
-      console.log('🔄 Cleaning up real-time subscription...');
+      console.log('🔄 Cleaning up unified real-time subscription...');
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
@@ -125,49 +126,32 @@ export const useWebhookOperations = () => {
       timeoutSeconds: number;
       headers: any;
     }) => {
-      console.log('💾 Saving webhook configuration via mutation:', data);
+      console.log('💾 Saving webhook via unified approach:', data);
       return await saveWebhookConfiguration(data);
     },
     onSuccess: async (result, variables) => {
-      console.log('✅ Webhook save mutation successful:', result);
+      console.log('✅ Unified webhook save successful:', result);
       
       toast({
         title: "✅ Webhook Configuratie Opgeslagen",
-        description: "Webhook is succesvol geconfigureerd en actief voor alle gebruikers.",
+        description: "Webhook is succesvol geconfigureerd met database synchronisatie.",
       });
       
-      // Aggressive cache invalidation for immediate UI updates
+      // Force refresh all related queries
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['ai-agents'] }),
         queryClient.invalidateQueries({ queryKey: ['ai-agents-management'] }),
         queryClient.invalidateQueries({ queryKey: ['agent-webhooks'] }),
       ]);
       
-      // Force multiple refetches with staggered timing for maximum reliability
-      console.log('🔄 Forcing immediate agent refetch after webhook save...');
+      // Additional verification
       setTimeout(async () => {
+        console.log('🔍 Performing post-save verification...');
         await refetchAgents();
-        
-        // Additional verification refetch
-        setTimeout(async () => {
-          console.log('🔄 Final verification refetch to ensure data consistency...');
-          await refetchAgents();
-          
-          // Verify the specific agent was updated
-          const updatedAgents = await fetchAgents();
-          const updatedAgent = updatedAgents.find(a => a.id === variables.agentId);
-          console.log('🔍 Verification - Updated agent webhook status:', {
-            agentId: variables.agentId,
-            webhook_url: updatedAgent?.webhook_url,
-            is_webhook_enabled: updatedAgent?.is_webhook_enabled,
-            expected_enabled: variables.enabled,
-            match: updatedAgent?.is_webhook_enabled === variables.enabled
-          });
-        }, 1000);
       }, 500);
     },
     onError: (error: any) => {
-      console.error('❌ Save webhook error:', error);
+      console.error('❌ Unified webhook save error:', error);
       toast({
         title: "❌ Opslaan Mislukt",
         description: `Kon webhook niet opslaan: ${error.message}`,
@@ -227,28 +211,26 @@ export const useWebhookOperations = () => {
     });
   };
 
-  // Enhanced function to manually refresh agents data with debugging
+  // Enhanced refresh with verification
   const forceRefreshAgents = async () => {
-    console.log('🔄 Force refreshing agents data...');
+    console.log('🔄 Force refreshing with unified approach...');
     
-    // Clear all related cache entries
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['ai-agents'] }),
       queryClient.invalidateQueries({ queryKey: ['ai-agents-management'] }),
       queryClient.invalidateQueries({ queryKey: ['agent-webhooks'] }),
     ]);
     
-    // Force fresh fetch
     await refetchAgents();
     
-    // Log current state for debugging
-    const currentAgents = await fetchAgents();
-    console.log('🔍 Current agents after refresh:', currentAgents.map(a => ({
-      id: a.id,
-      name: a.name,
-      webhook_url: a.webhook_url,
-      is_webhook_enabled: a.is_webhook_enabled
-    })));
+    // Verify synchronization for all agents
+    const { data: allSyncData } = await supabase.rpc('verify_webhook_sync', { agent_uuid: null });
+    if (allSyncData) {
+      const unsyncedAgents = allSyncData.filter(agent => !agent.is_synchronized);
+      if (unsyncedAgents.length > 0) {
+        console.warn('⚠️ Found unsynchronized agents:', unsyncedAgents);
+      }
+    }
   };
 
   return {
