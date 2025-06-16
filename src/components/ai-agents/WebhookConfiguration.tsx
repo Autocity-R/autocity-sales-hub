@@ -1,67 +1,29 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Zap, TestTube2, CheckCircle, AlertCircle, Plus, Trash2, Save, ArrowLeft, RefreshCw } from "lucide-react";
+import { Zap, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { saveWebhookConfiguration } from "@/services/webhookService";
-import { Link } from "react-router-dom";
-
-interface Agent {
-  id: string;
-  name: string;
-  webhook_url?: string;
-  is_webhook_enabled: boolean;
-  webhook_config?: any;
-}
-
-interface Webhook {
-  id: string;
-  agent_id: string;
-  webhook_name: string;
-  webhook_url: string;
-  workflow_type: string;
-  is_active: boolean;
-  retry_count: number;
-  timeout_seconds: number;
-  headers: any;
-}
-
-const fetchAgents = async (): Promise<Agent[]> => {
-  const { data, error } = await supabase
-    .from('ai_agents')
-    .select('id, name, webhook_url, is_webhook_enabled, webhook_config')
-    .eq('is_active', true);
-
-  if (error) throw error;
-  return data || [];
-};
-
-const fetchWebhooks = async (agentId: string): Promise<Webhook[]> => {
-  if (!agentId) return [];
-  
-  const { data, error } = await supabase
-    .from('ai_agent_webhooks')
-    .select('*')
-    .eq('agent_id', agentId);
-
-  if (error) throw error;
-  return data || [];
-};
+import { useWebhookOperations } from "@/hooks/useWebhookOperations";
+import { AgentSelector } from "./webhook/AgentSelector";
+import { WebhookStatusDisplay } from "./webhook/WebhookStatusDisplay";
+import { WebhookForm } from "./webhook/WebhookForm";
+import { WebhookList } from "./webhook/WebhookList";
+import { WebhookDocumentation } from "./webhook/WebhookDocumentation";
 
 export const WebhookConfiguration = () => {
   const { toast } = useToast();
   const { isAdmin } = useAuth();
-  const queryClient = useQueryClient();
+  const {
+    agents,
+    refetchAgents,
+    saveWebhookMutation,
+    testWebhookMutation,
+    getWebhooks,
+  } = useWebhookOperations();
+
   const [selectedAgent, setSelectedAgent] = useState<string>("");
   const [webhookUrl, setWebhookUrl] = useState("");
   const [workflowType, setWorkflowType] = useState("calendar_operations");
@@ -71,18 +33,7 @@ export const WebhookConfiguration = () => {
   const [isTestingWebhook, setIsTestingWebhook] = useState(false);
   const [isWebhookEnabled, setIsWebhookEnabled] = useState(false);
 
-  const { data: agents = [], refetch: refetchAgents } = useQuery({
-    queryKey: ['ai-agents'],
-    queryFn: fetchAgents,
-    refetchInterval: 5000, // Auto-refresh om sync te behouden
-  });
-
-  const { data: webhooks = [] } = useQuery({
-    queryKey: ['agent-webhooks', selectedAgent],
-    queryFn: () => fetchWebhooks(selectedAgent),
-    enabled: !!selectedAgent,
-  });
-
+  const { data: webhooks = [] } = getWebhooks(selectedAgent);
   const selectedAgentData = agents.find(agent => agent.id === selectedAgent);
 
   React.useEffect(() => {
@@ -95,102 +46,6 @@ export const WebhookConfiguration = () => {
       setCustomHeaders(JSON.stringify(config.headers || {}, null, 2));
     }
   }, [selectedAgentData]);
-
-  const saveWebhookMutation = useMutation({
-    mutationFn: async (data: {
-      agentId: string;
-      webhookUrl: string;
-      enabled: boolean;
-      config: any;
-    }) => {
-      console.log('💾 Saving webhook configuration:', {
-        agentId: data.agentId,
-        webhookUrl: data.webhookUrl,
-        enabled: data.enabled,
-        config: data.config
-      });
-
-      // Use the new saveWebhookConfiguration function
-      return await saveWebhookConfiguration({
-        agentId: data.agentId,
-        webhookUrl: data.webhookUrl,
-        enabled: data.enabled,
-        config: data.config,
-        webhookName: `${selectedAgentData?.name || 'Agent'} Webhook`,
-        workflowType,
-        retryCount,
-        timeoutSeconds,
-        headers: JSON.parse(customHeaders || '{}'),
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: "✅ Webhook Configuratie Opgeslagen",
-        description: "Webhook is succesvol geconfigureerd en blijft actief voor alle gebruikers.",
-      });
-      
-      // Force refresh van alle related queries
-      queryClient.invalidateQueries({ queryKey: ['ai-agents'] });
-      queryClient.invalidateQueries({ queryKey: ['agent-webhooks'] });
-      queryClient.invalidateQueries({ queryKey: ['agents-with-data'] });
-      
-      // Trigger additional refresh na korte delay voor sync
-      setTimeout(() => {
-        refetchAgents();
-      }, 1000);
-    },
-    onError: (error: any) => {
-      console.error('❌ Save webhook error:', error);
-      toast({
-        title: "❌ Opslaan Mislukt",
-        description: `Kon webhook niet opslaan: ${error.message}`,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const testWebhookMutation = useMutation({
-    mutationFn: async (url: string) => {
-      const { data, error } = await supabase.functions.invoke('test-webhook', {
-        body: {
-          webhookUrl: url,
-          testData: {
-            agentId: selectedAgent,
-            agentName: selectedAgentData?.name,
-            message: "Test bericht vanuit CRM systeem",
-            systemData: {
-              currentTime: new Date().toISOString(),
-              testMode: true
-            }
-          }
-        }
-      });
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      if (data.success) {
-        toast({
-          title: "✅ Webhook Test Succesvol",
-          description: `Webhook getest met status ${data.status}. Response ontvangen.`,
-        });
-      } else {
-        toast({
-          title: "⚠️ Webhook Test Gefaald",
-          description: `Status: ${data.status} - ${data.error || 'Onbekende fout'}`,
-          variant: "destructive",
-        });
-      }
-    },
-    onError: (error) => {
-      toast({
-        title: "❌ Test Fout",
-        description: `Webhook test gefaald: ${error.message}`,
-        variant: "destructive",
-      });
-    },
-  });
 
   const handleSaveWebhook = () => {
     if (!selectedAgent) {
@@ -229,7 +84,6 @@ export const WebhookConfiguration = () => {
       rate_limit: 60
     };
 
-    // Webhook wordt automatisch geactiveerd bij opslaan
     const enableWebhook = !!webhookUrl;
     setIsWebhookEnabled(enableWebhook);
 
@@ -237,7 +91,12 @@ export const WebhookConfiguration = () => {
       agentId: selectedAgent,
       webhookUrl,
       enabled: enableWebhook,
-      config
+      config,
+      webhookName: `${selectedAgentData?.name || 'Agent'} Webhook`,
+      workflowType,
+      retryCount,
+      timeoutSeconds,
+      headers: JSON.parse(customHeaders || '{}'),
     });
   };
 
@@ -272,7 +131,12 @@ export const WebhookConfiguration = () => {
       agentId: selectedAgent,
       webhookUrl,
       enabled,
-      config
+      config,
+      webhookName: `${selectedAgentData?.name || 'Agent'} Webhook`,
+      workflowType,
+      retryCount,
+      timeoutSeconds,
+      headers: JSON.parse(customHeaders || '{}'),
     });
   };
 
@@ -306,248 +170,44 @@ export const WebhookConfiguration = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Agent Selection */}
-          <div>
-            <Label htmlFor="agent-select">Selecteer AI Agent</Label>
-            <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-              <SelectTrigger>
-                <SelectValue placeholder="Kies een AI agent" />
-              </SelectTrigger>
-              <SelectContent>
-                {agents.map((agent) => (
-                  <SelectItem key={agent.id} value={agent.id}>
-                    <div className="flex items-center gap-2">
-                      {agent.name}
-                      {agent.is_webhook_enabled && agent.webhook_url && (
-                        <Badge variant="default" className="ml-2">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Actief
-                        </Badge>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <AgentSelector
+            agents={agents}
+            selectedAgent={selectedAgent}
+            onAgentChange={setSelectedAgent}
+          />
 
           {selectedAgent && (
             <div className="space-y-6">
               <Separator />
 
-              {/* Current Status with Real-time Info */}
-              <div className="p-4 bg-muted rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium">Huidige Webhook Status</h4>
-                  <Badge variant="outline" className="text-xs">
-                    Laatste update: {new Date().toLocaleTimeString()}
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">Status:</span>
-                    <Badge variant={selectedAgentData?.is_webhook_enabled ? "default" : "secondary"}>
-                      {selectedAgentData?.is_webhook_enabled ? (
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                      ) : (
-                        <AlertCircle className="h-3 w-3 mr-1" />
-                      )}
-                      {selectedAgentData?.is_webhook_enabled ? "Actief" : "Inactief"}
-                    </Badge>
-                  </div>
-                  <div>
-                    <span className="font-medium">URL:</span>
-                    {selectedAgentData?.webhook_url ? (
-                      <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded">
-                        {selectedAgentData.webhook_url.substring(0, 40)}...
-                      </span>
-                    ) : (
-                      <span className="ml-2 text-gray-500">Niet geconfigureerd</span>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <WebhookStatusDisplay selectedAgentData={selectedAgentData} />
 
-              {/* Webhook Enable/Disable Toggle */}
-              <div className="flex items-center space-x-2 p-4 border rounded-lg">
-                <Switch
-                  id="webhook-enabled"
-                  checked={isWebhookEnabled}
-                  onCheckedChange={handleToggleWebhook}
-                />
-                <Label htmlFor="webhook-enabled" className="font-medium">
-                  Webhook Activeren
-                </Label>
-                <span className="text-sm text-muted-foreground ml-4">
-                  Schakel dit in om de webhook te activeren voor deze agent
-                </span>
-              </div>
+              <WebhookForm
+                webhookUrl={webhookUrl}
+                setWebhookUrl={setWebhookUrl}
+                workflowType={workflowType}
+                setWorkflowType={setWorkflowType}
+                retryCount={retryCount}
+                setRetryCount={setRetryCount}
+                timeoutSeconds={timeoutSeconds}
+                setTimeoutSeconds={setTimeoutSeconds}
+                customHeaders={customHeaders}
+                setCustomHeaders={setCustomHeaders}
+                isWebhookEnabled={isWebhookEnabled}
+                onToggleWebhook={handleToggleWebhook}
+                onSaveWebhook={handleSaveWebhook}
+                onTestWebhook={handleTestWebhook}
+                isSaving={saveWebhookMutation.isPending}
+                isTesting={testWebhookMutation.isPending || isTestingWebhook}
+              />
 
-              {/* Webhook Configuration */}
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="webhook-url">n8n Webhook URL</Label>
-                  <Input
-                    id="webhook-url"
-                    type="url"
-                    placeholder="https://jouw-n8n-instance.com/webhook/..."
-                    value={webhookUrl}
-                    onChange={(e) => setWebhookUrl(e.target.value)}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="workflow-type">Workflow Type</Label>
-                    <Select value={workflowType} onValueChange={setWorkflowType}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="calendar_operations">Calendar Operations</SelectItem>
-                        <SelectItem value="lead_management">Lead Management</SelectItem>
-                        <SelectItem value="customer_service">Customer Service</SelectItem>
-                        <SelectItem value="general_crm">General CRM</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="retry-count">Retry Count</Label>
-                    <Input
-                      id="retry-count"
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={retryCount}
-                      onChange={(e) => setRetryCount(parseInt(e.target.value) || 3)}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="timeout">Timeout (seconden)</Label>
-                    <Input
-                      id="timeout"
-                      type="number"
-                      min="5"
-                      max="120"
-                      value={timeoutSeconds}
-                      onChange={(e) => setTimeoutSeconds(parseInt(e.target.value) || 30)}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="custom-headers">Custom Headers (JSON)</Label>
-                  <Textarea
-                    id="custom-headers"
-                    placeholder='{"Authorization": "Bearer token", "X-Custom": "value"}'
-                    value={customHeaders}
-                    onChange={(e) => setCustomHeaders(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={handleSaveWebhook}
-                  disabled={saveWebhookMutation.isPending || !webhookUrl}
-                  className="flex items-center gap-2"
-                >
-                  <Save className="h-4 w-4" />
-                  {saveWebhookMutation.isPending ? 'Opslaan...' : 'Permanent Opslaan'}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  onClick={handleTestWebhook}
-                  disabled={testWebhookMutation.isPending || isTestingWebhook || !webhookUrl}
-                  className="flex items-center gap-2"
-                >
-                  <TestTube2 className="h-4 w-4" />
-                  {isTestingWebhook ? 'Testen...' : 'Test Webhook'}
-                </Button>
-              </div>
-
-              {/* Existing Webhooks */}
-              {webhooks.length > 0 && (
-                <div>
-                  <Separator />
-                  <h4 className="font-medium mb-4">Actieve Webhooks</h4>
-                  <div className="space-y-3">
-                    {webhooks.map((webhook) => (
-                      <Card key={webhook.id}>
-                        <CardContent className="pt-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium">{webhook.webhook_name}</span>
-                                <Badge variant={webhook.is_active ? "default" : "secondary"}>
-                                  {webhook.is_active ? "Actief" : "Inactief"}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-muted-foreground">
-                                {webhook.workflow_type} • {webhook.retry_count} retries • {webhook.timeout_seconds}s timeout
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-1 bg-gray-100 p-2 rounded">
-                                {webhook.webhook_url}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <WebhookList webhooks={webhooks} />
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Documentation */}
-      <Card>
-        <CardHeader>
-          <CardTitle>n8n Integratie Documentatie</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h4 className="font-medium mb-2">Webhook Payload Structuur</h4>
-            <pre className="bg-muted p-3 rounded text-sm overflow-x-auto">
-{`{
-  "sessionId": "uuid",
-  "message": "gebruiker bericht",
-  "agentId": "uuid",
-  "agentName": "Calendar Assistant",
-  "workflowType": "calendar_operations",
-  "userContext": {},
-  "systemData": {
-    "appointments": [...],
-    "contacts": [...],
-    "vehicles": [...],
-    "availableVehicles": [...]
-  }
-}`}
-            </pre>
-          </div>
-
-          <div>
-            <h4 className="font-medium mb-2">Verwachte Response</h4>
-            <pre className="bg-muted p-3 rounded text-sm overflow-x-auto">
-{`{
-  "success": true,
-  "message": "Afspraak succesvol ingepland",
-  "data": {
-    "action": "appointment_created",
-    "details": "Afspraak op 2024-01-15 om 14:00"
-  }
-}`}
-            </pre>
-          </div>
-        </CardContent>
-      </Card>
+      <WebhookDocumentation />
     </div>
   );
 };
