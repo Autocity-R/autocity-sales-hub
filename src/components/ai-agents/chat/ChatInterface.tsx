@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,20 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onSendMessage,
   onKeyPress,
 }) => {
+  // Debug logging for messages state
+  useEffect(() => {
+    console.log('🔍 ChatInterface messages updated:', {
+      selectedAgent,
+      messagesCount: messages.length,
+      messages: messages.map(m => ({
+        id: m.id,
+        type: m.messageType,
+        content: m.content.substring(0, 50) + '...',
+        timestamp: m.createdAt
+      }))
+    });
+  }, [messages, selectedAgent]);
+
   const getDataAccessSummary = (permissions: any) => {
     if (!permissions) return [];
     return Object.entries(permissions)
@@ -74,7 +88,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           )}
         </CardTitle>
         <CardDescription>
-          Deze chat triggert n8n workflows met volledig systeem data context
+          Deze chat triggert n8n workflows met volledig systeem data context ({messages.length} berichten)
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col">
@@ -89,6 +103,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <div className="text-center text-gray-500 py-8">
               <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
               <p>Sessie wordt geïnitialiseerd...</p>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">
+              <Bot className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p>Geen berichten nog. Start een gesprek!</p>
             </div>
           ) : (
             messages.map((msg) => (

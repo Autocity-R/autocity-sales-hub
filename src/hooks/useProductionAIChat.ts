@@ -39,6 +39,7 @@ export const useProductionAIChat = () => {
     refetchInterval: 10000, // Refresh every 10 seconds to sync status
   });
 
+  // Use the full useAIChat hook instead of the simplified version
   const {
     session,
     messages,
@@ -54,6 +55,13 @@ export const useProductionAIChat = () => {
   const handleSendMessage = async () => {
     if (!message.trim() || !selectedAgent || chatLoading) return;
     
+    console.log('🚀 handleSendMessage called in useProductionAIChat with:', {
+      message,
+      selectedAgent,
+      sessionId: session?.id,
+      messagesCount: messages.length
+    });
+    
     await sendMessage(message);
     setMessage("");
   };
@@ -66,7 +74,14 @@ export const useProductionAIChat = () => {
   };
 
   const handleAgentChange = (agentId: string) => {
+    console.log('🔄 Agent change requested:', {
+      from: selectedAgent,
+      to: agentId,
+      hasCurrentSession: !!session
+    });
+    
     if (session) {
+      console.log('🛑 Ending current session before agent change');
       endSession();
     }
     setSelectedAgent(agentId);
