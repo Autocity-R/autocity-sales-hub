@@ -67,8 +67,9 @@ export const useWebhookOperations = () => {
   const { data: agents = [], refetch: refetchAgents, isLoading: agentsLoading } = useQuery({
     queryKey: ['ai-agents'],
     queryFn: fetchAgents,
-    refetchInterval: 3000, // Refresh every 3 seconds to see updates faster
-    refetchIntervalInBackground: true,
+    staleTime: 0, // Always consider data stale to force refetch
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   const saveWebhookMutation = useMutation({
@@ -86,7 +87,7 @@ export const useWebhookOperations = () => {
       console.log('💾 Saving webhook configuration via mutation:', data);
       return await saveWebhookConfiguration(data);
     },
-    onSuccess: (result, variables) => {
+    onSuccess: async (result, variables) => {
       console.log('✅ Webhook save mutation successful:', result);
       
       toast({
@@ -94,15 +95,21 @@ export const useWebhookOperations = () => {
         description: "Webhook is succesvol geconfigureerd en actief voor alle gebruikers.",
       });
       
-      // Invalidate and refetch all relevant queries
-      queryClient.invalidateQueries({ queryKey: ['ai-agents'] });
-      queryClient.invalidateQueries({ queryKey: ['agent-webhooks'] });
+      // Force immediate invalidation and refetch of all related queries
+      await queryClient.invalidateQueries({ queryKey: ['ai-agents'] });
+      await queryClient.invalidateQueries({ queryKey: ['agent-webhooks'] });
       
-      // Force an immediate refetch of agents to show the updated status
-      setTimeout(() => {
-        console.log('🔄 Forcing agent refetch after webhook save...');
-        refetchAgents();
-      }, 500);
+      // Force a direct refetch with a small delay to ensure DB changes are committed
+      setTimeout(async () => {
+        console.log('🔄 Forcing immediate agent refetch after webhook save...');
+        await refetchAgents();
+        
+        // Double-check by refetching again after a moment
+        setTimeout(async () => {
+          console.log('🔄 Secondary refetch to ensure data consistency...');
+          await refetchAgents();
+        }, 1000);
+      }, 200);
     },
     onError: (error: any) => {
       console.error('❌ Save webhook error:', error);
@@ -165,6 +172,13 @@ export const useWebhookOperations = () => {
     });
   };
 
+  // Function to manually refresh agents data
+  const forceRefreshAgents = async () => {
+    console.log('🔄 Force refreshing agents data...');
+    await queryClient.invalidateQueries({ queryKey: ['ai-agents'] });
+    await refetchAgents();
+  };
+
   return {
     agents,
     refetchAgents,
@@ -172,5 +186,6 @@ export const useWebhookOperations = () => {
     saveWebhookMutation,
     testWebhookMutation,
     getWebhooks,
+    forceRefreshAgents,
   };
 };

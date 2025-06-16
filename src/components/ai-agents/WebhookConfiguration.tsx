@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -22,6 +22,7 @@ export const WebhookConfiguration = () => {
     saveWebhookMutation,
     testWebhookMutation,
     getWebhooks,
+    forceRefreshAgents,
   } = useWebhookOperations();
 
   const [selectedAgent, setSelectedAgent] = useState<string>("");
@@ -36,6 +37,25 @@ export const WebhookConfiguration = () => {
   const { data: webhooks = [] } = getWebhooks(selectedAgent);
   const selectedAgentData = agents.find(agent => agent.id === selectedAgent);
 
+  // Effect to refresh agents when component mounts or tab becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('🔄 Tab became visible, refreshing agents...');
+        forceRefreshAgents();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Also refresh when component mounts
+    forceRefreshAgents();
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [forceRefreshAgents]);
+
   React.useEffect(() => {
     if (selectedAgentData) {
       setWebhookUrl(selectedAgentData.webhook_url || "");
@@ -47,7 +67,7 @@ export const WebhookConfiguration = () => {
     }
   }, [selectedAgentData]);
 
-  const handleSaveWebhook = () => {
+  const handleSaveWebhook = async () => {
     if (!selectedAgent) {
       toast({
         title: "⚠️ Selectie Vereist",
@@ -87,7 +107,7 @@ export const WebhookConfiguration = () => {
     const enableWebhook = !!webhookUrl;
     setIsWebhookEnabled(enableWebhook);
 
-    saveWebhookMutation.mutate({
+    await saveWebhookMutation.mutateAsync({
       agentId: selectedAgent,
       webhookUrl,
       enabled: enableWebhook,
@@ -115,7 +135,7 @@ export const WebhookConfiguration = () => {
     setTimeout(() => setIsTestingWebhook(false), 3000);
   };
 
-  const handleToggleWebhook = (enabled: boolean) => {
+  const handleToggleWebhook = async (enabled: boolean) => {
     if (!selectedAgent) return;
     
     setIsWebhookEnabled(enabled);
@@ -127,7 +147,7 @@ export const WebhookConfiguration = () => {
       rate_limit: 60
     };
 
-    saveWebhookMutation.mutate({
+    await saveWebhookMutation.mutateAsync({
       agentId: selectedAgent,
       webhookUrl,
       enabled,
@@ -137,6 +157,14 @@ export const WebhookConfiguration = () => {
       retryCount,
       timeoutSeconds,
       headers: JSON.parse(customHeaders || '{}'),
+    });
+  };
+
+  const handleRefresh = () => {
+    forceRefreshAgents();
+    toast({
+      title: "🔄 Data Bijgewerkt",
+      description: "Agent configuraties zijn opnieuw geladen.",
     });
   };
 
@@ -159,7 +187,7 @@ export const WebhookConfiguration = () => {
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={() => refetchAgents()}
+              onClick={handleRefresh}
               className="ml-auto"
             >
               <RefreshCw className="h-4 w-4" />
