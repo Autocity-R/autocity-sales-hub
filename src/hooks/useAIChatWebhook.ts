@@ -117,50 +117,11 @@ export const useAIChatWebhook = () => {
         console.log('✅ Unified webhook approach successful');
       }
 
-      // Enhanced message handling with detailed debugging
-      let displayMessage = 'Ik heb je verzoek verwerkt via de geconfigureerde workflow.';
+      // The enhanced webhook service now handles all message extraction
+      // We just use whatever it returns as the message
+      const displayMessage = webhookResult.message || 'Ik heb je verzoek verwerkt via de geconfigureerde workflow.';
       
-      console.log('🔍 Starting message extraction process...');
-      
-      // Priority 1: Check webhook result message
-      if (webhookResult.message && typeof webhookResult.message === 'string' && webhookResult.message.trim()) {
-        displayMessage = webhookResult.message.trim();
-        console.log('✅ Using webhook result message:', displayMessage);
-      }
-      // Priority 2: Check if data is a direct string
-      else if (webhookResult.data && typeof webhookResult.data === 'string' && webhookResult.data.trim()) {
-        displayMessage = webhookResult.data.trim();
-        console.log('✅ Using webhook data as string:', displayMessage);
-      }
-      // Priority 3: Check if data has a message property
-      else if (webhookResult.data && typeof webhookResult.data === 'object' && webhookResult.data.message && webhookResult.data.message.trim()) {
-        displayMessage = webhookResult.data.message.trim();
-        console.log('✅ Using webhook data.message:', displayMessage);
-      }
-      // Priority 4: Check if data has rawText property
-      else if (webhookResult.data && typeof webhookResult.data === 'object' && webhookResult.data.rawText && webhookResult.data.rawText.trim()) {
-        displayMessage = webhookResult.data.rawText.trim();
-        console.log('✅ Using webhook data.rawText:', displayMessage);
-      }
-      // Priority 5: Try to extract any text from data object
-      else if (webhookResult.data && typeof webhookResult.data === 'object') {
-        const dataKeys = Object.keys(webhookResult.data);
-        console.log('🔍 Available data keys:', dataKeys);
-        
-        for (const key of dataKeys) {
-          const value = webhookResult.data[key];
-          if (typeof value === 'string' && value.trim()) {
-            displayMessage = value.trim();
-            console.log(`✅ Using webhook data.${key}:`, displayMessage);
-            break;
-          }
-        }
-      }
-      else {
-        console.log('⚠️ No suitable message found, using default message');
-      }
-
-      console.log('🎯 Final display message will be:', displayMessage);
+      console.log('🎯 Using message from enhanced webhook service:', displayMessage);
 
       return {
         success: webhookResult.success,
