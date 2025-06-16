@@ -137,17 +137,22 @@ export const useAIChat = (agentId: string) => {
       // Import and use enhanced webhook trigger
       const { triggerEnhancedWebhook } = await import('@/services/enhancedWebhookService');
       
-      // Get webhook configuration from ai_agents table
-      const webhookConfig = agentData.webhook_config || {};
+      // Get webhook configuration from ai_agents table with proper type handling
+      let webhookConfig: any = {};
+      if (agentData.webhook_config) {
+        if (typeof agentData.webhook_config === 'object' && agentData.webhook_config !== null) {
+          webhookConfig = agentData.webhook_config as any;
+        }
+      }
       
-      // Trigger enhanced webhook
+      // Trigger enhanced webhook with safe property access
       const webhookResult = await triggerEnhancedWebhook(
         agentData.webhook_url,
         payload,
         {
-          timeout: (webhookConfig.timeout || 30) * 1000,
-          retries: webhookConfig.retries || 3,
-          headers: webhookConfig.headers || {},
+          timeout: (typeof webhookConfig.timeout === 'number' ? webhookConfig.timeout : 30) * 1000,
+          retries: typeof webhookConfig.retries === 'number' ? webhookConfig.retries : 3,
+          headers: (typeof webhookConfig.headers === 'object' && webhookConfig.headers !== null) ? webhookConfig.headers : {},
         }
       );
 
