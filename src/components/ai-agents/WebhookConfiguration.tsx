@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -68,10 +69,12 @@ export const WebhookConfiguration = () => {
   const [timeoutSeconds, setTimeoutSeconds] = useState(30);
   const [customHeaders, setCustomHeaders] = useState("{}");
   const [isTestingWebhook, setIsTestingWebhook] = useState(false);
+  const [isWebhookEnabled, setIsWebhookEnabled] = useState(false);
 
-  const { data: agents = [] } = useQuery({
+  const { data: agents = [], refetch: refetchAgents } = useQuery({
     queryKey: ['ai-agents'],
     queryFn: fetchAgents,
+    refetchInterval: 5000, // Auto-refresh om sync te behouden
   });
 
   const { data: webhooks = [] } = useQuery({
@@ -85,6 +88,7 @@ export const WebhookConfiguration = () => {
   React.useEffect(() => {
     if (selectedAgentData) {
       setWebhookUrl(selectedAgentData.webhook_url || "");
+      setIsWebhookEnabled(selectedAgentData.is_webhook_enabled || false);
       const config = selectedAgentData.webhook_config || {};
       setRetryCount(config.retries || 3);
       setTimeoutSeconds(config.timeout || 30);
@@ -96,19 +100,31 @@ export const WebhookConfiguration = () => {
     mutationFn: async (data: {
       agentId: string;
       webhookUrl: string;
+      enabled: boolean;
       config: any;
     }) => {
-      // Update agent with webhook URL and enable webhook
+      console.log('💾 Saving webhook configuration:', {
+        agentId: data.agentId,
+        webhookUrl: data.webhookUrl,
+        enabled: data.enabled,
+        config: data.config
+      });
+
+      // Update agent with webhook URL and enabled status
       const { error: agentError } = await supabase
         .from('ai_agents')
         .update({
           webhook_url: data.webhookUrl,
-          is_webhook_enabled: true,
-          webhook_config: data.config
+          is_webhook_enabled: data.enabled,
+          webhook_config: data.config,
+          updated_at: new Date().toISOString()
         })
         .eq('id', data.agentId);
 
-      if (agentError) throw agentError;
+      if (agentError) {
+        console.error('❌ Agent update error:', agentError);
+        throw agentError;
+      }
 
       // Create or update webhook record
       const { error: webhookError } = await supabase
@@ -118,27 +134,43 @@ export const WebhookConfiguration = () => {
           webhook_name: `${selectedAgentData?.name || 'Agent'} Webhook`,
           webhook_url: data.webhookUrl,
           workflow_type: workflowType,
-          is_active: true,
+          is_active: data.enabled,
           retry_count: retryCount,
           timeout_seconds: timeoutSeconds,
-          headers: JSON.parse(customHeaders || '{}')
+          headers: JSON.parse(customHeaders || '{}'),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'agent_id'
         });
 
-      if (webhookError) throw webhookError;
+      if (webhookError) {
+        console.error('❌ Webhook update error:', webhookError);
+        throw webhookError;
+      }
 
+      console.log('✅ Webhook configuration saved successfully');
       return true;
     },
     onSuccess: () => {
       toast({
-        title: "Webhook Opgeslagen",
-        description: "Webhook configuratie is succesvol opgeslagen en geactiveerd.",
+        title: "✅ Webhook Configuratie Opgeslagen",
+        description: "Webhook is succesvol geconfigureerd en blijft actief voor alle gebruikers.",
       });
+      
+      // Force refresh van alle related queries
       queryClient.invalidateQueries({ queryKey: ['ai-agents'] });
       queryClient.invalidateQueries({ queryKey: ['agent-webhooks'] });
+      queryClient.invalidateQueries({ queryKey: ['agents-with-data'] });
+      
+      // Trigger additional refresh na korte delay voor sync
+      setTimeout(() => {
+        refetchAgents();
+      }, 1000);
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error('❌ Save webhook error:', error);
       toast({
-        title: "Fout",
+        title: "❌ Opslaan Mislukt",
         description: `Kon webhook niet opslaan: ${error.message}`,
         variant: "destructive",
       });
@@ -168,12 +200,12 @@ export const WebhookConfiguration = () => {
     onSuccess: (data) => {
       if (data.success) {
         toast({
-          title: "Webhook Test Succesvol",
+          title: "✅ Webhook Test Succesvol",
           description: `Webhook getest met status ${data.status}. Response ontvangen.`,
         });
       } else {
         toast({
-          title: "Webhook Test Gefaald",
+          title: "⚠️ Webhook Test Gefaald",
           description: `Status: ${data.status} - ${data.error || 'Onbekende fout'}`,
           variant: "destructive",
         });
@@ -181,7 +213,7 @@ export const WebhookConfiguration = () => {
     },
     onError: (error) => {
       toast({
-        title: "Test Fout",
+        title: "❌ Test Fout",
         description: `Webhook test gefaald: ${error.message}`,
         variant: "destructive",
       });
@@ -189,10 +221,19 @@ export const WebhookConfiguration = () => {
   });
 
   const handleSaveWebhook = () => {
-    if (!selectedAgent || !webhookUrl) {
+    if (!selectedAgent) {
       toast({
-        title: "Fout",
-        description: "Selecteer een agent en voer een webhook URL in.",
+        title: "⚠️ Selectie Vereist",
+        description: "Selecteer eerst een agent.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!webhookUrl) {
+      toast({
+        title: "⚠️ URL Vereist",
+        description: "Voer een webhook URL in.",
         variant: "destructive",
       });
       return;
@@ -202,7 +243,7 @@ export const WebhookConfiguration = () => {
       JSON.parse(customHeaders || '{}');
     } catch {
       toast({
-        title: "Fout",
+        title: "⚠️ JSON Fout",
         description: "Ongeldige JSON in custom headers.",
         variant: "destructive",
       });
@@ -216,9 +257,14 @@ export const WebhookConfiguration = () => {
       rate_limit: 60
     };
 
+    // Webhook wordt automatisch geactiveerd bij opslaan
+    const enableWebhook = !!webhookUrl;
+    setIsWebhookEnabled(enableWebhook);
+
     saveWebhookMutation.mutate({
       agentId: selectedAgent,
       webhookUrl,
+      enabled: enableWebhook,
       config
     });
   };
@@ -226,7 +272,7 @@ export const WebhookConfiguration = () => {
   const handleTestWebhook = () => {
     if (!webhookUrl) {
       toast({
-        title: "Fout",
+        title: "⚠️ URL Vereist",
         description: "Voer eerst een webhook URL in.",
         variant: "destructive",
       });
@@ -236,6 +282,26 @@ export const WebhookConfiguration = () => {
     setIsTestingWebhook(true);
     testWebhookMutation.mutate(webhookUrl);
     setTimeout(() => setIsTestingWebhook(false), 3000);
+  };
+
+  const handleToggleWebhook = (enabled: boolean) => {
+    if (!selectedAgent) return;
+    
+    setIsWebhookEnabled(enabled);
+    
+    const config = {
+      retries: retryCount,
+      timeout: timeoutSeconds,
+      headers: JSON.parse(customHeaders || '{}'),
+      rate_limit: 60
+    };
+
+    saveWebhookMutation.mutate({
+      agentId: selectedAgent,
+      webhookUrl,
+      enabled,
+      config
+    });
   };
 
   if (!isAdmin) {
@@ -249,24 +315,22 @@ export const WebhookConfiguration = () => {
 
   return (
     <div className="space-y-6">
-      {/* Navigation */}
-      <div className="flex items-center gap-4 mb-6">
-        <Link to="/">
-          <Button variant="outline" size="sm" className="flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Terug naar Dashboard
-          </Button>
-        </Link>
-      </div>
-
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5" />
             n8n Webhook Configuratie
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => refetchAgents()}
+              className="ml-auto"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
           </CardTitle>
           <CardDescription>
-            Configureer n8n webhooks voor AI agents om automatische workflows te triggeren
+            Configureer n8n webhooks voor AI agents - configuratie blijft permanent opgeslagen
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -282,7 +346,7 @@ export const WebhookConfiguration = () => {
                   <SelectItem key={agent.id} value={agent.id}>
                     <div className="flex items-center gap-2">
                       {agent.name}
-                      {agent.is_webhook_enabled && (
+                      {agent.is_webhook_enabled && agent.webhook_url && (
                         <Badge variant="default" className="ml-2">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Actief
@@ -299,24 +363,52 @@ export const WebhookConfiguration = () => {
             <div className="space-y-6">
               <Separator />
 
-              {/* Current Status */}
+              {/* Current Status with Real-time Info */}
               <div className="p-4 bg-muted rounded-lg">
-                <h4 className="font-medium mb-2">Huidige Status</h4>
-                <div className="flex items-center gap-2">
-                  <Badge variant={selectedAgentData?.is_webhook_enabled ? "default" : "secondary"}>
-                    {selectedAgentData?.is_webhook_enabled ? (
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                    ) : (
-                      <AlertCircle className="h-3 w-3 mr-1" />
-                    )}
-                    {selectedAgentData?.is_webhook_enabled ? "Webhook Actief" : "Webhook Inactief"}
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">Huidige Webhook Status</h4>
+                  <Badge variant="outline" className="text-xs">
+                    Laatste update: {new Date().toLocaleTimeString()}
                   </Badge>
-                  {selectedAgentData?.webhook_url && (
-                    <span className="text-sm text-muted-foreground">
-                      URL: {selectedAgentData.webhook_url.substring(0, 50)}...
-                    </span>
-                  )}
                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">Status:</span>
+                    <Badge variant={selectedAgentData?.is_webhook_enabled ? "default" : "secondary"}>
+                      {selectedAgentData?.is_webhook_enabled ? (
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                      ) : (
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                      )}
+                      {selectedAgentData?.is_webhook_enabled ? "Actief" : "Inactief"}
+                    </Badge>
+                  </div>
+                  <div>
+                    <span className="font-medium">URL:</span>
+                    {selectedAgentData?.webhook_url ? (
+                      <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded">
+                        {selectedAgentData.webhook_url.substring(0, 40)}...
+                      </span>
+                    ) : (
+                      <span className="ml-2 text-gray-500">Niet geconfigureerd</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Webhook Enable/Disable Toggle */}
+              <div className="flex items-center space-x-2 p-4 border rounded-lg">
+                <Switch
+                  id="webhook-enabled"
+                  checked={isWebhookEnabled}
+                  onCheckedChange={handleToggleWebhook}
+                />
+                <Label htmlFor="webhook-enabled" className="font-medium">
+                  Webhook Activeren
+                </Label>
+                <span className="text-sm text-muted-foreground ml-4">
+                  Schakel dit in om de webhook te activeren voor deze agent
+                </span>
               </div>
 
               {/* Webhook Configuration */}
@@ -393,7 +485,7 @@ export const WebhookConfiguration = () => {
                   className="flex items-center gap-2"
                 >
                   <Save className="h-4 w-4" />
-                  {saveWebhookMutation.isPending ? 'Opslaan...' : 'Webhook Opslaan'}
+                  {saveWebhookMutation.isPending ? 'Opslaan...' : 'Permanent Opslaan'}
                 </Button>
 
                 <Button
@@ -411,7 +503,7 @@ export const WebhookConfiguration = () => {
               {webhooks.length > 0 && (
                 <div>
                   <Separator />
-                  <h4 className="font-medium mb-4">Bestaande Webhooks</h4>
+                  <h4 className="font-medium mb-4">Actieve Webhooks</h4>
                   <div className="space-y-3">
                     {webhooks.map((webhook) => (
                       <Card key={webhook.id}>
@@ -427,13 +519,10 @@ export const WebhookConfiguration = () => {
                               <p className="text-sm text-muted-foreground">
                                 {webhook.workflow_type} • {webhook.retry_count} retries • {webhook.timeout_seconds}s timeout
                               </p>
-                              <p className="text-xs text-muted-foreground mt-1">
+                              <p className="text-xs text-muted-foreground mt-1 bg-gray-100 p-2 rounded">
                                 {webhook.webhook_url}
                               </p>
                             </div>
-                            <Button variant="outline" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
                           </div>
                         </CardContent>
                       </Card>

@@ -28,9 +28,25 @@ export const triggerWebhook = async (
   const startTime = Date.now();
   const { timeout = 30000, retries = 3, headers = {} } = options;
 
+  // Check if webhook is enabled for this agent
+  const { data: agentData } = await supabase
+    .from('ai_agents')
+    .select('is_webhook_enabled, webhook_url')
+    .eq('id', payload.agentId)
+    .single();
+
+  if (!agentData?.is_webhook_enabled || !agentData?.webhook_url) {
+    console.log('🚫 Webhook disabled or not configured for agent:', payload.agentId);
+    return {
+      success: false,
+      message: 'Webhook is niet geactiveerd voor deze agent',
+    };
+  }
+
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       console.log(`🔄 Webhook attempt ${attempt + 1}/${retries} to:`, webhookUrl);
+      console.log('📤 Webhook payload:', payload);
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -150,4 +166,24 @@ export const getAgentWebhooks = async (agentId: string) => {
 
   if (error) throw error;
   return data || [];
+};
+
+export const checkWebhookStatus = async (agentId: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase
+      .from('ai_agents')
+      .select('is_webhook_enabled, webhook_url')
+      .eq('id', agentId)
+      .single();
+
+    if (error) {
+      console.error('Error checking webhook status:', error);
+      return false;
+    }
+
+    return !!(data?.is_webhook_enabled && data?.webhook_url);
+  } catch (error) {
+    console.error('Error checking webhook status:', error);
+    return false;
+  }
 };
