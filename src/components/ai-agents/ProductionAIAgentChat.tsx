@@ -4,11 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, Bot, User, Settings, Zap, AlertCircle, CheckCircle, Database, Activity } from "lucide-react";
+import { Send, Bot, User, Settings, Zap, AlertCircle, CheckCircle, Database, Activity, RefreshCw } from "lucide-react";
 import { useAIChat } from "@/hooks/useAIChat";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 interface AIAgent {
   id: string;
@@ -16,6 +17,7 @@ interface AIAgent {
   persona: string;
   is_active: boolean;
   is_webhook_enabled?: boolean;
+  webhook_url?: string;
   webhook_config?: any;
   data_access_permissions?: any;
   capabilities?: string[];
@@ -33,12 +35,14 @@ const fetchAIAgents = async (): Promise<AIAgent[]> => {
 };
 
 export const ProductionAIAgentChat = () => {
+  const { toast } = useToast();
   const [selectedAgent, setSelectedAgent] = useState<string>("");
   const [message, setMessage] = useState("");
 
-  const { data: agents = [], isLoading: agentsLoading } = useQuery({
+  const { data: agents = [], isLoading: agentsLoading, refetch: refetchAgents } = useQuery({
     queryKey: ['ai-agents'],
     queryFn: fetchAIAgents,
+    refetchInterval: 10000, // Refresh every 10 seconds to sync status
   });
 
   const {
@@ -74,6 +78,14 @@ export const ProductionAIAgentChat = () => {
     setSelectedAgent(agentId);
   };
 
+  const handleRefreshAgents = () => {
+    refetchAgents();
+    toast({
+      title: "Agents Bijgewerkt",
+      description: "Agent status is opnieuw geladen",
+    });
+  };
+
   const getDataAccessSummary = (permissions: any) => {
     if (!permissions) return [];
     return Object.entries(permissions)
@@ -82,12 +94,21 @@ export const ProductionAIAgentChat = () => {
         switch(key) {
           case 'leads': return 'Leads';
           case 'customers': return 'Klanten';
+          case 'contacts': return 'Contacten';
           case 'vehicles': return 'Voertuigen';
           case 'appointments': return 'Afspraken';
           case 'contracts': return 'Contracten';
+          case 'warranty': return 'Garantie';
+          case 'loan_cars': return 'Leen Auto\'s';
           default: return key;
         }
       });
+  };
+
+  const getWebhookStatus = (agent: AIAgent) => {
+    if (!agent.webhook_url) return { status: 'not_configured', label: 'Niet geconfigureerd', color: 'secondary' };
+    if (!agent.is_webhook_enabled) return { status: 'disabled', label: 'Uitgeschakeld', color: 'secondary' };
+    return { status: 'active', label: 'Actief', color: 'default' };
   };
 
   return (
@@ -98,6 +119,14 @@ export const ProductionAIAgentChat = () => {
           <CardTitle className="flex items-center gap-2">
             <Bot className="h-5 w-5" />
             AI Agents
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleRefreshAgents}
+              className="ml-auto"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
           </CardTitle>
           <CardDescription>
             Selecteer een AI agent met systeem data toegang
@@ -113,7 +142,7 @@ export const ProductionAIAgentChat = () => {
                 <SelectItem key={agent.id} value={agent.id}>
                   <div className="flex items-center gap-2">
                     {agent.name}
-                    {agent.is_webhook_enabled && (
+                    {getWebhookStatus(agent).status === 'active' && (
                       <Zap className="h-3 w-3 text-green-600" />
                     )}
                   </div>
@@ -127,19 +156,46 @@ export const ProductionAIAgentChat = () => {
               <div className="p-3 bg-muted rounded-lg">
                 <h4 className="font-medium flex items-center gap-2">
                   {selectedAgentData.name}
-                  <Badge variant={selectedAgentData.is_webhook_enabled ? "default" : "secondary"}>
-                    {selectedAgentData.is_webhook_enabled ? (
+                  <Badge variant={getWebhookStatus(selectedAgentData).color as any}>
+                    {getWebhookStatus(selectedAgentData).status === 'active' ? (
                       <CheckCircle className="h-3 w-3 mr-1" />
                     ) : (
                       <AlertCircle className="h-3 w-3 mr-1" />
                     )}
-                    {selectedAgentData.is_webhook_enabled ? "Webhook Active" : "No Webhook"}
+                    {getWebhookStatus(selectedAgentData).label}
                   </Badge>
                 </h4>
                 <p className="text-sm text-muted-foreground mt-1">
                   {selectedAgentData.persona}
                 </p>
               </div>
+
+              {/* Webhook Status Detail */}
+              {selectedAgentData.webhook_url && (
+                <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                  <h5 className="font-medium text-purple-800 flex items-center gap-1">
+                    <Zap className="h-4 w-4" />
+                    n8n Webhook
+                  </h5>
+                  <div className="text-sm text-purple-700 mt-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span>Status:</span>
+                      <Badge variant={selectedAgentData.is_webhook_enabled ? "default" : "secondary"}>
+                        {selectedAgentData.is_webhook_enabled ? "Actief" : "Inactief"}
+                      </Badge>
+                    </div>
+                    <div className="text-xs break-all">
+                      URL: {selectedAgentData.webhook_url.substring(0, 40)}...
+                    </div>
+                    {selectedAgentData.webhook_config && (
+                      <div className="text-xs">
+                        Timeout: {selectedAgentData.webhook_config.timeout || 30}s • 
+                        Retries: {selectedAgentData.webhook_config.retries || 3}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Capabilities */}
               {selectedAgentData.capabilities && selectedAgentData.capabilities.length > 0 && (
@@ -175,26 +231,11 @@ export const ProductionAIAgentChat = () => {
                 </div>
               )}
 
-              {/* Webhook Configuration */}
-              {selectedAgentData.is_webhook_enabled && selectedAgentData.webhook_config && (
-                <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                  <h5 className="font-medium text-purple-800 flex items-center gap-1">
-                    <Zap className="h-4 w-4" />
-                    n8n Configuration
-                  </h5>
-                  <div className="text-sm text-purple-700 mt-1 space-y-1">
-                    <div>Timeout: {selectedAgentData.webhook_config.timeout || 30}s</div>
-                    <div>Retries: {selectedAgentData.webhook_config.retries || 3}</div>
-                    <div>Rate Limit: {selectedAgentData.webhook_config.rate_limit || 60}/min</div>
-                  </div>
-                </div>
-              )}
-
               {session && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <h5 className="font-medium text-blue-800">Actieve Sessie</h5>
                   <div className="text-sm text-blue-700 mt-1">
-                    <div>ID: {session.sessionToken}</div>
+                    <div>ID: {session.sessionToken.substring(0, 8)}...</div>
                     <div>Status: {session.status}</div>
                     <div>Berichten: {messages.length}</div>
                   </div>
@@ -214,10 +255,10 @@ export const ProductionAIAgentChat = () => {
           <div className="space-y-2">
             <h4 className="font-medium text-sm">Alle Agents:</h4>
             {agents.map((agent) => (
-              <div key={agent.id} className="flex items-center justify-between text-sm">
-                <span className="truncate">{agent.name}</span>
+              <div key={agent.id} className="flex items-center justify-between text-sm p-2 rounded border">
+                <span className="truncate font-medium">{agent.name}</span>
                 <div className="flex items-center gap-1">
-                  {agent.is_webhook_enabled ? (
+                  {getWebhookStatus(agent).status === 'active' ? (
                     <Zap className="h-3 w-3 text-green-600" />
                   ) : (
                     <Settings className="h-3 w-3 text-gray-400" />
@@ -244,6 +285,11 @@ export const ProductionAIAgentChat = () => {
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
             Enhanced AI Agent Chat
+            {selectedAgentData && (
+              <Badge variant="outline" className="ml-auto">
+                {selectedAgentData.name}
+              </Badge>
+            )}
           </CardTitle>
           <CardDescription>
             Deze chat triggert n8n workflows met volledig systeem data context
@@ -353,6 +399,7 @@ export const ProductionAIAgentChat = () => {
             </Button>
           </div>
 
+          {/* Status Messages */}
           {selectedAgentData && !selectedAgentData.is_webhook_enabled && (
             <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
               <AlertCircle className="h-4 w-4 inline mr-1" />

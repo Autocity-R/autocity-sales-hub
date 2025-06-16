@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Database, Users, Car, Calendar, FileText, Activity, Plus, Trash2 } from "lucide-react";
+import { Database, Users, Car, Calendar, FileText, Activity, Plus, Trash2, RefreshCw, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -76,9 +76,10 @@ export const AgentDataManagement = () => {
     preferred_data_sources: []
   });
 
-  const { data: agents = [] } = useQuery({
+  const { data: agents = [], refetch: refetchAgents } = useQuery({
     queryKey: ['agents-with-data'],
     queryFn: fetchAgentsWithData,
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
 
   const { data: contexts = [] } = useQuery({
@@ -93,14 +94,23 @@ export const AgentDataManagement = () => {
       permissions: SystemDataAccess;
       settings: any;
     }) => {
-      return updateAgentDataPermissions(agentId, permissions, settings);
+      const result = await updateAgentDataPermissions(agentId, permissions, settings);
+      
+      // Force refresh of all agent queries to ensure UI sync
+      await queryClient.invalidateQueries({ queryKey: ['agents-with-data'] });
+      await queryClient.invalidateQueries({ queryKey: ['ai-agents'] });
+      
+      return result;
     },
     onSuccess: () => {
       toast({
         title: "Succes",
-        description: "Agent data toegang bijgewerkt",
+        description: "Agent data toegang succesvol bijgewerkt en gesynchroniseerd",
       });
-      queryClient.invalidateQueries({ queryKey: ['agents-with-data'] });
+      // Trigger additional refresh to ensure UI consistency
+      setTimeout(() => {
+        refetchAgents();
+      }, 1000);
     },
     onError: (error) => {
       toast({
@@ -182,11 +192,34 @@ export const AgentDataManagement = () => {
 
   return (
     <div className="space-y-6">
+      {/* Status Indicator */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-center gap-2">
+          <Database className="h-5 w-5 text-blue-600" />
+          <h3 className="font-medium text-blue-800">Agent Status Monitor</h3>
+          <Badge variant="outline" className="ml-auto">
+            Auto-refresh: 5s
+          </Badge>
+        </div>
+        <p className="text-sm text-blue-700 mt-2">
+          Agent configuraties worden automatisch gesynchroniseerd tussen alle tabs. 
+          Wijzigingen zijn direct zichtbaar in de chat interface.
+        </p>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" />
             Agent Data Toegang
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => refetchAgents()}
+              className="ml-auto"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
           </CardTitle>
           <CardDescription>
             Beheer welke CRM data elke AI agent kan benaderen en gebruiken voor n8n workflows
@@ -214,6 +247,33 @@ export const AgentDataManagement = () => {
 
             {selectedAgent && selectedAgentData && (
               <div className="space-y-6">
+                {/* Current Status with Real-time Update */}
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium">Agent Status</h4>
+                    <Badge variant="outline" className="text-xs">
+                      Laatste update: {new Date().toLocaleTimeString()}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Webhook Status:</span>
+                      <Badge 
+                        variant={selectedAgentData.data_access_permissions ? "default" : "secondary"}
+                        className="ml-2"
+                      >
+                        {Object.values(selectedAgentData.data_access_permissions || {}).some(Boolean) ? "Actief" : "Inactief"}
+                      </Badge>
+                    </div>
+                    <div>
+                      <span className="font-medium">Data Toegang:</span>
+                      <span className="ml-2">
+                        {Object.values(selectedAgentData.data_access_permissions || {}).filter(Boolean).length} van {Object.keys(selectedAgentData.data_access_permissions || {}).length}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Current Capabilities */}
                 <div>
                   <Label>Huidige Capabilities</Label>
@@ -323,13 +383,23 @@ export const AgentDataManagement = () => {
                   )}
                 </div>
 
-                {/* Save Button */}
+                {/* Save Button with Enhanced Feedback */}
                 <Button 
                   onClick={handleSavePermissions}
                   disabled={updatePermissionsMutation.isPending}
                   className="w-full"
                 >
-                  {updatePermissionsMutation.isPending ? 'Opslaan...' : 'Instellingen Opslaan'}
+                  {updatePermissionsMutation.isPending ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Opslaan & Synchroniseren...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Instellingen Opslaan
+                    </>
+                  )}
                 </Button>
               </div>
             )}
