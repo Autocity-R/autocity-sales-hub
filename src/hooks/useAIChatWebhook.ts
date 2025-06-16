@@ -97,9 +97,23 @@ export const useAIChatWebhook = () => {
         console.log('✅ Unified webhook approach successful');
       }
 
+      // Improved message handling - ensure we always have a message to display
+      let displayMessage = 'Ik heb je verzoek verwerkt via de geconfigureerde workflow.';
+      
+      if (webhookResult.message && webhookResult.message.trim()) {
+        displayMessage = webhookResult.message;
+        console.log('📝 Using webhook message:', displayMessage);
+      } else if (webhookResult.data && typeof webhookResult.data === 'string' && webhookResult.data.trim()) {
+        displayMessage = webhookResult.data;
+        console.log('📝 Using webhook data as message:', displayMessage);
+      } else if (webhookResult.data && webhookResult.data.rawText && webhookResult.data.rawText.trim()) {
+        displayMessage = webhookResult.data.rawText;
+        console.log('📝 Using raw text from webhook data:', displayMessage);
+      }
+
       return {
         success: webhookResult.success,
-        message: webhookResult.message || 'Ik heb je verzoek verwerkt via de geconfigureerde workflow.',
+        message: displayMessage,
         data: webhookResult.data,
         processingTime
       };

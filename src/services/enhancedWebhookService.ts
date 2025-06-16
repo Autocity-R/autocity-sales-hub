@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 // Define webhook types locally since they're not exported from webhookService
@@ -130,10 +131,18 @@ export const triggerEnhancedWebhook = async (
       const responseData = await response.text();
       let parsedData: any = responseData;
 
+      // Try to parse as JSON first
       try {
         parsedData = JSON.parse(responseData);
+        console.log('✅ Received JSON response:', parsedData);
       } catch {
-        // Keep as text if not JSON
+        // If it's not JSON, treat as plain text and create proper response object
+        console.log('📝 Received plain text response:', responseData);
+        parsedData = {
+          success: true,
+          message: responseData.trim() || 'Response received from webhook',
+          data: { rawText: responseData }
+        };
       }
 
       const processingTime = Date.now() - startTime;
@@ -155,7 +164,7 @@ export const triggerEnhancedWebhook = async (
         return {
           success: true,
           data: parsedData,
-          message: parsedData?.message || 'Webhook executed successfully with CRM context',
+          message: parsedData?.message || responseData || 'Webhook executed successfully with CRM context',
           processingTime
         };
       } else {
@@ -233,7 +242,6 @@ const getSuggestedActions = (message: string, systemData: any, permissions: any)
   return suggestions;
 };
 
-// Log webhook calls for auditing and debugging
 const logWebhookCall = async (
   agentId: string,
   webhookUrl: string,
