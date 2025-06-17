@@ -347,6 +347,113 @@ export type Database = {
           },
         ]
       }
+      ai_email_processing: {
+        Row: {
+          competitive_mentions: Json | null
+          content_summary: string | null
+          created_at: string | null
+          email_id: string
+          id: string
+          intent_classification: string | null
+          key_insights: Json | null
+          lead_id: string | null
+          lead_score: number
+          processed_at: string | null
+          processing_agent: string | null
+          sender_email: string
+          sentiment_score: number | null
+          subject: string | null
+          suggested_response: string | null
+          urgency_level: string | null
+        }
+        Insert: {
+          competitive_mentions?: Json | null
+          content_summary?: string | null
+          created_at?: string | null
+          email_id: string
+          id?: string
+          intent_classification?: string | null
+          key_insights?: Json | null
+          lead_id?: string | null
+          lead_score?: number
+          processed_at?: string | null
+          processing_agent?: string | null
+          sender_email: string
+          sentiment_score?: number | null
+          subject?: string | null
+          suggested_response?: string | null
+          urgency_level?: string | null
+        }
+        Update: {
+          competitive_mentions?: Json | null
+          content_summary?: string | null
+          created_at?: string | null
+          email_id?: string
+          id?: string
+          intent_classification?: string | null
+          key_insights?: Json | null
+          lead_id?: string | null
+          lead_score?: number
+          processed_at?: string | null
+          processing_agent?: string | null
+          sender_email?: string
+          sentiment_score?: number | null
+          subject?: string | null
+          suggested_response?: string | null
+          urgency_level?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_email_processing_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_sales_interactions: {
+        Row: {
+          agent_name: string | null
+          ai_response: string | null
+          created_at: string | null
+          id: string
+          input_data: Json
+          interaction_type: string
+          outcome: string | null
+          success_indicators: Json | null
+          team_feedback: string | null
+          team_rating: number | null
+          user_id: string | null
+        }
+        Insert: {
+          agent_name?: string | null
+          ai_response?: string | null
+          created_at?: string | null
+          id?: string
+          input_data: Json
+          interaction_type: string
+          outcome?: string | null
+          success_indicators?: Json | null
+          team_feedback?: string | null
+          team_rating?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          agent_name?: string | null
+          ai_response?: string | null
+          created_at?: string | null
+          id?: string
+          input_data?: Json
+          interaction_type?: string
+          outcome?: string | null
+          success_indicators?: Json | null
+          team_feedback?: string | null
+          team_rating?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ai_webhook_logs: {
         Row: {
           agent_id: string
@@ -726,45 +833,164 @@ export type Database = {
           },
         ]
       }
+      email_response_suggestions: {
+        Row: {
+          created_at: string | null
+          email_processing_id: string | null
+          id: string
+          lead_id: string | null
+          personalization_factors: Json | null
+          priority_level: string | null
+          response_type: string | null
+          sent_at: string | null
+          suggested_response: string
+          team_action: string | null
+          team_modifications: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email_processing_id?: string | null
+          id?: string
+          lead_id?: string | null
+          personalization_factors?: Json | null
+          priority_level?: string | null
+          response_type?: string | null
+          sent_at?: string | null
+          suggested_response: string
+          team_action?: string | null
+          team_modifications?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email_processing_id?: string | null
+          id?: string
+          lead_id?: string | null
+          personalization_factors?: Json | null
+          priority_level?: string | null
+          response_type?: string | null
+          sent_at?: string | null
+          suggested_response?: string
+          team_action?: string | null
+          team_modifications?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_response_suggestions_email_processing_id_fkey"
+            columns: ["email_processing_id"]
+            isOneToOne: false
+            referencedRelation: "ai_email_processing"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_response_suggestions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_scoring_history: {
+        Row: {
+          id: string
+          lead_id: string
+          new_score: number
+          previous_score: number | null
+          scored_at: string | null
+          scored_by_agent: string | null
+          scoring_factors: Json | null
+          scoring_reason: string | null
+        }
+        Insert: {
+          id?: string
+          lead_id: string
+          new_score: number
+          previous_score?: number | null
+          scored_at?: string | null
+          scored_by_agent?: string | null
+          scoring_factors?: Json | null
+          scoring_reason?: string | null
+        }
+        Update: {
+          id?: string
+          lead_id?: string
+          new_score?: number
+          previous_score?: number | null
+          scored_at?: string | null
+          scored_by_agent?: string | null
+          scoring_factors?: Json | null
+          scoring_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_scoring_history_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           assigned_to: string | null
           created_at: string
           email: string | null
+          email_thread_id: string | null
           first_name: string | null
           id: string
+          intent_classification: string | null
           interested_vehicle: string | null
+          last_email_date: string | null
           last_name: string | null
+          lead_score: number | null
           phone: string | null
           priority: string
+          response_required: boolean | null
+          source_email: string | null
           status: string
           updated_at: string
+          urgency_level: string | null
         }
         Insert: {
           assigned_to?: string | null
           created_at?: string
           email?: string | null
+          email_thread_id?: string | null
           first_name?: string | null
           id?: string
+          intent_classification?: string | null
           interested_vehicle?: string | null
+          last_email_date?: string | null
           last_name?: string | null
+          lead_score?: number | null
           phone?: string | null
           priority: string
+          response_required?: boolean | null
+          source_email?: string | null
           status: string
           updated_at?: string
+          urgency_level?: string | null
         }
         Update: {
           assigned_to?: string | null
           created_at?: string
           email?: string | null
+          email_thread_id?: string | null
           first_name?: string | null
           id?: string
+          intent_classification?: string | null
           interested_vehicle?: string | null
+          last_email_date?: string | null
           last_name?: string | null
+          lead_score?: number | null
           phone?: string | null
           priority?: string
+          response_required?: boolean | null
+          source_email?: string | null
           status?: string
           updated_at?: string
+          urgency_level?: string | null
         }
         Relationships: [
           {
