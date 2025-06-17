@@ -1,6 +1,6 @@
 
 import React from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductionAIAgentChat } from "@/components/ai-agents/ProductionAIAgentChat";
 import { WebhookConfiguration } from "@/components/ai-agents/WebhookConfiguration";
