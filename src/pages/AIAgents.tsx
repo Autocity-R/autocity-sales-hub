@@ -7,30 +7,49 @@ import { WebhookConfiguration } from "@/components/ai-agents/WebhookConfiguratio
 import { AIAgentManagement } from "@/components/settings/AIAgentManagement";
 import { HendrikSalesDashboard } from "@/components/sales/HendrikSalesDashboard";
 import { SalesAgentChat } from "@/components/sales/SalesAgentChat";
-import { Brain, Settings, Webhook, TrendingUp, MessageSquare } from "lucide-react";
+import { AgentOverviewDashboard } from "@/components/ai-agents/AgentOverviewDashboard";
+import { RobinCalendarDashboard } from "@/components/ai-agents/RobinCalendarDashboard";
+import { 
+  Brain, 
+  Settings, 
+  Webhook, 
+  TrendingUp, 
+  MessageSquare, 
+  BarChart3,
+  Calendar,
+  Users
+} from "lucide-react";
 
 const AIAgents = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">AI Agents</h1>
+          <h1 className="text-3xl font-bold tracking-tight">AI Agents Control Center</h1>
           <p className="text-muted-foreground">
-            Beheer en communiceer met AI agents voor verschillende business processen
+            Centraal dashboard voor alle AI agents met gespecialiseerde interfaces
           </p>
         </div>
 
-        <Tabs defaultValue="sales-dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="sales-dashboard" className="flex items-center gap-2">
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="grid w-full grid-cols-7">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Overzicht
+            </TabsTrigger>
+            <TabsTrigger value="robin-dashboard" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Robin Calendar
+            </TabsTrigger>
+            <TabsTrigger value="hendrik-dashboard" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
-              Hendrik Dashboard
+              Hendrik Sales
             </TabsTrigger>
-            <TabsTrigger value="sales-chat" className="flex items-center gap-2">
+            <TabsTrigger value="chat" className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
-              Chat met Hendrik
+              Agent Chat
             </TabsTrigger>
-            <TabsTrigger value="agents" className="flex items-center gap-2">
+            <TabsTrigger value="all-agents" className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
               Alle Agents
             </TabsTrigger>
@@ -40,19 +59,27 @@ const AIAgents = () => {
             </TabsTrigger>
             <TabsTrigger value="management" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
-              Agent Beheer
+              Beheer
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="sales-dashboard" className="space-y-4">
+          <TabsContent value="overview" className="space-y-4">
+            <AgentOverviewDashboard />
+          </TabsContent>
+
+          <TabsContent value="robin-dashboard" className="space-y-4">
+            <RobinCalendarDashboard />
+          </TabsContent>
+
+          <TabsContent value="hendrik-dashboard" className="space-y-4">
             <HendrikSalesDashboard />
           </TabsContent>
 
-          <TabsContent value="sales-chat" className="space-y-4">
+          <TabsContent value="chat" className="space-y-4">
             <SalesAgentChat />
           </TabsContent>
 
-          <TabsContent value="agents" className="space-y-4">
+          <TabsContent value="all-agents" className="space-y-4">
             <ProductionAIAgentChat />
           </TabsContent>
 
