@@ -134,7 +134,7 @@ export const SalesAgentChat = () => {
                 Specialiteiten
               </h4>
               <div className="flex flex-wrap gap-1">
-                {hendrikAgent.capabilities.map((cap) => (
+                {(hendrikAgent.capabilities || []).map((cap) => (
                   <Badge key={cap} variant="outline" className="text-xs">
                     {cap}
                   </Badge>
