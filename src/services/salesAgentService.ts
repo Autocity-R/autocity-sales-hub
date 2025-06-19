@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface SalesEmailAnalysis {
@@ -32,13 +31,13 @@ export interface ResponseSuggestion {
   personalizationFactors: Record<string, any>;
 }
 
-// Initialize Hendrik Sales Agent
+// Initialize Hendrik Sales Agent with enhanced capabilities
 export const initializeHendrikAgent = async () => {
   try {
     // Check if Hendrik already exists
     const { data: existingAgent } = await supabase
       .from('ai_agents')
-      .select('id')
+      .select('id, name')
       .eq('name', 'Hendrik - Sales AI Agent')
       .single();
 
@@ -47,12 +46,12 @@ export const initializeHendrikAgent = async () => {
       return existingAgent;
     }
 
-    // Create Hendrik Sales Agent
+    // Create Hendrik Sales Agent with direct OpenAI integration
     const { data: newAgent, error } = await supabase
       .from('ai_agents')
       .insert({
         name: 'Hendrik - Sales AI Agent',
-        persona: 'Ik ben Hendrik, jouw Sales AI Assistent. Ik help het sales team met email analyse, lead scoring, en het voorstellen van gepersonaliseerde responses. Ik leer van jullie feedback om steeds beter te worden in het identificeren van koopintentie en het ondersteunen van het sales proces.',
+        persona: 'Ik ben Hendrik, jouw intelligente Sales AI Assistent. Ik heb directe toegang tot alle CRM data en kan real-time analyses maken, leads scoren, afspraken plannen, en gepersonaliseerde response suggesties geven. Ik leer van jullie feedback om steeds beter te worden in het ondersteunen van het sales proces.',
         capabilities: [
           'email-processing',
           'lead-scoring', 
@@ -60,9 +59,12 @@ export const initializeHendrikAgent = async () => {
           'response-suggestions',
           'competitive-analysis',
           'sales-analytics',
-          'team-learning'
+          'team-learning',
+          'appointment-scheduling',
+          'crm-operations',
+          'direct-ai-integration'
         ],
-        system_prompt: 'Je bent Hendrik, een Sales AI Agent voor Auto City. Je analyseert inkomende emails op verkoop@auto-city.nl, scoort leads, detecteert koopintentie, en stelt gepersonaliseerde responses voor aan het sales team. Je leert van team feedback om je suggesties te verbeteren. Focus op: lead kwalificatie, urgentie detectie, competitive intelligence, en sales opportunities.',
+        system_prompt: 'Je bent Hendrik, een geavanceerde Sales AI Agent voor Auto City met directe OpenAI integratie. Je hebt real-time toegang tot alle CRM data en kunt proactief sales opportunities identificeren, leads kwalificeren, afspraken inplannen, en het team ondersteunen met data-driven insights. Je leert van team feedback en past je responses aan op basis van wat werkt.',
         data_access_permissions: {
           leads: true,
           customers: true,
@@ -74,19 +76,24 @@ export const initializeHendrikAgent = async () => {
           loan_cars: false
         },
         context_settings: {
-          max_context_items: 15,
-          preferred_data_sources: ['leads', 'customers', 'vehicles', 'appointments'],
+          max_context_items: 20,
+          preferred_data_sources: ['leads', 'customers', 'vehicles', 'appointments', 'contracts'],
           include_recent_activity: true,
           sales_focus: true,
-          email_processing: true
+          email_processing: true,
+          direct_ai_integration: true,
+          learning_enabled: true
         },
         is_active: true,
-        is_webhook_enabled: false, // Will be enabled when N8N URL is provided
+        // No webhook needed - uses direct OpenAI integration
+        is_webhook_enabled: false,
+        webhook_url: null,
         webhook_config: {
-          retries: 3,
-          timeout: 45,
-          headers: {},
-          rate_limit: 100
+          direct_ai: true,
+          model: 'gpt-4o',
+          temperature: 0.7,
+          max_tokens: 1000,
+          functions_enabled: true
         }
       })
       .select()
@@ -94,10 +101,43 @@ export const initializeHendrikAgent = async () => {
 
     if (error) throw error;
 
-    console.log('✅ Hendrik Sales Agent created successfully');
+    console.log('✅ Hendrik Sales Agent created with direct OpenAI integration');
     return newAgent;
   } catch (error) {
     console.error('❌ Failed to initialize Hendrik:', error);
+    throw error;
+  }
+};
+
+// Enhanced function to process direct AI responses
+export const processDirectAIResponse = async (
+  agentId: string,
+  userMessage: string,
+  aiResponse: string,
+  functionCalled?: string,
+  functionResult?: any
+) => {
+  try {
+    const { data, error } = await supabase
+      .from('ai_sales_interactions')
+      .insert({
+        interaction_type: 'direct_ai_chat',
+        input_data: { 
+          message: userMessage,
+          function_called: functionCalled,
+          function_result: functionResult
+        },
+        ai_response: aiResponse,
+        agent_name: 'hendrik',
+        processing_method: 'direct_openai_integration'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('❌ Failed to log direct AI response:', error);
     throw error;
   }
 };

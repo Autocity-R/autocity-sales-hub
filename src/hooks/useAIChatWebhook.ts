@@ -1,6 +1,5 @@
 
 import { useCallback } from 'react';
-import { checkWebhookStatus, WebhookPayload } from '@/services/webhookService';
 import { supabase } from '@/integrations/supabase/client';
 import { ChatSession, ChatMessage } from '@/services/chatSessionService';
 import { useToast } from '@/hooks/use-toast';
@@ -15,127 +14,142 @@ export const useAIChatWebhook = () => {
     messages: ChatMessage[]
   ) => {
     const startTime = Date.now();
-    console.log('🚀 Starting processWebhookMessage with:', {
+    console.log('🚀 Starting processWebhookMessage with direct OpenAI integration:', {
       agentId,
       sessionId: session.id,
       messageContent: content,
       messagesCount: messages.length
     });
 
-    // Check webhook status using unified approach (ai_agents table)
-    const hasWebhook = await checkWebhookStatus(agentId);
-    console.log('🔍 Webhook status check result:', hasWebhook);
-    
-    if (!hasWebhook) {
-      return {
-        success: false,
-        message: 'Ik heb je bericht ontvangen, maar er zijn geen workflows geconfigureerd voor deze agent. Configureer een webhook in de agent instellingen.',
-        processingTime: Date.now() - startTime
-      };
-    }
-
-    // Get webhook URL from ai_agents table (unified approach)
-    const { data: agentData } = await supabase
-      .from('ai_agents')
-      .select('webhook_url, webhook_config')
-      .eq('id', agentId)
-      .single();
-
-    console.log('🔍 Agent data from database:', agentData);
-
-    if (!agentData?.webhook_url) {
-      return {
-        success: false,
-        message: 'Webhook is ingeschakeld maar geen URL geconfigureerd. Controleer de configuratie.',
-        processingTime: Date.now() - startTime
-      };
-    }
-    
-    // Prepare webhook payload
-    const payload: WebhookPayload = {
-      sessionId: session.id,
-      message: content,
-      workflowType: 'chat_interaction',
-      agentId: agentId,
-      userContext: {
-        ...session.context,
-        currentMessage: content,
-        sessionToken: session.sessionToken,
-        messageHistory: messages.slice(-5).map(m => ({
-          type: m.messageType,
-          content: m.content,
-          timestamp: m.createdAt
-        }))
-      },
-    };
-
-    console.log('🔄 Sending webhook payload via unified approach:', payload);
-
     try {
-      // Import and use enhanced webhook trigger
+      // Check if this is Hendrik (sales agent) - use direct OpenAI integration
+      const { data: agentData } = await supabase
+        .from('ai_agents')
+        .select('name, capabilities')
+        .eq('id', agentId)
+        .single();
+
+      const isHendrikAgent = agentData?.name?.toLowerCase().includes('hendrik') || 
+                             agentData?.capabilities?.includes('email-processing') ||
+                             agentData?.capabilities?.includes('lead-scoring');
+
+      if (isHendrikAgent) {
+        console.log('🤖 Using direct OpenAI integration for Hendrik');
+        
+        // Call our new Hendrik AI Chat edge function
+        const { data: aiResponse, error: aiError } = await supabase.functions.invoke(
+          'hendrik-ai-chat',
+          {
+            body: {
+              sessionId: session.id,
+              message: content,
+              agentId: agentId,
+              userContext: {
+                ...session.context,
+                sessionToken: session.sessionToken,
+                messageHistory: messages.slice(-3).map(m => ({
+                  type: m.messageType,
+                  content: m.content,
+                  timestamp: m.createdAt
+                }))
+              }
+            }
+          }
+        );
+
+        if (aiError) {
+          console.error('❌ Direct AI integration error:', aiError);
+          throw new Error(`AI service error: ${aiError.message}`);
+        }
+
+        const processingTime = Date.now() - startTime;
+        
+        console.log('✅ Direct OpenAI integration successful:', {
+          success: aiResponse.success,
+          hasMessage: !!aiResponse.message,
+          functionCalled: aiResponse.function_called,
+          contextUsed: aiResponse.context_used,
+          processingTime
+        });
+
+        if (!aiResponse.success) {
+          throw new Error(aiResponse.error || 'AI service failed');
+        }
+
+        return {
+          success: true,
+          message: aiResponse.message || 'Ik heb je bericht verwerkt.',
+          data: {
+            function_called: aiResponse.function_called,
+            function_result: aiResponse.function_result,
+            context_used: aiResponse.context_used
+          },
+          processingTime
+        };
+      }
+
+      // For other agents, fall back to webhook system (if configured)
+      console.log('🔄 Using webhook system for non-Hendrik agent');
+      
+      const { data: webhookAgent } = await supabase
+        .from('ai_agents')
+        .select('webhook_url, webhook_config, is_webhook_enabled')
+        .eq('id', agentId)
+        .single();
+
+      if (!webhookAgent?.is_webhook_enabled || !webhookAgent?.webhook_url) {
+        return {
+          success: false,
+          message: 'Deze agent heeft geen direct AI systeem of webhook geconfigureerd. Hendrik heeft wel directe AI integratie beschikbaar.',
+          processingTime: Date.now() - startTime
+        };
+      }
+
+      // Use existing webhook logic for other agents
       const { triggerEnhancedWebhook } = await import('@/services/enhancedWebhookService');
       
-      // Get webhook configuration from ai_agents table with proper type handling
-      let webhookConfig: any = {};
-      if (agentData.webhook_config) {
-        if (typeof agentData.webhook_config === 'object' && agentData.webhook_config !== null) {
-          webhookConfig = agentData.webhook_config as any;
-        }
-      }
-      
-      console.log('🔧 Webhook config:', webhookConfig);
-      
-      // Trigger enhanced webhook with safe property access
       const webhookResult = await triggerEnhancedWebhook(
-        agentData.webhook_url,
-        payload,
+        webhookAgent.webhook_url,
         {
-          timeout: (typeof webhookConfig.timeout === 'number' ? webhookConfig.timeout : 30) * 1000,
-          retries: typeof webhookConfig.retries === 'number' ? webhookConfig.retries : 3,
-          headers: (typeof webhookConfig.headers === 'object' && webhookConfig.headers !== null) ? webhookConfig.headers : {},
+          sessionId: session.id,
+          message: content,
+          workflowType: 'chat_interaction',
+          agentId: agentId,
+          userContext: {
+            ...session.context,
+            currentMessage: content,
+            sessionToken: session.sessionToken,
+            messageHistory: messages.slice(-5).map(m => ({
+              type: m.messageType,
+              content: m.content,
+              timestamp: m.createdAt
+            }))
+          }
+        },
+        {
+          timeout: 30000,
+          retries: 3,
+          headers: {},
         }
       );
 
-      console.log('🎯 Webhook result received:', {
-        success: webhookResult.success,
-        hasMessage: !!webhookResult.message,
-        hasData: !!webhookResult.data,
-        messageValue: webhookResult.message,
-        dataValue: webhookResult.data,
-        processingTime: webhookResult.processingTime
-      });
-
       const processingTime = Date.now() - startTime;
-
-      if (!webhookResult.success) {
-        toast({
-          title: 'Webhook Warning',
-          description: 'Er was een probleem met de workflow verwerking.',
-          variant: 'destructive',
-        });
-      } else {
-        console.log('✅ Unified webhook approach successful');
-      }
-
-      // The enhanced webhook service now handles all message extraction
-      // We just use whatever it returns as the message
-      const displayMessage = webhookResult.message || 'Ik heb je verzoek verwerkt via de geconfigureerde workflow.';
-      
-      console.log('🎯 Using message from enhanced webhook service:', displayMessage);
 
       return {
         success: webhookResult.success,
-        message: displayMessage,
+        message: webhookResult.message || 'Ik heb je verzoek verwerkt.',
         data: webhookResult.data,
         processingTime
       };
 
     } catch (error) {
-      console.error('❌ Webhook processing error:', error);
+      console.error('❌ Message processing error:', error);
+      const processingTime = Date.now() - startTime;
+      
       return {
         success: false,
         message: 'Sorry, er is een fout opgetreden bij het verwerken van je bericht. Probeer het opnieuw.',
-        processingTime: Date.now() - startTime
+        processingTime
       };
     }
   }, [toast]);

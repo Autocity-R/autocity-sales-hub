@@ -75,12 +75,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       });
   };
 
+  const isHendrikAgent = selectedAgentData?.name?.toLowerCase().includes('hendrik') ||
+                        selectedAgentData?.capabilities?.includes('direct-ai-integration');
+
   return (
     <Card className="lg:col-span-3 flex flex-col h-[600px]">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Activity className="h-5 w-5" />
-          Enhanced AI Agent Chat
+          {isHendrikAgent ? 'Hendrik AI Chat (Direct OpenAI)' : 'Enhanced AI Agent Chat'}
           {selectedAgentData && (
             <Badge variant="outline" className="ml-auto">
               {selectedAgentData.name}
@@ -88,7 +91,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           )}
         </CardTitle>
         <CardDescription>
-          Deze chat triggert n8n workflows met volledig systeem data context ({messages.length} berichten)
+          {isHendrikAgent 
+            ? `Hendrik heeft directe OpenAI integratie met volledige CRM context (${messages.length} berichten)`
+            : `Deze chat triggert workflows met volledig systeem data context (${messages.length} berichten)`
+          }
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col">
@@ -108,6 +114,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <div className="text-center text-gray-500 py-8">
               <Bot className="h-12 w-12 mx-auto mb-4 text-gray-300" />
               <p>Geen berichten nog. Start een gesprek!</p>
+              {isHendrikAgent && (
+                <p className="text-sm mt-2 text-blue-600">
+                  💡 Hendrik heeft directe AI integratie - probeer: "Wat zijn de beste leads deze week?" of "Plan een afspraak voor morgen"
+                </p>
+              )}
             </div>
           ) : (
             messages.map((msg) => (
@@ -129,14 +140,23 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                       : "bg-white border"
                   }`}
                 >
-                  <p>{msg.content}</p>
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
                   <div className="flex items-center justify-between mt-2 text-xs opacity-70">
                     <span>{new Date(msg.createdAt).toLocaleTimeString()}</span>
                     <div className="flex items-center gap-2">
                       {msg.webhookTriggered && (
                         <Badge variant="outline" className="ml-2">
-                          <Zap className="h-3 w-3 mr-1" />
-                          n8n + Data
+                          {isHendrikAgent ? (
+                            <>
+                              <Brain className="h-3 w-3 mr-1" />
+                              Direct AI
+                            </>
+                          ) : (
+                            <>
+                              <Zap className="h-3 w-3 mr-1" />
+                              n8n + Data
+                            </>
+                          )}
                           {msg.processingTime && ` (${msg.processingTime}ms)`}
                         </Badge>
                       )}
@@ -144,7 +164,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                        Object.values(selectedAgentData.data_access_permissions).some(Boolean) && (
                         <Badge variant="outline" className="bg-green-50">
                           <Database className="h-3 w-3 mr-1" />
-                          System Data
+                          Live CRM
                         </Badge>
                       )}
                     </div>
@@ -170,6 +190,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                   <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0.4s' }}></div>
                 </div>
+                {isHendrikAgent && (
+                  <div className="text-xs text-blue-600 mt-1">
+                    Hendrik analyseert CRM data...
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -183,17 +208,19 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             onKeyPress={onKeyPress}
             placeholder={
               selectedAgent 
-                ? selectedAgentData?.is_webhook_enabled
-                  ? "Typ je bericht (triggert n8n workflow met systeem data)..."
-                  : "Agent heeft geen webhook geconfigureerd"
+                ? isHendrikAgent
+                  ? "Vraag Hendrik over leads, afspraken, of vraag om CRM acties..."
+                  : selectedAgentData?.is_webhook_enabled
+                    ? "Typ je bericht (triggert workflow met systeem data)..."
+                    : "Agent heeft geen integratie geconfigureerd"
                 : "Selecteer eerst een AI agent"
             }
-            disabled={!selectedAgent || chatLoading || isInitializing || !selectedAgentData?.is_webhook_enabled}
+            disabled={!selectedAgent || chatLoading || isInitializing || (!isHendrikAgent && !selectedAgentData?.is_webhook_enabled)}
             className="flex-1"
           />
           <Button
             onClick={onSendMessage}
-            disabled={!selectedAgent || !message.trim() || chatLoading || isInitializing || !selectedAgentData?.is_webhook_enabled}
+            disabled={!selectedAgent || !message.trim() || chatLoading || isInitializing || (!isHendrikAgent && !selectedAgentData?.is_webhook_enabled)}
             size="icon"
           >
             <Send className="h-4 w-4" />
@@ -201,10 +228,17 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
 
         {/* Status Messages */}
-        {selectedAgentData && !selectedAgentData.is_webhook_enabled && (
+        {selectedAgentData && !isHendrikAgent && !selectedAgentData.is_webhook_enabled && (
           <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
             <AlertCircle className="h-4 w-4 inline mr-1" />
-            Deze agent heeft geen webhook geconfigureerd. Configureer eerst een n8n webhook.
+            Deze agent heeft geen integratie. Hendrik heeft wel directe AI integratie beschikbaar.
+          </div>
+        )}
+
+        {isHendrikAgent && (
+          <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+            <Brain className="h-4 w-4 inline mr-1" />
+            Hendrik heeft directe OpenAI integratie met real-time CRM toegang en function calling.
           </div>
         )}
 
