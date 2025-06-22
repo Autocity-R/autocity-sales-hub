@@ -13,7 +13,14 @@ import {
   TrendingUp, 
   Target,
   Lightbulb,
-  BookOpen
+  BookOpen,
+  ThumbsUp,
+  ThumbsDown,
+  Star,
+  Database,
+  Calendar,
+  Users,
+  Car
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useProductionAIChat } from "@/hooks/useProductionAIChat";
@@ -23,6 +30,7 @@ export const SalesAgentChat = () => {
   const { toast } = useToast();
   const [learningMode, setLearningMode] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
+  const [messageRatings, setMessageRatings] = useState<Record<string, number>>({});
 
   const {
     agents,
@@ -77,6 +85,25 @@ export const SalesAgentChat = () => {
     }
   };
 
+  const handleMessageRating = async (messageId: string, rating: number) => {
+    setMessageRatings(prev => ({ ...prev, [messageId]: rating }));
+    
+    try {
+      await logSalesInteraction(
+        'message_rating',
+        { message_id: messageId, rating, session_id: session?.id },
+        `Message rating: ${rating}/5`
+      );
+
+      toast({
+        title: "✅ Feedback Ontvangen",
+        description: `Hendrik leert van je ${rating}/5 rating.`,
+      });
+    } catch (error) {
+      console.error('Failed to rate message:', error);
+    }
+  };
+
   if (!hendrikAgent) {
     return (
       <Card>
@@ -86,7 +113,7 @@ export const SalesAgentChat = () => {
             Hendrik Sales Agent
           </CardTitle>
           <CardDescription>
-            De Sales AI Agent wordt geladen...
+            De Enhanced Sales AI Agent wordt geladen...
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -101,7 +128,7 @@ export const SalesAgentChat = () => {
 
   return (
     <div className="space-y-6">
-      {/* Hendrik Info Card */}
+      {/* Enhanced Hendrik Info Card */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -110,9 +137,9 @@ export const SalesAgentChat = () => {
                 <Brain className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <CardTitle>Hendrik - Sales AI Agent</CardTitle>
+                <CardTitle>Hendrik - Enhanced Sales AI Agent</CardTitle>
                 <CardDescription>
-                  Jouw AI partner voor sales intelligence en email analyse
+                  Jouw AI partner met volledige CRM integratie en learning capabilities
                 </CardDescription>
               </div>
             </div>
@@ -120,14 +147,14 @@ export const SalesAgentChat = () => {
               <Badge variant={hendrikAgent.is_active ? "default" : "secondary"}>
                 {hendrikAgent.is_active ? "Actief" : "Inactief"}
               </Badge>
-              <Badge variant={hendrikAgent.is_webhook_enabled ? "default" : "outline"}>
-                {hendrikAgent.is_webhook_enabled ? "N8N Gekoppeld" : "N8N Nog Niet Gekoppeld"}
+              <Badge variant="default" className="bg-green-600">
+                Enhanced CRM
               </Badge>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
               <h4 className="font-semibold flex items-center gap-2">
                 <Target className="h-4 w-4" />
@@ -143,17 +170,37 @@ export const SalesAgentChat = () => {
             </div>
             <div className="space-y-2">
               <h4 className="font-semibold flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Toegang Tot
+                <Database className="h-4 w-4" />
+                Live CRM Data
               </h4>
               <div className="text-sm text-muted-foreground">
-                Leads, Klanten, Voertuigen, Afspraken, Contracten
+                <div className="flex items-center gap-1">
+                  <Car className="h-3 w-3" />
+                  Voertuigen & Prijzen
+                </div>
+                <div className="flex items-center gap-1">
+                  <Users className="h-3 w-3" />
+                  Leads & Analyses  
+                </div>
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  Afspraken & Planning
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h4 className="font-semibold flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                AI Functions
+              </h4>
+              <div className="text-sm text-muted-foreground">
+                Afspraak Planning, Lead Analyse, Voertuig Matching, Inruil Waardering
               </div>
             </div>
             <div className="space-y-2">
               <h4 className="font-semibold flex items-center gap-2">
                 <Lightbulb className="h-4 w-4" />
-                Leermodi
+                Learning Mode
               </h4>
               <Button 
                 variant="outline" 
@@ -169,21 +216,21 @@ export const SalesAgentChat = () => {
         </CardContent>
       </Card>
 
-      {/* Learning Mode */}
+      {/* Enhanced Learning Mode */}
       {learningMode && (
         <Card className="border-blue-200 bg-blue-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-blue-700">
               <BookOpen className="h-5 w-5" />
-              Leer Hendrik Mode
+              Enhanced Learning Mode
             </CardTitle>
             <CardDescription>
-              Deel feedback, tips of lessen die Hendrik kan leren voor betere sales responses
+              Deel feedback die Hendrik helpt beter te worden in sales gesprekken en klant interacties
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Textarea
-              placeholder="Bijvoorbeeld: 'Wanneer klanten vragen naar financiering, verwijs altijd naar onze lease specialist...' of 'Bij vragen over hybride auto's, benadruk de belastingvoordelen...'"
+              placeholder="Bijvoorbeeld: 'Bij prijsvragen eerst waarde tonen voor kostenvergelijking...' of 'Bij twijfel over betrouwbaarheid altijd BOVAG certificering en 55 jaar ervaring benadrukken...' of 'Inruil gesprekken altijd naar showroom leiden voor transparante waardering...'"
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
               rows={4}
@@ -191,7 +238,7 @@ export const SalesAgentChat = () => {
             <div className="flex gap-2">
               <Button onClick={handleSendLearningFeedback} disabled={!feedbackText.trim()}>
                 <Send className="h-4 w-4 mr-2" />
-                Verstuur Lering
+                Verstuur Learning Feedback
               </Button>
               <Button variant="outline" onClick={() => setLearningMode(false)}>
                 Annuleren
@@ -201,32 +248,37 @@ export const SalesAgentChat = () => {
         </Card>
       )}
 
-      {/* Chat Interface */}
+      {/* Enhanced Chat Interface */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
-            Chat met Hendrik
+            Enhanced Hendrik Chat
           </CardTitle>
           <CardDescription>
-            Stel vragen over sales strategieën, lead analyses, of vraag om hulp bij specifieke klanten
+            Volledig CRM geïntegreerde sales agent met learning capabilities en directe actie mogelijkheden
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Chat Messages */}
+          {/* Chat Messages with Rating */}
           <div className="h-96 overflow-y-auto border rounded-lg p-4 space-y-4 mb-4">
             {isInitializing ? (
               <div className="flex items-center justify-center py-8">
                 <Brain className="h-6 w-6 animate-pulse mr-2" />
-                <span>Hendrik start op...</span>
+                <span>Hendrik start op met volledige CRM context...</span>
               </div>
             ) : messages.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Begin een gesprek met Hendrik</p>
-                <p className="text-sm mt-2">
-                  Vraag bijvoorbeeld: "Wat zijn de beste leads van deze week?" of "Hoe kan ik beter reageren op prijsvragen?"
-                </p>
+                <p>Begin een enhanced gesprek met Hendrik</p>
+                <div className="text-sm mt-2 space-y-1">
+                  <p className="font-medium">Hendrik heeft nu toegang tot:</p>
+                  <p>• Live voorraad data met prijzen</p>
+                  <p>• Actieve leads met analyses</p>
+                  <p>• Afspraak planning functionaliteit</p>
+                  <p>• Inruil waardering proces</p>
+                  <p>• Learning van team feedback</p>
+                </div>
               </div>
             ) : (
               messages.map((msg) => (
@@ -244,13 +296,38 @@ export const SalesAgentChat = () => {
                     {msg.messageType === 'assistant' && (
                       <div className="flex items-center gap-2 mb-2">
                         <Brain className="h-4 w-4" />
-                        <span className="font-medium">Hendrik</span>
+                        <span className="font-medium">Hendrik Enhanced</span>
+                        <Badge variant="outline" className="text-xs">
+                          CRM Data
+                        </Badge>
                       </div>
                     )}
                     <p className="whitespace-pre-wrap">{msg.content}</p>
                     {msg.webhookTriggered && (
                       <div className="mt-2 text-xs opacity-75">
-                        ⚡ Verwerkt via N8N workflow
+                        ⚡ Enhanced AI met volledige CRM context
+                        {msg.processingTime && ` (${msg.processingTime}ms)`}
+                      </div>
+                    )}
+                    {/* Rating for assistant messages */}
+                    {msg.messageType === 'assistant' && (
+                      <div className="mt-3 pt-2 border-t border-gray-200">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-600">Rate deze response:</span>
+                          {[1, 2, 3, 4, 5].map((rating) => (
+                            <button
+                              key={rating}
+                              onClick={() => handleMessageRating(msg.id, rating)}
+                              className={`text-xs p-1 rounded ${
+                                messageRatings[msg.id] === rating
+                                  ? 'text-yellow-500'
+                                  : 'text-gray-400 hover:text-yellow-400'
+                              }`}
+                            >
+                              <Star className="h-3 w-3" fill={messageRatings[msg.id] >= rating ? 'currentColor' : 'none'} />
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -262,17 +339,17 @@ export const SalesAgentChat = () => {
                 <div className="bg-gray-100 p-3 rounded-lg">
                   <div className="flex items-center gap-2">
                     <Brain className="h-4 w-4 animate-pulse" />
-                    <span>Hendrik denkt na...</span>
+                    <span>Hendrik analyseert CRM data en formuleert response...</span>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Chat Input */}
+          {/* Enhanced Chat Input */}
           <div className="flex gap-2">
             <Input
-              placeholder="Stel Hendrik een vraag over sales, leads, of vraag om advies..."
+              placeholder="Vraag Hendrik over leads, voertuigen, afspraken, of vraag om CRM acties uit te voeren..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyPress={handleKeyPress}
@@ -284,6 +361,12 @@ export const SalesAgentChat = () => {
             >
               <Send className="h-4 w-4" />
             </Button>
+          </div>
+
+          {/* Enhanced Status */}
+          <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
+            <Database className="h-4 w-4 inline mr-1" />
+            Enhanced Hendrik heeft real-time toegang tot alle CRM data en kan directe acties uitvoeren zoals afspraken plannen.
           </div>
         </CardContent>
       </Card>

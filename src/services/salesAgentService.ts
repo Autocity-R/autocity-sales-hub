@@ -31,27 +31,81 @@ export interface ResponseSuggestion {
   personalizationFactors: Record<string, any>;
 }
 
-// Initialize Hendrik Sales Agent with enhanced capabilities
-export const initializeHendrikAgent = async () => {
+export interface EnhancedSalesInteraction {
+  interactionType: string;
+  inputData: any;
+  aiResponse: string;
+  detectedPhase?: string;
+  sentimentAnalysis?: string;
+  urgencyLevel?: string;
+  conversionProbability?: number;
+  teamFeedback?: string;
+  teamRating?: number;
+  functionCalled?: string;
+  functionResult?: any;
+}
+
+// Initialize Enhanced Hendrik Sales Agent
+export const initializeEnhancedHendrikAgent = async () => {
   try {
-    // Check if Hendrik already exists
     const { data: existingAgent } = await supabase
       .from('ai_agents')
-      .select('id, name')
+      .select('id, name, capabilities')
       .eq('name', 'Hendrik - Sales AI Agent')
       .single();
 
     if (existingAgent) {
-      console.log('✅ Hendrik Sales Agent already exists');
-      return existingAgent;
+      // Update existing agent with enhanced capabilities
+      const { data: updatedAgent, error } = await supabase
+        .from('ai_agents')
+        .update({
+          capabilities: [
+            'email-processing',
+            'lead-scoring', 
+            'intent-recognition',
+            'response-suggestions',
+            'competitive-analysis',
+            'sales-analytics',
+            'team-learning',
+            'appointment-scheduling',
+            'crm-operations',
+            'direct-ai-integration',
+            'phase-detection',
+            'sentiment-analysis',
+            'vehicle-matching',
+            'inruil-valuation',
+            'enhanced-learning'
+          ],
+          system_prompt: 'Je bent Hendrik, een geavanceerde Sales AI Agent voor Auto City met directe OpenAI integratie en volledige CRM context. Je hebt real-time toegang tot voorraad, leads, afspraken en klantgegevens. Je kunt proactief sales opportunities identificeren, leads analyseren op fase en sentiment, afspraken inplannen, voertuig matching doen, en leren van team feedback voor continue verbetering.',
+          context_settings: {
+            max_context_items: 30,
+            preferred_data_sources: ['vehicles', 'leads', 'appointments', 'contacts', 'contracts'],
+            include_recent_activity: true,
+            sales_focus: true,
+            email_processing: true,
+            direct_ai_integration: true,
+            learning_enabled: true,
+            phase_detection: true,
+            sentiment_analysis: true,
+            enhanced_crm_access: true
+          },
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingAgent.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      console.log('✅ Enhanced Hendrik Sales Agent updated');
+      return updatedAgent;
     }
 
-    // Create Hendrik Sales Agent with direct OpenAI integration
+    // Create new enhanced agent if doesn't exist
     const { data: newAgent, error } = await supabase
       .from('ai_agents')
       .insert({
         name: 'Hendrik - Sales AI Agent',
-        persona: 'Ik ben Hendrik, jouw intelligente Sales AI Assistent. Ik heb directe toegang tot alle CRM data en kan real-time analyses maken, leads scoren, afspraken plannen, en gepersonaliseerde response suggesties geven. Ik leer van jullie feedback om steeds beter te worden in het ondersteunen van het sales proces.',
+        persona: 'Ik ben Hendrik, jouw enhanced Sales AI Assistent met volledige CRM integratie. Ik analyseer leads op fase en sentiment, help met voertuig matching, plan afspraken, en leer van team feedback om steeds beter te worden in het ondersteunen van het sales proces.',
         capabilities: [
           'email-processing',
           'lead-scoring', 
@@ -62,9 +116,14 @@ export const initializeHendrikAgent = async () => {
           'team-learning',
           'appointment-scheduling',
           'crm-operations',
-          'direct-ai-integration'
+          'direct-ai-integration',
+          'phase-detection',
+          'sentiment-analysis',
+          'vehicle-matching',
+          'inruil-valuation',
+          'enhanced-learning'
         ],
-        system_prompt: 'Je bent Hendrik, een geavanceerde Sales AI Agent voor Auto City met directe OpenAI integratie. Je hebt real-time toegang tot alle CRM data en kunt proactief sales opportunities identificeren, leads kwalificeren, afspraken inplannen, en het team ondersteunen met data-driven insights. Je leert van team feedback en past je responses aan op basis van wat werkt.',
+        system_prompt: 'Je bent Hendrik, een geavanceerde Sales AI Agent voor Auto City met directe OpenAI integratie en volledige CRM context. Je hebt real-time toegang tot voorraad, leads, afspraken en klantgegevens. Je kunt proactief sales opportunities identificeren, leads analyseren op fase en sentiment, afspraken inplannen, voertuig matching doen, en leren van team feedback voor continue verbetering.',
         data_access_permissions: {
           leads: true,
           customers: true,
@@ -76,60 +135,62 @@ export const initializeHendrikAgent = async () => {
           loan_cars: false
         },
         context_settings: {
-          max_context_items: 20,
-          preferred_data_sources: ['leads', 'customers', 'vehicles', 'appointments', 'contracts'],
+          max_context_items: 30,
+          preferred_data_sources: ['vehicles', 'leads', 'appointments', 'contacts', 'contracts'],
           include_recent_activity: true,
           sales_focus: true,
           email_processing: true,
           direct_ai_integration: true,
-          learning_enabled: true
+          learning_enabled: true,
+          phase_detection: true,
+          sentiment_analysis: true,
+          enhanced_crm_access: true
         },
         is_active: true,
-        // No webhook needed - uses direct OpenAI integration
         is_webhook_enabled: false,
         webhook_url: null,
         webhook_config: {
           direct_ai: true,
           model: 'gpt-4o',
           temperature: 0.7,
-          max_tokens: 1000,
-          functions_enabled: true
+          max_tokens: 1200,
+          functions_enabled: true,
+          enhanced_context: true
         }
       })
       .select()
       .single();
 
     if (error) throw error;
-
-    console.log('✅ Hendrik Sales Agent created with direct OpenAI integration');
+    console.log('✅ Enhanced Hendrik Sales Agent created');
     return newAgent;
   } catch (error) {
-    console.error('❌ Failed to initialize Hendrik:', error);
+    console.error('❌ Failed to initialize Enhanced Hendrik:', error);
     throw error;
   }
 };
 
-// Enhanced function to process direct AI responses
-export const processDirectAIResponse = async (
-  agentId: string,
-  userMessage: string,
-  aiResponse: string,
-  functionCalled?: string,
-  functionResult?: any
-) => {
+// Enhanced logging with learning capabilities
+export const logEnhancedSalesInteraction = async (interaction: EnhancedSalesInteraction, userId?: string) => {
   try {
     const { data, error } = await supabase
       .from('ai_sales_interactions')
       .insert({
-        interaction_type: 'direct_ai_chat',
-        input_data: { 
-          message: userMessage,
-          function_called: functionCalled,
-          function_result: functionResult
+        interaction_type: interaction.interactionType,
+        input_data: {
+          ...interaction.inputData,
+          detected_phase: interaction.detectedPhase,
+          sentiment_analysis: interaction.sentimentAnalysis,
+          urgency_level: interaction.urgencyLevel,
+          conversion_probability: interaction.conversionProbability
         },
-        ai_response: aiResponse,
+        ai_response: interaction.aiResponse,
+        team_feedback: interaction.teamFeedback,
+        team_rating: interaction.teamRating,
+        function_called: interaction.functionCalled,
+        function_result: interaction.functionResult,
         agent_name: 'hendrik',
-        processing_method: 'direct_openai_integration'
+        user_id: userId
       })
       .select()
       .single();
@@ -137,7 +198,152 @@ export const processDirectAIResponse = async (
     if (error) throw error;
     return data;
   } catch (error) {
-    console.error('❌ Failed to log direct AI response:', error);
+    console.error('❌ Failed to log enhanced sales interaction:', error);
+    throw error;
+  }
+};
+
+// Get learning analytics for Hendrik
+export const getHendrikLearningAnalytics = async () => {
+  try {
+    const { data: interactions, error } = await supabase
+      .from('ai_sales_interactions')
+      .select('*')
+      .eq('agent_name', 'hendrik')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) throw error;
+
+    const analytics = {
+      totalInteractions: interactions?.length || 0,
+      ratedInteractions: interactions?.filter(i => i.team_rating).length || 0,
+      avgRating: 0,
+      feedbackCount: interactions?.filter(i => i.team_feedback).length || 0,
+      phaseDetections: {} as Record<string, number>,
+      sentimentDistribution: {} as Record<string, number>,
+      functionUsage: {} as Record<string, number>,
+      improvementTrends: [] as any[]
+    };
+
+    if (interactions && interactions.length > 0) {
+      // Calculate average rating
+      const ratedInteractions = interactions.filter(i => i.team_rating);
+      if (ratedInteractions.length > 0) {
+        analytics.avgRating = ratedInteractions.reduce((sum, i) => sum + (i.team_rating || 0), 0) / ratedInteractions.length;
+      }
+
+      // Analyze phase detections
+      interactions.forEach(i => {
+        const phase = i.input_data?.detected_phase;
+        if (phase) {
+          analytics.phaseDetections[phase] = (analytics.phaseDetections[phase] || 0) + 1;
+        }
+
+        const sentiment = i.input_data?.sentiment_analysis;
+        if (sentiment) {
+          analytics.sentimentDistribution[sentiment] = (analytics.sentimentDistribution[sentiment] || 0) + 1;
+        }
+
+        const func = i.function_called;
+        if (func) {
+          analytics.functionUsage[func] = (analytics.functionUsage[func] || 0) + 1;
+        }
+      });
+
+      // Calculate improvement trends (ratings over time)
+      const weeklyRatings = interactions
+        .filter(i => i.team_rating && i.created_at)
+        .reduce((acc, i) => {
+          const week = new Date(i.created_at).toISOString().slice(0, 10);
+          if (!acc[week]) acc[week] = [];
+          acc[week].push(i.team_rating!);
+          return acc;
+        }, {} as Record<string, number[]>);
+
+      analytics.improvementTrends = Object.entries(weeklyRatings)
+        .map(([week, ratings]) => ({
+          week,
+          avgRating: ratings.reduce((sum, r) => sum + r, 0) / ratings.length,
+          count: ratings.length
+        }))
+        .sort((a, b) => a.week.localeCompare(b.week));
+    }
+
+    return analytics;
+  } catch (error) {
+    console.error('❌ Failed to get learning analytics:', error);
+    throw error;
+  }
+};
+
+// Get team feedback suggestions for improvement
+export const getImprovementSuggestions = async () => {
+  try {
+    const { data: feedbackData, error } = await supabase
+      .from('ai_sales_interactions')
+      .select('team_feedback, team_rating, interaction_type, created_at')
+      .eq('agent_name', 'hendrik')
+      .not('team_feedback', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) throw error;
+
+    const suggestions = {
+      commonFeedback: [] as any[],
+      lowRatedAreas: [] as any[],
+      improvementAreas: [] as string[],
+      strengths: [] as string[]
+    };
+
+    if (feedbackData && feedbackData.length > 0) {
+      // Analyze common feedback themes
+      const feedbackWords = feedbackData
+        .flatMap(f => f.team_feedback?.toLowerCase().split(' ') || [])
+        .filter(word => word.length > 3);
+      
+      const wordCounts = feedbackWords.reduce((acc, word) => {
+        acc[word] = (acc[word] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      suggestions.commonFeedback = Object.entries(wordCounts)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 10)
+        .map(([word, count]) => ({ word, count }));
+
+      // Identify low-rated areas
+      const lowRatedFeedback = feedbackData.filter(f => (f.team_rating || 0) < 3);
+      suggestions.lowRatedAreas = lowRatedFeedback.map(f => ({
+        feedback: f.team_feedback,
+        rating: f.team_rating,
+        type: f.interaction_type
+      }));
+
+      // Generate improvement suggestions based on feedback patterns
+      const allFeedback = feedbackData.map(f => f.team_feedback).join(' ').toLowerCase();
+      
+      if (allFeedback.includes('te technisch') || allFeedback.includes('complex')) {
+        suggestions.improvementAreas.push('Gebruik eenvoudigere taal en minder technische termen');
+      }
+      if (allFeedback.includes('te kort') || allFeedback.includes('meer uitleg')) {
+        suggestions.improvementAreas.push('Geef meer uitgebreide antwoorden met voorbeelden');
+      }
+      if (allFeedback.includes('prijs') || allFeedback.includes('waarde')) {
+        suggestions.improvementAreas.push('Focus meer op waarde-propositie dan alleen prijzen');
+      }
+      if (allFeedback.includes('bovag') || allFeedback.includes('garantie')) {
+        suggestions.strengths.push('Goede nadruk op BOVAG certificering en garanties');
+      }
+      if (allFeedback.includes('afspraak') || allFeedback.includes('showroom')) {
+        suggestions.strengths.push('Effectief in het leiden naar showroom afspraken');
+      }
+    }
+
+    return suggestions;
+  } catch (error) {
+    console.error('❌ Failed to get improvement suggestions:', error);
     throw error;
   }
 };
