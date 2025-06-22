@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -142,7 +141,7 @@ export const SalesAgentChat = () => {
 
   return (
     <div className="space-y-6">
-      {/* Enhanced Hendrik Info Card */}
+      {/* Enhanced Hendrik Info Card with Memory Status */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -153,7 +152,7 @@ export const SalesAgentChat = () => {
               <div>
                 <CardTitle>Hendrik - Enhanced Sales AI Agent</CardTitle>
                 <CardDescription>
-                  Jouw AI partner met volledige CRM integratie en learning capabilities
+                  Jouw AI partner met volledige CRM integratie, conversatie memory en learning capabilities
                 </CardDescription>
               </div>
             </div>
@@ -163,6 +162,9 @@ export const SalesAgentChat = () => {
               </Badge>
               <Badge variant="default" className="bg-green-600">
                 Enhanced CRM
+              </Badge>
+              <Badge variant="default" className="bg-purple-600">
+                Full Memory
               </Badge>
             </div>
           </div>
@@ -227,6 +229,31 @@ export const SalesAgentChat = () => {
               </Button>
             </div>
           </div>
+          
+          {/* New Memory Status Section */}
+          <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <Brain className="h-4 w-4 text-purple-600" />
+              <span className="font-medium text-purple-800">Conversatie Memory Status</span>
+            </div>
+            <div className="text-sm text-purple-700">
+              <div className="flex items-center justify-between">
+                <span>Actieve gesprek berichten:</span>
+                <Badge variant="outline" className="bg-purple-100">
+                  {messages.length} berichten
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between mt-1">
+                <span>Memory functionaliteit:</span>
+                <Badge variant="outline" className="bg-green-100 text-green-800">
+                  Volledig Actief
+                </Badge>
+              </div>
+              <p className="text-xs mt-2 text-purple-600">
+                💭 Hendrik onthoudt alles uit dit gesprek en kan natuurlijke vervolgvragen beantwoorden
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -262,24 +289,24 @@ export const SalesAgentChat = () => {
         </Card>
       )}
 
-      {/* Enhanced Chat Interface */}
+      {/* Enhanced Chat Interface with Memory */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
-            Enhanced Hendrik Chat
+            Enhanced Hendrik Chat met Volledig Geheugen
           </CardTitle>
           <CardDescription>
-            Volledig CRM geïntegreerde sales agent met learning capabilities en directe actie mogelijkheden
+            Volledig CRM geïntegreerde sales agent met conversatie memory, learning capabilities en directe actie mogelijkheden
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Chat Messages with Rating */}
+          {/* Chat Messages with Rating and Memory indicators */}
           <div className="h-96 overflow-y-auto border rounded-lg p-4 space-y-4 mb-4">
             {isInitializing ? (
               <div className="flex items-center justify-center py-8">
                 <Brain className="h-6 w-6 animate-pulse mr-2" />
-                <span>Hendrik start op met volledige CRM context...</span>
+                <span>Hendrik start op met volledige CRM context en conversatie memory...</span>
               </div>
             ) : messages.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
@@ -292,6 +319,7 @@ export const SalesAgentChat = () => {
                   <p>• Afspraak planning functionaliteit</p>
                   <p>• Inruil waardering proces</p>
                   <p>• Learning van team feedback</p>
+                  <p className="font-medium text-purple-600">• 🧠 Volledige conversatie memory</p>
                 </div>
               </div>
             ) : (
@@ -314,12 +342,15 @@ export const SalesAgentChat = () => {
                         <Badge variant="outline" className="text-xs">
                           CRM Data
                         </Badge>
+                        <Badge variant="outline" className="text-xs bg-purple-100">
+                          Memory
+                        </Badge>
                       </div>
                     )}
                     <p className="whitespace-pre-wrap">{msg.content}</p>
                     {msg.webhookTriggered && (
                       <div className="mt-2 text-xs opacity-75">
-                        ⚡ Enhanced AI met volledige CRM context
+                        ⚡ Enhanced AI met volledige CRM context + conversatie memory
                         {msg.processingTime && ` (${msg.processingTime}ms)`}
                       </div>
                     )}
@@ -353,7 +384,7 @@ export const SalesAgentChat = () => {
                 <div className="bg-gray-100 p-3 rounded-lg">
                   <div className="flex items-center gap-2">
                     <Brain className="h-4 w-4 animate-pulse" />
-                    <span>Hendrik analyseert CRM data en formuleert response...</span>
+                    <span>Hendrik analyseert CRM data met conversatie context...</span>
                   </div>
                 </div>
               </div>
@@ -385,10 +416,10 @@ export const SalesAgentChat = () => {
             </div>
           </div>
 
-          {/* Enhanced Status */}
+          {/* Enhanced Status with Memory */}
           <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
             <Database className="h-4 w-4 inline mr-1" />
-            Enhanced Hendrik heeft real-time toegang tot alle CRM data en kan directe acties uitvoeren zoals afspraken plannen.
+            Enhanced Hendrik heeft real-time toegang tot alle CRM data, volledige conversatie memory en kan directe acties uitvoeren zoals afspraken plannen.
           </div>
         </CardContent>
       </Card>

@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -28,7 +27,23 @@ serve(async (req) => {
 
     const { sessionId, message, agentId, userContext }: ChatRequest = await req.json();
     
-    console.log('🤖 Hendrik AI Chat Request:', { sessionId, agentId, message: message.substring(0, 100) });
+    console.log('🤖 Hendrik AI Chat Request with Memory:', { sessionId, agentId, message: message.substring(0, 100) });
+
+    // Get conversation history for full context
+    const { data: conversationHistory, error: historyError } = await supabaseClient
+      .from('ai_chat_messages')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true });
+
+    if (historyError) {
+      console.error('Error fetching conversation history:', historyError);
+    }
+
+    console.log('💭 Conversation history loaded:', {
+      messageCount: conversationHistory?.length || 0,
+      sessionId
+    });
 
     // Get comprehensive CRM data for Hendrik
     const crmData = await getEnhancedCRMData(supabaseClient);
@@ -61,7 +76,16 @@ serve(async (req) => {
       teamFeedback: teamFeedback?.length || 0
     });
 
-    // Call OpenAI with enhanced context
+    // Build conversation messages for OpenAI with full history
+    const conversationMessages = buildConversationMessages(contextPrompt, conversationHistory || [], message);
+
+    console.log('📝 Conversation messages built:', {
+      totalMessages: conversationMessages.length,
+      systemPromptLength: contextPrompt.length,
+      historyMessages: (conversationHistory?.length || 0)
+    });
+
+    // Call OpenAI with enhanced context and full conversation history
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -70,16 +94,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: contextPrompt
-          },
-          {
-            role: 'user',
-            content: message
-          }
-        ],
+        messages: conversationMessages,
         temperature: 0.7,
         max_tokens: 1200,
         functions: [
@@ -181,9 +196,10 @@ serve(async (req) => {
     await supabaseClient
       .from('ai_sales_interactions')
       .insert({
-        interaction_type: 'enhanced_chat_response',
+        interaction_type: 'enhanced_chat_response_with_memory',
         input_data: { 
           message, 
+          conversation_length: conversationHistory?.length || 0,
           detected_phase: extractPhaseFromResponse(responseMessage),
           sentiment: extractSentimentFromResponse(responseMessage),
           crm_context_size: Object.keys(crmData).length 
@@ -195,7 +211,7 @@ serve(async (req) => {
         function_result: functionResult
       });
 
-    console.log('✅ Enhanced Hendrik response generated successfully');
+    console.log('✅ Enhanced Hendrik response with memory generated successfully');
 
     return new Response(JSON.stringify({
       success: true,
@@ -206,6 +222,7 @@ serve(async (req) => {
         vehicles: crmData.vehicles?.length || 0,
         leads: crmData.leads?.length || 0,
         appointments: crmData.appointments?.length || 0,
+        conversation_history: conversationHistory?.length || 0,
         learning_data: {
           recent_interactions: recentInteractions?.length || 0,
           team_feedback_count: teamFeedback?.length || 0
@@ -227,6 +244,49 @@ serve(async (req) => {
     });
   }
 });
+
+function buildConversationMessages(systemPrompt: string, conversationHistory: any[], currentMessage: string) {
+  const messages = [
+    {
+      role: 'system',
+      content: systemPrompt
+    }
+  ];
+
+  // Add conversation history - maintaining context flow
+  if (conversationHistory && conversationHistory.length > 0) {
+    // Convert database messages to OpenAI format
+    conversationHistory.forEach(msg => {
+      if (msg.message_type === 'user') {
+        messages.push({
+          role: 'user',
+          content: msg.content
+        });
+      } else if (msg.message_type === 'assistant') {
+        messages.push({
+          role: 'assistant',
+          content: msg.content
+        });
+      }
+    });
+  }
+
+  // Add the current message
+  messages.push({
+    role: 'user',
+    content: currentMessage
+  });
+
+  // Optimize token usage - keep recent conversation if too long
+  const maxMessages = 20; // System + 19 conversation messages
+  if (messages.length > maxMessages) {
+    // Keep system prompt and recent messages
+    const recentMessages = messages.slice(-(maxMessages - 1));
+    return [messages[0], ...recentMessages]; // System prompt + recent messages
+  }
+
+  return messages;
+}
 
 async function getEnhancedCRMData(supabase: any) {
   const data: any = {};
@@ -303,14 +363,25 @@ async function getEnhancedCRMData(supabase: any) {
 function buildEnhancedHendrikContext(crmData: any, recentInteractions: any[], teamFeedback: any[]) {
   const today = new Date().toLocaleDateString('nl-NL');
   
-  return `# AUTOCITY SALES AGENT - HENDRIK
-## Professional Automotive Lead Specialist
+  return `# AUTOCITY SALES AGENT - HENDRIK WITH FULL CONVERSATION MEMORY
+## Professional Automotive Lead Specialist with Contextual Memory
 
 <identity>
 Je bent Hendrik, Autocity's expert automotive lead specialist.
 Je combineert 55 jaar familiebedrijf ervaring met moderne sales intelligence.
 Je helpt particuliere klanten (B2C) de perfecte jong gebruikte premium auto vinden.
+Je hebt VOLLEDIGE CONVERSATIE MEMORY - je onthoudt alles wat eerder besproken is in dit gesprek.
 </identity>
+
+<conversation_memory_instructions>
+**BELANGRIJK - CONVERSATIE GEHEUGEN:**
+- Je onthoudt ALLE eerdere berichten in dit gesprek
+- Verwijs naar eerdere vragen, antwoorden en context waar relevant
+- Gebruik vervolgvragen natuurlijk: "Zoals je eerder vroeg over...", "Terugkomend op je vraag over..."
+- Bouw voort op eerdere gespreksonderwerpen
+- Houd klantvoorkeuren en eerdere informatie bij
+- Maak gebruik van context uit het hele gesprek voor betere aanbevelingen
+</conversation_memory_instructions>
 
 <company_context>
 **Autocity Profiel:**
@@ -326,6 +397,7 @@ Je helpt particuliere klanten (B2C) de perfecte jong gebruikte premium auto vind
 **Primair Doel:** Elke lead omzetten naar showroom afspraak
 **Secundair Doel:** Remote closing bij hoge urgentie/interesse
 **Filosofie:** Help eerst, verkoop daarna - bouw levenslange relaties
+**Memory Bonus:** Gebruik eerdere gespreksinformatie voor gepersonaliseerde service
 </core_mission>
 
 <live_crm_data>
@@ -360,110 +432,78 @@ ${teamFeedback.length > 0 ? teamFeedback.map((feedback: any) =>
 ${recentInteractions.length > 0 ? `Laatste ${recentInteractions.length} interacties gelogd voor continue verbetering` : 'Eerste sessie - leer van deze interactie'}
 </learning_context>
 
-<lead_analysis_framework>
-**Fase Herkenning (Automatisch detecteren):**
+<memory_enhanced_lead_analysis>
+**Fase Herkenning met Conversatie Context:**
 
 FASE 1 - ORIENTATIE
 - Indicators: Algemene vragen, "kijk rond", geen specifieke auto
+- Memory Gebruik: Onthoud interessegebieden voor latere aanbevelingen
 - Response: Expertise tonen, vertrouwen bouwen, behoeften identificeren
 
 FASE 2 - INTERESSE  
 - Indicators: Specifieke auto vragen, prijzen, specificaties
+- Memory Gebruik: Verwijs naar eerdere voertuigvragen, bouw voort op interesse
 - Response: Vragen beantwoorden, waarde tonen, urgentie creëren
 
 FASE 3 - OVERWEGING
 - Indicators: Vergelijkingen, twijfel uitingen, objecties
+- Memory Gebruik: Gebruik eerdere gesprekspunten om objecties te handlen
 - Response: Objecties handlen, Autocity voordelen, push naar afspraak
 
 FASE 4 - BESLISSING
 - Indicators: Koopintentie, "wil deze auto", timing vragen
+- Memory Gebruik: Refereer aan eerder besproken voorkeur en timing
 - Response: Direct faciliteren, afspraak maken, remote closing overwegen
 
 FASE 5 - ACTIE
 - Indicators: Reservering willen, proces vragen, concrete stappen
+- Memory Gebruik: Gebruik alle eerdere informatie voor snelle afhandeling
 - Response: Directe actie, proces uitleggen, transactie afronden
-</lead_analysis_framework>
+</memory_enhanced_lead_analysis>
 
-<sentiment_intelligence>
-**Emotionele Herkenning Patterns:**
+<conversational_enhancement>
+**Memory-Driven Response Patterns:**
 
-ENTHOUSIASME
-- Patterns: Uitroeptekens, positieve bijvoeglijke naamwoorden, "prachtig/mooi/perfect"
-- Response: Match energie niveau, push naar afspraak, faciliteer snelle actie
+NATUURLIJKE VERVOLGVRAGEN
+- "Zoals je eerder vroeg over de [merk/model]..."
+- "Terugkomend op je interesse in [specificatie]..."
+- "Je noemde dat je [eerdere informatie], dus..."
 
-TWIJFEL/ONZEKERHEID
-- Patterns: "misschien", "weet niet zeker", "twijfel tussen", vragende zinnen
-- Response: Zekerheid creëren, expertise tonen, BOVAG garanties benadrukken
+CONTEXT BUILDING
+- Gebruik klantvoorkeuren uit het hele gesprek
+- Verwijs naar eerdere bezorgdheden en hoe die opgelost zijn
+- Bouw voort op eerdere interesse punten
 
-HAAST/URGENTIE
-- Patterns: "snel nodig", "zo spoedig mogelijk", "huidige auto kapot"
-- Response: Urgentie faciliteren, snelle oplossing bieden, directe actie
+PERSOONLIJKE SERVICE
+- Onthoud klant timing en urgentie uit gesprek
+- Gebruik eerdere budget indicaties
+- Refereer aan familie/gebruik situatie indien genoemd
+</conversational_enhancement>
 
-PRIJS BEZORGDHEID
-- Patterns: Prijsfocus, "goedkoop", "budget", vergelijkingen
-- Response: Waarde demonstratie, scherpe prijzen benadrukken, total cost ownership
-
-ANGST/RISICO AVERSIE
-- Patterns: "wat als", "bang voor", "zeker weten", garantie vragen
-- Response: Geruststelling, BOVAG voordelen, 55 jaar ervaring, transparantie
-</sentiment_intelligence>
-
-<objection_mastery>
-**Objectie Handling met CRM Data:**
-
-PRIJS OBJECTIES
-- Gebruik: Actuele voorraadprijzen uit CRM
-- Positioning: "Deze ${crmData.vehicles?.[0]?.brand || 'auto'} is zeer scherp geprijsd voor €${crmData.vehicles?.[0]?.selling_price || 'XXX'}"
-- Waarde: BOVAG + Ongevalvrij + 55 jaar ervaring
-
-VOORRAAD URGENTIE
-- Gebruik: Echte voorraadstatus
-- Positioning: "We hebben momenteel ${crmData.vehicles?.length || 0} voertuigen op voorraad"
-- Actie: Directe reservering mogelijk
-
-VERGELIJKING OBJECTIES
-- Gebruik: Autocity unieke voordelen
-- Differentiatie: BOVAG + Familiebedrijf + Transparantie
-</objection_mastery>
-
-<closing_protocols>
-**Strategic Closing met CRM Integratie:**
+<enhanced_closing_with_memory>
+**Memory-Enhanced Closing Protocols:**
 
 PRIMARY: SHOWROOM APPOINTMENT
 - Gebruik: create_showroom_appointment functie
-- Data: Klantgegevens + voertuig interesse uit gesprek
-- Timing: Alle fasen, primaire focus
+- Memory: Integreer alle eerder besproken voorkeuren en timing
+- Data: Klantgegevens + voertuig interesse uit VOLLEDIG gesprek
 
-SECONDARY: LEAD ANALYSIS UPDATE
+SECONDARY: CONTEXTUAL LEAD ANALYSIS
 - Gebruik: update_lead_analysis functie
-- Data: Gedetecteerde fase + sentiment + urgentie
-- Doel: CRM data verrijken voor team
+- Memory: Gebruik conversatie ontwikkeling voor fase detectie
+- Data: Gedetecteerde fase + sentiment gebaseerd op HELE gesprek
 
-TERTIARY: VEHICLE MATCHING
+TERTIARY: PERSONALIZED VEHICLE MATCHING
 - Gebruik: suggest_vehicle_match functie
-- Data: Klant requirements + budget + voorraad
-- Actie: Perfecte match voorstellen
-</closing_protocols>
-
-<performance_guidelines>
-**Response Optimization met Data:**
-
-RESPONSE STRUCTURE
-- Eerste zin: Direct antwoord met CRM data
-- Tweede element: Relevante Autocity voordeel + voorraad status
-- Derde element: Showroom closing met concrete actie
-
-COMMUNICATION PRINCIPLES
-- Gebruik echte voorraad data in gesprek
-- Refereer naar actuele prijzen en beschikbaarheid
-- Geen onnodige promotie, focus op relevante data
-- Leer van team feedback voor betere responses
-</performance_guidelines>
+- Memory: Alle eerdere requirements en voorkeuren
+- Actie: Perfecte match voorstellen gebaseerd op volledig gesprek
+</enhanced_closing_with_memory>
 
 <mission_statement>
-**ENHANCED HENDRIK MISSIE:** Elke lead omzetten naar een tevreden klant door data-driven expertise, authentieke service en continue learning van team feedback.
+**ENHANCED HENDRIK MEMORY MISSIE:** 
+Elke lead omzetten naar een tevreden klant door data-driven expertise, authentieke service, volledig gesprekgeheugen en continue learning. Gebruik ALTIJD de context van het hele gesprek voor gepersonaliseerde, natuurlijke communicatie.
 
-Het is vandaag ${today}. Gebruik de live CRM data om klanten de best mogelijke service te bieden en leer van elke interactie om steeds beter te worden.
+Het is vandaag ${today}. Gebruik de live CRM data EN je volledige gesprekgeheugen om klanten de best mogelijke, contextrijke service te bieden.
 </mission_statement>`;
 }
 
@@ -503,7 +543,6 @@ async function handleEnhancedFunctionCall(supabase: any, functionCall: any, agen
         };
 
       case 'update_lead_analysis':
-        // Find lead by email
         const { data: existingLead } = await supabase
           .from('leads')
           .select('*')
@@ -525,11 +564,10 @@ async function handleEnhancedFunctionCall(supabase: any, functionCall: any, agen
 
           if (leadError) throw leadError;
 
-          // Log the analysis
           await supabase
             .from('ai_sales_interactions')
             .insert({
-              interaction_type: 'lead_phase_detection',
+              interaction_type: 'lead_phase_detection_with_memory',
               input_data: parsedArgs,
               ai_response: `Lead fase gedetecteerd: ${parsedArgs.detected_phase}, Sentiment: ${parsedArgs.sentiment_analysis}`,
               agent_name: 'hendrik'
@@ -544,11 +582,10 @@ async function handleEnhancedFunctionCall(supabase: any, functionCall: any, agen
         return { success: false, error: 'Lead niet gevonden in CRM' };
 
       case 'suggest_vehicle_match':
-        // Log the vehicle matching request
         await supabase
           .from('ai_sales_interactions')
           .insert({
-            interaction_type: 'vehicle_matching',
+            interaction_type: 'vehicle_matching_with_memory',
             input_data: parsedArgs,
             ai_response: `Voertuig matching uitgevoerd voor: ${parsedArgs.customer_requirements}`,
             agent_name: 'hendrik'
@@ -561,11 +598,10 @@ async function handleEnhancedFunctionCall(supabase: any, functionCall: any, agen
         };
 
       case 'request_inruil_valuation':
-        // Log inruil request
         await supabase
           .from('ai_sales_interactions')
           .insert({
-            interaction_type: 'inruil_request',
+            interaction_type: 'inruil_request_with_memory',
             input_data: parsedArgs,
             ai_response: `Inruil waardering aangevraagd voor ${parsedArgs.vehicle_brand} ${parsedArgs.vehicle_model}`,
             agent_name: 'hendrik'
