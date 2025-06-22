@@ -104,6 +104,20 @@ export const SalesAgentChat = () => {
     }
   };
 
+  // Enhanced key handling for multi-line support
+  const handleEnhancedKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter") {
+      if (e.shiftKey) {
+        // Allow default behavior for Shift+Enter (new line)
+        return;
+      } else {
+        // Prevent default and send message for Enter alone
+        e.preventDefault();
+        handleSendMessage();
+      }
+    }
+  };
+
   if (!hendrikAgent) {
     return (
       <Card>
@@ -346,21 +360,29 @@ export const SalesAgentChat = () => {
             )}
           </div>
 
-          {/* Enhanced Chat Input */}
-          <div className="flex gap-2">
-            <Input
-              placeholder="Vraag Hendrik over leads, voertuigen, afspraken, of vraag om CRM acties uit te voeren..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              disabled={chatLoading || !session}
-            />
-            <Button
-              onClick={handleSendMessage}
-              disabled={!message.trim() || chatLoading || !session}
-            >
-              <Send className="h-4 w-4" />
-            </Button>
+          {/* Enhanced Chat Input with Textarea for multi-line support */}
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Textarea
+                placeholder="Vraag Hendrik over leads, voertuigen, afspraken, of vraag om CRM acties uit te voeren... (Shift+Enter voor nieuwe regel, Enter om te verzenden)"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={handleEnhancedKeyPress}
+                disabled={chatLoading || !session}
+                rows={3}
+                className="resize-none"
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={!message.trim() || chatLoading || !session}
+                className="self-end"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              💡 Tip: Gebruik Shift+Enter voor een nieuwe regel, Enter om je bericht te verzenden
+            </div>
           </div>
 
           {/* Enhanced Status */}
