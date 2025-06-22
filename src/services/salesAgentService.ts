@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface SalesEmailAnalysis {
@@ -45,8 +46,8 @@ export interface EnhancedSalesInteraction {
   functionResult?: any;
 }
 
-// Initialize Enhanced Hendrik Sales Agent
-export const initializeEnhancedHendrikAgent = async () => {
+// Initialize Enhanced Hendrik Sales Agent - renamed from initializeEnhancedHendrikAgent
+export const initializeHendrikAgent = async () => {
   try {
     const { data: existingAgent } = await supabase
       .from('ai_agents')
@@ -187,10 +188,9 @@ export const logEnhancedSalesInteraction = async (interaction: EnhancedSalesInte
         ai_response: interaction.aiResponse,
         team_feedback: interaction.teamFeedback,
         team_rating: interaction.teamRating,
-        function_called: interaction.functionCalled,
-        function_result: interaction.functionResult,
         agent_name: 'hendrik',
-        user_id: userId
+        user_id: userId,
+        outcome: interaction.functionCalled || null
       })
       .select()
       .single();
@@ -233,19 +233,23 @@ export const getHendrikLearningAnalytics = async () => {
         analytics.avgRating = ratedInteractions.reduce((sum, i) => sum + (i.team_rating || 0), 0) / ratedInteractions.length;
       }
 
-      // Analyze phase detections
+      // Analyze phase detections - safely access input_data
       interactions.forEach(i => {
-        const phase = i.input_data?.detected_phase;
-        if (phase) {
-          analytics.phaseDetections[phase] = (analytics.phaseDetections[phase] || 0) + 1;
+        if (i.input_data && typeof i.input_data === 'object') {
+          const inputData = i.input_data as any;
+          
+          const phase = inputData.detected_phase;
+          if (phase) {
+            analytics.phaseDetections[phase] = (analytics.phaseDetections[phase] || 0) + 1;
+          }
+
+          const sentiment = inputData.sentiment_analysis;
+          if (sentiment) {
+            analytics.sentimentDistribution[sentiment] = (analytics.sentimentDistribution[sentiment] || 0) + 1;
+          }
         }
 
-        const sentiment = i.input_data?.sentiment_analysis;
-        if (sentiment) {
-          analytics.sentimentDistribution[sentiment] = (analytics.sentimentDistribution[sentiment] || 0) + 1;
-        }
-
-        const func = i.function_called;
+        const func = i.outcome; // Use outcome field instead of function_called
         if (func) {
           analytics.functionUsage[func] = (analytics.functionUsage[func] || 0) + 1;
         }
