@@ -27,12 +27,6 @@ interface Vehicle {
   status: string;
 }
 
-interface EmailThread {
-  id: string;
-  subject: string;
-  message_count: number;
-}
-
 export const EnhancedLeadEmailComposer: React.FC<EnhancedLeadEmailComposerProps> = ({ 
   lead, 
   onClose, 
@@ -47,14 +41,11 @@ export const EnhancedLeadEmailComposer: React.FC<EnhancedLeadEmailComposerProps>
   const [isSending, setIsSending] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<string>('');
-  const [emailThreads, setEmailThreads] = useState<EmailThread[]>([]);
-  const [selectedThread, setSelectedThread] = useState<string>('');
   const [hendrikContext, setHendrikContext] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     loadVehicles();
-    loadEmailThreads();
     loadHendrikContext();
   }, [lead.id]);
 
@@ -66,26 +57,6 @@ export const EnhancedLeadEmailComposer: React.FC<EnhancedLeadEmailComposerProps>
       .order('brand', { ascending: true });
     
     if (data) setVehicles(data);
-  };
-
-  const loadEmailThreads = async () => {
-    const { data } = await supabase
-      .from('email_threads')
-      .select(`
-        id,
-        subject,
-        email_messages(count)
-      `)
-      .eq('lead_id', lead.id)
-      .order('updated_at', { ascending: false });
-    
-    if (data) {
-      setEmailThreads(data.map(thread => ({
-        id: thread.id,
-        subject: thread.subject || 'Geen onderwerp',
-        message_count: thread.email_messages?.length || 0
-      })));
-    }
   };
 
   const loadHendrikContext = async () => {
@@ -119,12 +90,11 @@ export const EnhancedLeadEmailComposer: React.FC<EnhancedLeadEmailComposerProps>
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.supabaseKey}`
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZud2Fncm1veWZ5aW1kb2F5bmtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgyOTM1OTEsImV4cCI6MjA2Mzg2OTU5MX0.vzCFGEJv13gHlu9wRPg9czQZtLiUZXN74rWOyOdBf3c`
         },
         body: JSON.stringify({
           lead: hendrikContext.lead,
           selectedVehicle: selectedVehicle ? vehicles.find(v => v.id === selectedVehicle) : null,
-          emailThread: selectedThread,
           context: {
             vehicles: hendrikContext.vehicles,
             appointments: hendrikContext.appointments
@@ -139,7 +109,7 @@ export const EnhancedLeadEmailComposer: React.FC<EnhancedLeadEmailComposerProps>
       
       setEmailData(prev => ({
         ...prev,
-        subject: result.subject || `Re: ${lead.first_name} - Auto City`,
+        subject: result.subject || `Re: ${lead.firstName} - Auto City`,
         content: result.content || 'Hendrik kon geen email genereren. Probeer opnieuw.'
       }));
       
@@ -176,7 +146,7 @@ export const EnhancedLeadEmailComposer: React.FC<EnhancedLeadEmailComposerProps>
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.supabaseKey}`
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZud2Fncm1veWZ5aW1kb2F5bmtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgyOTM1OTEsImV4cCI6MjA2Mzg2OTU5MX0.vzCFGEJv13gHlu9wRPg9czQZtLiUZXN74rWOyOdBf3c`
         },
         body: JSON.stringify({
           to: lead.email,
@@ -184,7 +154,6 @@ export const EnhancedLeadEmailComposer: React.FC<EnhancedLeadEmailComposerProps>
           subject: emailData.subject,
           content: emailData.content,
           leadId: lead.id,
-          threadId: selectedThread,
           vehicleId: selectedVehicle,
           aiGenerated: emailData.template === 'hendrik_ai'
         })
@@ -192,34 +161,17 @@ export const EnhancedLeadEmailComposer: React.FC<EnhancedLeadEmailComposerProps>
 
       if (!response.ok) throw new Error('Email send failed');
 
-      // Store in email_messages table
-      await supabase
-        .from('email_messages')
-        .insert({
-          thread_id: selectedThread || null,
-          lead_id: lead.id,
-          from_email: 'verkoop@auto-city.nl',
-          to_email: lead.email,
-          subject: emailData.subject,
-          content: emailData.content,
-          direction: 'outbound',
-          status: 'sent',
-          ai_generated: emailData.template === 'hendrik_ai',
-          ai_agent_name: 'hendrik'
-        });
-
       // Update lead activity
       await supabase
         .from('leads')
         .update({
-          last_email_date: new Date().toISOString(),
-          email_engagement_score: supabase.rpc('increment', { column_name: 'email_engagement_score' })
+          updated_at: new Date().toISOString()
         })
         .eq('id', lead.id);
 
       toast({
         title: "✅ Email Verzonden",
-        description: `Email succesvol verzonden naar ${lead.first_name}`,
+        description: `Email succesvol verzonden naar ${lead.firstName}`,
       });
       
       onSent();
@@ -255,7 +207,7 @@ export const EnhancedLeadEmailComposer: React.FC<EnhancedLeadEmailComposerProps>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
-            Enhanced Email Composer - {lead.first_name} {lead.last_name}
+            Enhanced Email Composer - {lead.firstName} {lead.lastName}
             <Button
               variant="ghost"
               size="sm"
@@ -285,51 +237,33 @@ export const EnhancedLeadEmailComposer: React.FC<EnhancedLeadEmailComposerProps>
                   <strong>Status:</strong> <Badge variant="outline">{lead.status}</Badge>
                 </div>
                 <div>
-                  <strong>Interesse:</strong> {lead.intent_classification || 'Onbekend'}
+                  <strong>Prioriteit:</strong> <Badge variant="secondary">{lead.priority}</Badge>
                 </div>
                 <div>
-                  <strong>Urgentie:</strong> <Badge variant="secondary">{lead.urgency_level}</Badge>
+                  <strong>Bron:</strong> {lead.source || 'Onbekend'}
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Vehicle Selection */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <Car className="h-4 w-4" />
-                Voertuig Selectie
-              </label>
-              <Select value={selectedVehicle} onValueChange={handleVehicleSelect}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecteer voertuig (optioneel)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vehicles.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.brand} {vehicle.model} ({vehicle.year}) - €{vehicle.selling_price?.toLocaleString()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Email Thread</label>
-              <Select value={selectedThread} onValueChange={setSelectedThread}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Nieuwe email" />
-                </SelectTrigger>
-                <SelectContent>
-                  {emailThreads.map((thread) => (
-                    <SelectItem key={thread.id} value={thread.id}>
-                      {thread.subject} ({thread.message_count} berichten)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Car className="h-4 w-4" />
+              Voertuig Selectie
+            </label>
+            <Select value={selectedVehicle} onValueChange={handleVehicleSelect}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecteer voertuig (optioneel)" />
+              </SelectTrigger>
+              <SelectContent>
+                {vehicles.map((vehicle) => (
+                  <SelectItem key={vehicle.id} value={vehicle.id}>
+                    {vehicle.brand} {vehicle.model} ({vehicle.year}) - €{vehicle.selling_price?.toLocaleString()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Hendrik AI Generation */}
