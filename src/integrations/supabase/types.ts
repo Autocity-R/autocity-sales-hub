@@ -265,8 +265,10 @@ export type Database = {
       ai_chat_messages: {
         Row: {
           content: string
+          context_items_used: Json | null
           created_at: string
           id: string
+          memory_references: Json | null
           message_type: string
           processing_time_ms: number | null
           session_id: string
@@ -275,8 +277,10 @@ export type Database = {
         }
         Insert: {
           content: string
+          context_items_used?: Json | null
           created_at?: string
           id?: string
+          memory_references?: Json | null
           message_type: string
           processing_time_ms?: number | null
           session_id: string
@@ -285,8 +289,10 @@ export type Database = {
         }
         Update: {
           content?: string
+          context_items_used?: Json | null
           created_at?: string
           id?: string
+          memory_references?: Json | null
           message_type?: string
           processing_time_ms?: number | null
           session_id?: string
@@ -307,9 +313,12 @@ export type Database = {
         Row: {
           agent_id: string
           context: Json | null
+          context_summary: string | null
           created_at: string
           ended_at: string | null
           id: string
+          lead_id: string | null
+          memory_context: Json | null
           session_token: string
           status: string
           updated_at: string
@@ -318,9 +327,12 @@ export type Database = {
         Insert: {
           agent_id: string
           context?: Json | null
+          context_summary?: string | null
           created_at?: string
           ended_at?: string | null
           id?: string
+          lead_id?: string | null
+          memory_context?: Json | null
           session_token: string
           status?: string
           updated_at?: string
@@ -329,9 +341,12 @@ export type Database = {
         Update: {
           agent_id?: string
           context?: Json | null
+          context_summary?: string | null
           created_at?: string
           ended_at?: string | null
           id?: string
+          lead_id?: string | null
+          memory_context?: Json | null
           session_token?: string
           status?: string
           updated_at?: string
@@ -343,6 +358,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_chat_sessions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -405,6 +427,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ai_email_processing_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_lead_memory: {
+        Row: {
+          context_data: Json
+          context_type: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          importance_score: number | null
+          lead_id: string
+          updated_at: string
+        }
+        Insert: {
+          context_data?: Json
+          context_type: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          importance_score?: number | null
+          lead_id: string
+          updated_at?: string
+        }
+        Update: {
+          context_data?: Json
+          context_type?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          importance_score?: number | null
+          lead_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_lead_memory_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"

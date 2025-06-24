@@ -27,9 +27,12 @@ serve(async (req) => {
 
     const { sessionId, message, agentId, userContext }: ChatRequest = await req.json();
     
-    console.log('🤖 Hendrik AI Chat Request with Memory:', { sessionId, agentId, message: message.substring(0, 100) });
+    console.log('🧠 Hendrik AI Chat with Enhanced Memory:', { sessionId, agentId, message: message.substring(0, 100) });
 
-    // Get conversation history for full context
+    // Process lead detection and memory loading
+    const memoryResult = await processMessageWithMemory(supabaseClient, sessionId, message);
+    
+    // Get conversation history with enhanced context
     const { data: conversationHistory, error: historyError } = await supabaseClient
       .from('ai_chat_messages')
       .select('*')
@@ -40,13 +43,15 @@ serve(async (req) => {
       console.error('Error fetching conversation history:', historyError);
     }
 
-    console.log('💭 Conversation history loaded:', {
+    console.log('💭 Enhanced Memory Context:', {
       messageCount: conversationHistory?.length || 0,
+      hasLeadContext: !!memoryResult.leadId,
+      memoryContextLength: memoryResult.memoryContext?.length || 0,
       sessionId
     });
 
-    // Get comprehensive CRM data for Hendrik
-    const crmData = await getEnhancedCRMData(supabaseClient);
+    // Get comprehensive CRM data
+    const crmData = await getEnhancedCRMData(supabaseClient, memoryResult.leadId);
     
     // Get recent sales interactions for learning context
     const { data: recentInteractions } = await supabaseClient
@@ -65,27 +70,40 @@ serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(5);
 
-    // Build enhanced context with new sales agent prompt
-    const contextPrompt = buildEnhancedHendrikContext(crmData, recentInteractions || [], teamFeedback || []);
+    // Build enhanced context with memory
+    const contextPrompt = buildEnhancedHendrikContextWithMemory(
+      crmData, 
+      recentInteractions || [], 
+      teamFeedback || [],
+      memoryResult.memoryContext || ''
+    );
     
-    console.log('🧠 Enhanced CRM context built:', {
+    console.log('🧠 Enhanced CRM context with memory built:', {
       vehicles: crmData.vehicles?.length || 0,
       leads: crmData.leads?.length || 0,
       appointments: crmData.appointments?.length || 0,
       recentInteractions: recentInteractions?.length || 0,
-      teamFeedback: teamFeedback?.length || 0
+      teamFeedback: teamFeedback?.length || 0,
+      hasMemoryContext: !!memoryResult.memoryContext,
+      leadId: memoryResult.leadId
     });
 
-    // Build conversation messages for OpenAI with full history
-    const conversationMessages = buildConversationMessages(contextPrompt, conversationHistory || [], message);
+    // Build conversation messages for OpenAI with memory
+    const conversationMessages = buildConversationMessagesWithMemory(
+      contextPrompt, 
+      conversationHistory || [], 
+      message,
+      memoryResult.leadId
+    );
 
-    console.log('📝 Conversation messages built:', {
+    console.log('📝 Enhanced conversation messages with memory:', {
       totalMessages: conversationMessages.length,
       systemPromptLength: contextPrompt.length,
-      historyMessages: (conversationHistory?.length || 0)
+      historyMessages: (conversationHistory?.length || 0),
+      hasLeadMemory: !!memoryResult.leadId
     });
 
-    // Call OpenAI with enhanced context and full conversation history
+    // Call OpenAI with enhanced memory context
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -113,6 +131,20 @@ serve(async (req) => {
                 notes: { type: 'string', description: 'Additional notes or requirements' }
               },
               required: ['customer_name', 'preferred_date', 'preferred_time']
+            }
+          },
+          {
+            name: 'update_lead_memory',
+            description: 'Update or save lead memory context for future conversations',
+            parameters: {
+              type: 'object',
+              properties: {
+                lead_id: { type: 'string', description: 'Lead ID' },
+                context_type: { type: 'string', enum: ['preference', 'conversation_summary', 'sales_phase', 'objection_history', 'vehicle_interest', 'budget_info'] },
+                context_data: { type: 'object', description: 'Memory data to store' },
+                importance_score: { type: 'number', description: 'Importance score 1-10' }
+              },
+              required: ['lead_id', 'context_type', 'context_data']
             }
           },
           {
@@ -176,13 +208,14 @@ serve(async (req) => {
     let responseMessage = choice.message.content;
     let functionResult = null;
 
-    // Handle function calls with enhanced actions
+    // Handle function calls with memory support
     if (choice.message.function_call) {
       console.log('🔧 Function call detected:', choice.message.function_call.name);
-      functionResult = await handleEnhancedFunctionCall(
+      functionResult = await handleEnhancedFunctionCallWithMemory(
         supabaseClient,
         choice.message.function_call,
-        agentId
+        agentId,
+        memoryResult.leadId
       );
       
       if (functionResult.success) {
@@ -192,17 +225,19 @@ serve(async (req) => {
       }
     }
 
-    // Log interaction with enhanced data for learning
+    // Log interaction with enhanced memory data
     await supabaseClient
       .from('ai_sales_interactions')
       .insert({
-        interaction_type: 'enhanced_chat_response_with_memory',
+        interaction_type: 'enhanced_chat_with_full_memory',
         input_data: { 
           message, 
           conversation_length: conversationHistory?.length || 0,
           detected_phase: extractPhaseFromResponse(responseMessage),
           sentiment: extractSentimentFromResponse(responseMessage),
-          crm_context_size: Object.keys(crmData).length 
+          crm_context_size: Object.keys(crmData).length,
+          has_lead_memory: !!memoryResult.leadId,
+          lead_id: memoryResult.leadId
         },
         ai_response: responseMessage,
         agent_name: 'hendrik',
@@ -211,7 +246,7 @@ serve(async (req) => {
         function_result: functionResult
       });
 
-    console.log('✅ Enhanced Hendrik response with memory generated successfully');
+    console.log('✅ Enhanced Hendrik response with full memory generated successfully');
 
     return new Response(JSON.stringify({
       success: true,
@@ -223,7 +258,9 @@ serve(async (req) => {
         leads: crmData.leads?.length || 0,
         appointments: crmData.appointments?.length || 0,
         conversation_history: conversationHistory?.length || 0,
-        learning_data: {
+        memory_context: {
+          has_lead_memory: !!memoryResult.leadId,
+          lead_id: memoryResult.leadId,
           recent_interactions: recentInteractions?.length || 0,
           team_feedback_count: teamFeedback?.length || 0
         }
@@ -233,7 +270,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('❌ Enhanced Hendrik AI Chat Error:', error);
+    console.error('❌ Enhanced Hendrik AI Chat with Memory Error:', error);
     return new Response(JSON.stringify({
       success: false,
       error: error.message,
@@ -245,7 +282,182 @@ serve(async (req) => {
   }
 });
 
-function buildConversationMessages(systemPrompt: string, conversationHistory: any[], currentMessage: string) {
+async function processMessageWithMemory(supabaseClient: any, sessionId: string, message: string) {
+  try {
+    // Extract email pattern from message
+    const emailMatch = message.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
+    
+    // Extract phone pattern from message  
+    const phoneMatch = message.match(/(?:\+31|0)[0-9]{1,3}[-.\s]?[0-9]{3}[-.\s]?[0-9]{3,4}/);
+    
+    let leadId = null;
+
+    if (emailMatch) {
+      const { data: lead } = await supabaseClient
+        .from('leads')
+        .select('id')
+        .eq('email', emailMatch[0])
+        .single();
+      
+      if (lead) leadId = lead.id;
+    }
+
+    if (!leadId && phoneMatch) {
+      const cleanPhone = phoneMatch[0].replace(/[-.\s]/g, '');
+      const { data: lead } = await supabaseClient
+        .from('leads')
+        .select('id')
+        .or(`phone.eq.${cleanPhone},phone.eq.${phoneMatch[0]}`)
+        .single();
+      
+      if (lead) leadId = lead.id;
+    }
+
+    let memoryContext = '';
+    
+    if (leadId) {
+      // Get lead context including memories
+      const leadContext = await getLeadContextWithMemory(supabaseClient, leadId);
+      
+      if (leadContext) {
+        memoryContext = buildMemoryContextString(leadContext);
+        
+        // Update session with memory context
+        await supabaseClient
+          .from('ai_chat_sessions')
+          .update({
+            lead_id: leadId,
+            memory_context: {
+              leadId,
+              sessionCount: leadContext.sessionCount,
+              lastContact: leadContext.lastContact,
+              salesPhase: leadContext.salesPhase,
+              memoriesCount: leadContext.memories.length
+            },
+            context_summary: `Lead: ${leadContext.lead.first_name} ${leadContext.lead.last_name} (${leadContext.sessionCount} sessies)`
+          })
+          .eq('id', sessionId);
+      }
+    }
+    
+    return { leadId, memoryContext };
+  } catch (error) {
+    console.error('Error processing message with memory:', error);
+    return {};
+  }
+}
+
+async function getLeadContextWithMemory(supabaseClient: any, leadId: string) {
+  try {
+    // Get lead basic info
+    const { data: lead } = await supabaseClient
+      .from('leads')
+      .select('*')
+      .eq('id', leadId)
+      .single();
+
+    if (!lead) return null;
+
+    // Get lead memories
+    const { data: memories } = await supabaseClient
+      .from('ai_lead_memory')
+      .select('*')
+      .eq('lead_id', leadId)
+      .or('expires_at.is.null,expires_at.gt.now()')
+      .order('importance_score', { ascending: false })
+      .limit(20);
+
+    // Get conversation history from all sessions for this lead
+    const { data: sessions } = await supabaseClient
+      .from('ai_chat_sessions')
+      .select(`
+        id,
+        created_at,
+        context_summary,
+        ai_chat_messages(*)
+      `)
+      .eq('lead_id', leadId)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    // Flatten conversation history
+    const conversationHistory = sessions?.flatMap(session => 
+      session.ai_chat_messages?.map(msg => ({
+        ...msg,
+        session_date: session.created_at
+      })) || []
+    ) || [];
+
+    // Extract key context from memories
+    const preferences = memories?.find(m => m.context_type === 'preference')?.context_data;
+    const salesPhase = memories?.find(m => m.context_type === 'sales_phase')?.context_data?.current_phase;
+
+    return {
+      lead,
+      memories: memories || [],
+      conversationHistory,
+      sessionCount: sessions?.length || 0,
+      lastContact: sessions?.[0]?.created_at,
+      salesPhase,
+      preferences
+    };
+  } catch (error) {
+    console.error('Error getting lead context with memory:', error);
+    return null;
+  }
+}
+
+function buildMemoryContextString(leadContext: any): string {
+  let contextString = `\n\n<LEAD_MEMORY_CONTEXT>\n`;
+  
+  contextString += `**Lead Informatie:**\n`;
+  contextString += `- Naam: ${leadContext.lead.first_name} ${leadContext.lead.last_name}\n`;
+  contextString += `- Email: ${leadContext.lead.email}\n`;
+  contextString += `- Status: ${leadContext.lead.status}\n`;
+  contextString += `- Sessies: ${leadContext.sessionCount} eerdere gesprekken\n`;
+  
+  if (leadContext.lastContact) {
+    const daysSince = Math.floor((new Date().getTime() - new Date(leadContext.lastContact).getTime()) / (1000 * 60 * 60 * 24));
+    contextString += `- Laatste contact: ${daysSince} dagen geleden\n`;
+  }
+
+  if (leadContext.salesPhase) {
+    contextString += `- Sales Fase: ${leadContext.salesPhase}\n`;
+  }
+
+  // Add important memories
+  if (leadContext.memories.length > 0) {
+    contextString += `\n**Belangrijke Context:**\n`;
+    leadContext.memories.slice(0, 8).forEach(memory => {
+      if (memory.context_type === 'preference') {
+        contextString += `- Voorkeuren: ${JSON.stringify(memory.context_data)}\n`;
+      } else if (memory.context_type === 'objection_history') {
+        contextString += `- Eerdere objecties: ${JSON.stringify(memory.context_data)}\n`;
+      } else if (memory.context_type === 'vehicle_interest') {
+        contextString += `- Voertuig interesse: ${JSON.stringify(memory.context_data)}\n`;
+      } else if (memory.context_type === 'budget_info') {
+        contextString += `- Budget informatie: ${JSON.stringify(memory.context_data)}\n`;
+      }
+    });
+  }
+
+  // Add recent conversation highlights
+  if (leadContext.conversationHistory.length > 0) {
+    contextString += `\n**Recente Gesprekken (laatste 5 berichten):**\n`;
+    leadContext.conversationHistory
+      .filter(msg => msg.message_type === 'user')
+      .slice(0, 5)
+      .forEach(msg => {
+        contextString += `- "${msg.content.substring(0, 100)}${msg.content.length > 100 ? '...' : ''}"\n`;
+      });
+  }
+
+  contextString += `</LEAD_MEMORY_CONTEXT>\n`;
+  
+  return contextString;
+}
+
+function buildConversationMessagesWithMemory(systemPrompt: string, conversationHistory: any[], currentMessage: string, leadId?: string) {
   const messages = [
     {
       role: 'system',
@@ -278,7 +490,7 @@ function buildConversationMessages(systemPrompt: string, conversationHistory: an
   });
 
   // Optimize token usage - keep recent conversation if too long
-  const maxMessages = 20; // System + 19 conversation messages
+  const maxMessages = leadId ? 25 : 20; // More context for known leads
   if (messages.length > maxMessages) {
     // Keep system prompt and recent messages
     const recentMessages = messages.slice(-(maxMessages - 1));
@@ -288,7 +500,7 @@ function buildConversationMessages(systemPrompt: string, conversationHistory: an
   return messages;
 }
 
-async function getEnhancedCRMData(supabase: any) {
+async function getEnhancedCRMData(supabase: any, leadId?: string) {
   const data: any = {};
 
   try {
@@ -360,14 +572,15 @@ async function getEnhancedCRMData(supabase: any) {
   return data;
 }
 
-function buildEnhancedHendrikContext(crmData: any, recentInteractions: any[], teamFeedback: any[]): string {
+function buildEnhancedHendrikContextWithMemory(crmData: any, recentInteractions: any[], teamFeedback: any[], memoryContext: string): string {
   let contextString = `# AUTOCITY SALES AGENT - HENDRIK
-## Professional Automotive Lead Specialist
+## Professional Automotive Lead Specialist with Enhanced Memory
 
 <identity>
 Je bent Hendrik, Autocity's expert automotive lead specialist.
-Je combineert 55 jaar familiebedrijf ervaring met moderne sales intelligence.
+Je combineert 55 jaar familiebedrijf ervaring met moderne sales intelligence en volledig geheugen van alle klant interacties.
 Je helpt particuliere klanten (B2C) de perfecte jong gebruikte premium auto vinden.
+Je onthoudt ALLES van elke klant - hun voorkeuren, eerdere gesprekken, objecties, en de volledige customer journey.
 </identity>
 
 <company_context>
@@ -380,11 +593,40 @@ Je helpt particuliere klanten (B2C) de perfecte jong gebruikte premium auto vind
 - Transparant en betrouwbaar in alle transacties
 </company_context>
 
+<memory_system>
+**Enhanced Memory Capabilities:**
+
+CONVERSATIE GEHEUGEN
+- Volledige historie van alle gesprekken per klant
+- Automatische herkenning van terugkerende klanten
+- Context van vorige sessies en beslissingsmomenten
+- Persoonlijke voorkeuren en gestelde vragen
+
+RELATIE MANAGEMENT
+- Fase tracking door alle gesprekken heen
+- Objectie geschiedenis en hoe deze zijn opgelost
+- Budget evolutie en interesse ontwikkeling
+- Tijdlijn van klant journey
+
+PERSONALISATIE
+- Aangepaste begroeting op basis van geschiedenis
+- Referenties naar vorige gesprekken
+- Herinnering aan specifieke auto interesses
+- Follow-up op eerder besproken punten
+</memory_system>
+
 <core_mission>
 **Primair Doel:** Elke lead omzetten naar showroom afspraak
 **Secundair Doel:** Remote closing bij hoge urgentie/interesse
-**Filosofie:** Help eerst, verkoop daarna - bouw levenslange relaties
-</core_mission>
+**Filosofie:** Help eerst, verkoop daarna - bouw levenslange relaties met perfecte memory
+</core_mission>`;
+
+  // Add memory context if available
+  if (memoryContext) {
+    contextString += memoryContext;
+  }
+
+  contextString += `
 
 <lead_analysis_framework>
 **Fase Herkenning (Automatisch detecteren):**
@@ -404,7 +646,6 @@ FASE 3 - OVERWEGING
 FASE 4 - BESLISSING
 - Indicators: Koopintentie, "wil deze auto", timing vragen
 - Response: Direct faciliteren, afspraak maken, remote closing overwegen
-- Objections: Als een klant ergens over wilt nadenken of geen specifieke reden geeft voor het uitstellen van de beslissing probeer momentum te behouden en te achterhalen wat de objection is, is het de prijs? is het de timing? de inruil? de voorwaarden? als we de objection weten kunnen we het daarna omzetten in een sale.
 
 FASE 5 - ACTIE
 - Indicators: Reservering willen, proces vragen, concrete stappen
@@ -598,12 +839,33 @@ FOCUS POINTS
   return contextString;
 }
 
-async function handleEnhancedFunctionCall(supabase: any, functionCall: any, agentId: string) {
+async function handleEnhancedFunctionCallWithMemory(supabase: any, functionCall: any, agentId: string, leadId?: string) {
   const { name, arguments: args } = functionCall;
   const parsedArgs = JSON.parse(args);
 
   try {
     switch (name) {
+      case 'update_lead_memory':
+        if (leadId) {
+          await supabase
+            .from('ai_lead_memory')
+            .upsert({
+              lead_id: leadId,
+              context_type: parsedArgs.context_type,
+              context_data: parsedArgs.context_data,
+              importance_score: parsedArgs.importance_score || 5
+            }, {
+              onConflict: 'lead_id,context_type'
+            });
+
+          return { 
+            success: true, 
+            message: `Lead memory updated: ${parsedArgs.context_type}`, 
+            data: parsedArgs 
+          };
+        }
+        return { success: false, error: 'No lead ID available for memory update' };
+
       case 'create_showroom_appointment':
         const appointmentData = {
           title: `Showroom afspraak - ${parsedArgs.vehicle_interest || 'Voertuig interesse'}`,
@@ -708,7 +970,7 @@ async function handleEnhancedFunctionCall(supabase: any, functionCall: any, agen
         return { success: false, error: `Unknown function: ${name}` };
     }
   } catch (error) {
-    console.error(`Enhanced function call error (${name}):`, error);
+    console.error(`Enhanced function call error with memory (${name}):`, error);
     return { success: false, error: error.message };
   }
 }

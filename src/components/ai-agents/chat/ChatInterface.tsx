@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Bot, User, Send, Activity, Zap, Database, AlertCircle, Brain } from "lucide-react";
+import { Bot, User, Send, Activity, Zap, Database, AlertCircle, Brain, Clock, Users } from "lucide-react";
 import { ChatMessage } from "@/services/chatSessionService";
 
 interface AIAgent {
@@ -83,7 +83,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Activity className="h-5 w-5" />
-          {isHendrikAgent ? 'Hendrik AI Chat (Direct OpenAI)' : 'Enhanced AI Agent Chat'}
+          {isHendrikAgent ? 'Hendrik AI Chat (Enhanced Memory)' : 'Enhanced AI Agent Chat'}
           {selectedAgentData && (
             <Badge variant="outline" className="ml-auto">
               {selectedAgentData.name}
@@ -92,7 +92,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </CardTitle>
         <CardDescription>
           {isHendrikAgent 
-            ? `Hendrik heeft directe OpenAI integratie met volledige CRM context (${messages.length} berichten)`
+            ? `Hendrik heeft volledig geheugen van alle gesprekken en lead context (${messages.length} berichten)`
             : `Deze chat triggert workflows met volledig systeem data context (${messages.length} berichten)`
           }
         </CardDescription>
@@ -109,6 +109,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <div className="text-center text-gray-500 py-8">
               <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
               <p>Sessie wordt geïnitialiseerd...</p>
+              {isHendrikAgent && (
+                <p className="text-sm mt-2 text-blue-600">Hendrik laadt geheugen context...</p>
+              )}
             </div>
           ) : messages.length === 0 ? (
             <div className="text-center text-gray-500 py-8">
@@ -116,7 +119,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <p>Geen berichten nog. Start een gesprek!</p>
               {isHendrikAgent && (
                 <p className="text-sm mt-2 text-blue-600">
-                  💡 Hendrik heeft directe AI integratie - probeer: "Wat zijn de beste leads deze week?" of "Plan een afspraak voor morgen"
+                  💡 Hendrik onthoudt alle gesprekken - probeer: "Hallo, ik ben op zoek naar een auto" of noem je email/telefoon
                 </p>
               )}
             </div>
@@ -149,7 +152,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                           {isHendrikAgent ? (
                             <>
                               <Brain className="h-3 w-3 mr-1" />
-                              Direct AI
+                              Enhanced AI
                             </>
                           ) : (
                             <>
@@ -158,6 +161,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                             </>
                           )}
                           {msg.processingTime && ` (${msg.processingTime}ms)`}
+                        </Badge>
+                      )}
+                      {msg.memoryReferences && Object.keys(msg.memoryReferences).length > 0 && (
+                        <Badge variant="outline" className="bg-purple-50">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Memory
                         </Badge>
                       )}
                       {selectedAgentData?.data_access_permissions && 
@@ -192,7 +201,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 </div>
                 {isHendrikAgent && (
                   <div className="text-xs text-blue-600 mt-1">
-                    Hendrik analyseert CRM data...
+                    Hendrik analyseert met volledige memory context...
                   </div>
                 )}
               </div>
@@ -209,7 +218,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             placeholder={
               selectedAgent 
                 ? isHendrikAgent
-                  ? "Vraag Hendrik over leads, afspraken, of vraag om CRM acties..."
+                  ? "Hendrik onthoudt alles - vertel over je auto wensen of noem je contactgegevens..."
                   : selectedAgentData?.is_webhook_enabled
                     ? "Typ je bericht (triggert workflow met systeem data)..."
                     : "Agent heeft geen integratie geconfigureerd"
@@ -227,18 +236,18 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </Button>
         </div>
 
-        {/* Status Messages */}
+        {/* Enhanced Status Messages */}
         {selectedAgentData && !isHendrikAgent && !selectedAgentData.is_webhook_enabled && (
           <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
             <AlertCircle className="h-4 w-4 inline mr-1" />
-            Deze agent heeft geen integratie. Hendrik heeft wel directe AI integratie beschikbaar.
+            Deze agent heeft geen integratie. Hendrik heeft wel enhanced memory beschikbaar.
           </div>
         )}
 
         {isHendrikAgent && (
           <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
             <Brain className="h-4 w-4 inline mr-1" />
-            Hendrik heeft directe OpenAI integratie met real-time CRM toegang en function calling.
+            Hendrik heeft enhanced memory - onthoudt alle gesprekken, voorkeuren en lead context.
           </div>
         )}
 

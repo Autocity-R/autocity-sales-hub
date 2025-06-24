@@ -1,120 +1,117 @@
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
-import { useAIChat } from "@/hooks/useAIChat";
-import { supabase } from "@/integrations/supabase/client";
-
-interface AIAgent {
-  id: string;
-  name: string;
-  persona: string;
-  is_active: boolean;
-  is_webhook_enabled?: boolean;
-  webhook_url?: string;
-  webhook_config?: any;
-  data_access_permissions?: any;
-  capabilities?: string[];
-}
-
-const fetchAIAgents = async (): Promise<AIAgent[]> => {
-  const { data, error } = await supabase
-    .from('ai_agents')
-    .select('*')
-    .eq('is_active', true)
-    .order('name');
-
-  if (error) throw error;
-  return data || [];
-};
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useEnhancedAIChat } from './useEnhancedAIChat';
+import { useAIChat } from './useAIChat';
 
 export const useProductionAIChat = () => {
   const { toast } = useToast();
-  const [selectedAgent, setSelectedAgent] = useState<string>("");
-  const [message, setMessage] = useState("");
+  const [agents, setAgents] = useState<any[]>([]);
+  const [selectedAgent, setSelectedAgent] = useState<string>('');
+  const [selectedAgentData, setSelectedAgentData] = useState<any>(null);
+  const [message, setMessage] = useState('');
+  const [agentsLoading, setAgentsLoading] = useState(true);
 
-  const { data: agents = [], isLoading: agentsLoading, refetch: refetchAgents } = useQuery({
-    queryKey: ['ai-agents'],
-    queryFn: fetchAIAgents,
-    refetchInterval: 10000, // Refresh every 10 seconds to sync status
-  });
+  // Use enhanced chat for Hendrik, regular chat for others
+  const isHendrikAgent = selectedAgentData?.name?.toLowerCase().includes('hendrik') ||
+                        selectedAgentData?.capabilities?.includes('direct-ai-integration');
 
-  // Use the full useAIChat hook instead of the simplified version
-  const {
-    session,
-    messages,
-    isLoading: chatLoading,
-    isInitializing,
-    sendMessage,
-    endSession,
-    reinitialize,
-  } = useAIChat(selectedAgent);
+  const enhancedChat = useEnhancedAIChat(isHendrikAgent ? selectedAgent : '');
+  const regularChat = useAIChat(!isHendrikAgent ? selectedAgent : '');
 
-  const selectedAgentData = agents.find(agent => agent.id === selectedAgent);
+  // Select which chat system to use
+  const activeChat = isHendrikAgent ? enhancedChat : regularChat;
 
-  const handleSendMessage = async () => {
-    if (!message.trim() || !selectedAgent || chatLoading) return;
+  const loadAgents = useCallback(async () => {
+    try {
+      setAgentsLoading(true);
+      const { data, error } = await supabase
+        .from('ai_agents')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      setAgents(data || []);
+      
+      // Auto-select Hendrik if available
+      const hendrik = data?.find(agent => agent.name.toLowerCase().includes('hendrik'));
+      if (hendrik && !selectedAgent) {
+        setSelectedAgent(hendrik.id);
+        setSelectedAgentData(hendrik);
+      }
+    } catch (error) {
+      console.error('Error loading agents:', error);
+      toast({
+        title: 'Fout',
+        description: 'Kon AI agents niet laden.',
+        variant: 'destructive',
+      });
+    } finally {
+      setAgentsLoading(false);
+    }
+  }, [selectedAgent, toast]);
+
+  const handleAgentChange = useCallback(async (agentId: string) => {
+    const agent = agents.find(a => a.id === agentId);
+    setSelectedAgent(agentId);
+    setSelectedAgentData(agent);
     
-    console.log('🚀 handleSendMessage called in useProductionAIChat with:', {
-      message,
-      selectedAgent,
-      sessionId: session?.id,
-      messagesCount: messages.length
+    // End current session when switching agents
+    if (activeChat.session) {
+      await activeChat.endSession();
+    }
+  }, [agents, activeChat]);
+
+  const handleSendMessage = useCallback(async () => {
+    if (!message.trim()) return;
+    
+    console.log('🚀 Production AI Chat - sending message:', {
+      agent: selectedAgentData?.name,
+      isHendrik: isHendrikAgent,
+      messageLength: message.length,
+      hasMemory: isHendrikAgent
     });
     
-    await sendMessage(message);
-    setMessage("");
-  };
+    await activeChat.sendMessage(message);
+    setMessage('');
+  }, [message, activeChat, selectedAgentData, isHendrikAgent]);
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
-  };
+  }, [handleSendMessage]);
 
-  const handleAgentChange = (agentId: string) => {
-    console.log('🔄 Agent change requested:', {
-      from: selectedAgent,
-      to: agentId,
-      hasCurrentSession: !!session
-    });
-    
-    if (session) {
-      console.log('🛑 Ending current session before agent change');
-      endSession();
-    }
-    setSelectedAgent(agentId);
-  };
+  useEffect(() => {
+    loadAgents();
+  }, [loadAgents]);
 
-  const handleRefreshAgents = () => {
-    refetchAgents();
-    toast({
-      title: "Agents Bijgewerkt",
-      description: "Agent status is opnieuw geladen",
-    });
-  };
+  console.log('🔄 Production AI Chat State:', {
+    selectedAgent: selectedAgentData?.name,
+    isHendrik: isHendrikAgent,
+    messagesCount: activeChat.messages.length,
+    hasSession: !!activeChat.session,
+    isLoading: activeChat.isLoading
+  });
 
   return {
-    // Data
     agents,
     selectedAgent,
     selectedAgentData,
-    session,
-    messages,
+    session: activeChat.session,
+    messages: activeChat.messages,
     message,
-    
-    // Loading states
     agentsLoading,
-    chatLoading,
-    isInitializing,
-    
-    // Handlers
+    chatLoading: activeChat.isLoading,
+    isInitializing: activeChat.isInitializing,
     handleSendMessage,
     handleKeyPress,
     handleAgentChange,
-    handleRefreshAgents,
+    handleRefreshAgents: loadAgents,
     setMessage,
-    endSession,
+    endSession: activeChat.endSession,
   };
 };
