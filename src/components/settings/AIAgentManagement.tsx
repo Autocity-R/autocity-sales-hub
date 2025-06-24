@@ -11,6 +11,7 @@ import { Bot, Plus, Trash2, Eye, EyeOff, Zap, CheckCircle, RefreshCw } from "luc
 import { useToast } from "@/hooks/use-toast";
 import { useAIAgents } from "@/hooks/useAIAgents";
 import { Link } from "react-router-dom";
+import { HendrikUpgradePanel } from "./HendrikUpgradePanel";
 
 interface NewAgent {
   name: string;
@@ -193,6 +194,9 @@ export const AIAgentManagement = () => {
         </div>
       </div>
 
+      {/* Hendrik Upgrade Panel */}
+      <HendrikUpgradePanel />
+
       {/* Existing Agents */}
       <Card>
         <CardHeader>
@@ -227,29 +231,14 @@ export const AIAgentManagement = () => {
                           Webhook Actief
                         </Badge>
                       )}
+                      {agent.name === 'Hendrik - Sales AI Agent' && (
+                        <Badge variant="default" className="bg-blue-600">
+                          Sales Expert
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-gray-600 mb-2">{agent.description}</p>
-                    <div className="flex items-center gap-4 text-sm text-gray-500 mb-2">
-                      <span>Model: {agent.model}</span>
-                      <span>Aangemaakt: {agent.createdAt.toLocaleDateString()}</span>
-                    </div>
                     
-                    {/* Webhook Status */}
-                    {agent.webhook_url && (
-                      <div className="mt-2 p-2 bg-gray-50 rounded">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Zap className="h-4 w-4" />
-                          <span className="text-sm font-medium">Webhook Status:</span>
-                          <Badge variant={agent.is_webhook_enabled ? "default" : "secondary"}>
-                            {agent.is_webhook_enabled ? "Ingeschakeld" : "Uitgeschakeld"}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-gray-600 font-mono">
-                          {agent.webhook_url}
-                        </p>
-                      </div>
-                    )}
-
                     <div className="mt-2">
                       <span className="text-sm font-medium">Toegang: </span> 
                       {agent.permissions.map(permission => (
