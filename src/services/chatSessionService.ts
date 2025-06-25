@@ -1,6 +1,19 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
+export interface ChatMessage {
+  id: string;
+  sessionId: string;
+  messageType: 'user' | 'assistant' | 'system';
+  content: string;
+  webhookTriggered?: boolean;
+  webhookResponse?: any;
+  processingTime?: number;
+  contextItemsUsed?: string[];
+  memoryReferences?: any;
+  createdAt: string;
+}
+
 export interface ChatSession {
   id: string;
   agentId: string;
@@ -10,17 +23,6 @@ export interface ChatSession {
   createdAt: string;
   updatedAt: string;
   endedAt?: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  sessionId: string;
-  messageType: 'user' | 'assistant' | 'system';
-  content: string;
-  webhookTriggered: boolean;
-  webhookResponse?: any;
-  processingTime?: number;
-  createdAt: string;
 }
 
 export const createChatSession = async (agentId: string): Promise<ChatSession> => {
@@ -60,7 +62,9 @@ export const addChatMessage = async (
   content: string,
   webhookTriggered = false,
   webhookResponse?: any,
-  processingTime?: number
+  processingTime?: number,
+  contextItemsUsed: string[] = [],
+  memoryReferences: any = {}
 ): Promise<ChatMessage> => {
   const { data, error } = await supabase
     .from('ai_chat_messages')
@@ -71,6 +75,8 @@ export const addChatMessage = async (
       webhook_triggered: webhookTriggered,
       webhook_response: webhookResponse,
       processing_time_ms: processingTime,
+      context_items_used: contextItemsUsed,
+      memory_references: memoryReferences,
     })
     .select()
     .single();
@@ -85,6 +91,8 @@ export const addChatMessage = async (
     webhookTriggered: data.webhook_triggered,
     webhookResponse: data.webhook_response,
     processingTime: data.processing_time_ms,
+    contextItemsUsed: data.context_items_used,
+    memoryReferences: data.memory_references,
     createdAt: data.created_at,
   };
 };
@@ -98,7 +106,7 @@ export const getChatMessages = async (sessionId: string): Promise<ChatMessage[]>
 
   if (error) throw error;
 
-  return (data || []).map(msg => ({
+  return data.map(msg => ({
     id: msg.id,
     sessionId: msg.session_id,
     messageType: msg.message_type as 'user' | 'assistant' | 'system',
@@ -106,6 +114,8 @@ export const getChatMessages = async (sessionId: string): Promise<ChatMessage[]>
     webhookTriggered: msg.webhook_triggered,
     webhookResponse: msg.webhook_response,
     processingTime: msg.processing_time_ms,
+    contextItemsUsed: msg.context_items_used,
+    memoryReferences: msg.memory_references,
     createdAt: msg.created_at,
   }));
 };
@@ -113,9 +123,9 @@ export const getChatMessages = async (sessionId: string): Promise<ChatMessage[]>
 export const endChatSession = async (sessionId: string): Promise<void> => {
   const { error } = await supabase
     .from('ai_chat_sessions')
-    .update({
+    .update({ 
       status: 'ended',
-      ended_at: new Date().toISOString(),
+      ended_at: new Date().toISOString()
     })
     .eq('id', sessionId);
 

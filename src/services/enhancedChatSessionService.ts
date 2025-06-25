@@ -148,7 +148,7 @@ export const getSessionWithMemoryContext = async (sessionId: string): Promise<En
       id: data.id,
       agentId: data.agent_id,
       sessionToken: data.session_token,
-      status: data.status,
+      status: data.status as 'active' | 'ended' | 'error',
       context: data.context,
       memoryContext: data.memory_context,
       contextSummary: data.context_summary,

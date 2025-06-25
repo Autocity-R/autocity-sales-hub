@@ -80,13 +80,25 @@ export const getLeadContext = async (leadId: string): Promise<LeadContext | null
     if (!lead) return null;
 
     // Get lead memories
-    const { data: memories } = await supabase
+    const { data: memoriesData } = await supabase
       .from('ai_lead_memory')
       .select('*')
       .eq('lead_id', leadId)
       .or('expires_at.is.null,expires_at.gt.now()')
       .order('importance_score', { ascending: false })
       .limit(20);
+
+    // Map database fields to interface
+    const memories: LeadMemory[] = memoriesData?.map(memory => ({
+      id: memory.id,
+      leadId: memory.lead_id,
+      contextType: memory.context_type as LeadMemory['contextType'],
+      contextData: memory.context_data,
+      importanceScore: memory.importance_score,
+      expiresAt: memory.expires_at,
+      createdAt: memory.created_at,
+      updatedAt: memory.updated_at,
+    })) || [];
 
     // Get conversation history from all sessions for this lead
     const { data: sessions } = await supabase
@@ -109,13 +121,16 @@ export const getLeadContext = async (leadId: string): Promise<LeadContext | null
       })) || []
     ) || [];
 
-    // Extract key context from memories
-    const preferences = memories?.find(m => m.context_type === 'preference')?.context_data;
-    const salesPhase = memories?.find(m => m.context_type === 'sales_phase')?.context_data?.current_phase;
+    // Extract key context from memories with safe type checking
+    const preferences = memories?.find(m => m.contextType === 'preference')?.contextData;
+    const salesPhaseMemory = memories?.find(m => m.contextType === 'sales_phase')?.contextData;
+    const salesPhase = salesPhaseMemory && typeof salesPhaseMemory === 'object' && salesPhaseMemory !== null 
+      ? (salesPhaseMemory as any).current_phase 
+      : undefined;
 
     return {
       lead,
-      memories: memories || [],
+      memories,
       conversationHistory,
       sessionCount: sessions?.length || 0,
       lastContact: sessions?.[0]?.created_at,
@@ -208,14 +223,14 @@ export const buildMemoryContext = (leadContext: LeadContext): string => {
   if (leadContext.memories.length > 0) {
     contextString += `\n**Belangrijke Context:**\n`;
     leadContext.memories.slice(0, 8).forEach(memory => {
-      if (memory.context_type === 'preference') {
-        contextString += `- Voorkeuren: ${JSON.stringify(memory.context_data)}\n`;
-      } else if (memory.context_type === 'objection_history') {
-        contextString += `- Eerdere objecties: ${JSON.stringify(memory.context_data)}\n`;
-      } else if (memory.context_type === 'vehicle_interest') {
-        contextString += `- Voertuig interesse: ${JSON.stringify(memory.context_data)}\n`;
-      } else if (memory.context_type === 'budget_info') {
-        contextString += `- Budget informatie: ${JSON.stringify(memory.context_data)}\n`;
+      if (memory.contextType === 'preference') {
+        contextString += `- Voorkeuren: ${JSON.stringify(memory.contextData)}\n`;
+      } else if (memory.contextType === 'objection_history') {
+        contextString += `- Eerdere objecties: ${JSON.stringify(memory.contextData)}\n`;
+      } else if (memory.contextType === 'vehicle_interest') {
+        contextString += `- Voertuig interesse: ${JSON.stringify(memory.contextData)}\n`;
+      } else if (memory.contextType === 'budget_info') {
+        contextString += `- Budget informatie: ${JSON.stringify(memory.contextData)}\n`;
       }
     });
   }
