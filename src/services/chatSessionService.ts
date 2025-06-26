@@ -91,8 +91,8 @@ export const addChatMessage = async (
     webhookTriggered: data.webhook_triggered,
     webhookResponse: data.webhook_response,
     processingTime: data.processing_time_ms,
-    contextItemsUsed: data.context_items_used,
-    memoryReferences: data.memory_references,
+    contextItemsUsed: Array.isArray(data.context_items_used) ? data.context_items_used as string[] : [],
+    memoryReferences: data.memory_references || {},
     createdAt: data.created_at,
   };
 };
@@ -114,8 +114,8 @@ export const getChatMessages = async (sessionId: string): Promise<ChatMessage[]>
     webhookTriggered: msg.webhook_triggered,
     webhookResponse: msg.webhook_response,
     processingTime: msg.processing_time_ms,
-    contextItemsUsed: msg.context_items_used,
-    memoryReferences: msg.memory_references,
+    contextItemsUsed: Array.isArray(msg.context_items_used) ? msg.context_items_used as string[] : [],
+    memoryReferences: msg.memory_references || {},
     createdAt: msg.created_at,
   }));
 };
