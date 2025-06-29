@@ -11,7 +11,7 @@ export class ExactOnlineCacheService {
   async get<T>(cacheKey: string): Promise<T | null> {
     try {
       const { data, error } = await supabase
-        .from('exact_online_cache')
+        .from('exact_online_cache' as any)
         .select('*')
         .eq('cache_key', cacheKey)
         .gt('expires_at', new Date().toISOString())
@@ -44,7 +44,7 @@ export class ExactOnlineCacheService {
       
       // Upsert cache entry
       const { error } = await supabase
-        .from('exact_online_cache')
+        .from('exact_online_cache' as any)
         .upsert({
           cache_key: cacheKey,
           data: data as any,
@@ -72,7 +72,7 @@ export class ExactOnlineCacheService {
   async delete(cacheKey: string): Promise<void> {
     try {
       const { error } = await supabase
-        .from('exact_online_cache')
+        .from('exact_online_cache' as any)
         .delete()
         .eq('cache_key', cacheKey);
 
@@ -93,7 +93,7 @@ export class ExactOnlineCacheService {
   async clearByEntityType(entityType: string, divisionCode?: string): Promise<void> {
     try {
       let query = supabase
-        .from('exact_online_cache')
+        .from('exact_online_cache' as any)
         .delete()
         .eq('entity_type', entityType);
 
@@ -120,7 +120,7 @@ export class ExactOnlineCacheService {
   async clearExpired(): Promise<number> {
     try {
       const { error, count } = await supabase
-        .from('exact_online_cache')
+        .from('exact_online_cache' as any)
         .delete()
         .lt('expires_at', new Date().toISOString());
 
@@ -149,18 +149,18 @@ export class ExactOnlineCacheService {
     try {
       // Get total entries
       const { count: totalEntries } = await supabase
-        .from('exact_online_cache')
+        .from('exact_online_cache' as any)
         .select('*', { count: 'exact', head: true });
 
       // Get expired entries
       const { count: expiredEntries } = await supabase
-        .from('exact_online_cache')
+        .from('exact_online_cache' as any)
         .select('*', { count: 'exact', head: true })
         .lt('expires_at', new Date().toISOString());
 
       // Get entries by type
       const { data: entitiesData } = await supabase
-        .from('exact_online_cache')
+        .from('exact_online_cache' as any)
         .select('entity_type')
         .gt('expires_at', new Date().toISOString());
 

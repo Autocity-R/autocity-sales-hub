@@ -212,7 +212,7 @@ export class ExactOnlineService {
   private async getValidToken(userId: string): Promise<ExactOnlineTokenData | null> {
     try {
       const { data, error } = await supabase
-        .from('exact_online_tokens')
+        .from('exact_online_tokens' as any)
         .select('*')
         .eq('user_id', userId)
         .order('updated_at', { ascending: false })

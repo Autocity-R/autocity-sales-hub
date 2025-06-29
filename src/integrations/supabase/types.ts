@@ -953,6 +953,111 @@ export type Database = {
           },
         ]
       }
+      exact_online_cache: {
+        Row: {
+          cache_key: string
+          created_at: string | null
+          data: Json
+          division_code: string | null
+          entity_type: string
+          expires_at: string
+          id: string
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string | null
+          data: Json
+          division_code?: string | null
+          entity_type: string
+          expires_at: string
+          id?: string
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string | null
+          data?: Json
+          division_code?: string | null
+          entity_type?: string
+          expires_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      exact_online_sync_status: {
+        Row: {
+          created_at: string | null
+          division_code: string | null
+          entity_type: string
+          error_message: string | null
+          id: string
+          last_sync: string | null
+          records_processed: number | null
+          sync_duration_ms: number | null
+          sync_status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          division_code?: string | null
+          entity_type: string
+          error_message?: string | null
+          id?: string
+          last_sync?: string | null
+          records_processed?: number | null
+          sync_duration_ms?: number | null
+          sync_status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          division_code?: string | null
+          entity_type?: string
+          error_message?: string | null
+          id?: string
+          last_sync?: string | null
+          records_processed?: number | null
+          sync_duration_ms?: number | null
+          sync_status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      exact_online_tokens: {
+        Row: {
+          access_token: string
+          company_name: string | null
+          created_at: string | null
+          division_code: string | null
+          expires_at: string
+          id: string
+          refresh_token: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          access_token: string
+          company_name?: string | null
+          created_at?: string | null
+          division_code?: string | null
+          expires_at: string
+          id?: string
+          refresh_token: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          access_token?: string
+          company_name?: string | null
+          created_at?: string | null
+          division_code?: string | null
+          expires_at?: string
+          id?: string
+          refresh_token?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       lead_scoring_history: {
         Row: {
           id: string
@@ -1314,6 +1419,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      clean_expired_exact_online_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      get_valid_exact_online_token: {
+        Args: { user_uuid: string }
+        Returns: {
+          access_token: string
+          refresh_token: string
+          expires_at: string
+          division_code: string
+          needs_refresh: boolean
+        }[]
+      }
       verify_webhook_sync: {
         Args: { agent_uuid: string }
         Returns: {
