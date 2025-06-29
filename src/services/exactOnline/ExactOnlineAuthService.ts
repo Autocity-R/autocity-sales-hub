@@ -82,7 +82,7 @@ export class ExactOnlineAuthService {
       const expiresAt = new Date(Date.now() + authResult.expires_in * 1000).toISOString();
       
       const { data, error } = await supabase
-        .from('exact_online_tokens' as any)
+        .from('exact_online_tokens')
         .update({
           access_token: authResult.access_token,
           refresh_token: authResult.refresh_token || tokenData.refreshToken,
@@ -122,7 +122,7 @@ export class ExactOnlineAuthService {
     try {
       // Get current tokens
       const { data: tokenData } = await supabase
-        .from('exact_online_tokens' as any)
+        .from('exact_online_tokens')
         .select('*')
         .eq('user_id', userId)
         .single();
@@ -147,7 +147,7 @@ export class ExactOnlineAuthService {
 
         // Remove tokens from database
         await supabase
-          .from('exact_online_tokens' as any)
+          .from('exact_online_tokens')
           .delete()
           .eq('user_id', userId);
       }
@@ -163,7 +163,7 @@ export class ExactOnlineAuthService {
   async hasValidTokens(userId: string): Promise<boolean> {
     try {
       const { data } = await supabase
-        .from('exact_online_tokens' as any)
+        .from('exact_online_tokens')
         .select('expires_at')
         .eq('user_id', userId)
         .single();
@@ -291,13 +291,13 @@ export class ExactOnlineAuthService {
     
     // Delete existing tokens for this user
     await supabase
-      .from('exact_online_tokens' as any)
+      .from('exact_online_tokens')
       .delete()
       .eq('user_id', userId);
 
     // Insert new tokens
     const { data, error } = await supabase
-      .from('exact_online_tokens' as any)
+      .from('exact_online_tokens')
       .insert({
         user_id: userId,
         access_token: authResult.access_token,

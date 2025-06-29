@@ -196,7 +196,7 @@ export class EnhancedReportsService {
 
       // Remove tokens from database
       await supabase
-        .from('exact_online_tokens' as any)
+        .from('exact_online_tokens')
         .delete()
         .eq('user_id', user.id);
 
