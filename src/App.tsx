@@ -21,6 +21,7 @@ import NotFound from "@/pages/NotFound";
 import TestContract from "@/pages/TestContract";
 import ContractPreview from "@/pages/ContractPreview";
 import Auth from "@/pages/Auth";
+import ResetPassword from "@/pages/ResetPassword";
 import { Toaster } from "@/components/ui/toaster";
 import { DigitalSignaturePage } from "@/components/contracts/DigitalSignaturePage";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -31,6 +32,7 @@ function App() {
     <>
       <Routes>
         <Route path="/auth" element={<Auth />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/contract/sign/:token" element={<DigitalSignaturePage />} />
         <Route path="/" element={
           <ProtectedRoute>

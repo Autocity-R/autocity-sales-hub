@@ -9,12 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff } from "lucide-react";
+import { PasswordResetForm } from "@/components/auth/PasswordResetForm";
 
 const Auth = () => {
   const { user, signIn, signUp } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showResetForm, setShowResetForm] = useState(false);
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState("");
@@ -101,6 +103,24 @@ const Auth = () => {
     }
   };
 
+  if (showResetForm) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+              Auto City CRM
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Wachtwoord herstellen
+            </p>
+          </div>
+          <PasswordResetForm onBack={() => setShowResetForm(false)} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -175,6 +195,17 @@ const Auth = () => {
                   >
                     {loading ? "Bezig met inloggen..." : "Inloggen"}
                   </Button>
+                  
+                  <div className="text-center">
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                      onClick={() => setShowResetForm(true)}
+                    >
+                      Wachtwoord vergeten?
+                    </Button>
+                  </div>
                 </form>
               </TabsContent>
               
