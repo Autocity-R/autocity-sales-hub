@@ -15,13 +15,23 @@ const mockVehicles: Vehicle[] = [
     mileage: 15000,
     purchasePrice: 45000,
     sellingPrice: 52000,
-    location: "Showroom",
+    location: "showroom",
     salesStatus: "voorraad",
     importStatus: "ingeschreven",
     arrived: true,
     papersReceived: true,
     showroomOnline: true,
     mainPhotoUrl: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=300&h=200&fit=crop",
+    photos: ["https://images.unsplash.com/photo-1555215695-3004980ad54e?w=300&h=200&fit=crop"],
+    workshopStatus: "gereed",
+    damage: { description: "", status: "geen" },
+    bpmRequested: false,
+    bpmStarted: false,
+    cmrSent: false,
+    cmrDate: null,
+    papersDate: null,
+    notes: "",
+    paymentStatus: "volledig_betaald",
     createdAt: new Date("2024-01-15").toISOString(),
     updatedAt: new Date("2024-01-15").toISOString()
   },
@@ -36,13 +46,23 @@ const mockVehicles: Vehicle[] = [
     mileage: 22000,
     purchasePrice: 38000,
     sellingPrice: 44000,
-    location: "Transport",
+    location: "onderweg",
     salesStatus: "verkocht_b2c",
     importStatus: "onderweg",
     arrived: false,
     papersReceived: false,
     showroomOnline: false,
     mainPhotoUrl: "https://images.unsplash.com/photo-1563720223185-11003d516935?w=300&h=200&fit=crop",
+    photos: ["https://images.unsplash.com/photo-1563720223185-11003d516935?w=300&h=200&fit=crop"],
+    workshopStatus: "wachten",
+    damage: { description: "", status: "geen" },
+    bpmRequested: false,
+    bpmStarted: false,
+    cmrSent: false,
+    cmrDate: null,
+    papersDate: null,
+    notes: "",
+    paymentStatus: "niet_betaald",
     createdAt: new Date("2024-01-10").toISOString(),
     updatedAt: new Date("2024-01-12").toISOString()
   },
@@ -57,13 +77,23 @@ const mockVehicles: Vehicle[] = [
     mileage: 8500,
     purchasePrice: 35000,
     sellingPrice: 41000,
-    location: "Showroom",
+    location: "showroom",
     salesStatus: "verkocht_b2b",
     importStatus: "aangekomen",
     arrived: true,
     papersReceived: true,
     showroomOnline: true,
     mainPhotoUrl: "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=300&h=200&fit=crop",
+    photos: ["https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=300&h=200&fit=crop"],
+    workshopStatus: "gereed",
+    damage: { description: "", status: "geen" },
+    bpmRequested: false,
+    bpmStarted: false,
+    cmrSent: false,
+    cmrDate: null,
+    papersDate: null,
+    notes: "",
+    paymentStatus: "volledig_betaald",
     createdAt: new Date("2024-01-08").toISOString(),
     updatedAt: new Date("2024-01-14").toISOString()
   }
@@ -97,6 +127,14 @@ export const fetchVehicles = async (): Promise<Vehicle[]> => {
     console.error('Failed to fetch vehicles from Supabase, falling back to mock data:', error);
     return mockVehicles;
   }
+};
+
+/**
+ * Get single vehicle by ID
+ */
+export const fetchVehicle = async (id: string): Promise<Vehicle | null> => {
+  const vehicles = await fetchVehicles();
+  return vehicles.find(v => v.id === id) || null;
 };
 
 /**
@@ -140,6 +178,14 @@ export const fetchB2BVehicles = async (): Promise<Vehicle[]> => {
 };
 
 /**
+ * Get online vehicles (available in showroom)
+ */
+export const fetchOnlineVehicles = async (): Promise<Vehicle[]> => {
+  const vehicles = await fetchVehicles();
+  return vehicles.filter(v => v.showroomOnline);
+};
+
+/**
  * Update vehicle sales status
  */
 export const updateVehicleStatus = async (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad'): Promise<void> => {
@@ -159,6 +205,25 @@ export const updateVehicleStatus = async (vehicleId: string, status: 'verkocht_b
     console.error('Failed to update vehicle status:', error);
     throw error;
   }
+};
+
+/**
+ * Update vehicle
+ */
+export const updateVehicle = async (vehicle: Vehicle): Promise<Vehicle> => {
+  if (useMockData) {
+    console.log(`Mock: Updating vehicle ${vehicle.id}`);
+    const index = mockVehicles.findIndex(v => v.id === vehicle.id);
+    if (index >= 0) {
+      mockVehicles[index] = { ...vehicle, updatedAt: new Date().toISOString() };
+      return mockVehicles[index];
+    }
+    return vehicle;
+  }
+
+  // For real implementation, you would update via Supabase
+  console.log('Update vehicle via Supabase - not implemented yet');
+  return vehicle;
 };
 
 /**
@@ -184,6 +249,24 @@ export const markVehicleAsArrived = async (vehicleId: string): Promise<void> => 
 };
 
 /**
+ * Mark vehicle as delivered
+ */
+export const markVehicleAsDelivered = async (vehicleId: string): Promise<void> => {
+  if (useMockData) {
+    console.log(`Mock: Marking vehicle ${vehicleId} as delivered`);
+    const vehicle = mockVehicles.find(v => v.id === vehicleId);
+    if (vehicle) {
+      vehicle.salesStatus = 'afgeleverd';
+      vehicle.deliveryDate = new Date();
+      vehicle.updatedAt = new Date().toISOString();
+    }
+    return;
+  }
+
+  console.log('Mark vehicle as delivered via Supabase - not implemented yet');
+};
+
+/**
  * Create a new vehicle
  */
 export const createVehicle = async (vehicleData: Partial<Vehicle>): Promise<Vehicle> => {
@@ -200,12 +283,23 @@ export const createVehicle = async (vehicleData: Partial<Vehicle>): Promise<Vehi
       mileage: vehicleData.mileage || 0,
       purchasePrice: vehicleData.purchasePrice || 0,
       sellingPrice: vehicleData.sellingPrice || 0,
-      location: vehicleData.location || 'Unknown',
+      location: vehicleData.location || 'showroom',
       salesStatus: vehicleData.salesStatus || 'voorraad',
       importStatus: 'niet_gestart',
       arrived: false,
       papersReceived: false,
       showroomOnline: false,
+      workshopStatus: 'wachten',
+      damage: { description: '', status: 'geen' },
+      bpmRequested: false,
+      bpmStarted: false,
+      cmrSent: false,
+      cmrDate: null,
+      papersDate: null,
+      notes: '',
+      paymentStatus: 'niet_betaald',
+      mainPhotoUrl: null,
+      photos: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -219,6 +313,140 @@ export const createVehicle = async (vehicleData: Partial<Vehicle>): Promise<Vehi
     console.error('Failed to create vehicle:', error);
     throw error;
   }
+};
+
+/**
+ * Send email
+ */
+export const sendEmail = async (type: string, vehicleIds: string[]): Promise<void> => {
+  console.log(`Mock: Sending ${type} email for vehicles:`, vehicleIds);
+  // In a real implementation, this would send emails via an email service
+};
+
+/**
+ * Update selling price
+ */
+export const updateSellingPrice = async (vehicleId: string, price: number): Promise<void> => {
+  if (useMockData) {
+    console.log(`Mock: Updating selling price for vehicle ${vehicleId} to ${price}`);
+    const vehicle = mockVehicles.find(v => v.id === vehicleId);
+    if (vehicle) {
+      vehicle.sellingPrice = price;
+      vehicle.updatedAt = new Date().toISOString();
+    }
+    return;
+  }
+
+  console.log('Update selling price via Supabase - not implemented yet');
+};
+
+/**
+ * Update payment status
+ */
+export const updatePaymentStatus = async (vehicleId: string, status: any): Promise<void> => {
+  if (useMockData) {
+    console.log(`Mock: Updating payment status for vehicle ${vehicleId} to ${status}`);
+    const vehicle = mockVehicles.find(v => v.id === vehicleId);
+    if (vehicle) {
+      vehicle.paymentStatus = status;
+      vehicle.updatedAt = new Date().toISOString();
+    }
+    return;
+  }
+
+  console.log('Update payment status via Supabase - not implemented yet');
+};
+
+/**
+ * Update paint status
+ */
+export const updatePaintStatus = async (vehicleId: string, status: any): Promise<void> => {
+  if (useMockData) {
+    console.log(`Mock: Updating paint status for vehicle ${vehicleId} to ${status}`);
+    const vehicle = mockVehicles.find(v => v.id === vehicleId);
+    if (vehicle) {
+      vehicle.paintStatus = status;
+      vehicle.updatedAt = new Date().toISOString();
+    }
+    return;
+  }
+
+  console.log('Update paint status via Supabase - not implemented yet');
+};
+
+/**
+ * Update sales status
+ */
+export const updateSalesStatus = async (vehicleId: string, status: any): Promise<void> => {
+  if (useMockData) {
+    console.log(`Mock: Updating sales status for vehicle ${vehicleId} to ${status}`);
+    const vehicle = mockVehicles.find(v => v.id === vehicleId);
+    if (vehicle) {
+      vehicle.salesStatus = status;
+      vehicle.updatedAt = new Date().toISOString();
+    }
+    return;
+  }
+
+  console.log('Update sales status via Supabase - not implemented yet');
+};
+
+/**
+ * Change vehicle status (alias for updateVehicleStatus)
+ */
+export const changeVehicleStatus = async (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad'): Promise<void> => {
+  return updateVehicleStatus(vehicleId, status);
+};
+
+/**
+ * Upload vehicle photo
+ */
+export const uploadVehiclePhoto = async (vehicleId: string, file: File, isMain: boolean = false): Promise<string> => {
+  console.log(`Mock: Uploading photo for vehicle ${vehicleId}, isMain: ${isMain}`);
+  // In a real implementation, this would upload to Supabase Storage
+  const mockUrl = "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=300&h=200&fit=crop";
+  
+  if (useMockData) {
+    const vehicle = mockVehicles.find(v => v.id === vehicleId);
+    if (vehicle) {
+      if (!vehicle.photos.includes(mockUrl)) {
+        vehicle.photos.push(mockUrl);
+      }
+      if (isMain) {
+        vehicle.mainPhotoUrl = mockUrl;
+      }
+      vehicle.updatedAt = new Date().toISOString();
+    }
+  }
+  
+  return mockUrl;
+};
+
+/**
+ * Upload vehicle file
+ */
+export const uploadVehicleFile = async (file: File, category: any, vehicleId: string): Promise<any> => {
+  console.log(`Mock: Uploading file for vehicle ${vehicleId}, category: ${category}`);
+  // In a real implementation, this would upload to Supabase Storage
+  return {
+    id: `file-${Date.now()}`,
+    name: file.name,
+    url: "https://example.com/mock-file.pdf",
+    category,
+    vehicleId,
+    createdAt: new Date().toISOString(),
+    size: file.size,
+    type: file.type
+  };
+};
+
+/**
+ * Fetch vehicle files
+ */
+export const fetchVehicleFiles = async (vehicleId: string): Promise<any[]> => {
+  console.log(`Mock: Fetching files for vehicle ${vehicleId}`);
+  // In a real implementation, this would fetch from Supabase
+  return [];
 };
 
 /**
