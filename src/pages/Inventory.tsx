@@ -194,10 +194,20 @@ const Inventory = () => {
       <DashboardLayout>
         <VehicleDetails 
           vehicle={selectedVehicle} 
-          onBack={() => setSelectedVehicle(null)}
+          onClose={() => setSelectedVehicle(null)}
           onUpdate={(updatedVehicle) => {
             setSelectedVehicle(updatedVehicle);
             queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+          }}
+          onSendEmail={handleSendEmail}
+          onPhotoUpload={(file: File, isMain: boolean) => {
+            console.log('Photo upload:', file, isMain);
+          }}
+          onRemovePhoto={(photoUrl: string) => {
+            console.log('Remove photo:', photoUrl);
+          }}
+          onSetMainPhoto={(photoUrl: string) => {
+            console.log('Set main photo:', photoUrl);
           }}
         />
       </DashboardLayout>
@@ -212,7 +222,6 @@ const Inventory = () => {
             setShowForm(false);
             queryClient.invalidateQueries({ queryKey: ['vehicles'] });
           }}
-          onCancel={() => setShowForm(false)}
         />
       </DashboardLayout>
     );
