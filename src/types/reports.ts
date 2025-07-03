@@ -51,6 +51,25 @@ export interface PerformanceData {
   turnoverRate: number;
   teamPerformance: TeamMember[];
   financial: FinancialMetrics;
+  // Additional properties for enhanced reports
+  revenue?: number;
+  profit?: number;
+  vehiclesSold?: number;
+  averageSalePrice?: number;
+  revenueGrowth?: number;
+  profitMargin?: number;
+  revenueChart?: Array<{ month: string; revenue: number; profit: number }>;
+  salesChart?: Array<{ category: string; b2c: number; b2b: number }>;
+  topVehicles?: Array<{ model: string; brand: string; sales: number; revenue: number }>;
+  _metadata?: {
+    dataSource: string;
+    lastUpdated: string;
+    recordCounts?: {
+      salesInvoices: number;
+      purchaseInvoices?: number;
+      payments?: number;
+    };
+  };
 }
 
 export interface TeamMember {

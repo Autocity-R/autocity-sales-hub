@@ -149,13 +149,23 @@ export class SupabaseInventoryService {
       mileage: supabaseVehicle.mileage,
       purchasePrice: 0, // Not in current schema
       sellingPrice: supabaseVehicle.selling_price,
-      location: supabaseVehicle.location || 'Unknown',
+      location: supabaseVehicle.location || 'showroom',
       salesStatus: supabaseVehicle.status as any,
       importStatus: 'niet_gestart' as any, // Default value
       arrived: false, // Default value
       papersReceived: false, // Default value
       showroomOnline: false, // Default value
+      workshopStatus: 'wachten' as any, // Default value
+      damage: { description: '', status: 'geen' }, // Default value
+      bpmRequested: false, // Default value
+      bpmStarted: false, // Default value
+      cmrSent: false, // Default value
+      cmrDate: null, // Default value
+      papersDate: null, // Default value
+      notes: '', // Default value
+      paymentStatus: 'niet_betaald' as any, // Default value
       mainPhotoUrl: undefined,
+      photos: [], // Default value
       createdAt: supabaseVehicle.created_at,
       customerId: supabaseVehicle.customer_id
     };

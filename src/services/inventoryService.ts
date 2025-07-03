@@ -1,3 +1,4 @@
+
 import { Vehicle } from "@/types/inventory";
 import { supabaseInventoryService } from "./supabaseInventoryService";
 
@@ -31,8 +32,7 @@ const mockVehicles: Vehicle[] = [
     papersDate: null,
     notes: "",
     paymentStatus: "volledig_betaald",
-    createdAt: new Date("2024-01-15").toISOString(),
-    updatedAt: new Date("2024-01-15").toISOString()
+    createdAt: new Date("2024-01-15").toISOString()
   },
   {
     id: "2",
@@ -62,8 +62,7 @@ const mockVehicles: Vehicle[] = [
     papersDate: null,
     notes: "",
     paymentStatus: "niet_betaald",
-    createdAt: new Date("2024-01-10").toISOString(),
-    updatedAt: new Date("2024-01-12").toISOString()
+    createdAt: new Date("2024-01-10").toISOString()
   },
   {
     id: "3",
@@ -93,8 +92,7 @@ const mockVehicles: Vehicle[] = [
     papersDate: null,
     notes: "",
     paymentStatus: "volledig_betaald",
-    createdAt: new Date("2024-01-08").toISOString(),
-    updatedAt: new Date("2024-01-14").toISOString()
+    createdAt: new Date("2024-01-08").toISOString()
   }
 ];
 
@@ -201,7 +199,6 @@ export const updateVehicleStatus = async (vehicleId: string, status: 'verkocht_b
     const vehicle = mockVehicles.find(v => v.id === vehicleId);
     if (vehicle) {
       vehicle.salesStatus = status;
-      vehicle.updatedAt = new Date().toISOString();
     }
     return;
   }
@@ -222,7 +219,7 @@ export const updateVehicle = async (vehicle: Vehicle): Promise<Vehicle> => {
     console.log(`Mock: Updating vehicle ${vehicle.id}`);
     const index = mockVehicles.findIndex(v => v.id === vehicle.id);
     if (index >= 0) {
-      mockVehicles[index] = { ...vehicle, updatedAt: new Date().toISOString() };
+      mockVehicles[index] = vehicle;
       return mockVehicles[index];
     }
     return vehicle;
@@ -242,7 +239,7 @@ export const bulkUpdateVehicles = async (vehicles: Vehicle[]): Promise<void> => 
     vehicles.forEach(vehicle => {
       const index = mockVehicles.findIndex(v => v.id === vehicle.id);
       if (index >= 0) {
-        mockVehicles[index] = { ...vehicle, updatedAt: new Date().toISOString() };
+        mockVehicles[index] = vehicle;
       }
     });
     return;
@@ -260,7 +257,6 @@ export const markVehicleAsArrived = async (vehicleId: string): Promise<void> => 
     const vehicle = mockVehicles.find(v => v.id === vehicleId);
     if (vehicle) {
       vehicle.arrived = true;
-      vehicle.updatedAt = new Date().toISOString();
     }
     return;
   }
@@ -283,7 +279,6 @@ export const markVehicleAsDelivered = async (vehicleId: string): Promise<void> =
     if (vehicle) {
       vehicle.salesStatus = 'afgeleverd';
       vehicle.deliveryDate = new Date();
-      vehicle.updatedAt = new Date().toISOString();
     }
     return;
   }
@@ -325,8 +320,7 @@ export const createVehicle = async (vehicleData: Partial<Vehicle>): Promise<Vehi
       paymentStatus: 'niet_betaald',
       mainPhotoUrl: null,
       photos: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      createdAt: new Date().toISOString()
     };
     mockVehicles.push(newVehicle);
     return newVehicle;
@@ -357,7 +351,6 @@ export const updateSellingPrice = async (vehicleId: string, price: number): Prom
     const vehicle = mockVehicles.find(v => v.id === vehicleId);
     if (vehicle) {
       vehicle.sellingPrice = price;
-      vehicle.updatedAt = new Date().toISOString();
     }
     return;
   }
@@ -374,7 +367,6 @@ export const updatePaymentStatus = async (vehicleId: string, status: any): Promi
     const vehicle = mockVehicles.find(v => v.id === vehicleId);
     if (vehicle) {
       vehicle.paymentStatus = status;
-      vehicle.updatedAt = new Date().toISOString();
     }
     return;
   }
@@ -391,7 +383,6 @@ export const updatePaintStatus = async (vehicleId: string, status: any): Promise
     const vehicle = mockVehicles.find(v => v.id === vehicleId);
     if (vehicle) {
       vehicle.paintStatus = status;
-      vehicle.updatedAt = new Date().toISOString();
     }
     return;
   }
@@ -408,7 +399,6 @@ export const updateSalesStatus = async (vehicleId: string, status: any): Promise
     const vehicle = mockVehicles.find(v => v.id === vehicleId);
     if (vehicle) {
       vehicle.salesStatus = status;
-      vehicle.updatedAt = new Date().toISOString();
     }
     return;
   }
@@ -440,7 +430,6 @@ export const uploadVehiclePhoto = async (vehicleId: string, file: File, isMain: 
       if (isMain) {
         vehicle.mainPhotoUrl = mockUrl;
       }
-      vehicle.updatedAt = new Date().toISOString();
     }
   }
   

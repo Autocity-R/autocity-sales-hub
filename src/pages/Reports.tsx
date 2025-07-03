@@ -26,15 +26,9 @@ import { ExactOnlineStatus } from "@/components/reports/ExactOnlineStatus";
 import { DataSourceIndicator } from "@/components/common/DataSourceIndicator";
 import { useQuery } from "@tanstack/react-query";
 import { enhancedReportsService } from "@/services/enhancedReportsService";
+import { ReportPeriod, PerformanceData } from "@/types/reports";
 
-interface ReportPeriod {
-  startDate: string;
-  endDate: string;
-  label: string;
-  type: string;
-}
-
-interface MockPerformanceData {
+interface MockPerformanceData extends PerformanceData {
   revenue: number;
   profit: number;
   vehiclesSold: number;
@@ -44,10 +38,10 @@ interface MockPerformanceData {
   revenueChart: Array<{ month: string; revenue: number; profit: number }>;
   salesChart: Array<{ category: string; b2c: number; b2b: number }>;
   topVehicles: Array<{ model: string; brand: string; sales: number; revenue: number }>;
-  _metadata?: {
+  _metadata: {
     dataSource: string;
     lastUpdated: string;
-    recordCounts?: {
+    recordCounts: {
       salesInvoices: number;
     };
   };
@@ -69,7 +63,7 @@ const Reports = () => {
           startDate: lastMonth.toISOString(),
           endDate: lastMonthEnd.toISOString(),
           label: "Vorige maand",
-          type: "monthly"
+          type: "month" as const
         };
       
       case "currentQuarter":
@@ -78,7 +72,7 @@ const Reports = () => {
           startDate: quarterStart.toISOString(),
           endDate: now.toISOString(),
           label: "Huidig kwartaal",
-          type: "quarterly"
+          type: "custom" as const
         };
       
       case "currentYear":
@@ -87,7 +81,7 @@ const Reports = () => {
           startDate: yearStart.toISOString(),
           endDate: now.toISOString(),
           label: "Huidig jaar",
-          type: "yearly"
+          type: "year" as const
         };
       
       default: // currentMonth
@@ -96,13 +90,57 @@ const Reports = () => {
           startDate: monthStart.toISOString(),
           endDate: now.toISOString(),
           label: "Huidige maand",
-          type: "monthly"
+          type: "month" as const
         };
     }
   }, [selectedPeriod]);
 
   // Mock data for fallback
   const mockReportsData: MockPerformanceData = {
+    period: reportPeriod,
+    sales: {
+      totalSales: 158,
+      totalRevenue: 6420000,
+      averageMargin: 15.4,
+      totalUnits: 158,
+      conversionRate: 72.5
+    },
+    leads: {
+      totalLeads: 218,
+      responseTime: 2.8,
+      conversionRate: 72.5,
+      followUpRate: 89.2,
+      avgDaysToClose: 14.2
+    },
+    vehicleTypes: [
+      { type: "BMW", unitsSold: 45, revenue: 1800000, margin: 15.2, percentage: 28.5 },
+      { type: "Mercedes", unitsSold: 38, revenue: 1950000, margin: 18.7, percentage: 24.1 },
+      { type: "Audi", unitsSold: 42, revenue: 1680000, margin: 14.8, percentage: 26.6 },
+      { type: "Volkswagen", unitsSold: 33, revenue: 990000, margin: 12.3, percentage: 20.9 }
+    ],
+    turnoverRate: 8.5,
+    teamPerformance: [
+      {
+        id: "tm1",
+        name: "Pieter Jansen",
+        leadsAssigned: 25,
+        leadsConverted: 18,
+        revenue: 450000,
+        responseTime: 2.5
+      }
+    ],
+    financial: {
+      totalRevenue: 6420000,
+      totalCosts: 4850000,
+      grossProfit: 1570000,
+      netProfit: 720000,
+      grossMargin: 24.5,
+      netMargin: 11.2,
+      operatingExpenses: 850000,
+      ebitda: 840000,
+      cashFlow: 900000,
+      profitGrowth: 12.5
+    },
     revenue: 125000,
     profit: 25000,
     vehiclesSold: 8,
@@ -177,10 +215,10 @@ const Reports = () => {
     
     const csvData = [
       ['Metric', 'Value', 'Period'],
-      ['Revenue', reportsData.revenue.toString(), reportPeriod.label],
-      ['Profit', reportsData.profit.toString(), reportPeriod.label],
-      ['Vehicles Sold', reportsData.vehiclesSold.toString(), reportPeriod.label],
-      ['Average Sale Price', reportsData.averageSalePrice.toString(), reportPeriod.label]
+      ['Revenue', (reportsData.revenue || 0).toString(), reportPeriod.label],
+      ['Profit', (reportsData.profit || 0).toString(), reportPeriod.label],
+      ['Vehicles Sold', (reportsData.vehiclesSold || 0).toString(), reportPeriod.label],
+      ['Average Sale Price', (reportsData.averageSalePrice || 0).toString(), reportPeriod.label]
     ];
     
     const csvContent = csvData.map(row => row.join(',')).join('\n');
@@ -259,11 +297,11 @@ const Reports = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    €{reportsData.revenue.toLocaleString()}
+                    €{(reportsData.revenue || 0).toLocaleString()}
                   </div>
                   <div className="flex items-center text-xs text-muted-foreground mt-1">
                     <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
-                    {reportsData.revenueGrowth}% vs vorige periode
+                    {reportsData.revenueGrowth || 0}% vs vorige periode
                   </div>
                 </CardContent>
               </Card>
@@ -275,11 +313,11 @@ const Reports = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">
-                    €{reportsData.profit.toLocaleString()}
+                    €{(reportsData.profit || 0).toLocaleString()}
                   </div>
                   <div className="flex items-center text-xs text-muted-foreground mt-1">
                     <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
-                    {reportsData.profitMargin}% winstmarge
+                    {reportsData.profitMargin || 0}% winstmarge
                   </div>
                 </CardContent>
               </Card>
@@ -291,7 +329,7 @@ const Reports = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {reportsData.vehiclesSold}
+                    {reportsData.vehiclesSold || 0}
                   </div>
                   <div className="flex items-center text-xs text-muted-foreground mt-1">
                     <Calendar className="h-3 w-3 mr-1" />
@@ -307,7 +345,7 @@ const Reports = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    €{reportsData.averageSalePrice.toLocaleString()}
+                    €{(reportsData.averageSalePrice || 0).toLocaleString()}
                   </div>
                   <div className="flex items-center text-xs text-muted-foreground mt-1">
                     <TrendingUp className="h-3 w-3 mr-1 text-blue-500" />
@@ -327,7 +365,7 @@ const Reports = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <RevenueChart data={reportsData.revenueChart} />
+                  <RevenueChart data={reportsData.revenueChart || []} />
                 </CardContent>
               </Card>
 
@@ -339,7 +377,7 @@ const Reports = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <SalesChart data={reportsData.salesChart} />
+                  <SalesChart data={reportsData.salesChart || []} />
                 </CardContent>
               </Card>
             </div>
@@ -353,7 +391,7 @@ const Reports = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <TopVehiclesChart data={reportsData.topVehicles} />
+                <TopVehiclesChart data={reportsData.topVehicles || []} />
               </CardContent>
             </Card>
 
