@@ -21,10 +21,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
-  const url = new URL(req.url)
-  const path = url.pathname
-
   try {
+    console.log(`Received ${req.method} request to ${req.url}`);
+
     // Initialize Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -40,208 +39,242 @@ serve(async (req) => {
     }
 
     if (!config.clientId || !config.clientSecret) {
+      console.error('Missing Exact Online credentials');
       return new Response(
         JSON.stringify({ error: 'Missing Exact Online credentials' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Handle authorization initiation
-    if (path.endsWith('/initiate') && req.method === 'POST') {
-      const { userId } = await req.json()
+    // Handle POST requests by reading action from body
+    if (req.method === 'POST') {
+      const body = await req.json();
+      const { action } = body;
       
-      if (!userId) {
-        return new Response(
-          JSON.stringify({ error: 'User ID is required' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
+      console.log(`Processing action: ${action}`);
 
-      // Generate state parameter
-      const state = generateState(userId)
-      
-      // Build authorization URL
-      const authParams = new URLSearchParams({
-        client_id: config.clientId,
-        redirect_uri: config.redirectUri,
-        response_type: 'code',
-        scope: 'read write',
-        state: state,
-        force_login: '0'
-      })
+      // Handle authorization initiation
+      if (action === 'initiate') {
+        const { userId } = body;
+        
+        if (!userId) {
+          console.error('User ID is required for initiate action');
+          return new Response(
+            JSON.stringify({ error: 'User ID is required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
 
-      const authUrl = `${config.authBaseUrl}/auth?${authParams.toString()}`
-
-      return new Response(
-        JSON.stringify({ authUrl, state }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Handle OAuth callback
-    if (path.endsWith('/callback') && req.method === 'POST') {
-      const { code, state } = await req.json()
-      
-      if (!code || !state) {
-        return new Response(
-          JSON.stringify({ error: 'Authorization code and state are required' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      // Verify state and extract user ID
-      const userId = verifyState(state)
-      if (!userId) {
-        return new Response(
-          JSON.stringify({ error: 'Invalid state parameter' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      // Exchange code for tokens
-      const tokenResponse = await fetch(`${config.authBaseUrl}/token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json'
-        },
-        body: new URLSearchParams({
-          grant_type: 'authorization_code',
+        // Generate state parameter
+        const state = generateState(userId)
+        
+        // Build authorization URL
+        const authParams = new URLSearchParams({
           client_id: config.clientId,
-          client_secret: config.clientSecret,
-          code: code,
-          redirect_uri: config.redirectUri
+          redirect_uri: config.redirectUri,
+          response_type: 'code',
+          scope: 'read write',
+          state: state,
+          force_login: '0'
         })
-      })
 
-      if (!tokenResponse.ok) {
-        const errorText = await tokenResponse.text()
-        console.error('Token exchange failed:', errorText)
+        const authUrl = `${config.authBaseUrl}/auth?${authParams.toString()}`
+        
+        console.log(`Generated auth URL for user ${userId}`);
+
         return new Response(
-          JSON.stringify({ error: 'Token exchange failed' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ authUrl, state }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
-      const tokens = await tokenResponse.json()
-      
-      // Get division information
-      const divisionInfo = await getDivisionInfo(tokens.access_token)
-      
-      // Store tokens in database
-      const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString()
-      
-      // Delete existing tokens for this user
-      await supabaseClient
-        .from('exact_online_tokens')
-        .delete()
-        .eq('user_id', userId)
+      // Handle OAuth callback
+      if (action === 'callback') {
+        const { code, state } = body;
+        
+        if (!code || !state) {
+          console.error('Authorization code and state are required for callback');
+          return new Response(
+            JSON.stringify({ error: 'Authorization code and state are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
 
-      // Insert new tokens
-      const { data: tokenData, error: insertError } = await supabaseClient
-        .from('exact_online_tokens')
-        .insert({
-          user_id: userId,
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token,
-          expires_at: expiresAt,
-          division_code: divisionInfo.divisionCode,
-          company_name: divisionInfo.companyName
+        // Verify state and extract user ID
+        const userId = verifyState(state)
+        if (!userId) {
+          console.error('Invalid state parameter');
+          return new Response(
+            JSON.stringify({ error: 'Invalid state parameter' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        console.log(`Processing callback for user ${userId}`);
+
+        // Exchange code for tokens
+        const tokenResponse = await fetch(`${config.authBaseUrl}/token`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+          },
+          body: new URLSearchParams({
+            grant_type: 'authorization_code',
+            client_id: config.clientId,
+            client_secret: config.clientSecret,
+            code: code,
+            redirect_uri: config.redirectUri
+          })
         })
-        .select()
-        .single()
 
-      if (insertError) {
-        console.error('Failed to store tokens:', insertError)
+        if (!tokenResponse.ok) {
+          const errorText = await tokenResponse.text()
+          console.error('Token exchange failed:', errorText)
+          return new Response(
+            JSON.stringify({ error: 'Token exchange failed' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        const tokens = await tokenResponse.json()
+        
+        // Get division information
+        const divisionInfo = await getDivisionInfo(tokens.access_token)
+        
+        // Store tokens in database
+        const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+        
+        // Delete existing tokens for this user
+        await supabaseClient
+          .from('exact_online_tokens')
+          .delete()
+          .eq('user_id', userId)
+
+        // Insert new tokens
+        const { data: tokenData, error: insertError } = await supabaseClient
+          .from('exact_online_tokens')
+          .insert({
+            user_id: userId,
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
+            expires_at: expiresAt,
+            division_code: divisionInfo.divisionCode,
+            company_name: divisionInfo.companyName
+          })
+          .select()
+          .single()
+
+        if (insertError) {
+          console.error('Failed to store tokens:', insertError)
+          return new Response(
+            JSON.stringify({ error: 'Failed to store authentication tokens' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        console.log(`Successfully stored tokens for user ${userId}`);
+
         return new Response(
-          JSON.stringify({ error: 'Failed to store authentication tokens' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ 
+            success: true, 
+            tokenData: {
+              id: tokenData.id,
+              divisionCode: tokenData.division_code,
+              companyName: tokenData.company_name,
+              expiresAt: tokenData.expires_at
+            }
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
+      // Handle token refresh
+      if (action === 'refresh') {
+        const { userId, refreshToken } = body;
+        
+        if (!userId || !refreshToken) {
+          console.error('User ID and refresh token are required for refresh');
+          return new Response(
+            JSON.stringify({ error: 'User ID and refresh token are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        console.log(`Refreshing tokens for user ${userId}`);
+
+        // Refresh tokens
+        const refreshResponse = await fetch(`${config.authBaseUrl}/token`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+          },
+          body: new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+            client_id: config.clientId,
+            client_secret: config.clientSecret
+          })
+        })
+
+        if (!refreshResponse.ok) {
+          console.error('Token refresh failed');
+          return new Response(
+            JSON.stringify({ error: 'Token refresh failed' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        const newTokens = await refreshResponse.json()
+        const expiresAt = new Date(Date.now() + newTokens.expires_in * 1000).toISOString()
+
+        // Update tokens in database
+        const { error: updateError } = await supabaseClient
+          .from('exact_online_tokens')
+          .update({
+            access_token: newTokens.access_token,
+            refresh_token: newTokens.refresh_token || refreshToken,
+            expires_at: expiresAt,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', userId)
+
+        if (updateError) {
+          console.error('Failed to update tokens:', updateError);
+          return new Response(
+            JSON.stringify({ error: 'Failed to update tokens' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        console.log(`Successfully refreshed tokens for user ${userId}`);
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Unknown action
+      console.error(`Unknown action: ${action}`);
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          tokenData: {
-            id: tokenData.id,
-            divisionCode: tokenData.division_code,
-            companyName: tokenData.company_name,
-            expiresAt: tokenData.expires_at
-          }
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: `Unknown action: ${action}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Handle token refresh
-    if (path.endsWith('/refresh') && req.method === 'POST') {
-      const { userId, refreshToken } = await req.json()
-      
-      if (!userId || !refreshToken) {
-        return new Response(
-          JSON.stringify({ error: 'User ID and refresh token are required' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      // Refresh tokens
-      const refreshResponse = await fetch(`${config.authBaseUrl}/token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json'
-        },
-        body: new URLSearchParams({
-          grant_type: 'refresh_token',
-          refresh_token: refreshToken,
-          client_id: config.clientId,
-          client_secret: config.clientSecret
-        })
-      })
-
-      if (!refreshResponse.ok) {
-        return new Response(
-          JSON.stringify({ error: 'Token refresh failed' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      const newTokens = await refreshResponse.json()
-      const expiresAt = new Date(Date.now() + newTokens.expires_in * 1000).toISOString()
-
-      // Update tokens in database
-      const { error: updateError } = await supabaseClient
-        .from('exact_online_tokens')
-        .update({
-          access_token: newTokens.access_token,
-          refresh_token: newTokens.refresh_token || refreshToken,
-          expires_at: expiresAt,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', userId)
-
-      if (updateError) {
-        return new Response(
-          JSON.stringify({ error: 'Failed to update tokens' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      return new Response(
-        JSON.stringify({ success: true }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
+    // Method not allowed
+    console.error(`Method ${req.method} not allowed`);
     return new Response(
-      JSON.stringify({ error: 'Not found' }),
-      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'Method not allowed' }),
+      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
     console.error('Edge function error:', error)
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error', details: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
