@@ -1,4 +1,3 @@
-
 import { Vehicle } from "@/types/inventory";
 import { supabaseInventoryService } from "./supabaseInventoryService";
 
@@ -178,6 +177,14 @@ export const fetchB2BVehicles = async (): Promise<Vehicle[]> => {
 };
 
 /**
+ * Get delivered vehicles
+ */
+export const fetchDeliveredVehicles = async (): Promise<Vehicle[]> => {
+  const vehicles = await fetchVehicles();
+  return vehicles.filter(v => v.salesStatus === 'afgeleverd');
+};
+
+/**
  * Get online vehicles (available in showroom)
  */
 export const fetchOnlineVehicles = async (): Promise<Vehicle[]> => {
@@ -224,6 +231,24 @@ export const updateVehicle = async (vehicle: Vehicle): Promise<Vehicle> => {
   // For real implementation, you would update via Supabase
   console.log('Update vehicle via Supabase - not implemented yet');
   return vehicle;
+};
+
+/**
+ * Bulk update vehicles
+ */
+export const bulkUpdateVehicles = async (vehicles: Vehicle[]): Promise<void> => {
+  if (useMockData) {
+    console.log(`Mock: Bulk updating ${vehicles.length} vehicles`);
+    vehicles.forEach(vehicle => {
+      const index = mockVehicles.findIndex(v => v.id === vehicle.id);
+      if (index >= 0) {
+        mockVehicles[index] = { ...vehicle, updatedAt: new Date().toISOString() };
+      }
+    });
+    return;
+  }
+
+  console.log('Bulk update vehicles via Supabase - not implemented yet');
 };
 
 /**

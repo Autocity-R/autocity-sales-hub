@@ -6,7 +6,7 @@ export class SupabaseInventoryService {
   /**
    * Get all vehicles from Supabase database
    */
-  async getAllVehicles(): Promise<Vehicle[]> {
+  async getAllVehicles(): Promise<Vehicle[]> => {
     try {
       const { data, error } = await supabase
         .from('vehicles')
@@ -29,7 +29,7 @@ export class SupabaseInventoryService {
   /**
    * Get vehicles by sales status
    */
-  async getVehiclesByStatus(status: string): Promise<Vehicle[]> {
+  async getVehiclesByStatus(status: string): Promise<Vehicle[]> => {
     try {
       const { data, error } = await supabase
         .from('vehicles')
@@ -52,7 +52,7 @@ export class SupabaseInventoryService {
   /**
    * Update vehicle sales status
    */
-  async updateVehicleStatus(vehicleId: string, status: string): Promise<void> {
+  async updateVehicleStatus(vehicleId: string, status: string): Promise<void> => {
     try {
       const { error } = await supabase
         .from('vehicles')
@@ -77,7 +77,7 @@ export class SupabaseInventoryService {
   /**
    * Mark vehicle as arrived
    */
-  async markVehicleAsArrived(vehicleId: string): Promise<void> {
+  async markVehicleAsArrived(vehicleId: string): Promise<void> => {
     try {
       const { error } = await supabase
         .from('vehicles')
@@ -102,7 +102,7 @@ export class SupabaseInventoryService {
   /**
    * Create a new vehicle
    */
-  async createVehicle(vehicleData: Partial<Vehicle>): Promise<Vehicle> {
+  async createVehicle(vehicleData: Partial<Vehicle>): Promise<Vehicle> => {
     try {
       const { data, error } = await supabase
         .from('vehicles')

@@ -10,10 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Filter, Car, Package, TrendingUp, AlertCircle } from "lucide-react";
 import { VehicleTable } from "@/components/inventory/VehicleTable";
-import { VehicleDetail } from "@/components/inventory/VehicleDetail";
+import { VehicleDetails } from "@/components/inventory/VehicleDetails";
 import { VehicleForm } from "@/components/inventory/VehicleForm";
 import { Vehicle } from "@/types/inventory";
-import { fetchVehicles, fetchB2CVehicles, fetchB2BVehicles, getVehicleStats, updateVehicleStatus, markVehicleAsArrived } from "@/services/inventoryService";
+import { fetchVehicles, fetchB2CVehicles, fetchB2BVehicles, getVehicleStats, updateVehicleStatus, markVehicleAsArrived, setUseMockData } from "@/services/inventoryService";
 import { DataSourceIndicator } from "@/components/common/DataSourceIndicator";
 import { useToast } from "@/hooks/use-toast";
 
@@ -181,6 +181,7 @@ const Inventory = () => {
 
   const handleDataSourceChange = (useMock: boolean) => {
     setIsUsingMockData(useMock);
+    setUseMockData(useMock);
     // Refresh all queries when data source changes
     queryClient.invalidateQueries({ queryKey: ['vehicles'] });
   };
@@ -191,7 +192,7 @@ const Inventory = () => {
   if (selectedVehicle) {
     return (
       <DashboardLayout>
-        <VehicleDetail 
+        <VehicleDetails 
           vehicle={selectedVehicle} 
           onBack={() => setSelectedVehicle(null)}
           onUpdate={(updatedVehicle) => {
@@ -207,7 +208,7 @@ const Inventory = () => {
     return (
       <DashboardLayout>
         <VehicleForm 
-          onSave={() => {
+          onSubmit={() => {
             setShowForm(false);
             queryClient.invalidateQueries({ queryKey: ['vehicles'] });
           }}
