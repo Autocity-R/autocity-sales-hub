@@ -2,7 +2,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Vehicle, PaymentStatus } from "@/types/inventory";
-import { FileCategory, VehicleFile } from "@/types/files";
+import { FileCategory } from "@/types/inventory";
 import { 
   updateVehicle, 
   sendEmail, 
@@ -17,7 +17,7 @@ export const useB2BVehicleOperations = () => {
   const queryClient = useQueryClient();
   
   const updateVehicleMutation = useMutation({
-    mutationFn: updateVehicle,
+    mutationFn: (vehicle: Vehicle) => updateVehicle(vehicle),
     onSuccess: () => {
       toast.success("Voertuig bijgewerkt");
       queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });

@@ -8,7 +8,7 @@ export const useVehiclePhotos = (selectedVehicle: Vehicle | null, onVehicleUpdat
   const queryClient = useQueryClient();
   
   const updateVehicleMutation = useMutation({
-    mutationFn: updateVehicle,
+    mutationFn: (vehicle: Vehicle) => updateVehicle(vehicle),
     onSuccess: () => {
       toast.success("Voertuig bijgewerkt");
       queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });

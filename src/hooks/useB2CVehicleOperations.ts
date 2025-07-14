@@ -19,7 +19,7 @@ export const useB2CVehicleOperations = () => {
   const { toast } = useToast();
 
   const updateVehicleMutation = useMutation({
-    mutationFn: updateVehicle,
+    mutationFn: (vehicle: Vehicle) => updateVehicle(vehicle),
     onSuccess: () => {
       toast({
         description: "Voertuig bijgewerkt"
