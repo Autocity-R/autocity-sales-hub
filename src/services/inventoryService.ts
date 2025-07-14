@@ -67,7 +67,7 @@ export const fetchOnlineVehicles = async (): Promise<Vehicle[]> => {
     
     if (isUseMockData) {
       console.log('Using mock data for online vehicles');
-      return mockVehicles.filter(v => v.status === 'voorraad');
+      return mockVehicles.filter(v => v.salesStatus === 'voorraad');
     }
 
     try {
@@ -76,11 +76,11 @@ export const fetchOnlineVehicles = async (): Promise<Vehicle[]> => {
       return vehicles;
     } catch (supabaseError) {
       console.warn('Supabase fetch failed, falling back to mock data:', supabaseError);
-      return mockVehicles.filter(v => v.status === 'voorraad');
+      return mockVehicles.filter(v => v.salesStatus === 'voorraad');
     }
   } catch (error) {
     console.error('Error in fetchOnlineVehicles:', error);
-    return mockVehicles.filter(v => v.status === 'voorraad');
+    return mockVehicles.filter(v => v.salesStatus === 'voorraad');
   }
 };
 
@@ -90,7 +90,7 @@ export const fetchB2BVehicles = async (): Promise<Vehicle[]> => {
     
     if (isUseMockData) {
       console.log('Using mock data for B2B vehicles');
-      return mockVehicles.filter(v => v.status === 'verkocht_b2b');
+      return mockVehicles.filter(v => v.salesStatus === 'verkocht_b2b');
     }
 
     try {
@@ -99,11 +99,11 @@ export const fetchB2BVehicles = async (): Promise<Vehicle[]> => {
       return vehicles;
     } catch (supabaseError) {
       console.warn('Supabase fetch failed, falling back to mock data:', supabaseError);
-      return mockVehicles.filter(v => v.status === 'verkocht_b2b');
+      return mockVehicles.filter(v => v.salesStatus === 'verkocht_b2b');
     }
   } catch (error) {
     console.error('Error in fetchB2BVehicles:', error);
-    return mockVehicles.filter(v => v.status === 'verkocht_b2b');
+    return mockVehicles.filter(v => v.salesStatus === 'verkocht_b2b');
   }
 };
 
@@ -113,7 +113,7 @@ export const fetchB2CVehicles = async (): Promise<Vehicle[]> => {
     
     if (isUseMockData) {
       console.log('Using mock data for B2C vehicles');
-      return mockVehicles.filter(v => v.status === 'verkocht_b2c');
+      return mockVehicles.filter(v => v.salesStatus === 'verkocht_b2c');
     }
 
     try {
@@ -122,11 +122,11 @@ export const fetchB2CVehicles = async (): Promise<Vehicle[]> => {
       return vehicles;
     } catch (supabaseError) {
       console.warn('Supabase fetch failed, falling back to mock data:', supabaseError);
-      return mockVehicles.filter(v => v.status === 'verkocht_b2c');
+      return mockVehicles.filter(v => v.salesStatus === 'verkocht_b2c');
     }
   } catch (error) {
     console.error('Error in fetchB2CVehicles:', error);
-    return mockVehicles.filter(v => v.status === 'verkocht_b2c');
+    return mockVehicles.filter(v => v.salesStatus === 'verkocht_b2c');
   }
 };
 
@@ -136,7 +136,7 @@ export const fetchDeliveredVehicles = async (): Promise<Vehicle[]> => {
     
     if (isUseMockData) {
       console.log('Using mock data for delivered vehicles');
-      return mockVehicles.filter(v => v.status === 'afgeleverd');
+      return mockVehicles.filter(v => v.salesStatus === 'afgeleverd');
     }
 
     try {
@@ -145,11 +145,11 @@ export const fetchDeliveredVehicles = async (): Promise<Vehicle[]> => {
       return vehicles;
     } catch (supabaseError) {
       console.warn('Supabase fetch failed, falling back to mock data:', supabaseError);
-      return mockVehicles.filter(v => v.status === 'afgeleverd');
+      return mockVehicles.filter(v => v.salesStatus === 'afgeleverd');
     }
   } catch (error) {
     console.error('Error in fetchDeliveredVehicles:', error);
-    return mockVehicles.filter(v => v.status === 'afgeleverd');
+    return mockVehicles.filter(v => v.salesStatus === 'afgeleverd');
   }
 };
 
@@ -455,10 +455,10 @@ export const getVehicleStats = async (): Promise<any> => {
       console.log('Using mock data for vehicle stats');
       return {
         total: mockVehicles.length,
-        voorraad: mockVehicles.filter(v => v.status === 'voorraad').length,
-        verkocht_b2c: mockVehicles.filter(v => v.status === 'verkocht_b2c').length,
-        verkocht_b2b: mockVehicles.filter(v => v.status === 'verkocht_b2b').length,
-        afgeleverd: mockVehicles.filter(v => v.status === 'afgeleverd').length,
+        voorraad: mockVehicles.filter(v => v.salesStatus === 'voorraad').length,
+        verkocht_b2c: mockVehicles.filter(v => v.salesStatus === 'verkocht_b2c').length,
+        verkocht_b2b: mockVehicles.filter(v => v.salesStatus === 'verkocht_b2b').length,
+        afgeleverd: mockVehicles.filter(v => v.salesStatus === 'afgeleverd').length,
       };
     }
 
@@ -466,10 +466,10 @@ export const getVehicleStats = async (): Promise<any> => {
       const vehicles = await supabaseInventoryService.getAllVehicles();
       return {
         total: vehicles.length,
-        voorraad: vehicles.filter(v => v.status === 'voorraad').length,
-        verkocht_b2c: vehicles.filter(v => v.status === 'verkocht_b2c').length,
-        verkocht_b2b: vehicles.filter(v => v.status === 'verkocht_b2b').length,
-        afgeleverd: vehicles.filter(v => v.status === 'afgeleverd').length,
+        voorraad: vehicles.filter(v => v.salesStatus === 'voorraad').length,
+        verkocht_b2c: vehicles.filter(v => v.salesStatus === 'verkocht_b2c').length,
+        verkocht_b2b: vehicles.filter(v => v.salesStatus === 'verkocht_b2b').length,
+        afgeleverd: vehicles.filter(v => v.salesStatus === 'afgeleverd').length,
       };
     } catch (supabaseError) {
       console.warn('Supabase fetch failed, using mock stats:', supabaseError);

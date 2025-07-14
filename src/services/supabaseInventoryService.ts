@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Vehicle } from "@/types/inventory";
 
@@ -161,6 +160,43 @@ export class SupabaseInventoryService {
       return data.map(this.mapSupabaseToVehicle);
     } catch (error) {
       console.error('Error fetching transport vehicles:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update an existing vehicle
+   */
+  async updateVehicle(vehicle: Vehicle): Promise<Vehicle> {
+    try {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .update({
+          brand: vehicle.brand,
+          model: vehicle.model,
+          year: vehicle.year,
+          color: vehicle.color,
+          license_number: vehicle.licenseNumber,
+          vin: vehicle.vin,
+          mileage: vehicle.mileage,
+          selling_price: vehicle.sellingPrice,
+          status: vehicle.salesStatus,
+          location: vehicle.location,
+          customer_id: vehicle.customerId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', vehicle.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Failed to update vehicle:', error);
+        throw error;
+      }
+
+      return this.mapSupabaseToVehicle(data);
+    } catch (error) {
+      console.error('Error updating vehicle:', error);
       throw error;
     }
   }
