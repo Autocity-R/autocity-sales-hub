@@ -50,6 +50,122 @@ export class SupabaseInventoryService {
   }
 
   /**
+   * Get online vehicles (voorraad status and not in transport)
+   */
+  async getOnlineVehicles(): Promise<Vehicle[]> {
+    try {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .select('*')
+        .eq('status', 'voorraad')
+        .neq('location', 'onderweg')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to fetch online vehicles from Supabase:', error);
+        throw error;
+      }
+
+      return data.map(this.mapSupabaseToVehicle);
+    } catch (error) {
+      console.error('Error fetching online vehicles:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get B2B sold vehicles
+   */
+  async getB2BVehicles(): Promise<Vehicle[]> {
+    try {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .select('*')
+        .eq('status', 'verkocht_b2b')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to fetch B2B vehicles from Supabase:', error);
+        throw error;
+      }
+
+      return data.map(this.mapSupabaseToVehicle);
+    } catch (error) {
+      console.error('Error fetching B2B vehicles:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get B2C sold vehicles
+   */
+  async getB2CVehicles(): Promise<Vehicle[]> {
+    try {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .select('*')
+        .eq('status', 'verkocht_b2c')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to fetch B2C vehicles from Supabase:', error);
+        throw error;
+      }
+
+      return data.map(this.mapSupabaseToVehicle);
+    } catch (error) {
+      console.error('Error fetching B2C vehicles:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get delivered vehicles
+   */
+  async getDeliveredVehicles(): Promise<Vehicle[]> {
+    try {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .select('*')
+        .eq('status', 'afgeleverd')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to fetch delivered vehicles from Supabase:', error);
+        throw error;
+      }
+
+      return data.map(this.mapSupabaseToVehicle);
+    } catch (error) {
+      console.error('Error fetching delivered vehicles:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get transport vehicles (in transit)
+   */
+  async getTransportVehicles(): Promise<Vehicle[]> {
+    try {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .select('*')
+        .eq('location', 'onderweg')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to fetch transport vehicles from Supabase:', error);
+        throw error;
+      }
+
+      return data.map(this.mapSupabaseToVehicle);
+    } catch (error) {
+      console.error('Error fetching transport vehicles:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Update vehicle sales status
    */
   async updateVehicleStatus(vehicleId: string, status: string): Promise<void> {
@@ -75,6 +191,31 @@ export class SupabaseInventoryService {
   }
 
   /**
+   * Update vehicle location
+   */
+  async updateVehicleLocation(vehicleId: string, location: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('vehicles')
+        .update({ 
+          location,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', vehicleId);
+
+      if (error) {
+        console.error('Failed to update vehicle location:', error);
+        throw error;
+      }
+
+      console.log(`Vehicle ${vehicleId} location updated to ${location}`);
+    } catch (error) {
+      console.error('Error updating vehicle location:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Mark vehicle as arrived
    */
   async markVehicleAsArrived(vehicleId: string): Promise<void> {
@@ -82,7 +223,7 @@ export class SupabaseInventoryService {
       const { error } = await supabase
         .from('vehicles')
         .update({ 
-          // Note: 'arrived' field doesn't exist in current schema, but we'll update what we can
+          location: 'showroom',
           updated_at: new Date().toISOString()
         })
         .eq('id', vehicleId);
@@ -116,7 +257,7 @@ export class SupabaseInventoryService {
           mileage: vehicleData.mileage,
           selling_price: vehicleData.sellingPrice,
           status: vehicleData.salesStatus || 'voorraad',
-          location: vehicleData.location,
+          location: vehicleData.location || 'showroom',
           customer_id: vehicleData.customerId
         })
         .select()
@@ -152,9 +293,9 @@ export class SupabaseInventoryService {
       location: supabaseVehicle.location || 'showroom',
       salesStatus: supabaseVehicle.status as any,
       importStatus: 'niet_gestart' as any, // Default value
-      arrived: false, // Default value
+      arrived: supabaseVehicle.location !== 'onderweg', // True if not in transport
       papersReceived: false, // Default value
-      showroomOnline: false, // Default value
+      showroomOnline: supabaseVehicle.status === 'voorraad' && supabaseVehicle.location === 'showroom', // Online if in stock and showroom
       workshopStatus: 'wachten' as any, // Default value
       damage: { description: '', status: 'geen' }, // Default value
       bpmRequested: false, // Default value
