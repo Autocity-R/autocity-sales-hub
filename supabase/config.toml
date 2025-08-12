@@ -1,1 +1,4 @@
 project_id = "fnwagrmoyfyimdoaynkg"
+
+[functions.sheets-import-webhook]
+verify_jwt = false
