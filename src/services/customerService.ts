@@ -1,6 +1,14 @@
 import { Contact, ContactType, CustomerHistoryItem, SupplierHistoryItem } from "@/types/customer";
+import { supabaseCustomerService } from "./supabaseCustomerService";
 
-// Mock data for development
+// Flag for using mock data during development
+let isUseMockData = false;
+
+export const setUseMockData = (useMock: boolean) => {
+  isUseMockData = useMock;
+};
+
+// Mock data for development fallback
 const mockContacts: Contact[] = [
   {
     id: "1",
@@ -20,42 +28,6 @@ const mockContacts: Contact[] = [
     notes: "Preferred supplier for premium vehicles",
     createdAt: "2023-01-15T10:30:00Z",
     updatedAt: "2023-04-22T14:45:00Z"
-  },
-  {
-    id: "2",
-    type: "supplier",
-    companyName: "Deutsche Autos GmbH",
-    firstName: "Klaus",
-    lastName: "Mueller",
-    email: "klaus@deutscheautos.de",
-    phone: "+49 987654321",
-    address: {
-      street: "Hauptstraße",
-      number: "45",
-      city: "München",
-      zipCode: "80331",
-      country: "Duitsland"
-    },
-    createdAt: "2023-02-18T09:15:00Z",
-    updatedAt: "2023-05-10T11:20:00Z"
-  },
-  {
-    id: "3",
-    type: "supplier",
-    companyName: "Car Connect",
-    firstName: "Jan",
-    lastName: "Janssens",
-    email: "jan@carconnect.be",
-    phone: "+32 478123456",
-    address: {
-      street: "Autolaan",
-      number: "78",
-      city: "Brussel",
-      zipCode: "1000",
-      country: "België"
-    },
-    createdAt: "2023-03-05T13:45:00Z",
-    updatedAt: "2023-06-12T16:30:00Z"
   },
   {
     id: "4",
@@ -138,59 +110,6 @@ const mockCustomerHistory: CustomerHistoryItem[] = [
     date: "2023-07-01T09:30:00Z",
     actionType: "lead",
     description: "Initial inquiry about electric vehicles",
-  },
-  {
-    id: "h2",
-    customerId: "6",
-    date: "2023-07-15T14:20:00Z",
-    actionType: "contact",
-    description: "Follow-up call about available models",
-  },
-  {
-    id: "h3",
-    customerId: "6",
-    date: "2023-08-10T11:00:00Z",
-    actionType: "purchase",
-    description: "Purchased Tesla Model 3",
-    vehicleId: "v001",
-    vehicleName: "Tesla Model 3",
-    vehicleDetails: true,
-    vehicleBrand: "Tesla",
-    vehicleModel: "Model 3",
-    vehicleYear: 2022,
-    vehicleMileage: 12500,
-    vehicleVin: "5YJ3E1EA7MF123456",
-    vehiclePrice: 42950
-  },
-  {
-    id: "h4",
-    customerId: "4",
-    date: "2023-06-05T10:15:00Z",
-    actionType: "contact",
-    description: "Meeting to discuss fleet renewal",
-  },
-  {
-    id: "h5",
-    customerId: "4",
-    date: "2023-06-20T13:30:00Z",
-    actionType: "sale",
-    description: "Quote for 5 company vehicles",
-  },
-  {
-    id: "h6",
-    customerId: "4",
-    date: "2023-07-10T09:45:00Z",
-    actionType: "purchase",
-    description: "Purchased 3 Volkswagen Passat",
-    vehicleId: "v002",
-    vehicleName: "Volkswagen Passat",
-    vehicleDetails: true,
-    vehicleBrand: "Volkswagen",
-    vehicleModel: "Passat",
-    vehicleYear: 2023,
-    vehicleMileage: 5000,
-    vehicleVin: "WVWZZZ3CZPE123456",
-    vehiclePrice: 38500
   }
 ];
 
@@ -210,74 +129,127 @@ const mockSupplierHistory: SupplierHistoryItem[] = [
     vehicleMileage: 25000,
     vehicleVin: "WBA8E9C06NCK12345",
     vehiclePrice: 23000
-  },
-  {
-    id: "sh2",
-    supplierId: "1",
-    date: "2023-06-15T11:45:00Z",
-    actionType: "contact",
-    description: "Onderhandeld over prijzen voor Q3",
-  },
-  {
-    id: "sh3",
-    supplierId: "2",
-    date: "2023-04-20T14:15:00Z",
-    actionType: "purchase",
-    description: "Aangekocht 3 Mercedes C-Class voertuigen",
-    vehicleId: "v004",
-    vehicleName: "Mercedes C-Class",
-    vehicleDetails: true,
-    vehicleBrand: "Mercedes",
-    vehicleModel: "C-Class",
-    vehicleYear: 2023,
-    vehicleMileage: 8000,
-    vehicleVin: "WDD2050071R123456",
-    vehiclePrice: 36250
-  },
-  {
-    id: "sh4",
-    supplierId: "3",
-    date: "2023-07-05T09:30:00Z",
-    actionType: "purchase",
-    description: "Aangekocht Audi A4 Avant",
-    vehicleId: "v005",
-    vehicleName: "Audi A4 Avant",
-    vehicleDetails: true,
-    vehicleBrand: "Audi",
-    vehicleModel: "A4 Avant",
-    vehicleYear: 2021,
-    vehicleMileage: 32000,
-    vehicleVin: "WAUZZZ8E0EA123456",
-    vehiclePrice: 28500
-  },
-  {
-    id: "sh5",
-    supplierId: "1",
-    date: "2023-08-12T14:20:00Z",
-    actionType: "purchase",
-    description: "Aangekocht BMW X3",
-    vehicleId: "v006",
-    vehicleName: "BMW X3",
-    vehicleDetails: true,
-    vehicleBrand: "BMW",
-    vehicleModel: "X3",
-    vehicleYear: 2022,
-    vehicleMileage: 18500,
-    vehicleVin: "WBAXG9C04NDR12345",
-    vehiclePrice: 31200
   }
 ];
 
-export const getContacts = (): Contact[] => {
-  return mockContacts;
+// Updated functions to use Supabase when available
+export const getContacts = async (): Promise<Contact[]> => {
+  try {
+    console.log('Fetching all contacts...');
+    
+    if (isUseMockData) {
+      console.log('Using mock data for contacts');
+      return mockContacts;
+    }
+
+    try {
+      // Get all contacts from Supabase (B2B and B2C)
+      const [b2bContacts, b2cContacts] = await Promise.all([
+        supabaseCustomerService.getContactsByType('b2b'),
+        supabaseCustomerService.getContactsByType('b2c')
+      ]);
+      
+      const allContacts = [...b2bContacts, ...b2cContacts];
+      console.log(`Fetched ${allContacts.length} contacts from Supabase`);
+      return allContacts;
+    } catch (supabaseError) {
+      console.warn('Supabase fetch failed, falling back to mock data:', supabaseError);
+      return mockContacts;
+    }
+  } catch (error) {
+    console.error('Error in getContacts:', error);
+    return mockContacts;
+  }
 };
 
-export const getContactsByType = (type: ContactType): Contact[] => {
-  return mockContacts.filter(contact => contact.type === type);
+export const getContactsByType = async (type: ContactType): Promise<Contact[]> => {
+  try {
+    console.log(`Fetching ${type} contacts...`);
+    
+    if (isUseMockData) {
+      console.log('Using mock data for contacts');
+      return mockContacts.filter(contact => contact.type === type);
+    }
+
+    try {
+      const contacts = await supabaseCustomerService.getContactsByType(type);
+      console.log(`Fetched ${contacts.length} ${type} contacts from Supabase`);
+      return contacts;
+    } catch (supabaseError) {
+      console.warn('Supabase fetch failed, falling back to mock data:', supabaseError);
+      return mockContacts.filter(contact => contact.type === type);
+    }
+  } catch (error) {
+    console.error(`Error in getContactsByType for ${type}:`, error);
+    return mockContacts.filter(contact => contact.type === type);
+  }
 };
 
-export const getContactById = (id: string): Contact | undefined => {
-  return mockContacts.find(contact => contact.id === id);
+export const getContactById = async (id: string): Promise<Contact | undefined> => {
+  try {
+    console.log(`Fetching contact ${id}...`);
+    
+    if (isUseMockData) {
+      console.log('Using mock data for contact');
+      return mockContacts.find(contact => contact.id === id);
+    }
+
+    try {
+      const contact = await supabaseCustomerService.getContactById(id);
+      return contact || undefined;
+    } catch (supabaseError) {
+      console.warn('Supabase fetch failed:', supabaseError);
+      return mockContacts.find(contact => contact.id === id);
+    }
+  } catch (error) {
+    console.error('Error in getContactById:', error);
+    return undefined;
+  }
+};
+
+export const searchContacts = async (searchTerm: string, type?: ContactType): Promise<Contact[]> => {
+  try {
+    console.log(`Searching contacts with term: ${searchTerm}, type: ${type}`);
+    
+    if (isUseMockData) {
+      console.log('Using mock data for search');
+      let results = mockContacts.filter(contact => 
+        contact.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        contact.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (contact.companyName && contact.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+      
+      if (type) {
+        results = results.filter(contact => contact.type === type);
+      }
+      
+      return results;
+    }
+
+    try {
+      const results = await supabaseCustomerService.searchContacts(searchTerm, type);
+      console.log(`Found ${results.length} contacts matching "${searchTerm}"`);
+      return results;
+    } catch (supabaseError) {
+      console.warn('Supabase search failed, falling back to mock data:', supabaseError);
+      let results = mockContacts.filter(contact => 
+        contact.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        contact.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (contact.companyName && contact.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+      
+      if (type) {
+        results = results.filter(contact => contact.type === type);
+      }
+      
+      return results;
+    }
+  } catch (error) {
+    console.error('Error in searchContacts:', error);
+    return [];
+  }
 };
 
 export const getCustomerHistory = (customerId: string): CustomerHistoryItem[] => {
@@ -288,28 +260,65 @@ export const getSupplierHistory = (supplierId: string): SupplierHistoryItem[] =>
   return mockSupplierHistory.filter(item => item.supplierId === supplierId);
 };
 
-export const addContact = (contact: Omit<Contact, "id" | "createdAt" | "updatedAt">): Contact => {
-  const newContact: Contact = {
-    ...contact,
-    id: `${mockContacts.length + 1}`,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-  
-  mockContacts.push(newContact);
-  return newContact;
+export const addContact = async (contact: Omit<Contact, "id" | "createdAt" | "updatedAt">): Promise<Contact> => {
+  try {
+    console.log('Creating new contact...', contact);
+    
+    if (isUseMockData) {
+      console.log('Mock data mode - contact creation simulated');
+      const newContact: Contact = {
+        ...contact,
+        id: `${mockContacts.length + 1}`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      mockContacts.push(newContact);
+      return newContact;
+    }
+
+    try {
+      const newContact = await supabaseCustomerService.createContact(contact);
+      console.log('Contact created successfully via Supabase');
+      return newContact;
+    } catch (supabaseError) {
+      console.warn('Supabase creation failed:', supabaseError);
+      throw supabaseError;
+    }
+  } catch (error) {
+    console.error('Error in addContact:', error);
+    throw error;
+  }
 };
 
-export const updateContact = (contact: Contact): Contact => {
-  const index = mockContacts.findIndex(c => c.id === contact.id);
-  if (index !== -1) {
-    mockContacts[index] = {
-      ...contact,
-      updatedAt: new Date().toISOString()
-    };
-    return mockContacts[index];
+export const updateContact = async (contact: Contact): Promise<Contact> => {
+  try {
+    console.log(`Updating contact ${contact.id}...`);
+    
+    if (isUseMockData) {
+      console.log('Mock data mode - contact update simulated');
+      const index = mockContacts.findIndex(c => c.id === contact.id);
+      if (index !== -1) {
+        mockContacts[index] = {
+          ...contact,
+          updatedAt: new Date().toISOString()
+        };
+        return mockContacts[index];
+      }
+      throw new Error(`Contact with ID ${contact.id} not found`);
+    }
+
+    try {
+      const updatedContact = await supabaseCustomerService.updateContact(contact);
+      console.log('Contact updated successfully via Supabase');
+      return updatedContact;
+    } catch (supabaseError) {
+      console.warn('Supabase update failed:', supabaseError);
+      throw supabaseError;
+    }
+  } catch (error) {
+    console.error('Error in updateContact:', error);
+    throw error;
   }
-  throw new Error(`Contact with ID ${contact.id} not found`);
 };
 
 export const addHistoryItem = (item: Omit<CustomerHistoryItem, "id" | "date">): CustomerHistoryItem => {

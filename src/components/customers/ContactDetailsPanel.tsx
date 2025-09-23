@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Building, Mail, Phone, MapPin, Pencil } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import ContactForm from "./ContactForm";
+import { ContactForm } from "./ContactForm";
 
 interface ContactDetailsPanelProps {
   contact: Contact;

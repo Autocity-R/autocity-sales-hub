@@ -66,7 +66,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
       let result: Contact;
       
       if (isEditMode && initialData?.id) {
-        result = updateContact({
+        result = await updateContact({
           ...(data as Contact),
           id: initialData.id,
           createdAt: initialData.createdAt!,
@@ -74,7 +74,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
         });
         toast.success("Contact succesvol bijgewerkt");
       } else {
-        result = addContact(data as Omit<Contact, "id" | "createdAt" | "updatedAt">);
+        result = await addContact(data as Omit<Contact, "id" | "createdAt" | "updatedAt">);
         toast.success("Nieuw contact succesvol toegevoegd");
       }
       
@@ -327,4 +327,4 @@ const ContactForm: React.FC<ContactFormProps> = ({
   );
 };
 
-export default ContactForm;
+export { ContactForm };

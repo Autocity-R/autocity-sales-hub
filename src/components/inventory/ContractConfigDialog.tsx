@@ -14,7 +14,7 @@ import { FileText, Send, X, Eye, Mail, PenTool, Plus, Trash2, Car } from "lucide
 import { generateContract } from "@/services/contractService";
 import { createSignatureSession, generateSignatureUrl } from "@/services/digitalSignatureService";
 import { useToast } from "@/hooks/use-toast";
-import { CustomerSelector } from "@/components/customers/CustomerSelector";
+import { SearchableCustomerSelector } from "@/components/customers/SearchableCustomerSelector";
 
 interface ContractConfigDialogProps {
   isOpen: boolean;
@@ -206,12 +206,12 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
 
         <div className="space-y-6">
           {/* Customer Selection */}
-          <CustomerSelector
+          <SearchableCustomerSelector
             value={selectedCustomer?.id}
             onValueChange={handleCustomerSelect}
             customerType={contractType}
             label="Klant selecteren"
-            placeholder="Selecteer een klant voor dit contract"
+            placeholder="Zoek en selecteer een klant..."
           />
 
           <Separator />

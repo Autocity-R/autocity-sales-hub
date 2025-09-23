@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Search, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import ContactForm from "./ContactForm";
+import { ContactForm } from "./ContactForm";
 import { useNavigate } from "react-router-dom";
 
 interface ContactListProps {

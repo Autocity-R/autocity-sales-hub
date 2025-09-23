@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getContactById, getCustomerHistory, getSupplierHistory, updateContact } from "@/services/customerService";
@@ -10,6 +9,8 @@ import { ArrowLeft, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { PageHeader } from "@/components/ui/page-header";
 
 const CustomerDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,117 +21,113 @@ const CustomerDetail = () => {
   const [activeTab, setActiveTab] = useState("details");
 
   useEffect(() => {
-    if (id) {
-      const contactData = getContactById(id);
-      
-      if (contactData) {
-        setContact(contactData);
-        
-        // Load appropriate history based on contact type
-        if (contactData.type === "supplier") {
-          setHistory(getSupplierHistory(id));
-        } else {
-          setHistory(getCustomerHistory(id));
+    const loadContact = async () => {
+      if (id) {
+        try {
+          const contactData = await getContactById(id);
+          
+          if (contactData) {
+            setContact(contactData);
+            
+            // Load appropriate history based on contact type
+            if (contactData.type === "supplier") {
+              setHistory(getSupplierHistory(id));
+            } else {
+              setHistory(getCustomerHistory(id));
+            }
+          }
+        } catch (error) {
+          console.error("Error loading contact:", error);
+        } finally {
+          setLoading(false);
         }
       }
-      
-      setLoading(false);
-    }
+    };
+
+    loadContact();
   }, [id]);
 
-  const handleContactUpdate = (updated: Contact) => {
-    setContact(updated);
-  };
-
-  const handleGoBack = () => {
-    navigate(-1);
+  const handleUpdate = async (updatedContact: Contact) => {
+    try {
+      await updateContact(updatedContact);
+      setContact(updatedContact);
+    } catch (error) {
+      console.error("Error updating contact:", error);
+    }
   };
 
   if (loading) {
-    return <div className="p-6">Laden...</div>;
+    return (
+      <DashboardLayout>
+        <div className="flex justify-center items-center py-8">
+          <p>Contact laden...</p>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   if (!contact) {
     return (
-      <div className="p-6">
-        <Button variant="outline" onClick={handleGoBack}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Terug
-        </Button>
-        <div className="mt-10 text-center">
-          <h2 className="text-2xl font-bold">Contact niet gevonden</h2>
-          <p className="text-muted-foreground mt-2">
-            Het gevraagde contact bestaat niet of is verwijderd.
-          </p>
+      <DashboardLayout>
+        <div className="space-y-6">
+          <PageHeader title="Contact niet gevonden" />
+          <div className="flex justify-center items-center py-8">
+            <div className="text-center">
+              <p className="text-muted-foreground mb-4">Het opgevraagde contact kon niet worden gevonden.</p>
+              <Button onClick={() => navigate('/customers')}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Terug naar contacten
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <Button variant="outline" onClick={handleGoBack}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Terug naar overzicht
-        </Button>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <PageHeader 
+          title={contact.companyName || `${contact.firstName} ${contact.lastName}`}
+          description={`${contact.type === "supplier" ? "Leverancier" : 
+                       contact.type === "b2b" ? "Zakelijke klant" : 
+                       "Particuliere klant"} details en geschiedenis`}
+        >
+          <Button variant="outline" onClick={() => navigate('/customers')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Terug
+          </Button>
+        </PageHeader>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="history">
+              <Clock className="mr-2 h-4 w-4" />
+              Geschiedenis
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="details" className="space-y-6">
+            <ContactDetailsPanel contact={contact} onUpdate={handleUpdate} />
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Contact Geschiedenis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ContactHistory 
+                  history={history} 
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="history">Geschiedenis</TabsTrigger>
-              <TabsTrigger value="vehicles">Voertuigen</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="details" className="mt-6">
-              <ContactDetailsPanel
-                contact={contact}
-                onUpdate={handleContactUpdate}
-              />
-            </TabsContent>
-            
-            <TabsContent value="history" className="mt-6">
-              <ContactHistory history={history} />
-            </TabsContent>
-            
-            <TabsContent value="vehicles" className="mt-6">
-              <div className="text-center py-8 text-muted-foreground">
-                Geen voertuigen gekoppeld aan dit contact
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-        
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Contact Informatie</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center">
-                  <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Aangemaakt op</p>
-                    <p>{format(new Date(contact.createdAt), "dd/MM/yyyy")}</p>
-                  </div>
-                </div>
-                <div className="flex items-center">
-                  <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Laatst bijgewerkt</p>
-                    <p>{format(new Date(contact.updatedAt), "dd/MM/yyyy")}</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
+    </DashboardLayout>
   );
 };
 
