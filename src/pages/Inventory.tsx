@@ -13,7 +13,7 @@ import { VehicleTable } from "@/components/inventory/VehicleTable";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
 import { VehicleForm } from "@/components/inventory/VehicleForm";
 import { Vehicle } from "@/types/inventory";
-import { fetchVehicles, fetchB2CVehicles, fetchB2BVehicles, getVehicleStats, updateVehicleStatus, markVehicleAsArrived, setUseMockData } from "@/services/inventoryService";
+import { fetchVehicles, fetchB2CVehicles, fetchB2BVehicles, getVehicleStats, updateVehicleStatus, markVehicleAsArrived, setUseMockData, createVehicle } from "@/services/inventoryService";
 import { DataSourceIndicator } from "@/components/common/DataSourceIndicator";
 import { useToast } from "@/hooks/use-toast";
 
@@ -218,9 +218,20 @@ const Inventory = () => {
     return (
       <DashboardLayout>
         <VehicleForm 
-          onSubmit={() => {
-            setShowForm(false);
-            queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+          onSubmit={async (vehicleData) => {
+            try {
+              await createVehicle(vehicleData);
+              toast({ description: "Voertuig succesvol toegevoegd" });
+              setShowForm(false);
+              // Refresh all relevant lists
+              queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+              queryClient.invalidateQueries({ queryKey: ['onlineVehicles'] });
+              queryClient.invalidateQueries({ queryKey: ['b2cVehicles'] });
+              queryClient.invalidateQueries({ queryKey: ['b2bVehicles'] });
+            } catch (error) {
+              console.error("Error creating vehicle:", error);
+              toast({ variant: "destructive", description: "Fout bij het toevoegen van het voertuig" });
+            }
           }}
         />
       </DashboardLayout>
