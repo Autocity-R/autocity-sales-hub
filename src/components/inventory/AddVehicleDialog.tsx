@@ -12,6 +12,7 @@ import {
 import { VehicleForm } from "./VehicleForm";
 import { Vehicle } from "@/types/inventory";
 import { useToast } from "@/hooks/use-toast";
+import { createVehicle } from "@/services/inventoryService";
 
 interface AddVehicleDialogProps {
   onVehicleAdded?: (vehicle: Vehicle) => void;
@@ -23,15 +24,7 @@ export const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ onVehicleAdd
 
   const handleSubmit = async (vehicleData: Omit<Vehicle, "id">) => {
     try {
-      // Generate a new ID for the vehicle
-      const newVehicle: Vehicle = {
-        ...vehicleData,
-        id: `vehicle-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-      };
-
-      // In a real app, this would call an API to create the vehicle
-      console.log("Creating new vehicle:", newVehicle);
+      const newVehicle = await createVehicle(vehicleData);
       
       toast({
         description: "Voertuig succesvol toegevoegd"

@@ -447,6 +447,35 @@ export const bulkUpdateVehicles = async (vehicles: Vehicle[]): Promise<void> => 
   }
 };
 
+export const createVehicle = async (vehicleData: Omit<Vehicle, "id">): Promise<Vehicle> => {
+  try {
+    console.log('Creating new vehicle...', vehicleData);
+    
+    if (isUseMockData) {
+      console.log('Mock data mode - vehicle creation simulated');
+      const newVehicle: Vehicle = {
+        ...vehicleData,
+        id: `vehicle-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+      };
+      mockVehicles.push(newVehicle);
+      return newVehicle;
+    }
+
+    try {
+      const newVehicle = await supabaseInventoryService.createVehicle(vehicleData);
+      console.log('Vehicle created successfully via Supabase');
+      return newVehicle;
+    } catch (supabaseError) {
+      console.warn('Supabase creation failed:', supabaseError);
+      throw supabaseError;
+    }
+  } catch (error) {
+    console.error('Error in createVehicle:', error);
+    throw error;
+  }
+};
+
 export const getVehicleStats = async (): Promise<any> => {
   try {
     console.log('Fetching vehicle statistics...');
