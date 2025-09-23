@@ -119,27 +119,10 @@ export const SearchableCustomerSelector: React.FC<SearchableCustomerSelectorProp
     onValueChange(customer.id, customer);
   };
 
-  const handleCreateNewCustomer = async (newCustomer: Omit<Contact, "id" | "createdAt" | "updatedAt">) => {
-    try {
-      const createdCustomer = await supabaseCustomerService.createContact({
-        ...newCustomer,
-        type: customerType
-      });
-      
-      toast({
-        description: "Klant succesvol toegevoegd"
-      });
-      
-      setShowNewCustomerForm(false);
-      handleSelectCustomer(createdCustomer);
-      loadInitialCustomers(); // Refresh the list
-    } catch (error) {
-      console.error("Error creating customer:", error);
-      toast({
-        variant: "destructive",
-        description: "Fout bij het toevoegen van de klant"
-      });
-    }
+  const handleCreateNewCustomer = (newCustomer: Contact) => {
+    setShowNewCustomerForm(false);
+    handleSelectCustomer(newCustomer);
+    loadInitialCustomers(); // Refresh the list
   };
 
   const getCustomerDisplayName = (customer: Contact) => {
