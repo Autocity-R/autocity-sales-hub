@@ -9,10 +9,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
+import { Contact } from "@/types/customer";
 import { FileText, Send, X, Eye, Mail, PenTool, Plus, Trash2, Car } from "lucide-react";
 import { generateContract } from "@/services/contractService";
 import { createSignatureSession, generateSignatureUrl } from "@/services/digitalSignatureService";
 import { useToast } from "@/hooks/use-toast";
+import { CustomerSelector } from "@/components/customers/CustomerSelector";
 
 interface ContractConfigDialogProps {
   isOpen: boolean;
@@ -46,6 +48,7 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
   const [showPreview, setShowPreview] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showTradeInForm, setShowTradeInForm] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Contact | null>(null);
 
   const handlePreview = async () => {
     setLoading(true);
@@ -66,10 +69,10 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
   };
 
   const handleSendDigital = async () => {
-    if (!vehicle.customerContact?.email) {
+    if (!selectedCustomer) {
       toast({
-        title: "Geen klant email",
-        description: "Voeg eerst een klant email toe aan dit voertuig",
+        title: "Geen klant geselecteerd",
+        description: "Selecteer eerst een klant voor dit contract",
         variant: "destructive"
       });
       return;
@@ -85,12 +88,12 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
       const contract = await generateContract(vehicle, contractType, options, signatureUrl);
       
       // Simulate sending email with contract and signature link
-      console.log("Digitaal contract verzonden naar:", vehicle.customerContact.email);
+      console.log("Digitaal contract verzonden naar:", selectedCustomer.email);
       console.log("Ondertekeningslink:", signatureUrl);
       
       toast({
         title: "Contract verzonden",
-        description: `Digitaal contract met ondertekeningslink verzonden naar ${vehicle.customerContact.email}`,
+        description: `Digitaal contract met ondertekeningslink verzonden naar ${selectedCustomer.email}`,
       });
       
       onClose();
@@ -136,6 +139,10 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
         [field]: value
       }
     }));
+  };
+
+  const handleCustomerSelect = (customerId: string, customer: Contact) => {
+    setSelectedCustomer(customer);
   };
 
   const isB2B = contractType === "b2b";
@@ -198,6 +205,16 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Customer Selection */}
+          <CustomerSelector
+            value={selectedCustomer?.id}
+            onValueChange={handleCustomerSelect}
+            customerType={contractType}
+            label="Klant selecteren"
+            placeholder="Selecteer een klant voor dit contract"
+          />
+
+          <Separator />
           {/* Vehicle Info */}
           <div className="p-4 bg-muted rounded-lg">
             <h4 className="font-medium mb-2">Voertuig informatie</h4>
