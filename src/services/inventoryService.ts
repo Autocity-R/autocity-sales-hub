@@ -350,8 +350,38 @@ export const updatePaymentStatus = async (vehicleId: string, status: PaymentStat
       return;
     }
 
-    // In a real implementation, this would update the payment status in Supabase
-    console.log('Payment status update functionality not implemented yet');
+    // Update payment status in Supabase via details.paymentStatus
+    const { data: vehicle, error: fetchError } = await supabase
+      .from('vehicles')
+      .select('details')
+      .eq('id', vehicleId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching vehicle:', fetchError);
+      throw fetchError;
+    }
+
+    const currentDetails = (vehicle?.details as Record<string, any>) || {};
+    const updatedDetails = {
+      ...currentDetails,
+      paymentStatus: status
+    };
+
+    const { error } = await supabase
+      .from('vehicles')
+      .update({ 
+        details: updatedDetails,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', vehicleId);
+
+    if (error) {
+      console.error('Error updating payment status:', error);
+      throw error;
+    }
+
+    console.log(`Payment status updated successfully for vehicle ${vehicleId}`);
   } catch (error) {
     console.error('Error in updatePaymentStatus:', error);
     throw error;
