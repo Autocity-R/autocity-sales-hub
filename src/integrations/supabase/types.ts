@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -1322,13 +1322,93 @@ export type Database = {
           },
         ]
       }
+      vehicle_files: {
+        Row: {
+          category: string
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          updated_at: string
+          uploaded_by: string | null
+          vehicle_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          vehicle_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          vehicle_id?: string
+        }
+        Relationships: []
+      }
+      vehicle_import_logs: {
+        Row: {
+          changed_by: string | null
+          created_at: string | null
+          external_reference: string | null
+          id: string
+          new_status: string
+          old_status: string | null
+          vehicle_id: string
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string | null
+          external_reference?: string | null
+          id?: string
+          new_status: string
+          old_status?: string | null
+          vehicle_id: string
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string | null
+          external_reference?: string | null
+          id?: string
+          new_status?: string
+          old_status?: string | null
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_import_logs_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicles: {
         Row: {
           brand: string
           color: string | null
           created_at: string
           customer_id: string | null
+          external_sheet_reference: string | null
           id: string
+          import_status: string | null
+          import_updated_at: string | null
           license_number: string | null
           location: string | null
           mileage: number | null
@@ -1344,7 +1424,10 @@ export type Database = {
           color?: string | null
           created_at?: string
           customer_id?: string | null
+          external_sheet_reference?: string | null
           id?: string
+          import_status?: string | null
+          import_updated_at?: string | null
           license_number?: string | null
           location?: string | null
           mileage?: number | null
@@ -1360,7 +1443,10 @@ export type Database = {
           color?: string | null
           created_at?: string
           customer_id?: string | null
+          external_sheet_reference?: string | null
           id?: string
+          import_status?: string | null
+          import_updated_at?: string | null
           license_number?: string | null
           location?: string | null
           mileage?: number | null
@@ -1432,22 +1518,22 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: {
           access_token: string
-          refresh_token: string
-          expires_at: string
           division_code: string
+          expires_at: string
           needs_refresh: boolean
+          refresh_token: string
         }[]
       }
       verify_webhook_sync: {
         Args: { agent_uuid: string }
         Returns: {
+          active_webhooks_count: number
           agent_id: string
           agent_name: string
           agents_webhook_enabled: boolean
           agents_webhook_url: string
-          webhooks_count: number
-          active_webhooks_count: number
           is_synchronized: boolean
+          webhooks_count: number
         }[]
       }
     }

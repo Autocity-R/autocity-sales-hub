@@ -1,6 +1,7 @@
 
 import { Vehicle, PaymentStatus, FileCategory, PaintStatus } from "@/types/inventory";
 import { supabaseInventoryService } from "./supabaseInventoryService";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock data and flag for using mock data
 let isUseMockData = false;
@@ -185,8 +186,10 @@ export const fetchVehicleFiles = async (vehicleId: string): Promise<any[]> => {
       return [];
     }
 
-    // In a real implementation, this would fetch files from Supabase
-    return [];
+    // Fetch files from Supabase
+    const files = await supabaseInventoryService.getVehicleFiles(vehicleId);
+    console.log(`Fetched ${files.length} files for vehicle ${vehicleId}`);
+    return files;
   } catch (error) {
     console.error('Error in fetchVehicleFiles:', error);
     return [];
@@ -421,9 +424,32 @@ export const uploadVehicleFile = async (file: File, category: FileCategory, vehi
       return { id: `mock-file-${Date.now()}`, name: file.name, category };
     }
 
-    // In a real implementation, this would upload to Supabase Storage
-    console.log('File upload functionality not implemented yet');
-    return { id: `mock-file-${Date.now()}`, name: file.name, category };
+    // Use Supabase Storage and database
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `${vehicleId}/${category}/${Date.now()}-${file.name}`;
+    
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('vehicle-documents')
+      .upload(fileName, file);
+    
+    if (uploadError) {
+      console.error('Error uploading file to storage:', uploadError);
+      throw new Error(`Upload failed: ${uploadError.message}`);
+    }
+    
+    // Save metadata to database
+    const fileRecord = await supabaseInventoryService.createVehicleFile({
+      vehicle_id: vehicleId,
+      file_name: file.name,
+      file_path: fileName,
+      file_size: file.size,
+      file_type: file.type,
+      category: category
+    });
+    
+    console.log('File uploaded successfully:', fileRecord);
+    return fileRecord;
   } catch (error) {
     console.error('Error in uploadVehicleFile:', error);
     throw error;

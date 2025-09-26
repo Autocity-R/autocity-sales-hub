@@ -347,6 +347,96 @@ export class SupabaseInventoryService {
       customerId: supabaseVehicle.customer_id
     };
   }
+
+  /**
+   * Upload file to Supabase Storage
+   */
+  async uploadFile(bucketName: string, filePath: string, file: File) {
+    try {
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .upload(filePath, file);
+
+      if (error) {
+        console.error('Failed to upload file to Supabase Storage:', error);
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create vehicle file record in database
+   */
+  async createVehicleFile(fileData: {
+    vehicle_id: string;
+    file_name: string;
+    file_path: string;
+    file_size: number;
+    file_type: string;
+    category: string;
+  }) {
+    try {
+      const { data, error } = await supabase
+        .from('vehicle_files')
+        .insert(fileData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Failed to create vehicle file record:', error);
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error creating vehicle file record:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get vehicle files from database with signed URLs
+   */
+  async getVehicleFiles(vehicleId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('vehicle_files')
+        .select('*')
+        .eq('vehicle_id', vehicleId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to fetch vehicle files:', error);
+        throw error;
+      }
+
+      // Get signed URLs for each file
+      const filesWithUrls = await Promise.all(
+        data.map(async (file) => {
+          const { data: urlData } = await supabase.storage
+            .from('vehicle-documents')
+            .createSignedUrl(file.file_path, 3600); // 1 hour expiry
+          
+          return {
+            ...file,
+            url: urlData?.signedUrl || '',
+            name: file.file_name
+          };
+        })
+      );
+
+      return filesWithUrls;
+    } catch (error) {
+      console.error('Error fetching vehicle files:', error);
+      throw error;
+    }
+  }
+
 }
 
 export const supabaseInventoryService = new SupabaseInventoryService();
