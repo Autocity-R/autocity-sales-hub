@@ -114,7 +114,7 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-[90%] sm:max-w-[800px] max-h-[90vh] p-0 flex flex-col">
-        <DialogHeader className="p-6 pb-2 sticky top-0 z-10 bg-background border-b">
+        <DialogHeader className="p-6 pb-2 flex-shrink-0 bg-background border-b">
           <DialogTitle>
             Transport Details: {vehicle.brand} {vehicle.model}
           </DialogTitle>
@@ -128,9 +128,10 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
           </Button>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 h-[calc(90vh-130px)]">
-          <div className="p-6">
-            <Tabs defaultValue="details" className="w-full">
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="p-6">
+              <Tabs defaultValue="details" className="w-full">
               <TabsList className="sticky top-0 bg-background z-10 mb-4">
                 <TabsTrigger value="details">Voertuig Details</TabsTrigger>
                 <TabsTrigger value="transport">Transport</TabsTrigger>
@@ -374,7 +375,7 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
           </div>
         </ScrollArea>
 
-        <div className="sticky bottom-0 left-0 right-0 flex justify-end gap-2 p-4 border-t bg-background z-10">
+        <div className="flex-shrink-0 flex justify-end gap-2 p-4 border-t bg-background">
           <Button type="button" variant="secondary" onClick={onClose}>
             Annuleren
           </Button>
