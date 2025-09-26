@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { FileText, X, Mail, Upload, CheckCircle } from "lucide-react";
+import { FileText, X, Mail, Upload, CheckCircle, Trash2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -25,6 +25,8 @@ import { TransportFileUploader } from "./TransportFileUploader";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { useQueryClient } from "@tanstack/react-query";
 import { VehicleFile } from "@/types/inventory";
+import { deleteVehicleFile } from "@/services/inventoryService";
+import { useToast } from "@/hooks/use-toast";
 
 interface TransportDetailsProps {
   vehicle: Vehicle;
@@ -47,6 +49,7 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
   const { vehicleFiles = [] } = useVehicleFiles(vehicle);
   const [notes, setNotes] = useState(vehicle.notes || "");
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const handleImportStatusChange = (status: ImportStatus) => {
     setUpdatedVehicle({
@@ -74,11 +77,36 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
   const handleFileUploaded = (fileData: VehicleFile) => {
     // Invalidate the vehicle files query to refresh the list
     queryClient.invalidateQueries({ queryKey: ["vehicleFiles", vehicle.id] });
+    toast({
+      title: "Document geüpload",
+      description: `${fileData.name} is succesvol geüpload.`,
+    });
     console.log("File uploaded:", fileData);
+  };
+
+  const handleDeleteFile = async (fileId: string, filePath: string, fileName: string) => {
+    try {
+      await deleteVehicleFile(fileId, filePath);
+      queryClient.invalidateQueries({ queryKey: ["vehicleFiles", vehicle.id] });
+      toast({
+        title: "Document verwijderd",
+        description: `${fileName} is verwijderd.`,
+      });
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      toast({
+        title: "Fout bij verwijderen",
+        description: "Het document kon niet worden verwijderd.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Get CMR files
   const cmrFiles = vehicleFiles.filter(file => file.category === "cmr");
+  
+  // Get pickup files
+  const pickupFiles = vehicleFiles.filter(file => file.category === "pickup");
   
   // Get damage files
   const damageFiles = vehicleFiles.filter(file => file.category === "damage");
@@ -231,37 +259,69 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
                       onFileUploaded={handleFileUploaded}
                     />
                   </div>
-                  <div className="text-sm text-muted-foreground mb-2">
-                    {updatedVehicle.cmrSent ? `Verstuurd op ${new Date(updatedVehicle.cmrDate || "").toLocaleDateString()}` : "Nog niet verstuurd"}
-                  </div>
-                  {cmrFiles.length > 0 && (
-                    <Button variant="outline" size="sm">
-                      <FileText className="mr-2 h-4 w-4" />
-                      Download CMR
-                    </Button>
-                  )}
-                </div>
-                
-                <div className="p-4 border rounded-md">
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-medium">Pickup Document</h4>
-                    <TransportFileUploader 
-                      vehicleId={vehicle.id}
-                      category="pickup"
-                      onFileUploaded={handleFileUploaded}
-                    />
-                  </div>
-                  <div className="text-sm text-muted-foreground mb-2">
-                    {updatedVehicle.cmrSent ? "Gereed voor verzending" : "Niet gereed"}
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => onSendPickupDocument(vehicle.id)}
-                  >
-                    <Mail className="mr-2 h-4 w-4" />
-                    Verstuur naar transporteur
-                  </Button>
+                   <div className="text-sm text-muted-foreground mb-2">
+                     {cmrFiles.length > 0 ? `${cmrFiles.length} bestand(en) geüpload` : "Nog niet verstuurd"}
+                   </div>
+                   {cmrFiles.length > 0 && (
+                     <div className="space-y-2">
+                       {cmrFiles.map((file) => (
+                         <div key={file.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                           <div className="flex items-center">
+                             <FileText className="mr-2 h-4 w-4" />
+                             <span className="text-sm">{file.name}</span>
+                           </div>
+                           <Button 
+                             variant="ghost" 
+                             size="sm"
+                             onClick={() => handleDeleteFile(file.id, file.filePath || '', file.name)}
+                           >
+                             <Trash2 className="h-4 w-4" />
+                           </Button>
+                         </div>
+                       ))}
+                     </div>
+                   )}
+                 </div>
+                 
+                 <div className="p-4 border rounded-md">
+                   <div className="flex justify-between items-center mb-2">
+                     <h4 className="font-medium">Pickup Document</h4>
+                     <TransportFileUploader 
+                       vehicleId={vehicle.id}
+                       category="pickup"
+                       onFileUploaded={handleFileUploaded}
+                     />
+                   </div>
+                   <div className="text-sm text-muted-foreground mb-2">
+                     {pickupFiles.length > 0 ? `${pickupFiles.length} bestand(en) geüpload` : "Niet gereed"}
+                   </div>
+                   {pickupFiles.length > 0 && (
+                     <div className="space-y-2 mb-2">
+                       {pickupFiles.map((file) => (
+                         <div key={file.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                           <div className="flex items-center">
+                             <FileText className="mr-2 h-4 w-4" />
+                             <span className="text-sm">{file.name}</span>
+                           </div>
+                           <Button 
+                             variant="ghost" 
+                             size="sm"
+                             onClick={() => handleDeleteFile(file.id, file.filePath || '', file.name)}
+                           >
+                             <Trash2 className="h-4 w-4" />
+                           </Button>
+                         </div>
+                       ))}
+                     </div>
+                   )}
+                   <Button 
+                     variant="outline" 
+                     size="sm"
+                     onClick={() => onSendPickupDocument(vehicle.id)}
+                   >
+                     <Mail className="mr-2 h-4 w-4" />
+                     Verstuur naar transporteur
+                   </Button>
                 </div>
                 
                 <div className="p-4 border rounded-md">
@@ -273,15 +333,28 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
                       onFileUploaded={handleFileUploaded}
                     />
                   </div>
-                  <div className="text-sm text-muted-foreground mb-2">
-                    Optioneel: alleen bij schade
-                  </div>
-                  {damageFiles.length > 0 && (
-                    <Button variant="outline" size="sm">
-                      <FileText className="mr-2 h-4 w-4" />
-                      Download schadeformulier
-                    </Button>
-                  )}
+                   <div className="text-sm text-muted-foreground mb-2">
+                     Optioneel: alleen bij schade
+                   </div>
+                   {damageFiles.length > 0 && (
+                     <div className="space-y-2">
+                       {damageFiles.map((file) => (
+                         <div key={file.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                           <div className="flex items-center">
+                             <FileText className="mr-2 h-4 w-4" />
+                             <span className="text-sm">{file.name}</span>
+                           </div>
+                           <Button 
+                             variant="ghost" 
+                             size="sm"
+                             onClick={() => handleDeleteFile(file.id, file.filePath || '', file.name)}
+                           >
+                             <Trash2 className="h-4 w-4" />
+                           </Button>
+                         </div>
+                       ))}
+                     </div>
+                   )}
                 </div>
               </TabsContent>
               
