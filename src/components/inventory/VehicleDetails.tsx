@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { X } from "lucide-react";
@@ -51,26 +51,40 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   files = [],
 }) => {
   const [editedVehicle, setEditedVehicle] = useState<Vehicle>(vehicle);
+  const initialVehicleRef = useRef<Vehicle>(vehicle);
+  const hasUserChangesRef = useRef(false);
   
   // Always use the hook to fetch files for this vehicle
   const { vehicleFiles: hookVehicleFiles } = useVehicleFiles(vehicle);
   const filesData = hookVehicleFiles;
   
   // Debounce the edited vehicle to trigger auto-save
-  const debouncedVehicle = useDebounce(editedVehicle, 1000); // 1 second delay
+  const debouncedVehicle = useDebounce(editedVehicle, 1500); // 1.5 second delay
   
-  // Auto-save when vehicle changes (except on initial load)
+  // Reset edited vehicle when vehicle prop changes (but keep user changes)
   useEffect(() => {
-    if (onAutoSave && debouncedVehicle && debouncedVehicle.id === vehicle.id) {
-      // Check if there are actual changes
-      const hasChanges = JSON.stringify(debouncedVehicle) !== JSON.stringify(vehicle);
+    if (!hasUserChangesRef.current) {
+      setEditedVehicle(vehicle);
+      initialVehicleRef.current = vehicle;
+    }
+  }, [vehicle.id]); // Only reset when vehicle ID changes
+  
+  // Auto-save when user makes changes (debounced)
+  useEffect(() => {
+    if (onAutoSave && hasUserChangesRef.current && debouncedVehicle.id === initialVehicleRef.current.id) {
+      // Check if there are actual changes from initial state
+      const hasChanges = JSON.stringify(debouncedVehicle) !== JSON.stringify(initialVehicleRef.current);
       if (hasChanges) {
+        console.log('Auto-saving vehicle changes...');
         onAutoSave(debouncedVehicle);
+        // Update initial reference to prevent re-saving the same changes
+        initialVehicleRef.current = debouncedVehicle;
       }
     }
-  }, [debouncedVehicle, onAutoSave, vehicle]);
+  }, [debouncedVehicle, onAutoSave]); // Removed 'vehicle' dependency to prevent infinite loops
   
   const handleChange = (field: keyof Vehicle, value: any) => {
+    hasUserChangesRef.current = true; // Mark that user has made changes
     setEditedVehicle(prev => ({
       ...prev,
       [field]: value
@@ -78,6 +92,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   };
   
   const handleDamageChange = (field: keyof Vehicle["damage"], value: any) => {
+    hasUserChangesRef.current = true; // Mark that user has made changes
     setEditedVehicle(prev => ({
       ...prev,
       damage: {
