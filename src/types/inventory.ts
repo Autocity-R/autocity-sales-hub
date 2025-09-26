@@ -155,4 +155,7 @@ export interface VehicleFile {
   size?: number;
   type?: string;
   isLargeFile?: boolean; // Added for performance optimization
+  filePath?: string; // Added for delete functionality
+  uploadedAt?: string;
+  uploadedBy?: string;
 }

@@ -1,6 +1,6 @@
 
 import React from "react";
-import { FileText } from "lucide-react";
+import { FileText, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileUploader } from "@/components/inventory/FileUploader";
@@ -9,11 +9,13 @@ import { VehicleFile, FileCategory } from "@/types/inventory";
 interface FilesTabProps {
   files: VehicleFile[];
   onFileUpload: (file: File, category: FileCategory) => void;
+  onFileDelete: (fileId: string, filePath: string) => void;
 }
 
 export const FilesTab: React.FC<FilesTabProps> = ({ 
   files, 
-  onFileUpload 
+  onFileUpload,
+  onFileDelete 
 }) => {
   return (
     <div className="grid grid-cols-1 gap-4">
@@ -43,7 +45,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                   <li key={file.id} className="flex items-center justify-between text-sm">
                     <div className="flex items-center">
                       <FileText className="h-4 w-4 mr-2" />
-                      <span className="truncate max-w-[150px]" title={file.name}>
+                      <span className="truncate max-w-[120px]" title={file.name}>
                         {file.name}
                       </span>
                       {file.isLargeFile && (
@@ -52,15 +54,25 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                         </Badge>
                       )}
                     </div>
-                    {file.isLargeFile ? (
-                      <Button size="sm" variant="ghost" disabled>
-                        Te groot
+                    <div className="flex items-center gap-1">
+                      {file.isLargeFile ? (
+                        <Button size="sm" variant="ghost" disabled>
+                          Te groot
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="ghost">
+                          <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
+                        </Button>
+                      )}
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={() => onFileDelete(file.id, file.filePath || '')}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
                       </Button>
-                    ) : (
-                      <Button size="sm" variant="ghost">
-                        <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
-                      </Button>
-                    )}
+                    </div>
                   </li>
                 ))}
               {files.filter(file => file.category === "damage").length > 10 && (
@@ -93,7 +105,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                   <li key={file.id} className="flex items-center justify-between text-sm">
                     <div className="flex items-center">
                       <FileText className="h-4 w-4 mr-2" />
-                      <span className="truncate max-w-[150px]" title={file.name}>
+                      <span className="truncate max-w-[120px]" title={file.name}>
                         {file.name}
                       </span>
                       {file.isLargeFile && (
@@ -102,15 +114,25 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                         </Badge>
                       )}
                     </div>
-                    {file.isLargeFile ? (
-                      <Button size="sm" variant="ghost" disabled>
-                        Te groot
+                    <div className="flex items-center gap-1">
+                      {file.isLargeFile ? (
+                        <Button size="sm" variant="ghost" disabled>
+                          Te groot
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="ghost">
+                          <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
+                        </Button>
+                      )}
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={() => onFileDelete(file.id, file.filePath || '')}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
                       </Button>
-                    ) : (
-                      <Button size="sm" variant="ghost">
-                        <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
-                      </Button>
-                    )}
+                    </div>
                   </li>
                 ))}
               {files.filter(file => file.category === "cmr").length > 10 && (
@@ -143,7 +165,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                   <li key={file.id} className="flex items-center justify-between text-sm">
                     <div className="flex items-center">
                       <FileText className="h-4 w-4 mr-2" />
-                      <span className="truncate max-w-[150px]" title={file.name}>
+                      <span className="truncate max-w-[120px]" title={file.name}>
                         {file.name}
                       </span>
                       {file.isLargeFile && (
@@ -152,15 +174,25 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                         </Badge>
                       )}
                     </div>
-                    {file.isLargeFile ? (
-                      <Button size="sm" variant="ghost" disabled>
-                        Te groot
+                    <div className="flex items-center gap-1">
+                      {file.isLargeFile ? (
+                        <Button size="sm" variant="ghost" disabled>
+                          Te groot
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="ghost">
+                          <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
+                        </Button>
+                      )}
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={() => onFileDelete(file.id, file.filePath || '')}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
                       </Button>
-                    ) : (
-                      <Button size="sm" variant="ghost">
-                        <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
-                      </Button>
-                    )}
+                    </div>
                   </li>
                 ))}
               {files.filter(file => file.category === "pickup").length > 10 && (

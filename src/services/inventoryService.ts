@@ -416,42 +416,40 @@ export const uploadVehiclePhoto = async (vehicleId: string, file: File, isMain: 
 };
 
 export const uploadVehicleFile = async (file: File, category: FileCategory, vehicleId: string): Promise<any> => {
+  console.log('Uploading vehicle file:', { fileName: file.name, category, vehicleId });
+  
   try {
-    console.log(`Uploading file for vehicle ${vehicleId}, category: ${category}`);
-    
-    if (isUseMockData) {
-      console.log('Mock data mode - file upload simulated');
-      return { id: `mock-file-${Date.now()}`, name: file.name, category };
-    }
+    const uploadedFile = await supabaseInventoryService.uploadFile(
+      'vehicle-documents',
+      `${vehicleId}/${category}/${Date.now()}-${file.name}`,
+      file
+    );
 
-    // Use Supabase Storage and database
-    const fileExtension = file.name.split('.').pop();
-    const fileName = `${vehicleId}/${category}/${Date.now()}-${file.name}`;
-    
-    // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('vehicle-documents')
-      .upload(fileName, file);
-    
-    if (uploadError) {
-      console.error('Error uploading file to storage:', uploadError);
-      throw new Error(`Upload failed: ${uploadError.message}`);
-    }
-    
-    // Save metadata to database
-    const fileRecord = await supabaseInventoryService.createVehicleFile({
+    const vehicleFile = await supabaseInventoryService.createVehicleFile({
       vehicle_id: vehicleId,
       file_name: file.name,
-      file_path: fileName,
+      file_path: uploadedFile.path,
       file_size: file.size,
       file_type: file.type,
       category: category
     });
-    
-    console.log('File uploaded successfully:', fileRecord);
-    return fileRecord;
+
+    console.log('Vehicle file uploaded successfully:', vehicleFile);
+    return vehicleFile;
   } catch (error) {
     console.error('Error in uploadVehicleFile:', error);
+    throw error;
+  }
+};
+
+export const deleteVehicleFile = async (fileId: string, filePath: string): Promise<void> => {
+  console.log('Deleting vehicle file:', { fileId, filePath });
+  
+  try {
+    await supabaseInventoryService.deleteVehicleFile(fileId, filePath);
+    console.log('Vehicle file deleted successfully');
+  } catch (error) {
+    console.error('Error in deleteVehicleFile:', error);
     throw error;
   }
 };

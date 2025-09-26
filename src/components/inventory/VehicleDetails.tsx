@@ -31,6 +31,7 @@ interface VehicleDetailsProps {
   onRemovePhoto: (photoUrl: string) => void;
   onSetMainPhoto: (photoUrl: string) => void;
   onFileUpload?: (file: File, category: FileCategory) => void;
+  onFileDelete?: (fileId: string, filePath: string) => void;
   files?: VehicleFile[];
 }
 
@@ -43,6 +44,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   onRemovePhoto,
   onSetMainPhoto,
   onFileUpload,
+  onFileDelete,
   files = [],
 }) => {
   const [editedVehicle, setEditedVehicle] = useState<Vehicle>(vehicle);
@@ -136,6 +138,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                   <FilesTab 
                     files={filesData}
                     onFileUpload={onFileUpload || (() => {})}
+                    onFileDelete={onFileDelete || (() => {})}
                   />
                 </TabsContent>
                 

@@ -13,7 +13,7 @@ import { VehicleTable } from "@/components/inventory/VehicleTable";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
 import { VehicleForm } from "@/components/inventory/VehicleForm";
 import { Vehicle, FileCategory } from "@/types/inventory";
-import { fetchVehicles, fetchB2CVehicles, fetchB2BVehicles, getVehicleStats, updateVehicleStatus, markVehicleAsArrived, setUseMockData, createVehicle, updateVehicle, uploadVehicleFile } from "@/services/inventoryService";
+import { fetchVehicles, fetchB2CVehicles, fetchB2BVehicles, getVehicleStats, updateVehicleStatus, markVehicleAsArrived, setUseMockData, createVehicle, updateVehicle, uploadVehicleFile, deleteVehicleFile } from "@/services/inventoryService";
 import { DataSourceIndicator } from "@/components/common/DataSourceIndicator";
 import { useToast } from "@/hooks/use-toast";
 
@@ -230,10 +230,37 @@ const Inventory = () => {
     }
   });
 
+  // Mutation for file deletion
+  const deleteFileMutation = useMutation({
+    mutationFn: ({ fileId, filePath }: { fileId: string; filePath: string }) => 
+      deleteVehicleFile(fileId, filePath),
+    onSuccess: () => {
+      if (selectedVehicle) {
+        queryClient.invalidateQueries({ queryKey: ["vehicleFiles", selectedVehicle.id] });
+      }
+      toast({
+        title: "Document verwijderd",
+        description: "Het document is succesvol verwijderd",
+      });
+    },
+    onError: (error) => {
+      console.error('Error deleting file:', error);
+      toast({
+        title: "Verwijder fout",
+        description: "Er is een fout opgetreden bij het verwijderen van het document",
+        variant: "destructive"
+      });
+    }
+  });
+
   const handleFileUpload = (file: File, category: FileCategory) => {
     if (selectedVehicle) {
       uploadFileMutation.mutate({ file, category, vehicleId: selectedVehicle.id });
     }
+  };
+
+  const handleFileDelete = (fileId: string, filePath: string) => {
+    deleteFileMutation.mutate({ fileId, filePath });
   };
 
   const handleUpdateVehicle = (vehicle: Vehicle) => {
@@ -261,6 +288,7 @@ const Inventory = () => {
             console.log('Set main photo:', photoUrl);
           }}
           onFileUpload={handleFileUpload}
+          onFileDelete={handleFileDelete}
         />
       </DashboardLayout>
     );

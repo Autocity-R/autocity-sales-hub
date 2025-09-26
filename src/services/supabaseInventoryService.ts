@@ -438,56 +438,106 @@ export class SupabaseInventoryService {
    * Get vehicle files from database with signed URLs (with pagination and limits)
    */
   async getVehicleFiles(vehicleId: string, limit: number = 50) {
+    console.log('Fetching vehicle files for vehicle:', vehicleId);
+    
     try {
-      const { data, error } = await supabase
+      const { data: files, error } = await supabase
         .from('vehicle_files')
         .select('*')
         .eq('vehicle_id', vehicleId)
         .order('created_at', { ascending: false })
-        .limit(limit); // Limit number of files to prevent overflow
+        .limit(limit);
 
       if (error) {
-        console.error('Failed to fetch vehicle files:', error);
+        console.error('Error fetching vehicle files:', error);
         throw error;
       }
 
-      // Only get signed URLs for files that are not too large (< 50MB)
-      const filesWithUrls = await Promise.all(
-        data.map(async (file) => {
-          const base = {
-            id: file.id as string,
-            name: file.file_name as string,
-            category: file.category as string,
-            vehicleId: file.vehicle_id as string,
-            createdAt: file.created_at as string,
-            size: file.file_size as number | undefined,
-            type: file.file_type as string | undefined,
-          };
+      if (!files || files.length === 0) {
+        console.log('No files found for vehicle:', vehicleId);
+        return [];
+      }
 
-          // Skip very large files for performance
-          if (file.file_size && file.file_size > 50 * 1024 * 1024) {
+      // Generate signed URLs for file access and transform to VehicleFile format
+      const filesWithUrls = await Promise.all(
+        files.map(async (file) => {
+          try {
+            const { data: signedUrl } = await supabase.storage
+              .from('vehicle-documents')
+              .createSignedUrl(file.file_path, 3600); // 1 hour expiry
+
+            const isLargeFile = file.file_size && file.file_size > 10 * 1024 * 1024; // > 10MB
+
             return {
-              ...base,
+              id: file.id,
+              vehicleId: file.vehicle_id,
+              name: file.file_name,
+              url: signedUrl?.signedUrl || '',
+              size: file.file_size || 0,
+              type: file.file_type || '',
+              category: file.category as any,
+              uploadedAt: file.created_at,
+              uploadedBy: file.uploaded_by,
+              isLargeFile: isLargeFile || false,
+              filePath: file.file_path,
+              createdAt: file.created_at
+            };
+          } catch (urlError) {
+            console.error('Error generating signed URL for file:', file.file_name, urlError);
+            return {
+              id: file.id,
+              vehicleId: file.vehicle_id,
+              name: file.file_name,
               url: '',
-              isLargeFile: true,
+              size: file.file_size || 0,
+              type: file.file_type || '',
+              category: file.category as any,
+              uploadedAt: file.created_at,
+              uploadedBy: file.uploaded_by,
+              isLargeFile: file.file_size ? file.file_size > 10 * 1024 * 1024 : false,
+              filePath: file.file_path,
+              createdAt: file.created_at
             };
           }
-
-          const { data: urlData } = await supabase.storage
-            .from('vehicle-documents')
-            .createSignedUrl(file.file_path, 3600); // 1 hour expiry
-          
-          return {
-            ...base,
-            url: urlData?.signedUrl || '',
-            isLargeFile: false,
-          };
         })
       );
 
+      console.log(`Successfully fetched ${filesWithUrls.length} files for vehicle:`, vehicleId);
       return filesWithUrls;
     } catch (error) {
-      console.error('Error fetching vehicle files:', error);
+      console.error('Error in getVehicleFiles:', error);
+      throw error;
+    }
+  }
+
+  async deleteVehicleFile(fileId: string, filePath: string): Promise<void> {
+    console.log('Deleting vehicle file:', { fileId, filePath });
+    
+    try {
+      // Delete file from storage
+      const { error: storageError } = await supabase.storage
+        .from('vehicle-documents')
+        .remove([filePath]);
+
+      if (storageError) {
+        console.error('Error deleting file from storage:', storageError);
+        throw storageError;
+      }
+
+      // Delete record from database
+      const { error: dbError } = await supabase
+        .from('vehicle_files')
+        .delete()
+        .eq('id', fileId);
+
+      if (dbError) {
+        console.error('Error deleting file record from database:', dbError);
+        throw dbError;
+      }
+
+      console.log('Vehicle file deleted successfully');
+    } catch (error) {
+      console.error('Error in deleteVehicleFile:', error);
       throw error;
     }
   }
