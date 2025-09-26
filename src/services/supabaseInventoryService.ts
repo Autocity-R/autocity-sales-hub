@@ -401,11 +401,24 @@ export class SupabaseInventoryService {
     file_size: number;
     file_type: string;
     category: string;
+    uploaded_by?: string;
   }) {
     try {
+      // Ensure uploaded_by is set to current user
+      let uploadedBy = fileData.uploaded_by;
+      if (!uploadedBy) {
+        const { data: userData } = await supabase.auth.getUser();
+        uploadedBy = userData.user?.id || undefined;
+      }
+      if (!uploadedBy) {
+        throw new Error('Geen ingelogde gebruiker gevonden voor upload');
+      }
+
+      const insertData = { ...fileData, uploaded_by: uploadedBy };
+
       const { data, error } = await supabase
         .from('vehicle_files')
-        .insert(fileData)
+        .insert(insertData)
         .select()
         .single();
 
@@ -441,13 +454,22 @@ export class SupabaseInventoryService {
       // Only get signed URLs for files that are not too large (< 50MB)
       const filesWithUrls = await Promise.all(
         data.map(async (file) => {
+          const base = {
+            id: file.id as string,
+            name: file.file_name as string,
+            category: file.category as string,
+            vehicleId: file.vehicle_id as string,
+            createdAt: file.created_at as string,
+            size: file.file_size as number | undefined,
+            type: file.file_type as string | undefined,
+          };
+
           // Skip very large files for performance
           if (file.file_size && file.file_size > 50 * 1024 * 1024) {
             return {
-              ...file,
-              url: '', // Don't generate URL for very large files
-              name: file.file_name,
-              isLargeFile: true
+              ...base,
+              url: '',
+              isLargeFile: true,
             };
           }
 
@@ -456,10 +478,9 @@ export class SupabaseInventoryService {
             .createSignedUrl(file.file_path, 3600); // 1 hour expiry
           
           return {
-            ...file,
+            ...base,
             url: urlData?.signedUrl || '',
-            name: file.file_name,
-            isLargeFile: false
+            isLargeFile: false,
           };
         })
       );
