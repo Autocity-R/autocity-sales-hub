@@ -54,7 +54,8 @@ interface VehicleB2BTableProps {
   handleSendEmail: (type: string, vehicleId: string) => void;
   handleUpdateSellingPrice?: (vehicleId: string, price: number) => void;
   handleUpdatePaymentStatus?: (vehicleId: string, status: PaymentStatus) => void;
-  onMarkAsDelivered?: (vehicleId: string) => void; // New prop for marking as delivered
+  onMarkAsDelivered?: (vehicleId: string) => void;
+  onOpenContractConfig?: (vehicle: Vehicle, type: "b2b" | "b2c") => void;
   isLoading: boolean;
   error: unknown;
   onSort?: (field: string) => void;
@@ -103,6 +104,7 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
   handleUpdateSellingPrice,
   handleUpdatePaymentStatus,
   onMarkAsDelivered,
+  onOpenContractConfig,
   isLoading,
   error,
   onSort,
@@ -374,7 +376,7 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => {
                         e.stopPropagation();
-                        handleSendEmail("contract_b2b", vehicle.id);
+                        onOpenContractConfig && onOpenContractConfig(vehicle, "b2b");
                       }}>
                         <Mail className="h-4 w-4 mr-2" />
                         Koopcontract sturen
