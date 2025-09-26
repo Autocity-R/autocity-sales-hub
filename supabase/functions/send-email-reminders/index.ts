@@ -1,8 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { Resend } from "npm:resend@2.0.0";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,15 +61,12 @@ const handler = async (req: Request): Promise<Response> => {
         // Generate email content based on reminder type
         const emailContent = generateEmailContent(reminder, vehicle);
         
-        // Send email
-        const emailResponse = await resend.emails.send({
-          from: "Auto City <noreply@autocity.nl>",
-          to: [reminder.recipient_email],
+        // For now, just log what would be sent (email sending will be implemented later)
+        console.log(`Would send email for vehicle ${reminder.vehicle_id}:`, {
+          to: reminder.recipient_email,
           subject: emailContent.subject,
-          html: emailContent.html,
+          reminder_type: reminder.reminder_type
         });
-
-        console.log(`Email sent for vehicle ${reminder.vehicle_id}:`, emailResponse);
 
         // Log the sent reminder
         await supabase.from('email_reminders').insert({
@@ -105,7 +99,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         failedReminders.push({
           vehicle_id: reminder.vehicle_id,
-          error: emailError.message
+          error: emailError instanceof Error ? emailError.message : 'Unknown error'
         });
       }
     }
