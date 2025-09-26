@@ -1405,6 +1405,7 @@ export type Database = {
           color: string | null
           created_at: string
           customer_id: string | null
+          details: Json
           external_sheet_reference: string | null
           id: string
           import_status: string | null
@@ -1413,6 +1414,7 @@ export type Database = {
           location: string | null
           mileage: number | null
           model: string
+          notes: string | null
           selling_price: number | null
           status: string
           updated_at: string
@@ -1424,6 +1426,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           customer_id?: string | null
+          details?: Json
           external_sheet_reference?: string | null
           id?: string
           import_status?: string | null
@@ -1432,6 +1435,7 @@ export type Database = {
           location?: string | null
           mileage?: number | null
           model: string
+          notes?: string | null
           selling_price?: number | null
           status?: string
           updated_at?: string
@@ -1443,6 +1447,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           customer_id?: string | null
+          details?: Json
           external_sheet_reference?: string | null
           id?: string
           import_status?: string | null
@@ -1451,6 +1456,7 @@ export type Database = {
           location?: string | null
           mileage?: number | null
           model?: string
+          notes?: string | null
           selling_price?: number | null
           status?: string
           updated_at?: string

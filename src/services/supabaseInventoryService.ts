@@ -168,6 +168,27 @@ export class SupabaseInventoryService {
    * Update an existing vehicle
    */
   async updateVehicle(vehicle: Vehicle): Promise<Vehicle> {
+    console.log('Updating vehicle:', vehicle.id);
+    
+    // Prepare details object with all extra fields (convert dates to ISO strings)
+    const details = {
+      notes: vehicle.notes || null,
+      workshopStatus: vehicle.workshopStatus || 'niet_gestart',
+      paintStatus: vehicle.paintStatus || 'niet_gestart', 
+      bpmRequested: vehicle.bpmRequested || false,
+      bpmStarted: vehicle.bpmStarted || false,
+      damage: vehicle.damage || { description: '', status: 'geen' },
+      cmrSent: vehicle.cmrSent || false,
+      cmrDate: vehicle.cmrDate ? vehicle.cmrDate.toISOString() : null,
+      papersReceived: vehicle.papersReceived || false,
+      papersDate: vehicle.papersDate ? vehicle.papersDate.toISOString() : null,
+      showroomOnline: vehicle.showroomOnline || false,
+      paymentStatus: vehicle.paymentStatus || 'niet_betaald',
+      salespersonId: vehicle.salespersonId || null,
+      mainPhotoUrl: vehicle.mainPhotoUrl || null,
+      photos: vehicle.photos || []
+    };
+    
     try {
       const { data, error } = await supabase
         .from('vehicles')
@@ -183,6 +204,9 @@ export class SupabaseInventoryService {
           status: vehicle.salesStatus,
           location: vehicle.location,
           customer_id: vehicle.customerId,
+          import_status: vehicle.importStatus,
+          notes: vehicle.notes,
+          details: details as any,
           updated_at: new Date().toISOString()
         })
         .eq('id', vehicle.id)
@@ -194,6 +218,7 @@ export class SupabaseInventoryService {
         throw error;
       }
 
+      console.log('Vehicle updated successfully:', data);
       return this.mapSupabaseToVehicle(data);
     } catch (error) {
       console.error('Error updating vehicle:', error);
@@ -280,10 +305,31 @@ export class SupabaseInventoryService {
    * Create a new vehicle
    */
   async createVehicle(vehicleData: Partial<Vehicle>): Promise<Vehicle> {
+    console.log('Creating vehicle:', vehicleData);
+    
+    // Prepare details object with defaults (convert dates to ISO strings)
+    const details = {
+      notes: vehicleData.notes || null,
+      workshopStatus: vehicleData.workshopStatus || 'niet_gestart',
+      paintStatus: vehicleData.paintStatus || 'niet_gestart', 
+      bpmRequested: vehicleData.bpmRequested || false,
+      bpmStarted: vehicleData.bpmStarted || false,
+      damage: vehicleData.damage || { description: '', status: 'geen' },
+      cmrSent: vehicleData.cmrSent || false,
+      cmrDate: vehicleData.cmrDate ? vehicleData.cmrDate.toISOString() : null,
+      papersReceived: vehicleData.papersReceived || false,
+      papersDate: vehicleData.papersDate ? vehicleData.papersDate.toISOString() : null,
+      showroomOnline: vehicleData.showroomOnline || false,
+      paymentStatus: vehicleData.paymentStatus || 'niet_betaald',
+      salespersonId: vehicleData.salespersonId || null,
+      mainPhotoUrl: vehicleData.mainPhotoUrl || null,
+      photos: vehicleData.photos || []
+    };
+    
     try {
       const { data, error } = await supabase
         .from('vehicles')
-        .insert({
+        .insert([{
           brand: vehicleData.brand || '',
           model: vehicleData.model || '',
           year: vehicleData.year,
@@ -294,8 +340,11 @@ export class SupabaseInventoryService {
           selling_price: vehicleData.sellingPrice,
           status: vehicleData.salesStatus || 'voorraad',
           location: vehicleData.location || 'showroom',
-          customer_id: vehicleData.customerId
-        })
+          customer_id: vehicleData.customerId,
+          import_status: vehicleData.importStatus || 'niet_gestart',
+          notes: vehicleData.notes,
+          details: details as any
+        }])
         .select()
         .single();
 
@@ -315,6 +364,9 @@ export class SupabaseInventoryService {
    * Map Supabase vehicle data to Vehicle interface
    */
   private mapSupabaseToVehicle(supabaseVehicle: any): Vehicle {
+    // Extract details with fallbacks
+    const details = supabaseVehicle.details || {};
+    
     return {
       id: supabaseVehicle.id,
       brand: supabaseVehicle.brand,
@@ -324,27 +376,35 @@ export class SupabaseInventoryService {
       licenseNumber: supabaseVehicle.license_number,
       vin: supabaseVehicle.vin,
       mileage: supabaseVehicle.mileage,
-      purchasePrice: 0, // Not in current schema
       sellingPrice: supabaseVehicle.selling_price,
       location: supabaseVehicle.location || 'showroom',
       salesStatus: supabaseVehicle.status as any,
-      importStatus: 'niet_gestart' as any, // Default value
-      arrived: supabaseVehicle.location !== 'onderweg', // True if not in transport
-      papersReceived: false, // Default value
-      showroomOnline: supabaseVehicle.status === 'voorraad' && supabaseVehicle.location === 'showroom', // Online if in stock and showroom
-      workshopStatus: 'wachten' as any, // Default value
-      damage: { description: '', status: 'geen' }, // Default value
-      bpmRequested: false, // Default value
-      bpmStarted: false, // Default value
-      cmrSent: false, // Default value
-      cmrDate: null, // Default value
-      papersDate: null, // Default value
-      notes: '', // Default value
-      paymentStatus: 'niet_betaald' as any, // Default value
-      mainPhotoUrl: undefined,
-      photos: [], // Default value
+      customerId: supabaseVehicle.customer_id,
       createdAt: supabaseVehicle.created_at,
-      customerId: supabaseVehicle.customer_id
+      
+      // Map import_status and notes from top-level columns
+      importStatus: supabaseVehicle.import_status || 'niet_gestart',
+      notes: supabaseVehicle.notes || details.notes || '',
+      
+      // Map details fields with fallbacks
+      purchasePrice: details.purchasePrice || 0,
+      workshopStatus: details.workshopStatus || 'niet_gestart',
+      paintStatus: details.paintStatus || 'niet_gestart',
+      damage: details.damage || { description: '', status: 'geen' },
+      bpmRequested: details.bpmRequested || false,
+      bpmStarted: details.bpmStarted || false,
+      cmrSent: details.cmrSent || false,
+      cmrDate: details.cmrDate ? new Date(details.cmrDate) : null,
+      papersReceived: details.papersReceived || false,
+      papersDate: details.papersDate ? new Date(details.papersDate) : null,
+      showroomOnline: details.showroomOnline || false,
+      paymentStatus: details.paymentStatus || 'niet_betaald',
+      salespersonId: details.salespersonId || null,
+      mainPhotoUrl: details.mainPhotoUrl || null,
+      photos: details.photos || [],
+      
+      // Derived fields
+      arrived: supabaseVehicle.location !== 'onderweg'
     };
   }
 

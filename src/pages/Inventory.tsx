@@ -186,7 +186,7 @@ const Inventory = () => {
     queryClient.invalidateQueries({ queryKey: ['vehicles'] });
   };
 
-  // Mutation for updating vehicle
+  // Mutation for updating vehicle (manual save)
   const updateVehicleMutation = useMutation({
     mutationFn: updateVehicle,
     onSuccess: () => {
@@ -202,6 +202,28 @@ const Inventory = () => {
       toast({
         title: "Fout",
         description: "Er is een fout opgetreden bij het opslaan",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Mutation for auto-saving vehicle (no dialog close)
+  const autoSaveVehicleMutation = useMutation({
+    mutationFn: updateVehicle,
+    onSuccess: (updatedVehicle) => {
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      // Update the selected vehicle with saved data, don't close dialog
+      setSelectedVehicle(updatedVehicle);
+      toast({
+        title: "Automatisch opgeslagen",
+        description: "Wijzigingen zijn automatisch opgeslagen",
+      });
+    },
+    onError: (error) => {
+      console.error('Error auto-saving vehicle:', error);
+      toast({
+        title: "Auto-save fout",
+        description: "Fout bij automatisch opslaan",
         variant: "destructive"
       });
     }
@@ -268,7 +290,7 @@ const Inventory = () => {
   };
 
   const handleAutoSave = (vehicle: Vehicle) => {
-    updateVehicleMutation.mutate(vehicle);
+    autoSaveVehicleMutation.mutate(vehicle);
   };
 
   const isLoading = isLoadingAll || isLoadingB2C || isLoadingB2B;
