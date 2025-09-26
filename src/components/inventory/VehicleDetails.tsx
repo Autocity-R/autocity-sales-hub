@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { X } from "lucide-react";
@@ -21,11 +21,13 @@ import { PhotosTab } from "@/components/inventory/detail-tabs/PhotosTab";
 import { FilesTab } from "@/components/inventory/detail-tabs/FilesTab";
 import { ContactsTab } from "@/components/inventory/detail-tabs/ContactsTab";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface VehicleDetailsProps {
   vehicle: Vehicle;
   onClose: () => void;
   onUpdate: (vehicle: Vehicle) => void;
+  onAutoSave?: (vehicle: Vehicle) => void;
   onSendEmail: (type: string, vehicleId: string) => void;
   onPhotoUpload: (file: File, isMain: boolean) => void;
   onRemovePhoto: (photoUrl: string) => void;
@@ -39,6 +41,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   vehicle,
   onClose,
   onUpdate,
+  onAutoSave,
   onSendEmail,
   onPhotoUpload,
   onRemovePhoto,
@@ -52,6 +55,20 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   // Always use the hook to fetch files for this vehicle
   const { vehicleFiles: hookVehicleFiles } = useVehicleFiles(vehicle);
   const filesData = hookVehicleFiles;
+  
+  // Debounce the edited vehicle to trigger auto-save
+  const debouncedVehicle = useDebounce(editedVehicle, 1000); // 1 second delay
+  
+  // Auto-save when vehicle changes (except on initial load)
+  useEffect(() => {
+    if (onAutoSave && debouncedVehicle && debouncedVehicle.id === vehicle.id) {
+      // Check if there are actual changes
+      const hasChanges = JSON.stringify(debouncedVehicle) !== JSON.stringify(vehicle);
+      if (hasChanges) {
+        onAutoSave(debouncedVehicle);
+      }
+    }
+  }, [debouncedVehicle, onAutoSave, vehicle]);
   
   const handleChange = (field: keyof Vehicle, value: any) => {
     setEditedVehicle(prev => ({

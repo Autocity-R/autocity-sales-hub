@@ -267,6 +267,10 @@ const Inventory = () => {
     updateVehicleMutation.mutate(vehicle);
   };
 
+  const handleAutoSave = (vehicle: Vehicle) => {
+    updateVehicleMutation.mutate(vehicle);
+  };
+
   const isLoading = isLoadingAll || isLoadingB2C || isLoadingB2B;
   const hasError = errorAll || errorB2C || errorB2B;
 
@@ -277,6 +281,7 @@ const Inventory = () => {
           vehicle={selectedVehicle} 
           onClose={() => setSelectedVehicle(null)}
           onUpdate={handleUpdateVehicle}
+          onAutoSave={handleAutoSave}
           onSendEmail={handleSendEmail}
           onPhotoUpload={(file: File, isMain: boolean) => {
             console.log('Photo upload:', file, isMain);
