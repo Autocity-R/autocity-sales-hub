@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Vehicle, ImportStatus, FileCategory } from "@/types/inventory";
 import { TransportFileUploader } from "./TransportFileUploader";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
+import { useQueryClient } from "@tanstack/react-query";
 import { VehicleFile } from "@/types/inventory";
 
 interface TransportDetailsProps {
@@ -45,6 +46,7 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
   const [updatedVehicle, setUpdatedVehicle] = useState<Vehicle>(vehicle);
   const { vehicleFiles = [] } = useVehicleFiles(vehicle);
   const [notes, setNotes] = useState(vehicle.notes || "");
+  const queryClient = useQueryClient();
 
   const handleImportStatusChange = (status: ImportStatus) => {
     setUpdatedVehicle({
@@ -70,7 +72,8 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
   };
 
   const handleFileUploaded = (fileData: VehicleFile) => {
-    // In a real app, refresh the files list or add the new file to the state
+    // Invalidate the vehicle files query to refresh the list
+    queryClient.invalidateQueries({ queryKey: ["vehicleFiles", vehicle.id] });
     console.log("File uploaded:", fileData);
   };
 
