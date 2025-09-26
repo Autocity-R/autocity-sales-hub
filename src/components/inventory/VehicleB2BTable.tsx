@@ -355,6 +355,21 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                   {renderPaymentStatusBadge(vehicle.paymentStatus || "niet_betaald")}
                 </TableCell>
                 <TableCell>
+                  <div className="flex items-center gap-2">
+                    {vehicle.salesStatus === "verkocht_b2b" && onOpenContractConfig && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenContractConfig(vehicle, "b2b");
+                        }}
+                        className="text-xs"
+                      >
+                        <Mail className="h-3 w-3 mr-1" />
+                        Contract
+                      </Button>
+                    )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                       <Button 
@@ -432,6 +447,7 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
