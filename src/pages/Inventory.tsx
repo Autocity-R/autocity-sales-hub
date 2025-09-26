@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,8 @@ import { Plus, Search, Filter, Car, Package, TrendingUp, AlertCircle } from "luc
 import { VehicleTable } from "@/components/inventory/VehicleTable";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
 import { VehicleForm } from "@/components/inventory/VehicleForm";
-import { Vehicle } from "@/types/inventory";
-import { fetchVehicles, fetchB2CVehicles, fetchB2BVehicles, getVehicleStats, updateVehicleStatus, markVehicleAsArrived, setUseMockData, createVehicle } from "@/services/inventoryService";
+import { Vehicle, FileCategory } from "@/types/inventory";
+import { fetchVehicles, fetchB2CVehicles, fetchB2BVehicles, getVehicleStats, updateVehicleStatus, markVehicleAsArrived, setUseMockData, createVehicle, updateVehicle, uploadVehicleFile } from "@/services/inventoryService";
 import { DataSourceIndicator } from "@/components/common/DataSourceIndicator";
 import { useToast } from "@/hooks/use-toast";
 
@@ -186,6 +186,60 @@ const Inventory = () => {
     queryClient.invalidateQueries({ queryKey: ['vehicles'] });
   };
 
+  // Mutation for updating vehicle
+  const updateVehicleMutation = useMutation({
+    mutationFn: updateVehicle,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      setSelectedVehicle(null);
+      toast({
+        title: "Voertuig opgeslagen",
+        description: "De voertuiggegevens zijn succesvol bijgewerkt",
+      });
+    },
+    onError: (error) => {
+      console.error('Error updating vehicle:', error);
+      toast({
+        title: "Fout",
+        description: "Er is een fout opgetreden bij het opslaan",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Mutation for file upload
+  const uploadFileMutation = useMutation({
+    mutationFn: ({ file, category, vehicleId }: { file: File; category: FileCategory; vehicleId: string }) => 
+      uploadVehicleFile(file, category, vehicleId),
+    onSuccess: () => {
+      if (selectedVehicle) {
+        queryClient.invalidateQueries({ queryKey: ["vehicleFiles", selectedVehicle.id] });
+      }
+      toast({
+        title: "Document geüpload",
+        description: "Het document is succesvol toegevoegd aan het voertuig",
+      });
+    },
+    onError: (error) => {
+      console.error('Error uploading file:', error);
+      toast({
+        title: "Upload fout",
+        description: "Er is een fout opgetreden bij het uploaden van het document",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const handleFileUpload = (file: File, category: FileCategory) => {
+    if (selectedVehicle) {
+      uploadFileMutation.mutate({ file, category, vehicleId: selectedVehicle.id });
+    }
+  };
+
+  const handleUpdateVehicle = (vehicle: Vehicle) => {
+    updateVehicleMutation.mutate(vehicle);
+  };
+
   const isLoading = isLoadingAll || isLoadingB2C || isLoadingB2B;
   const hasError = errorAll || errorB2C || errorB2B;
 
@@ -195,10 +249,7 @@ const Inventory = () => {
         <VehicleDetails 
           vehicle={selectedVehicle} 
           onClose={() => setSelectedVehicle(null)}
-          onUpdate={(updatedVehicle) => {
-            setSelectedVehicle(updatedVehicle);
-            queryClient.invalidateQueries({ queryKey: ['vehicles'] });
-          }}
+          onUpdate={handleUpdateVehicle}
           onSendEmail={handleSendEmail}
           onPhotoUpload={(file: File, isMain: boolean) => {
             console.log('Photo upload:', file, isMain);
@@ -209,6 +260,7 @@ const Inventory = () => {
           onSetMainPhoto={(photoUrl: string) => {
             console.log('Set main photo:', photoUrl);
           }}
+          onFileUpload={handleFileUpload}
         />
       </DashboardLayout>
     );

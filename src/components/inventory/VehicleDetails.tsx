@@ -47,9 +47,9 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
 }) => {
   const [editedVehicle, setEditedVehicle] = useState<Vehicle>(vehicle);
   
-  // If files prop is empty, try to use the hook as a fallback
+  // Always use the hook to fetch files for this vehicle
   const { vehicleFiles: hookVehicleFiles } = useVehicleFiles(vehicle);
-  const filesData = files && files.length > 0 ? files : hookVehicleFiles;
+  const filesData = hookVehicleFiles;
   
   const handleChange = (field: keyof Vehicle, value: any) => {
     setEditedVehicle(prev => ({
