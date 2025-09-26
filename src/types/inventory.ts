@@ -154,4 +154,5 @@ export interface VehicleFile {
   createdAt: string;
   size?: number;
   type?: string;
+  isLargeFile?: boolean; // Added for performance optimization
 }

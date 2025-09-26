@@ -35,20 +35,39 @@ export const FilesTab: React.FC<FilesTabProps> = ({
             <p className="text-sm text-muted-foreground">
               Upload schaderapport documenten voor intern gebruik.
             </p>
-            <ul className="space-y-2">
+            <ul className="space-y-2 max-h-48 overflow-y-auto">
               {files
                 .filter(file => file.category === "damage")
+                .slice(0, 10) // Limit to 10 files for performance
                 .map(file => (
                   <li key={file.id} className="flex items-center justify-between text-sm">
                     <div className="flex items-center">
                       <FileText className="h-4 w-4 mr-2" />
-                      <span className="truncate max-w-[150px]">{file.name}</span>
+                      <span className="truncate max-w-[150px]" title={file.name}>
+                        {file.name}
+                      </span>
+                      {file.isLargeFile && (
+                        <Badge variant="destructive" className="ml-2 text-xs">
+                          Groot bestand
+                        </Badge>
+                      )}
                     </div>
-                    <Button size="sm" variant="ghost">
-                      <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
-                    </Button>
+                    {file.isLargeFile ? (
+                      <Button size="sm" variant="ghost" disabled>
+                        Te groot
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="ghost">
+                        <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
+                      </Button>
+                    )}
                   </li>
                 ))}
+              {files.filter(file => file.category === "damage").length > 10 && (
+                <li className="text-sm text-muted-foreground text-center">
+                  ... en {files.filter(file => file.category === "damage").length - 10} meer
+                </li>
+              )}
             </ul>
           </div>
           
@@ -66,20 +85,39 @@ export const FilesTab: React.FC<FilesTabProps> = ({
             <p className="text-sm text-muted-foreground">
               Upload CMR documenten voor verzending naar leverancier.
             </p>
-            <ul className="space-y-2">
+            <ul className="space-y-2 max-h-48 overflow-y-auto">
               {files
                 .filter(file => file.category === "cmr")
+                .slice(0, 10)
                 .map(file => (
                   <li key={file.id} className="flex items-center justify-between text-sm">
                     <div className="flex items-center">
                       <FileText className="h-4 w-4 mr-2" />
-                      <span className="truncate max-w-[150px]">{file.name}</span>
+                      <span className="truncate max-w-[150px]" title={file.name}>
+                        {file.name}
+                      </span>
+                      {file.isLargeFile && (
+                        <Badge variant="destructive" className="ml-2 text-xs">
+                          Groot bestand
+                        </Badge>
+                      )}
                     </div>
-                    <Button size="sm" variant="ghost">
-                      <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
-                    </Button>
+                    {file.isLargeFile ? (
+                      <Button size="sm" variant="ghost" disabled>
+                        Te groot
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="ghost">
+                        <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
+                      </Button>
+                    )}
                   </li>
                 ))}
+              {files.filter(file => file.category === "cmr").length > 10 && (
+                <li className="text-sm text-muted-foreground text-center">
+                  ... en {files.filter(file => file.category === "cmr").length - 10} meer
+                </li>
+              )}
             </ul>
           </div>
           
@@ -97,20 +135,39 @@ export const FilesTab: React.FC<FilesTabProps> = ({
             <p className="text-sm text-muted-foreground">
               Upload pickup documenten voor verzending naar transporteur.
             </p>
-            <ul className="space-y-2">
+            <ul className="space-y-2 max-h-48 overflow-y-auto">
               {files
                 .filter(file => file.category === "pickup")
+                .slice(0, 10)
                 .map(file => (
                   <li key={file.id} className="flex items-center justify-between text-sm">
                     <div className="flex items-center">
                       <FileText className="h-4 w-4 mr-2" />
-                      <span className="truncate max-w-[150px]">{file.name}</span>
+                      <span className="truncate max-w-[150px]" title={file.name}>
+                        {file.name}
+                      </span>
+                      {file.isLargeFile && (
+                        <Badge variant="destructive" className="ml-2 text-xs">
+                          Groot bestand
+                        </Badge>
+                      )}
                     </div>
-                    <Button size="sm" variant="ghost">
-                      <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
-                    </Button>
+                    {file.isLargeFile ? (
+                      <Button size="sm" variant="ghost" disabled>
+                        Te groot
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="ghost">
+                        <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
+                      </Button>
+                    )}
                   </li>
                 ))}
+              {files.filter(file => file.category === "pickup").length > 10 && (
+                <li className="text-sm text-muted-foreground text-center">
+                  ... en {files.filter(file => file.category === "pickup").length - 10} meer
+                </li>
+              )}
             </ul>
           </div>
         </div>

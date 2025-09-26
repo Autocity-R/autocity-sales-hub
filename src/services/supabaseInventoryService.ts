@@ -349,10 +349,32 @@ export class SupabaseInventoryService {
   }
 
   /**
-   * Upload file to Supabase Storage
+   * Upload file to Supabase Storage with size limits
    */
   async uploadFile(bucketName: string, filePath: string, file: File) {
     try {
+      // Check file size (max 25MB)
+      const maxSize = 25 * 1024 * 1024; // 25MB
+      if (file.size > maxSize) {
+        throw new Error(`File te groot. Maximum grootte is 25MB, dit bestand is ${Math.round(file.size / 1024 / 1024)}MB`);
+      }
+
+      // Check file type (only allow PDFs, images, and common document types)
+      const allowedTypes = [
+        'application/pdf',
+        'image/jpeg',
+        'image/jpg', 
+        'image/png',
+        'image/webp',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain'
+      ];
+      
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error(`Bestandstype niet toegestaan. Alleen PDF, afbeeldingen en documenten zijn toegestaan.`);
+      }
+
       const { data, error } = await supabase.storage
         .from(bucketName)
         .upload(filePath, file);
@@ -400,24 +422,35 @@ export class SupabaseInventoryService {
   }
 
   /**
-   * Get vehicle files from database with signed URLs
+   * Get vehicle files from database with signed URLs (with pagination and limits)
    */
-  async getVehicleFiles(vehicleId: string) {
+  async getVehicleFiles(vehicleId: string, limit: number = 50) {
     try {
       const { data, error } = await supabase
         .from('vehicle_files')
         .select('*')
         .eq('vehicle_id', vehicleId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(limit); // Limit number of files to prevent overflow
 
       if (error) {
         console.error('Failed to fetch vehicle files:', error);
         throw error;
       }
 
-      // Get signed URLs for each file
+      // Only get signed URLs for files that are not too large (< 50MB)
       const filesWithUrls = await Promise.all(
         data.map(async (file) => {
+          // Skip very large files for performance
+          if (file.file_size && file.file_size > 50 * 1024 * 1024) {
+            return {
+              ...file,
+              url: '', // Don't generate URL for very large files
+              name: file.file_name,
+              isLargeFile: true
+            };
+          }
+
           const { data: urlData } = await supabase.storage
             .from('vehicle-documents')
             .createSignedUrl(file.file_path, 3600); // 1 hour expiry
@@ -425,7 +458,8 @@ export class SupabaseInventoryService {
           return {
             ...file,
             url: urlData?.signedUrl || '',
-            name: file.file_name
+            name: file.file_name,
+            isLargeFile: false
           };
         })
       );
