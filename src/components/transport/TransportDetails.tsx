@@ -374,6 +374,7 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
             </Tabs>
           </div>
         </ScrollArea>
+        </div>
 
         <div className="flex-shrink-0 flex justify-end gap-2 p-4 border-t bg-background">
           <Button type="button" variant="secondary" onClick={onClose}>
