@@ -101,10 +101,25 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
       }
     }));
   };
-  
+
+  const handleReminderUpdate = (type: 'payment_reminder' | 'papers_reminder', enabled: boolean) => {
+    hasUserChangesRef.current = true;
+    const currentSettings = (editedVehicle as any).emailReminderSettings || {};
+    const updatedSettings = {
+      ...currentSettings,
+      [`${type}_enabled`]: enabled
+    };
+    
+    setEditedVehicle(prev => ({
+      ...prev,
+      emailReminderSettings: updatedSettings
+    } as any));
+  };
+
   const handleSave = () => {
     onUpdate(editedVehicle);
   };
+
   
   const formatDate = (date: Date | string | null | undefined) => {
     if (!date) return "-";
@@ -177,13 +192,15 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                 <TabsContent value="emails" className="h-full mt-0 p-0">
                   {vehicle.salesStatus === "verkocht_b2c" ? (
                     <B2CEmailsTab 
-                      vehicle={vehicle}
+                      vehicle={editedVehicle}
                       onSendEmail={(type) => onSendEmail(type, vehicle.id)}
+                      onUpdateReminder={handleReminderUpdate}
                     />
                   ) : (
                     <EmailsTab 
-                      vehicle={vehicle}
+                      vehicle={editedVehicle}
                       onSendEmail={(type) => onSendEmail(type, vehicle.id)}
+                      onUpdateReminder={handleReminderUpdate}
                     />
                   )}
                 </TabsContent>

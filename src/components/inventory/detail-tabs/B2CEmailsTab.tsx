@@ -11,11 +11,12 @@ import { isButtonLinkedToTemplate } from "@/services/emailTemplateService";
 import { ContractConfigDialog } from "../ContractConfigDialog";
 
 interface B2CEmailsTabProps {
+  vehicle: Vehicle;
   onSendEmail: (type: string, contractOptions?: ContractOptions) => void;
-  vehicle?: Vehicle;
+  onUpdateReminder: (type: 'payment_reminder', enabled: boolean) => void;
 }
 
-export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle }) => {
+export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle, onUpdateReminder }) => {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   
   const isB2C = vehicle?.salesStatus === "verkocht_b2c";
@@ -144,8 +145,12 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
         <h4 className="font-medium mb-4">Herinneringen</h4>
         
         <div className="flex items-center space-x-2 mb-4">
-          <Checkbox id="reminder_enabled" defaultChecked />
-          <Label htmlFor="reminder_enabled">
+          <Checkbox 
+            id="payment_reminder_enabled" 
+            checked={(vehicle as any).emailReminderSettings?.payment_reminder_enabled || false}
+            onCheckedChange={(checked) => onUpdateReminder('payment_reminder', checked as boolean)}
+          />
+          <Label htmlFor="payment_reminder_enabled">
             Na een week automatisch herinnering sturen als betaling uitblijft
           </Label>
         </div>

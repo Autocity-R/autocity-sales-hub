@@ -188,6 +188,9 @@ export class SupabaseInventoryService {
       mainPhotoUrl: vehicle.mainPhotoUrl || null,
       photos: vehicle.photos || []
     };
+
+    // Prepare email reminder settings
+    const emailReminderSettings = (vehicle as any).emailReminderSettings || {};
     
     try {
       const { data, error } = await supabase
@@ -207,6 +210,7 @@ export class SupabaseInventoryService {
           import_status: vehicle.importStatus,
           notes: vehicle.notes,
           details: details as any,
+          email_reminder_settings: emailReminderSettings as any,
           updated_at: new Date().toISOString()
         })
         .eq('id', vehicle.id)

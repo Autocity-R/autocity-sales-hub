@@ -11,11 +11,12 @@ import { isButtonLinkedToTemplate } from "@/services/emailTemplateService";
 import { ContractConfigDialog } from "../ContractConfigDialog";
 
 interface EmailsTabProps {
+  vehicle: Vehicle;
   onSendEmail: (type: string, contractOptions?: ContractOptions) => void;
-  vehicle?: Vehicle;
+  onUpdateReminder: (type: 'papers_reminder', enabled: boolean) => void;
 }
 
-export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle }) => {
+export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle, onUpdateReminder }) => {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [contractType, setContractType] = useState<"b2b" | "b2c">("b2b");
   
@@ -130,8 +131,12 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle }) =>
           <h4 className="font-medium mb-4">Herinneringen</h4>
           
           <div className="flex items-center space-x-2 mb-4">
-            <Checkbox id="reminder_enabled" defaultChecked />
-            <Label htmlFor="reminder_enabled">
+            <Checkbox 
+              id="papers_reminder_enabled" 
+              checked={(vehicle as any).emailReminderSettings?.papers_reminder_enabled || false}
+              onCheckedChange={(checked) => onUpdateReminder('papers_reminder', checked as boolean)}
+            />
+            <Label htmlFor="papers_reminder_enabled">
               Na een week automatisch herinnering sturen als papieren niet binnen
             </Label>
           </div>

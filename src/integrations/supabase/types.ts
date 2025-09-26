@@ -901,6 +901,50 @@ export type Database = {
           },
         ]
       }
+      email_reminders: {
+        Row: {
+          created_at: string
+          email_type: string
+          id: string
+          next_reminder_at: string | null
+          recipient_email: string
+          reminder_type: string
+          sent_at: string
+          status: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_type: string
+          id?: string
+          next_reminder_at?: string | null
+          recipient_email: string
+          reminder_type: string
+          sent_at?: string
+          status?: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          email_type?: string
+          id?: string
+          next_reminder_at?: string | null
+          recipient_email?: string
+          reminder_type?: string
+          sent_at?: string
+          status?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_reminders_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_response_suggestions: {
         Row: {
           created_at: string | null
@@ -1406,6 +1450,7 @@ export type Database = {
           created_at: string
           customer_id: string | null
           details: Json
+          email_reminder_settings: Json
           external_sheet_reference: string | null
           id: string
           import_status: string | null
@@ -1427,6 +1472,7 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           details?: Json
+          email_reminder_settings?: Json
           external_sheet_reference?: string | null
           id?: string
           import_status?: string | null
@@ -1448,6 +1494,7 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           details?: Json
+          email_reminder_settings?: Json
           external_sheet_reference?: string | null
           id?: string
           import_status?: string | null
@@ -1528,6 +1575,16 @@ export type Database = {
           expires_at: string
           needs_refresh: boolean
           refresh_token: string
+        }[]
+      }
+      get_vehicles_needing_reminders: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          days_since_last_email: number
+          email_type: string
+          recipient_email: string
+          reminder_type: string
+          vehicle_id: string
         }[]
       }
       verify_webhook_sync: {
