@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Task, TaskStatus } from "@/types/tasks";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface TaskListProps {
   tasks: Task[];
@@ -24,6 +25,11 @@ const TaskCard = memo<{
   onStartTask: (taskId: string) => void;
   onTaskSelect: (task: Task) => void;
 }>(({ task, onCompleteTask, onStartTask, onTaskSelect }) => {
+  const { user, isAdmin } = useAuth();
+  
+  // Check if current user can manage this task
+  const canManageTask = isAdmin || task.assignedTo === user?.id || task.assignedBy === user?.id;
+  
   const getStatusIcon = useCallback((status: TaskStatus) => {
     switch (status) {
       case "toegewezen":
@@ -125,7 +131,7 @@ const TaskCard = memo<{
           </div>
         </div>
 
-        {task.status !== "voltooid" && (
+        {canManageTask && task.status !== "voltooid" && (
           <div className="mt-4 flex justify-end space-x-2">
             {task.status === "toegewezen" && (
               <Button 
@@ -154,14 +160,15 @@ const TaskCard = memo<{
   );
 });
 
-export const TaskList = memo<TaskListProps>(({
-  tasks,
-  onCompleteTask,
-  onStartTask,
-  onTaskSelect,
+export const TaskList = memo<TaskListProps>(({ 
+  tasks, 
+  onCompleteTask, 
+  onStartTask, 
+  onTaskSelect, 
   statusFilter,
-  onStatusFilterChange
+  onStatusFilterChange 
 }) => {
+  const { isAdmin } = useAuth();
   const filteredTasks = useMemo(() => {
     return statusFilter === "all" 
       ? tasks.filter(task => 
@@ -175,7 +182,9 @@ export const TaskList = memo<TaskListProps>(({
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Taken Overzicht</h3>
+        <h3 className="text-lg font-medium">
+          {isAdmin ? "Alle Taken Overzicht" : "Mijn Taken Overzicht"}
+        </h3>
         <Select value={statusFilter} onValueChange={onStatusFilterChange}>
           <SelectTrigger className="w-48">
             <SelectValue placeholder="Filter op status" />

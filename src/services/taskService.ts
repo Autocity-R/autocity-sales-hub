@@ -1,202 +1,240 @@
 
-import { Task, TaskStatus, Employee } from "@/types/tasks";
+import { Task, TaskStatus, TaskPriority, TaskCategory, Employee } from "@/types/tasks";
+import { supabase } from "@/integrations/supabase/client";
+import { UserProfile } from "./userService";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+// Convert UserProfile to Employee interface
+const profileToEmployee = (profile: UserProfile): Employee => ({
+  id: profile.id,
+  name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+  role: profile.role || 'user',
+  email: profile.email,
+  phone: undefined, // Not available in profiles
+  department: mapRoleToDepartment(profile.role || 'user'),
+  active: true
+});
 
-// Mock employees data
-const mockEmployees: Employee[] = [
-  {
-    id: "emp-1",
-    name: "Pieter Jansen",
-    role: "Verkoper",
-    email: "pieter@autohandel.nl",
-    phone: "+31 6 12345678",
-    department: "verkoop",
-    active: true
-  },
-  {
-    id: "emp-2", 
-    name: "Sander Vermeulen",
-    role: "Verkoper",
-    email: "sander@autohandel.nl",
-    phone: "+31 6 23456789",
-    department: "verkoop",
-    active: true
-  },
-  {
-    id: "emp-3",
-    name: "Kees van der Berg",
-    role: "Monteur",
-    email: "kees@autohandel.nl",
-    phone: "+31 6 34567890",
-    department: "techniek",
-    active: true
-  },
-  {
-    id: "emp-4",
-    name: "Jan Bakker",
-    role: "Transport medewerker",
-    email: "jan@autohandel.nl",
-    phone: "+31 6 45678901",
-    department: "transport",
-    active: true
-  },
-  {
-    id: "emp-5",
-    name: "Lisa Peters",
-    role: "Schoonmaak specialist",
-    email: "lisa@autohandel.nl",
-    phone: "+31 6 56789012",
-    department: "schoonmaak",
-    active: true
+const mapRoleToDepartment = (role: string): Employee['department'] => {
+  switch (role) {
+    case 'admin':
+    case 'owner':
+      return 'administratie';
+    default:
+      return 'verkoop';
   }
-];
-
-// Mock tasks data
-const mockTasks: Task[] = [
-  {
-    id: "task-1",
-    title: "BMW 3 Serie voorbereiden voor aflevering",
-    description: "Auto schoonmaken en controleren voor aflevering aan klant",
-    assignedTo: "emp-5",
-    assignedBy: "emp-1",
-    vehicleId: "v-1",
-    vehicleBrand: "BMW",
-    vehicleModel: "3 Serie",
-    vehicleLicenseNumber: "AB-123-CD",
-    dueDate: new Date("2024-01-25T14:00:00"),
-    status: "toegewezen",
-    priority: "hoog",
-    category: "voorbereiding",
-    location: "Werkplaats",
-    estimatedDuration: 120,
-    notes: "Extra aandacht voor interieur",
-    createdAt: new Date("2024-01-20T09:00:00"),
-    updatedAt: new Date("2024-01-20T09:00:00")
-  },
-  {
-    id: "task-2",
-    title: "Mercedes E-Class ophalen bij leverancier",
-    description: "Voertuig ophalen en transporteren naar showroom",
-    assignedTo: "emp-4",
-    assignedBy: "emp-2",
-    vehicleId: "v-2",
-    vehicleBrand: "Mercedes",
-    vehicleModel: "E-Class",
-    vehicleLicenseNumber: "EF-456-GH",
-    dueDate: new Date("2024-01-23T10:00:00"),
-    status: "in_uitvoering",
-    priority: "normaal",
-    category: "transport",
-    location: "AutoHouse Amsterdam",
-    estimatedDuration: 180,
-    createdAt: new Date("2024-01-19T11:30:00"),
-    updatedAt: new Date("2024-01-22T08:15:00")
-  },
-  {
-    id: "task-3",
-    title: "Audi A4 technische inspectie",
-    description: "Volledige technische controle uitvoeren",
-    assignedTo: "emp-3",
-    assignedBy: "emp-1",
-    vehicleId: "v-3",
-    vehicleBrand: "Audi",
-    vehicleModel: "A4",
-    vehicleLicenseNumber: "AU-789-DI",
-    dueDate: new Date("2024-01-24T09:00:00"),
-    status: "voltooid",
-    priority: "hoog",
-    category: "inspectie",
-    location: "Werkplaats",
-    estimatedDuration: 90,
-    completedAt: new Date("2024-01-24T10:30:00"),
-    notes: "Alle systemen in orde",
-    createdAt: new Date("2024-01-18T14:20:00"),
-    updatedAt: new Date("2024-01-24T10:30:00")
-  }
-];
+};
 
 export const fetchTasks = async (filters?: any): Promise<Task[]> => {
   try {
-    const params = new URLSearchParams();
-    if (filters?.assignedTo) params.append('assignedTo', filters.assignedTo);
-    if (filters?.status) params.append('status', filters.status);
-    
-    const response = await fetch(`${API_URL}/api/tasks?${params}`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    let query = supabase
+      .from('tasks')
+      .select(`
+        *,
+        assigned_to_profile:profiles!tasks_assigned_to_fkey(id, first_name, last_name, email),
+        assigned_by_profile:profiles!tasks_assigned_by_fkey(id, first_name, last_name, email),
+        vehicle:vehicles(id, brand, model, license_number)
+      `)
+      .order('created_at', { ascending: false });
+
+    // Apply filters
+    if (filters?.assignedTo && filters.assignedTo !== 'all') {
+      query = query.eq('assigned_to', filters.assignedTo);
     }
-    return await response.json();
+    if (filters?.status && filters.status !== 'all') {
+      query = query.eq('status', filters.status);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Failed to fetch tasks:", error);
+      return [];
+    }
+
+    // Transform database response to Task interface
+    return (data || []).map((task: any) => ({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      assignedTo: task.assigned_to,
+      assignedBy: task.assigned_by,
+      vehicleId: task.vehicle_id,
+      vehicleBrand: task.vehicle_brand || task.vehicle?.brand,
+      vehicleModel: task.vehicle_model || task.vehicle?.model,
+      vehicleLicenseNumber: task.vehicle_license_number || task.vehicle?.license_number,
+      dueDate: task.due_date,
+      status: task.status as TaskStatus,
+      priority: task.priority,
+      category: task.category,
+      location: task.location,
+      estimatedDuration: task.estimated_duration,
+      completedAt: task.completed_at,
+      notes: task.notes,
+      createdAt: task.created_at,
+      updatedAt: task.updated_at
+    }));
   } catch (error: any) {
     console.error("Failed to fetch tasks:", error);
-    return mockTasks;
+    return [];
   }
 };
 
 export const fetchEmployees = async (): Promise<Employee[]> => {
   try {
-    const response = await fetch(`${API_URL}/api/employees`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('first_name', { ascending: true });
+
+    if (error) {
+      console.error("Failed to fetch employees:", error);
+      return [];
     }
-    return await response.json();
+
+    return (data || []).map(profileToEmployee);
   } catch (error: any) {
     console.error("Failed to fetch employees:", error);
-    return mockEmployees;
+    return [];
   }
 };
 
 export const createTask = async (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> => {
   try {
-    const response = await fetch(`${API_URL}/api/tasks`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(task),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    const { data: currentUser } = await supabase.auth.getUser();
+    if (!currentUser.user) {
+      throw new Error("User not authenticated");
     }
-    return await response.json();
+
+    const taskData = {
+      title: task.title,
+      description: task.description,
+      assigned_to: task.assignedTo,
+      assigned_by: currentUser.user.id,
+      vehicle_id: task.vehicleId || null,
+      vehicle_brand: task.vehicleBrand || null,
+      vehicle_model: task.vehicleModel || null,
+      vehicle_license_number: task.vehicleLicenseNumber || null,
+      due_date: typeof task.dueDate === 'string' ? task.dueDate : task.dueDate.toISOString(),
+      status: task.status,
+      priority: task.priority,
+      category: task.category,
+      location: task.location || null,
+      estimated_duration: task.estimatedDuration || null,
+      notes: task.notes || null
+    };
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert([taskData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Failed to create task:", error);
+      throw error;
+    }
+
+    return {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      assignedTo: data.assigned_to,
+      assignedBy: data.assigned_by,
+      vehicleId: data.vehicle_id,
+      vehicleBrand: data.vehicle_brand,
+      vehicleModel: data.vehicle_model,
+      vehicleLicenseNumber: data.vehicle_license_number,
+      dueDate: data.due_date,
+      status: data.status as TaskStatus,
+      priority: data.priority as TaskPriority,
+      category: data.category as TaskCategory,
+      location: data.location,
+      estimatedDuration: data.estimated_duration,
+      completedAt: data.completed_at,
+      notes: data.notes,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
   } catch (error: any) {
     console.error("Failed to create task:", error);
-    const newTask: Task = {
-      ...task,
-      id: `task-${Date.now()}`,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    mockTasks.push(newTask);
-    return newTask;
+    throw error;
   }
 };
 
 export const updateTaskStatus = async (taskId: string, status: TaskStatus): Promise<Task> => {
   try {
-    const response = await fetch(`${API_URL}/api/tasks/${taskId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ status, completedAt: status === 'voltooid' ? new Date() : null }),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    const updateData: any = {
+      status,
+      updated_at: new Date().toISOString()
+    };
+
+    // Set completed_at when task is completed
+    if (status === 'voltooid') {
+      updateData.completed_at = new Date().toISOString();
+    } else {
+      updateData.completed_at = null;
     }
-    return await response.json();
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .update(updateData)
+      .eq('id', taskId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Failed to update task status:", error);
+      throw error;
+    }
+
+    return {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      assignedTo: data.assigned_to,
+      assignedBy: data.assigned_by,
+      vehicleId: data.vehicle_id,
+      vehicleBrand: data.vehicle_brand,
+      vehicleModel: data.vehicle_model,
+      vehicleLicenseNumber: data.vehicle_license_number,
+      dueDate: data.due_date,
+      status: data.status as TaskStatus,
+      priority: data.priority as TaskPriority,
+      category: data.category as TaskCategory,
+      location: data.location,
+      estimatedDuration: data.estimated_duration,
+      completedAt: data.completed_at,
+      notes: data.notes,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
   } catch (error: any) {
     console.error("Failed to update task status:", error);
-    const taskIndex = mockTasks.findIndex(t => t.id === taskId);
-    if (taskIndex > -1) {
-      mockTasks[taskIndex] = {
-        ...mockTasks[taskIndex],
-        status,
-        updatedAt: new Date(),
-        completedAt: status === 'voltooid' ? new Date() : undefined
-      };
-      return mockTasks[taskIndex];
-    }
     throw error;
+  }
+};
+
+export const fetchTaskHistory = async (taskId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('task_history')
+      .select(`
+        *,
+        changed_by_profile:profiles!task_history_changed_by_fkey(first_name, last_name, email),
+        old_assignee_profile:profiles!task_history_old_assignee_fkey(first_name, last_name, email),
+        new_assignee_profile:profiles!task_history_new_assignee_fkey(first_name, last_name, email)
+      `)
+      .eq('task_id', taskId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("Failed to fetch task history:", error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error: any) {
+    console.error("Failed to fetch task history:", error);
+    return [];
   }
 };

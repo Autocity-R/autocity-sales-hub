@@ -11,6 +11,8 @@ import { Task, TaskStatus } from "@/types/tasks";
 import { fetchTasks, updateTaskStatus } from "@/services/taskService";
 import { TaskForm } from "@/components/tasks/TaskForm";
 import { TaskList } from "@/components/tasks/TaskList";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTasksRealtime } from "@/hooks/useTasksRealtime";
 
 const TaskManagement = () => {
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -19,14 +21,22 @@ const TaskManagement = () => {
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user, isAdmin } = useAuth();
+  
+  // Enable real-time updates
+  useTasksRealtime();
 
   const {
     data: tasks = [],
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["tasks", statusFilter],
-    queryFn: () => fetchTasks(statusFilter !== "all" ? { status: statusFilter } : {}),
+    queryKey: ["tasks", statusFilter, user?.id],
+    queryFn: () => fetchTasks({ 
+      status: statusFilter !== "all" ? statusFilter : undefined,
+      assignedTo: isAdmin ? undefined : user?.id 
+    }),
+    enabled: !!user,
   });
 
   const updateStatusMutation = useMutation({
@@ -91,6 +101,16 @@ const TaskManagement = () => {
     }
   };
 
+  if (!user) {
+    return (
+      <DashboardLayout>
+        <div className="p-8 text-center">
+          <p className="text-muted-foreground">Je moet ingelogd zijn om taken te bekijken.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -117,7 +137,7 @@ const TaskManagement = () => {
       <div className="space-y-6">
         <PageHeader 
           title="Taken Beheer" 
-          description="Beheer taken voor medewerkers en voertuigen"
+          description={isAdmin ? "Beheer alle taken voor medewerkers en voertuigen" : "Bekijk en beheer je toegewezen taken"}
         >
           <Button onClick={() => setShowTaskForm(true)}>
             <Plus className="h-4 w-4 mr-2" />

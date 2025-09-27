@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { Task, TaskPriority, TaskCategory } from "@/types/tasks";
 import { fetchEmployees, createTask } from "@/services/taskService";
 import { fetchVehicles } from "@/services/inventoryService";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface TaskFormProps {
   onClose: () => void;
@@ -22,6 +24,7 @@ interface TaskFormProps {
 }
 
 export const TaskForm: React.FC<TaskFormProps> = ({ onClose, onTaskAdded }) => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -31,7 +34,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({ onClose, onTaskAdded }) => {
     priority: "normaal" as TaskPriority,
     category: "voorbereiding" as TaskCategory,
     location: "",
-    estimatedDuration: 60
+    estimatedDuration: 60,
+    notes: ""
   });
 
   const { data: employees = [] } = useQuery({
@@ -47,25 +51,46 @@ export const TaskForm: React.FC<TaskFormProps> = ({ onClose, onTaskAdded }) => {
   const createTaskMutation = useMutation({
     mutationFn: createTask,
     onSuccess: () => {
+      toast.success("Taak succesvol aangemaakt");
       onTaskAdded();
     },
     onError: (error) => {
       console.error("Error creating task:", error);
+      toast.error("Fout bij het aanmaken van de taak");
     }
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!user) {
+      toast.error("Je moet ingelogd zijn om een taak aan te maken");
+      return;
+    }
+
+    if (!formData.assignedTo) {
+      toast.error("Selecteer een medewerker om de taak toe te wijzen");
+      return;
+    }
+    
     const selectedVehicle = vehicles.find(v => v.id === formData.vehicleId);
     
     const taskData = {
-      ...formData,
-      assignedBy: "current-user", // In real app, get from auth context
+      title: formData.title,
+      description: formData.description,
+      assignedTo: formData.assignedTo,
+      assignedBy: user.id,
+      vehicleId: formData.vehicleId || undefined,
       vehicleBrand: selectedVehicle?.brand,
       vehicleModel: selectedVehicle?.model,
       vehicleLicenseNumber: selectedVehicle?.licenseNumber,
-      status: "toegewezen" as const
+      dueDate: formData.dueDate,
+      status: "toegewezen" as const,
+      priority: formData.priority,
+      category: formData.category,
+      location: formData.location,
+      estimatedDuration: formData.estimatedDuration,
+      notes: formData.notes
     };
 
     createTaskMutation.mutate(taskData);
@@ -228,15 +253,26 @@ export const TaskForm: React.FC<TaskFormProps> = ({ onClose, onTaskAdded }) => {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="location">Locatie</Label>
-            <Input
-              id="location"
-              value={formData.location}
-              onChange={(e) => setFormData({...formData, location: e.target.value})}
-              placeholder="Bijv. Werkplaats, Showroom, etc."
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="location">Locatie</Label>
+              <Input
+                id="location"
+                value={formData.location}
+                onChange={(e) => setFormData({...formData, location: e.target.value})}
+                placeholder="Bijv. Werkplaats, Showroom, etc."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notities</Label>
+              <Textarea
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                placeholder="Extra opmerkingen of instructies..."
+                rows={2}
+              />
+            </div>
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>

@@ -1310,6 +1310,159 @@ export type Database = {
         }
         Relationships: []
       }
+      task_history: {
+        Row: {
+          change_reason: string | null
+          changed_by: string
+          created_at: string
+          id: string
+          new_assignee: string | null
+          new_status: string
+          old_assignee: string | null
+          old_status: string | null
+          task_id: string
+        }
+        Insert: {
+          change_reason?: string | null
+          changed_by: string
+          created_at?: string
+          id?: string
+          new_assignee?: string | null
+          new_status: string
+          old_assignee?: string | null
+          old_status?: string | null
+          task_id: string
+        }
+        Update: {
+          change_reason?: string | null
+          changed_by?: string
+          created_at?: string
+          id?: string
+          new_assignee?: string | null
+          new_status?: string
+          old_assignee?: string | null
+          old_status?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_history_new_assignee_fkey"
+            columns: ["new_assignee"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_history_old_assignee_fkey"
+            columns: ["old_assignee"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_history_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          assigned_by: string
+          assigned_to: string
+          category: string
+          completed_at: string | null
+          created_at: string
+          description: string
+          due_date: string
+          estimated_duration: number | null
+          id: string
+          location: string | null
+          notes: string | null
+          priority: string
+          status: string
+          title: string
+          updated_at: string
+          vehicle_brand: string | null
+          vehicle_id: string | null
+          vehicle_license_number: string | null
+          vehicle_model: string | null
+        }
+        Insert: {
+          assigned_by: string
+          assigned_to: string
+          category?: string
+          completed_at?: string | null
+          created_at?: string
+          description: string
+          due_date: string
+          estimated_duration?: number | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          priority?: string
+          status?: string
+          title: string
+          updated_at?: string
+          vehicle_brand?: string | null
+          vehicle_id?: string | null
+          vehicle_license_number?: string | null
+          vehicle_model?: string | null
+        }
+        Update: {
+          assigned_by?: string
+          assigned_to?: string
+          category?: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string
+          due_date?: string
+          estimated_duration?: number | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          priority?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          vehicle_brand?: string | null
+          vehicle_id?: string | null
+          vehicle_license_number?: string | null
+          vehicle_model?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_calendar_settings: {
         Row: {
           auto_sync: boolean | null
@@ -1563,6 +1716,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_task: {
+        Args: { task_id: string; user_id: string }
+        Returns: boolean
+      }
       clean_expired_exact_online_cache: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -1586,6 +1743,10 @@ export type Database = {
           reminder_type: string
           vehicle_id: string
         }[]
+      }
+      is_admin_user: {
+        Args: { user_id: string }
+        Returns: boolean
       }
       verify_webhook_sync: {
         Args: { agent_uuid: string }
