@@ -108,6 +108,7 @@ export const fetchDeliveredVehiclesForWarranty = async (): Promise<Vehicle[]> =>
         vin: "WAUZZZ8K3BA134651",
         mileage: 95000,
         importStatus: "ingeschreven",
+        transportStatus: "aangekomen",
         arrived: true,
         workshopStatus: "gereed",
         location: "showroom",

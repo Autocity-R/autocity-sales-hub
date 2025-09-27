@@ -5,7 +5,7 @@ import { nl } from "date-fns/locale";
 import { 
   CalendarIcon, CircleCheck, MapPin, Euro, User, Wrench, Palette
 } from "lucide-react";
-import { Vehicle, ImportStatus, LocationStatus, DamageStatus, WorkshopStatus, PaintStatus } from "@/types/inventory";
+import { Vehicle, ImportStatus, TransportStatus, LocationStatus, DamageStatus, WorkshopStatus, PaintStatus } from "@/types/inventory";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -95,6 +95,24 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
           </div>
         </div>
         
+        {/* Transport Status */}
+        <div className="space-y-2">
+          <Label>Transport status</Label>
+          <Select 
+            value={editedVehicle.transportStatus} 
+            onValueChange={(value: TransportStatus) => handleChange('transportStatus', value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecteer transport status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="onderweg">Onderweg</SelectItem>
+              <SelectItem value="transport_geregeld">Transport Geregeld</SelectItem>
+              <SelectItem value="aangekomen">Aangekomen</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Import Status */}
         <div className="space-y-2">
           <Label>Import status</Label>

@@ -1,4 +1,9 @@
 
+export type TransportStatus = 
+  | "onderweg"
+  | "transport_geregeld"
+  | "aangekomen";
+
 export type ImportStatus = 
   | "niet_aangemeld" 
   | "aangemeld"
@@ -73,6 +78,7 @@ export interface Vehicle {
   vin: string;
   mileage: number;
   importStatus: ImportStatus;
+  transportStatus: TransportStatus;
   arrived: boolean;
   workshopStatus: WorkshopStatus;
   location: LocationStatus;

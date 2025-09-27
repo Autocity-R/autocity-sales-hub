@@ -387,7 +387,8 @@ export class SupabaseInventoryService {
       createdAt: supabaseVehicle.created_at,
       
       // Map import_status and notes from top-level columns
-      importStatus: supabaseVehicle.import_status || 'niet_gestart',
+      importStatus: supabaseVehicle.import_status || 'niet_aangemeld',
+      transportStatus: details.transportStatus || 'onderweg',
       notes: supabaseVehicle.notes || details.notes || '',
       
       // Map details fields with fallbacks

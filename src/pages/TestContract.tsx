@@ -27,6 +27,7 @@ const TestContract = () => {
     mileage: 70000,
     year: 2019,
     importStatus: "ingeschreven",
+    transportStatus: "aangekomen",
     arrived: true,
     workshopStatus: "gereed",
     location: "showroom",

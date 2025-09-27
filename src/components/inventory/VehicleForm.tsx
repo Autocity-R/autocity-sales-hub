@@ -26,7 +26,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SupplierSelector } from "./SupplierSelector";
 import { cn } from "@/lib/utils";
-import { Vehicle, ImportStatus, WorkshopStatus, DamageStatus, LocationStatus, SalesStatus, PaymentStatus } from "@/types/inventory";
+import { Vehicle, ImportStatus, TransportStatus, WorkshopStatus, DamageStatus, LocationStatus, SalesStatus, PaymentStatus } from "@/types/inventory";
 
 interface VehicleFormProps {
   onSubmit: (data: Omit<Vehicle, "id">) => void;
@@ -45,6 +45,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
     vin: initialData?.vin || "",
     mileage: initialData?.mileage || 0,
     importStatus: initialData?.importStatus || "niet_aangemeld",
+    transportStatus: initialData?.transportStatus || "onderweg",
     arrived: initialData?.arrived || false,
     workshopStatus: initialData?.workshopStatus || "wachten",
     location: initialData?.location || "showroom",
@@ -186,6 +187,24 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
         
         {/* Right column */}
         <div className="space-y-4">
+          {/* Transport Status */}
+          <div className="space-y-2">
+            <Label>Transport Status</Label>
+            <Select 
+              value={formData.transportStatus} 
+              onValueChange={(value: TransportStatus) => handleChange('transportStatus', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecteer transport status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="onderweg">Onderweg</SelectItem>
+                <SelectItem value="transport_geregeld">Transport Geregeld</SelectItem>
+                <SelectItem value="aangekomen">Aangekomen</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Import Status */}
           <div className="space-y-2">
             <Label>Importstatus</Label>
@@ -197,15 +216,10 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
                 <SelectValue placeholder="Selecteer status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="niet_gestart">Niet gestart</SelectItem>
+                <SelectItem value="niet_aangemeld">Niet aangemeld</SelectItem>
                 <SelectItem value="aangemeld">Aangemeld</SelectItem>
                 <SelectItem value="goedgekeurd">Goedgekeurd</SelectItem>
-                <SelectItem value="transport_geregeld">Transport geregeld</SelectItem>
-                <SelectItem value="onderweg">Onderweg</SelectItem>
-                <SelectItem value="aangekomen">Aangekomen</SelectItem>
-                <SelectItem value="afgemeld">Afgemeld</SelectItem>
-                <SelectItem value="bpm_betaald">BPM betaald</SelectItem>
-                <SelectItem value="herkeuring">Herkeuring</SelectItem>
+                <SelectItem value="bpm_betaald">BPM Betaald</SelectItem>
                 <SelectItem value="ingeschreven">Ingeschreven</SelectItem>
               </SelectContent>
             </Select>
