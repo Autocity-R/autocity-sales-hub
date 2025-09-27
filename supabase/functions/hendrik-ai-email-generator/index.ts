@@ -115,7 +115,7 @@ Genereer een JSON response met:
     console.error('❌ Hendrik AI Email Generation Error:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
       subject: 'Email van Auto City',
       content: 'Er is een probleem opgetreden bij het genereren van de email. Neem contact op voor persoonlijke service.'
     }), {

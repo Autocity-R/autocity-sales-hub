@@ -130,7 +130,7 @@ serve(async (req) => {
           impersonateEmail: impersonateEmail,
           targetCalendar: targetCalendar,
           error: responseData,
-          availableCalendars: calendarList.items?.map(cal => ({
+          availableCalendars: calendarList.items?.map((cal: any) => ({
             id: cal.id,
             summary: cal.summary,
             accessRole: cal.accessRole,
@@ -159,7 +159,7 @@ serve(async (req) => {
         projectId: credentials.project_id,
         impersonateEmail: impersonateEmail
       },
-      availableCalendars: calendarList.items?.map(cal => ({
+      availableCalendars: calendarList.items?.map((cal: any) => ({
         id: cal.id,
         summary: cal.summary,
         accessRole: cal.accessRole,
@@ -184,7 +184,7 @@ serve(async (req) => {
     console.error('Test: Google Calendar test failed:', error);
     return new Response(JSON.stringify({ 
       success: false,
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
       details: 'Controleer de logs voor meer informatie. Mogelijk is Domain-wide delegation niet correct geconfigureerd.'
     }), {
       status: 500,

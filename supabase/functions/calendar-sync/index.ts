@@ -84,7 +84,7 @@ serve(async (req) => {
       console.log('✅ Got access token successfully with Domain-wide delegation');
     } catch (tokenError) {
       console.error('❌ Failed to get access token:', tokenError);
-      throw new Error(`Failed to get Service Account access token: ${tokenError.message}`);
+      throw new Error(`Failed to get Service Account access token: ${tokenError instanceof Error ? tokenError.message : 'Unknown error'}`);
     }
 
     switch (action) {
@@ -323,7 +323,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('❌ Calendar sync error:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
       details: 'Check function logs for more information'
     }), {
       status: 500,
@@ -350,7 +350,7 @@ function formatDateTimeForGoogle(dateTimeInput: string | Date): string {
     return isoString;
   } catch (error) {
     console.error(`❌ Error formatting datetime ${dateTimeInput}:`, error);
-    throw new Error(`Failed to format datetime: ${error.message}`);
+    throw new Error(`Failed to format datetime: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 

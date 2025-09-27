@@ -273,7 +273,7 @@ serve(async (req) => {
     console.error('❌ Enhanced Hendrik AI Chat with Memory Error:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
       message: 'Sorry, er ging iets mis. Probeer het opnieuw.'
     }), {
       status: 500,
@@ -381,16 +381,16 @@ async function getLeadContextWithMemory(supabaseClient: any, leadId: string) {
       .limit(5);
 
     // Flatten conversation history
-    const conversationHistory = sessions?.flatMap(session => 
-      session.ai_chat_messages?.map(msg => ({
+    const conversationHistory = sessions?.flatMap((session: any) =>
+      session.ai_chat_messages?.map((msg: any) => ({
         ...msg,
         session_date: session.created_at
       })) || []
     ) || [];
 
     // Extract key context from memories
-    const preferences = memories?.find(m => m.context_type === 'preference')?.context_data;
-    const salesPhase = memories?.find(m => m.context_type === 'sales_phase')?.context_data?.current_phase;
+    const preferences = memories?.find((m: any) => m.context_type === 'preference')?.context_data;
+    const salesPhase = memories?.find((m: any) => m.context_type === 'sales_phase')?.context_data?.current_phase;
 
     return {
       lead,
@@ -428,7 +428,7 @@ function buildMemoryContextString(leadContext: any): string {
   // Add important memories
   if (leadContext.memories.length > 0) {
     contextString += `\n**Belangrijke Context:**\n`;
-    leadContext.memories.slice(0, 8).forEach(memory => {
+    leadContext.memories.slice(0, 8).forEach((memory: any) => {
       if (memory.context_type === 'preference') {
         contextString += `- Voorkeuren: ${JSON.stringify(memory.context_data)}\n`;
       } else if (memory.context_type === 'objection_history') {
@@ -445,9 +445,9 @@ function buildMemoryContextString(leadContext: any): string {
   if (leadContext.conversationHistory.length > 0) {
     contextString += `\n**Recente Gesprekken (laatste 5 berichten):**\n`;
     leadContext.conversationHistory
-      .filter(msg => msg.message_type === 'user')
+      .filter((msg: any) => msg.message_type === 'user')
       .slice(0, 5)
-      .forEach(msg => {
+      .forEach((msg: any) => {
         contextString += `- "${msg.content.substring(0, 100)}${msg.content.length > 100 ? '...' : ''}"\n`;
       });
   }
@@ -971,7 +971,7 @@ async function handleEnhancedFunctionCallWithMemory(supabase: any, functionCall:
     }
   } catch (error) {
     console.error(`Enhanced function call error with memory (${name}):`, error);
-    return { success: false, error: error.message };
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
