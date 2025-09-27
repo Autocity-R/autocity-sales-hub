@@ -1744,6 +1744,10 @@ export type Database = {
           vehicle_id: string
         }[]
       }
+      is_admin_or_owner: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_admin_user: {
         Args: { user_id: string }
         Returns: boolean
