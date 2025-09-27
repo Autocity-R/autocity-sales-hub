@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Task, TaskStatus } from "@/types/tasks";
-import { fetchTasks, updateTaskStatus } from "@/services/taskService";
+import { fetchTasks, updateTaskStatus, deleteTask } from "@/services/taskService";
 import { TaskForm } from "@/components/tasks/TaskForm";
 import { TaskList } from "@/components/tasks/TaskList";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,6 +16,7 @@ import { useTasksRealtime } from "@/hooks/useTasksRealtime";
 
 const TaskManagement = () => {
   const [showTaskForm, setShowTaskForm] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
   
@@ -67,10 +68,31 @@ const TaskManagement = () => {
 
   const handleTaskAdded = () => {
     setShowTaskForm(false);
+    setEditingTask(null);
     queryClient.invalidateQueries({ queryKey: ["tasks"] });
     toast({
-      description: "Taak succesvol toegevoegd"
+      description: editingTask ? "Taak succesvol bijgewerkt" : "Taak succesvol toegevoegd"
     });
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setShowTaskForm(true);
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await deleteTask(taskId);
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      toast({
+        description: "Taak succesvol verwijderd"
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        description: "Fout bij het verwijderen van de taak"
+      });
+    }
   };
 
   const getStatusCounts = () => {
@@ -210,6 +232,8 @@ const TaskManagement = () => {
           onCompleteTask={handleCompleteTask}
           onStartTask={handleStartTask}
           onTaskSelect={setSelectedTask}
+          onEditTask={handleEditTask}
+          onDeleteTask={handleDeleteTask}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
         />
@@ -217,7 +241,11 @@ const TaskManagement = () => {
         {/* Task Form Dialog */}
         {showTaskForm && (
           <TaskForm
-            onClose={() => setShowTaskForm(false)}
+            task={editingTask}
+            onClose={() => {
+              setShowTaskForm(false);
+              setEditingTask(null);
+            }}
             onTaskAdded={handleTaskAdded}
           />
         )}

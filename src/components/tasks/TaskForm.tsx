@@ -13,29 +13,30 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Task, TaskPriority, TaskCategory } from "@/types/tasks";
-import { fetchEmployees, createTask } from "@/services/taskService";
+import { fetchEmployees, createTask, updateTask } from "@/services/taskService";
 import { fetchVehicles } from "@/services/inventoryService";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 interface TaskFormProps {
+  task?: Task | null;
   onClose: () => void;
   onTaskAdded: () => void;
 }
 
-export const TaskForm: React.FC<TaskFormProps> = ({ onClose, onTaskAdded }) => {
+export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }) => {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    assignedTo: "",
-    vehicleId: "",
-    dueDate: new Date(),
-    priority: "normaal" as TaskPriority,
-    category: "voorbereiding" as TaskCategory,
-    location: "",
-    estimatedDuration: 60,
-    notes: ""
+    title: task?.title || "",
+    description: task?.description || "",
+    assignedTo: task?.assignedTo || "",
+    vehicleId: task?.vehicleId || "",
+    dueDate: task?.dueDate ? new Date(task.dueDate) : new Date(),
+    priority: (task?.priority || "normaal") as TaskPriority,
+    category: (task?.category || "voorbereiding") as TaskCategory,
+    location: task?.location || "",
+    estimatedDuration: task?.estimatedDuration || 60,
+    notes: task?.notes || ""
   });
 
   const { data: employees = [] } = useQuery({
@@ -49,15 +50,17 @@ export const TaskForm: React.FC<TaskFormProps> = ({ onClose, onTaskAdded }) => {
     queryFn: fetchVehicles,
   });
 
-  const createTaskMutation = useMutation({
-    mutationFn: createTask,
+  const saveTaskMutation = useMutation({
+    mutationFn: task ? 
+      (taskData: any) => updateTask(task.id, taskData) :
+      createTask,
     onSuccess: () => {
-      toast.success("Taak succesvol aangemaakt");
+      toast.success(task ? "Taak succesvol bijgewerkt" : "Taak succesvol aangemaakt");
       onTaskAdded();
     },
     onError: (error) => {
-      console.error("Error creating task:", error);
-      toast.error("Fout bij het aanmaken van de taak");
+      console.error("Error saving task:", error);
+      toast.error(task ? "Fout bij het bijwerken van de taak" : "Fout bij het aanmaken van de taak");
     }
   });
 
@@ -94,7 +97,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ onClose, onTaskAdded }) => {
       notes: formData.notes
     };
 
-    createTaskMutation.mutate(taskData);
+    saveTaskMutation.mutate(taskData);
   };
 
   const priorityOptions = [
@@ -120,7 +123,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ onClose, onTaskAdded }) => {
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Nieuwe Taak Toevoegen</DialogTitle>
+          <DialogTitle>{task ? "Taak Bewerken" : "Nieuwe Taak Toevoegen"}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -279,8 +282,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({ onClose, onTaskAdded }) => {
             <Button type="button" variant="outline" onClick={onClose}>
               Annuleren
             </Button>
-            <Button type="submit" disabled={createTaskMutation.isPending}>
-              {createTaskMutation.isPending ? "Opslaan..." : "Taak Aanmaken"}
+            <Button type="submit" disabled={saveTaskMutation.isPending}>
+              {saveTaskMutation.isPending ? "Opslaan..." : (task ? "Taak Bijwerken" : "Taak Aanmaken")}
             </Button>
           </div>
         </form>

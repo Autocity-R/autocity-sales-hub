@@ -187,6 +187,82 @@ export const createTask = async (task: Omit<Task, 'id' | 'createdAt' | 'updatedA
   }
 };
 
+export const updateTask = async (taskId: string, updates: Partial<Task>): Promise<Task> => {
+  try {
+    const updateData: any = {
+      title: updates.title,
+      description: updates.description,
+      assigned_to: updates.assignedTo,
+      vehicle_id: updates.vehicleId || null,
+      vehicle_brand: updates.vehicleBrand || null,
+      vehicle_model: updates.vehicleModel || null,
+      vehicle_license_number: updates.vehicleLicenseNumber || null,
+      due_date: typeof updates.dueDate === 'string' ? updates.dueDate : updates.dueDate?.toISOString(),
+      status: updates.status,
+      priority: updates.priority,
+      category: updates.category,
+      location: updates.location || null,
+      estimated_duration: updates.estimatedDuration || null,
+      notes: updates.notes || null,
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .update(updateData)
+      .eq('id', taskId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Failed to update task:", error);
+      throw error;
+    }
+
+    return {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      assignedTo: data.assigned_to,
+      assignedBy: data.assigned_by,
+      vehicleId: data.vehicle_id,
+      vehicleBrand: data.vehicle_brand,
+      vehicleModel: data.vehicle_model,
+      vehicleLicenseNumber: data.vehicle_license_number,
+      dueDate: data.due_date,
+      status: data.status as TaskStatus,
+      priority: data.priority as TaskPriority,
+      category: data.category as TaskCategory,
+      location: data.location,
+      estimatedDuration: data.estimated_duration,
+      completedAt: data.completed_at,
+      notes: data.notes,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
+  } catch (error: any) {
+    console.error("Failed to update task:", error);
+    throw error;
+  }
+};
+
+export const deleteTask = async (taskId: string): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', taskId);
+
+    if (error) {
+      console.error("Failed to delete task:", error);
+      throw error;
+    }
+  } catch (error: any) {
+    console.error("Failed to delete task:", error);
+    throw error;
+  }
+};
+
 export const updateTaskStatus = async (taskId: string, status: TaskStatus): Promise<Task> => {
   try {
     const updateData: any = {

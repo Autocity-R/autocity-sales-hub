@@ -1,7 +1,7 @@
 
 import React, { memo, useMemo, useCallback } from "react";
 import { format } from "date-fns";
-import { CheckCircle, Clock, AlertCircle, Car, User, Play } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, Car, User, Play, Edit, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ interface TaskListProps {
   onCompleteTask: (taskId: string) => void;
   onStartTask: (taskId: string) => void;
   onTaskSelect: (task: Task) => void;
+  onEditTask: (task: Task) => void;
+  onDeleteTask: (taskId: string) => void;
   statusFilter: TaskStatus | "all";
   onStatusFilterChange: (status: TaskStatus | "all") => void;
 }
@@ -24,11 +26,16 @@ const TaskCard = memo<{
   onCompleteTask: (taskId: string) => void;
   onStartTask: (taskId: string) => void;
   onTaskSelect: (task: Task) => void;
-}>(({ task, onCompleteTask, onStartTask, onTaskSelect }) => {
+  onEditTask: (task: Task) => void;
+  onDeleteTask: (taskId: string) => void;
+}>(({ task, onCompleteTask, onStartTask, onTaskSelect, onEditTask, onDeleteTask }) => {
   const { user, isAdmin } = useAuth();
   
   // Check if current user can manage this task
   const canManageTask = isAdmin || task.assignedTo === user?.id || task.assignedBy === user?.id;
+  
+  // Check if current user can edit/delete (only who assigned it or admin)
+  const canEditDelete = isAdmin || task.assignedBy === user?.id;
   
   const getStatusIcon = useCallback((status: TaskStatus) => {
     switch (status) {
@@ -85,6 +92,18 @@ const TaskCard = memo<{
     onTaskSelect(task);
   }, [task, onTaskSelect]);
 
+  const handleEditClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEditTask(task);
+  }, [task, onEditTask]);
+
+  const handleDeleteClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm('Weet je zeker dat je deze taak wilt verwijderen?')) {
+      onDeleteTask(task.id);
+    }
+  }, [task.id, onDeleteTask]);
+
   const formattedDate = useMemo(() => {
     return format(new Date(task.dueDate), "dd/MM/yyyy HH:mm");
   }, [task.dueDate]);
@@ -135,30 +154,57 @@ const TaskCard = memo<{
           </div>
         </div>
 
-        {canManageTask && task.status !== "voltooid" && (
-          <div className="mt-4 flex justify-end space-x-2">
-            {task.status === "toegewezen" && (
-              <Button 
-                size="sm" 
-                variant="outline"
-                onClick={handleStartClick}
-              >
-                <Play className="h-4 w-4 mr-2" />
-                Start taak
-              </Button>
-            )}
-            
-            {(task.status === "in_uitvoering" || task.status === "toegewezen") && (
-              <Button 
-                size="sm" 
-                onClick={handleCompleteClick}
-              >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Markeer als voltooid
-              </Button>
+        <div className="mt-4 flex justify-between">
+          {/* Edit/Delete buttons - only for task creator or admin */}
+          <div className="flex space-x-2">
+            {canEditDelete && (
+              <>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={handleEditClick}
+                >
+                  <Edit className="h-4 w-4 mr-1" />
+                  Bewerken
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={handleDeleteClick}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Verwijderen
+                </Button>
+              </>
             )}
           </div>
-        )}
+
+          {/* Action buttons - for assigned users or admin */}
+          {canManageTask && task.status !== "voltooid" && (
+            <div className="flex space-x-2">
+              {task.status === "toegewezen" && (
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={handleStartClick}
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  Start taak
+                </Button>
+              )}
+              
+              {(task.status === "in_uitvoering" || task.status === "toegewezen") && (
+                <Button 
+                  size="sm" 
+                  onClick={handleCompleteClick}
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Markeer als voltooid
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -168,7 +214,9 @@ export const TaskList = memo<TaskListProps>(({
   tasks, 
   onCompleteTask, 
   onStartTask, 
-  onTaskSelect, 
+  onTaskSelect,
+  onEditTask,
+  onDeleteTask,
   statusFilter,
   onStatusFilterChange 
 }) => {
@@ -219,6 +267,8 @@ export const TaskList = memo<TaskListProps>(({
               onCompleteTask={onCompleteTask}
               onStartTask={onStartTask}
               onTaskSelect={onTaskSelect}
+              onEditTask={onEditTask}
+              onDeleteTask={onDeleteTask}
             />
           ))}
         </div>
