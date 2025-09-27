@@ -141,28 +141,28 @@ export class SupabaseInventoryService {
     }
   }
 
-  /**
-   * Get transport vehicles (in transit)
-   */
-  async getTransportVehicles(): Promise<Vehicle[]> {
-    try {
-      const { data, error } = await supabase
-        .from('vehicles')
-        .select('*')
-        .eq('location', 'onderweg')
-        .order('created_at', { ascending: false });
+   /**
+    * Get transport vehicles (vehicles with transport status "onderweg")
+    */
+   async getTransportVehicles(): Promise<Vehicle[]> {
+     try {
+       const { data, error } = await supabase
+         .from('vehicles')
+         .select('*')
+         .contains('details', { transportStatus: 'onderweg' })
+         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Failed to fetch transport vehicles from Supabase:', error);
-        throw error;
-      }
+       if (error) {
+         console.error('Failed to fetch transport vehicles from Supabase:', error);
+         throw error;
+       }
 
-      return data.map(this.mapSupabaseToVehicle);
-    } catch (error) {
-      console.error('Error fetching transport vehicles:', error);
-      throw error;
-    }
-  }
+       return data.map(this.mapSupabaseToVehicle);
+     } catch (error) {
+       console.error('Error fetching transport vehicles:', error);
+       throw error;
+     }
+   }
 
   /**
    * Update an existing vehicle
@@ -170,24 +170,31 @@ export class SupabaseInventoryService {
   async updateVehicle(vehicle: Vehicle): Promise<Vehicle> {
     console.log('Updating vehicle:', vehicle.id);
     
-    // Prepare details object with all extra fields (convert dates to ISO strings)
-    const details = {
-      notes: vehicle.notes || null,
-      workshopStatus: vehicle.workshopStatus || 'niet_gestart',
-      paintStatus: vehicle.paintStatus || 'niet_gestart', 
-      bpmRequested: vehicle.bpmRequested || false,
-      bpmStarted: vehicle.bpmStarted || false,
-      damage: vehicle.damage || { description: '', status: 'geen' },
-      cmrSent: vehicle.cmrSent || false,
-      cmrDate: vehicle.cmrDate ? vehicle.cmrDate.toISOString() : null,
-      papersReceived: vehicle.papersReceived || false,
-      papersDate: vehicle.papersDate ? vehicle.papersDate.toISOString() : null,
-      showroomOnline: vehicle.showroomOnline || false,
-      paymentStatus: vehicle.paymentStatus || 'niet_betaald',
-      salespersonId: vehicle.salespersonId || null,
-      mainPhotoUrl: vehicle.mainPhotoUrl || null,
-      photos: vehicle.photos || []
-    };
+     // Prepare details object with all extra fields (convert dates to ISO strings)
+     const details = {
+       notes: vehicle.notes || null,
+       workshopStatus: vehicle.workshopStatus || 'wachten',
+       paintStatus: vehicle.paintStatus || 'geen_behandeling', 
+       transportStatus: vehicle.transportStatus || 'onderweg',
+       bpmRequested: vehicle.bpmRequested || false,
+       bpmStarted: vehicle.bpmStarted || false,
+       damage: vehicle.damage || { description: '', status: 'geen' },
+       cmrSent: vehicle.cmrSent || false,
+       cmrDate: vehicle.cmrDate ? vehicle.cmrDate.toISOString() : null,
+       papersReceived: vehicle.papersReceived || false,
+       papersDate: vehicle.papersDate ? vehicle.papersDate.toISOString() : null,
+       showroomOnline: vehicle.showroomOnline || false,
+       paymentStatus: vehicle.paymentStatus || 'niet_betaald',
+       salespersonId: vehicle.salespersonId || null,
+       mainPhotoUrl: vehicle.mainPhotoUrl || null,
+       photos: vehicle.photos || []
+     };
+
+     // Auto-update sales status when transport status changes to "aangekomen"
+     let salesStatus = vehicle.salesStatus;
+     if (vehicle.transportStatus === 'aangekomen' && vehicle.salesStatus !== 'voorraad') {
+       salesStatus = 'voorraad';
+     }
 
     // Prepare email reminder settings
     const emailReminderSettings = (vehicle as any).emailReminderSettings || {};
@@ -204,7 +211,7 @@ export class SupabaseInventoryService {
           vin: vehicle.vin,
           mileage: vehicle.mileage,
           selling_price: vehicle.sellingPrice,
-          status: vehicle.salesStatus,
+          status: salesStatus,
           location: vehicle.location,
           customer_id: vehicle.customerId,
           import_status: vehicle.importStatus,
@@ -311,24 +318,25 @@ export class SupabaseInventoryService {
   async createVehicle(vehicleData: Partial<Vehicle>): Promise<Vehicle> {
     console.log('Creating vehicle:', vehicleData);
     
-    // Prepare details object with defaults (convert dates to ISO strings)
-    const details = {
-      notes: vehicleData.notes || null,
-      workshopStatus: vehicleData.workshopStatus || 'niet_gestart',
-      paintStatus: vehicleData.paintStatus || 'niet_gestart', 
-      bpmRequested: vehicleData.bpmRequested || false,
-      bpmStarted: vehicleData.bpmStarted || false,
-      damage: vehicleData.damage || { description: '', status: 'geen' },
-      cmrSent: vehicleData.cmrSent || false,
-      cmrDate: vehicleData.cmrDate ? vehicleData.cmrDate.toISOString() : null,
-      papersReceived: vehicleData.papersReceived || false,
-      papersDate: vehicleData.papersDate ? vehicleData.papersDate.toISOString() : null,
-      showroomOnline: vehicleData.showroomOnline || false,
-      paymentStatus: vehicleData.paymentStatus || 'niet_betaald',
-      salespersonId: vehicleData.salespersonId || null,
-      mainPhotoUrl: vehicleData.mainPhotoUrl || null,
-      photos: vehicleData.photos || []
-    };
+     // Prepare details object with defaults (convert dates to ISO strings)
+     const details = {
+       notes: vehicleData.notes || null,
+       workshopStatus: vehicleData.workshopStatus || 'wachten',
+       paintStatus: vehicleData.paintStatus || 'geen_behandeling', 
+       transportStatus: vehicleData.transportStatus || 'onderweg',
+       bpmRequested: vehicleData.bpmRequested || false,
+       bpmStarted: vehicleData.bpmStarted || false,
+       damage: vehicleData.damage || { description: '', status: 'geen' },
+       cmrSent: vehicleData.cmrSent || false,
+       cmrDate: vehicleData.cmrDate ? vehicleData.cmrDate.toISOString() : null,
+       papersReceived: vehicleData.papersReceived || false,
+       papersDate: vehicleData.papersDate ? vehicleData.papersDate.toISOString() : null,
+       showroomOnline: vehicleData.showroomOnline || false,
+       paymentStatus: vehicleData.paymentStatus || 'niet_betaald',
+       salespersonId: vehicleData.salespersonId || null,
+       mainPhotoUrl: vehicleData.mainPhotoUrl || null,
+       photos: vehicleData.photos || []
+     };
     
     try {
       const { data, error } = await supabase
@@ -393,8 +401,8 @@ export class SupabaseInventoryService {
       
       // Map details fields with fallbacks
       purchasePrice: details.purchasePrice || 0,
-      workshopStatus: details.workshopStatus || 'niet_gestart',
-      paintStatus: details.paintStatus || 'niet_gestart',
+      workshopStatus: details.workshopStatus || 'wachten',
+      paintStatus: details.paintStatus || 'geen_behandeling',
       damage: details.damage || { description: '', status: 'geen' },
       bpmRequested: details.bpmRequested || false,
       bpmStarted: details.bpmStarted || false,

@@ -100,7 +100,13 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
           <Label>Transport status</Label>
           <Select 
             value={editedVehicle.transportStatus} 
-            onValueChange={(value: TransportStatus) => handleChange('transportStatus', value)}
+            onValueChange={(value: TransportStatus) => {
+              handleChange('transportStatus', value);
+              // Automatically set vehicle to "voorraad" when transport status becomes "aangekomen"
+              if (value === 'aangekomen' && editedVehicle.salesStatus !== 'voorraad') {
+                handleChange('salesStatus', 'voorraad');
+              }
+            }}
           >
             <SelectTrigger>
               <SelectValue placeholder="Selecteer transport status" />
