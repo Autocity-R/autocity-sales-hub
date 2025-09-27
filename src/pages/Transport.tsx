@@ -21,11 +21,11 @@ const Transport = () => {
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
   const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>([]);
 
-  // Fetch vehicles that are not arrived yet
+  // Fetch vehicles that have transport status "onderweg"
   const { data: vehicles = [], isLoading, error } = useQuery({
     queryKey: ["vehicles"],
     queryFn: fetchVehicles,
-    select: (data) => data.filter(v => !v.arrived)
+    select: (data) => data.filter(v => v.transportStatus === "onderweg")
   });
 
   // Update vehicle mutation
