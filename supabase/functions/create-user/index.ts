@@ -34,21 +34,12 @@ serve(async (req) => {
       );
     }
 
-    // Create a client for the requesting user
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-    );
+    // Extract bearer token from Authorization header
+    const token = authHeader.replace('Bearer ', '').trim();
 
-    // Set the auth header for the client request
-    supabaseClient.auth.setSession({
-      access_token: authHeader.replace('Bearer ', ''),
-      refresh_token: '',
-    });
-
-    // Verify the requesting user is admin
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !userData.user) {
+    // Verify the requesting user using service role (avoids session issues in edge runtime)
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+    if (userError || !userData?.user) {
       return new Response(
         JSON.stringify({ success: false, error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -56,7 +47,7 @@ serve(async (req) => {
     }
 
     // Check if user has admin role
-    const { data: profile, error: profileError } = await supabaseClient
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', userData.user.id)
@@ -120,15 +111,16 @@ serve(async (req) => {
       );
     }
 
-    // Update the role in profiles table
+    // Upsert profile to ensure it exists and set role
     const { error: roleError } = await supabaseAdmin
       .from('profiles')
-      .update({ 
+      .upsert({
+        id: newUser.user.id,
+        email,
         role,
         first_name: firstName,
-        last_name: lastName 
-      })
-      .eq('id', newUser.user.id);
+        last_name: lastName
+      }, { onConflict: 'id' });
 
     if (roleError) {
       console.error('Error updating role:', roleError);
