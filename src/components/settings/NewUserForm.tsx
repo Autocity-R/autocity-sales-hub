@@ -21,7 +21,7 @@ export const NewUserForm = () => {
     lastName: "",
     email: "",
     password: "",
-    role: "user",
+    role: "operationeel",
   });
 
   const createUserMutation = useMutation({
@@ -45,7 +45,7 @@ export const NewUserForm = () => {
           lastName: "",
           email: "",
           password: "",
-          role: "user",
+          role: "operationeel",
         });
       } else {
         const isDuplicate = result.error?.toLowerCase().includes('bestaat al') || result.error?.toLowerCase().includes('already');
@@ -193,8 +193,8 @@ export const NewUserForm = () => {
                 <SelectItem value="owner">Owner - Volledige toegang</SelectItem>
                 <SelectItem value="admin">Admin - Volledige toegang</SelectItem>
                 <SelectItem value="manager">Manager - Beheer en rapportages</SelectItem>
-                <SelectItem value="verkoper">Verkoper - Verkoop en klanten</SelectItem>
-                <SelectItem value="user">Gebruiker - Basis toegang</SelectItem>
+                <SelectItem value="verkoper">Verkoper - Verkoop maar geen rapportages</SelectItem>
+                <SelectItem value="operationeel">Operationeel Gebruiker - Alleen voertuigen</SelectItem>
               </SelectContent>
             </Select>
           </div>

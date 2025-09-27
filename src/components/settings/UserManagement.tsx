@@ -150,10 +150,10 @@ export const UserManagement = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="owner">Owner</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      <SelectItem value="verkoper">Verkoper</SelectItem>
-                      <SelectItem value="user">Gebruiker</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="manager">Manager</SelectItem>
+                              <SelectItem value="verkoper">Verkoper</SelectItem>
+                              <SelectItem value="operationeel">Operationeel Gebruiker</SelectItem>
                     </SelectContent>
                   </Select>
                   

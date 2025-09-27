@@ -32,9 +32,11 @@ import {
 } from "@/components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 export function AppSidebar() {
   const location = useLocation();
+  const { hasReportsAccess, hasLeadsAccess, hasCustomersAccess, hasAIAgentsAccess, hasSettingsAccess } = useRoleAccess();
 
   const isActive = (path: string) => {
     if (path === "/") {
@@ -129,42 +131,48 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/customers") && !getSubActive(["/customers/b2b", "/customers/b2c", "/suppliers"])}>
-                  <Link to="/customers" className="text-white hover:text-white hover:bg-gray-800">
-                    <UsersIcon className="mr-2 h-4 w-4" />
-                    <span>Alle Klanten</span>
-                  </Link>
-                </SidebarMenuButton>
-                <SidebarMenuSub>
-                  {customerMenuItems.map((item) => (
-                    <SidebarMenuSubItem key={item.title}>
-                      <SidebarMenuSubButton asChild isActive={isActive(item.url)}>
-                        <Link to={item.url} className="text-white hover:text-white hover:bg-gray-800">
-                          <item.icon className="mr-2 h-4 w-4" />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  ))}
-                </SidebarMenuSub>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/suppliers")}>
-                  <Link to="/suppliers" className="text-white hover:text-white hover:bg-gray-800">
-                    <TruckIcon className="mr-2 h-4 w-4" />
-                    <span>Leveranciers</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/leads")}>
-                  <Link to="/leads" className="text-white hover:text-white hover:bg-gray-800">
-                    <BookIcon className="mr-2 h-4 w-4" />
-                    <span>Leads</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {hasCustomersAccess() && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/customers") && !getSubActive(["/customers/b2b", "/customers/b2c", "/suppliers"])}>
+                    <Link to="/customers" className="text-white hover:text-white hover:bg-gray-800">
+                      <UsersIcon className="mr-2 h-4 w-4" />
+                      <span>Alle Klanten</span>
+                    </Link>
+                  </SidebarMenuButton>
+                  <SidebarMenuSub>
+                    {customerMenuItems.map((item) => (
+                      <SidebarMenuSubItem key={item.title}>
+                        <SidebarMenuSubButton asChild isActive={isActive(item.url)}>
+                          <Link to={item.url} className="text-white hover:text-white hover:bg-gray-800">
+                            <item.icon className="mr-2 h-4 w-4" />
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                </SidebarMenuItem>
+              )}
+              {hasCustomersAccess() && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/suppliers")}>
+                    <Link to="/suppliers" className="text-white hover:text-white hover:bg-gray-800">
+                      <TruckIcon className="mr-2 h-4 w-4" />
+                      <span>Leveranciers</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {hasLeadsAccess() && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/leads")}>
+                    <Link to="/leads" className="text-white hover:text-white hover:bg-gray-800">
+                      <BookIcon className="mr-2 h-4 w-4" />
+                      <span>Leads</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -175,22 +183,26 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/reports")}>
-                  <Link to="/reports" className="text-white hover:text-white hover:bg-gray-800">
-                    <BarChart3 className="mr-2 h-4 w-4" />
-                    <span>Rapportages</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/ai-agents")}>
-                  <Link to="/ai-agents" className="text-white hover:text-white hover:bg-gray-800">
-                    <Bot className="mr-2 h-4 w-4" />
-                    <span>AI Agents</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {hasReportsAccess() && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/reports")}>
+                    <Link to="/reports" className="text-white hover:text-white hover:bg-gray-800">
+                      <BarChart3 className="mr-2 h-4 w-4" />
+                      <span>Rapportages</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {hasAIAgentsAccess() && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/ai-agents")}>
+                    <Link to="/ai-agents" className="text-white hover:text-white hover:bg-gray-800">
+                      <Bot className="mr-2 h-4 w-4" />
+                      <span>AI Agents</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={isActive("/warranty")}>
                   <Link to="/warranty" className="text-white hover:text-white hover:bg-gray-800">
@@ -219,20 +231,22 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/settings")}>
-                  <Link to="/settings" className="text-white hover:text-white hover:bg-gray-800">
-                    <SettingsIcon className="mr-2 h-4 w-4" />
-                    <span>Instellingen</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {hasSettingsAccess() && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/settings")}>
+                    <Link to="/settings" className="text-white hover:text-white hover:bg-gray-800">
+                      <SettingsIcon className="mr-2 h-4 w-4" />
+                      <span>Instellingen</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   );

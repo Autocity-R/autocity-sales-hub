@@ -6,7 +6,7 @@ export interface UserProfile {
   email: string;
   first_name: string | null;
   last_name: string | null;
-  role: string;
+  role: 'admin' | 'owner' | 'manager' | 'verkoper' | 'operationeel' | 'user';
   company: string | null;
   created_at: string;
   updated_at: string;
@@ -24,7 +24,7 @@ export const getAllUsers = async (): Promise<UserProfile[]> => {
       throw error;
     }
 
-    return data || [];
+    return (data || []) as UserProfile[];
   } catch (error) {
     console.error("Failed to fetch users:", error);
     throw error;
@@ -53,7 +53,7 @@ export const createUser = async (
   password: string,
   firstName: string,
   lastName: string,
-  role: string = 'user'
+  role: string = 'operationeel'
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     // Get current session for authorization
