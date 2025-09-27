@@ -41,6 +41,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ onClose, onTaskAdded }) => {
   const { data: employees = [] } = useQuery({
     queryKey: ["employees"],
     queryFn: fetchEmployees,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const { data: vehicles = [] } = useQuery({

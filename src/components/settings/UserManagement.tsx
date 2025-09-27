@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,11 +9,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAllUsers, updateUserRole, UserProfile } from "@/services/userService";
 import { useAuth } from "@/contexts/AuthContext";
+import { AddUserDialog } from "./AddUserDialog";
+import { UserActivityIndicator } from "./UserActivityIndicator";
 
 export const UserManagement = () => {
   const { toast } = useToast();
   const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
+  const [showAddUserDialog, setShowAddUserDialog] = useState(false);
 
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ["users"],
@@ -73,13 +76,24 @@ export const UserManagement = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Gebruikersbeheer
-          </CardTitle>
-          <CardDescription>
-            Beheer alle gebruikers in het systeem en hun toegangsrechten
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Gebruikersbeheer ({users.length})
+              </CardTitle>
+              <CardDescription>
+                Beheer alle gebruikers in het systeem en hun toegangsrechten
+              </CardDescription>
+            </div>
+            <Button 
+              onClick={() => setShowAddUserDialog(true)}
+              className="flex items-center gap-2"
+            >
+              <UserPlus className="h-4 w-4" />
+              Nieuwe Gebruiker
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -105,6 +119,7 @@ export const UserManagement = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <UserActivityIndicator user={user} />
                   <Badge variant={user.role === "admin" || user.role === "owner" ? "default" : "secondary"}>
                     {user.role === "admin" ? "Admin" : 
                      user.role === "owner" ? "Owner" :
@@ -139,6 +154,11 @@ export const UserManagement = () => {
           </div>
         </CardContent>
       </Card>
+
+      <AddUserDialog 
+        open={showAddUserDialog}
+        onClose={() => setShowAddUserDialog(false)}
+      />
     </div>
   );
 };

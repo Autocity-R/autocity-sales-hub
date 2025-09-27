@@ -98,6 +98,28 @@ export const fetchEmployees = async (): Promise<Employee[]> => {
   }
 };
 
+// Get active employees (users that can be assigned tasks)
+export const fetchActiveEmployees = async (): Promise<Employee[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('first_name', { ascending: true });
+
+    if (error) {
+      console.error("Failed to fetch active employees:", error);
+      return [];
+    }
+
+    return (data || [])
+      .filter(profile => profile.role && profile.role !== 'inactive') // Filter out inactive users
+      .map(profileToEmployee);
+  } catch (error: any) {
+    console.error("Failed to fetch active employees:", error);
+    return [];
+  }
+};
+
 export const createTask = async (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> => {
   try {
     const { data: currentUser } = await supabase.auth.getUser();
