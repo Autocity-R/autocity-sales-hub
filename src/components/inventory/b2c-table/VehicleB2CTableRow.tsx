@@ -28,7 +28,9 @@ const renderImportStatusBadge = (status: ImportStatus) => {
     ingeschreven: { label: "Ingeschreven", variant: "default" }
   };
   
-  const { label, variant } = statusMap[status];
+  // Handle unknown status values with fallback
+  const statusInfo = statusMap[status] || { label: status.replace(/_/g, ' ').toUpperCase(), variant: "outline" as const };
+  const { label, variant } = statusInfo;
   return <Badge variant={variant}>{label}</Badge>;
 };
 
