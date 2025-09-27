@@ -4,19 +4,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, UserPlus, Shield, Mail } from "lucide-react";
+import { Users, UserPlus, Shield, Mail, Trash2, MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAllUsers, updateUserRole, UserProfile } from "@/services/userService";
 import { useAuth } from "@/contexts/AuthContext";
 import { AddUserDialog } from "./AddUserDialog";
 import { UserActivityIndicator } from "./UserActivityIndicator";
+import { DeleteUserDialog } from "./DeleteUserDialog";
 
 export const UserManagement = () => {
   const { toast } = useToast();
   const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [showAddUserDialog, setShowAddUserDialog] = useState(false);
+  const [showDeleteUserDialog, setShowDeleteUserDialog] = useState(false);
+  const [selectedUserToDelete, setSelectedUserToDelete] = useState<UserProfile | null>(null);
 
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ["users"],
@@ -44,6 +48,16 @@ export const UserManagement = () => {
 
   const handleRoleChange = (userId: string, newRole: string) => {
     updateRoleMutation.mutate({ userId, newRole });
+  };
+
+  const handleDeleteUser = (user: UserProfile) => {
+    setSelectedUserToDelete(user);
+    setShowDeleteUserDialog(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setSelectedUserToDelete(null);
+    setShowDeleteUserDialog(false);
   };
 
   if (!isAdmin) {
@@ -142,6 +156,23 @@ export const UserManagement = () => {
                       <SelectItem value="user">Gebruiker</SelectItem>
                     </SelectContent>
                   </Select>
+                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem
+                        onClick={() => handleDeleteUser(user)}
+                        className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Gebruiker Verwijderen
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             ))}
@@ -158,6 +189,12 @@ export const UserManagement = () => {
       <AddUserDialog 
         open={showAddUserDialog}
         onClose={() => setShowAddUserDialog(false)}
+      />
+
+      <DeleteUserDialog
+        open={showDeleteUserDialog}
+        onClose={handleCloseDeleteDialog}
+        user={selectedUserToDelete}
       />
     </div>
   );

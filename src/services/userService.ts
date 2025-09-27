@@ -93,6 +93,39 @@ export const createUser = async (
   }
 };
 
+export const deleteUser = async (userId: string): Promise<{ success: boolean; error?: string; message?: string }> => {
+  try {
+    // Get current session for authorization
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      return { success: false, error: 'Je moet ingelogd zijn om gebruikers te verwijderen' };
+    }
+
+    // Call the edge function to delete user
+    const { data, error } = await supabase.functions.invoke('delete-user', {
+      body: { userId },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      }
+    });
+
+    if (error) {
+      console.error('Edge function error:', error);
+      return { success: false, error: 'Er is een fout opgetreden bij het verwijderen van de gebruiker' };
+    }
+
+    if (!data.success) {
+      return { success: false, error: data.error || 'Onbekende fout' };
+    }
+
+    return { success: true, message: data.message };
+  } catch (error: any) {
+    console.error("Failed to delete user:", error);
+    return { success: false, error: error.message || 'Onbekende fout' };
+  }
+};
+
 export const getUserLastLogin = async (userId: string): Promise<string | null> => {
   try {
     // This would need to be implemented with auth.users access via RPC or edge function
