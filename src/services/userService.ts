@@ -56,38 +56,35 @@ export const createUser = async (
   role: string = 'user'
 ): Promise<{ success: boolean; error?: string }> => {
   try {
-    // First check if email already exists
-    const { data: existingUser } = await supabase
-      .from('profiles')
-      .select('email')
-      .eq('email', email)
-      .single();
-
-    if (existingUser) {
-      return { success: false, error: 'Een gebruiker met dit e-mailadres bestaat al' };
+    // Get current session for authorization
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      return { success: false, error: 'Je moet ingelogd zijn om gebruikers aan te maken' };
     }
 
-    // Create user with Supabase Auth
-    const { data, error: authError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        first_name: firstName,
-        last_name: lastName,
+    // Call the edge function to create user
+    const { data, error } = await supabase.functions.invoke('create-user', {
+      body: {
+        email,
+        password,
+        firstName,
+        lastName,
+        role
+      },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
       }
     });
 
-    if (authError) {
-      return { success: false, error: authError.message };
+    if (error) {
+      console.error('Edge function error:', error);
+      return { success: false, error: 'Er is een fout opgetreden bij het aanmaken van de gebruiker' };
     }
 
-    if (!data.user) {
-      return { success: false, error: 'Gebruiker niet aangemaakt' };
+    if (!data.success) {
+      return { success: false, error: data.error || 'Onbekende fout' };
     }
-
-    // Update the role in profiles table
-    await updateUserRole(data.user.id, role);
 
     return { success: true };
   } catch (error: any) {
