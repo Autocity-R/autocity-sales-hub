@@ -62,7 +62,7 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
     onUpdate({
       ...updatedVehicle,
       arrived: true,
-      importStatus: "aangekomen",
+      importStatus: "ingeschreven",
       notes
     });
   };

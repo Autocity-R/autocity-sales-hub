@@ -39,7 +39,7 @@ export const BulkActionDialog: React.FC<BulkActionDialogProps> = ({
   count
 }) => {
   const [actionType, setActionType] = useState<string>("importStatus");
-  const [importStatus, setImportStatus] = useState<ImportStatus>("transport_geregeld");
+  const [importStatus, setImportStatus] = useState<ImportStatus>("aangemeld");
   const [workshopStatus, setWorkshopStatus] = useState<WorkshopStatus>("poetsen");
   const [arrived, setArrived] = useState<boolean>(true);
   const [emailType, setEmailType] = useState<string>("transport_pickup");
@@ -127,11 +127,11 @@ export const BulkActionDialog: React.FC<BulkActionDialogProps> = ({
                   <SelectValue placeholder="Selecteer status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="niet_gestart">Niet gestart</SelectItem>
-                  <SelectItem value="transport_geregeld">Transport geregeld</SelectItem>
-                  <SelectItem value="onderweg">Onderweg</SelectItem>
-                  <SelectItem value="aangekomen">Aangekomen</SelectItem>
-                  <SelectItem value="afgemeld">Afgemeld</SelectItem>
+                  <SelectItem value="niet_aangemeld">Niet aangemeld</SelectItem>
+                  <SelectItem value="aangemeld">Aangemeld</SelectItem>
+                  <SelectItem value="goedgekeurd">Goedgekeurd</SelectItem>
+                  <SelectItem value="bpm_betaald">BPM Betaald</SelectItem>
+                  <SelectItem value="ingeschreven">Ingeschreven</SelectItem>
                 </SelectContent>
               </Select>
             </div>

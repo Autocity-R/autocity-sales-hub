@@ -1,14 +1,9 @@
 
 export type ImportStatus = 
-  | "niet_gestart" 
-  | "aangemeld"      // Added
-  | "goedgekeurd"    // Added
-  | "transport_geregeld" 
-  | "onderweg" 
-  | "aangekomen" 
-  | "afgemeld"
+  | "niet_aangemeld" 
+  | "aangemeld"
+  | "goedgekeurd"
   | "bpm_betaald"
-  | "herkeuring"
   | "ingeschreven";
 
 export type WorkshopStatus = 

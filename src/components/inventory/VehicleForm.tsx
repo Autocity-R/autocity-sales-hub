@@ -44,7 +44,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
     licenseNumber: initialData?.licenseNumber || "",
     vin: initialData?.vin || "",
     mileage: initialData?.mileage || 0,
-    importStatus: initialData?.importStatus || "niet_gestart",
+    importStatus: initialData?.importStatus || "niet_aangemeld",
     arrived: initialData?.arrived || false,
     workshopStatus: initialData?.workshopStatus || "wachten",
     location: initialData?.location || "showroom",

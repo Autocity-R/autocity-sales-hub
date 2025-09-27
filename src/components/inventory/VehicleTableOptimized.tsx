@@ -34,15 +34,10 @@ interface VehicleTableProps {
 
 const renderImportStatusBadge = (status: ImportStatus) => {
   const statusMap: Record<ImportStatus, { label: string, variant: "default" | "outline" | "secondary" | "destructive" }> = {
-    niet_gestart: { label: "Niet gestart", variant: "outline" },
+    niet_aangemeld: { label: "Niet aangemeld", variant: "outline" },
     aangemeld: { label: "Aangemeld", variant: "outline" },
     goedgekeurd: { label: "Goedgekeurd", variant: "secondary" },
-    transport_geregeld: { label: "Transport geregeld", variant: "secondary" },
-    onderweg: { label: "Onderweg", variant: "secondary" },
-    aangekomen: { label: "Aangekomen", variant: "default" },
-    afgemeld: { label: "Afgemeld", variant: "destructive" },
     bpm_betaald: { label: "BPM betaald", variant: "default" },
-    herkeuring: { label: "Herkeuring", variant: "secondary" },
     ingeschreven: { label: "Ingeschreven", variant: "default" }
   };
   

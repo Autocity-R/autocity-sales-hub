@@ -26,7 +26,7 @@ const TestContract = () => {
     vin: "WDD2052011F123456",
     mileage: 70000,
     year: 2019,
-    importStatus: "aangekomen",
+    importStatus: "ingeschreven",
     arrived: true,
     workshopStatus: "gereed",
     location: "showroom",

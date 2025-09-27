@@ -107,7 +107,7 @@ export const fetchDeliveredVehiclesForWarranty = async (): Promise<Vehicle[]> =>
         licenseNumber: "CD-789-E",
         vin: "WAUZZZ8K3BA134651",
         mileage: 95000,
-        importStatus: "aangekomen",
+        importStatus: "ingeschreven",
         arrived: true,
         workshopStatus: "gereed",
         location: "showroom",
