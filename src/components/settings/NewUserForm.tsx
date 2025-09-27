@@ -48,11 +48,20 @@ export const NewUserForm = () => {
           role: "user",
         });
       } else {
-        toast({
-          title: "Fout bij aanmaken",
-          description: result.error || "Er is een fout opgetreden.",
-          variant: "destructive",
-        });
+        const isDuplicate = result.error?.toLowerCase().includes('bestaat al') || result.error?.toLowerCase().includes('already');
+        if (isDuplicate) {
+          queryClient.invalidateQueries({ queryKey: ["users"] });
+          toast({
+            title: "Gebruiker bestaat al",
+            description: `${formData.firstName} ${formData.lastName} staat al in het systeem. De lijst is ververst.`,
+          });
+        } else {
+          toast({
+            title: "Fout bij aanmaken",
+            description: result.error || "Er is een fout opgetreden.",
+            variant: "destructive",
+          });
+        }
       }
     },
     onError: (error: any) => {

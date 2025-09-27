@@ -73,11 +73,22 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose }) =
         });
         handleClose();
       } else {
-        toast({
-          title: "Fout bij aanmaken",
-          description: result.error || "Er is een fout opgetreden bij het aanmaken van de gebruiker.",
-          variant: "destructive",
-        });
+        const isDuplicate = result.error?.toLowerCase().includes('bestaat al') || result.error?.toLowerCase().includes('already');
+        if (isDuplicate) {
+          queryClient.invalidateQueries({ queryKey: ["users"] });
+          queryClient.invalidateQueries({ queryKey: ["employees"] });
+          toast({
+            title: "Gebruiker bestaat al",
+            description: "Deze gebruiker staat al in de lijst. De lijst is ververst.",
+          });
+          handleClose();
+        } else {
+          toast({
+            title: "Fout bij aanmaken",
+            description: result.error || "Er is een fout opgetreden bij het aanmaken van de gebruiker.",
+            variant: "destructive",
+          });
+        }
       }
     },
     onError: (error: any) => {
