@@ -115,7 +115,11 @@ const TaskCard = memo<{
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div className="flex items-center space-x-2">
             <User className="h-4 w-4 text-muted-foreground" />
-            <span>Toegewezen aan: {task.assignedTo}</span>
+            <span>Toegewezen aan: {
+              (task as any).assigned_to_profile 
+                ? `${(task as any).assigned_to_profile.first_name || ''} ${(task as any).assigned_to_profile.last_name || ''}`.trim() || (task as any).assigned_to_profile.email
+                : 'Onbekende gebruiker'
+            }</span>
           </div>
           
           {task.vehicleBrand && (

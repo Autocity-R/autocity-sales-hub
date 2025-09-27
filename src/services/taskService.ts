@@ -51,7 +51,7 @@ export const fetchTasks = async (filters?: any): Promise<Task[]> => {
       return [];
     }
 
-    // Transform database response to Task interface
+    // Transform database response to Task interface - pass through the profile data
     return (data || []).map((task: any) => ({
       id: task.id,
       title: task.title,
@@ -71,7 +71,11 @@ export const fetchTasks = async (filters?: any): Promise<Task[]> => {
       completedAt: task.completed_at,
       notes: task.notes,
       createdAt: task.created_at,
-      updatedAt: task.updated_at
+      updatedAt: task.updated_at,
+      // Pass through the joined profile data
+      assigned_to_profile: task.assigned_to_profile,
+      assigned_by_profile: task.assigned_by_profile,
+      vehicle: task.vehicle
     }));
   } catch (error: any) {
     console.error("Failed to fetch tasks:", error);
