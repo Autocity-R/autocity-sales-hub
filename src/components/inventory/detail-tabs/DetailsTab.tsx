@@ -305,37 +305,41 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
             </Label>
           </div>
           
-          {/* Show salesperson and payment status when vehicle is sold */}
+          {/* Salesperson Selection - Always visible for performance tracking */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium flex items-center">
+              <User className="h-4 w-4 mr-1 text-muted-foreground" />
+              Verkoper
+            </Label>
+            <Select 
+              value={editedVehicle.salespersonId || ""} 
+              onValueChange={(value) => {
+                const selectedSalesperson = salespeople?.find(sp => sp.id === value);
+                handleChange('salespersonId', value);
+                handleChange('salespersonName', selectedSalesperson?.name || '');
+              }}
+              disabled={salesLoading}
+            >
+              <SelectTrigger className="w-full bg-background">
+                <SelectValue placeholder={salesLoading ? "Laden..." : "Selecteer verkoper"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                <SelectItem value="">Geen verkoper toegewezen</SelectItem>
+                {salespeople?.map((salesperson) => (
+                  <SelectItem key={salesperson.id} value={salesperson.id}>
+                    {salesperson.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Koppel een verkoper voor performance tracking en motivatie
+            </p>
+          </div>
+
+          {/* Show payment status when vehicle is sold */}
           {(editedVehicle.salesStatus === "verkocht_b2c" || editedVehicle.salesStatus === "verkocht_b2b") && (
             <div className="ml-6 mt-2 p-4 bg-green-50 border border-green-100 rounded-md space-y-4">
-              {/* Salesperson Selection */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium flex items-center">
-                  <User className="h-4 w-4 mr-1 text-muted-foreground" />
-                  Verkoper
-                </Label>
-                <Select 
-                  value={editedVehicle.salespersonId || ""} 
-                  onValueChange={(value) => {
-                    const selectedSalesperson = salespeople?.find(sp => sp.id === value);
-                    handleChange('salespersonId', value);
-                    handleChange('salespersonName', selectedSalesperson?.name || '');
-                  }}
-                  disabled={salesLoading}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={salesLoading ? "Laden..." : "Selecteer verkoper"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {salespeople?.map((salesperson) => (
-                      <SelectItem key={salesperson.id} value={salesperson.id}>
-                        {salesperson.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
               {/* Payment Status */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Betaalstatus</Label>
@@ -343,10 +347,10 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
                   value={editedVehicle.paymentStatus || "niet_betaald"} 
                   onValueChange={(value) => handleChange('paymentStatus', value)}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full bg-background">
                     <SelectValue placeholder="Selecteer betaalstatus" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-background border z-50">
                     <SelectItem value="niet_betaald">Niet betaald</SelectItem>
                     <SelectItem value="aanbetaling">Aanbetaling</SelectItem>
                     <SelectItem value="volledig_betaald">Volledig betaald</SelectItem>

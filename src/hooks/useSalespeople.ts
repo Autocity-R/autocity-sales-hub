@@ -1,48 +1,37 @@
 
 import { useQuery } from "@tanstack/react-query";
-import { User } from "@/types/inventory";
+import { supabase } from "@/integrations/supabase/client";
 
-// Mock data - replace with actual API call
-const mockSalespeople: User[] = [
-  {
-    id: "1",
-    name: "Jan van der Berg",
-    email: "jan@company.com",
-    role: "Verkoper",
-    isActive: true
-  },
-  {
-    id: "2", 
-    name: "Sarah de Vries",
-    email: "sarah@company.com",
-    role: "Verkoper",
-    isActive: true
-  },
-  {
-    id: "3",
-    name: "Mike Jansen",
-    email: "mike@company.com", 
-    role: "Verkoper",
-    isActive: true
-  },
-  {
-    id: "4",
-    name: "Lisa Bakker", 
-    email: "lisa@company.com",
-    role: "Verkoper",
-    isActive: false
-  }
-];
+export interface Salesperson {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+}
 
 export const useSalespeople = () => {
   return useQuery({
     queryKey: ["salespeople"],
-    queryFn: async (): Promise<User[]> => {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Filter only active salespeople
-      return mockSalespeople.filter(user => user.role === "Verkoper" && user.isActive);
-    }
+    queryFn: async (): Promise<Salesperson[]> => {
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email, role')
+        .eq('role', 'verkoper');
+
+      if (error) {
+        console.error("Error fetching salespeople:", error);
+        throw error;
+      }
+
+      return profiles?.map(profile => ({
+        id: profile.id,
+        name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+        email: profile.email,
+        role: "Verkoper",
+        isActive: true
+      })) || [];
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
