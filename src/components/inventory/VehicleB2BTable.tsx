@@ -54,6 +54,7 @@ interface VehicleB2BTableProps {
   handleSendEmail: (type: string, vehicleId: string) => void;
   handleUpdateSellingPrice?: (vehicleId: string, price: number) => void;
   handleUpdatePaymentStatus?: (vehicleId: string, status: PaymentStatus) => void;
+  handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   onMarkAsDelivered?: (vehicleId: string) => void;
   onOpenContractConfig?: (vehicle: Vehicle, type: "b2b" | "b2c") => void;
   isLoading: boolean;
@@ -100,6 +101,7 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
   handleSendEmail,
   handleUpdateSellingPrice,
   handleUpdatePaymentStatus,
+  handleChangeStatus,
   onMarkAsDelivered,
   onOpenContractConfig,
   isLoading,
@@ -407,6 +409,31 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                         <Mail className="h-4 w-4 mr-2" />
                         Kenteken update
                       </DropdownMenuItem>
+                      
+                      {handleChangeStatus && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>Verkoopstatus</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            handleChangeStatus(vehicle.id, "verkocht_b2b");
+                          }}>
+                            Verkocht B2B
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            handleChangeStatus(vehicle.id, "verkocht_b2c");
+                          }}>
+                            Verkocht Particulier
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            handleChangeStatus(vehicle.id, "voorraad");
+                          }}>
+                            Terug naar voorraad
+                          </DropdownMenuItem>
+                        </>
+                      )}
                       
                       <DropdownMenuSeparator />
                       <DropdownMenuLabel>Betaalstatus</DropdownMenuLabel>

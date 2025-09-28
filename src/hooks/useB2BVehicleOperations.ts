@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Vehicle, PaymentStatus } from "@/types/inventory";
 import { FileCategory } from "@/types/inventory";
+import { useWeeklySalesTracking } from "@/hooks/useWeeklySalesTracking";
 import { 
   updateVehicle, 
   sendEmail, 
@@ -10,11 +11,13 @@ import {
   updatePaymentStatus,
   uploadVehiclePhoto,
   updateSalesStatus,
-  uploadVehicleFile
+  uploadVehicleFile,
+  changeVehicleStatus
 } from "@/services/inventoryService";
 
 export const useB2BVehicleOperations = () => {
   const queryClient = useQueryClient();
+  const { trackSale } = useWeeklySalesTracking();
   
   const updateVehicleMutation = useMutation({
     mutationFn: (vehicle: Vehicle) => updateVehicle(vehicle),
@@ -111,6 +114,38 @@ export const useB2BVehicleOperations = () => {
   const handleMarkAsDelivered = (vehicleId: string) => {
     markAsDeliveredMutation.mutate(vehicleId);
   };
+
+  const changeVehicleStatusMutation = useMutation({
+    mutationFn: ({ vehicleId, status }: { vehicleId: string; status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad' }) => 
+      changeVehicleStatus(vehicleId, status),
+    onSuccess: (_, { vehicleId, status }) => {
+      toast.success("Voertuig status bijgewerkt");
+      queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["weeklySalesLeaderboard"] });
+    },
+    onError: (error) => {
+      toast.error("Fout bij het bijwerken van de voertuig status");
+      console.error("Error changing vehicle status:", error);
+    }
+  });
+
+  const handleChangeStatus = async (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => {
+    // Find the vehicle to get salesperson info for tracking
+    const currentVehicles = queryClient.getQueryData<Vehicle[]>(["b2bVehicles"]) || [];
+    const vehicle = currentVehicles.find(v => v.id === vehicleId);
+    
+    // Track sales before status change
+    if ((status === 'verkocht_b2b' || status === 'verkocht_b2c') && vehicle && vehicle.salespersonId && vehicle.salespersonName) {
+      const salesType = status === 'verkocht_b2b' ? 'b2b' : 'b2c';
+      trackSale({
+        salespersonId: vehicle.salespersonId,
+        salespersonName: vehicle.salespersonName,
+        salesType
+      });
+    }
+    
+    changeVehicleStatusMutation.mutate({ vehicleId, status });
+  };
   
   return {
     handleUpdateVehicle,
@@ -118,6 +153,7 @@ export const useB2BVehicleOperations = () => {
     handleUpdateSellingPrice,
     handleUpdatePaymentStatus,
     handleMarkAsDelivered,
+    handleChangeStatus,
     uploadFileMutation
   };
 };

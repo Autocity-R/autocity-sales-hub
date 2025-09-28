@@ -20,7 +20,7 @@ const InventoryB2B = () => {
   // Custom hooks for managing state and operations
   const { vehicles, isLoading, error, sortField, sortDirection, onSort } = useB2BVehicles();
   const { selectedVehicles, selectedVehicle, setSelectedVehicle, toggleSelectVehicle, toggleSelectAll } = useB2BVehicleSelection(vehicles);
-  const { handleUpdateVehicle, handleSendEmail, handleUpdateSellingPrice, handleUpdatePaymentStatus, handleMarkAsDelivered, uploadFileMutation } = useB2BVehicleOperations();
+  const { handleUpdateVehicle, handleSendEmail, handleUpdateSellingPrice, handleUpdatePaymentStatus, handleMarkAsDelivered, handleChangeStatus, uploadFileMutation } = useB2BVehicleOperations();
   const { vehicleFiles = [] } = useVehicleFiles(selectedVehicle);
   const { handleUploadPhoto, handleRemovePhoto, handleSetMainPhoto } = useVehiclePhotos(selectedVehicle, setSelectedVehicle);
 
@@ -67,6 +67,7 @@ const InventoryB2B = () => {
           onSendEmail={handleSendEmail}
           onUpdateSellingPrice={handleUpdateSellingPrice}
           onUpdatePaymentStatus={handleUpdatePaymentStatus}
+          onChangeStatus={handleChangeStatus}
           onMarkAsDelivered={handleMarkAsDelivered}
           onUpdateVehicle={handleUpdateVehicle}
           onPhotoUpload={handleUploadPhoto}

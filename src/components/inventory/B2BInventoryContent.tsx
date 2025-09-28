@@ -20,6 +20,7 @@ interface B2BInventoryContentProps {
   onSendEmail: (type: string, vehicleId: string) => void;
   onUpdateSellingPrice: (vehicleId: string, price: number) => void;
   onUpdatePaymentStatus: (vehicleId: string, status: PaymentStatus) => void;
+  onChangeStatus: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   onMarkAsDelivered: (vehicleId: string) => void;
   onUpdateVehicle: (vehicle: Vehicle) => void;
   onPhotoUpload: (file: File, isMain: boolean) => void;
@@ -45,6 +46,7 @@ export const B2BInventoryContent = ({
   onSendEmail,
   onUpdateSellingPrice,
   onUpdatePaymentStatus,
+  onChangeStatus,
   onMarkAsDelivered,
   onUpdateVehicle,
   onPhotoUpload,
@@ -65,6 +67,7 @@ export const B2BInventoryContent = ({
           handleSendEmail={onSendEmail}
           handleUpdateSellingPrice={onUpdateSellingPrice}
           handleUpdatePaymentStatus={onUpdatePaymentStatus}
+          handleChangeStatus={onChangeStatus}
           onMarkAsDelivered={onMarkAsDelivered}
           onOpenContractConfig={onOpenContractConfig}
           isLoading={isLoading}

@@ -185,8 +185,9 @@ export class SupabaseInventoryService {
        papersDate: vehicle.papersDate ? vehicle.papersDate.toISOString() : null,
        showroomOnline: vehicle.showroomOnline || false,
        paymentStatus: vehicle.paymentStatus || 'niet_betaald',
-       salespersonId: vehicle.salespersonId || null,
-       mainPhotoUrl: vehicle.mainPhotoUrl || null,
+        salespersonId: vehicle.salespersonId || null,
+        salespersonName: vehicle.salespersonName || null,
+        mainPhotoUrl: vehicle.mainPhotoUrl || null,
        photos: vehicle.photos || []
      };
 
@@ -214,6 +215,7 @@ export class SupabaseInventoryService {
           status: salesStatus,
           location: vehicle.location,
           customer_id: vehicle.customerId,
+          supplier_id: vehicle.supplierId,
           import_status: vehicle.importStatus,
           notes: vehicle.notes,
           details: details as any,
@@ -333,8 +335,9 @@ export class SupabaseInventoryService {
        papersDate: vehicleData.papersDate ? vehicleData.papersDate.toISOString() : null,
        showroomOnline: vehicleData.showroomOnline || false,
        paymentStatus: vehicleData.paymentStatus || 'niet_betaald',
-       salespersonId: vehicleData.salespersonId || null,
-       mainPhotoUrl: vehicleData.mainPhotoUrl || null,
+         salespersonId: vehicleData.salespersonId || null,
+         salespersonName: vehicleData.salespersonName || null,
+         mainPhotoUrl: vehicleData.mainPhotoUrl || null,
        photos: vehicleData.photos || []
      };
     
@@ -352,8 +355,9 @@ export class SupabaseInventoryService {
           selling_price: vehicleData.sellingPrice,
           status: vehicleData.salesStatus || 'voorraad',
           location: vehicleData.location || 'showroom',
-          customer_id: vehicleData.customerId,
-          import_status: vehicleData.importStatus || 'niet_gestart',
+           customer_id: vehicleData.customerId,
+           supplier_id: vehicleData.supplierId,
+           import_status: vehicleData.importStatus || 'niet_gestart',
           notes: vehicleData.notes,
           details: details as any
         }])
@@ -392,6 +396,7 @@ export class SupabaseInventoryService {
       location: supabaseVehicle.location || 'showroom',
       salesStatus: supabaseVehicle.status as any,
       customerId: supabaseVehicle.customer_id,
+      supplierId: supabaseVehicle.supplier_id,
       createdAt: supabaseVehicle.created_at,
       
       // Map import_status and notes from top-level columns
@@ -413,6 +418,7 @@ export class SupabaseInventoryService {
       showroomOnline: details.showroomOnline || false,
       paymentStatus: details.paymentStatus || 'niet_betaald',
       salespersonId: details.salespersonId || null,
+      salespersonName: details.salespersonName || null,
       mainPhotoUrl: details.mainPhotoUrl || null,
       photos: details.photos || [],
       
