@@ -1,41 +1,34 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getContacts, getContactsByType } from "@/services/customerService";
 import ContactList from "@/components/customers/ContactList";
 import { Contact, ContactType } from "@/types/customer";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
+import { useQuery } from "@tanstack/react-query";
 
 const Customers = () => {
-  const [allContacts, setAllContacts] = useState<Contact[]>([]);
-  const [suppliers, setSuppliers] = useState<Contact[]>([]);
-  const [b2bCustomers, setB2bCustomers] = useState<Contact[]>([]);
-  const [b2cCustomers, setB2cCustomers] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: allContacts = [], isLoading: loadingAll } = useQuery({
+    queryKey: ["contacts", "all"],
+    queryFn: getContacts
+  });
 
-  useEffect(() => {
-    const loadContacts = async () => {
-      try {
-        const [all, supplierList, b2bList, b2cList] = await Promise.all([
-          getContacts(),
-          getContactsByType("supplier"),
-          getContactsByType("b2b"),
-          getContactsByType("b2c")
-        ]);
-        
-        setAllContacts(all);
-        setSuppliers(supplierList);
-        setB2bCustomers(b2bList);
-        setB2cCustomers(b2cList);
-      } catch (error) {
-        console.error("Error loading contacts:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const { data: suppliers = [], isLoading: loadingSuppliers } = useQuery({
+    queryKey: ["contacts", "supplier"],
+    queryFn: () => getContactsByType("supplier")
+  });
 
-    loadContacts();
-  }, []);
+  const { data: b2bCustomers = [], isLoading: loadingB2B } = useQuery({
+    queryKey: ["contacts", "b2b"],
+    queryFn: () => getContactsByType("b2b")
+  });
+
+  const { data: b2cCustomers = [], isLoading: loadingB2C } = useQuery({
+    queryKey: ["contacts", "b2c"],
+    queryFn: () => getContactsByType("b2c")
+  });
+
+  const loading = loadingAll || loadingSuppliers || loadingB2B || loadingB2C;
 
   if (loading) {
     return (

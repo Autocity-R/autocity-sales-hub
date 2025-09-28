@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ContactForm } from "./ContactForm";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ContactListProps {
   contacts: Contact[];
@@ -26,6 +27,7 @@ const ContactList: React.FC<ContactListProps> = ({ contacts, title, type }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   
   const filteredContacts = contacts.filter(contact => {
     const searchFields = [
@@ -46,6 +48,8 @@ const ContactList: React.FC<ContactListProps> = ({ contacts, title, type }) => {
   
   const handleAddSuccess = () => {
     setIsAddContactOpen(false);
+    // Invalidate all contact queries to refresh the data
+    queryClient.invalidateQueries({ queryKey: ["contacts"] });
   };
 
   return (
