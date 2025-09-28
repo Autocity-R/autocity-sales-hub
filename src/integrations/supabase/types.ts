@@ -1717,6 +1717,45 @@ export type Database = {
           },
         ]
       }
+      weekly_sales: {
+        Row: {
+          b2b_sales: number
+          b2c_sales: number
+          created_at: string
+          id: string
+          salesperson_id: string
+          salesperson_name: string
+          total_sales: number
+          updated_at: string
+          week_end_date: string
+          week_start_date: string
+        }
+        Insert: {
+          b2b_sales?: number
+          b2c_sales?: number
+          created_at?: string
+          id?: string
+          salesperson_id: string
+          salesperson_name: string
+          total_sales?: number
+          updated_at?: string
+          week_end_date: string
+          week_start_date: string
+        }
+        Update: {
+          b2b_sales?: number
+          b2c_sales?: number
+          created_at?: string
+          id?: string
+          salesperson_id?: string
+          salesperson_name?: string
+          total_sales?: number
+          updated_at?: string
+          week_end_date?: string
+          week_start_date?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1750,6 +1789,10 @@ export type Database = {
           vehicle_id: string
         }[]
       }
+      get_week_start_date: {
+        Args: { input_date?: string }
+        Returns: string
+      }
       is_admin_or_owner: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -1757,6 +1800,14 @@ export type Database = {
       is_admin_user: {
         Args: { user_id: string }
         Returns: boolean
+      }
+      update_weekly_sales: {
+        Args: {
+          p_sales_type: string
+          p_salesperson_id: string
+          p_salesperson_name: string
+        }
+        Returns: undefined
       }
       verify_webhook_sync: {
         Args: { agent_uuid: string }

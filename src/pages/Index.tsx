@@ -6,6 +6,7 @@ import InventoryChart from "@/components/dashboard/InventoryChart";
 import LeadTimeChart from "@/components/dashboard/LeadTimeChart";
 import AiAssistant from "@/components/dashboard/AiAssistant";
 import RecentLeads from "@/components/dashboard/RecentLeads";
+import WeeklySalesLeaderboard from "@/components/dashboard/WeeklySalesLeaderboard";
 import { Database, Package, Truck, User } from "lucide-react";
 
 const Index = () => {
@@ -57,6 +58,10 @@ const Index = () => {
       <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2 mt-6">
         <RecentLeads />
         <AiAssistant />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-1 mt-6">
+        <WeeklySalesLeaderboard />
       </div>
     </DashboardLayout>
   );
