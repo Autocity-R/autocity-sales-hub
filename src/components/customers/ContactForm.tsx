@@ -3,6 +3,7 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { Contact, ContactType, Address } from "@/types/customer";
 import { Button } from "@/components/ui/button";
+import ContactEmailManager from "./ContactEmailManager";
 import {
   Form,
   FormControl,
@@ -42,6 +43,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
     firstName: "",
     lastName: "",
     email: "",
+    additionalEmails: [],
     phone: "",
     address: {
       street: "",
@@ -292,6 +294,23 @@ const ContactForm: React.FC<ContactFormProps> = ({
             )}
           />
           
+          {/* Email Management - only for suppliers and B2B clients */}
+          {(selectedType === "supplier" || selectedType === "b2b") && (
+            <div className="pt-4">
+              <h4 className="font-medium text-lg mb-4">Email Management</h4>
+              <ContactEmailManager
+                primaryEmail={form.watch("email") || ""}
+                additionalEmails={form.watch("additionalEmails") || []}
+                onEmailsChange={(emails) => form.setValue("additionalEmails", emails)}
+                contactType={selectedType}
+                onSendCMR={(emails) => {
+                  // This will be connected later when email service is ready
+                  console.log("CMR versturen naar:", emails);
+                }}
+              />
+            </div>
+          )}
+
           <FormField
             control={form.control}
             name="notes"

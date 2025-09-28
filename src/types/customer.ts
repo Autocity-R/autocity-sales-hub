@@ -16,6 +16,7 @@ export interface Contact {
   firstName: string;
   lastName: string;
   email: string;
+  additionalEmails?: string[]; // Additional emails for suppliers/B2B clients
   phone: string;
   address: Address;
   notes?: string;

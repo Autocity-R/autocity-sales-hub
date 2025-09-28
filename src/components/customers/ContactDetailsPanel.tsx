@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Building, Mail, Phone, MapPin, Pencil } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ContactForm } from "./ContactForm";
+import ContactEmailManager from "./ContactEmailManager";
 
 interface ContactDetailsPanelProps {
   contact: Contact;
@@ -18,6 +19,16 @@ const ContactDetailsPanel: React.FC<ContactDetailsPanelProps> = ({ contact, onUp
   const handleEditSuccess = (updated: Contact) => {
     setIsEditing(false);
     onUpdate(updated);
+  };
+
+  const handleEmailsChange = (emails: string[]) => {
+    const updatedContact = { ...contact, additionalEmails: emails };
+    onUpdate(updatedContact);
+  };
+
+  const handleSendCMR = (emails: string[]) => {
+    // This will be connected later when email service is ready
+    console.log("CMR versturen naar:", emails);
   };
 
   return (
@@ -103,6 +114,19 @@ const ContactDetailsPanel: React.FC<ContactDetailsPanelProps> = ({ contact, onUp
             <p className="whitespace-pre-line">{contact.notes}</p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Email Management for suppliers and B2B clients */}
+      {(contact.type === "supplier" || contact.type === "b2b") && (
+        <div className="mb-8">
+          <ContactEmailManager
+            primaryEmail={contact.email}
+            additionalEmails={contact.additionalEmails || []}
+            onEmailsChange={handleEmailsChange}
+            contactType={contact.type}
+            onSendCMR={contact.type === "supplier" ? handleSendCMR : undefined}
+          />
+        </div>
       )}
 
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
