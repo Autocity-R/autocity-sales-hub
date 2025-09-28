@@ -312,11 +312,16 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               Verkoper
             </Label>
             <Select 
-              value={editedVehicle.salespersonId || ""} 
+              value={editedVehicle.salespersonId || "none"} 
               onValueChange={(value) => {
-                const selectedSalesperson = salespeople?.find(sp => sp.id === value);
-                handleChange('salespersonId', value);
-                handleChange('salespersonName', selectedSalesperson?.name || '');
+                if (value === "none") {
+                  handleChange('salespersonId', null);
+                  handleChange('salespersonName', '');
+                } else {
+                  const selectedSalesperson = salespeople?.find(sp => sp.id === value);
+                  handleChange('salespersonId', value);
+                  handleChange('salespersonName', selectedSalesperson?.name || '');
+                }
               }}
               disabled={salesLoading}
             >
@@ -324,7 +329,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
                 <SelectValue placeholder={salesLoading ? "Laden..." : "Selecteer verkoper"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
-                <SelectItem value="">Geen verkoper toegewezen</SelectItem>
+                <SelectItem value="none">Geen verkoper toegewezen</SelectItem>
                 {salespeople?.map((salesperson) => (
                   <SelectItem key={salesperson.id} value={salesperson.id}>
                     {salesperson.name}
