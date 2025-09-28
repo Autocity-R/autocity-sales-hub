@@ -102,7 +102,6 @@ export interface Vehicle {
   mainPhotoUrl: string | null;
   photos: string[];
   createdAt?: string | Date;
-  customerId?: string;      // Added customer reference
   customerName?: string;    // Added customer name for display
   deliveryDate?: Date | null; // Added delivery date
   salespersonId?: string;   // Added salesperson reference
@@ -114,6 +113,11 @@ export interface Vehicle {
   contractType?: "b2b" | "b2c"; // Type of contract
   contractDate?: Date | null; // Date when contract was generated
   contractOptions?: any;    // The options used when generating the contract
+  
+  // Contact references to contacts table
+  customerId?: string;              // Reference to customer in contacts table
+  supplierId?: string;              // Reference to supplier in contacts table
+  transporterId?: string;           // Reference to transporter in contacts table
   
   // Contact informatie voor email verzending
   customerContact?: ContactInfo;    // Klant contact informatie

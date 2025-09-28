@@ -50,11 +50,22 @@ export const getEmailTemplateByButton = (buttonValue: string): EmailTemplate | n
   return emailTemplates.find(template => template.linkedButton === buttonValue) || null;
 };
 
-export const determineRecipient = (buttonValue: string, vehicleData: Vehicle): { email: string; name: string } | null => {
+export const determineRecipient = async (buttonValue: string, vehicleData: Vehicle): Promise<{ email: string; name: string } | null> => {
   switch (buttonValue) {
     case "transport_pickup":
       return vehicleData.transporterContact || null;
     case "cmr_supplier":
+      // Get supplier contact from contacts table
+      if (vehicleData.supplierId) {
+        const { supabaseCustomerService } = await import('./supabaseCustomerService');
+        const supplier = await supabaseCustomerService.getContactById(vehicleData.supplierId);
+        if (supplier) {
+          return {
+            email: supplier.email,
+            name: supplier.companyName || `${supplier.firstName} ${supplier.lastName}`
+          };
+        }
+      }
       return vehicleData.supplierContact || null;
     case "contract_b2b":
     case "contract_b2c":
@@ -67,12 +78,34 @@ export const determineRecipient = (buttonValue: string, vehicleData: Vehicle): {
     case "delivery_appointment":
     case "workshop_update":
     case "payment_reminder":
+      // Get customer contact from contacts table
+      if (vehicleData.customerId) {
+        const { supabaseCustomerService } = await import('./supabaseCustomerService');
+        const customer = await supabaseCustomerService.getContactById(vehicleData.customerId);
+        if (customer) {
+          return {
+            email: customer.email,
+            name: customer.companyName || `${customer.firstName} ${customer.lastName}`
+          };
+        }
+      }
       return vehicleData.customerContact || null;
     case "bpm_huys":
       return { email: "info@bpmhuys.nl", name: "BPM Huys" };
     case "license_registration":
       return vehicleData.customerContact || null;
     case "reminder_papers":
+      // Get supplier contact from contacts table
+      if (vehicleData.supplierId) {
+        const { supabaseCustomerService } = await import('./supabaseCustomerService');
+        const supplier = await supabaseCustomerService.getContactById(vehicleData.supplierId);
+        if (supplier) {
+          return {
+            email: supplier.email,
+            name: supplier.companyName || `${supplier.firstName} ${supplier.lastName}`
+          };
+        }
+      }
       return vehicleData.supplierContact || null;
     default:
       return null;
@@ -92,7 +125,7 @@ export const sendEmailWithTemplate = async (
     return false;
   }
 
-  const recipient = determineRecipient(buttonValue, vehicleData);
+  const recipient = await determineRecipient(buttonValue, vehicleData);
   if (!recipient) {
     console.warn(`Geen ontvanger gevonden voor knop: ${buttonValue}`);
     return false;
