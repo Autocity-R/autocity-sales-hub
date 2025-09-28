@@ -33,6 +33,28 @@ export class SupabaseCustomerService {
   }
 
   /**
+   * Get all contacts (any type)
+   */
+  async getAllContacts(): Promise<Contact[]> {
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to fetch all contacts:', error);
+        throw error;
+      }
+
+      return data.map(this.mapSupabaseToContact);
+    } catch (error) {
+      console.error('Error fetching all contacts:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get all contacts by type
    */
   async getContactsByType(type: ContactType): Promise<Contact[]> {

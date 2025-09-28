@@ -50,6 +50,10 @@ const ContactList: React.FC<ContactListProps> = ({ contacts, title, type }) => {
     setIsAddContactOpen(false);
     // Invalidate all contact queries to refresh the data
     queryClient.invalidateQueries({ queryKey: ["contacts"] });
+    queryClient.invalidateQueries({ queryKey: ["contacts", "all"] });
+    queryClient.invalidateQueries({ queryKey: ["contacts", "supplier"] });
+    queryClient.invalidateQueries({ queryKey: ["contacts", "b2b"] });
+    queryClient.invalidateQueries({ queryKey: ["contacts", "b2c"] });
   };
 
   return (
