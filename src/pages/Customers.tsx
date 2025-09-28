@@ -6,6 +6,7 @@ import { Contact, ContactType } from "@/types/customer";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
 import { useQuery } from "@tanstack/react-query";
+import { useRealtimeContacts } from "@/hooks/useRealtimeContacts";
 
 const Customers = () => {
   const { data: allContacts = [], isLoading: loadingAll } = useQuery({
@@ -27,6 +28,8 @@ const Customers = () => {
     queryKey: ["contacts", "b2c"],
     queryFn: () => getContactsByType("b2c")
   });
+
+  useRealtimeContacts();
 
   const loading = loadingAll || loadingSuppliers || loadingB2B || loadingB2C;
 
