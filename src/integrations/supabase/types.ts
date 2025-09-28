@@ -810,6 +810,7 @@ export type Database = {
       }
       contacts: {
         Row: {
+          additional_emails: Json | null
           address_city: string | null
           address_street: string | null
           company_name: string | null
@@ -823,6 +824,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          additional_emails?: Json | null
           address_city?: string | null
           address_street?: string | null
           company_name?: string | null
@@ -836,6 +838,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          additional_emails?: Json | null
           address_city?: string | null
           address_street?: string | null
           company_name?: string | null
@@ -1615,6 +1618,7 @@ export type Database = {
           notes: string | null
           selling_price: number | null
           status: string
+          supplier_id: string | null
           updated_at: string
           vin: string | null
           year: number | null
@@ -1637,6 +1641,7 @@ export type Database = {
           notes?: string | null
           selling_price?: number | null
           status?: string
+          supplier_id?: string | null
           updated_at?: string
           vin?: string | null
           year?: number | null
@@ -1659,6 +1664,7 @@ export type Database = {
           notes?: string | null
           selling_price?: number | null
           status?: string
+          supplier_id?: string | null
           updated_at?: string
           vin?: string | null
           year?: number | null

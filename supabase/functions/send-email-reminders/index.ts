@@ -46,12 +46,27 @@ const handler = async (req: Request): Promise<Response> => {
     // Process each reminder
     for (const reminder of reminders || []) {
       try {
-        // Get vehicle details for email template
+        // Get vehicle details with CMR files and supplier contact for email template
         const { data: vehicle, error: vehicleError } = await supabase
           .from('vehicles')
-          .select('*, contacts(*)')
+          .select(`*, 
+            customer_contact:contacts!customer_id(*),
+            supplier_contact:contacts!supplier_id(*)
+          `)
           .eq('id', reminder.vehicle_id)
           .single();
+
+        // Get CMR files for papers reminders
+        let cmrFiles = [];
+        if (reminder.reminder_type === 'papers_reminder') {
+          const { data: files } = await supabase
+            .from('vehicle_files')
+            .select('*')
+            .eq('vehicle_id', reminder.vehicle_id)
+            .eq('category', 'cmr');
+          
+          cmrFiles = files || [];
+        }
 
         if (vehicleError || !vehicle) {
           console.error(`Vehicle not found: ${reminder.vehicle_id}`);
@@ -59,13 +74,14 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         // Generate email content based on reminder type
-        const emailContent = generateEmailContent(reminder, vehicle);
+        const emailContent = generateEmailContent(reminder, vehicle, cmrFiles);
         
         // For now, just log what would be sent (email sending will be implemented later)
         console.log(`Would send email for vehicle ${reminder.vehicle_id}:`, {
           to: reminder.recipient_email,
           subject: emailContent.subject,
-          reminder_type: reminder.reminder_type
+          reminder_type: reminder.reminder_type,
+          attachments: reminder.reminder_type === 'papers_reminder' ? cmrFiles.length : 0
         });
 
         // Log the sent reminder
@@ -134,7 +150,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-function generateEmailContent(reminder: VehicleReminder, vehicle: any) {
+function generateEmailContent(reminder: VehicleReminder, vehicle: any, cmrFiles: any[] = []) {
   const vehicleInfo = `${vehicle.brand} ${vehicle.model} (${vehicle.license_number || vehicle.vin})`;
   
   if (reminder.reminder_type === 'payment_reminder') {
@@ -160,24 +176,30 @@ function generateEmailContent(reminder: VehicleReminder, vehicle: any) {
       `
     };
   } else if (reminder.reminder_type === 'papers_reminder') {
+    const supplierName = vehicle.supplier_contact ? 
+      `${vehicle.supplier_contact.first_name} ${vehicle.supplier_contact.last_name}` :
+      'leverancier';
+    
     return {
-      subject: `Herinnering: Papieren voor ${vehicleInfo}`,
+      subject: `Herinnering: CMR Documenten voor ${vehicleInfo}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2563eb;">Herinnering Papieren</h2>
-          <p>Beste klant,</p>
-          <p>Dit is een herinnering betreffende de benodigde papieren voor:</p>
+          <h2 style="color: #2563eb;">CMR Document Herinnering</h2>
+          <p>Beste ${supplierName},</p>
+          <p>Dit is een herinnering betreffende de CMR documenten voor het volgende voertuig:</p>
           <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
             <strong>Voertuig:</strong> ${vehicleInfo}<br>
-            <strong>Verkoopdatum:</strong> ${new Date(vehicle.created_at).toLocaleDateString('nl-NL')}
+            <strong>Verkoopdatum:</strong> ${new Date(vehicle.created_at).toLocaleDateString('nl-NL')}<br>
+            ${cmrFiles.length > 0 ? `<strong>CMR Documenten:</strong> ${cmrFiles.length} bestand(en) beschikbaar` : '<strong>Status:</strong> Wachtend op papieren van klant'}
           </div>
-          <p>Wij hebben nog niet alle benodigde documenten ontvangen. Kunt u deze zo spoedig mogelijk aan ons toesturen?</p>
+          <p>Het voertuig is verkocht maar de papieren zijn nog niet door de klant ontvangen. 
+          ${cmrFiles.length > 0 ? 'De bijgevoegde CMR documenten zijn beschikbaar voor verzending.' : 'Zodra de papieren binnen zijn, ontvangt u de CMR documenten.'}</p>
           <p>Bij vragen kunt u altijd contact met ons opnemen.</p>
           <p>Met vriendelijke groet,<br>
           <strong>Auto City</strong></p>
           <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
           <p style="font-size: 12px; color: #6b7280;">
-            Dit is een automatische herinnering. Als u de papieren al heeft verstuurd, kunt u deze email negeren.
+            Dit is een automatische herinnering. Deze wordt verstuurd zolang de papieren niet als 'binnen' zijn gemarkeerd.
           </p>
         </div>
       `
