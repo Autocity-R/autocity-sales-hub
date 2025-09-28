@@ -130,7 +130,7 @@ const ContactDetailsPanel: React.FC<ContactDetailsPanelProps> = ({ contact, onUp
       )}
 
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <ContactForm
             initialData={contact}
             onSuccess={handleEditSuccess}
