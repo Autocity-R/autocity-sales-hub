@@ -143,13 +143,14 @@ export const getContacts = async (): Promise<Contact[]> => {
     }
 
     try {
-      // Get all contacts from Supabase (B2B and B2C)
-      const [b2bContacts, b2cContacts] = await Promise.all([
+      // Get all contacts from Supabase (suppliers, B2B and B2C)
+      const [supplierContacts, b2bContacts, b2cContacts] = await Promise.all([
+        supabaseCustomerService.getContactsByType('supplier'),
         supabaseCustomerService.getContactsByType('b2b'),
         supabaseCustomerService.getContactsByType('b2c')
       ]);
       
-      const allContacts = [...b2bContacts, ...b2cContacts];
+      const allContacts = [...supplierContacts, ...b2bContacts, ...b2cContacts];
       console.log(`Fetched ${allContacts.length} contacts from Supabase`);
       return allContacts;
     } catch (supabaseError) {
