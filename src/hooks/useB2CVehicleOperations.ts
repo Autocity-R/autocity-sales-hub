@@ -170,9 +170,18 @@ export const useB2CVehicleOperations = () => {
     const currentVehicles = queryClient.getQueryData<Vehicle[]>(["b2cVehicles"]) || [];
     const vehicle = currentVehicles.find(v => v.id === vehicleId);
     
+    console.log(`🚗 Changing vehicle ${vehicleId} status to ${status}`);
+    console.log(`🔍 Vehicle validation for ${vehicleId}:`, {
+      hasCustomer: !!vehicle?.customerId,
+      hasSalesperson: !!vehicle?.salespersonId,
+      salespersonName: vehicle?.salespersonName,
+      currentStatus: vehicle?.salesStatus
+    });
+    
     // Validation: Cannot sell vehicle without customer linked
     if ((status === 'verkocht_b2b' || status === 'verkocht_b2c') && vehicle) {
       if (!vehicle.customerId) {
+        console.error(`❌ Sale blocked: Vehicle ${vehicleId} has no customer linked`);
         toast({
           variant: "destructive",
           description: "Kan voertuig niet verkopen: er is geen klant gekoppeld"
@@ -180,26 +189,36 @@ export const useB2CVehicleOperations = () => {
         return;
       }
       if (!vehicle.salespersonId || !vehicle.salespersonName) {
+        console.error(`❌ Sale blocked: Vehicle ${vehicleId} has no salesperson linked`);
         toast({
           variant: "destructive",
           description: "Kan voertuig niet verkopen: er is geen verkoper gekoppeld"
         });
         return;
       }
+      
+      console.log(`✅ Vehicle ${vehicleId} validation passed - Customer: ${vehicle.customerId}, Salesperson: ${vehicle.salespersonId} (${vehicle.salespersonName})`);
     }
     
     // Track sales when changing FROM voorraad TO verkocht status (not vice versa)
     if ((status === 'verkocht_b2b' || status === 'verkocht_b2c') && vehicle && vehicle.salesStatus === 'voorraad' && vehicle.salespersonId && vehicle.salespersonName) {
       const salesType = status === 'verkocht_b2b' ? 'b2b' : 'b2c';
+      console.log(`📊 Tracking sale for vehicle ${vehicleId}: ${vehicle.salespersonName} - ${salesType}`);
+      
       trackSale({
         salespersonId: vehicle.salespersonId,
         salespersonName: vehicle.salespersonName,
         salesType,
         vehicleId
       });
+      
+      console.log(`✅ Sale tracking initiated for ${vehicle.salespersonName}`);
+    } else if ((status === 'verkocht_b2b' || status === 'verkocht_b2c') && vehicle) {
+      console.warn(`⚠️ Sale not tracked for vehicle ${vehicleId} - Status: ${vehicle.salesStatus}, Salesperson: ${vehicle.salespersonId}, Name: ${vehicle.salespersonName}`);
     }
     
     changeVehicleStatusMutation.mutate({ vehicleId, status });
+    console.log(`✅ Vehicle ${vehicleId} status change mutation initiated`);
   };
 
   return {
