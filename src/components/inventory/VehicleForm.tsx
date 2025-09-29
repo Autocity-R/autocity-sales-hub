@@ -85,10 +85,11 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Remove supplierId from the data before submitting (it's not part of Vehicle type)
+    // Include supplierId in the submission data
     const { supplierId, ...vehicleData } = formData;
+    const submitData = { ...vehicleData, supplierId };
     
-    onSubmit(vehicleData);
+    onSubmit(submitData);
   };
   
   return (
