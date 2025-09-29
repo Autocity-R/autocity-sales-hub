@@ -83,10 +83,16 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel>Verkoopstatus</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => handleChangeStatus(vehicle.id, "verkocht_b2b")}>
+            <DropdownMenuItem 
+              onClick={() => handleChangeStatus(vehicle.id, "verkocht_b2b")}
+              disabled={!vehicle.customerId || !vehicle.salespersonId}
+            >
               Verkocht B2B
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleChangeStatus(vehicle.id, "verkocht_b2c")}>
+            <DropdownMenuItem 
+              onClick={() => handleChangeStatus(vehicle.id, "verkocht_b2c")}
+              disabled={!vehicle.customerId || !vehicle.salespersonId}
+            >
               Verkocht Particulier
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleChangeStatus(vehicle.id, "voorraad")}>

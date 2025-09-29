@@ -130,9 +130,21 @@ export const useB2BVehicleOperations = () => {
   });
 
   const handleChangeStatus = async (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => {
-    // Find the vehicle to get salesperson info for tracking
+    // Find the vehicle to get info for validation and tracking
     const currentVehicles = queryClient.getQueryData<Vehicle[]>(["b2bVehicles"]) || [];
     const vehicle = currentVehicles.find(v => v.id === vehicleId);
+    
+    // Validation: Cannot sell vehicle without customer linked
+    if ((status === 'verkocht_b2b' || status === 'verkocht_b2c') && vehicle) {
+      if (!vehicle.customerId) {
+        toast.error("Kan voertuig niet verkopen: er is geen klant gekoppeld");
+        return;
+      }
+      if (!vehicle.salespersonId || !vehicle.salespersonName) {
+        toast.error("Kan voertuig niet verkopen: er is geen verkoper gekoppeld");
+        return;
+      }
+    }
     
     // Track sales when changing FROM voorraad TO verkocht status (not vice versa)
     if ((status === 'verkocht_b2b' || status === 'verkocht_b2c') && vehicle && vehicle.salesStatus === 'voorraad' && vehicle.salespersonId && vehicle.salespersonName) {
@@ -140,7 +152,8 @@ export const useB2BVehicleOperations = () => {
       trackSale({
         salespersonId: vehicle.salespersonId,
         salespersonName: vehicle.salespersonName,
-        salesType
+        salesType,
+        vehicleId
       });
     }
     

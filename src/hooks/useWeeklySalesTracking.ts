@@ -9,12 +9,29 @@ export const useWeeklySalesTracking = () => {
     mutationFn: async ({
       salespersonId,
       salespersonName,
-      salesType
+      salesType,
+      vehicleId
     }: {
       salespersonId: string;
       salespersonName: string;
       salesType: 'b2b' | 'b2c';
+      vehicleId: string;
     }) => {
+      // Update the vehicle with sale information
+      const { error: vehicleError } = await supabase
+        .from('vehicles')
+        .update({
+          sold_date: new Date().toISOString(),
+          sold_by_user_id: salespersonId
+        })
+        .eq('id', vehicleId);
+
+      if (vehicleError) {
+        console.error("Error updating vehicle sale data:", vehicleError);
+        throw vehicleError;
+      }
+
+      // Track in weekly sales
       const { error } = await supabase.rpc('update_weekly_sales', {
         p_salesperson_id: salespersonId,
         p_salesperson_name: salespersonName,

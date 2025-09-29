@@ -1,6 +1,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useWeeklySalesTracking } from "@/hooks/useWeeklySalesTracking";
 import { 
   updateVehicle,
   sendEmail,
@@ -17,6 +18,7 @@ import { Vehicle, PaymentStatus, PaintStatus, FileCategory } from "@/types/inven
 export const useB2CVehicleOperations = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { trackSale } = useWeeklySalesTracking();
 
   const updateVehicleMutation = useMutation({
     mutationFn: (vehicle: Vehicle) => updateVehicle(vehicle),
@@ -152,6 +154,7 @@ export const useB2CVehicleOperations = () => {
       queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
       queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["weeklySalesLeaderboard"] });
     },
     onError: (error) => {
       toast({
@@ -162,6 +165,43 @@ export const useB2CVehicleOperations = () => {
     }
   });
 
+  const handleChangeStatus = async (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => {
+    // Find the vehicle to get info for validation and tracking
+    const currentVehicles = queryClient.getQueryData<Vehicle[]>(["b2cVehicles"]) || [];
+    const vehicle = currentVehicles.find(v => v.id === vehicleId);
+    
+    // Validation: Cannot sell vehicle without customer linked
+    if ((status === 'verkocht_b2b' || status === 'verkocht_b2c') && vehicle) {
+      if (!vehicle.customerId) {
+        toast({
+          variant: "destructive",
+          description: "Kan voertuig niet verkopen: er is geen klant gekoppeld"
+        });
+        return;
+      }
+      if (!vehicle.salespersonId || !vehicle.salespersonName) {
+        toast({
+          variant: "destructive",
+          description: "Kan voertuig niet verkopen: er is geen verkoper gekoppeld"
+        });
+        return;
+      }
+    }
+    
+    // Track sales when changing FROM voorraad TO verkocht status (not vice versa)
+    if ((status === 'verkocht_b2b' || status === 'verkocht_b2c') && vehicle && vehicle.salesStatus === 'voorraad' && vehicle.salespersonId && vehicle.salespersonName) {
+      const salesType = status === 'verkocht_b2b' ? 'b2b' : 'b2c';
+      trackSale({
+        salespersonId: vehicle.salespersonId,
+        salespersonName: vehicle.salespersonName,
+        salesType,
+        vehicleId
+      });
+    }
+    
+    changeVehicleStatusMutation.mutate({ vehicleId, status });
+  };
+
   return {
     updateVehicleMutation,
     sendEmailMutation,
@@ -170,6 +210,7 @@ export const useB2CVehicleOperations = () => {
     updatePaintStatusMutation,
     markAsDeliveredMutation,
     uploadFileMutation,
-    changeVehicleStatusMutation
+    changeVehicleStatusMutation,
+    handleChangeStatus
   };
 };

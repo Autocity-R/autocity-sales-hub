@@ -1617,6 +1617,8 @@ export type Database = {
           model: string
           notes: string | null
           selling_price: number | null
+          sold_by_user_id: string | null
+          sold_date: string | null
           status: string
           supplier_id: string | null
           updated_at: string
@@ -1640,6 +1642,8 @@ export type Database = {
           model: string
           notes?: string | null
           selling_price?: number | null
+          sold_by_user_id?: string | null
+          sold_date?: string | null
           status?: string
           supplier_id?: string | null
           updated_at?: string
@@ -1663,6 +1667,8 @@ export type Database = {
           model?: string
           notes?: string | null
           selling_price?: number | null
+          sold_by_user_id?: string | null
+          sold_date?: string | null
           status?: string
           supplier_id?: string | null
           updated_at?: string
@@ -1723,6 +1729,7 @@ export type Database = {
           b2c_sales: number
           created_at: string
           id: string
+          sale_date: string | null
           salesperson_id: string
           salesperson_name: string
           total_sales: number
@@ -1735,6 +1742,7 @@ export type Database = {
           b2c_sales?: number
           created_at?: string
           id?: string
+          sale_date?: string | null
           salesperson_id: string
           salesperson_name: string
           total_sales?: number
@@ -1747,6 +1755,7 @@ export type Database = {
           b2c_sales?: number
           created_at?: string
           id?: string
+          sale_date?: string | null
           salesperson_id?: string
           salesperson_name?: string
           total_sales?: number

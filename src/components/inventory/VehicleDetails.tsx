@@ -99,7 +99,8 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
       trackSale({
         salespersonId: editedVehicle.salespersonId,
         salespersonName: editedVehicle.salespersonName,
-        salesType
+        salesType,
+        vehicleId: vehicle.id
       });
     }
     
