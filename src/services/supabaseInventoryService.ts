@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Vehicle } from "@/types/inventory";
+import { loadVehicleRelationships } from "./vehicleRelationshipService";
 
 export class SupabaseInventoryService {
   /**
@@ -79,11 +80,7 @@ export class SupabaseInventoryService {
     try {
       const { data, error } = await supabase
         .from('vehicles')
-        .select(`
-          *,
-          customer:contacts!vehicles_customer_id_fkey(first_name, last_name, company_name),
-          supplier:contacts!vehicles_supplier_id_fkey(first_name, last_name, company_name)
-        `)
+        .select('*')
         .in('status', ['verkocht_b2b', 'voorraad'])
         .order('created_at', { ascending: false });
 
@@ -92,7 +89,9 @@ export class SupabaseInventoryService {
         throw error;
       }
 
-      return data.map(this.mapSupabaseToVehicle);
+      const vehicles = data.map(this.mapSupabaseToVehicle);
+      const vehiclesWithNames = await loadVehicleRelationships(vehicles);
+      return vehiclesWithNames;
     } catch (error) {
       console.error('Error fetching B2B vehicles:', error);
       throw error;
@@ -106,11 +105,7 @@ export class SupabaseInventoryService {
     try {
       const { data, error } = await supabase
         .from('vehicles')
-        .select(`
-          *,
-          customer:contacts!vehicles_customer_id_fkey(first_name, last_name, company_name),
-          supplier:contacts!vehicles_supplier_id_fkey(first_name, last_name, company_name)
-        `)
+        .select('*')
         .in('status', ['verkocht_b2c', 'voorraad'])
         .order('created_at', { ascending: false });
 
@@ -119,7 +114,9 @@ export class SupabaseInventoryService {
         throw error;
       }
 
-      return data.map(this.mapSupabaseToVehicle);
+      const vehicles = data.map(this.mapSupabaseToVehicle);
+      const vehiclesWithNames = await loadVehicleRelationships(vehicles);
+      return vehiclesWithNames;
     } catch (error) {
       console.error('Error fetching B2C vehicles:', error);
       throw error;
@@ -133,11 +130,7 @@ export class SupabaseInventoryService {
     try {
       const { data, error } = await supabase
         .from('vehicles')
-        .select(`
-          *,
-          customer:contacts!vehicles_customer_id_fkey(first_name, last_name, company_name),
-          supplier:contacts!vehicles_supplier_id_fkey(first_name, last_name, company_name)
-        `)
+        .select('*')
         .eq('status', 'afgeleverd')
         .order('created_at', { ascending: false });
 
@@ -146,7 +139,9 @@ export class SupabaseInventoryService {
         throw error;
       }
 
-      return data.map(this.mapSupabaseToVehicle);
+      const vehicles = data.map(this.mapSupabaseToVehicle);
+      const vehiclesWithNames = await loadVehicleRelationships(vehicles);
+      return vehiclesWithNames;
     } catch (error) {
       console.error('Error fetching delivered vehicles:', error);
       throw error;
@@ -395,10 +390,6 @@ export class SupabaseInventoryService {
     // Extract details with fallbacks
     const details = supabaseVehicle.details || {};
     
-    // Extract customer and supplier info
-    const customer = supabaseVehicle.customer;
-    const supplier = supabaseVehicle.supplier;
-    
     return {
       id: supabaseVehicle.id,
       brand: supabaseVehicle.brand,
@@ -413,8 +404,7 @@ export class SupabaseInventoryService {
       salesStatus: supabaseVehicle.status as any,
       customerId: supabaseVehicle.customer_id,
       supplierId: supabaseVehicle.supplier_id,
-      customerName: customer ? (customer.company_name || `${customer.first_name} ${customer.last_name}`.trim()) : null,
-      // supplierName: supplier ? (supplier.company_name || `${supplier.first_name} ${supplier.last_name}`.trim()) : null,
+      customerName: null, // Will be loaded separately when needed
       createdAt: supabaseVehicle.created_at,
       
       // Map import_status and notes from top-level columns
