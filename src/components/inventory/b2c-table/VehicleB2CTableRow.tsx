@@ -19,7 +19,7 @@ interface VehicleB2CTableRowProps {
   onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c") => void;
 }
 
-const renderImportStatusBadge = (status: ImportStatus) => {
+const renderImportStatusBadge = (status: ImportStatus | undefined) => {
   const statusMap: Record<ImportStatus, { label: string, variant: "default" | "outline" | "secondary" | "destructive" }> = {
     niet_aangemeld: { label: "Niet aangemeld", variant: "outline" },
     aangemeld: { label: "Aangemeld", variant: "outline" },
@@ -27,9 +27,10 @@ const renderImportStatusBadge = (status: ImportStatus) => {
     bpm_betaald: { label: "BPM betaald", variant: "default" },
     ingeschreven: { label: "Ingeschreven", variant: "default" }
   };
-  
+
   // Handle unknown status values with fallback
-  const statusInfo = statusMap[status] || { label: status.replace(/_/g, ' ').toUpperCase(), variant: "outline" as const };
+  const normalized = (status ?? "niet_aangemeld") as ImportStatus;
+  const statusInfo = statusMap[normalized] || { label: (normalized as string).replace(/_/g, ' ').toUpperCase() || "ONBEKEND", variant: "outline" as const };
   const { label, variant } = statusInfo;
   return <Badge variant={variant}>{label}</Badge>;
 };
@@ -52,16 +53,15 @@ const renderWorkshopStatusBadge = (status: WorkshopStatus) => {
 };
 
 const renderPaintStatusBadge = (status: PaintStatus | undefined) => {
-  if (!status) status = "geen_behandeling";
-  
+  const normalized = (status ?? "geen_behandeling") as PaintStatus;
+
   const statusMap: Record<PaintStatus, { label: string, variant: "default" | "outline" | "secondary" | "destructive" }> = {
     geen_behandeling: { label: "Geen behandeling", variant: "outline" },
     hersteld: { label: "Hersteld", variant: "default" },
     in_behandeling: { label: "In behandeling", variant: "secondary" }
   };
-  
-  // Handle unknown status values with fallback
-  const statusInfo = statusMap[status] || { label: status?.replace(/_/g, ' ').toUpperCase() || "Onbekend", variant: "outline" as const };
+
+  const statusInfo = statusMap[normalized] ?? { label: (normalized as string).replace(/_/g, " ").toUpperCase() || "ONBEKEND", variant: "outline" as const };
   const { label, variant } = statusInfo;
   return <Badge variant={variant}>{label}</Badge>;
 };
