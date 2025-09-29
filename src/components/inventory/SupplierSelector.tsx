@@ -112,8 +112,8 @@ export const SupplierSelector: React.FC<SupplierSelectorProps> = ({
               </SelectItem>
             ))
           ) : (
-            <SelectItem value="" disabled>
-              Geen leveranciers gevonden
+            <SelectItem value="no-suppliers-available" disabled>
+              <span className="text-muted-foreground">Geen leveranciers gevonden</span>
             </SelectItem>
           )}
         </SelectContent>
