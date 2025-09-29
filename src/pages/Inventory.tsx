@@ -70,7 +70,8 @@ const Inventory = () => {
       case 'b2b':
         return b2bVehicles;
       default:
-        return allVehicles;
+        // Filter out delivered vehicles from all vehicles view
+        return allVehicles.filter(vehicle => vehicle.salesStatus !== 'afgeleverd');
     }
   }, [activeTab, allVehicles, b2cVehicles, b2bVehicles]);
 
@@ -372,9 +373,9 @@ const Inventory = () => {
               <Car className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.total || 0}</div>
+              <div className="text-2xl font-bold">{(stats?.total || 0) - (stats?.afgeleverd || 0)}</div>
               <p className="text-xs text-muted-foreground">
-                voertuigen in systeem
+                voertuigen in systeem (excl. afgeleverd)
               </p>
             </CardContent>
           </Card>
@@ -436,7 +437,7 @@ const Inventory = () => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
-            <TabsTrigger value="all">Alle Voertuigen ({allVehicles.length})</TabsTrigger>
+            <TabsTrigger value="all">Alle Voertuigen ({allVehicles.filter(v => v.salesStatus !== 'afgeleverd').length})</TabsTrigger>
             <TabsTrigger value="b2c">B2C Verkocht ({b2cVehicles.length})</TabsTrigger>
             <TabsTrigger value="b2b">B2B Verkocht ({b2bVehicles.length})</TabsTrigger>
           </TabsList>

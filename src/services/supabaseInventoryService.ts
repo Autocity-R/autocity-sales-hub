@@ -82,6 +82,7 @@ export class SupabaseInventoryService {
         .from('vehicles')
         .select('*')
         .in('status', ['verkocht_b2b', 'voorraad'])
+        .neq('status', 'afgeleverd')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -107,6 +108,7 @@ export class SupabaseInventoryService {
         .from('vehicles')
         .select('*')
         .in('status', ['verkocht_b2c', 'voorraad'])
+        .neq('status', 'afgeleverd')
         .order('created_at', { ascending: false });
 
       if (error) {
