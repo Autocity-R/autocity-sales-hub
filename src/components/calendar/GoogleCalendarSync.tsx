@@ -248,6 +248,36 @@ export const GoogleCalendarSync: React.FC<GoogleCalendarSyncProps> = ({
     }
   };
 
+  const handleImportFromGoogle = async () => {
+    setIsSyncing(true);
+    try {
+      const { data: importResult, error } = await supabase.functions.invoke('google-calendar-import');
+
+      if (error) throw error;
+
+      if (importResult?.success) {
+        toast({
+          title: "Import voltooid",
+          description: `${importResult.imported} van ${importResult.total} nieuwe afspraken geïmporteerd uit Google Calendar`,
+        });
+        
+        // Refresh the calendar view if needed
+        window.location.reload();
+      } else {
+        throw new Error(importResult?.error || 'Import failed');
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      toast({
+        title: "Importfout",
+        description: "Kon afspraken niet importeren uit Google Calendar",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -351,24 +381,39 @@ export const GoogleCalendarSync: React.FC<GoogleCalendarSyncProps> = ({
               </ol>
             </div>
 
-            <div className="flex gap-2">
-              <Button 
-                onClick={handleManualSync}
-                disabled={isSyncing || !isAdmin}
-                variant="outline"
-                className="gap-2 flex-1"
-              >
-                {isSyncing ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-                Handmatig synchroniseren
-              </Button>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleManualSync}
+                  disabled={isSyncing || !isAdmin}
+                  variant="outline"
+                  className="gap-2 flex-1"
+                >
+                  {isSyncing ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  CRM → Google
+                </Button>
+                <Button 
+                  onClick={handleImportFromGoogle}
+                  disabled={isSyncing || !isAdmin}
+                  variant="outline"
+                  className="gap-2 flex-1"
+                >
+                  {isSyncing ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Calendar className="h-4 w-4" />
+                  )}
+                  Google → CRM
+                </Button>
+              </div>
               <Button 
                 onClick={() => window.open('https://calendar.google.com', '_blank')}
                 variant="outline"
-                className="gap-2"
+                className="gap-2 w-full"
               >
                 <ExternalLink className="h-4 w-4" />
                 Open Google Calendar
