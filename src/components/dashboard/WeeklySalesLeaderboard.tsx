@@ -27,10 +27,18 @@ const WeeklySalesLeaderboard = () => {
   const { data: weeklyStats, isLoading } = useQuery({
     queryKey: ["weeklySalesLeaderboard"],
     queryFn: async (): Promise<WeeklySalesData[]> => {
+      // Calculate current week start (Monday)
+      const now = new Date();
+      const startOfWeek = new Date(now);
+      const day = now.getDay();
+      const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+      startOfWeek.setDate(diff);
+      const weekStartString = startOfWeek.toISOString().split('T')[0];
+
       const { data, error } = await supabase
         .from('weekly_sales')
         .select('*')
-        .gte('week_start_date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .gte('week_start_date', weekStartString)
         .order('total_sales', { ascending: false })
         .order('b2c_sales', { ascending: false });
 

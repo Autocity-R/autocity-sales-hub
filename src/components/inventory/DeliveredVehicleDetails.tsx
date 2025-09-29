@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import { X, Car, User, Euro, Calendar, FileText, Download, Eye } from "lucide-react";
+import { X, Car, User, Euro, Calendar, FileText, Download, Eye, Undo2 } from "lucide-react";
 import { Vehicle } from "@/types/inventory";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,9 +14,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Avatar } from "@/components/ui/avatar";
 import { ContractViewer } from "@/components/contracts/ContractViewer";
 import { getContractByVehicleId, StoredContract } from "@/services/contractStorageService";
+import { deliveredVehicleService } from "@/services/deliveredVehicleService";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface DeliveredVehicleDetailsProps {
   vehicle: Vehicle;
@@ -30,6 +40,10 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
   const [contract, setContract] = useState<StoredContract | null>(null);
   const [showContractViewer, setShowContractViewer] = useState(false);
   const [loadingContract, setLoadingContract] = useState(true);
+  const [showMoveBackDialog, setShowMoveBackDialog] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<'verkocht_b2b' | 'verkocht_b2c' | 'voorraad'>('voorraad');
+  const [isMovingBack, setIsMovingBack] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const loadContract = async () => {
@@ -45,6 +59,30 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
 
     loadContract();
   }, [vehicle.id]);
+
+  const handleMoveBack = async () => {
+    if (!selectedStatus) return;
+    
+    setIsMovingBack(true);
+    try {
+      await deliveredVehicleService.moveDeliveredVehicleBack(vehicle.id, selectedStatus);
+      
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["deliveredVehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      
+      toast.success(`Voertuig succesvol teruggeplaatst naar ${selectedStatus === 'voorraad' ? 'voorraad' : selectedStatus === 'verkocht_b2b' ? 'verkocht B2B' : 'verkocht B2C'}`);
+      onClose();
+    } catch (error) {
+      console.error('Error moving vehicle back:', error);
+      toast.error('Fout bij het terugplaatsen van het voertuig');
+    } finally {
+      setIsMovingBack(false);
+      setShowMoveBackDialog(false);
+    }
+  };
 
   const formatPrice = (price: number | undefined) => {
     if (!price) return "Niet beschikbaar";
@@ -67,9 +105,20 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
       <Dialog open onOpenChange={onClose}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Car className="h-5 w-5" />
-              {vehicle.brand} {vehicle.model}
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Car className="h-5 w-5" />
+                {vehicle.brand} {vehicle.model}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMoveBackDialog(true)}
+                className="flex items-center gap-2"
+              >
+                <Undo2 className="h-4 w-4" />
+                Terugplaatsen
+              </Button>
             </DialogTitle>
             <DialogDescription>
               Volledige informatie van het afgeleverde voertuig
@@ -297,6 +346,45 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
           contract={contract}
           onClose={() => setShowContractViewer(false)}
         />
+      )}
+
+      {/* Move Back Dialog */}
+      {showMoveBackDialog && (
+        <Dialog open onOpenChange={setShowMoveBackDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Voertuig Terugplaatsen</DialogTitle>
+              <DialogDescription>
+                Selecteer de nieuwe status voor dit voertuig. Het wordt weggehaald uit de afgeleverde lijst.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Nieuwe Status</label>
+                <Select value={selectedStatus} onValueChange={(value: any) => setSelectedStatus(value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecteer nieuwe status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="voorraad">Voorraad</SelectItem>
+                    <SelectItem value="verkocht_b2b">Verkocht B2B</SelectItem>
+                    <SelectItem value="verkocht_b2c">Verkocht B2C</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowMoveBackDialog(false)}>
+                  Annuleren
+                </Button>
+                <Button onClick={handleMoveBack} disabled={isMovingBack}>
+                  {isMovingBack ? 'Bezig...' : 'Terugplaatsen'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </>
   );

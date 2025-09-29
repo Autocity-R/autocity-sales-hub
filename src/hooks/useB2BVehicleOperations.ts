@@ -134,8 +134,8 @@ export const useB2BVehicleOperations = () => {
     const currentVehicles = queryClient.getQueryData<Vehicle[]>(["b2bVehicles"]) || [];
     const vehicle = currentVehicles.find(v => v.id === vehicleId);
     
-    // Track sales before status change
-    if ((status === 'verkocht_b2b' || status === 'verkocht_b2c') && vehicle && vehicle.salespersonId && vehicle.salespersonName) {
+    // Track sales when changing FROM voorraad TO verkocht status (not vice versa)
+    if ((status === 'verkocht_b2b' || status === 'verkocht_b2c') && vehicle && vehicle.salesStatus === 'voorraad' && vehicle.salespersonId && vehicle.salespersonName) {
       const salesType = status === 'verkocht_b2b' ? 'b2b' : 'b2c';
       trackSale({
         salespersonId: vehicle.salespersonId,
