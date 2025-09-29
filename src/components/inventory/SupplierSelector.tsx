@@ -31,7 +31,7 @@ export const SupplierSelector: React.FC<SupplierSelectorProps> = ({
   onValueChange 
 }) => {
   const { data: suppliers, isLoading, error } = useQuery({
-    queryKey: ["suppliers"],
+    queryKey: ["contacts", "supplier"],
     queryFn: async (): Promise<Supplier[]> => {
       const { data, error } = await supabase
         .from('contacts')
@@ -46,7 +46,7 @@ export const SupplierSelector: React.FC<SupplierSelectorProps> = ({
 
       return data || [];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 1 * 60 * 1000, // 1 minute
   });
 
   const getSupplierDisplayName = (supplier: Supplier) => {
