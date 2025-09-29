@@ -45,7 +45,9 @@ const renderWorkshopStatusBadge = (status: WorkshopStatus) => {
     wacht_op_onderdelen: { label: "Wacht op onderdelen", variant: "outline" }
   };
   
-  const { label, variant } = statusMap[status];
+  // Handle unknown status values with fallback
+  const statusInfo = statusMap[status] || { label: status?.replace(/_/g, ' ').toUpperCase() || "Onbekend", variant: "outline" as const };
+  const { label, variant } = statusInfo;
   return <Badge variant={variant}>{label}</Badge>;
 };
 
@@ -58,7 +60,9 @@ const renderPaintStatusBadge = (status: PaintStatus | undefined) => {
     in_behandeling: { label: "In behandeling", variant: "secondary" }
   };
   
-  const { label, variant } = statusMap[status];
+  // Handle unknown status values with fallback
+  const statusInfo = statusMap[status] || { label: status?.replace(/_/g, ' ').toUpperCase() || "Onbekend", variant: "outline" as const };
+  const { label, variant } = statusInfo;
   return <Badge variant={variant}>{label}</Badge>;
 };
 
