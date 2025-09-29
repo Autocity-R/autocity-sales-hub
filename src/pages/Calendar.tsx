@@ -16,6 +16,7 @@ import { CalendarSyncStatus } from "@/components/calendar/CalendarSyncStatus";
 import { GoogleCalendarTest } from "@/components/calendar/GoogleCalendarTest";
 import { fetchAppointments } from "@/services/calendarService";
 import { Appointment, CalendarView as CalendarViewType } from "@/types/calendar";
+import { useAutoCalendarSync } from "@/hooks/useAutoCalendarSync";
 import { 
   Plus, 
   Calendar as CalendarIcon, 
@@ -27,7 +28,8 @@ import {
   CheckCircle,
   AlertCircle,
   Settings,
-  TestTube
+  TestTube,
+  Download
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, startOfDay, endOfDay, addDays, subDays, startOfWeek, endOfWeek } from "date-fns";
@@ -44,7 +46,19 @@ const Calendar = () => {
     type: "month",
     date: new Date()
   });
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
   const { toast } = useToast();
+
+  // Auto sync hook - triggers import on load and periodically
+  const { triggerImport, isEnabled: syncIsEnabled } = useAutoCalendarSync({
+    enabled: autoSyncEnabled && googleCalendarConnected,
+    onImportComplete: (imported) => {
+      if (imported > 0) {
+        loadAppointments();
+      }
+    },
+    autoImportInterval: 30 // 30 minutes
+  });
 
   const loadAppointments = async () => {
     setIsLoading(true);
@@ -176,6 +190,10 @@ const Calendar = () => {
             <Button onClick={loadAppointments} variant="outline" className="gap-2">
               <RefreshCw className="h-4 w-4" />
               Vernieuwen
+            </Button>
+            <Button onClick={triggerImport} variant="outline" className="gap-2">
+              <Download className="h-4 w-4" />
+              Import Nu
             </Button>
             <Button onClick={() => setShowForm(true)} className="gap-2">
               <Plus className="h-4 w-4" />

@@ -369,12 +369,30 @@ export const GoogleCalendarSync: React.FC<GoogleCalendarSyncProps> = ({
             </div>
 
             <div className="bg-green-50 p-4 rounded-md">
-              <h5 className="font-medium text-green-800 mb-2">Team Calendar Toegang:</h5>
-              <p className="text-sm text-green-700 mb-2">
+              <h5 className="font-medium text-green-800 mb-2">Automatische Import Status:</h5>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-green-700">
+                    Google Calendar wordt automatisch elke 30 minuten geïmporteerd
+                  </p>
+                  <p className="text-xs text-green-600 mt-1">
+                    Import gebeurt bij pagina laden en op de achtergrond
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-green-700 border-green-300">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Actief
+                </Badge>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 p-4 rounded-md">
+              <h5 className="font-medium text-blue-800 mb-2">Team Calendar Toegang:</h5>
+              <p className="text-sm text-blue-700 mb-2">
                 Voor volledige team toegang, deel de calendar met alle teamleden:
               </p>
-              <ol className="text-sm text-green-700 list-decimal list-inside space-y-1">
-                <li>Open Google Calendar met info@auto-city.nl account</li>
+              <ol className="text-sm text-blue-700 list-decimal list-inside space-y-1">
+                <li>Open Google Calendar met verkoop@auto-city.nl account</li>
                 <li>Ga naar calendar instellingen</li>
                 <li>Voeg teamleden toe met "Wijzigen en beheren van gebeurtenissen" rechten</li>
                 <li>Team kan nu alle afspraken zien en bewerken</li>
