@@ -9,7 +9,7 @@ const corsHeaders = {
 
 // TARGET CALENDAR naar primary met Domain-wide delegation
 const TARGET_CALENDAR = 'primary';
-const IMPERSONATE_EMAIL = 'inkoop@auto-city.nl';
+const IMPERSONATE_EMAIL = 'verkoop@auto-city.nl';
 
 interface CalendarEvent {
   id?: string;
