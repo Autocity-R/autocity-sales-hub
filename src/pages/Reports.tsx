@@ -27,6 +27,7 @@ import { DataSourceIndicator } from "@/components/common/DataSourceIndicator";
 import { useQuery } from "@tanstack/react-query";
 import { enhancedReportsService } from "@/services/enhancedReportsService";
 import { ReportPeriod, PerformanceData } from "@/types/reports";
+import { SalespersonPerformance } from "@/components/reports/SalespersonPerformance";
 
 interface MockPerformanceData extends PerformanceData {
   revenue: number;
@@ -283,6 +284,7 @@ const Reports = () => {
           <TabsList>
             <TabsTrigger value="overview">Overzicht</TabsTrigger>
             <TabsTrigger value="sales">Verkoop</TabsTrigger>
+            <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="financial">Financieel</TabsTrigger>
             <TabsTrigger value="inventory">Voorraad</TabsTrigger>
           </TabsList>
@@ -428,6 +430,10 @@ const Reports = () => {
                 <p>This is the sales content.</p>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="performance" className="space-y-6">
+            <SalespersonPerformance />
           </TabsContent>
           
           <TabsContent value="financial" className="space-y-6">
