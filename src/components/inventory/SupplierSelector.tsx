@@ -36,7 +36,7 @@ export const SupplierSelector: React.FC<SupplierSelectorProps> = ({
       const { data, error } = await supabase
         .from('contacts')
         .select('id, company_name, first_name, last_name, email, address_city')
-        .eq('type', 'leverancier')
+        .eq('type', 'supplier')
         .order('company_name', { ascending: true, nullsFirst: false });
 
       if (error) {
