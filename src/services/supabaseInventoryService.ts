@@ -4,13 +4,14 @@ import { loadVehicleRelationships } from "./vehicleRelationshipService";
 
 export class SupabaseInventoryService {
   /**
-   * Get all vehicles from Supabase database
+   * Get all vehicles from Supabase database (excluding delivered vehicles)
    */
   async getAllVehicles(): Promise<Vehicle[]> {
     try {
       const { data, error } = await supabase
         .from('vehicles')
         .select('*')
+        .neq('status', 'afgeleverd')
         .order('created_at', { ascending: false });
 
       if (error) {
