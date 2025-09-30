@@ -218,7 +218,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="niet_aangemeld">Niet aangemeld</SelectItem>
-                <SelectItem value="aangemeld">Aangemeld</SelectItem>
+                <SelectItem value="aanvraag_ontvangen">Aanvraag ontvangen</SelectItem>
                 <SelectItem value="goedgekeurd">Goedgekeurd</SelectItem>
                 <SelectItem value="bpm_betaald">BPM Betaald</SelectItem>
                 <SelectItem value="ingeschreven">Ingeschreven</SelectItem>
