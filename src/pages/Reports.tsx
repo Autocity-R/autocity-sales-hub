@@ -26,6 +26,7 @@ import { ExactOnlineStatus } from "@/components/reports/ExactOnlineStatus";
 import { DataSourceIndicator } from "@/components/common/DataSourceIndicator";
 import { useQuery } from "@tanstack/react-query";
 import { enhancedReportsService } from "@/services/enhancedReportsService";
+import { systemReportsService } from "@/services/systemReportsService";
 import { ReportPeriod, PerformanceData } from "@/types/reports";
 import { SalespersonPerformance } from "@/components/reports/SalespersonPerformance";
 
@@ -171,7 +172,7 @@ const Reports = () => {
     }
   };
 
-  // Fetch reports data with fallback to mock data
+  // Fetch reports data from system database
   const { 
     data: reportsData = mockReportsData, 
     isLoading, 
@@ -181,9 +182,11 @@ const Reports = () => {
     queryKey: ['reports', reportPeriod],
     queryFn: async () => {
       try {
-        return await enhancedReportsService.getReportsData(reportPeriod);
+        // Use system data from vehicles table
+        return await systemReportsService.getReportsData(reportPeriod);
       } catch (error) {
-        console.log('Using mock data fallback for reports');
+        console.error('Error fetching system reports data:', error);
+        // Fallback to mock data only on error
         return mockReportsData;
       }
     },
