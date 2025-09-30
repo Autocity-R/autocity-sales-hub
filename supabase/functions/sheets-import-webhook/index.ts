@@ -19,12 +19,14 @@ interface SheetUpdateRequest {
 const statusMapping: Record<string, string> = {
   'Niet gestart': 'niet_gestart',
   'Aangemeld': 'aangemeld',
+  'Aanvraag ontvangen': 'aanvraag_ontvangen',
   'Goedgekeurd': 'goedgekeurd',
   'Transport geregeld': 'transport_geregeld',
   'Onderweg': 'onderweg',
   'Aangekomen': 'aangekomen',
   'Afgemeld': 'afgemeld',
   'BPM betaald': 'bpm_betaald',
+  'BPM Betaald': 'bpm_betaald',
   'Herkeuring': 'herkeuring',
   'Ingeschreven': 'ingeschreven'
 };

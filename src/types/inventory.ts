@@ -6,7 +6,7 @@ export type TransportStatus =
 
 export type ImportStatus = 
   | "niet_aangemeld" 
-  | "aangemeld"
+  | "aanvraag_ontvangen"
   | "goedgekeurd"
   | "bpm_betaald"
   | "ingeschreven";

@@ -67,7 +67,7 @@ interface VehicleB2BTableProps {
 export const renderImportStatusBadge = (status: ImportStatus) => {
   const statusMap: Record<ImportStatus, { label: string, variant: "default" | "outline" | "secondary" | "destructive" }> = {
     niet_aangemeld: { label: "Niet aangemeld", variant: "outline" },
-    aangemeld: { label: "Aangemeld", variant: "outline" },
+    aanvraag_ontvangen: { label: "Aanvraag ontvangen", variant: "outline" },
     goedgekeurd: { label: "Goedgekeurd", variant: "secondary" },
     bpm_betaald: { label: "BPM betaald", variant: "default" },
     ingeschreven: { label: "Ingeschreven", variant: "default" }

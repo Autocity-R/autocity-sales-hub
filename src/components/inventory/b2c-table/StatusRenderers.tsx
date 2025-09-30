@@ -6,8 +6,8 @@ export const renderImportStatus = (status: string) => {
   switch (status) {
     case "niet_gestart":
       return <Badge variant="outline" className="bg-gray-100">Niet gestart</Badge>;
-    case "aangemeld":
-      return <Badge variant="outline" className="bg-blue-100 text-blue-800">Aangemeld</Badge>;
+    case "aanvraag_ontvangen":
+      return <Badge variant="outline" className="bg-blue-100 text-blue-800">Aanvraag ontvangen</Badge>;
     case "goedgekeurd":
       return <Badge variant="outline" className="bg-green-100 text-green-800">Goedgekeurd</Badge>;
     case "bpm_betaald":

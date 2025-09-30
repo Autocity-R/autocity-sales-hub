@@ -38,7 +38,7 @@ export const TransportBulkActions: React.FC<TransportBulkActionsProps> = ({
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [transporterId, setTransporterId] = useState("");
   const [emailContent, setEmailContent] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<ImportStatus>("aangemeld");
+  const [selectedStatus, setSelectedStatus] = useState<ImportStatus>("aanvraag_ontvangen");
 
   const handleSendEmails = () => {
     if (transporterId) {
@@ -142,7 +142,7 @@ export const TransportBulkActions: React.FC<TransportBulkActionsProps> = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="niet_aangemeld">Niet aangemeld</SelectItem>
-                <SelectItem value="aangemeld">Aangemeld</SelectItem>
+                <SelectItem value="aanvraag_ontvangen">Aanvraag ontvangen</SelectItem>
                 <SelectItem value="goedgekeurd">Goedgekeurd</SelectItem>
                 <SelectItem value="bpm_betaald">BPM Betaald</SelectItem>
                 <SelectItem value="ingeschreven">Ingeschreven</SelectItem>
