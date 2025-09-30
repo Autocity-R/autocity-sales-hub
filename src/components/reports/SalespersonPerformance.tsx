@@ -81,8 +81,8 @@ export const SalespersonPerformance: React.FC = () => {
       // Fetch profiles (salespeople)
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, email')
-        .neq('role', 'admin');
+        .select('id, first_name, last_name, email, role')
+        .eq('role', 'verkoper');
 
       if (!profiles) return [];
 
