@@ -78,14 +78,6 @@ export const SalespersonPerformance: React.FC = () => {
           startDate = new Date(now.getFullYear(), 0, 1);
       }
 
-      // Fetch profiles (salespeople)
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email, role')
-        .eq('role', 'verkoper');
-
-      if (!profiles) return [];
-
       // Fetch sold vehicles with their details
       const { data: vehicles } = await supabase
         .from('vehicles')
@@ -99,48 +91,50 @@ export const SalespersonPerformance: React.FC = () => {
 
       if (!vehicles) return [];
 
-      // Process data per salesperson
+      // Prepare map keyed by salesperson id
       const salespersonMap = new Map<string, SalespersonData>();
 
-      profiles.forEach(profile => {
-        const name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Onbekend';
-        salespersonMap.set(profile.id, {
-          id: profile.id,
-          name,
-          email: profile.email,
-          totalSales: 0,
-          totalRevenue: 0,
-          totalMargin: 0,
-          averageMargin: 0,
-          vehiclesSold: [],
-          monthlyPerformance: [],
-          rank: 0
-        });
-      });
+      // Calculate performance metrics from vehicles, deriving salesperson info from vehicle details
+      vehicles.forEach((vehicle) => {
+        const sellerId = (vehicle as any).sold_by_user_id as string | null;
+        if (!sellerId) return;
 
-      // Calculate performance metrics
-      vehicles.forEach(vehicle => {
-        if (!vehicle.sold_by_user_id) return;
-        
-        const salesperson = salespersonMap.get(vehicle.sold_by_user_id);
-        if (!salesperson) return;
+        const vDetails = ((vehicle as any).details as any) || {};
+        const salespersonName = vDetails?.salespersonName || 'Onbekend';
+        const salespersonEmail = vDetails?.salespersonEmail || '';
 
-        const sellingPrice = vehicle.selling_price || 0;
-        const purchasePrice = (vehicle.details as any)?.purchase_price || 0;
+        if (!salespersonMap.has(sellerId)) {
+          salespersonMap.set(sellerId, {
+            id: sellerId,
+            name: salespersonName,
+            email: salespersonEmail,
+            totalSales: 0,
+            totalRevenue: 0,
+            totalMargin: 0,
+            averageMargin: 0,
+            vehiclesSold: [],
+            monthlyPerformance: [],
+            rank: 0,
+          });
+        }
+
+        const salesperson = salespersonMap.get(sellerId)!;
+
+        const sellingPrice = (vehicle as any).selling_price || 0;
+        const purchasePrice = vDetails?.purchase_price || 0;
         const margin = sellingPrice - purchasePrice;
-        const marginPercentage = sellingPrice > 0 ? (margin / sellingPrice) * 100 : 0;
 
         salesperson.totalSales += 1;
         salesperson.totalRevenue += sellingPrice;
         salesperson.totalMargin += margin;
         salesperson.vehiclesSold.push({
-          id: vehicle.id,
-          brand: vehicle.brand,
-          model: vehicle.model,
+          id: (vehicle as any).id,
+          brand: (vehicle as any).brand,
+          model: (vehicle as any).model,
           selling_price: sellingPrice,
           margin: margin,
-          sold_date: vehicle.sold_date!,
-          purchase_price: purchasePrice
+          sold_date: (vehicle as any).sold_date!,
+          purchase_price: purchasePrice,
         });
       });
 
