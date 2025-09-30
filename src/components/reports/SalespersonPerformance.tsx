@@ -15,10 +15,12 @@ import {
   Trophy,
   Search,
   Filter,
-  ArrowUpDown
+  ArrowUpDown,
+  ChevronRight
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { SalespersonDetailDialog } from "./SalespersonDetailDialog";
 
 interface SalespersonData {
   id: string;
@@ -55,6 +57,8 @@ export const SalespersonPerformance: React.FC = () => {
   const [sortBy, setSortBy] = useState("totalRevenue");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedPeriod, setSelectedPeriod] = useState("currentYear");
+  const [selectedSalesperson, setSelectedSalesperson] = useState<SalespersonData | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   // Fetch salesperson performance data
   const { data: salespersonData, isLoading } = useQuery({
@@ -214,7 +218,14 @@ export const SalespersonPerformance: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      <SalespersonDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        salesperson={selectedSalesperson}
+      />
+      
+      <div className="space-y-6">
       {/* Filters and Controls */}
       <Card>
         <CardHeader>
@@ -386,32 +397,44 @@ export const SalespersonPerformance: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Recent Sales */}
+                  {/* Recent Sales - Max 5 */}
                   {salesperson.vehiclesSold.length > 0 && (
                     <div className="mt-4 pt-4 border-t">
-                      <h4 className="font-medium mb-2 flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        Recente Verkopen ({salesperson.vehiclesSold.length})
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                        {salesperson.vehiclesSold.slice(0, 6).map((vehicle) => (
-                          <div key={vehicle.id} className="bg-gray-50 rounded-lg p-3 text-sm">
-                            <div className="font-medium">{vehicle.brand} {vehicle.model}</div>
-                            <div className="text-muted-foreground">
-                              {formatCurrency(vehicle.selling_price)} • 
-                              Marge: {formatCurrency(vehicle.margin)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(vehicle.sold_date).toLocaleDateString('nl-NL')}
-                            </div>
-                          </div>
-                        ))}
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          Laatste 5 Verkopen
+                        </h4>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedSalesperson(salesperson);
+                            setDetailDialogOpen(true);
+                          }}
+                          className="text-primary hover:text-primary"
+                        >
+                          Bekijk alle {salesperson.vehiclesSold.length} verkopen
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
                       </div>
-                      {salesperson.vehiclesSold.length > 6 && (
-                        <p className="text-sm text-muted-foreground mt-2">
-                          En {salesperson.vehiclesSold.length - 6} meer...
-                        </p>
-                      )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {salesperson.vehiclesSold
+                          .sort((a, b) => new Date(b.sold_date).getTime() - new Date(a.sold_date).getTime())
+                          .slice(0, 5)
+                          .map((vehicle) => (
+                            <div key={vehicle.id} className="bg-muted/50 rounded-lg p-3 text-sm hover:bg-muted/70 transition-colors">
+                              <div className="font-medium">{vehicle.brand} {vehicle.model}</div>
+                              <div className="text-muted-foreground">
+                                {formatCurrency(vehicle.selling_price)} • 
+                                Marge: {formatCurrency(vehicle.margin)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {new Date(vehicle.sold_date).toLocaleDateString('nl-NL')}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -432,6 +455,7 @@ export const SalespersonPerformance: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </>
   );
 };
