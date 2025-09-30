@@ -167,6 +167,107 @@ export class SystemReportsService {
       profit: Math.round(data.profit)
     }));
   }
+
+  /**
+   * Get inventory metrics from system data
+   */
+  async getInventoryMetrics() {
+    try {
+      // Get all vehicles in stock
+      const { data: stockVehicles, error: stockError } = await supabase
+        .from('vehicles')
+        .select('*')
+        .in('status', ['voorraad', 'in_bestelling', 'onderweg']);
+
+      if (stockError) throw stockError;
+
+      // Get sold vehicles to calculate average days in stock
+      const { data: soldVehicles, error: soldError } = await supabase
+        .from('vehicles')
+        .select('*')
+        .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
+        .not('sold_date', 'is', null);
+
+      if (soldError) throw soldError;
+
+      // Calculate metrics
+      const totalVehicles = stockVehicles?.length || 0;
+      
+      // Calculate average days in stock from sold vehicles
+      let avgDaysInStock = 0;
+      if (soldVehicles && soldVehicles.length > 0) {
+        const daysArray = soldVehicles
+          .filter(v => v.created_at && v.sold_date)
+          .map(v => {
+            const created = new Date(v.created_at);
+            const sold = new Date(v.sold_date);
+            return Math.floor((sold.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+          });
+        
+        avgDaysInStock = daysArray.length > 0 
+          ? Math.round(daysArray.reduce((a, b) => a + b, 0) / daysArray.length)
+          : 0;
+      }
+
+      // Calculate average selling price of current stock
+      const avgPrice = stockVehicles && stockVehicles.length > 0
+        ? stockVehicles.reduce((sum, v) => sum + (Number(v.selling_price) || 0), 0) / stockVehicles.length
+        : 0;
+
+      // Calculate total inventory value (purchase price from details)
+      const totalInventoryValue = stockVehicles?.reduce((sum, v) => {
+        const purchasePrice = (v.details as any)?.purchasePrice || (v.details as any)?.kostprijs || 0;
+        return sum + Number(purchasePrice);
+      }, 0) || 0;
+
+      // Calculate average transport lead time
+      const vehiclesWithTransport = stockVehicles?.filter(v => 
+        (v.details as any)?.transportAddedDate && (v.details as any)?.transportArrivalDate
+      ) || [];
+
+      let avgTransportDays = 0;
+      if (vehiclesWithTransport.length > 0) {
+        const transportDays = vehiclesWithTransport.map(v => {
+          const details = v.details as any;
+          const added = new Date(details.transportAddedDate);
+          const arrived = new Date(details.transportArrivalDate);
+          return Math.floor((arrived.getTime() - added.getTime()) / (1000 * 60 * 60 * 24));
+        });
+        avgTransportDays = Math.round(transportDays.reduce((a, b) => a + b, 0) / transportDays.length);
+      }
+
+      // Get vehicles currently in transport
+      const inTransportVehicles = stockVehicles?.filter(v => 
+        v.status === 'onderweg' && (v.details as any)?.transportAddedDate
+      ) || [];
+
+      return {
+        totalVehicles,
+        avgDaysInStock,
+        avgPrice: Math.round(avgPrice),
+        totalInventoryValue: Math.round(totalInventoryValue),
+        avgTransportDays,
+        inTransportCount: inTransportVehicles.length,
+        stockByStatus: {
+          voorraad: stockVehicles?.filter(v => v.status === 'voorraad').length || 0,
+          in_bestelling: stockVehicles?.filter(v => v.status === 'in_bestelling').length || 0,
+          onderweg: stockVehicles?.filter(v => v.status === 'onderweg').length || 0
+        },
+        _metadata: {
+          dataSource: 'System Database',
+          lastUpdated: new Date().toISOString(),
+          recordCounts: {
+            stockVehicles: stockVehicles?.length || 0,
+            soldVehicles: soldVehicles?.length || 0,
+            transportVehicles: vehiclesWithTransport.length
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching inventory metrics:', error);
+      throw error;
+    }
+  }
 }
 
 export const systemReportsService = new SystemReportsService();

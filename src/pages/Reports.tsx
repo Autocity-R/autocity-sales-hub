@@ -209,6 +209,14 @@ const Reports = () => {
     refetchOnMount: true
   });
 
+  // Fetch inventory metrics
+  const { data: inventoryMetrics, isLoading: inventoryLoading } = useQuery({
+    queryKey: ['inventory-metrics'],
+    queryFn: () => systemReportsService.getInventoryMetrics(),
+    refetchOnMount: true,
+    refetchOnWindowFocus: false
+  });
+
   const handleDataSourceChange = (useMock: boolean) => {
     setIsUsingMockData(useMock);
     refetch(); // Refresh data when source changes
@@ -451,14 +459,133 @@ const Reports = () => {
           </TabsContent>
           
           <TabsContent value="inventory" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Inventory Content</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>This is the inventory content.</p>
-              </CardContent>
-            </Card>
+            {inventoryLoading ? (
+              <div className="flex items-center justify-center min-h-[200px]">
+                <Database className="h-6 w-6 animate-pulse mr-2" />
+                <span>Loading inventory data...</span>
+              </div>
+            ) : (
+              <>
+                {/* Inventory KPI Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Voertuigen in Voorraad</CardTitle>
+                      <Car className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {inventoryMetrics?.totalVehicles || 0}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Voorraad: {inventoryMetrics?.stockByStatus.voorraad || 0} • 
+                        Onderweg: {inventoryMetrics?.stockByStatus.onderweg || 0}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Gem. Sta-dagen</CardTitle>
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {inventoryMetrics?.avgDaysInStock || 0} dagen
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Tijd tot verkoop
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Gem. Voorraadprijs</CardTitle>
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        €{(inventoryMetrics?.avgPrice || 0).toLocaleString()}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Gemiddelde verkoopprijs
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Totale Voorraadwaarde</CardTitle>
+                      <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        €{(inventoryMetrics?.totalInventoryValue || 0).toLocaleString()}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Totale inkoopwaarde
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Transport Metrics */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5" />
+                      Transport Statistieken
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="flex flex-col">
+                        <span className="text-sm text-muted-foreground">Gem. Doorlooptijd Transport</span>
+                        <span className="text-2xl font-bold mt-1">
+                          {inventoryMetrics?.avgTransportDays || 0} dagen
+                        </span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-muted-foreground">Voertuigen Onderweg</span>
+                        <span className="text-2xl font-bold mt-1">
+                          {inventoryMetrics?.inTransportCount || 0}
+                        </span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-muted-foreground">In Bestelling</span>
+                        <span className="text-2xl font-bold mt-1">
+                          {inventoryMetrics?.stockByStatus.in_bestelling || 0}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Data Source Info */}
+                {inventoryMetrics?._metadata && (
+                  <Card className="border-blue-200 bg-blue-50">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2 text-blue-800 font-medium">
+                            <Database className="h-4 w-4" />
+                            Voorraad Data Actief
+                          </div>
+                          <p className="text-sm text-blue-600 mt-1">
+                            Data bron: {inventoryMetrics._metadata.dataSource} • 
+                            Laatste update: {new Date(inventoryMetrics._metadata.lastUpdated).toLocaleString('nl-NL')}
+                          </p>
+                        </div>
+                        <Badge className="bg-blue-500 text-white">
+                          {inventoryMetrics._metadata.recordCounts.stockVehicles} voertuigen verwerkt
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
           </TabsContent>
         </Tabs>
       </div>
