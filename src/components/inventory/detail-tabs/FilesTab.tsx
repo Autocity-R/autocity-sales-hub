@@ -10,12 +10,14 @@ interface FilesTabProps {
   files: VehicleFile[];
   onFileUpload: (file: File, category: FileCategory) => void;
   onFileDelete: (fileId: string, filePath: string) => void;
+  onSendEmail?: (type: string) => void;
 }
 
 export const FilesTab: React.FC<FilesTabProps> = ({ 
   files, 
   onFileUpload,
-  onFileDelete 
+  onFileDelete,
+  onSendEmail
 }) => {
   return (
     <div className="grid grid-cols-1 gap-4">
@@ -216,6 +218,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
             </p>
             <Button 
               disabled={!files.some(file => file.category === "cmr")}
+              onClick={() => onSendEmail?.('cmr_supplier')}
               className="w-full"
             >
               <FileText className="mr-2 h-4 w-4" />
@@ -235,6 +238,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
             </p>
             <Button 
               disabled={!files.some(file => file.category === "pickup")}
+              onClick={() => onSendEmail?.('transport_pickup')}
               className="w-full"
             >
               <FileText className="mr-2 h-4 w-4" />

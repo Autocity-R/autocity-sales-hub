@@ -205,6 +205,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                     files={filesData}
                     onFileUpload={onFileUpload || (() => {})}
                     onFileDelete={onFileDelete || (() => {})}
+                    onSendEmail={(type) => onSendEmail(type, vehicle.id)}
                   />
                 </TabsContent>
                 
