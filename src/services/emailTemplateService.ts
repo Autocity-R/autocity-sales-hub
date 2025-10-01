@@ -9,8 +9,8 @@ let emailTemplates: EmailTemplate[] = [
   {
     id: "1",
     name: "CMR Leverancier",
-    subject: "CMR Document - {{MERK}} {{MODEL}}",
-    content: "Beste leverancier,\n\nBijgevoegd vindt u het CMR document voor:\n- Voertuig: {{MERK}} {{MODEL}}\n- VIN: {{VIN}}\n- Kenteken: {{KENTEKEN}}\n\nMet vriendelijke groet,\nAutocity Automotive Group\n+31 10 262 3980",
+    subject: "CMR Document – {{MERK}} {{MODEL}} ({{VIN}})",
+    content: "Dear Sir/Madam,\n\nPlease find attached the CMR document for the following vehicle:\n\nMake: {{MERK}}\n\nModel: {{MODEL}}\n\nVIN: {{VIN}}\n\nWe kindly ask you to return the required documents once they are available.\n\nBest regards,\nAutocity Automotive Group\n+31 10 262 3980",
     senderEmail: "inkoop@auto-city.nl",
     linkedButton: "cmr_supplier",
     hasAttachment: true,
