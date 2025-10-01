@@ -289,6 +289,46 @@ export const sendEmailWithTemplate = async (
     }
 
     console.log('✅ Email sent successfully:', data);
+    
+    // Update vehicle record for specific email types
+    if (buttonValue === 'bpm_huys') {
+      try {
+        // First, get the current vehicle details
+        const { data: currentVehicle, error: fetchError } = await supabase
+          .from('vehicles')
+          .select('details')
+          .eq('id', vehicleData.id)
+          .single();
+        
+        if (fetchError) {
+          console.error('Failed to fetch vehicle details:', fetchError);
+        } else {
+          // Update the details object with bpmRequested flag
+          const currentDetails = (currentVehicle.details && typeof currentVehicle.details === 'object') 
+            ? currentVehicle.details as Record<string, any>
+            : {};
+          
+          const updatedDetails = {
+            ...currentDetails,
+            bpmRequested: true
+          };
+          
+          const { error: updateError } = await supabase
+            .from('vehicles')
+            .update({ details: updatedDetails })
+            .eq('id', vehicleData.id);
+          
+          if (updateError) {
+            console.error('Failed to update vehicle bpmRequested status:', updateError);
+          } else {
+            console.log('✅ Vehicle bpmRequested status updated');
+          }
+        }
+      } catch (updateError) {
+        console.error('Error updating vehicle:', updateError);
+      }
+    }
+    
     toast({
       title: "Email verzonden",
       description: `Email succesvol verzonden naar ${recipient.name}`
