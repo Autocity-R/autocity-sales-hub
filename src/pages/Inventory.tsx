@@ -13,7 +13,7 @@ import { VehicleTable } from "@/components/inventory/VehicleTable";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
 import { VehicleForm } from "@/components/inventory/VehicleForm";
 import { Vehicle, FileCategory } from "@/types/inventory";
-import { fetchVehicles, fetchB2CVehicles, fetchB2BVehicles, getVehicleStats, updateVehicleStatus, markVehicleAsArrived, setUseMockData, createVehicle, updateVehicle, uploadVehicleFile, deleteVehicleFile } from "@/services/inventoryService";
+import { fetchVehicles, fetchB2CVehicles, fetchB2BVehicles, getVehicleStats, updateVehicleStatus, markVehicleAsArrived, setUseMockData, createVehicle, updateVehicle, uploadVehicleFile, deleteVehicleFile, sendEmail } from "@/services/inventoryService";
 import { DataSourceIndicator } from "@/components/common/DataSourceIndicator";
 import { useToast } from "@/hooks/use-toast";
 
@@ -133,11 +133,29 @@ const Inventory = () => {
     setSelectedVehicle(vehicle);
   };
 
+  // Mutation for sending emails
+  const sendEmailMutation = useMutation({
+    mutationFn: ({ type, vehicleId }: { type: string; vehicleId: string }) => 
+      sendEmail(type, [vehicleId]),
+    onSuccess: () => {
+      toast({
+        title: "Email verzonden",
+        description: "De email is succesvol verzonden",
+      });
+    },
+    onError: (error) => {
+      console.error('Error sending email:', error);
+      toast({
+        title: "Fout",
+        description: "Er is een fout opgetreden bij het verzenden van de email",
+        variant: "destructive"
+      });
+    }
+  });
+
   const handleSendEmail = (type: string, vehicleId: string) => {
-    toast({
-      title: "Email Sent",
-      description: `${type} email sent for vehicle ${vehicleId}`,
-    });
+    console.log(`Sending ${type} email for vehicle ${vehicleId}`);
+    sendEmailMutation.mutate({ type, vehicleId });
   };
 
   const handleChangeStatus = async (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => {
