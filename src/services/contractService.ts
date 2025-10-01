@@ -39,6 +39,12 @@ export const generateContract = async (
   options: ContractOptions,
   signatureUrl?: string
 ): Promise<GeneratedContract> => {
+  console.log('[CONTRACT_SERVICE] 📄 Generating contract:', {
+    vehicleId: vehicle.id,
+    type: contractType,
+    customerName: vehicle.customerName,
+    customerContact: vehicle.customerContact
+  });
   
   const isB2B = contractType === "b2b";
   const currentDate = new Date().toLocaleDateString("nl-NL");

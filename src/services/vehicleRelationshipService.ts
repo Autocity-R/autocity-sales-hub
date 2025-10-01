@@ -5,6 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export const loadVehicleRelationships = async (vehicles: any[]): Promise<any[]> => {
   try {
+    console.log('[RELATIONSHIP_SERVICE] 📦 Input vehicles:', vehicles.length);
+    console.log('[RELATIONSHIP_SERVICE] 🎯 Test vehicle customerId:', 
+      vehicles.find(v => v.id === 'a95829f7-150e-43d6-84be-ced28f90c974')?.customerId
+    );
+    
     // Get unique customer and supplier IDs
     const customerIds = [...new Set(vehicles.map(v => v.customerId).filter(Boolean))];
     const supplierIds = [...new Set(vehicles.map(v => v.supplierId).filter(Boolean))];
@@ -17,18 +22,28 @@ export const loadVehicleRelationships = async (vehicles: any[]): Promise<any[]> 
         .select('id, first_name, last_name, company_name, email, phone, address_street, address_city')
         .in('id', customerIds);
       
+      console.log('[RELATIONSHIP_SERVICE] 👥 Fetched contacts:', customerData?.length);
+      console.log('[RELATIONSHIP_SERVICE] 🔍 Test customer data:', 
+        customerData?.find(c => c.id === 'fb72c339-42c3-41d3-8de9-d8d5904f7605')
+      );
+      
       customerData?.forEach(customer => {
         const name = customer.company_name || `${customer.first_name} ${customer.last_name}`.trim();
         const address = [customer.address_street, customer.address_city].filter(Boolean).join(', ');
-        customers.set(customer.id, {
+        
+        const contactData = {
           name,
-          contact: {
-            name,
-            email: customer.email,
-            phone: customer.phone,
-            address
-          }
-        });
+          email: customer.email,
+          phone: customer.phone,
+          address
+        };
+        
+        // 🔍 BELANGRIJKE LOG voor test-klant
+        if (customer.id === 'fb72c339-42c3-41d3-8de9-d8d5904f7605') {
+          console.log('[RELATIONSHIP_SERVICE] 🎯 Mapping test customer:', contactData);
+        }
+        
+        customers.set(customer.id, { name, contact: contactData });
       });
     }
 
@@ -56,13 +71,26 @@ export const loadVehicleRelationships = async (vehicles: any[]): Promise<any[]> 
     }
 
     // Add names and contact info to vehicles
-    return vehicles.map(vehicle => ({
+    const enrichedVehicles = vehicles.map(vehicle => ({
       ...vehicle,
       customerName: customers.get(vehicle.customerId)?.name || null,
       supplierName: suppliers.get(vehicle.supplierId)?.name || null,
       customerContact: customers.get(vehicle.customerId)?.contact || null,
       supplierContact: suppliers.get(vehicle.supplierId)?.contact || null,
     }));
+    
+    // 🔍 LOG voor test-voertuig
+    const testVehicle = enrichedVehicles.find(v => v.id === 'a95829f7-150e-43d6-84be-ced28f90c974');
+    if (testVehicle) {
+      console.log('[RELATIONSHIP_SERVICE] ✅ Enriched test vehicle:', {
+        id: testVehicle.id,
+        customerId: testVehicle.customerId,
+        customerName: testVehicle.customerName,
+        customerContact: testVehicle.customerContact
+      });
+    }
+    
+    return enrichedVehicles;
 
   } catch (error) {
     console.error('Error loading vehicle relationships:', error);

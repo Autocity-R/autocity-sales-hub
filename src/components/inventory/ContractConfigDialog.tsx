@@ -54,10 +54,14 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
 
   // Centralize vehicle enrichment with customer data
   const vehicleWithContact = useMemo(() => {
+    console.log('[CONTRACT_DIALOG] 🔄 Enriching vehicle with selectedCustomer:', selectedCustomer?.id);
+    
     if (!selectedCustomer) {
+      console.log('[CONTRACT_DIALOG] ⚠️ No selectedCustomer, using base vehicle with customerContact:', vehicle.customerContact);
       return vehicle;
     }
-    return {
+    
+    const enriched = {
       ...vehicle,
       customerContact: {
         name: selectedCustomer.companyName || `${selectedCustomer.firstName} ${selectedCustomer.lastName}`.trim(),
@@ -66,6 +70,13 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
         address: [selectedCustomer.address?.street, selectedCustomer.address?.city].filter(Boolean).join(', ')
       }
     };
+    
+    console.log('[CONTRACT_DIALOG] ✅ Enriched vehicle:', {
+      id: enriched.id,
+      customerContact: enriched.customerContact
+    });
+    
+    return enriched;
   }, [vehicle, selectedCustomer]);
 
   // Validation: disable actions if customer data is loading
@@ -73,6 +84,13 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
 
   // Auto-load linked customer
   useEffect(() => {
+    console.log('[CONTRACT_DIALOG] 🚀 Dialog opened with vehicle:', {
+      id: vehicle.id,
+      customerId: vehicle.customerId,
+      customerName: vehicle.customerName,
+      customerContact: vehicle.customerContact
+    });
+    
     if (vehicle.customerId && isOpen && !selectedCustomer) {
       setLoading(true);
       supabaseCustomerService.getContactById(vehicle.customerId)
