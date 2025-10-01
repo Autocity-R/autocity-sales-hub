@@ -71,6 +71,12 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
               <PenTool className="mr-2 h-4 w-4" />, 
               "Koopcontract B2C - Digitaal"
             )}
+
+            {renderEmailButton(
+              "contract_send", 
+              <FileText className="mr-2 h-4 w-4" />, 
+              "Koopcontract sturen"
+            )}
             
             {renderEmailButton(
               "rdw_approved", 
@@ -133,7 +139,7 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
         <h4 className="font-medium mb-4">Documenten</h4>
         
         <div className="space-y-3">
-          {renderEmailButton(
+          {!vehicle?.papersReceived && renderEmailButton(
             "reminder_papers", 
             <FileText className="mr-2 h-4 w-4" />, 
             "Herinnering documenten"

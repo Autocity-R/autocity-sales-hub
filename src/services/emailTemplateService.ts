@@ -9,28 +9,31 @@ let emailTemplates: EmailTemplate[] = [
   {
     id: "1",
     name: "CMR Leverancier",
-    subject: "CMR Document - {voertuig_merk} {voertuig_model}",
-    content: "Beste leverancier,\n\nBijgevoegd vindt u het CMR document voor:\n- Voertuig: {voertuig_merk} {voertuig_model}\n- VIN: {voertuig_vin}\n- Kenteken: {voertuig_kenteken}\n\nMet vriendelijke groet,\n{gebruiker_naam}",
+    subject: "CMR Document - {{MERK}} {{MODEL}}",
+    content: "Beste leverancier,\n\nBijgevoegd vindt u het CMR document voor:\n- Voertuig: {{MERK}} {{MODEL}}\n- VIN: {{VIN}}\n- Kenteken: {{KENTEKEN}}\n\nMet vriendelijke groet,\nAutocity Automotive Group\n+31 10 262 3980",
+    senderEmail: "inkoop@auto-city.nl",
     linkedButton: "cmr_supplier",
     hasAttachment: true,
     attachmentType: "auto-upload",
-    staticAttachmentType: "CMR"
+    staticAttachmentType: "cmr"
   },
   {
     id: "2", 
     name: "Transport Pickup",
-    subject: "Pickup Document - {voertuig_merk} {voertuig_model}",
-    content: "Beste transporteur,\n\nHierbij het pickup document voor:\n- Voertuig: {voertuig_merk} {voertuig_model}\n- Locatie: {voertuig_locatie}\n- VIN: {voertuig_vin}\n\nGraag contact opnemen voor planning.\n\nMet vriendelijke groet,\n{gebruiker_naam}",
+    subject: "Pickup Document - {{MERK}} {{MODEL}}",
+    content: "Beste transporteur,\n\nHierbij het pickup document voor:\n- Voertuig: {{MERK}} {{MODEL}}\n- Locatie: {{LOCATIE}}\n- VIN: {{VIN}}\n\nGraag contact opnemen voor planning.\n\nMet vriendelijke groet,\nAutocity Automotive Group\n+31 10 262 3980",
+    senderEmail: "inkoop@auto-city.nl",
     linkedButton: "transport_pickup",
     hasAttachment: true,
     attachmentType: "auto-upload",
-    staticAttachmentType: "Pickup Document"
+    staticAttachmentType: "pickup"
   },
   {
     id: "3",
     name: "Koopcontract B2B - Digitaal",
-    subject: "Koopcontract voor ondertekening - {voertuig_merk} {voertuig_model}",
-    content: "Beste {klant_naam},\n\nBijgevoegd vindt u het koopcontract voor uw voertuig:\n\n- Voertuig: {voertuig_merk} {voertuig_model}\n- Kenteken: {voertuig_kenteken}\n- Verkoopprijs: €{voertuig_prijs}\n\nU kunt het contract digitaal ondertekenen via onderstaande link:\n[ONDERTEKENINGSLINK]\n\nDe link is 7 dagen geldig. Na ondertekening ontvangt u automatisch een bevestiging.\n\nMet vriendelijke groet,\nAutoCity\nTel: 010-2623980",
+    subject: "Koopcontract voor ondertekening - {{MERK}} {{MODEL}}",
+    content: "Beste {{VOORNAAM}} {{ACHTERNAAM}},\n\nBijgevoegd vindt u het koopcontract voor uw voertuig:\n\n- Voertuig: {{MERK}} {{MODEL}}\n- Kenteken: {{KENTEKEN}}\n- Verkoopprijs: €{{PRIJS}}\n\nU kunt het contract digitaal ondertekenen via onderstaande link:\n[ONDERTEKENINGSLINK]\n\nDe link is 7 dagen geldig. Na ondertekening ontvangt u automatisch een bevestiging.\n\nMet vriendelijke groet,\nAutocity Automotive Group\nTel: 010-2623980",
+    senderEmail: "administratie@auto-city.nl",
     linkedButton: "contract_b2b_digital",
     hasAttachment: true,
     attachmentType: "generated-contract"
@@ -38,11 +41,78 @@ let emailTemplates: EmailTemplate[] = [
   {
     id: "4",
     name: "Koopcontract B2C - Digitaal", 
-    subject: "Uw autocontract voor digitale ondertekening - {voertuig_merk} {voertuig_model}",
-    content: "Beste {klant_naam},\n\nHartelijk dank voor uw aankoop bij AutoCity!\n\nBijgevoegd vindt u het koopcontract voor:\n- {voertuig_merk} {voertuig_model} ({voertuig_kenteken})\n- Kilometer: {voertuig_kilometerstand} km\n- Totaalprijs: €{voertuig_prijs}\n\nU kunt het contract eenvoudig digitaal ondertekenen via deze beveiligde link:\n[ONDERTEKENINGSLINK]\n\nNa ondertekening plannen wij graag de aflevering met u in.\n\nVragen? Bel ons op 010-2623980\n\nMet vriendelijke groet,\nHet AutoCity team",
+    subject: "Uw autocontract voor digitale ondertekening - {{MERK}} {{MODEL}}",
+    content: "Beste {{VOORNAAM}} {{ACHTERNAAM}},\n\nHartelijk dank voor uw aankoop bij AutoCity!\n\nBijgevoegd vindt u het koopcontract voor:\n- {{MERK}} {{MODEL}} ({{KENTEKEN}})\n- Kilometer: {{KILOMETERSTAND}} km\n- Totaalprijs: €{{PRIJS}}\n\nU kunt het contract eenvoudig digitaal ondertekenen via deze beveiligde link:\n[ONDERTEKENINGSLINK]\n\nNa ondertekening plannen wij graag de aflevering met u in.\n\nVragen? Bel ons op 010-2623980\n\nMet vriendelijke groet,\nHet AutoCity team",
+    senderEmail: "administratie@auto-city.nl",
     linkedButton: "contract_b2c_digital",
     hasAttachment: true,
     attachmentType: "generated-contract"
+  },
+  {
+    id: "5",
+    name: "BPM Huys Aanmelden",
+    subject: "Voertuig binnen voor taxatie – {{MERK}} {{MODEL}} ({{VIN}})",
+    content: "Geachte BPM Huys Team,\n\nWij willen u informeren dat het volgende voertuig bij ons is binnengekomen en klaarstaat voor taxatie om het importproces te starten:\n\nMerk: {{MERK}}\nModel: {{MODEL}}\nVIN: {{VIN}}\n\nAlvast bedankt voor de samenwerking.\n\nMet vriendelijke groet,\nAutocity Automotive Group\n+31 10 262 3980",
+    senderEmail: "import@auto-city.nl",
+    linkedButton: "bpm_huys",
+    hasAttachment: false
+  },
+  {
+    id: "6",
+    name: "Handmatig Herinnering (Papieren niet binnen)",
+    subject: "Reminder – Pending Documents for {{MERK}} {{MODEL}} ({{VIN}})",
+    content: "Dear Sir/Madam,\n\nThis is a kind reminder that we have not yet received the required documents for the following vehicle, 7 days after the CMR was provided:\n\nMake: {{MERK}}\nModel: {{MODEL}}\nVIN: {{VIN}}\n\nWe kindly ask you to send the pending documents at your earliest convenience.\n\nThank you in advance for your cooperation.\n\nBest regards,\nAutocity Automotive Group\n+31 10 262 3980",
+    senderEmail: "inkoop@auto-city.nl",
+    linkedButton: "reminder_papers",
+    hasAttachment: true,
+    attachmentType: "auto-upload",
+    staticAttachmentType: "cmr"
+  },
+  {
+    id: "7",
+    name: "Koopcontract Sturen",
+    subject: "Koopcontract – {{MERK}} {{MODEL}} ({{VIN}})",
+    content: "Beste {{VOORNAAM}} {{ACHTERNAAM}},\n\nHartelijk dank voor uw aankoop bij Autocity Automotive Group.\n\nIn de bijlage vindt u het koopcontract voor uw voertuig, waarin alle gemaakte afspraken duidelijk zijn vermeld:\n\nMerk: {{MERK}}\nModel: {{MODEL}}\nVIN: {{VIN}}\n\nWij verzoeken u het contract door te nemen en ons te informeren zodra alles akkoord is.\n\nMocht u nog vragen hebben, neem dan gerust contact met ons op.\n\nMet vriendelijke groet,\nAutocity Automotive Group\n010 262 3980\nwww.auto-city.nl",
+    senderEmail: "administratie@auto-city.nl",
+    linkedButton: "contract_send",
+    hasAttachment: true,
+    attachmentType: "generated-contract"
+  },
+  {
+    id: "8",
+    name: "Auto Gereed",
+    subject: "Uw voertuig is gereed voor afhaling – {{MERK}} {{MODEL}} ({{VIN}})",
+    content: "Beste {{VOORNAAM}} {{ACHTERNAAM}},\n\nWij informeren u dat het probleem aan uw voertuig is verholpen.\n\nVoertuiggegevens:\nMerk: {{MERK}}\nModel: {{MODEL}}\nVIN: {{VIN}}\n\nU kunt nu een afspraak met ons inplannen voor het ophalen van de auto op een moment dat het u uitkomt.\n\nNeem gerust contact met ons op om een geschikte dag en tijd af te stemmen.\n\nMet vriendelijke groet,\nAutocity Automotive Group\n010-2623980\nwww.auto-city.nl",
+    senderEmail: "garantie@auto-city.nl",
+    linkedButton: "auto_gereed",
+    hasAttachment: false
+  },
+  {
+    id: "9",
+    name: "Happy Call",
+    subject: "Hoe is uw ervaring geweest met uw {{MERK}} {{MODEL}}?",
+    content: "Beste {{VOORNAAM}} {{ACHTERNAAM}},\n\nWij hopen dat alles naar wens is verlopen met het herstel van uw voertuig:\n\nMerk: {{MERK}}\nModel: {{MODEL}}\nVIN: {{VIN}}\n\nWij horen graag of u tevreden bent met de service en of alles weer naar behoren werkt.\nMocht er onverhoopt toch nog iets zijn, aarzel dan niet om direct contact met ons op te nemen — we helpen u graag verder.\n\nAls u tevreden bent, zouden wij het enorm waarderen als u uw ervaring met ons wilt delen via onderstaande link:\n\nhttps://g.page/r/CZ2zNLjntUphEAE/review\n\nUw feedback helpt ons om onze service te verbeteren én andere klanten een goed beeld te geven van onze dienstverlening.\n\nHartelijk dank voor uw tijd en vertrouwen in Autocity.\n\nMet vriendelijke groet,\nAutocity Automotive Group\n010-2623980\nwww.auto-city.nl",
+    senderEmail: "garantie@auto-city.nl",
+    linkedButton: "happy_call",
+    hasAttachment: false
+  },
+  {
+    id: "10",
+    name: "Aflevering Afspraak",
+    subject: "Plan uw afleverafspraak – {{MERK}} {{MODEL}}",
+    content: "Beste {{VOORNAAM}} {{ACHTERNAAM}},\n\nUw {{MERK}} {{MODEL}} ({{VIN}}) is klaar voor aflevering!\n\nWij nodigen u graag uit om een afspraak te maken voor de overdracht van uw voertuig.\n\nNeem contact met ons op via:\nTel: 010-2623980\nEmail: verkoop@auto-city.nl\n\nMet vriendelijke groet,\nAutocity Automotive Group",
+    senderEmail: "verkoop@auto-city.nl",
+    linkedButton: "delivery_appointment",
+    hasAttachment: false
+  },
+  {
+    id: "11",
+    name: "Auto is Binnengekomen",
+    subject: "Uw voertuig is bij ons aangekomen – {{MERK}} {{MODEL}}",
+    content: "Beste {{VOORNAAM}} {{ACHTERNAAM}},\n\nWij willen u informeren dat uw {{MERK}} {{MODEL}} ({{VIN}}) veilig bij ons is aangekomen.\n\nHet voertuig wordt nu geïnspecteerd en voorbereid volgens de afgesproken procedures.\n\nWij houden u op de hoogte van de voortgang.\n\nMet vriendelijke groet,\nAutocity Automotive Group\n010-2623980",
+    senderEmail: "inkoop@auto-city.nl",
+    linkedButton: "vehicle_arrived",
+    hasAttachment: false
   }
 ];
 
@@ -55,6 +125,7 @@ export const determineRecipient = async (buttonValue: string, vehicleData: Vehic
     case "transport_pickup":
       return vehicleData.transporterContact || null;
     case "cmr_supplier":
+    case "reminder_papers":
       // Get supplier contact from contacts table
       if (vehicleData.supplierId) {
         const { supabaseCustomerService } = await import('./supabaseCustomerService');
@@ -71,6 +142,7 @@ export const determineRecipient = async (buttonValue: string, vehicleData: Vehic
     case "contract_b2c":
     case "contract_b2b_digital":
     case "contract_b2c_digital":
+    case "contract_send":
     case "vehicle_arrived":
     case "rdw_approved":
     case "bpm_paid":
@@ -78,6 +150,8 @@ export const determineRecipient = async (buttonValue: string, vehicleData: Vehic
     case "delivery_appointment":
     case "workshop_update":
     case "payment_reminder":
+    case "auto_gereed":
+    case "happy_call":
       // Get customer contact from contacts table
       if (vehicleData.customerId) {
         const { supabaseCustomerService } = await import('./supabaseCustomerService');
@@ -94,19 +168,6 @@ export const determineRecipient = async (buttonValue: string, vehicleData: Vehic
       return { email: "info@bpmhuys.nl", name: "BPM Huys" };
     case "license_registration":
       return vehicleData.customerContact || null;
-    case "reminder_papers":
-      // Get supplier contact from contacts table
-      if (vehicleData.supplierId) {
-        const { supabaseCustomerService } = await import('./supabaseCustomerService');
-        const supplier = await supabaseCustomerService.getContactById(vehicleData.supplierId);
-        if (supplier) {
-          return {
-            email: supplier.email,
-            name: supplier.companyName || `${supplier.firstName} ${supplier.lastName}`
-          };
-        }
-      }
-      return vehicleData.supplierContact || null;
     default:
       return null;
   }
@@ -224,8 +285,10 @@ const getEmailAttachments = async (
 
 const getRelevantDocuments = (files: VehicleFile[], documentType: string): VehicleFile[] => {
   switch (documentType) {
+    case "cmr":
     case "CMR":
       return files.filter(file => file.category === "cmr");
+    case "pickup":
     case "Pickup Document":
       return files.filter(file => file.category === "pickup");
     default:
@@ -236,7 +299,31 @@ const getRelevantDocuments = (files: VehicleFile[], documentType: string): Vehic
 const replaceVariables = (text: string, vehicleData: Vehicle, recipient?: { email: string; name: string }): string => {
   let result = text;
   
-  // Vervang voertuig variabelen
+  // Nieuwe {{VARIABELE}} syntax
+  result = result.replace(/{{MERK}}/g, vehicleData.brand || '');
+  result = result.replace(/{{MODEL}}/g, vehicleData.model || '');
+  result = result.replace(/{{VIN}}/g, vehicleData.vin || '');
+  result = result.replace(/{{KENTEKEN}}/g, vehicleData.licenseNumber || '');
+  result = result.replace(/{{LOCATIE}}/g, vehicleData.location || '');
+  result = result.replace(/{{KILOMETERSTAND}}/g, vehicleData.mileage?.toString() || '');
+  result = result.replace(/{{JAAR}}/g, vehicleData.year?.toString() || '');
+  result = result.replace(/{{KLEUR}}/g, vehicleData.color || '');
+  result = result.replace(/{{PRIJS}}/g, vehicleData.sellingPrice?.toLocaleString('nl-NL') || '0');
+  
+  // Klant variabelen (NIEUW)
+  if (vehicleData.customerContact || recipient) {
+    const customerName = vehicleData.customerContact?.name || recipient?.name || '';
+    const nameParts = customerName.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    
+    result = result.replace(/{{VOORNAAM}}/g, firstName);
+    result = result.replace(/{{ACHTERNAAM}}/g, lastName);
+    result = result.replace(/{{EMAIL}}/g, vehicleData.customerContact?.email || recipient?.email || '');
+    result = result.replace(/{{TELEFOON}}/g, vehicleData.customerContact?.phone || '');
+  }
+  
+  // Legacy {variabele} syntax (backwards compatibility)
   result = result.replace(/{voertuig_merk}/g, vehicleData.brand || '');
   result = result.replace(/{voertuig_model}/g, vehicleData.model || '');
   result = result.replace(/{voertuig_vin}/g, vehicleData.vin || '');
@@ -246,7 +333,6 @@ const replaceVariables = (text: string, vehicleData: Vehicle, recipient?: { emai
   result = result.replace(/{voertuig_jaar}/g, vehicleData.year?.toString() || '');
   result = result.replace(/{voertuig_prijs}/g, vehicleData.sellingPrice?.toLocaleString('nl-NL') || '0');
   
-  // Vervang klant/leverancier/transporteur variabelen
   if (recipient) {
     result = result.replace(/{ontvanger_naam}/g, recipient.name);
     result = result.replace(/{ontvanger_email}/g, recipient.email);
@@ -267,7 +353,6 @@ const replaceVariables = (text: string, vehicleData: Vehicle, recipient?: { emai
     result = result.replace(/{transporteur_email}/g, vehicleData.transporterContact.email);
   }
   
-  // Vervang gebruiker/bedrijf variabelen (mock data)
   result = result.replace(/{gebruiker_naam}/g, 'Jan Jansen');
   result = result.replace(/{gebruiker_email}/g, 'jan@autobedrijf.nl');
   result = result.replace(/{bedrijf_naam}/g, 'Auto Import Nederland');

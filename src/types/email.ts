@@ -4,6 +4,7 @@ export interface EmailTemplate {
   name: string;
   subject: string;
   content: string;
+  senderEmail: string; // Specifieke afzender per template
   linkedButton: string;
   hasAttachment: boolean;
   attachmentType?: "auto-upload" | "generated-contract" | "static-file";

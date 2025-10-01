@@ -133,42 +133,77 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
     });
   };
 
-  const handleSendReadyEmail = () => {
-    // In een echte implementatie zou dit een API call zijn
-    toast({
-      title: "Email verzonden",
-      description: `Email verzonden naar ${claim.customerName} dat de auto gereed staat.`,
-    });
+  const handleSendReadyEmail = async () => {
+    // Roep email service aan met vehicle data van de claim
+    const vehicleData = {
+      id: claim.vehicleId,
+      brand: claim.vehicleBrand,
+      model: claim.vehicleModel,
+      licenseNumber: claim.vehicleLicenseNumber,
+      customerContact: {
+        name: claim.customerName,
+        email: claim.customerEmail || '',
+        phone: claim.customerPhone || ''
+      }
+    };
+    
+    try {
+      const { sendEmailWithTemplate } = await import('@/services/emailTemplateService');
+      const success = await sendEmailWithTemplate('auto_gereed', vehicleData as any);
+      
+      if (success) {
+        toast({
+          title: "Email verzonden",
+          description: `Email verzonden naar ${claim.customerName} dat de auto gereed staat.`,
+        });
+      } else {
+        toast({
+          title: "Email kon niet worden verzonden",
+          description: "Er is een fout opgetreden bij het verzenden van de email.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error sending email:", error);
+      toast({
+        title: "Fout",
+        description: "Er is een fout opgetreden.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleSendHappyCall = () => {
-    // In een echte implementatie zou dit een API call zijn naar de email service
-    const emailContent = `
-Beste ${claim.customerName},
-
-Wij hopen dat u tevreden bent met de afhandeling van uw garantieclaim voor uw ${claim.vehicleBrand} ${claim.vehicleModel} (${claim.vehicleLicenseNumber}).
-
-Uw voertuig is recent gerepareerd en wij willen graag weten hoe u onze service heeft ervaren. Uw feedback is zeer waardevol voor ons om onze dienstverlening te blijven verbeteren.
-
-Zou u zo vriendelijk willen zijn om een paar minuten te nemen voor de volgende vragen:
-- Hoe tevreden bent u met de snelheid van afhandeling?
-- Was de communicatie tijdens het proces duidelijk?
-- Zijn er nog zaken die u wilt melden of verbeterpunten?
-
-Als u een review wilt achterlaten over onze service, kunt u dat doen via: https://review.autogarantie.nl/review/${claim.id}
-
-Mocht u nog vragen hebben of ontevreden zijn over bepaalde aspecten, neem dan gerust contact met ons op.
-
-Met vriendelijke groet,
-Het Garantieteam
-    `;
+  const handleSendHappyCall = async () => {
+    const vehicleData = {
+      id: claim.vehicleId,
+      brand: claim.vehicleBrand,
+      model: claim.vehicleModel,
+      licenseNumber: claim.vehicleLicenseNumber,
+      customerContact: {
+        name: claim.customerName,
+        email: claim.customerEmail || '',
+        phone: claim.customerPhone || ''
+      }
+    };
     
-    console.log("Happy Call email sent to:", claim.customerName, emailContent);
-    
-    toast({
-      title: "Happy Call verzonden",
-      description: `Follow-up email verzonden naar ${claim.customerName} voor feedback over de service.`,
-    });
+    try {
+      const { sendEmailWithTemplate } = await import('@/services/emailTemplateService');
+      const success = await sendEmailWithTemplate('happy_call', vehicleData as any);
+      
+      if (success) {
+        toast({
+          title: "Happy Call verzonden",
+          description: `Follow-up email verzonden naar ${claim.customerName} voor feedback over de service.`,
+        });
+      } else {
+        toast({
+          title: "Email kon niet worden verzonden",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error sending email:", error);
+    }
   };
 
   return (

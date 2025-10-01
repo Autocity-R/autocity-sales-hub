@@ -82,7 +82,7 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle, onUp
               "CMR voor Leverancier"
             )}
             
-            {renderEmailButton(
+            {vehicle?.importStatus === "niet_aangemeld" && renderEmailButton(
               "bpm_huys", 
               <Mail className="mr-2 h-4 w-4" />, 
               "BPM Huys aanmelden"
@@ -100,6 +100,12 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle, onUp
                 <Mail className="mr-2 h-4 w-4" />, 
                 "Koopcontract sturen (B2B)"
               )}
+
+              {renderEmailButton(
+                "contract_send", 
+                <FileText className="mr-2 h-4 w-4" />, 
+                "Koopcontract sturen"
+              )}
               
               {isVehicleArrived && renderEmailButton(
                 "vehicle_arrived", 
@@ -116,7 +122,7 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle, onUp
               <div className="mt-2 p-3 bg-muted rounded-md">
                 <h5 className="text-sm font-medium mb-2">Kenteken registratie updates</h5>
                 <div className="space-y-1 text-xs text-muted-foreground">
-                  <div>• Aangemeld - Initiële melding naar klant</div>
+                  <div>• Aanvraag ontvangen - Initiële melding naar klant</div>
                   <div>• Goedgekeurd - RDW heeft voertuig goedgekeurd</div>
                   <div>• BPM Betaald - BPM betaald en registratie volgt</div>
                   <div>• Herkeuring - Voertuig moet opnieuw worden gekeurd</div>
@@ -144,7 +150,7 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle, onUp
           <Separator className="my-4" />
           
           <div className="space-y-3">
-            {renderEmailButton(
+            {!vehicle?.papersReceived && renderEmailButton(
               "reminder_papers", 
               <Mail className="mr-2 h-4 w-4" />, 
               "Handmatig herinnering sturen",
