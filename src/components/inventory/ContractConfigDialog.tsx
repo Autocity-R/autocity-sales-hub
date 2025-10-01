@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +52,25 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
   const [selectedCustomer, setSelectedCustomer] = useState<Contact | null>(null);
   const [allowCustomerChange, setAllowCustomerChange] = useState(false);
 
+  // Centralize vehicle enrichment with customer data
+  const vehicleWithContact = useMemo(() => {
+    if (!selectedCustomer) {
+      return vehicle;
+    }
+    return {
+      ...vehicle,
+      customerContact: {
+        name: selectedCustomer.companyName || `${selectedCustomer.firstName} ${selectedCustomer.lastName}`.trim(),
+        email: selectedCustomer.email,
+        phone: selectedCustomer.phone,
+        address: [selectedCustomer.address?.street, selectedCustomer.address?.city].filter(Boolean).join(', ')
+      }
+    };
+  }, [vehicle, selectedCustomer]);
+
+  // Validation: disable actions if customer data is loading
+  const isActionDisabled = loading || (vehicle.customerId && !selectedCustomer);
+
   // Auto-load linked customer
   useEffect(() => {
     if (vehicle.customerId && isOpen && !selectedCustomer) {
@@ -77,17 +96,6 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
   const handlePreview = async () => {
     setLoading(true);
     try {
-      // Enrich vehicle with selected customer contact info
-      const vehicleWithContact = {
-        ...vehicle,
-        customerContact: selectedCustomer ? {
-          name: selectedCustomer.companyName || `${selectedCustomer.firstName} ${selectedCustomer.lastName}`.trim(),
-          email: selectedCustomer.email,
-          phone: selectedCustomer.phone,
-          address: [selectedCustomer.address?.street, selectedCustomer.address?.city].filter(Boolean).join(', ')
-        } : vehicle.customerContact
-      };
-      
       const contract = await generateContract(vehicleWithContact, contractType, options);
       setContractPreview(contract);
       setShowPreview(true);
@@ -115,17 +123,6 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
 
     setLoading(true);
     try {
-      // Enrich vehicle with selected customer contact info
-      const vehicleWithContact = {
-        ...vehicle,
-        customerContact: selectedCustomer ? {
-          name: selectedCustomer.companyName || `${selectedCustomer.firstName} ${selectedCustomer.lastName}`.trim(),
-          email: selectedCustomer.email,
-          phone: selectedCustomer.phone,
-          address: [selectedCustomer.address?.street, selectedCustomer.address?.city].filter(Boolean).join(', ')
-        } : vehicle.customerContact
-      };
-      
       // Create signature session
       const session = await createSignatureSession(vehicleWithContact, contractType, options);
       const signatureUrl = generateSignatureUrl(session);
@@ -587,11 +584,11 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
             <Button variant="outline" onClick={onClose}>
               Annuleren
             </Button>
-            <Button variant="outline" onClick={handlePreview} disabled={loading}>
+            <Button variant="outline" onClick={handlePreview} disabled={isActionDisabled}>
               <Eye className="h-4 w-4 mr-2" />
               Voorbeeld
             </Button>
-            <Button onClick={deliveryMethod === "digital" ? handleSendDigital : handleSendEmail} disabled={loading}>
+            <Button onClick={deliveryMethod === "digital" ? handleSendDigital : handleSendEmail} disabled={isActionDisabled}>
               {loading ? "Bezig..." : (
                 deliveryMethod === "digital" ? (
                   <>

@@ -746,7 +746,7 @@ Contractnummer: AC-${vehicle.licenseNumber}-${Date.now().toString().slice(-6)}
 Datum: ${currentDate}
 Type verkoop: ${isB2B ? 'Zakelijke verkoop (B2B)' : 'Particuliere verkoop (B2C)'}
 Klant: ${isB2B ? (vehicle.customerName || '[Bedrijfsnaam]') : (vehicle.customerContact?.name || '[Voor- en achternaam]')}
-Adres: [Adres van klant]
+Adres: ${vehicle.customerContact?.address || '[Adres klant]'}
 Email: ${vehicle.customerContact?.email || '[Email adres]'}
 
 VOERTUIGGEGEVENS:
