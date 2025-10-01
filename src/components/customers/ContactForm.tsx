@@ -80,9 +80,9 @@ const ContactForm: React.FC<ContactFormProps> = ({
         toast.success("Nieuw contact succesvol toegevoegd");
       }
       
-      if (onSuccess) {
-        onSuccess(result);
-      }
+      onSuccess?.(result);
+      // Auto-close parent dialog/sheet if provided
+      onCancel?.();
       
       if (!isEditMode) {
         form.reset(defaultValues);
