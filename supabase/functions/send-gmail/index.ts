@@ -1,11 +1,25 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
+import * as jose from "https://deno.land/x/jose@v4.14.4/index.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+interface ServiceAccount {
+  type: string;
+  project_id: string;
+  private_key_id: string;
+  private_key: string;
+  client_email: string;
+  client_id: string;
+  auth_uri: string;
+  token_uri: string;
+  auth_provider_x509_cert_url: string;
+  client_x509_cert_url: string;
+}
 
 interface EmailRequest {
   senderEmail: string;
@@ -53,7 +67,12 @@ serve(async (req) => {
       throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY not configured');
     }
 
-    const serviceAccount = JSON.parse(serviceAccountKey);
+    const serviceAccount: ServiceAccount = JSON.parse(serviceAccountKey);
+    
+    console.log('🔑 Service Account Info:', {
+      client_email: serviceAccount.client_email,
+      private_key_id: serviceAccount.private_key_id?.substring(0, 8) + '...',
+    });
 
     // Get auth header from request
     const authHeader = req.headers.get('Authorization');
@@ -223,9 +242,69 @@ serve(async (req) => {
   }
 });
 
+// === MANUS' OPLOSSING: JWT CREATIE MET KID HEADER ===
+async function createJWTAssertion(
+  serviceAccount: ServiceAccount,
+  scope: string,
+  impersonateEmail: string
+): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  
+  console.log('🔐 Creating JWT with kid:', serviceAccount.private_key_id?.substring(0, 8) + '...');
+  
+  const privateKeyObject = await jose.importPKCS8(serviceAccount.private_key, 'RS256');
+
+  const jwt = await new jose.SignJWT({ scope })
+    .setProtectedHeader({
+      alg: 'RS256',
+      typ: 'JWT',
+      kid: serviceAccount.private_key_id, // <-- DE CRUCIALE TOEVOEGING!
+    })
+    .setIssuedAt(now)
+    .setIssuer(serviceAccount.client_email)
+    .setSubject(impersonateEmail)
+    .setAudience('https://oauth2.googleapis.com/token')
+    .setExpirationTime(now + 3600)
+    .sign(privateKeyObject);
+
+  return jwt;
+}
+
+// Get access token using the corrected JWT
+async function getAccessToken(
+  serviceAccount: ServiceAccount,
+  impersonateEmail: string
+): Promise<string> {
+  const scope = 'https://www.googleapis.com/auth/gmail.send';
+  const assertion = await createJWTAssertion(serviceAccount, scope, impersonateEmail);
+
+  console.log('📤 Exchanging JWT for access token...');
+
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: assertion,
+    }),
+  });
+
+  const data = await response.json();
+  
+  if (!response.ok) {
+    console.error('❌ Token exchange failed:', JSON.stringify(data, null, 2));
+    throw new Error(`Failed to get access token: ${JSON.stringify(data)}`);
+  }
+
+  console.log('✅ Access token obtained successfully');
+  return data.access_token;
+}
+
 // Get access token with retry logic
 async function getAccessTokenWithRetry(
-  serviceAccount: any,
+  serviceAccount: ServiceAccount,
   impersonateEmail: string,
   maxRetries = 3
 ): Promise<string> {
@@ -233,20 +312,21 @@ async function getAccessTokenWithRetry(
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      const token = await getServiceAccountToken(serviceAccount, impersonateEmail);
+      const token = await getAccessToken(serviceAccount, impersonateEmail);
       return token;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error');
-      console.error(`Token attempt ${attempt + 1} failed:`, lastError.message);
+      console.error(`Token attempt ${attempt + 1}/${maxRetries} failed:`, lastError.message);
       
       if (attempt < maxRetries - 1) {
         const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+        console.log(`⏳ Waiting ${delay}ms before retry...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   }
 
-  throw lastError || new Error('Failed to get access token');
+  throw lastError || new Error('Failed to get access token after retries');
 }
 
 // Send email with retry logic
@@ -284,7 +364,7 @@ async function sendEmailWithRetry(
       
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error');
-      console.error(`Send attempt ${attempt + 1} failed:`, lastError.message);
+      console.error(`Send attempt ${attempt + 1}/${maxRetries} failed:`, lastError.message);
       
       if (attempt < maxRetries - 1) {
         const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
@@ -293,112 +373,5 @@ async function sendEmailWithRetry(
     }
   }
 
-  throw lastError || new Error('Failed to send email');
-}
-
-// Get service account access token (reused from google-service-auth)
-async function getServiceAccountToken(
-  serviceAccount: any,
-  impersonateEmail: string
-): Promise<string> {
-  const scope = 'https://www.googleapis.com/auth/gmail.send';
-  
-  const jwtAssertion = await createJWTAssertion(
-    serviceAccount.client_email,
-    serviceAccount.private_key,
-    scope,
-    impersonateEmail
-  );
-
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion: jwtAssertion,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to get access token: ${error}`);
-  }
-
-  const data = await response.json();
-  return data.access_token;
-}
-
-// Create JWT assertion for service account
-async function createJWTAssertion(
-  clientEmail: string,
-  privateKey: string,
-  scope: string,
-  impersonateEmail: string
-): Promise<string> {
-  const now = Math.floor(Date.now() / 1000);
-  
-  const header = {
-    alg: 'RS256',
-    typ: 'JWT',
-  };
-
-  const payload = {
-    iss: clientEmail,
-    scope: scope,
-    aud: 'https://oauth2.googleapis.com/token',
-    exp: now + 3600,
-    iat: now,
-    sub: impersonateEmail,
-  };
-
-  const encodedHeader = base64UrlEncode(JSON.stringify(header));
-  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
-  const signatureInput = `${encodedHeader}.${encodedPayload}`;
-
-  // Import the private key
-  const pemHeader = '-----BEGIN PRIVATE KEY-----';
-  const pemFooter = '-----END PRIVATE KEY-----';
-  const pemContents = privateKey
-    .replace(pemHeader, '')
-    .replace(pemFooter, '')
-    .replace(/\s/g, '');
-
-  const binaryKey = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
-
-  const cryptoKey = await crypto.subtle.importKey(
-    'pkcs8',
-    binaryKey,
-    {
-      name: 'RSASSA-PKCS1-v1_5',
-      hash: 'SHA-256',
-    },
-    false,
-    ['sign']
-  );
-
-  // Sign the JWT
-  const encoder = new TextEncoder();
-  const signature = await crypto.subtle.sign(
-    'RSASSA-PKCS1-v1_5',
-    cryptoKey,
-    encoder.encode(signatureInput)
-  );
-
-  const encodedSignature = base64UrlEncode(
-    String.fromCharCode(...new Uint8Array(signature))
-  );
-
-  return `${signatureInput}.${encodedSignature}`;
-}
-
-// Base64 URL encode helper
-function base64UrlEncode(str: string): string {
-  const base64 = btoa(
-    encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) =>
-      String.fromCharCode(parseInt(p1, 16))
-    )
-  );
-  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  throw lastError || new Error('Failed to send email after retries');
 }
