@@ -346,6 +346,7 @@ export const sendEmail = async (type: string, vehicleIds: string[], contractOpti
       'reminder_papers': 'reminder_papers',
       'bpm_huys': 'bpm_huys',
       'contract_b2c_digital': 'contract_b2c_digital',
+      'contract_b2b_digital': 'contract_b2b_digital',
     };
 
     const buttonValue = emailTypeToButtonMap[type];
