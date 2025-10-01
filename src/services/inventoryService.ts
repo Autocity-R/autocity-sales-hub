@@ -309,15 +309,78 @@ export const markVehicleAsDelivered = async (vehicleId: string): Promise<void> =
 
 export const sendEmail = async (type: string, vehicleIds: string[]): Promise<void> => {
   try {
-    console.log(`Sending ${type} email for vehicles:`, vehicleIds);
+    console.log(`Sending ${type} email for ${vehicleIds.length} vehicle(s)`);
     
     if (isUseMockData) {
       console.log('Mock data mode - email send simulated');
       return;
     }
 
-    // In a real implementation, this would send emails
-    console.log('Email send functionality not implemented yet');
+    // Import the email template service
+    const { sendEmailWithTemplate } = await import('./emailTemplateService');
+    const { toast } = await import('@/hooks/use-toast');
+
+    // Map email type to button value
+    const emailTypeToButtonMap: Record<string, string> = {
+      'transport_pickup': 'transport_pickup',
+      'transport_arrival': 'vehicle_arrived',
+      'cmr_supplier': 'cmr_supplier',
+      'reminder_papers': 'reminder_papers',
+    };
+
+    const buttonValue = emailTypeToButtonMap[type];
+    if (!buttonValue) {
+      console.warn(`Unknown email type: ${type}`);
+      toast({
+        title: "Onbekend email type",
+        description: `Email type '${type}' is niet geconfigureerd.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Send email for each vehicle
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const vehicleId of vehicleIds) {
+      try {
+        // Fetch full vehicle data
+        const vehicle = await fetchVehicle(vehicleId);
+        if (!vehicle) {
+          console.warn(`Vehicle ${vehicleId} not found`);
+          failCount++;
+          continue;
+        }
+
+        // Send email with template
+        const success = await sendEmailWithTemplate(buttonValue, vehicle);
+        if (success) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (error) {
+        console.error(`Error sending email for vehicle ${vehicleId}:`, error);
+        failCount++;
+      }
+    }
+
+    // Show result toast
+    if (successCount > 0) {
+      toast({
+        title: "Emails verzonden",
+        description: `${successCount} email(s) succesvol verzonden${failCount > 0 ? `, ${failCount} mislukt` : ''}.`,
+        variant: successCount === vehicleIds.length ? "default" : "destructive"
+      });
+    } else if (failCount > 0) {
+      toast({
+        title: "Email verzenden mislukt",
+        description: `Alle ${failCount} email(s) zijn mislukt.`,
+        variant: "destructive"
+      });
+    }
+
   } catch (error) {
     console.error('Error in sendEmail:', error);
     throw error;

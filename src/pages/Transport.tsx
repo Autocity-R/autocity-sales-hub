@@ -169,10 +169,15 @@ const Transport = () => {
 
   // Handle bulk email sending
   const handleSendBulkEmails = (vehicleIds: string[], transporterId: string) => {
+    // We use the supplierId from each vehicle, not the transporterId parameter
+    // This ensures each vehicle goes to its own linked transporter
     emailMutation.mutate({ 
       type: "transport_pickup", 
       vehicleIds 
     });
+    
+    // Reset selection after sending
+    setSelectedVehicleIds([]);
   };
 
   // Handle bulk status update

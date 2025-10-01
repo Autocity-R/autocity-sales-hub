@@ -123,21 +123,45 @@ export const getEmailTemplateByButton = (buttonValue: string): EmailTemplate | n
 export const determineRecipient = async (buttonValue: string, vehicleData: Vehicle): Promise<{ email: string; name: string } | null> => {
   switch (buttonValue) {
     case "transport_pickup":
+      // Get transporter contact from contacts table
+      if (vehicleData.supplierId) {
+        const { supabaseCustomerService } = await import('./supabaseCustomerService');
+        const contact = await supabaseCustomerService.getContactById(vehicleData.supplierId);
+        
+        // Verify it's actually a transporter
+        if (contact && contact.type === 'transporter') {
+          return {
+            email: contact.email,
+            name: contact.companyName || `${contact.firstName} ${contact.lastName}`
+          };
+        } else if (contact && contact.type !== 'transporter') {
+          console.warn(`Contact ${contact.id} is not type 'transporter', but '${contact.type}'`);
+          return null;
+        }
+      }
+      // Fallback to legacy transporterContact
       return vehicleData.transporterContact || null;
+      
     case "cmr_supplier":
     case "reminder_papers":
       // Get supplier contact from contacts table
       if (vehicleData.supplierId) {
         const { supabaseCustomerService } = await import('./supabaseCustomerService');
-        const supplier = await supabaseCustomerService.getContactById(vehicleData.supplierId);
-        if (supplier) {
+        const contact = await supabaseCustomerService.getContactById(vehicleData.supplierId);
+        
+        // Verify it's actually a supplier (not transporter!)
+        if (contact && contact.type === 'supplier') {
           return {
-            email: supplier.email,
-            name: supplier.companyName || `${supplier.firstName} ${supplier.lastName}`
+            email: contact.email,
+            name: contact.companyName || `${contact.firstName} ${contact.lastName}`
           };
+        } else if (contact && contact.type !== 'supplier') {
+          console.warn(`Contact ${contact.id} is not type 'supplier', but '${contact.type}'. CMR should not go to transporters!`);
+          return null;
         }
       }
       return vehicleData.supplierContact || null;
+      
     case "contract_b2b":
     case "contract_b2c":
     case "contract_b2b_digital":
@@ -371,6 +395,13 @@ const replaceVariables = (text: string, vehicleData: Vehicle, recipient?: { emai
     result = result.replace(/{{ACHTERNAAM}}/g, lastName);
     result = result.replace(/{{EMAIL}}/g, vehicleData.customerContact?.email || recipient?.email || '');
     result = result.replace(/{{TELEFOON}}/g, vehicleData.customerContact?.phone || '');
+  }
+  
+  // Transporteur variabelen (NIEUW)
+  if (vehicleData.transporterContact || (recipient && text.includes('TRANSPORTEUR'))) {
+    const transporterName = vehicleData.transporterContact?.name || recipient?.name || '';
+    result = result.replace(/{{TRANSPORTEUR_NAAM}}/g, transporterName);
+    result = result.replace(/{{TRANSPORTEUR_EMAIL}}/g, vehicleData.transporterContact?.email || recipient?.email || '');
   }
   
   // Legacy {variabele} syntax (backwards compatibility)
