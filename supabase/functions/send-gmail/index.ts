@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { encode as encodeBase64 } from "https://deno.land/std@0.177.0/encoding/base64.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
 import * as jose from "https://deno.land/x/jose@v4.14.4/index.ts";
 import { corsHeaders } from '../_shared/cors.ts';
@@ -119,7 +120,8 @@ serve(async (req) => {
 
           if (att.base64) {
             console.log(`✅ Using provided base64 data for attachment: ${att.filename}`);
-            base64Data = att.base64;
+            // Sanitize: remove any existing line breaks for consistent formatting
+            base64Data = att.base64.replace(/\r?\n/g, '');
           } else if (att.url) {
             console.log(`📥 Fetching attachment from URL: ${att.filename}`);
             const response = await fetch(att.url);
@@ -139,7 +141,10 @@ serve(async (req) => {
 
             mimeType = response.headers.get('content-type') || mimeType;
             const buffer = await response.arrayBuffer();
-            base64Data = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+            const bytes = new Uint8Array(buffer);
+            console.log(`📏 Converting ${bytes.length} bytes to base64 for ${att.filename}`);
+            base64Data = encodeBase64(bytes);
+            console.log(`✅ Base64 conversion complete: ${base64Data.length} characters`);
           } else {
             throw new Error(`Attachment "${att.filename}" has no url or base64 data.`);
           }
