@@ -37,6 +37,20 @@ interface EmailRequest {
   };
 }
 
+// === MANUS' OPLOSSING: UTF-8 SAFE BASE64URL ENCODING ===
+function base64urlEncode(str: string): string {
+  // Stap 1: Converteer de UTF-8 string naar een Uint8Array (een array van bytes)
+  const bytes = new TextEncoder().encode(str);
+  
+  // Stap 2: Converteer de bytes naar een Base64 string
+  // btoa kan niet direct met een Uint8Array overweg, dus we converteren de byte-waarden
+  // terug naar karakters. Dit is een standaard en veilige methode.
+  const base64 = btoa(String.fromCharCode(...bytes));
+  
+  // Stap 3: Converteer de standaard Base64 naar Base64URL formaat voor de Gmail API
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -138,7 +152,7 @@ serve(async (req) => {
         `From: ${senderEmail}`,
         `To: ${to.join(', ')}`,
         cc.length > 0 ? `Cc: ${cc.join(', ')}` : null,
-        `Subject: ${subject}`,
+        `Subject: =?utf-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`,
         'MIME-Version: 1.0',
         `Content-Type: multipart/mixed; boundary="${boundary}"`,
         '',
@@ -165,11 +179,8 @@ serve(async (req) => {
 
       mimeMessage += `--${boundary}--`;
 
-      // Base64url encode the MIME message
-      const encodedMessage = btoa(mimeMessage)
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
+      // Base64url encode the MIME message - MANUS' UTF-8 SAFE ENCODING
+      const encodedMessage = base64urlEncode(mimeMessage);
 
       // Send email via Gmail API with retry
       const sendResult = await sendEmailWithRetry(accessToken, senderEmail, encodedMessage);
