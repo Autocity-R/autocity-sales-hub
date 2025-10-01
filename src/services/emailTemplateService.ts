@@ -3,6 +3,7 @@ import { Vehicle, VehicleFile } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 import { generateContract } from "./contractService";
 import { fetchVehicleFiles } from "./inventoryService";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock email templates - in productie zou dit vanuit een API komen
 let emailTemplates: EmailTemplate[] = [
@@ -375,10 +376,40 @@ const getEmailAttachments = async (
         const contractType = template.linkedButton.includes("b2b") ? "b2b" : "b2c";
         const contract = await generateContract(vehicleData, contractType, contractOptions, signatureUrl);
         
+        // Generate PDF and upload to Supabase Storage
+        const { generatePdfFromText } = await import("./contractPdfService");
+        const pdfBytes = await generatePdfFromText(contract.content);
+        
+        // Create a blob from the PDF bytes
+        const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const fileName = contract.fileName;
+        const filePath = `${vehicleData.id}/contracts/${Date.now()}-${fileName}`;
+        
+        // Upload to Supabase Storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('vehicle-documents')
+          .upload(filePath, pdfBlob, {
+            contentType: 'application/pdf',
+            upsert: false
+          });
+        
+        if (uploadError) {
+          console.error('Error uploading contract PDF:', uploadError);
+          throw new Error(`Failed to upload contract PDF: ${uploadError.message}`);
+        }
+        
+        // Get signed URL (valid for 1 hour)
+        const { data: urlData } = await supabase.storage
+          .from('vehicle-documents')
+          .createSignedUrl(filePath, 3600);
+        
+        if (!urlData?.signedUrl) {
+          throw new Error('Failed to generate signed URL for contract PDF');
+        }
+        
         attachments.push({
-          name: contract.fileName,
-          url: contract.pdfUrl || "",
-          content: contract.content
+          name: fileName,
+          url: urlData.signedUrl
         });
       }
       break;

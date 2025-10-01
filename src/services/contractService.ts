@@ -136,7 +136,7 @@ export const generateContract = async (
     content: textContent,
     htmlContent,
     fileName,
-    pdfUrl: `https://example.com/contracts/${fileName}`,
+    pdfUrl: undefined, // Will be generated and uploaded when sending email
     signatureUrl
   };
 };
