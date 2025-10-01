@@ -114,6 +114,16 @@ let emailTemplates: EmailTemplate[] = [
     senderEmail: "inkoop@auto-city.nl",
     linkedButton: "vehicle_arrived",
     hasAttachment: false
+  },
+  {
+    id: "12",
+    name: "Koopcontract B2B",
+    subject: "Koopcontract – {{MERK}} {{MODEL}} ({{VIN}})",
+    content: "Beste {{VOORNAAM}} {{ACHTERNAAM}},\n\nHartelijk dank voor uw aankoop bij Autocity Automotive Group.\n\nIn de bijlage vindt u het koopcontract voor uw voertuig, waarin alle gemaakte afspraken duidelijk zijn vermeld:\n\nMerk: {{MERK}}\n\nModel: {{MODEL}}\n\nVIN: {{VIN}}\n\nWij verzoeken u het contract door te nemen en ons te informeren zodra alles akkoord is.\n\nMocht u nog vragen hebben, neem dan gerust contact met ons op.\n\nMet vriendelijke groet,\nAutocity Automotive Group\n010 262 3980\nwww.auto-city.nl",
+    senderEmail: "administratie@auto-city.nl",
+    linkedButton: "contract_b2b",
+    hasAttachment: true,
+    attachmentType: "generated-contract"
   }
 ];
 
