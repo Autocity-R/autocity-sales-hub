@@ -41,8 +41,7 @@ interface ServiceAccount {
 
 // --- HELPER FUNCTIES ---
 function base64urlEncode(str: string): string {
-  const bytes = new TextEncoder().encode(str);
-  const base64 = btoa(String.fromCharCode(...bytes));
+  const base64 = btoa(unescape(encodeURIComponent(str)));
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
