@@ -29,7 +29,7 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle, onUp
   };
 
   const handleSendContract = (options: ContractOptions) => {
-    const buttonType = contractType === "b2b" ? "contract_b2b" : "contract_b2c";
+    const buttonType = contractType === "b2b" ? "contract_b2b" : "contract_send";
     onSendEmail(buttonType, options);
   };
 
@@ -39,7 +39,8 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle, onUp
     
     const handleClick = () => {
       if (isContractButton) {
-        const type = buttonType.includes("b2b") ? "b2b" : "b2c";
+        // In B2B context, always use B2B contract type
+        const type = (isB2B || buttonType.includes("b2b")) ? "b2b" : "b2c";
         handleContractClick(type);
       } else {
         onSendEmail(buttonType);

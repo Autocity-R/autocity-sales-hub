@@ -347,6 +347,10 @@ export const sendEmail = async (type: string, vehicleIds: string[], contractOpti
       'bpm_huys': 'bpm_huys',
       'contract_b2c_digital': 'contract_b2c_digital',
       'contract_b2b_digital': 'contract_b2b_digital',
+      'contract_b2b': 'contract_b2b',
+      'contract_send': 'contract_send',
+      'vehicle_arrived': 'vehicle_arrived',
+      'license_registration': 'license_registration',
     };
 
     const buttonValue = emailTypeToButtonMap[type];
