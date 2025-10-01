@@ -151,7 +151,7 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
               <TableCell className="align-middle">€{vehicle.purchasePrice.toLocaleString('nl-NL')}</TableCell>
               <TableCell className="align-middle">{getPickupStatus(vehicle)}</TableCell>
               <TableCell className="align-middle">{formatImportStatus(vehicle.importStatus)}</TableCell>
-              <TableCell className="align-middle">
+              <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
                 <div className="flex justify-center space-x-2">
                   <Button 
                     size="sm" 
@@ -162,7 +162,8 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
                     }}
                     title="Verstuur pickup document"
                   >
-                    <FileText className="h-4 w-4" />
+                    <FileText className="h-4 w-4 mr-1" />
+                    Pickup versturen
                   </Button>
                   <Button 
                     size="sm" 
