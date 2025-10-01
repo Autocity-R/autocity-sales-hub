@@ -1,5 +1,5 @@
 
-export type ContactType = 'supplier' | 'b2b' | 'b2c';
+export type ContactType = 'supplier' | 'b2b' | 'b2c' | 'transporter';
 
 export interface Address {
   street: string;

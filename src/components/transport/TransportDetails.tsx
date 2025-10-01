@@ -52,10 +52,10 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Fetch transporters (suppliers)
+  // Fetch transporters
   const { data: transporters = [] } = useQuery({
-    queryKey: ["contacts", "supplier"],
-    queryFn: () => getContactsByType("supplier")
+    queryKey: ["contacts", "transporter"],
+    queryFn: () => getContactsByType("transporter")
   });
 
   const handleImportStatusChange = (status: ImportStatus) => {

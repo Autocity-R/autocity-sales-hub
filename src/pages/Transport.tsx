@@ -190,7 +190,7 @@ const Transport = () => {
   const createSupplierMutation = useMutation({
     mutationFn: async (supplierData: Supplier) => {
       const contactData: Omit<Contact, "id" | "createdAt" | "updatedAt"> = {
-        type: "supplier",
+        type: "transporter",
         companyName: supplierData.name,
         firstName: supplierData.contactPerson || "",
         lastName: "",
@@ -209,7 +209,7 @@ const Transport = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
-      queryClient.invalidateQueries({ queryKey: ["contacts", "supplier"] });
+      queryClient.invalidateQueries({ queryKey: ["contacts", "transporter"] });
       toast({
         title: "Transporteur toegevoegd",
         description: "De nieuwe transporteur is succesvol toegevoegd.",
