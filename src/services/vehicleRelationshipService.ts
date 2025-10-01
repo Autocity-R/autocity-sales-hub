@@ -14,12 +14,21 @@ export const loadVehicleRelationships = async (vehicles: any[]): Promise<any[]> 
     if (customerIds.length > 0) {
       const { data: customerData } = await supabase
         .from('contacts')
-        .select('id, first_name, last_name, company_name')
+        .select('id, first_name, last_name, company_name, email, phone, address_street, address_city')
         .in('id', customerIds);
       
       customerData?.forEach(customer => {
         const name = customer.company_name || `${customer.first_name} ${customer.last_name}`.trim();
-        customers.set(customer.id, name);
+        const address = [customer.address_street, customer.address_city].filter(Boolean).join(', ');
+        customers.set(customer.id, {
+          name,
+          contact: {
+            name,
+            email: customer.email,
+            phone: customer.phone,
+            address
+          }
+        });
       });
     }
 
@@ -28,20 +37,31 @@ export const loadVehicleRelationships = async (vehicles: any[]): Promise<any[]> 
     if (supplierIds.length > 0) {
       const { data: supplierData } = await supabase
         .from('contacts')
-        .select('id, first_name, last_name, company_name')
+        .select('id, first_name, last_name, company_name, email, phone, address_street, address_city')
         .in('id', supplierIds);
       
       supplierData?.forEach(supplier => {
         const name = supplier.company_name || `${supplier.first_name} ${supplier.last_name}`.trim();
-        suppliers.set(supplier.id, name);
+        const address = [supplier.address_street, supplier.address_city].filter(Boolean).join(', ');
+        suppliers.set(supplier.id, {
+          name,
+          contact: {
+            name,
+            email: supplier.email,
+            phone: supplier.phone,
+            address
+          }
+        });
       });
     }
 
-    // Add names to vehicles
+    // Add names and contact info to vehicles
     return vehicles.map(vehicle => ({
       ...vehicle,
-      customerName: customers.get(vehicle.customerId) || null,
-      supplierName: suppliers.get(vehicle.supplierId) || null,
+      customerName: customers.get(vehicle.customerId)?.name || null,
+      supplierName: suppliers.get(vehicle.supplierId)?.name || null,
+      customerContact: customers.get(vehicle.customerId)?.contact || null,
+      supplierContact: suppliers.get(vehicle.supplierId)?.contact || null,
     }));
 
   } catch (error) {

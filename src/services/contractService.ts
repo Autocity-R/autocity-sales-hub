@@ -516,7 +516,7 @@ const generateHtmlContract = (
                         </div>
                         <div class="info-item">
                             <span class="info-label">Adres:</span>
-                            <span class="info-value">[Adres klant]</span>
+                            <span class="info-value">${vehicle.customerContact?.address || '[Adres klant]'}</span>
                         </div>
                     </div>
                 </div>
