@@ -18,6 +18,7 @@ interface SearchableCustomerSelectorProps {
   customerType: ContactType;
   label?: string;
   placeholder?: string;
+  disabled?: boolean;
 }
 
 export const SearchableCustomerSelector: React.FC<SearchableCustomerSelectorProps> = ({
@@ -25,7 +26,8 @@ export const SearchableCustomerSelector: React.FC<SearchableCustomerSelectorProp
   onValueChange,
   customerType,
   label = "Klant",
-  placeholder = "Zoek en selecteer klant..."
+  placeholder = "Zoek en selecteer klant...",
+  disabled = false
 }) => {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -140,13 +142,14 @@ export const SearchableCustomerSelector: React.FC<SearchableCustomerSelectorProp
     <>
       <div className="space-y-2">
         <Label>{label}</Label>
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover open={open && !disabled} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
               role="combobox"
               aria-expanded={open}
               className="w-full justify-between"
+              disabled={disabled}
             >
               {selectedCustomer ? (
                 <div className="flex items-center gap-2">

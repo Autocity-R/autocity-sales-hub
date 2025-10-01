@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { generateContract } from "@/services/contractService";
 import { createSignatureSession, generateSignatureUrl } from "@/services/digitalSignatureService";
 import { useToast } from "@/hooks/use-toast";
 import { SearchableCustomerSelector } from "@/components/customers/SearchableCustomerSelector";
+import { supabaseCustomerService } from "@/services/supabaseCustomerService";
 
 interface ContractConfigDialogProps {
   isOpen: boolean;
@@ -49,11 +50,45 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
   const [loading, setLoading] = useState(false);
   const [showTradeInForm, setShowTradeInForm] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Contact | null>(null);
+  const [allowCustomerChange, setAllowCustomerChange] = useState(false);
+
+  // Auto-load linked customer
+  useEffect(() => {
+    if (vehicle.customerId && isOpen && !selectedCustomer) {
+      setLoading(true);
+      supabaseCustomerService.getContactById(vehicle.customerId)
+        .then(contact => {
+          if (contact) {
+            setSelectedCustomer(contact);
+          }
+        })
+        .catch(error => {
+          console.error('Error loading customer:', error);
+          toast({
+            title: "Waarschuwing",
+            description: "Kon gekoppelde klant niet laden",
+            variant: "destructive"
+          });
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [vehicle.customerId, isOpen]);
 
   const handlePreview = async () => {
     setLoading(true);
     try {
-      const contract = await generateContract(vehicle, contractType, options);
+      // Enrich vehicle with selected customer contact info
+      const vehicleWithContact = {
+        ...vehicle,
+        customerContact: selectedCustomer ? {
+          name: selectedCustomer.companyName || `${selectedCustomer.firstName} ${selectedCustomer.lastName}`.trim(),
+          email: selectedCustomer.email,
+          phone: selectedCustomer.phone,
+          address: [selectedCustomer.address?.street, selectedCustomer.address?.city].filter(Boolean).join(', ')
+        } : vehicle.customerContact
+      };
+      
+      const contract = await generateContract(vehicleWithContact, contractType, options);
       setContractPreview(contract);
       setShowPreview(true);
     } catch (error) {
@@ -80,12 +115,23 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
 
     setLoading(true);
     try {
+      // Enrich vehicle with selected customer contact info
+      const vehicleWithContact = {
+        ...vehicle,
+        customerContact: selectedCustomer ? {
+          name: selectedCustomer.companyName || `${selectedCustomer.firstName} ${selectedCustomer.lastName}`.trim(),
+          email: selectedCustomer.email,
+          phone: selectedCustomer.phone,
+          address: [selectedCustomer.address?.street, selectedCustomer.address?.city].filter(Boolean).join(', ')
+        } : vehicle.customerContact
+      };
+      
       // Create signature session
-      const session = await createSignatureSession(vehicle, contractType, options);
+      const session = await createSignatureSession(vehicleWithContact, contractType, options);
       const signatureUrl = generateSignatureUrl(session);
       
       // Generate contract with signature URL
-      const contract = await generateContract(vehicle, contractType, options, signatureUrl);
+      const contract = await generateContract(vehicleWithContact, contractType, options, signatureUrl);
       
       // Simulate sending email with contract and signature link
       console.log("Digitaal contract verzonden naar:", selectedCustomer.email);
@@ -206,13 +252,31 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
 
         <div className="space-y-6">
           {/* Customer Selection */}
-          <SearchableCustomerSelector
-            value={selectedCustomer?.id}
-            onValueChange={handleCustomerSelect}
-            customerType={contractType}
-            label="Klant selecteren"
-            placeholder="Zoek en selecteer een klant..."
-          />
+          <div className="space-y-2">
+            {vehicle.customerId && !allowCustomerChange && (
+              <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-700 font-medium">
+                  ✓ Gekoppelde klant wordt automatisch gebruikt
+                </p>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setAllowCustomerChange(true)}
+                  className="text-green-700 hover:text-green-800"
+                >
+                  Andere klant selecteren
+                </Button>
+              </div>
+            )}
+            <SearchableCustomerSelector
+              value={selectedCustomer?.id}
+              onValueChange={handleCustomerSelect}
+              customerType={contractType}
+              label="Klant selecteren"
+              placeholder={vehicle.customerId && !allowCustomerChange ? "Gekoppelde klant geselecteerd" : "Zoek en selecteer een klant..."}
+              disabled={!!vehicle.customerId && !allowCustomerChange}
+            />
+          </div>
 
           <Separator />
           {/* Vehicle Info */}
