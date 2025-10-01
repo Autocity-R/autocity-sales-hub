@@ -376,12 +376,9 @@ const getEmailAttachments = async (
         const contractType = template.linkedButton.includes("b2b") ? "b2b" : "b2c";
         const contract = await generateContract(vehicleData, contractType, contractOptions, signatureUrl);
         
-        // Generate PDF and upload to Supabase Storage
-        const { generatePdfFromText } = await import("./contractPdfService");
-        const pdfBytes = await generatePdfFromText(contract.content);
-        
-        // Create a blob from the PDF bytes
-        const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+        // Generate PDF from HTML to preserve styling and layout
+        const { generatePdfFromHtml } = await import("./contractPdfService");
+        const pdfBlob = await generatePdfFromHtml(contract.htmlContent);
         const fileName = contract.fileName;
         const filePath = `${vehicleData.id}/contracts/${Date.now()}-${fileName}`;
         
