@@ -45,18 +45,35 @@ export const fetchVehicle = async (vehicleId: string): Promise<Vehicle | null> =
   try {
     console.log(`Fetching vehicle ${vehicleId}...`);
     
+    let vehicle: Vehicle | null = null;
+    
     if (isUseMockData) {
       console.log('Using mock data for vehicle');
-      return mockVehicles.find(v => v.id === vehicleId) || null;
+      vehicle = mockVehicles.find(v => v.id === vehicleId) || null;
+    } else {
+      try {
+        const vehicles = await supabaseInventoryService.getAllVehicles();
+        vehicle = vehicles.find(v => v.id === vehicleId) || null;
+      } catch (supabaseError) {
+        console.warn('Supabase fetch failed:', supabaseError);
+        vehicle = mockVehicles.find(v => v.id === vehicleId) || null;
+      }
     }
-
-    try {
-      const vehicles = await supabaseInventoryService.getAllVehicles();
-      return vehicles.find(v => v.id === vehicleId) || null;
-    } catch (supabaseError) {
-      console.warn('Supabase fetch failed:', supabaseError);
-      return mockVehicles.find(v => v.id === vehicleId) || null;
+    
+    if (!vehicle) {
+      return null;
     }
+    
+    // ✨ Verrijk vehicle met customer/supplier relaties
+    const { loadVehicleRelationships } = await import('./vehicleRelationshipService');
+    const [enrichedVehicle] = await loadVehicleRelationships([vehicle]);
+    
+    console.log('[INVENTORY_SERVICE] ✅ Enriched fetched vehicle:', {
+      id: enrichedVehicle.id,
+      customerContact: enrichedVehicle.customerContact
+    });
+    
+    return enrichedVehicle || vehicle;
   } catch (error) {
     console.error('Error in fetchVehicle:', error);
     return null;
