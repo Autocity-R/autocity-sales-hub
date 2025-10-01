@@ -1,5 +1,6 @@
 
 import { Vehicle, PaymentStatus, FileCategory, PaintStatus } from "@/types/inventory";
+import { ContractOptions } from "@/types/email";
 import { supabaseInventoryService } from "./supabaseInventoryService";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -307,7 +308,7 @@ export const markVehicleAsDelivered = async (vehicleId: string): Promise<void> =
   }
 };
 
-export const sendEmail = async (type: string, vehicleIds: string[]): Promise<void> => {
+export const sendEmail = async (type: string, vehicleIds: string[], contractOptions?: ContractOptions): Promise<void> => {
   try {
     console.log(`Sending ${type} email for ${vehicleIds.length} vehicle(s)`);
     
@@ -355,8 +356,8 @@ export const sendEmail = async (type: string, vehicleIds: string[]): Promise<voi
           continue;
         }
 
-        // Send email with template
-        const success = await sendEmailWithTemplate(buttonValue, vehicle);
+        // Send email with template (pass contractOptions if provided)
+        const success = await sendEmailWithTemplate(buttonValue, vehicle, contractOptions);
         if (success) {
           successCount++;
         } else {

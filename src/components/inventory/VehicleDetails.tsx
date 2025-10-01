@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { X } from "lucide-react";
 import { Vehicle, FileCategory, VehicleFile } from "@/types/inventory";
+import { ContractOptions } from "@/types/email";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -29,7 +30,7 @@ interface VehicleDetailsProps {
   onClose: () => void;
   onUpdate: (vehicle: Vehicle) => void;
   onAutoSave?: (vehicle: Vehicle) => void;
-  onSendEmail: (type: string, vehicleId: string) => void;
+  onSendEmail: (type: string, vehicleId: string, contractOptions?: ContractOptions) => void;
   onPhotoUpload: (file: File, isMain: boolean) => void;
   onRemovePhoto: (photoUrl: string) => void;
   onSetMainPhoto: (photoUrl: string) => void;
@@ -213,13 +214,13 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                   {vehicle.salesStatus === "verkocht_b2c" ? (
                     <B2CEmailsTab 
                       vehicle={editedVehicle}
-                      onSendEmail={(type) => onSendEmail(type, vehicle.id)}
+                    onSendEmail={(type, contractOptions) => onSendEmail(type, vehicle.id, contractOptions)}
                       onUpdateReminder={handleReminderUpdate}
                     />
                   ) : (
                     <EmailsTab 
                       vehicle={editedVehicle}
-                      onSendEmail={(type) => onSendEmail(type, vehicle.id)}
+                      onSendEmail={(type, contractOptions) => onSendEmail(type, vehicle.id, contractOptions)}
                       onUpdateReminder={handleReminderUpdate}
                     />
                   )}

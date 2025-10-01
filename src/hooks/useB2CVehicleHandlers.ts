@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Vehicle, PaymentStatus, PaintStatus, FileCategory } from "@/types/inventory";
+import { ContractOptions } from "@/types/email";
 import { uploadVehiclePhoto } from "@/services/inventoryService";
 import { useB2CVehicleOperations } from "./useB2CVehicleOperations";
 
@@ -104,8 +105,8 @@ export const useB2CVehicleHandlers = () => {
     setSelectedVehicle(null);
   };
   
-  const handleSendEmail = (type: string, vehicleId: string) => {
-    sendEmailMutation.mutate({ type, vehicleIds: [vehicleId] });
+  const handleSendEmail = (type: string, vehicleId: string, contractOptions?: ContractOptions) => {
+    sendEmailMutation.mutate({ type, vehicleIds: [vehicleId], contractOptions });
   };
   
   const handleUpdateSellingPrice = (vehicleId: string, price: number) => {

@@ -2,6 +2,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useWeeklySalesTracking } from "@/hooks/useWeeklySalesTracking";
+import { ContractOptions } from "@/types/email";
 import { 
   updateVehicle,
   sendEmail,
@@ -38,8 +39,8 @@ export const useB2CVehicleOperations = () => {
   });
 
   const sendEmailMutation = useMutation({
-    mutationFn: ({ type, vehicleIds }: { type: string; vehicleIds: string[] }) => 
-      sendEmail(type, vehicleIds),
+    mutationFn: ({ type, vehicleIds, contractOptions }: { type: string; vehicleIds: string[]; contractOptions?: ContractOptions }) => 
+      sendEmail(type, vehicleIds, contractOptions),
     onSuccess: () => {
       toast({
         description: "E-mail verzonden"
