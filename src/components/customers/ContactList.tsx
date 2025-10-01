@@ -53,6 +53,7 @@ const ContactList: React.FC<ContactListProps> = ({ contacts, title, type }) => {
     queryClient.invalidateQueries({ queryKey: ["contacts"] });
     queryClient.invalidateQueries({ queryKey: ["contacts", "all"] });
     queryClient.invalidateQueries({ queryKey: ["contacts", "supplier"] });
+    queryClient.invalidateQueries({ queryKey: ["contacts", "transporter"] });
     queryClient.invalidateQueries({ queryKey: ["contacts", "b2b"] });
     queryClient.invalidateQueries({ queryKey: ["contacts", "b2c"] });
   };
@@ -63,8 +64,9 @@ const ContactList: React.FC<ContactListProps> = ({ contacts, title, type }) => {
         <h2 className="text-2xl font-semibold">{title}</h2>
         <Button onClick={() => setIsAddContactOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          {type === "supplier" ? "Nieuwe leverancier" :
-           type === "b2b" ? "Nieuwe B2B klant" :
+          {type === "supplier" ? "Nieuwe leverancier" : 
+           type === "transporter" ? "Nieuwe transporteur" :
+           type === "b2b" ? "Nieuwe B2B klant" : 
            type === "b2c" ? "Nieuwe B2C klant" : "Nieuw contact"}
         </Button>
       </div>
@@ -83,7 +85,7 @@ const ContactList: React.FC<ContactListProps> = ({ contacts, title, type }) => {
         <Table>
           <TableHeader>
             <TableRow>
-              {(type === "supplier" || type === "b2b" || !type) && (
+              {(type === "supplier" || type === "transporter" || type === "b2b" || !type) && (
                 <TableHead>Bedrijf</TableHead>
               )}
               <TableHead>Naam</TableHead>
@@ -107,7 +109,7 @@ const ContactList: React.FC<ContactListProps> = ({ contacts, title, type }) => {
             ) : (
               filteredContacts.map((contact) => (
                 <TableRow key={contact.id}>
-                  {(type === "supplier" || type === "b2b" || !type) && (
+                  {(type === "supplier" || type === "transporter" || type === "b2b" || !type) && (
                     <TableCell>{contact.companyName || "-"}</TableCell>
                   )}
                   <TableCell>{`${contact.firstName} ${contact.lastName}`}</TableCell>
@@ -117,6 +119,7 @@ const ContactList: React.FC<ContactListProps> = ({ contacts, title, type }) => {
                   {!type && (
                     <TableCell>
                       {contact.type === "supplier" ? "Leverancier" : 
+                       contact.type === "transporter" ? "Transporteur" :
                        contact.type === "b2b" ? "B2B" : "B2C"}
                     </TableCell>
                   )}

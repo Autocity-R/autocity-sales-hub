@@ -15,6 +15,7 @@ export function useRealtimeContacts() {
           queryClient.invalidateQueries({ queryKey: ["contacts"] });
           queryClient.invalidateQueries({ queryKey: ["contacts", "all"] });
           queryClient.invalidateQueries({ queryKey: ["contacts", "supplier"] });
+          queryClient.invalidateQueries({ queryKey: ["contacts", "transporter"] });
           queryClient.invalidateQueries({ queryKey: ["contacts", "b2b"] });
           queryClient.invalidateQueries({ queryKey: ["contacts", "b2c"] });
         }

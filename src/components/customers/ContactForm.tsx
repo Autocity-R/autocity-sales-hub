@@ -99,6 +99,8 @@ const ContactForm: React.FC<ContactFormProps> = ({
     switch (contactType) {
       case "supplier":
         return "Nieuwe leverancier";
+      case "transporter":
+        return "Nieuwe transporteur";
       case "b2b":
         return "Nieuwe zakelijke klant";
       case "b2c":
@@ -132,6 +134,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="supplier">Leverancier</SelectItem>
+                      <SelectItem value="transporter">Transporteur</SelectItem>
                       <SelectItem value="b2b">Zakelijke klant (B2B)</SelectItem>
                       <SelectItem value="b2c">Particuliere klant (B2C)</SelectItem>
                     </SelectContent>
@@ -142,7 +145,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
             />
           )}
           
-          {(selectedType === "supplier" || selectedType === "b2b") && (
+          {(selectedType === "supplier" || selectedType === "transporter" || selectedType === "b2b") && (
             <FormField
               control={form.control}
               name="companyName"
@@ -294,8 +297,8 @@ const ContactForm: React.FC<ContactFormProps> = ({
             )}
           />
           
-          {/* Email Management - only for suppliers and B2B clients */}
-          {(selectedType === "supplier" || selectedType === "b2b") && (
+          {/* Email Management - only for suppliers, transporters and B2B clients */}
+          {(selectedType === "supplier" || selectedType === "transporter" || selectedType === "b2b") && (
             <div className="pt-4">
               <h4 className="font-medium text-lg mb-4">Email Management</h4>
               <ContactEmailManager

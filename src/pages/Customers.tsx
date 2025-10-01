@@ -29,9 +29,14 @@ const Customers = () => {
     queryFn: () => getContactsByType("b2c")
   });
 
+  const { data: transporters = [], isLoading: loadingTransporters } = useQuery({
+    queryKey: ["contacts", "transporter"],
+    queryFn: () => getContactsByType("transporter")
+  });
+
   useRealtimeContacts();
 
-  const loading = loadingAll || loadingSuppliers || loadingB2B || loadingB2C;
+  const loading = loadingAll || loadingSuppliers || loadingB2B || loadingB2C || loadingTransporters;
 
   if (loading) {
     return (
@@ -54,13 +59,14 @@ const Customers = () => {
       <div className="space-y-6">
         <PageHeader 
           title="Klanten & Contacten"
-          description="Beheer al uw leveranciers, zakelijke en particuliere klanten"
+          description="Beheer al uw leveranciers, transporteurs, zakelijke en particuliere klanten"
         />
         
         <Tabs defaultValue="all" className="space-y-4">
           <TabsList>
             <TabsTrigger value="all">Alle contacten</TabsTrigger>
             <TabsTrigger value="suppliers">Leveranciers</TabsTrigger>
+            <TabsTrigger value="transporters">Transporteurs</TabsTrigger>
             <TabsTrigger value="b2b">Zakelijke klanten</TabsTrigger>
             <TabsTrigger value="b2c">Particuliere klanten</TabsTrigger>
           </TabsList>
@@ -93,6 +99,14 @@ const Customers = () => {
               contacts={b2cCustomers} 
               title="Particuliere klanten" 
               type="b2c"
+            />
+          </TabsContent>
+          
+          <TabsContent value="transporters">
+            <ContactList 
+              contacts={transporters} 
+              title="Transporteurs" 
+              type="transporter"
             />
           </TabsContent>
         </Tabs>
