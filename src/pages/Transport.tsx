@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Vehicle, ImportStatus, Supplier, FileCategory } from "@/types/inventory";
 import { fetchVehicles, updateVehicle, sendEmail, bulkUpdateVehicles, uploadVehicleFile } from "@/services/inventoryService";
+import { addContact } from "@/services/customerService";
+import { Contact } from "@/types/customer";
 import { TransportVehicleTable } from "@/components/transport/TransportVehicleTable";
 import { TransportSupplierForm } from "@/components/transport/TransportSupplierForm";
 import { TransportDetails } from "@/components/transport/TransportDetails";
@@ -184,16 +186,49 @@ const Transport = () => {
     }
   };
 
+  // Create new supplier mutation
+  const createSupplierMutation = useMutation({
+    mutationFn: async (supplierData: Supplier) => {
+      const contactData: Omit<Contact, "id" | "createdAt" | "updatedAt"> = {
+        type: "supplier",
+        companyName: supplierData.name,
+        firstName: supplierData.contactPerson || "",
+        lastName: "",
+        email: supplierData.email,
+        phone: supplierData.phone,
+        address: {
+          street: supplierData.address || "",
+          number: "",
+          city: "",
+          zipCode: "",
+          country: supplierData.country || ""
+        },
+        additionalEmails: []
+      };
+      return addContact(contactData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["contacts", "supplier"] });
+      toast({
+        title: "Transporteur toegevoegd",
+        description: "De nieuwe transporteur is succesvol toegevoegd.",
+        variant: "default",
+      });
+      setIsAddSupplierOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Fout bij toevoegen transporteur",
+        description: "Er is iets misgegaan: " + error,
+        variant: "destructive",
+      });
+    }
+  });
+
   // Create new supplier
   const handleCreateSupplier = (supplierData: Supplier) => {
-    // In a real application, this would call an API to create a supplier
-    console.log("Creating supplier:", supplierData);
-    toast({
-      title: "Transporteur toegevoegd",
-      description: "De nieuwe transporteur is succesvol toegevoegd.",
-      variant: "default",
-    });
-    setIsAddSupplierOpen(false);
+    createSupplierMutation.mutate(supplierData);
   };
 
   // Filter vehicles based on search term

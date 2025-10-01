@@ -23,10 +23,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Vehicle, ImportStatus, FileCategory } from "@/types/inventory";
 import { TransportFileUploader } from "./TransportFileUploader";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { VehicleFile } from "@/types/inventory";
 import { deleteVehicleFile } from "@/services/inventoryService";
 import { useToast } from "@/hooks/use-toast";
+import { getContactsByType } from "@/services/customerService";
 
 interface TransportDetailsProps {
   vehicle: Vehicle;
@@ -50,6 +51,12 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
   const [notes, setNotes] = useState(vehicle.notes || "");
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Fetch transporters (suppliers)
+  const { data: transporters = [] } = useQuery({
+    queryKey: ["contacts", "supplier"],
+    queryFn: () => getContactsByType("supplier")
+  });
 
   const handleImportStatusChange = (status: ImportStatus) => {
     setUpdatedVehicle({
@@ -199,14 +206,25 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
                   </div>
                   <div>
                     <Label>Transporteur</Label>
-                    <Select defaultValue="transporteur1">
+                    <Select 
+                      value={updatedVehicle.supplierId || ""} 
+                      onValueChange={(value) => setUpdatedVehicle({...updatedVehicle, supplierId: value})}
+                    >
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder="Selecteer transporteur" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="transporteur1">Easy Transport GmbH</SelectItem>
-                        <SelectItem value="transporteur2">QuickMove Transport</SelectItem>
-                        <SelectItem value="transporteur3">Euro Car Logistics</SelectItem>
+                        {transporters.length === 0 ? (
+                          <SelectItem value="none" disabled>
+                            Geen transporteurs beschikbaar
+                          </SelectItem>
+                        ) : (
+                          transporters.map((transporter) => (
+                            <SelectItem key={transporter.id} value={transporter.id}>
+                              {transporter.companyName || `${transporter.firstName} ${transporter.lastName}`}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
