@@ -20,8 +20,8 @@ let emailTemplates: EmailTemplate[] = [
   {
     id: "2", 
     name: "Transport Pickup",
-    subject: "Pickup Document - {{MERK}} {{MODEL}}",
-    content: "Beste transporteur,\n\nHierbij het pickup document voor:\n- Voertuig: {{MERK}} {{MODEL}}\n- Locatie: {{LOCATIE}}\n- VIN: {{VIN}}\n\nGraag contact opnemen voor planning.\n\nMet vriendelijke groet,\nAutocity Automotive Group\n+31 10 262 3980",
+    subject: "Transport Pickup – {{MERK}} {{MODEL}} ({{VIN}})",
+    content: "Dear Sir/Madam,\n\nPlease find attached the pickup document for the following vehicle to be collected:\n\nMake: {{MERK}}\n\nModel: {{MODEL}}\n\nVIN: {{VIN}}\n\nWe kindly ask you to arrange the pickup as instructed in the attached document.\n\nBest regards,\nAutocity Automotive Group\n+31 10 262 3980",
     senderEmail: "inkoop@auto-city.nl",
     linkedButton: "transport_pickup",
     hasAttachment: true,
