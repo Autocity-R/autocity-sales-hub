@@ -326,6 +326,7 @@ export const sendEmail = async (type: string, vehicleIds: string[]): Promise<voi
       'transport_arrival': 'vehicle_arrived',
       'cmr_supplier': 'cmr_supplier',
       'reminder_papers': 'reminder_papers',
+      'bpm_huys': 'bpm_huys',
     };
 
     const buttonValue = emailTypeToButtonMap[type];

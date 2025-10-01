@@ -52,7 +52,7 @@ let emailTemplates: EmailTemplate[] = [
     id: "5",
     name: "BPM Huys Aanmelden",
     subject: "Voertuig binnen voor taxatie – {{MERK}} {{MODEL}} ({{VIN}})",
-    content: "Geachte BPM Huys Team,\n\nWij willen u informeren dat het volgende voertuig bij ons is binnengekomen en klaarstaat voor taxatie om het importproces te starten:\n\nMerk: {{MERK}}\nModel: {{MODEL}}\nVIN: {{VIN}}\n\nAlvast bedankt voor de samenwerking.\n\nMet vriendelijke groet,\nAutocity Automotive Group\n+31 10 262 3980",
+    content: "Geachte BPM Huys Team,\n\nWij willen u informeren dat het volgende voertuig bij ons is binnengekomen en klaarstaat voor taxatie om het importproces te starten:\n\nMerk: {{MERK}}\n\nModel: {{MODEL}}\n\nVIN: {{VIN}}\n\n\nAlvast bedankt voor de samenwerking.\n\nMet vriendelijke groet,\nAutocity Automotive Group\n+31 10 262 3980",
     senderEmail: "import@auto-city.nl",
     linkedButton: "bpm_huys",
     hasAttachment: false
