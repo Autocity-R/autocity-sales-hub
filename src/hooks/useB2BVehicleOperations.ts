@@ -32,8 +32,8 @@ export const useB2BVehicleOperations = () => {
   });
   
   const sendEmailMutation = useMutation({
-    mutationFn: ({ type, vehicleId }: { type: string; vehicleId: string }) => 
-      sendEmail(type, [vehicleId]),
+    mutationFn: ({ type, vehicleId, contractOptions }: { type: string; vehicleId: string; contractOptions?: any }) => 
+      sendEmail(type, [vehicleId], contractOptions),
     onSuccess: () => {
       toast.success("E-mail verzonden");
     },
@@ -99,8 +99,8 @@ export const useB2BVehicleOperations = () => {
     updateVehicleMutation.mutate(updatedVehicle);
   };
   
-  const handleSendEmail = (type: string, vehicleId: string) => {
-    sendEmailMutation.mutate({ type, vehicleId });
+  const handleSendEmail = (type: string, vehicleId: string, contractOptions?: any) => {
+    sendEmailMutation.mutate({ type, vehicleId, contractOptions });
   };
   
   const handleUpdateSellingPrice = (vehicleId: string, price: number) => {

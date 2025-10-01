@@ -39,8 +39,8 @@ const InventoryB2B = () => {
     if (!contractVehicle) return;
     
     // Determine email type based on contract type
-    const emailType = contractType === "b2b" ? "contract_b2b_digital" : "contract_b2c_digital";
-    handleSendEmail(emailType, contractVehicle.id);
+    const emailType = contractType === "b2b" ? "contract_b2b" : "contract_send";
+    handleSendEmail(emailType, contractVehicle.id, options);
     
     setContractDialogOpen(false);
     setContractVehicle(null);
