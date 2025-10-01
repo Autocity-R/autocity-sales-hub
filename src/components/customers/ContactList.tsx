@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Search, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { ContactForm } from "./ContactForm";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -132,12 +133,14 @@ const ContactList: React.FC<ContactListProps> = ({ contacts, title, type }) => {
       </div>
       
       <Dialog open={isAddContactOpen} onOpenChange={setIsAddContactOpen}>
-        <DialogContent className="max-w-2xl">
-          <ContactForm 
-            contactType={type}
-            onSuccess={handleAddSuccess}
-            onCancel={() => setIsAddContactOpen(false)}
-          />
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden">
+          <ScrollArea className="max-h-[calc(90vh-80px)] pr-4">
+            <ContactForm 
+              contactType={type}
+              onSuccess={handleAddSuccess}
+              onCancel={() => setIsAddContactOpen(false)}
+            />
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>

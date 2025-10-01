@@ -330,7 +330,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
             )}
           />
           
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="flex justify-end space-x-2 pt-4 sticky bottom-0 bg-background/95 backdrop-blur py-4 -mb-4 border-t mt-4">
             {onCancel && (
               <Button type="button" variant="outline" onClick={onCancel}>
                 Annuleren
