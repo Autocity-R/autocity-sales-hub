@@ -193,6 +193,10 @@ export const sendEmailWithTemplate = async (
   }
 
   try {
+    // Import supabase client and toast
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { toast } = await import('@/hooks/use-toast');
+
     // Vervang variabelen in de template
     let processedSubject = replaceVariables(template.subject, vehicleData, recipient);
     let processedContent = replaceVariables(template.content, vehicleData, recipient);
@@ -202,33 +206,79 @@ export const sendEmailWithTemplate = async (
       processedContent = processedContent.replace("[ONDERTEKENINGSLINK]", signatureUrl);
     }
 
-    console.log(`Email verzonden met template: ${template.name}`);
-    console.log(`Naar: ${recipient.name} (${recipient.email})`);
-    console.log(`Onderwerp: ${processedSubject}`);
-    console.log(`Inhoud: ${processedContent}`);
-    
+    // Convert newlines to HTML breaks
+    const htmlBody = processedContent.replace(/\n/g, '<br>');
+
     // Handle attachments based on template type
+    let attachments: Array<{ filename: string; url: string }> = [];
     if (template.hasAttachment) {
-      const attachments = await getEmailAttachments(template, vehicleData, contractOptions, signatureUrl);
-      if (attachments.length > 0) {
-        console.log(`Bijlagen (${attachments.length}):`, attachments.map(a => a.name));
-      } else if (template.attachmentType === "auto-upload") {
+      const attachmentData = await getEmailAttachments(template, vehicleData, contractOptions, signatureUrl);
+      
+      if (attachmentData.length === 0 && template.attachmentType === "auto-upload") {
         console.warn(`Geen documenten gevonden voor ${template.staticAttachmentType} van voertuig ${vehicleData.id}`);
+        toast({
+          title: "Geen bijlagen gevonden",
+          description: `Er zijn geen ${template.staticAttachmentType} documenten geüpload voor dit voertuig.`,
+          variant: "destructive"
+        });
         return false;
       }
+
+      attachments = attachmentData.map(att => ({
+        filename: att.name,
+        url: att.url
+      }));
     }
 
-    // Hier zou de daadwerkelijke email verzending plaatsvinden
-    // await emailAPI.send({ 
-    //   to: recipient.email, 
-    //   subject: processedSubject, 
-    //   content: processedContent,
-    //   attachments: attachments
-    // });
+    // Get current user for CC
+    const { data: { user } } = await supabase.auth.getUser();
+
+    console.log(`📧 Sending email with template: ${template.name}`);
+    console.log(`To: ${recipient.name} (${recipient.email})`);
+    console.log(`Subject: ${processedSubject}`);
+    console.log(`Attachments: ${attachments.length}`);
+
+    // Send email via Gmail API
+    const { data, error } = await supabase.functions.invoke('send-gmail', {
+      body: {
+        senderEmail: template.senderEmail,
+        to: [recipient.email],
+        cc: user?.email ? [user.email] : [],
+        subject: processedSubject,
+        htmlBody: htmlBody,
+        attachments: attachments,
+        metadata: {
+          vehicleId: vehicleData.id,
+          templateId: template.id
+        }
+      }
+    });
+
+    if (error) {
+      console.error('Email send failed:', error);
+      toast({
+        title: "Email verzenden mislukt",
+        description: error.message || "Er is een fout opgetreden bij het verzenden van de email.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    console.log('✅ Email sent successfully:', data);
+    toast({
+      title: "Email verzonden",
+      description: `Email succesvol verzonden naar ${recipient.name}`
+    });
     
     return true;
   } catch (error) {
     console.error("Fout bij verzenden email:", error);
+    const { toast } = await import('@/hooks/use-toast');
+    toast({
+      title: "Email verzenden mislukt",
+      description: "Er is een onverwachte fout opgetreden.",
+      variant: "destructive"
+    });
     return false;
   }
 };

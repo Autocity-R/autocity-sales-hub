@@ -904,6 +904,65 @@ export type Database = {
           },
         ]
       }
+      email_logs: {
+        Row: {
+          attachment_count: number | null
+          cc_emails: string[] | null
+          created_at: string | null
+          error_message: string | null
+          gmail_message_id: string | null
+          id: string
+          recipient_email: string
+          sender_email: string
+          sent_at: string | null
+          sent_by_user_id: string | null
+          status: string
+          subject: string
+          template_id: string | null
+          vehicle_id: string | null
+        }
+        Insert: {
+          attachment_count?: number | null
+          cc_emails?: string[] | null
+          created_at?: string | null
+          error_message?: string | null
+          gmail_message_id?: string | null
+          id?: string
+          recipient_email: string
+          sender_email: string
+          sent_at?: string | null
+          sent_by_user_id?: string | null
+          status?: string
+          subject: string
+          template_id?: string | null
+          vehicle_id?: string | null
+        }
+        Update: {
+          attachment_count?: number | null
+          cc_emails?: string[] | null
+          created_at?: string | null
+          error_message?: string | null
+          gmail_message_id?: string | null
+          id?: string
+          recipient_email?: string
+          sender_email?: string
+          sent_at?: string | null
+          sent_by_user_id?: string | null
+          status?: string
+          subject?: string
+          template_id?: string | null
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_reminders: {
         Row: {
           created_at: string
