@@ -2,11 +2,28 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
 import * as jose from "https://deno.land/x/jose@v4.14.4/index.ts";
+import { corsHeaders } from '../_shared/cors.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// --- INTERFACES (AANGEPAST VOOR OPTIONELE BASE64) ---
+interface EmailAttachment {
+  filename: string;
+  mimeType?: string;
+  url?: string;
+  base64?: string;
+}
+
+interface EmailRequest {
+  senderEmail: string;
+  to: string[];
+  cc?: string[];
+  subject: string;
+  htmlBody: string;
+  attachments?: EmailAttachment[];
+  metadata?: {
+    vehicleId?: string;
+    templateId?: string;
+  };
+}
 
 interface ServiceAccount {
   type: string;
@@ -21,39 +38,17 @@ interface ServiceAccount {
   client_x509_cert_url: string;
 }
 
-interface EmailRequest {
-  senderEmail: string;
-  to: string[];
-  cc?: string[];
-  subject: string;
-  htmlBody: string;
-  attachments?: Array<{
-    filename: string;
-    url: string;
-  }>;
-  metadata?: {
-    vehicleId?: string;
-    templateId?: string;
-  };
-}
-
-// === MANUS' OPLOSSING: UTF-8 SAFE BASE64URL ENCODING ===
+// --- HELPER FUNCTIES ---
 function base64urlEncode(str: string): string {
-  // Stap 1: Converteer de UTF-8 string naar een Uint8Array (een array van bytes)
   const bytes = new TextEncoder().encode(str);
-  
-  // Stap 2: Converteer de bytes naar een Base64 string
-  // btoa kan niet direct met een Uint8Array overweg, dus we converteren de byte-waarden
-  // terug naar karakters. Dit is een standaard en veilige methode.
   const base64 = btoa(String.fromCharCode(...bytes));
-  
-  // Stap 3: Converteer de standaard Base64 naar Base64URL formaat voor de Gmail API
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+// --- MAIN SERVER LOGIC ---
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
@@ -67,15 +62,9 @@ serve(async (req) => {
       metadata = {}
     }: EmailRequest = await req.json();
 
-    console.log('📧 Gmail Send Request:', {
-      senderEmail,
-      to,
-      cc,
-      subject,
-      attachmentCount: attachments.length
-    });
+    console.log(`📧 Processing email request for "${to.join(', ')}" with subject "${subject}" and ${attachments.length} attachment(s) in request.`);
 
-    // Get service account key
+    // --- 1. AUTHENTICATIE ---
     const serviceAccountKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
     if (!serviceAccountKey) {
       throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY not configured');
@@ -121,69 +110,118 @@ serve(async (req) => {
       // Get access token with retry logic
       const accessToken = await getAccessTokenWithRetry(serviceAccount, senderEmail);
 
-      // Download attachments and convert to base64
-      const attachmentData = await Promise.all(
-        attachments.map(async (att) => {
-          try {
+      // --- 2. BIJLAGEN VERWERKEN (VOLLEDIG VERNIEUWD) ---
+      const validAttachments = [];
+      for (const att of attachments) {
+        try {
+          let base64Data: string;
+          let mimeType = att.mimeType || 'application/octet-stream';
+
+          if (att.base64) {
+            console.log(`✅ Using provided base64 data for attachment: ${att.filename}`);
+            base64Data = att.base64;
+          } else if (att.url) {
+            console.log(`📥 Fetching attachment from URL: ${att.filename}`);
             const response = await fetch(att.url);
-            if (!response.ok) {
-              console.warn(`Failed to download attachment: ${att.filename}`);
-              return null;
-            }
-            const buffer = await response.arrayBuffer();
-            const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-            return {
+
+            // Verbeterde logging
+            console.log('📊 Attachment fetch details:', {
               filename: att.filename,
-              mimeType: response.headers.get('content-type') || 'application/octet-stream',
-              data: base64
-            };
-          } catch (error) {
-            console.error(`Error downloading attachment ${att.filename}:`, error);
-            return null;
+              status: response.status,
+              ok: response.ok,
+              contentType: response.headers.get('content-type'),
+              contentLength: response.headers.get('content-length'),
+            });
+
+            if (!response.ok) {
+              throw new Error(`Failed to download attachment. Status: ${response.status}`);
+            }
+
+            mimeType = response.headers.get('content-type') || mimeType;
+            const buffer = await response.arrayBuffer();
+            base64Data = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+          } else {
+            throw new Error(`Attachment "${att.filename}" has no url or base64 data.`);
           }
-        })
-      );
 
-      const validAttachments = attachmentData.filter(att => att !== null);
+          // Base64 wrapping op 76 karakters per regel
+          const base64Wrapped = base64Data.match(/.{1,76}/g)?.join('\r\n') ?? base64Data;
 
-      // Build MIME message
-      const boundary = `boundary_${Date.now()}`;
-      let mimeMessage = [
+          validAttachments.push({
+            filename: att.filename,
+            mimeType: mimeType,
+            data: base64Wrapped,
+          });
+
+        } catch (error) {
+          console.error(`❌ Failed to process attachment "${att.filename}":`, error.message);
+          // Ga door naar de volgende bijlage, maar log de fout
+        }
+      }
+
+      console.log(`✅ Successfully processed ${validAttachments.length} out of ${attachments.length} attachments.`);
+
+      // Verbeterde foutafhandeling: gooi een error als de bedoeling was een bijlage te sturen, maar geen enkele is gelukt
+      if (attachments.length > 0 && validAttachments.length === 0) {
+        throw new Error('All attachment downloads or processing failed. Halting email send.');
+      }
+
+      // --- 3. MIME MESSAGE BOUWEN (AANGEPAST) ---
+      let mimeMessage: string;
+      const boundary = `----=${crypto.randomUUID()}`;
+
+      const subjectEncoded = `Subject: =?utf-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`;
+      const commonHeaders = [
         `From: ${senderEmail}`,
         `To: ${to.join(', ')}`,
         cc.length > 0 ? `Cc: ${cc.join(', ')}` : null,
-        `Subject: =?utf-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`,
+        subjectEncoded,
         'MIME-Version: 1.0',
-        `Content-Type: multipart/mixed; boundary="${boundary}"`,
-        '',
-        `--${boundary}`,
-        'Content-Type: text/html; charset=UTF-8',
-        'Content-Transfer-Encoding: quoted-printable',
-        '',
-        htmlBody,
-        ''
-      ].filter(line => line !== null).join('\r\n');
+      ].filter(line => line !== null);
 
-      // Add attachments
-      for (const att of validAttachments) {
-        mimeMessage += [
-          `--${boundary}`,
+      if (validAttachments.length > 0) {
+        // Multipart message met bijlagen
+        const htmlPart = [
+          `Content-Type: text/html; charset="UTF-8"`,
+          'Content-Transfer-Encoding: 7bit', // FIX: Veranderd van quoted-printable naar 7bit
+          '',
+          htmlBody,
+        ].join('\r\n');
+
+        const attachmentParts = validAttachments.map(att => [
           `Content-Type: ${att.mimeType}; name="${att.filename}"`,
           'Content-Transfer-Encoding: base64',
           `Content-Disposition: attachment; filename="${att.filename}"`,
           '',
-          att.data,
-          ''
+          att.data, // Gebruik de gewrapte base64 data
+        ].join('\r\n')).join(`\r\n--${boundary}\r\n`);
+
+        mimeMessage = [
+          ...commonHeaders,
+          `Content-Type: multipart/mixed; boundary="${boundary}"`,
+          '',
+          `--${boundary}`,
+          htmlPart,
+          `--${boundary}`,
+          attachmentParts,
+          `--${boundary}--`,
+        ].join('\r\n');
+
+      } else {
+        // Simpele HTML-only message
+        mimeMessage = [
+          ...commonHeaders,
+          'Content-Type: text/html; charset="UTF-8"',
+          'Content-Transfer-Encoding: 7bit',
+          '',
+          htmlBody,
         ].join('\r\n');
       }
 
-      mimeMessage += `--${boundary}--`;
+      // --- 4. VERSTUREN VIA GMAIL API ---
+      const base64EncodedEmail = base64urlEncode(mimeMessage);
 
-      // Base64url encode the MIME message - MANUS' UTF-8 SAFE ENCODING
-      const encodedMessage = base64urlEncode(mimeMessage);
-
-      // Send email via Gmail API with retry
-      const sendResult = await sendEmailWithRetry(accessToken, senderEmail, encodedMessage);
+      const sendResult = await sendEmailWithRetry(accessToken, senderEmail, base64EncodedEmail);
       
       gmailMessageId = sendResult.id;
       status = 'sent';
@@ -253,7 +291,7 @@ serve(async (req) => {
   }
 });
 
-// === MANUS' OPLOSSING: JWT CREATIE MET KID HEADER ===
+// --- JWT CREATIE MET KID HEADER ---
 async function createJWTAssertion(
   serviceAccount: ServiceAccount,
   scope: string,
@@ -269,7 +307,7 @@ async function createJWTAssertion(
     .setProtectedHeader({
       alg: 'RS256',
       typ: 'JWT',
-      kid: serviceAccount.private_key_id, // <-- DE CRUCIALE TOEVOEGING!
+      kid: serviceAccount.private_key_id,
     })
     .setIssuedAt(now)
     .setIssuer(serviceAccount.client_email)
@@ -330,7 +368,7 @@ async function getAccessTokenWithRetry(
       console.error(`Token attempt ${attempt + 1}/${maxRetries} failed:`, lastError.message);
       
       if (attempt < maxRetries - 1) {
-        const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+        const delay = Math.pow(2, attempt) * 1000;
         console.log(`⏳ Waiting ${delay}ms before retry...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
@@ -378,7 +416,7 @@ async function sendEmailWithRetry(
       console.error(`Send attempt ${attempt + 1}/${maxRetries} failed:`, lastError.message);
       
       if (attempt < maxRetries - 1) {
-        const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+        const delay = Math.pow(2, attempt) * 1000;
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
