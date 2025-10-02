@@ -117,6 +117,15 @@ let emailTemplates: EmailTemplate[] = [
   },
   {
     id: "12",
+    name: "Kenteken Update",
+    subject: "Kenteken update van uw voertuig",
+    content: "Beste {{VOORNAAM}} {{ACHTERNAAM}},\n\nHierbij ontvangt u een update over de voortgang van uw voertuig:\n\nVoertuiggegevens:\n\nMerk: {{MERK}}\n\nModel: {{MODEL}}\n\nVIN: {{VIN}}\n\nDe huidige status van uw voertuig is: {{STATUS}}\n\nOverzicht van de stappen:\n\n• Aanvraag ontvangen\n• Goedgekeurd\n• BPM Betaald\n• Ingeschreven\n\nWij houden u steeds op de hoogte zodra een volgende stap is afgerond.\nHeeft u vragen over de status van uw voertuig? Neem gerust contact met ons op.\n\nMet vriendelijke groet,\nAutocity Automotive Group\n010-2623980\nwww.auto-city.nl",
+    senderEmail: "administratie@auto-city.nl",
+    linkedButton: "license_registration",
+    hasAttachment: false
+  },
+  {
+    id: "13",
     name: "Koopcontract B2B",
     subject: "Koopcontract – {{MERK}} {{MODEL}} ({{VIN}})",
     content: "Beste {{VOORNAAM}} {{ACHTERNAAM}},\n\nHartelijk dank voor uw aankoop bij Autocity Automotive Group.\n\nIn de bijlage vindt u het koopcontract voor uw voertuig, waarin alle gemaakte afspraken duidelijk zijn vermeld:\n\nMerk: {{MERK}}\n\nModel: {{MODEL}}\n\nVIN: {{VIN}}\n\nWij verzoeken u het contract door te nemen en ons te informeren zodra alles akkoord is.\n\nMocht u nog vragen hebben, neem dan gerust contact met ons op.\n\nMet vriendelijke groet,\nAutocity Automotive Group\n010 262 3980\nwww.auto-city.nl",
