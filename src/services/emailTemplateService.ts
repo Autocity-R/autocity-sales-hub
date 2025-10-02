@@ -318,31 +318,26 @@ export const sendEmailWithTemplate = async (
       attachments: attachments
     };
 
-    console.log(`📧 Adding email to queue for: ${recipient.name} (${recipient.email})`);
+    console.log(`📧 Sending email now for: ${recipient.name} (${recipient.email})`);
     console.log(`Subject: ${processedSubject}`);
     console.log(`Attachments: ${attachments.length}`);
 
-    // Add to email queue instead of sending directly
-    const { error } = await supabase
-      .from('email_queue')
-      .insert({
-        payload: emailPayload,
-        status: 'pending',
-        vehicle_id: vehicleData.id,
-        template_id: template.id
-      });
+    // Directly send via Edge Function (rollback from queue-based sending)
+    const { data: sendResult, error: sendError } = await supabase.functions.invoke('send-gmail', {
+      body: emailPayload,
+    });
 
-    if (error) {
-      console.error('❌ Failed to add email to queue:', error);
+    if (sendError) {
+      console.error('❌ Failed to send email via edge function:', sendError);
       toast({
         title: "Email kan niet worden verstuurd",
-        description: "De email kon niet in de wachtrij worden geplaatst. Probeer het opnieuw.",
+        description: "Er ging iets mis bij het verzenden. Probeer het opnieuw.",
         variant: "destructive"
       });
       return false;
     }
 
-    console.log('✅ Email successfully queued for sending');
+    console.log('✅ Email sent via edge function', sendResult);
     
     // Update vehicle record for specific email types
     if (buttonValue === 'bpm_huys') {
@@ -382,8 +377,8 @@ export const sendEmailWithTemplate = async (
     }
     
     toast({
-      title: "Email wordt verstuurd",
-      description: `De email naar ${recipient.name} is in de wachtrij geplaatst en wordt binnen een minuut verzonden.`
+      title: "Email verzonden",
+      description: `De email naar ${recipient.name} is succesvol verzonden.`
     });
     
     return true;
