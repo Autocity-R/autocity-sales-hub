@@ -284,7 +284,7 @@ export const sendEmailWithTemplate = async (
     const htmlBody = processedContent.replace(/\n/g, '<br>');
 
     // Handle attachments based on template type
-    let attachments: Array<{ filename: string; url: string }> = [];
+    let attachments: Array<{ filename: string; url?: string; base64Content?: string }> = [];
     if (template.hasAttachment) {
       const attachmentData = await getEmailAttachments(template, vehicleData, contractOptions, signatureUrl);
       
@@ -300,64 +300,53 @@ export const sendEmailWithTemplate = async (
 
       attachments = attachmentData.map(att => ({
         filename: att.name,
-        url: att.url
+        url: att.url,
+        base64Content: att.content
       }));
     }
 
     // Get current user for CC
     const { data: { user } } = await supabase.auth.getUser();
 
-    console.log(`📧 Sending email with template: ${template.name}`);
-    console.log(`To: ${recipient.name} (${recipient.email})`);
+    // Prepare email payload for queue
+    const emailPayload = {
+      senderEmail: template.senderEmail,
+      to: [recipient.email],
+      cc: user?.email ? [user.email] : [],
+      subject: processedSubject,
+      htmlBody: htmlBody,
+      attachments: attachments
+    };
+
+    console.log(`📧 Adding email to queue for: ${recipient.name} (${recipient.email})`);
     console.log(`Subject: ${processedSubject}`);
     console.log(`Attachments: ${attachments.length}`);
 
-    // Send email via Gmail API
-    const { data, error } = await supabase.functions.invoke('send-gmail', {
-      body: {
-        senderEmail: template.senderEmail,
-        to: [recipient.email],
-        cc: user?.email ? [user.email] : [],
-        subject: processedSubject,
-        htmlBody: htmlBody,
-        attachments: attachments,
-        metadata: {
-          vehicleId: vehicleData.id,
-          templateId: template.id
-        }
-      }
-    });
+    // Add to email queue instead of sending directly
+    const { error } = await supabase
+      .from('email_queue')
+      .insert({
+        payload: emailPayload,
+        status: 'pending',
+        vehicle_id: vehicleData.id,
+        template_id: template.id
+      });
 
     if (error) {
-      console.error('❌ Email send failed:', error);
-      
-      // Check for specific error types
-      let errorTitle = "Email verzenden mislukt";
-      let errorDescription = error.message || "Er is een fout opgetreden bij het verzenden van de email.";
-      
-      // Gmail rate limit detection
-      if (error.message && error.message.includes('429')) {
-        errorTitle = "Te veel emails verstuurd";
-        errorDescription = "De Gmail API limiet is bereikt. Probeer het over 15-20 minuten opnieuw of neem contact op met IT voor een alternatieve email service.";
-      } else if (error.message && error.message.includes('rate limit')) {
-        errorTitle = "Te veel emails verstuurd";
-        errorDescription = "Te veel emails verstuurd. Wacht enkele minuten en probeer het opnieuw.";
-      }
-      
+      console.error('❌ Failed to add email to queue:', error);
       toast({
-        title: errorTitle,
-        description: errorDescription,
+        title: "Email kan niet worden verstuurd",
+        description: "De email kon niet in de wachtrij worden geplaatst. Probeer het opnieuw.",
         variant: "destructive"
       });
       return false;
     }
 
-    console.log('✅ Email sent successfully:', data);
+    console.log('✅ Email successfully queued for sending');
     
     // Update vehicle record for specific email types
     if (buttonValue === 'bpm_huys') {
       try {
-        // First, get the current vehicle details
         const { data: currentVehicle, error: fetchError } = await supabase
           .from('vehicles')
           .select('details')
@@ -367,7 +356,6 @@ export const sendEmailWithTemplate = async (
         if (fetchError) {
           console.error('Failed to fetch vehicle details:', fetchError);
         } else {
-          // Update the details object with bpmRequested flag
           const currentDetails = (currentVehicle.details && typeof currentVehicle.details === 'object') 
             ? currentVehicle.details as Record<string, any>
             : {};
@@ -394,8 +382,8 @@ export const sendEmailWithTemplate = async (
     }
     
     toast({
-      title: "Email verzonden",
-      description: `Email succesvol verzonden naar ${recipient.name}`
+      title: "Email wordt verstuurd",
+      description: `De email naar ${recipient.name} is in de wachtrij geplaatst en wordt binnen een minuut verzonden.`
     });
     
     return true;
