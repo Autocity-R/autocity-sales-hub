@@ -13,6 +13,36 @@ export {
   toggleLoanCarAvailability
 } from "./loanCarService";
 
+// Map database status values to UI status (Dutch)
+const mapDbStatusToUi = (status?: string): import("@/types/warranty").WarrantyClaim["status"] => {
+  switch (status) {
+    case 'resolved':
+      return 'opgelost';
+    case 'in_progress':
+      return 'in_behandeling';
+    case 'void':
+      return 'vervallen';
+    case 'pending':
+    default:
+      return 'actief';
+  }
+};
+
+// Map UI status (Dutch) to database status values
+const mapUiStatusToDb = (status?: import("@/types/warranty").WarrantyClaim["status"]): string => {
+  switch (status) {
+    case 'opgelost':
+      return 'resolved';
+    case 'in_behandeling':
+      return 'in_progress';
+    case 'vervallen':
+      return 'void';
+    case 'actief':
+    default:
+      return 'pending';
+  }
+};
+
 export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
   try {
     const { data, error } = await supabase
@@ -54,7 +84,7 @@ export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
       warrantyEndDate: new Date(new Date(claim.vehicles?.details?.deliveryDate || new Date()).setFullYear(new Date().getFullYear() + 1)),
       problemDescription: claim.description || '',
       reportDate: claim.created_at,
-      status: claim.claim_status,
+      status: mapDbStatusToUi(claim.claim_status),
       priority: 'normaal',
       loanCarAssigned: false,
       estimatedCost: claim.claim_amount || 0,
@@ -78,7 +108,7 @@ export const createWarrantyClaim = async (claim: Omit<WarrantyClaim, 'id' | 'cre
       .insert({
         vehicle_id: claim.vehicleId,
         description: claim.problemDescription,
-        claim_status: claim.status || 'pending',
+        claim_status: claim.status ? mapUiStatusToDb(claim.status as any) : 'pending',
         claim_amount: claim.estimatedCost
       })
       .select()
@@ -103,7 +133,7 @@ export const updateWarrantyClaim = async (claimId: string, updates: Partial<Warr
     const updateData: any = {};
     
     if (updates.problemDescription) updateData.description = updates.problemDescription;
-    if (updates.status) updateData.claim_status = updates.status;
+    if (updates.status) updateData.claim_status = mapUiStatusToDb(updates.status as any);
     if (updates.estimatedCost !== undefined) updateData.claim_amount = updates.estimatedCost;
     if (updates.actualCost !== undefined) updateData.claim_amount = updates.actualCost;
 
