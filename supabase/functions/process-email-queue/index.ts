@@ -44,7 +44,7 @@ async function createJWTAssertion(serviceAccount: ServiceAccount): Promise<strin
   const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
   const unsignedToken = `${encodedHeader}.${encodedPayload}`;
 
-  const privateKey = serviceAccount.private_key.replace(/\\\\n/g, "\\n");
+  const privateKey = serviceAccount.private_key.replace(/\\n/g, "\n");
   const key = await crypto.subtle.importKey(
     "pkcs8",
     new TextEncoder().encode(
@@ -222,10 +222,10 @@ serve(async (req) => {
         // Mark as processing
         await supabase
           .from('email_queue')
-          .update({\
-            status: 'processing',\
-            attempts: (task.attempts || 0) + 1,\
-            last_attempt_at: new Date().toISOString(),\
+          .update({
+            status: 'processing',
+            attempts: (task.attempts || 0) + 1,
+            last_attempt_at: new Date().toISOString(),
           })
           .eq('id', task.id);
 
@@ -262,7 +262,7 @@ serve(async (req) => {
           const retryAfterMatch = error.message.match(/Retry after ([\d-:TZ.]+)/);
           const retryAfter = retryAfterMatch 
             ? retryAfterMatch[1]
-            : new Date(Date.now() + 5 * 60000).toISOString(); // Default 5 minutes
+            : new Date(Date.now() + 5 * 60000).toISOString();
 
           await supabase
             .from('email_queue')
@@ -274,7 +274,7 @@ serve(async (req) => {
             .eq('id', task.id);
 
           console.log(`⏰ Rate limit hit. Stopping processing. Next retry: ${retryAfter}`);
-          break; // Stop processing more emails
+          break;
         } else {
           // Other error - mark as failed after 3 attempts
           const newStatus = task.attempts >= 2 ? 'failed' : 'retry';
