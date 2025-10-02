@@ -279,15 +279,28 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
       
       {/* Right column */}
       <div className="space-y-5">
-        {/* Mileage */}
-        <div className="space-y-2">
-          <Label htmlFor="mileage">Kilometerstand</Label>
-          <Input
-            id="mileage"
-            type="number"
-            value={editedVehicle.mileage}
-            onChange={(e) => handleChange('mileage', parseInt(e.target.value))}
-          />
+        {/* Year & Mileage */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="year">Bouwjaar</Label>
+            <Input
+              id="year"
+              type="number"
+              value={editedVehicle.year || ''}
+              onChange={(e) => handleChange('year', e.target.value ? parseInt(e.target.value) : null)}
+              placeholder="Bijv. 2020"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="mileage">Kilometerstand</Label>
+            <Input
+              id="mileage"
+              type="number"
+              value={editedVehicle.mileage}
+              onChange={(e) => handleChange('mileage', parseInt(e.target.value))}
+            />
+          </div>
         </div>
         
         {/* Checkboxes row */}

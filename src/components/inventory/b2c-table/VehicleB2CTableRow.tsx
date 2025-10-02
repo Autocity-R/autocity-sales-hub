@@ -119,6 +119,9 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
       <TableCell className="align-middle">
         {vehicle.model}
       </TableCell>
+      <TableCell className="align-middle text-muted-foreground">
+        {vehicle.year || '-'}
+      </TableCell>
       <TableCell className="align-middle">
         {formatMileage(vehicle.mileage)}
       </TableCell>

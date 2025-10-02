@@ -94,6 +94,12 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
                 {renderSortIcon("model")}
               </div>
             </TableHead>
+            <TableHead className="min-w-16 cursor-pointer" onClick={() => handleSort("year")}>
+              <div className="flex items-center">
+                Jaar
+                {renderSortIcon("year")}
+              </div>
+            </TableHead>
             <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("mileage")}>
               <div className="flex items-center">
                 KM
@@ -169,6 +175,9 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
                 </TableCell>
                 <TableCell className="align-middle truncate">
                   {vehicle.model}
+                </TableCell>
+                <TableCell className="align-middle text-muted-foreground">
+                  {vehicle.year || '-'}
                 </TableCell>
                 <TableCell className="align-middle">
                   {formatMileage(vehicle.mileage)}

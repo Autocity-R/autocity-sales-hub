@@ -170,6 +170,9 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
               <TableHead className="min-w-24">
                 {renderSortableHeader("model", "Model")}
               </TableHead>
+              <TableHead className="min-w-16">
+                {renderSortableHeader("year", "Jaar")}
+              </TableHead>
               <TableHead className="min-w-20">
                 {renderSortableHeader("mileage", "KM Stand")}
               </TableHead>
@@ -238,6 +241,9 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
               <TableHead className="min-w-24">
                 {renderSortableHeader("model", "Model")}
               </TableHead>
+              <TableHead className="min-w-16">
+                {renderSortableHeader("year", "Jaar")}
+              </TableHead>
               <TableHead className="min-w-20">
                 {renderSortableHeader("mileage", "KM Stand")}
               </TableHead>
@@ -304,6 +310,7 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                 </TableCell>
                 <TableCell className="font-medium">{vehicle.brand}</TableCell>
                 <TableCell>{vehicle.model}</TableCell>
+                <TableCell className="text-muted-foreground">{vehicle.year || '-'}</TableCell>
                 <TableCell>{vehicle.mileage.toLocaleString('nl-NL')} km</TableCell>
                 <TableCell>{vehicle.licenseNumber}</TableCell>
                 <TableCell className="truncate max-w-32">{vehicle.vin}</TableCell>
