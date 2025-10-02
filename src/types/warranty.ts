@@ -26,6 +26,7 @@ export interface WarrantyClaim {
   vehicleBrand: string;
   vehicleModel: string;
   vehicleLicenseNumber: string;
+  vehicleVin?: string;
   deliveryDate: Date | string;
   warrantyStartDate: Date | string;
   warrantyEndDate: Date | string;

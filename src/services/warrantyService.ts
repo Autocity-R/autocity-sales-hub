@@ -23,6 +23,7 @@ export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
           brand,
           model,
           license_number,
+          vin,
           details,
           customer_id,
           customerContact:contacts!vehicles_customer_id_fkey(
@@ -47,6 +48,7 @@ export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
       vehicleBrand: claim.vehicles?.brand || '',
       vehicleModel: claim.vehicles?.model || '',
       vehicleLicenseNumber: claim.vehicles?.license_number || '',
+      vehicleVin: claim.vehicles?.vin || '',
       deliveryDate: claim.vehicles?.details?.deliveryDate || new Date(),
       warrantyStartDate: claim.vehicles?.details?.deliveryDate || new Date(),
       warrantyEndDate: new Date(new Date(claim.vehicles?.details?.deliveryDate || new Date()).setFullYear(new Date().getFullYear() + 1)),

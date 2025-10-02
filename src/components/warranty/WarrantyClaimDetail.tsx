@@ -140,6 +140,7 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
       brand: claim.vehicleBrand,
       model: claim.vehicleModel,
       licenseNumber: claim.vehicleLicenseNumber,
+      vin: claim.vehicleVin || '',
       customerContact: {
         name: claim.customerName,
         email: claim.customerEmail || '',
@@ -179,6 +180,7 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
       brand: claim.vehicleBrand,
       model: claim.vehicleModel,
       licenseNumber: claim.vehicleLicenseNumber,
+      vin: claim.vehicleVin || '',
       customerContact: {
         name: claim.customerName,
         email: claim.customerEmail || '',
