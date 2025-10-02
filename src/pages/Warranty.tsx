@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dialog";
 
 const Warranty = () => {
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
@@ -57,6 +58,12 @@ const Warranty = () => {
     queryKey: ["warrantyStats"],
     queryFn: getWarrantyStats
   });
+
+  const handleClaimCreated = () => {
+    queryClient.invalidateQueries({ queryKey: ["warrantyClaims"] });
+    queryClient.invalidateQueries({ queryKey: ["warrantyStats"] });
+    setShowCreateForm(false);
+  };
 
   // Filter claims based on search and filters
   const filteredClaims = claims.filter((claim: WarrantyClaim) => {
@@ -128,7 +135,7 @@ const Warranty = () => {
                 <DialogHeader>
                   <DialogTitle>Nieuwe Garantieclaim</DialogTitle>
                 </DialogHeader>
-                <WarrantyForm onClose={() => setShowCreateForm(false)} />
+                <WarrantyForm onClose={handleClaimCreated} />
               </DialogContent>
             </Dialog>
           </div>

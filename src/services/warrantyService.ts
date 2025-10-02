@@ -1,167 +1,147 @@
-
 import { WarrantyClaim, WarrantyStats, LoanCar } from "@/types/warranty";
-import { Vehicle } from "@/types/inventory";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
-
-// Mock data voor loan cars
-const mockLoanCars: LoanCar[] = [
-  {
-    id: "loan-1",
-    brand: "Volkswagen",
-    model: "Polo",
-    licenseNumber: "LN-001-X",
-    available: true
-  },
-  {
-    id: "loan-2", 
-    brand: "Toyota",
-    model: "Yaris",
-    licenseNumber: "LN-002-Y",
-    available: false
-  },
-  {
-    id: "loan-3",
-    brand: "Opel",
-    model: "Corsa",
-    licenseNumber: "LN-003-Z",
-    available: true
-  }
-];
-
-// Mock warranty claims
-const mockWarrantyClaims: WarrantyClaim[] = [
-  {
-    id: "warranty-1",
-    vehicleId: "3",
-    customerId: "cust-1", 
-    customerName: "John Doe",
-    customerEmail: "john.doe@email.com",
-    customerPhone: "+31 6 12345678",
-    vehicleBrand: "Audi",
-    vehicleModel: "A4",
-    vehicleLicenseNumber: "CD-789-E",
-    deliveryDate: new Date("2023-04-15"),
-    warrantyStartDate: new Date("2023-04-15"),
-    warrantyEndDate: new Date("2024-04-15"),
-    problemDescription: "Motor maakt vreemd geluid bij opstarten",
-    reportDate: new Date("2023-10-15"),
-    status: "in_behandeling",
-    priority: "hoog",
-    loanCarAssigned: true,
-    loanCarId: "loan-2",
-    loanCarDetails: mockLoanCars.find(car => car.id === "loan-2"),
-    estimatedCost: 850,
-    additionalNotes: "Klant heeft aangegeven dat het geluid alleen bij koude starts voorkomt",
-    attachments: [],
-    assignedTo: "Mechanic Team A",
-    createdAt: new Date("2023-10-15"),
-    updatedAt: new Date("2023-10-20")
-  },
-  {
-    id: "warranty-2",
-    vehicleId: "4",
-    customerId: "dealer-1",
-    customerName: "ABC Auto Dealership", 
-    customerEmail: "contact@abcauto.nl",
-    customerPhone: "+31 20 1234567",
-    vehicleBrand: "Mercedes",
-    vehicleModel: "C Class",
-    vehicleLicenseNumber: "EF-012-G",
-    deliveryDate: new Date("2023-02-25"),
-    warrantyStartDate: new Date("2023-02-25"),
-    warrantyEndDate: new Date("2024-02-25"),
-    problemDescription: "Airconditioning werkt niet optimaal",
-    reportDate: new Date("2023-08-10"),
-    status: "opgelost",
-    priority: "normaal",
-    loanCarAssigned: false,
-    estimatedCost: 450,
-    actualCost: 425,
-    resolutionDate: new Date("2023-08-15"),
-    resolutionDescription: "Airco systeem gereinigd en bijgevuld",
-    additionalNotes: "Preventieve controle uitgevoerd",
-    attachments: [],
-    assignedTo: "Mechanic Team B",
-    customerSatisfaction: 4,
-    createdAt: new Date("2023-08-10"),
-    updatedAt: new Date("2023-08-15")
-  }
-];
+import { supabase } from "@/integrations/supabase/client";
 
 // Import from deliveredVehicleService instead
 export { fetchDeliveredVehiclesForWarranty } from "./deliveredVehicleService";
 
 export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
   try {
-    const response = await fetch(`${API_URL}/api/warranty/claims`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
+    const { data, error } = await supabase
+      .from('warranty_claims')
+      .select(`
+        *,
+        vehicles!warranty_claims_vehicle_id_fkey (
+          brand,
+          model,
+          license_number,
+          details
+        ),
+        contacts!inner (
+          first_name,
+          last_name,
+          email,
+          phone
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map((claim: any) => ({
+      id: claim.id,
+      vehicleId: claim.vehicle_id,
+      customerId: claim.vehicles?.details?.customerId || '',
+      customerName: `${claim.contacts?.first_name || ''} ${claim.contacts?.last_name || ''}`.trim(),
+      customerEmail: claim.contacts?.email,
+      customerPhone: claim.contacts?.phone,
+      vehicleBrand: claim.vehicles?.brand || '',
+      vehicleModel: claim.vehicles?.model || '',
+      vehicleLicenseNumber: claim.vehicles?.license_number || '',
+      deliveryDate: claim.vehicles?.details?.deliveryDate || new Date(),
+      warrantyStartDate: claim.vehicles?.details?.deliveryDate || new Date(),
+      warrantyEndDate: new Date(new Date(claim.vehicles?.details?.deliveryDate || new Date()).setFullYear(new Date().getFullYear() + 1)),
+      problemDescription: claim.description || '',
+      reportDate: claim.created_at,
+      status: claim.claim_status,
+      priority: 'normaal',
+      loanCarAssigned: false,
+      estimatedCost: claim.claim_amount || 0,
+      actualCost: claim.claim_status === 'resolved' ? claim.claim_amount : undefined,
+      resolutionDate: claim.claim_status === 'resolved' ? claim.updated_at : undefined,
+      attachments: [],
+      createdAt: claim.created_at,
+      updatedAt: claim.updated_at
+    }));
   } catch (error: any) {
     console.error("Failed to fetch warranty claims:", error);
-    return mockWarrantyClaims;
+    return [];
   }
 };
 
 export const fetchLoanCars = async (): Promise<LoanCar[]> => {
   try {
-    const response = await fetch(`${API_URL}/api/warranty/loan-cars`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
+    const { data, error } = await supabase
+      .from('loan_cars')
+      .select(`
+        *,
+        vehicles!loan_cars_vehicle_id_fkey (
+          brand,
+          model,
+          license_number
+        )
+      `)
+      .eq('status', 'beschikbaar');
+
+    if (error) throw error;
+
+    return (data || []).map((loanCar: any) => ({
+      id: loanCar.id,
+      brand: loanCar.vehicles?.brand || '',
+      model: loanCar.vehicles?.model || '',
+      licenseNumber: loanCar.vehicles?.license_number || '',
+      available: loanCar.status === 'beschikbaar'
+    }));
   } catch (error: any) {
     console.error("Failed to fetch loan cars:", error);
-    return mockLoanCars;
+    return [];
   }
 };
 
 export const createWarrantyClaim = async (claim: Omit<WarrantyClaim, 'id' | 'createdAt' | 'updatedAt'>): Promise<WarrantyClaim> => {
   try {
-    const response = await fetch(`${API_URL}/api/warranty/claims`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(claim),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error: any) {
-    console.error("Failed to create warranty claim:", error);
-    // Return mock created claim
+    const { data, error } = await supabase
+      .from('warranty_claims')
+      .insert({
+        vehicle_id: claim.vehicleId,
+        description: claim.problemDescription,
+        claim_status: claim.status || 'pending',
+        claim_amount: claim.estimatedCost
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
     return {
       ...claim,
-      id: `warranty-${Date.now()}`,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      id: data.id,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
     } as WarrantyClaim;
+  } catch (error: any) {
+    console.error("Failed to create warranty claim:", error);
+    throw error;
   }
 };
 
 export const updateWarrantyClaim = async (claimId: string, updates: Partial<WarrantyClaim>): Promise<WarrantyClaim> => {
   try {
-    const response = await fetch(`${API_URL}/api/warranty/claims/${claimId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(updates),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
+    const updateData: any = {};
+    
+    if (updates.problemDescription) updateData.description = updates.problemDescription;
+    if (updates.status) updateData.claim_status = updates.status;
+    if (updates.estimatedCost !== undefined) updateData.claim_amount = updates.estimatedCost;
+    if (updates.actualCost !== undefined) updateData.claim_amount = updates.actualCost;
+
+    const { data, error } = await supabase
+      .from('warranty_claims')
+      .update(updateData)
+      .eq('id', claimId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Fetch full claim with relations
+    const claims = await fetchWarrantyClaims();
+    const updatedClaim = claims.find(c => c.id === claimId);
+    
+    if (!updatedClaim) throw new Error('Claim not found after update');
+    
+    return updatedClaim;
   } catch (error: any) {
     console.error("Failed to update warranty claim:", error);
-    // Return mock updated claim
-    const existingClaim = mockWarrantyClaims.find(c => c.id === claimId);
-    if (!existingClaim) throw error;
-    return { ...existingClaim, ...updates, updatedAt: new Date() };
+    throw error;
   }
 };
 
@@ -171,49 +151,80 @@ export const resolveWarrantyClaim = async (claimId: string, resolutionData: {
   customerSatisfaction: number;
 }): Promise<WarrantyClaim> => {
   try {
-    const response = await fetch(`${API_URL}/api/warranty/claims/${claimId}/resolve`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(resolutionData),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
+    const { data, error } = await supabase
+      .from('warranty_claims')
+      .update({
+        claim_status: 'resolved',
+        claim_amount: resolutionData.actualCost
+      })
+      .eq('id', claimId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Fetch full claim with relations
+    const claims = await fetchWarrantyClaims();
+    const resolvedClaim = claims.find(c => c.id === claimId);
+    
+    if (!resolvedClaim) throw new Error('Claim not found after resolve');
+    
+    return resolvedClaim;
   } catch (error: any) {
     console.error("Failed to resolve warranty claim:", error);
-    // Return mock resolved claim
-    const existingClaim = mockWarrantyClaims.find(c => c.id === claimId);
-    if (!existingClaim) throw error;
-    return {
-      ...existingClaim,
-      ...resolutionData,
-      status: "opgelost",
-      resolutionDate: new Date(),
-      updatedAt: new Date()
-    };
+    throw error;
   }
 };
 
 export const getWarrantyStats = async (): Promise<WarrantyStats> => {
   try {
-    const response = await fetch(`${API_URL}/api/warranty/stats`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
+    const claims = await fetchWarrantyClaims();
+    
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    const activeClaims = claims.filter(c => c.status !== 'opgelost' && c.status !== 'vervallen');
+    const resolvedClaims = claims.filter(c => c.status === 'opgelost');
+    const thisMonthClaims = claims.filter(c => new Date(c.createdAt) >= firstDayOfMonth);
+    const pendingClaims = claims.filter(c => c.status === 'actief');
+    
+    // Calculate average resolution days
+    const resolvedWithDates = resolvedClaims.filter(c => c.resolutionDate);
+    const avgResolutionDays = resolvedWithDates.length > 0
+      ? resolvedWithDates.reduce((sum, claim) => {
+          const reportDate = new Date(claim.reportDate);
+          const resolutionDate = new Date(claim.resolutionDate!);
+          const diffDays = Math.ceil((resolutionDate.getTime() - reportDate.getTime()) / (1000 * 60 * 60 * 24));
+          return sum + diffDays;
+        }, 0) / resolvedWithDates.length
+      : 0;
+    
+    // Calculate average customer satisfaction
+    const withSatisfaction = resolvedClaims.filter(c => c.customerSatisfaction);
+    const avgSatisfaction = withSatisfaction.length > 0
+      ? withSatisfaction.reduce((sum, c) => sum + (c.customerSatisfaction || 0), 0) / withSatisfaction.length
+      : 0;
+    
+    // Calculate total cost this month
+    const totalCostThisMonth = thisMonthClaims.reduce((sum, c) => sum + (c.actualCost || c.estimatedCost || 0), 0);
+    
+    return {
+      totalActive: activeClaims.length,
+      totalThisMonth: thisMonthClaims.length,
+      avgResolutionDays: Math.round(avgResolutionDays * 10) / 10,
+      customerSatisfactionAvg: Math.round(avgSatisfaction * 10) / 10,
+      totalCostThisMonth,
+      pendingClaims: pendingClaims.length
+    };
   } catch (error: any) {
     console.error("Failed to fetch warranty stats:", error);
-    // Return mock stats
     return {
-      totalActive: 3,
-      totalThisMonth: 2,
-      avgResolutionDays: 5.2,
-      customerSatisfactionAvg: 4.2,
-      totalCostThisMonth: 1275,
-      pendingClaims: 1
+      totalActive: 0,
+      totalThisMonth: 0,
+      avgResolutionDays: 0,
+      customerSatisfactionAvg: 0,
+      totalCostThisMonth: 0,
+      pendingClaims: 0
     };
   }
 };
