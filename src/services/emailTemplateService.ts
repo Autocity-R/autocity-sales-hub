@@ -1,5 +1,5 @@
 import { EmailTemplate } from "@/types/email";
-import { Vehicle, VehicleFile } from "@/types/inventory";
+import { Vehicle, VehicleFile, ImportStatus } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 import { generateContract } from "./contractService";
 import { fetchVehicleFiles } from "./inventoryService";
@@ -512,6 +512,18 @@ const parseNameSafely = (fullName: string | undefined | null): { firstName: stri
   };
 };
 
+// Helper function to get import status label in Dutch
+const getImportStatusLabel = (status: ImportStatus): string => {
+  const statusLabels: Record<ImportStatus, string> = {
+    'niet_aangemeld': 'Niet aangemeld',
+    'aanvraag_ontvangen': 'Aanvraag ontvangen',
+    'goedgekeurd': 'Goedgekeurd',
+    'bpm_betaald': 'BPM Betaald',
+    'ingeschreven': 'Ingeschreven'
+  };
+  return statusLabels[status] || status;
+};
+
 const replaceVariables = (text: string, vehicleData: Vehicle, recipient?: { email: string; name: string }): string => {
   // Debug logging
   console.log('🔍 replaceVariables DEBUG:', {
@@ -536,6 +548,7 @@ const replaceVariables = (text: string, vehicleData: Vehicle, recipient?: { emai
   result = result.replace(/{{JAAR}}/g, vehicleData.year?.toString() || '');
   result = result.replace(/{{KLEUR}}/g, vehicleData.color || '');
   result = result.replace(/{{PRIJS}}/g, vehicleData.sellingPrice?.toLocaleString('nl-NL') || '0');
+  result = result.replace(/{{STATUS}}/g, getImportStatusLabel(vehicleData.importStatus));
   
   // Customer/recipient variables - use safe parsing
   const customerName = vehicleData.customerContact?.name || recipient?.name || '';
