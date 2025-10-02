@@ -4,6 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 // Import from deliveredVehicleService instead
 export { fetchDeliveredVehiclesForWarranty } from "./deliveredVehicleService";
 
+// Import loan car functions from loanCarService
+export { 
+  fetchLoanCars,
+  createLoanCar,
+  updateLoanCar,
+  deleteLoanCar,
+  toggleLoanCarAvailability
+} from "./loanCarService";
+
 export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
   try {
     const { data, error } = await supabase
@@ -58,34 +67,6 @@ export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
   }
 };
 
-export const fetchLoanCars = async (): Promise<LoanCar[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('loan_cars')
-      .select(`
-        *,
-        vehicles!loan_cars_vehicle_id_fkey (
-          brand,
-          model,
-          license_number
-        )
-      `)
-      .eq('status', 'beschikbaar');
-
-    if (error) throw error;
-
-    return (data || []).map((loanCar: any) => ({
-      id: loanCar.id,
-      brand: loanCar.vehicles?.brand || '',
-      model: loanCar.vehicles?.model || '',
-      licenseNumber: loanCar.vehicles?.license_number || '',
-      available: loanCar.status === 'beschikbaar'
-    }));
-  } catch (error: any) {
-    console.error("Failed to fetch loan cars:", error);
-    return [];
-  }
-};
 
 export const createWarrantyClaim = async (claim: Omit<WarrantyClaim, 'id' | 'createdAt' | 'updatedAt'>): Promise<WarrantyClaim> => {
   try {

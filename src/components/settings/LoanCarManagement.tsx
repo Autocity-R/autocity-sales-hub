@@ -8,7 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Car, Plus, Trash2, Edit, CheckCircle, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { fetchLoanCars } from "@/services/warrantyService";
+import { 
+  fetchLoanCars, 
+  createLoanCar, 
+  updateLoanCar, 
+  deleteLoanCar, 
+  toggleLoanCarAvailability 
+} from "@/services/warrantyService";
 import { LoanCar } from "@/types/warranty";
 import {
   Dialog,
@@ -46,6 +52,86 @@ export const LoanCarManagement = () => {
     queryFn: fetchLoanCars
   });
 
+  // Mutations
+  const createMutation = useMutation({
+    mutationFn: createLoanCar,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loanCars"] });
+      toast({
+        title: "Leenauto toegevoegd",
+        description: "De leenauto is succesvol toegevoegd."
+      });
+      resetForm();
+      setShowAddForm(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout",
+        description: error.message || "Er is een fout opgetreden bij het toevoegen.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, vehicleId, data }: { id: string; vehicleId: string; data: any }) =>
+      updateLoanCar(id, vehicleId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loanCars"] });
+      toast({
+        title: "Leenauto bijgewerkt",
+        description: "De leenauto is succesvol bijgewerkt."
+      });
+      resetForm();
+      setShowAddForm(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout",
+        description: error.message || "Er is een fout opgetreden bij het bijwerken.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: ({ id, vehicleId }: { id: string; vehicleId: string }) =>
+      deleteLoanCar(id, vehicleId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loanCars"] });
+      toast({
+        title: "Leenauto verwijderd",
+        description: "De leenauto is succesvol verwijderd."
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout",
+        description: error.message || "Er is een fout opgetreden bij het verwijderen.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      toggleLoanCarAvailability(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loanCars"] });
+      toast({
+        title: "Status bijgewerkt",
+        description: "De beschikbaarheidsstatus is bijgewerkt."
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout",
+        description: error.message || "Er is een fout opgetreden bij het bijwerken van de status.",
+        variant: "destructive"
+      });
+    }
+  });
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -72,14 +158,11 @@ export const LoanCarManagement = () => {
       return;
     }
 
-    // Mock adding car - in real app this would call an API
-    toast({
-      title: "Leenauto toegevoegd",
-      description: `${formData.brand} ${formData.model} (${formData.licenseNumber}) is toegevoegd.`,
+    createMutation.mutate({
+      brand: formData.brand,
+      model: formData.model,
+      licenseNumber: formData.licenseNumber
     });
-
-    resetForm();
-    setShowAddForm(false);
   };
 
   const handleEditCar = (car: LoanCar) => {
@@ -93,7 +176,7 @@ export const LoanCarManagement = () => {
   };
 
   const handleUpdateCar = () => {
-    if (!formData.brand || !formData.model || !formData.licenseNumber) {
+    if (!formData.brand || !formData.model || !formData.licenseNumber || !editingCar?.vehicleId) {
       toast({
         title: "Fout",
         description: "Vul alle velden in.",
@@ -102,31 +185,25 @@ export const LoanCarManagement = () => {
       return;
     }
 
-    // Mock updating car - in real app this would call an API
-    toast({
-      title: "Leenauto bijgewerkt",
-      description: `${formData.brand} ${formData.model} is bijgewerkt.`,
+    updateMutation.mutate({
+      id: editingCar.id,
+      vehicleId: editingCar.vehicleId,
+      data: {
+        brand: formData.brand,
+        model: formData.model,
+        licenseNumber: formData.licenseNumber
+      }
     });
-
-    resetForm();
-    setShowAddForm(false);
   };
 
   const handleDeleteCar = (car: LoanCar) => {
-    // Mock deleting car - in real app this would call an API
-    toast({
-      title: "Leenauto verwijderd",
-      description: `${car.brand} ${car.model} (${car.licenseNumber}) is verwijderd.`,
-    });
+    if (!car.vehicleId) return;
+    deleteMutation.mutate({ id: car.id, vehicleId: car.vehicleId });
   };
 
   const toggleAvailability = (car: LoanCar) => {
-    // Mock toggling availability - in real app this would call an API
-    const newStatus = car.available ? "uitgeleend" : "beschikbaar";
-    toast({
-      title: "Status bijgewerkt",
-      description: `${car.brand} ${car.model} is nu ${newStatus}.`,
-    });
+    const currentStatus = car.available ? 'beschikbaar' : 'uitgeleend';
+    toggleMutation.mutate({ id: car.id, status: currentStatus });
   };
 
   return (

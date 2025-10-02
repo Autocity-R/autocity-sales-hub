@@ -4,6 +4,7 @@ export interface LoanCar {
   model: string;
   licenseNumber: string;
   available: boolean;
+  vehicleId?: string;
 }
 
 export interface WarrantyStats {
