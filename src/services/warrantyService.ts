@@ -89,54 +89,8 @@ const mockWarrantyClaims: WarrantyClaim[] = [
   }
 ];
 
-export const fetchDeliveredVehiclesForWarranty = async (): Promise<Vehicle[]> => {
-  try {
-    const response = await fetch(`${API_URL}/api/vehicles?delivered=true`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error: any) {
-    console.error("Failed to fetch delivered vehicles:", error);
-    // Return mock delivered vehicles
-    return [
-      {
-        id: "3",
-        brand: "Audi",
-        model: "A4", 
-        licenseNumber: "CD-789-E",
-        vin: "WAUZZZ8K3BA134651",
-        mileage: 95000,
-        importStatus: "ingeschreven",
-        transportStatus: "aangekomen",
-        arrived: true,
-        workshopStatus: "gereed",
-        location: "showroom",
-        salesStatus: "verkocht_b2c",
-        showroomOnline: false,
-        bpmRequested: true,
-        bpmStarted: true,
-        damage: {
-          description: "Minor dent on rear bumper",
-          status: "licht",
-        },
-        purchasePrice: 18000,
-        sellingPrice: 22000,
-        paymentStatus: "volledig_betaald",
-        cmrSent: true,
-        cmrDate: new Date("2023-03-05"),
-        papersReceived: true,
-        papersDate: new Date("2023-03-10"),
-        notes: "Sold to John Doe, delivery scheduled next week.",
-        mainPhotoUrl: "https://placehold.co/600x400?text=Audi+A4",
-        photos: ["https://placehold.co/600x400?text=Audi+A4"],
-        customerId: "cust-1",
-        customerName: "John Doe",
-        deliveryDate: new Date("2023-04-15"),
-      }
-    ];
-  }
-};
+// Import from deliveredVehicleService instead
+export { fetchDeliveredVehiclesForWarranty } from "./deliveredVehicleService";
 
 export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
   try {

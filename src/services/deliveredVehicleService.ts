@@ -112,3 +112,83 @@ export class DeliveredVehicleService {
 }
 
 export const deliveredVehicleService = new DeliveredVehicleService();
+
+/**
+ * Fetch all delivered vehicles for warranty claims
+ */
+export const fetchDeliveredVehiclesForWarranty = async (): Promise<Vehicle[]> => {
+  const { data, error } = await supabase
+    .from('vehicles')
+    .select(`
+      *,
+      customerContact:contacts!vehicles_customer_id_fkey(
+        id,
+        first_name,
+        last_name,
+        email,
+        phone,
+        company_name,
+        type
+      )
+    `)
+    .in('status', ['afgeleverd', 'verkocht_b2c', 'verkocht_b2b'])
+    .not('customer_id', 'is', null)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching delivered vehicles:', error);
+    throw new Error('Failed to fetch delivered vehicles');
+  }
+
+  // Map the data to Vehicle type
+  const vehicles: Vehicle[] = (data || []).map(vehicleData => {
+    const details = vehicleData.details as any || {};
+    const customerContact = vehicleData.customerContact as any;
+    
+    return {
+      id: vehicleData.id,
+      brand: vehicleData.brand,
+      model: vehicleData.model,
+      year: vehicleData.year,
+      color: vehicleData.color,
+      licenseNumber: vehicleData.license_number,
+      vin: vehicleData.vin,
+      mileage: vehicleData.mileage,
+      purchasePrice: details.purchase_price || 0,
+      sellingPrice: vehicleData.selling_price,
+      location: vehicleData.location || 'showroom',
+      salesStatus: vehicleData.status,
+      customerId: vehicleData.customer_id,
+      supplierId: vehicleData.supplier_id,
+      mainPhotoUrl: details.main_photo_url,
+      photos: details.photos || [],
+      importStatus: vehicleData.import_status,
+      externalSheetReference: vehicleData.external_sheet_reference,
+      deliveryDate: details.delivery_date ? new Date(details.delivery_date) : null,
+      customerName: customerContact 
+        ? customerContact.company_name || 
+          `${customerContact.first_name} ${customerContact.last_name}`
+        : undefined,
+      customerEmail: customerContact?.email,
+      customerPhone: customerContact?.phone,
+      arrived: true,
+      notes: vehicleData.notes,
+      workshopStatus: details.workshopStatus || 'wachten',
+      paintStatus: details.paintStatus || 'geen_behandeling',
+      transportStatus: details.transportStatus || 'onderweg',
+      bpmRequested: details.bpmRequested || false,
+      bpmStarted: details.bpmStarted || false,
+      damage: details.damage || { description: '', status: 'geen' },
+      cmrSent: details.cmrSent || false,
+      cmrDate: details.cmrDate ? new Date(details.cmrDate) : null,
+      papersReceived: details.papersReceived || false,
+      papersDate: details.papersDate ? new Date(details.papersDate) : null,
+      showroomOnline: details.showroomOnline || false,
+      paymentStatus: details.paymentStatus || 'niet_betaald',
+      salespersonId: details.salespersonId || null,
+      salespersonName: details.salespersonName || null,
+    } as Vehicle;
+  });
+
+  return vehicles;
+};

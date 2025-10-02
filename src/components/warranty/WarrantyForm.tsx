@@ -27,9 +27,11 @@ import { CalendarIcon, Car, User, AlertTriangle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Vehicle } from "@/types/inventory";
 import { LoanCar, WarrantyClaim } from "@/types/warranty";
-import { fetchDeliveredVehiclesForWarranty, fetchLoanCars, createWarrantyClaim } from "@/services/warrantyService";
+import { fetchLoanCars, createWarrantyClaim } from "@/services/warrantyService";
+import { fetchDeliveredVehiclesForWarranty } from "@/services/deliveredVehicleService";
 import { createAppointment } from "@/services/calendarService";
 import { toast } from "@/hooks/use-toast";
+import { SearchableVehicleSelector } from "./SearchableVehicleSelector";
 
 interface WarrantyFormProps {
   onClose: () => void;
@@ -203,32 +205,14 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="vehicle">Selecteer Voertuig</Label>
-            <Select
-              value={selectedVehicle?.id || ""}
-              onValueChange={(value) => {
-                const vehicle = vehicles.find((v: Vehicle) => v.id === value);
-                setSelectedVehicle(vehicle || null);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Kies een afgeleverd voertuig..." />
-              </SelectTrigger>
-              <SelectContent>
-                {vehicles.map((vehicle: Vehicle) => (
-                  <SelectItem key={vehicle.id} value={vehicle.id}>
-                    <div className="flex items-center justify-between w-full">
-                      <span>{vehicle.brand} {vehicle.model} - {vehicle.licenseNumber}</span>
-                      <span className="text-sm text-muted-foreground ml-2">
-                        {vehicle.customerName}
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <SearchableVehicleSelector
+            value={selectedVehicle?.id}
+            onValueChange={(vehicle) => setSelectedVehicle(vehicle)}
+            vehicles={vehicles}
+            label="Selecteer Voertuig *"
+            placeholder="Zoek op kenteken, merk, model, VIN of klant..."
+            loading={vehiclesLoading}
+          />
 
           {selectedVehicle && (
             <div className="p-4 bg-blue-50 rounded-lg">
