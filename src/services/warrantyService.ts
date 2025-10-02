@@ -89,7 +89,8 @@ export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
       loanCarAssigned: false,
       estimatedCost: claim.claim_amount || 0,
       actualCost: claim.claim_status === 'resolved' ? claim.claim_amount : undefined,
-      resolutionDate: claim.claim_status === 'resolved' ? claim.updated_at : undefined,
+      resolutionDate: claim.resolution_date || (claim.claim_status === 'resolved' ? claim.updated_at : undefined),
+      resolutionDescription: claim.resolution_description || undefined,
       attachments: [],
       createdAt: claim.created_at,
       updatedAt: claim.updated_at
@@ -169,7 +170,9 @@ export const resolveWarrantyClaim = async (claimId: string, resolutionData: {
       .from('warranty_claims')
       .update({
         claim_status: 'resolved',
-        claim_amount: resolutionData.actualCost
+        claim_amount: resolutionData.actualCost,
+        resolution_description: resolutionData.resolutionDescription,
+        resolution_date: new Date().toISOString()
       })
       .eq('id', claimId)
       .select()

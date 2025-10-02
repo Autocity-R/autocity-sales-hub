@@ -1798,6 +1798,8 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          resolution_date: string | null
+          resolution_description: string | null
           updated_at: string
           vehicle_id: string | null
         }
@@ -1807,6 +1809,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          resolution_date?: string | null
+          resolution_description?: string | null
           updated_at?: string
           vehicle_id?: string | null
         }
@@ -1816,6 +1820,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          resolution_date?: string | null
+          resolution_description?: string | null
           updated_at?: string
           vehicle_id?: string | null
         }

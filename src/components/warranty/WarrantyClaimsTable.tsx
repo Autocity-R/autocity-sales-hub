@@ -173,6 +173,7 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
             {showResolved ? (
               <>
                 <TableHead>Opgelost</TableHead>
+                <TableHead>Oplossing</TableHead>
                 <TableHead>Kosten</TableHead>
                 <TableHead>Tevredenheid</TableHead>
               </>
@@ -188,7 +189,7 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
         <TableBody>
           {claims.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={showResolved ? 11 : 10} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={showResolved ? 12 : 10} className="text-center py-8 text-muted-foreground">
                 Geen garantieclaims gevonden
               </TableCell>
             </TableRow>
@@ -251,6 +252,11 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="max-w-xs truncate" title={claim.resolutionDescription || ''}>
+                        {claim.resolutionDescription || <span className="text-muted-foreground">-</span>}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <span className="font-medium text-red-600">
