@@ -2,8 +2,10 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Mail, Car, FileText, Check } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { MoreHorizontal, Mail, Car, FileText, Check, AlertCircle } from "lucide-react";
 import { Vehicle, PaymentStatus } from "@/types/inventory";
+import { toast } from "sonner";
 
 interface VehicleActionsDropdownProps {
   vehicle: Vehicle;
@@ -25,10 +27,37 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
   // Check if vehicle is sold to determine if contract emails should be shown
   const isVehicleSold = vehicle.salesStatus === 'verkocht_b2b' || vehicle.salesStatus === 'verkocht_b2c';
   
+  // Check if vehicle has customer linked
+  const hasCustomer = !!(vehicle.customerId || vehicle.customerContact);
+  const hasValidCustomerEmail = !!(vehicle.customerContact?.email && vehicle.customerContact.email.includes('@'));
+  
   const handleContractAction = (contractType: "b2b" | "b2c") => {
     if (onOpenContractConfig) {
       onOpenContractConfig(vehicle, contractType);
     }
+  };
+  
+  const handleEmailWithValidation = (emailType: string, vehicleId: string) => {
+    // Validate customer exists for customer emails
+    const customerEmailTypes = ["delivery_appointment", "payment_reminder", "contract_b2b", "contract_b2c", "auto_gereed", "happy_call"];
+    
+    if (customerEmailTypes.includes(emailType)) {
+      if (!hasCustomer) {
+        toast.error("Geen klant gekoppeld", {
+          description: "Koppel eerst een klant aan dit voertuig voordat u de email verstuurt."
+        });
+        return;
+      }
+      
+      if (!hasValidCustomerEmail) {
+        toast.error("Ongeldig emailadres", {
+          description: "De klant heeft geen geldig emailadres. Update de klantgegevens."
+        });
+        return;
+      }
+    }
+    
+    onSendEmail(emailType, vehicleId);
   };
   
   return (
@@ -55,14 +84,51 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
           </>
         )}
         
-        <DropdownMenuItem onClick={() => onSendEmail("delivery_appointment", vehicle.id)}>
-          <Mail className="h-4 w-4 mr-2" />
-          Aflevering afspraak
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onSendEmail("payment_reminder", vehicle.id)}>
-          <Mail className="h-4 w-4 mr-2" />
-          Betaalherinnering
-        </DropdownMenuItem>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <DropdownMenuItem 
+                  onClick={() => handleEmailWithValidation("delivery_appointment", vehicle.id)}
+                  disabled={!hasCustomer || !hasValidCustomerEmail}
+                  className={!hasCustomer || !hasValidCustomerEmail ? "opacity-50" : ""}
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Aflevering afspraak
+                  {(!hasCustomer || !hasValidCustomerEmail) && <AlertCircle className="h-3 w-3 ml-auto text-amber-500" />}
+                </DropdownMenuItem>
+              </div>
+            </TooltipTrigger>
+            {(!hasCustomer || !hasValidCustomerEmail) && (
+              <TooltipContent>
+                <p>{!hasCustomer ? "Koppel eerst een klant" : "Klant heeft geen geldig emailadres"}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <DropdownMenuItem 
+                  onClick={() => handleEmailWithValidation("payment_reminder", vehicle.id)}
+                  disabled={!hasCustomer || !hasValidCustomerEmail}
+                  className={!hasCustomer || !hasValidCustomerEmail ? "opacity-50" : ""}
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Betaalherinnering
+                  {(!hasCustomer || !hasValidCustomerEmail) && <AlertCircle className="h-3 w-3 ml-auto text-amber-500" />}
+                </DropdownMenuItem>
+              </div>
+            </TooltipTrigger>
+            {(!hasCustomer || !hasValidCustomerEmail) && (
+              <TooltipContent>
+                <p>{!hasCustomer ? "Koppel eerst een klant" : "Klant heeft geen geldig emailadres"}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
         <DropdownMenuItem onClick={() => onSendEmail("bpm_huys", vehicle.id)}>
           <Mail className="h-4 w-4 mr-2" />
           BPM Huys aanmelden

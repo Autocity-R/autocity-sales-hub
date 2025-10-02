@@ -409,6 +409,20 @@ async function sendEmailWithRetry(
 
       if (!response.ok) {
         const errorData = await response.text();
+        
+        // Parse rate limit retry time if available
+        if (response.status === 429) {
+          try {
+            const errorJson = JSON.parse(errorData);
+            const retryAfter = errorJson?.error?.message?.match(/Retry after (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)/)?.[1];
+            if (retryAfter) {
+              console.error(`⏰ Rate limit exceeded. Retry after: ${retryAfter}`);
+            }
+          } catch (e) {
+            // Failed to parse, continue with regular error
+          }
+        }
+        
         throw new Error(`Gmail API error (${response.status}): ${errorData}`);
       }
 

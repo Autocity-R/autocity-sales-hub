@@ -141,6 +141,11 @@ export const determineRecipient = async (buttonValue: string, vehicleData: Vehic
         
         // Verify it's actually a transporter
         if (contact && contact.type === 'transporter') {
+          // Validate email address
+          if (!contact.email || !contact.email.includes('@')) {
+            console.warn(`Contact ${contact.id} has invalid email: ${contact.email}`);
+            return null;
+          }
           return {
             email: contact.email,
             name: contact.companyName || `${contact.firstName} ${contact.lastName}`
@@ -162,6 +167,11 @@ export const determineRecipient = async (buttonValue: string, vehicleData: Vehic
         
         // Verify it's actually a supplier (not transporter!)
         if (contact && contact.type === 'supplier') {
+          // Validate email address
+          if (!contact.email || !contact.email.includes('@')) {
+            console.warn(`Contact ${contact.id} has invalid email: ${contact.email}`);
+            return null;
+          }
           return {
             email: contact.email,
             name: contact.companyName || `${contact.firstName} ${contact.lastName}`
@@ -192,13 +202,24 @@ export const determineRecipient = async (buttonValue: string, vehicleData: Vehic
         const { supabaseCustomerService } = await import('./supabaseCustomerService');
         const customer = await supabaseCustomerService.getContactById(vehicleData.customerId);
         if (customer) {
+          // Validate email address
+          if (!customer.email || !customer.email.includes('@')) {
+            console.warn(`Customer ${customer.id} has invalid email: ${customer.email}`);
+            return null;
+          }
           return {
             email: customer.email,
             name: customer.companyName || `${customer.firstName} ${customer.lastName}`
           };
         }
       }
-      return vehicleData.customerContact || null;
+      // Fallback to customerContact
+      const fallbackContact = vehicleData.customerContact;
+      if (fallbackContact && (!fallbackContact.email || !fallbackContact.email.includes('@'))) {
+        console.warn(`Vehicle ${vehicleData.id} has invalid customer email: ${fallbackContact?.email}`);
+        return null;
+      }
+      return fallbackContact || null;
     case "bpm_huys":
       return { email: "info@bpmhuys.nl", name: "BPM Huys" };
     case "license_registration":
@@ -223,7 +244,25 @@ export const sendEmailWithTemplate = async (
 
   const recipient = await determineRecipient(buttonValue, vehicleData);
   if (!recipient) {
-    console.warn(`Geen ontvanger gevonden voor knop: ${buttonValue}`);
+    console.warn(`❌ Geen ontvanger gevonden voor knop: ${buttonValue}`);
+    console.warn(`Vehicle ID: ${vehicleData.id}, customerId: ${vehicleData.customerId}, customerContact:`, vehicleData.customerContact);
+    const { toast } = await import('@/hooks/use-toast');
+    toast({
+      title: "Geen ontvanger",
+      description: "Er is geen klant of contactpersoon gekoppeld aan dit voertuig. Koppel eerst een klant voordat u de email verstuurt.",
+      variant: "destructive"
+    });
+    return false;
+  }
+  
+  if (!recipient.email || !recipient.email.includes('@')) {
+    console.warn(`❌ Ongeldig emailadres voor recipient: ${recipient.email}`);
+    const { toast } = await import('@/hooks/use-toast');
+    toast({
+      title: "Ongeldig emailadres",
+      description: `Het emailadres van ${recipient.name} is ongeldig. Update de contactgegevens.`,
+      variant: "destructive"
+    });
     return false;
   }
 
@@ -290,10 +329,24 @@ export const sendEmailWithTemplate = async (
     });
 
     if (error) {
-      console.error('Email send failed:', error);
+      console.error('❌ Email send failed:', error);
+      
+      // Check for specific error types
+      let errorTitle = "Email verzenden mislukt";
+      let errorDescription = error.message || "Er is een fout opgetreden bij het verzenden van de email.";
+      
+      // Gmail rate limit detection
+      if (error.message && error.message.includes('429')) {
+        errorTitle = "Te veel emails verstuurd";
+        errorDescription = "De Gmail API limiet is bereikt. Probeer het over 15-20 minuten opnieuw of neem contact op met IT voor een alternatieve email service.";
+      } else if (error.message && error.message.includes('rate limit')) {
+        errorTitle = "Te veel emails verstuurd";
+        errorDescription = "Te veel emails verstuurd. Wacht enkele minuten en probeer het opnieuw.";
+      }
+      
       toast({
-        title: "Email verzenden mislukt",
-        description: error.message || "Er is een fout opgetreden bij het verzenden van de email.",
+        title: errorTitle,
+        description: errorDescription,
         variant: "destructive"
       });
       return false;
@@ -451,7 +504,11 @@ const getRelevantDocuments = (files: VehicleFile[], documentType: string): Vehic
 const replaceVariables = (text: string, vehicleData: Vehicle, recipient?: { email: string; name: string }): string => {
   let result = text;
   
-  // Nieuwe {{VARIABELE}} syntax
+  // Extract first and last name from recipient with fallbacks
+  const recipientFirstName = recipient?.name?.split(' ')[0] || '[Voornaam]';
+  const recipientLastName = recipient?.name?.split(' ').slice(1).join(' ') || '[Achternaam]';
+  
+  // Vehicle variables
   result = result.replace(/{{MERK}}/g, vehicleData.brand || '');
   result = result.replace(/{{MODEL}}/g, vehicleData.model || '');
   result = result.replace(/{{VIN}}/g, vehicleData.vin || '');
@@ -461,6 +518,11 @@ const replaceVariables = (text: string, vehicleData: Vehicle, recipient?: { emai
   result = result.replace(/{{JAAR}}/g, vehicleData.year?.toString() || '');
   result = result.replace(/{{KLEUR}}/g, vehicleData.color || '');
   result = result.replace(/{{PRIJS}}/g, vehicleData.sellingPrice?.toLocaleString('nl-NL') || '0');
+  
+  // Customer/recipient variables with safe fallbacks
+  result = result.replace(/{{VOORNAAM}}/g, recipientFirstName);
+  result = result.replace(/{{ACHTERNAAM}}/g, recipientLastName);
+  result = result.replace(/{{EMAIL}}/g, recipient?.email || '[Email niet beschikbaar]');
   
   // Klant variabelen (NIEUW)
   if (vehicleData.customerContact || recipient) {
