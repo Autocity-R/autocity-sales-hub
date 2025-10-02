@@ -17,6 +17,9 @@ import {
 } from "lucide-react";
 import { WarrantyClaim } from "@/types/warranty";
 import { WarrantyClaimDetail } from "./WarrantyClaimDetail";
+import { updateWarrantyClaim, resolveWarrantyClaim } from "@/services/warrantyService";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 interface WarrantyClaimsTableProps {
   claims: WarrantyClaim[];
@@ -32,6 +35,8 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
   showResolved = false
 }) => {
   const [selectedClaim, setSelectedClaim] = useState<WarrantyClaim | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const formatDate = (date: Date | string) => {
     const dateObj = typeof date === "string" ? new Date(date) : date;
@@ -87,20 +92,50 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
     return diffDays;
   };
 
-  const handleUpdateClaim = (claimId: string, updates: Partial<WarrantyClaim>) => {
-    // In een echte implementatie zou dit een API call zijn
-    console.log("Updating claim:", claimId, updates);
-    // Hier zou je de claim updaten in de state of opnieuw fetchen
+  const handleUpdateClaim = async (claimId: string, updates: Partial<WarrantyClaim>) => {
+    try {
+      await updateWarrantyClaim(claimId, updates);
+      queryClient.invalidateQueries({ queryKey: ["warrantyClaims"] });
+      queryClient.invalidateQueries({ queryKey: ["warrantyStats"] });
+      toast({
+        title: "Claim bijgewerkt",
+        description: "De garantieclaim is succesvol bijgewerkt.",
+      });
+    } catch (error) {
+      console.error("Error updating claim:", error);
+      toast({
+        title: "Fout bij bijwerken",
+        description: "Er is een fout opgetreden bij het bijwerken van de claim.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleResolveClaim = (claimId: string, resolutionData: {
-    resolutionDescription: string;
-    actualCost: number;
-    customerSatisfaction: number;
-  }) => {
-    // In een echte implementatie zou dit een API call zijn
+  const handleResolveClaim = async (
+    claimId: string, 
+    resolutionData: {
+      resolutionDescription: string;
+      actualCost: number;
+      customerSatisfaction: number;
+    }
+  ) => {
     console.log("Resolving claim:", claimId, resolutionData);
-    // Hier zou je de claim oplossen en opnieuw fetchen
+    try {
+      await resolveWarrantyClaim(claimId, resolutionData);
+      queryClient.invalidateQueries({ queryKey: ["warrantyClaims"] });
+      queryClient.invalidateQueries({ queryKey: ["warrantyStats"] });
+      toast({
+        title: "Claim afgewikkeld",
+        description: "De garantieclaim is succesvol afgewikkeld.",
+      });
+    } catch (error) {
+      console.error("Error resolving claim:", error);
+      toast({
+        title: "Fout bij afwikkelen",
+        description: "Er is een fout opgetreden bij het afwikkelen van de claim.",
+        variant: "destructive"
+      });
+    }
   };
 
   if (isLoading) {
