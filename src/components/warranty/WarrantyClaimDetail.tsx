@@ -443,6 +443,69 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
             </CardContent>
           </Card>
 
+          {/* Oplossing Informatie - alleen zichtbaar voor opgeloste claims */}
+          {claim.status === "opgelost" && (
+            <Card className="border-green-200 bg-green-50/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-green-700">
+                  <CheckCircle className="h-5 w-5" />
+                  Oplossing Informatie
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {claim.resolutionDate && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Opgelost op</p>
+                    <p className="font-medium">{formatDate(claim.resolutionDate)}</p>
+                  </div>
+                )}
+                
+                {claim.resolutionDescription && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Oplossing omschrijving</p>
+                    <p className="mt-1 text-sm bg-white p-3 rounded-md border">
+                      {claim.resolutionDescription}
+                    </p>
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {claim.actualCost && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Werkelijke kosten</p>
+                      <p className="font-medium text-green-700">
+                        {formatCurrency(claim.actualCost)}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {claim.customerSatisfaction && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Klanttevredenheid</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`h-4 w-4 ${
+                                star <= (claim.customerSatisfaction || 0)
+                                  ? "text-yellow-400 fill-current"
+                                  : "text-gray-300"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-sm font-medium">
+                          {claim.customerSatisfaction}/5
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Acties */}
           <div className="flex gap-2 pt-4">
             {claim.status !== "opgelost" && (
@@ -458,18 +521,10 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
               </>
             )}
             {claim.status === "opgelost" && (
-              <>
-                <Button variant="outline" onClick={handleSendHappyCall} className="border-pink-200 text-pink-700 hover:bg-pink-50">
-                  <Heart className="h-4 w-4 mr-2" />
-                  Happy Call
-                </Button>
-                {claim.resolutionDate && (
-                  <div className="text-sm text-muted-foreground flex items-center">
-                    Opgelost op {formatDate(claim.resolutionDate)}
-                    {claim.resolutionDescription && `: ${claim.resolutionDescription}`}
-                  </div>
-                )}
-              </>
+              <Button variant="outline" onClick={handleSendHappyCall} className="border-pink-200 text-pink-700 hover:bg-pink-50">
+                <Heart className="h-4 w-4 mr-2" />
+                Happy Call
+              </Button>
             )}
           </div>
         </DialogContent>
