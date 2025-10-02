@@ -23,13 +23,14 @@ export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
           brand,
           model,
           license_number,
-          details
-        ),
-        contacts!inner (
-          first_name,
-          last_name,
-          email,
-          phone
+          details,
+          customer_id,
+          customerContact:contacts!vehicles_customer_id_fkey(
+            first_name,
+            last_name,
+            email,
+            phone
+          )
         )
       `)
       .order('created_at', { ascending: false });
@@ -39,10 +40,10 @@ export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
     return (data || []).map((claim: any) => ({
       id: claim.id,
       vehicleId: claim.vehicle_id,
-      customerId: claim.vehicles?.details?.customerId || '',
-      customerName: `${claim.contacts?.first_name || ''} ${claim.contacts?.last_name || ''}`.trim(),
-      customerEmail: claim.contacts?.email,
-      customerPhone: claim.contacts?.phone,
+      customerId: claim.vehicles?.customer_id || '',
+      customerName: `${claim.vehicles?.customerContact?.first_name || ''} ${claim.vehicles?.customerContact?.last_name || ''}`.trim(),
+      customerEmail: claim.vehicles?.customerContact?.email,
+      customerPhone: claim.vehicles?.customerContact?.phone,
       vehicleBrand: claim.vehicles?.brand || '',
       vehicleModel: claim.vehicles?.model || '',
       vehicleLicenseNumber: claim.vehicles?.license_number || '',
