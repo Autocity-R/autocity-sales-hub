@@ -489,16 +489,42 @@ const getRelevantDocuments = (files: VehicleFile[], documentType: string): Vehic
   }
 };
 
+// Helper function for safe name parsing
+const parseNameSafely = (fullName: string | undefined | null): { firstName: string; lastName: string } => {
+  if (!fullName || typeof fullName !== 'string' || fullName.trim() === '') {
+    return { firstName: '[Voornaam]', lastName: '[Achternaam]' };
+  }
+  
+  const trimmedName = fullName.trim();
+  const parts = trimmedName.split(' ').filter(part => part.length > 0);
+  
+  if (parts.length === 0) {
+    return { firstName: '[Voornaam]', lastName: '[Achternaam]' };
+  }
+  
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(' ') || ''
+  };
+};
+
 const replaceVariables = (text: string, vehicleData: Vehicle, recipient?: { email: string; name: string }): string => {
+  // Debug logging
+  console.log('🔍 replaceVariables DEBUG:', {
+    recipientName: recipient?.name,
+    customerContactName: vehicleData.customerContact?.name,
+    vehicleBrand: vehicleData.brand,
+    vehicleModel: vehicleData.model
+  });
+
   let result = text;
   
-  // Extract first and last name from recipient with fallbacks
-  const recipientFirstName = recipient?.name?.split(' ')[0] || '[Voornaam]';
-  const recipientLastName = recipient?.name?.split(' ').slice(1).join(' ') || '[Achternaam]';
+  // Extract first and last name from recipient with safe parsing
+  const { firstName: recipientFirstName, lastName: recipientLastName } = parseNameSafely(recipient?.name);
   
-  // Vehicle variables
-  result = result.replace(/{{MERK}}/g, vehicleData.brand || '');
-  result = result.replace(/{{MODEL}}/g, vehicleData.model || '');
+  // Vehicle variables with safer fallbacks
+  result = result.replace(/{{MERK}}/g, vehicleData.brand || '[Merk]');
+  result = result.replace(/{{MODEL}}/g, vehicleData.model || '[Model]');
   result = result.replace(/{{VIN}}/g, vehicleData.vin || '');
   result = result.replace(/{{KENTEKEN}}/g, vehicleData.licenseNumber || '');
   result = result.replace(/{{LOCATIE}}/g, vehicleData.location || '');
@@ -507,25 +533,16 @@ const replaceVariables = (text: string, vehicleData: Vehicle, recipient?: { emai
   result = result.replace(/{{KLEUR}}/g, vehicleData.color || '');
   result = result.replace(/{{PRIJS}}/g, vehicleData.sellingPrice?.toLocaleString('nl-NL') || '0');
   
-  // Customer/recipient variables with safe fallbacks
-  result = result.replace(/{{VOORNAAM}}/g, recipientFirstName);
-  result = result.replace(/{{ACHTERNAAM}}/g, recipientLastName);
-  result = result.replace(/{{EMAIL}}/g, recipient?.email || '[Email niet beschikbaar]');
+  // Customer/recipient variables - use safe parsing
+  const customerName = vehicleData.customerContact?.name || recipient?.name || '';
+  const { firstName: customerFirstName, lastName: customerLastName } = parseNameSafely(customerName);
   
-  // Klant variabelen (NIEUW)
-  if (vehicleData.customerContact || recipient) {
-    const customerName = vehicleData.customerContact?.name || recipient?.name || '';
-    const nameParts = customerName.split(' ');
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
-    
-    result = result.replace(/{{VOORNAAM}}/g, firstName);
-    result = result.replace(/{{ACHTERNAAM}}/g, lastName);
-    result = result.replace(/{{EMAIL}}/g, vehicleData.customerContact?.email || recipient?.email || '');
-    result = result.replace(/{{TELEFOON}}/g, vehicleData.customerContact?.phone || '');
-  }
+  result = result.replace(/{{VOORNAAM}}/g, customerFirstName);
+  result = result.replace(/{{ACHTERNAAM}}/g, customerLastName);
+  result = result.replace(/{{EMAIL}}/g, vehicleData.customerContact?.email || recipient?.email || '[Email niet beschikbaar]');
+  result = result.replace(/{{TELEFOON}}/g, vehicleData.customerContact?.phone || '');
   
-  // Transporteur variabelen (NIEUW)
+  // Transporteur variabelen
   if (vehicleData.transporterContact || (recipient && text.includes('TRANSPORTEUR'))) {
     const transporterName = vehicleData.transporterContact?.name || recipient?.name || '';
     result = result.replace(/{{TRANSPORTEUR_NAAM}}/g, transporterName);
@@ -533,8 +550,8 @@ const replaceVariables = (text: string, vehicleData: Vehicle, recipient?: { emai
   }
   
   // Legacy {variabele} syntax (backwards compatibility)
-  result = result.replace(/{voertuig_merk}/g, vehicleData.brand || '');
-  result = result.replace(/{voertuig_model}/g, vehicleData.model || '');
+  result = result.replace(/{voertuig_merk}/g, vehicleData.brand || '[Merk]');
+  result = result.replace(/{voertuig_model}/g, vehicleData.model || '[Model]');
   result = result.replace(/{voertuig_vin}/g, vehicleData.vin || '');
   result = result.replace(/{voertuig_kenteken}/g, vehicleData.licenseNumber || '');
   result = result.replace(/{voertuig_locatie}/g, vehicleData.location || '');
@@ -543,23 +560,23 @@ const replaceVariables = (text: string, vehicleData: Vehicle, recipient?: { emai
   result = result.replace(/{voertuig_prijs}/g, vehicleData.sellingPrice?.toLocaleString('nl-NL') || '0');
   
   if (recipient) {
-    result = result.replace(/{ontvanger_naam}/g, recipient.name);
-    result = result.replace(/{ontvanger_email}/g, recipient.email);
+    result = result.replace(/{ontvanger_naam}/g, recipient.name || '[Ontvanger]');
+    result = result.replace(/{ontvanger_email}/g, recipient.email || '');
   }
   
   if (vehicleData.customerContact) {
-    result = result.replace(/{klant_naam}/g, vehicleData.customerContact.name);
-    result = result.replace(/{klant_email}/g, vehicleData.customerContact.email);
+    result = result.replace(/{klant_naam}/g, vehicleData.customerContact.name || '[Klant]');
+    result = result.replace(/{klant_email}/g, vehicleData.customerContact.email || '');
   }
   
   if (vehicleData.supplierContact) {
-    result = result.replace(/{leverancier_naam}/g, vehicleData.supplierContact.name);
-    result = result.replace(/{leverancier_email}/g, vehicleData.supplierContact.email);
+    result = result.replace(/{leverancier_naam}/g, vehicleData.supplierContact.name || '[Leverancier]');
+    result = result.replace(/{leverancier_email}/g, vehicleData.supplierContact.email || '');
   }
   
   if (vehicleData.transporterContact) {
-    result = result.replace(/{transporteur_naam}/g, vehicleData.transporterContact.name);
-    result = result.replace(/{transporteur_email}/g, vehicleData.transporterContact.email);
+    result = result.replace(/{transporteur_naam}/g, vehicleData.transporterContact.name || '[Transporteur]');
+    result = result.replace(/{transporteur_email}/g, vehicleData.transporterContact.email || '');
   }
   
   result = result.replace(/{gebruiker_naam}/g, 'Jan Jansen');
