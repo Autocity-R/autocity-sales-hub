@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getContactById, getCustomerHistory, getSupplierHistory, updateContact } from "@/services/customerService";
+import { getContactById, getCustomerHistory, getSupplierHistory, updateContact, getCustomerPurchasedVehicles } from "@/services/customerService";
 import ContactDetailsPanel from "@/components/customers/ContactDetailsPanel";
 import ContactHistory from "@/components/customers/ContactHistory";
+import { PurchaseHistory } from "@/components/customers/PurchaseHistory";
 import { Contact } from "@/types/customer";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Clock } from "lucide-react";
+import { ArrowLeft, Clock, ShoppingCart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
@@ -17,6 +18,7 @@ const CustomerDetail = () => {
   const navigate = useNavigate();
   const [contact, setContact] = useState<Contact | null>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [purchasedVehicles, setPurchasedVehicles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("details");
 
@@ -34,6 +36,9 @@ const CustomerDetail = () => {
               setHistory(getSupplierHistory(id));
             } else {
               setHistory(getCustomerHistory(id));
+              // Load purchased vehicles for customers (not suppliers)
+              const vehicles = await getCustomerPurchasedVehicles(id);
+              setPurchasedVehicles(vehicles);
             }
           }
         } catch (error) {
@@ -103,6 +108,12 @@ const CustomerDetail = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
+            {contact.type !== "supplier" && (
+              <TabsTrigger value="purchases">
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Aankoophistorie
+              </TabsTrigger>
+            )}
             <TabsTrigger value="history">
               <Clock className="mr-2 h-4 w-4" />
               Geschiedenis
@@ -112,6 +123,15 @@ const CustomerDetail = () => {
           <TabsContent value="details" className="space-y-6">
             <ContactDetailsPanel contact={contact} onUpdate={handleUpdate} />
           </TabsContent>
+
+          {contact.type !== "supplier" && (
+            <TabsContent value="purchases" className="space-y-6">
+              <PurchaseHistory 
+                vehicles={purchasedVehicles}
+                customerType={contact.type as "b2b" | "b2c"}
+              />
+            </TabsContent>
+          )}
 
           <TabsContent value="history" className="space-y-6">
             <Card>

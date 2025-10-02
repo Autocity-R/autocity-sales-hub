@@ -1,5 +1,7 @@
 import { Contact, ContactType, CustomerHistoryItem, SupplierHistoryItem } from "@/types/customer";
 import { supabaseCustomerService } from "./supabaseCustomerService";
+import { supabase } from "@/integrations/supabase/client";
+
 
 // Flag for using mock data during development
 let isUseMockData = false;
@@ -254,6 +256,37 @@ export const getCustomerHistory = (customerId: string): CustomerHistoryItem[] =>
 export const getSupplierHistory = (supplierId: string): SupplierHistoryItem[] => {
   return mockSupplierHistory.filter(item => item.supplierId === supplierId);
 };
+
+// Get purchased vehicles for a customer
+export const getCustomerPurchasedVehicles = async (customerId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select('id, brand, model, year, license_number, vin, selling_price, sold_date, status')
+      .eq('customer_id', customerId)
+      .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
+      .order('sold_date', { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map(vehicle => ({
+      id: vehicle.id,
+      brand: vehicle.brand,
+      model: vehicle.model,
+      year: vehicle.year,
+      licenseNumber: vehicle.license_number,
+      vin: vehicle.vin,
+      sellingPrice: vehicle.selling_price,
+      soldDate: vehicle.sold_date,
+      status: vehicle.status
+    }));
+  } catch (error) {
+    console.error('Error fetching customer purchased vehicles:', error);
+    return [];
+  }
+};
+
+
 
 export const addContact = async (contact: Omit<Contact, "id" | "createdAt" | "updatedAt">): Promise<Contact> => {
   try {
