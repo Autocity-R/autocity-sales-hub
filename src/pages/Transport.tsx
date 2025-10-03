@@ -130,7 +130,8 @@ const Transport = () => {
       updateMutation.mutate({ 
         ...vehicle, 
         arrived: true, 
-        importStatus: "aangekomen" as ImportStatus 
+        importStatus: "aangekomen" as ImportStatus,
+        transportStatus: "aangekomen" as const
       });
     }
   };

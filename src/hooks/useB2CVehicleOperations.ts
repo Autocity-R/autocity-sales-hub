@@ -218,8 +218,20 @@ export const useB2CVehicleOperations = () => {
       console.warn(`⚠️ Sale not tracked for vehicle ${vehicleId} - Status: ${vehicle.salesStatus}, Salesperson: ${vehicle.salespersonId}, Name: ${vehicle.salespersonName}`);
     }
     
-    changeVehicleStatusMutation.mutate({ vehicleId, status });
-    console.log(`✅ Vehicle ${vehicleId} status change mutation initiated`);
+    // Update the vehicle with the new status AND clear transportStatus if sold
+    if (vehicle && (status === 'verkocht_b2b' || status === 'verkocht_b2c')) {
+      // When marking as sold, set transportStatus to 'aangekomen' so it doesn't show in transport list
+      const updatedVehicle = {
+        ...vehicle,
+        salesStatus: status,
+        transportStatus: 'aangekomen' as const
+      };
+      updateVehicleMutation.mutate(updatedVehicle);
+      console.log(`✅ Vehicle ${vehicleId} updated with status ${status} and transportStatus set to aangekomen`);
+    } else {
+      changeVehicleStatusMutation.mutate({ vehicleId, status });
+      console.log(`✅ Vehicle ${vehicleId} status change mutation initiated`);
+    }
   };
 
   return {
