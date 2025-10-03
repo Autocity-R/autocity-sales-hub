@@ -11,6 +11,8 @@ import { LeadActivities } from "./LeadActivities";
 import { LeadCommunication } from "./LeadCommunication";
 import { LeadProposals } from "./LeadProposals";
 import { LeadFollowUp } from "./LeadFollowUp";
+import { LeadEmailHistory } from "./LeadEmailHistory";
+import { LeadEmailComposer } from "./LeadEmailComposer";
 import { 
   ArrowLeft, 
   Mail, 
@@ -60,7 +62,28 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
   const [emails] = useState(getLeadEmails(lead.id));
   const [proposals] = useState(getLeadProposals(lead.id));
   const [followUps] = useState(mockFollowUps.filter(fu => fu.leadId === lead.id));
+  const [showEmailComposer, setShowEmailComposer] = useState(false);
+  const [replyToEmail, setReplyToEmail] = useState<any>(null);
   const { toast } = useToast();
+
+  const handleReplyToEmail = (email: any) => {
+    setReplyToEmail({
+      messageId: email.message_id || email.gmail_message_id,
+      threadId: email.thread_id,
+      subject: email.subject,
+      sender: email.sender || email.sender_email
+    });
+    setShowEmailComposer(true);
+  };
+
+  const handleEmailSent = () => {
+    setShowEmailComposer(false);
+    setReplyToEmail(null);
+    toast({
+      title: "Email verzonden",
+      description: "Uw email is succesvol verzonden",
+    });
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -266,13 +289,13 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
       </Card>
 
       {/* Tabs for Activities, Communication, etc. */}
-      <Tabs defaultValue="activities" className="w-full">
+      <Tabs defaultValue="emails" className="w-full">
         <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="emails">
+            Email Geschiedenis
+          </TabsTrigger>
           <TabsTrigger value="activities">
             Activiteiten ({activities.length})
-          </TabsTrigger>
-          <TabsTrigger value="communication">
-            Communicatie ({emails.length})
           </TabsTrigger>
           <TabsTrigger value="proposals">
             Offertes ({proposals.length})
@@ -285,12 +308,12 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="activities">
-          <LeadActivities leadId={lead.id} activities={activities} />
+        <TabsContent value="emails">
+          <LeadEmailHistory leadId={lead.id} onReply={handleReplyToEmail} />
         </TabsContent>
 
-        <TabsContent value="communication">
-          <LeadCommunication leadId={lead.id} emails={emails} />
+        <TabsContent value="activities">
+          <LeadActivities leadId={lead.id} activities={activities} />
         </TabsContent>
 
         <TabsContent value="proposals">
@@ -311,6 +334,19 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Email Composer Dialog */}
+      {showEmailComposer && (
+        <LeadEmailComposer
+          lead={lead}
+          onClose={() => {
+            setShowEmailComposer(false);
+            setReplyToEmail(null);
+          }}
+          onSent={handleEmailSent}
+          replyTo={replyToEmail}
+        />
+      )}
     </div>
   );
 };

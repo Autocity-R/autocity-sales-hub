@@ -23,6 +23,9 @@ interface EmailRequest {
   metadata?: {
     vehicleId?: string;
     templateId?: string;
+    leadId?: string;
+    threadId?: string;
+    replyToMessageId?: string;
   };
 }
 
@@ -181,6 +184,9 @@ serve(async (req) => {
         cc.length > 0 ? `Cc: ${cc.join(', ')}` : null,
         subjectEncoded,
         'MIME-Version: 1.0',
+        // Add email threading headers for replies
+        metadata.replyToMessageId ? `In-Reply-To: ${metadata.replyToMessageId}` : null,
+        metadata.replyToMessageId ? `References: ${metadata.replyToMessageId}` : null,
       ].filter(line => line !== null);
 
       if (validAttachments.length > 0) {
@@ -242,6 +248,7 @@ serve(async (req) => {
     const processingTime = Date.now() - startTime;
     
     try {
+      // Log to email_logs table
       const { error: logError } = await supabase
         .from('email_logs')
         .insert({
@@ -260,6 +267,28 @@ serve(async (req) => {
 
       if (logError) {
         console.error('Failed to log email:', logError);
+      }
+
+      // If this is a lead email, also log to email_messages table
+      if (metadata.leadId && status === 'sent') {
+        const { error: messageError } = await supabase
+          .from('email_messages')
+          .insert({
+            thread_id: metadata.threadId || null,
+            lead_id: metadata.leadId,
+            message_id: gmailMessageId || '',
+            sender: senderEmail,
+            recipient: to[0],
+            subject: subject,
+            body: htmlBody,
+            received_at: new Date().toISOString(),
+            is_from_customer: false, // This is an outgoing email from us
+            portal_source: 'crm'
+          });
+
+        if (messageError) {
+          console.error('Failed to log to email_messages:', messageError);
+        }
       }
     } catch (logError) {
       console.error('Exception while logging email:', logError);
