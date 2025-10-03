@@ -218,9 +218,8 @@ export const useB2CVehicleOperations = () => {
       console.warn(`⚠️ Sale not tracked for vehicle ${vehicleId} - Status: ${vehicle.salesStatus}, Salesperson: ${vehicle.salespersonId}, Name: ${vehicle.salespersonName}`);
     }
     
-    // Update the vehicle with the new status AND clear transportStatus if sold
+    // When marking as sold, also set transportStatus to 'aangekomen' so it doesn't show in transport list
     if (vehicle && (status === 'verkocht_b2b' || status === 'verkocht_b2c')) {
-      // When marking as sold, set transportStatus to 'aangekomen' so it doesn't show in transport list
       const updatedVehicle = {
         ...vehicle,
         salesStatus: status,
