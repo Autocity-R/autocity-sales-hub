@@ -166,7 +166,7 @@ async function createJWTAssertion(serviceAccount: ServiceAccount): Promise<strin
     .setIssuer(serviceAccount.client_email)
     .setSubject(userToImpersonate)
     .setAudience('https://oauth2.googleapis.com/token')
-    .setExpirationTime('2h')
+    .setExpirationTime('1h')
     .sign(privateKey);
 
   return jwt;
