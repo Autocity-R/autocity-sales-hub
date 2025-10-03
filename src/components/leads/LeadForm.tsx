@@ -12,6 +12,7 @@ import { createLead } from "@/services/leadService";
 import { LeadSource, LeadPriority } from "@/types/leads";
 import { ArrowLeft, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSalespeople } from "@/hooks/useSalespeople";
 
 interface LeadFormProps {
   onSave: () => void;
@@ -36,6 +37,7 @@ interface FormData {
 
 export const LeadForm: React.FC<LeadFormProps> = ({ onSave, onCancel }) => {
   const { toast } = useToast();
+  const { data: salespeople = [] } = useSalespeople();
   const form = useForm<FormData>({
     defaultValues: {
       firstName: "",
@@ -246,9 +248,21 @@ export const LeadForm: React.FC<LeadFormProps> = ({ onSave, onCancel }) => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Toegewezen aan</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Medewerker naam" {...field} />
-                      </FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecteer verkoper" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="">Niet toegewezen</SelectItem>
+                          {salespeople.map((person) => (
+                            <SelectItem key={person.id} value={person.id}>
+                              {person.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

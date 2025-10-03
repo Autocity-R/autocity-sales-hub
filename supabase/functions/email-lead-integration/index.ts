@@ -47,6 +47,14 @@ serve(async (req) => {
       });
     }
 
+    // Filter out non-portal emails (spam, newsletters, etc.)
+    if (!isValidPortalEmail(emailData)) {
+      console.log('❌ Email not from recognized portal, ignoring');
+      return new Response(JSON.stringify({ success: false, message: 'Not from recognized portal' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Check if lead exists
     let leadId = await findOrCreateLead(supabaseClient, emailData);
     
@@ -209,4 +217,85 @@ function classifyUrgency(subject: string, content: string): string {
 
 function generateThreadId(subject: string): string {
   return subject.replace(/^(re:|fwd:)/i, '').trim().replace(/\s+/g, '_').toLowerCase();
+}
+
+function isValidPortalEmail(emailData: EmailWebhookData): boolean {
+  const fromLower = emailData.from.toLowerCase();
+  const subjectLower = emailData.subject.toLowerCase();
+  const textLower = emailData.text.toLowerCase();
+  
+  // List of recognized auto portals
+  const validPortalDomains = [
+    'autotrack.nl',
+    'marktplaats.nl',
+    'autoscout24.nl',
+    'occasions.nl',
+    'gaspedaal.nl',
+    'autowereld.nl',
+    'autoweek.nl',
+    'autonetwerk.nl',
+    'autotrader.nl'
+  ];
+  
+  // Check if email is from a recognized portal
+  const isFromPortal = validPortalDomains.some(domain => fromLower.includes(domain));
+  
+  // Keywords that indicate a valid lead from portals
+  const validLeadKeywords = [
+    'interesse',
+    'informatie',
+    'voertuig',
+    'auto',
+    'vraag',
+    'beschikbaar',
+    'prijs',
+    'afspraak',
+    'bezichtigen',
+    'kopen',
+    'aankoop',
+    'testrit'
+  ];
+  
+  // Keywords that indicate spam or unwanted emails
+  const spamKeywords = [
+    'unsubscribe',
+    'newsletter',
+    'marketing',
+    'advertentie',
+    'promotie',
+    'casino',
+    'viagra',
+    'gewonnen',
+    'gratis',
+    'klik hier'
+  ];
+  
+  // Check for spam keywords
+  const containsSpam = spamKeywords.some(keyword => 
+    subjectLower.includes(keyword) || textLower.includes(keyword)
+  );
+  
+  if (containsSpam) {
+    console.log('🚫 Email contains spam keywords');
+    return false;
+  }
+  
+  // If from portal, accept it
+  if (isFromPortal) {
+    console.log('✅ Email from recognized portal');
+    return true;
+  }
+  
+  // If not from portal, check if it contains valid lead keywords
+  const containsValidKeywords = validLeadKeywords.some(keyword => 
+    subjectLower.includes(keyword) || textLower.includes(keyword)
+  );
+  
+  if (containsValidKeywords) {
+    console.log('✅ Email contains valid lead keywords');
+    return true;
+  }
+  
+  console.log('❌ Email does not meet lead criteria');
+  return false;
 }

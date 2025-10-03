@@ -14,6 +14,7 @@ import { LeadForm } from "@/components/leads/LeadForm";
 import { LeadPipeline } from "@/components/leads/LeadPipeline";
 import { LeadEmailComposer } from "@/components/leads/LeadEmailComposer";
 import { LeadAIAssistant } from "@/components/leads/LeadAIAssistant";
+import { useSalespeople } from "@/hooks/useSalespeople";
 import { 
   Plus, 
   Search, 
@@ -39,6 +40,7 @@ const Leads = () => {
   const [activeTab, setActiveTab] = useState("list");
   const [assignedToFilter, setAssignedToFilter] = useState<string>("all");
   
+  const { data: salespeople = [] } = useSalespeople();
   const stats = getLeadStats();
   const currentUser = "Admin"; // In real app, this would come from auth context
 
@@ -246,14 +248,16 @@ const Leads = () => {
 
               <Select value={assignedToFilter} onValueChange={setAssignedToFilter}>
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter op toegewezen" />
+                  <SelectValue placeholder="Filter op medewerker" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Alle medewerkers</SelectItem>
                   <SelectItem value="unassigned">Niet toegewezen</SelectItem>
-                  <SelectItem value="Pieter Jansen">Pieter Jansen</SelectItem>
-                  <SelectItem value="Sander Vermeulen">Sander Vermeulen</SelectItem>
-                  <SelectItem value="Admin">Admin</SelectItem>
+                  {salespeople.map((person) => (
+                    <SelectItem key={person.id} value={person.id}>
+                      {person.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
