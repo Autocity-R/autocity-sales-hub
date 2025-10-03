@@ -54,6 +54,15 @@ export interface ContractOptions {
     tradeInPrice: number;
   };
   
+  // Contract address override
+  contractAddress?: {
+    street: string;
+    number: string;
+    zipCode: string;
+    city: string;
+  };
+  saveAddressToContact?: boolean;
+  
   // Common options
   additionalClauses?: string;
   specialAgreements?: string;

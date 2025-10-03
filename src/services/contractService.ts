@@ -109,7 +109,7 @@ export const generateContract = async (
     website: "www.auto-city.nl"
   };
 
-  // Ensure full customer address (Street + Number, Postcode City)
+  // Ensure full customer address - prioritize manual contractAddress
   const formatAddressParts = (
     street?: string,
     number?: string,
@@ -122,22 +122,35 @@ export const generateContract = async (
   };
 
   let computedAddress = vehicle.customerContact?.address || '';
-  const hasZip = /\b\d{4}\s?[A-Za-z]{2}\b/.test(computedAddress);
 
-  if (vehicle.customerId && (!computedAddress || !hasZip)) {
-    const { data: contact } = await supabase
-      .from('contacts')
-      .select('address_street, address_number, address_postal_code, address_city')
-      .eq('id', vehicle.customerId)
-      .maybeSingle();
+  // Priority 1: Use manual contractAddress from options if provided
+  if (options.contractAddress) {
+    computedAddress = formatAddressParts(
+      options.contractAddress.street,
+      options.contractAddress.number,
+      options.contractAddress.zipCode,
+      options.contractAddress.city
+    );
+  } 
+  // Priority 2: Fetch from database if address is incomplete
+  else {
+    const hasZip = /\b\d{4}\s?[A-Za-z]{2}\b/.test(computedAddress);
+    
+    if (vehicle.customerId && (!computedAddress || !hasZip)) {
+      const { data: contact } = await supabase
+        .from('contacts')
+        .select('address_street, address_number, address_postal_code, address_city')
+        .eq('id', vehicle.customerId)
+        .maybeSingle();
 
-    if (contact) {
-      computedAddress = formatAddressParts(
-        contact.address_street,
-        contact.address_number,
-        contact.address_postal_code,
-        contact.address_city
-      );
+      if (contact) {
+        computedAddress = formatAddressParts(
+          contact.address_street,
+          contact.address_number,
+          contact.address_postal_code,
+          contact.address_city
+        );
+      }
     }
   }
 

@@ -10,12 +10,13 @@ import { Separator } from "@/components/ui/separator";
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 import { Contact } from "@/types/customer";
-import { FileText, Send, X, Eye, Mail, PenTool, Plus, Trash2, Car } from "lucide-react";
+import { FileText, Send, X, Eye, Mail, PenTool, Plus, Trash2, Car, AlertCircle } from "lucide-react";
 import { generateContract } from "@/services/contractService";
 import { createSignatureSession, generateSignatureUrl } from "@/services/digitalSignatureService";
 import { useToast } from "@/hooks/use-toast";
 import { SearchableCustomerSelector } from "@/components/customers/SearchableCustomerSelector";
 import { supabaseCustomerService } from "@/services/supabaseCustomerService";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ContractConfigDialogProps {
   isOpen: boolean;
@@ -52,6 +53,7 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
   const [showTradeInForm, setShowTradeInForm] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Contact | null>(null);
   const [allowCustomerChange, setAllowCustomerChange] = useState(false);
+  const [addressWarning, setAddressWarning] = useState(false);
 
   // Centralize vehicle enrichment with customer data
   const vehicleWithContact = useMemo(() => {
@@ -61,6 +63,20 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
       console.log('[CONTRACT_DIALOG] ⚠️ No selectedCustomer, using base vehicle with customerContact:', vehicle.customerContact);
       return vehicle;
     }
+
+    // Use contractAddress if provided, otherwise use selectedCustomer address
+    let formattedAddress = '';
+    if (options.contractAddress) {
+      const { street, number, zipCode, city } = options.contractAddress;
+      const line1 = [street, number].filter(Boolean).join(' ').trim();
+      const line2 = [zipCode, city].filter(Boolean).join(' ').trim();
+      formattedAddress = [line1, line2].filter(Boolean).join(', ');
+    } else {
+      formattedAddress = [
+        [selectedCustomer.address?.street, selectedCustomer.address?.number].filter(Boolean).join(' '),
+        [selectedCustomer.address?.zipCode, selectedCustomer.address?.city].filter(Boolean).join(' ')
+      ].filter(Boolean).join(', ');
+    }
     
     const enriched = {
       ...vehicle,
@@ -68,10 +84,7 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
         name: selectedCustomer.companyName || `${selectedCustomer.firstName} ${selectedCustomer.lastName}`.trim(),
         email: selectedCustomer.email,
         phone: selectedCustomer.phone,
-        address: [
-          [selectedCustomer.address?.street, selectedCustomer.address?.number].filter(Boolean).join(' '),
-          [selectedCustomer.address?.zipCode, selectedCustomer.address?.city].filter(Boolean).join(' ')
-        ].filter(Boolean).join(', ')
+        address: formattedAddress
       }
     };
     
@@ -81,12 +94,12 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
     });
     
     return enriched;
-  }, [vehicle, selectedCustomer]);
+  }, [vehicle, selectedCustomer, options.contractAddress]);
 
   // Validation: disable actions if customer data is loading
   const isActionDisabled = loading || (vehicle.customerId && !selectedCustomer);
 
-  // Auto-load linked customer
+  // Auto-load linked customer and initialize address
   useEffect(() => {
     console.log('[CONTRACT_DIALOG] 🚀 Dialog opened with vehicle:', {
       id: vehicle.id,
@@ -101,6 +114,24 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
         .then(contact => {
           if (contact) {
             setSelectedCustomer(contact);
+            
+            // Initialize contractAddress from customer data
+            setOptions(prev => ({
+              ...prev,
+              contractAddress: {
+                street: contact.address?.street || '',
+                number: contact.address?.number || '',
+                zipCode: contact.address?.zipCode || '',
+                city: contact.address?.city || ''
+              }
+            }));
+
+            // Check if address is incomplete
+            const hasNumber = !!contact.address?.number;
+            const hasZip = !!contact.address?.zipCode;
+            if (!hasNumber || !hasZip) {
+              setAddressWarning(true);
+            }
           }
         })
         .catch(error => {
@@ -118,6 +149,9 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
   const handlePreview = async () => {
     setLoading(true);
     try {
+      // Save address to contact if requested
+      await saveAddressIfNeeded();
+      
       const contract = await generateContract(vehicleWithContact, contractType, options);
       setContractPreview(contract);
       setShowPreview(true);
@@ -133,6 +167,37 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
     }
   };
 
+  const saveAddressIfNeeded = async () => {
+    if (options.saveAddressToContact && selectedCustomer && options.contractAddress) {
+      try {
+        const updatedCustomer = {
+          ...selectedCustomer,
+          address: {
+            street: options.contractAddress.street,
+            number: options.contractAddress.number,
+            zipCode: options.contractAddress.zipCode,
+            city: options.contractAddress.city,
+            country: selectedCustomer.address?.country || 'Nederland'
+          }
+        };
+        
+        await supabaseCustomerService.updateContact(updatedCustomer);
+        
+        toast({
+          title: "Adres opgeslagen",
+          description: "Het adres is bijgewerkt bij de klantgegevens"
+        });
+      } catch (error) {
+        console.error("Error saving address:", error);
+        toast({
+          title: "Waarschuwing",
+          description: "Kon adres niet opslaan bij klant",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
   const handleSendDigital = async () => {
     if (!selectedCustomer) {
       toast({
@@ -145,6 +210,9 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
 
     setLoading(true);
     try {
+      // Save address to contact if requested
+      await saveAddressIfNeeded();
+
       // Create signature session
       const session = await createSignatureSession(vehicleWithContact, contractType, options);
       const signatureUrl = generateSignatureUrl(session);
@@ -174,7 +242,10 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
     }
   };
 
-  const handleSendEmail = () => {
+  const handleSendEmail = async () => {
+    // Save address to contact if requested
+    await saveAddressIfNeeded();
+    
     onSendContract(options);
     onClose();
   };
@@ -296,6 +367,125 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
               disabled={!!vehicle.customerId && !allowCustomerChange}
             />
           </div>
+
+          <Separator />
+
+          {/* Address Warning */}
+          {addressWarning && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Huisnummer of postcode ontbreekt in de klantgegevens. Controleer en vul hieronder aan voor dit contract.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Contract Address Override */}
+          {selectedCustomer && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">Adres voor contract</h4>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Straat</Label>
+                  <Input
+                    value={options.contractAddress?.street || ''}
+                    onChange={(e) => 
+                      setOptions(prev => ({ 
+                        ...prev, 
+                        contractAddress: { 
+                          ...prev.contractAddress,
+                          street: e.target.value,
+                          number: prev.contractAddress?.number || '',
+                          zipCode: prev.contractAddress?.zipCode || '',
+                          city: prev.contractAddress?.city || ''
+                        } 
+                      }))
+                    }
+                    placeholder="Straatnaam"
+                  />
+                </div>
+                <div>
+                  <Label>Huisnummer</Label>
+                  <Input
+                    value={options.contractAddress?.number || ''}
+                    onChange={(e) => {
+                      setOptions(prev => ({ 
+                        ...prev, 
+                        contractAddress: { 
+                          ...prev.contractAddress,
+                          street: prev.contractAddress?.street || '',
+                          number: e.target.value,
+                          zipCode: prev.contractAddress?.zipCode || '',
+                          city: prev.contractAddress?.city || ''
+                        } 
+                      }));
+                      if (e.target.value && addressWarning) {
+                        setAddressWarning(false);
+                      }
+                    }}
+                    placeholder="Huisnummer"
+                  />
+                </div>
+                <div>
+                  <Label>Postcode</Label>
+                  <Input
+                    value={options.contractAddress?.zipCode || ''}
+                    onChange={(e) => {
+                      setOptions(prev => ({ 
+                        ...prev, 
+                        contractAddress: { 
+                          ...prev.contractAddress,
+                          street: prev.contractAddress?.street || '',
+                          number: prev.contractAddress?.number || '',
+                          zipCode: e.target.value,
+                          city: prev.contractAddress?.city || ''
+                        } 
+                      }));
+                      if (e.target.value && addressWarning) {
+                        setAddressWarning(false);
+                      }
+                    }}
+                    placeholder="1234AB"
+                  />
+                </div>
+                <div>
+                  <Label>Plaats</Label>
+                  <Input
+                    value={options.contractAddress?.city || ''}
+                    onChange={(e) => 
+                      setOptions(prev => ({ 
+                        ...prev, 
+                        contractAddress: { 
+                          ...prev.contractAddress,
+                          street: prev.contractAddress?.street || '',
+                          number: prev.contractAddress?.number || '',
+                          zipCode: prev.contractAddress?.zipCode || '',
+                          city: e.target.value
+                        } 
+                      }))
+                    }
+                    placeholder="Plaatsnaam"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="save-address"
+                  checked={options.saveAddressToContact || false}
+                  onCheckedChange={(checked) => 
+                    setOptions(prev => ({ ...prev, saveAddressToContact: checked as boolean }))
+                  }
+                />
+                <Label htmlFor="save-address" className="text-sm font-normal">
+                  Sla dit adres ook op bij de klantgegevens
+                </Label>
+              </div>
+            </div>
+          )}
 
           <Separator />
           {/* Vehicle Info */}
