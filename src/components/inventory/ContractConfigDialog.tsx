@@ -68,7 +68,10 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
         name: selectedCustomer.companyName || `${selectedCustomer.firstName} ${selectedCustomer.lastName}`.trim(),
         email: selectedCustomer.email,
         phone: selectedCustomer.phone,
-        address: [selectedCustomer.address?.street, selectedCustomer.address?.city].filter(Boolean).join(', ')
+        address: [
+          [selectedCustomer.address?.street, selectedCustomer.address?.number].filter(Boolean).join(' '),
+          [selectedCustomer.address?.zipCode, selectedCustomer.address?.city].filter(Boolean).join(' ')
+        ].filter(Boolean).join(', ')
       }
     };
     

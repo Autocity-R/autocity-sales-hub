@@ -60,16 +60,15 @@ export const generateContract = async (
   let downPaymentAmount = 0;
   let downPaymentPercentage = 0;
 
-  // Calculate delivery package price for B2C
-  if (!isB2B && options.deliveryPackage) {
-    deliveryPackagePrice = DELIVERY_PACKAGE_PRICES[options.deliveryPackage as keyof typeof DELIVERY_PACKAGE_PRICES] || 0;
+  // Determine package price for B2C: manual overrides default
+  if (!isB2B) {
+    if (options.warrantyPackagePrice !== undefined) {
+      warrantyPackagePrice = options.warrantyPackagePrice;
+      deliveryPackagePrice = warrantyPackagePrice; // use manual price for calculations
+    } else if (options.deliveryPackage) {
+      deliveryPackagePrice = DELIVERY_PACKAGE_PRICES[options.deliveryPackage as keyof typeof DELIVERY_PACKAGE_PRICES] || 0;
+    }
     finalPrice = basePrice + deliveryPackagePrice;
-  }
-
-  // Add warranty package price for B2C
-  if (!isB2B && options.warrantyPackagePrice !== undefined) {
-    warrantyPackagePrice = options.warrantyPackagePrice;
-    finalPrice = finalPrice + warrantyPackagePrice;
   }
 
   // Calculate trade-in for B2C
@@ -650,16 +649,10 @@ const generateHtmlContract = (
                         <span class="price-label">Verkoopprijs voertuig (inclusief BTW)</span>
                         <span class="price-value">€ ${basePrice.toLocaleString('nl-NL')}</span>
                     </div>
-                    ${deliveryPackagePrice > 0 ? `
+                    ${options.deliveryPackage ? `
                     <div class="price-item">
                         <span class="price-label">Afleverpakket</span>
                         <span class="price-value">€ ${deliveryPackagePrice.toLocaleString('nl-NL')}</span>
-                    </div>
-                    ` : ''}
-                    ${warrantyPackagePrice > 0 ? `
-                    <div class="price-item">
-                        <span class="price-label">Garantiepakket</span>
-                        <span class="price-value">€ ${warrantyPackagePrice.toLocaleString('nl-NL')}</span>
                     </div>
                     ` : ''}
                     ${tradeInPrice > 0 ? `
@@ -797,8 +790,7 @@ BTW (21%): € ${btwAmount.toLocaleString('nl-NL')}
 Bedrag inclusief BTW: € ${basePrice.toLocaleString('nl-NL')}
 ` : `
 Verkoopprijs voertuig (inclusief BTW): € ${basePrice.toLocaleString('nl-NL')}
-${deliveryPackagePrice > 0 ? `Afleverpakket: € ${deliveryPackagePrice.toLocaleString('nl-NL')}` : ''}
-${warrantyPackagePrice > 0 ? `Garantiepakket: € ${warrantyPackagePrice.toLocaleString('nl-NL')}` : ''}
+${options.deliveryPackage ? `Afleverpakket: € ${deliveryPackagePrice.toLocaleString('nl-NL')}` : ''}
 ${tradeInPrice > 0 ? `Inruilprijs: -€ ${tradeInPrice.toLocaleString('nl-NL')}` : ''}
 Betalingsvoorwaarden: ${options.paymentTerms ? PAYMENT_TERMS_LABELS[options.paymentTerms as keyof typeof PAYMENT_TERMS_LABELS] : ''}
 `}
