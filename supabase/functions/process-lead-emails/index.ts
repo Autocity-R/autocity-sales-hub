@@ -220,7 +220,7 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3): P
       
       // Handle rate limiting
       if (response.status === 429) {
-        const retryAfter = parseInt(response.headers.get('Retry-After') || '5');
+        const retryAfter = parseInt(response.headers.get('Retry-After') || '60');
         console.log(`⏳ Rate limited, waiting ${retryAfter}s...`);
         await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
         continue;
