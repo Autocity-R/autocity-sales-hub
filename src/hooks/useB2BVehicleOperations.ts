@@ -121,6 +121,8 @@ export const useB2BVehicleOperations = () => {
     onSuccess: (_, { vehicleId, status }) => {
       toast.success("Voertuig status bijgewerkt");
       queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
       queryClient.invalidateQueries({ queryKey: ["weeklySalesLeaderboard"] });
     },
     onError: (error) => {
