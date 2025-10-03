@@ -652,19 +652,37 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
                   <Label>Betalingsvoorwaarden</Label>
                   <Select 
                     value={options.paymentTerms} 
-                    onValueChange={(value) => 
-                      setOptions(prev => ({ ...prev, paymentTerms: value }))
-                    }
+                    onValueChange={(value) => {
+                      setOptions(prev => ({ ...prev, paymentTerms: value }));
+                      if (value !== "handmatig") {
+                        setOptions(prev => ({ ...prev, customDownPayment: undefined }));
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="aanbetaling_5">Aanbetaling 5%</SelectItem>
-                      <SelectItem value="aanbetaling_10">Aanbetaling 10%</SelectItem>
+                      <SelectItem value="aanbetaling_5">Aanbetaling 5% (over verkoopprijs)</SelectItem>
+                      <SelectItem value="aanbetaling_10">Aanbetaling 10% (over verkoopprijs)</SelectItem>
+                      <SelectItem value="handmatig">Handmatig bedrag invoeren</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+                
+                {options.paymentTerms === "handmatig" && (
+                  <div>
+                    <Label>Aanbetalingsbedrag (€)</Label>
+                    <Input
+                      type="number"
+                      value={options.customDownPayment || ''}
+                      onChange={(e) => 
+                        setOptions(prev => ({ ...prev, customDownPayment: parseFloat(e.target.value) || 0 }))
+                      }
+                      placeholder="Voer aanbetalingsbedrag in"
+                    />
+                  </div>
+                )}
               </div>
 
               <div>

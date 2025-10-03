@@ -29,8 +29,9 @@ const DELIVERY_PACKAGE_LABELS = {
 
 // Payment terms labels
 const PAYMENT_TERMS_LABELS = {
-  "aanbetaling_5": "Aanbetaling 5%",
-  "aanbetaling_10": "Aanbetaling 10%"
+  "aanbetaling_5": "Aanbetaling 5% (over verkoopprijs)",
+  "aanbetaling_10": "Aanbetaling 10% (over verkoopprijs)",
+  "handmatig": "Handmatig bedrag"
 };
 
 export const generateContract = async (
@@ -77,14 +78,17 @@ export const generateContract = async (
     finalPrice = finalPrice - tradeInPrice;
   }
 
-  // Calculate down payment for B2C (based on final price after trade-in)
+  // Calculate down payment for B2C (based on vehicle selling price, NOT final price)
   if (!isB2B && options.paymentTerms) {
-    if (options.paymentTerms === "aanbetaling_5") {
+    if (options.paymentTerms === "handmatig" && options.customDownPayment) {
+      downPaymentAmount = Math.round(options.customDownPayment);
+    } else if (options.paymentTerms === "aanbetaling_5") {
       downPaymentPercentage = 5;
+      downPaymentAmount = Math.round((basePrice * downPaymentPercentage) / 100);
     } else if (options.paymentTerms === "aanbetaling_10") {
       downPaymentPercentage = 10;
+      downPaymentAmount = Math.round((basePrice * downPaymentPercentage) / 100);
     }
-    downPaymentAmount = Math.round((finalPrice * downPaymentPercentage) / 100);
   }
 
   if (isB2B) {
@@ -736,7 +740,7 @@ const generateHtmlContract = (
                         <p>Het voertuig wordt geleverd zoals gezien, gereden en akkoord bevonden door koper.</p>
                         <p>Levering vindt plaats na volledige betaling van het aankoopbedrag en op het moment van fysieke overdracht of registratie bij RDW op naam van koper.</p>
                         <p>Het risico van verlies of beschadiging gaat over op koper op het moment van levering.</p>
-                        ${downPaymentPercentage > 0 ? `<p>Klant dient de aanbetaling van ${downPaymentPercentage}% (€ ${downPaymentAmount.toLocaleString('nl-NL')}) per bank te voldoen.</p>` : ''}
+                        ${downPaymentAmount > 0 ? `<p>Klant dient de aanbetaling van ${downPaymentPercentage > 0 ? `${downPaymentPercentage}% ` : ''}€ ${downPaymentAmount.toLocaleString('nl-NL')} per bank te voldoen.</p>` : ''}
                         
                         ${options.tradeInVehicle ? `
                         <p><strong>Inruilvoertuigen:</strong><br>
@@ -862,7 +866,7 @@ Indien van toepassing worden aanvullende afspraken vastgelegd in het koopcontrac
 - Het voertuig wordt geleverd zoals gezien, gereden en akkoord bevonden door koper
 - Levering vindt plaats na volledige betaling en op het moment van fysieke overdracht of registratie bij RDW op naam van koper
 - Het risico van verlies of beschadiging gaat over op koper op het moment van levering
-${downPaymentPercentage > 0 ? `- Klant dient de aanbetaling van ${downPaymentPercentage}% (€ ${downPaymentAmount.toLocaleString('nl-NL')}) per bank te voldoen.` : ''}
+${downPaymentAmount > 0 ? `- Klant dient de aanbetaling van ${downPaymentPercentage > 0 ? `${downPaymentPercentage}% ` : ''}€ ${downPaymentAmount.toLocaleString('nl-NL')} per bank te voldoen.` : ''}
 
 ${options.tradeInVehicle ? `
 INRUILVOERTUIGEN:
