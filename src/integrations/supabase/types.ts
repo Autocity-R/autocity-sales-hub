@@ -969,6 +969,69 @@ export type Database = {
           },
         ]
       }
+      email_messages: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          is_from_customer: boolean | null
+          lead_id: string | null
+          message_id: string
+          parsed_data: Json | null
+          portal_source: string | null
+          received_at: string
+          recipient: string
+          sender: string
+          subject: string | null
+          thread_id: string | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          is_from_customer?: boolean | null
+          lead_id?: string | null
+          message_id: string
+          parsed_data?: Json | null
+          portal_source?: string | null
+          received_at: string
+          recipient: string
+          sender: string
+          subject?: string | null
+          thread_id?: string | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          is_from_customer?: boolean | null
+          lead_id?: string | null
+          message_id?: string
+          parsed_data?: Json | null
+          portal_source?: string | null
+          received_at?: string
+          recipient?: string
+          sender?: string
+          subject?: string | null
+          thread_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_messages_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "email_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_queue: {
         Row: {
           attempts: number
@@ -1110,6 +1173,53 @@ export type Database = {
           },
           {
             foreignKeyName: "email_response_suggestions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_threads: {
+        Row: {
+          created_at: string
+          first_message_date: string | null
+          id: string
+          last_message_date: string | null
+          lead_id: string | null
+          message_count: number | null
+          participants: Json | null
+          subject: string | null
+          thread_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          first_message_date?: string | null
+          id?: string
+          last_message_date?: string | null
+          lead_id?: string | null
+          message_count?: number | null
+          participants?: Json | null
+          subject?: string | null
+          thread_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          first_message_date?: string | null
+          id?: string
+          last_message_date?: string | null
+          lead_id?: string | null
+          message_count?: number | null
+          participants?: Json | null
+          subject?: string | null
+          thread_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_threads_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
