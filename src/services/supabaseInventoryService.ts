@@ -82,8 +82,7 @@ export class SupabaseInventoryService {
       const { data, error } = await supabase
         .from('vehicles')
         .select('*')
-        .in('status', ['verkocht_b2b', 'voorraad'])
-        .neq('status', 'afgeleverd')
+        .eq('status', 'verkocht_b2b')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -108,8 +107,7 @@ export class SupabaseInventoryService {
       const { data, error } = await supabase
         .from('vehicles')
         .select('*')
-        .in('status', ['verkocht_b2c', 'voorraad'])
-        .neq('status', 'afgeleverd')
+        .eq('status', 'verkocht_b2c')
         .order('created_at', { ascending: false });
 
       if (error) {
