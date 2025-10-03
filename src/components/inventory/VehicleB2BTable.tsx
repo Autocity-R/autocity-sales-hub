@@ -44,6 +44,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { EmailConfirmDialog } from "@/components/ui/email-confirm-dialog";
 
 interface VehicleB2BTableProps {
   vehicles: Vehicle[];
@@ -112,6 +113,20 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
 }) => {
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   const [selectedVehicleForDelivery, setSelectedVehicleForDelivery] = useState<string | null>(null);
+  const [emailConfirmOpen, setEmailConfirmOpen] = useState(false);
+  const [pendingEmailAction, setPendingEmailAction] = useState<{ type: string; vehicleId: string; vehicle?: Vehicle } | null>(null);
+
+  const handleEmailClick = (emailType: string, vehicleId: string, vehicle?: Vehicle) => {
+    setPendingEmailAction({ type: emailType, vehicleId, vehicle });
+    setEmailConfirmOpen(true);
+  };
+
+  const handleConfirmEmail = () => {
+    if (pendingEmailAction) {
+      handleSendEmail(pendingEmailAction.type, pendingEmailAction.vehicleId);
+      setPendingEmailAction(null);
+    }
+  };
 
   const handleDeliveryConfirm = () => {
     if (selectedVehicleForDelivery && onMarkAsDelivered) {
@@ -404,14 +419,14 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => {
                         e.stopPropagation();
-                        handleSendEmail("vehicle_arrived", vehicle.id);
+                        handleEmailClick("vehicle_arrived", vehicle.id, vehicle);
                       }}>
                         <Mail className="h-4 w-4 mr-2" />
                         Auto is binnengekomen
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => {
                         e.stopPropagation();
-                        handleSendEmail("license_registration", vehicle.id);
+                        handleEmailClick("license_registration", vehicle.id, vehicle);
                       }}>
                         <Mail className="h-4 w-4 mr-2" />
                         Kenteken update
@@ -507,6 +522,14 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <EmailConfirmDialog
+        open={emailConfirmOpen}
+        onOpenChange={setEmailConfirmOpen}
+        onConfirm={handleConfirmEmail}
+        emailType={pendingEmailAction?.type}
+        recipientInfo={pendingEmailAction?.vehicle?.customerContact?.email}
+      />
     </>
   );
 };
