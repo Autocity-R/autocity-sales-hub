@@ -118,6 +118,8 @@ export class SupabaseCustomerService {
           email: contactData.email,
           phone: contactData.phone,
           address_street: contactData.address?.street,
+          address_number: contactData.address?.number,
+          address_postal_code: contactData.address?.zipCode,
           address_city: contactData.address?.city,
         })
         .select()
@@ -150,6 +152,8 @@ export class SupabaseCustomerService {
           email: contact.email,
           phone: contact.phone,
           address_street: contact.address?.street,
+          address_number: contact.address?.number,
+          address_postal_code: contact.address?.zipCode,
           address_city: contact.address?.city,
           updated_at: new Date().toISOString()
         })
@@ -183,12 +187,12 @@ export class SupabaseCustomerService {
       phone: supabaseContact.phone,
       address: {
         street: supabaseContact.address_street || "",
-        number: "", // Not in current schema
+        number: supabaseContact.address_number || "",
         city: supabaseContact.address_city || "",
-        zipCode: "", // Not in current schema
-        country: "Nederland" // Default
+        zipCode: supabaseContact.address_postal_code || "",
+        country: "Nederland"
       },
-      notes: "", // Not in current schema
+      notes: "",
       createdAt: supabaseContact.created_at,
       updatedAt: supabaseContact.updated_at
     };

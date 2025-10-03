@@ -19,7 +19,7 @@ export const loadVehicleRelationships = async (vehicles: any[]): Promise<any[]> 
     if (customerIds.length > 0) {
       const { data: customerData } = await supabase
         .from('contacts')
-        .select('id, first_name, last_name, company_name, email, phone, address_street, address_city')
+        .select('id, first_name, last_name, company_name, email, phone, address_street, address_number, address_postal_code, address_city')
         .in('id', customerIds);
       
       console.log('[RELATIONSHIP_SERVICE] 👥 Fetched contacts:', customerData?.length);
@@ -29,7 +29,13 @@ export const loadVehicleRelationships = async (vehicles: any[]): Promise<any[]> 
       
       customerData?.forEach(customer => {
         const name = customer.company_name || `${customer.first_name} ${customer.last_name}`.trim();
-        const address = [customer.address_street, customer.address_city].filter(Boolean).join(', ');
+        const addressParts = [
+          customer.address_street,
+          customer.address_number,
+          customer.address_postal_code,
+          customer.address_city
+        ].filter(Boolean);
+        const address = addressParts.join(', ');
         
         const contactData = {
           name,
@@ -52,12 +58,18 @@ export const loadVehicleRelationships = async (vehicles: any[]): Promise<any[]> 
     if (supplierIds.length > 0) {
       const { data: supplierData } = await supabase
         .from('contacts')
-        .select('id, first_name, last_name, company_name, email, phone, address_street, address_city')
+        .select('id, first_name, last_name, company_name, email, phone, address_street, address_number, address_postal_code, address_city')
         .in('id', supplierIds);
       
       supplierData?.forEach(supplier => {
         const name = supplier.company_name || `${supplier.first_name} ${supplier.last_name}`.trim();
-        const address = [supplier.address_street, supplier.address_city].filter(Boolean).join(', ');
+        const addressParts = [
+          supplier.address_street,
+          supplier.address_number,
+          supplier.address_postal_code,
+          supplier.address_city
+        ].filter(Boolean);
+        const address = addressParts.join(', ');
         suppliers.set(supplier.id, {
           name,
           contact: {

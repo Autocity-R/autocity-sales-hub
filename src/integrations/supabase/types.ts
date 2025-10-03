@@ -812,6 +812,8 @@ export type Database = {
         Row: {
           additional_emails: Json | null
           address_city: string | null
+          address_number: string | null
+          address_postal_code: string | null
           address_street: string | null
           company_name: string | null
           created_at: string
@@ -826,6 +828,8 @@ export type Database = {
         Insert: {
           additional_emails?: Json | null
           address_city?: string | null
+          address_number?: string | null
+          address_postal_code?: string | null
           address_street?: string | null
           company_name?: string | null
           created_at?: string
@@ -840,6 +844,8 @@ export type Database = {
         Update: {
           additional_emails?: Json | null
           address_city?: string | null
+          address_number?: string | null
+          address_postal_code?: string | null
           address_street?: string | null
           company_name?: string | null
           created_at?: string
