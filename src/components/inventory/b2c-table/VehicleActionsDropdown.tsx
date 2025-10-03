@@ -1,11 +1,12 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { MoreHorizontal, Mail, Car, FileText, Check, AlertCircle } from "lucide-react";
 import { Vehicle, PaymentStatus } from "@/types/inventory";
 import { toast } from "sonner";
+import { EmailConfirmDialog } from "@/components/ui/email-confirm-dialog";
 
 interface VehicleActionsDropdownProps {
   vehicle: Vehicle;
@@ -24,6 +25,9 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
   onMarkAsArrived,
   onOpenContractConfig
 }) => {
+  const [emailConfirmOpen, setEmailConfirmOpen] = useState(false);
+  const [pendingEmailAction, setPendingEmailAction] = useState<{ type: string; vehicleId: string } | null>(null);
+  
   // Check if vehicle is sold to determine if contract emails should be shown
   const isVehicleSold = vehicle.salesStatus === 'verkocht_b2b' || vehicle.salesStatus === 'verkocht_b2c';
   
@@ -34,6 +38,18 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
   const handleContractAction = (contractType: "b2b" | "b2c") => {
     if (onOpenContractConfig) {
       onOpenContractConfig(vehicle, contractType);
+    }
+  };
+  
+  const handleEmailClick = (emailType: string, vehicleId: string) => {
+    setPendingEmailAction({ type: emailType, vehicleId });
+    setEmailConfirmOpen(true);
+  };
+  
+  const handleConfirmEmail = () => {
+    if (pendingEmailAction) {
+      handleEmailWithValidation(pendingEmailAction.type, pendingEmailAction.vehicleId);
+      setPendingEmailAction(null);
     }
   };
   
@@ -61,7 +77,8 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
   };
   
   return (
-    <DropdownMenu>
+    <>
+      <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon">
           <MoreHorizontal className="h-5 w-5" />
@@ -89,7 +106,7 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
             <TooltipTrigger asChild>
               <div>
                 <DropdownMenuItem 
-                  onClick={() => handleEmailWithValidation("delivery_appointment", vehicle.id)}
+                  onClick={() => handleEmailClick("delivery_appointment", vehicle.id)}
                   disabled={!hasCustomer || !hasValidCustomerEmail}
                   className={!hasCustomer || !hasValidCustomerEmail ? "opacity-50" : ""}
                 >
@@ -112,7 +129,7 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
             <TooltipTrigger asChild>
               <div>
                 <DropdownMenuItem 
-                  onClick={() => handleEmailWithValidation("payment_reminder", vehicle.id)}
+                  onClick={() => handleEmailClick("payment_reminder", vehicle.id)}
                   disabled={!hasCustomer || !hasValidCustomerEmail}
                   className={!hasCustomer || !hasValidCustomerEmail ? "opacity-50" : ""}
                 >
@@ -135,7 +152,7 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
             <TooltipTrigger asChild>
               <div>
                 <DropdownMenuItem 
-                  onClick={() => handleEmailWithValidation("license_registration", vehicle.id)}
+                  onClick={() => handleEmailClick("license_registration", vehicle.id)}
                   disabled={!hasCustomer || !hasValidCustomerEmail}
                   className={!hasCustomer || !hasValidCustomerEmail ? "opacity-50" : ""}
                 >
@@ -153,7 +170,7 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
           </Tooltip>
         </TooltipProvider>
         
-        <DropdownMenuItem onClick={() => onSendEmail("bpm_huys", vehicle.id)}>
+        <DropdownMenuItem onClick={() => handleEmailClick("bpm_huys", vehicle.id)}>
           <Mail className="h-4 w-4 mr-2" />
           BPM Huys aanmelden
         </DropdownMenuItem>
@@ -202,5 +219,14 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+
+    <EmailConfirmDialog
+      open={emailConfirmOpen}
+      onOpenChange={setEmailConfirmOpen}
+      onConfirm={handleConfirmEmail}
+      emailType={pendingEmailAction?.type}
+      recipientInfo={vehicle.customerContact?.email}
+    />
+  </>
   );
 };

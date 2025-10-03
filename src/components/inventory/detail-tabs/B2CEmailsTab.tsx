@@ -9,6 +9,7 @@ import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 import { isButtonLinkedToTemplate } from "@/services/emailTemplateService";
 import { ContractConfigDialog } from "../ContractConfigDialog";
+import { EmailConfirmDialog } from "@/components/ui/email-confirm-dialog";
 
 interface B2CEmailsTabProps {
   vehicle: Vehicle;
@@ -18,6 +19,8 @@ interface B2CEmailsTabProps {
 
 export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle, onUpdateReminder }) => {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
+  const [emailConfirmOpen, setEmailConfirmOpen] = useState(false);
+  const [pendingEmailAction, setPendingEmailAction] = useState<{ type: string; options?: ContractOptions } | null>(null);
   
   const isB2C = vehicle?.salesStatus === "verkocht_b2c";
   const isVehicleArrived = vehicle?.arrived;
@@ -27,7 +30,15 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
   };
 
   const handleSendContract = (options: ContractOptions) => {
-    onSendEmail("contract_b2c_digital", options);
+    setPendingEmailAction({ type: "contract_b2c_digital", options });
+    setEmailConfirmOpen(true);
+  };
+
+  const handleConfirmEmail = () => {
+    if (pendingEmailAction) {
+      onSendEmail(pendingEmailAction.type, pendingEmailAction.options);
+      setPendingEmailAction(null);
+    }
   };
 
   const renderEmailButton = (buttonType: string, icon: React.ReactNode, label: string, variant: "default" | "outline" = "default") => {
@@ -38,7 +49,8 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
       if (isContractButton) {
         handleContractClick();
       } else {
-        onSendEmail(buttonType);
+        setPendingEmailAction({ type: buttonType });
+        setEmailConfirmOpen(true);
       }
     };
     
@@ -189,6 +201,14 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
           onSendContract={handleSendContract}
         />
       )}
+
+      <EmailConfirmDialog
+        open={emailConfirmOpen}
+        onOpenChange={setEmailConfirmOpen}
+        onConfirm={handleConfirmEmail}
+        emailType={pendingEmailAction?.type}
+        recipientInfo={vehicle?.customerContact?.email}
+      />
     </div>
   );
 };

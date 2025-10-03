@@ -9,6 +9,7 @@ import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 import { isButtonLinkedToTemplate } from "@/services/emailTemplateService";
 import { ContractConfigDialog } from "../ContractConfigDialog";
+import { EmailConfirmDialog } from "@/components/ui/email-confirm-dialog";
 
 interface EmailsTabProps {
   vehicle: Vehicle;
@@ -19,6 +20,8 @@ interface EmailsTabProps {
 export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle, onUpdateReminder }) => {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [contractType, setContractType] = useState<"b2b" | "b2c">("b2b");
+  const [emailConfirmOpen, setEmailConfirmOpen] = useState(false);
+  const [pendingEmailAction, setPendingEmailAction] = useState<{ type: string; options?: ContractOptions } | null>(null);
   
   const isB2B = vehicle?.salesStatus === "verkocht_b2b";
   const isVehicleArrived = vehicle?.arrived;
@@ -30,7 +33,15 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle, onUp
 
   const handleSendContract = (options: ContractOptions) => {
     const buttonType = contractType === "b2b" ? "contract_b2b" : "contract_send";
-    onSendEmail(buttonType, options);
+    setPendingEmailAction({ type: buttonType, options });
+    setEmailConfirmOpen(true);
+  };
+
+  const handleConfirmEmail = () => {
+    if (pendingEmailAction) {
+      onSendEmail(pendingEmailAction.type, pendingEmailAction.options);
+      setPendingEmailAction(null);
+    }
   };
 
   const renderEmailButton = (buttonType: string, icon: React.ReactNode, label: string, variant: "default" | "outline" = "default") => {
@@ -43,7 +54,8 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle, onUp
         const type = (isB2B || buttonType.includes("b2b")) ? "b2b" : "b2c";
         handleContractClick(type);
       } else {
-        onSendEmail(buttonType);
+        setPendingEmailAction({ type: buttonType });
+        setEmailConfirmOpen(true);
       }
     };
     
@@ -177,6 +189,14 @@ export const EmailsTab: React.FC<EmailsTabProps> = ({ onSendEmail, vehicle, onUp
           onSendContract={handleSendContract}
         />
       )}
+
+      <EmailConfirmDialog
+        open={emailConfirmOpen}
+        onOpenChange={setEmailConfirmOpen}
+        onConfirm={handleConfirmEmail}
+        emailType={pendingEmailAction?.type}
+        recipientInfo={vehicle?.customerContact?.email}
+      />
     </div>
   );
 };
