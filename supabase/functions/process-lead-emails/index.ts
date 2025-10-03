@@ -164,27 +164,16 @@ async function createJWTAssertion(serviceAccount: ServiceAccount): Promise<strin
   const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
   const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
   
-  const message = `${encodedHeader}.${encodedPayload}`;
+  const unsignedToken = `${encodedHeader}.${encodedPayload}`;
   
-  // Fix: Properly format the private key (same as working process-email-queue)
-  const privateKeyPem = serviceAccount.private_key
-    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
-    .replace(/-----END PRIVATE KEY-----/g, '')
-    .replace(/\\n/g, '')
-    .replace(/\s/g, '');
-  
-  const binaryKey = Uint8Array.from(atob(privateKeyPem), c => c.charCodeAt(0));
-  
-  const encoder = new TextEncoder();
-  const data = encoder.encode(message);
-  
+  // Fix: Use same approach as process-email-queue
+  const privateKey = serviceAccount.private_key.replace(/\\n/g, "\n");
   const keyData = await crypto.subtle.importKey(
     "pkcs8",
-    binaryKey,
-    {
-      name: "RSASSA-PKCS1-v1_5",
-      hash: "SHA-256",
-    },
+    new TextEncoder().encode(
+      `-----BEGIN PRIVATE KEY-----\n${privateKey.split("\n").filter(line => !line.includes("BEGIN") && !line.includes("END")).join("\n")}\n-----END PRIVATE KEY-----`
+    ),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
     false,
     ["sign"]
   );
@@ -192,13 +181,13 @@ async function createJWTAssertion(serviceAccount: ServiceAccount): Promise<strin
   const signature = await crypto.subtle.sign(
     "RSASSA-PKCS1-v1_5",
     keyData,
-    data
+    new TextEncoder().encode(unsignedToken)
   );
   
   const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
     .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
   
-  return `${message}.${encodedSignature}`;
+  return `${unsignedToken}.${encodedSignature}`;
 }
 
 async function getAccessToken(serviceAccount: ServiceAccount, retries = 3): Promise<string> {
