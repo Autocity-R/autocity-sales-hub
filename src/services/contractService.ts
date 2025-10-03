@@ -1,6 +1,6 @@
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
-
+import { supabase } from "@/integrations/supabase/client";
 export interface GeneratedContract {
   content: string;
   htmlContent: string; // Nieuwe HTML versie voor digitale weergave
@@ -109,8 +109,48 @@ export const generateContract = async (
     website: "www.auto-city.nl"
   };
 
+  // Ensure full customer address (Street + Number, Postcode City)
+  const formatAddressParts = (
+    street?: string,
+    number?: string,
+    zip?: string,
+    city?: string
+  ) => {
+    const line1 = [street, number].filter(Boolean).join(' ').trim();
+    const line2 = [zip, city].filter(Boolean).join(' ').trim();
+    return [line1, line2].filter(Boolean).join(', ');
+  };
+
+  let computedAddress = vehicle.customerContact?.address || '';
+  const hasZip = /\b\d{4}\s?[A-Za-z]{2}\b/.test(computedAddress);
+
+  if (vehicle.customerId && (!computedAddress || !hasZip)) {
+    const { data: contact } = await supabase
+      .from('contacts')
+      .select('address_street, address_number, address_postal_code, address_city')
+      .eq('id', vehicle.customerId)
+      .maybeSingle();
+
+    if (contact) {
+      computedAddress = formatAddressParts(
+        contact.address_street,
+        contact.address_number,
+        contact.address_postal_code,
+        contact.address_city
+      );
+    }
+  }
+
+  const vehicleForContract = {
+    ...vehicle,
+    customerContact: {
+      ...(vehicle.customerContact || {}),
+      address: computedAddress
+    }
+  } as Vehicle;
+
   const htmlContent = generateHtmlContract(
-    vehicle, 
+    vehicleForContract, 
     contractType, 
     options, 
     companyInfo, 
@@ -128,7 +168,7 @@ export const generateContract = async (
   );
 
   const textContent = generateTextContract(
-    vehicle, 
+    vehicleForContract, 
     contractType, 
     options, 
     companyInfo, 
