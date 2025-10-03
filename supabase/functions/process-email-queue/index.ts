@@ -131,7 +131,20 @@ async function sendEmailViaGmail(payload: EmailPayload, accessToken: string): Pr
   message.push(`--${boundary}--`);
 
   const rawMessage = message.join('\r\n');
-  const encodedMessage = btoa(rawMessage).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  
+  // Convert to UTF-8 bytes to handle Dutch characters (é, ë, ï, etc.)
+  const utf8Bytes = new TextEncoder().encode(rawMessage);
+  
+  // Convert bytes to base64 using Uint8Array
+  let binaryString = '';
+  utf8Bytes.forEach(byte => {
+    binaryString += String.fromCharCode(byte);
+  });
+  
+  const encodedMessage = btoa(binaryString)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 
   const response = await fetch(
     `https://gmail.googleapis.com/gmail/v1/users/me/messages/send`,

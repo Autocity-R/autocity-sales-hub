@@ -254,7 +254,7 @@ serve(async (req) => {
   };
 
   try {
-    console.log('🚀 Starting lead email processing...');
+    console.log('🚀 Starting lead email processing... (v2 - JWT fixed)');
     
     // Validate environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
