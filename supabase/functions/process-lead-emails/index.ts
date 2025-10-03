@@ -144,7 +144,7 @@ function parseLeadEmail(sender: string, subject: string, body: string): ParsedLe
   }
 }
 
-// Gmail API authentication
+// Gmail API authentication with proper key handling
 async function createJWTAssertion(serviceAccount: ServiceAccount): Promise<string> {
   const header = {
     alg: "RS256",
@@ -166,14 +166,21 @@ async function createJWTAssertion(serviceAccount: ServiceAccount): Promise<strin
   
   const message = `${encodedHeader}.${encodedPayload}`;
   
-  const privateKey = serviceAccount.private_key.replace(/\\n/g, '\n');
+  // Fix: Properly format the private key (same as working process-email-queue)
+  const privateKeyPem = serviceAccount.private_key
+    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+    .replace(/-----END PRIVATE KEY-----/g, '')
+    .replace(/\\n/g, '')
+    .replace(/\s/g, '');
+  
+  const binaryKey = Uint8Array.from(atob(privateKeyPem), c => c.charCodeAt(0));
   
   const encoder = new TextEncoder();
   const data = encoder.encode(message);
   
   const keyData = await crypto.subtle.importKey(
     "pkcs8",
-    encoder.encode(privateKey),
+    binaryKey,
     {
       name: "RSASSA-PKCS1-v1_5",
       hash: "SHA-256",
@@ -194,22 +201,76 @@ async function createJWTAssertion(serviceAccount: ServiceAccount): Promise<strin
   return `${message}.${encodedSignature}`;
 }
 
-async function getAccessToken(serviceAccount: ServiceAccount): Promise<string> {
-  const assertion = await createJWTAssertion(serviceAccount);
-  
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion: assertion,
-    }),
-  });
+async function getAccessToken(serviceAccount: ServiceAccount, retries = 3): Promise<string> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const assertion = await createJWTAssertion(serviceAccount);
+      
+      const response = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+          assertion: assertion,
+        }),
+      });
 
-  const data = await response.json();
-  return data.access_token;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Token request failed (${response.status}): ${errorText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.access_token) {
+        throw new Error('No access token in response');
+      }
+      
+      return data.access_token;
+    } catch (error) {
+      console.error(`❌ Access token attempt ${attempt}/${retries}:`, error);
+      
+      if (attempt === retries) {
+        throw new Error(`Failed to get access token after ${retries} attempts: ${error.message}`);
+      }
+      
+      // Exponential backoff: 1s, 2s, 4s
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+    }
+  }
+  
+  throw new Error('Failed to get access token');
+}
+
+// Helper function for Gmail API calls with retry logic
+async function fetchWithRetry(url: string, options: RequestInit, retries = 3): Promise<Response> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      
+      // Handle rate limiting
+      if (response.status === 429) {
+        const retryAfter = parseInt(response.headers.get('Retry-After') || '5');
+        console.log(`⏳ Rate limited, waiting ${retryAfter}s...`);
+        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+        continue;
+      }
+      
+      return response;
+    } catch (error) {
+      console.error(`❌ Fetch attempt ${attempt}/${retries}:`, error);
+      
+      if (attempt === retries) {
+        throw error;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+    }
+  }
+  
+  throw new Error('Fetch failed after all retries');
 }
 
 serve(async (req) => {
@@ -217,20 +278,32 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const stats = {
+    processed: 0,
+    created: 0,
+    updated: 0,
+    errors: [] as Array<{ id: string; error: string }>
+  };
+
   try {
     console.log('🚀 Starting lead email processing...');
     
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Get Gmail access token
+    // Validate environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const serviceAccountKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase environment variables');
+    }
+    
     if (!serviceAccountKey) {
       throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY not configured');
     }
 
+    const supabase = createClient(supabaseUrl, supabaseKey);
     const serviceAccount: ServiceAccount = JSON.parse(serviceAccountKey);
+    
     console.log('🔑 Getting Gmail API access token...');
     const accessToken = await getAccessToken(serviceAccount);
 
@@ -238,7 +311,7 @@ serve(async (req) => {
     const query = 'is:unread to:verkoop@auto-city.nl (from:autotrack.nl OR from:marktplaats.nl OR from:autoscout24.nl OR from:autoscout24.com OR from:2dehands.be OR subject:"interesse" OR subject:"vraag" OR subject:"contactverzoek")';
     
     console.log('🔍 Searching for lead emails...');
-    const searchResponse = await fetch(
+    const searchResponse = await fetchWithRetry(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=50`,
       {
         headers: {
@@ -247,19 +320,20 @@ serve(async (req) => {
       }
     );
 
+    if (!searchResponse.ok) {
+      const errorText = await searchResponse.text();
+      throw new Error(`Gmail search failed (${searchResponse.status}): ${errorText}`);
+    }
+
     const searchData = await searchResponse.json();
     const messages = searchData.messages || [];
     
     console.log(`📬 Found ${messages.length} potential lead emails`);
 
-    let processed = 0;
-    let created = 0;
-    let errors = 0;
-
     for (const message of messages) {
       try {
-        // Get full message details
-        const messageResponse = await fetch(
+        // Get full message details with retry
+        const messageResponse = await fetchWithRetry(
           `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}?format=full`,
           {
             headers: {
@@ -267,6 +341,11 @@ serve(async (req) => {
             },
           }
         );
+
+        if (!messageResponse.ok) {
+          const errorText = await messageResponse.text();
+          throw new Error(`Failed to fetch message (${messageResponse.status}): ${errorText}`);
+        }
 
         const messageData = await messageResponse.json();
         const headers = messageData.payload.headers;
@@ -294,19 +373,24 @@ serve(async (req) => {
         const parsedData = parseLeadEmail(from, subject, body);
         
         if (!parsedData) {
-          console.log('⚠️  Could not parse lead data, skipping...');
-          errors++;
+          const errorMsg = `Could not parse lead data from ${from}`;
+          console.log(`⚠️  ${errorMsg}`);
+          stats.errors.push({ id: message.id, error: errorMsg });
           continue;
         }
 
         console.log('✅ Successfully parsed lead data:', parsedData.email);
 
         // Check if thread already exists
-        const { data: existingThread } = await supabase
+        const { data: existingThread, error: threadCheckError } = await supabase
           .from('email_threads')
           .select('id, lead_id')
           .eq('thread_id', threadId)
-          .single();
+          .maybeSingle();
+
+        if (threadCheckError) {
+          throw new Error(`Database error checking thread: ${threadCheckError.message}`);
+        }
 
         let leadId: string;
         let threadDbId: string;
@@ -319,7 +403,7 @@ serve(async (req) => {
           console.log(`📌 Existing thread found, using lead: ${leadId}`);
 
           // Update thread stats
-          await supabase
+          const { error: updateError } = await supabase
             .from('email_threads')
             .update({
               last_message_date: internalDate,
@@ -327,6 +411,12 @@ serve(async (req) => {
               updated_at: new Date().toISOString()
             })
             .eq('id', threadDbId);
+
+          if (updateError) {
+            throw new Error(`Failed to update thread: ${updateError.message}`);
+          }
+          
+          stats.updated++;
         } else {
           // New thread, create lead
           console.log('🆕 Creating new lead...');
@@ -349,9 +439,16 @@ serve(async (req) => {
             .select()
             .single();
 
-          if (leadError) throw leadError;
+          if (leadError) {
+            throw new Error(`Failed to create lead: ${leadError.message}`);
+          }
+          
+          if (!newLead) {
+            throw new Error('Lead creation returned no data');
+          }
+          
           leadId = newLead.id;
-          created++;
+          stats.created++;
 
           console.log(`✅ Lead created: ${leadId}`);
 
@@ -370,12 +467,19 @@ serve(async (req) => {
             .select()
             .single();
 
-          if (threadError) throw threadError;
+          if (threadError) {
+            throw new Error(`Failed to create thread: ${threadError.message}`);
+          }
+          
+          if (!newThread) {
+            throw new Error('Thread creation returned no data');
+          }
+          
           threadDbId = newThread.id;
         }
 
         // Store message
-        await supabase
+        const { error: messageError } = await supabase
           .from('email_messages')
           .insert({
             thread_id: threadDbId,
@@ -391,38 +495,67 @@ serve(async (req) => {
             parsed_data: parsedData
           });
 
-        // Mark as read in Gmail
-        await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}/modify`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              removeLabelIds: ['UNREAD']
-            }),
+        if (messageError) {
+          throw new Error(`Failed to store message: ${messageError.message}`);
+        }
+
+        // Mark as read in Gmail with retry
+        try {
+          const markReadResponse = await fetchWithRetry(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}/modify`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                removeLabelIds: ['UNREAD']
+              }),
+            }
+          );
+
+          if (!markReadResponse.ok) {
+            console.error(`⚠️ Could not mark email ${message.id} as read (${markReadResponse.status})`);
           }
-        );
+        } catch (markError) {
+          console.error(`⚠️ Failed to mark email as read:`, markError);
+          // Don't fail the whole operation if we can't mark as read
+        }
 
-        processed++;
-        console.log(`✅ Email processed and marked as read`);
+        stats.processed++;
+        console.log(`✅ Email processed (${stats.processed}/${messages.length})`);
 
-      } catch (error) {
-        console.error('❌ Error processing message:', error);
-        errors++;
+      } catch (error: any) {
+        console.error(`❌ Error processing message ${message.id}:`, error);
+        stats.errors.push({
+          id: message.id,
+          error: error.message || 'Unknown error'
+        });
       }
     }
 
-    console.log(`\n📊 Summary: ${processed} processed, ${created} new leads, ${errors} errors`);
+    console.log(`\n📊 Processing Summary:`);
+    console.log(`   ✅ Processed: ${stats.processed}`);
+    console.log(`   🆕 Created: ${stats.created}`);
+    console.log(`   🔄 Updated: ${stats.updated}`);
+    console.log(`   ❌ Errors: ${stats.errors.length}`);
+
+    if (stats.errors.length > 0) {
+      console.log('\n❌ Error Details:');
+      stats.errors.forEach((err, i) => {
+        console.log(`   ${i + 1}. Message ${err.id}: ${err.error}`);
+      });
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
-        processed,
-        created,
-        errors
+        processed: stats.processed,
+        created: stats.created,
+        updated: stats.updated,
+        errors: stats.errors.length,
+        errorDetails: stats.errors
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -430,9 +563,15 @@ serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('❌ Function error:', error);
+    console.error('❌ Critical function error:', error);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        success: false,
+        error: error.message,
+        stack: error.stack,
+        stats: stats
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
