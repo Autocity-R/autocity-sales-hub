@@ -40,6 +40,7 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
     maxDamageAmount: 500,
     deliveryPackage: "garantie_wettelijk",
     paymentTerms: "aanbetaling_5",
+    warrantyPackagePrice: 0,
     additionalClauses: "",
     specialAgreements: ""
   });
@@ -471,6 +472,21 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div>
+                <Label>Garantiepakket prijs (€)</Label>
+                <Input
+                  type="number"
+                  value={options.warrantyPackagePrice}
+                  onChange={(e) => 
+                    setOptions(prev => ({ ...prev, warrantyPackagePrice: parseFloat(e.target.value) || 0 }))
+                  }
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Optioneel garantiepakket. Zet op 0 voor korting of laat leeg.
+                </p>
               </div>
 
               {/* Trade-in Vehicle Section */}

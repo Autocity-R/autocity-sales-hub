@@ -45,6 +45,7 @@ export interface ContractOptions {
   // B2C specific options
   deliveryPackage?: string;
   paymentTerms?: string;
+  warrantyPackagePrice?: number;
   tradeInVehicle?: {
     brand: string;
     model: string;
