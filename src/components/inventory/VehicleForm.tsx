@@ -40,6 +40,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
   const [formData, setFormData] = useState<Omit<Vehicle, "id"> & { supplierId?: string }>({
     brand: initialData?.brand || "",
     model: initialData?.model || "",
+    year: initialData?.year || null,
     color: initialData?.color || "",
     licenseNumber: initialData?.licenseNumber || "",
     vin: initialData?.vin || "",
@@ -120,6 +121,17 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
               value={formData.model}
               onChange={(e) => handleChange('model', e.target.value)}
               required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="year">Bouwjaar</Label>
+            <Input
+              id="year"
+              type="number"
+              value={formData.year || ""}
+              onChange={(e) => handleChange('year', e.target.value ? parseInt(e.target.value) : null)}
+              placeholder="Bijv. 2020"
             />
           </div>
 
