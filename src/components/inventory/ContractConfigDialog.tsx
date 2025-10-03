@@ -628,6 +628,27 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <Label>BTW-regeling</Label>
+                  <Select
+                    value={options.vehicleType || "btw"}
+                    onValueChange={(value: "marge" | "btw") => {
+                      setOptions({ 
+                        ...options, 
+                        vehicleType: value
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="btw">BTW-plichtig (inclusief BTW)</SelectItem>
+                      <SelectItem value="marge">Margeregeling (vrijgesteld van BTW)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
                   <Label>Afleverpakket</Label>
                   <Select 
                     value={options.deliveryPackage} 

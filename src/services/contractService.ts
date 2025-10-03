@@ -98,6 +98,11 @@ export const generateContract = async (
     finalPrice = basePrice;
   }
 
+  // Determine VAT text based on vehicle type
+  const vatText = options.vehicleType === "marge" 
+    ? "vrijgesteld van BTW (margeregeling)" 
+    : "inclusief BTW";
+
   // Bedrijfsgegevens
   const companyInfo = {
     name: "HPM Cars VOF",
@@ -181,6 +186,7 @@ export const generateContract = async (
     tradeInPrice,
     downPaymentAmount,
     downPaymentPercentage,
+    vatText,
     signatureUrl
   );
 
@@ -198,7 +204,8 @@ export const generateContract = async (
     warrantyPackagePrice,
     tradeInPrice,
     downPaymentAmount,
-    downPaymentPercentage
+    downPaymentPercentage,
+    vatText
   );
 
   const fileName = `koopcontract_${vehicle.licenseNumber}_${currentDate.replace(/\//g, '-')}.pdf`;
@@ -227,6 +234,7 @@ const generateHtmlContract = (
   tradeInPrice: number,
   downPaymentAmount: number,
   downPaymentPercentage: number,
+  vatText: string,
   signatureUrl?: string
 ): string => {
   const isB2B = contractType === "b2b";
@@ -703,7 +711,7 @@ const generateHtmlContract = (
                     </div>
                 ` : `
                     <div class="price-item">
-                        <span class="price-label">Verkoopprijs voertuig (inclusief BTW)</span>
+                        <span class="price-label">Verkoopprijs voertuig (${vatText})</span>
                         <span class="price-value">€ ${basePrice.toLocaleString('nl-NL')}</span>
                     </div>
                     ${options.deliveryPackage ? `
@@ -799,7 +807,8 @@ const generateTextContract = (
   warrantyPackagePrice: number,
   tradeInPrice: number,
   downPaymentAmount: number,
-  downPaymentPercentage: number
+  downPaymentPercentage: number,
+  vatText: string
 ): string => {
   const isB2B = contractType === "b2b";
   
@@ -846,7 +855,7 @@ Bedrag exclusief BTW: € ${priceExclBtw.toLocaleString('nl-NL')}
 BTW (21%): € ${btwAmount.toLocaleString('nl-NL')}
 Bedrag inclusief BTW: € ${basePrice.toLocaleString('nl-NL')}
 ` : `
-Verkoopprijs voertuig (inclusief BTW): € ${basePrice.toLocaleString('nl-NL')}
+Verkoopprijs voertuig (${vatText}): € ${basePrice.toLocaleString('nl-NL')}
 ${options.deliveryPackage ? `Afleverpakket: € ${deliveryPackagePrice.toLocaleString('nl-NL')}` : ''}
 ${tradeInPrice > 0 ? `Inruilprijs: -€ ${tradeInPrice.toLocaleString('nl-NL')}` : ''}
 Betalingsvoorwaarden: ${options.paymentTerms ? PAYMENT_TERMS_LABELS[options.paymentTerms as keyof typeof PAYMENT_TERMS_LABELS] : ''}
