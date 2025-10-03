@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import * as jose from 'https://deno.land/x/jose@v4.14.4/index.ts';
 
 interface EmailAttachment {
   filename: string;
@@ -23,48 +24,25 @@ interface ServiceAccount {
   private_key_id: string;
 }
 
-// JWT and Access Token functions (from send-gmail)
+// JWT and Access Token functions using jose library
 async function createJWTAssertion(serviceAccount: ServiceAccount): Promise<string> {
-  const header = {
-    alg: "RS256",
-    typ: "JWT",
-    kid: serviceAccount.private_key_id,
-  };
+  const scopes = 'https://www.googleapis.com/auth/gmail.send';
 
-  const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    iss: serviceAccount.client_email,
-    scope: "https://www.googleapis.com/auth/gmail.send",
-    aud: "https://oauth2.googleapis.com/token",
-    exp: now + 3600,
-    iat: now,
-  };
-
-  const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-  const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-  const unsignedToken = `${encodedHeader}.${encodedPayload}`;
-
-  const privateKey = serviceAccount.private_key.replace(/\\n/g, "\n");
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    new TextEncoder().encode(
-      `-----BEGIN PRIVATE KEY-----\n${privateKey.split("\n").filter(line => !line.includes("BEGIN") && !line.includes("END")).join("\n")}\n-----END PRIVATE KEY-----`
-    ),
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"]
+  // jose library handles PEM->DER conversion automatically
+  const privateKey = await jose.importPKCS8(
+    serviceAccount.private_key.replace(/\\n/g, '\n'), 
+    'RS256'
   );
+  
+  const jwt = await new jose.SignJWT({ scope: scopes })
+    .setProtectedHeader({ alg: 'RS256', typ: 'JWT', kid: serviceAccount.private_key_id })
+    .setIssuedAt()
+    .setIssuer(serviceAccount.client_email)
+    .setAudience('https://oauth2.googleapis.com/token')
+    .setExpirationTime('2h')
+    .sign(privateKey);
 
-  const signature = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    key,
-    new TextEncoder().encode(unsignedToken)
-  );
-
-  const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-
-  return `${unsignedToken}.${encodedSignature}`;
+  return jwt;
 }
 
 async function getAccessToken(serviceAccount: ServiceAccount): Promise<string> {
@@ -80,11 +58,12 @@ async function getAccessToken(serviceAccount: ServiceAccount): Promise<string> {
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to get access token: ${error}`);
+    const errorData = await response.json();
+    throw new Error(`Gmail Auth Failed (${response.status}): ${JSON.stringify(errorData)}`);
   }
 
   const data = await response.json();
+  console.log('✅ Gmail authentication successful');
   return data.access_token;
 }
 

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import * as jose from 'https://deno.land/x/jose@v4.14.4/index.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +10,7 @@ const corsHeaders = {
 interface ServiceAccount {
   client_email: string;
   private_key: string;
+  private_key_id: string;
 }
 
 interface ParsedLeadData {
@@ -144,88 +146,65 @@ function parseLeadEmail(sender: string, subject: string, body: string): ParsedLe
   }
 }
 
-// Gmail API authentication with proper key handling
+// Gmail API authentication with jose library
 async function createJWTAssertion(serviceAccount: ServiceAccount): Promise<string> {
-  const header = {
-    alg: "RS256",
-    typ: "JWT"
-  };
+  const userToImpersonate = 'verkoop@auto-city.nl';
+  const scopes = [
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.modify'
+  ].join(' ');
 
-  const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    iss: serviceAccount.client_email,
-    sub: "verkoop@auto-city.nl", // Impersonate this email
-    scope: "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify",
-    aud: "https://oauth2.googleapis.com/token",
-    exp: now + 3600,
-    iat: now
-  };
-
-  const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  
-  const unsignedToken = `${encodedHeader}.${encodedPayload}`;
-  
-  // Fix: Use same approach as process-email-queue
-  const privateKey = serviceAccount.private_key.replace(/\\n/g, "\n");
-  const keyData = await crypto.subtle.importKey(
-    "pkcs8",
-    new TextEncoder().encode(
-      `-----BEGIN PRIVATE KEY-----\n${privateKey.split("\n").filter(line => !line.includes("BEGIN") && !line.includes("END")).join("\n")}\n-----END PRIVATE KEY-----`
-    ),
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"]
+  // jose library handles PEM->DER conversion automatically
+  const privateKey = await jose.importPKCS8(
+    serviceAccount.private_key.replace(/\\n/g, '\n'), 
+    'RS256'
   );
   
-  const signature = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    keyData,
-    new TextEncoder().encode(unsignedToken)
-  );
-  
-  const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  
-  return `${unsignedToken}.${encodedSignature}`;
+  const jwt = await new jose.SignJWT({ scope: scopes })
+    .setProtectedHeader({ alg: 'RS256', typ: 'JWT', kid: serviceAccount.private_key_id })
+    .setIssuedAt()
+    .setIssuer(serviceAccount.client_email)
+    .setSubject(userToImpersonate)
+    .setAudience('https://oauth2.googleapis.com/token')
+    .setExpirationTime('2h')
+    .sign(privateKey);
+
+  return jwt;
 }
 
 async function getAccessToken(serviceAccount: ServiceAccount, retries = 3): Promise<string> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const assertion = await createJWTAssertion(serviceAccount);
+      const jwt = await createJWTAssertion(serviceAccount);
       
       const response = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
           grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-          assertion: assertion,
+          assertion: jwt,
         }),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Token request failed (${response.status}): ${errorText}`);
+        const errorData = await response.json();
+        throw new Error(`Gmail Auth Failed (${response.status}): ${JSON.stringify(errorData)}`);
       }
 
       const data = await response.json();
-      
       if (!data.access_token) {
         throw new Error('No access token in response');
       }
       
+      console.log('✅ Gmail authentication successful');
       return data.access_token;
     } catch (error) {
-      console.error(`❌ Access token attempt ${attempt}/${retries}:`, error);
+      console.error(`❌ Access token attempt ${attempt}/${retries}:`, error.message);
       
       if (attempt === retries) {
         throw new Error(`Failed to get access token after ${retries} attempts: ${error.message}`);
       }
       
-      // Exponential backoff: 1s, 2s, 4s
       await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
     }
   }
