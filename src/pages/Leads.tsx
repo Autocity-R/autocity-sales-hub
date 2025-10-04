@@ -104,22 +104,33 @@ const Leads = () => {
   };
 
   const handleManualEmailSync = async () => {
-    const t = toast({ title: "Email synchronisatie gestart..." });
+    toast({ title: "Email synchronisatie gestart..." });
     try {
       const { data, error } = await supabase.functions.invoke('process-lead-emails');
       if (error) throw error;
       console.log("Sync resultaat:", data);
+      
       const created = data?.created ?? 0;
       const updated = data?.updated ?? 0;
-      const errors = data?.errors ?? 0;
+      const parseErrors = data?.parseErrors ?? 0;
+      const ignoredNonLead = data?.ignoredNonLead ?? 0;
+      
       if (created + updated > 0) {
-        t.update({ ...t, title: `Sync voltooid: ${created} nieuw, ${updated} bijgewerkt`, description: errors ? `${errors} niet geparsed` : undefined });
+        toast({ 
+          title: `✅ ${created} nieuwe leads, ${updated} bijgewerkt`,
+          description: parseErrors > 0 ? `${parseErrors} emails niet herkend, ${ignoredNonLead} niet-lead emails genegeerd` : 
+                      ignoredNonLead > 0 ? `${ignoredNonLead} niet-lead emails genegeerd` : undefined
+        });
       } else {
-        t.update({ ...t, title: "Geen nieuwe leads gevonden", description: errors ? `${errors} emails konden niet geparsed worden` : undefined });
+        toast({ 
+          title: "Geen nieuwe leads gevonden",
+          description: parseErrors > 0 ? `${parseErrors} emails konden niet geparsed worden, ${ignoredNonLead} niet-lead emails genegeerd` :
+                      ignoredNonLead > 0 ? `${ignoredNonLead} niet-lead emails (rapporten/nieuwsbrieven) genegeerd` : undefined
+        });
       }
     } catch (error) {
       console.error("Email sync error:", error);
-      toast({ title: "Fout bij email synchronisatie" });
+      toast({ title: "❌ Fout bij email synchronisatie", variant: "destructive" });
     }
   };
   if (selectedLead) {

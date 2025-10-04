@@ -23,15 +23,44 @@ interface ParsedLeadData {
   notes: string;
 }
 
-// Portal parsers
+// Helper to identify non-lead emails (reports, newsletters)
+function isNonLeadNotice(subject: string, body: string): boolean {
+  const nonLeadKeywords = [
+    'verkoopkansen',
+    'analytics update',
+    'statistics',
+    'statistieken',
+    'oproep',
+    'healthcheckemail',
+    'advertentiekwaliteit',
+    'monthly report',
+    'call tracker',
+    'aangenomen oproep',
+    'gemiste oproep'
+  ];
+  
+  const subjectLower = subject.toLowerCase();
+  const bodyLower = body.toLowerCase();
+  
+  return nonLeadKeywords.some(keyword => 
+    subjectLower.includes(keyword) || bodyLower.includes(keyword)
+  );
+}
+
+// Portal parsers - enhanced with robust regex and HTML stripping
 function parseAutoTrack(body: string, subject: string): ParsedLeadData | null {
   console.log('📧 Parsing AutoTrack email');
   
-  const nameMatch = body.match(/(?:Naam|Name):\s*([^\n]+)/i);
-  const emailMatch = body.match(/(?:E-?mail):\s*([^\s\n]+)/i);
-  const phoneMatch = body.match(/(?:Telefoon|Phone|Tel):\s*([^\n]+)/i);
-  const vehicleMatch = body.match(/(?:Voertuig|Vehicle|Auto):\s*([^\n]+)/i) || 
-                       subject.match(/(?:interesse in|interested in)\s+([^\n]+)/i);
+  // Strip HTML tags and normalize whitespace
+  const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  
+  // More robust regex patterns (case-insensitive, multiple label variants)
+  const nameMatch = cleanBody.match(/(?:Naam|Name|Volledige naam):\s*([^\n;]+)/i);
+  const emailMatch = cleanBody.match(/(?:E[-\s]?mail(?:adres)?|Email|Reply email):\s*([^\s;<>]+)/i);
+  const phoneMatch = cleanBody.match(/(?:Telefoon(?:nummer)?|Tel\.?|Phone):\s*([^\n;]+)/i);
+  const vehicleMatch = cleanBody.match(/(?:Voertuig|Vehicle|Auto):\s*([^\n;]+)/i) || 
+                       subject.match(/(?:voor uw|interesse in)\s+(.+?)(?:\s+-|$)/i);
+  const messageMatch = cleanBody.match(/(?:Bericht|Message|Vraag):\s*([^\n]+)/i);
   
   if (nameMatch && emailMatch) {
     const nameParts = nameMatch[1].trim().split(' ');
@@ -42,7 +71,7 @@ function parseAutoTrack(body: string, subject: string): ParsedLeadData | null {
       phone: phoneMatch?.[1]?.trim(),
       interestedVehicle: vehicleMatch?.[1]?.trim(),
       source: 'autotrack',
-      notes: `Lead van AutoTrack. ${vehicleMatch ? `Interesse in: ${vehicleMatch[1].trim()}` : ''}`
+      notes: `Lead van AutoTrack. ${messageMatch ? messageMatch[1].trim() : cleanBody.substring(0, 300)}`
     };
   }
   return null;
@@ -51,13 +80,14 @@ function parseAutoTrack(body: string, subject: string): ParsedLeadData | null {
 function parseMarktplaats(body: string, subject: string): ParsedLeadData | null {
   console.log('📧 Parsing Marktplaats email');
   
-  const nameMatch = body.match(/(?:Van|From):\s*([^\n]+)/i) || 
-                    body.match(/(?:Naam|Name):\s*([^\n]+)/i);
-  const emailMatch = body.match(/(?:Antwoord-e-mail|Reply email):\s*([^\s\n]+)/i) ||
-                     body.match(/(?:E-?mail):\s*([^\s\n]+)/i);
-  const phoneMatch = body.match(/(?:Telefoon|Phone):\s*([^\n]+)/i);
-  const messageMatch = body.match(/(?:Bericht|Message):\s*([^\n]+(?:\n(?!(?:Van|Advertentie|Bekijk)).*)*)/i);
-  const adMatch = body.match(/(?:Advertentie|Ad):\s*([^\n]+)/i);
+  const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  
+  const nameMatch = cleanBody.match(/(?:Van|From|Naam|Name):\s*([^\n]+)/i);
+  const emailMatch = cleanBody.match(/(?:Antwoord-e-mail|Reply email|E[-\s]?mail(?:adres)?):\s*([^\s\n<>]+)/i);
+  const phoneMatch = cleanBody.match(/(?:Telefoon(?:nummer)?|Phone|Tel\.?):\s*([^\n]+)/i);
+  const messageMatch = cleanBody.match(/(?:Bericht|Message):\s*([^\n]+(?:\n(?!(?:Van|Advertentie|Bekijk)).*)*)/i);
+  const adMatch = cleanBody.match(/(?:Advertentie|Ad):\s*([^\n]+)/i) || 
+                  subject.match(/vraag over\s+(.+?)(?:\s+-|$)/i);
   
   if (nameMatch && emailMatch) {
     const nameParts = nameMatch[1].trim().split(' ');
@@ -77,12 +107,16 @@ function parseMarktplaats(body: string, subject: string): ParsedLeadData | null 
 function parseAutoScout24(body: string, subject: string): ParsedLeadData | null {
   console.log('📧 Parsing AutoScout24 email');
   
-  const nameMatch = body.match(/(?:Name|Naam):\s*([^\n]+)/i);
-  const emailMatch = body.match(/(?:E-?mail):\s*([^\s\n]+)/i);
-  const phoneMatch = body.match(/(?:Telefoon|Phone|Tel\.?):\s*([^\n]+)/i);
-  const vehicleMatch = body.match(/(?:Fahrzeug|Vehicle|Auto):\s*([^\n]+)/i) ||
-                       subject.match(/(?:Interesse|Anfrage).*?:\s*(.+?)(?:\s*\||\s*-|$)/i);
-  const messageMatch = body.match(/(?:Nachricht|Bericht|Message):\s*([^\n]+(?:\n(?!(?:Name|E-mail)).*)*)/i);
+  // Strip HTML and semicolons
+  const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/;/g, ' ').replace(/\s+/g, ' ').trim();
+  
+  const nameMatch = cleanBody.match(/(?:Name|Naam|Van|From):\s*([^\n]+)/i);
+  const emailMatch = cleanBody.match(/(?:E[-\s]?mail(?:adres)?|Email|Reply email|Antwoord-e-mail):\s*([^\s<>]+)/i);
+  const phoneMatch = cleanBody.match(/(?:Telefoon(?:nummer)?|Tel\.?|Phone):\s*([^\n]+)/i);
+  const vehicleMatch = cleanBody.match(/voor uw\s+([^\n;]+?)(?:\s+met|;|$)/i) || 
+                       cleanBody.match(/(?:Fahrzeug|Vehicle|Auto):\s*([^\n]+)/i) ||
+                       subject.match(/(?:Interesse|Anfrage|interesse in).*?:\s*(.+?)(?:\s*\||\s*-|$)/i);
+  const messageMatch = cleanBody.match(/(?:Bericht van de koper|Nachricht|Bericht|Message):\s*([^\n]+)/i);
   
   if (nameMatch && emailMatch) {
     const nameParts = nameMatch[1].trim().split(' ');
@@ -102,16 +136,38 @@ function parseAutoScout24(body: string, subject: string): ParsedLeadData | null 
 function parseTweedehands(body: string, subject: string): ParsedLeadData | null {
   console.log('📧 Parsing 2dehands email');
   
-  // 2dehands uses similar format to Marktplaats
-  return parseMarktplaats(body, subject);
+  const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  
+  const nameMatch = cleanBody.match(/(?:Naam|Name):\s*([^\n]+)/i);
+  const emailMatch = cleanBody.match(/(?:E[-\s]?mail(?:adres)?|Email):\s*([^\s<>]+)/i);
+  const phoneMatch = cleanBody.match(/(?:Telefoon(?:nummer)?|Tel\.?):\s*([^\n]+)/i);
+  const vehicleMatch = subject.match(/interesse in\s+(.+?)(?:\s+-|$)/i);
+  
+  if (nameMatch && emailMatch) {
+    const nameParts = nameMatch[1].trim().split(' ');
+    return {
+      firstName: nameParts[0],
+      lastName: nameParts.slice(1).join(' ') || nameParts[0],
+      email: emailMatch[1].trim(),
+      phone: phoneMatch?.[1]?.trim(),
+      interestedVehicle: vehicleMatch?.[1]?.trim(),
+      source: 'tweedehands',
+      notes: `Lead van 2dehands. ${cleanBody.substring(0, 300)}`
+    };
+  }
+  return null;
 }
 
 function parseGenericLead(body: string, subject: string): ParsedLeadData | null {
   console.log('📧 Parsing generic lead email');
   
-  const emailMatch = body.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
-  const phoneMatch = body.match(/(?:\+31|0)[1-9](?:[0-9]\s?){8}/);
-  const nameMatch = body.match(/(?:Naam|Name|Van|From):\s*([^\n]+)/i);
+  const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  
+  // Try to find email and phone anywhere in the body
+  const emailMatch = cleanBody.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+  const phoneMatch = cleanBody.match(/(\+?\d[\d\s-]{8,})/);
+  const nameMatch = cleanBody.match(/(?:Naam|Name|Van|From):\s*([^\n]+)/i);
+  const vehicleMatch = subject.match(/(?:interesse in|vraag over|voor uw)\s+(.+?)(?:\s+-|$)/i);
   
   if (emailMatch) {
     const nameParts = nameMatch?.[1]?.trim().split(' ') || ['Onbekend'];
@@ -120,9 +176,9 @@ function parseGenericLead(body: string, subject: string): ParsedLeadData | null 
       lastName: nameParts.slice(1).join(' ') || '',
       email: emailMatch[1],
       phone: phoneMatch?.[0],
+      interestedVehicle: vehicleMatch?.[1]?.trim(),
       source: 'website',
-      notes: `Generieke lead. Onderwerp: ${subject}. ${body.substring(0, 200)}...`,
-      interestedVehicle: undefined
+      notes: `Generieke lead. Onderwerp: ${subject}. ${cleanBody.substring(0, 300)}...`
     };
   }
   return null;
@@ -131,9 +187,6 @@ function parseGenericLead(body: string, subject: string): ParsedLeadData | null 
 function parseLeadEmail(sender: string, subject: string, body: string): ParsedLeadData | null {
   // Determine portal based on sender
   const senderLower = sender.toLowerCase();
-  
-  // Debug: Log first 500 chars of body
-  console.log(`📄 Email body preview (${sender}):`, body.substring(0, 500));
   
   if (senderLower.includes('autotrack')) {
     return parseAutoTrack(body, subject);
@@ -253,11 +306,13 @@ serve(async (req) => {
     processed: 0,
     created: 0,
     updated: 0,
-    errors: [] as Array<{ id: string; error: string }>
+    parseErrors: 0,
+    ignoredNonLead: 0,
+    errorDetails: [] as string[]
   };
 
   try {
-    console.log('🚀 Starting lead email processing... (v2 - JWT fixed)');
+    console.log('🚀 Starting lead email processing... (v3 - Enhanced parsing + triage)');
     
     // Validate environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -278,8 +333,8 @@ serve(async (req) => {
     console.log('🔑 Getting Gmail API access token...');
     const accessToken = await getAccessToken(serviceAccount);
 
-    // Search for unread lead emails
-    const query = 'is:unread to:verkoop@auto-city.nl (from:autotrack.nl OR from:marktplaats.nl OR from:autoscout24.nl OR from:autoscout24.com OR from:2dehands.be OR subject:"interesse" OR subject:"vraag" OR subject:"contactverzoek")';
+    // Search for unread emails - specific lead subjects only, exclude non-lead emails
+    const query = 'is:unread to:verkoop@auto-city.nl (subject:("nieuwe aanvraag" OR "contactaanvraag" OR "bericht van koper" OR "vraag over" OR "interesse in" OR "aanvraag voor" OR "vraag naar")) -subject:("uw verkoopkansen" OR "advertentiekwaliteit" OR "analytics update" OR "statistieken" OR "monthly statistics" OR "healthcheckemail" OR "aangenomen oproep" OR "call tracker")';
     
     console.log('🔍 Searching for lead emails...');
     const searchResponse = await fetchWithRetry(
@@ -362,13 +417,36 @@ serve(async (req) => {
 
         console.log(`\n📧 Processing: ${subject} from ${from}`);
 
+        // TRIAGE: Check if this is a non-lead email (report, newsletter, etc.)
+        if (isNonLeadNotice(subject, body)) {
+          console.log("📋 Non-lead email detected (report/newsletter), marking as read and ignoring");
+          stats.ignoredNonLead++;
+          
+          // Mark as read to clean up inbox
+          await fetchWithRetry(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/modify`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ removeLabelIds: ['UNREAD'] })
+            }
+          );
+          stats.processed++;
+          continue;
+        }
+
         // Parse the email
         const parsedData = parseLeadEmail(from, subject, body);
         
         if (!parsedData) {
-          const errorMsg = `Could not parse lead data from ${from}`;
-          console.log(`⚠️  ${errorMsg}`);
-          stats.errors.push({ id: message.id, error: errorMsg });
+          console.warn(`⚠️ Could not parse potential lead email ID: ${messageId}`);
+          console.log(`Subject: ${subject}`);
+          console.log(`Body preview: ${body.substring(0, 300)}`);
+          stats.parseErrors++;
+          stats.errorDetails.push(`Failed to parse: ${subject}`);
           continue;
         }
 
@@ -414,6 +492,9 @@ serve(async (req) => {
           // New thread, create lead
           console.log('🆕 Creating new lead...');
           
+          // Build notes with vehicle info and source
+          const vehicleText = parsedData.interestedVehicle || 'Geen specifiek voertuig vermeld';
+          
           const { data: newLead, error: leadError } = await supabase
             .from('leads')
             .insert({
@@ -427,7 +508,7 @@ serve(async (req) => {
               urgency_level: 'medium',
               status: 'new',
               priority: 'medium',
-              interested_vehicle: parsedData.interestedVehicle,
+              interested_vehicle: null, // UUID kolom - blijft null tenzij we een match vinden
             })
             .select()
             .single();
@@ -485,61 +566,50 @@ serve(async (req) => {
             received_at: internalDate,
             is_from_customer: true,
             portal_source: parsedData.source,
-            parsed_data: parsedData
+            parsed_data: {
+              name: `${parsedData.firstName} ${parsedData.lastName}`,
+              email: parsedData.email,
+              phone: parsedData.phone,
+              vehicle: parsedData.interestedVehicle,
+              notes: parsedData.notes
+            }
           });
 
         if (messageError) {
           throw new Error(`Failed to store message: ${messageError.message}`);
         }
 
-        // Mark as read in Gmail with retry
-        try {
-          const markReadResponse = await fetchWithRetry(
-            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}/modify`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                removeLabelIds: ['UNREAD']
-              }),
-            }
-          );
-
-          if (!markReadResponse.ok) {
-            console.error(`⚠️ Could not mark email ${message.id} as read (${markReadResponse.status})`);
+        // Mark email as read
+        await fetchWithRetry(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/modify`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              removeLabelIds: ['UNREAD']
+            })
           }
-        } catch (markError) {
-          console.error(`⚠️ Failed to mark email as read:`, markError);
-          // Don't fail the whole operation if we can't mark as read
-        }
+        );
 
         stats.processed++;
-        console.log(`✅ Email processed (${stats.processed}/${messages.length})`);
+        console.log(`✅ Processed and marked as read`);
 
-      } catch (error: any) {
+      } catch (error) {
         console.error(`❌ Error processing message ${message.id}:`, error);
-        stats.errors.push({
-          id: message.id,
-          error: error.message || 'Unknown error'
-        });
+        stats.errorDetails.push(`${message.id}: ${error.message}`);
       }
     }
 
-    console.log(`\n📊 Processing Summary:`);
-    console.log(`   ✅ Processed: ${stats.processed}`);
-    console.log(`   🆕 Created: ${stats.created}`);
-    console.log(`   🔄 Updated: ${stats.updated}`);
-    console.log(`   ❌ Errors: ${stats.errors.length}`);
-
-    if (stats.errors.length > 0) {
-      console.log('\n❌ Error Details:');
-      stats.errors.forEach((err, i) => {
-        console.log(`   ${i + 1}. Message ${err.id}: ${err.error}`);
-      });
-    }
+    console.log('\n📊 Processing complete:', {
+      processed: stats.processed,
+      created: stats.created,
+      updated: stats.updated,
+      parseErrors: stats.parseErrors,
+      ignoredNonLead: stats.ignoredNonLead
+    });
 
     return new Response(
       JSON.stringify({
@@ -547,27 +617,27 @@ serve(async (req) => {
         processed: stats.processed,
         created: stats.created,
         updated: stats.updated,
-        errors: stats.errors.length,
-        errorDetails: stats.errors
+        parseErrors: stats.parseErrors,
+        ignoredNonLead: stats.ignoredNonLead,
+        errorDetails: stats.errorDetails.slice(0, 10)
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
       }
     );
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ Critical function error:', error);
-    
     return new Response(
       JSON.stringify({ 
-        success: false,
+        success: false, 
         error: error.message,
-        stack: error.stack,
-        stats: stats
+        ...stats
       }),
       {
-        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500
       }
     );
   }
