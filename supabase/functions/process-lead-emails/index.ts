@@ -327,15 +327,37 @@ serve(async (req) => {
         const messageId = messageData.id;
         const internalDate = new Date(parseInt(messageData.internalDate));
 
-        // Get email body
+        // Get email body (prefer text/plain, fallback to text/html stripped)
         let body = '';
-        if (messageData.payload.body.data) {
-          body = atob(messageData.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-        } else if (messageData.payload.parts) {
-          const textPart = messageData.payload.parts.find((p: any) => p.mimeType === 'text/plain');
-          if (textPart?.body?.data) {
-            body = atob(textPart.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+        function decodeB64Url(data: string) {
+          return atob(data.replace(/-/g, '+').replace(/_/g, '/'));
+        }
+        function extractText(payload: any): string {
+          if (!payload) return '';
+          if (payload.mimeType === 'text/plain' && payload.body?.data) {
+            return decodeB64Url(payload.body.data);
           }
+          if (payload.mimeType === 'text/html' && payload.body?.data) {
+            const html = decodeB64Url(payload.body.data);
+            // Strip HTML tags to plain text
+            return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+          }
+          if (Array.isArray(payload.parts)) {
+            // Try to find text/plain first
+            const plain = payload.parts.find((p: any) => p.mimeType === 'text/plain');
+            if (plain?.body?.data) return decodeB64Url(plain.body.data);
+            // Then any nested parts
+            for (const part of payload.parts) {
+              const txt = extractText(part);
+              if (txt) return txt;
+            }
+          }
+          return '';
+        }
+        if (messageData.payload.body?.data) {
+          body = decodeB64Url(messageData.payload.body.data);
+        } else {
+          body = extractText(messageData.payload);
         }
 
         console.log(`\n📧 Processing: ${subject} from ${from}`);

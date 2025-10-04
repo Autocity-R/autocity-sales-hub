@@ -104,12 +104,19 @@ const Leads = () => {
   };
 
   const handleManualEmailSync = async () => {
-    toast({ title: "Email synchronisatie gestart..." });
+    const t = toast({ title: "Email synchronisatie gestart..." });
     try {
       const { data, error } = await supabase.functions.invoke('process-lead-emails');
       if (error) throw error;
-      toast({ title: "Email synchronisatie succesvol afgerond!" });
       console.log("Sync resultaat:", data);
+      const created = data?.created ?? 0;
+      const updated = data?.updated ?? 0;
+      const errors = data?.errors ?? 0;
+      if (created + updated > 0) {
+        t.update({ ...t, title: `Sync voltooid: ${created} nieuw, ${updated} bijgewerkt`, description: errors ? `${errors} niet geparsed` : undefined });
+      } else {
+        t.update({ ...t, title: "Geen nieuwe leads gevonden", description: errors ? `${errors} emails konden niet geparsed worden` : undefined });
+      }
     } catch (error) {
       console.error("Email sync error:", error);
       toast({ title: "Fout bij email synchronisatie" });
