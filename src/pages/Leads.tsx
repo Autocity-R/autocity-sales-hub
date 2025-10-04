@@ -28,7 +28,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { LeadSearchRequests } from "@/components/leads/LeadSearchRequests";
 
@@ -104,18 +104,17 @@ const Leads = () => {
   };
 
   const handleManualEmailSync = async () => {
-    toast.info("Email synchronisatie gestart...");
+    toast({ title: "Email synchronisatie gestart..." });
     try {
       const { data, error } = await supabase.functions.invoke('process-lead-emails');
       if (error) throw error;
-      toast.success("Email synchronisatie succesvol afgerond!");
+      toast({ title: "Email synchronisatie succesvol afgerond!" });
       console.log("Sync resultaat:", data);
     } catch (error) {
       console.error("Email sync error:", error);
-      toast.error("Fout bij email synchronisatie");
+      toast({ title: "Fout bij email synchronisatie" });
     }
   };
-
   if (selectedLead) {
     return (
       <DashboardLayout>
