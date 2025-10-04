@@ -255,7 +255,7 @@ export const LeadForm: React.FC<LeadFormProps> = ({ onSave, onCancel }) => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Niet toegewezen</SelectItem>
+                          <SelectItem value="unassigned">Niet toegewezen</SelectItem>
                           {salespeople.map((person) => (
                             <SelectItem key={person.id} value={person.id}>
                               {person.name}
