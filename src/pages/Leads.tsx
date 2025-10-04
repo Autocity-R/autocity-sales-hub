@@ -24,8 +24,11 @@ import {
   Clock,
   Target,
   Mail,
-  Bot
+  Bot,
+  RefreshCw
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { LeadSearchRequests } from "@/components/leads/LeadSearchRequests";
 
@@ -100,6 +103,19 @@ const Leads = () => {
     console.log(`Assigning lead ${leadId} to ${assignee}`);
   };
 
+  const handleManualEmailSync = async () => {
+    toast.info("Email synchronisatie gestart...");
+    try {
+      const { data, error } = await supabase.functions.invoke('process-lead-emails');
+      if (error) throw error;
+      toast.success("Email synchronisatie succesvol afgerond!");
+      console.log("Sync resultaat:", data);
+    } catch (error) {
+      console.error("Email sync error:", error);
+      toast.error("Fout bij email synchronisatie");
+    }
+  };
+
   if (selectedLead) {
     return (
       <DashboardLayout>
@@ -152,6 +168,10 @@ const Leads = () => {
           description="Beheer alle prospects en leads in één overzicht"
         >
           <div className="flex gap-2">
+            <Button onClick={handleManualEmailSync} variant="outline" className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Gmail Sync (Test)
+            </Button>
             <Button onClick={() => setShowAIAssistant(true)} variant="outline" className="gap-2">
               <Bot className="h-4 w-4" />
               AI Assistant
