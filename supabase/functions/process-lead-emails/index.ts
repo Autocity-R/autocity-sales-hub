@@ -132,6 +132,9 @@ function parseLeadEmail(sender: string, subject: string, body: string): ParsedLe
   // Determine portal based on sender
   const senderLower = sender.toLowerCase();
   
+  // Debug: Log first 500 chars of body
+  console.log(`📄 Email body preview (${sender}):`, body.substring(0, 500));
+  
   if (senderLower.includes('autotrack')) {
     return parseAutoTrack(body, subject);
   } else if (senderLower.includes('marktplaats')) {
