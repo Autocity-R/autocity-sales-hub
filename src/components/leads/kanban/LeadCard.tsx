@@ -90,57 +90,47 @@ export function LeadCard({ lead, onClick, onDragStart, onDragEnd }: LeadCardProp
       onDragEnd={onDragEnd}
       onClick={onClick}
       className={cn(
-        "p-3 cursor-grab active:cursor-grabbing hover:shadow-lg transition-all",
+        "p-3 cursor-pointer hover:shadow-md transition-all",
         "bg-card border border-border hover:border-primary/50",
         isUrgent() && "border-l-4 border-l-destructive"
       )}
     >
       <div className="space-y-2">
-        {/* Header: Name + Urgency */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1">
-              {isUrgent() && <AlertCircle className="h-3 w-3 text-destructive flex-shrink-0" />}
-              <h4 className="font-semibold text-sm text-foreground truncate">
-                {lead.firstName} {lead.lastName}
-              </h4>
-            </div>
-            {lead.company && (
-              <p className="text-xs text-muted-foreground truncate">{lead.company}</p>
-            )}
+        {/* Header: Name + Source */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            {isUrgent() && <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />}
+            <h4 className="font-semibold text-sm text-foreground truncate">
+              {lead.firstName} {lead.lastName}
+            </h4>
           </div>
-          
-          {/* Source Badge */}
-          <div className={cn("flex-shrink-0 w-6 h-6 rounded flex items-center justify-center", sourceInfo.color)}>
+          <div className={cn("flex-shrink-0 w-5 h-5 rounded flex items-center justify-center", sourceInfo.color)}>
             <span className="text-xs">{sourceInfo.icon}</span>
           </div>
         </div>
 
-        {/* Vehicle Interest with Price */}
+        {/* Vehicle Interest */}
         {lead.interestedVehicle && (
-          <div className="flex items-start gap-1.5 text-xs">
-            <Car className="h-3 w-3 text-muted-foreground flex-shrink-0 mt-0.5" />
-            <span className="text-foreground line-clamp-2 flex-1 leading-tight">
-              {lead.interestedVehicle}
-              {lead.budget && (
-                <span className="text-primary font-semibold ml-1">
-                  - €{lead.budget.toLocaleString()}
-                </span>
-              )}
-            </span>
-          </div>
+          <p className="text-xs text-foreground line-clamp-1">
+            {lead.interestedVehicle}
+            {lead.budget && (
+              <span className="text-primary font-semibold ml-1">
+                €{lead.budget.toLocaleString()}
+              </span>
+            )}
+          </p>
         )}
 
         {/* Request Type Badge */}
         {requestType && (
-          <Badge variant="outline" className={cn("text-xs gap-1 h-5", requestType.color)}>
+          <Badge variant="outline" className={cn("text-xs gap-1 h-5 w-fit", requestType.color)}>
             {requestType.icon}
             <span>{requestType.label}</span>
           </Badge>
         )}
 
-        {/* Footer: Owner + Time */}
-        <div className="flex items-center justify-between pt-1 border-t border-border/50">
+        {/* Footer: Time + Owner */}
+        <div className="flex items-center justify-between pt-1.5 border-t border-border/50">
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="h-3 w-3" />
             <span>{getTimeSinceLastActivity()}</span>
