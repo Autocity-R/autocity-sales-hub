@@ -491,20 +491,33 @@ async function getAccessToken(serviceAccount: ServiceAccount, retries = 3): Prom
 
 // Helper function for Gmail API calls with retry logic
 async function fetchWithRetry(url: string, options: RequestInit, retries = 3): Promise<Response> {
+  let rateLimitCount = 0;
+  
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const response = await fetch(url, options);
       
-      // Handle rate limiting
+      // Handle rate limiting - early exit na 2 keer om timeout te voorkomen
       if (response.status === 429) {
-        const retryAfter = parseInt(response.headers.get('Retry-After') || '60');
-        console.log(`⏳ Rate limited, waiting ${retryAfter}s...`);
+        rateLimitCount++;
+        if (rateLimitCount >= 2) {
+          console.warn(`⚠️ Rate limited ${rateLimitCount} keer - gestopt om timeout te voorkomen`);
+          throw new Error('RATE_LIMIT_EXCEEDED');
+        }
+        
+        const retryAfter = Math.min(parseInt(response.headers.get('Retry-After') || '5'), 5);
+        console.log(`⏳ Rate limited (${rateLimitCount}/${retries}), waiting ${retryAfter}s...`);
         await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
         continue;
       }
       
       return response;
     } catch (error) {
+      // Re-throw RATE_LIMIT_EXCEEDED errors
+      if (error.message === 'RATE_LIMIT_EXCEEDED') {
+        throw error;
+      }
+      
       console.error(`❌ Fetch attempt ${attempt}/${retries}:`, error);
       
       if (attempt === retries) {
@@ -880,8 +893,13 @@ serve(async (req) => {
         console.log(`✅ Processed and marked as read`);
 
       } catch (error) {
-        console.error(`❌ Error processing message ${message.id}:`, error);
-        stats.errorDetails.push(`${message.id}: ${error.message}`);
+        if (error.message === 'RATE_LIMIT_EXCEEDED') {
+          console.warn(`⏭️ Skipping message ${message.id} door rate limiting - probeer later opnieuw`);
+          stats.rateLimitSkipped = (stats.rateLimitSkipped || 0) + 1;
+        } else {
+          console.error(`❌ Error processing message ${message.id}:`, error);
+          stats.errorDetails.push(`${message.id}: ${error.message}`);
+        }
       }
     }
 
@@ -908,6 +926,7 @@ serve(async (req) => {
         missedCalls: stats.missedCalls,
         tradeIns: stats.tradeIns,
         financialLeads: stats.financialLeads,
+        rateLimitSkipped: stats.rateLimitSkipped || 0,
         sourceBreakdown: stats.sourceBreakdown,
         errorDetails: stats.errorDetails.slice(0, 10)
       }),
