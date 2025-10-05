@@ -11,7 +11,7 @@ interface LeadKanbanBoardProps {
 const LEAD_STATUSES = [
   { value: 'new', label: 'Nieuw', color: 'bg-blue-500' },
   { value: 'contacted', label: 'Gecontacteerd', color: 'bg-yellow-500' },
-  { value: 'appointment_planned', label: 'Afspraak Gepland', color: 'bg-purple-500' },
+  { value: 'appointment_planned', label: 'Afspraak', color: 'bg-purple-500' },
   { value: 'negotiation', label: 'Onderhandeling', color: 'bg-orange-500' },
   { value: 'won', label: 'Gewonnen', color: 'bg-green-500' },
   { value: 'lost', label: 'Verloren', color: 'bg-red-500' },
@@ -40,7 +40,7 @@ export function LeadKanbanBoard({ leads, onLeadClick, onStatusChange }: LeadKanb
   };
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 h-full">
+    <div className="flex gap-3 overflow-x-auto pb-4 h-full px-1">
       {LEAD_STATUSES.map((status) => (
         <LeadKanbanColumn
           key={status.value}

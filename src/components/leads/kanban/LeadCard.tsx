@@ -2,8 +2,10 @@ import { Lead } from "@/types/leads";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Car, Mail, Phone, AlertCircle } from "lucide-react";
+import { Car, Phone, PhoneCall, PhoneMissed, RefreshCw, AlertCircle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatDistanceToNow } from "date-fns";
+import { nl } from "date-fns/locale";
 
 interface LeadCardProps {
   lead: Lead;
@@ -15,26 +17,71 @@ interface LeadCardProps {
 export function LeadCard({ lead, onClick, onDragStart, onDragEnd }: LeadCardProps) {
   const isUrgent = () => {
     if (lead.status !== 'new') return false;
-    const createdAt = new Date(lead.created_at);
+    const createdAt = new Date(lead.created_at || lead.createdAt);
     const now = new Date();
     const hoursDiff = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
     return hoursDiff > 24;
   };
 
-  const getSourceIcon = () => {
+  const getSourceInfo = () => {
     const source = lead.source?.toLowerCase() || '';
-    if (source.includes('autoscout')) return '🚗';
-    if (source.includes('marktplaats')) return '🏪';
-    if (source.includes('autotrack')) return '📊';
-    if (source.includes('website')) return '🌐';
-    return '📧';
+    const email = (lead as any).source_email?.toLowerCase() || '';
+    
+    if (source.includes('autoscout') || email.includes('autoscout')) {
+      return { icon: '🚗', color: 'bg-orange-500', label: 'AutoScout24' };
+    }
+    if (source.includes('marktplaats') || email.includes('marktplaats')) {
+      return { icon: '🏪', color: 'bg-blue-500', label: 'Marktplaats' };
+    }
+    if (source.includes('autotrack') || email.includes('autotrack')) {
+      return { icon: '📊', color: 'bg-purple-500', label: 'AutoTrack' };
+    }
+    if (source.includes('website')) {
+      return { icon: '🌐', color: 'bg-green-500', label: 'Website' };
+    }
+    return { icon: '📧', color: 'bg-gray-500', label: 'Email' };
+  };
+
+  const getRequestType = () => {
+    const notes = lead.notes?.toLowerCase() || '';
+    const vehicle = lead.interestedVehicle?.toLowerCase() || '';
+    const email = (lead as any).source_email?.toLowerCase() || '';
+    
+    if (notes.includes('inruil') || vehicle.includes('inruil') || email.includes('inruil')) {
+      return { icon: <RefreshCw className="h-3 w-3" />, color: 'bg-blue-100 text-blue-700', label: 'Inruil' };
+    }
+    if (notes.includes('proefrit') || notes.includes('testrit') || email.includes('proefrit')) {
+      return { icon: <Car className="h-3 w-3" />, color: 'bg-green-100 text-green-700', label: 'Proefrit' };
+    }
+    if (notes.includes('gemiste') || notes.includes('missed') || email.includes('call')) {
+      return { icon: <PhoneMissed className="h-3 w-3" />, color: 'bg-red-100 text-red-700', label: 'Gemiste oproep' };
+    }
+    if (lead.phone) {
+      return { icon: <Phone className="h-3 w-3" />, color: 'bg-yellow-100 text-yellow-700', label: 'Telefonisch' };
+    }
+    return null;
   };
 
   const getOwnerInitials = () => {
-    if (!lead.owner_id) return '?';
+    if (!lead.owner_id) return null;
     // This would be replaced with actual owner name from profiles
+    // For now, generate from owner_id
     return 'VK';
   };
+
+  const getTimeSinceLastActivity = () => {
+    const lastActivity = lead.lastContactDate || lead.created_at || lead.createdAt;
+    if (!lastActivity) return 'Nieuw';
+    
+    return formatDistanceToNow(new Date(lastActivity), { 
+      addSuffix: true, 
+      locale: nl 
+    });
+  };
+
+  const sourceInfo = getSourceInfo();
+  const requestType = getRequestType();
+  const ownerInitials = getOwnerInitials();
 
   return (
     <Card
@@ -43,72 +90,76 @@ export function LeadCard({ lead, onClick, onDragStart, onDragEnd }: LeadCardProp
       onDragEnd={onDragEnd}
       onClick={onClick}
       className={cn(
-        "p-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow",
-        "bg-card border border-border"
+        "p-3 cursor-grab active:cursor-grabbing hover:shadow-lg transition-all",
+        "bg-card border border-border hover:border-primary/50",
+        isUrgent() && "border-l-4 border-l-destructive"
       )}
     >
-      <div className="space-y-3">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              {isUrgent() && (
-                <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
-              )}
-              <h4 className="font-semibold text-sm text-foreground line-clamp-1">
+      <div className="space-y-2">
+        {/* Header: Name + Urgency */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1">
+              {isUrgent() && <AlertCircle className="h-3 w-3 text-destructive flex-shrink-0" />}
+              <h4 className="font-semibold text-sm text-foreground truncate">
                 {lead.firstName} {lead.lastName}
               </h4>
             </div>
             {lead.company && (
-              <p className="text-xs text-muted-foreground mt-1">{lead.company}</p>
+              <p className="text-xs text-muted-foreground truncate">{lead.company}</p>
             )}
           </div>
-          <div className="flex items-center gap-1">
-            <span className="text-lg">{getSourceIcon()}</span>
-            {lead.owner_id && (
-              <Avatar className="h-6 w-6">
-                <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                  {getOwnerInitials()}
-                </AvatarFallback>
-              </Avatar>
-            )}
+          
+          {/* Source Badge */}
+          <div className={cn("flex-shrink-0 w-6 h-6 rounded flex items-center justify-center", sourceInfo.color)}>
+            <span className="text-xs">{sourceInfo.icon}</span>
           </div>
         </div>
 
-        {/* Vehicle Interest */}
+        {/* Vehicle Interest with Price */}
         {lead.interestedVehicle && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Car className="h-3 w-3" />
-            <span className="line-clamp-1">{lead.interestedVehicle}</span>
+          <div className="flex items-start gap-1.5 text-xs">
+            <Car className="h-3 w-3 text-muted-foreground flex-shrink-0 mt-0.5" />
+            <span className="text-foreground line-clamp-2 flex-1 leading-tight">
+              {lead.interestedVehicle}
+              {lead.budget && (
+                <span className="text-primary font-semibold ml-1">
+                  - €{lead.budget.toLocaleString()}
+                </span>
+              )}
+            </span>
           </div>
         )}
 
-        {/* Contact Info */}
-        <div className="flex flex-wrap gap-2">
-          {lead.email && (
-            <Badge variant="outline" className="text-xs gap-1">
-              <Mail className="h-3 w-3" />
-              <span className="max-w-[120px] truncate">{lead.email}</span>
-            </Badge>
-          )}
-          {lead.phone && (
-            <Badge variant="outline" className="text-xs gap-1">
-              <Phone className="h-3 w-3" />
-              {lead.phone}
-            </Badge>
-          )}
-        </div>
-
-        {/* Priority */}
-        {lead.priority && (
-          <Badge
-            variant={lead.priority === 'high' ? 'destructive' : 'secondary'}
-            className="text-xs w-fit"
-          >
-            {lead.priority === 'high' ? 'Hoog' : lead.priority === 'medium' ? 'Gemiddeld' : 'Laag'}
+        {/* Request Type Badge */}
+        {requestType && (
+          <Badge variant="outline" className={cn("text-xs gap-1 h-5", requestType.color)}>
+            {requestType.icon}
+            <span>{requestType.label}</span>
           </Badge>
         )}
+
+        {/* Footer: Owner + Time */}
+        <div className="flex items-center justify-between pt-1 border-t border-border/50">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            <span>{getTimeSinceLastActivity()}</span>
+          </div>
+          
+          {ownerInitials ? (
+            <Avatar className="h-5 w-5">
+              <AvatarFallback className="text-[10px] bg-primary text-primary-foreground">
+                {ownerInitials}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
+              <span className="text-[10px] text-muted-foreground">?</span>
+            </div>
+          )}
+        </div>
       </div>
     </Card>
   );
 }
+

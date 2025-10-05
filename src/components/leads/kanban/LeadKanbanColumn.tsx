@@ -1,5 +1,6 @@
 import { Lead } from "@/types/leads";
 import { LeadCard } from "./LeadCard";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -40,13 +41,13 @@ export function LeadKanbanColumn({
   };
 
   return (
-    <div className="flex-shrink-0 w-80 flex flex-col">
-      <div className="flex items-center gap-2 mb-4">
-        <div className={cn("w-3 h-3 rounded-full", status.color)} />
-        <h3 className="font-semibold text-foreground">{status.label}</h3>
-        <span className="ml-auto text-sm text-muted-foreground">
+    <div className="flex-shrink-0 w-72 flex flex-col">
+      <div className="flex items-center gap-2 mb-3 px-1">
+        <div className={cn("w-2 h-2 rounded-full", status.color)} />
+        <h3 className="font-semibold text-sm text-foreground">{status.label}</h3>
+        <Badge variant="secondary" className="ml-auto text-xs h-5 px-2">
           {leads.length}
-        </span>
+        </Badge>
       </div>
 
       <div
@@ -54,9 +55,9 @@ export function LeadKanbanColumn({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          "flex-1 bg-muted/30 rounded-lg p-3 space-y-3 min-h-[200px] transition-colors",
-          isDragOver && "bg-primary/10 border-2 border-primary border-dashed",
-          !isDragOver && "border-2 border-transparent"
+          "flex-1 bg-muted/20 rounded-lg p-2 space-y-2 min-h-[400px] transition-colors",
+          isDragOver && "bg-primary/10 ring-2 ring-primary ring-inset",
+          !isDragOver && "border border-border/50"
         )}
       >
         {leads.map((lead) => (
