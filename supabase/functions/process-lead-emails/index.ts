@@ -292,31 +292,6 @@ function parseGenericLead(body: string, subject: string): ParsedData | null {
   return null;
 }
 
-function parseGenericLead(body: string, subject: string): ParsedLeadData | null {
-  console.log('📧 Parsing generic lead email');
-  
-  const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-  
-  // Try to find email and phone anywhere in the body
-  const emailMatch = cleanBody.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
-  const phoneMatch = cleanBody.match(/(\+?\d[\d\s-]{8,})/);
-  const nameMatch = cleanBody.match(/(?:Naam|Name|Van|From):\s*([^\n]+)/i);
-  const vehicleMatch = subject.match(/(?:interesse in|vraag over|voor uw)\s+(.+?)(?:\s+-|$)/i);
-  
-  if (emailMatch) {
-    const nameParts = nameMatch?.[1]?.trim().split(' ') || ['Onbekend'];
-    return {
-      firstName: nameParts[0],
-      lastName: nameParts.slice(1).join(' ') || '',
-      email: emailMatch[1],
-      phone: phoneMatch?.[0],
-      interestedVehicle: vehicleMatch?.[1]?.trim(),
-      source: 'website',
-      notes: `Generieke lead. Onderwerp: ${subject}. ${cleanBody.substring(0, 300)}...`
-    };
-  }
-  return null;
-}
 
 function parseLeadEmail(sender: string, subject: string, body: string): ParsedLeadData | null {
   // Determine portal based on sender
