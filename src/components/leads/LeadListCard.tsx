@@ -4,7 +4,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Lead } from "@/types/leads";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
-import { Car, PhoneMissed, RefreshCw, Info } from "lucide-react";
+import { Car, PhoneMissed, RefreshCw, Info, Mail, Phone } from "lucide-react";
+import { parseLeadData } from "@/utils/leadParser";
 
 interface LeadListCardProps {
   lead: Lead;
@@ -39,6 +40,8 @@ const getTypeLabel = (type: string) => {
 };
 
 export function LeadListCard({ lead, ownerInitials, onLeadClick }: LeadListCardProps) {
+  const parsedData = parseLeadData(lead);
+  
   const isUrgent = lead.status === 'new' && 
     new Date().getTime() - new Date(lead.createdAt).getTime() > 24 * 60 * 60 * 1000;
 
@@ -53,33 +56,47 @@ export function LeadListCard({ lead, ownerInitials, onLeadClick }: LeadListCardP
       onClick={() => onLeadClick(lead)}
     >
       <div className="space-y-3">
-        {/* Header: Type Badge */}
+        {/* Header: Customer name and type */}
         <div className="flex items-center justify-between">
-          <Badge variant="outline" className="gap-1">
-            {getTypeIcon(lead.source)}
-            {getTypeLabel(lead.source)}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold">
+              {parsedData.customerName}
+            </h3>
+            <Badge variant="outline" className="gap-1">
+              {getTypeIcon(lead.source)}
+              {getTypeLabel(lead.source)}
+            </Badge>
+          </div>
           {isUrgent && (
             <div className="h-2 w-2 bg-destructive rounded-full animate-pulse" />
           )}
         </div>
 
-        {/* Lead Name */}
-        <div>
-          <h3 className="text-lg font-semibold">
-            {lead.firstName} {lead.lastName}
-          </h3>
-        </div>
-
-        {/* Vehicle Interest */}
-        {lead.interestedVehicle && (
-          <div className="text-sm text-muted-foreground">
-            {lead.interestedVehicle}
+        {/* Vehicle Interest - Main title */}
+        {parsedData.vehicleInterest && (
+          <div className="text-base font-medium text-primary">
+            {parsedData.vehicleInterest}
           </div>
         )}
 
+        {/* Contact Information */}
+        <div className="space-y-1 text-sm">
+          {parsedData.email && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Mail className="h-3 w-3" />
+              <span>{parsedData.email}</span>
+            </div>
+          )}
+          {parsedData.phone && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Phone className="h-3 w-3" />
+              <span>{parsedData.phone}</span>
+            </div>
+          )}
+        </div>
+
         {/* Footer: Owner & Time */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex items-center justify-between text-sm text-muted-foreground pt-2 border-t">
           <div className="flex items-center gap-2">
             {ownerInitials ? (
               <Avatar className="h-6 w-6">
