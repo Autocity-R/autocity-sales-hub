@@ -405,10 +405,10 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
               <CardTitle>Volledige Email Tekst</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="prose prose-sm max-w-none">
-                <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-lg font-sans">
+              <div className="bg-muted p-4 rounded-lg">
+                <div className="text-sm whitespace-pre-wrap">
                   {parsedData.message}
-                </pre>
+                </div>
               </div>
             </CardContent>
           </Card>

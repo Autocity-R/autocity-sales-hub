@@ -26,6 +26,7 @@ import { parseLeadData } from "@/utils/leadParser";
 interface LeadListViewProps {
   leads: Lead[];
   onLeadClick: (lead: Lead) => void;
+  onDisqualifyLead: (lead: Lead) => void;
   salespeople: Array<{ id: string; name: string }>;
 }
 
@@ -35,6 +36,7 @@ type SortDirection = 'asc' | 'desc';
 export const LeadListView: React.FC<LeadListViewProps> = ({
   leads,
   onLeadClick,
+  onDisqualifyLead,
   salespeople
 }) => {
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
@@ -296,12 +298,19 @@ export const LeadListView: React.FC<LeadListViewProps> = ({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => onLeadClick(lead)}>
-                          Details bekijken
+                          Bekijk Dossier
                         </DropdownMenuItem>
-                        <DropdownMenuItem>Email versturen</DropdownMenuItem>
-                        <DropdownMenuItem>Status wijzigen</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
-                          Archiveren
+                        <DropdownMenuItem>
+                          Wijs toe aan...
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          Wijzig Status...
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => onDisqualifyLead(lead)}
+                        >
+                          Markeer als Verloren
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
