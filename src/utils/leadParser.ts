@@ -6,13 +6,29 @@ interface ParsedLeadInfo {
   phone: string;
   vehicleInterest: string;
   message: string;
+  subject: string;
 }
 
 export function parseLeadData(lead: Lead): ParsedLeadInfo {
   // Combine all text fields to search for information
-  const fullText = `${lead.firstName || ''} ${lead.lastName || ''} ${lead.phone || ''} ${lead.email || ''}`.toLowerCase();
+  const fullText = `${lead.firstName || ''} ${lead.lastName || ''} ${lead.phone || ''} ${lead.email || ''} ${lead.notes || ''}`.toLowerCase();
   
-  // Extract customer name (usually after "Hans Augustinus" pattern)
+  // Extract subject/title from the email
+  let subject = "Lead";
+  const subjectMatch = fullText.match(/autotrack\s*\|\s*([^*\n]+)/i);
+  if (subjectMatch) {
+    subject = subjectMatch[1].trim();
+  } else if (lead.source === 'autotrack') {
+    subject = "AutoTrack Lead";
+  } else if (lead.source === 'website') {
+    subject = "Website Aanvraag";
+  } else if (lead.source === 'facebook') {
+    subject = "Facebook Lead";
+  } else if (lead.source === 'marktplaats') {
+    subject = "Marktplaats Aanvraag";
+  }
+  
+  // Extract customer name
   let customerName = "Onbekende klant";
   const nameMatch = fullText.match(/(?:^|\*\s*)([a-z]+\s+[a-z]+)(?=\s*\*|$)/i);
   if (nameMatch) {
@@ -39,7 +55,6 @@ export function parseLeadData(lead: Lead): ParsedLeadInfo {
   // Extract vehicle interest
   let vehicleInterest = lead.interestedVehicle || "";
   if (!vehicleInterest) {
-    // Look for "interesse in de [vehicle]" or "interested in [vehicle]"
     const vehicleMatch = fullText.match(/interesse in de ([^.?!*]+?)(?:\.|wilt|met vriendelijke|proefritaanvraag|$)/i);
     if (vehicleMatch) {
       vehicleInterest = vehicleMatch[1].trim()
@@ -49,18 +64,15 @@ export function parseLeadData(lead: Lead): ParsedLeadInfo {
     }
   }
   
-  // Extract message
-  let message = "";
-  const messageMatch = fullText.match(/bericht\s+([^*]+?)(?:proefritaanvraag|met vriendelijke|$)/i);
-  if (messageMatch) {
-    message = messageMatch[1].trim();
-  }
+  // Extract full message (entire email text)
+  let message = fullText;
   
   return {
     customerName,
     email,
     phone,
     vehicleInterest,
-    message
+    message,
+    subject
   };
 }

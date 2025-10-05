@@ -13,6 +13,7 @@ import { LeadProposals } from "./LeadProposals";
 import { LeadFollowUp } from "./LeadFollowUp";
 import { LeadEmailHistory } from "./LeadEmailHistory";
 import { LeadEmailComposer } from "./LeadEmailComposer";
+import { parseLeadData } from "@/utils/leadParser";
 import { 
   ArrowLeft, 
   Mail, 
@@ -25,7 +26,9 @@ import {
   Bot,
   UserCheck,
   UserPlus,
-  Check
+  Check,
+  User,
+  Car
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -74,6 +77,9 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
   
   const isOwnedByCurrentUser = lead.assignedTo === user?.id;
   const isUnassigned = !lead.assignedTo;
+  
+  // Parse lead data
+  const parsedData = parseLeadData(lead);
 
   const handleReplyToEmail = (email: any) => {
     setReplyToEmail({
@@ -198,8 +204,8 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`${lead.firstName} ${lead.lastName}`}
-        description={lead.company || lead.email}
+        title={parsedData.subject}
+        description={parsedData.vehicleInterest || "Geen voertuig interesse"}
       >
         <div className="flex gap-2">
           <Button variant="outline" onClick={onBack} className="gap-2">
@@ -320,24 +326,34 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <span className="font-medium">Naam: </span>
+                  <span>{parsedData.customerName}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-muted-foreground" />
-                <span>{lead.email}</span>
+                <div>
+                  <span className="font-medium">E-mailadres: </span>
+                  <span>{parsedData.email || "Niet opgegeven"}</span>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4 text-muted-foreground" />
-                <span>{lead.phone}</span>
-              </div>
-              {lead.company && (
-                <div className="flex items-center gap-2">
-                  <Building className="h-4 w-4 text-muted-foreground" />
-                  <span>{lead.company}</span>
+                <div>
+                  <span className="font-medium">Telefoonnummer: </span>
+                  <span>{parsedData.phone || "Niet opgegeven"}</span>
                 </div>
-              )}
+              </div>
             </div>
             <div className="space-y-4">
-              <div>
-                <span className="font-medium">Interesse: </span>
-                <span>{lead.interestedVehicle || 'Niet gespecificeerd'}</span>
+              <div className="flex items-center gap-2">
+                <Car className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <span className="font-medium">Interesse: </span>
+                  <span>{parsedData.vehicleInterest || 'Niet gespecificeerd'}</span>
+                </div>
               </div>
               <div>
                 <span className="font-medium">Timeline: </span>
@@ -360,13 +376,6 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
               </div>
             </div>
           </div>
-          
-          {lead.notes && (
-            <div className="mt-6">
-              <h4 className="font-medium mb-2">Notities:</h4>
-              <p className="text-muted-foreground">{lead.notes}</p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -391,6 +400,18 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
         </TabsList>
 
         <TabsContent value="emails">
+          <Card className="mb-4">
+            <CardHeader>
+              <CardTitle>Volledige Email Tekst</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="prose prose-sm max-w-none">
+                <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-lg font-sans">
+                  {parsedData.message}
+                </pre>
+              </div>
+            </CardContent>
+          </Card>
           <LeadEmailHistory leadId={lead.id} onReply={handleReplyToEmail} />
         </TabsContent>
 
