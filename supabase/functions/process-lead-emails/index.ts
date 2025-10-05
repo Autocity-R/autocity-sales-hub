@@ -511,6 +511,12 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3): P
         continue;
       }
       
+      // Log andere HTTP errors met status en body voor betere diagnostiek
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error(`❌ Gmail API error ${response.status}:`, errorBody);
+      }
+      
       return response;
     } catch (error) {
       // Re-throw RATE_LIMIT_EXCEEDED errors
@@ -579,12 +585,8 @@ serve(async (req) => {
     const accessToken = await getAccessToken(serviceAccount);
 
     // Search for unread emails - SENDER-BASED with exclusions
-    const query = `is:unread to:verkoop@auto-city.nl (
-      from:(autoscout24.com OR autotrack.nl OR morgeninternet.nl OR financiallease.nl OR blokweggroep.nl) OR 
-      from:mail.marktplaats.nl OR 
-      from:call.marktplaats.nl
-    ) 
-    -subject:("Je hebt een reactie ontvangen" OR "Gesprek gevoerd" OR "uw verkoopkansen" OR "advertentiekwaliteit")`;
+    // Single-line query with correct Gmail syntax: each domain needs its own from:, and exclusions are individual -subject: statements
+    const query = 'is:unread to:verkoop@auto-city.nl (from:autoscout24.com OR from:autotrack.nl OR from:mail.marktplaats.nl OR from:call.marktplaats.nl OR from:morgeninternet.nl OR from:financiallease.nl OR from:blokweggroep.nl) -subject:"Je hebt een reactie ontvangen" -subject:"Gesprek gevoerd" -subject:"uw verkoopkansen" -subject:"advertentiekwaliteit"';
     
     console.log('🔍 Searching for lead emails...');
     
@@ -607,15 +609,17 @@ serve(async (req) => {
       const searchData = await searchResponse.json();
       messages = searchData.messages || [];
     } catch (error) {
-      // Graceful handling van Gmail API errors
+      // Graceful handling van Gmail API errors met specifieke fout-differentiatie
       console.error('❌ Gmail search error:', error.message);
       
       let errorType = 'gmail_search_error';
+      // Alleen rate_limit_exceeded als het ECHT die specifieke error is
       if (error.message === 'RATE_LIMIT_EXCEEDED') {
         errorType = 'rate_limit_exceeded';
       } else if (error.message.includes('Fetch failed')) {
         errorType = 'gmail_api_timeout';
       }
+      // Alle andere errors (400, 403, etc.) blijven 'gmail_search_error' met details in logs
       
       return new Response(
         JSON.stringify({
