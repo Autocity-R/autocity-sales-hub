@@ -6,11 +6,15 @@ interface ParsedLeadInfo {
   phone: string;
   vehicleInterest: string;
   message: string;
+  subject: string;
+  vehicleYear?: string;
+  vehicleMileage?: string;
+  vehiclePrice?: string;
 }
 
 export function parseLeadData(lead: Lead): ParsedLeadInfo {
   // Combine all text fields to search for information
-  const fullText = `${lead.firstName || ''} ${lead.lastName || ''} ${lead.phone || ''} ${lead.email || ''}`.toLowerCase();
+  const fullText = `${lead.firstName || ''} ${lead.lastName || ''} ${lead.phone || ''} ${lead.email || ''} ${lead.notes || ''}`.toLowerCase();
   
   // Extract customer name (usually after "Hans Augustinus" pattern)
   let customerName = "Onbekende klant";
@@ -56,11 +60,52 @@ export function parseLeadData(lead: Lead): ParsedLeadInfo {
     message = messageMatch[1].trim();
   }
   
+  // Extract subject (email onderwerp)
+  let subject = "";
+  const subjectMatch = fullText.match(/(?:autotrack|onderwerp|subject)[:\s|]*([^\n]+)/i);
+  if (subjectMatch) {
+    subject = subjectMatch[1].trim()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  } else if (lead.source === 'autotrack') {
+    // Fallback: generate subject from available data
+    const requestType = fullText.includes('proefrit') ? 'Proefrit verzoek' : 
+                        fullText.includes('inruil') ? 'Inruil verzoek' : 
+                        'Informatie verzoek';
+    subject = `AutoTrack | ${requestType}${vehicleInterest ? ' voor ' + vehicleInterest.split(' ').slice(0, 2).join(' ') : ''}`;
+  }
+  
+  // Extract vehicle year
+  let vehicleYear = "";
+  const yearMatch = fullText.match(/(?:bouwjaar|jaar)[:\s]*(\d{4})/i);
+  if (yearMatch) {
+    vehicleYear = yearMatch[1];
+  }
+  
+  // Extract vehicle mileage
+  let vehicleMileage = "";
+  const mileageMatch = fullText.match(/(?:km[:\s-]*stand|kilometerstand)[:\s]*([\d.]+)/i);
+  if (mileageMatch) {
+    vehicleMileage = mileageMatch[1].replace(/\./g, '.');
+  }
+  
+  // Extract vehicle price
+  let vehiclePrice = "";
+  const priceMatch = fullText.match(/(?:prijs|€)[:\s]*€?\s*([\d.]+)/i);
+  if (priceMatch) {
+    vehiclePrice = `€${priceMatch[1]}`;
+  }
+  
   return {
     customerName,
     email,
     phone,
     vehicleInterest,
-    message
+    message,
+    subject,
+    vehicleYear,
+    vehicleMileage,
+    vehiclePrice
   };
 }

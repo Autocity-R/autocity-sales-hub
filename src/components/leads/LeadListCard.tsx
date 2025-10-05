@@ -56,28 +56,44 @@ export function LeadListCard({ lead, ownerInitials, onLeadClick }: LeadListCardP
       onClick={() => onLeadClick(lead)}
     >
       <div className="space-y-3">
-        {/* Header: Customer name and type */}
+        {/* Email Subject as Title */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold">
-              {parsedData.customerName}
-            </h3>
-            <Badge variant="outline" className="gap-1">
+          <div className="flex items-center gap-2 flex-1">
+            <Badge variant="outline" className="gap-1 shrink-0">
               {getTypeIcon(lead.source)}
               {getTypeLabel(lead.source)}
             </Badge>
+            {parsedData.subject && (
+              <h3 className="text-sm font-semibold truncate">
+                {parsedData.subject}
+              </h3>
+            )}
           </div>
           {isUrgent && (
-            <div className="h-2 w-2 bg-destructive rounded-full animate-pulse" />
+            <div className="h-2 w-2 bg-destructive rounded-full animate-pulse shrink-0" />
           )}
         </div>
 
-        {/* Vehicle Interest - Main title */}
+        {/* Vehicle Interest & Details */}
         {parsedData.vehicleInterest && (
-          <div className="text-base font-medium text-primary">
-            {parsedData.vehicleInterest}
+          <div className="space-y-1">
+            <div className="text-base font-medium text-primary">
+              {parsedData.vehicleInterest}
+            </div>
+            {(parsedData.vehicleYear || parsedData.vehicleMileage || parsedData.vehiclePrice) && (
+              <div className="flex gap-3 text-xs text-muted-foreground">
+                {parsedData.vehicleYear && <span>Bouwjaar: {parsedData.vehicleYear}</span>}
+                {parsedData.vehicleMileage && <span>KM: {parsedData.vehicleMileage}</span>}
+                {parsedData.vehiclePrice && <span className="font-medium text-foreground">{parsedData.vehiclePrice}</span>}
+              </div>
+            )}
           </div>
         )}
+
+        {/* Customer Name */}
+        <div className="text-sm font-medium">
+          {parsedData.customerName}
+        </div>
 
         {/* Contact Information */}
         <div className="space-y-1 text-sm">
