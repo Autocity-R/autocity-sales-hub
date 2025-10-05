@@ -23,10 +23,14 @@ import {
   Clock,
   TrendingUp,
   Bot,
-  UserCheck
+  UserCheck,
+  UserPlus,
+  Check
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LeadDetailProps {
   lead: Lead;
@@ -65,6 +69,11 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
   const [showEmailComposer, setShowEmailComposer] = useState(false);
   const [replyToEmail, setReplyToEmail] = useState<any>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [isClaiming, setIsClaiming] = useState(false);
+  
+  const isOwnedByCurrentUser = lead.assignedTo === user?.id;
+  const isUnassigned = !lead.assignedTo;
 
   const handleReplyToEmail = (email: any) => {
     setReplyToEmail({
@@ -76,13 +85,67 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
     setShowEmailComposer(true);
   };
 
-  const handleEmailSent = () => {
+  const handleEmailSent = async () => {
     setShowEmailComposer(false);
     setReplyToEmail(null);
+    
+    // Update status to 'contacted' if it was 'new'
+    if (lead.status === 'new' && user?.id) {
+      await supabase
+        .from('leads')
+        .update({ 
+          status: 'contacted',
+          assigned_to: lead.assignedTo || user.id
+        })
+        .eq('id', lead.id);
+      
+      const updatedLead = { ...lead, status: 'contacted' as LeadStatus };
+      onUpdate(updatedLead);
+    }
+    
     toast({
       title: "Email verzonden",
-      description: "Uw email is succesvol verzonden",
+      description: "Email succesvol verstuurd en lead status bijgewerkt",
     });
+  };
+
+  const handleClaimLead = async () => {
+    if (!user?.id) return;
+    
+    setIsClaiming(true);
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .update({ 
+          owner_id: user.id,
+          assigned_to: user.id,
+          status: lead.status === 'new' ? 'contacted' : lead.status
+        })
+        .eq('id', lead.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Lead geclaimd",
+        description: "Deze lead is nu aan jou toegewezen",
+      });
+      
+      const updatedLead = { 
+        ...lead, 
+        assignedTo: user.id,
+        status: lead.status === 'new' ? 'contacted' as LeadStatus : lead.status
+      };
+      onUpdate(updatedLead);
+    } catch (error) {
+      console.error('Error claiming lead:', error);
+      toast({
+        title: "Fout",
+        description: "Er is een fout opgetreden bij het claimen van de lead",
+        variant: "destructive",
+      });
+    } finally {
+      setIsClaiming(false);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -139,23 +202,42 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
         description={lead.company || lead.email}
       >
         <div className="flex gap-2">
-          <Button variant="outline" onClick={onOpenAI} className="gap-2">
-            <Bot className="h-4 w-4" />
-            AI Assistant
+          <Button variant="outline" onClick={onBack} className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Terug
           </Button>
+          {!isOwnedByCurrentUser && (
+            <Button 
+              onClick={handleClaimLead}
+              disabled={isClaiming}
+              variant={isUnassigned ? "default" : "outline"}
+            >
+              {isUnassigned ? (
+                <>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Claim Lead
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Overname Lead
+                </>
+              )}
+            </Button>
+          )}
+          {isOwnedByCurrentUser && (
+            <Badge variant="secondary" className="px-3 py-2">
+              <Check className="h-4 w-4 mr-2" />
+              Jouw Lead
+            </Badge>
+          )}
           <Button variant="outline" onClick={onSendEmail} className="gap-2">
             <Mail className="h-4 w-4" />
             Email Versturen
           </Button>
-          {!lead.assignedTo && (
-            <Button variant="outline" onClick={handleAssignToMe} className="gap-2">
-              <UserCheck className="h-4 w-4" />
-              Toewijzen aan mij
-            </Button>
-          )}
-          <Button variant="outline" onClick={onBack} className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Terug naar overzicht
+          <Button variant="outline" onClick={onOpenAI} className="gap-2">
+            <Bot className="h-4 w-4" />
+            AI Assistant
           </Button>
         </div>
       </PageHeader>

@@ -8,6 +8,7 @@ export interface Salesperson {
   email: string;
   role: string;
   isActive: boolean;
+  initials: string;
 }
 
 export const useSalespeople = () => {
@@ -29,7 +30,8 @@ export const useSalespeople = () => {
         name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
         email: profile.email,
         role: "Verkoper",
-        isActive: true
+        isActive: true,
+        initials: `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase() || profile.email[0].toUpperCase()
       })) || [];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

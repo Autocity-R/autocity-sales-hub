@@ -15,6 +15,7 @@ import { LeadForm } from "@/components/leads/LeadForm";
 import { LeadPipeline } from "@/components/leads/LeadPipeline";
 import { LeadEmailComposer } from "@/components/leads/LeadEmailComposer";
 import { LeadAIAssistant } from "@/components/leads/LeadAIAssistant";
+import { LeadListCard } from "@/components/leads/LeadListCard";
 import { useSalespeople } from "@/hooks/useSalespeople";
 import { 
   Plus, 
@@ -460,63 +461,17 @@ const Leads = () => {
                   </CardContent>
                 </Card>
               ) : (
-                filteredLeads.map((lead) => (
-                <Card key={lead.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedLead(lead)}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-lg">
-                            {lead.firstName} {lead.lastName}
-                          </h3>
-                          <Badge className={`${getStatusColor(lead.status)} text-white`}>
-                            {getStatusLabel(lead.status)}
-                          </Badge>
-                          <Badge variant="outline" className={getPriorityColor(lead.priority)}>
-                            {lead.priority}
-                          </Badge>
-                          {lead.assignedTo && (
-                            <Badge variant="secondary">
-                              Toegewezen aan: {lead.assignedTo}
-                            </Badge>
-                          )}
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
-                          <div>
-                            <p><strong>Email:</strong> {lead.email}</p>
-                            <p><strong>Telefoon:</strong> {lead.phone}</p>
-                            {lead.company && <p><strong>Bedrijf:</strong> {lead.company}</p>}
-                          </div>
-                          
-                          <div>
-                            <p><strong>Interesse:</strong> {lead.interestedVehicle || 'Niet gespecificeerd'}</p>
-                            <p><strong>Budget:</strong> {lead.budget ? `€ ${lead.budget.toLocaleString()}` : 'Niet opgegeven'}</p>
-                            <p><strong>Bron:</strong> {lead.source}</p>
-                          </div>
-                          
-                          <div>
-                            <p><strong>Aangemaakt:</strong> {format(new Date(lead.createdAt), 'dd/MM/yyyy')}</p>
-                            {lead.lastContactDate && (
-                              <p><strong>Laatste contact:</strong> {format(new Date(lead.lastContactDate), 'dd/MM/yyyy')}</p>
-                            )}
-                            <p><strong>Activiteiten:</strong> {lead.totalActivities}</p>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="ml-4 text-right">
-                        <div className="text-lg font-semibold text-green-600">
-                          {lead.conversionProbability}%
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          conversiekans
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                ))
+                filteredLeads.map((lead) => {
+                  const owner = salespeople?.find(s => s.id === lead.assignedTo);
+                  return (
+                    <LeadListCard
+                      key={lead.id}
+                      lead={lead}
+                      ownerInitials={owner?.initials}
+                      onLeadClick={setSelectedLead}
+                    />
+                  );
+                })
               )}
             </div>
           </TabsContent>
