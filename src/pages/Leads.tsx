@@ -114,20 +114,34 @@ const Leads = () => {
       const updated = data?.updated ?? 0;
       const parseErrors = data?.parseErrors ?? 0;
       const ignoredNonLead = data?.ignoredNonLead ?? 0;
+      const ignoredCalls = data?.ignoredCalls ?? 0;
+      const missedCalls = data?.missedCalls ?? 0;
+      const tradeIns = data?.tradeIns ?? 0;
+      const sourceBreakdown = data?.sourceBreakdown ?? {};
       
-      if (created + updated > 0) {
-        toast({ 
-          title: `✅ ${created} nieuwe leads, ${updated} bijgewerkt`,
-          description: parseErrors > 0 ? `${parseErrors} emails niet herkend, ${ignoredNonLead} niet-lead emails genegeerd` : 
-                      ignoredNonLead > 0 ? `${ignoredNonLead} niet-lead emails genegeerd` : undefined
-        });
-      } else {
-        toast({ 
-          title: "Geen nieuwe leads gevonden",
-          description: parseErrors > 0 ? `${parseErrors} emails konden niet geparsed worden, ${ignoredNonLead} niet-lead emails genegeerd` :
-                      ignoredNonLead > 0 ? `${ignoredNonLead} niet-lead emails (rapporten/nieuwsbrieven) genegeerd` : undefined
-        });
+      // Build detailed description
+      let description = '';
+      if (created > 0) {
+        description += `${created} nieuwe lead${created !== 1 ? 's' : ''} aangemaakt`;
+        if (tradeIns > 0) description += ` (waarvan ${tradeIns} inruilaanvra${tradeIns !== 1 ? 'gen' : 'ag'})`;
+        description += '\n';
       }
+      if (updated > 0) description += `${updated} bestaande lead${updated !== 1 ? 's' : ''} bijgewerkt\n`;
+      if (missedCalls > 0) description += `${missedCalls} gemiste oproep${missedCalls !== 1 ? 'en' : ''} verwerkt\n`;
+      if (ignoredNonLead > 0) description += `${ignoredNonLead} niet-lead email${ignoredNonLead !== 1 ? 's' : ''} genegeerd`;
+      if (ignoredCalls > 0) description += ` (${ignoredCalls} aangenomen oproep${ignoredCalls !== 1 ? 'en' : ''})`;
+      description += '\n';
+      if (parseErrors > 0) description += `⚠️ ${parseErrors} email${parseErrors !== 1 ? 's' : ''} niet herkend\n`;
+      
+      // Add source breakdown
+      const sources = Object.entries(sourceBreakdown).map(([source, count]) => `${source}: ${count}`).join(', ');
+      if (sources) description += `\nBronnen: ${sources}`;
+      
+      toast({ 
+        title: created + updated > 0 ? "✅ Email sync succesvol" : "Email sync voltooid",
+        description: description.trim(),
+        variant: created + updated > 0 ? "default" : parseErrors > 0 ? "destructive" : "default"
+      });
     } catch (error) {
       console.error("Email sync error:", error);
       toast({ title: "❌ Fout bij email synchronisatie", variant: "destructive" });

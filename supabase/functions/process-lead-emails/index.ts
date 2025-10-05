@@ -640,23 +640,49 @@ serve(async (req) => {
           // New thread, create lead
           console.log('🆕 Creating new lead...');
           
-          // Build notes with vehicle info and source
-          const vehicleText = parsedData.interestedVehicle || 'Geen specifiek voertuig vermeld';
+          // Build comprehensive notes
+          let notes = `Lead van ${parsedData.source}`;
+          if (parsedData.type) notes += ` - Type: ${parsedData.type}`;
+          if (parsedData.subType) notes += ` (${parsedData.subType})`;
+          
+          // Add trade-in data if present
+          if (parsedData.tradeIn) {
+            notes += `\n\n--- INRUILVOORSTEL ---`;
+            if (parsedData.tradeIn.kenteken) notes += `\nKenteken: ${parsedData.tradeIn.kenteken}`;
+            if (parsedData.tradeIn.mileage) notes += `\nKM-stand: ${parsedData.tradeIn.mileage}`;
+            if (parsedData.tradeIn.remarks) notes += `\nOpmerkingen: ${parsedData.tradeIn.remarks}`;
+            notes += `\n--------------------`;
+          }
+          
+          // Add vehicle interest
+          if (parsedData.vehicle) notes += `\n\nInteresse in: ${parsedData.vehicle}`;
+          
+          // Add company name for financial leads
+          if (parsedData.companyName) notes += `\n\nBedrijf: ${parsedData.companyName}`;
+          
+          // Add customer message
+          if (parsedData.message) notes += `\n\nBericht: ${parsedData.message}`;
+          
+          // Determine urgency and intent
+          const urgency = parsedData.type === 'MissedCall' ? 'high' : 'medium';
+          const intent = parsedData.type === 'TradeIn' ? 'inruil_aanvraag' : 
+                        parsedData.type === 'FinancialLead' ? 'financiering_aanvraag' :
+                        'informatie_aanvraag';
           
           const { data: newLead, error: leadError } = await supabase
             .from('leads')
             .insert({
-              first_name: parsedData.firstName,
-              last_name: parsedData.lastName,
-              email: parsedData.email,
-              phone: parsedData.phone,
+              first_name: parsedData.firstName || 'Onbekend',
+              last_name: parsedData.lastName || '',
+              email: parsedData.email || null,
+              phone: parsedData.phone || null,
               source_email: from,
               email_thread_id: threadId,
-              intent_classification: 'informatie_aanvraag',
-              urgency_level: 'medium',
+              intent_classification: intent,
+              urgency_level: urgency,
               status: 'new',
-              priority: 'medium',
-              interested_vehicle: null, // UUID kolom - blijft null tenzij we een match vinden
+              priority: urgency === 'high' ? 'high' : 'medium',
+              interested_vehicle: null,
             })
             .select()
             .single();
@@ -672,7 +698,7 @@ serve(async (req) => {
           leadId = newLead.id;
           stats.created++;
 
-          console.log(`✅ Lead created: ${leadId}`);
+          console.log(`✅ Lead created: ${leadId} (${parsedData.type})`);
 
           // Create thread record
           const { data: newThread, error: threadError } = await supabase
@@ -715,11 +741,15 @@ serve(async (req) => {
             is_from_customer: true,
             portal_source: parsedData.source,
             parsed_data: {
-              name: `${parsedData.firstName} ${parsedData.lastName}`,
+              name: `${parsedData.firstName || ''} ${parsedData.lastName || ''}`.trim(),
               email: parsedData.email,
               phone: parsedData.phone,
-              vehicle: parsedData.interestedVehicle,
-              notes: parsedData.notes
+              vehicle: parsedData.vehicle,
+              companyName: parsedData.companyName,
+              type: parsedData.type,
+              subType: parsedData.subType,
+              tradeIn: parsedData.tradeIn,
+              message: parsedData.message
             }
           });
 
@@ -756,7 +786,11 @@ serve(async (req) => {
       created: stats.created,
       updated: stats.updated,
       parseErrors: stats.parseErrors,
-      ignoredNonLead: stats.ignoredNonLead
+      ignoredNonLead: stats.ignoredNonLead,
+      ignoredCalls: stats.ignoredCalls,
+      missedCalls: stats.missedCalls,
+      tradeIns: stats.tradeIns,
+      sourceBreakdown: stats.sourceBreakdown
     });
 
     return new Response(
@@ -767,6 +801,10 @@ serve(async (req) => {
         updated: stats.updated,
         parseErrors: stats.parseErrors,
         ignoredNonLead: stats.ignoredNonLead,
+        ignoredCalls: stats.ignoredCalls,
+        missedCalls: stats.missedCalls,
+        tradeIns: stats.tradeIns,
+        sourceBreakdown: stats.sourceBreakdown,
         errorDetails: stats.errorDetails.slice(0, 10)
       }),
       {
