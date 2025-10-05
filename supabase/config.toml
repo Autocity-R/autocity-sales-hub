@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.process-lead-emails]
 verify_jwt = false
+
+[functions.process-email-with-ai]
+verify_jwt = false
+
+[functions.calculate-lead-score]
+verify_jwt = false

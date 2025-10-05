@@ -33,6 +33,15 @@ export interface Lead {
   responseTime?: number; // in hours
   totalActivities: number;
   conversionProbability: number; // percentage
+  
+  // AI Scoring
+  lead_score?: number; // 0-100
+  response_required?: boolean;
+  last_ai_analysis?: string;
+  lead_temperature?: 'hot' | 'warm' | 'cold' | 'ice';
+  lead_type?: string;
+  intent_classification?: string;
+  urgency_level?: 'low' | 'medium' | 'high' | 'urgent';
 }
 
 export interface LeadActivity {

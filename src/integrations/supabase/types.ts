@@ -380,6 +380,7 @@ export type Database = {
           content_summary: string | null
           created_at: string | null
           email_id: string
+          email_message_id: string | null
           id: string
           intent_classification: string | null
           key_insights: Json | null
@@ -387,6 +388,8 @@ export type Database = {
           lead_score: number
           processed_at: string | null
           processing_agent: string | null
+          response_generated: boolean | null
+          response_sent: boolean | null
           sender_email: string
           sentiment_score: number | null
           subject: string | null
@@ -398,6 +401,7 @@ export type Database = {
           content_summary?: string | null
           created_at?: string | null
           email_id: string
+          email_message_id?: string | null
           id?: string
           intent_classification?: string | null
           key_insights?: Json | null
@@ -405,6 +409,8 @@ export type Database = {
           lead_score?: number
           processed_at?: string | null
           processing_agent?: string | null
+          response_generated?: boolean | null
+          response_sent?: boolean | null
           sender_email: string
           sentiment_score?: number | null
           subject?: string | null
@@ -416,6 +422,7 @@ export type Database = {
           content_summary?: string | null
           created_at?: string | null
           email_id?: string
+          email_message_id?: string | null
           id?: string
           intent_classification?: string | null
           key_insights?: Json | null
@@ -423,6 +430,8 @@ export type Database = {
           lead_score?: number
           processed_at?: string | null
           processing_agent?: string | null
+          response_generated?: boolean | null
+          response_sent?: boolean | null
           sender_email?: string
           sentiment_score?: number | null
           subject?: string | null
@@ -430,6 +439,13 @@ export type Database = {
           urgency_level?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ai_email_processing_email_message_id_fkey"
+            columns: ["email_message_id"]
+            isOneToOne: false
+            referencedRelation: "email_messages"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ai_email_processing_lead_id_fkey"
             columns: ["lead_id"]
@@ -1128,10 +1144,12 @@ export type Database = {
       }
       email_response_suggestions: {
         Row: {
+          actual_response_sent: string | null
           created_at: string | null
           email_processing_id: string | null
           id: string
           lead_id: string | null
+          modified_by_team: boolean | null
           personalization_factors: Json | null
           priority_level: string | null
           response_type: string | null
@@ -1139,12 +1157,16 @@ export type Database = {
           suggested_response: string
           team_action: string | null
           team_modifications: string | null
+          team_rating: number | null
+          used_by_team: boolean | null
         }
         Insert: {
+          actual_response_sent?: string | null
           created_at?: string | null
           email_processing_id?: string | null
           id?: string
           lead_id?: string | null
+          modified_by_team?: boolean | null
           personalization_factors?: Json | null
           priority_level?: string | null
           response_type?: string | null
@@ -1152,12 +1174,16 @@ export type Database = {
           suggested_response: string
           team_action?: string | null
           team_modifications?: string | null
+          team_rating?: number | null
+          used_by_team?: boolean | null
         }
         Update: {
+          actual_response_sent?: string | null
           created_at?: string | null
           email_processing_id?: string | null
           id?: string
           lead_id?: string | null
+          modified_by_team?: boolean | null
           personalization_factors?: Json | null
           priority_level?: string | null
           response_type?: string | null
@@ -1165,6 +1191,8 @@ export type Database = {
           suggested_response?: string
           team_action?: string | null
           team_modifications?: string | null
+          team_rating?: number | null
+          used_by_team?: boolean | null
         }
         Relationships: [
           {
@@ -1187,37 +1215,46 @@ export type Database = {
         Row: {
           created_at: string
           first_message_date: string | null
+          from_email: string | null
           id: string
           last_message_date: string | null
           lead_id: string | null
           message_count: number | null
           participants: Json | null
+          status: string | null
           subject: string | null
           thread_id: string
+          to_email: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           first_message_date?: string | null
+          from_email?: string | null
           id?: string
           last_message_date?: string | null
           lead_id?: string | null
           message_count?: number | null
           participants?: Json | null
+          status?: string | null
           subject?: string | null
           thread_id: string
+          to_email?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           first_message_date?: string | null
+          from_email?: string | null
           id?: string
           last_message_date?: string | null
           lead_id?: string | null
           message_count?: number | null
           participants?: Json | null
+          status?: string | null
           subject?: string | null
           thread_id?: string
+          to_email?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1337,34 +1374,46 @@ export type Database = {
       }
       lead_scoring_history: {
         Row: {
+          engagement_score: number | null
           id: string
           lead_id: string
+          match_score: number | null
           new_score: number
           previous_score: number | null
           scored_at: string | null
           scored_by_agent: string | null
           scoring_factors: Json | null
           scoring_reason: string | null
+          sentiment_score: number | null
+          urgency_score: number | null
         }
         Insert: {
+          engagement_score?: number | null
           id?: string
           lead_id: string
+          match_score?: number | null
           new_score: number
           previous_score?: number | null
           scored_at?: string | null
           scored_by_agent?: string | null
           scoring_factors?: Json | null
           scoring_reason?: string | null
+          sentiment_score?: number | null
+          urgency_score?: number | null
         }
         Update: {
+          engagement_score?: number | null
           id?: string
           lead_id?: string
+          match_score?: number | null
           new_score?: number
           previous_score?: number | null
           scored_at?: string | null
           scored_by_agent?: string | null
           scoring_factors?: Json | null
           scoring_reason?: string | null
+          sentiment_score?: number | null
+          urgency_score?: number | null
         }
         Relationships: [
           {
@@ -1386,6 +1435,7 @@ export type Database = {
           id: string
           intent_classification: string | null
           interested_vehicle: string | null
+          last_ai_analysis: string | null
           last_email_date: string | null
           last_name: string | null
           lead_score: number | null
@@ -1409,6 +1459,7 @@ export type Database = {
           id?: string
           intent_classification?: string | null
           interested_vehicle?: string | null
+          last_ai_analysis?: string | null
           last_email_date?: string | null
           last_name?: string | null
           lead_score?: number | null
@@ -1432,6 +1483,7 @@ export type Database = {
           id?: string
           intent_classification?: string | null
           interested_vehicle?: string | null
+          last_ai_analysis?: string | null
           last_email_date?: string | null
           last_name?: string | null
           lead_score?: number | null

@@ -220,6 +220,7 @@ export const LeadListView: React.FC<LeadListViewProps> = ({
               <TableHead>
                 <SortButton field="name">Lead Naam</SortButton>
               </TableHead>
+              <TableHead>Score</TableHead>
               <TableHead>
                 <SortButton field="status">Status</SortButton>
               </TableHead>
@@ -258,6 +259,27 @@ export const LeadListView: React.FC<LeadListViewProps> = ({
                       <div className="font-medium">{parsedData.customerName}</div>
                       <div className="text-sm text-muted-foreground">{parsedData.email}</div>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {lead.lead_score !== null && lead.lead_score !== undefined ? (
+                      <div className="flex items-center gap-2">
+                        <Badge 
+                          variant={lead.lead_score >= 70 ? 'default' : lead.lead_score >= 50 ? 'secondary' : 'outline'}
+                          className={
+                            lead.lead_score >= 70 ? 'bg-green-500' : 
+                            lead.lead_score >= 50 ? 'bg-blue-500' : 
+                            'bg-gray-500'
+                          }
+                        >
+                          {lead.lead_score}
+                        </Badge>
+                        {lead.response_required && (
+                          <Badge variant="destructive" className="text-xs">!</Badge>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={getStatusColor(lead.status)}>
