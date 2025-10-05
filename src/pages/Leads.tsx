@@ -110,6 +110,23 @@ const Leads = () => {
       if (error) throw error;
       console.log("Sync resultaat:", data);
       
+      // Check voor niet-succesvolle sync (transient errors)
+      if (data?.success === false) {
+        const errorMessages: Record<string, string> = {
+          'rate_limit_exceeded': 'Gmail API rate limit bereikt. Probeer over een paar minuten opnieuw.',
+          'gmail_api_timeout': 'Gmail API tijdelijk niet bereikbaar. Probeer later opnieuw.',
+          'gmail_search_error': 'Fout bij ophalen emails van Gmail.',
+          'critical_error': 'Er is een fout opgetreden bij het verwerken van emails.'
+        };
+        
+        toast({ 
+          title: "⚠️ Email sync tijdelijk niet mogelijk",
+          description: errorMessages[data.errorType] || data.error || 'Onbekende fout',
+          variant: "destructive"
+        });
+        return;
+      }
+      
       const created = data?.created ?? 0;
       const updated = data?.updated ?? 0;
       const parseErrors = data?.parseErrors ?? 0;
@@ -117,6 +134,7 @@ const Leads = () => {
       const missedCalls = data?.missedCalls ?? 0;
       const tradeIns = data?.tradeIns ?? 0;
       const financialLeads = data?.financialLeads ?? 0;
+      const rateLimitSkipped = data?.rateLimitSkipped ?? 0;
       const sourceBreakdown = data?.sourceBreakdown ?? {};
       
       // Build detailed description with highlights
@@ -139,6 +157,10 @@ const Leads = () => {
       
       if (ignoredMarktplaats > 0) {
         description += `${ignoredMarktplaats} Marktplaats notificatie${ignoredMarktplaats !== 1 ? 's' : ''} genegeerd\n`;
+      }
+      
+      if (rateLimitSkipped > 0) {
+        description += `⏭️ ${rateLimitSkipped} email${rateLimitSkipped !== 1 ? 's' : ''} overgeslagen (rate limit)\n`;
       }
       
       if (parseErrors > 0) {

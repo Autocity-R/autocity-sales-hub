@@ -536,6 +536,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = Date.now();
+  const MAX_PROCESSING_TIME = 18000; // 18 seconds
+  const MAX_MESSAGES_TO_PROCESS = 15;
+  
   const stats = {
     processed: 0,
     created: 0,
@@ -547,6 +551,7 @@ serve(async (req) => {
     missedCalls: 0,
     tradeIns: 0,
     financialLeads: 0,
+    rateLimitSkipped: 0,
     errorDetails: [] as string[],
     sourceBreakdown: {} as Record<string, { processed: number; created: number }>
   };
@@ -582,26 +587,67 @@ serve(async (req) => {
     -subject:("Je hebt een reactie ontvangen" OR "Gesprek gevoerd" OR "uw verkoopkansen" OR "advertentiekwaliteit")`;
     
     console.log('🔍 Searching for lead emails...');
-    const searchResponse = await fetchWithRetry(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=50`,
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
+    
+    let messages = [];
+    try {
+      const searchResponse = await fetchWithRetry(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=15`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!searchResponse.ok) {
+        const errorText = await searchResponse.text();
+        throw new Error(`Gmail search failed (${searchResponse.status}): ${errorText}`);
       }
-    );
 
-    if (!searchResponse.ok) {
-      const errorText = await searchResponse.text();
-      throw new Error(`Gmail search failed (${searchResponse.status}): ${errorText}`);
+      const searchData = await searchResponse.json();
+      messages = searchData.messages || [];
+    } catch (error) {
+      // Graceful handling van Gmail API errors
+      console.error('❌ Gmail search error:', error.message);
+      
+      let errorType = 'gmail_search_error';
+      if (error.message === 'RATE_LIMIT_EXCEEDED') {
+        errorType = 'rate_limit_exceeded';
+      } else if (error.message.includes('Fetch failed')) {
+        errorType = 'gmail_api_timeout';
+      }
+      
+      return new Response(
+        JSON.stringify({
+          success: false,
+          errorType,
+          error: error.message,
+          processed: 0,
+          created: 0,
+          updated: 0,
+          rateLimitSkipped: 0,
+          message: errorType === 'rate_limit_exceeded' 
+            ? 'Gmail API rate limit bereikt. Probeer over een paar minuten opnieuw.'
+            : 'Gmail API tijdelijk niet bereikbaar. Probeer later opnieuw.'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200
+        }
+      );
     }
-
-    const searchData = await searchResponse.json();
-    const messages = searchData.messages || [];
     
     console.log(`📬 Found ${messages.length} potential lead emails`);
 
     for (const message of messages) {
+      // Check timeboxing limits
+      const elapsedTime = Date.now() - startTime;
+      if (elapsedTime > MAX_PROCESSING_TIME || stats.processed >= MAX_MESSAGES_TO_PROCESS) {
+        console.log(`⏰ Timeboxing limit bereikt: ${Math.round(elapsedTime/1000)}s / ${stats.processed} messages verwerkt`);
+        console.log(`📭 ${messages.length - messages.indexOf(message)} emails overgeslagen - worden bij volgende sync opgepakt`);
+        break;
+      }
+      
       try {
         // Get full message details with retry
         const messageResponse = await fetchWithRetry(
@@ -737,12 +783,22 @@ serve(async (req) => {
           
           console.log(`📌 Existing thread found, using lead: ${leadId}`);
 
-          // Update thread stats
+          // Update thread stats - eerst SELECT huidige message_count
+          const { data: currentThread, error: selectError } = await supabase
+            .from('email_threads')
+            .select('message_count')
+            .eq('id', threadDbId)
+            .single();
+          
+          if (selectError) {
+            throw new Error(`Failed to get thread count: ${selectError.message}`);
+          }
+          
           const { error: updateError } = await supabase
             .from('email_threads')
             .update({
               last_message_date: internalDate,
-              message_count: supabase.rpc('increment', { x: 1 }),
+              message_count: (currentThread?.message_count || 0) + 1,
               updated_at: new Date().toISOString()
             })
             .eq('id', threadDbId);
@@ -938,15 +994,21 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('❌ Critical function error:', error);
+    
+    // Altijd 200 teruggeven met success:false voor betere CORS handling
     return new Response(
       JSON.stringify({ 
-        success: false, 
+        success: false,
+        errorType: 'critical_error',
         error: error.message,
-        ...stats
+        processed: stats.processed || 0,
+        created: stats.created || 0,
+        updated: stats.updated || 0,
+        rateLimitSkipped: stats.rateLimitSkipped || 0
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
+        status: 200
       }
     );
   }
