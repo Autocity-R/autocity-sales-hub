@@ -1389,6 +1389,8 @@ export type Database = {
           last_email_date: string | null
           last_name: string | null
           lead_score: number | null
+          lead_temperature: string | null
+          lead_type: string | null
           owner_id: string | null
           phone: string | null
           priority: string
@@ -1410,6 +1412,8 @@ export type Database = {
           last_email_date?: string | null
           last_name?: string | null
           lead_score?: number | null
+          lead_temperature?: string | null
+          lead_type?: string | null
           owner_id?: string | null
           phone?: string | null
           priority: string
@@ -1431,6 +1435,8 @@ export type Database = {
           last_email_date?: string | null
           last_name?: string | null
           lead_score?: number | null
+          lead_temperature?: string | null
+          lead_type?: string | null
           owner_id?: string | null
           phone?: string | null
           priority?: string

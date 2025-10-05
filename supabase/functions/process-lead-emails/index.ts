@@ -68,6 +68,48 @@ interface ParsedData {
   rawBody?: string;
 }
 
+// Fase 1.3: Lead Temperature Classification
+function classifyLeadTemperature(parsedData: ParsedData): {
+  temperature: 'hot' | 'warm' | 'cold' | 'ice';
+  type: string;
+} {
+  
+  // 🔥 HOT LEADS (directe actie vereist - hoogste prioriteit)
+  if (parsedData.type === 'FinancialLead') {
+    return { temperature: 'hot', type: 'financial_approved' };
+  }
+  if (parsedData.subType === 'Proefritaanvraag') {
+    return { temperature: 'hot', type: 'test_drive_request' };
+  }
+  if (parsedData.type === 'TradeIn') {
+    return { temperature: 'hot', type: 'trade_in_request' };
+  }
+  
+  // 🟡 WARM LEADS (standaard opvolging binnen 24u)
+  if (parsedData.subType === 'Terugbelverzoek') {
+    return { temperature: 'warm', type: 'callback_request' };
+  }
+  if (parsedData.type === 'Contact' && parsedData.vehicle) {
+    return { temperature: 'warm', type: 'vehicle_inquiry' };
+  }
+  if (parsedData.type === 'Contact') {
+    return { temperature: 'warm', type: 'general_inquiry' };
+  }
+  
+  // 🔵 COLD LEADS (opvolging binnen 48u)
+  if (parsedData.type === 'MissedCall') {
+    return { temperature: 'cold', type: 'missed_call' };
+  }
+  
+  // ❄️ ICE (genegeerd - geen lead)
+  if (parsedData.ignored) {
+    return { temperature: 'ice', type: 'ignored' };
+  }
+  
+  // Default: warm
+  return { temperature: 'warm', type: 'general_inquiry' };
+}
+
 // Financial Partner Parser (Blokweg Groep + FinancialLease.nl)
 function parseFinancialPartner(body: string, from: string): ParsedData | null {
   console.log('💰 Parsing Financial Partner email');
@@ -872,11 +914,15 @@ serve(async (req) => {
           // Add customer message
           if (parsedData.message) notes += `\n\nBericht: ${parsedData.message}`;
           
-          // Determine urgency and intent
-          const urgency = parsedData.type === 'MissedCall' ? 'high' : 'medium';
+          // Fase 1.3: Use intelligent classification
+          const classification = classifyLeadTemperature(parsedData);
+          const urgency = classification.temperature === 'hot' ? 'high' : 
+                         classification.temperature === 'warm' ? 'medium' : 'low';
           const intent = parsedData.type === 'TradeIn' ? 'inruil_aanvraag' : 
                         parsedData.type === 'FinancialLead' ? 'financiering_aanvraag' :
                         'informatie_aanvraag';
+          
+          console.log(`🌡️ Lead classified as ${classification.temperature.toUpperCase()} - Type: ${classification.type}`);
           
           const { data: newLead, error: leadError } = await supabase
             .from('leads')
@@ -889,6 +935,8 @@ serve(async (req) => {
               email_thread_id: threadId,
               intent_classification: intent,
               urgency_level: urgency,
+              lead_temperature: classification.temperature,
+              lead_type: classification.type,
               status: 'new',
               priority: urgency === 'high' ? 'high' : 'medium',
               interested_vehicle: null,
