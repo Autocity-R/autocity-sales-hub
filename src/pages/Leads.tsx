@@ -10,11 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Lead, LeadStatus, LeadSource } from "@/types/leads";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LeadDetail } from "@/components/leads/LeadDetail";
 import { LeadForm } from "@/components/leads/LeadForm";
-import { LeadPipeline } from "@/components/leads/LeadPipeline";
-import { LeadEmailComposer } from "@/components/leads/LeadEmailComposer";
-import { LeadAIAssistant } from "@/components/leads/LeadAIAssistant";
+import { LeadKanbanBoard } from "@/components/leads/LeadKanbanBoard";
+import { LeadDetailSidebar } from "@/components/leads/LeadDetailSidebar";
 import { useSalespeople } from "@/hooks/useSalespeople";
 import { 
   Plus, 
@@ -24,25 +22,19 @@ import {
   TrendingUp, 
   Clock,
   Target,
-  Mail,
-  Bot,
   RefreshCw
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { LeadSearchRequests } from "@/components/leads/LeadSearchRequests";
 
 const Leads = () => {
   const queryClient = useQueryClient();
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [showEmailComposer, setShowEmailComposer] = useState(false);
-  const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all");
-  const [activeTab, setActiveTab] = useState("list");
-  const [assignedToFilter, setAssignedToFilter] = useState<string>("all");
+  const [viewFilter, setViewFilter] = useState<"all" | "mine" | "unassigned">("all");
   
   const { data: salespeople = [] } = useSalespeople();
 
@@ -76,8 +68,10 @@ const Leads = () => {
         timeline: undefined,
         notes: '',
         createdAt: dbLead.created_at,
+        created_at: dbLead.created_at,
         updatedAt: dbLead.updated_at,
         assignedTo: dbLead.assigned_to || undefined,
+        owner_id: dbLead.owner_id || undefined,
         lastContactDate: dbLead.last_email_date || undefined,
         nextFollowUpDate: undefined,
         responseTime: undefined,
@@ -173,21 +167,74 @@ const Leads = () => {
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = `${lead.firstName} ${lead.lastName} ${lead.email} ${lead.company || ''}`
       .toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || lead.status === statusFilter;
-    const matchesAssignee = assignedToFilter === "all" || 
-      (assignedToFilter === "unassigned" && !lead.assignedTo) ||
-      lead.assignedTo === assignedToFilter;
-    return matchesSearch && matchesStatus && matchesAssignee;
+    
+    // TODO: Replace with actual auth.uid() check
+    const currentUserId = "current-user-id"; 
+    
+    if (viewFilter === "mine") {
+      return matchesSearch && lead.owner_id === currentUserId;
+    } else if (viewFilter === "unassigned") {
+      return matchesSearch && !lead.owner_id;
+    }
+    
+    return matchesSearch; // "all" filter
   });
 
-  const handleStatusFilterClick = (status: LeadStatus) => {
-    setStatusFilter(status);
-    setActiveTab("list");
+
+  const handleStatusChange = async (leadId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .update({ status: newStatus })
+        .eq('id', leadId);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
+
+      toast({
+        title: "Status bijgewerkt",
+        description: "Lead status is succesvol gewijzigd",
+      });
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast({
+        title: "Fout",
+        description: "Kon lead status niet bijwerken",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleAssignLead = (leadId: string, assignee: string) => {
-    // TODO: Implement lead assignment logic
-    console.log(`Assigning lead ${leadId} to ${assignee}`);
+  const handleOwnerChange = async (leadId: string, ownerId: string | null) => {
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .update({ owner_id: ownerId })
+        .eq('id', leadId);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+
+      toast({
+        title: "Eigenaar bijgewerkt",
+        description: "Lead eigenaar is succesvol gewijzigd",
+      });
+    } catch (error) {
+      console.error('Error updating owner:', error);
+      toast({
+        title: "Fout",
+        description: "Kon lead eigenaar niet bijwerken",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLeadClick = (lead: Lead) => {
+    setSelectedLead(lead);
+    setSidebarOpen(true);
   };
 
   const handleManualEmailSync = async () => {
@@ -276,35 +323,6 @@ const Leads = () => {
       toast({ title: "❌ Fout bij email synchronisatie", variant: "destructive" });
     }
   };
-  if (selectedLead) {
-    return (
-      <DashboardLayout>
-        <LeadDetail 
-          lead={selectedLead} 
-          onBack={() => setSelectedLead(null)}
-          onUpdate={(updatedLead) => setSelectedLead(updatedLead)}
-          onSendEmail={() => setShowEmailComposer(true)}
-          onOpenAI={() => setShowAIAssistant(true)}
-        />
-        {showEmailComposer && (
-          <LeadEmailComposer
-            lead={selectedLead}
-            onClose={() => setShowEmailComposer(false)}
-            onSent={() => {
-              setShowEmailComposer(false);
-              // Refresh lead data
-            }}
-          />
-        )}
-        {showAIAssistant && (
-          <LeadAIAssistant
-            lead={selectedLead}
-            onClose={() => setShowAIAssistant(false)}
-          />
-        )}
-      </DashboardLayout>
-    );
-  }
 
   if (showForm) {
     return (
@@ -324,123 +342,80 @@ const Leads = () => {
     <DashboardLayout>
       <div className="space-y-6">
         <PageHeader
-          title="Lead Management"
-          description="Beheer alle prospects en leads in één overzicht"
+          title="Lead Management Dashboard"
+          description="Kanban overzicht van alle verkoopkansen"
         >
           <div className="flex gap-2">
-            <Button onClick={handleManualEmailSync} variant="outline" className="gap-2">
+            <Button onClick={handleManualEmailSync} variant="outline" size="sm" className="gap-2">
               <RefreshCw className="h-4 w-4" />
-              Gmail Sync (Test)
+              Sync Emails
             </Button>
-            <Button onClick={() => setShowAIAssistant(true)} variant="outline" className="gap-2">
-              <Bot className="h-4 w-4" />
-              AI Assistant
-            </Button>
-            <Button onClick={() => setShowEmailComposer(true)} variant="outline" className="gap-2">
-              <Mail className="h-4 w-4" />
-              Bulk Email
-            </Button>
-            <Button onClick={() => setShowForm(true)} className="gap-2">
+            <Button onClick={() => setShowForm(true)} size="sm" className="gap-2">
               <Plus className="h-4 w-4" />
               Nieuwe Lead
             </Button>
           </div>
         </PageHeader>
 
-        {/* Stats Cards - Now Clickable */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleStatusFilterClick('new')}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Nieuw</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{stats.byStatus.new || 0}</div>
-            </CardContent>
-          </Card>
+        {/* View Filters */}
+        <div className="flex gap-4 items-center">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Zoek leads..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
           
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleStatusFilterClick('contacted')}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Gecontacteerd</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">{stats.byStatus.contacted || 0}</div>
-            </CardContent>
-          </Card>
-          
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleStatusFilterClick('proposal')}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Offerte</CardTitle>
-              <Target className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{stats.byStatus.proposal || 0}</div>
-            </CardContent>
-          </Card>
-          
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleStatusFilterClick('won')}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Gewonnen</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.byStatus.won || 0}</div>
-            </CardContent>
-          </Card>
+          <div className="flex gap-2">
+            <Button
+              variant={viewFilter === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewFilter("all")}
+            >
+              Alle Leads
+            </Button>
+            <Button
+              variant={viewFilter === "mine" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewFilter("mine")}
+            >
+              Mijn Leads
+            </Button>
+            <Button
+              variant={viewFilter === "unassigned" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewFilter("unassigned")}
+            >
+              Niet-toegewezen
+            </Button>
+          </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="list">Lijstweergave</TabsTrigger>
-            <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-            <TabsTrigger value="search">Zoekopdrachten</TabsTrigger>
-          </TabsList>
+        {/* Kanban Board */}
+        {isLoading ? (
+          <div className="space-y-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-96 w-full" />
+          </div>
+        ) : (
+          <LeadKanbanBoard
+            leads={filteredLeads}
+            onLeadClick={handleLeadClick}
+            onStatusChange={handleStatusChange}
+          />
+        )}
 
-          <TabsContent value="list" className="space-y-4">
-            {/* Enhanced Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Zoek leads..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              
-              <Select value={statusFilter} onValueChange={(value: LeadStatus | "all") => setStatusFilter(value)}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter op status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alle statussen</SelectItem>
-                  <SelectItem value="new">Nieuw</SelectItem>
-                  <SelectItem value="contacted">Gecontacteerd</SelectItem>
-                  <SelectItem value="qualified">Gekwalificeerd</SelectItem>
-                  <SelectItem value="proposal">Offerte</SelectItem>
-                  <SelectItem value="negotiation">Onderhandeling</SelectItem>
-                  <SelectItem value="won">Gewonnen</SelectItem>
-                  <SelectItem value="lost">Verloren</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={assignedToFilter} onValueChange={setAssignedToFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter op medewerker" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alle medewerkers</SelectItem>
-                  <SelectItem value="unassigned">Niet toegewezen</SelectItem>
-                  {salespeople.map((person) => (
-                    <SelectItem key={person.id} value={person.id}>
-                      {person.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        {/* Lead Detail Sidebar */}
+        <LeadDetailSidebar
+          lead={selectedLead}
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onStatusChange={handleStatusChange}
+          onOwnerChange={handleOwnerChange}
+        />
 
             {/* Enhanced Leads List */}
             <div className="grid gap-4">
@@ -519,36 +494,6 @@ const Leads = () => {
                 ))
               )}
             </div>
-          </TabsContent>
-
-          <TabsContent value="pipeline">
-            <LeadPipeline 
-              leads={leads} 
-              onLeadClick={setSelectedLead}
-              onStatusClick={handleStatusFilterClick}
-            />
-          </TabsContent>
-
-          <TabsContent value="search">
-            <LeadSearchRequests />
-          </TabsContent>
-        </Tabs>
-
-        {/* AI Assistant Modal */}
-        {showAIAssistant && (
-          <LeadAIAssistant
-            onClose={() => setShowAIAssistant(false)}
-          />
-        )}
-
-        {/* Bulk Email Composer */}
-        {showEmailComposer && (
-          <LeadEmailComposer
-            leads={filteredLeads}
-            onClose={() => setShowEmailComposer(false)}
-            onSent={() => setShowEmailComposer(false)}
-          />
-        )}
       </div>
     </DashboardLayout>
   );
