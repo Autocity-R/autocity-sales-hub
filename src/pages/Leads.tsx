@@ -13,9 +13,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { LeadDetail } from "@/components/leads/LeadDetail";
 import { LeadForm } from "@/components/leads/LeadForm";
 import { LeadPipeline } from "@/components/leads/LeadPipeline";
+import { LeadListView } from "@/components/leads/LeadListView";
 import { LeadEmailComposer } from "@/components/leads/LeadEmailComposer";
 import { LeadAIAssistant } from "@/components/leads/LeadAIAssistant";
 import { LeadListCard } from "@/components/leads/LeadListCard";
+import { DisqualifyLeadDialog } from "@/components/leads/DisqualifyLeadDialog";
 import { useSalespeople } from "@/hooks/useSalespeople";
 import { 
   Plus, 
@@ -27,7 +29,10 @@ import {
   Target,
   Mail,
   Bot,
-  RefreshCw
+  RefreshCw,
+  LayoutGrid,
+  List,
+  Archive
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -42,8 +47,11 @@ const Leads = () => {
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all");
-  const [activeTab, setActiveTab] = useState("list");
+  const [activeTab, setActiveTab] = useState("pipeline");
   const [assignedToFilter, setAssignedToFilter] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [showArchived, setShowArchived] = useState(false);
+  const [disqualifyLead, setDisqualifyLead] = useState<Lead | null>(null);
   
   const { data: salespeople = [] } = useSalespeople();
 
@@ -191,6 +199,40 @@ const Leads = () => {
     console.log(`Assigning lead ${leadId} to ${assignee}`);
   };
 
+  const handleDisqualifyLead = async (reason: string, notes: string) => {
+    if (!disqualifyLead) return;
+
+    try {
+      // Update lead status to 'lost'
+      const { error } = await supabase
+        .from('leads')
+        .update({ status: 'lost' })
+        .eq('id', disqualifyLead.id);
+
+      if (error) throw error;
+
+      // Log activity
+      // TODO: Add to activities table with reason and notes
+
+      toast({
+        title: "Lead gediskwalificeerd",
+        description: `${reason}${notes ? ': ' + notes : ''}`,
+      });
+
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
+      
+      setDisqualifyLead(null);
+    } catch (error) {
+      console.error("Error disqualifying lead:", error);
+      toast({ 
+        title: "Fout bij diskwalificeren", 
+        variant: "destructive" 
+      });
+    }
+  };
+
   const handleManualEmailSync = async () => {
     toast({ title: "Email synchronisatie gestart..." });
     try {
@@ -326,12 +368,20 @@ const Leads = () => {
       <div className="space-y-6">
         <PageHeader
           title="Lead Management"
-          description="Beheer alle prospects en leads in één overzicht"
+          description="Schaalbaar lead systeem met kwalificatie workflow"
         >
           <div className="flex gap-2">
+            <Button 
+              onClick={() => setShowArchived(!showArchived)} 
+              variant="outline" 
+              className="gap-2"
+            >
+              <Archive className="h-4 w-4" />
+              {showArchived ? 'Verberg Archief' : 'Toon Archief'}
+            </Button>
             <Button onClick={handleManualEmailSync} variant="outline" className="gap-2">
               <RefreshCw className="h-4 w-4" />
-              Gmail Sync (Test)
+              Gmail Sync
             </Button>
             <Button onClick={() => setShowAIAssistant(true)} variant="outline" className="gap-2">
               <Bot className="h-4 w-4" />
@@ -392,96 +442,52 @@ const Leads = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="list">Lijstweergave</TabsTrigger>
-            <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-            <TabsTrigger value="search">Zoekopdrachten</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="pipeline">Verkooppijplijn</TabsTrigger>
+              <TabsTrigger value="search">Zoekopdrachten</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="list" className="space-y-4">
-            {/* Enhanced Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Zoek leads..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+            {activeTab === 'pipeline' && (
+              <div className="flex gap-2">
+                <Button
+                  variant={viewMode === 'kanban' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('kanban')}
+                  className="gap-2"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  Kanban
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="gap-2"
+                >
+                  <List className="h-4 w-4" />
+                  Lijst
+                </Button>
               </div>
-              
-              <Select value={statusFilter} onValueChange={(value: LeadStatus | "all") => setStatusFilter(value)}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter op status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alle statussen</SelectItem>
-                  <SelectItem value="new">Nieuw</SelectItem>
-                  <SelectItem value="contacted">Gecontacteerd</SelectItem>
-                  <SelectItem value="qualified">Gekwalificeerd</SelectItem>
-                  <SelectItem value="proposal">Offerte</SelectItem>
-                  <SelectItem value="negotiation">Onderhandeling</SelectItem>
-                  <SelectItem value="won">Gewonnen</SelectItem>
-                  <SelectItem value="lost">Verloren</SelectItem>
-                </SelectContent>
-              </Select>
+            )}
+          </div>
 
-              <Select value={assignedToFilter} onValueChange={setAssignedToFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter op medewerker" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alle medewerkers</SelectItem>
-                  <SelectItem value="unassigned">Niet toegewezen</SelectItem>
-                  {salespeople.map((person) => (
-                    <SelectItem key={person.id} value={person.id}>
-                      {person.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Enhanced Leads List */}
-            <div className="grid gap-4">
-              {isLoading ? (
-                // Loading skeletons
-                Array.from({ length: 3 }).map((_, i) => (
-                  <Card key={i}>
-                    <CardContent className="p-6">
-                      <Skeleton className="h-24 w-full" />
-                    </CardContent>
-                  </Card>
-                ))
-              ) : filteredLeads.length === 0 ? (
-                <Card>
-                  <CardContent className="p-12 text-center text-muted-foreground">
-                    <p>Geen leads gevonden</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                filteredLeads.map((lead) => {
-                  const owner = salespeople?.find(s => s.id === lead.assignedTo);
-                  return (
-                    <LeadListCard
-                      key={lead.id}
-                      lead={lead}
-                      ownerInitials={owner?.initials}
-                      onLeadClick={setSelectedLead}
-                    />
-                  );
-                })
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="pipeline">
-            <LeadPipeline 
-              leads={leads} 
-              onLeadClick={setSelectedLead}
-              onStatusClick={handleStatusFilterClick}
-            />
+          <TabsContent value="pipeline" className="space-y-4">
+            {viewMode === 'kanban' ? (
+              <LeadPipeline 
+                leads={filteredLeads}
+                onLeadClick={setSelectedLead}
+                onStatusClick={handleStatusFilterClick}
+                onDisqualifyClick={setDisqualifyLead}
+                showArchived={showArchived}
+              />
+            ) : (
+              <LeadListView 
+                leads={filteredLeads}
+                onLeadClick={setSelectedLead}
+                salespeople={salespeople}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="search">
@@ -492,6 +498,7 @@ const Leads = () => {
         {/* AI Assistant Modal */}
         {showAIAssistant && (
           <LeadAIAssistant
+            lead={null}
             onClose={() => setShowAIAssistant(false)}
           />
         )}
@@ -502,6 +509,16 @@ const Leads = () => {
             leads={filteredLeads}
             onClose={() => setShowEmailComposer(false)}
             onSent={() => setShowEmailComposer(false)}
+          />
+        )}
+
+        {/* Disqualify Lead Dialog */}
+        {disqualifyLead && (
+          <DisqualifyLeadDialog
+            open={!!disqualifyLead}
+            onClose={() => setDisqualifyLead(null)}
+            onDisqualify={handleDisqualifyLead}
+            leadName={`${disqualifyLead.firstName} ${disqualifyLead.lastName}`}
           />
         )}
       </div>

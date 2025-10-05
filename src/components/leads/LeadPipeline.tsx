@@ -11,20 +11,39 @@ interface LeadPipelineProps {
   onStatusClick?: (status: LeadStatus) => void;
 }
 
+interface LeadPipelineProps {
+  leads: Lead[];
+  onLeadClick: (lead: Lead) => void;
+  onStatusClick?: (status: LeadStatus) => void;
+  onDisqualifyClick?: (lead: Lead) => void;
+  showArchived?: boolean;
+}
+
 export const LeadPipeline: React.FC<LeadPipelineProps> = ({ 
   leads, 
   onLeadClick, 
-  onStatusClick 
+  onStatusClick,
+  onDisqualifyClick,
+  showArchived = false
 }) => {
-  const statusColumns: { status: LeadStatus; label: string; color: string }[] = [
-    { status: 'new', label: 'Nieuw', color: 'bg-blue-500' },
-    { status: 'contacted', label: 'Gecontacteerd', color: 'bg-yellow-500' },
-    { status: 'qualified', label: 'Gekwalificeerd', color: 'bg-purple-500' },
-    { status: 'proposal', label: 'Offerte', color: 'bg-orange-500' },
-    { status: 'negotiation', label: 'Onderhandeling', color: 'bg-indigo-500' },
-    { status: 'won', label: 'Gewonnen', color: 'bg-green-500' },
-    { status: 'lost', label: 'Verloren', color: 'bg-red-500' }
+  // Active pipeline columns (default view)
+  const activePipelineColumns: { status: LeadStatus; label: string; color: string; description: string }[] = [
+    { status: 'new', label: 'Nieuw', color: 'bg-blue-500', description: 'Lead Inbox - Te kwalificeren' },
+    { status: 'contacted', label: 'Gecontacteerd', color: 'bg-yellow-500', description: 'Eerste contact gelegd' },
+    { status: 'qualified', label: 'Gekwalificeerd', color: 'bg-purple-500', description: 'Serieuze prospect' },
+    { status: 'proposal', label: 'Offerte', color: 'bg-orange-500', description: 'Voorstel verstuurd' },
+    { status: 'negotiation', label: 'Onderhandeling', color: 'bg-indigo-500', description: 'In onderhandeling' },
   ];
+
+  // Endpoint columns (archived after 7 days)
+  const endpointColumns: { status: LeadStatus; label: string; color: string; description: string }[] = [
+    { status: 'won', label: 'Gewonnen', color: 'bg-green-500', description: 'Deal gesloten' },
+    { status: 'lost', label: 'Verloren', color: 'bg-red-500', description: 'Diskwalificatie' }
+  ];
+
+  const statusColumns = showArchived 
+    ? [...activePipelineColumns, ...endpointColumns]
+    : activePipelineColumns;
 
   const getLeadsByStatus = (status: LeadStatus) => {
     return leads.filter(lead => lead.status === status);
@@ -34,18 +53,33 @@ export const LeadPipeline: React.FC<LeadPipelineProps> = ({
     return leads.reduce((sum, lead) => sum + (lead.budget || 0), 0);
   };
 
+  const filteredLeads = showArchived 
+    ? leads 
+    : leads.filter(lead => !['won', 'lost'].includes(lead.status));
+
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
+      {!showArchived && (
+        <div className="flex items-center gap-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="text-sm text-blue-900">
+            <strong>💡 Actieve Verkooppijplijn:</strong> Alleen actieve leads worden getoond. 
+            Gewonnen en Verloren leads worden na 7 dagen automatisch gearchiveerd.
+          </div>
+        </div>
+      )}
+      
+      <div className={`grid grid-cols-1 gap-4 ${showArchived ? 'lg:grid-cols-7' : 'lg:grid-cols-5'}`}>
         {statusColumns.map((column) => {
-          const columnLeads = getLeadsByStatus(column.status);
+          const columnLeads = getLeadsByStatus(column.status).filter(lead => 
+            showArchived || !['won', 'lost'].includes(lead.status)
+          );
           const totalValue = getTotalValue(columnLeads);
           
           return (
             <div key={column.status} className="space-y-3">
               <Card 
-                className={`cursor-pointer hover:shadow-md transition-shadow ${
-                  onStatusClick ? 'hover:bg-accent' : ''
+                className={`${
+                  onStatusClick ? 'cursor-pointer hover:shadow-md transition-shadow hover:bg-accent' : ''
                 }`}
                 onClick={() => onStatusClick?.(column.status)}
               >
@@ -54,8 +88,11 @@ export const LeadPipeline: React.FC<LeadPipelineProps> = ({
                     <span>{column.label}</span>
                     <Badge variant="secondary">{columnLeads.length}</Badge>
                   </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    {column.description}
+                  </p>
                   {totalValue > 0 && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs font-medium text-green-600">
                       € {totalValue.toLocaleString()}
                     </p>
                   )}
