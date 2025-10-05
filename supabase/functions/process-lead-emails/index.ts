@@ -35,23 +35,31 @@ interface ParsedData {
   rawBody?: string;
 }
 
-// Financial Partner Parser (NEW)
-function parseFinancialPartner(body: string, subject: string, from: string): ParsedData | null {
+// Financial Partner Parser (Blokweg Groep + FinancialLease.nl)
+function parseFinancialPartner(body: string, from: string): ParsedData | null {
   console.log('💰 Parsing Financial Partner email');
   
   const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   
-  const nameMatch = cleanBody.match(/Naam:\s*([^\n]+)/i);
+  // Detect source
+  const lowerFrom = from.toLowerCase();
+  const source = lowerFrom.includes('financiallease.nl') ? 'FinancialLease.nl' : 
+                 lowerFrom.includes('blokweggroep.nl') ? 'BlokwegGroep' : 'FinancialPartner';
+  
+  // Extract fields (can have "De heer" / "Mevrouw" prefix)
+  const nameMatch = cleanBody.match(/Naam:\s*(?:De heer|Mevrouw)?\s*([^\n]+)/i);
   const emailMatch = cleanBody.match(/E-mail:\s*([^\s<>]+)/i);
   const phoneMatch = cleanBody.match(/Telefoonnummer:\s*([^\n]+)/i);
   const companyMatch = cleanBody.match(/Bedrijfsnaam:\s*([^\n]+)/i);
+  const vehicleMatch = cleanBody.match(/(?:Voertuig|Interesse in):\s*([^\n]+)/i);
   
   if (!nameMatch || !emailMatch) {
     return null;
   }
   
   const nameParts = nameMatch[1].trim().split(' ');
-  const source = from.includes('financiallease.nl') ? 'FinancialLease.nl' : 'BlokwegGroep.nl';
+  let message = `🔥 FINANCIAL LEASE GOEDGEKEURD (${source})\nFinanciering is al akkoord - directe verkoopkans!`;
+  if (vehicleMatch) message += `\n\nVoertuig: ${vehicleMatch[1].trim()}`;
   
   return {
     firstName: nameParts[0],
@@ -59,14 +67,15 @@ function parseFinancialPartner(body: string, subject: string, from: string): Par
     email: emailMatch[1].trim(),
     phone: phoneMatch?.[1]?.trim(),
     companyName: companyMatch?.[1]?.trim(),
-    message: cleanBody.substring(0, 500),
+    vehicle: vehicleMatch?.[1]?.trim(),
+    message: message,
     source: source,
     type: 'FinancialLead',
     rawBody: cleanBody
   };
 }
 
-// Website Parser (NEW)
+// Website Parser (morgeninternet.nl)
 function parseWebsite(body: string, subject: string): ParsedData | null {
   console.log('🌐 Parsing Website email');
   
@@ -95,14 +104,14 @@ function parseWebsite(body: string, subject: string): ParsedData | null {
   if (isTradeIn) {
     const kentekenMatch = cleanBody.match(/Kenteken:\s*([^\n]+)/i);
     const kmMatch = cleanBody.match(/Kilometerstand:\s*([^\n]+)/i);
-    const remarksMatch = cleanBody.match(/Eventuele opmerkingen:\s*([^\n]+)/i);
+    const remarksMatch = cleanBody.match(/(?:Eventuele opmerkingen|Opmerkingen):\s*([^\n]+)/i);
     
     result.tradeIn = {
       kenteken: kentekenMatch?.[1]?.trim(),
       mileage: kmMatch?.[1]?.trim(),
       remarks: remarksMatch?.[1]?.trim()
     };
-    result.message = `Inruilaanvraag voor ${kentekenMatch?.[1]?.trim() || 'onbekend kenteken'}`;
+    result.message = `Inruilaanvraag via website - ${kentekenMatch?.[1]?.trim() || 'kenteken onbekend'}`;
   }
   
   return result;
@@ -171,10 +180,14 @@ function parseAutoTrackEnhanced(body: string, subject: string): ParsedData | nul
   if (subType === 'Inruilaanvraag') {
     const kentekenMatch = cleanBody.match(/Kenteken:\s*([^\n]+)/i);
     const kmMatch = cleanBody.match(/Kilometerstand:\s*([^\n]+)/i);
+    const stateMatch = cleanBody.match(/Staat van inruilauto:\s*([^\n]+)/i);
+    const descMatch = cleanBody.match(/Beschrijving inruilauto:\s*([^\n]+)/i);
     
     result.tradeIn = {
       kenteken: kentekenMatch?.[1]?.trim(),
-      mileage: kmMatch?.[1]?.trim()
+      mileage: kmMatch?.[1]?.trim(),
+      state: stateMatch?.[1]?.trim(),
+      description: descMatch?.[1]?.trim()
     };
     result.message = `Inruilaanvraag via AutoTrack`;
   } else if (subType === 'Terugbelverzoek') {
@@ -189,8 +202,85 @@ function parseAutoTrackEnhanced(body: string, subject: string): ParsedData | nul
   return result;
 }
 
-// Marktplaats - explicitly ignored
-// This function is no longer used, handled in master parser
+// Marktplaats Parser - Multiple email types
+function parseMarktplaats(body: string, subject: string): ParsedData | null {
+  console.log('🛒 Parsing Marktplaats email');
+  
+  const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const lowerSubject = subject.toLowerCase();
+  
+  // TRIAGE: Ignore "Reactie ontvangen" en "Gesprek gevoerd"
+  if (lowerSubject.includes('je hebt een reactie ontvangen') || 
+      lowerSubject.includes('gesprek gevoerd')) {
+    console.log('💬 Marktplaats reactie/gesprek - ignoring');
+    return { source: 'Marktplaats', type: 'Ignored', ignored: true };
+  }
+  
+  // SUBTYPE detectie
+  let subType = 'Contact';
+  if (lowerSubject.includes('gemiste oproep')) subType = 'MissedCall';
+  else if (lowerSubject.includes('inruilverzoek')) subType = 'TradeIn';
+  else if (lowerSubject.includes('vraag over')) subType = 'Question';
+  
+  // GEMISTE OPROEP - alleen telefoonnummer
+  if (subType === 'MissedCall') {
+    const phoneMatch = cleanBody.match(/Telefoonnummer:\s*([^\n]+)/i);
+    const vehicleMatch = subject.match(/voor\s+(.+?)(?:\s*-|$)/i);
+    
+    if (phoneMatch) {
+      return {
+        phone: phoneMatch[1].trim(),
+        vehicle: vehicleMatch?.[1]?.trim(),
+        source: 'Marktplaats',
+        type: 'MissedCall',
+        message: `Gemiste oproep - klant gebeld via Marktplaats`,
+        rawBody: cleanBody
+      };
+    }
+  }
+  
+  // NORMALE PARSING
+  const nameMatch = cleanBody.match(/(?:Naam|Van):\s*([^\n]+)/i);
+  const emailMatch = cleanBody.match(/E-mailadres:\s*([^\s<>]+)/i);
+  const phoneMatch = cleanBody.match(/Telefoonnummer:\s*([^\n]+)/i);
+  const vehicleMatch = subject.match(/voor\s+(.+?)(?:\s*-|$)/i) ||
+                       cleanBody.match(/(?:Voertuig|Advertentie):\s*([^\n]+)/i);
+  const messageMatch = cleanBody.match(/(?:Vraag|Bericht):\s*([^\n]+)/i);
+  
+  if (!nameMatch || !emailMatch) {
+    return null;
+  }
+  
+  const nameParts = nameMatch[1].trim().split(' ');
+  const result: ParsedData = {
+    firstName: nameParts[0],
+    lastName: nameParts.slice(1).join(' ') || nameParts[0],
+    email: emailMatch[1].trim(),
+    phone: phoneMatch?.[1]?.trim(),
+    vehicle: vehicleMatch?.[1]?.trim(),
+    message: messageMatch?.[1]?.trim(),
+    source: 'Marktplaats',
+    type: subType === 'TradeIn' ? 'TradeIn' : 'Contact',
+    subType: subType,
+    rawBody: cleanBody
+  };
+  
+  // INRUILVERZOEK
+  if (subType === 'TradeIn') {
+    const kentekenMatch = cleanBody.match(/Kenteken:\s*([^\n]+)/i);
+    const kmMatch = cleanBody.match(/Kilometerstand:\s*([^\n]+)/i);
+    const remarksMatch = cleanBody.match(/Mankementen:\s*([^\n]+)/i);
+    
+    result.tradeIn = {
+      kenteken: kentekenMatch?.[1]?.trim(),
+      mileage: kmMatch?.[1]?.trim(),
+      remarks: remarksMatch?.[1]?.trim()
+    };
+    result.message = `Inruilverzoek via Marktplaats`;
+  }
+  
+  return result;
+}
 
 // Enhanced AutoScout24 Parser
 function parseAutoScout24Enhanced(body: string, subject: string): ParsedData | null {
@@ -224,10 +314,16 @@ function parseAutoScout24Enhanced(body: string, subject: string): ParsedData | n
   }
   
   // HOOFD-PARSING: Nieuwe aanvraag
-  const nameMatch = cleanBody.match(/(?:Nieuwe aanvraag van|Naam|Name):\s*([^\n;]+)/i);
+  let nameMatch = cleanBody.match(/(?:Nieuwe aanvraag van|Naam|Name):\s*([^\n;]+)/i);
   const emailMatch = cleanBody.match(/(?:E[-\s]?mail(?:adres)?|Email):\s*([^\s<>;]+)/i);
   const phoneMatch = cleanBody.match(/(?:Telefoon(?:nummer)?|Phone):\s*([^\n;]+)/i);
   const messageMatch = cleanBody.match(/(?:Bericht van de koper|Nachricht|Message):\s*([^\n]+)/i);
+  
+  // Probeer naam uit closing indien niet gevonden
+  if (!nameMatch) {
+    const greetingMatch = cleanBody.match(/(?:Met vriendelijke groet|bvd,?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i);
+    if (greetingMatch) nameMatch = [greetingMatch[0], greetingMatch[1]];
+  }
   
   const vehicleMatch = subject.match(/voor uw\s+(.+?)(?:\s*-|\s*\||$)/i) ||
                        cleanBody.match(/voor uw\s+([^\n;]+?)(?:\s+met|;|$)/i);
@@ -293,22 +389,38 @@ function parseGenericLead(body: string, subject: string): ParsedData | null {
 }
 
 
-function parseLeadEmail(sender: string, subject: string, body: string): ParsedLeadData | null {
-  // Determine portal based on sender
-  const senderLower = sender.toLowerCase();
+// Master Email Router
+function parseEmail(body: string, subject: string, from: string): ParsedData | null {
+  const lowerFrom = from.toLowerCase();
   
-  if (senderLower.includes('autotrack')) {
-    return parseAutoTrack(body, subject);
-  } else if (senderLower.includes('marktplaats')) {
-    return parseMarktplaats(body, subject);
-  } else if (senderLower.includes('autoscout24') || senderLower.includes('autoscout')) {
-    return parseAutoScout24(body, subject);
-  } else if (senderLower.includes('2dehands') || senderLower.includes('tweedehands')) {
-    return parseTweedehands(body, subject);
-  } else {
-    // Try generic parsing for other sources
-    return parseGenericLead(body, subject);
+  // === FINANCIAL PARTNERS ===
+  if (lowerFrom.includes('blokweggroep.nl') || lowerFrom.includes('financiallease.nl')) {
+    return parseFinancialPartner(body, from);
   }
+  
+  // === AUTOSCOUT24 ===
+  if (lowerFrom.includes('autoscout24.com')) {
+    return parseAutoScout24Enhanced(body, subject);
+  }
+  
+  // === AUTOTRACK ===
+  if (lowerFrom.includes('autotrack.nl')) {
+    return parseAutoTrackEnhanced(body, subject);
+  }
+  
+  // === MARKTPLAATS ===
+  if (lowerFrom.includes('marktplaats.nl')) {
+    return parseMarktplaats(body, subject);
+  }
+  
+  // === WEBSITE ===
+  if (lowerFrom.includes('morgeninternet.nl')) {
+    return parseWebsite(body, subject);
+  }
+  
+  // === FALLBACK ===
+  console.log(`⚠️ No specific parser for: ${from}`);
+  return parseGenericLead(body, subject);
 }
 
 // Gmail API authentication with jose library
@@ -417,11 +529,13 @@ serve(async (req) => {
     updated: 0,
     parseErrors: 0,
     ignoredNonLead: 0,
+    ignoredMarktplaats: 0,
     ignoredCalls: 0,
     missedCalls: 0,
     tradeIns: 0,
+    financialLeads: 0,
     errorDetails: [] as string[],
-    sourceBreakdown: {} as Record<string, number>
+    sourceBreakdown: {} as Record<string, { processed: number; created: number }>
   };
 
   try {
@@ -446,8 +560,13 @@ serve(async (req) => {
     console.log('🔑 Getting Gmail API access token...');
     const accessToken = await getAccessToken(serviceAccount);
 
-    // Search for unread emails - specific lead subjects only, exclude non-lead emails
-    const query = 'is:unread to:verkoop@auto-city.nl (subject:("nieuwe aanvraag" OR "contactaanvraag" OR "bericht van koper" OR "vraag over" OR "interesse in" OR "aanvraag voor" OR "vraag naar")) -subject:("uw verkoopkansen" OR "advertentiekwaliteit" OR "analytics update" OR "statistieken" OR "monthly statistics" OR "healthcheckemail" OR "aangenomen oproep" OR "call tracker")';
+    // Search for unread emails - SENDER-BASED with exclusions
+    const query = `is:unread to:verkoop@auto-city.nl (
+      from:(autoscout24.com OR autotrack.nl OR morgeninternet.nl OR financiallease.nl OR blokweggroep.nl) OR 
+      from:mail.marktplaats.nl OR 
+      from:call.marktplaats.nl
+    ) 
+    -subject:("Je hebt een reactie ontvangen" OR "Gesprek gevoerd" OR "uw verkoopkansen" OR "advertentiekwaliteit")`;
     
     console.log('🔍 Searching for lead emails...');
     const searchResponse = await fetchWithRetry(
@@ -538,9 +657,13 @@ serve(async (req) => {
           console.log(`📋 Email ignored: ${parsedData.type} from ${parsedData.source}`);
           stats.ignoredNonLead++;
           if (parsedData.type === 'IgnoredCall') stats.ignoredCalls++;
+          if (parsedData.source === 'Marktplaats') stats.ignoredMarktplaats++;
           
           // Track source
-          stats.sourceBreakdown[parsedData.source] = (stats.sourceBreakdown[parsedData.source] || 0) + 1;
+          if (!stats.sourceBreakdown[parsedData.source]) {
+            stats.sourceBreakdown[parsedData.source] = { processed: 0, created: 0 };
+          }
+          stats.sourceBreakdown[parsedData.source].processed++;
           
           // Mark as read
           await fetchWithRetry(
@@ -571,7 +694,12 @@ serve(async (req) => {
         // Track statistics
         if (parsedData.type === 'MissedCall') stats.missedCalls++;
         if (parsedData.type === 'TradeIn') stats.tradeIns++;
-        stats.sourceBreakdown[parsedData.source] = (stats.sourceBreakdown[parsedData.source] || 0) + 1;
+        if (parsedData.type === 'FinancialLead') stats.financialLeads++;
+        
+        if (!stats.sourceBreakdown[parsedData.source]) {
+          stats.sourceBreakdown[parsedData.source] = { processed: 0, created: 0 };
+        }
+        stats.sourceBreakdown[parsedData.source].processed++;
 
         console.log(`✅ Successfully parsed ${parsedData.type} from ${parsedData.source}:`, parsedData.email || parsedData.phone);
 
@@ -672,6 +800,7 @@ serve(async (req) => {
           
           leadId = newLead.id;
           stats.created++;
+          stats.sourceBreakdown[parsedData.source].created++;
 
           console.log(`✅ Lead created: ${leadId} (${parsedData.type})`);
 
@@ -756,17 +885,15 @@ serve(async (req) => {
       }
     }
 
-    console.log('\n📊 Processing complete:', {
-      processed: stats.processed,
-      created: stats.created,
-      updated: stats.updated,
-      parseErrors: stats.parseErrors,
-      ignoredNonLead: stats.ignoredNonLead,
-      ignoredCalls: stats.ignoredCalls,
-      missedCalls: stats.missedCalls,
-      tradeIns: stats.tradeIns,
-      sourceBreakdown: stats.sourceBreakdown
-    });
+    console.log('\n📊 Email Triage Complete:');
+    console.log(`  📧 Totaal verwerkt: ${stats.processed}`);
+    console.log(`  ✅ Nieuwe leads: ${stats.created}`);
+    console.log(`  🔄 Bestaande threads: ${stats.updated}`);
+    console.log(`  ⏭️ Marktplaats (genegeerd): ${stats.ignoredMarktplaats}`);
+    console.log(`  📞 Gemiste oproepen: ${stats.missedCalls}`);
+    console.log(`  🔁 Inruilaanvragen: ${stats.tradeIns}`);
+    console.log(`  💼 Financial Lease: ${stats.financialLeads}`);
+    console.log('\n📈 Per Bron:', stats.sourceBreakdown);
 
     return new Response(
       JSON.stringify({
@@ -776,9 +903,11 @@ serve(async (req) => {
         updated: stats.updated,
         parseErrors: stats.parseErrors,
         ignoredNonLead: stats.ignoredNonLead,
+        ignoredMarktplaats: stats.ignoredMarktplaats,
         ignoredCalls: stats.ignoredCalls,
         missedCalls: stats.missedCalls,
         tradeIns: stats.tradeIns,
+        financialLeads: stats.financialLeads,
         sourceBreakdown: stats.sourceBreakdown,
         errorDetails: stats.errorDetails.slice(0, 10)
       }),

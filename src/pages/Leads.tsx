@@ -113,34 +113,50 @@ const Leads = () => {
       const created = data?.created ?? 0;
       const updated = data?.updated ?? 0;
       const parseErrors = data?.parseErrors ?? 0;
-      const ignoredNonLead = data?.ignoredNonLead ?? 0;
-      const ignoredCalls = data?.ignoredCalls ?? 0;
+      const ignoredMarktplaats = data?.ignoredMarktplaats ?? 0;
       const missedCalls = data?.missedCalls ?? 0;
       const tradeIns = data?.tradeIns ?? 0;
+      const financialLeads = data?.financialLeads ?? 0;
       const sourceBreakdown = data?.sourceBreakdown ?? {};
       
-      // Build detailed description
+      // Build detailed description with highlights
+      const details = [];
+      if (financialLeads > 0) details.push(`💼 ${financialLeads} financial lease`);
+      if (tradeIns > 0) details.push(`🔁 ${tradeIns} inruil`);
+      if (missedCalls > 0) details.push(`📞 ${missedCalls} gemiste oproep`);
+      
       let description = '';
+      
       if (created > 0) {
         description += `${created} nieuwe lead${created !== 1 ? 's' : ''} aangemaakt`;
-        if (tradeIns > 0) description += ` (waarvan ${tradeIns} inruilaanvra${tradeIns !== 1 ? 'gen' : 'ag'})`;
+        if (details.length > 0) description += ` (${details.join(', ')})`;
         description += '\n';
       }
-      if (updated > 0) description += `${updated} bestaande lead${updated !== 1 ? 's' : ''} bijgewerkt\n`;
-      if (missedCalls > 0) description += `${missedCalls} gemiste oproep${missedCalls !== 1 ? 'en' : ''} verwerkt\n`;
-      if (ignoredNonLead > 0) description += `${ignoredNonLead} niet-lead email${ignoredNonLead !== 1 ? 's' : ''} genegeerd`;
-      if (ignoredCalls > 0) description += ` (${ignoredCalls} aangenomen oproep${ignoredCalls !== 1 ? 'en' : ''})`;
-      description += '\n';
-      if (parseErrors > 0) description += `⚠️ ${parseErrors} email${parseErrors !== 1 ? 's' : ''} niet herkend\n`;
+      
+      if (updated > 0) {
+        description += `${updated} bestaande thread${updated !== 1 ? 's' : ''} bijgewerkt\n`;
+      }
+      
+      if (ignoredMarktplaats > 0) {
+        description += `${ignoredMarktplaats} Marktplaats notificatie${ignoredMarktplaats !== 1 ? 's' : ''} genegeerd\n`;
+      }
+      
+      if (parseErrors > 0) {
+        description += `⚠️ ${parseErrors} email${parseErrors !== 1 ? 's' : ''} niet herkend\n`;
+      }
       
       // Add source breakdown
-      const sources = Object.entries(sourceBreakdown).map(([source, count]) => `${source}: ${count}`).join(', ');
-      if (sources) description += `\nBronnen: ${sources}`;
+      if (Object.keys(sourceBreakdown).length > 0) {
+        description += '\n📊 Per bron:\n';
+        Object.entries(sourceBreakdown).forEach(([source, counts]: [string, any]) => {
+          description += `  • ${source}: ${counts.created || 0} nieuw\n`;
+        });
+      }
       
       toast({ 
-        title: created + updated > 0 ? "✅ Email sync succesvol" : "Email sync voltooid",
+        title: created > 0 ? "✅ Email sync succesvol" : "Email sync voltooid",
         description: description.trim(),
-        variant: created + updated > 0 ? "default" : parseErrors > 0 ? "destructive" : "default"
+        variant: created > 0 ? "default" : parseErrors > 0 ? "destructive" : "default"
       });
     } catch (error) {
       console.error("Email sync error:", error);
