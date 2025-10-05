@@ -1386,7 +1386,6 @@ export type Database = {
           last_email_date: string | null
           last_name: string | null
           lead_score: number | null
-          owner_id: string | null
           phone: string | null
           priority: string
           response_required: boolean | null
@@ -1407,7 +1406,6 @@ export type Database = {
           last_email_date?: string | null
           last_name?: string | null
           lead_score?: number | null
-          owner_id?: string | null
           phone?: string | null
           priority: string
           response_required?: boolean | null
@@ -1428,7 +1426,6 @@ export type Database = {
           last_email_date?: string | null
           last_name?: string | null
           lead_score?: number | null
-          owner_id?: string | null
           phone?: string | null
           priority?: string
           response_required?: boolean | null
@@ -1450,13 +1447,6 @@ export type Database = {
             columns: ["interested_vehicle"]
             isOneToOne: false
             referencedRelation: "vehicles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "leads_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

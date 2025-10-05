@@ -24,10 +24,8 @@ export interface Lead {
   
   // Tracking
   createdAt: string;
-  created_at?: string; // Database field (snake_case) - optional for compatibility
   updatedAt: string;
   assignedTo?: string;
-  owner_id?: string; // Database field for owner
   lastContactDate?: string;
   nextFollowUpDate?: string;
   
