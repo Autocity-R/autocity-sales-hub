@@ -110,6 +110,12 @@ function classifyLeadTemperature(parsedData: ParsedData): {
   return { temperature: 'warm', type: 'general_inquiry' };
 }
 
+// Fase 1.1: Waterdichte De-Duplicatie Helper
+function extractPhoneFromBody(body: string): string | null {
+  const phoneMatch = body.match(/(\+31\s?6?\s?\d{8,10}|\+31\s?\d{1,2}\s?\d{7,8}|06[-\s]?\d{8})/);
+  return phoneMatch ? phoneMatch[1].replace(/\s/g, '') : null;
+}
+
 // Financial Partner Parser (Blokweg Groep + FinancialLease.nl)
 function parseFinancialPartner(body: string, from: string): ParsedData | null {
   console.log('💰 Parsing Financial Partner email');
@@ -841,7 +847,8 @@ serve(async (req) => {
 
         console.log(`✅ Successfully parsed ${parsedData.type} from ${parsedData.source}:`, parsedData.email || parsedData.phone);
 
-        // Check if thread already exists
+        // Fase 1.1: Waterdichte De-Duplicatie
+        // STAP 1 & 2: Check op threadId (native of inReplyTo)
         const { data: existingThread, error: threadCheckError } = await supabase
           .from('email_threads')
           .select('id, lead_id')
@@ -854,15 +861,16 @@ serve(async (req) => {
 
         let leadId: string;
         let threadDbId: string;
+        let isNewLead = false;
 
         if (existingThread) {
           // Thread exists, use existing lead
           leadId = existingThread.lead_id;
           threadDbId = existingThread.id;
           
-          console.log(`📌 Existing thread found, using lead: ${leadId}`);
+          console.log(`🔗 Thread match found - reusing lead: ${leadId}`);
 
-          // Update thread stats - eerst SELECT huidige message_count
+          // Update thread stats
           const { data: currentThread, error: selectError } = await supabase
             .from('email_threads')
             .select('message_count')
@@ -888,7 +896,38 @@ serve(async (req) => {
           
           stats.updated++;
         } else {
-          // New thread, create lead
+          // STAP 3 & 4: No thread found, check for existing lead by email/phone
+          const emailToCheck = parsedData.email;
+          const phoneToCheck = parsedData.phone || extractPhoneFromBody(body);
+          
+          let existingLead = null;
+          
+          if (emailToCheck && phoneToCheck) {
+            // Check email OR phone
+            const { data } = await supabase
+              .from('leads')
+              .select('id')
+              .or(`email.eq.${emailToCheck},phone.eq.${phoneToCheck}`)
+              .maybeSingle();
+            existingLead = data;
+            if (existingLead) console.log('👤 Contact match (email/phone) - reusing lead:', existingLead.id);
+          } else if (emailToCheck) {
+            // Check only email
+            const { data } = await supabase
+              .from('leads')
+              .select('id')
+              .eq('email', emailToCheck)
+              .maybeSingle();
+            existingLead = data;
+            if (existingLead) console.log('📧 Email-only match - reusing lead:', existingLead.id);
+          }
+          
+          if (existingLead) {
+            // Existing lead found - link to new thread
+            leadId = existingLead.id;
+            isNewLead = false;
+          } else {
+            // STAP 5: No match - create new lead
           console.log('🆕 Creating new lead...');
           
           // Build comprehensive notes
@@ -948,6 +987,7 @@ serve(async (req) => {
             throw new Error(`Failed to create lead: ${leadError.message}`);
           }
           
+          
           if (!newLead) {
             throw new Error('Lead creation returned no data');
           }
@@ -957,8 +997,9 @@ serve(async (req) => {
           stats.sourceBreakdown[parsedData.source].created++;
 
           console.log(`✅ Lead created: ${leadId} (${parsedData.type})`);
-
-          // Create thread record
+          }
+          
+          // Create or link thread
           const { data: newThread, error: threadError } = await supabase
             .from('email_threads')
             .insert({

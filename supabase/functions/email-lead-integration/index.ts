@@ -88,8 +88,15 @@ serve(async (req) => {
       });
     }
 
-    // Check if lead exists
-    let leadId = await findOrCreateLead(supabaseClient, emailData);
+    // Fase 1.1: Use smart de-duplication
+    const leadResult = await findOrCreateLeadSmart(supabaseClient, emailData);
+    const leadId = leadResult.leadId;
+    
+    if (leadResult.isNew) {
+      console.log('✅ New lead created:', leadId);
+    } else {
+      console.log('✅ Existing lead updated:', leadId);
+    }
     
     // Handle email thread
     let threadId = await handleEmailThread(supabaseClient, emailData, leadId);
@@ -123,19 +130,74 @@ serve(async (req) => {
   }
 });
 
-async function findOrCreateLead(supabase: any, emailData: EmailWebhookData): Promise<string> {
-  // Check if lead exists by email
-  const { data: existingLead } = await supabase
-    .from('leads')
-    .select('id')
-    .eq('email', emailData.from)
-    .single();
-
-  if (existingLead) {
-    return existingLead.id;
+// Fase 1.1: Waterdichte De-Duplicatie Logica
+async function findOrCreateLeadSmart(
+  supabase: any,
+  emailData: EmailWebhookData
+): Promise<{ leadId: string; isNew: boolean }> {
+  
+  // STAP 1: Check op NATIVE Gmail threadId (hoogste prioriteit)
+  if (emailData.threadId) {
+    const { data: existingThread } = await supabase
+      .from('email_threads')
+      .select('lead_id')
+      .eq('thread_id', emailData.threadId)
+      .maybeSingle();
+    
+    if (existingThread?.lead_id) {
+      console.log('🔗 Thread match found - reusing lead:', existingThread.lead_id);
+      return { leadId: existingThread.lead_id, isNew: false };
+    }
   }
-
-  // Create new lead
+  
+  // STAP 2: Check op In-Reply-To header (antwoord op onze email)
+  if (emailData.inReplyTo) {
+    const { data: replyThread } = await supabase
+      .from('email_threads')
+      .select('lead_id')
+      .eq('thread_id', emailData.inReplyTo)
+      .maybeSingle();
+    
+    if (replyThread?.lead_id) {
+      console.log('↩️ Reply-To match found - reusing lead:', replyThread.lead_id);
+      return { leadId: replyThread.lead_id, isNew: false };
+    }
+  }
+  
+  // STAP 3: Check op email + phone (dubbele zekerheid)
+  const emailMatch = emailData.from;
+  const phoneMatch = extractPhoneFromEmail(emailData.text);
+  
+  if (emailMatch && phoneMatch) {
+    const { data: contactMatch } = await supabase
+      .from('leads')
+      .select('id')
+      .or(`email.eq.${emailMatch},phone.eq.${phoneMatch}`)
+      .maybeSingle();
+    
+    if (contactMatch?.id) {
+      console.log('👤 Contact match (email/phone) - reusing lead:', contactMatch.id);
+      return { leadId: contactMatch.id, isNew: false };
+    }
+  }
+  
+  // STAP 4: Check op alleen email (laatste fallback)
+  if (emailMatch) {
+    const { data: emailOnlyMatch } = await supabase
+      .from('leads')
+      .select('id')
+      .eq('email', emailMatch)
+      .maybeSingle();
+    
+    if (emailOnlyMatch?.id) {
+      console.log('📧 Email-only match found - reusing lead:', emailOnlyMatch.id);
+      return { leadId: emailOnlyMatch.id, isNew: false };
+    }
+  }
+  
+  // STAP 5: Geen match - maak nieuwe lead
+  console.log('🆕 No match found - creating new lead');
+  
   const nameParts = extractNameFromEmail(emailData.from, emailData.subject);
   const { data: newLead, error } = await supabase
     .from('leads')
@@ -143,9 +205,11 @@ async function findOrCreateLead(supabase: any, emailData: EmailWebhookData): Pro
       email: emailData.from,
       first_name: nameParts.firstName,
       last_name: nameParts.lastName,
+      phone: phoneMatch || null,
       status: 'new',
       priority: 'medium',
       source_email: emailData.from,
+      email_thread_id: emailData.threadId || generateThreadId(emailData.subject),
       intent_classification: classifyIntent(emailData.subject, emailData.text),
       urgency_level: classifyUrgency(emailData.subject, emailData.text)
     })
@@ -153,7 +217,12 @@ async function findOrCreateLead(supabase: any, emailData: EmailWebhookData): Pro
     .single();
 
   if (error) throw error;
-  return newLead.id;
+  return { leadId: newLead.id, isNew: true };
+}
+
+function extractPhoneFromEmail(text: string): string | null {
+  const phoneMatch = text.match(/(\+31\s?6?\s?\d{8,10}|\+31\s?\d{1,2}\s?\d{7,8}|06[-\s]?\d{8})/);
+  return phoneMatch ? phoneMatch[1].replace(/\s/g, '') : null;
 }
 
 async function handleEmailThread(supabase: any, emailData: EmailWebhookData, leadId: string): Promise<string> {
