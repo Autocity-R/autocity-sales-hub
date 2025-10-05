@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getLeads, getLeadStats } from "@/services/leadService";
-import { Lead, LeadStatus } from "@/types/leads";
+import { Lead, LeadStatus, LeadSource } from "@/types/leads";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
 import { LeadDetail } from "@/components/leads/LeadDetail";
 import { LeadForm } from "@/components/leads/LeadForm";
 import { LeadPipeline } from "@/components/leads/LeadPipeline";
@@ -33,7 +34,7 @@ import { format } from "date-fns";
 import { LeadSearchRequests } from "@/components/leads/LeadSearchRequests";
 
 const Leads = () => {
-  const [leads] = useState<Lead[]>(getLeads());
+  const queryClient = useQueryClient();
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showEmailComposer, setShowEmailComposer] = useState(false);
@@ -44,8 +45,94 @@ const Leads = () => {
   const [assignedToFilter, setAssignedToFilter] = useState<string>("all");
   
   const { data: salespeople = [] } = useSalespeople();
-  const stats = getLeadStats();
-  const currentUser = "Admin"; // In real app, this would come from auth context
+
+  // Fetch leads from Supabase
+  const { data: leads = [], isLoading } = useQuery({
+    queryKey: ['leads'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Map database fields to Lead type
+      return (data || []).map(dbLead => ({
+        id: dbLead.id,
+        status: dbLead.status as LeadStatus,
+        priority: (dbLead.priority || 'medium') as Lead['priority'],
+        source: (dbLead.source_email?.includes('marktplaats') ? 'marktplaats' : 
+                dbLead.source_email?.includes('autotrack') ? 'autotrack' :
+                dbLead.source_email?.includes('autoscout24') ? 'facebook' : 
+                'other') as LeadSource,
+        firstName: dbLead.first_name || '',
+        lastName: dbLead.last_name || '',
+        email: dbLead.email || '',
+        phone: dbLead.phone || '',
+        company: undefined,
+        interestedVehicle: dbLead.interested_vehicle || undefined,
+        budget: undefined,
+        timeline: undefined,
+        notes: '',
+        createdAt: dbLead.created_at,
+        updatedAt: dbLead.updated_at,
+        assignedTo: dbLead.assigned_to || undefined,
+        lastContactDate: dbLead.last_email_date || undefined,
+        nextFollowUpDate: undefined,
+        responseTime: undefined,
+        totalActivities: 0,
+        conversionProbability: dbLead.lead_score || 50,
+      })) as Lead[];
+    },
+  });
+
+  // Fetch stats from database
+  const { data: stats = { total: 0, byStatus: {}, avgResponseTime: 0 } } = useQuery({
+    queryKey: ['lead-stats'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('status');
+      
+      if (error) throw error;
+
+      const byStatus = (data || []).reduce((acc, lead) => {
+        acc[lead.status] = (acc[lead.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      return {
+        total: data?.length || 0,
+        byStatus,
+        avgResponseTime: 0,
+      };
+    },
+  });
+
+  // Realtime subscription for new leads
+  useEffect(() => {
+    const channel = supabase
+      .channel('leads-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'leads'
+        },
+        () => {
+          // Refresh leads when new ones are inserted
+          queryClient.invalidateQueries({ queryKey: ['leads'] });
+          queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const getStatusColor = (status: LeadStatus) => {
     switch (status) {
@@ -180,6 +267,10 @@ const Leads = () => {
         description: description.trim(),
         variant: created > 0 ? "default" : parseErrors > 0 ? "destructive" : "default"
       });
+
+      // Refresh leads after successful sync
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
     } catch (error) {
       console.error("Email sync error:", error);
       toast({ title: "❌ Fout bij email synchronisatie", variant: "destructive" });
@@ -353,7 +444,23 @@ const Leads = () => {
 
             {/* Enhanced Leads List */}
             <div className="grid gap-4">
-              {filteredLeads.map((lead) => (
+              {isLoading ? (
+                // Loading skeletons
+                Array.from({ length: 3 }).map((_, i) => (
+                  <Card key={i}>
+                    <CardContent className="p-6">
+                      <Skeleton className="h-24 w-full" />
+                    </CardContent>
+                  </Card>
+                ))
+              ) : filteredLeads.length === 0 ? (
+                <Card>
+                  <CardContent className="p-12 text-center text-muted-foreground">
+                    <p>Geen leads gevonden</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                filteredLeads.map((lead) => (
                 <Card key={lead.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedLead(lead)}>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
@@ -409,7 +516,8 @@ const Leads = () => {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                ))
+              )}
             </div>
           </TabsContent>
 
