@@ -2,6 +2,39 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as jose from 'https://deno.land/x/jose@v4.14.4/index.ts';
 
+// Email Cleaner - Fase 1.2
+function cleanEmailText(rawHtml: string): string {
+  if (!rawHtml) return '';
+  
+  let cleaned = rawHtml;
+  
+  // Decode HTML entities
+  cleaned = cleaned
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&euro;/gi, '€')
+    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
+  
+  // Strip HTML tags (preserve line breaks)
+  cleaned = cleaned
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]+>/g, ' ');
+  
+  // Normalize whitespace
+  cleaned = cleaned
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n\s*\n/g, '\n\n')
+    .replace(/^\s+|\s+$/gm, '')
+    .trim();
+  
+  return cleaned;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -903,7 +936,9 @@ serve(async (req) => {
           threadDbId = newThread.id;
         }
 
-        // Store message
+        // Store message with cleaned body
+        const cleanBody = cleanEmailText(body);
+        
         const { error: messageError } = await supabase
           .from('email_messages')
           .insert({
@@ -913,7 +948,8 @@ serve(async (req) => {
             sender: from,
             recipient: 'verkoop@auto-city.nl',
             subject: subject,
-            body: body,
+            body: cleanBody,           // Cleaned version for display
+            html_body: body,           // Raw HTML for archival
             received_at: internalDate,
             is_from_customer: true,
             portal_source: parsedData.source,

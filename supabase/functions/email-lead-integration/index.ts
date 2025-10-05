@@ -3,6 +3,39 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// Email Cleaner - Fase 1.2
+function cleanEmailText(rawHtml: string): string {
+  if (!rawHtml) return '';
+  
+  let cleaned = rawHtml;
+  
+  // Decode HTML entities
+  cleaned = cleaned
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&euro;/gi, '€')
+    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
+  
+  // Strip HTML tags (preserve line breaks)
+  cleaned = cleaned
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]+>/g, ' ');
+  
+  // Normalize whitespace
+  cleaned = cleaned
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n\s*\n/g, '\n\n')
+    .replace(/^\s+|\s+$/gm, '')
+    .trim();
+  
+  return cleaned;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -157,19 +190,22 @@ async function handleEmailThread(supabase: any, emailData: EmailWebhookData, lea
 }
 
 async function storeEmailMessage(supabase: any, emailData: EmailWebhookData, threadId: string, leadId: string) {
+  // Clean the email body for display
+  const cleanBody = cleanEmailText(emailData.html || emailData.text);
+  
   await supabase
     .from('email_messages')
     .insert({
       thread_id: threadId,
       lead_id: leadId,
       message_id: emailData.messageId,
-      from_email: emailData.from,
-      to_email: emailData.to,
+      sender: emailData.from,
+      recipient: emailData.to,
       subject: emailData.subject,
-      content: emailData.text,
-      html_content: emailData.html,
-      direction: 'inbound',
-      status: 'received'
+      body: cleanBody,           // Cleaned version for display
+      html_body: emailData.html,  // Raw HTML for archival
+      received_at: new Date().toISOString(),
+      is_from_customer: true
     });
 }
 

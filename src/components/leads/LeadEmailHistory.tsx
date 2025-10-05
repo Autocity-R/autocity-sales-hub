@@ -267,12 +267,9 @@ export const LeadEmailHistory: React.FC<LeadEmailHistoryProps> = ({
                       
                       {isIncoming && (email as EmailMessage).body && (
                         <div className="mt-2 p-2 bg-white rounded border text-sm">
-                          <div 
-                            className="line-clamp-3"
-                            dangerouslySetInnerHTML={{ 
-                              __html: (email as EmailMessage).body?.substring(0, 200) || '' 
-                            }} 
-                          />
+                          <div className="line-clamp-3 whitespace-pre-wrap">
+                            {(email as EmailMessage).body?.substring(0, 200) || ''}
+                          </div>
                         </div>
                       )}
                       
