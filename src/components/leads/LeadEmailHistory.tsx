@@ -18,6 +18,7 @@ interface EmailMessage {
   recipient: string;
   subject: string | null;
   body: string | null;
+  clean_customer_message: string | null;  // NEW
   received_at: string;
   is_from_customer: boolean;
   portal_source: string | null;
@@ -216,10 +217,12 @@ export const LeadEmailHistory: React.FC<LeadEmailHistoryProps> = ({
                   : (email as EmailLog).sender_email}
               </div>
               
-              {isIncoming && (email as EmailMessage).body && (
-                <div className="mt-1 p-2 bg-white rounded border text-xs">
-                  <div className="line-clamp-2 whitespace-pre-wrap text-muted-foreground">
-                    {(email as EmailMessage).body?.substring(0, 150)}...
+              {isIncoming && (
+                <div className="mt-1 p-3 bg-amber-50 border border-amber-200 rounded text-sm">
+                  <div className="whitespace-pre-wrap text-gray-700">
+                    {(email as EmailMessage).clean_customer_message || 
+                     (email as EmailMessage).body?.substring(0, 200) || 
+                     'Geen bericht beschikbaar'}
                   </div>
                 </div>
               )}

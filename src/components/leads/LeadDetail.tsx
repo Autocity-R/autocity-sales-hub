@@ -367,12 +367,21 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
               </div>
             </div>
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Car className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <span className="font-medium">Interesse: </span>
-                  <span>{parsedData.vehicleInterest || 'Niet gespecificeerd'}</span>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Car className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <span className="font-medium">Interesse: </span>
+                    <span>{parsedData.vehicleInterest || 'Niet gespecificeerd'}</span>
+                  </div>
                 </div>
+                {parsedData.vehicleUrl && (
+                  <Button variant="outline" size="sm" asChild className="ml-6">
+                    <a href={parsedData.vehicleUrl} target="_blank" rel="noopener noreferrer">
+                      Bekijk advertentie
+                    </a>
+                  </Button>
+                )}
               </div>
               <div>
                 <span className="font-medium">Timeline: </span>

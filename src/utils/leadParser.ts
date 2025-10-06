@@ -73,12 +73,21 @@ export function parseLeadData(lead: Lead): ParsedLeadInfo {
   let cleanMessage: string | undefined;
   let vehicleUrl: string | undefined;
   
+  // First, try to get from lead's vehicle_url field (NEW!)
+  if ((lead as any).vehicle_url) {
+    vehicleUrl = (lead as any).vehicle_url;
+  }
+  
   // Check if we have email_messages data in the lead object (extended query)
   if ((lead as any).email_messages?.length > 0) {
     const emailMsg = (lead as any).email_messages[0];
     if (emailMsg.parsed_data) {
-      cleanMessage = emailMsg.parsed_data.cleanMessage;
-      vehicleUrl = emailMsg.parsed_data.vehicleUrl;
+      cleanMessage = emailMsg.parsed_data.cleanMessage || emailMsg.clean_customer_message;
+      if (!vehicleUrl) vehicleUrl = emailMsg.parsed_data.vehicleUrl;
+    }
+    // Also try direct clean_customer_message field (NEW!)
+    if (!cleanMessage && emailMsg.clean_customer_message) {
+      cleanMessage = emailMsg.clean_customer_message;
     }
   }
   

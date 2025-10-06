@@ -510,12 +510,12 @@ function parseAutoScout24Enhanced(plainBody: string, htmlBody: string, subject: 
   if (subjectLower.includes('gemiste oproep')) {
     console.log('📵 AutoScout24 Gemiste oproep - extracting phone');
     
-    const phoneMatch = plainBody.match(/Telefoonnummer:\s*([^\n\s]+)/i);
+    const missedCallPhone = plainBody.match(/Telefoonnummer:\s*([^\n\s]+)/i);
     const vehicleMatch = subject.match(/:\s*(.+?)(?:\s*\||$)/i);
     
-    if (phoneMatch) {
+    if (missedCallPhone) {
       return {
-        phone: phoneMatch[1].trim(),
+        phone: missedCallPhone[1].trim(),
         vehicle: vehicleMatch?.[1]?.trim(),
         source: 'AutoScout24',
         type: 'MissedCall',
@@ -557,7 +557,8 @@ function parseAutoScout24Enhanced(plainBody: string, htmlBody: string, subject: 
     vehicleUrl: vehicleUrl || undefined,  // Advertentie link!
     source: 'AutoScout24',
     type: isTradeIn ? 'TradeIn' : 'Contact',
-      rawBody: cleanBody
+    rawBody: plainBody
+  };
     };
     
     if (isTradeIn) {
