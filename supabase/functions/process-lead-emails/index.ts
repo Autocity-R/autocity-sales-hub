@@ -220,13 +220,18 @@ function parseAutoTrackEnhanced(body: string, subject: string, replyTo?: string)
   // Extract advertisement URL from HTML body (before cleaning)
   const vehicleUrl = body.match(/https?:\/\/www\.autotrack\.nl\/a\/[^\s<>"]+/i)?.[0];
   
-  // Extract clean customer message - between "Bericht" and footer
+  // Extract clean customer message - only the actual customer message
   let cleanMessage = '';
-  const berichtMatch = cleanBody.match(/Bericht[:\s]+([\s\S]*?)(?=Met vriendelijke groet|Gewenste|Wat vond je|$)/i);
+  const berichtMatch = cleanBody.match(/\*?Bericht\*?[:\s]+([\s\S]*?)(?=\*?Met vriendelijke groet|Gewenste|Wat vond je|©|autotrack is onderdeel|$)/i);
   if (berichtMatch) {
     cleanMessage = berichtMatch[1]
-      .replace(/^\s+|\s+$/g, '')  // Trim
-      .replace(/\n{3,}/g, '\n\n')  // Max 2 newlines
+      .replace(/\*Naam\*?:.*$/i, '') // Remove any metadata that leaked in
+      .replace(/\*E-mailadres\*?:.*$/i, '')
+      .replace(/\*Telefoonnummer\*?:.*$/i, '')
+      .replace(/autotrack is onderdeel van.*$/i, '')
+      .replace(/postbus.*$/i, '')
+      .replace(/^\s+|\s+$/g, '')
+      .replace(/\n{3,}/g, '\n\n')
       .trim();
   }
   

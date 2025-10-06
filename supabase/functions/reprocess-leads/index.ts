@@ -42,11 +42,16 @@ function cleanEmailText(rawHtml: string): string {
 function extractAutoTrackData(body: string, htmlBody: string) {
   const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ').trim();
   
-  // Extract clean message
+  // Extract clean message - only the customer's message part
   let cleanMessage = '';
-  const berichtMatch = cleanBody.match(/Bericht[:\s]+([\s\S]*?)(?=Met vriendelijke groet|Gewenste|Wat vond je|$)/i);
+  const berichtMatch = cleanBody.match(/\*?Bericht\*?[:\s]+([\s\S]*?)(?=\*?Met vriendelijke groet|Gewenste|Wat vond je|©|$)/i);
   if (berichtMatch) {
     cleanMessage = berichtMatch[1]
+      .replace(/\*Naam\*?:.*$/i, '') // Remove any metadata that leaked in
+      .replace(/\*E-mailadres\*?:.*$/i, '')
+      .replace(/\*Telefoonnummer\*?:.*$/i, '')
+      .replace(/autotrack is onderdeel van.*$/i, '')
+      .replace(/postbus.*$/i, '')
       .replace(/^\s+|\s+$/g, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
