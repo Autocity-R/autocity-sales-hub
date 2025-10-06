@@ -571,50 +571,45 @@ async function getAccessToken(serviceAccount: ServiceAccount, retries = 3): Prom
 }
 
 // Helper function for Gmail API calls with retry logic
-async function fetchWithRetry(url: string, options: RequestInit, retries = 3): Promise<Response> {
-  let rateLimitCount = 0;
-  
+async function fetchWithRetry(url: string, options: RequestInit, retries = 5): Promise<Response> {
+  const backoffs = [2000, 5000, 15000, 30000, 60000];
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const response = await fetch(url, options);
-      
-      // Handle rate limiting - early exit na 2 keer om timeout te voorkomen
-      if (response.status === 429) {
-        rateLimitCount++;
-        if (rateLimitCount >= 2) {
-          console.warn(`⚠️ Rate limited ${rateLimitCount} keer - gestopt om timeout te voorkomen`);
-          throw new Error('RATE_LIMIT_EXCEEDED');
+
+      // Handle Gmail rate limits (429) and quota/userRateLimitExceeded (403 with body)
+      if (response.status === 429 || response.status === 403) {
+        let isRateLimit = response.status === 429;
+        if (response.status === 403) {
+          const bodyText = await response.clone().text().catch(() => '');
+          isRateLimit = /rate.*limit|quota.*exceeded|userRateLimitExceeded/i.test(bodyText);
         }
-        
-        const retryAfter = Math.min(parseInt(response.headers.get('Retry-After') || '5'), 5);
-        console.log(`⏳ Rate limited (${rateLimitCount}/${retries}), waiting ${retryAfter}s...`);
-        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-        continue;
+        if (isRateLimit) {
+          const retryAfterHeader = response.headers.get('Retry-After');
+          const retryMs = retryAfterHeader
+            ? Math.min(Number(retryAfterHeader) * 1000, 60000)
+            : backoffs[Math.min(attempt - 1, backoffs.length - 1)];
+          console.log(`⏳ Rate limited (${attempt}/${retries}). Waiting ${Math.round(retryMs/1000)}s...`);
+          await new Promise(r => setTimeout(r, retryMs));
+          continue;
+        }
       }
-      
-      // Log andere HTTP errors met status en body voor betere diagnostiek
+
       if (!response.ok) {
-        const errorBody = await response.text();
+        const errorBody = await response.text().catch(() => '');
         console.error(`❌ Gmail API error ${response.status}:`, errorBody);
       }
-      
+
       return response;
-    } catch (error) {
-      // Re-throw RATE_LIMIT_EXCEEDED errors
-      if (error.message === 'RATE_LIMIT_EXCEEDED') {
-        throw error;
-      }
-      
-      console.error(`❌ Fetch attempt ${attempt}/${retries}:`, error);
-      
+    } catch (err: any) {
       if (attempt === retries) {
-        throw error;
+        throw err;
       }
-      
-      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+      const delay = backoffs[Math.min(attempt - 1, backoffs.length - 1)];
+      console.warn(`⚠️ Fetch attempt ${attempt}/${retries} failed. Retrying in ${Math.round(delay/1000)}s...`, err?.message || err);
+      await new Promise(r => setTimeout(r, delay));
     }
   }
-  
   throw new Error('Fetch failed after all retries');
 }
 
@@ -625,7 +620,8 @@ serve(async (req) => {
 
   const startTime = Date.now();
   const MAX_PROCESSING_TIME = 18000; // 18 seconds
-  const MAX_MESSAGES_TO_PROCESS = 15;
+  const MAX_MESSAGES_TO_PROCESS = 5;
+  const MESSAGE_FETCH_DELAY_MS = 350;
   
   const stats = {
     processed: 0,
@@ -667,14 +663,14 @@ serve(async (req) => {
 
     // Search for unread emails - SENDER-BASED with exclusions
     // Single-line query with correct Gmail syntax: each domain needs its own from:, and exclusions are individual -subject: statements
-    const query = 'is:unread to:verkoop@auto-city.nl (from:autoscout24.com OR from:autotrack.nl OR from:mail.marktplaats.nl OR from:call.marktplaats.nl OR from:morgeninternet.nl OR from:financiallease.nl OR from:blokweggroep.nl) -subject:"Je hebt een reactie ontvangen" -subject:"Gesprek gevoerd" -subject:"uw verkoopkansen" -subject:"advertentiekwaliteit"';
+    const query = 'is:unread newer_than:2d to:verkoop@auto-city.nl (from:autoscout24.com OR from:autotrack.nl OR from:mail.marktplaats.nl OR from:call.marktplaats.nl OR from:morgeninternet.nl OR from:financiallease.nl OR from:blokweggroep.nl) -subject:"Je hebt een reactie ontvangen" -subject:"Gesprek gevoerd" -subject:"uw verkoopkansen" -subject:"advertentiekwaliteit"';
     
     console.log('🔍 Searching for lead emails...');
     
     let messages = [];
     try {
       const searchResponse = await fetchWithRetry(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=15`,
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=5`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -750,6 +746,8 @@ serve(async (req) => {
         }
 
         const messageData = await messageResponse.json();
+        // Small delay to avoid Gmail burst detection
+        await new Promise((resolve) => setTimeout(resolve, MESSAGE_FETCH_DELAY_MS));
         const headers = messageData.payload.headers;
         
         const from = headers.find((h: any) => h.name.toLowerCase() === 'from')?.value || '';

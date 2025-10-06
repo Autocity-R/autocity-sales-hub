@@ -157,7 +157,7 @@ const Leads = () => {
   const handleManualEmailSync = async () => {
     toast({ title: "Email synchronisatie gestart..." });
     try {
-      const { data, error } = await supabase.functions.invoke('process-lead-emails');
+      const { data, error } = await supabase.functions.invoke('process-lead-emails', { body: { batchSize: 5 } });
       if (error) throw error;
       
       if (data?.success === false) {
