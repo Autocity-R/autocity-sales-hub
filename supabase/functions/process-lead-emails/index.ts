@@ -202,26 +202,31 @@ function parseWebsite(body: string, subject: string, replyTo?: string): ParsedDa
 function parseAutoTrackEnhanced(body: string, subject: string, replyTo?: string): ParsedData | null {
   console.log('🏁 Parsing AutoTrack email');
   
-  const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  // CRITICAL: Don't remove newlines for AutoTrack - they separate fields!
+  const cleanBody = body
+    .replace(/<[^>]+>/g, ' ')  // Remove HTML tags
+    .replace(/[ \t]+/g, ' ')    // Multiple spaces -> single space (but keep newlines!)
+    .trim();
   
   // Extract customer email from Reply-To or body
   let customerEmail = replyTo;
   if (!customerEmail) {
-    const emailMatch = cleanBody.match(/E-mailadres:\s*([^\s<>]+@[^\s<>]+)/i);
+    // Match email between asterisks or after "E-mailadres:"
+    const emailMatch = cleanBody.match(/\*E-mailadres:\*\s*([^\s<>\*]+@[^\s<>\*]+)/i) ||
+                       cleanBody.match(/E-mailadres:\s*([^\s<>\*]+@[^\s<>\*]+)/i);
     if (emailMatch) customerEmail = emailMatch[1].trim();
   }
   
-  // Extract advertisement URL
-  const vehicleUrl = body.match(/https?:\/\/(?:www\.)?autotrack\.nl\/[^\s<>"]+/i)?.[0] ||
-                     body.match(/https?:\/\/(?:auto-city\.)?autotrack\.nl\/[^\s<>"]+/i)?.[0];
+  // Extract advertisement URL from HTML body (before cleaning)
+  const vehicleUrl = body.match(/https?:\/\/www\.autotrack\.nl\/a\/[^\s<>"]+/i)?.[0];
   
-  // Extract clean customer message
+  // Extract clean customer message - between "Bericht" and footer
   let cleanMessage = '';
-  const berichtMatch = cleanBody.match(/Bericht:\s*([\s\S]*?)(?=Gewenste|Voertuig|Auto:|$)/i);
+  const berichtMatch = cleanBody.match(/Bericht[:\s]+([\s\S]*?)(?=Met vriendelijke groet|Gewenste|Wat vond je|$)/i);
   if (berichtMatch) {
     cleanMessage = berichtMatch[1]
-      .replace(/AutoTrack[\s\S]*$/i, '')
-      .replace(/Naar de advertentie[\s\S]*$/i, '')
+      .replace(/^\s+|\s+$/g, '')  // Trim
+      .replace(/\n{3,}/g, '\n\n')  // Max 2 newlines
       .trim();
   }
   
@@ -256,12 +261,19 @@ function parseAutoTrackEnhanced(body: string, subject: string, replyTo?: string)
   else if (cleanBody.includes('Terugbelverzoek')) subType = 'Terugbelverzoek';
   else if (cleanBody.includes('Proefritaanvraag')) subType = 'Proefritaanvraag';
   
-  const nameMatch = cleanBody.match(/Naam:\s*([^\n]+)/i);
-  const phoneMatch = cleanBody.match(/Telefoonnummer:\s*([^\n]+)/i);
+  // Match name between asterisks or after "Naam:"
+  const nameMatch = cleanBody.match(/\*Naam:\*\s*([^\n\*]+)/i) ||
+                    cleanBody.match(/Naam:\s*([^\n\*]+)/i);
+  
+  // Match phone between asterisks or after "Telefoonnummer:"
+  const phoneMatch = cleanBody.match(/\*Telefoonnummer:\*\s*([^\n\*\s]+)/i) ||
+                     cleanBody.match(/Telefoonnummer:\s*([^\n\*\s]+)/i);
+  
   const vehicleMatch = cleanBody.match(/(?:Voertuig|Auto):\s*([^\n]+)/i) ||
                        subject.match(/voor\s+(.+?)(?:\s*-|$)/i);
   
   if (!nameMatch || !customerEmail) {
+    console.log('❌ AutoTrack parse failed - missing name or email');
     return null;
   }
   
@@ -309,7 +321,11 @@ function parseAutoTrackEnhanced(body: string, subject: string, replyTo?: string)
 function parseMarktplaats(body: string, subject: string, replyTo?: string): ParsedData | null {
   console.log('🛒 Parsing Marktplaats email');
   
-  const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  // Keep newlines for field separation
+  const cleanBody = body
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .trim();
   const lowerSubject = subject.toLowerCase();
   
   // Extract customer email from Reply-To or body
@@ -325,7 +341,7 @@ function parseMarktplaats(body: string, subject: string, replyTo?: string): Pars
   
   // Extract clean customer message
   let cleanMessage = '';
-  const vraagMatch = cleanBody.match(/(?:Vraag|Bericht):\s*([\s\S]*?)(?=Verkoper|Bekijk advertentie|$)/i);
+  const vraagMatch = cleanBody.match(/(?:Vraag|Bericht)[:\s]+([\s\S]*?)(?=Verkoper|Bekijk advertentie|$)/i);
   if (vraagMatch) {
     cleanMessage = vraagMatch[1]
       .replace(/Verkoper[\s\S]*$/i, '')
@@ -411,7 +427,12 @@ function parseMarktplaats(body: string, subject: string, replyTo?: string): Pars
 function parseAutoScout24Enhanced(body: string, subject: string, replyTo?: string): ParsedData | null {
   console.log('🚗 Parsing AutoScout24 email');
   
-  const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/;/g, ' ').replace(/\s+/g, ' ').trim();
+  // Keep newlines for field separation
+  const cleanBody = body
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/;/g, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .trim();
   
   // Extract customer email from Reply-To header first
   let customerEmail = replyTo;
@@ -431,7 +452,7 @@ function parseAutoScout24Enhanced(body: string, subject: string, replyTo?: strin
   
   // Extract clean customer message
   let cleanMessage = '';
-  const messageMatch = cleanBody.match(/(?:Bericht van de koper|Message|Nachricht):\s*([\s\S]*?)(?=Met vriendelijke groet|Bekijk advertentie|View|Antwoorden op|$)/i);
+  const messageMatch = cleanBody.match(/(?:Bericht van de koper|Message|Nachricht)[:\s]+([\s\S]*?)(?=Met vriendelijke groet|Bekijk advertentie|View|Antwoorden op|$)/i);
   if (messageMatch) {
     cleanMessage = messageMatch[1]
       .replace(/Antwoorden op:[\s\S]*?(?=\n\n|$)/i, '')

@@ -71,6 +71,7 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
   const [followUps] = useState(mockFollowUps.filter(fu => fu.leadId === lead.id));
   const [showEmailComposer, setShowEmailComposer] = useState(false);
   const [replyToEmail, setReplyToEmail] = useState<any>(null);
+  const [enhancedLead, setEnhancedLead] = useState<any>(lead);
   const { toast } = useToast();
   const { user } = useAuth();
   const [isClaiming, setIsClaiming] = useState(false);
@@ -78,8 +79,26 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
   const isOwnedByCurrentUser = lead.assignedTo === user?.id;
   const isUnassigned = !lead.assignedTo;
   
-  // Parse lead data
-  const parsedData = parseLeadData(lead);
+  // Fetch email_messages for this lead to get parsed_data
+  React.useEffect(() => {
+    const fetchEmailData = async () => {
+      const { data } = await supabase
+        .from('email_messages')
+        .select('parsed_data, body, html_body')
+        .eq('lead_id', lead.id)
+        .order('received_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (data) {
+        setEnhancedLead({ ...lead, email_messages: [data] });
+      }
+    };
+    fetchEmailData();
+  }, [lead.id]);
+  
+  // Parse lead data with enhanced email data
+  const parsedData = parseLeadData(enhancedLead);
 
   const handleReplyToEmail = (email: any) => {
     setReplyToEmail({

@@ -69,15 +69,30 @@ export function parseLeadData(lead: Lead): ParsedLeadInfo {
   // Extract full message (entire email text)
   let message = fullText;
   
-  // Extract clean message and vehicle URL from notes if available
-  let cleanMessage = undefined;
-  let vehicleUrl = undefined;
+  // Try to extract from parsed email_messages data
+  let cleanMessage: string | undefined;
+  let vehicleUrl: string | undefined;
   
-  // Try to get from lead notes which might contain parsed_data
-  if (lead.notes) {
-    const cleanMsgMatch = lead.notes.match(/cleanMessage['":\s]+([^"'\n]+)/i);
-    if (cleanMsgMatch) cleanMessage = cleanMsgMatch[1];
-    
+  // Check if we have email_messages data in the lead object (extended query)
+  if ((lead as any).email_messages?.length > 0) {
+    const emailMsg = (lead as any).email_messages[0];
+    if (emailMsg.parsed_data) {
+      cleanMessage = emailMsg.parsed_data.cleanMessage;
+      vehicleUrl = emailMsg.parsed_data.vehicleUrl;
+    }
+  }
+  
+  // Fallback: try to extract from notes or message body
+  if (!cleanMessage && lead.notes) {
+    // For old AutoTrack leads, extract message from notes
+    const berichtMatch = lead.notes.match(/Bericht[:\s]+([\s\S]*?)(?=Met vriendelijke groet|Gewenste|$)/i);
+    if (berichtMatch) {
+      cleanMessage = berichtMatch[1].trim();
+    }
+  }
+  
+  // Extract vehicle URL from notes if not found
+  if (!vehicleUrl && lead.notes) {
     const urlMatch = lead.notes.match(/(https?:\/\/(?:www\.)?(?:autoscout24|marktplaats|autotrack)[^\s"'<>]+)/i);
     if (urlMatch) vehicleUrl = urlMatch[1];
   }
