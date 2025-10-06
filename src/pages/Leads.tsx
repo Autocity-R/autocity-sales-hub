@@ -308,27 +308,30 @@ const Leads = () => {
         </div>
 
         {/* View Selector */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 mb-6">
           <Button 
             variant={currentView === 'list' ? 'default' : 'outline'}
             onClick={() => setCurrentView('list')}
-            className="gap-2"
+            className="flex items-center gap-2 px-4 py-2 shadow-sm"
           >
-            📊 Lijstweergave
+            <span>📊</span>
+            <span>Lijstweergave</span>
           </Button>
           <Button 
             variant={currentView === 'kanban' ? 'default' : 'outline'}
             onClick={() => setCurrentView('kanban')}
-            className="gap-2"
+            className="flex items-center gap-2 px-4 py-2 shadow-sm"
           >
-            📋 Kanban Board
+            <span>📋</span>
+            <span>Kanban Board</span>
           </Button>
           <Button 
             variant={currentView === 'analytics' ? 'default' : 'outline'}
             onClick={() => setCurrentView('analytics')}
-            className="gap-2"
+            className="flex items-center gap-2 px-4 py-2 shadow-sm"
           >
-            📈 Analytics
+            <span>📈</span>
+            <span>Analytics</span>
           </Button>
         </div>
 
@@ -385,15 +388,19 @@ const Leads = () => {
         )}
 
         {currentView === 'kanban' && (
-          <KanbanBoard 
-            leads={leads || []} 
-            onLeadClick={setSelectedLead}
-            salespeople={salespeople}
-          />
+          <div className="bg-white rounded-xl shadow-sm">
+            <KanbanBoard 
+              leads={leads || []} 
+              onLeadClick={setSelectedLead}
+              salespeople={salespeople}
+            />
+          </div>
         )}
 
         {currentView === 'analytics' && (
-          <AnalyticsDashboard leads={leads || []} />
+          <div className="bg-white rounded-xl shadow-sm">
+            <AnalyticsDashboard leads={leads || []} />
+          </div>
         )}
 
         {/* Disqualify Dialog */}
