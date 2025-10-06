@@ -42,6 +42,11 @@ export interface Lead {
   lead_type?: string;
   intent_classification?: string;
   urgency_level?: 'low' | 'medium' | 'high' | 'urgent';
+  
+  // New fields (backwards compatible)
+  vehicleUrl?: string;
+  parsingConfidence?: number;
+  platformMetadata?: any;
 }
 
 export interface LeadActivity {
@@ -91,6 +96,23 @@ export interface LeadFollowUpTrigger {
   completedDate?: string;
   createdBy: string;
   createdAt: string;
+}
+
+export interface LeadDisplayConfig {
+  status: {
+    [K in LeadStatus]: {
+      label: string;
+      color: string;
+      textColor: string;
+    };
+  };
+  source: {
+    [K in LeadSource]: {
+      label: string;
+      icon: string;
+      color: string;
+    };
+  };
 }
 
 export interface LeadSearchRequest {

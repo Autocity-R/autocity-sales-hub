@@ -1445,7 +1445,9 @@ export type Database = {
           lead_temperature: string | null
           lead_type: string | null
           owner_id: string | null
+          parsing_confidence: number | null
           phone: string | null
+          platform_metadata: Json | null
           priority: string
           response_required: boolean | null
           source_email: string | null
@@ -1470,7 +1472,9 @@ export type Database = {
           lead_temperature?: string | null
           lead_type?: string | null
           owner_id?: string | null
+          parsing_confidence?: number | null
           phone?: string | null
+          platform_metadata?: Json | null
           priority: string
           response_required?: boolean | null
           source_email?: string | null
@@ -1495,7 +1499,9 @@ export type Database = {
           lead_temperature?: string | null
           lead_type?: string | null
           owner_id?: string | null
+          parsing_confidence?: number | null
           phone?: string | null
+          platform_metadata?: Json | null
           priority?: string
           response_required?: boolean | null
           source_email?: string | null

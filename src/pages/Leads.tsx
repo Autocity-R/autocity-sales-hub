@@ -27,6 +27,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { LeadSearchRequests } from "@/components/leads/LeadSearchRequests";
+import { KanbanBoard } from "@/components/leads/KanbanBoard";
+import { AnalyticsDashboard } from "@/components/leads/AnalyticsDashboard";
 
 const Leads = () => {
   const queryClient = useQueryClient();
@@ -36,6 +38,7 @@ const Leads = () => {
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [activeTab, setActiveTab] = useState("pipeline");
   const [disqualifyLead, setDisqualifyLead] = useState<Lead | null>(null);
+  const [currentView, setCurrentView] = useState<'list' | 'kanban' | 'analytics'>('list');
   
   const { data: salespeople = [] } = useSalespeople();
 
@@ -304,7 +307,33 @@ const Leads = () => {
           </Card>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        {/* View Selector */}
+        <div className="flex gap-2">
+          <Button 
+            variant={currentView === 'list' ? 'default' : 'outline'}
+            onClick={() => setCurrentView('list')}
+            className="gap-2"
+          >
+            📊 Lijstweergave
+          </Button>
+          <Button 
+            variant={currentView === 'kanban' ? 'default' : 'outline'}
+            onClick={() => setCurrentView('kanban')}
+            className="gap-2"
+          >
+            📋 Kanban Board
+          </Button>
+          <Button 
+            variant={currentView === 'analytics' ? 'default' : 'outline'}
+            onClick={() => setCurrentView('analytics')}
+            className="gap-2"
+          >
+            📈 Analytics
+          </Button>
+        </div>
+
+        {currentView === 'list' && (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="pipeline">Alle Leads</TabsTrigger>
             <TabsTrigger value="active">Actieve Leads</TabsTrigger>
@@ -353,6 +382,19 @@ const Leads = () => {
             <LeadSearchRequests />
           </TabsContent>
         </Tabs>
+        )}
+
+        {currentView === 'kanban' && (
+          <KanbanBoard 
+            leads={leads || []} 
+            onLeadClick={setSelectedLead}
+            salespeople={salespeople}
+          />
+        )}
+
+        {currentView === 'analytics' && (
+          <AnalyticsDashboard leads={leads || []} />
+        )}
 
         {/* Disqualify Dialog */}
         <DisqualifyLeadDialog
