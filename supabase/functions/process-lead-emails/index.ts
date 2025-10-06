@@ -117,7 +117,7 @@ function extractPhoneFromBody(body: string): string | null {
 }
 
 // Financial Partner Parser (Blokweg Groep + FinancialLease.nl)
-function parseFinancialPartner(body: string, from: string): ParsedData | null {
+function parseFinancialPartner(body: string, from: string, replyTo?: string): ParsedData | null {
   console.log('💰 Parsing Financial Partner email');
   
   const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -157,7 +157,7 @@ function parseFinancialPartner(body: string, from: string): ParsedData | null {
 }
 
 // Website Parser (morgeninternet.nl)
-function parseWebsite(body: string, subject: string): ParsedData | null {
+function parseWebsite(body: string, subject: string, replyTo?: string): ParsedData | null {
   console.log('🌐 Parsing Website email');
   
   const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -199,10 +199,31 @@ function parseWebsite(body: string, subject: string): ParsedData | null {
 }
 
 // Enhanced AutoTrack Parser
-function parseAutoTrackEnhanced(body: string, subject: string): ParsedData | null {
+function parseAutoTrackEnhanced(body: string, subject: string, replyTo?: string): ParsedData | null {
   console.log('🏁 Parsing AutoTrack email');
   
   const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  
+  // Extract customer email from Reply-To or body
+  let customerEmail = replyTo;
+  if (!customerEmail) {
+    const emailMatch = cleanBody.match(/E-mailadres:\s*([^\s<>]+@[^\s<>]+)/i);
+    if (emailMatch) customerEmail = emailMatch[1].trim();
+  }
+  
+  // Extract advertisement URL
+  const vehicleUrl = body.match(/https?:\/\/(?:www\.)?autotrack\.nl\/[^\s<>"]+/i)?.[0] ||
+                     body.match(/https?:\/\/(?:auto-city\.)?autotrack\.nl\/[^\s<>"]+/i)?.[0];
+  
+  // Extract clean customer message
+  let cleanMessage = '';
+  const berichtMatch = cleanBody.match(/Bericht:\s*([\s\S]*?)(?=Gewenste|Voertuig|Auto:|$)/i);
+  if (berichtMatch) {
+    cleanMessage = berichtMatch[1]
+      .replace(/AutoTrack[\s\S]*$/i, '')
+      .replace(/Naar de advertentie[\s\S]*$/i, '')
+      .trim();
+  }
   
   // TRIAGE 1: Oproep ontvangen - negeren
   if (cleanBody.includes('Oproep ontvangen') || subject.includes('Oproep ontvangen')) {
@@ -236,12 +257,11 @@ function parseAutoTrackEnhanced(body: string, subject: string): ParsedData | nul
   else if (cleanBody.includes('Proefritaanvraag')) subType = 'Proefritaanvraag';
   
   const nameMatch = cleanBody.match(/Naam:\s*([^\n]+)/i);
-  const emailMatch = cleanBody.match(/E-mailadres:\s*([^\s<>]+)/i);
   const phoneMatch = cleanBody.match(/Telefoonnummer:\s*([^\n]+)/i);
   const vehicleMatch = cleanBody.match(/(?:Voertuig|Auto):\s*([^\n]+)/i) ||
                        subject.match(/voor\s+(.+?)(?:\s*-|$)/i);
   
-  if (!nameMatch || !emailMatch) {
+  if (!nameMatch || !customerEmail) {
     return null;
   }
   
@@ -249,9 +269,11 @@ function parseAutoTrackEnhanced(body: string, subject: string): ParsedData | nul
   const result: ParsedData = {
     firstName: nameParts[0],
     lastName: nameParts.slice(1).join(' ') || nameParts[0],
-    email: emailMatch[1].trim(),
+    email: customerEmail,
     phone: phoneMatch?.[1]?.trim(),
     vehicle: vehicleMatch?.[1]?.trim(),
+    cleanMessage: cleanMessage,
+    vehicleUrl: vehicleUrl || undefined,
     source: 'AutoTrack',
     type: subType === 'Inruilaanvraag' ? 'TradeIn' : 'Contact',
     subType: subType,
@@ -284,11 +306,32 @@ function parseAutoTrackEnhanced(body: string, subject: string): ParsedData | nul
 }
 
 // Marktplaats Parser - Multiple email types
-function parseMarktplaats(body: string, subject: string): ParsedData | null {
+function parseMarktplaats(body: string, subject: string, replyTo?: string): ParsedData | null {
   console.log('🛒 Parsing Marktplaats email');
   
   const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   const lowerSubject = subject.toLowerCase();
+  
+  // Extract customer email from Reply-To or body
+  let customerEmail = replyTo;
+  if (!customerEmail) {
+    const emailMatch = cleanBody.match(/E-mailadres:\s*([^\s<>]+@[^\s<>]+)/i);
+    if (emailMatch) customerEmail = emailMatch[1].trim();
+  }
+  
+  // Extract advertisement URL
+  const vehicleUrl = body.match(/https?:\/\/(?:www\.)?marktplaats\.nl\/[alv]\/[^\s<>"]+/i)?.[0] ||
+                     body.match(/https?:\/\/link\.marktplaats\.nl\/[^\s<>"]+/i)?.[0];
+  
+  // Extract clean customer message
+  let cleanMessage = '';
+  const vraagMatch = cleanBody.match(/(?:Vraag|Bericht):\s*([\s\S]*?)(?=Verkoper|Bekijk advertentie|$)/i);
+  if (vraagMatch) {
+    cleanMessage = vraagMatch[1]
+      .replace(/Verkoper[\s\S]*$/i, '')
+      .replace(/Bekijk advertentie[\s\S]*$/i, '')
+      .trim();
+  }
   
   // TRIAGE: Ignore "Reactie ontvangen" en "Gesprek gevoerd"
   if (lowerSubject.includes('je hebt een reactie ontvangen') || 
@@ -322,13 +365,12 @@ function parseMarktplaats(body: string, subject: string): ParsedData | null {
   
   // NORMALE PARSING
   const nameMatch = cleanBody.match(/(?:Naam|Van):\s*([^\n]+)/i);
-  const emailMatch = cleanBody.match(/E-mailadres:\s*([^\s<>]+)/i);
   const phoneMatch = cleanBody.match(/Telefoonnummer:\s*([^\n]+)/i);
   const vehicleMatch = subject.match(/voor\s+(.+?)(?:\s*-|$)/i) ||
                        cleanBody.match(/(?:Voertuig|Advertentie):\s*([^\n]+)/i);
   const messageMatch = cleanBody.match(/(?:Vraag|Bericht):\s*([^\n]+)/i);
   
-  if (!nameMatch || !emailMatch) {
+  if (!nameMatch || !customerEmail) {
     return null;
   }
   
@@ -336,10 +378,12 @@ function parseMarktplaats(body: string, subject: string): ParsedData | null {
   const result: ParsedData = {
     firstName: nameParts[0],
     lastName: nameParts.slice(1).join(' ') || nameParts[0],
-    email: emailMatch[1].trim(),
+    email: customerEmail,
     phone: phoneMatch?.[1]?.trim(),
     vehicle: vehicleMatch?.[1]?.trim(),
     message: messageMatch?.[1]?.trim(),
+    cleanMessage: cleanMessage || messageMatch?.[1]?.trim(),
+    vehicleUrl: vehicleUrl || undefined,
     source: 'Marktplaats',
     type: subType === 'TradeIn' ? 'TradeIn' : 'Contact',
     subType: subType,
@@ -364,10 +408,36 @@ function parseMarktplaats(body: string, subject: string): ParsedData | null {
 }
 
 // Enhanced AutoScout24 Parser
-function parseAutoScout24Enhanced(body: string, subject: string): ParsedData | null {
+function parseAutoScout24Enhanced(body: string, subject: string, replyTo?: string): ParsedData | null {
   console.log('🚗 Parsing AutoScout24 email');
   
   const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/;/g, ' ').replace(/\s+/g, ' ').trim();
+  
+  // Extract customer email from Reply-To header first
+  let customerEmail = replyTo;
+  
+  // If no Reply-To, try to extract from body "Antwoorden op:" section
+  if (!customerEmail) {
+    const replyMatch = body.match(/Antwoorden op:.*?<([^>]+)>/i) || 
+                       body.match(/Antwoorden op:\s*([^\s<>]+@[^\s<>]+)/i);
+    if (replyMatch) {
+      customerEmail = replyMatch[1].trim();
+    }
+  }
+  
+  // Extract advertisement URL
+  const vehicleUrl = body.match(/https?:\/\/(?:www\.)?autoscout24\.(?:nl|com)\/aanbod\/[^\s<>"]+/i)?.[0] ||
+                     body.match(/https?:\/\/(?:www\.)?autoscout24\.(?:nl|com)\/offers\/[^\s<>"]+/i)?.[0];
+  
+  // Extract clean customer message
+  let cleanMessage = '';
+  const messageMatch = cleanBody.match(/(?:Bericht van de koper|Message|Nachricht):\s*([\s\S]*?)(?=Met vriendelijke groet|Bekijk advertentie|View|Antwoorden op|$)/i);
+  if (messageMatch) {
+    cleanMessage = messageMatch[1]
+      .replace(/Antwoorden op:[\s\S]*?(?=\n\n|$)/i, '')
+      .replace(/Bekijk advertentie[\s\S]*$/i, '')
+      .trim();
+  }
   
   // TRIAGE 1: Aangenomen oproep - negeren
   if (cleanBody.includes('Aangenomen oproep') || subject.includes('Aangenomen oproep')) {
@@ -396,7 +466,7 @@ function parseAutoScout24Enhanced(body: string, subject: string): ParsedData | n
   
   // HOOFD-PARSING: Nieuwe aanvraag
   let nameMatch = cleanBody.match(/(?:Nieuwe aanvraag van|Naam|Name):\s*([^\n;]+)/i);
-  const emailMatch = cleanBody.match(/(?:E[-\s]?mail(?:adres)?|Email):\s*([^\s<>;]+)/i);
+  const emailMatch = customerEmail || cleanBody.match(/(?:E[-\s]?mail(?:adres)?|Email):\s*([^\s<>;]+)/i)?.[1];
   const phoneMatch = cleanBody.match(/(?:Telefoon(?:nummer)?|Phone):\s*([^\n;]+)/i);
   const messageMatch = cleanBody.match(/(?:Bericht van de koper|Nachricht|Message):\s*([^\n]+)/i);
   
@@ -416,10 +486,12 @@ function parseAutoScout24Enhanced(body: string, subject: string): ParsedData | n
     const result: ParsedData = {
       firstName: nameParts[0],
       lastName: nameParts.slice(1).join(' ') || nameParts[0],
-      email: emailMatch[1].trim(),
+      email: typeof emailMatch === 'string' ? emailMatch : emailMatch.trim(),
       phone: phoneMatch?.[1]?.trim(),
       vehicle: vehicleMatch?.[1]?.trim(),
       message: messageMatch?.[1]?.trim(),
+      cleanMessage: cleanMessage || messageMatch?.[1]?.trim(),
+      vehicleUrl: vehicleUrl || undefined,
       source: 'AutoScout24',
       type: isTradeIn ? 'TradeIn' : 'Contact',
       rawBody: cleanBody
@@ -442,7 +514,7 @@ function parseAutoScout24Enhanced(body: string, subject: string): ParsedData | n
 }
 
 // Generic Lead Parser (fallback)
-function parseGenericLead(body: string, subject: string): ParsedData | null {
+function parseGenericLead(body: string, subject: string, replyTo?: string): ParsedData | null {
   console.log('📧 Parsing generic lead email');
   
   const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -471,37 +543,37 @@ function parseGenericLead(body: string, subject: string): ParsedData | null {
 
 
 // Master Email Router
-function parseEmail(body: string, subject: string, from: string): ParsedData | null {
+function parseEmail(body: string, subject: string, from: string, replyTo?: string): ParsedData | null {
   const lowerFrom = from.toLowerCase();
   
   // === FINANCIAL PARTNERS ===
   if (lowerFrom.includes('blokweggroep.nl') || lowerFrom.includes('financiallease.nl')) {
-    return parseFinancialPartner(body, from);
+    return parseFinancialPartner(body, from, replyTo);
   }
   
   // === AUTOSCOUT24 ===
   if (lowerFrom.includes('autoscout24.com')) {
-    return parseAutoScout24Enhanced(body, subject);
+    return parseAutoScout24Enhanced(body, subject, replyTo);
   }
   
   // === AUTOTRACK ===
   if (lowerFrom.includes('autotrack.nl')) {
-    return parseAutoTrackEnhanced(body, subject);
+    return parseAutoTrackEnhanced(body, subject, replyTo);
   }
   
   // === MARKTPLAATS ===
   if (lowerFrom.includes('marktplaats.nl')) {
-    return parseMarktplaats(body, subject);
+    return parseMarktplaats(body, subject, replyTo);
   }
   
   // === WEBSITE ===
   if (lowerFrom.includes('morgeninternet.nl')) {
-    return parseWebsite(body, subject);
+    return parseWebsite(body, subject, replyTo);
   }
   
   // === FALLBACK ===
   console.log(`⚠️ No specific parser for: ${from}`);
-  return parseGenericLead(body, subject);
+  return parseGenericLead(body, subject, replyTo);
 }
 
 // Gmail API authentication with jose library
@@ -751,6 +823,7 @@ serve(async (req) => {
         const headers = messageData.payload.headers;
         
         const from = headers.find((h: any) => h.name.toLowerCase() === 'from')?.value || '';
+        const replyTo = headers.find((h: any) => h.name.toLowerCase() === 'reply-to')?.value || '';
         const subject = headers.find((h: any) => h.name.toLowerCase() === 'subject')?.value || '';
         const threadId = messageData.threadId;
         const messageId = messageData.id;
@@ -790,9 +863,12 @@ serve(async (req) => {
         }
 
         console.log(`\n📧 Processing: ${subject} from ${from}`);
+        if (replyTo && replyTo !== from) {
+          console.log(`📬 Reply-To found: ${replyTo}`);
+        }
 
-        // Parse the email with new master parser
-        const parsedData = parseEmail(body, subject, from);
+        // Parse the email with new master parser (pass replyTo for customer email extraction)
+        const parsedData = parseEmail(body, subject, from, replyTo);
         
         // Check voor expliciet genegeerde emails
         if (parsedData?.ignored) {
@@ -1045,9 +1121,11 @@ serve(async (req) => {
               email: parsedData.email,
               phone: parsedData.phone,
               vehicle: parsedData.vehicle,
+              vehicleUrl: parsedData.vehicleUrl,
               companyName: parsedData.companyName,
               type: parsedData.type,
               subType: parsedData.subType,
+              cleanMessage: parsedData.cleanMessage,
               tradeIn: parsedData.tradeIn,
               message: parsedData.message
             }

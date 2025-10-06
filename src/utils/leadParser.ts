@@ -6,6 +6,8 @@ interface ParsedLeadInfo {
   phone: string;
   vehicleInterest: string;
   message: string;
+  cleanMessage?: string;
+  vehicleUrl?: string;
   subject: string;
 }
 
@@ -67,12 +69,27 @@ export function parseLeadData(lead: Lead): ParsedLeadInfo {
   // Extract full message (entire email text)
   let message = fullText;
   
+  // Extract clean message and vehicle URL from notes if available
+  let cleanMessage = undefined;
+  let vehicleUrl = undefined;
+  
+  // Try to get from lead notes which might contain parsed_data
+  if (lead.notes) {
+    const cleanMsgMatch = lead.notes.match(/cleanMessage['":\s]+([^"'\n]+)/i);
+    if (cleanMsgMatch) cleanMessage = cleanMsgMatch[1];
+    
+    const urlMatch = lead.notes.match(/(https?:\/\/(?:www\.)?(?:autoscout24|marktplaats|autotrack)[^\s"'<>]+)/i);
+    if (urlMatch) vehicleUrl = urlMatch[1];
+  }
+  
   return {
     customerName,
     email,
     phone,
     vehicleInterest,
     message,
+    cleanMessage,
+    vehicleUrl,
     subject
   };
 }

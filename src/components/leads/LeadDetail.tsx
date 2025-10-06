@@ -402,12 +402,28 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
         <TabsContent value="emails">
           <Card className="mb-4">
             <CardHeader>
-              <CardTitle>Volledige Email Tekst</CardTitle>
+              <CardTitle>Klant Bericht</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {parsedData.vehicleUrl && (
+                <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg">
+                  <Car className="h-5 w-5 text-primary" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Advertentie waar klant op reageerde:</p>
+                    <a 
+                      href={parsedData.vehicleUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline break-all"
+                    >
+                      Bekijk advertentie →
+                    </a>
+                  </div>
+                </div>
+              )}
               <div className="bg-muted p-4 rounded-lg">
-                <div className="text-sm whitespace-pre-wrap">
-                  {parsedData.message}
+                <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                  {parsedData.cleanMessage || parsedData.message || 'Geen bericht beschikbaar'}
                 </div>
               </div>
             </CardContent>

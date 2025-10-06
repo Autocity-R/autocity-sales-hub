@@ -69,3 +69,113 @@ export function extractPlainText(htmlOrPlain: string): string {
 export function cleanEmailForDisplay(emailBody: string): string {
   return cleanEmailText(emailBody);
 }
+
+/**
+ * Portal-specific message cleaning - extracts only customer message
+ */
+export function extractCustomerMessage(body: string, source: string): string {
+  if (!body) return '';
+  
+  const cleanBody = cleanEmailText(body);
+  
+  switch (source.toLowerCase()) {
+    case 'autoscout24':
+      return cleanAutoScout24Message(cleanBody);
+    case 'marktplaats':
+      return cleanMarktplaatsMessage(cleanBody);
+    case 'autotrack':
+      return cleanAutoTrackMessage(cleanBody);
+    default:
+      return cleanBody;
+  }
+}
+
+function cleanAutoScout24Message(text: string): string {
+  // Extract message between "Bericht van de koper:" and "Met vriendelijke groet"
+  let message = text;
+  
+  const berichtMatch = text.match(/(?:Bericht van de koper|Message|Nachricht):\s*([\s\S]*?)(?=Met vriendelijke groet|Bekijk advertentie|View|$)/i);
+  if (berichtMatch) {
+    message = berichtMatch[1].trim();
+  }
+  
+  // Remove portal footer noise
+  message = message
+    .replace(/Antwoorden op:[\s\S]*?(?=\n\n|$)/i, '')
+    .replace(/Bekijk advertentie[\s\S]*$/i, '')
+    .replace(/View (?:vehicle|ad)[\s\S]*$/i, '')
+    .trim();
+  
+  return message || text;
+}
+
+function cleanMarktplaatsMessage(text: string): string {
+  // Extract message from "Vraag:" or "Bericht:" section
+  let message = text;
+  
+  const vraagMatch = text.match(/(?:Vraag|Bericht):\s*([\s\S]*?)(?=Verkoper|Bekijk advertentie|$)/i);
+  if (vraagMatch) {
+    message = vraagMatch[1].trim();
+  }
+  
+  // Remove seller info and footer
+  message = message
+    .replace(/Verkoper[\s\S]*$/i, '')
+    .replace(/Bekijk advertentie[\s\S]*$/i, '')
+    .replace(/Marktplaats[\s\S]*$/i, '')
+    .trim();
+  
+  return message || text;
+}
+
+function cleanAutoTrackMessage(text: string): string {
+  // Extract message from "Bericht:" section
+  let message = text;
+  
+  const berichtMatch = text.match(/Bericht:\s*([\s\S]*?)(?=Gewenste|Voertuig|Auto:|$)/i);
+  if (berichtMatch) {
+    message = berichtMatch[1].trim();
+  }
+  
+  // Remove AutoTrack footer
+  message = message
+    .replace(/AutoTrack[\s\S]*$/i, '')
+    .replace(/Naar de advertentie[\s\S]*$/i, '')
+    .trim();
+  
+  return message || text;
+}
+
+/**
+ * Extract advertisement URL from email body
+ */
+export function extractAdvertisementUrl(body: string, source: string): string | null {
+  if (!body) return null;
+  
+  // URL patterns for each portal
+  const patterns: Record<string, RegExp[]> = {
+    autoscout24: [
+      /https?:\/\/(?:www\.)?autoscout24\.nl\/aanbod\/[^\s<>"]+/i,
+      /https?:\/\/(?:www\.)?autoscout24\.com\/offers\/[^\s<>"]+/i
+    ],
+    marktplaats: [
+      /https?:\/\/(?:www\.)?marktplaats\.nl\/[alv]\/[^\s<>"]+/i,
+      /https?:\/\/link\.marktplaats\.nl\/[^\s<>"]+/i
+    ],
+    autotrack: [
+      /https?:\/\/(?:www\.)?autotrack\.nl\/[^\s<>"]+/i,
+      /https?:\/\/(?:auto-city\.)?autotrack\.nl\/[^\s<>"]+/i
+    ]
+  };
+  
+  const sourcePatterns = patterns[source.toLowerCase()] || [];
+  
+  for (const pattern of sourcePatterns) {
+    const match = body.match(pattern);
+    if (match) {
+      return match[0];
+    }
+  }
+  
+  return null;
+}
