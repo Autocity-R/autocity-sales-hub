@@ -1,55 +1,23 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { DOMParser } from "https://deno.land/x/deno_dom/deno-dom-wasm.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Email cleaning utility
-function cleanEmailText(rawHtml: string): string {
-  if (!rawHtml) return '';
-  
-  let cleaned = rawHtml;
-  
-  // Decode HTML entities
-  cleaned = cleaned
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
-    .replace(/&#x([0-9a-f]+);/gi, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
-  
-  // Strip HTML tags (but preserve line breaks)
-  cleaned = cleaned
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n\n')
-    .replace(/<[^>]+>/g, ' ');
-  
-  // Normalize whitespace
-  cleaned = cleaned
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\n\s*\n\s*\n/g, '\n\n')
-    .replace(/^\s+|\s+$/gm, '')
-    .trim();
-  
-  return cleaned;
-}
-
 function extractAutoTrackData(body: string, htmlBody: string) {
-  const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ').trim();
+  const doc = new DOMParser().parseFromString(htmlBody, 'text/html');
   
-  // Extract clean message - only the customer's message part
+  // Extract clean message
   let cleanMessage = '';
-  const berichtMatch = cleanBody.match(/\*?Bericht\*?[:\s]+([\s\S]*?)(?=\*?Met vriendelijke groet|Gewenste|Wat vond je|©|$)/i);
+  const berichtMatch = body.match(/\*?Bericht\*?[:\s]+([\s\S]*?)(?=\*?Met vriendelijke groet|Gewenste|Wat vond je|©|autotrack is onderdeel|$)/i);
   if (berichtMatch) {
     cleanMessage = berichtMatch[1]
-      .replace(/\*Naam\*?:.*$/i, '') // Remove any metadata that leaked in
-      .replace(/\*E-mailadres\*?:.*$/i, '')
-      .replace(/\*Telefoonnummer\*?:.*$/i, '')
+      .replace(/\*Naam\*?:.*$/im, '')
+      .replace(/\*E-mailadres\*?:.*$/im, '')
+      .replace(/\*Telefoonnummer\*?:.*$/im, '')
       .replace(/autotrack is onderdeel van.*$/i, '')
       .replace(/postbus.*$/i, '')
       .replace(/^\s+|\s+$/g, '')
@@ -57,50 +25,93 @@ function extractAutoTrackData(body: string, htmlBody: string) {
       .trim();
   }
   
-  // Extract vehicle URL
-  const vehicleUrl = htmlBody.match(/https?:\/\/www\.autotrack\.nl\/a\/[^\s<>"]+/i)?.[0];
+  // Extract vehicle URL (DOM-based with fallback)
+  let vehicleUrl = '';
+  if (doc) {
+    const links = Array.from(doc.querySelectorAll('a'));
+    const autotrackLink = links.find(a => a.getAttribute('href')?.includes('autotrack.nl/a/'));
+    if (autotrackLink) {
+      vehicleUrl = autotrackLink.getAttribute('href') || '';
+    }
+  }
+  if (!vehicleUrl) {
+    vehicleUrl = htmlBody.match(/https?:\/\/www\.autotrack\.nl\/a\/[^\s<>"]+/i)?.[0] || '';
+  }
   
   // Extract customer email
   let customerEmail = null;
-  const emailMatch = cleanBody.match(/\*E-mailadres:\*\s*([^\s<>\*]+@[^\s<>\*]+)/i) ||
-                     cleanBody.match(/E-mailadres:\s*([^\s<>\*]+@[^\s<>\*]+)/i);
+  const emailMatch = body.match(/\*E-mailadres:\*\s*([^\s<>\*]+@[^\s<>\*]+)/i) ||
+                     body.match(/E-mailadres:\s*([^\s<>\*]+@[^\s<>\*]+)/i);
   if (emailMatch) customerEmail = emailMatch[1].trim();
   
   return { cleanMessage, vehicleUrl, customerEmail };
 }
 
 function extractAutoScout24Data(body: string, htmlBody: string) {
-  const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ').trim();
+  const doc = new DOMParser().parseFromString(htmlBody, 'text/html');
   
-  // Extract clean message
+  // Extract clean message (DOM-based with fallback)
   let cleanMessage = '';
-  const messageMatch = cleanBody.match(/(?:Bericht van de koper|Message|Nachricht)[:\s]+([\s\S]*?)(?=Met vriendelijke groet|Bekijk advertentie|View|Antwoorden op|$)/i);
-  if (messageMatch) {
-    cleanMessage = messageMatch[1]
-      .replace(/Antwoorden op:[\s\S]*?(?=\n\n|$)/i, '')
-      .replace(/Bekijk advertentie[\s\S]*$/i, '')
-      .trim();
+  if (doc) {
+    const messageHeader = Array.from(doc.querySelectorAll('td, div')).find(el => 
+      el.textContent.includes('Bericht van de koper')
+    );
+    if (messageHeader) {
+      let nextElement = messageHeader.nextElementSibling;
+      while(nextElement && nextElement.textContent.trim().length < 2) {
+        nextElement = nextElement.nextElementSibling;
+      }
+      if(nextElement) {
+        cleanMessage = nextElement.textContent.trim();
+      }
+    }
+  }
+  if (!cleanMessage) {
+    const msgMatch = body.match(/Bericht van de koper\s*([\s\S]*?)(?=Met vriendelijke groet|Bekijk advertentie)/i);
+    if (msgMatch) cleanMessage = msgMatch[1].trim();
   }
   
-  // Extract vehicle URL
-  const vehicleUrl = htmlBody.match(/https?:\/\/(?:www\.)?autoscout24\.(?:nl|com)\/aanbod\/[^\s<>"]+/i)?.[0] ||
-                     htmlBody.match(/https?:\/\/(?:www\.)?autoscout24\.(?:nl|com)\/offers\/[^\s<>"]+/i)?.[0];
+  // Extract vehicle URL (DOM-based with fallback)
+  let vehicleUrl = '';
+  if (doc) {
+    const adLink = Array.from(doc.querySelectorAll('a')).find(el => 
+      el.textContent.includes('Bekijk advertentie')
+    );
+    if (adLink) {
+      vehicleUrl = adLink.getAttribute('href') || '';
+    }
+  }
+  if (!vehicleUrl) {
+    vehicleUrl = htmlBody.match(/https?:\/\/(?:www\.)?autoscout24\.(?:nl|com)\/aanbod\/[^\s<>"]+/i)?.[0] || '';
+  }
   
-  // Extract customer email from "Antwoorden op:"
+  // Extract customer email (DOM-based with fallback)
   let customerEmail = null;
-  const replyMatch = htmlBody.match(/Antwoorden op:.*?<([^>]+)>/i) || 
-                     htmlBody.match(/Antwoorden op:\s*([^\s<>]+@[^\s<>]+)/i);
-  if (replyMatch) customerEmail = replyMatch[1].trim();
+  if (doc) {
+    const elements = Array.from(doc.querySelectorAll('td, span, div'));
+    const replyToElement = elements.find(el => el.textContent.includes('Antwoorden op:'));
+    if (replyToElement) {
+      const mailtoLink = replyToElement.querySelector('a[href^="mailto:"]');
+      if (mailtoLink) {
+        customerEmail = mailtoLink.getAttribute('href')?.replace('mailto:', '');
+      }
+    }
+  }
+  if (!customerEmail) {
+    const replyMatch = htmlBody.match(/Antwoorden op:.*?<([^>]+)>/i) || 
+                       htmlBody.match(/Antwoorden op:\s*([^\s<>]+@[^\s<>]+)/i);
+    if (replyMatch) customerEmail = replyMatch[1].trim();
+  }
   
   return { cleanMessage, vehicleUrl, customerEmail };
 }
 
 function extractMarktplaatsData(body: string, htmlBody: string) {
-  const cleanBody = body.replace(/<[^>]+>/g, ' ').replace(/[ \t]+/g, ' ').trim();
+  const doc = new DOMParser().parseFromString(htmlBody, 'text/html');
   
   // Extract clean message
   let cleanMessage = '';
-  const vraagMatch = cleanBody.match(/(?:Vraag|Bericht)[:\s]+([\s\S]*?)(?=Verkoper|Bekijk advertentie|$)/i);
+  const vraagMatch = body.match(/(?:Vraag|Bericht)[:\s]+([\s\S]*?)(?=Verkoper|Bekijk advertentie|$)/i);
   if (vraagMatch) {
     cleanMessage = vraagMatch[1]
       .replace(/Verkoper[\s\S]*$/i, '')
@@ -108,13 +119,26 @@ function extractMarktplaatsData(body: string, htmlBody: string) {
       .trim();
   }
   
-  // Extract vehicle URL
-  const vehicleUrl = htmlBody.match(/https?:\/\/(?:www\.)?marktplaats\.nl\/[alv]\/[^\s<>"]+/i)?.[0] ||
-                     htmlBody.match(/https?:\/\/link\.marktplaats\.nl\/[^\s<>"]+/i)?.[0];
+  // Extract vehicle URL (DOM-based with fallback)
+  let vehicleUrl = '';
+  if (doc) {
+    const links = Array.from(doc.querySelectorAll('a'));
+    const mpLink = links.find(a => {
+      const href = a.getAttribute('href') || '';
+      return href.includes('marktplaats.nl') && (href.includes('/a/') || href.includes('/v/') || href.includes('/l/'));
+    });
+    if (mpLink) {
+      vehicleUrl = mpLink.getAttribute('href') || '';
+    }
+  }
+  if (!vehicleUrl) {
+    vehicleUrl = htmlBody.match(/https?:\/\/(?:www\.)?marktplaats\.nl\/[alv]\/[^\s<>"]+/i)?.[0] || 
+                 htmlBody.match(/https?:\/\/link\.marktplaats\.nl\/[^\s<>"]+/i)?.[0] || '';
+  }
   
   // Extract customer email
   let customerEmail = null;
-  const emailMatch = cleanBody.match(/E-mailadres:\s*([^\s<>]+@[^\s<>]+)/i);
+  const emailMatch = body.match(/E-mailadres:\s*([^\s<>]+@[^\s<>]+)/i);
   if (emailMatch) customerEmail = emailMatch[1].trim();
   
   return { cleanMessage, vehicleUrl, customerEmail };

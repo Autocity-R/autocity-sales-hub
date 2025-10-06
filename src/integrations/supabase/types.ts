@@ -988,6 +988,7 @@ export type Database = {
       email_messages: {
         Row: {
           body: string | null
+          clean_customer_message: string | null
           created_at: string
           html_body: string | null
           id: string
@@ -1004,6 +1005,7 @@ export type Database = {
         }
         Insert: {
           body?: string | null
+          clean_customer_message?: string | null
           created_at?: string
           html_body?: string | null
           id?: string
@@ -1020,6 +1022,7 @@ export type Database = {
         }
         Update: {
           body?: string | null
+          clean_customer_message?: string | null
           created_at?: string
           html_body?: string | null
           id?: string
@@ -1449,6 +1452,7 @@ export type Database = {
           status: string
           updated_at: string
           urgency_level: string | null
+          vehicle_url: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -1473,6 +1477,7 @@ export type Database = {
           status: string
           updated_at?: string
           urgency_level?: string | null
+          vehicle_url?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -1497,6 +1502,7 @@ export type Database = {
           status?: string
           updated_at?: string
           urgency_level?: string | null
+          vehicle_url?: string | null
         }
         Relationships: [
           {
