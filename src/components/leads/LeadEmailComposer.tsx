@@ -24,6 +24,21 @@ interface LeadEmailComposerProps {
   };
 }
 
+// Helper function to extract clean email address
+const extractEmailAddress = (emailField: string): string => {
+  if (!emailField) return '';
+  
+  // Check if it's already a clean email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (emailRegex.test(emailField.trim())) {
+    return emailField.trim();
+  }
+  
+  // Extract email from text that might contain full message
+  const emailMatch = emailField.match(/([^\s@]+@[^\s@]+\.[^\s@]+)/);
+  return emailMatch ? emailMatch[1] : emailField;
+};
+
 export const LeadEmailComposer: React.FC<LeadEmailComposerProps> = ({ 
   lead, 
   leads = [], 
@@ -108,7 +123,7 @@ export const LeadEmailComposer: React.FC<LeadEmailComposerProps> = ({
       const { data, error } = await supabase.functions.invoke('send-gmail', {
         body: {
           senderEmail: 'verkoop@auto-city.nl',
-          to: recipients.map(l => l.email),
+          to: recipients.map(l => extractEmailAddress(l.email)),
           subject: emailData.subject,
           htmlBody: emailData.content.replace(/\n/g, '<br>'),
           metadata: {
@@ -164,7 +179,7 @@ export const LeadEmailComposer: React.FC<LeadEmailComposerProps> = ({
               {recipients.map((recipient) => (
                 <Badge key={recipient.id} variant="secondary" className="flex items-center gap-1">
                   {recipient.firstName} {recipient.lastName}
-                  <span className="text-muted-foreground ml-1">({recipient.email})</span>
+                  <span className="text-muted-foreground ml-1">({extractEmailAddress(recipient.email)})</span>
                 </Badge>
               ))}
             </div>
