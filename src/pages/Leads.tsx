@@ -12,6 +12,7 @@ import { LeadListView } from "@/components/leads/LeadListView";
 import { LeadEmailComposer } from "@/components/leads/LeadEmailComposer";
 import { LeadAIAssistant } from "@/components/leads/LeadAIAssistant";
 import { DisqualifyLeadDialog } from "@/components/leads/DisqualifyLeadDialog";
+import { ReprocessLeadsButton } from "@/components/leads/ReprocessLeadsButton";
 import { useSalespeople } from "@/hooks/useSalespeople";
 import { 
   Plus, 
@@ -244,6 +245,7 @@ const Leads = () => {
               <RefreshCw className="h-4 w-4" />
               Gmail Sync
             </Button>
+            <ReprocessLeadsButton />
             <Button onClick={() => setShowAIAssistant(true)} variant="outline" className="gap-2">
               <Bot className="h-4 w-4" />
               AI Assistant
