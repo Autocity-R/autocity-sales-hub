@@ -796,20 +796,21 @@ serve(async (req) => {
     const accessToken = await getAccessToken(serviceAccount);
 
     // Search for unread emails - SENDER-BASED with exclusions
-    // Single-line query with correct Gmail syntax: each domain needs its own from:, and exclusions are individual -subject: statements
-    const query = 'is:unread newer_than:2d to:verkoop@auto-city.nl (from:autoscout24.com OR from:autotrack.nl OR from:mail.marktplaats.nl OR from:call.marktplaats.nl OR from:morgeninternet.nl OR from:financiallease.nl OR from:blokweggroep.nl) -subject:"Je hebt een reactie ontvangen" -subject:"Gesprek gevoerd" -subject:"uw verkoopkansen" -subject:"advertentiekwaliteit"';
-    
-    console.log('🔍 Searching for lead emails...');
-    
-    let messages = [];
-    try {
-      const searchResponse = await fetchWithRetry(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=5`,
-        {
+  // Single-line query with correct Gmail syntax: each domain needs its own from:, and exclusions are individual -subject: statements
+  const query = 'in:inbox is:unread newer_than:1d to:verkoop@auto-city.nl (from:autoscout24.com OR from:autotrack.nl OR from:mail.marktplaats.nl OR from:call.marktplaats.nl OR from:morgeninternet.nl OR from:financiallease.nl OR from:blokweggroep.nl) -subject:"Je hebt een reactie ontvangen" -subject:"Gesprek gevoerd" -subject:"uw verkoopkansen" -subject:"advertentiekwaliteit"';
+  
+  console.log('🔍 Searching for lead emails...');
+  
+  let messages = [];
+  try {
+    const searchResponse = await fetchWithRetry(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=3`,
+      {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
           },
-        }
+        },
+        2
       );
 
       if (!searchResponse.ok) {
