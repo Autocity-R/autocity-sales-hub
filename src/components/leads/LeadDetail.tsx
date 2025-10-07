@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import { LeadFollowUp } from "./LeadFollowUp";
 import { LeadEmailHistory } from "./LeadEmailHistory";
 import { LeadEmailComposer } from "./LeadEmailComposer";
 import { parseLeadData } from "@/utils/leadParser";
+import { EmailParserService, ParsedLead } from "@/services/emailParser";
 import { 
   ArrowLeft, 
   Mail, 
@@ -28,7 +29,8 @@ import {
   UserPlus,
   Check,
   User,
-  Car
+  Car,
+  ExternalLink
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -84,7 +86,7 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
     const fetchEmailData = async () => {
       const { data } = await supabase
         .from('email_messages')
-        .select('parsed_data, body, html_body')
+        .select('parsed_data, body, html_body, sender_email, subject')
         .eq('lead_id', lead.id)
         .order('received_at', { ascending: false })
         .limit(1)
@@ -99,6 +101,25 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
   
   // Parse lead data with enhanced email data
   const parsedData = parseLeadData(enhancedLead);
+  
+  // Parse email with EmailParserService for professional display
+  const parsedLead: ParsedLead | null = useMemo(() => {
+    if (enhancedLead?.email_messages?.[0]) {
+      const emailMsg = enhancedLead.email_messages[0];
+      const emailContent = emailMsg.body || emailMsg.html_body || lead.notes || '';
+      const subject = emailMsg.subject || lead.interestedVehicle || '';
+      const fromAddress = emailMsg.sender_email || lead.email || '';
+      
+      return EmailParserService.parseEmail(emailContent, subject, fromAddress);
+    } else if (lead.notes) {
+      return EmailParserService.parseEmail(
+        lead.notes || '',
+        lead.interestedVehicle || '',
+        lead.email || ''
+      );
+    }
+    return null;
+  }, [enhancedLead, lead]);
 
   const handleReplyToEmail = (email: any) => {
     setReplyToEmail({
@@ -428,34 +449,161 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
         </TabsList>
 
         <TabsContent value="emails">
-          <Card className="mb-4">
-            <CardHeader>
-              <CardTitle>Klant Bericht</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {parsedData.vehicleUrl && (
-                <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg">
-                  <Car className="h-5 w-5 text-primary" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Advertentie waar klant op reageerde:</p>
-                    <a 
-                      href={parsedData.vehicleUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-sm text-primary hover:underline break-all"
+          {parsedLead ? (
+            <Card className="mb-4">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Klantbericht</span>
+                  {parsedLead.priority > 85 && (
+                    <Badge variant="destructive" className="ml-2">
+                      HOGE PRIORITEIT
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className={`rounded-lg p-6 border-l-4 ${getPlatformBorderColor(parsedLead.platform)} bg-card`}>
+                  {/* Platform Header */}
+                  <div className="flex items-center justify-between mb-4 pb-4 border-b">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{parsedLead.platformIcon}</span>
+                      <div>
+                        <h4 className="font-semibold text-foreground">{parsedLead.platform}</h4>
+                        <Badge variant="secondary" className="mt-1">
+                          {parsedLead.leadType}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Customer Info */}
+                  <div className="mb-6 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-foreground">{parsedLead.customerName}</span>
+                    </div>
+                    {parsedLead.customerEmail && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <a 
+                          href={`mailto:${parsedLead.customerEmail}`}
+                          className="text-sm text-primary hover:underline"
+                        >
+                          {parsedLead.customerEmail}
+                        </a>
+                      </div>
+                    )}
+                    {parsedLead.customerPhone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <a 
+                          href={`tel:${parsedLead.customerPhone}`}
+                          className="text-sm text-primary hover:underline"
+                        >
+                          {parsedLead.customerPhone}
+                        </a>
+                      </div>
+                    )}
+                    {parsedLead.vehicleTitle && (
+                      <div className="flex items-center gap-2">
+                        <Car className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium text-foreground">{parsedLead.vehicleTitle}</span>
+                      </div>
+                    )}
+                    {parsedLead.vehiclePrice && (
+                      <div className="flex items-center gap-2">
+                        <Euro className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-semibold text-primary">€ {parsedLead.vehiclePrice}</span>
+                      </div>
+                    )}
+                    {parsedLead.kenteken && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-muted-foreground">KENTEKEN:</span>
+                        <Badge variant="outline">{parsedLead.kenteken}</Badge>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Customer Message - The Most Important Part */}
+                  <div className="mb-6">
+                    <h6 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
+                      Bericht van klant:
+                    </h6>
+                    <blockquote className="relative bg-muted/50 p-5 rounded-lg border-l-2 border-primary/30 italic text-foreground leading-relaxed">
+                      <span className="absolute top-2 left-3 text-4xl text-muted-foreground/20 font-serif leading-none">"</span>
+                      <div className="pl-6 pr-4 whitespace-pre-wrap">
+                        {parsedLead.customerMessage}
+                      </div>
+                      <span className="absolute bottom-1 right-3 text-4xl text-muted-foreground/20 font-serif leading-none">"</span>
+                    </blockquote>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap gap-2 pt-4 border-t">
+                    {parsedLead.advertUrl && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a 
+                          href={parsedLead.advertUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="gap-2"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          Bekijk Advertentie
+                        </a>
+                      </Button>
+                    )}
+                    <Button 
+                      variant="default" 
+                      size="sm"
+                      onClick={() => setShowEmailComposer(true)}
+                      className="gap-2"
                     >
-                      Bekijk advertentie →
-                    </a>
+                      <Mail className="h-4 w-4" />
+                      Reageren
+                    </Button>
+                    {parsedLead.customerPhone && (
+                      <Button variant="outline" size="sm" asChild className="gap-2">
+                        <a href={`tel:${parsedLead.customerPhone}`}>
+                          <Phone className="h-4 w-4" />
+                          Bellen
+                        </a>
+                      </Button>
+                    )}
                   </div>
                 </div>
-              )}
-              <div className="bg-muted p-4 rounded-lg">
-                <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                  {parsedData.cleanMessage || parsedData.message || 'Geen bericht beschikbaar'}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="mb-4">
+              <CardHeader>
+                <CardTitle>Klant Bericht</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {parsedData.vehicleUrl && (
+                  <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg">
+                    <Car className="h-5 w-5 text-primary" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Advertentie waar klant op reageerde:</p>
+                      <a 
+                        href={parsedData.vehicleUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary hover:underline break-all"
+                      >
+                        Bekijk advertentie →
+                      </a>
+                    </div>
+                  </div>
+                )}
+                <div className="bg-muted p-4 rounded-lg">
+                  <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                    {parsedData.cleanMessage || parsedData.message || 'Geen bericht beschikbaar'}
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
           <LeadEmailHistory leadId={lead.id} onReply={handleReplyToEmail} />
         </TabsContent>
 
@@ -497,3 +645,19 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
     </div>
   );
 };
+
+// Helper function for platform border colors using semantic tokens
+function getPlatformBorderColor(platform: string): string {
+  switch (platform.toLowerCase()) {
+    case 'marktplaats':
+      return 'border-l-green-500';
+    case 'autoscout24':
+      return 'border-l-primary';
+    case 'autotrack':
+      return 'border-l-accent';
+    case 'eigen website':
+      return 'border-l-purple-500';
+    default:
+      return 'border-l-muted-foreground';
+  }
+}
