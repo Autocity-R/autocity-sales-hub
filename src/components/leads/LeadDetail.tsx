@@ -476,101 +476,106 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
                     </div>
                   </div>
                   
-                  {/* Customer Info */}
-                  <div className="mb-6 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium text-foreground">{parsedLead.customerName}</span>
+                  {/* Customer & Vehicle Info Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {/* Customer Info */}
+                    <div className="space-y-3">
+                      <h5 className="text-sm font-semibold text-muted-foreground uppercase">Klantgegevens</h5>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium text-foreground">{parsedLead.customerName}</span>
+                        </div>
+                        {parsedLead.customerEmail && (
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4 text-muted-foreground" />
+                            <a href={`mailto:${parsedLead.customerEmail}`} className="text-primary hover:underline text-sm">
+                              {parsedLead.customerEmail}
+                            </a>
+                          </div>
+                        )}
+                        {parsedLead.customerPhone && (
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4 text-muted-foreground" />
+                            <a href={`tel:${parsedLead.customerPhone}`} className="text-primary hover:underline text-sm">
+                              {parsedLead.customerPhone}
+                            </a>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    {parsedLead.customerEmail && (
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <a 
-                          href={`mailto:${parsedLead.customerEmail}`}
-                          className="text-sm text-primary hover:underline"
-                        >
-                          {parsedLead.customerEmail}
-                        </a>
+                    
+                    {/* Vehicle Info */}
+                    <div className="space-y-3">
+                      <h5 className="text-sm font-semibold text-muted-foreground uppercase">Voertuiggegevens</h5>
+                      <div className="space-y-2">
+                        {parsedLead.vehicleTitle && (
+                          <div className="flex items-center gap-2">
+                            <Car className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium text-foreground">{parsedLead.vehicleTitle}</span>
+                          </div>
+                        )}
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                          {parsedLead.vehiclePrice && (
+                            <span className="text-primary font-semibold">€ {parsedLead.vehiclePrice}</span>
+                          )}
+                          {parsedLead.vehicleMileage && (
+                            <span className="text-muted-foreground">{parsedLead.vehicleMileage} km</span>
+                          )}
+                          {parsedLead.vehicleYear && (
+                            <span className="text-muted-foreground">{parsedLead.vehicleYear}</span>
+                          )}
+                          {parsedLead.vehicleFuelType && (
+                            <span className="text-muted-foreground">{parsedLead.vehicleFuelType}</span>
+                          )}
+                        </div>
+                        {parsedLead.kenteken && (
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">Kenteken: </span>
+                            <span className="font-mono font-medium">{parsedLead.kenteken}</span>
+                          </div>
+                        )}
+                        {parsedLead.advertNumber && (
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">Advertentie nr: </span>
+                            <span className="font-medium">{parsedLead.advertNumber}</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {parsedLead.customerPhone && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <a 
-                          href={`tel:${parsedLead.customerPhone}`}
-                          className="text-sm text-primary hover:underline"
-                        >
-                          {parsedLead.customerPhone}
-                        </a>
-                      </div>
-                    )}
-                    {parsedLead.vehicleTitle && (
-                      <div className="flex items-center gap-2">
-                        <Car className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium text-foreground">{parsedLead.vehicleTitle}</span>
-                      </div>
-                    )}
-                    {parsedLead.vehiclePrice && (
-                      <div className="flex items-center gap-2">
-                        <Euro className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-semibold text-primary">€ {parsedLead.vehiclePrice}</span>
-                      </div>
-                    )}
-                    {parsedLead.kenteken && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-muted-foreground">KENTEKEN:</span>
-                        <Badge variant="outline">{parsedLead.kenteken}</Badge>
-                      </div>
-                    )}
+                    </div>
                   </div>
                   
-                  {/* Customer Message - The Most Important Part */}
+                  {/* Customer Message */}
                   <div className="mb-6">
-                    <h6 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-                      Bericht van klant:
-                    </h6>
-                    <blockquote className="relative bg-muted/50 p-5 rounded-lg border-l-2 border-primary/30 text-foreground leading-relaxed">
-                      <span className="absolute top-2 left-3 text-4xl text-muted-foreground/20 font-serif leading-none">"</span>
-                      <div className="pl-6 pr-4 whitespace-pre-wrap text-base">
-                        {parsedLead.customerMessage.split('\n').map((line, i, arr) => (
-                          <React.Fragment key={i}>
-                            {line}
-                            {i < arr.length - 1 && <br />}
-                          </React.Fragment>
-                        ))}
-                      </div>
-                      <span className="absolute bottom-1 right-3 text-4xl text-muted-foreground/20 font-serif leading-none">"</span>
+                    <h5 className="text-sm font-semibold text-muted-foreground uppercase mb-3">Bericht van klant</h5>
+                    <blockquote className="bg-muted/50 p-4 rounded-lg border-l-4 border-primary/30 italic text-foreground leading-relaxed whitespace-pre-wrap">
+                      {parsedLead.customerMessage.split('\n').map((line, i) => (
+                        <React.Fragment key={i}>
+                          {line}
+                          {i < parsedLead.customerMessage.split('\n').length - 1 && <br />}
+                        </React.Fragment>
+                      ))}
                     </blockquote>
                   </div>
                   
                   {/* Action Buttons */}
-                  <div className="flex flex-wrap gap-2 pt-4 border-t">
+                  <div className="flex flex-wrap gap-2">
                     {parsedLead.advertUrl && (
                       <Button variant="outline" size="sm" asChild>
-                        <a 
-                          href={parsedLead.advertUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="gap-2"
-                        >
-                          <ExternalLink className="h-4 w-4" />
+                        <a href={parsedLead.advertUrl} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-4 w-4 mr-2" />
                           Bekijk Advertentie
                         </a>
                       </Button>
                     )}
-                    <Button 
-                      variant="default" 
-                      size="sm"
-                      onClick={() => setShowEmailComposer(true)}
-                      className="gap-2"
-                    >
-                      <Mail className="h-4 w-4" />
+                    <Button variant="default" size="sm" onClick={() => setShowEmailComposer(true)}>
+                      <Mail className="h-4 w-4 mr-2" />
                       Reageren
                     </Button>
                     {parsedLead.customerPhone && (
-                      <Button variant="outline" size="sm" asChild className="gap-2">
+                      <Button variant="outline" size="sm" asChild>
                         <a href={`tel:${parsedLead.customerPhone}`}>
-                          <Phone className="h-4 w-4" />
+                          <Phone className="h-4 w-4 mr-2" />
                           Bellen
                         </a>
                       </Button>

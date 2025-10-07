@@ -7,7 +7,11 @@ export interface ParsedLead {
   customerMessage: string;
   vehicleTitle?: string;
   vehiclePrice?: string;
+  vehicleYear?: string;
+  vehicleMileage?: string;
+  vehicleFuelType?: string;
   kenteken?: string;
+  advertNumber?: string;
   advertUrl?: string;
   leadType: string;
   priority: number;
@@ -45,23 +49,18 @@ export class EmailParserService {
   }
   
   private static parseMarktplaatsEmail(emailContent: string, subject: string): ParsedLead {
-    const customerNameMatch = emailContent.match(/Je hebt een reactie ontvangen van ([^:]+?):/i) ||
-                               emailContent.match(/(?:van|from):\s*([^\n]+)/i);
+    const customerNameMatch = emailContent.match(/(?:reactie ontvangen van|van)\s+([^:,\n]+)/i);
     
-    // Try to extract message content more intelligently
+    // Extract clean message
     let messageContent = emailContent;
-    const reactieMatch = emailContent.match(/Je hebt een reactie ontvangen van [^:]+?:\s*\n+([\s\S]+?)(?:\n\n-+|advertentie|klik hier|marktplaats\.nl)/is);
+    const reactieMatch = emailContent.match(/(?:reactie ontvangen van [^:]+?:\s*\n+|Vraag:\s*\n+)(.*?)(?=\n\n|Verkoper|Advertentie|$)/is);
     if (reactieMatch) {
       messageContent = reactieMatch[1];
-    } else {
-      const berichtMatch = emailContent.match(/(?:bericht|reactie)[:\s]*\n+([\s\S]+?)(?:\n\n-+|advertentie|klik hier)/is);
-      if (berichtMatch) {
-        messageContent = berichtMatch[1];
-      }
     }
     
     const advertUrlMatch = emailContent.match(/(https?:\/\/[^\s]+marktplaats[^\s]+)/i);
-    const vehicleMatch = subject.match(/reactie op (.+?)$/i) || subject.match(/(.+?)(?:\s*-\s*Marktplaats)?$/i);
+    const vehicleMatch = subject.match(/reactie op\s+(.+?)$/i);
+    const priceMatch = emailContent.match(/Prijs[:\s]*€\s*([\d.,]+)/i);
     
     return {
       platform: 'Marktplaats',
@@ -69,32 +68,37 @@ export class EmailParserService {
       customerName: customerNameMatch?.[1]?.trim() || 'Onbekend',
       customerMessage: this.cleanMessage(messageContent),
       vehicleTitle: vehicleMatch?.[1]?.trim() || subject,
+      vehiclePrice: priceMatch?.[1],
       advertUrl: advertUrlMatch?.[1],
       leadType: 'Email Reactie',
-      priority: 70
+      priority: 72
     };
   }
   
   private static parseAutoScout24Email(emailContent: string, subject: string): ParsedLead {
-    const customerNameMatch = emailContent.match(/(?:Nieuwe aanvraag|aanvraag|van)\s+(?:van\s+)?([^\n]+?)\s+(?:voor|via)/i) ||
+    const customerNameMatch = emailContent.match(/(?:Nieuwe aanvraag|aanvraag)\s+van\s+([^\s]+(?:\s+[^\s]+)?)\s+voor/i) ||
                                emailContent.match(/naam:?\s*([^\n]+)/i);
-    const customerEmailMatch = emailContent.match(/(?:e-?mail|email):?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i) ||
-                                emailContent.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+    const customerEmailMatch = emailContent.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
     const customerPhoneMatch = emailContent.match(/(?:telefoon|tel|phone):?\s*([\d\s\+\-\(\)]+)/i);
     
-    // Better message extraction
+    // Extract clean customer message
     let messageContent = emailContent;
-    const berichtMatch = emailContent.match(/(?:bericht van de koper|bericht|opmerking|vraag)[^\n]*?:\s*\n+([\s\S]+?)(?:\n\n(?:kenteken|prijs|advertentie|voor meer info)|$)/is);
+    const berichtMatch = emailContent.match(/Bericht van de koper\s*\n\s*([^\n]+(?:\n(?!(?:Met vriendelijke|Advertentie|Kenteken|\w+\s+van\s+Houwelingen))[^\n]*)*)/i);
     if (berichtMatch) {
-      messageContent = berichtMatch[1];
+      messageContent = berichtMatch[1].trim();
     }
     
-    const priceMatch = emailContent.match(/(?:prijs|price):?\s*€\s*([\d.,]+)/i) ||
-                       emailContent.match(/€\s*([\d.,]+)/);
-    const kentekenMatch = emailContent.match(/(?:kenteken|license plate):?\s*([A-Z0-9\-]+)/i);
+    // Extract vehicle details
+    const vehicleMatch = subject.match(/Interesse in\s+(.+?)\s+€/i) || 
+                        emailContent.match(/(?:Uw voertuig|advertentie)[^\n]*\n[^\n]*\n\s*([^\n]+)/i);
+    const vehicleTitleMatch = emailContent.match(/([A-Z][a-z]+\s+[A-Z0-9]+(?:\s+[\w\s.]+)?)\s*\n.*?Elektro|Benzine|Diesel/i);
+    const priceMatch = emailContent.match(/€\s*([\d.,]+),-/);
+    const mileageMatch = emailContent.match(/([\d.,]+)\s*km/i);
+    const yearMatch = emailContent.match(/(\d{2})\/(\d{4})\s+Jaar/i);
+    const fuelMatch = emailContent.match(/(Elektro\/Benzine|Benzine|Diesel|Hybride|Elektrisch)/i);
+    const kentekenMatch = emailContent.match(/Kenteken\s+([A-Z0-9\-]+)/i);
+    const advertNumberMatch = emailContent.match(/Advertentienr\.\s+(\d+)/i);
     const advertUrlMatch = emailContent.match(/(https?:\/\/[^\s]*autoscout24[^\s]*)/i);
-    const vehicleMatch = subject.match(/(?:voor|over|aanvraag)\s+(.+?)(?:\s*-\s*AutoScout24)?$/i) || 
-                        emailContent.match(/(?:advertentie|voertuig):?\s*\n\s*(.+?)(?:\n|$)/i);
     
     return {
       platform: 'AutoScout24',
@@ -103,23 +107,33 @@ export class EmailParserService {
       customerEmail: customerEmailMatch?.[1]?.trim(),
       customerPhone: customerPhoneMatch?.[1]?.trim(),
       customerMessage: this.cleanMessage(messageContent),
-      vehicleTitle: vehicleMatch?.[1]?.trim() || subject,
-      vehiclePrice: priceMatch?.[1]?.replace(/\./g, '').replace(',', '.'),
+      vehicleTitle: vehicleTitleMatch?.[1]?.trim() || vehicleMatch?.[1]?.trim() || subject,
+      vehiclePrice: priceMatch?.[1],
+      vehicleYear: yearMatch ? `${yearMatch[2]}` : undefined,
+      vehicleMileage: mileageMatch?.[1]?.replace(/\./g, ''),
+      vehicleFuelType: fuelMatch?.[1],
       kenteken: kentekenMatch?.[1]?.trim(),
+      advertNumber: advertNumberMatch?.[1],
       advertUrl: advertUrlMatch?.[1],
       leadType: 'Email Aanvraag',
-      priority: 85
+      priority: 87
     };
   }
   
   private static parseAutoTrackEmail(emailContent: string, subject: string): ParsedLead {
-    const customerNameMatch = emailContent.match(/(?:naam|name):?\s*([^\n]+)/i);
-    const customerEmailMatch = emailContent.match(/(?:e-?mail|email):?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
-    const customerPhoneMatch = emailContent.match(/(?:telefoon|tel|phone):?\s*([\d\s\+\-\(\)]+)/i);
-    const messageMatch = emailContent.match(/(?:bericht|opmerking|vraag)[^\n]*?:\s*\n\s*(.+?)(?:\n\n|\nadvertentie|$)/is);
-    const vehicleMatch = emailContent.match(/(?:Het gaat om de volgende )?advertentie:?\s*\n\s*(.+?)(?:\n|$)/i) ||
-                        subject.match(/(?:vraag over|informatie)\s+(.+?)(?:\s*-\s*AutoTrack)?$/i);
-    const priceMatch = emailContent.match(/(?:prijs|price):?\s*€\s*([\d.,]+)/i);
+    const customerNameMatch = emailContent.match(/Naam:?\s*([^\n]+)/i);
+    const customerEmailMatch = emailContent.match(/E-?mailadres:?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+    const customerPhoneMatch = emailContent.match(/Telefoonnummer:?\s*([\d\s\+\-\(\)]+)/i);
+    
+    // Extract clean message
+    const messageMatch = emailContent.match(/Bericht:?\s*\n\s*(.*?)(?=\n\n(?:Met vriendelijke|Gewenste|Het gaat om)|$)/is);
+    
+    // Extract vehicle details
+    const vehicleMatch = emailContent.match(/Het gaat om de volgende advertentie:\s*\n\s*([^\n]+)/i);
+    const priceMatch = emailContent.match(/Prijs:\s*€\s*([\d.,]+)/i);
+    const mileageMatch = emailContent.match(/Kilometerstand:\s*([\d.,]+)\s*km/i);
+    const yearMatch = emailContent.match(/Bouwjaar:\s*(\d{4})/i);
+    const kentekenMatch = emailContent.match(/Kenteken:\s*([A-Z0-9\-]+)/i);
     const advertUrlMatch = emailContent.match(/(https?:\/\/[^\s]*autotrack[^\s]*)/i);
     
     return {
@@ -130,28 +144,26 @@ export class EmailParserService {
       customerPhone: customerPhoneMatch?.[1]?.trim(),
       customerMessage: this.cleanMessage(messageMatch?.[1] || emailContent),
       vehicleTitle: vehicleMatch?.[1]?.trim() || subject,
-      vehiclePrice: priceMatch?.[1]?.replace(/\./g, '').replace(',', '.'),
+      vehiclePrice: priceMatch?.[1],
+      vehicleYear: yearMatch?.[1],
+      vehicleMileage: mileageMatch?.[1]?.replace(/\./g, ''),
+      kenteken: kentekenMatch?.[1]?.trim(),
       advertUrl: advertUrlMatch?.[1],
       leadType: 'Email Aanvraag',
-      priority: 80
+      priority: 81
     };
   }
   
   private static parseWebsiteEmail(emailContent: string, subject: string): ParsedLead {
-    const customerNameMatch = emailContent.match(/(?:naam|name):?\s*([^\n]+)/i);
-    const customerEmailMatch = emailContent.match(/(?:e-?mail|email):?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
-    const customerPhoneMatch = emailContent.match(/(?:telefoon|tel|phone):?\s*([\d\s\+\-\(\)]+)/i);
+    const customerNameMatch = emailContent.match(/Naam:?\s*([^\n]+)/i);
+    const customerEmailMatch = emailContent.match(/E-?Mailadres:?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+    const customerPhoneMatch = emailContent.match(/Telefoonnummer:?\s*([\d\s\+\-\(\)]+)/i);
     
-    // Better message extraction for website forms
-    let messageContent = emailContent;
-    const berichtMatch = emailContent.match(/(?:bericht|opmerking|vraag)[^\n]*?:\s*\n+([\s\S]+?)(?:\n\n(?:car url|advertentie|met vriendelijke)|$)/is);
-    if (berichtMatch) {
-      messageContent = berichtMatch[1];
-    }
+    // Extract message
+    const messageMatch = emailContent.match(/(?:Opmerkingen\s*\/\s*vraag|Bericht):?\s*\n\s*(.*?)(?=\n\n(?:Car URL|Met vriendelijke)|$)/is);
     
-    const advertUrlMatch = emailContent.match(/(?:car url|advertentie|link):?\s*(https?:\/\/[^\s]+)/i);
-    const vehicleMatch = emailContent.match(/(?:interesse in|vraag over|onderwerp):?\s*([^\n]+)/i) ||
-                        subject.match(/(?:contactformulier|vraag over)\s+(.+)$/i);
+    const advertUrlMatch = emailContent.match(/Car URL:?\s*(https?:\/\/[^\s]+)/i);
+    const vehicleMatch = emailContent.match(/(?:Onderwerp|Subject):?\s*([^\n]+)/i);
     
     return {
       platform: 'Eigen Website',
@@ -159,11 +171,11 @@ export class EmailParserService {
       customerName: customerNameMatch?.[1]?.trim() || 'Onbekend',
       customerEmail: customerEmailMatch?.[1]?.trim(),
       customerPhone: customerPhoneMatch?.[1]?.trim(),
-      customerMessage: this.cleanMessage(messageContent),
+      customerMessage: this.cleanMessage(messageMatch?.[1] || emailContent),
       vehicleTitle: vehicleMatch?.[1]?.trim(),
       advertUrl: advertUrlMatch?.[1],
       leadType: 'Website Reactie',
-      priority: 90
+      priority: 95
     };
   }
   
