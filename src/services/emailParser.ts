@@ -46,9 +46,20 @@ export class EmailParserService {
   
   private static parseMarktplaatsEmail(emailContent: string, subject: string): ParsedLead {
     const customerNameMatch = emailContent.match(/Je hebt een reactie ontvangen van ([^:]+?):/i) ||
-                               emailContent.match(/van:\s*([^\n]+)/i);
-    const messageMatch = emailContent.match(/Je hebt een reactie ontvangen van .+?:\s*\n\s*(.+?)(?:\n\n|\n-|$)/is) ||
-                        emailContent.match(/bericht:?\s*\n\s*(.+?)(?:\n\n|\n-|$)/is);
+                               emailContent.match(/(?:van|from):\s*([^\n]+)/i);
+    
+    // Try to extract message content more intelligently
+    let messageContent = emailContent;
+    const reactieMatch = emailContent.match(/Je hebt een reactie ontvangen van [^:]+?:\s*\n+([\s\S]+?)(?:\n\n-+|advertentie|klik hier|marktplaats\.nl)/is);
+    if (reactieMatch) {
+      messageContent = reactieMatch[1];
+    } else {
+      const berichtMatch = emailContent.match(/(?:bericht|reactie)[:\s]*\n+([\s\S]+?)(?:\n\n-+|advertentie|klik hier)/is);
+      if (berichtMatch) {
+        messageContent = berichtMatch[1];
+      }
+    }
+    
     const advertUrlMatch = emailContent.match(/(https?:\/\/[^\s]+marktplaats[^\s]+)/i);
     const vehicleMatch = subject.match(/reactie op (.+?)$/i) || subject.match(/(.+?)(?:\s*-\s*Marktplaats)?$/i);
     
@@ -56,7 +67,7 @@ export class EmailParserService {
       platform: 'Marktplaats',
       platformIcon: '🛒',
       customerName: customerNameMatch?.[1]?.trim() || 'Onbekend',
-      customerMessage: this.cleanMessage(messageMatch?.[1] || emailContent),
+      customerMessage: this.cleanMessage(messageContent),
       vehicleTitle: vehicleMatch?.[1]?.trim() || subject,
       advertUrl: advertUrlMatch?.[1],
       leadType: 'Email Reactie',
@@ -70,13 +81,20 @@ export class EmailParserService {
     const customerEmailMatch = emailContent.match(/(?:e-?mail|email):?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i) ||
                                 emailContent.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
     const customerPhoneMatch = emailContent.match(/(?:telefoon|tel|phone):?\s*([\d\s\+\-\(\)]+)/i);
-    const messageMatch = emailContent.match(/(?:bericht|opmerking|vraag)[^\n]*?:\s*\n\s*(.+?)(?:\n\n|\n-|advertentie|kenteken|prijs|$)/is);
+    
+    // Better message extraction
+    let messageContent = emailContent;
+    const berichtMatch = emailContent.match(/(?:bericht van de koper|bericht|opmerking|vraag)[^\n]*?:\s*\n+([\s\S]+?)(?:\n\n(?:kenteken|prijs|advertentie|voor meer info)|$)/is);
+    if (berichtMatch) {
+      messageContent = berichtMatch[1];
+    }
+    
     const priceMatch = emailContent.match(/(?:prijs|price):?\s*€\s*([\d.,]+)/i) ||
                        emailContent.match(/€\s*([\d.,]+)/);
     const kentekenMatch = emailContent.match(/(?:kenteken|license plate):?\s*([A-Z0-9\-]+)/i);
     const advertUrlMatch = emailContent.match(/(https?:\/\/[^\s]*autoscout24[^\s]*)/i);
     const vehicleMatch = subject.match(/(?:voor|over|aanvraag)\s+(.+?)(?:\s*-\s*AutoScout24)?$/i) || 
-                        emailContent.match(/advertentie:?\s*\n\s*(.+?)(?:\n|$)/i);
+                        emailContent.match(/(?:advertentie|voertuig):?\s*\n\s*(.+?)(?:\n|$)/i);
     
     return {
       platform: 'AutoScout24',
@@ -84,7 +102,7 @@ export class EmailParserService {
       customerName: customerNameMatch?.[1]?.trim() || 'Onbekend',
       customerEmail: customerEmailMatch?.[1]?.trim(),
       customerPhone: customerPhoneMatch?.[1]?.trim(),
-      customerMessage: this.cleanMessage(messageMatch?.[1] || emailContent),
+      customerMessage: this.cleanMessage(messageContent),
       vehicleTitle: vehicleMatch?.[1]?.trim() || subject,
       vehiclePrice: priceMatch?.[1]?.replace(/\./g, '').replace(',', '.'),
       kenteken: kentekenMatch?.[1]?.trim(),
@@ -123,9 +141,16 @@ export class EmailParserService {
     const customerNameMatch = emailContent.match(/(?:naam|name):?\s*([^\n]+)/i);
     const customerEmailMatch = emailContent.match(/(?:e-?mail|email):?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
     const customerPhoneMatch = emailContent.match(/(?:telefoon|tel|phone):?\s*([\d\s\+\-\(\)]+)/i);
-    const messageMatch = emailContent.match(/(?:bericht|opmerking|vraag)[^\n]*?:\s*\n\s*(.+?)(?:\n\n|car url|advertentie|$)/is);
+    
+    // Better message extraction for website forms
+    let messageContent = emailContent;
+    const berichtMatch = emailContent.match(/(?:bericht|opmerking|vraag)[^\n]*?:\s*\n+([\s\S]+?)(?:\n\n(?:car url|advertentie|met vriendelijke)|$)/is);
+    if (berichtMatch) {
+      messageContent = berichtMatch[1];
+    }
+    
     const advertUrlMatch = emailContent.match(/(?:car url|advertentie|link):?\s*(https?:\/\/[^\s]+)/i);
-    const vehicleMatch = emailContent.match(/(?:interesse in|vraag over):?\s*([^\n]+)/i) ||
+    const vehicleMatch = emailContent.match(/(?:interesse in|vraag over|onderwerp):?\s*([^\n]+)/i) ||
                         subject.match(/(?:contactformulier|vraag over)\s+(.+)$/i);
     
     return {
@@ -134,7 +159,7 @@ export class EmailParserService {
       customerName: customerNameMatch?.[1]?.trim() || 'Onbekend',
       customerEmail: customerEmailMatch?.[1]?.trim(),
       customerPhone: customerPhoneMatch?.[1]?.trim(),
-      customerMessage: this.cleanMessage(messageMatch?.[1] || emailContent),
+      customerMessage: this.cleanMessage(messageContent),
       vehicleTitle: vehicleMatch?.[1]?.trim(),
       advertUrl: advertUrlMatch?.[1],
       leadType: 'Website Reactie',
@@ -163,24 +188,113 @@ export class EmailParserService {
   private static cleanMessage(message: string): string {
     if (!message) return 'Geen bericht beschikbaar';
     
-    return message
-      .trim()
-      // Remove common email footers and signatures
-      .replace(/Met vriendelijke groet[\s\S]*$/i, '')
-      .replace(/Klik hier om[\s\S]*$/i, '')
-      .replace(/Dit bericht is automatisch gegenereerd[\s\S]*$/i, '')
-      .replace(/Voor meer informatie[\s\S]*$/i, '')
-      .replace(/Bekijk de advertentie[\s\S]*$/i, '')
-      .replace(/https?:\/\/[^\s]+/g, '') // Remove URLs from message body
-      // Clean up formatting
-      .replace(/\n\n\n+/g, '\n\n') // Max 2 line breaks
-      .replace(/^\s+|\s+$/gm, '') // Trim each line
-      .replace(/\t/g, ' ') // Replace tabs
-      .replace(/<[^>]*>/g, '') // Remove HTML tags
-      .replace(/&[a-zA-Z0-9#]+;/g, '') // Remove HTML entities
-      .replace(/_{3,}/g, '') // Remove horizontal lines
-      .replace(/-{3,}/g, '')
-      .trim()
-      .substring(0, 800); // Reasonable length limit
+    let cleaned = message;
+    
+    // Remove HTML tags but preserve structure
+    cleaned = cleaned.replace(/<br\s*\/?>/gi, '\n');
+    cleaned = cleaned.replace(/<\/p>/gi, '\n\n');
+    cleaned = cleaned.replace(/<p[^>]*>/gi, '');
+    cleaned = cleaned.replace(/<div[^>]*>/gi, '');
+    cleaned = cleaned.replace(/<\/div>/gi, '\n');
+    cleaned = cleaned.replace(/<[^>]*>/g, '');
+    
+    // Decode HTML entities
+    cleaned = cleaned.replace(/&nbsp;/g, ' ');
+    cleaned = cleaned.replace(/&amp;/g, '&');
+    cleaned = cleaned.replace(/&lt;/g, '<');
+    cleaned = cleaned.replace(/&gt;/g, '>');
+    cleaned = cleaned.replace(/&quot;/g, '"');
+    cleaned = cleaned.replace(/&#39;/g, "'");
+    cleaned = cleaned.replace(/&[a-zA-Z0-9#]+;/g, '');
+    
+    // Remove email signatures and footers (common patterns)
+    const footerPatterns = [
+      /Met vriendelijke groet[\s\S]*$/i,
+      /Klik hier om[\s\S]*$/i,
+      /Dit bericht is automatisch gegenereerd[\s\S]*$/i,
+      /Voor meer informatie[\s\S]*$/i,
+      /Bekijk de advertentie[\s\S]*$/i,
+      /Je ontvangt deze e-mail[\s\S]*$/i,
+      /Afmelden[\s\S]*$/i,
+      /Unsubscribe[\s\S]*$/i,
+      /--+[\s\S]*$/m,
+      /_{3,}[\s\S]*$/m,
+      /Verzonden vanaf[\s\S]*$/i,
+      /Sent from[\s\S]*$/i,
+      /Get Outlook for[\s\S]*$/i,
+      /Disclaimer[\s\S]*$/i,
+    ];
+    
+    for (const pattern of footerPatterns) {
+      cleaned = cleaned.replace(pattern, '');
+    }
+    
+    // Remove platform-specific junk
+    cleaned = cleaned.replace(/\[cid:[^\]]+\]/g, ''); // Remove CID references
+    cleaned = cleaned.replace(/\[image:[^\]]+\]/gi, ''); // Remove image references
+    cleaned = cleaned.replace(/https?:\/\/[^\s]+/g, ''); // Remove URLs
+    
+    // Remove portal metadata lines
+    const metadataPatterns = [
+      /^(Van|From|To|Aan|Subject|Onderwerp|Date|Datum|CC|BCC):.*/gmi,
+      /^Verzonden op.*/gmi,
+      /^Sent on.*/gmi,
+      /^[A-Z]{2,}\s*:\s*.*/gm, // Lines like "NAAM: John"
+    ];
+    
+    for (const pattern of metadataPatterns) {
+      cleaned = cleaned.replace(pattern, '');
+    }
+    
+    // Clean up whitespace while preserving paragraph structure
+    cleaned = cleaned.replace(/[ \t]+/g, ' '); // Multiple spaces to single space
+    cleaned = cleaned.replace(/\n[ \t]+/g, '\n'); // Remove spaces at start of lines
+    cleaned = cleaned.replace(/[ \t]+\n/g, '\n'); // Remove spaces at end of lines
+    cleaned = cleaned.replace(/\n{4,}/g, '\n\n\n'); // Max 3 line breaks (= 2 empty lines)
+    cleaned = cleaned.replace(/^\n+/, ''); // Remove leading newlines
+    cleaned = cleaned.replace(/\n+$/, ''); // Remove trailing newlines
+    
+    // Extract the actual customer message (remove boilerplate)
+    const messageMarkers = [
+      /(?:bericht|opmerking|vraag|message)(?:\s+van\s+(?:de\s+)?klant)?[:\s]*\n+(.+)/is,
+      /(?:klant|customer)\s+(?:schrijft|wrote|zegt|says)[:\s]*\n+(.+)/is,
+      /(?:reactie|reply|response)[:\s]*\n+(.+)/is,
+    ];
+    
+    for (const marker of messageMarkers) {
+      const match = cleaned.match(marker);
+      if (match && match[1]) {
+        cleaned = match[1];
+        break;
+      }
+    }
+    
+    cleaned = cleaned.trim();
+    
+    // If message is still too long or contains too much junk, try to extract first meaningful paragraphs
+    if (cleaned.length > 1000) {
+      const paragraphs = cleaned.split(/\n\n+/);
+      const meaningfulParagraphs = paragraphs.filter(p => {
+        // Filter out paragraphs that are likely metadata or junk
+        const lowerP = p.toLowerCase().trim();
+        return p.length > 20 && 
+               !lowerP.startsWith('http') &&
+               !lowerP.includes('====') &&
+               !lowerP.includes('----') &&
+               !lowerP.includes('unsubscribe') &&
+               !lowerP.includes('disclaimer');
+      });
+      
+      if (meaningfulParagraphs.length > 0) {
+        cleaned = meaningfulParagraphs.slice(0, 5).join('\n\n'); // Max 5 paragraphs
+      }
+    }
+    
+    // Final length limit
+    if (cleaned.length > 1200) {
+      cleaned = cleaned.substring(0, 1200).trim() + '...';
+    }
+    
+    return cleaned || 'Geen bericht beschikbaar';
   }
 }

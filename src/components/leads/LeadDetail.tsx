@@ -529,10 +529,15 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
                     <h6 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
                       Bericht van klant:
                     </h6>
-                    <blockquote className="relative bg-muted/50 p-5 rounded-lg border-l-2 border-primary/30 italic text-foreground leading-relaxed">
+                    <blockquote className="relative bg-muted/50 p-5 rounded-lg border-l-2 border-primary/30 text-foreground leading-relaxed">
                       <span className="absolute top-2 left-3 text-4xl text-muted-foreground/20 font-serif leading-none">"</span>
-                      <div className="pl-6 pr-4 whitespace-pre-wrap">
-                        {parsedLead.customerMessage}
+                      <div className="pl-6 pr-4 whitespace-pre-wrap text-base">
+                        {parsedLead.customerMessage.split('\n').map((line, i, arr) => (
+                          <React.Fragment key={i}>
+                            {line}
+                            {i < arr.length - 1 && <br />}
+                          </React.Fragment>
+                        ))}
                       </div>
                       <span className="absolute bottom-1 right-3 text-4xl text-muted-foreground/20 font-serif leading-none">"</span>
                     </blockquote>
