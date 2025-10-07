@@ -376,13 +376,13 @@ function parseMarktplaats(plainBody: string, htmlBody: string, subject: string, 
   
   // GEMISTE OPROEP - alleen telefoonnummer
   if (subType === 'MissedCall') {
-    const phoneMatch = plainBody.match(/Telefoonnummer:\s*([^\n]+)/i);
-    const vehicleMatch = subject.match(/voor\s+(.+?)(?:\s*-|$)/i);
+    const mpPhoneMatch = plainBody.match(/Telefoonnummer:\s*([^\n]+)/i);
+    const mpVehicleMatch = subject.match(/voor\s+(.+?)(?:\s*-|$)/i);
     
-    if (phoneMatch) {
+    if (mpPhoneMatch) {
       return {
-        phone: phoneMatch[1].trim(),
-        vehicle: vehicleMatch?.[1]?.trim(),
+        phone: mpPhoneMatch[1].trim(),
+        vehicle: mpVehicleMatch?.[1]?.trim(),
         source: 'Marktplaats',
         type: 'MissedCall',
         message: `Gemiste oproep - klant gebeld via Marktplaats`,
