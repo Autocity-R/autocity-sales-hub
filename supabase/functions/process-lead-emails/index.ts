@@ -559,20 +559,18 @@ function parseAutoScout24Enhanced(plainBody: string, htmlBody: string, subject: 
     type: isTradeIn ? 'TradeIn' : 'Contact',
     rawBody: plainBody
   };
+  
+  if (isTradeIn) {
+    const kentekenMatch = plainBody.match(/Kenteken:\s*([^\n;]+)/i);
+    const mileageMatch = plainBody.match(/Kilometerstand:\s*([^\n;]+)/i);
+    
+    result.tradeIn = {
+      kenteken: kentekenMatch?.[1]?.trim(),
+      mileage: mileageMatch?.[1]?.trim()
     };
-    
-    if (isTradeIn) {
-      const kentekenMatch = cleanBody.match(/Kenteken:\s*([^\n;]+)/i);
-      const mileageMatch = cleanBody.match(/Kilometerstand:\s*([^\n;]+)/i);
-      
-      result.tradeIn = {
-        kenteken: kentekenMatch?.[1]?.trim(),
-        mileage: mileageMatch?.[1]?.trim()
-      };
-    }
-    
-    return result;
   }
+  
+  return result;
   
   return null;
 }
