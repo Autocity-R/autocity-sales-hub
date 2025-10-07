@@ -109,9 +109,7 @@ export const LeadListView: React.FC<LeadListViewProps> = ({
     switch (status) {
       case 'new': return 'bg-blue-500/10 text-blue-700 border-blue-200';
       case 'contacted': return 'bg-yellow-500/10 text-yellow-700 border-yellow-200';
-      case 'qualified': return 'bg-purple-500/10 text-purple-700 border-purple-200';
-      case 'proposal': return 'bg-orange-500/10 text-orange-700 border-orange-200';
-      case 'negotiation': return 'bg-indigo-500/10 text-indigo-700 border-indigo-200';
+      case 'appointment': return 'bg-purple-500/10 text-purple-700 border-purple-200';
       case 'won': return 'bg-green-500/10 text-green-700 border-green-200';
       case 'lost': return 'bg-red-500/10 text-red-700 border-red-200';
       default: return 'bg-gray-500/10 text-gray-700 border-gray-200';
@@ -122,9 +120,7 @@ export const LeadListView: React.FC<LeadListViewProps> = ({
     const labels: Record<LeadStatus, string> = {
       new: 'Nieuw',
       contacted: 'Gecontacteerd',
-      qualified: 'Gekwalificeerd',
-      proposal: 'Offerte',
-      negotiation: 'Onderhandeling',
+      appointment: 'Afspraak',
       won: 'Gewonnen',
       lost: 'Verloren'
     };

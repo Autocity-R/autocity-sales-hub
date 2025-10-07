@@ -30,9 +30,7 @@ export const LeadPipeline: React.FC<LeadPipelineProps> = ({
   const activePipelineColumns: { status: LeadStatus; label: string; color: string; description: string }[] = [
     { status: 'new', label: 'Nieuw', color: 'bg-blue-500', description: 'Lead Inbox - Te kwalificeren' },
     { status: 'contacted', label: 'Gecontacteerd', color: 'bg-yellow-500', description: 'Eerste contact gelegd' },
-    { status: 'qualified', label: 'Gekwalificeerd', color: 'bg-purple-500', description: 'Serieuze prospect' },
-    { status: 'proposal', label: 'Offerte', color: 'bg-orange-500', description: 'Voorstel verstuurd' },
-    { status: 'negotiation', label: 'Onderhandeling', color: 'bg-indigo-500', description: 'In onderhandeling' },
+    { status: 'appointment', label: 'Afspraak', color: 'bg-purple-500', description: 'Afspraak gepland' },
   ];
 
   // Endpoint columns (archived after 7 days)

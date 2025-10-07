@@ -13,7 +13,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ leads })
   const stats = {
     totaal: leads.length,
     nieuw: leads.filter(l => l.status === 'new').length,
-    gekwalificeerd: leads.filter(l => l.status === 'qualified').length,
+    afspraak: leads.filter(l => l.status === 'appointment').length,
     verkocht: leads.filter(l => l.status === 'won').length,
     verloren: leads.filter(l => l.status === 'lost').length,
     conversieRatio: leads.length > 0 ? Math.round((leads.filter(l => l.status === 'won').length / leads.length) * 100) : 0,
@@ -77,9 +77,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ leads })
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-600 text-sm font-medium mb-1">Gekwalificeerd</p>
-                <p className="text-3xl font-bold text-purple-900">{stats.gekwalificeerd}</p>
-                <p className="text-xs text-purple-600 mt-1">Actieve prospects</p>
+                <p className="text-purple-600 text-sm font-medium mb-1">Afspraak</p>
+                <p className="text-3xl font-bold text-purple-900">{stats.afspraak}</p>
+                <p className="text-xs text-purple-600 mt-1">Geplande afspraken</p>
               </div>
               <div className="bg-purple-500 p-3 rounded-full">
                 <Target className="h-6 w-6 text-white" />
@@ -116,12 +116,12 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ leads })
               <div className="text-sm text-blue-700 font-medium">Nieuw</div>
             </div>
             <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">{stats.gekwalificeerd}</div>
-              <div className="text-sm text-purple-700 font-medium">Gekwalificeerd</div>
+              <div className="text-2xl font-bold text-purple-600">{stats.afspraak}</div>
+              <div className="text-sm text-purple-700 font-medium">Afspraak</div>
             </div>
             <div className="text-center p-4 bg-green-50 rounded-lg">
               <div className="text-2xl font-bold text-green-600">{stats.verkocht}</div>
-              <div className="text-sm text-green-700 font-medium">Verkocht</div>
+              <div className="text-sm text-green-700 font-medium">Gewonnen</div>
             </div>
             <div className="text-center p-4 bg-red-50 rounded-lg">
               <div className="text-2xl font-bold text-red-600">{stats.verloren}</div>

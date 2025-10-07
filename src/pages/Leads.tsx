@@ -317,14 +317,6 @@ const Leads = () => {
             <span>Lijstweergave</span>
           </Button>
           <Button 
-            variant={currentView === 'kanban' ? 'default' : 'outline'}
-            onClick={() => setCurrentView('kanban')}
-            className="flex items-center gap-2 px-4 py-2 shadow-sm"
-          >
-            <span>📋</span>
-            <span>Kanban Board</span>
-          </Button>
-          <Button 
             variant={currentView === 'analytics' ? 'default' : 'outline'}
             onClick={() => setCurrentView('analytics')}
             className="flex items-center gap-2 px-4 py-2 shadow-sm"
@@ -355,7 +347,7 @@ const Leads = () => {
 
           <TabsContent value="active" className="space-y-4">
             <LeadListView
-              leads={leads?.filter(l => ['new', 'contacted', 'qualified', 'proposal', 'negotiation'].includes(l.status)) || []}
+              leads={leads?.filter(l => ['new', 'contacted', 'appointment'].includes(l.status)) || []}
               onLeadClick={setSelectedLead}
               onDisqualifyLead={setDisqualifyLead}
               salespeople={salespeople}
@@ -384,16 +376,6 @@ const Leads = () => {
             <LeadSearchRequests />
           </TabsContent>
         </Tabs>
-        )}
-
-        {currentView === 'kanban' && (
-          <div className="bg-white rounded-xl shadow-sm">
-            <KanbanBoard 
-              leads={leads || []} 
-              onLeadClick={setSelectedLead}
-              salespeople={salespeople}
-            />
-          </div>
         )}
 
         {currentView === 'analytics' && (

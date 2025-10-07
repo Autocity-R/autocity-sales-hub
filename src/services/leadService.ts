@@ -47,7 +47,7 @@ const mockLeads: Lead[] = [
   },
   {
     id: "lead3",
-    status: "proposal",
+    status: "appointment",
     priority: "high",
     source: "facebook",
     firstName: "Mark",
