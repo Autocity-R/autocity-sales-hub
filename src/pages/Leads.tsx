@@ -40,7 +40,7 @@ const Leads = () => {
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [activeTab, setActiveTab] = useState("pipeline");
   const [disqualifyLead, setDisqualifyLead] = useState<Lead | null>(null);
-  const [currentView, setCurrentView] = useState<'list' | 'analytics'>('list');
+  const [currentView, setCurrentView] = useState<'list' | 'analytics' | 'mijn-leads'>('list');
   
   const { data: salespeople = [] } = useSalespeople();
   const { userRole } = useRoleAccess();
@@ -323,6 +323,16 @@ const Leads = () => {
             <span>📊</span>
             <span>Lijstweergave</span>
           </Button>
+          {isVerkoper && (
+            <Button 
+              variant={currentView === 'mijn-leads' ? 'default' : 'outline'}
+              onClick={() => setCurrentView('mijn-leads')}
+              className="flex items-center gap-2 px-4 py-2 shadow-sm"
+            >
+              <span>👤</span>
+              <span>Mijn Leads</span>
+            </Button>
+          )}
           <Button 
             variant={currentView === 'analytics' ? 'default' : 'outline'}
             onClick={() => setCurrentView('analytics')}
@@ -333,35 +343,70 @@ const Leads = () => {
           </Button>
         </div>
 
+        {currentView === 'mijn-leads' && isVerkoper && (
+          <div className="space-y-4">
+            {user?.id && (
+              <SalespersonStats 
+                leads={leads || []}
+                salespersonId={user.id}
+              />
+            )}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="pipeline">Alle Mijn Leads</TabsTrigger>
+                <TabsTrigger value="active">Actief</TabsTrigger>
+                <TabsTrigger value="won">Gewonnen</TabsTrigger>
+                <TabsTrigger value="lost">Verloren</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="pipeline" className="space-y-4">
+                <LeadListView
+                  leads={leads?.filter(l => l.assignedTo === user?.id) || []}
+                  onLeadClick={setSelectedLead}
+                  onDisqualifyLead={setDisqualifyLead}
+                  salespeople={salespeople}
+                />
+              </TabsContent>
+
+              <TabsContent value="active" className="space-y-4">
+                <LeadListView
+                  leads={leads?.filter(l => l.assignedTo === user?.id && ['new', 'contacted', 'appointment'].includes(l.status)) || []}
+                  onLeadClick={setSelectedLead}
+                  onDisqualifyLead={setDisqualifyLead}
+                  salespeople={salespeople}
+                />
+              </TabsContent>
+
+              <TabsContent value="won" className="space-y-4">
+                <LeadListView
+                  leads={leads?.filter(l => l.assignedTo === user?.id && l.status === 'won') || []}
+                  onLeadClick={setSelectedLead}
+                  onDisqualifyLead={setDisqualifyLead}
+                  salespeople={salespeople}
+                />
+              </TabsContent>
+
+              <TabsContent value="lost" className="space-y-4">
+                <LeadListView
+                  leads={leads?.filter(l => l.assignedTo === user?.id && l.status === 'lost') || []}
+                  onLeadClick={setSelectedLead}
+                  onDisqualifyLead={setDisqualifyLead}
+                  salespeople={salespeople}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
+        )}
+
         {currentView === 'list' && (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
-            {isVerkoper && (
-              <TabsTrigger value="mijn-leads">Mijn Leads</TabsTrigger>
-            )}
             <TabsTrigger value="pipeline">Alle Leads</TabsTrigger>
             <TabsTrigger value="active">Actieve Leads</TabsTrigger>
             <TabsTrigger value="won">Gewonnen</TabsTrigger>
             <TabsTrigger value="lost">Verloren</TabsTrigger>
             <TabsTrigger value="search">Zoekopdrachten</TabsTrigger>
           </TabsList>
-
-          {isVerkoper && (
-            <TabsContent value="mijn-leads" className="space-y-4">
-              {user?.id && (
-                <SalespersonStats 
-                  leads={leads || []}
-                  salespersonId={user.id}
-                />
-              )}
-              <LeadListView
-                leads={leads?.filter(l => l.assignedTo === user?.id) || []}
-                onLeadClick={setSelectedLead}
-                onDisqualifyLead={setDisqualifyLead}
-                salespeople={salespeople}
-              />
-            </TabsContent>
-          )}
 
           <TabsContent value="pipeline" className="space-y-4">
             <LeadListView
