@@ -14,7 +14,6 @@ import { LeadFollowUp } from "./LeadFollowUp";
 import { LeadEmailHistory } from "./LeadEmailHistory";
 import { LeadEmailComposer } from "./LeadEmailComposer";
 import { parseLeadData } from "@/utils/leadParser";
-import { extractCustomerMessage, cleanEmailForDisplay } from "@/utils/emailCleaner";
 import { 
   ArrowLeft, 
   Mail, 
@@ -100,31 +99,6 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
   
   // Parse lead data with enhanced email data
   const parsedData = parseLeadData(enhancedLead);
-  
-  // Extract clean customer message from email
-  const getCleanCustomerMessage = () => {
-    // First try parsed clean message
-    if (parsedData.cleanMessage) {
-      return parsedData.cleanMessage;
-    }
-    
-    // Try to get from email_messages with proper cleaning
-    if (enhancedLead.email_messages?.length > 0) {
-      const emailMsg = enhancedLead.email_messages[0];
-      const body = emailMsg.html_body || emailMsg.body || '';
-      const source = emailMsg.portal_source || lead.source || 'unknown';
-      
-      // Extract only customer message using portal-specific logic
-      if (body) {
-        return extractCustomerMessage(body, source);
-      }
-    }
-    
-    // Fallback to parsed message or raw message
-    return parsedData.message || 'Geen bericht beschikbaar';
-  };
-  
-  const customerMessage = getCleanCustomerMessage();
 
   const handleReplyToEmail = (email: any) => {
     setReplyToEmail({
@@ -476,8 +450,8 @@ export const LeadDetail: React.FC<LeadDetailProps> = ({
                 </div>
               )}
               <div className="bg-muted p-4 rounded-lg">
-                <div className="text-sm whitespace-pre-wrap leading-relaxed font-normal">
-                  {customerMessage}
+                <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                  {parsedData.cleanMessage || parsedData.message || 'Geen bericht beschikbaar'}
                 </div>
               </div>
             </CardContent>
