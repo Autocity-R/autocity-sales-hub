@@ -14,6 +14,8 @@ import { LeadAIAssistant } from "@/components/leads/LeadAIAssistant";
 import { DisqualifyLeadDialog } from "@/components/leads/DisqualifyLeadDialog";
 import { ReprocessLeadsButton } from "@/components/leads/ReprocessLeadsButton";
 import { useSalespeople } from "@/hooks/useSalespeople";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   Plus, 
   Users, 
@@ -28,6 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { LeadSearchRequests } from "@/components/leads/LeadSearchRequests";
 import { AnalyticsDashboard } from "@/components/leads/AnalyticsDashboard";
+import { SalespersonStats } from "@/components/leads/SalespersonStats";
 
 const Leads = () => {
   const queryClient = useQueryClient();
@@ -40,6 +43,10 @@ const Leads = () => {
   const [currentView, setCurrentView] = useState<'list' | 'analytics'>('list');
   
   const { data: salespeople = [] } = useSalespeople();
+  const { userRole } = useRoleAccess();
+  const { user } = useAuth();
+  
+  const isVerkoper = userRole === 'verkoper';
 
   // Fetch leads from Supabase
   const { data: leads = [], isLoading } = useQuery({
@@ -329,12 +336,32 @@ const Leads = () => {
         {currentView === 'list' && (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
+            {isVerkoper && (
+              <TabsTrigger value="mijn-leads">Mijn Leads</TabsTrigger>
+            )}
             <TabsTrigger value="pipeline">Alle Leads</TabsTrigger>
             <TabsTrigger value="active">Actieve Leads</TabsTrigger>
             <TabsTrigger value="won">Gewonnen</TabsTrigger>
             <TabsTrigger value="lost">Verloren</TabsTrigger>
             <TabsTrigger value="search">Zoekopdrachten</TabsTrigger>
           </TabsList>
+
+          {isVerkoper && (
+            <TabsContent value="mijn-leads" className="space-y-4">
+              {user?.id && (
+                <SalespersonStats 
+                  leads={leads || []}
+                  salespersonId={user.id}
+                />
+              )}
+              <LeadListView
+                leads={leads?.filter(l => l.assignedTo === user?.id) || []}
+                onLeadClick={setSelectedLead}
+                onDisqualifyLead={setDisqualifyLead}
+                salespeople={salespeople}
+              />
+            </TabsContent>
+          )}
 
           <TabsContent value="pipeline" className="space-y-4">
             <LeadListView
