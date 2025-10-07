@@ -3,11 +3,9 @@ import { LeadDisplayConfig } from "@/types/leads";
 export const leadDisplayConfig: LeadDisplayConfig = {
   status: {
     'new': { label: 'Nieuw', color: 'bg-blue-500', textColor: 'text-blue-700' },
-    'contacted': { label: 'Contact Opgenomen', color: 'bg-yellow-500', textColor: 'text-yellow-700' },
-    'qualified': { label: 'Gekwalificeerd', color: 'bg-purple-500', textColor: 'text-purple-700' },
-    'proposal': { label: 'Voorstel', color: 'bg-orange-500', textColor: 'text-orange-700' },
-    'negotiation': { label: 'Onderhandeling', color: 'bg-indigo-500', textColor: 'text-indigo-700' },
-    'won': { label: 'Verkocht', color: 'bg-green-500', textColor: 'text-green-700' },
+    'contacted': { label: 'Gecontacteerd', color: 'bg-yellow-500', textColor: 'text-yellow-700' },
+    'appointment': { label: 'Afspraak', color: 'bg-purple-500', textColor: 'text-purple-700' },
+    'won': { label: 'Gewonnen', color: 'bg-green-500', textColor: 'text-green-700' },
     'lost': { label: 'Verloren', color: 'bg-red-500', textColor: 'text-red-700' }
   },
   source: {

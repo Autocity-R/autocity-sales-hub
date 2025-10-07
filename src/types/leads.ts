@@ -1,4 +1,4 @@
-export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'proposal' | 'negotiation' | 'won' | 'lost';
+export type LeadStatus = 'new' | 'contacted' | 'appointment' | 'won' | 'lost';
 export type LeadSource = 'website' | 'facebook' | 'autotrack' | 'marktplaats' | 'referral' | 'phone' | 'other';
 export type LeadPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type ActivityType = 'call' | 'email' | 'meeting' | 'note' | 'proposal' | 'follow-up';

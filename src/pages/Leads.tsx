@@ -27,7 +27,6 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { LeadSearchRequests } from "@/components/leads/LeadSearchRequests";
-import { KanbanBoard } from "@/components/leads/KanbanBoard";
 import { AnalyticsDashboard } from "@/components/leads/AnalyticsDashboard";
 
 const Leads = () => {
@@ -38,7 +37,7 @@ const Leads = () => {
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [activeTab, setActiveTab] = useState("pipeline");
   const [disqualifyLead, setDisqualifyLead] = useState<Lead | null>(null);
-  const [currentView, setCurrentView] = useState<'list' | 'kanban' | 'analytics'>('list');
+  const [currentView, setCurrentView] = useState<'list' | 'analytics'>('list');
   
   const { data: salespeople = [] } = useSalespeople();
 

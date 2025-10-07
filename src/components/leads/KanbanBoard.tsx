@@ -16,7 +16,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onLeadClick,
   salespeople 
 }) => {
-  const statuses: LeadStatus[] = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
+  const statuses: LeadStatus[] = ['new', 'contacted', 'appointment', 'won', 'lost'];
   
   return (
     <div className="grid grid-cols-7 gap-4 h-full overflow-x-auto p-6">
