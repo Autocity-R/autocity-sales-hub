@@ -176,13 +176,28 @@ export const determineRecipient = async (buttonValue: string, vehicleData: Vehic
         
         // Verify it's actually a supplier (not transporter!)
         if (contact && contact.type === 'supplier') {
-          // Validate email address
+          // Validate primary email address
           if (!contact.email || !contact.email.includes('@')) {
             console.warn(`Contact ${contact.id} has invalid email: ${contact.email}`);
             return null;
           }
+          
+          // Collect all valid email addresses (primary + additional)
+          const allEmails: string[] = [contact.email];
+          
+          if (contact.additionalEmails && Array.isArray(contact.additionalEmails)) {
+            // Add all valid additional emails
+            contact.additionalEmails.forEach((email: string) => {
+              if (email && email.includes('@') && !allEmails.includes(email)) {
+                allEmails.push(email);
+              }
+            });
+          }
+          
+          console.log(`[CMR_RECIPIENT] Sending CMR to ${allEmails.length} email(s):`, allEmails);
+          
           return {
-            email: contact.email,
+            email: allEmails.join(','), // Multiple emails separated by comma
             name: contact.companyName || `${contact.firstName} ${contact.lastName}`
           };
         } else if (contact && contact.type !== 'supplier') {
