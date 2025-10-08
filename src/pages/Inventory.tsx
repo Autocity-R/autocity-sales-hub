@@ -316,17 +316,45 @@ const Inventory = () => {
 
   const handleBulkAction = async (action: string, value?: string) => {
     if (action === 'delete') {
+      console.log(`[BULK_DELETE] Deleting ${selectedVehicles.length} vehicles from Inventory (voorraad menu)`);
+      
+      let successCount = 0;
+      let errorCount = 0;
+      
       for (const vehicleId of selectedVehicles) {
         try {
-          await supabase.from('vehicles').delete().eq('id', vehicleId);
+          const { error } = await supabase
+            .from('vehicles')
+            .delete()
+            .eq('id', vehicleId);
+          
+          if (error) {
+            console.error('[BULK_DELETE] Error deleting vehicle:', vehicleId, error);
+            errorCount++;
+          } else {
+            console.log('[BULK_DELETE] Successfully deleted vehicle:', vehicleId);
+            successCount++;
+          }
         } catch (error) {
-          console.error('Error deleting vehicle:', error);
+          console.error('[BULK_DELETE] Exception deleting vehicle:', vehicleId, error);
+          errorCount++;
         }
       }
-      toast({
-        title: "Voertuigen verwijderd",
-        description: `${selectedVehicles.length} voertuig(en) succesvol verwijderd`,
-      });
+      
+      if (successCount > 0) {
+        toast({
+          title: "Voertuigen verwijderd",
+          description: `${successCount} voertuig(en) succesvol verwijderd uit alle lijsten`,
+        });
+      }
+      
+      if (errorCount > 0) {
+        toast({
+          title: "Fout bij verwijderen",
+          description: `${errorCount} voertuig(en) konden niet worden verwijderd`,
+          variant: "destructive"
+        });
+      }
     } else if (action === 'status' && value) {
       console.log(`[BULK_ACTION] Updating ${selectedVehicles.length} vehicles to status: ${value}`);
       
