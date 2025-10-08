@@ -16,6 +16,8 @@ import { Vehicle, FileCategory } from "@/types/inventory";
 import { fetchVehicles, fetchB2CVehicles, fetchB2BVehicles, getVehicleStats, updateVehicleStatus, markVehicleAsArrived, setUseMockData, createVehicle, updateVehicle, uploadVehicleFile, deleteVehicleFile, sendEmail } from "@/services/inventoryService";
 import { DataSourceIndicator } from "@/components/common/DataSourceIndicator";
 import { useToast } from "@/hooks/use-toast";
+import { InventoryBulkActions } from "@/components/inventory/InventoryBulkActions";
+import { supabase } from "@/integrations/supabase/client";
 
 const Inventory = () => {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
@@ -312,6 +314,39 @@ const Inventory = () => {
     autoSaveVehicleMutation.mutate(vehicle);
   };
 
+  const handleBulkAction = async (action: string, value?: string) => {
+    if (action === 'delete') {
+      for (const vehicleId of selectedVehicles) {
+        try {
+          await supabase.from('vehicles').delete().eq('id', vehicleId);
+        } catch (error) {
+          console.error('Error deleting vehicle:', error);
+        }
+      }
+      toast({
+        title: "Voertuigen verwijderd",
+        description: `${selectedVehicles.length} voertuig(en) succesvol verwijderd`,
+      });
+    } else if (action === 'status' && value) {
+      for (const vehicleId of selectedVehicles) {
+        try {
+          await supabase
+            .from('vehicles')
+            .update({ status: value })
+            .eq('id', vehicleId);
+        } catch (error) {
+          console.error('Error updating vehicle status:', error);
+        }
+      }
+      toast({
+        title: "Status bijgewerkt",
+        description: `Status van ${selectedVehicles.length} voertuig(en) gewijzigd`,
+      });
+    }
+    queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+    setSelectedVehicles([]);
+  };
+
   const isLoading = isLoadingAll || isLoadingB2C || isLoadingB2B;
   const hasError = errorAll || errorB2C || errorB2B;
 
@@ -371,10 +406,16 @@ const Inventory = () => {
           title="Voertuig Beheer"
           description="Beheer alle voertuigen in voorraad en verkocht"
         >
-          <Button onClick={() => setShowForm(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nieuw Voertuig
-          </Button>
+          <div className="flex gap-2">
+            <InventoryBulkActions 
+              selectedVehicles={selectedVehicles}
+              onBulkAction={handleBulkAction}
+            />
+            <Button onClick={() => setShowForm(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nieuw Voertuig
+            </Button>
+          </div>
         </PageHeader>
 
         {/* Data Source Indicator */}

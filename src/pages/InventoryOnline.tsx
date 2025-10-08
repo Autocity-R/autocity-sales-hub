@@ -21,6 +21,8 @@ import {
   changeVehicleStatus,
 } from "@/services/inventoryService";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
+import { InventoryBulkActions } from "@/components/inventory/InventoryBulkActions";
+import { supabase } from "@/integrations/supabase/client";
 
 const InventoryOnline = () => {
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
@@ -28,6 +30,40 @@ const InventoryOnline = () => {
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const handleBulkAction = async (action: string, value?: string) => {
+    if (action === 'delete') {
+      for (const vehicleId of selectedVehicles) {
+        try {
+          await supabase.from('vehicles').delete().eq('id', vehicleId);
+        } catch (error) {
+          console.error('Error deleting vehicle:', error);
+        }
+      }
+      toast({
+        title: "Voertuigen verwijderd",
+        description: `${selectedVehicles.length} voertuig(en) succesvol verwijderd`,
+      });
+    } else if (action === 'status' && value) {
+      for (const vehicleId of selectedVehicles) {
+        try {
+          await supabase
+            .from('vehicles')
+            .update({ status: value })
+            .eq('id', vehicleId);
+        } catch (error) {
+          console.error('Error updating vehicle status:', error);
+        }
+      }
+      toast({
+        title: "Status bijgewerkt",
+        description: `Status van ${selectedVehicles.length} voertuig(en) gewijzigd`,
+      });
+    }
+    queryClient.invalidateQueries({ queryKey: ['onlineVehicles'] });
+    queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+    setSelectedVehicles([]);
+  };
   
   // Use the online vehicles hook
   const {
@@ -301,20 +337,10 @@ const InventoryOnline = () => {
           title="Online Voertuigen" 
           description="Beheer voertuigen die online gepubliceerd zijn"
         >
-          <div className="flex space-x-2">
-            <Button variant="outline" size="sm" disabled={selectedVehicles.length === 0}>
-              <FileText className="h-4 w-4 mr-2" />
-              Export selectie
-            </Button>
-            <Button variant="outline" size="sm" disabled={selectedVehicles.length === 0}>
-              <Mail className="h-4 w-4 mr-2" />
-              E-mail sturen
-            </Button>
-            <Button variant="default" size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Nieuw voertuig
-            </Button>
-          </div>
+          <InventoryBulkActions 
+            selectedVehicles={selectedVehicles}
+            onBulkAction={handleBulkAction}
+          />
         </PageHeader>
         
         <div className="bg-white rounded-md shadow">

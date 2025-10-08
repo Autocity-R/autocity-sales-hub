@@ -11,13 +11,20 @@ import { PageHeader } from "@/components/ui/page-header";
 import { fetchB2CVehicles } from "@/services/inventoryService";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { useB2CVehicleHandlers } from "@/hooks/useB2CVehicleHandlers";
+import { InventoryBulkActions } from "@/components/inventory/InventoryBulkActions";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
+import { useToast } from "@/hooks/use-toast";
 
 const InventoryB2C = () => {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [contractVehicle, setContractVehicle] = useState<Vehicle | null>(null);
   const [contractType, setContractType] = useState<"b2b" | "b2c">("b2c");
+
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Fetch B2C sold vehicles only
   const { data: vehicles = [], isLoading, error } = useQuery({
@@ -67,6 +74,39 @@ const InventoryB2C = () => {
     setContractDialogOpen(false);
     setContractVehicle(null);
   };
+
+  const handleBulkAction = async (action: string, value?: string) => {
+    if (action === 'delete') {
+      for (const vehicleId of selectedVehicles) {
+        try {
+          await supabase.from('vehicles').delete().eq('id', vehicleId);
+        } catch (error) {
+          console.error('Error deleting vehicle:', error);
+        }
+      }
+      toast({
+        title: "Voertuigen verwijderd",
+        description: `${selectedVehicles.length} voertuig(en) succesvol verwijderd`,
+      });
+    } else if (action === 'status' && value) {
+      for (const vehicleId of selectedVehicles) {
+        try {
+          await supabase
+            .from('vehicles')
+            .update({ status: value })
+            .eq('id', vehicleId);
+        } catch (error) {
+          console.error('Error updating vehicle status:', error);
+        }
+      }
+      toast({
+        title: "Status bijgewerkt",
+        description: `Status van ${selectedVehicles.length} voertuig(en) gewijzigd`,
+      });
+    }
+    queryClient.invalidateQueries({ queryKey: ['b2cVehicles'] });
+    queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+  };
   
   // Sort vehicles based on sort field and direction
   const sortedVehicles = [...vehicles].sort((a, b) => {
@@ -113,20 +153,10 @@ const InventoryB2C = () => {
           title="Verkocht B2C" 
           description="Beheer uw verkochte voertuigen aan particuliere klanten"
         >
-          <div className="flex space-x-2">
-            <Button variant="outline" size="sm" disabled={selectedVehicles.length === 0}>
-              <FileText className="h-4 w-4 mr-2" />
-              Export selectie
-            </Button>
-            <Button variant="outline" size="sm" disabled={selectedVehicles.length === 0}>
-              <Mail className="h-4 w-4 mr-2" />
-              E-mail sturen
-            </Button>
-            <Button variant="default" size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Nieuw voertuig
-            </Button>
-          </div>
+          <InventoryBulkActions 
+            selectedVehicles={selectedVehicles}
+            onBulkAction={handleBulkAction}
+          />
         </PageHeader>
         
         <div className="bg-white rounded-md shadow">

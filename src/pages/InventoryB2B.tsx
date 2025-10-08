@@ -11,15 +11,21 @@ import { useVehiclePhotos } from "@/hooks/useVehiclePhotos";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { FileCategory, VehicleFile, Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const InventoryB2B = () => {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [contractVehicle, setContractVehicle] = useState<Vehicle | null>(null);
   const [contractType, setContractType] = useState<"b2b" | "b2c">("b2b");
 
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
   // Custom hooks for managing state and operations
   const { vehicles, isLoading, error, sortField, sortDirection, onSort } = useB2BVehicles();
-  const { selectedVehicles, selectedVehicle, setSelectedVehicle, toggleSelectVehicle, toggleSelectAll } = useB2BVehicleSelection(vehicles);
+  const { selectedVehicles, setSelectedVehicles, selectedVehicle, setSelectedVehicle, toggleSelectVehicle, toggleSelectAll } = useB2BVehicleSelection(vehicles);
   const { handleUpdateVehicle, handleSendEmail, handleUpdateSellingPrice, handleUpdatePaymentStatus, handleMarkAsDelivered, handleChangeStatus, uploadFileMutation } = useB2BVehicleOperations();
   const { vehicleFiles = [] } = useVehicleFiles(selectedVehicle);
   const { handleUploadPhoto, handleRemovePhoto, handleSetMainPhoto } = useVehiclePhotos(selectedVehicle, setSelectedVehicle);
@@ -46,10 +52,49 @@ const InventoryB2B = () => {
     setContractVehicle(null);
   };
 
+  const handleBulkAction = async (action: string, value?: string) => {
+    if (action === 'delete') {
+      // Delete selected vehicles
+      for (const vehicleId of selectedVehicles) {
+        try {
+          await supabase.from('vehicles').delete().eq('id', vehicleId);
+        } catch (error) {
+          console.error('Error deleting vehicle:', error);
+        }
+      }
+      toast({
+        title: "Voertuigen verwijderd",
+        description: `${selectedVehicles.length} voertuig(en) succesvol verwijderd`,
+      });
+    } else if (action === 'status' && value) {
+      // Change status of selected vehicles
+      for (const vehicleId of selectedVehicles) {
+        try {
+          await supabase
+            .from('vehicles')
+            .update({ status: value })
+            .eq('id', vehicleId);
+        } catch (error) {
+          console.error('Error updating vehicle status:', error);
+        }
+      }
+      toast({
+        title: "Status bijgewerkt",
+        description: `Status van ${selectedVehicles.length} voertuig(en) gewijzigd naar ${value}`,
+      });
+    }
+    // Refresh data and clear selection
+    queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+    setSelectedVehicles([]);
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-4">
-        <B2BInventoryHeader selectedVehicles={selectedVehicles} />
+        <B2BInventoryHeader 
+          selectedVehicles={selectedVehicles}
+          onBulkAction={handleBulkAction}
+        />
         
         <B2BInventoryContent
           vehicles={vehicles}

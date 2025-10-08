@@ -20,6 +20,7 @@ export const useB2BVehicleSelection = (vehicles: Vehicle[]) => {
   
   return {
     selectedVehicles,
+    setSelectedVehicles,
     selectedVehicle,
     setSelectedVehicle,
     toggleSelectVehicle,

@@ -46,6 +46,9 @@ export const BulkActionDialog: React.FC<BulkActionDialogProps> = ({
 
   const handleApply = () => {
     switch (actionType) {
+      case "status":
+        onApply("status", importStatus);
+        break;
       case "importStatus":
         onApply("importStatus", importStatus);
         break;
@@ -81,6 +84,14 @@ export const BulkActionDialog: React.FC<BulkActionDialogProps> = ({
             <Label>Kies actie</Label>
             <RadioGroup value={actionType} onValueChange={setActionType}>
               <div className="flex items-center space-x-2 rounded-md border p-3">
+                <RadioGroupItem value="status" id="status" />
+                <Label htmlFor="status" className="flex items-center">
+                  <Truck className="mr-2 h-4 w-4" />
+                  Voertuig Status wijzigen
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-2 rounded-md border p-3">
                 <RadioGroupItem value="importStatus" id="importStatus" />
                 <Label htmlFor="importStatus" className="flex items-center">
                   <Truck className="mr-2 h-4 w-4" />
@@ -115,6 +126,26 @@ export const BulkActionDialog: React.FC<BulkActionDialogProps> = ({
           </div>
           
           <Separator />
+          
+          {actionType === "status" && (
+            <div className="space-y-2">
+              <Label>Nieuwe Status</Label>
+              <Select 
+                value={importStatus} 
+                onValueChange={(value: any) => setImportStatus(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecteer nieuwe status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="voorraad">Voorraad</SelectItem>
+                  <SelectItem value="verkocht_b2b">Verkocht B2B</SelectItem>
+                  <SelectItem value="verkocht_b2c">Verkocht B2C</SelectItem>
+                  <SelectItem value="afgeleverd">Afgeleverd</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           
           {actionType === "importStatus" && (
             <div className="space-y-2">
