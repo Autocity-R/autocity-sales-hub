@@ -30,6 +30,24 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
   };
 
   const handleSendContract = (options: ContractOptions) => {
+    // Check if vehicle has a customerId
+    if (!vehicle.customerId) {
+      console.warn('[B2C_EMAIL] No customerId found, please link customer first');
+      const { toast } = require('@/hooks/use-toast');
+      toast({
+        title: "Geen klant gekoppeld",
+        description: "Koppel eerst een klant aan dit voertuig in het 'Contacten' tabblad voordat u een contract verstuurt.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    console.log('[B2C_EMAIL] Customer linked, preparing contract:', {
+      vehicleId: vehicle.id,
+      customerId: vehicle.customerId,
+      customerName: vehicle.customerName
+    });
+    
     setPendingEmailAction({ type: "contract_b2c_digital", options });
     setEmailConfirmOpen(true);
   };

@@ -207,28 +207,51 @@ export const determineRecipient = async (buttonValue: string, vehicleData: Vehic
     case "auto_gereed":
     case "happy_call":
       // Get customer contact from contacts table
+      console.log(`[EMAIL_RECIPIENT] Determining recipient for ${buttonValue}:`, {
+        vehicleId: vehicleData.id,
+        customerId: vehicleData.customerId,
+        hasCustomerContact: !!vehicleData.customerContact,
+        customerContactEmail: vehicleData.customerContact?.email
+      });
+      
       if (vehicleData.customerId) {
         const { supabaseCustomerService } = await import('./supabaseCustomerService');
         const customer = await supabaseCustomerService.getContactById(vehicleData.customerId);
         if (customer) {
           // Validate email address
           if (!customer.email || !customer.email.includes('@')) {
-            console.warn(`Customer ${customer.id} has invalid email: ${customer.email}`);
+            console.warn(`[EMAIL_RECIPIENT] ❌ Customer ${customer.id} has invalid email: ${customer.email}`);
             return null;
           }
+          console.log(`[EMAIL_RECIPIENT] ✅ Found customer from DB:`, {
+            email: customer.email,
+            name: customer.companyName || `${customer.firstName} ${customer.lastName}`
+          });
           return {
             email: customer.email,
             name: customer.companyName || `${customer.firstName} ${customer.lastName}`
           };
+        } else {
+          console.warn(`[EMAIL_RECIPIENT] ❌ Customer ${vehicleData.customerId} not found in database`);
         }
       }
-      // Fallback to customerContact
+      
+      // Fallback to customerContact (enriched from vehicleRelationshipService)
       const fallbackContact = vehicleData.customerContact;
-      if (fallbackContact && (!fallbackContact.email || !fallbackContact.email.includes('@'))) {
-        console.warn(`Vehicle ${vehicleData.id} has invalid customer email: ${fallbackContact?.email}`);
-        return null;
+      if (fallbackContact) {
+        if (!fallbackContact.email || !fallbackContact.email.includes('@')) {
+          console.warn(`[EMAIL_RECIPIENT] ❌ Vehicle ${vehicleData.id} has invalid customer email: ${fallbackContact?.email}`);
+          return null;
+        }
+        console.log(`[EMAIL_RECIPIENT] ✅ Using customerContact fallback:`, {
+          email: fallbackContact.email,
+          name: fallbackContact.name
+        });
+        return fallbackContact;
       }
-      return fallbackContact || null;
+      
+      console.warn(`[EMAIL_RECIPIENT] ❌ No customer found for vehicle ${vehicleData.id}`);
+      return null;
     case "bpm_huys":
       return { email: "info@bpmhuys.nl", name: "BPM Huys" };
     case "license_registration":
