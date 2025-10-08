@@ -326,9 +326,9 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                 <TableCell className="font-medium">{vehicle.brand}</TableCell>
                 <TableCell>{vehicle.model}</TableCell>
                 <TableCell className="text-muted-foreground">{vehicle.year || '-'}</TableCell>
-                <TableCell>{vehicle.mileage.toLocaleString('nl-NL')} km</TableCell>
-                <TableCell>{vehicle.licenseNumber}</TableCell>
-                <TableCell className="truncate max-w-32">{vehicle.vin}</TableCell>
+                <TableCell>{vehicle.mileage ? `${vehicle.mileage.toLocaleString('nl-NL')} km` : '-'}</TableCell>
+                <TableCell>{vehicle.licenseNumber || '-'}</TableCell>
+                <TableCell className="truncate max-w-32">{vehicle.vin || '-'}</TableCell>
                 <TableCell className="font-medium">
                   {vehicle.purchasePrice ? `€ ${vehicle.purchasePrice.toLocaleString('nl-NL')}` : '-'}
                 </TableCell>
