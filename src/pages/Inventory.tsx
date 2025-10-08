@@ -328,22 +328,36 @@ const Inventory = () => {
         description: `${selectedVehicles.length} voertuig(en) succesvol verwijderd`,
       });
     } else if (action === 'status' && value) {
+      console.log(`[BULK_ACTION] Updating ${selectedVehicles.length} vehicles to status: ${value}`);
+      
       for (const vehicleId of selectedVehicles) {
         try {
-          await supabase
+          const { error } = await supabase
             .from('vehicles')
             .update({ status: value })
             .eq('id', vehicleId);
+          
+          if (error) {
+            console.error('[BULK_ACTION] Error updating vehicle:', error);
+            throw error;
+          }
         } catch (error) {
           console.error('Error updating vehicle status:', error);
         }
       }
       toast({
         title: "Status bijgewerkt",
-        description: `Status van ${selectedVehicles.length} voertuig(en) gewijzigd`,
+        description: `Status van ${selectedVehicles.length} voertuig(en) gewijzigd naar ${value}`,
       });
     }
-    queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+    
+    // Refresh ALL vehicle queries to ensure vehicles move between lists
+    await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+    await queryClient.invalidateQueries({ queryKey: ['b2bVehicles'] });
+    await queryClient.invalidateQueries({ queryKey: ['b2cVehicles'] });
+    await queryClient.invalidateQueries({ queryKey: ['onlineVehicles'] });
+    await queryClient.invalidateQueries({ queryKey: ['deliveredVehicles'] });
+    
     setSelectedVehicles([]);
   };
 
