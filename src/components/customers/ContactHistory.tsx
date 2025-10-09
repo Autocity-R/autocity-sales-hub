@@ -67,9 +67,9 @@ const ContactHistory: React.FC<ContactHistoryProps> = ({ history }) => {
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium">
                     {item.actionType === 'lead' ? 'Nieuwe lead' :
-                     item.actionType === 'contact' ? 'Contact moment' :
+                     item.actionType === 'contact' ? 'Contact / Email' :
                      item.actionType === 'purchase' ? 'Aankoop' :
-                     item.actionType === 'sale' ? 'Verkoop' : 'Actie'}
+                     item.actionType === 'sale' ? 'Verkoop / Contract' : 'Actie'}
                   </h4>
                   <span className="text-sm text-muted-foreground flex items-center gap-1">
                     <Clock className="h-3 w-3" />

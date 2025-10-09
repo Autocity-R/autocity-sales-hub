@@ -249,12 +249,187 @@ export const searchContacts = async (searchTerm: string, type?: ContactType): Pr
   }
 };
 
-export const getCustomerHistory = (customerId: string): CustomerHistoryItem[] => {
-  return mockCustomerHistory.filter(item => item.customerId === customerId);
+export const getCustomerHistory = async (customerId: string): Promise<CustomerHistoryItem[]> => {
+  try {
+    // Fetch email logs for this customer
+    const { data: emailLogs, error: emailError } = await supabase
+      .from('email_logs')
+      .select(`
+        id,
+        created_at,
+        subject,
+        recipient_email,
+        template_id,
+        status,
+        vehicle_id,
+        vehicles (
+          brand,
+          model,
+          year,
+          vin,
+          license_number,
+          selling_price
+        )
+      `)
+      .eq('recipient_email', (await supabase.from('contacts').select('email').eq('id', customerId).single()).data?.email || '')
+      .order('created_at', { ascending: false });
+
+    if (emailError) {
+      console.error('Error fetching email logs:', emailError);
+    }
+
+    // Fetch contracts for this customer
+    const { data: contracts, error: contractError } = await supabase
+      .from('contracts')
+      .select(`
+        id,
+        created_at,
+        contract_number,
+        type,
+        status,
+        contract_amount,
+        vehicle_id,
+        vehicles (
+          brand,
+          model,
+          year,
+          vin,
+          license_number
+        )
+      `)
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: false });
+
+    if (contractError) {
+      console.error('Error fetching contracts:', contractError);
+    }
+
+    const historyItems: CustomerHistoryItem[] = [];
+
+    // Add email logs to history
+    if (emailLogs) {
+      emailLogs.forEach((email: any) => {
+        historyItems.push({
+          id: email.id,
+          customerId: customerId,
+          date: email.created_at,
+          actionType: 'contact',
+          description: `Email verstuurd: ${email.subject || 'Geen onderwerp'}`,
+          vehicleId: email.vehicle_id,
+          vehicleName: email.vehicles ? `${email.vehicles.brand} ${email.vehicles.model}` : undefined,
+          vehicleDetails: !!email.vehicles,
+          vehicleBrand: email.vehicles?.brand,
+          vehicleModel: email.vehicles?.model,
+          vehicleYear: email.vehicles?.year,
+          vehicleVin: email.vehicles?.vin,
+          vehiclePrice: email.vehicles?.selling_price
+        });
+      });
+    }
+
+    // Add contracts to history
+    if (contracts) {
+      contracts.forEach((contract: any) => {
+        historyItems.push({
+          id: contract.id,
+          customerId: customerId,
+          date: contract.created_at,
+          actionType: contract.type === 'verkoop' ? 'sale' : 'other',
+          description: `Contract ${contract.contract_number} - ${contract.type} (${contract.status})`,
+          vehicleId: contract.vehicle_id,
+          vehicleName: contract.vehicles ? `${contract.vehicles.brand} ${contract.vehicles.model}` : undefined,
+          vehicleDetails: !!contract.vehicles,
+          vehicleBrand: contract.vehicles?.brand,
+          vehicleModel: contract.vehicles?.model,
+          vehicleYear: contract.vehicles?.year,
+          vehicleVin: contract.vehicles?.vin,
+          vehiclePrice: contract.contract_amount
+        });
+      });
+    }
+
+    // Sort all items by date (newest first)
+    historyItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return historyItems;
+  } catch (error) {
+    console.error('Error fetching customer history:', error);
+    return [];
+  }
 };
 
-export const getSupplierHistory = (supplierId: string): SupplierHistoryItem[] => {
-  return mockSupplierHistory.filter(item => item.supplierId === supplierId);
+export const getSupplierHistory = async (supplierId: string): Promise<SupplierHistoryItem[]> => {
+  try {
+    // Fetch email logs for this supplier
+    const { data: contactData } = await supabase
+      .from('contacts')
+      .select('email, additional_emails')
+      .eq('id', supplierId)
+      .single();
+
+    if (!contactData) return [];
+
+    // Get all emails (primary + additional)
+    const supplierEmails = [contactData.email];
+    if (contactData.additional_emails && Array.isArray(contactData.additional_emails)) {
+      supplierEmails.push(...(contactData.additional_emails as string[]));
+    }
+
+    const { data: emailLogs, error: emailError } = await supabase
+      .from('email_logs')
+      .select(`
+        id,
+        created_at,
+        subject,
+        recipient_email,
+        template_id,
+        status,
+        vehicle_id,
+        vehicles (
+          brand,
+          model,
+          year,
+          vin,
+          license_number
+        )
+      `)
+      .in('recipient_email', supplierEmails)
+      .order('created_at', { ascending: false });
+
+    if (emailError) {
+      console.error('Error fetching supplier email logs:', emailError);
+    }
+
+    const historyItems: SupplierHistoryItem[] = [];
+
+    // Add email logs to history
+    if (emailLogs) {
+      emailLogs.forEach((email: any) => {
+        historyItems.push({
+          id: email.id,
+          supplierId: supplierId,
+          date: email.created_at,
+          actionType: 'contact',
+          description: `Email verstuurd: ${email.subject || 'Geen onderwerp'}`,
+          vehicleId: email.vehicle_id,
+          vehicleName: email.vehicles ? `${email.vehicles.brand} ${email.vehicles.model}` : undefined,
+          vehicleDetails: !!email.vehicles,
+          vehicleBrand: email.vehicles?.brand,
+          vehicleModel: email.vehicles?.model,
+          vehicleYear: email.vehicles?.year,
+          vehicleVin: email.vehicles?.vin
+        });
+      });
+    }
+
+    // Sort all items by date (newest first)
+    historyItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return historyItems;
+  } catch (error) {
+    console.error('Error fetching supplier history:', error);
+    return [];
+  }
 };
 
 // Get purchased vehicles for a customer

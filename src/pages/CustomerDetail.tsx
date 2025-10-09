@@ -33,9 +33,11 @@ const CustomerDetail = () => {
             
             // Load appropriate history based on contact type
             if (contactData.type === "supplier") {
-              setHistory(getSupplierHistory(id));
+              const supplierHistory = await getSupplierHistory(id);
+              setHistory(supplierHistory);
             } else {
-              setHistory(getCustomerHistory(id));
+              const customerHistory = await getCustomerHistory(id);
+              setHistory(customerHistory);
               // Load purchased vehicles for customers (not suppliers)
               const vehicles = await getCustomerPurchasedVehicles(id);
               setPurchasedVehicles(vehicles);
