@@ -58,39 +58,47 @@ const Reports = () => {
     const now = new Date();
     
     switch (selectedPeriod) {
-      case "lastMonth":
-        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+      case "currentWeek":
+        // Get Monday of current week (week starts on Monday)
+        const currentDay = now.getDay();
+        const diff = currentDay === 0 ? -6 : 1 - currentDay; // If Sunday (0), go back 6 days, otherwise go to Monday
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() + diff);
+        weekStart.setHours(0, 0, 0, 0);
+        
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
+        
         return {
-          startDate: lastMonth.toISOString(),
-          endDate: lastMonthEnd.toISOString(),
-          label: "Vorige maand",
-          type: "month" as const
-        };
-      
-      case "currentQuarter":
-        const quarterStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-        return {
-          startDate: quarterStart.toISOString(),
-          endDate: now.toISOString(),
-          label: "Huidig kwartaal",
-          type: "custom" as const
+          startDate: weekStart.toISOString(),
+          endDate: weekEnd.toISOString(),
+          label: "Huidige week",
+          type: "week" as const
         };
       
       case "currentYear":
         const yearStart = new Date(now.getFullYear(), 0, 1);
+        yearStart.setHours(0, 0, 0, 0);
+        const yearEnd = new Date(now.getFullYear(), 11, 31);
+        yearEnd.setHours(23, 59, 59, 999);
+        
         return {
           startDate: yearStart.toISOString(),
-          endDate: now.toISOString(),
+          endDate: yearEnd.toISOString(),
           label: "Huidig jaar",
           type: "year" as const
         };
       
       default: // currentMonth
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        monthStart.setHours(0, 0, 0, 0);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        monthEnd.setHours(23, 59, 59, 999);
+        
         return {
           startDate: monthStart.toISOString(),
-          endDate: now.toISOString(),
+          endDate: monthEnd.toISOString(),
           label: "Huidige maand",
           type: "month" as const
         };
@@ -273,9 +281,8 @@ const Reports = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="currentWeek">Huidige week</SelectItem>
                 <SelectItem value="currentMonth">Huidige maand</SelectItem>
-                <SelectItem value="lastMonth">Vorige maand</SelectItem>
-                <SelectItem value="currentQuarter">Huidig kwartaal</SelectItem>
                 <SelectItem value="currentYear">Huidig jaar</SelectItem>
               </SelectContent>
             </Select>

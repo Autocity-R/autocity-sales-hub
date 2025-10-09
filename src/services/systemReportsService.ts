@@ -12,10 +12,13 @@ export class SystemReportsService {
     const { startDate, endDate } = period;
 
     // Fetch sold vehicles within the period
+    // Only vehicles with status verkocht_b2b, verkocht_b2c, or afgeleverd count as sales
+    // Vehicles must have a sold_date to be counted
     const { data: soldVehicles, error } = await supabase
       .from('vehicles')
       .select('*')
       .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
+      .not('sold_date', 'is', null)
       .gte('sold_date', startDate)
       .lte('sold_date', endDate);
 
@@ -38,9 +41,28 @@ export class SystemReportsService {
 
     const profitMargin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100) : 0;
 
-    // Group by B2B vs B2C
-    const b2bSales = soldVehicles?.filter(v => v.status === 'verkocht_b2b' || v.status === 'afgeleverd' && (v.details as any)?.salesType === 'b2b').length || 0;
-    const b2cSales = soldVehicles?.filter(v => v.status === 'verkocht_b2c' || v.status === 'afgeleverd' && (v.details as any)?.salesType !== 'b2b').length || 0;
+    // Group by B2B vs B2C based on status
+    // verkocht_b2b and afgeleverd vehicles that were originally verkocht_b2b count as B2B
+    // verkocht_b2c and afgeleverd vehicles that were originally verkocht_b2c count as B2C
+    const b2bSales = soldVehicles?.filter(v => {
+      if (v.status === 'verkocht_b2b') return true;
+      if (v.status === 'afgeleverd') {
+        // Check details for original sales type
+        const salesType = (v.details as any)?.salesType;
+        return salesType === 'b2b';
+      }
+      return false;
+    }).length || 0;
+    
+    const b2cSales = soldVehicles?.filter(v => {
+      if (v.status === 'verkocht_b2c') return true;
+      if (v.status === 'afgeleverd') {
+        // Check details for original sales type (default to b2c if not specified)
+        const salesType = (v.details as any)?.salesType;
+        return !salesType || salesType === 'b2c';
+      }
+      return false;
+    }).length || 0;
 
     // Get top selling brands
     const brandStats = soldVehicles?.reduce((acc, v) => {
