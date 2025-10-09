@@ -23,7 +23,7 @@ const OptimizedDashboardLayout = memo<DashboardLayoutProps>(({ children }) => {
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-gray-50 dark:bg-gray-900">
+        <main className="flex-1 overflow-y-auto py-4 bg-gray-50 dark:bg-gray-900">
           <Suspense fallback={<LoadingFallback />}>
             {children}
           </Suspense>
