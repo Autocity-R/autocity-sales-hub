@@ -15,6 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Vehicle, PaymentStatus, PaintStatus } from "@/types/inventory";
 import { VehicleB2CTableHeader } from "./b2c-table/VehicleB2CTableHeader";
 import { VehicleB2CTableRow } from "./b2c-table/VehicleB2CTableRow";
+import { VehicleMobileCard } from "./VehicleMobileCard";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface VehicleB2CTableProps {
   vehicles: Vehicle[];
@@ -52,6 +54,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
   sortField,
   sortDirection
 }) => {
+  const isMobile = useIsMobile();
   const [deliveryConfirmOpen, setDeliveryConfirmOpen] = React.useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = React.useState<string | null>(null);
 
@@ -73,7 +76,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
       <div className="p-4">
         <Skeleton className="h-10 w-full mb-4" />
         {Array(5).fill(0).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full mb-2" />
+          <Skeleton key={i} className={isMobile ? "h-32 w-full mb-3" : "h-16 w-full mb-2"} />
         ))}
       </div>
     );
@@ -83,6 +86,50 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
     return <div className="p-4 text-red-500">Fout bij het laden van voertuigen</div>;
   }
 
+  // Mobile Card View
+  if (isMobile) {
+    return (
+      <>
+        <div className="space-y-3 p-3">
+          {vehicles.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Geen voertuigen gevonden
+            </div>
+          ) : (
+            vehicles.map((vehicle) => (
+              <VehicleMobileCard
+                key={vehicle.id}
+                vehicle={vehicle}
+                onSelectVehicle={handleSelectVehicle}
+                onSendEmail={handleSendEmail}
+                onChangeStatus={handleChangeStatus}
+                onDeliveryConfirm={handleDeliveryConfirm}
+                onOpenContractConfig={onOpenContractConfig}
+              />
+            ))
+          )}
+        </div>
+
+        <AlertDialog open={deliveryConfirmOpen} onOpenChange={setDeliveryConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Voertuig afgeleverd markeren?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Weet u zeker dat u dit voertuig als afgeleverd wilt markeren? 
+                Het voertuig wordt verplaatst naar de 'Afgeleverd' sectie.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuleren</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelivery}>Ja, markeer als afgeleverd</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
+  }
+
+  // Desktop Table View
   return (
     <>
       <div className="w-full overflow-x-auto">

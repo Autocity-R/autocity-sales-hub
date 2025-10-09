@@ -22,6 +22,8 @@ import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { ArrowUpDown, MoreVertical, UserPlus, Tag, Archive } from "lucide-react";
 import { parseLeadData } from "@/utils/leadParser";
+import { LeadMobileCard } from "./LeadMobileCard";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface LeadListViewProps {
   leads: Lead[];
@@ -152,6 +154,32 @@ export const LeadListView: React.FC<LeadListViewProps> = ({
     </Button>
   );
 
+  const isMobile = useIsMobile();
+
+  // Mobile Card View
+  if (isMobile) {
+    return (
+      <div className="space-y-3 p-3">
+        {sortedLeads.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            Geen leads gevonden
+          </div>
+        ) : (
+          sortedLeads.map((lead) => (
+            <LeadMobileCard
+              key={lead.id}
+              lead={lead}
+              onLeadClick={onLeadClick}
+              onDisqualifyLead={onDisqualifyLead}
+              salespeople={salespeople}
+            />
+          ))
+        )}
+      </div>
+    );
+  }
+
+  // Desktop Table View
   return (
     <div className="space-y-4">
       {/* Bulk Actions Bar */}
