@@ -33,14 +33,34 @@ export const getAllUsers = async (): Promise<UserProfile[]> => {
 
 export const updateUserRole = async (userId: string, role: string): Promise<void> => {
   try {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ role })
-      .eq('id', userId);
+    // Check if role already exists
+    const { data: existingRole } = await supabase
+      .from('user_roles')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
 
-    if (error) {
-      console.error('Error updating user role:', error);
-      throw error;
+    if (existingRole) {
+      // Update existing role
+      const { error } = await supabase
+        .from('user_roles')
+        .update({ role: role as any })
+        .eq('user_id', userId);
+      
+      if (error) {
+        console.error('Error updating user role:', error);
+        throw error;
+      }
+    } else {
+      // Insert new role
+      const { error } = await supabase
+        .from('user_roles')
+        .insert({ user_id: userId, role: role as any });
+      
+      if (error) {
+        console.error('Error inserting user role:', error);
+        throw error;
+      }
     }
   } catch (error) {
     console.error("Failed to update user role:", error);

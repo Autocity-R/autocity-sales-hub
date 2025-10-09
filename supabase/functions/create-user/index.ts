@@ -47,13 +47,13 @@ serve(async (req) => {
     }
 
     // Check if user has admin role
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
+    const { data: userRole, error: roleError } = await supabaseAdmin
+      .from('user_roles')
       .select('role')
-      .eq('id', userData.user.id)
+      .eq('user_id', userData.user.id)
       .single();
 
-    if (profileError || !profile || (profile.role !== 'admin' && profile.role !== 'owner')) {
+    if (roleError || !userRole || (userRole.role !== 'admin' && userRole.role !== 'owner')) {
       return new Response(
         JSON.stringify({ success: false, error: 'Access denied. Admin rights required.' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -111,20 +111,37 @@ serve(async (req) => {
       );
     }
 
-    // Upsert profile to ensure it exists and set role
-    const { error: roleError } = await supabaseAdmin
+    // Create profile
+    const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .upsert({
         id: newUser.user.id,
         email,
-        role,
         first_name: firstName,
         last_name: lastName
       }, { onConflict: 'id' });
 
-    if (roleError) {
-      console.error('Error updating role:', roleError);
-      // Try to delete the user if role update fails
+    if (profileError) {
+      console.error('Error creating profile:', profileError);
+      // Try to delete the user if profile creation fails
+      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Failed to create user profile' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create user role in separate table
+    const { error: userRoleError } = await supabaseAdmin
+      .from('user_roles')
+      .insert({
+        user_id: newUser.user.id,
+        role
+      });
+
+    if (userRoleError) {
+      console.error('Error setting user role:', userRoleError);
+      // Try to delete the user if role assignment fails
       await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
       return new Response(
         JSON.stringify({ success: false, error: 'Failed to set user role' }),
