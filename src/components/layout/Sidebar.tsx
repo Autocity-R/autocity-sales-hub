@@ -45,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
 
   return (
     <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
-      <ScrollArea className="flex-1 px-4 py-4">
+      <ScrollArea className="flex-1 px-2 py-3">
         <div className="space-y-1">
           <Link to="/">
             <Button
@@ -77,7 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             <Link to="/inventory/online">
               <Button
                 variant={isActive("/inventory/online") ? "default" : "ghost"}
-                className="w-full justify-start pl-8 text-white hover:text-white hover:bg-gray-800"
+                className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
                 <ShoppingBagIcon className="mr-2 h-4 w-4" />
@@ -87,7 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             <Link to="/inventory/b2b">
               <Button
                 variant={isActive("/inventory/b2b") ? "default" : "ghost"}
-                className="w-full justify-start pl-8 text-white hover:text-white hover:bg-gray-800"
+                className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
                 <BoxIcon className="mr-2 h-4 w-4" />
@@ -97,7 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             <Link to="/inventory/consumer">
               <Button
                 variant={isActive("/inventory/consumer") ? "default" : "ghost"}
-                className="w-full justify-start pl-8 text-white hover:text-white hover:bg-gray-800"
+                className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
                 <UsersIcon className="mr-2 h-4 w-4" />
@@ -107,7 +107,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             <Link to="/inventory/delivered">
               <Button
                 variant={isActive("/inventory/delivered") ? "default" : "ghost"}
-                className="w-full justify-start pl-8 text-white hover:text-white hover:bg-gray-800"
+                className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
                 <Flag className="mr-2 h-4 w-4" />
@@ -155,7 +155,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             <Link to="/customers/b2b">
               <Button
                 variant={isActive("/customers/b2b") ? "default" : "ghost"}
-                className="w-full justify-start pl-8 text-white hover:text-white hover:bg-gray-800"
+                className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
                 <BoxIcon className="mr-2 h-4 w-4" />
@@ -165,7 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             <Link to="/customers/b2c">
               <Button
                 variant={isActive("/customers/b2c") ? "default" : "ghost"}
-                className="w-full justify-start pl-8 text-white hover:text-white hover:bg-gray-800"
+                className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
                 <UsersIcon className="mr-2 h-4 w-4" />

@@ -537,11 +537,13 @@ const Inventory = () => {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="all">Alle Voertuigen ({allVehicles.filter(v => v.salesStatus !== 'afgeleverd').length})</TabsTrigger>
-            <TabsTrigger value="b2c">B2C Verkocht ({b2cVehicles.length})</TabsTrigger>
-            <TabsTrigger value="b2b">B2B Verkocht ({b2bVehicles.length})</TabsTrigger>
-          </TabsList>
+          <div className="relative -mx-2 px-2 overflow-x-auto">
+            <TabsList className="min-w-max">
+              <TabsTrigger value="all">Alle Voertuigen ({allVehicles.filter(v => v.salesStatus !== 'afgeleverd').length})</TabsTrigger>
+              <TabsTrigger value="b2c">B2C Verkocht ({b2cVehicles.length})</TabsTrigger>
+              <TabsTrigger value="b2b">B2B Verkocht ({b2bVehicles.length})</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value={activeTab} className="space-y-4">
             {/* Search and Filters */}
