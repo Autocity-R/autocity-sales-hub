@@ -1,5 +1,3 @@
-
-import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   BookIcon,
@@ -26,17 +24,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
-import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 export function AppSidebar() {
   const location = useLocation();
-  const { hasReportsAccess, hasLeadsAccess, hasCustomersAccess, hasAIAgentsAccess, hasSettingsAccess } = useRoleAccess();
 
   const isActive = (path: string) => {
     if (path === "/") {
@@ -49,204 +40,207 @@ export function AppSidebar() {
     return paths.some((path) => location.pathname === path);
   };
 
-  const vehicleMenuItems = [
-    { title: "Online", url: "/inventory/online", icon: ShoppingBagIcon },
-    { title: "Verkocht B2B", url: "/inventory/b2b", icon: BoxIcon },
-    { title: "Verkocht B2C", url: "/inventory/consumer", icon: UsersIcon },
-    { title: "Afgeleverd", url: "/inventory/delivered", icon: Flag },
+  const vehicleItems = [
+    {
+      title: "Voorraad",
+      url: "/inventory",
+      icon: CarIcon,
+      isActive: isActive("/inventory") && !getSubActive(["/inventory/b2b", "/inventory/online", "/inventory/consumer", "/inventory/delivered"])
+    },
+    {
+      title: "Online",
+      url: "/inventory/online",
+      icon: ShoppingBagIcon,
+      isActive: isActive("/inventory/online"),
+      isSubItem: true
+    },
+    {
+      title: "Verkocht B2B",
+      url: "/inventory/b2b",
+      icon: BoxIcon,
+      isActive: isActive("/inventory/b2b"),
+      isSubItem: true
+    },
+    {
+      title: "Verkocht B2C",
+      url: "/inventory/consumer",
+      icon: UsersIcon,
+      isActive: isActive("/inventory/consumer"),
+      isSubItem: true
+    },
+    {
+      title: "Afgeleverd",
+      url: "/inventory/delivered",
+      icon: Flag,
+      isActive: isActive("/inventory/delivered"),
+      isSubItem: true
+    },
+    {
+      title: "Transport",
+      url: "/transport",
+      icon: TruckIcon,
+      isActive: isActive("/transport")
+    },
+    {
+      title: "Taken Schema",
+      url: "/tasks",
+      icon: ClipboardList,
+      isActive: isActive("/tasks")
+    }
   ];
 
-  const customerMenuItems = [
-    { title: "Zakelijk", url: "/customers/b2b", icon: BoxIcon },
-    { title: "Particulier", url: "/customers/b2c", icon: UsersIcon },
+  const customerItems = [
+    {
+      title: "Alle Klanten",
+      url: "/customers",
+      icon: UsersIcon,
+      isActive: isActive("/customers") && !getSubActive(["/customers/b2b", "/customers/b2c", "/suppliers"])
+    },
+    {
+      title: "Zakelijk",
+      url: "/customers/b2b",
+      icon: BoxIcon,
+      isActive: isActive("/customers/b2b"),
+      isSubItem: true
+    },
+    {
+      title: "Particulier",
+      url: "/customers/b2c",
+      icon: UsersIcon,
+      isActive: isActive("/customers/b2c"),
+      isSubItem: true
+    },
+    {
+      title: "Leveranciers",
+      url: "/suppliers",
+      icon: TruckIcon,
+      isActive: isActive("/suppliers")
+    },
+    {
+      title: "Leads",
+      url: "/leads",
+      icon: BookIcon,
+      isActive: isActive("/leads")
+    }
+  ];
+
+  const adminItems = [
+    {
+      title: "Rapportages",
+      url: "/reports",
+      icon: BarChart3,
+      isActive: isActive("/reports")
+    },
+    {
+      title: "AI Agents",
+      url: "/ai-agents",
+      icon: Bot,
+      isActive: isActive("/ai-agents")
+    },
+    {
+      title: "Garantie",
+      url: "/warranty",
+      icon: ShieldIcon,
+      isActive: isActive("/warranty")
+    },
+    {
+      title: "Leen auto beheer",
+      url: "/loan-cars",
+      icon: CarIcon,
+      isActive: isActive("/loan-cars")
+    },
+    {
+      title: "Agenda",
+      url: "/calendar",
+      icon: CalendarIcon,
+      isActive: isActive("/calendar")
+    }
   ];
 
   return (
-    <Sidebar className="border-r border-gray-800">
-      <SidebarContent className="bg-black text-white">
+    <Sidebar collapsible="icon">
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isActive("/")}>
+                <Link to="/">
+                  <HomeIcon />
+                  <span>Dashboard</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>VOERTUIGEN</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {vehicleItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={item.isActive} className={item.isSubItem ? "pl-8" : ""}>
+                    <Link to={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>KLANTEN</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {customerItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={item.isActive} className={item.isSubItem ? "pl-8" : ""}>
+                    <Link to={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>ADMINISTRATIE</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {adminItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={item.isActive}>
+                    <Link to={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/")}>
-                  <Link to="/" className="text-white hover:text-white hover:bg-gray-800">
-                    <HomeIcon className="mr-2 h-4 w-4" />
-                    <span>Dashboard</span>
+                <SidebarMenuButton asChild isActive={isActive("/settings")}>
+                  <Link to="/settings">
+                    <SettingsIcon />
+                    <span>Instellingen</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-gray-400 text-xs font-semibold">
-            VOERTUIGEN
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/inventory") && !getSubActive(["/inventory/b2b", "/inventory/online", "/inventory/consumer", "/inventory/delivered"])}>
-                  <Link to="/inventory" className="text-white hover:text-white hover:bg-gray-800">
-                    <CarIcon className="mr-2 h-4 w-4" />
-                    <span>Voorraad</span>
-                  </Link>
-                </SidebarMenuButton>
-                <SidebarMenuSub>
-                  {vehicleMenuItems.map((item) => (
-                    <SidebarMenuSubItem key={item.title}>
-                      <SidebarMenuSubButton asChild isActive={isActive(item.url)}>
-                        <Link to={item.url} className="text-white hover:text-white hover:bg-gray-800">
-                          <item.icon className="mr-2 h-4 w-4" />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  ))}
-                </SidebarMenuSub>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/transport")}>
-                  <Link to="/transport" className="text-white hover:text-white hover:bg-gray-800">
-                    <TruckIcon className="mr-2 h-4 w-4" />
-                    <span>Transport</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/tasks")}>
-                  <Link to="/tasks" className="text-white hover:text-white hover:bg-gray-800">
-                    <ClipboardList className="mr-2 h-4 w-4" />
-                    <span>Taken Schema</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-gray-400 text-xs font-semibold">
-            KLANTEN
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {hasCustomersAccess() && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/customers") && !getSubActive(["/customers/b2b", "/customers/b2c", "/suppliers"])}>
-                    <Link to="/customers" className="text-white hover:text-white hover:bg-gray-800">
-                      <UsersIcon className="mr-2 h-4 w-4" />
-                      <span>Alle Klanten</span>
-                    </Link>
-                  </SidebarMenuButton>
-                  <SidebarMenuSub>
-                    {customerMenuItems.map((item) => (
-                      <SidebarMenuSubItem key={item.title}>
-                        <SidebarMenuSubButton asChild isActive={isActive(item.url)}>
-                          <Link to={item.url} className="text-white hover:text-white hover:bg-gray-800">
-                            <item.icon className="mr-2 h-4 w-4" />
-                            <span>{item.title}</span>
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    ))}
-                  </SidebarMenuSub>
-                </SidebarMenuItem>
-              )}
-              {hasCustomersAccess() && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/suppliers")}>
-                    <Link to="/suppliers" className="text-white hover:text-white hover:bg-gray-800">
-                      <TruckIcon className="mr-2 h-4 w-4" />
-                      <span>Leveranciers</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              {hasLeadsAccess() && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/leads")}>
-                    <Link to="/leads" className="text-white hover:text-white hover:bg-gray-800">
-                      <BookIcon className="mr-2 h-4 w-4" />
-                      <span>Leads</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-gray-400 text-xs font-semibold">
-            ADMINISTRATIE
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {hasReportsAccess() && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/reports")}>
-                    <Link to="/reports" className="text-white hover:text-white hover:bg-gray-800">
-                      <BarChart3 className="mr-2 h-4 w-4" />
-                      <span>Rapportages</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              {hasAIAgentsAccess() && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/ai-agents")}>
-                    <Link to="/ai-agents" className="text-white hover:text-white hover:bg-gray-800">
-                      <Bot className="mr-2 h-4 w-4" />
-                      <span>AI Agents</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/warranty")}>
-                  <Link to="/warranty" className="text-white hover:text-white hover:bg-gray-800">
-                    <ShieldIcon className="mr-2 h-4 w-4" />
-                    <span>Garantie</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/loan-cars")}>
-                  <Link to="/loan-cars" className="text-white hover:text-white hover:bg-gray-800">
-                    <CarIcon className="mr-2 h-4 w-4" />
-                    <span>Leen auto beheer</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/calendar")}>
-                  <Link to="/calendar" className="text-white hover:text-white hover:bg-gray-800">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    <span>Agenda</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {hasSettingsAccess() && (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/settings")}>
-                    <Link to="/settings" className="text-white hover:text-white hover:bg-gray-800">
-                      <SettingsIcon className="mr-2 h-4 w-4" />
-                      <span>Instellingen</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
       </SidebarContent>
     </Sidebar>
   );
