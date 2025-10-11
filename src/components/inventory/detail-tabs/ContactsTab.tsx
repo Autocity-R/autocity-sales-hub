@@ -184,7 +184,6 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({ vehicle, onUpdate }) =
             <SearchableCustomerSelector
               placeholder="Zoek klant..."
               onValueChange={handleCustomerChange}
-              customerType={vehicle.salesStatus === "verkocht_b2b" ? "b2b" : "b2c"}
               value={vehicle.customerId || undefined}
               label="Klant selecteren"
             />

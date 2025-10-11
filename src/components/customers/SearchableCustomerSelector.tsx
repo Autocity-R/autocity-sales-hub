@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 interface SearchableCustomerSelectorProps {
   value?: string;
   onValueChange: (customerId: string, customer: Contact) => void;
-  customerType: ContactType;
+  customerType?: ContactType; // optional: show all when omitted
   label?: string;
   placeholder?: string;
   disabled?: boolean;
@@ -75,21 +75,23 @@ export const SearchableCustomerSelector: React.FC<SearchableCustomerSelectorProp
   }, [searchTerm, customerType]);
 
   // Load initial customers
-  const loadInitialCustomers = async () => {
-    setLoading(true);
-    try {
-      const results = await supabaseCustomerService.getContactsByType(customerType);
-      setCustomers(results.slice(0, 10)); // Limit initial results
-    } catch (error) {
-      console.error("Error loading customers:", error);
-      toast({
-        variant: "destructive",
-        description: "Fout bij het laden van klanten"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+const loadInitialCustomers = async () => {
+  setLoading(true);
+  try {
+    const results = customerType
+      ? await supabaseCustomerService.getContactsByType(customerType)
+      : await supabaseCustomerService.getAllContacts();
+    setCustomers(results.slice(0, 10)); // Limit initial results
+  } catch (error) {
+    console.error("Error loading customers:", error);
+    toast({
+      variant: "destructive",
+      description: "Fout bij het laden van klanten"
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Load initial customers on mount
   useEffect(() => {
