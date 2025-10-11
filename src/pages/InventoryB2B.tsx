@@ -4,6 +4,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { B2BInventoryHeader } from "@/components/inventory/B2BInventoryHeader";
 import { B2BInventoryContent } from "@/components/inventory/B2BInventoryContent";
 import { ContractConfigDialog } from "@/components/inventory/ContractConfigDialog";
+import { MisplacedVehiclesAlert } from "@/components/inventory/MisplacedVehiclesAlert";
 import { useB2BVehicles } from "@/hooks/useB2BVehicles";
 import { useB2BVehicleSelection } from "@/hooks/useB2BVehicleSelection";
 import { useB2BVehicleOperations } from "@/hooks/useB2BVehicleOperations";
@@ -105,6 +106,8 @@ const InventoryB2B = () => {
   return (
     <DashboardLayout>
       <div className="space-y-4">
+        <MisplacedVehiclesAlert onFixStatus={handleChangeStatus} />
+        
         <B2BInventoryHeader 
           selectedVehicles={selectedVehicles}
           onBulkAction={handleBulkAction}
