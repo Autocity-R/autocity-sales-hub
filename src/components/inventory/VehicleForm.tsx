@@ -68,7 +68,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
     notes: initialData?.notes || "",
     mainPhotoUrl: initialData?.mainPhotoUrl || null,
     photos: initialData?.photos || [],
-    customerId: initialData?.customerId || undefined,
+    customerId: initialData?.customerId || null,
     supplierId: ""
   });
   
