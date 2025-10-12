@@ -25,6 +25,11 @@ export function useRealtimeContacts() {
         { event: "UPDATE", schema: "public", table: "contacts" },
         () => {
           queryClient.invalidateQueries({ queryKey: ["contacts"] });
+          queryClient.invalidateQueries({ queryKey: ["contacts", "all"] });
+          queryClient.invalidateQueries({ queryKey: ["contacts", "supplier"] });
+          queryClient.invalidateQueries({ queryKey: ["contacts", "transporter"] });
+          queryClient.invalidateQueries({ queryKey: ["contacts", "b2b"] });
+          queryClient.invalidateQueries({ queryKey: ["contacts", "b2c"] });
         }
       )
       .on(
@@ -32,6 +37,11 @@ export function useRealtimeContacts() {
         { event: "DELETE", schema: "public", table: "contacts" },
         () => {
           queryClient.invalidateQueries({ queryKey: ["contacts"] });
+          queryClient.invalidateQueries({ queryKey: ["contacts", "all"] });
+          queryClient.invalidateQueries({ queryKey: ["contacts", "supplier"] });
+          queryClient.invalidateQueries({ queryKey: ["contacts", "transporter"] });
+          queryClient.invalidateQueries({ queryKey: ["contacts", "b2b"] });
+          queryClient.invalidateQueries({ queryKey: ["contacts", "b2c"] });
         }
       )
       .subscribe();
