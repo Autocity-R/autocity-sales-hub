@@ -20,6 +20,7 @@ export interface Contact {
   phone: string;
   address: Address;
   notes?: string;
+  isCarDealer?: boolean; // True if the contact is a car dealership (B2B), false for regular business customers (B2C)
   createdAt: string;
   updatedAt: string;
 }

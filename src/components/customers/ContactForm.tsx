@@ -11,9 +11,11 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -53,6 +55,7 @@ const ContactForm: React.FC<ContactFormProps> = ({
       country: "Nederland"
     },
     notes: "",
+    isCarDealer: false,
     ...initialData
   };
 
@@ -156,6 +159,31 @@ const ContactForm: React.FC<ContactFormProps> = ({
                     <Input placeholder="Bedrijfsnaam" {...field} />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {(selectedType === "b2b" || selectedType === "b2c") && (
+            <FormField
+              control={form.control}
+              name="isCarDealer"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Dit is een autobedrijf (dealer)
+                    </FormLabel>
+                    <FormDescription>
+                      Alleen aanvinken als dit een ander autobedrijf is. Zakelijke klanten die GEEN autobedrijf zijn, horen bij B2C.
+                    </FormDescription>
+                  </div>
                 </FormItem>
               )}
             />

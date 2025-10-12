@@ -836,6 +836,7 @@ export type Database = {
           email: string
           first_name: string
           id: string
+          is_car_dealer: boolean
           last_name: string
           phone: string | null
           type: string
@@ -852,6 +853,7 @@ export type Database = {
           email: string
           first_name: string
           id?: string
+          is_car_dealer?: boolean
           last_name: string
           phone?: string | null
           type: string
@@ -868,6 +870,7 @@ export type Database = {
           email?: string
           first_name?: string
           id?: string
+          is_car_dealer?: boolean
           last_name?: string
           phone?: string | null
           type?: string
