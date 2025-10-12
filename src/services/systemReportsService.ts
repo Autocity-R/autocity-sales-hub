@@ -195,15 +195,16 @@ export class SystemReportsService {
    */
   async getInventoryMetrics() {
     try {
-      // Get all vehicles in stock
+      // Get all vehicles currently in stock (voorraad status only)
       const { data: stockVehicles, error: stockError } = await supabase
         .from('vehicles')
         .select('*')
-        .in('status', ['voorraad', 'in_bestelling', 'onderweg']);
+        .eq('status', 'voorraad');
 
       if (stockError) throw stockError;
 
       // Get sold vehicles to calculate average days in stock
+      // Only count vehicles that have been sold (moved from voorraad to verkocht)
       const { data: soldVehicles, error: soldError } = await supabase
         .from('vehicles')
         .select('*')
@@ -216,6 +217,7 @@ export class SystemReportsService {
       const totalVehicles = stockVehicles?.length || 0;
       
       // Calculate average days in stock from sold vehicles
+      // This shows how long vehicles typically stay in stock before being sold
       let avgDaysInStock = 0;
       if (soldVehicles && soldVehicles.length > 0) {
         const daysArray = soldVehicles
@@ -231,12 +233,12 @@ export class SystemReportsService {
           : 0;
       }
 
-      // Calculate average selling price of current stock
+      // Calculate average selling price of current stock (voorraad)
       const avgPrice = stockVehicles && stockVehicles.length > 0
         ? stockVehicles.reduce((sum, v) => sum + (Number(v.selling_price) || 0), 0) / stockVehicles.length
         : 0;
 
-      // Calculate total inventory value (purchase price from details)
+      // Calculate total inventory value based on PURCHASE PRICE (inkoopprijs) of current stock
       const totalInventoryValue = stockVehicles?.reduce((sum, v) => {
         const purchasePrice = (v.details as any)?.purchasePrice || (v.details as any)?.kostprijs || 0;
         return sum + Number(purchasePrice);
