@@ -178,39 +178,73 @@ export class SupabaseInventoryService {
   async updateVehicle(vehicle: Vehicle): Promise<Vehicle> {
     console.log('Updating vehicle:', vehicle.id);
     
-     // Prepare details object with all extra fields (convert dates to ISO strings)
-     const details = {
-       notes: vehicle.notes || null,
-       workshopStatus: vehicle.workshopStatus || 'wachten',
-       paintStatus: vehicle.paintStatus || 'geen_behandeling', 
-       transportStatus: vehicle.transportStatus || 'onderweg',
-       bpmRequested: vehicle.bpmRequested || false,
-       bpmStarted: vehicle.bpmStarted || false,
-       damage: vehicle.damage || { description: '', status: 'geen' },
-       cmrSent: vehicle.cmrSent || false,
-       cmrDate: vehicle.cmrDate ? vehicle.cmrDate.toISOString() : null,
-       papersReceived: vehicle.papersReceived || false,
-       papersDate: vehicle.papersDate ? vehicle.papersDate.toISOString() : null,
-       showroomOnline: vehicle.showroomOnline || false,
-       paymentStatus: vehicle.paymentStatus || 'niet_betaald',
-        salespersonId: vehicle.salespersonId || null,
-        salespersonName: vehicle.salespersonName || null,
-        mainPhotoUrl: vehicle.mainPhotoUrl || null,
-       photos: vehicle.photos || []
-     };
+    // CRITICAL: First fetch the existing vehicle to preserve data
+    const { data: existingVehicle, error: fetchError } = await supabase
+      .from('vehicles')
+      .select('*')
+      .eq('id', vehicle.id)
+      .single();
 
+    if (fetchError) {
+      console.error('Failed to fetch existing vehicle:', fetchError);
+      throw fetchError;
+    }
+
+    // Preserve existing data from details
+    const existingDetails = (existingVehicle.details as any) || {};
+    
+    // Prepare details object with all extra fields (convert dates to ISO strings)
+    // CRITICAL: Preserve existing purchasePrice if not provided in update
+    const details = {
+      notes: vehicle.notes || existingDetails.notes || null,
+      workshopStatus: vehicle.workshopStatus || existingDetails.workshopStatus || 'wachten',
+      paintStatus: vehicle.paintStatus || existingDetails.paintStatus || 'geen_behandeling', 
+      transportStatus: vehicle.transportStatus || existingDetails.transportStatus || 'onderweg',
+      bpmRequested: vehicle.bpmRequested ?? existingDetails.bpmRequested ?? false,
+      bpmStarted: vehicle.bpmStarted ?? existingDetails.bpmStarted ?? false,
+      damage: vehicle.damage || existingDetails.damage || { description: '', status: 'geen' },
+      cmrSent: vehicle.cmrSent ?? existingDetails.cmrSent ?? false,
+      cmrDate: vehicle.cmrDate ? vehicle.cmrDate.toISOString() : (existingDetails.cmrDate || null),
+      papersReceived: vehicle.papersReceived ?? existingDetails.papersReceived ?? false,
+      papersDate: vehicle.papersDate ? vehicle.papersDate.toISOString() : (existingDetails.papersDate || null),
+      showroomOnline: vehicle.showroomOnline ?? existingDetails.showroomOnline ?? false,
+      paymentStatus: vehicle.paymentStatus || existingDetails.paymentStatus || 'niet_betaald',
+      // CRITICAL: Always preserve purchase price - use new value if provided, otherwise keep existing
+      purchasePrice: vehicle.purchasePrice !== undefined && vehicle.purchasePrice !== null 
+        ? vehicle.purchasePrice 
+        : (existingDetails.purchasePrice || 0),
+      salespersonId: vehicle.salespersonId || existingDetails.salespersonId || null,
+      salespersonName: vehicle.salespersonName || existingDetails.salespersonName || null,
+      mainPhotoUrl: vehicle.mainPhotoUrl || existingDetails.mainPhotoUrl || null,
+      photos: vehicle.photos || existingDetails.photos || []
+    };
+
+     // CRITICAL: Protect sold status from being accidentally changed
+     // Only allow status changes if explicitly requested
+     let salesStatus = vehicle.salesStatus;
+     
+     // If current vehicle is sold (B2B, B2C, or delivered), do NOT change status
+     // unless the new status is also a sold status
+     if (['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(existingVehicle.status)) {
+       // Only allow changing between sold statuses, not back to voorraad
+       if (!['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(vehicle.salesStatus)) {
+         console.warn(`[UPDATE_VEHICLE] Preventing status change from ${existingVehicle.status} to ${vehicle.salesStatus}`);
+         salesStatus = existingVehicle.status as any;
+       }
+     }
+     
      // Auto-update sales status when transport status changes to "aangekomen"
      // BUT ONLY if the vehicle is not already sold (preserve sold status)
-     let salesStatus = vehicle.salesStatus;
      if (vehicle.transportStatus === 'aangekomen' && 
-         !['voorraad', 'verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(vehicle.salesStatus)) {
+         !['voorraad', 'verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(salesStatus)) {
        salesStatus = 'voorraad';
      }
 
     // Prepare email reminder settings
     const emailReminderSettings = (vehicle as any).emailReminderSettings || {};
     
-    // Prepare update data - only include customer_id and supplier_id if explicitly provided
+    // Prepare update data
+    // CRITICAL: Preserve selling_price - use new value if provided, otherwise keep existing
     const updateData: any = {
       brand: vehicle.brand,
       model: vehicle.model,
@@ -219,7 +253,9 @@ export class SupabaseInventoryService {
       license_number: vehicle.licenseNumber,
       vin: vehicle.vin,
       mileage: vehicle.mileage,
-      selling_price: vehicle.sellingPrice,
+      selling_price: vehicle.sellingPrice !== undefined && vehicle.sellingPrice !== null
+        ? vehicle.sellingPrice
+        : existingVehicle.selling_price,
       status: salesStatus,
       location: vehicle.location,
       import_status: vehicle.importStatus,
@@ -241,6 +277,8 @@ export class SupabaseInventoryService {
       id: vehicle.id,
       customerId: vehicle.customerId,
       supplierId: vehicle.supplierId,
+      sellingPrice: updateData.selling_price,
+      purchasePrice: details.purchasePrice,
       willUpdateCustomerId: vehicle.customerId !== undefined,
       willUpdateSupplierId: vehicle.supplierId !== undefined
     });
