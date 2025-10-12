@@ -29,6 +29,7 @@ import { enhancedReportsService } from "@/services/enhancedReportsService";
 import { systemReportsService } from "@/services/systemReportsService";
 import { ReportPeriod, PerformanceData } from "@/types/reports";
 import { SalespersonPerformance } from "@/components/reports/SalespersonPerformance";
+import { SalesAnalytics } from "@/components/reports/SalesAnalytics";
 
 interface MockPerformanceData extends PerformanceData {
   revenue: number;
@@ -440,14 +441,7 @@ const Reports = () => {
           </TabsContent>
 
           <TabsContent value="sales" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Sales Content</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>This is the sales content.</p>
-              </CardContent>
-            </Card>
+            <SalesAnalytics />
           </TabsContent>
 
           <TabsContent value="performance" className="space-y-6">
