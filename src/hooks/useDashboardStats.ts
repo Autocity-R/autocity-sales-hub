@@ -27,7 +27,7 @@ export const useDashboardStats = () => {
       const { count: garantieCount } = await supabase
         .from("warranty_claims")
         .select("*", { count: "exact", head: true })
-        .neq("claim_status", "opgelost");
+        .neq("claim_status", "resolved");
 
       // Verkocht deze maand
       const { count: verkochtCount } = await supabase
