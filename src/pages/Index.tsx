@@ -2,7 +2,6 @@
 import React from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import StatCard from "@/components/dashboard/StatCard";
-import InventoryChart from "@/components/dashboard/InventoryChart";
 import MonthlySalesChart from "@/components/dashboard/MonthlySalesChart";
 import AiAssistant from "@/components/dashboard/AiAssistant";
 import WeeklySalesLeaderboard from "@/components/dashboard/WeeklySalesLeaderboard";
@@ -60,8 +59,7 @@ const Index = () => {
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 mt-6">
-        <InventoryChart />
+      <div className="grid gap-4 md:grid-cols-1 mt-6">
         <MonthlySalesChart />
       </div>
 
