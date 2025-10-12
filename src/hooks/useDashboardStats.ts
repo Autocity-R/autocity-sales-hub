@@ -10,11 +10,12 @@ export const useDashboardStats = () => {
       const monthStart = startOfMonth(now).toISOString();
       const monthEnd = endOfMonth(now).toISOString();
 
-      // Voertuigen voorraad
+      // Voertuigen voorraad (binnen gemeld of op voorraad)
       const { count: voorraadCount } = await supabase
         .from("vehicles")
         .select("*", { count: "exact", head: true })
-        .eq("status", "voorraad");
+        .neq("location", "onderweg")
+        .in("status", ["voorraad", "verkocht_b2b", "verkocht_b2c"]);
 
       // Voertuigen onderweg (transport)
       const { count: transportCount } = await supabase
