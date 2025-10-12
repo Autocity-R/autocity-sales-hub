@@ -36,44 +36,6 @@ const ContactDetailsPanel: React.FC<ContactDetailsPanelProps> = ({ contact, onUp
     }
   };
 
-  const handleSendCMR = async (emails: string[]) => {
-    try {
-      // Get the vehicle associated with this supplier
-      const { data: vehicles, error: vehicleError } = await supabase
-        .from('vehicles')
-        .select('id, brand, model, license_number')
-        .eq('supplier_id', contact.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (vehicleError) throw vehicleError;
-
-      // For now, we'll use the send-gmail edge function
-      // In a real implementation, you'd want to attach the CMR document
-      const { data, error } = await supabase.functions.invoke('send-gmail', {
-        body: {
-          to: emails,
-          subject: `CMR Document - ${contact.companyName || `${contact.firstName} ${contact.lastName}`}`,
-          content: `
-            Beste ${contact.firstName} ${contact.lastName},
-
-            Bijgevoegd vindt u het CMR document voor ${vehicles && vehicles.length > 0 ? `${vehicles[0].brand} ${vehicles[0].model} (${vehicles[0].license_number})` : 'het voertuig'}.
-
-            Met vriendelijke groet,
-            Auto City
-          `,
-          from: 'noreply@autocity.nl'
-        }
-      });
-
-      if (error) throw error;
-
-      toast.success(`CMR document verstuurd naar ${emails.length} emailadres(sen)`);
-    } catch (error) {
-      console.error("Error sending CMR:", error);
-      toast.error("Fout bij versturen van CMR document");
-    }
-  };
 
   return (
     <>
@@ -167,8 +129,6 @@ const ContactDetailsPanel: React.FC<ContactDetailsPanelProps> = ({ contact, onUp
             primaryEmail={contact.email}
             additionalEmails={contact.additionalEmails || []}
             onEmailsChange={handleEmailsChange}
-            contactType={contact.type}
-            onSendCMR={contact.type === "supplier" ? handleSendCMR : undefined}
           />
         </div>
       )}

@@ -333,11 +333,6 @@ const ContactForm: React.FC<ContactFormProps> = ({
                 primaryEmail={form.watch("email") || ""}
                 additionalEmails={form.watch("additionalEmails") || []}
                 onEmailsChange={(emails) => form.setValue("additionalEmails", emails)}
-                contactType={selectedType}
-                onSendCMR={(emails) => {
-                  // This will be connected later when email service is ready
-                  console.log("CMR versturen naar:", emails);
-                }}
               />
             </div>
           )}

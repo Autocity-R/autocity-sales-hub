@@ -121,6 +121,7 @@ export class SupabaseCustomerService {
           address_number: contactData.address?.number,
           address_postal_code: contactData.address?.zipCode,
           address_city: contactData.address?.city,
+          additional_emails: contactData.additionalEmails || [],
         })
         .select()
         .single();
@@ -155,6 +156,7 @@ export class SupabaseCustomerService {
           address_number: contact.address?.number,
           address_postal_code: contact.address?.zipCode,
           address_city: contact.address?.city,
+          additional_emails: contact.additionalEmails || [],
           updated_at: new Date().toISOString()
         })
         .eq('id', contact.id)
@@ -184,6 +186,7 @@ export class SupabaseCustomerService {
       firstName: supabaseContact.first_name,
       lastName: supabaseContact.last_name,
       email: supabaseContact.email,
+      additionalEmails: supabaseContact.additional_emails || [],
       phone: supabaseContact.phone,
       address: {
         street: supabaseContact.address_street || "",

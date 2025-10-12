@@ -4,26 +4,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Send } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 interface ContactEmailManagerProps {
   primaryEmail: string;
   additionalEmails: string[];
   onEmailsChange: (emails: string[]) => void;
-  contactType: string;
-  onSendCMR?: (emails: string[]) => void;
 }
 
 const ContactEmailManager: React.FC<ContactEmailManagerProps> = ({
   primaryEmail,
   additionalEmails = [],
   onEmailsChange,
-  contactType,
-  onSendCMR
 }) => {
   const [newEmail, setNewEmail] = useState("");
-  const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
 
   const addEmail = () => {
     if (!newEmail || !newEmail.includes("@")) {
@@ -45,31 +40,8 @@ const ContactEmailManager: React.FC<ContactEmailManagerProps> = ({
   const removeEmail = (emailToRemove: string) => {
     const updatedEmails = additionalEmails.filter(email => email !== emailToRemove);
     onEmailsChange(updatedEmails);
-    setSelectedEmails(selectedEmails.filter(email => email !== emailToRemove));
     toast.success("Email verwijderd");
   };
-
-  const handleEmailSelection = (email: string, checked: boolean) => {
-    if (checked) {
-      setSelectedEmails([...selectedEmails, email]);
-    } else {
-      setSelectedEmails(selectedEmails.filter(e => e !== email));
-    }
-  };
-
-  const handleSendCMR = () => {
-    if (selectedEmails.length === 0) {
-      toast.error("Selecteer ten minste één emailadres");
-      return;
-    }
-    
-    if (onSendCMR) {
-      onSendCMR(selectedEmails);
-      toast.success(`CMR document wordt verstuurd naar ${selectedEmails.length} emailadres(sen)`);
-    }
-  };
-
-  const allEmails = [primaryEmail, ...additionalEmails];
 
   return (
     <Card>
@@ -125,45 +97,6 @@ const ContactEmailManager: React.FC<ContactEmailManagerProps> = ({
           </div>
         </div>
 
-        {/* CMR Document sending - only for suppliers */}
-        {contactType === "supplier" && allEmails.length > 0 && (
-          <div className="border-t pt-4 mt-6">
-            <Label className="text-sm font-medium">CMR Document versturen</Label>
-            <div className="space-y-3 mt-2">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">
-                  Selecteer emailadressen om CMR document naar te versturen:
-                </Label>
-                {allEmails.map((email) => (
-                  <div key={email} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id={`email-${email}`}
-                      checked={selectedEmails.includes(email)}
-                      onChange={(e) => handleEmailSelection(email, e.target.checked)}
-                      className="rounded"
-                    />
-                    <label htmlFor={`email-${email}`} className="text-sm">
-                      {email}
-                      {email === primaryEmail && (
-                        <span className="text-xs text-muted-foreground ml-1">(primair)</span>
-                      )}
-                    </label>
-                  </div>
-                ))}
-              </div>
-              
-              <Button 
-                onClick={handleSendCMR}
-                disabled={selectedEmails.length === 0}
-                className="w-full"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                CMR Document versturen naar {selectedEmails.length} emailadres(sen)
-              </Button>
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
