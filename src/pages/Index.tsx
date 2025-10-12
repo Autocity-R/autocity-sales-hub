@@ -3,9 +3,8 @@ import React from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import StatCard from "@/components/dashboard/StatCard";
 import InventoryChart from "@/components/dashboard/InventoryChart";
-import LeadTimeChart from "@/components/dashboard/LeadTimeChart";
+import MonthlySalesChart from "@/components/dashboard/MonthlySalesChart";
 import AiAssistant from "@/components/dashboard/AiAssistant";
-import RecentLeads from "@/components/dashboard/RecentLeads";
 import WeeklySalesLeaderboard from "@/components/dashboard/WeeklySalesLeaderboard";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { Database, Package, Truck, ShieldCheck } from "lucide-react";
@@ -61,17 +60,13 @@ const Index = () => {
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-6">
+      <div className="grid gap-4 md:grid-cols-2 mt-6">
         <InventoryChart />
-        <LeadTimeChart />
+        <MonthlySalesChart />
       </div>
 
       <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2 mt-6">
-        <RecentLeads />
         <AiAssistant />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-1 mt-6">
         <WeeklySalesLeaderboard />
       </div>
     </DashboardLayout>
