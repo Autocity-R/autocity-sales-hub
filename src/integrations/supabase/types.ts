@@ -1931,6 +1931,97 @@ export type Database = {
           },
         ]
       }
+      vehicle_price_audit_log: {
+        Row: {
+          change_reason: string | null
+          change_source: string | null
+          changed_at: string
+          changed_by: string | null
+          id: string
+          new_purchase_price: number | null
+          new_selling_price: number | null
+          old_purchase_price: number | null
+          old_selling_price: number | null
+          vehicle_id: string
+        }
+        Insert: {
+          change_reason?: string | null
+          change_source?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_purchase_price?: number | null
+          new_selling_price?: number | null
+          old_purchase_price?: number | null
+          old_selling_price?: number | null
+          vehicle_id: string
+        }
+        Update: {
+          change_reason?: string | null
+          change_source?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_purchase_price?: number | null
+          new_selling_price?: number | null
+          old_purchase_price?: number | null
+          old_selling_price?: number | null
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_price_audit_log_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicle_status_audit_log: {
+        Row: {
+          change_metadata: Json | null
+          change_timestamp: string
+          changed_by: string | null
+          id: string
+          new_location: string | null
+          new_status: string
+          old_location: string | null
+          old_status: string | null
+          vehicle_id: string
+        }
+        Insert: {
+          change_metadata?: Json | null
+          change_timestamp?: string
+          changed_by?: string | null
+          id?: string
+          new_location?: string | null
+          new_status: string
+          old_location?: string | null
+          old_status?: string | null
+          vehicle_id: string
+        }
+        Update: {
+          change_metadata?: Json | null
+          change_timestamp?: string
+          changed_by?: string | null
+          id?: string
+          new_location?: string | null
+          new_status?: string
+          old_location?: string | null
+          old_status?: string | null
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_status_audit_log_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicles: {
         Row: {
           brand: string
