@@ -163,16 +163,6 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-              {hasLeadsAccess() && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/leads")}>
-                    <Link to="/leads" className="text-white hover:text-white hover:bg-gray-800">
-                      <BookIcon className="mr-2 h-4 w-4" />
-                      <span>Leads</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
