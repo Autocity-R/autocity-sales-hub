@@ -134,6 +134,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 Taken Schema
               </Button>
             </Link>
+            <Link to="/warranty">
+              <Button
+                variant={isActive("/warranty") ? "default" : "ghost"}
+                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+                size="sm"
+              >
+                <ShieldIcon className="mr-2 h-4 w-4" />
+                Garantie
+              </Button>
+            </Link>
           </div>
         </div>
 
@@ -182,16 +192,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 Leveranciers
               </Button>
             </Link>
-            <Link to="/leads">
-              <Button
-                variant={isActive("/leads") ? "default" : "ghost"}
-                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <BookIcon className="mr-2 h-4 w-4" />
-                Leads
-              </Button>
-            </Link>
           </div>
         </div>
 
@@ -218,16 +218,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
               >
                 <Bot className="mr-2 h-4 w-4" />
                 AI Agents
-              </Button>
-            </Link>
-            <Link to="/warranty">
-              <Button
-                variant={isActive("/warranty") ? "default" : "ghost"}
-                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <ShieldIcon className="mr-2 h-4 w-4" />
-                Garantie
               </Button>
             </Link>
             <Link to="/loan-cars">
