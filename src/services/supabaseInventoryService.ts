@@ -208,28 +208,45 @@ export class SupabaseInventoryService {
     // Prepare email reminder settings
     const emailReminderSettings = (vehicle as any).emailReminderSettings || {};
     
+    // Prepare update data - only include customer_id and supplier_id if explicitly provided
+    const updateData: any = {
+      brand: vehicle.brand,
+      model: vehicle.model,
+      year: vehicle.year,
+      color: vehicle.color,
+      license_number: vehicle.licenseNumber,
+      vin: vehicle.vin,
+      mileage: vehicle.mileage,
+      selling_price: vehicle.sellingPrice,
+      status: salesStatus,
+      location: vehicle.location,
+      import_status: vehicle.importStatus,
+      notes: vehicle.notes,
+      details: details as any,
+      email_reminder_settings: emailReminderSettings as any,
+      updated_at: new Date().toISOString()
+    };
+
+    // Only update customer_id and supplier_id if they are explicitly provided (not undefined)
+    if (vehicle.customerId !== undefined) {
+      updateData.customer_id = vehicle.customerId;
+    }
+    if (vehicle.supplierId !== undefined) {
+      updateData.supplier_id = vehicle.supplierId;
+    }
+
+    console.log('[UPDATE_VEHICLE] Updating vehicle:', {
+      id: vehicle.id,
+      customerId: vehicle.customerId,
+      supplierId: vehicle.supplierId,
+      willUpdateCustomerId: vehicle.customerId !== undefined,
+      willUpdateSupplierId: vehicle.supplierId !== undefined
+    });
+    
     try {
       const { data, error } = await supabase
         .from('vehicles')
-        .update({
-          brand: vehicle.brand,
-          model: vehicle.model,
-          year: vehicle.year,
-          color: vehicle.color,
-          license_number: vehicle.licenseNumber,
-          vin: vehicle.vin,
-          mileage: vehicle.mileage,
-          selling_price: vehicle.sellingPrice,
-          status: salesStatus,
-          location: vehicle.location,
-          customer_id: vehicle.customerId,
-          supplier_id: vehicle.supplierId,
-          import_status: vehicle.importStatus,
-          notes: vehicle.notes,
-          details: details as any,
-          email_reminder_settings: emailReminderSettings as any,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', vehicle.id)
         .select()
         .single();
