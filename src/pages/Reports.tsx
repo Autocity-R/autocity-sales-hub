@@ -30,6 +30,7 @@ import { systemReportsService } from "@/services/systemReportsService";
 import { ReportPeriod, PerformanceData } from "@/types/reports";
 import { SalespersonPerformance } from "@/components/reports/SalespersonPerformance";
 import { SalesAnalytics } from "@/components/reports/SalesAnalytics";
+import { WarrantyReports } from "@/components/reports/WarrantyReports";
 
 interface MockPerformanceData extends PerformanceData {
   revenue: number;
@@ -306,6 +307,7 @@ const Reports = () => {
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="financial">Financieel</TabsTrigger>
             <TabsTrigger value="inventory">Voorraad</TabsTrigger>
+            <TabsTrigger value="warranty">Garantie</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -587,6 +589,10 @@ const Reports = () => {
                 )}
               </>
             )}
+          </TabsContent>
+
+          <TabsContent value="warranty" className="space-y-6">
+            <WarrantyReports />
           </TabsContent>
         </Tabs>
       </div>
