@@ -16,7 +16,8 @@ export interface SalesData {
     model: string;
     status: string;
     selling_price: number;
-    sold_date: string;
+    sold_date: string | null;
+    created_at: string;
     details: any;
   }>;
 }
@@ -55,27 +56,32 @@ export const salesDataService = {
       }
     }
 
-    // Fetch sold vehicles - only count each vehicle once based on sold_date
+    // Fetch sold vehicles - include vehicles with or without sold_date
+    // We check status as the source of truth for sold vehicles
     const { data: vehicles, error } = await supabase
       .from("vehicles")
-      .select("id, brand, model, status, selling_price, sold_date, details")
+      .select("id, brand, model, status, selling_price, sold_date, created_at, details")
       .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"])
-      .not("sold_date", "is", null)
-      .gte("sold_date", startDate.toISOString())
-      .lte("sold_date", endDate.toISOString())
-      .order("sold_date", { ascending: false });
+      .order("sold_date", { ascending: false, nullsFirst: false });
 
     if (error) {
       console.error("Error fetching sales data:", error);
       throw error;
     }
 
+    // Filter vehicles by sold_date if available, otherwise use created_at
+    // Only count vehicles within the date range
+    const filteredVehicles = vehicles?.filter(v => {
+      const dateToCheck = v.sold_date ? new Date(v.sold_date) : new Date(v.created_at || startDate);
+      return dateToCheck >= startDate && dateToCheck <= endDate;
+    }) || [];
+
     // Calculate metrics
-    const totalVehicles = vehicles?.length || 0;
-    const totalRevenue = vehicles?.reduce((sum, v) => sum + (v.selling_price || 0), 0) || 0;
+    const totalVehicles = filteredVehicles?.length || 0;
+    const totalRevenue = filteredVehicles?.reduce((sum, v) => sum + (v.selling_price || 0), 0) || 0;
     
     // Calculate total cost from purchase price in details
-    const totalCost = vehicles?.reduce((sum, v) => {
+    const totalCost = filteredVehicles?.reduce((sum, v) => {
       if (!v.details || typeof v.details !== 'object') return sum;
       const details = v.details as any;
       const purchasePrice = details.purchasePrice || 0;
@@ -86,8 +92,8 @@ export const salesDataService = {
     const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
 
     // Count B2B vs B2C
-    const b2bCount = vehicles?.filter((v) => v.status === "verkocht_b2b").length || 0;
-    const b2cCount = vehicles?.filter((v) => 
+    const b2bCount = filteredVehicles?.filter((v) => v.status === "verkocht_b2b").length || 0;
+    const b2cCount = filteredVehicles?.filter((v) => 
       v.status === "verkocht_b2c" || v.status === "afgeleverd"
     ).length || 0;
 
@@ -102,7 +108,7 @@ export const salesDataService = {
       b2bCount,
       b2cCount,
       averageSalePrice,
-      vehicles: vehicles || [],
+      vehicles: filteredVehicles || [],
     };
   },
 
@@ -119,13 +125,16 @@ export const salesDataService = {
 
     const { data: vehicles, error } = await supabase
       .from("vehicles")
-      .select("status, selling_price, sold_date")
-      .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"])
-      .not("sold_date", "is", null)
-      .gte("sold_date", startDate.toISOString())
-      .lte("sold_date", endDate.toISOString());
+      .select("status, selling_price, sold_date, created_at")
+      .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"]);
 
     if (error) throw error;
+
+    // Filter by year - use sold_date if available, otherwise created_at
+    const yearVehicles = vehicles?.filter(v => {
+      const dateToCheck = v.sold_date ? new Date(v.sold_date) : new Date(v.created_at || startDate);
+      return dateToCheck >= startDate && dateToCheck <= endDate;
+    }) || [];
 
     const monthNames = [
       "Jan", "Feb", "Mrt", "Apr", "Mei", "Jun",
@@ -141,9 +150,9 @@ export const salesDataService = {
       revenue: 0,
     }));
 
-    vehicles?.forEach((vehicle) => {
-      const soldDate = new Date(vehicle.sold_date);
-      const month = soldDate.getMonth();
+    yearVehicles?.forEach((vehicle) => {
+      const dateToCheck = vehicle.sold_date ? new Date(vehicle.sold_date) : new Date(vehicle.created_at || startDate);
+      const month = dateToCheck.getMonth();
       
       if (vehicle.status === "verkocht_b2b") {
         monthlyData[month].b2b++;
