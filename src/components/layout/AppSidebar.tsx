@@ -121,6 +121,14 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/warranty")}>
+                  <Link to="/warranty" className="text-white hover:text-white hover:bg-gray-800">
+                    <ShieldIcon className="mr-2 h-4 w-4" />
+                    <span>Garantie</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -193,14 +201,6 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/warranty")}>
-                  <Link to="/warranty" className="text-white hover:text-white hover:bg-gray-800">
-                    <ShieldIcon className="mr-2 h-4 w-4" />
-                    <span>Garantie</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={isActive("/loan-cars")}>
                   <Link to="/loan-cars" className="text-white hover:text-white hover:bg-gray-800">
