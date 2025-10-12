@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +24,9 @@ import { SalesChart } from "@/components/reports/SalesChart";
 import { TopVehiclesChart } from "@/components/reports/TopVehiclesChart";
 import { ExactOnlineStatus } from "@/components/reports/ExactOnlineStatus";
 import { DataSourceIndicator } from "@/components/common/DataSourceIndicator";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { enhancedReportsService } from "@/services/enhancedReportsService";
 import { systemReportsService } from "@/services/systemReportsService";
 import { ReportPeriod, PerformanceData } from "@/types/reports";
@@ -54,6 +56,7 @@ interface MockPerformanceData extends PerformanceData {
 const Reports = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<string>("currentMonth");
   const [isUsingMockData, setIsUsingMockData] = useState(false);
+  const queryClient = useQueryClient();
   
   // Generate report period based on selection
   const reportPeriod: ReportPeriod = React.useMemo(() => {
@@ -226,6 +229,112 @@ const Reports = () => {
     refetchOnMount: true,
     refetchOnWindowFocus: false
   });
+
+  // Real-time updates for vehicles that affect reports
+  useEffect(() => {
+    console.log('📡 Setting up real-time listeners for reports dashboard...');
+    
+    const channel = supabase
+      .channel('reports-vehicle-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'vehicles'
+        },
+        (payload) => {
+          console.log('🔄 Vehicle update detected:', payload);
+          
+          const newVehicle = payload.new as any;
+          const oldVehicle = payload.old as any;
+          
+          // Check if it's a status change to sold
+          const statusChanged = oldVehicle.status !== newVehicle.status;
+          const isSoldStatus = ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(newVehicle.status);
+          
+          // Check if prices changed
+          const sellingPriceChanged = oldVehicle.selling_price !== newVehicle.selling_price;
+          const oldPurchasePrice = oldVehicle.details?.purchasePrice;
+          const newPurchasePrice = newVehicle.details?.purchasePrice;
+          const purchasePriceChanged = oldPurchasePrice !== newPurchasePrice;
+          
+          // If relevant changes occurred, update the dashboard
+          if ((statusChanged && isSoldStatus) || sellingPriceChanged || purchasePriceChanged) {
+            console.log('💰 Important financial change detected:', {
+              vehicle: `${newVehicle.brand} ${newVehicle.model}`,
+              statusChanged,
+              newStatus: newVehicle.status,
+              sellingPriceChanged,
+              oldSellingPrice: oldVehicle.selling_price,
+              newSellingPrice: newVehicle.selling_price,
+              purchasePriceChanged,
+              oldPurchasePrice,
+              newPurchasePrice
+            });
+            
+            // Show toast notification
+            if (statusChanged && isSoldStatus) {
+              toast.success(
+                `Verkoop geregistreerd: ${newVehicle.brand} ${newVehicle.model}`,
+                {
+                  description: `Status: ${newVehicle.status} • Verkoopprijs: €${newVehicle.selling_price?.toLocaleString() || 0}`
+                }
+              );
+            } else if (sellingPriceChanged) {
+              toast.info(
+                `Verkoopprijs aangepast: ${newVehicle.brand} ${newVehicle.model}`,
+                {
+                  description: `Van €${oldVehicle.selling_price?.toLocaleString() || 0} naar €${newVehicle.selling_price?.toLocaleString() || 0}`
+                }
+              );
+            } else if (purchasePriceChanged) {
+              toast.info(
+                `Inkoopprijs aangepast: ${newVehicle.brand} ${newVehicle.model}`,
+                {
+                  description: `Van €${oldPurchasePrice?.toLocaleString() || 0} naar €${newPurchasePrice?.toLocaleString() || 0}`
+                }
+              );
+            }
+            
+            // Invalidate all report queries to refresh the data
+            queryClient.invalidateQueries({ queryKey: ['reports'] });
+            queryClient.invalidateQueries({ queryKey: ['inventory-metrics'] });
+            console.log('✅ Reports data refreshed');
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'vehicles'
+        },
+        (payload) => {
+          const newVehicle = payload.new as any;
+          const isSoldStatus = ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(newVehicle.status);
+          
+          if (isSoldStatus) {
+            console.log('🆕 New sold vehicle added:', newVehicle);
+            toast.success(
+              `Nieuw verkocht voertuig: ${newVehicle.brand} ${newVehicle.model}`,
+              {
+                description: `Status: ${newVehicle.status}`
+              }
+            );
+            queryClient.invalidateQueries({ queryKey: ['reports'] });
+            queryClient.invalidateQueries({ queryKey: ['inventory-metrics'] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🔌 Cleaning up real-time listeners...');
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const handleDataSourceChange = (useMock: boolean) => {
     setIsUsingMockData(useMock);
