@@ -200,8 +200,10 @@ export class SupabaseInventoryService {
      };
 
      // Auto-update sales status when transport status changes to "aangekomen"
+     // BUT ONLY if the vehicle is not already sold (preserve sold status)
      let salesStatus = vehicle.salesStatus;
-     if (vehicle.transportStatus === 'aangekomen' && vehicle.salesStatus !== 'voorraad') {
+     if (vehicle.transportStatus === 'aangekomen' && 
+         !['voorraad', 'verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(vehicle.salesStatus)) {
        salesStatus = 'voorraad';
      }
 
