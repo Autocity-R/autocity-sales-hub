@@ -7,6 +7,9 @@ import { Building, Mail, Phone, MapPin, Pencil } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ContactForm } from "./ContactForm";
 import ContactEmailManager from "./ContactEmailManager";
+import { updateContact } from "@/services/customerService";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ContactDetailsPanelProps {
   contact: Contact;
@@ -21,14 +24,55 @@ const ContactDetailsPanel: React.FC<ContactDetailsPanelProps> = ({ contact, onUp
     onUpdate(updated);
   };
 
-  const handleEmailsChange = (emails: string[]) => {
-    const updatedContact = { ...contact, additionalEmails: emails };
-    onUpdate(updatedContact);
+  const handleEmailsChange = async (emails: string[]) => {
+    try {
+      const updatedContact = { ...contact, additionalEmails: emails };
+      await updateContact(updatedContact);
+      onUpdate(updatedContact);
+      toast.success("Extra emailadressen opgeslagen");
+    } catch (error) {
+      console.error("Error updating emails:", error);
+      toast.error("Fout bij opslaan van emailadressen");
+    }
   };
 
-  const handleSendCMR = (emails: string[]) => {
-    // This will be connected later when email service is ready
-    console.log("CMR versturen naar:", emails);
+  const handleSendCMR = async (emails: string[]) => {
+    try {
+      // Get the vehicle associated with this supplier
+      const { data: vehicles, error: vehicleError } = await supabase
+        .from('vehicles')
+        .select('id, brand, model, license_number')
+        .eq('supplier_id', contact.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (vehicleError) throw vehicleError;
+
+      // For now, we'll use the send-gmail edge function
+      // In a real implementation, you'd want to attach the CMR document
+      const { data, error } = await supabase.functions.invoke('send-gmail', {
+        body: {
+          to: emails,
+          subject: `CMR Document - ${contact.companyName || `${contact.firstName} ${contact.lastName}`}`,
+          content: `
+            Beste ${contact.firstName} ${contact.lastName},
+
+            Bijgevoegd vindt u het CMR document voor ${vehicles && vehicles.length > 0 ? `${vehicles[0].brand} ${vehicles[0].model} (${vehicles[0].license_number})` : 'het voertuig'}.
+
+            Met vriendelijke groet,
+            Auto City
+          `,
+          from: 'noreply@autocity.nl'
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success(`CMR document verstuurd naar ${emails.length} emailadres(sen)`);
+    } catch (error) {
+      console.error("Error sending CMR:", error);
+      toast.error("Fout bij versturen van CMR document");
+    }
   };
 
   return (
