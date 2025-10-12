@@ -102,8 +102,11 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
             value={editedVehicle.transportStatus} 
             onValueChange={(value: TransportStatus) => {
               handleChange('transportStatus', value);
-              // Automatically set vehicle to "voorraad" when transport status becomes "aangekomen"
-              if (value === 'aangekomen' && editedVehicle.salesStatus !== 'voorraad') {
+              // Preserve sold status when marking as arrived; only auto-set to voorraad if not sold/delivered
+              if (
+                value === 'aangekomen' &&
+                !['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(editedVehicle.salesStatus)
+              ) {
                 handleChange('salesStatus', 'voorraad');
               }
             }}
