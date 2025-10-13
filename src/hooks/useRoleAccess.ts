@@ -52,7 +52,7 @@ export const useRoleAccess = () => {
   };
 
   const hasWarrantyAccess = () => {
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper';
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper' || userRole === 'operationeel';
   };
 
   const hasLoanCarsAccess = () => {
