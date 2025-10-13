@@ -67,12 +67,13 @@ export class SupabaseInventoryService {
         throw error;
       }
 
-      // Extra filter: only vehicles where transportStatus is NOT 'onderweg'
+      // Filter vehicles that are online and not in transport
       const vehicles = data
         .map(this.mapSupabaseToVehicle)
         .filter(v => {
-          const transportStatus = (v as any).details?.transportStatus || v.transportStatus;
-          return transportStatus !== 'onderweg';
+          const isNotInTransport = v.transportStatus !== 'onderweg';
+          const isShowroomOnline = v.showroomOnline === true;
+          return isNotInTransport && isShowroomOnline;
         });
 
       return vehicles;
@@ -201,13 +202,27 @@ export class SupabaseInventoryService {
     // Preserve existing data from details
     const existingDetails = (existingVehicle.details as any) || {};
     
+    // Determine transport status
+    const transportStatus = vehicle.transportStatus || existingDetails.transportStatus || 'aangekomen';
+    const isInTransit = transportStatus === 'onderweg';
+    
+    // Force location and showroomOnline if in transit
+    const finalLocation = isInTransit ? 'onderweg' : vehicle.location;
+    const finalShowroomOnline = isInTransit ? false : (vehicle.showroomOnline ?? existingDetails.showroomOnline ?? false);
+    
+    // Auto-set status to voorraad when arrived and not sold/delivered
+    let finalStatus = vehicle.salesStatus;
+    if (transportStatus === 'aangekomen' && !['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(vehicle.salesStatus)) {
+      finalStatus = 'voorraad';
+    }
+    
     // Prepare details object with all extra fields (convert dates to ISO strings)
     // CRITICAL: Preserve existing purchasePrice if not provided in update
     const details = {
       notes: vehicle.notes || existingDetails.notes || null,
       workshopStatus: vehicle.workshopStatus || existingDetails.workshopStatus || 'wachten',
       paintStatus: vehicle.paintStatus || existingDetails.paintStatus || 'geen_behandeling', 
-      transportStatus: vehicle.transportStatus || existingDetails.transportStatus || 'onderweg',
+      transportStatus,
       bpmRequested: vehicle.bpmRequested ?? existingDetails.bpmRequested ?? false,
       bpmStarted: vehicle.bpmStarted ?? existingDetails.bpmStarted ?? false,
       damage: vehicle.damage || existingDetails.damage || { description: '', status: 'geen' },
@@ -215,7 +230,7 @@ export class SupabaseInventoryService {
       cmrDate: vehicle.cmrDate ? vehicle.cmrDate.toISOString() : (existingDetails.cmrDate || null),
       papersReceived: vehicle.papersReceived ?? existingDetails.papersReceived ?? false,
       papersDate: vehicle.papersDate ? vehicle.papersDate.toISOString() : (existingDetails.papersDate || null),
-      showroomOnline: vehicle.showroomOnline ?? existingDetails.showroomOnline ?? false,
+      showroomOnline: finalShowroomOnline,
       paymentStatus: vehicle.paymentStatus || existingDetails.paymentStatus || 'niet_betaald',
       // CRITICAL: Always preserve purchase price - use new value if provided, otherwise keep existing
       purchasePrice: vehicle.purchasePrice !== undefined && vehicle.purchasePrice !== null 
@@ -272,8 +287,8 @@ export class SupabaseInventoryService {
       selling_price: vehicle.sellingPrice !== undefined && vehicle.sellingPrice !== null
         ? vehicle.sellingPrice
         : existingVehicle.selling_price,
-      status: salesStatus,
-      location: vehicle.location,
+      status: finalStatus,
+      location: finalLocation,
       import_status: vehicle.importStatus,
       notes: vehicle.notes,
       details: details as any,
@@ -392,10 +407,10 @@ export class SupabaseInventoryService {
    */
   async markVehicleAsArrived(vehicleId: string): Promise<void> {
     try {
-      // First fetch current vehicle to get existing details
+      // First fetch current vehicle to get existing details and status
       const { data: existingVehicle, error: fetchError } = await supabase
         .from('vehicles')
-        .select('details')
+        .select('details, status')
         .eq('id', vehicleId)
         .single();
 
@@ -405,6 +420,12 @@ export class SupabaseInventoryService {
       }
 
       const existingDetails = (existingVehicle?.details as any) || {};
+      const currentStatus = existingVehicle?.status || 'voorraad';
+      
+      // Only set to voorraad if not already sold or delivered
+      const finalStatus = ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(currentStatus) 
+        ? currentStatus 
+        : 'voorraad';
       
       // Update details with arrived transport status
       const updatedDetails = {
@@ -416,7 +437,7 @@ export class SupabaseInventoryService {
         .from('vehicles')
         .update({ 
           location: 'showroom',
-          status: 'voorraad',
+          status: finalStatus,
           details: updatedDetails,
           updated_at: new Date().toISOString()
         })
@@ -427,7 +448,7 @@ export class SupabaseInventoryService {
         throw error;
       }
 
-      console.log(`Vehicle ${vehicleId} marked as arrived, status set to voorraad, location to showroom`);
+      console.log(`Vehicle ${vehicleId} marked as arrived, status: ${finalStatus}, location: showroom`);
     } catch (error) {
       console.error('Error marking vehicle as arrived:', error);
       throw error;
@@ -450,7 +471,9 @@ export class SupabaseInventoryService {
     const defaultLocation = isUnderweg ? 'onderweg' : (vehicleData.location || 'showroom');
     
      // Prepare details object with defaults (convert dates to ISO strings)
+     // CRITICAL: Store purchasePrice in details.purchasePrice
      const details = {
+       purchasePrice: vehicleData.purchasePrice || 0,
        notes: vehicleData.notes || null,
        workshopStatus: vehicleData.workshopStatus || 'wachten',
        paintStatus: vehicleData.paintStatus || 'geen_behandeling', 
@@ -462,11 +485,11 @@ export class SupabaseInventoryService {
        cmrDate: vehicleData.cmrDate ? vehicleData.cmrDate.toISOString() : null,
        papersReceived: vehicleData.papersReceived || false,
        papersDate: vehicleData.papersDate ? vehicleData.papersDate.toISOString() : null,
-       showroomOnline: vehicleData.showroomOnline || false,
+       showroomOnline: isUnderweg ? false : (vehicleData.showroomOnline || false),
        paymentStatus: vehicleData.paymentStatus || 'niet_betaald',
-         salespersonId: vehicleData.salespersonId || null,
-         salespersonName: vehicleData.salespersonName || null,
-         mainPhotoUrl: vehicleData.mainPhotoUrl || null,
+       salespersonId: vehicleData.salespersonId || null,
+       salespersonName: vehicleData.salespersonName || null,
+       mainPhotoUrl: vehicleData.mainPhotoUrl || null,
        photos: vehicleData.photos || []
      };
     
@@ -552,8 +575,8 @@ export class SupabaseInventoryService {
       mainPhotoUrl: details.mainPhotoUrl || null,
       photos: details.photos || [],
       
-      // Derived fields
-      arrived: supabaseVehicle.location !== 'onderweg'
+      // Derived fields - arrived based on transportStatus, not location
+      arrived: details.transportStatus === 'aangekomen'
     };
   }
 

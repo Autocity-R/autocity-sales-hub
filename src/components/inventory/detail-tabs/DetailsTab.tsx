@@ -311,7 +311,8 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
           <div className="flex items-center space-x-2">
             <Checkbox
               id="onInventory"
-              checked={editedVehicle.salesStatus === "voorraad"}
+              checked={editedVehicle.salesStatus === "voorraad" && editedVehicle.transportStatus === 'aangekomen'}
+              disabled={editedVehicle.transportStatus === 'onderweg'}
               onCheckedChange={(checked) => 
                 handleChange('salesStatus', checked ? "voorraad" : "verkocht_b2c")
               }
@@ -319,6 +320,9 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
             <Label htmlFor="onInventory" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
               Op Voorraad
             </Label>
+            {editedVehicle.transportStatus === 'onderweg' && (
+              <span className="text-xs text-muted-foreground ml-2">(eerst binnenmelden vanuit Transport menu)</span>
+            )}
           </div>
           
           {/* Salesperson Selection - Always visible for performance tracking */}
@@ -398,6 +402,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
             <Switch
               id="showroomOnline"
               checked={editedVehicle.showroomOnline}
+              disabled={editedVehicle.transportStatus === 'onderweg'}
               onCheckedChange={(checked) => 
                 handleChange('showroomOnline', checked)
               }
@@ -405,6 +410,9 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
             <Label htmlFor="showroomOnline" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
               Showroom online
             </Label>
+            {editedVehicle.transportStatus === 'onderweg' && (
+              <span className="text-xs text-muted-foreground ml-2">(eerst binnenmelden vanuit Transport menu)</span>
+            )}
           </div>
         </div>
         

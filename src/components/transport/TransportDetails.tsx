@@ -66,10 +66,14 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
   };
 
   const handleMarkAsArrived = () => {
+    const isCurrentlySold = ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(updatedVehicle.salesStatus);
+    
     onUpdate({
       ...updatedVehicle,
+      transportStatus: 'aangekomen',
+      location: 'showroom',
+      salesStatus: isCurrentlySold ? updatedVehicle.salesStatus : 'voorraad',
       arrived: true,
-      importStatus: "ingeschreven",
       notes
     });
   };
@@ -188,18 +192,17 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
               <TabsContent value="transport" className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="importStatus">Transport status</Label>
+                    <Label htmlFor="transportStatus">Transport status</Label>
                     <Select
-                      value={updatedVehicle.importStatus}
-                      onValueChange={(value: ImportStatus) => handleImportStatusChange(value)}
+                      value={updatedVehicle.transportStatus || 'onderweg'}
+                      onValueChange={(value) => setUpdatedVehicle({...updatedVehicle, transportStatus: value as any})}
                     >
-                      <SelectTrigger id="importStatus" className="mt-1">
+                      <SelectTrigger id="transportStatus" className="mt-1">
                         <SelectValue placeholder="Selecteer status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="niet_gestart">Niet ready</SelectItem>
-                        <SelectItem value="transport_geregeld">Opdracht gegeven</SelectItem>
                         <SelectItem value="onderweg">Onderweg</SelectItem>
+                        <SelectItem value="transport_geregeld">Transport Geregeld</SelectItem>
                         <SelectItem value="aangekomen">Aangekomen</SelectItem>
                       </SelectContent>
                     </Select>
