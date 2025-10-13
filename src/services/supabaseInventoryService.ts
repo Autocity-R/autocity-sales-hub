@@ -51,7 +51,7 @@ export class SupabaseInventoryService {
   }
 
   /**
-   * Get online vehicles (voorraad status and not in transport)
+   * Get online vehicles (voorraad status, location is showroom, and transport is arrived)
    */
   async getOnlineVehicles(): Promise<Vehicle[]> {
     try {
@@ -59,7 +59,7 @@ export class SupabaseInventoryService {
         .from('vehicles')
         .select('*')
         .eq('status', 'voorraad')
-        .neq('location', 'onderweg')
+        .eq('location', 'showroom')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -67,7 +67,15 @@ export class SupabaseInventoryService {
         throw error;
       }
 
-      return data.map(this.mapSupabaseToVehicle);
+      // Extra filter: only vehicles where transportStatus is NOT 'onderweg'
+      const vehicles = data
+        .map(this.mapSupabaseToVehicle)
+        .filter(v => {
+          const transportStatus = (v as any).details?.transportStatus || v.transportStatus;
+          return transportStatus !== 'onderweg';
+        });
+
+      return vehicles;
     } catch (error) {
       console.error('Error fetching online vehicles:', error);
       throw error;
@@ -380,14 +388,36 @@ export class SupabaseInventoryService {
   }
 
   /**
-   * Mark vehicle as arrived
+   * Mark vehicle as arrived - sets location to showroom, status to voorraad, and updates transport status
    */
   async markVehicleAsArrived(vehicleId: string): Promise<void> {
     try {
+      // First fetch current vehicle to get existing details
+      const { data: existingVehicle, error: fetchError } = await supabase
+        .from('vehicles')
+        .select('details')
+        .eq('id', vehicleId)
+        .single();
+
+      if (fetchError) {
+        console.error('Failed to fetch vehicle for arrival update:', fetchError);
+        throw fetchError;
+      }
+
+      const existingDetails = (existingVehicle?.details as any) || {};
+      
+      // Update details with arrived transport status
+      const updatedDetails = {
+        ...existingDetails,
+        transportStatus: 'aangekomen'
+      };
+
       const { error } = await supabase
         .from('vehicles')
         .update({ 
           location: 'showroom',
+          status: 'voorraad',
+          details: updatedDetails,
           updated_at: new Date().toISOString()
         })
         .eq('id', vehicleId);
@@ -397,7 +427,7 @@ export class SupabaseInventoryService {
         throw error;
       }
 
-      console.log(`Vehicle ${vehicleId} marked as arrived`);
+      console.log(`Vehicle ${vehicleId} marked as arrived, status set to voorraad, location to showroom`);
     } catch (error) {
       console.error('Error marking vehicle as arrived:', error);
       throw error;
