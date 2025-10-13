@@ -17,6 +17,7 @@ import { VehicleB2CTableHeader } from "./b2c-table/VehicleB2CTableHeader";
 import { VehicleB2CTableRow } from "./b2c-table/VehicleB2CTableRow";
 import { VehicleMobileCard } from "./VehicleMobileCard";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface VehicleB2CTableProps {
   vehicles: Vehicle[];
@@ -55,6 +56,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
   sortDirection
 }) => {
   const isMobile = useIsMobile();
+  const { hasPriceAccess } = useRoleAccess();
   const [deliveryConfirmOpen, setDeliveryConfirmOpen] = React.useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = React.useState<string | null>(null);
 
@@ -141,6 +143,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
             onSort={onSort}
             sortField={sortField}
             sortDirection={sortDirection}
+            hasPriceAccess={hasPriceAccess()}
           />
           <TableBody>
             {vehicles.length === 0 ? (
@@ -161,6 +164,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
                   handleChangeStatus={handleChangeStatus}
                   onDeliveryConfirm={handleDeliveryConfirm}
                   onOpenContractConfig={onOpenContractConfig}
+                  hasPriceAccess={hasPriceAccess()}
                 />
               ))
             )}

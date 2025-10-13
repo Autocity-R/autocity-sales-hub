@@ -24,6 +24,7 @@ import { ContactsTab } from "@/components/inventory/detail-tabs/ContactsTab";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useWeeklySalesTracking } from "@/hooks/useWeeklySalesTracking";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface VehicleDetailsProps {
   vehicle: Vehicle;
@@ -59,7 +60,9 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   // Always use the hook to fetch files for this vehicle
   const { vehicleFiles: hookVehicleFiles } = useVehicleFiles(vehicle);
   const { trackSale } = useWeeklySalesTracking();
+  const { hasInventoryEditAccess } = useRoleAccess();
   const filesData = hookVehicleFiles;
+  const isReadOnly = !hasInventoryEditAccess();
   
   // Debounce the edited vehicle to trigger auto-save
   const debouncedVehicle = useDebounce(editedVehicle, 1500); // 1.5 second delay
@@ -235,11 +238,13 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
           {/* Sticky footer */}
           <div className="sticky bottom-0 left-0 right-0 flex justify-end gap-2 p-4 border-t bg-background z-10">
             <Button type="button" variant="secondary" onClick={onClose}>
-              Annuleren
+              {isReadOnly ? 'Sluiten' : 'Annuleren'}
             </Button>
-            <Button type="submit" onClick={handleSave}>
-              Opslaan
-            </Button>
+            {!isReadOnly && (
+              <Button type="submit" onClick={handleSave}>
+                Opslaan
+              </Button>
+            )}
           </div>
         </div>
 

@@ -11,6 +11,7 @@ interface VehicleB2CTableHeaderProps {
   onSort: (field: string) => void;
   sortField: string | null;
   sortDirection: "asc" | "desc";
+  hasPriceAccess: boolean;
 }
 
 export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
@@ -19,7 +20,8 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
   toggleSelectAll,
   onSort,
   sortField,
-  sortDirection
+  sortDirection,
+  hasPriceAccess
 }) => {
   const renderSortIcon = (field: string) => {
     if (sortField !== field) return null;
@@ -71,12 +73,16 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
         <TableHead className="min-w-32">
           {renderSortableHeader("vin", "VIN")}
         </TableHead>
-        <TableHead className="min-w-28">
-          {renderSortableHeader("purchasePrice", "Inkoop prijs")}
-        </TableHead>
-        <TableHead className="min-w-28">
-          {renderSortableHeader("sellingPrice", "Verkoopprijs")}
-        </TableHead>
+        {hasPriceAccess && (
+          <>
+            <TableHead className="min-w-28">
+              {renderSortableHeader("purchasePrice", "Inkoop prijs")}
+            </TableHead>
+            <TableHead className="min-w-28">
+              {renderSortableHeader("sellingPrice", "Verkoopprijs")}
+            </TableHead>
+          </>
+        )}
         <TableHead className="min-w-24">
           {renderSortableHeader("customerName", "Klantnaam")}
         </TableHead>

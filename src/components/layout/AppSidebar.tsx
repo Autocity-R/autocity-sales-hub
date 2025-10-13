@@ -37,7 +37,19 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 export function AppSidebar() {
   const location = useLocation();
-  const { hasAnalyticsAccess, hasLeadsAccess, hasCustomersAccess, hasAIAgentsAccess, hasSettingsAccess } = useRoleAccess();
+  const { 
+    hasAnalyticsAccess, 
+    hasLeadsAccess, 
+    hasCustomersAccess, 
+    hasAIAgentsAccess, 
+    hasSettingsAccess,
+    hasTransportAccess,
+    hasWarrantyAccess,
+    hasLoanCarsAccess,
+    hasCalendarAccess,
+    canViewAllInventory,
+    canViewSoldInventoryOnly
+  } = useRoleAccess();
 
   const isActive = (path: string) => {
     if (path === "/") {
@@ -50,12 +62,19 @@ export function AppSidebar() {
     return paths.some((path) => location.pathname === path);
   };
 
-  const vehicleMenuItems = [
+  const allVehicleMenuItems = [
     { title: "Online", url: "/inventory/online", icon: ShoppingBagIcon },
     { title: "Verkocht B2B", url: "/inventory/b2b", icon: BoxIcon },
     { title: "Verkocht B2C", url: "/inventory/consumer", icon: UsersIcon },
     { title: "Afgeleverd", url: "/inventory/delivered", icon: Flag },
   ];
+
+  const operationalVehicleMenuItems = [
+    { title: "Verkocht B2B", url: "/inventory/b2b", icon: BoxIcon },
+    { title: "Verkocht B2C", url: "/inventory/consumer", icon: UsersIcon },
+  ];
+
+  const vehicleMenuItems = canViewAllInventory() ? allVehicleMenuItems : operationalVehicleMenuItems;
 
   const customerMenuItems = [
     { title: "Zakelijk", url: "/customers/b2b", icon: BoxIcon },
@@ -86,34 +105,52 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/inventory") && !getSubActive(["/inventory/b2b", "/inventory/online", "/inventory/consumer", "/inventory/delivered"])}>
-                  <Link to="/inventory" className="text-white hover:text-white hover:bg-gray-800">
-                    <CarIcon className="mr-2 h-4 w-4" />
-                    <span>Voorraad</span>
-                  </Link>
-                </SidebarMenuButton>
-                <SidebarMenuSub>
+              {canViewAllInventory() && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/inventory") && !getSubActive(["/inventory/b2b", "/inventory/online", "/inventory/consumer", "/inventory/delivered"])}>
+                    <Link to="/inventory" className="text-white hover:text-white hover:bg-gray-800">
+                      <CarIcon className="mr-2 h-4 w-4" />
+                      <span>Voorraad</span>
+                    </Link>
+                  </SidebarMenuButton>
+                  <SidebarMenuSub>
+                    {vehicleMenuItems.map((item) => (
+                      <SidebarMenuSubItem key={item.title}>
+                        <SidebarMenuSubButton asChild isActive={isActive(item.url)}>
+                          <Link to={item.url} className="text-white hover:text-white hover:bg-gray-800">
+                            <item.icon className="mr-2 h-4 w-4" />
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                </SidebarMenuItem>
+              )}
+              {canViewSoldInventoryOnly() && (
+                <>
                   {vehicleMenuItems.map((item) => (
-                    <SidebarMenuSubItem key={item.title}>
-                      <SidebarMenuSubButton asChild isActive={isActive(item.url)}>
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild isActive={isActive(item.url)}>
                         <Link to={item.url} className="text-white hover:text-white hover:bg-gray-800">
                           <item.icon className="mr-2 h-4 w-4" />
                           <span>{item.title}</span>
                         </Link>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
                   ))}
-                </SidebarMenuSub>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/transport")}>
-                  <Link to="/transport" className="text-white hover:text-white hover:bg-gray-800">
-                    <TruckIcon className="mr-2 h-4 w-4" />
-                    <span>Transport</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+                </>
+              )}
+              {hasTransportAccess() && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/transport")}>
+                    <Link to="/transport" className="text-white hover:text-white hover:bg-gray-800">
+                      <TruckIcon className="mr-2 h-4 w-4" />
+                      <span>Transport</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={isActive("/tasks")}>
                   <Link to="/tasks" className="text-white hover:text-white hover:bg-gray-800">
@@ -122,14 +159,16 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/warranty")}>
-                  <Link to="/warranty" className="text-white hover:text-white hover:bg-gray-800">
-                    <ShieldIcon className="mr-2 h-4 w-4" />
-                    <span>Garantie</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {hasWarrantyAccess() && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/warranty")}>
+                    <Link to="/warranty" className="text-white hover:text-white hover:bg-gray-800">
+                      <ShieldIcon className="mr-2 h-4 w-4" />
+                      <span>Garantie</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -223,22 +262,26 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/loan-cars")}>
-                  <Link to="/loan-cars" className="text-white hover:text-white hover:bg-gray-800">
-                    <CarIcon className="mr-2 h-4 w-4" />
-                    <span>Leen auto beheer</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/calendar")}>
-                  <Link to="/calendar" className="text-white hover:text-white hover:bg-gray-800">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    <span>Agenda</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {hasLoanCarsAccess() && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/loan-cars")}>
+                    <Link to="/loan-cars" className="text-white hover:text-white hover:bg-gray-800">
+                      <CarIcon className="mr-2 h-4 w-4" />
+                      <span>Leen auto beheer</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {hasCalendarAccess() && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/calendar")}>
+                    <Link to="/calendar" className="text-white hover:text-white hover:bg-gray-800">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      <span>Agenda</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -43,12 +43,16 @@ function App() {
         } />
         <Route path="/transport" element={
           <ProtectedRoute>
-            <Transport />
+            <RoleProtectedRoute requiredAccess="transport" fallbackPath="/">
+              <Transport />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } />
         <Route path="/inventory" element={
           <ProtectedRoute>
-            <Inventory />
+            <RoleProtectedRoute requiredAccess="inventory" fallbackPath="/">
+              <Inventory />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } />
         <Route path="/inventory/b2b" element={
@@ -68,17 +72,23 @@ function App() {
         } />
         <Route path="/inventory/delivered" element={
           <ProtectedRoute>
-            <InventoryDelivered />
+            <RoleProtectedRoute requiredAccess="inventory" fallbackPath="/">
+              <InventoryDelivered />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } />
         <Route path="/inventory/online" element={
           <ProtectedRoute>
-            <InventoryOnline />
+            <RoleProtectedRoute requiredAccess="inventory" fallbackPath="/">
+              <InventoryOnline />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } />
         <Route path="/loan-cars" element={
           <ProtectedRoute>
-            <LoanCars />
+            <RoleProtectedRoute requiredAccess="loan-cars" fallbackPath="/">
+              <LoanCars />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } />
         <Route path="/ai-agents" element={
@@ -93,7 +103,9 @@ function App() {
         } />
         <Route path="/calendar" element={
           <ProtectedRoute>
-            <Calendar />
+            <RoleProtectedRoute requiredAccess="calendar" fallbackPath="/">
+              <Calendar />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } />
         <Route path="/tasks" element={
@@ -142,7 +154,9 @@ function App() {
         } />
         <Route path="/warranty" element={
           <ProtectedRoute>
-            <Warranty />
+            <RoleProtectedRoute requiredAccess="warranty" fallbackPath="/">
+              <Warranty />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } />
         <Route path="/settings" element={

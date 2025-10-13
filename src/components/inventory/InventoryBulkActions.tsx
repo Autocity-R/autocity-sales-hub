@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { ArrowRight, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BulkActionDialog } from "./BulkActionDialog";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface InventoryBulkActionsProps {
   selectedVehicles: string[];
@@ -10,6 +11,11 @@ interface InventoryBulkActionsProps {
 
 export const InventoryBulkActions = ({ selectedVehicles, onBulkAction }: InventoryBulkActionsProps) => {
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const { hasInventoryEditAccess } = useRoleAccess();
+
+  if (!hasInventoryEditAccess()) {
+    return null;
+  }
 
   return (
     <>

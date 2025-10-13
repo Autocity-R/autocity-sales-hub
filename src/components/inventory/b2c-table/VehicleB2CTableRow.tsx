@@ -17,6 +17,7 @@ interface VehicleB2CTableRowProps {
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   onDeliveryConfirm: (vehicleId: string) => void;
   onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c") => void;
+  hasPriceAccess: boolean;
 }
 
 const renderImportStatusBadge = (status: ImportStatus | undefined) => {
@@ -74,7 +75,8 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
   handleSendEmail,
   handleChangeStatus,
   onDeliveryConfirm,
-  onOpenContractConfig
+  onOpenContractConfig,
+  hasPriceAccess
 }) => {
   const formatPrice = (price: number | undefined) => {
     if (!price) return "€ -";
@@ -128,12 +130,16 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
       <TableCell className="align-middle truncate max-w-32">
         {vehicle.vin}
       </TableCell>
-      <TableCell className="align-middle">
-        {formatPrice(vehicle.purchasePrice)}
-      </TableCell>
-      <TableCell className="align-middle">
-        {formatPrice(vehicle.sellingPrice)}
-      </TableCell>
+      {hasPriceAccess && (
+        <>
+          <TableCell className="align-middle">
+            {formatPrice(vehicle.purchasePrice)}
+          </TableCell>
+          <TableCell className="align-middle">
+            {formatPrice(vehicle.sellingPrice)}
+          </TableCell>
+        </>
+      )}
       <TableCell className="align-middle">
         {vehicle.customerName || "Onbekend"}
       </TableCell>

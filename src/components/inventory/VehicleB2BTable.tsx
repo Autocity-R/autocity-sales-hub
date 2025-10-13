@@ -45,6 +45,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { EmailConfirmDialog } from "@/components/ui/email-confirm-dialog";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface VehicleB2BTableProps {
   vehicles: Vehicle[];
@@ -111,6 +112,7 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
   sortField,
   sortDirection
 }) => {
+  const { hasPriceAccess } = useRoleAccess();
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   const [selectedVehicleForDelivery, setSelectedVehicleForDelivery] = useState<string | null>(null);
   const [emailConfirmOpen, setEmailConfirmOpen] = useState(false);
@@ -197,12 +199,16 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
               <TableHead className="min-w-32">
                 {renderSortableHeader("vin", "VIN")}
               </TableHead>
-              <TableHead className="min-w-28">
-                {renderSortableHeader("purchasePrice", "Inkoop prijs")}
-              </TableHead>
-              <TableHead className="min-w-32">
-                {renderSortableHeader("sellingPrice", "Verkoopprijs")}
-              </TableHead>
+              {hasPriceAccess() && (
+                <>
+                  <TableHead className="min-w-28">
+                    {renderSortableHeader("purchasePrice", "Inkoop prijs")}
+                  </TableHead>
+                  <TableHead className="min-w-32">
+                    {renderSortableHeader("sellingPrice", "Verkoopprijs")}
+                  </TableHead>
+                </>
+              )}
               <TableHead className="min-w-24">
                 {renderSortableHeader("customerName", "Klant")}
               </TableHead>
@@ -268,12 +274,16 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
               <TableHead className="min-w-32">
                 {renderSortableHeader("vin", "VIN")}
               </TableHead>
-              <TableHead className="min-w-28">
-                {renderSortableHeader("purchasePrice", "Inkoop prijs")}
-              </TableHead>
-              <TableHead className="min-w-32">
-                {renderSortableHeader("sellingPrice", "Verkoopprijs")}
-              </TableHead>
+              {hasPriceAccess() && (
+                <>
+                  <TableHead className="min-w-28">
+                    {renderSortableHeader("purchasePrice", "Inkoop prijs")}
+                  </TableHead>
+                  <TableHead className="min-w-32">
+                    {renderSortableHeader("sellingPrice", "Verkoopprijs")}
+                  </TableHead>
+                </>
+              )}
               <TableHead className="min-w-24">
                 {renderSortableHeader("customerName", "Klant")}
               </TableHead>
@@ -329,16 +339,20 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                 <TableCell>{vehicle.mileage ? `${vehicle.mileage.toLocaleString('nl-NL')} km` : '-'}</TableCell>
                 <TableCell>{vehicle.licenseNumber || '-'}</TableCell>
                 <TableCell className="truncate max-w-32">{vehicle.vin || '-'}</TableCell>
-                <TableCell className="font-medium">
-                  {vehicle.purchasePrice ? `€ ${vehicle.purchasePrice.toLocaleString('nl-NL')}` : '-'}
-                </TableCell>
-                <TableCell>
-                  {vehicle.sellingPrice ? (
-                    <span className="font-medium">€ {vehicle.sellingPrice.toLocaleString('nl-NL')}</span>
-                  ) : (
-                    <span className="text-muted-foreground">Niet ingesteld</span>
-                  )}
-                </TableCell>
+                {hasPriceAccess() && (
+                  <>
+                    <TableCell className="font-medium">
+                      {vehicle.purchasePrice ? `€ ${vehicle.purchasePrice.toLocaleString('nl-NL')}` : '-'}
+                    </TableCell>
+                    <TableCell>
+                      {vehicle.sellingPrice ? (
+                        <span className="font-medium">€ {vehicle.sellingPrice.toLocaleString('nl-NL')}</span>
+                      ) : (
+                        <span className="text-muted-foreground">Niet ingesteld</span>
+                      )}
+                    </TableCell>
+                  </>
+                )}
                 <TableCell>
                   {vehicle.customerName ? (
                     <div className="flex items-center space-x-1">

@@ -40,7 +40,35 @@ export const useRoleAccess = () => {
   };
 
   const isOperationalUser = () => {
-    return userRole === 'user';
+    return userRole === 'operationeel';
+  };
+
+  const hasInventoryEditAccess = () => {
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper';
+  };
+
+  const hasTransportAccess = () => {
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper';
+  };
+
+  const hasWarrantyAccess = () => {
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper';
+  };
+
+  const hasLoanCarsAccess = () => {
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper';
+  };
+
+  const hasCalendarAccess = () => {
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper';
+  };
+
+  const canViewAllInventory = () => {
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper';
+  };
+
+  const canViewSoldInventoryOnly = () => {
+    return userRole === 'operationeel';
   };
 
   return {
@@ -54,6 +82,13 @@ export const useRoleAccess = () => {
     hasTaskManagementAccess,
     canAssignTasks,
     isOperationalUser,
+    hasInventoryEditAccess,
+    hasTransportAccess,
+    hasWarrantyAccess,
+    hasLoanCarsAccess,
+    hasCalendarAccess,
+    canViewAllInventory,
+    canViewSoldInventoryOnly,
     userRole,
     isAdmin
   };
