@@ -136,18 +136,19 @@ export const SalespersonDetailDialog: React.FC<SalespersonDetailDialogProps> = (
             </TableHeader>
             <TableBody>
               {sortedVehicles.map((vehicle) => {
+                const soldDate = vehicle.sold_date ? new Date(vehicle.sold_date) : null;
                 const marginPercentage = vehicle.selling_price > 0 
-                  ? (vehicle.margin / vehicle.selling_price) * 100 
+                  ? (vehicle.margin / vehicle.selling_price) * 100
                   : 0;
                 
                 return (
                   <TableRow key={vehicle.id}>
                     <TableCell className="font-medium">
-                      {new Date(vehicle.sold_date).toLocaleDateString('nl-NL', {
+                      {soldDate ? soldDate.toLocaleDateString('nl-NL', {
                         day: '2-digit',
                         month: 'short',
                         year: 'numeric'
-                      })}
+                      }) : 'Geen datum'}
                     </TableCell>
                     <TableCell>
                       <div className="font-medium">{vehicle.brand}</div>

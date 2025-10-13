@@ -430,7 +430,7 @@ export const SalespersonPerformance: React.FC = () => {
                                 Marge: {formatCurrency(vehicle.margin)}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {new Date(vehicle.sold_date).toLocaleDateString('nl-NL')}
+                                {vehicle.sold_date ? new Date(vehicle.sold_date).toLocaleDateString('nl-NL') : 'Geen datum'}
                               </div>
                             </div>
                           ))}

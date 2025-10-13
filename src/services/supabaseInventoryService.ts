@@ -240,6 +240,14 @@ export class SupabaseInventoryService {
        salesStatus = 'voorraad';
      }
 
+     // Determine if we need to set sold_date
+     let soldDate = existingVehicle.sold_date;
+     // If status is changing to a sold status and there's no sold_date yet, set it
+     if (['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(salesStatus) && !soldDate) {
+       soldDate = new Date().toISOString();
+       console.log(`[UPDATE_VEHICLE] Setting sold_date for vehicle ${vehicle.id}`);
+     }
+
     // Prepare email reminder settings
     const emailReminderSettings = (vehicle as any).emailReminderSettings || {};
     
@@ -262,6 +270,7 @@ export class SupabaseInventoryService {
       notes: vehicle.notes,
       details: details as any,
       email_reminder_settings: emailReminderSettings as any,
+      sold_date: soldDate,
       updated_at: new Date().toISOString()
     };
 
@@ -309,12 +318,28 @@ export class SupabaseInventoryService {
    */
   async updateVehicleStatus(vehicleId: string, status: string): Promise<void> {
     try {
+      // First get current vehicle to check if sold_date is already set
+      const { data: currentVehicle } = await supabase
+        .from('vehicles')
+        .select('sold_date')
+        .eq('id', vehicleId)
+        .single();
+
+      const updateData: any = {
+        status,
+        updated_at: new Date().toISOString()
+      };
+
+      // Automatically set sold_date when status changes to sold status
+      // Only if sold_date is not already set
+      if (['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(status) && !currentVehicle?.sold_date) {
+        updateData.sold_date = new Date().toISOString();
+        console.log(`Setting sold_date for vehicle ${vehicleId} to ${updateData.sold_date}`);
+      }
+
       const { error } = await supabase
         .from('vehicles')
-        .update({ 
-          status,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', vehicleId);
 
       if (error) {
