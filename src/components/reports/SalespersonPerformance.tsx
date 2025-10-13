@@ -125,7 +125,7 @@ export const SalespersonPerformance: React.FC = () => {
         const salesperson = salespersonMap.get(sellerId)!;
 
         const sellingPrice = (vehicle as any).selling_price || 0;
-        const purchasePrice = vDetails?.purchase_price || 0;
+        const purchasePrice = vDetails?.purchasePrice || 0;
         const margin = sellingPrice - purchasePrice;
 
         salesperson.totalSales += 1;
