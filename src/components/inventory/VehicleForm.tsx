@@ -205,7 +205,19 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
             <Label>Transport Status</Label>
             <Select 
               value={formData.transportStatus} 
-              onValueChange={(value: TransportStatus) => handleChange('transportStatus', value)}
+              onValueChange={(value: TransportStatus) => {
+                handleChange('transportStatus', value);
+                
+                // Auto-update related fields when transport status changes
+                if (value === 'onderweg') {
+                  handleChange('location', 'onderweg');
+                  handleChange('salesStatus', 'in_transit');
+                  handleChange('showroomOnline', false);
+                } else if (value === 'aangekomen') {
+                  handleChange('location', 'showroom');
+                  handleChange('salesStatus', 'voorraad');
+                }
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecteer transport status" />
@@ -262,6 +274,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
             <Select 
               value={formData.location} 
               onValueChange={(value: LocationStatus) => handleChange('location', value)}
+              disabled={formData.transportStatus === 'onderweg'}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecteer locatie" />
@@ -277,6 +290,11 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
                 <SelectItem value="oud_beijerland">Oud Beijerland</SelectItem>
               </SelectContent>
             </Select>
+            {formData.transportStatus === 'onderweg' && (
+              <p className="text-xs text-muted-foreground">
+                Locatie wordt automatisch ingesteld op "onderweg" tijdens transport
+              </p>
+            )}
           </div>
           
           <div className="space-y-2">
@@ -284,6 +302,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
             <Select 
               value={formData.salesStatus} 
               onValueChange={(value: SalesStatus) => handleChange('salesStatus', value)}
+              disabled={formData.transportStatus === 'onderweg'}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecteer status" />
@@ -295,6 +314,11 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
                 <SelectItem value="afgeleverd">Afgeleverd</SelectItem>
               </SelectContent>
             </Select>
+            {formData.transportStatus === 'onderweg' && (
+              <p className="text-xs text-muted-foreground">
+                Verkoopstatus kan pas worden ingesteld nadat het voertuig is aangekomen
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -353,11 +377,22 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
               <Switch
                 id="showroomOnline"
                 checked={formData.showroomOnline}
+                disabled={formData.transportStatus === 'onderweg'}
                 onCheckedChange={(checked) => 
                   handleChange('showroomOnline', checked)
                 }
               />
-              <Label htmlFor="showroomOnline">Showroom online</Label>
+              <Label 
+                htmlFor="showroomOnline"
+                className={formData.transportStatus === 'onderweg' ? 'text-muted-foreground' : ''}
+              >
+                Showroom online
+                {formData.transportStatus === 'onderweg' && (
+                  <span className="text-xs block">
+                    (Alleen beschikbaar na aankomst)
+                  </span>
+                )}
+              </Label>
             </div>
           </div>
           

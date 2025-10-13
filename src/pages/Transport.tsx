@@ -123,13 +123,15 @@ const Transport = () => {
     setSelectedVehicle(null); // Close details after update
   };
 
-  // Handle vehicle arrival
+  // Handle vehicle arrival - mark as arrived and set status to voorraad
   const handleVehicleArrival = (vehicleId: string) => {
     const vehicle = vehicles.find(v => v.id === vehicleId);
     if (vehicle) {
       updateMutation.mutate({ 
         ...vehicle, 
         arrived: true, 
+        location: 'showroom',
+        salesStatus: 'voorraad',
         importStatus: "aangekomen" as ImportStatus,
         transportStatus: "aangekomen" as const
       });

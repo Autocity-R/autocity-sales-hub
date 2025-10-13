@@ -440,12 +440,21 @@ export class SupabaseInventoryService {
   async createVehicle(vehicleData: Partial<Vehicle>): Promise<Vehicle> {
     console.log('Creating vehicle:', vehicleData);
     
+    // Determine transport status - default to 'onderweg' if not specified
+    const transportStatus = vehicleData.transportStatus || 'onderweg';
+    const isUnderweg = transportStatus === 'onderweg';
+    
+    // CRITICAL: If vehicle is onderweg, status CANNOT be 'voorraad' and location CANNOT be 'showroom'
+    // Only set voorraad and showroom when vehicle has arrived (transportStatus = 'aangekomen')
+    const defaultStatus = isUnderweg ? 'in_transit' : (vehicleData.salesStatus || 'voorraad');
+    const defaultLocation = isUnderweg ? 'onderweg' : (vehicleData.location || 'showroom');
+    
      // Prepare details object with defaults (convert dates to ISO strings)
      const details = {
        notes: vehicleData.notes || null,
        workshopStatus: vehicleData.workshopStatus || 'wachten',
        paintStatus: vehicleData.paintStatus || 'geen_behandeling', 
-       transportStatus: vehicleData.transportStatus || 'onderweg',
+       transportStatus: transportStatus,
        bpmRequested: vehicleData.bpmRequested || false,
        bpmStarted: vehicleData.bpmStarted || false,
        damage: vehicleData.damage || { description: '', status: 'geen' },
@@ -473,8 +482,8 @@ export class SupabaseInventoryService {
           vin: vehicleData.vin,
           mileage: vehicleData.mileage,
           selling_price: vehicleData.sellingPrice,
-          status: vehicleData.salesStatus || 'voorraad',
-          location: vehicleData.location || 'showroom',
+          status: defaultStatus,
+          location: defaultLocation,
            customer_id: vehicleData.customerId,
            supplier_id: vehicleData.supplierId,
            import_status: vehicleData.importStatus || 'niet_gestart',
