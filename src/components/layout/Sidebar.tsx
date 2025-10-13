@@ -200,16 +200,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             ADMINISTRATIE
           </h2>
           <div className="space-y-1">
-            <Link to="/reports">
-              <Button
-                variant={isActive("/reports") ? "default" : "ghost"}
-                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <BarChart3 className="mr-2 h-4 w-4" />
-                Rapportages
-              </Button>
-            </Link>
+            <div className="space-y-1">
+              <Link to="/reports">
+                <Button
+                  variant={isActive("/reports") && !isActive("/reports/tasks") ? "default" : "ghost"}
+                  className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+                  size="sm"
+                >
+                  <BarChart3 className="mr-2 h-4 w-4" />
+                  Verkoop Analytics
+                </Button>
+              </Link>
+              <Link to="/reports/tasks">
+                <Button
+                  variant={isActive("/reports/tasks") ? "default" : "ghost"}
+                  className="w-full justify-start text-white hover:text-white hover:bg-gray-800 pl-8"
+                  size="sm"
+                >
+                  <ClipboardList className="mr-2 h-4 w-4" />
+                  Taken Analytics
+                </Button>
+              </Link>
+            </div>
             <Link to="/ai-agents">
               <Button
                 variant={isActive("/ai-agents") ? "default" : "ghost"}

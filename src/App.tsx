@@ -12,6 +12,7 @@ import AIAgents from "@/pages/AIAgents";
 import Leads from "@/pages/Leads";
 import Calendar from "@/pages/Calendar";
 import TaskManagement from "@/pages/TaskManagement";
+import TasksAnalytics from "@/pages/TasksAnalytics";
 import Customers from "@/pages/Customers";
 import CustomerDetail from "@/pages/CustomerDetail";
 import Reports from "@/pages/Reports";
@@ -127,6 +128,11 @@ function App() {
         <Route path="/reports" element={
           <ProtectedRoute>
             <Reports />
+          </ProtectedRoute>
+        } />
+        <Route path="/reports/tasks" element={
+          <ProtectedRoute>
+            <TasksAnalytics />
           </ProtectedRoute>
         } />
         <Route path="/warranty" element={

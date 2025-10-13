@@ -15,7 +15,8 @@ import {
   ShieldIcon,
   Flag,
   Bot,
-  ClipboardList
+  ClipboardList,
+  ChevronRight
 } from "lucide-react";
 import {
   Sidebar,
@@ -182,14 +183,35 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {hasReportsAccess() && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/reports")}>
-                    <Link to="/reports" className="text-white hover:text-white hover:bg-gray-800">
-                      <BarChart3 className="mr-2 h-4 w-4" />
-                      <span>Rapportages</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                <Collapsible defaultOpen={isActive("/reports")} className="group/collapsible">
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton className="text-white hover:text-white hover:bg-gray-800">
+                        <BarChart3 className="mr-2 h-4 w-4" />
+                        <span>Rapportages</span>
+                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        <SidebarMenuSubItem>
+                          <SidebarMenuSubButton asChild isActive={location.pathname === "/reports"}>
+                            <Link to="/reports" className="text-white hover:text-white hover:bg-gray-800">
+                              <span>Verkoop Analytics</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                        <SidebarMenuSubItem>
+                          <SidebarMenuSubButton asChild isActive={location.pathname === "/reports/tasks"}>
+                            <Link to="/reports/tasks" className="text-white hover:text-white hover:bg-gray-800">
+                              <span>Taken Analytics</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
               )}
               {hasAIAgentsAccess() && (
                 <SidebarMenuItem>
