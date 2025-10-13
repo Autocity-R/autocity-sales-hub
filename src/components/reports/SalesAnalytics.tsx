@@ -254,7 +254,9 @@ export const SalesAnalytics = () => {
                           {formatCurrency(vehicle.selling_price || 0)}
                         </td>
                         <td className="p-2 text-right text-sm text-muted-foreground">
-                          {new Date(vehicle.sold_date).toLocaleDateString("nl-NL")}
+                          {vehicle.sold_date 
+                            ? new Date(vehicle.sold_date).toLocaleDateString("nl-NL")
+                            : "Geen datum"}
                         </td>
                       </tr>
                     ))}
