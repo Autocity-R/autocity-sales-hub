@@ -6,7 +6,7 @@ export interface UserProfile {
   email: string;
   first_name: string | null;
   last_name: string | null;
-  role: 'admin' | 'owner' | 'manager' | 'verkoper' | 'operationeel' | 'user';
+  role: 'admin' | 'owner' | 'manager' | 'verkoper' | 'operationeel' | 'user' | null;
   company: string | null;
   created_at: string;
   updated_at: string;
@@ -16,7 +16,12 @@ export const getAllUsers = async (): Promise<UserProfile[]> => {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select(`
+        *,
+        user_roles (
+          role
+        )
+      `)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -24,7 +29,19 @@ export const getAllUsers = async (): Promise<UserProfile[]> => {
       throw error;
     }
 
-    return (data || []) as UserProfile[];
+    // Transform data to flatten user_roles
+    const users = (data || []).map((user: any) => ({
+      id: user.id,
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      role: user.user_roles?.[0]?.role || null,
+      company: user.company,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+    }));
+
+    return users as UserProfile[];
   } catch (error) {
     console.error("Failed to fetch users:", error);
     throw error;
