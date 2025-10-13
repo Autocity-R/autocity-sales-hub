@@ -14,28 +14,36 @@ export interface UserProfile {
 
 export const getAllUsers = async (): Promise<UserProfile[]> => {
   try {
-    const { data, error } = await supabase
+    // Query 1: Haal alle profiles op
+    const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select(`
-        *,
-        user_roles (
-          role
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching users:', error);
-      throw error;
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError);
+      throw profilesError;
     }
 
-    // Transform data to flatten user_roles
-    const users = (data || []).map((user: any) => ({
+    // Query 2: Haal alle rollen op
+    const { data: roles, error: rolesError } = await supabase
+      .from('user_roles')
+      .select('user_id, role');
+
+    if (rolesError) {
+      console.error('Error fetching roles:', rolesError);
+      throw rolesError;
+    }
+
+    // Combineer de data met een Map voor efficiënte lookup
+    const roleMap = new Map(roles?.map(r => [r.user_id, r.role]) || []);
+    
+    const users = (profiles || []).map((user: any) => ({
       id: user.id,
       email: user.email,
       first_name: user.first_name,
       last_name: user.last_name,
-      role: user.user_roles?.[0]?.role || null,
+      role: roleMap.get(user.id) || null,
       company: user.company,
       created_at: user.created_at,
       updated_at: user.updated_at,
