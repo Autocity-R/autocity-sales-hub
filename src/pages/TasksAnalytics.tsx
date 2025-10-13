@@ -5,8 +5,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskPerformanceOverview } from "@/components/reports/TaskPerformanceOverview";
 import { TaskEmployeePerformance } from "@/components/reports/TaskEmployeePerformance";
 import { ClipboardList } from "lucide-react";
+import { useTasksRealtime } from "@/hooks/useTasksRealtime";
 
 const TasksAnalytics = () => {
+  // Enable real-time updates for tasks
+  useTasksRealtime();
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
