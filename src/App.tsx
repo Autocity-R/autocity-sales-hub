@@ -115,27 +115,37 @@ function App() {
         } />
         <Route path="/customers" element={
           <ProtectedRoute>
-            <Customers />
+            <RoleProtectedRoute requiredAccess="customers" fallbackPath="/">
+              <Customers />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } />
         <Route path="/customers/b2b" element={
           <ProtectedRoute>
-            <Customers />
+            <RoleProtectedRoute requiredAccess="customers" fallbackPath="/">
+              <Customers />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } />
         <Route path="/customers/b2c" element={
           <ProtectedRoute>
-            <Customers />
+            <RoleProtectedRoute requiredAccess="customers" fallbackPath="/">
+              <Customers />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } />
         <Route path="/suppliers" element={
           <ProtectedRoute>
-            <Customers />
+            <RoleProtectedRoute requiredAccess="customers" fallbackPath="/">
+              <Customers />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } />
         <Route path="/customers/:id" element={
           <ProtectedRoute>
-            <CustomerDetail />
+            <RoleProtectedRoute requiredAccess="customers" fallbackPath="/">
+              <CustomerDetail />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } />
         <Route path="/reports" element={
