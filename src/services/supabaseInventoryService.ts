@@ -465,9 +465,10 @@ export class SupabaseInventoryService {
     const transportStatus = vehicleData.transportStatus || 'onderweg';
     const isUnderweg = transportStatus === 'onderweg';
     
-    // CRITICAL: If vehicle is onderweg, status CANNOT be 'voorraad' and location CANNOT be 'showroom'
-    // Only set voorraad and showroom when vehicle has arrived (transportStatus = 'aangekomen')
-    const defaultStatus = isUnderweg ? 'in_transit' : (vehicleData.salesStatus || 'voorraad');
+    // CRITICAL: If vehicle is onderweg, force location='onderweg' and showroomOnline=false
+    // Status should always be a valid sales status (voorraad, verkocht_b2b, verkocht_b2c, afgeleverd)
+    // NOT 'in_transit' - transport status is tracked via location and details.transportStatus
+    const defaultStatus = vehicleData.salesStatus || 'voorraad';
     const defaultLocation = isUnderweg ? 'onderweg' : (vehicleData.location || 'showroom');
     
      // Prepare details object with defaults (convert dates to ISO strings)
