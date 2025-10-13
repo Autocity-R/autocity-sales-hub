@@ -37,7 +37,7 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 export function AppSidebar() {
   const location = useLocation();
-  const { hasReportsAccess, hasLeadsAccess, hasCustomersAccess, hasAIAgentsAccess, hasSettingsAccess } = useRoleAccess();
+  const { hasAnalyticsAccess, hasLeadsAccess, hasCustomersAccess, hasAIAgentsAccess, hasSettingsAccess } = useRoleAccess();
 
   const isActive = (path: string) => {
     if (path === "/") {
@@ -182,7 +182,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {hasReportsAccess() && (
+              {hasAnalyticsAccess() && (
                 <Collapsible defaultOpen={isActive("/reports")} className="group/collapsible">
                   <SidebarMenuItem>
                     <CollapsibleTrigger asChild>

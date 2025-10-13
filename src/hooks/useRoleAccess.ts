@@ -23,6 +23,10 @@ export const useRoleAccess = () => {
     return isAdmin;
   };
 
+  const hasAnalyticsAccess = () => {
+    return isAdmin || userRole === 'manager' || userRole === 'owner';
+  };
+
   const hasPriceAccess = () => {
     return isAdmin || userRole === 'manager' || userRole === 'verkoper';
   };
@@ -45,6 +49,7 @@ export const useRoleAccess = () => {
     hasCustomersAccess,
     hasAIAgentsAccess,
     hasSettingsAccess,
+    hasAnalyticsAccess,
     hasPriceAccess,
     hasTaskManagementAccess,
     canAssignTasks,

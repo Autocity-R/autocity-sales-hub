@@ -4,7 +4,7 @@ import { Navigate } from "react-router-dom";
 
 interface RoleProtectedRouteProps {
   children: React.ReactNode;
-  requiredAccess: 'reports' | 'leads' | 'customers' | 'ai-agents' | 'settings';
+  requiredAccess: 'reports' | 'leads' | 'customers' | 'ai-agents' | 'settings' | 'analytics';
   fallbackPath?: string;
 }
 
@@ -27,6 +27,8 @@ export const RoleProtectedRoute: React.FC<RoleProtectedRouteProps> = ({
         return roleAccess.hasAIAgentsAccess();
       case 'settings':
         return roleAccess.hasSettingsAccess();
+      case 'analytics':
+        return roleAccess.hasAnalyticsAccess();
       default:
         return false;
     }
