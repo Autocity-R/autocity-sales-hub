@@ -775,6 +775,30 @@ export class SupabaseInventoryService {
     }
   }
 
+  /**
+   * Delete a vehicle by ID
+   */
+  async deleteVehicle(vehicleId: string): Promise<void> {
+    console.log('Deleting vehicle:', vehicleId);
+    
+    try {
+      const { error } = await supabase
+        .from('vehicles')
+        .delete()
+        .eq('id', vehicleId);
+
+      if (error) {
+        console.error('Error deleting vehicle from Supabase:', error);
+        throw error;
+      }
+
+      console.log('Vehicle deleted successfully');
+    } catch (error) {
+      console.error('Error in deleteVehicle:', error);
+      throw error;
+    }
+  }
+
 }
 
 export const supabaseInventoryService = new SupabaseInventoryService();

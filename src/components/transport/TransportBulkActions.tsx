@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { Mail, CheckCircle, X } from "lucide-react";
+import { Mail, CheckCircle, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
   Dialog, 
@@ -26,13 +26,15 @@ interface TransportBulkActionsProps {
   onClearSelection: () => void;
   onSendBulkEmails: (vehicleIds: string[], transporterId: string) => void;
   onUpdateBulkStatus: (vehicleIds: string[], status: ImportStatus) => void;
+  onBulkDelete: (vehicleIds: string[]) => void;
 }
 
 export const TransportBulkActions: React.FC<TransportBulkActionsProps> = ({
   selectedVehicleIds,
   onClearSelection,
   onSendBulkEmails,
-  onUpdateBulkStatus
+  onUpdateBulkStatus,
+  onBulkDelete
 }) => {
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
@@ -74,6 +76,15 @@ export const TransportBulkActions: React.FC<TransportBulkActionsProps> = ({
         >
           <CheckCircle className="mr-2 h-4 w-4" />
           Status wijzigen
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => onBulkDelete(selectedVehicleIds)}
+          className="text-destructive hover:text-destructive"
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Verwijderen
         </Button>
         <Button
           size="sm"

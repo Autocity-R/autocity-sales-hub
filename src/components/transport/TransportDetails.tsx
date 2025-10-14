@@ -36,6 +36,7 @@ interface TransportDetailsProps {
   onSendPickupDocument: (vehicleId: string) => void;
   onSendEmail?: (type: string, vehicleId: string) => void;
   onFileUpload?: (file: File, category: FileCategory) => void;
+  onDelete?: (vehicleId: string) => void;
 }
 
 export const TransportDetails: React.FC<TransportDetailsProps> = ({
@@ -44,7 +45,8 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
   onClose,
   onSendPickupDocument,
   onSendEmail,
-  onFileUpload
+  onFileUpload,
+  onDelete
 }) => {
   const [updatedVehicle, setUpdatedVehicle] = useState<Vehicle>(vehicle);
   const { vehicleFiles = [] } = useVehicleFiles(vehicle);
@@ -397,13 +399,25 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
         </ScrollArea>
         </div>
 
-        <div className="flex-shrink-0 flex justify-end gap-2 p-4 border-t bg-background">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Annuleren
-          </Button>
-          <Button type="submit" onClick={handleSave}>
-            Opslaan
-          </Button>
+        <div className="flex-shrink-0 flex justify-between gap-2 p-4 border-t bg-background">
+          {onDelete && (
+            <Button 
+              type="button" 
+              variant="destructive" 
+              onClick={() => onDelete(vehicle.id)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Voertuig verwijderen
+            </Button>
+          )}
+          <div className="flex gap-2 ml-auto">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Annuleren
+            </Button>
+            <Button type="submit" onClick={handleSave}>
+              Opslaan
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

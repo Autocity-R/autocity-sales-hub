@@ -576,6 +576,23 @@ export const deleteVehicleFile = async (fileId: string, filePath: string): Promi
   }
 };
 
+export const deleteVehicle = async (vehicleId: string): Promise<void> => {
+  console.log('Deleting vehicle:', vehicleId);
+  
+  try {
+    if (isUseMockData) {
+      console.log('Mock data mode - delete simulated');
+      return;
+    }
+
+    await supabaseInventoryService.deleteVehicle(vehicleId);
+    console.log('Vehicle deleted successfully');
+  } catch (error) {
+    console.error('Error in deleteVehicle:', error);
+    throw error;
+  }
+};
+
 export const bulkUpdateVehicles = async (vehicles: Vehicle[]): Promise<void> => {
   try {
     console.log(`Bulk updating ${vehicles.length} vehicles...`);

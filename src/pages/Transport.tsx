@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Vehicle, ImportStatus, Supplier, FileCategory } from "@/types/inventory";
-import { fetchVehicles, updateVehicle, sendEmail, bulkUpdateVehicles, uploadVehicleFile } from "@/services/inventoryService";
+import { fetchVehicles, updateVehicle, sendEmail, bulkUpdateVehicles, uploadVehicleFile, deleteVehicle } from "@/services/inventoryService";
 import { addContact } from "@/services/customerService";
 import { Contact } from "@/types/customer";
 import { TransportVehicleTable } from "@/components/transport/TransportVehicleTable";
@@ -112,6 +112,50 @@ const Transport = () => {
     }
   });
 
+  // Delete vehicle mutation
+  const deleteMutation = useMutation({
+    mutationFn: deleteVehicle,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      toast({
+        title: "Voertuig verwijderd",
+        description: "Het voertuig is succesvol uit het systeem verwijderd.",
+        variant: "default",
+      });
+      setSelectedVehicle(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Fout bij verwijderen",
+        description: "Er is iets misgegaan: " + error,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (vehicleIds: string[]) => {
+      await Promise.all(vehicleIds.map(id => deleteVehicle(id)));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      toast({
+        title: "Voertuigen verwijderd",
+        description: "De geselecteerde voertuigen zijn succesvol uit het systeem verwijderd.",
+        variant: "default",
+      });
+      setSelectedVehicleIds([]);
+    },
+    onError: (error) => {
+      toast({
+        title: "Fout bij bulk verwijderen",
+        description: "Er is iets misgegaan: " + error,
+        variant: "destructive",
+      });
+    }
+  });
+
   // Handle vehicle selection
   const handleSelectVehicle = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
@@ -195,6 +239,20 @@ const Transport = () => {
     }
   };
 
+  // Handle delete vehicle
+  const handleDeleteVehicle = (vehicleId: string) => {
+    if (confirm("Weet je zeker dat je dit voertuig wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.")) {
+      deleteMutation.mutate(vehicleId);
+    }
+  };
+
+  // Handle bulk delete
+  const handleBulkDelete = (vehicleIds: string[]) => {
+    if (confirm(`Weet je zeker dat je ${vehicleIds.length} voertuig(en) wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.`)) {
+      bulkDeleteMutation.mutate(vehicleIds);
+    }
+  };
+
   // Create new supplier mutation
   const createSupplierMutation = useMutation({
     mutationFn: async (supplierData: Supplier) => {
@@ -275,6 +333,7 @@ const Transport = () => {
           onClearSelection={() => setSelectedVehicleIds([])}
           onSendBulkEmails={handleSendBulkEmails}
           onUpdateBulkStatus={handleUpdateBulkStatus}
+          onBulkDelete={handleBulkDelete}
         />
         
         <div className="rounded-md border overflow-hidden">
@@ -298,6 +357,7 @@ const Transport = () => {
             onSendPickupDocument={handleSendPickupDocument}
             onSendEmail={handleSendEmail}
             onFileUpload={handleFileUpload}
+            onDelete={handleDeleteVehicle}
           />
         )}
         
