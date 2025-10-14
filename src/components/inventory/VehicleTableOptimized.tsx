@@ -98,14 +98,14 @@ const VehicleRow = memo<{
       className="hover:bg-muted/50 cursor-pointer"
       onClick={() => onSelectVehicle(vehicle)}
     >
-      <TableCell className="align-middle sticky left-0 bg-background z-10" onClick={(e) => e.stopPropagation()}>
+      <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
         <Checkbox 
           checked={isSelected} 
           onCheckedChange={(checked) => onToggleSelect(vehicle.id, checked === true)} 
           aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
         />
       </TableCell>
-      <TableCell className="align-middle sticky left-12 bg-background z-10">
+      <TableCell className="align-middle">
         {vehicle.mainPhotoUrl ? (
           <Avatar className="w-12 h-12 rounded-md">
             <img 
@@ -175,7 +175,7 @@ const VehicleRow = memo<{
           {calculateStandingDays(vehicle.createdAt)} dagen
         </Badge>
       </TableCell>
-      <TableCell className="align-middle sticky right-0 bg-background z-10" onClick={(e) => e.stopPropagation()}>
+      <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm">
@@ -301,96 +301,96 @@ export const VehicleTable = memo<VehicleTableProps>(({
 
   return (
     <div className="w-full overflow-x-auto">
-      <Table className="w-full">
+      <Table className="w-full min-w-[1600px]">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-12 sticky left-0 bg-background z-10">
+            <TableHead className="w-12">
               <Checkbox 
                 checked={isAllSelected} 
                 onCheckedChange={toggleSelectAll} 
                 aria-label="Selecteer alle voertuigen"
               />
             </TableHead>
-            <TableHead className="w-16 sticky left-12 bg-background z-10">Foto</TableHead>
-            <TableHead className="w-24 cursor-pointer" onClick={() => handleSort("brand")}>
+            <TableHead className="w-16">Foto</TableHead>
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("brand")}>
               <div className="flex items-center">
                 Merk
                 {renderSortIcon("brand")}
               </div>
             </TableHead>
-            <TableHead className="w-32 cursor-pointer" onClick={() => handleSort("model")}>
+            <TableHead className="min-w-24 cursor-pointer" onClick={() => handleSort("model")}>
               <div className="flex items-center">
                 Model
                 {renderSortIcon("model")}
               </div>
             </TableHead>
-            <TableHead className="w-28 cursor-pointer" onClick={() => handleSort("licenseNumber")}>
+            <TableHead className="min-w-28 cursor-pointer" onClick={() => handleSort("licenseNumber")}>
               <div className="flex items-center">
                 Kenteken
                 {renderSortIcon("licenseNumber")}
               </div>
             </TableHead>
-            <TableHead className="w-32 cursor-pointer" onClick={() => handleSort("vin")}>
-              <div className="flex items-center truncate">
+            <TableHead className="min-w-32 cursor-pointer" onClick={() => handleSort("vin")}>
+              <div className="flex items-center">
                 VIN
                 {renderSortIcon("vin")}
               </div>
             </TableHead>
-            <TableHead className="w-32 cursor-pointer" onClick={() => handleSort("purchasePrice")}>
+            <TableHead className="min-w-28 cursor-pointer" onClick={() => handleSort("purchasePrice")}>
               <div className="flex items-center">
                 Inkoopprijs
                 {renderSortIcon("purchasePrice")}
               </div>
             </TableHead>
-            <TableHead className="w-32 cursor-pointer" onClick={() => handleSort("sellingPrice")}>
+            <TableHead className="min-w-28 cursor-pointer" onClick={() => handleSort("sellingPrice")}>
               <div className="flex items-center">
                 Verkoopprijs
                 {renderSortIcon("sellingPrice")}
               </div>
             </TableHead>
-            <TableHead className="w-24 cursor-pointer" onClick={() => handleSort("mileage")}>
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("mileage")}>
               <div className="flex items-center">
                 KM Stand
                 {renderSortIcon("mileage")}
               </div>
             </TableHead>
-            <TableHead className="w-32 cursor-pointer" onClick={() => handleSort("importStatus")}>
+            <TableHead className="min-w-32 cursor-pointer" onClick={() => handleSort("importStatus")}>
               <div className="flex items-center">
                 Importstatus
                 {renderSortIcon("importStatus")}
               </div>
             </TableHead>
-            <TableHead className="w-24 cursor-pointer" onClick={() => handleSort("location")}>
+            <TableHead className="min-w-24 cursor-pointer" onClick={() => handleSort("location")}>
               <div className="flex items-center">
                 Locatie
                 {renderSortIcon("location")}
               </div>
             </TableHead>
-            <TableHead className="w-20 text-center cursor-pointer" onClick={() => handleSort("arrived")}>
-              <div className="flex items-center justify-center">
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("arrived")}>
+              <div className="flex items-center">
                 Aangekomen
                 {renderSortIcon("arrived")}
               </div>
             </TableHead>
-            <TableHead className="w-20 text-center cursor-pointer" onClick={() => handleSort("papersReceived")}>
-              <div className="flex items-center justify-center">
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("papersReceived")}>
+              <div className="flex items-center">
                 Papieren
                 {renderSortIcon("papersReceived")}
               </div>
             </TableHead>
-            <TableHead className="w-20 text-center cursor-pointer" onClick={() => handleSort("showroomOnline")}>
-              <div className="flex items-center justify-center">
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("showroomOnline")}>
+              <div className="flex items-center">
                 Online
                 {renderSortIcon("showroomOnline")}
               </div>
             </TableHead>
-            <TableHead className="w-24 text-center cursor-pointer" onClick={() => handleSort("createdAt")}>
-              <div className="flex items-center justify-center">
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("createdAt")}>
+              <div className="flex items-center">
                 Sta dagen
                 {renderSortIcon("createdAt")}
               </div>
             </TableHead>
-            <TableHead className="w-16 sticky right-0 bg-background z-10">Acties</TableHead>
+            <TableHead className="w-12">Acties</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

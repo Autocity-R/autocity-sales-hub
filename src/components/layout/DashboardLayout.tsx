@@ -54,7 +54,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         </div>
         
         {/* Page content */}
-        <main className="flex-1 py-4 px-4 lg:px-8">
+        <main className="flex-1 py-4">
           {children}
         </main>
       </div>
