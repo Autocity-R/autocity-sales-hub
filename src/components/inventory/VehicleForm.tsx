@@ -211,7 +211,6 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
                 // Auto-update related fields when transport status changes
                 if (value === 'onderweg') {
                   handleChange('location', 'onderweg');
-                  handleChange('salesStatus', 'in_transit');
                   handleChange('showroomOnline', false);
                 } else if (value === 'aangekomen') {
                   handleChange('location', 'showroom');
