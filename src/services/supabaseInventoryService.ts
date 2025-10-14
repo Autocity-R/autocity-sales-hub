@@ -4,7 +4,8 @@ import { loadVehicleRelationships } from "./vehicleRelationshipService";
 
 export class SupabaseInventoryService {
   /**
-   * Get all vehicles from Supabase database (excluding delivered vehicles)
+   * Get all vehicles from Supabase database (excluding delivered vehicles AND transport vehicles)
+   * CRITICAL: Voorraad menu mag ALLEEN voertuigen tonen die binnen zijn (transportStatus != 'onderweg')
    */
   async getAllVehicles(): Promise<Vehicle[]> {
     try {
@@ -12,12 +13,16 @@ export class SupabaseInventoryService {
         .from('vehicles')
         .select('*')
         .neq('status', 'afgeleverd')
+        // KRITIEK: Exclude voertuigen die onderweg zijn om overlap met Transport menu te voorkomen
+        .or('details->>transportStatus.is.null,details->>transportStatus.neq.onderweg')
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Failed to fetch vehicles from Supabase:', error);
         throw error;
       }
+
+      console.log(`[INVENTORY] ✅ Fetched ${data.length} voorraad vehicles (excluding onderweg)`);
 
       // Map Supabase data to Vehicle interface
       return data.map(this.mapSupabaseToVehicle);
