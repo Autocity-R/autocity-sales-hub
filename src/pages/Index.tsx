@@ -8,9 +8,13 @@ import WeeklySalesLeaderboard from "@/components/dashboard/WeeklySalesLeaderboar
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { Database, Package, Truck, ShieldCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useVehiclesRealtime } from "@/hooks/useVehiclesRealtime";
 
 const Index = () => {
   const { data: stats, isLoading } = useDashboardStats();
+
+  // Enable real-time dashboard updates
+  useVehiclesRealtime();
 
   return (
     <DashboardLayout>

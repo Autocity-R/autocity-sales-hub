@@ -18,6 +18,7 @@ import { DataSourceIndicator } from "@/components/common/DataSourceIndicator";
 import { useToast } from "@/hooks/use-toast";
 import { InventoryBulkActions } from "@/components/inventory/InventoryBulkActions";
 import { supabase } from "@/integrations/supabase/client";
+import { useVehiclesRealtime } from "@/hooks/useVehiclesRealtime";
 
 const Inventory = () => {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
@@ -31,6 +32,9 @@ const Inventory = () => {
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Enable real-time updates for all users
+  useVehiclesRealtime();
 
   // Fetch all vehicles
   const { data: allVehicles = [], isLoading: isLoadingAll, error: errorAll } = useQuery({

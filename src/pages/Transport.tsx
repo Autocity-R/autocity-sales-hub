@@ -15,6 +15,7 @@ import { TransportVehicleTable } from "@/components/transport/TransportVehicleTa
 import { TransportSupplierForm } from "@/components/transport/TransportSupplierForm";
 import { TransportDetails } from "@/components/transport/TransportDetails";
 import { TransportBulkActions } from "@/components/transport/TransportBulkActions";
+import { useVehiclesRealtime } from "@/hooks/useVehiclesRealtime";
 
 const Transport = () => {
   const { toast } = useToast();
@@ -23,6 +24,9 @@ const Transport = () => {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
   const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>([]);
+
+  // Enable real-time updates for all users
+  useVehiclesRealtime();
 
   // Fetch vehicles that have transport status "onderweg" - using dedicated query
   const { data: vehicles = [], isLoading, error } = useQuery({

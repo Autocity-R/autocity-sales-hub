@@ -31,6 +31,10 @@ export const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ onVehicleAdd
       // Invalidate all relevant queries to update dashboard and lists
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ['vehicles', 'all'] }); // Voor Inventory.tsx
+      queryClient.invalidateQueries({ queryKey: ['vehicles', 'b2c'] }); // Voor B2C tab
+      queryClient.invalidateQueries({ queryKey: ['vehicles', 'b2b'] }); // Voor B2B tab
+      queryClient.invalidateQueries({ queryKey: ['vehicles', 'stats'] }); // Voor stats
       queryClient.invalidateQueries({ queryKey: ["transport-vehicles"] });
       queryClient.invalidateQueries({ queryKey: ["onlineVehicles"] });
       queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
