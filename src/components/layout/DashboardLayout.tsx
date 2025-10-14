@@ -19,6 +19,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         <Sidebar />
       </div>
 
+      {/* Spacer for fixed sidebar - claims space so content doesn't scroll underneath */}
+      <div className="hidden lg:block lg:w-64 lg:flex-shrink-0" aria-hidden="true" />
+
       {/* Mobile Sidebar */}
       {sidebarOpen && (
         <>
@@ -33,7 +36,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       )}
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col lg:ml-64">
+      <div className="flex flex-1 flex-col">
         {/* Top bar */}
         <div className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm lg:px-4">
           <Button
