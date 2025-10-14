@@ -35,6 +35,7 @@ const Transport = () => {
     mutationFn: updateVehicle,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Voertuig bijgewerkt",
         description: "De wijzigingen zijn succesvol opgeslagen.",
@@ -55,6 +56,7 @@ const Transport = () => {
     mutationFn: (vehicles: Vehicle[]) => bulkUpdateVehicles(vehicles),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Voertuigen bijgewerkt",
         description: "De wijzigingen zijn succesvol opgeslagen voor alle geselecteerde voertuigen.",
@@ -117,6 +119,7 @@ const Transport = () => {
     mutationFn: deleteVehicle,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Voertuig verwijderd",
         description: "Het voertuig is succesvol uit het systeem verwijderd.",
@@ -140,6 +143,7 @@ const Transport = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Voertuigen verwijderd",
         description: "De geselecteerde voertuigen zijn succesvol uit het systeem verwijderd.",
