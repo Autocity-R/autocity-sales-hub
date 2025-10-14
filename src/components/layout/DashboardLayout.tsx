@@ -13,29 +13,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:left-0">
+    <div className="grid min-h-screen bg-gray-50 lg:grid-cols-[16rem,1fr]">
+      {/* Desktop Sidebar - sticky, claims column */}
+      <div className="hidden lg:block lg:sticky lg:top-0 lg:h-screen lg:z-40">
         <Sidebar />
       </div>
 
-      {/* Spacer for fixed sidebar - claims space so content doesn't scroll underneath */}
-      <div className="hidden lg:block lg:w-64 lg:flex-shrink-0" aria-hidden="true" />
-
-      {/* Mobile Sidebar */}
-      {sidebarOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-          <div className="fixed inset-y-0 left-0 z-50 w-64 lg:hidden">
-            <Sidebar />
-          </div>
-        </>
-      )}
-
-      {/* Main content */}
+      {/* Main content column */}
       <div className="flex flex-1 flex-col">
         {/* Top bar */}
         <div className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm lg:px-4">
@@ -63,6 +47,19 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           </div>
         </main>
       </div>
+
+      {/* Mobile Sidebar - overlay */}
+      {sidebarOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-black/50 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <div className="fixed inset-y-0 left-0 z-[60] w-64 lg:hidden">
+            <Sidebar />
+          </div>
+        </>
+      )}
     </div>
   );
 };
