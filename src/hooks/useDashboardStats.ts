@@ -17,11 +17,11 @@ export const useDashboardStats = () => {
         .eq("status", "voorraad")
         .neq("location", "onderweg");
 
-      // Voertuigen onderweg (transport)
+      // Voertuigen onderweg (transport) - gebruik location onderweg OF details.transportStatus onderweg
       const { count: transportCount } = await supabase
         .from("vehicles")
         .select("*", { count: "exact", head: true })
-        .in("import_status", ["in_transit", "onderweg"]);
+        .eq("location", "onderweg");
 
       // Openstaande garantieclaims
       const { count: garantieCount } = await supabase
