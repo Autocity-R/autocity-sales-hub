@@ -49,7 +49,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
     transportStatus: initialData?.transportStatus || "onderweg",
     arrived: initialData?.arrived || false,
     workshopStatus: initialData?.workshopStatus || "wachten",
-    location: initialData?.location || "showroom",
+    location: initialData?.location || "onderweg",
     salesStatus: initialData?.salesStatus || "voorraad",
     showroomOnline: initialData?.showroomOnline || false,
     bpmRequested: initialData?.bpmRequested || false,
@@ -343,9 +343,20 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
               <Checkbox
                 id="arrived"
                 checked={formData.arrived}
-                onCheckedChange={(checked) => 
-                  handleChange('arrived', Boolean(checked))
-                }
+                onCheckedChange={(checked) => {
+                  handleChange('arrived', Boolean(checked));
+                  if (checked) {
+                    // Als aangekomen = JA: zet alles op "aangekomen" status
+                    handleChange('transportStatus', 'aangekomen');
+                    handleChange('location', 'showroom');
+                    handleChange('salesStatus', 'voorraad');
+                  } else {
+                    // Als aangekomen = NEE: zet alles terug op "onderweg" status
+                    handleChange('transportStatus', 'onderweg');
+                    handleChange('location', 'onderweg');
+                    handleChange('showroomOnline', false);
+                  }
+                }}
               />
               <Label htmlFor="arrived">Aangekomen</Label>
             </div>
