@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Vehicle, ImportStatus, Supplier, FileCategory } from "@/types/inventory";
-import { fetchVehicles, updateVehicle, sendEmail, bulkUpdateVehicles, uploadVehicleFile, deleteVehicle } from "@/services/inventoryService";
+import { updateVehicle, sendEmail, bulkUpdateVehicles, uploadVehicleFile, deleteVehicle } from "@/services/inventoryService";
+import { supabaseInventoryService } from "@/services/supabaseInventoryService";
 import { addContact } from "@/services/customerService";
 import { Contact } from "@/types/customer";
 import { TransportVehicleTable } from "@/components/transport/TransportVehicleTable";
@@ -23,11 +24,10 @@ const Transport = () => {
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
   const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>([]);
 
-  // Fetch vehicles that have transport status "onderweg"
+  // Fetch vehicles that have transport status "onderweg" - using dedicated query
   const { data: vehicles = [], isLoading, error } = useQuery({
-    queryKey: ["vehicles"],
-    queryFn: fetchVehicles,
-    select: (data) => data.filter(v => v.transportStatus === "onderweg")
+    queryKey: ["transport-vehicles"],
+    queryFn: () => supabaseInventoryService.getTransportVehicles()
   });
 
   // Update vehicle mutation
@@ -35,6 +35,7 @@ const Transport = () => {
     mutationFn: updateVehicle,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["transport-vehicles"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Voertuig bijgewerkt",
@@ -56,6 +57,7 @@ const Transport = () => {
     mutationFn: (vehicles: Vehicle[]) => bulkUpdateVehicles(vehicles),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["transport-vehicles"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Voertuigen bijgewerkt",
@@ -119,6 +121,7 @@ const Transport = () => {
     mutationFn: deleteVehicle,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["transport-vehicles"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Voertuig verwijderd",
@@ -143,6 +146,7 @@ const Transport = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["transport-vehicles"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Voertuigen verwijderd",
