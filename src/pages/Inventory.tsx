@@ -18,7 +18,6 @@ import { DataSourceIndicator } from "@/components/common/DataSourceIndicator";
 import { useToast } from "@/hooks/use-toast";
 import { InventoryBulkActions } from "@/components/inventory/InventoryBulkActions";
 import { supabase } from "@/integrations/supabase/client";
-import { useVehiclesRealtime } from "@/hooks/useVehiclesRealtime";
 
 const Inventory = () => {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
@@ -32,9 +31,6 @@ const Inventory = () => {
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  // Enable real-time updates for all users
-  useVehiclesRealtime();
 
   // Fetch all vehicles
   const { data: allVehicles = [], isLoading: isLoadingAll, error: errorAll } = useQuery({
@@ -170,7 +166,6 @@ const Inventory = () => {
       
       // Refresh all vehicle queries
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       
       toast({
         title: "Status Updated",
@@ -191,7 +186,6 @@ const Inventory = () => {
       
       // Refresh vehicle queries
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       
       toast({
         title: "Vehicle Arrived",
@@ -218,7 +212,6 @@ const Inventory = () => {
     mutationFn: updateVehicle,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       setSelectedVehicle(null);
       toast({
         title: "Voertuig opgeslagen",
@@ -240,7 +233,6 @@ const Inventory = () => {
     mutationFn: updateVehicle,
     onSuccess: (updatedVehicle) => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       // Update the selected vehicle with saved data, don't close dialog
       setSelectedVehicle(updatedVehicle);
       toast({
@@ -439,7 +431,6 @@ const Inventory = () => {
               queryClient.invalidateQueries({ queryKey: ['onlineVehicles'] });
               queryClient.invalidateQueries({ queryKey: ['b2cVehicles'] });
               queryClient.invalidateQueries({ queryKey: ['b2bVehicles'] });
-              queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
             } catch (error) {
               console.error("Error creating vehicle:", error);
               toast({ variant: "destructive", description: "Fout bij het toevoegen van het voertuig" });

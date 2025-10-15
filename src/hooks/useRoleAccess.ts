@@ -23,10 +23,6 @@ export const useRoleAccess = () => {
     return isAdmin;
   };
 
-  const hasAnalyticsAccess = () => {
-    return isAdmin || userRole === 'manager' || userRole === 'owner';
-  };
-
   const hasPriceAccess = () => {
     return isAdmin || userRole === 'manager' || userRole === 'verkoper';
   };
@@ -40,35 +36,7 @@ export const useRoleAccess = () => {
   };
 
   const isOperationalUser = () => {
-    return userRole === 'operationeel';
-  };
-
-  const hasInventoryEditAccess = () => {
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper';
-  };
-
-  const hasTransportAccess = () => {
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper';
-  };
-
-  const hasWarrantyAccess = () => {
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper' || userRole === 'operationeel';
-  };
-
-  const hasLoanCarsAccess = () => {
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper';
-  };
-
-  const hasCalendarAccess = () => {
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper';
-  };
-
-  const canViewAllInventory = () => {
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper';
-  };
-
-  const canViewSoldInventoryOnly = () => {
-    return userRole === 'operationeel';
+    return userRole === 'user';
   };
 
   return {
@@ -77,18 +45,10 @@ export const useRoleAccess = () => {
     hasCustomersAccess,
     hasAIAgentsAccess,
     hasSettingsAccess,
-    hasAnalyticsAccess,
     hasPriceAccess,
     hasTaskManagementAccess,
     canAssignTasks,
     isOperationalUser,
-    hasInventoryEditAccess,
-    hasTransportAccess,
-    hasWarrantyAccess,
-    hasLoanCarsAccess,
-    hasCalendarAccess,
-    canViewAllInventory,
-    canViewSoldInventoryOnly,
     userRole,
     isAdmin
   };

@@ -13,7 +13,6 @@ import { VehicleForm } from "./VehicleForm";
 import { Vehicle } from "@/types/inventory";
 import { useToast } from "@/hooks/use-toast";
 import { createVehicle } from "@/services/inventoryService";
-import { useQueryClient } from "@tanstack/react-query";
 
 interface AddVehicleDialogProps {
   onVehicleAdded?: (vehicle: Vehicle) => void;
@@ -22,23 +21,10 @@ interface AddVehicleDialogProps {
 export const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ onVehicleAdded }) => {
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const handleSubmit = async (vehicleData: Omit<Vehicle, "id">) => {
     try {
       const newVehicle = await createVehicle(vehicleData);
-      
-      // Invalidate all relevant queries to update dashboard and lists
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
-      queryClient.invalidateQueries({ queryKey: ['vehicles', 'all'] }); // Voor Inventory.tsx
-      queryClient.invalidateQueries({ queryKey: ['vehicles', 'b2c'] }); // Voor B2C tab
-      queryClient.invalidateQueries({ queryKey: ['vehicles', 'b2b'] }); // Voor B2B tab
-      queryClient.invalidateQueries({ queryKey: ['vehicles', 'stats'] }); // Voor stats
-      queryClient.invalidateQueries({ queryKey: ["transport-vehicles"] });
-      queryClient.invalidateQueries({ queryKey: ["onlineVehicles"] });
-      queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
-      queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
       
       toast({
         description: "Voertuig succesvol toegevoegd"

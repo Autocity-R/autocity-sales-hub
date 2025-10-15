@@ -28,7 +28,6 @@ export const useB2CVehicleOperations = () => {
         description: "Voertuig bijgewerkt"
       });
       queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
     onError: (error) => {
       toast({
@@ -157,7 +156,6 @@ export const useB2CVehicleOperations = () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
       queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
       queryClient.invalidateQueries({ queryKey: ["weeklySalesLeaderboard"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
     onError: (error) => {
       toast({

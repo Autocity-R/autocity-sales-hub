@@ -36,7 +36,6 @@ interface TransportDetailsProps {
   onSendPickupDocument: (vehicleId: string) => void;
   onSendEmail?: (type: string, vehicleId: string) => void;
   onFileUpload?: (file: File, category: FileCategory) => void;
-  onDelete?: (vehicleId: string) => void;
 }
 
 export const TransportDetails: React.FC<TransportDetailsProps> = ({
@@ -45,8 +44,7 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
   onClose,
   onSendPickupDocument,
   onSendEmail,
-  onFileUpload,
-  onDelete
+  onFileUpload
 }) => {
   const [updatedVehicle, setUpdatedVehicle] = useState<Vehicle>(vehicle);
   const { vehicleFiles = [] } = useVehicleFiles(vehicle);
@@ -68,14 +66,10 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
   };
 
   const handleMarkAsArrived = () => {
-    const isCurrentlySold = ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(updatedVehicle.salesStatus);
-    
     onUpdate({
       ...updatedVehicle,
-      transportStatus: 'aangekomen',
-      location: 'showroom',
-      salesStatus: isCurrentlySold ? updatedVehicle.salesStatus : 'voorraad',
       arrived: true,
+      importStatus: "ingeschreven",
       notes
     });
   };
@@ -194,17 +188,18 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
               <TabsContent value="transport" className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="transportStatus">Transport status</Label>
+                    <Label htmlFor="importStatus">Transport status</Label>
                     <Select
-                      value={updatedVehicle.transportStatus || 'onderweg'}
-                      onValueChange={(value) => setUpdatedVehicle({...updatedVehicle, transportStatus: value as any})}
+                      value={updatedVehicle.importStatus}
+                      onValueChange={(value: ImportStatus) => handleImportStatusChange(value)}
                     >
-                      <SelectTrigger id="transportStatus" className="mt-1">
+                      <SelectTrigger id="importStatus" className="mt-1">
                         <SelectValue placeholder="Selecteer status" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="niet_gestart">Niet ready</SelectItem>
+                        <SelectItem value="transport_geregeld">Opdracht gegeven</SelectItem>
                         <SelectItem value="onderweg">Onderweg</SelectItem>
-                        <SelectItem value="transport_geregeld">Transport Geregeld</SelectItem>
                         <SelectItem value="aangekomen">Aangekomen</SelectItem>
                       </SelectContent>
                     </Select>
@@ -399,25 +394,13 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
         </ScrollArea>
         </div>
 
-        <div className="flex-shrink-0 flex justify-between gap-2 p-4 border-t bg-background">
-          {onDelete && (
-            <Button 
-              type="button" 
-              variant="destructive" 
-              onClick={() => onDelete(vehicle.id)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Voertuig verwijderen
-            </Button>
-          )}
-          <div className="flex gap-2 ml-auto">
-            <Button type="button" variant="secondary" onClick={onClose}>
-              Annuleren
-            </Button>
-            <Button type="submit" onClick={handleSave}>
-              Opslaan
-            </Button>
-          </div>
+        <div className="flex-shrink-0 flex justify-end gap-2 p-4 border-t bg-background">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Annuleren
+          </Button>
+          <Button type="submit" onClick={handleSave}>
+            Opslaan
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

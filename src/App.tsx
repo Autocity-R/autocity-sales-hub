@@ -12,7 +12,6 @@ import AIAgents from "@/pages/AIAgents";
 import Leads from "@/pages/Leads";
 import Calendar from "@/pages/Calendar";
 import TaskManagement from "@/pages/TaskManagement";
-import TasksAnalytics from "@/pages/TasksAnalytics";
 import Customers from "@/pages/Customers";
 import CustomerDetail from "@/pages/CustomerDetail";
 import Reports from "@/pages/Reports";
@@ -26,7 +25,6 @@ import ResetPassword from "@/pages/ResetPassword";
 import { Toaster } from "@/components/ui/toaster";
 import { DigitalSignaturePage } from "@/components/contracts/DigitalSignaturePage";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { RoleProtectedRoute } from "@/components/auth/RoleProtectedRoute";
 import "./App.css";
 
 function App() {
@@ -43,16 +41,12 @@ function App() {
         } />
         <Route path="/transport" element={
           <ProtectedRoute>
-            <RoleProtectedRoute requiredAccess="transport" fallbackPath="/">
-              <Transport />
-            </RoleProtectedRoute>
+            <Transport />
           </ProtectedRoute>
         } />
         <Route path="/inventory" element={
           <ProtectedRoute>
-            <RoleProtectedRoute requiredAccess="inventory" fallbackPath="/">
-              <Inventory />
-            </RoleProtectedRoute>
+            <Inventory />
           </ProtectedRoute>
         } />
         <Route path="/inventory/b2b" element={
@@ -72,23 +66,17 @@ function App() {
         } />
         <Route path="/inventory/delivered" element={
           <ProtectedRoute>
-            <RoleProtectedRoute requiredAccess="inventory" fallbackPath="/">
-              <InventoryDelivered />
-            </RoleProtectedRoute>
+            <InventoryDelivered />
           </ProtectedRoute>
         } />
         <Route path="/inventory/online" element={
           <ProtectedRoute>
-            <RoleProtectedRoute requiredAccess="inventory" fallbackPath="/">
-              <InventoryOnline />
-            </RoleProtectedRoute>
+            <InventoryOnline />
           </ProtectedRoute>
         } />
         <Route path="/loan-cars" element={
           <ProtectedRoute>
-            <RoleProtectedRoute requiredAccess="loan-cars" fallbackPath="/">
-              <LoanCars />
-            </RoleProtectedRoute>
+            <LoanCars />
           </ProtectedRoute>
         } />
         <Route path="/ai-agents" element={
@@ -103,9 +91,7 @@ function App() {
         } />
         <Route path="/calendar" element={
           <ProtectedRoute>
-            <RoleProtectedRoute requiredAccess="calendar" fallbackPath="/">
-              <Calendar />
-            </RoleProtectedRoute>
+            <Calendar />
           </ProtectedRoute>
         } />
         <Route path="/tasks" element={
@@ -115,58 +101,37 @@ function App() {
         } />
         <Route path="/customers" element={
           <ProtectedRoute>
-            <RoleProtectedRoute requiredAccess="customers" fallbackPath="/">
-              <Customers />
-            </RoleProtectedRoute>
+            <Customers />
           </ProtectedRoute>
         } />
         <Route path="/customers/b2b" element={
           <ProtectedRoute>
-            <RoleProtectedRoute requiredAccess="customers" fallbackPath="/">
-              <Customers />
-            </RoleProtectedRoute>
+            <Customers />
           </ProtectedRoute>
         } />
         <Route path="/customers/b2c" element={
           <ProtectedRoute>
-            <RoleProtectedRoute requiredAccess="customers" fallbackPath="/">
-              <Customers />
-            </RoleProtectedRoute>
+            <Customers />
           </ProtectedRoute>
         } />
         <Route path="/suppliers" element={
           <ProtectedRoute>
-            <RoleProtectedRoute requiredAccess="customers" fallbackPath="/">
-              <Customers />
-            </RoleProtectedRoute>
+            <Customers />
           </ProtectedRoute>
         } />
         <Route path="/customers/:id" element={
           <ProtectedRoute>
-            <RoleProtectedRoute requiredAccess="customers" fallbackPath="/">
-              <CustomerDetail />
-            </RoleProtectedRoute>
+            <CustomerDetail />
           </ProtectedRoute>
         } />
         <Route path="/reports" element={
           <ProtectedRoute>
-            <RoleProtectedRoute requiredAccess="analytics" fallbackPath="/">
-              <Reports />
-            </RoleProtectedRoute>
-          </ProtectedRoute>
-        } />
-        <Route path="/reports/tasks" element={
-          <ProtectedRoute>
-            <RoleProtectedRoute requiredAccess="analytics" fallbackPath="/">
-              <TasksAnalytics />
-            </RoleProtectedRoute>
+            <Reports />
           </ProtectedRoute>
         } />
         <Route path="/warranty" element={
           <ProtectedRoute>
-            <RoleProtectedRoute requiredAccess="warranty" fallbackPath="/">
-              <Warranty />
-            </RoleProtectedRoute>
+            <Warranty />
           </ProtectedRoute>
         } />
         <Route path="/settings" element={

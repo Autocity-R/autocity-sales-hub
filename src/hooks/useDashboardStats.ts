@@ -1,33 +1,8 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfMonth, endOfMonth } from "date-fns";
-import { useEffect } from "react";
 
 export const useDashboardStats = () => {
-  const queryClient = useQueryClient();
-
-  // Set up real-time updates for vehicle changes
-  useEffect(() => {
-    const channel = supabase
-      .channel('vehicles-dashboard-stats')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'vehicles'
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
-
   return useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
@@ -42,11 +17,11 @@ export const useDashboardStats = () => {
         .eq("status", "voorraad")
         .neq("location", "onderweg");
 
-      // Voertuigen onderweg (transport) - gebruik details.transportStatus onderweg
+      // Voertuigen onderweg (transport)
       const { count: transportCount } = await supabase
         .from("vehicles")
         .select("*", { count: "exact", head: true })
-        .contains("details", { transportStatus: "onderweg" });
+        .in("import_status", ["in_transit", "onderweg"]);
 
       // Openstaande garantieclaims
       const { count: garantieCount } = await supabase

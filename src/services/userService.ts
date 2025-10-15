@@ -6,7 +6,7 @@ export interface UserProfile {
   email: string;
   first_name: string | null;
   last_name: string | null;
-  role: 'admin' | 'owner' | 'manager' | 'verkoper' | 'operationeel' | 'user' | null;
+  role: 'admin' | 'owner' | 'manager' | 'verkoper' | 'operationeel' | 'user';
   company: string | null;
   created_at: string;
   updated_at: string;
@@ -14,42 +14,17 @@ export interface UserProfile {
 
 export const getAllUsers = async (): Promise<UserProfile[]> => {
   try {
-    // Query 1: Haal alle profiles op
-    const { data: profiles, error: profilesError } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (profilesError) {
-      console.error('Error fetching profiles:', profilesError);
-      throw profilesError;
+    if (error) {
+      console.error('Error fetching users:', error);
+      throw error;
     }
 
-    // Query 2: Haal alle rollen op
-    const { data: roles, error: rolesError } = await supabase
-      .from('user_roles')
-      .select('user_id, role');
-
-    if (rolesError) {
-      console.error('Error fetching roles:', rolesError);
-      throw rolesError;
-    }
-
-    // Combineer de data met een Map voor efficiënte lookup
-    const roleMap = new Map(roles?.map(r => [r.user_id, r.role]) || []);
-    
-    const users = (profiles || []).map((user: any) => ({
-      id: user.id,
-      email: user.email,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      role: roleMap.get(user.id) || null,
-      company: user.company,
-      created_at: user.created_at,
-      updated_at: user.updated_at,
-    }));
-
-    return users as UserProfile[];
+    return (data || []) as UserProfile[];
   } catch (error) {
     console.error("Failed to fetch users:", error);
     throw error;

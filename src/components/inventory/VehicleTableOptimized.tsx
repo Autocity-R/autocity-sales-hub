@@ -301,7 +301,7 @@ export const VehicleTable = memo<VehicleTableProps>(({
 
   return (
     <div className="w-full overflow-x-auto">
-      <Table className="w-full">
+      <Table className="w-full min-w-[1600px]">
         <TableHeader>
           <TableRow>
             <TableHead className="w-12">

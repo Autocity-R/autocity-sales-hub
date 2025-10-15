@@ -7,15 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Vehicle, ImportStatus, Supplier, FileCategory } from "@/types/inventory";
-import { updateVehicle, sendEmail, bulkUpdateVehicles, uploadVehicleFile, deleteVehicle } from "@/services/inventoryService";
-import { supabaseInventoryService } from "@/services/supabaseInventoryService";
+import { fetchVehicles, updateVehicle, sendEmail, bulkUpdateVehicles, uploadVehicleFile } from "@/services/inventoryService";
 import { addContact } from "@/services/customerService";
 import { Contact } from "@/types/customer";
 import { TransportVehicleTable } from "@/components/transport/TransportVehicleTable";
 import { TransportSupplierForm } from "@/components/transport/TransportSupplierForm";
 import { TransportDetails } from "@/components/transport/TransportDetails";
 import { TransportBulkActions } from "@/components/transport/TransportBulkActions";
-import { useVehiclesRealtime } from "@/hooks/useVehiclesRealtime";
 
 const Transport = () => {
   const { toast } = useToast();
@@ -25,13 +23,11 @@ const Transport = () => {
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
   const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>([]);
 
-  // Enable real-time updates for all users
-  useVehiclesRealtime();
-
-  // Fetch vehicles that have transport status "onderweg" - using dedicated query
+  // Fetch vehicles that have transport status "onderweg"
   const { data: vehicles = [], isLoading, error } = useQuery({
-    queryKey: ["transport-vehicles"],
-    queryFn: () => supabaseInventoryService.getTransportVehicles()
+    queryKey: ["vehicles"],
+    queryFn: fetchVehicles,
+    select: (data) => data.filter(v => v.transportStatus === "onderweg")
   });
 
   // Update vehicle mutation
@@ -39,8 +35,6 @@ const Transport = () => {
     mutationFn: updateVehicle,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
-      queryClient.invalidateQueries({ queryKey: ["transport-vehicles"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Voertuig bijgewerkt",
         description: "De wijzigingen zijn succesvol opgeslagen.",
@@ -61,8 +55,6 @@ const Transport = () => {
     mutationFn: (vehicles: Vehicle[]) => bulkUpdateVehicles(vehicles),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
-      queryClient.invalidateQueries({ queryKey: ["transport-vehicles"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast({
         title: "Voertuigen bijgewerkt",
         description: "De wijzigingen zijn succesvol opgeslagen voor alle geselecteerde voertuigen.",
@@ -120,54 +112,6 @@ const Transport = () => {
     }
   });
 
-  // Delete vehicle mutation
-  const deleteMutation = useMutation({
-    mutationFn: deleteVehicle,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
-      queryClient.invalidateQueries({ queryKey: ["transport-vehicles"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      toast({
-        title: "Voertuig verwijderd",
-        description: "Het voertuig is succesvol uit het systeem verwijderd.",
-        variant: "default",
-      });
-      setSelectedVehicle(null);
-    },
-    onError: (error) => {
-      toast({
-        title: "Fout bij verwijderen",
-        description: "Er is iets misgegaan: " + error,
-        variant: "destructive",
-      });
-    }
-  });
-
-  // Bulk delete mutation
-  const bulkDeleteMutation = useMutation({
-    mutationFn: async (vehicleIds: string[]) => {
-      await Promise.all(vehicleIds.map(id => deleteVehicle(id)));
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
-      queryClient.invalidateQueries({ queryKey: ["transport-vehicles"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      toast({
-        title: "Voertuigen verwijderd",
-        description: "De geselecteerde voertuigen zijn succesvol uit het systeem verwijderd.",
-        variant: "default",
-      });
-      setSelectedVehicleIds([]);
-    },
-    onError: (error) => {
-      toast({
-        title: "Fout bij bulk verwijderen",
-        description: "Er is iets misgegaan: " + error,
-        variant: "destructive",
-      });
-    }
-  });
-
   // Handle vehicle selection
   const handleSelectVehicle = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
@@ -179,20 +123,17 @@ const Transport = () => {
     setSelectedVehicle(null); // Close details after update
   };
 
-  // Handle vehicle arrival - mark as arrived and set status to voorraad
+  // Handle vehicle arrival
   const handleVehicleArrival = (vehicleId: string) => {
     const vehicle = vehicles.find(v => v.id === vehicleId);
-    if (!vehicle) return;
-    
-    const isCurrentlySold = ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(vehicle.salesStatus);
-
-    updateMutation.mutate({ 
-      ...vehicle, 
-      transportStatus: 'aangekomen',
-      location: 'showroom',
-      salesStatus: isCurrentlySold ? vehicle.salesStatus : 'voorraad',
-      arrived: true
-    });
+    if (vehicle) {
+      updateMutation.mutate({ 
+        ...vehicle, 
+        arrived: true, 
+        importStatus: "aangekomen" as ImportStatus,
+        transportStatus: "aangekomen" as const
+      });
+    }
   };
 
   // Handle send pickup document
@@ -248,20 +189,6 @@ const Transport = () => {
     
     if (vehiclesToUpdate.length > 0) {
       bulkUpdateMutation.mutate(vehiclesToUpdate);
-    }
-  };
-
-  // Handle delete vehicle
-  const handleDeleteVehicle = (vehicleId: string) => {
-    if (confirm("Weet je zeker dat je dit voertuig wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.")) {
-      deleteMutation.mutate(vehicleId);
-    }
-  };
-
-  // Handle bulk delete
-  const handleBulkDelete = (vehicleIds: string[]) => {
-    if (confirm(`Weet je zeker dat je ${vehicleIds.length} voertuig(en) wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.`)) {
-      bulkDeleteMutation.mutate(vehicleIds);
     }
   };
 
@@ -345,7 +272,6 @@ const Transport = () => {
           onClearSelection={() => setSelectedVehicleIds([])}
           onSendBulkEmails={handleSendBulkEmails}
           onUpdateBulkStatus={handleUpdateBulkStatus}
-          onBulkDelete={handleBulkDelete}
         />
         
         <div className="rounded-md border overflow-hidden">
@@ -369,7 +295,6 @@ const Transport = () => {
             onSendPickupDocument={handleSendPickupDocument}
             onSendEmail={handleSendEmail}
             onFileUpload={handleFileUpload}
-            onDelete={handleDeleteVehicle}
           />
         )}
         

@@ -138,11 +138,10 @@ export const UserManagement = () => {
                     {user.role === "admin" ? "Admin" : 
                      user.role === "owner" ? "Owner" :
                      user.role === "manager" ? "Manager" :
-                     user.role === "verkoper" ? "Verkoper" :
-                     user.role === "operationeel" ? "Operationeel" : "Gebruiker"}
+                     user.role === "verkoper" ? "Verkoper" : "Gebruiker"}
                   </Badge>
                   <Select
-                    value={user.role || 'operationeel'}
+                    value={user.role}
                     onValueChange={(value) => handleRoleChange(user.id, value)}
                     disabled={updateRoleMutation.isPending}
                   >
