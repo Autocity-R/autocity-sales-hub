@@ -537,7 +537,7 @@ const Inventory = () => {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="relative -mx-2 px-2 overflow-x-auto lg:mx-0 lg:px-0">
+          <div className="relative mx-0 px-0 overflow-x-auto">
             <TabsList className="min-w-max">
               <TabsTrigger value="all">Alle Voertuigen ({allVehicles.filter(v => v.salesStatus !== 'afgeleverd').length})</TabsTrigger>
               <TabsTrigger value="b2c">B2C Verkocht ({b2cVehicles.length})</TabsTrigger>

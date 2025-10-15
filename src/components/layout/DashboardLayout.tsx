@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { AuthHeader } from "./AuthHeader";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
@@ -10,6 +12,8 @@ const DashboardLayout = ({
   children
 }: DashboardLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
+  const isInventory = location.pathname.startsWith("/inventory");
   return <div className="flex min-h-screen bg-gray-50">
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:z-40">
@@ -25,9 +29,12 @@ const DashboardLayout = ({
         </>}
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col lg:pl-64 mx-0 my-0 py-0 px-0">
+      <div className="flex flex-1 flex-col lg:pl-64">
         {/* Top bar */}
-        <div className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm lg:pl-0 lg:pr-4">
+        <div className={cn(
+          "sticky top-0 z-20 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white shadow-sm px-4",
+          isInventory ? "lg:pl-0 lg:pr-4" : "lg:px-4"
+        )}>
           <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
             <Menu className="h-6 w-6" />
           </Button>
@@ -41,7 +48,10 @@ const DashboardLayout = ({
         </div>
         
         {/* Page content */}
-        <main className="flex-1 px-4 lg:pl-0 lg:pr-6 py-0">
+        <main className={cn(
+          "flex-1 py-0",
+          isInventory ? "px-0 lg:px-0" : "px-4 lg:px-6"
+        )}>
           {children}
         </main>
       </div>
