@@ -27,7 +27,7 @@ const DashboardLayout = ({
       {/* Main content */}
       <div className="flex flex-1 flex-col lg:pl-64 mx-0 my-0 py-0 px-0">
         {/* Top bar */}
-        <div className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm lg:px-4">
+        <div className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm lg:pl-0 lg:pr-4">
           <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
             <Menu className="h-6 w-6" />
           </Button>
