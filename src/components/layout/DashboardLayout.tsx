@@ -42,9 +42,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         
         {/* Page content */}
         <main className="flex-1 py-4 px-4 lg:px-6">
-          <div className="max-w-[1800px] mx-auto">
-            {children}
-          </div>
+          {children}
         </main>
       </div>
 
