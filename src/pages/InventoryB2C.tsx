@@ -160,7 +160,7 @@ const InventoryB2C = () => {
 
   return (
     <DashboardLayout>
-      <div className="w-full space-y-6">
+      <div className="space-y-4">
         <PageHeader 
           title="Verkocht B2C" 
           description="Beheer uw verkochte voertuigen aan particuliere klanten"
@@ -171,8 +171,8 @@ const InventoryB2C = () => {
           />
         </PageHeader>
         
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 w-full">
-          <VehicleB2CTable
+        <div className="bg-white rounded-md shadow">
+          <VehicleB2CTable 
             vehicles={sortedVehicles}
             selectedVehicles={selectedVehicles}
             toggleSelectAll={(checked) => toggleSelectAll(checked, vehicles)}

@@ -19,14 +19,14 @@ export function PageHeader({
   icon: Icon,
 }: PageHeaderProps) {
   return (
-    <div className={cn("flex flex-col md:flex-row md:items-center md:justify-between mb-6 lg:mb-8", className)}>
+    <div className={cn("flex flex-col md:flex-row md:items-center md:justify-between mb-6", className)}>
       <div>
-        <h1 className="text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-bold tracking-tight flex items-center gap-3">
-          {Icon && <Icon className="h-7 w-7 lg:h-9 lg:w-9 xl:h-11 xl:w-11" />}
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          {Icon && <Icon className="h-6 w-6" />}
           {title}
         </h1>
         {description && (
-          <p className="text-muted-foreground mt-2 text-lg lg:text-xl xl:text-2xl">{description}</p>
+          <p className="text-muted-foreground mt-1">{description}</p>
         )}
       </div>
       {children && (

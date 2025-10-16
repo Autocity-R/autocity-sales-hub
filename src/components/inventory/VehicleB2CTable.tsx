@@ -133,7 +133,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
   return (
     <>
       <div className="w-full overflow-x-auto">
-        <Table className="w-full max-w-none min-w-[1400px] 2xl:min-w-[1600px] 3xl:min-w-[1900px] 4xl:min-w-[2200px]">
+        <Table className="w-full min-w-[1400px]">
           <VehicleB2CTableHeader
             selectedVehicles={selectedVehicles}
             vehiclesLength={vehicles.length}
