@@ -34,17 +34,16 @@ interface VehicleTableProps {
 
 const renderImportStatusBadge = (status: ImportStatus) => {
   const statusMap: Record<ImportStatus, { label: string, variant: "default" | "outline" | "secondary" | "destructive" }> = {
-    niet_aangemeld: { label: "Niet aangemeld", variant: "outline" },
-    aanvraag_ontvangen: { label: "Aanvraag ontvangen", variant: "outline" },
-    goedgekeurd: { label: "Goedgekeurd", variant: "secondary" },
-    bpm_betaald: { label: "BPM betaald", variant: "default" },
-    ingeschreven: { label: "Ingeschreven", variant: "default" }
+    niet_aangemeld: { label: "Niet aangem.", variant: "outline" },
+    aanvraag_ontvangen: { label: "Aanvr. ontv.", variant: "outline" },
+    goedgekeurd: { label: "Goedgek.", variant: "secondary" },
+    bpm_betaald: { label: "BPM bet.", variant: "default" },
+    ingeschreven: { label: "Ingeschr.", variant: "default" }
   };
   
-  // Handle unknown status values with fallback
   const statusInfo = statusMap[status] || { label: status.replace(/_/g, ' ').toUpperCase(), variant: "outline" as const };
   const { label, variant } = statusInfo;
-  return <Badge variant={variant}>{label}</Badge>;
+  return <Badge variant={variant} className="text-[10px] px-1.5 py-0">{label}</Badge>;
 };
 
 // Memoized row component to prevent unnecessary re-renders
@@ -98,16 +97,16 @@ const VehicleRow = memo<{
       className="hover:bg-muted/50 cursor-pointer"
       onClick={() => onSelectVehicle(vehicle)}
     >
-      <TableCell className="align-middle px-3 py-2 text-[13px] md:text-sm lg:text-[15px]" onClick={(e) => e.stopPropagation()}>
+      <TableCell className="align-middle px-2 py-1" onClick={(e) => e.stopPropagation()}>
         <Checkbox 
           checked={isSelected} 
           onCheckedChange={(checked) => onToggleSelect(vehicle.id, checked === true)} 
           aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
         />
       </TableCell>
-      <TableCell className="align-middle px-3 py-2">
+      <TableCell className="align-middle px-2 py-1">
         {vehicle.mainPhotoUrl ? (
-          <Avatar className="w-10 h-10 rounded-md">
+          <Avatar className="w-8 h-8 rounded-md">
             <img 
               src={vehicle.mainPhotoUrl} 
               alt={`${vehicle.brand} ${vehicle.model}`} 
@@ -115,73 +114,73 @@ const VehicleRow = memo<{
             />
           </Avatar>
         ) : (
-          <div className="w-10 h-10 bg-muted rounded-md flex items-center justify-center">
-            <Car className="h-5 w-5 text-muted-foreground" />
+          <div className="w-8 h-8 bg-muted rounded-md flex items-center justify-center">
+            <Car className="h-4 w-4 text-muted-foreground" />
           </div>
         )}
       </TableCell>
-      <TableCell className="align-middle font-medium px-3 py-2 text-[13px] md:text-sm lg:text-[15px] whitespace-nowrap">
+      <TableCell className="align-middle font-medium px-2 py-1 text-xs whitespace-nowrap">
         {vehicle.brand}
       </TableCell>
-      <TableCell className="align-middle px-3 py-2 text-[13px] md:text-sm lg:text-[15px] whitespace-nowrap">
+      <TableCell className="align-middle px-2 py-1 text-xs whitespace-nowrap">
         {vehicle.model}
       </TableCell>
-      <TableCell className="align-middle px-3 py-2 text-[13px] md:text-sm lg:text-[15px] whitespace-nowrap">
+      <TableCell className="align-middle px-2 py-1 text-xs whitespace-nowrap">
         {vehicle.licenseNumber}
       </TableCell>
-      <TableCell className="align-middle px-3 py-2 text-[13px] md:text-sm lg:text-[15px]">
-        <div className="min-w-0 truncate max-w-44" title={vehicle.vin}>
+      <TableCell className="align-middle px-2 py-1 text-xs">
+        <div className="min-w-0 truncate max-w-36" title={vehicle.vin}>
           {vehicle.vin}
         </div>
       </TableCell>
-      <TableCell className="align-middle px-3 py-2 text-[13px] md:text-sm lg:text-[15px] whitespace-nowrap">
+      <TableCell className="align-middle px-2 py-1 text-xs whitespace-nowrap">
         {formatPrice(vehicle.purchasePrice)}
       </TableCell>
-      <TableCell className="align-middle px-3 py-2 text-[13px] md:text-sm lg:text-[15px] whitespace-nowrap">
+      <TableCell className="align-middle px-2 py-1 text-xs whitespace-nowrap">
         {formatPrice(vehicle.sellingPrice)}
       </TableCell>
-      <TableCell className="align-middle px-3 py-2 text-[13px] md:text-sm lg:text-[15px] whitespace-nowrap">
+      <TableCell className="align-middle px-2 py-1 text-xs whitespace-nowrap">
         {formatMileage(vehicle.mileage)}
       </TableCell>
-      <TableCell className="align-middle px-3 py-2 text-[13px] md:text-sm lg:text-[15px]">
+      <TableCell className="align-middle px-2 py-1 text-xs">
         {renderImportStatusBadge(vehicle.importStatus)}
       </TableCell>
-      <TableCell className="align-middle px-3 py-2 text-[13px] md:text-sm lg:text-[15px]">
-        <Badge variant="outline" className="capitalize text-[11px] md:text-xs">
+      <TableCell className="align-middle px-2 py-1 text-xs">
+        <Badge variant="outline" className="capitalize text-[10px] px-1.5 py-0">
           {vehicle.location}
         </Badge>
       </TableCell>
-      <TableCell className="align-middle text-center px-3 py-2 text-[13px] md:text-sm lg:text-[15px]">
+      <TableCell className="align-middle text-center px-2 py-1">
         {vehicle.arrived ? (
-          <Badge variant="default" className="bg-green-100 text-green-800 text-[11px] md:text-xs">Ja</Badge>
+          <Badge variant="default" className="bg-green-100 text-green-800 text-[10px] px-1.5 py-0">Ja</Badge>
         ) : (
-          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 text-[11px] md:text-xs">Nee</Badge>
+          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 text-[10px] px-1.5 py-0">Nee</Badge>
         )}
       </TableCell>
-      <TableCell className="align-middle text-center px-3 py-2 text-[13px] md:text-sm lg:text-[15px]">
+      <TableCell className="align-middle text-center px-2 py-1">
         {vehicle.papersReceived ? (
-          <Badge variant="default" className="bg-green-100 text-green-800 text-[11px] md:text-xs">Ja</Badge>
+          <Badge variant="default" className="bg-green-100 text-green-800 text-[10px] px-1.5 py-0">Ja</Badge>
         ) : (
-          <Badge variant="outline" className="bg-red-100 text-red-800 text-[11px] md:text-xs">Nee</Badge>
+          <Badge variant="outline" className="bg-red-100 text-red-800 text-[10px] px-1.5 py-0">Nee</Badge>
         )}
       </TableCell>
-      <TableCell className="align-middle text-center px-3 py-2 text-[13px] md:text-sm lg:text-[15px]">
+      <TableCell className="align-middle text-center px-2 py-1">
         {vehicle.showroomOnline ? (
-          <Badge variant="default" className="bg-blue-100 text-blue-800 text-[11px] md:text-xs">Online</Badge>
+          <Badge variant="default" className="bg-blue-100 text-blue-800 text-[10px] px-1.5 py-0">Online</Badge>
         ) : (
-          <Badge variant="outline" className="text-[11px] md:text-xs">Offline</Badge>
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0">Offline</Badge>
         )}
       </TableCell>
-      <TableCell className="align-middle px-3 py-2 text-[13px] md:text-sm lg:text-[15px]">
-        <Badge variant="secondary" className="text-[11px] md:text-xs">
-          {calculateStandingDays(vehicle.createdAt)} dagen
+      <TableCell className="align-middle px-2 py-1">
+        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+          {calculateStandingDays(vehicle.createdAt)} d
         </Badge>
       </TableCell>
-      <TableCell className="align-middle px-3 py-2" onClick={(e) => e.stopPropagation()}>
+      <TableCell className="align-middle px-2 py-1" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm">
-              <MoreHorizontal className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+              <MoreHorizontal className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -303,96 +302,96 @@ export const VehicleTable = memo<VehicleTableProps>(({
 
   return (
     <div className="w-full overflow-x-auto">
-      <Table className="w-full min-w-[1600px] table-auto">
-        <TableHeader className="sticky top-0 z-20 bg-background">
+      <Table className="w-full table-auto">
+        <TableHeader className="sticky top-0 z-20 bg-muted">
           <TableRow>
-            <TableHead className="w-12 h-12 px-3 text-[13px] md:text-sm lg:text-[15px]">
+            <TableHead className="w-10 h-10 px-2 py-1 text-xs">
               <Checkbox 
                 checked={isAllSelected} 
                 onCheckedChange={toggleSelectAll} 
                 aria-label="Selecteer alle voertuigen"
               />
             </TableHead>
-            <TableHead className="w-14 h-12 px-3 text-[13px] md:text-sm lg:text-[15px]">Foto</TableHead>
-            <TableHead className="min-w-28 h-12 px-3 text-[13px] md:text-sm lg:text-[15px] cursor-pointer" onClick={() => handleSort("brand")}>
+            <TableHead className="w-12 h-10 px-2 py-1 text-xs">Foto</TableHead>
+            <TableHead className="min-w-24 h-10 px-2 py-1 text-xs cursor-pointer whitespace-nowrap" onClick={() => handleSort("brand")}>
               <div className="flex items-center">
                 Merk
                 {renderSortIcon("brand")}
               </div>
             </TableHead>
-            <TableHead className="min-w-36 h-12 px-3 text-[13px] md:text-sm lg:text-[15px] cursor-pointer" onClick={() => handleSort("model")}>
+            <TableHead className="min-w-28 h-10 px-2 py-1 text-xs cursor-pointer whitespace-nowrap" onClick={() => handleSort("model")}>
               <div className="flex items-center">
                 Model
                 {renderSortIcon("model")}
               </div>
             </TableHead>
-            <TableHead className="min-w-28 h-12 px-3 text-[13px] md:text-sm lg:text-[15px] cursor-pointer" onClick={() => handleSort("licenseNumber")}>
+            <TableHead className="min-w-24 h-10 px-2 py-1 text-xs cursor-pointer whitespace-nowrap" onClick={() => handleSort("licenseNumber")}>
               <div className="flex items-center">
                 Kenteken
                 {renderSortIcon("licenseNumber")}
               </div>
             </TableHead>
-            <TableHead className="min-w-44 h-12 px-3 text-[13px] md:text-sm lg:text-[15px] cursor-pointer" onClick={() => handleSort("vin")}>
+            <TableHead className="min-w-36 h-10 px-2 py-1 text-xs cursor-pointer whitespace-nowrap" onClick={() => handleSort("vin")}>
               <div className="flex items-center">
                 VIN
                 {renderSortIcon("vin")}
               </div>
             </TableHead>
-            <TableHead className="min-w-32 h-12 px-3 text-[13px] md:text-sm lg:text-[15px] cursor-pointer" onClick={() => handleSort("purchasePrice")}>
+            <TableHead className="min-w-28 h-10 px-2 py-1 text-xs cursor-pointer whitespace-nowrap" onClick={() => handleSort("purchasePrice")}>
               <div className="flex items-center">
                 Inkoopprijs
                 {renderSortIcon("purchasePrice")}
               </div>
             </TableHead>
-            <TableHead className="min-w-32 h-12 px-3 text-[13px] md:text-sm lg:text-[15px] cursor-pointer" onClick={() => handleSort("sellingPrice")}>
+            <TableHead className="min-w-28 h-10 px-2 py-1 text-xs cursor-pointer whitespace-nowrap" onClick={() => handleSort("sellingPrice")}>
               <div className="flex items-center">
                 Verkoopprijs
                 {renderSortIcon("sellingPrice")}
               </div>
             </TableHead>
-            <TableHead className="min-w-28 h-12 px-3 text-[13px] md:text-sm lg:text-[15px] cursor-pointer" onClick={() => handleSort("mileage")}>
+            <TableHead className="min-w-24 h-10 px-2 py-1 text-xs cursor-pointer whitespace-nowrap" onClick={() => handleSort("mileage")}>
               <div className="flex items-center">
                 KM Stand
                 {renderSortIcon("mileage")}
               </div>
             </TableHead>
-            <TableHead className="min-w-36 h-12 px-3 text-[13px] md:text-sm lg:text-[15px] cursor-pointer" onClick={() => handleSort("importStatus")}>
+            <TableHead className="min-w-28 h-10 px-2 py-1 text-xs cursor-pointer whitespace-nowrap" onClick={() => handleSort("importStatus")}>
               <div className="flex items-center">
                 Importstatus
                 {renderSortIcon("importStatus")}
               </div>
             </TableHead>
-            <TableHead className="min-w-28 h-12 px-3 text-[13px] md:text-sm lg:text-[15px] cursor-pointer" onClick={() => handleSort("location")}>
+            <TableHead className="min-w-24 h-10 px-2 py-1 text-xs cursor-pointer whitespace-nowrap" onClick={() => handleSort("location")}>
               <div className="flex items-center">
                 Locatie
                 {renderSortIcon("location")}
               </div>
             </TableHead>
-            <TableHead className="min-w-28 h-12 px-3 text-[13px] md:text-sm lg:text-[15px] cursor-pointer" onClick={() => handleSort("arrived")}>
+            <TableHead className="min-w-24 h-10 px-2 py-1 text-xs cursor-pointer whitespace-nowrap" onClick={() => handleSort("arrived")}>
               <div className="flex items-center">
                 Aangekomen
                 {renderSortIcon("arrived")}
               </div>
             </TableHead>
-            <TableHead className="min-w-28 h-12 px-3 text-[13px] md:text-sm lg:text-[15px] cursor-pointer" onClick={() => handleSort("papersReceived")}>
+            <TableHead className="min-w-24 h-10 px-2 py-1 text-xs cursor-pointer whitespace-nowrap" onClick={() => handleSort("papersReceived")}>
               <div className="flex items-center">
                 Papieren
                 {renderSortIcon("papersReceived")}
               </div>
             </TableHead>
-            <TableHead className="min-w-28 h-12 px-3 text-[13px] md:text-sm lg:text-[15px] cursor-pointer" onClick={() => handleSort("showroomOnline")}>
+            <TableHead className="min-w-20 h-10 px-2 py-1 text-xs cursor-pointer whitespace-nowrap" onClick={() => handleSort("showroomOnline")}>
               <div className="flex items-center">
                 Online
                 {renderSortIcon("showroomOnline")}
               </div>
             </TableHead>
-            <TableHead className="min-w-28 h-12 px-3 text-[13px] md:text-sm lg:text-[15px] cursor-pointer" onClick={() => handleSort("createdAt")}>
+            <TableHead className="min-w-20 h-10 px-2 py-1 text-xs cursor-pointer whitespace-nowrap" onClick={() => handleSort("createdAt")}>
               <div className="flex items-center">
                 Sta dagen
                 {renderSortIcon("createdAt")}
               </div>
             </TableHead>
-            <TableHead className="w-14 h-12 px-3 text-[13px] md:text-sm lg:text-[15px]">Acties</TableHead>
+            <TableHead className="w-12 h-10 px-2 py-1 text-xs">Acties</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
