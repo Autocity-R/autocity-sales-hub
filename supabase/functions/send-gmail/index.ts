@@ -54,6 +54,24 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // For JWT-authenticated requests, allow them through
+  // For scheduled/automated requests, validate CRON_SECRET
+  const authHeader = req.headers.get('Authorization');
+  const hasJWT = authHeader && authHeader.startsWith('Bearer ');
+  
+  if (!hasJWT) {
+    const cronSecret = Deno.env.get('CRON_SECRET');
+    const requestSecret = req.headers.get('x-cron-secret');
+    
+    if (cronSecret && requestSecret !== cronSecret) {
+      console.error('Invalid or missing authentication');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
   try {
     const {
       senderEmail,
