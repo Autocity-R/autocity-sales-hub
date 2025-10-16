@@ -1,38 +1,46 @@
 import { useState } from "react";
-import { useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { AuthHeader } from "./AuthHeader";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
-const DashboardLayout = ({
-  children
-}: DashboardLayoutProps) => {
+
+const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const location = useLocation();
-  const isInventory = location.pathname.startsWith("/inventory");
-  return <div className="flex min-h-screen bg-gray-50">
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:z-40">
+
+  return (
+    <div className="flex min-h-screen bg-background">
+      {/* Desktop Sidebar - Sticky instead of Fixed */}
+      <div className="hidden lg:flex lg:w-64 lg:flex-col sticky top-0 h-screen">
         <Sidebar />
       </div>
 
       {/* Mobile Sidebar */}
-      {sidebarOpen && <>
-          <div className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      {sidebarOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
           <div className="fixed inset-y-0 left-0 z-50 w-64 lg:hidden">
             <Sidebar />
           </div>
-        </>}
+        </>
+      )}
 
-      {/* Main content */}
-      <div className="flex flex-1 flex-col lg:pl-64 px-0">
+      {/* Main content - Full width, no left padding */}
+      <div className="flex flex-1 flex-col min-w-0">
         {/* Top bar */}
-        <div className={cn("sticky top-0 z-20 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white shadow-sm px-4", isInventory ? "lg:pl-0 lg:pr-4" : "lg:px-4")}>
-          <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
+        <div className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-x-4 border-b bg-card shadow-sm px-4 lg:px-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="lg:hidden"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
             <Menu className="h-6 w-6" />
           </Button>
           
@@ -44,11 +52,15 @@ const DashboardLayout = ({
           </div>
         </div>
         
-        {/* Page content */}
-        <main className={cn("flex-1 py-0", isInventory ? "px-0 lg:px-0" : "px-4 lg:px-6")}>
-          {children}
+        {/* Page content - Responsive container */}
+        <main className="flex-1 p-4 lg:p-6 xl:p-8">
+          <div className="mx-auto max-w-full">
+            {children}
+          </div>
         </main>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default DashboardLayout;
