@@ -45,9 +45,9 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
   const isIndeterminate = selectedVehicles.length > 0 && selectedVehicles.length < vehiclesLength;
 
   return (
-    <TableHeader className="bg-muted/50 sticky top-0 z-20">
-      <TableRow className="hover:bg-transparent">
-        <TableHead className="w-[50px] px-3 sticky left-0 z-10 bg-muted/50">
+    <TableHeader>
+      <TableRow>
+        <TableHead className="w-12">
           <CustomCheckbox 
             checked={isAllSelected}
             indeterminate={isIndeterminate}
@@ -55,44 +55,44 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
             aria-label="Selecteer alle voertuigen"
           />
         </TableHead>
-        <TableHead className="w-[60px] px-3">Foto</TableHead>
-        <TableHead className="min-w-[110px] px-3">
+        <TableHead className="w-16">Foto</TableHead>
+        <TableHead className="min-w-20">
           {renderSortableHeader("brand", "Merk")}
         </TableHead>
-        <TableHead className="min-w-[140px] px-3">
+        <TableHead className="min-w-24">
           {renderSortableHeader("model", "Model")}
         </TableHead>
-        <TableHead className="min-w-[70px] px-3">
+        <TableHead className="min-w-16">
           {renderSortableHeader("year", "Jaar")}
         </TableHead>
-        <TableHead className="min-w-[130px] px-3">
-          {renderSortableHeader("mileage", "KM")}
+        <TableHead className="min-w-20">
+          {renderSortableHeader("mileage", "Kilometerstand")}
         </TableHead>
-        <TableHead className="min-w-[180px] px-3">
+        <TableHead className="min-w-32">
           {renderSortableHeader("vin", "VIN")}
         </TableHead>
-        <TableHead className="min-w-[120px] px-3">
-          {renderSortableHeader("purchasePrice", "Inkoop")}
+        <TableHead className="min-w-28">
+          {renderSortableHeader("purchasePrice", "Inkoop prijs")}
         </TableHead>
-        <TableHead className="min-w-[120px] px-3">
-          {renderSortableHeader("sellingPrice", "Verkoop")}
+        <TableHead className="min-w-28">
+          {renderSortableHeader("sellingPrice", "Verkoopprijs")}
         </TableHead>
-        <TableHead className="min-w-[150px] px-3">
-          {renderSortableHeader("customerName", "Klant")}
+        <TableHead className="min-w-24">
+          {renderSortableHeader("customerName", "Klantnaam")}
         </TableHead>
-        <TableHead className="min-w-[140px] px-3">
-          {renderSortableHeader("importStatus", "Import")}
+        <TableHead className="min-w-32">
+          {renderSortableHeader("importStatus", "Import status")}
         </TableHead>
-        <TableHead className="min-w-[150px] px-3">
-          {renderSortableHeader("workshopStatus", "Werkplaats")}
+        <TableHead className="min-w-32">
+          {renderSortableHeader("workshopStatus", "Werkplaats status")}
         </TableHead>
-        <TableHead className="min-w-[120px] px-3">
-          {renderSortableHeader("paintStatus", "Lak")}
+        <TableHead className="min-w-24">
+          {renderSortableHeader("paintStatus", "Lak status")}
         </TableHead>
-        <TableHead className="min-w-[100px] px-3">
+        <TableHead className="min-w-24">
           {renderSortableHeader("location", "Locatie")}
         </TableHead>
-        <TableHead className="w-[80px] px-3 sticky right-0 z-10 bg-muted/50">Acties</TableHead>
+        <TableHead className="w-12">Acties</TableHead>
       </TableRow>
     </TableHeader>
   );
