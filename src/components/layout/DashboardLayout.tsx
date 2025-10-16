@@ -14,7 +14,7 @@ const DashboardLayout = ({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const isInventory = location.pathname.startsWith("/inventory");
-  return <div className="flex min-h-screen bg-gray-50">
+  return <div className="flex min-h-screen bg-gray-50 overflow-hidden">
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:z-40">
         <Sidebar />
@@ -29,7 +29,7 @@ const DashboardLayout = ({
         </>}
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col lg:pl-64">
+      <div className="flex flex-1 flex-col lg:pl-64 min-w-0">
         {/* Top bar */}
         <div className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white shadow-sm px-4 lg:px-6">
           <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
@@ -45,7 +45,7 @@ const DashboardLayout = ({
         </div>
         
         {/* Page content */}
-        <main className="flex-1 py-6 px-4 lg:px-6">
+        <main className="flex-1 min-w-0 py-6 px-4 lg:px-6">
           {children}
         </main>
       </div>

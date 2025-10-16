@@ -91,24 +91,25 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
       className="hover:bg-muted/50 cursor-pointer"
       onClick={() => handleSelectVehicle(vehicle)}
     >
-      <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
+      <TableCell className="align-middle sticky left-0 z-10 bg-background" onClick={(e) => e.stopPropagation()}>
         <CustomCheckbox 
           checked={selectedVehicles.includes(vehicle.id)} 
           onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, checked === true)} 
           aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
         />
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="align-middle sticky left-12 z-10 bg-background w-[72px]">
         {vehicle.mainPhotoUrl ? (
-          <Avatar className="w-12 h-12 rounded-md">
+          <div className="w-16 h-12 rounded-md overflow-hidden">
             <img 
               src={vehicle.mainPhotoUrl} 
               alt={`${vehicle.brand} ${vehicle.model}`} 
-              className="object-cover w-full h-full rounded-md"
+              className="object-cover w-full h-full"
+              loading="lazy"
             />
-          </Avatar>
+          </div>
         ) : (
-          <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
+          <div className="w-16 h-12 bg-muted rounded-md flex items-center justify-center">
             <Car className="h-6 w-6 text-muted-foreground" />
           </div>
         )}
@@ -119,19 +120,19 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
       <TableCell className="align-middle">
         {vehicle.model}
       </TableCell>
-      <TableCell className="align-middle text-muted-foreground">
+      <TableCell className="align-middle hidden md:table-cell w-[80px] text-right text-muted-foreground">
         {vehicle.year || '-'}
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="align-middle hidden lg:table-cell w-[120px] text-right">
         {formatMileage(vehicle.mileage)}
       </TableCell>
-      <TableCell className="align-middle truncate max-w-32">
+      <TableCell className="align-middle hidden xl:table-cell min-w-[180px]">
         {vehicle.vin}
       </TableCell>
       <TableCell className="align-middle">
         {formatPrice(vehicle.purchasePrice)}
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="align-middle w-[120px] text-right">
         {formatPrice(vehicle.sellingPrice)}
       </TableCell>
       <TableCell className="align-middle">
@@ -151,7 +152,7 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
           {vehicle.location}
         </Badge>
       </TableCell>
-      <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
+      <TableCell className="align-middle sticky right-0 z-10 bg-background w-[96px]" onClick={(e) => e.stopPropagation()}>
         <VehicleActionsDropdown
           vehicle={vehicle}
           onSendEmail={handleSendEmail}

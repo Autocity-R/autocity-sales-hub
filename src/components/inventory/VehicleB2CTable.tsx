@@ -132,40 +132,42 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
   // Desktop Table View
   return (
     <>
-      <div className="w-full overflow-x-auto">
-        <Table className="w-full min-w-[1400px]">
-          <VehicleB2CTableHeader
-            selectedVehicles={selectedVehicles}
-            vehiclesLength={vehicles.length}
-            toggleSelectAll={toggleSelectAll}
-            onSort={onSort}
-            sortField={sortField}
-            sortDirection={sortDirection}
-          />
-          <TableBody>
-            {vehicles.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
-                  Geen voertuigen gevonden
-                </TableCell>
-              </TableRow>
-            ) : (
-              vehicles.map((vehicle) => (
-                <VehicleB2CTableRow
-                  key={vehicle.id}
-                  vehicle={vehicle}
-                  selectedVehicles={selectedVehicles}
-                  toggleSelectVehicle={toggleSelectVehicle}
-                  handleSelectVehicle={handleSelectVehicle}
-                  handleSendEmail={handleSendEmail}
-                  handleChangeStatus={handleChangeStatus}
-                  onDeliveryConfirm={handleDeliveryConfirm}
-                  onOpenContractConfig={onOpenContractConfig}
-                />
-              ))
-            )}
-          </TableBody>
-        </Table>
+      <div className="min-w-0 w-full">
+        <div className="overflow-x-auto w-full" style={{ ['scrollbarGutter' as any]: 'stable both-edges' }}>
+          <Table className="w-full table-auto border-separate border-spacing-0 text-sm whitespace-nowrap">
+            <VehicleB2CTableHeader
+              selectedVehicles={selectedVehicles}
+              vehiclesLength={vehicles.length}
+              toggleSelectAll={toggleSelectAll}
+              onSort={onSort}
+              sortField={sortField}
+              sortDirection={sortDirection}
+            />
+            <TableBody>
+              {vehicles.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
+                    Geen voertuigen gevonden
+                  </TableCell>
+                </TableRow>
+              ) : (
+                vehicles.map((vehicle) => (
+                  <VehicleB2CTableRow
+                    key={vehicle.id}
+                    vehicle={vehicle}
+                    selectedVehicles={selectedVehicles}
+                    toggleSelectVehicle={toggleSelectVehicle}
+                    handleSelectVehicle={handleSelectVehicle}
+                    handleSendEmail={handleSendEmail}
+                    handleChangeStatus={handleChangeStatus}
+                    onDeliveryConfirm={handleDeliveryConfirm}
+                    onOpenContractConfig={onOpenContractConfig}
+                  />
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       <AlertDialog open={deliveryConfirmOpen} onOpenChange={setDeliveryConfirmOpen}>
