@@ -443,7 +443,7 @@ const Inventory = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="w-full space-y-6">
         <PageHeader
           title="Voertuig Beheer"
           description="Beheer alle voertuigen in voorraad en verkocht"

@@ -44,8 +44,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   };
 
   return (
-    <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
-      <ScrollArea className="flex-1 px-2 py-3">
+    <div className={cn("flex h-full w-full flex-col bg-black text-white border-r border-gray-800", className)}>
+      <ScrollArea className="flex-1 px-3 py-4">
         <div className="space-y-1">
           <Link to="/">
             <Button
