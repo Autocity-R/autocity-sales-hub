@@ -15,9 +15,13 @@ export const useSalespeople = () => {
   return useQuery({
     queryKey: ["salespeople"],
     queryFn: async (): Promise<Salesperson[]> => {
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email, role')
+      const { data: userRoles, error } = await supabase
+        .from('user_roles')
+        .select(`
+          user_id,
+          role,
+          profiles!inner(id, first_name, last_name, email)
+        `)
         .eq('role', 'verkoper');
 
       if (error) {
@@ -25,15 +29,18 @@ export const useSalespeople = () => {
         throw error;
       }
 
-      return profiles?.map(profile => ({
-        id: profile.id,
-        name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
-        email: profile.email,
-        role: "Verkoper",
-        isActive: true,
-        initials: `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase() || profile.email[0].toUpperCase()
-      })) || [];
+      return userRoles?.map(userRole => {
+        const profile = userRole.profiles as any;
+        return {
+          id: profile.id,
+          name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+          email: profile.email,
+          role: "Verkoper",
+          isActive: true,
+          initials: `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase() || profile.email[0].toUpperCase()
+        };
+      }) || [];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutes,
   });
 };

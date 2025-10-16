@@ -44,13 +44,14 @@ export const GoogleServiceAccountSetup: React.FC<GoogleServiceAccountSetupProps>
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: profile } = await supabase
-        .from('profiles')
+      const { data: userRole } = await supabase
+        .from('user_roles')
         .select('role')
-        .eq('id', user.id)
-        .single();
+        .eq('user_id', user.id)
+        .in('role', ['admin', 'owner'])
+        .maybeSingle();
 
-      setIsAdmin(profile?.role === 'admin' || profile?.role === 'owner');
+      setIsAdmin(!!userRole);
     } catch (error) {
       console.error('Error checking user role:', error);
     }

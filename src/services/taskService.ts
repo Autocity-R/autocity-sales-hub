@@ -3,26 +3,16 @@ import { Task, TaskStatus, TaskPriority, TaskCategory, Employee } from "@/types/
 import { supabase } from "@/integrations/supabase/client";
 import { UserProfile } from "./userService";
 
-// Convert UserProfile to Employee interface
+// Convert UserProfile to Employee interface (no longer uses role field)
 const profileToEmployee = (profile: UserProfile): Employee => ({
   id: profile.id,
   name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
-  role: profile.role || 'user',
+  role: 'user', // Default role
   email: profile.email,
   phone: undefined, // Not available in profiles
-  department: mapRoleToDepartment(profile.role || 'user'),
+  department: 'verkoop', // Default department
   active: true
 });
-
-const mapRoleToDepartment = (role: string): Employee['department'] => {
-  switch (role) {
-    case 'admin':
-    case 'owner':
-      return 'administratie';
-    default:
-      return 'verkoop';
-  }
-};
 
 export const fetchTasks = async (filters?: any): Promise<Task[]> => {
   try {
@@ -115,9 +105,8 @@ export const fetchActiveEmployees = async (): Promise<Employee[]> => {
       return [];
     }
 
-    return (data || [])
-      .filter(profile => profile.role && profile.role !== 'inactive') // Filter out inactive users
-      .map(profileToEmployee);
+    // All users with profiles are considered active
+    return (data || []).map(profileToEmployee);
   } catch (error: any) {
     console.error("Failed to fetch active employees:", error);
     return [];
