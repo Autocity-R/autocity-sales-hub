@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SearchableCustomerSelector } from "@/components/customers/SearchableCustomerSelector";
 import { supabaseCustomerService } from "@/services/supabaseCustomerService";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import DOMPurify from 'dompurify';
 
 interface ContractConfigDialogProps {
   isOpen: boolean;
@@ -300,7 +301,12 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
           <div className="space-y-4">
             <div 
               className="border rounded-lg p-4 bg-white max-h-[60vh] overflow-y-auto"
-              dangerouslySetInnerHTML={{ __html: contractPreview.htmlContent }}
+              dangerouslySetInnerHTML={{ 
+                __html: DOMPurify.sanitize(contractPreview.htmlContent, {
+                  ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'div', 'span'],
+                  ALLOWED_ATTR: ['class', 'style']
+                })
+              }}
             />
             
             <div className="flex justify-end gap-2">

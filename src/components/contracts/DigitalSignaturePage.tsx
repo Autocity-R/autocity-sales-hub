@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { getSignatureSession, signContract, validateSignatureSession } from "@/s
 import { generateContract } from "@/services/contractService";
 import { fetchVehicle } from "@/services/inventoryService";
 import { Vehicle } from "@/types/inventory";
+import DOMPurify from 'dompurify';
 
 export const DigitalSignaturePage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
@@ -284,7 +284,12 @@ export const DigitalSignaturePage: React.FC = () => {
               <CardContent>
                 <div 
                   className="border rounded-lg p-4 max-h-96 overflow-y-auto bg-white"
-                  dangerouslySetInnerHTML={{ __html: contract.htmlContent }}
+                  dangerouslySetInnerHTML={{ 
+                    __html: DOMPurify.sanitize(contract.htmlContent, {
+                      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'div', 'span'],
+                      ALLOWED_ATTR: ['class', 'style']
+                    })
+                  }}
                 />
               </CardContent>
             </Card>

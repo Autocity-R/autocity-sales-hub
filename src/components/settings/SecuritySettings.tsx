@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Shield, Key, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export const SecuritySettings = () => {
   const { toast } = useToast();
@@ -35,7 +35,7 @@ export const SecuritySettings = () => {
     }));
   };
 
-  const handlePasswordUpdate = (e: React.FormEvent) => {
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
@@ -60,6 +60,21 @@ export const SecuritySettings = () => {
       toast({
         title: "Fout",
         description: "Wachtwoord moet minimaal 8 karakters bevatten.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // SECURITY FIX: Roep Supabase aan om wachtwoord daadwerkelijk te wijzigen
+    const { error } = await supabase.auth.updateUser({
+      password: passwordData.newPassword
+    });
+
+    if (error) {
+      console.error('Password update error:', error);
+      toast({
+        title: "Fout",
+        description: error.message || "Er is een fout opgetreden bij het wijzigen van je wachtwoord.",
         variant: "destructive"
       });
       return;

@@ -46,14 +46,15 @@ serve(async (req) => {
       );
     }
 
-    // Check if user has admin role
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
+    // SECURITY FIX: Check if user has admin role using user_roles table
+    const { data: userRole, error: roleError } = await supabaseAdmin
+      .from('user_roles')
       .select('role')
-      .eq('id', userData.user.id)
+      .eq('user_id', userData.user.id)
       .single();
 
-    if (profileError || !profile || (profile.role !== 'admin' && profile.role !== 'owner')) {
+    if (roleError || !userRole || (userRole.role !== 'admin' && userRole.role !== 'owner')) {
+      console.error('Role check failed:', roleError);
       return new Response(
         JSON.stringify({ success: false, error: 'Access denied. Admin rights required.' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -82,7 +83,7 @@ serve(async (req) => {
     // Get user details before deletion for logging
     const { data: userToDelete } = await supabaseAdmin
       .from('profiles')
-      .select('email, first_name, last_name, role')
+      .select('email, first_name, last_name')
       .eq('id', userId)
       .single();
 
@@ -93,8 +94,15 @@ serve(async (req) => {
       );
     }
 
+    // SECURITY FIX: Check user's role from user_roles table
+    const { data: userToDeleteRole } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .single();
+
     // Prevent deletion of owner accounts by non-owners
-    if (userToDelete.role === 'owner' && profile.role !== 'owner') {
+    if (userToDeleteRole?.role === 'owner' && userRole.role !== 'owner') {
       return new Response(
         JSON.stringify({ success: false, error: 'Alleen eigenaren kunnen andere eigenaren verwijderen' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
