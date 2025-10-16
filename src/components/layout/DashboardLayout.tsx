@@ -13,8 +13,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Desktop Sidebar - Sticky instead of Fixed */}
-      <div className="hidden lg:flex lg:w-64 lg:flex-col sticky top-0 h-screen">
+      {/* Desktop Sidebar - Scaled for better readability */}
+      <div className="hidden lg:flex lg:w-72 xl:w-80 2xl:w-96 lg:flex-col sticky top-0 h-screen">
         <Sidebar />
       </div>
 
@@ -31,10 +31,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         </>
       )}
 
-      {/* Main content - Full width, no left padding */}
+      {/* Main content - Full width with proper margin for sidebar */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Top bar */}
-        <div className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-x-4 border-b bg-card shadow-sm px-4 lg:px-6">
+        <div className="sticky top-0 z-30 flex h-16 xl:h-20 shrink-0 items-center gap-x-4 border-b bg-card shadow-sm px-4 lg:px-6 xl:px-8 2xl:px-12">
           <Button
             variant="ghost"
             size="sm"
@@ -52,9 +52,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           </div>
         </div>
         
-        {/* Page content - Responsive container */}
-        <main className="flex-1 p-4 lg:p-6 xl:p-8">
-          <div className="mx-auto max-w-full">
+        {/* Page content - Full width fluid for inventory */}
+        <main className="flex-1 px-4 py-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 lg:py-6">
+          <div className="w-full">
             {children}
           </div>
         </main>

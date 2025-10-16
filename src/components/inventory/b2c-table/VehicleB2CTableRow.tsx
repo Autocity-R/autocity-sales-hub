@@ -91,16 +91,16 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
       className="hover:bg-muted/50 cursor-pointer"
       onClick={() => handleSelectVehicle(vehicle)}
     >
-      <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
+      <TableCell className="sticky left-0 z-10 bg-white align-middle px-4 lg:px-5 xl:px-6 py-4 lg:py-5 xl:py-6" onClick={(e) => e.stopPropagation()}>
         <CustomCheckbox 
           checked={selectedVehicles.includes(vehicle.id)} 
           onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, checked === true)} 
           aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
         />
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="sticky left-16 lg:left-20 z-10 bg-white align-middle px-4 lg:px-5 xl:px-6 py-4 lg:py-5 xl:py-6">
         {vehicle.mainPhotoUrl ? (
-          <Avatar className="w-12 h-12 rounded-md">
+          <Avatar className="w-14 h-14 lg:w-16 lg:h-16 xl:w-20 xl:h-20 rounded-md">
             <img 
               src={vehicle.mainPhotoUrl} 
               alt={`${vehicle.brand} ${vehicle.model}`} 
@@ -108,50 +108,56 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
             />
           </Avatar>
         ) : (
-          <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
-            <Car className="h-6 w-6 text-muted-foreground" />
+          <div className="w-14 h-14 lg:w-16 lg:h-16 xl:w-20 xl:h-20 bg-muted rounded-md flex items-center justify-center">
+            <Car className="h-7 w-7 lg:h-8 lg:w-8 xl:h-10 xl:w-10 text-muted-foreground" />
           </div>
         )}
       </TableCell>
-      <TableCell className="align-middle font-medium">
+      <TableCell className="sticky left-36 lg:left-44 xl:left-48 z-10 bg-white align-middle font-medium px-4 lg:px-5 xl:px-6 py-4 lg:py-5 xl:py-6 text-base lg:text-lg xl:text-xl">
         {vehicle.brand}
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="align-middle px-4 lg:px-5 xl:px-6 py-4 lg:py-5 xl:py-6 text-base lg:text-lg xl:text-xl">
         {vehicle.model}
       </TableCell>
-      <TableCell className="align-middle text-muted-foreground">
+      <TableCell className="align-middle text-muted-foreground px-4 lg:px-5 xl:px-6 py-4 lg:py-5 xl:py-6 text-base lg:text-lg xl:text-xl">
         {vehicle.year || '-'}
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="align-middle px-4 lg:px-5 xl:px-6 py-4 lg:py-5 xl:py-6 text-base lg:text-lg xl:text-xl">
         {formatMileage(vehicle.mileage)}
       </TableCell>
-      <TableCell className="align-middle truncate max-w-32">
-        {vehicle.vin}
+      <TableCell className="align-middle px-4 lg:px-5 xl:px-6 py-4 lg:py-5 xl:py-6 text-base lg:text-lg xl:text-xl">
+        <span className="font-mono">{vehicle.vin}</span>
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="align-middle px-4 lg:px-5 xl:px-6 py-4 lg:py-5 xl:py-6 text-base lg:text-lg xl:text-xl">
         {formatPrice(vehicle.purchasePrice)}
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="align-middle px-4 lg:px-5 xl:px-6 py-4 lg:py-5 xl:py-6 text-base lg:text-lg xl:text-xl font-semibold">
         {formatPrice(vehicle.sellingPrice)}
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="align-middle px-4 lg:px-5 xl:px-6 py-4 lg:py-5 xl:py-6 text-base lg:text-lg xl:text-xl">
         {vehicle.customerName || "Onbekend"}
       </TableCell>
-      <TableCell className="align-middle">
-        {renderImportStatusBadge(vehicle.importStatus)}
+      <TableCell className="align-middle px-4 lg:px-5 xl:px-6 py-4 lg:py-5 xl:py-6">
+        <div className="scale-110 lg:scale-125 xl:scale-150 origin-left">
+          {renderImportStatusBadge(vehicle.importStatus)}
+        </div>
       </TableCell>
-      <TableCell className="align-middle">
-        {renderWorkshopStatusBadge(vehicle.workshopStatus)}
+      <TableCell className="align-middle px-4 lg:px-5 xl:px-6 py-4 lg:py-5 xl:py-6">
+        <div className="scale-110 lg:scale-125 xl:scale-150 origin-left">
+          {renderWorkshopStatusBadge(vehicle.workshopStatus)}
+        </div>
       </TableCell>
-      <TableCell className="align-middle">
-        {renderPaintStatusBadge(vehicle.paintStatus)}
+      <TableCell className="align-middle px-4 lg:px-5 xl:px-6 py-4 lg:py-5 xl:py-6">
+        <div className="scale-110 lg:scale-125 xl:scale-150 origin-left">
+          {renderPaintStatusBadge(vehicle.paintStatus)}
+        </div>
       </TableCell>
-      <TableCell className="align-middle">
-        <Badge variant="outline" className="capitalize">
+      <TableCell className="align-middle px-4 lg:px-5 xl:px-6 py-4 lg:py-5 xl:py-6">
+        <Badge variant="outline" className="capitalize text-sm lg:text-base xl:text-lg px-3 py-1">
           {vehicle.location}
         </Badge>
       </TableCell>
-      <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
+      <TableCell className="sticky right-0 z-10 bg-white align-middle px-4 lg:px-5 xl:px-6 py-4 lg:py-5 xl:py-6" onClick={(e) => e.stopPropagation()}>
         <VehicleActionsDropdown
           vehicle={vehicle}
           onSendEmail={handleSendEmail}
