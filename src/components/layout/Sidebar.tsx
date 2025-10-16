@@ -44,9 +44,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   };
 
   return (
-    <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
-      <ScrollArea className="flex-1 px-2 py-3">
-        <div className="space-y-1">
+    <div className={cn("flex h-full w-full flex-col bg-sidebar text-sidebar-foreground", className)}>
+      <ScrollArea className="flex-1 px-3 py-4">
+        <div className="space-y-1.5">
           <Link to="/">
             <Button
               variant={isActive("/") ? "default" : "ghost"}
@@ -59,11 +59,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           </Link>
         </div>
 
-        <div className="mt-8">
-          <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
+        <div className="mt-6">
+          <h2 className="mb-2 px-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
             VOERTUIGEN
           </h2>
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             <Link to="/inventory">
               <Button
                 variant={isActive("/inventory") && !getSubActive(["/inventory/b2b", "/inventory/online", "/inventory/consumer", "/inventory/delivered"]) ? "default" : "ghost"}
@@ -147,11 +147,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           </div>
         </div>
 
-        <div className="mt-8">
-          <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
+        <div className="mt-6">
+          <h2 className="mb-2 px-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
             KLANTEN
           </h2>
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             <Link to="/customers">
               <Button
                 variant={isActive("/customers") && !getSubActive(["/customers/b2b", "/customers/b2c", "/suppliers"]) ? "default" : "ghost"}
@@ -195,11 +195,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           </div>
         </div>
 
-        <div className="mt-8">
-          <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
+        <div className="mt-6">
+          <h2 className="mb-2 px-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
             ADMINISTRATIE
           </h2>
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             <Link to="/reports">
               <Button
                 variant={isActive("/reports") ? "default" : "ghost"}

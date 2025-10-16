@@ -88,70 +88,70 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
 
   return (
     <TableRow 
-      className="hover:bg-muted/50 cursor-pointer"
+      className="hover:bg-muted/30 cursor-pointer transition-colors"
       onClick={() => handleSelectVehicle(vehicle)}
     >
-      <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
+      <TableCell className="px-3 py-2 sticky left-0 z-10 bg-card" onClick={(e) => e.stopPropagation()}>
         <CustomCheckbox 
           checked={selectedVehicles.includes(vehicle.id)} 
           onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, checked === true)} 
           aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
         />
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="px-3 py-2">
         {vehicle.mainPhotoUrl ? (
-          <Avatar className="w-12 h-12 rounded-md">
+          <Avatar className="w-10 h-10 rounded">
             <img 
               src={vehicle.mainPhotoUrl} 
               alt={`${vehicle.brand} ${vehicle.model}`} 
-              className="object-cover w-full h-full rounded-md"
+              className="object-cover w-full h-full"
             />
           </Avatar>
         ) : (
-          <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
-            <Car className="h-6 w-6 text-muted-foreground" />
+          <div className="w-10 h-10 bg-muted rounded flex items-center justify-center">
+            <Car className="h-5 w-5 text-muted-foreground" />
           </div>
         )}
       </TableCell>
-      <TableCell className="align-middle font-medium">
+      <TableCell className="px-3 py-2 font-medium whitespace-nowrap">
         {vehicle.brand}
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="px-3 py-2 whitespace-nowrap">
         {vehicle.model}
       </TableCell>
-      <TableCell className="align-middle text-muted-foreground">
+      <TableCell className="px-3 py-2 text-muted-foreground whitespace-nowrap">
         {vehicle.year || '-'}
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="px-3 py-2 whitespace-nowrap">
         {formatMileage(vehicle.mileage)}
       </TableCell>
-      <TableCell className="align-middle truncate max-w-32">
+      <TableCell className="px-3 py-2 font-mono text-xs whitespace-nowrap">
         {vehicle.vin}
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="px-3 py-2 whitespace-nowrap">
         {formatPrice(vehicle.purchasePrice)}
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="px-3 py-2 font-medium whitespace-nowrap">
         {formatPrice(vehicle.sellingPrice)}
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="px-3 py-2 whitespace-nowrap">
         {vehicle.customerName || "Onbekend"}
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="px-3 py-2">
         {renderImportStatusBadge(vehicle.importStatus)}
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="px-3 py-2">
         {renderWorkshopStatusBadge(vehicle.workshopStatus)}
       </TableCell>
-      <TableCell className="align-middle">
+      <TableCell className="px-3 py-2">
         {renderPaintStatusBadge(vehicle.paintStatus)}
       </TableCell>
-      <TableCell className="align-middle">
-        <Badge variant="outline" className="capitalize">
+      <TableCell className="px-3 py-2">
+        <Badge variant="outline" className="capitalize whitespace-nowrap">
           {vehicle.location}
         </Badge>
       </TableCell>
-      <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
+      <TableCell className="px-3 py-2 sticky right-0 z-10 bg-card" onClick={(e) => e.stopPropagation()}>
         <VehicleActionsDropdown
           vehicle={vehicle}
           onSendEmail={handleSendEmail}
