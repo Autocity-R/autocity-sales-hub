@@ -29,9 +29,9 @@ const DashboardLayout = ({
         </>}
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col lg:pl-64 px-0">
+      <div className="flex flex-1 flex-col lg:pl-64">
         {/* Top bar */}
-        <div className={cn("sticky top-0 z-20 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white shadow-sm px-4", isInventory ? "lg:pl-0 lg:pr-4" : "lg:px-4")}>
+        <div className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white shadow-sm px-4 lg:px-6">
           <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
             <Menu className="h-6 w-6" />
           </Button>
@@ -45,7 +45,7 @@ const DashboardLayout = ({
         </div>
         
         {/* Page content */}
-        <main className={cn("flex-1 py-0", isInventory ? "px-0 lg:px-0" : "px-4 lg:px-6")}>
+        <main className="flex-1 py-6 px-4 lg:px-6">
           {children}
         </main>
       </div>
