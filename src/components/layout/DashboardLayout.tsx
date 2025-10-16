@@ -13,26 +13,25 @@ const DashboardLayout = ({
 }: DashboardLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const isInventoryRoute = location.pathname.startsWith('/inventory');
-  
-  return <div className="min-h-screen w-full overflow-hidden lg:grid lg:grid-cols-[240px_1fr] xl:grid-cols-[280px_1fr]">
-      {/* Desktop Sidebar - sticky within grid */}
-      <aside className="hidden lg:block sticky top-0 h-screen overflow-y-auto bg-black">
-        <Sidebar className="w-full" />
-      </aside>
+  const isInventory = location.pathname.startsWith("/inventory");
+  return <div className="flex min-h-screen bg-gray-50">
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:z-40">
+        <Sidebar />
+      </div>
 
       {/* Mobile Sidebar */}
       {sidebarOpen && <>
           <div className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 lg:hidden" onClick={() => setSidebarOpen(false)} />
-          <div className="fixed inset-y-0 left-0 z-50 w-[240px] lg:hidden">
+          <div className="fixed inset-y-0 left-0 z-50 w-64 lg:hidden">
             <Sidebar />
           </div>
         </>}
 
-      {/* Main content column */}
-      <div className="flex flex-col w-full min-w-0">
+      {/* Main content */}
+      <div className="flex flex-1 flex-col lg:pl-64 px-0">
         {/* Top bar */}
-        <div className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white shadow-sm px-4">
+        <div className={cn("sticky top-0 z-20 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white shadow-sm px-4", isInventory ? "lg:pl-0 lg:pr-4" : "lg:px-4")}>
           <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
             <Menu className="h-6 w-6" />
           </Button>
@@ -46,13 +45,8 @@ const DashboardLayout = ({
         </div>
         
         {/* Page content */}
-        <main className="flex-1 w-full overflow-x-visible">
-          <div className={cn(
-            "px-4 py-4 lg:px-6 lg:py-6",
-            isInventoryRoute ? "w-full" : "max-w-[2000px] mx-auto"
-          )}>
-            {children}
-          </div>
+        <main className={cn("flex-1 py-0", isInventory ? "px-0 lg:px-0" : "px-4 lg:px-6")}>
+          {children}
         </main>
       </div>
     </div>;
