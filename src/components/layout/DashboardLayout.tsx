@@ -13,6 +13,7 @@ const DashboardLayout = ({
 }: DashboardLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const isInventoryRoute = location.pathname.startsWith('/inventory');
   
   return <div className="min-h-screen w-full overflow-hidden lg:grid lg:grid-cols-[240px_1fr] xl:grid-cols-[280px_1fr]">
       {/* Desktop Sidebar - sticky within grid */}
@@ -46,7 +47,10 @@ const DashboardLayout = ({
         
         {/* Page content */}
         <main className="flex-1 w-full overflow-x-visible">
-          <div className="max-w-[2000px] mx-auto px-4 py-4 lg:px-6 lg:py-6">
+          <div className={cn(
+            "px-4 py-4 lg:px-6 lg:py-6",
+            isInventoryRoute ? "w-full" : "max-w-[2000px] mx-auto"
+          )}>
             {children}
           </div>
         </main>
