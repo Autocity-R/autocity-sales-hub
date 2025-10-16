@@ -27,10 +27,9 @@ import { cn } from "@/lib/utils";
 
 interface SidebarProps {
   className?: string;
-  collapsed?: boolean;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   const location = useLocation();
 
   const isActive = (path: string) => {
@@ -45,11 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
   };
 
   return (
-    <div className={cn(
-      "flex h-full flex-col bg-black text-white border-r border-gray-800 transition-all duration-200",
-      collapsed ? "w-20" : "w-64",
-      className
-    )}>
+    <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
       <ScrollArea className="flex-1 px-2 py-3">
         <div className="space-y-1">
           <Link to="/">
@@ -58,18 +53,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
               className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
               size="sm"
             >
-              <HomeIcon className={cn("h-4 w-4", !collapsed && "mr-2")} />
-              {!collapsed && "Dashboard"}
+              <HomeIcon className="mr-2 h-4 w-4" />
+              Dashboard
             </Button>
           </Link>
         </div>
 
         <div className="mt-8">
-          {!collapsed && (
-            <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
-              VOERTUIGEN
-            </h2>
-          )}
+          <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
+            VOERTUIGEN
+          </h2>
           <div className="space-y-1">
             <Link to="/inventory">
               <Button
@@ -77,8 +70,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
                 className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
-                <CarIcon className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "Voorraad"}
+                <CarIcon className="mr-2 h-4 w-4" />
+                Voorraad
               </Button>
             </Link>
             <Link to="/inventory/online">
@@ -87,8 +80,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
                 className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
-                <ShoppingBagIcon className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "Online"}
+                <ShoppingBagIcon className="mr-2 h-4 w-4" />
+                Online
               </Button>
             </Link>
             <Link to="/inventory/b2b">
@@ -97,8 +90,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
                 className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
-                <BoxIcon className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "Verkocht B2B"}
+                <BoxIcon className="mr-2 h-4 w-4" />
+                Verkocht B2B
               </Button>
             </Link>
             <Link to="/inventory/consumer">
@@ -107,8 +100,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
                 className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
-                <UsersIcon className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "Verkocht B2C"}
+                <UsersIcon className="mr-2 h-4 w-4" />
+                Verkocht B2C
               </Button>
             </Link>
             <Link to="/inventory/delivered">
@@ -117,8 +110,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
                 className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
-                <Flag className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "Afgeleverd"}
+                <Flag className="mr-2 h-4 w-4" />
+                Afgeleverd
               </Button>
             </Link>
             <Link to="/transport">
@@ -127,8 +120,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
                 className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
-                <TruckIcon className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "Transport"}
+                <TruckIcon className="mr-2 h-4 w-4" />
+                Transport
               </Button>
             </Link>
             <Link to="/tasks">
@@ -137,8 +130,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
                 className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
-                <ClipboardList className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "Taken Schema"}
+                <ClipboardList className="mr-2 h-4 w-4" />
+                Taken Schema
               </Button>
             </Link>
             <Link to="/warranty">
@@ -147,19 +140,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
                 className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
-                <ShieldIcon className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "Garantie"}
+                <ShieldIcon className="mr-2 h-4 w-4" />
+                Garantie
               </Button>
             </Link>
           </div>
         </div>
 
         <div className="mt-8">
-          {!collapsed && (
-            <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
-              KLANTEN
-            </h2>
-          )}
+          <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
+            KLANTEN
+          </h2>
           <div className="space-y-1">
             <Link to="/customers">
               <Button
@@ -167,8 +158,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
                 className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
-                <UsersIcon className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "Alle Klanten"}
+                <UsersIcon className="mr-2 h-4 w-4" />
+                Alle Klanten
               </Button>
             </Link>
             <Link to="/customers/b2b">
@@ -177,8 +168,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
                 className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
-                <BoxIcon className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "Zakelijk"}
+                <BoxIcon className="mr-2 h-4 w-4" />
+                Zakelijk
               </Button>
             </Link>
             <Link to="/customers/b2c">
@@ -187,8 +178,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
                 className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
-                <UsersIcon className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "Particulier"}
+                <UsersIcon className="mr-2 h-4 w-4" />
+                Particulier
               </Button>
             </Link>
             <Link to="/suppliers">
@@ -197,19 +188,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
                 className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
-                <TruckIcon className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "Leveranciers"}
+                <TruckIcon className="mr-2 h-4 w-4" />
+                Leveranciers
               </Button>
             </Link>
           </div>
         </div>
 
         <div className="mt-8">
-          {!collapsed && (
-            <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
-              ADMINISTRATIE
-            </h2>
-          )}
+          <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
+            ADMINISTRATIE
+          </h2>
           <div className="space-y-1">
             <Link to="/reports">
               <Button
@@ -217,8 +206,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
                 className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
-                <BarChart3 className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "Rapportages"}
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Rapportages
               </Button>
             </Link>
             <Link to="/ai-agents">
@@ -227,8 +216,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
                 className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
-                <Bot className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "AI Agents"}
+                <Bot className="mr-2 h-4 w-4" />
+                AI Agents
               </Button>
             </Link>
             <Link to="/loan-cars">
@@ -237,8 +226,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
                 className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
-                <CarIcon className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "Leen auto beheer"}
+                <CarIcon className="mr-2 h-4 w-4" />
+                Leen auto beheer
               </Button>
             </Link>
             <Link to="/calendar">
@@ -247,8 +236,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
                 className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
-                <CalendarIcon className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "Agenda"}
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                Agenda
               </Button>
             </Link>
           </div>
@@ -262,8 +251,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className, collapsed = false }
                 className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
                 size="sm"
               >
-                <SettingsIcon className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                {!collapsed && "Instellingen"}
+                <SettingsIcon className="mr-2 h-4 w-4" />
+                Instellingen
               </Button>
             </Link>
           </div>

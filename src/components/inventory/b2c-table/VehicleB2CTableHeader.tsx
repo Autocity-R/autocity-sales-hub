@@ -45,9 +45,9 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
   const isIndeterminate = selectedVehicles.length > 0 && selectedVehicles.length < vehiclesLength;
 
   return (
-    <TableHeader className="sticky top-0 z-10 bg-background">
+    <TableHeader>
       <TableRow>
-        <TableHead className="w-12 sticky left-0 z-10 bg-background">
+        <TableHead className="w-12">
           <CustomCheckbox 
             checked={isAllSelected}
             indeterminate={isIndeterminate}
@@ -55,26 +55,26 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
             aria-label="Selecteer alle voertuigen"
           />
         </TableHead>
-        <TableHead className="w-[72px] sticky left-12 z-10 bg-background">Foto</TableHead>
+        <TableHead className="w-16">Foto</TableHead>
         <TableHead className="min-w-20">
           {renderSortableHeader("brand", "Merk")}
         </TableHead>
         <TableHead className="min-w-24">
           {renderSortableHeader("model", "Model")}
         </TableHead>
-        <TableHead className="hidden md:table-cell w-[80px] text-right">
+        <TableHead className="min-w-16">
           {renderSortableHeader("year", "Jaar")}
         </TableHead>
-        <TableHead className="hidden lg:table-cell w-[120px] text-right">
+        <TableHead className="min-w-20">
           {renderSortableHeader("mileage", "Kilometerstand")}
         </TableHead>
-        <TableHead className="hidden xl:table-cell min-w-[180px]">
+        <TableHead className="min-w-32">
           {renderSortableHeader("vin", "VIN")}
         </TableHead>
         <TableHead className="min-w-28">
           {renderSortableHeader("purchasePrice", "Inkoop prijs")}
         </TableHead>
-        <TableHead className="w-[120px] text-right">
+        <TableHead className="min-w-28">
           {renderSortableHeader("sellingPrice", "Verkoopprijs")}
         </TableHead>
         <TableHead className="min-w-24">
@@ -92,7 +92,7 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
         <TableHead className="min-w-24">
           {renderSortableHeader("location", "Locatie")}
         </TableHead>
-        <TableHead className="w-[96px] sticky right-0 z-10 bg-background">Acties</TableHead>
+        <TableHead className="w-12">Acties</TableHead>
       </TableRow>
     </TableHeader>
   );

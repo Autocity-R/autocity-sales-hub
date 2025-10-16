@@ -98,25 +98,24 @@ const VehicleRow = memo<{
       className="hover:bg-muted/50 cursor-pointer"
       onClick={() => onSelectVehicle(vehicle)}
     >
-      <TableCell className="align-middle sticky left-0 z-10 bg-background" onClick={(e) => e.stopPropagation()}>
+      <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
         <Checkbox 
           checked={isSelected} 
           onCheckedChange={(checked) => onToggleSelect(vehicle.id, checked === true)} 
           aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
         />
       </TableCell>
-      <TableCell className="align-middle sticky left-12 z-10 bg-background w-[72px]">
+      <TableCell className="align-middle">
         {vehicle.mainPhotoUrl ? (
-          <div className="w-16 h-12 rounded-md overflow-hidden">
+          <Avatar className="w-12 h-12 rounded-md">
             <img 
               src={vehicle.mainPhotoUrl} 
               alt={`${vehicle.brand} ${vehicle.model}`} 
-              className="object-cover w-full h-full"
-              loading="lazy"
+              className="object-cover w-full h-full rounded-md"
             />
-          </div>
+          </Avatar>
         ) : (
-          <div className="w-16 h-12 bg-muted rounded-md flex items-center justify-center">
+          <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
             <Car className="h-6 w-6 text-muted-foreground" />
           </div>
         )}
@@ -130,16 +129,16 @@ const VehicleRow = memo<{
       <TableCell className="align-middle">
         {vehicle.licenseNumber}
       </TableCell>
-      <TableCell className="align-middle hidden xl:table-cell min-w-[180px]">
+      <TableCell className="align-middle truncate max-w-32">
         {vehicle.vin}
       </TableCell>
-      <TableCell className="align-middle w-[120px] text-right">
+      <TableCell className="align-middle">
         {formatPrice(vehicle.purchasePrice)}
       </TableCell>
       <TableCell className="align-middle">
         {formatPrice(vehicle.sellingPrice)}
       </TableCell>
-      <TableCell className="align-middle hidden lg:table-cell w-[120px] text-right">
+      <TableCell className="align-middle">
         {formatMileage(vehicle.mileage)}
       </TableCell>
       <TableCell className="align-middle">
@@ -176,7 +175,7 @@ const VehicleRow = memo<{
           {calculateStandingDays(vehicle.createdAt)} dagen
         </Badge>
       </TableCell>
-      <TableCell className="align-middle sticky right-0 z-10 bg-background w-[96px]" onClick={(e) => e.stopPropagation()}>
+      <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm">
@@ -301,128 +300,123 @@ export const VehicleTable = memo<VehicleTableProps>(({
   }
 
   return (
-    <div className="min-w-0 w-full">
-      <div
-        className="overflow-x-auto w-full"
-        style={{ ['scrollbarGutter' as any]: 'stable both-edges' }}
-      >
-        <Table className="w-full table-auto border-separate border-spacing-0 text-sm whitespace-nowrap">
-          <TableHeader className="sticky top-0 z-10 bg-background">
+    <div className="w-full overflow-x-auto">
+      <Table className="w-full min-w-[1600px]">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-12">
+              <Checkbox 
+                checked={isAllSelected} 
+                onCheckedChange={toggleSelectAll} 
+                aria-label="Selecteer alle voertuigen"
+              />
+            </TableHead>
+            <TableHead className="w-16">Foto</TableHead>
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("brand")}>
+              <div className="flex items-center">
+                Merk
+                {renderSortIcon("brand")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-24 cursor-pointer" onClick={() => handleSort("model")}>
+              <div className="flex items-center">
+                Model
+                {renderSortIcon("model")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-28 cursor-pointer" onClick={() => handleSort("licenseNumber")}>
+              <div className="flex items-center">
+                Kenteken
+                {renderSortIcon("licenseNumber")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-32 cursor-pointer" onClick={() => handleSort("vin")}>
+              <div className="flex items-center">
+                VIN
+                {renderSortIcon("vin")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-28 cursor-pointer" onClick={() => handleSort("purchasePrice")}>
+              <div className="flex items-center">
+                Inkoopprijs
+                {renderSortIcon("purchasePrice")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-28 cursor-pointer" onClick={() => handleSort("sellingPrice")}>
+              <div className="flex items-center">
+                Verkoopprijs
+                {renderSortIcon("sellingPrice")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("mileage")}>
+              <div className="flex items-center">
+                KM Stand
+                {renderSortIcon("mileage")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-32 cursor-pointer" onClick={() => handleSort("importStatus")}>
+              <div className="flex items-center">
+                Importstatus
+                {renderSortIcon("importStatus")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-24 cursor-pointer" onClick={() => handleSort("location")}>
+              <div className="flex items-center">
+                Locatie
+                {renderSortIcon("location")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("arrived")}>
+              <div className="flex items-center">
+                Aangekomen
+                {renderSortIcon("arrived")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("papersReceived")}>
+              <div className="flex items-center">
+                Papieren
+                {renderSortIcon("papersReceived")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("showroomOnline")}>
+              <div className="flex items-center">
+                Online
+                {renderSortIcon("showroomOnline")}
+              </div>
+            </TableHead>
+            <TableHead className="min-w-20 cursor-pointer" onClick={() => handleSort("createdAt")}>
+              <div className="flex items-center">
+                Sta dagen
+                {renderSortIcon("createdAt")}
+              </div>
+            </TableHead>
+            <TableHead className="w-12">Acties</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {vehicles.length === 0 ? (
             <TableRow>
-              <TableHead className="w-12 sticky left-0 z-10 bg-background">
-                <Checkbox 
-                  checked={isAllSelected} 
-                  onCheckedChange={toggleSelectAll} 
-                  aria-label="Selecteer alle voertuigen"
-                />
-              </TableHead>
-              <TableHead className="w-[72px] sticky left-12 z-10 bg-background">Foto</TableHead>
-              <TableHead className="min-w-[140px] cursor-pointer" onClick={() => handleSort("brand")}>
-                <div className="flex items-center">
-                  Merk
-                  {renderSortIcon("brand")}
-                </div>
-              </TableHead>
-              <TableHead className="min-w-[220px] cursor-pointer" onClick={() => handleSort("model")}>
-                <div className="flex items-center">
-                  Model
-                  {renderSortIcon("model")}
-                </div>
-              </TableHead>
-              <TableHead className="min-w-[120px] cursor-pointer" onClick={() => handleSort("licenseNumber")}>
-                <div className="flex items-center">
-                  Kenteken
-                  {renderSortIcon("licenseNumber")}
-                </div>
-              </TableHead>
-              <TableHead className="hidden xl:table-cell min-w-[180px] cursor-pointer" onClick={() => handleSort("vin")}>
-                <div className="flex items-center">
-                  VIN
-                  {renderSortIcon("vin")}
-                </div>
-              </TableHead>
-              <TableHead className="min-w-[120px] cursor-pointer" onClick={() => handleSort("purchasePrice")}>
-                <div className="flex items-center">
-                  Inkoopprijs
-                  {renderSortIcon("purchasePrice")}
-                </div>
-              </TableHead>
-              <TableHead className="w-[120px] text-right cursor-pointer" onClick={() => handleSort("sellingPrice")}>
-                <div className="flex items-center justify-end">
-                  Verkoopprijs
-                  {renderSortIcon("sellingPrice")}
-                </div>
-              </TableHead>
-              <TableHead className="hidden lg:table-cell w-[120px] text-right cursor-pointer" onClick={() => handleSort("mileage")}>
-                <div className="flex items-center justify-end">
-                  KM Stand
-                  {renderSortIcon("mileage")}
-                </div>
-              </TableHead>
-              <TableHead className="min-w-[180px] cursor-pointer" onClick={() => handleSort("importStatus")}>
-                <div className="flex items-center">
-                  Importstatus
-                  {renderSortIcon("importStatus")}
-                </div>
-              </TableHead>
-              <TableHead className="min-w-[140px] cursor-pointer" onClick={() => handleSort("location")}>
-                <div className="flex items-center">
-                  Locatie
-                  {renderSortIcon("location")}
-                </div>
-              </TableHead>
-              <TableHead className="min-w-[120px] cursor-pointer" onClick={() => handleSort("arrived")}>
-                <div className="flex items-center">
-                  Aangekomen
-                  {renderSortIcon("arrived")}
-                </div>
-              </TableHead>
-              <TableHead className="min-w-[120px] cursor-pointer" onClick={() => handleSort("papersReceived")}>
-                <div className="flex items-center">
-                  Papieren
-                  {renderSortIcon("papersReceived")}
-                </div>
-              </TableHead>
-              <TableHead className="min-w-[120px] cursor-pointer" onClick={() => handleSort("showroomOnline")}>
-                <div className="flex items-center">
-                  Online
-                  {renderSortIcon("showroomOnline")}
-                </div>
-              </TableHead>
-              <TableHead className="min-w-[120px] cursor-pointer" onClick={() => handleSort("createdAt")}>
-                <div className="flex items-center">
-                  Sta dagen
-                  {renderSortIcon("createdAt")}
-                </div>
-              </TableHead>
-              <TableHead className="w-[96px] sticky right-0 z-10 bg-background">Acties</TableHead>
+              <TableCell colSpan={16} className="text-center py-8 text-muted-foreground">
+                Geen voertuigen gevonden
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {vehicles.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={16} className="text-center py-8 text-muted-foreground">
-                  Geen voertuigen gevonden
-                </TableCell>
-              </TableRow>
-            ) : (
-              vehicles.map((vehicle) => (
-                <VehicleRow
-                  key={vehicle.id}
-                  vehicle={vehicle}
-                  isSelected={selectedVehicles.includes(vehicle.id)}
-                  onToggleSelect={toggleSelectVehicle}
-                  onSelectVehicle={handleSelectVehicle}
-                  onSendEmail={handleSendEmail}
-                  onChangeStatus={handleChangeStatus}
-                  onMarkAsDelivered={handleMarkAsDelivered}
-                  onMarkAsArrived={handleMarkAsArrived}
-                />
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+          ) : (
+            vehicles.map((vehicle) => (
+              <VehicleRow
+                key={vehicle.id}
+                vehicle={vehicle}
+                isSelected={selectedVehicles.includes(vehicle.id)}
+                onToggleSelect={toggleSelectVehicle}
+                onSelectVehicle={handleSelectVehicle}
+                onSendEmail={handleSendEmail}
+                onChangeStatus={handleChangeStatus}
+                onMarkAsDelivered={handleMarkAsDelivered}
+                onMarkAsArrived={handleMarkAsArrived}
+              />
+            ))
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 });
