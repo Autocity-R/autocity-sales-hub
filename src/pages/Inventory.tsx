@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Filter, Car, Package, TrendingUp, AlertCircle } from "lucide-react";
-import { VehicleTable } from "@/components/inventory/VehicleTable";
+import { InventoryVisibilityTable } from "@/components/inventory/InventoryVisibilityTable";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
 import { VehicleForm } from "@/components/inventory/VehicleForm";
 import { Vehicle, FileCategory } from "@/types/inventory";
@@ -572,7 +572,7 @@ const Inventory = () => {
             </div>
 
             {/* Vehicle Table */}
-            <VehicleTable
+            <InventoryVisibilityTable
               vehicles={filteredAndSortedVehicles}
               selectedVehicles={selectedVehicles}
               toggleSelectAll={toggleSelectAll}
