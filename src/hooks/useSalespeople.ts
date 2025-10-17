@@ -22,7 +22,7 @@ export const useSalespeople = () => {
           role,
           profiles!inner(id, first_name, last_name, email)
         `)
-        .eq('role', 'verkoper');
+        .in('role', ['verkoper', 'admin', 'owner']);
 
       if (error) {
         console.error("Error fetching salespeople:", error);
@@ -31,11 +31,13 @@ export const useSalespeople = () => {
 
       return userRoles?.map(userRole => {
         const profile = userRole.profiles as any;
+        const role = (userRole as any).role as string;
+        const roleLabel = role === 'owner' ? 'Owner' : role === 'admin' ? 'Admin' : 'Verkoper';
         return {
           id: profile.id,
           name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
           email: profile.email,
-          role: "Verkoper",
+          role: roleLabel,
           isActive: true,
           initials: `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase() || profile.email[0].toUpperCase()
         };
