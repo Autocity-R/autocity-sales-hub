@@ -1,6 +1,26 @@
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 import { supabase } from "@/integrations/supabase/client";
+
+/**
+ * Convert image URL to base64 data URL
+ */
+const imageToBase64 = async (imageUrl: string): Promise<string> => {
+  try {
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('Failed to convert image to base64:', error);
+    return '';
+  }
+};
+
 export interface GeneratedContract {
   content: string;
   htmlContent: string; // Nieuwe HTML versie voor digitale weergave
@@ -35,11 +55,13 @@ const PAYMENT_TERMS_LABELS = {
 };
 
 export const generateContract = async (
-  vehicle: Vehicle, 
-  contractType: "b2b" | "b2c", 
+  vehicle: Vehicle,
+  contractType: "b2b" | "b2c",
   options: ContractOptions,
   signatureUrl?: string
 ): Promise<GeneratedContract> => {
+  // Convert logo to base64 for reliable PDF rendering
+  const logoBase64 = await imageToBase64('/lovable-uploads/5ed4e40f-e743-47d8-ae24-9c02f8deab82.png');
   console.log('[CONTRACT_SERVICE] 📄 Generating contract:', {
     vehicleId: vehicle.id,
     type: contractType,
@@ -186,7 +208,8 @@ export const generateContract = async (
     downPaymentAmount,
     downPaymentPercentage,
     vatText,
-    signatureUrl
+    signatureUrl,
+    logoBase64
   );
 
   const textContent = generateTextContract(
@@ -234,7 +257,8 @@ const generateHtmlContract = (
   downPaymentAmount: number,
   downPaymentPercentage: number,
   vatText: string,
-  signatureUrl?: string
+  signatureUrl?: string,
+  logoBase64?: string
 ): string => {
   const isB2B = contractType === "b2b";
   
@@ -299,10 +323,9 @@ const generateHtmlContract = (
         }
         
         .logo-container img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            filter: brightness(0) invert(1);
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
         }
         
         .header-center {
@@ -542,7 +565,7 @@ const generateHtmlContract = (
         <div class="header">
             <div class="logo-section">
                 <div class="logo-container">
-                    <img src="/lovable-uploads/5ed4e40f-e743-47d8-ae24-9c02f8deab82.png" alt="AutoCity Logo" />
+                    <img src="${logoBase64 || '/lovable-uploads/5ed4e40f-e743-47d8-ae24-9c02f8deab82.png'}" alt="AutoCity Logo" />
                 </div>
             </div>
             <div class="header-center">
