@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Task, TaskStatus } from "@/types/tasks";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { TaskMobileCard } from "./TaskMobileCard";
 
 interface TaskListProps {
   tasks: Task[];
@@ -221,6 +223,8 @@ export const TaskList = memo<TaskListProps>(({
   onStatusFilterChange 
 }) => {
   const { isAdmin } = useAuth();
+  const isMobile = useIsMobile();
+  
   const filteredTasks = useMemo(() => {
     return statusFilter === "all" 
       ? tasks.filter(task => 
@@ -232,16 +236,16 @@ export const TaskList = memo<TaskListProps>(({
   }, [tasks, statusFilter]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">
-          {isAdmin ? "Alle Taken Overzicht" : "Mijn Taken Overzicht"}
+    <div className="space-y-3 md:space-y-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <h3 className="text-base md:text-lg font-medium">
+          {isAdmin ? "Alle Taken" : "Mijn Taken"}
         </h3>
         <Select value={statusFilter} onValueChange={onStatusFilterChange}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-full sm:w-48 touch-manipulation">
             <SelectValue placeholder="Filter op status" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-background">
             <SelectItem value="all">Actieve taken</SelectItem>
             <SelectItem value="toegewezen">Toegewezen</SelectItem>
             <SelectItem value="in_uitvoering">In uitvoering</SelectItem>
@@ -254,22 +258,34 @@ export const TaskList = memo<TaskListProps>(({
 
       {filteredTasks.length === 0 ? (
         <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
+          <CardContent className="p-6 md:p-8 text-center text-muted-foreground text-sm">
             Geen taken gevonden voor de geselecteerde filter.
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-3 md:gap-4">
           {filteredTasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onCompleteTask={onCompleteTask}
-              onStartTask={onStartTask}
-              onTaskSelect={onTaskSelect}
-              onEditTask={onEditTask}
-              onDeleteTask={onDeleteTask}
-            />
+            isMobile ? (
+              <TaskMobileCard
+                key={task.id}
+                task={task}
+                onCompleteTask={onCompleteTask}
+                onStartTask={onStartTask}
+                onTaskSelect={onTaskSelect}
+                onEditTask={onEditTask}
+                onDeleteTask={onDeleteTask}
+              />
+            ) : (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onCompleteTask={onCompleteTask}
+                onStartTask={onStartTask}
+                onTaskSelect={onTaskSelect}
+                onEditTask={onEditTask}
+                onDeleteTask={onDeleteTask}
+              />
+            )
           ))}
         </div>
       )}

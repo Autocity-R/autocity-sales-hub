@@ -168,60 +168,60 @@ const TaskManagement = () => {
         </PageHeader>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <Card 
-            className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "all" ? "ring-2 ring-primary" : ""}`}
+            className={`cursor-pointer touch-manipulation transition-all hover:shadow-md ${statusFilter === "all" ? "ring-2 ring-primary" : ""}`}
             onClick={() => handleStatCardClick("all")}
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Actieve Taken</CardTitle>
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
+              <CardTitle className="text-xs md:text-sm font-medium">Actief</CardTitle>
+              <CheckCircle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{statusCounts.total}</div>
-              <p className="text-xs text-muted-foreground mt-1">Taken die nog uitgevoerd moeten worden</p>
+            <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
+              <div className="text-xl md:text-2xl font-bold">{statusCounts.total}</div>
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">Te doen</p>
             </CardContent>
           </Card>
           
           <Card 
-            className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "toegewezen" ? "ring-2 ring-blue-500" : ""}`}
+            className={`cursor-pointer touch-manipulation transition-all hover:shadow-md ${statusFilter === "toegewezen" ? "ring-2 ring-blue-500" : ""}`}
             onClick={() => handleStatCardClick("toegewezen")}
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Toegewezen</CardTitle>
-              <Clock className="h-4 w-4 text-blue-500" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
+              <CardTitle className="text-xs md:text-sm font-medium">Toegewezen</CardTitle>
+              <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{statusCounts.toegewezen}</div>
-              <p className="text-xs text-muted-foreground mt-1">Klik om toegewezen taken te bekijken</p>
+            <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
+              <div className="text-xl md:text-2xl font-bold text-blue-600">{statusCounts.toegewezen}</div>
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2 hidden md:block">Toegewezen</p>
             </CardContent>
           </Card>
 
           <Card 
-            className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "in_uitvoering" ? "ring-2 ring-orange-500" : ""}`}
+            className={`cursor-pointer touch-manipulation transition-all hover:shadow-md ${statusFilter === "in_uitvoering" ? "ring-2 ring-orange-500" : ""}`}
             onClick={() => handleStatCardClick("in_uitvoering")}
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">In Uitvoering</CardTitle>
-              <AlertCircle className="h-4 w-4 text-orange-500" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
+              <CardTitle className="text-xs md:text-sm font-medium">Lopend</CardTitle>
+              <AlertCircle className="h-4 w-4 text-orange-500 flex-shrink-0" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{statusCounts.in_uitvoering}</div>
-              <p className="text-xs text-muted-foreground mt-1">Klik om lopende taken te bekijken</p>
+            <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
+              <div className="text-xl md:text-2xl font-bold text-orange-600">{statusCounts.in_uitvoering}</div>
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2 hidden md:block">In uitvoering</p>
             </CardContent>
           </Card>
 
           <Card 
-            className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === "voltooid" ? "ring-2 ring-green-500" : ""}`}
+            className={`cursor-pointer touch-manipulation transition-all hover:shadow-md ${statusFilter === "voltooid" ? "ring-2 ring-green-500" : ""}`}
             onClick={() => handleStatCardClick("voltooid")}
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Voltooid</CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-500" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
+              <CardTitle className="text-xs md:text-sm font-medium">Voltooid</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{statusCounts.voltooid}</div>
-              <p className="text-xs text-muted-foreground mt-1">Klik om voltooide taken te bekijken</p>
+            <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
+              <div className="text-xl md:text-2xl font-bold text-green-600">{statusCounts.voltooid}</div>
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2 hidden md:block">Afgerond</p>
             </CardContent>
           </Card>
         </div>
