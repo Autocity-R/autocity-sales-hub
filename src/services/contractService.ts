@@ -105,16 +105,15 @@ export const generateContract = async (
 
   // Bedrijfsgegevens
   const companyInfo = {
-    name: "HPM Cars VOF",
-    tradeName: "AutoCity",
+    tradeName: "Autocity Automotive Group B.V",
     address: "Thurledeweg 61a",
     postalCode: "3044ER",
     city: "Rotterdam",
     country: "Nederland",
     phone: "010-2623980",
     iban: "NL24ABNA0595583911",
-    btw: "NL8563 08 791B01",
-    kvk: "65900073",
+    btw: "NL868445794B01",
+    kvk: "98322702",
     website: "www.auto-city.nl"
   };
 
@@ -273,9 +272,9 @@ const generateHtmlContract = (
         }
         
         .header {
-            background: linear-gradient(135deg, #000000, #1a1a1a);
+            background: #000000;
             color: white;
-            padding: 15px 18px;
+            padding: 20px;
             margin: -8mm -8mm 15px -8mm;
             display: flex;
             justify-content: space-between;
@@ -292,20 +291,18 @@ const generateHtmlContract = (
         }
         
         .logo-container {
-            background: white;
-            padding: 8px;
-            border-radius: 8px;
+            width: 80px;
+            height: 80px;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 80px;
-            height: 80px;
         }
         
         .logo-container img {
             width: 100%;
             height: 100%;
             object-fit: contain;
+            filter: brightness(0) invert(1);
         }
         
         .header-center {
@@ -315,11 +312,11 @@ const generateHtmlContract = (
         }
         
         .header-title {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 700;
             color: white;
             text-transform: uppercase;
-            letter-spacing: 3px;
+            letter-spacing: 1px;
             margin-bottom: 8px;
         }
         
@@ -333,8 +330,8 @@ const generateHtmlContract = (
             flex: 0 0 auto;
             text-align: right;
             font-size: 11px;
-            color: #cccccc;
-            line-height: 1.4;
+            color: #ffffff;
+            line-height: 1.6;
             max-width: 200px;
         }
         
@@ -354,18 +351,16 @@ const generateHtmlContract = (
             border: 2px solid #000000;
             border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
             margin-bottom: 10px;
         }
         
         .section-header {
-            background: linear-gradient(135deg, #000000, #1a1a1a);
+            background: #000000;
             color: white;
-            padding: 10px 15px;
+            padding: 12px 15px;
             font-weight: 600;
             font-size: 14px;
             text-transform: uppercase;
-            letter-spacing: 1px;
         }
         
         .section-content {
@@ -373,36 +368,33 @@ const generateHtmlContract = (
         }
         
         .contract-details {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+            display: grid;
+            grid-template-columns: 180px 1fr;
+            gap: 8px 15px;
+            padding: 0;
         }
         
         .info-item {
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
+            display: contents;
         }
         
         .info-label {
             font-weight: 600;
-            color: #4b5563;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            color: #666666;
+            font-size: 12px;
         }
         
         .info-value {
-            color: #1a1a1a;
+            color: #000000;
             font-weight: 500;
             font-size: 13px;
-            padding: 2px 0;
         }
         
         .vehicle-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            grid-template-columns: 180px 1fr;
+            gap: 8px 15px;
+            padding: 0;
         }
         
         .price-section {
@@ -419,8 +411,8 @@ const generateHtmlContract = (
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 15px;
-            border-bottom: 1px solid #f3f4f6;
+            padding: 10px 15px;
+            border-bottom: 1px solid #eeeeee;
             font-size: 13px;
         }
         
@@ -430,23 +422,21 @@ const generateHtmlContract = (
         
         .price-label {
             font-weight: 500;
-            color: #4b5563;
+            color: #666666;
         }
         
         .price-value {
             font-weight: 600;
-            color: #1a1a1a;
+            color: #000000;
         }
         
         .price-total {
-            background: linear-gradient(135deg, #000000, #1a1a1a);
+            background: #000000;
             color: white;
-            padding: 12px 15px;
-            font-size: 16px;
+            padding: 15px;
+            font-size: 18px;
             font-weight: 700;
             text-align: center;
-            text-transform: uppercase;
-            letter-spacing: 1px;
         }
         
         .full-width-section {
@@ -561,7 +551,6 @@ const generateHtmlContract = (
             </div>
             <div class="company-info">
                 <div><strong>${companyInfo.tradeName}</strong></div>
-                <div>${companyInfo.name}</div>
                 <div>${companyInfo.address}</div>
                 <div>${companyInfo.postalCode} ${companyInfo.city}</div>
                 <div>${companyInfo.country}</div>
@@ -569,7 +558,6 @@ const generateHtmlContract = (
                 <div>IBAN: ${companyInfo.iban}</div>
                 <div>BTW: ${companyInfo.btw}</div>
                 <div>KVK: ${companyInfo.kvk}</div>
-                <div>${companyInfo.website}</div>
             </div>
         </div>
         
