@@ -13,7 +13,7 @@ import {
 import { StoredContract } from "@/services/contractStorageService";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import DOMPurify from 'dompurify';
+
 
 interface ContractViewerProps {
   contract: StoredContract;
@@ -95,14 +95,10 @@ export const ContractViewer: React.FC<ContractViewerProps> = ({
         
         {/* Contract Content */}
         <div className="flex-1 overflow-auto bg-white">
-          <div 
+          <iframe
+            title="Contract Content"
+            srcDoc={contract.htmlContent}
             className="w-full h-full"
-            dangerouslySetInnerHTML={{ 
-              __html: DOMPurify.sanitize(contract.htmlContent, {
-                ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'div', 'span'],
-                ALLOWED_ATTR: ['class', 'style']
-              })
-            }}
           />
         </div>
         

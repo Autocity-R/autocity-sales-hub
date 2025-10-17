@@ -10,7 +10,7 @@ import { getSignatureSession, signContract, validateSignatureSession } from "@/s
 import { generateContract } from "@/services/contractService";
 import { fetchVehicle } from "@/services/inventoryService";
 import { Vehicle } from "@/types/inventory";
-import DOMPurify from 'dompurify';
+
 
 export const DigitalSignaturePage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
@@ -282,15 +282,13 @@ export const DigitalSignaturePage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div 
-                  className="border rounded-lg p-4 max-h-96 overflow-y-auto bg-white"
-                  dangerouslySetInnerHTML={{ 
-                    __html: DOMPurify.sanitize(contract.htmlContent, {
-                      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'div', 'span'],
-                      ALLOWED_ATTR: ['class', 'style']
-                    })
-                  }}
-                />
+                <div className="border rounded-lg overflow-hidden bg-white">
+                  <iframe
+                    title="Contract Preview"
+                    srcDoc={contract.htmlContent}
+                    className="w-full h-96"
+                  />
+                </div>
               </CardContent>
             </Card>
           </div>

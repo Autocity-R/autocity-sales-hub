@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SearchableCustomerSelector } from "@/components/customers/SearchableCustomerSelector";
 import { supabaseCustomerService } from "@/services/supabaseCustomerService";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import DOMPurify from 'dompurify';
+
 
 interface ContractConfigDialogProps {
   isOpen: boolean;
@@ -297,19 +297,16 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
               </Button>
             </DialogTitle>
           </DialogHeader>
-          
-          <div className="space-y-4">
-            <div 
-              className="border rounded-lg p-4 bg-white max-h-[60vh] overflow-y-auto"
-              dangerouslySetInnerHTML={{ 
-                __html: DOMPurify.sanitize(contractPreview.htmlContent, {
-                  ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'div', 'span'],
-                  ALLOWED_ATTR: ['class', 'style']
-                })
-              }}
-            />
-            
-            <div className="flex justify-end gap-2">
+            <div className="space-y-4">
+              <div className="border rounded-lg overflow-hidden bg-white">
+                <iframe
+                  title="Contract Preview"
+                  srcDoc={contractPreview.htmlContent}
+                  className="w-full h-[60vh]"
+                />
+              </div>
+              
+              <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowPreview(false)}>
                 Bewerken
               </Button>
