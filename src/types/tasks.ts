@@ -9,6 +9,7 @@ export interface Task {
   vehicleBrand?: string;
   vehicleModel?: string;
   vehicleLicenseNumber?: string;
+  vehicleVin?: string;
   dueDate: Date | string;
   status: TaskStatus;
   priority: TaskPriority;

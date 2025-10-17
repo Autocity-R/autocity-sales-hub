@@ -88,6 +88,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
       vehicleBrand: selectedVehicle?.brand,
       vehicleModel: selectedVehicle?.model,
       vehicleLicenseNumber: selectedVehicle?.licenseNumber,
+      vehicleVin: selectedVehicle?.vin,
       dueDate: formData.dueDate,
       status: "toegewezen" as const,
       priority: formData.priority,
@@ -176,7 +177,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
                 <SelectContent>
                   {vehicles.map((vehicle) => (
                     <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.brand} {vehicle.model} - {vehicle.licenseNumber}
+                      {vehicle.brand} {vehicle.model} {vehicle.vin ? `- ${vehicle.vin}` : vehicle.licenseNumber ? `- ${vehicle.licenseNumber}` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
