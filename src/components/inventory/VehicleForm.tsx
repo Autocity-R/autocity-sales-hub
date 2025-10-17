@@ -27,6 +27,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SupplierSelector } from "./SupplierSelector";
 import { cn } from "@/lib/utils";
 import { Vehicle, ImportStatus, TransportStatus, WorkshopStatus, DamageStatus, LocationStatus, SalesStatus, PaymentStatus } from "@/types/inventory";
+import { useSalespeople } from "@/hooks/useSalespeople";
 
 interface VehicleFormProps {
   onSubmit: (data: Omit<Vehicle, "id">) => void;
@@ -37,6 +38,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
   onSubmit,
   initialData
 }) => {
+  const { data: salespeople } = useSalespeople();
   const [formData, setFormData] = useState<Omit<Vehicle, "id"> & { supplierId?: string }>({
     brand: initialData?.brand || "",
     model: initialData?.model || "",
@@ -69,7 +71,9 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
     mainPhotoUrl: initialData?.mainPhotoUrl || null,
     photos: initialData?.photos || [],
     customerId: initialData?.customerId || null,
-    supplierId: ""
+    supplierId: "",
+    salespersonId: initialData?.salespersonId || undefined,
+    salespersonName: initialData?.salespersonName || undefined
   });
   
   const handleChange = (field: keyof Omit<Vehicle, "id" | "damage"> | "supplierId", value: any) => {
@@ -296,6 +300,35 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Verkoper Selector - Only show when vehicle is sold */}
+          {(formData.salesStatus === 'verkocht_b2b' || formData.salesStatus === 'verkocht_b2c' || formData.salesStatus === 'afgeleverd') && (
+            <div className="space-y-2">
+              <Label>Verkoper</Label>
+              <Select 
+                value={formData.salespersonId || ""} 
+                onValueChange={(value) => {
+                  const selectedSalesperson = salespeople?.find(sp => sp.id === value);
+                  handleChange('salespersonId', value);
+                  handleChange('salespersonName', selectedSalesperson?.name || '');
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecteer verkoper" />
+                </SelectTrigger>
+                <SelectContent>
+                  {salespeople?.map((salesperson) => (
+                    <SelectItem key={salesperson.id} value={salesperson.id}>
+                      {salesperson.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Voor performance tracking en rapportage
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Betaalstatus</Label>

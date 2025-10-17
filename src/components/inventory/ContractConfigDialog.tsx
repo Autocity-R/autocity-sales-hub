@@ -287,7 +287,7 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
         ? `${profile.first_name} ${profile.last_name}`.trim()
         : user.email || 'Onbekend';
 
-      // Update vehicle details with warranty package info
+      // Update vehicle details with warranty package info AND salesperson info
       const updatedDetails = {
         ...vehicle.details,
         warrantyPackage: options.deliveryPackage || "garantie_wettelijk",
@@ -295,17 +295,21 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
         warrantyPackageName: warrantyPackageNames[options.deliveryPackage || "garantie_wettelijk"],
         contractSentBy: user.id,
         contractSentByName: sellerName,
-        contractSentDate: new Date().toISOString()
+        contractSentDate: new Date().toISOString(),
+        salespersonEmail: user.email,
+        purchasePrice: vehicle.purchasePrice
       };
 
-      // Update vehicle to "afgeleverd" status with warranty info
+      // Update vehicle to "afgeleverd" status with warranty info AND salesperson tracking
       const { error } = await supabase
         .from('vehicles')
         .update({
           status: 'afgeleverd',
           details: updatedDetails,
           delivery_date: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          sold_by_user_id: user.id,
+          sold_date: new Date().toISOString()
         })
         .eq('id', vehicle.id);
 
@@ -314,7 +318,7 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
         throw error;
       }
 
-      console.log("✅ Vehicle updated to afgeleverd with warranty package info");
+      console.log("✅ Vehicle updated to afgeleverd with warranty package and salesperson info");
     } catch (error) {
       console.error("Error saving warranty package:", error);
       toast({
