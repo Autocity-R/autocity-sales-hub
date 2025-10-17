@@ -206,7 +206,10 @@ export const TaskMobileCard = memo<TaskMobileCardProps>(({
           {task.vehicleBrand && (
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Car className="h-3.5 w-3.5 flex-shrink-0" />
-              <span className="truncate">{task.vehicleBrand} {task.vehicleModel}</span>
+              <span className="truncate">
+                {task.vehicleBrand} {task.vehicleModel}
+                {task.vehicleVin && ` • ${task.vehicleVin}`}
+              </span>
             </div>
           )}
           

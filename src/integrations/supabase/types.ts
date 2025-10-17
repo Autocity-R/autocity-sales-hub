@@ -1704,6 +1704,7 @@ export type Database = {
           vehicle_id: string | null
           vehicle_license_number: string | null
           vehicle_model: string | null
+          vehicle_vin: string | null
         }
         Insert: {
           assigned_by: string
@@ -1725,6 +1726,7 @@ export type Database = {
           vehicle_id?: string | null
           vehicle_license_number?: string | null
           vehicle_model?: string | null
+          vehicle_vin?: string | null
         }
         Update: {
           assigned_by?: string
@@ -1746,6 +1748,7 @@ export type Database = {
           vehicle_id?: string | null
           vehicle_license_number?: string | null
           vehicle_model?: string | null
+          vehicle_vin?: string | null
         }
         Relationships: [
           {
