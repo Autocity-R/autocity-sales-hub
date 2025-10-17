@@ -14,23 +14,34 @@ export interface UserProfile {
 
 export const getAllUsers = async (): Promise<UserProfile[]> => {
   try {
-    const { data, error } = await supabase
+    // Fetch all profiles
+    const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select(`
-        *,
-        user_roles!inner(role)
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching users:', error);
-      throw error;
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError);
+      throw profilesError;
     }
 
-    // Map the data to include the role from user_roles
-    return (data || []).map(user => ({
-      ...user,
-      role: (user.user_roles as any)?.[0]?.role || 'user'
+    // Fetch all user roles
+    const { data: userRoles, error: rolesError } = await supabase
+      .from('user_roles')
+      .select('user_id, role');
+
+    if (rolesError) {
+      console.error('Error fetching user roles:', rolesError);
+      throw rolesError;
+    }
+
+    // Create a map of user_id to role
+    const rolesMap = new Map(userRoles?.map(ur => [ur.user_id, ur.role]) || []);
+
+    // Combine profiles with their roles
+    return (profiles || []).map(profile => ({
+      ...profile,
+      role: rolesMap.get(profile.id) || 'user'
     })) as UserProfile[];
   } catch (error) {
     console.error("Failed to fetch users:", error);
