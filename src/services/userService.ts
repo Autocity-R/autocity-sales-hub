@@ -16,7 +16,10 @@ export const getAllUsers = async (): Promise<UserProfile[]> => {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select(`
+        *,
+        user_roles!inner(role)
+      `)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -24,7 +27,11 @@ export const getAllUsers = async (): Promise<UserProfile[]> => {
       throw error;
     }
 
-    return (data || []) as UserProfile[];
+    // Map the data to include the role from user_roles
+    return (data || []).map(user => ({
+      ...user,
+      role: (user.user_roles as any)?.[0]?.role || 'user'
+    })) as UserProfile[];
   } catch (error) {
     console.error("Failed to fetch users:", error);
     throw error;
