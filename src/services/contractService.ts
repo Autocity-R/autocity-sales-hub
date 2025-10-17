@@ -283,7 +283,7 @@ const generateHtmlContract = (
             line-height: 1.4;
             color: #1a1a1a;
             background: white;
-            font-size: 14px;
+            font-size: 13px;
         }
         
         .contract {
@@ -291,8 +291,6 @@ const generateHtmlContract = (
             margin: 0 auto;
             padding: 8mm;
             background: white;
-            min-height: 297mm;
-            page-break-inside: avoid;
         }
         
         .header {
@@ -375,6 +373,8 @@ const generateHtmlContract = (
             border-radius: 8px;
             overflow: hidden;
             margin-bottom: 10px;
+            page-break-inside: avoid;
+            break-inside: avoid;
         }
         
         .section-header {
@@ -392,8 +392,8 @@ const generateHtmlContract = (
         
         .contract-details {
             display: grid;
-            grid-template-columns: 180px 1fr;
-            gap: 8px 15px;
+            grid-template-columns: 160px 1fr;
+            gap: 6px 12px;
             padding: 0;
         }
         
@@ -405,18 +405,24 @@ const generateHtmlContract = (
             font-weight: 600;
             color: #666666;
             font-size: 12px;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
         
         .info-value {
             color: #000000;
             font-weight: 500;
             font-size: 13px;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            white-space: normal;
+            hyphens: auto;
         }
         
         .vehicle-grid {
             display: grid;
-            grid-template-columns: 180px 1fr;
-            gap: 8px 15px;
+            grid-template-columns: 160px 1fr;
+            gap: 6px 12px;
             padding: 0;
         }
         
