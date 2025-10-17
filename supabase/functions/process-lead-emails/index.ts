@@ -27,7 +27,7 @@ function decodeEmailBody(payload: any): { plain: string; html: string } {
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
 
 interface ServiceAccount {
@@ -750,6 +750,18 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 5): P
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Validate CRON_SECRET for security
+  const cronSecret = Deno.env.get('CRON_SECRET');
+  const requestSecret = req.headers.get('x-cron-secret');
+
+  if (cronSecret && requestSecret !== cronSecret) {
+    console.error('❌ Invalid or missing CRON_SECRET');
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   const startTime = Date.now();
