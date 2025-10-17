@@ -17,6 +17,8 @@ import { useToast } from "@/hooks/use-toast";
 import { SearchableCustomerSelector } from "@/components/customers/SearchableCustomerSelector";
 import { supabaseCustomerService } from "@/services/supabaseCustomerService";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 
 interface ContractConfigDialogProps {
@@ -35,6 +37,7 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
   onSendContract
 }) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [options, setOptions] = useState<ContractOptions>({
     btwType: "inclusive",
     bpmIncluded: false,
@@ -225,6 +228,9 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
       console.log("Digitaal contract verzonden naar:", selectedCustomer.email);
       console.log("Ondertekeningslink:", signatureUrl);
       
+      // Save warranty package info and move to delivered
+      await saveWarrantyPackageAndDeliver();
+      
       toast({
         title: "Contract verzonden",
         description: `Digitaal contract met ondertekeningslink verzonden naar ${selectedCustomer.email}`,
@@ -247,8 +253,76 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
     // Save address to contact if requested
     await saveAddressIfNeeded();
     
+    // Save warranty package info and move to delivered
+    await saveWarrantyPackageAndDeliver();
+    
     onSendContract(options);
     onClose();
+  };
+
+  const saveWarrantyPackageAndDeliver = async () => {
+    if (!user) {
+      console.error("No authenticated user found");
+      return;
+    }
+
+    try {
+      // Warranty package names mapping
+      const warrantyPackageNames: Record<string, string> = {
+        "garantie_wettelijk": "Garantie wettelijk",
+        "6_maanden_autocity": "6 Maanden Autocity garantie",
+        "12_maanden_autocity": "12 Maanden Autocity garantie",
+        "12_maanden_bovag": "12 Maanden Bovag garantie",
+        "12_maanden_bovag_vervangend": "12 Maanden Bovag garantie (inclusief vervangend vervoer)"
+      };
+
+      // Get current user profile for name
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', user.id)
+        .single();
+
+      const sellerName = profile 
+        ? `${profile.first_name} ${profile.last_name}`.trim()
+        : user.email || 'Onbekend';
+
+      // Update vehicle details with warranty package info
+      const updatedDetails = {
+        ...vehicle.details,
+        warrantyPackage: options.deliveryPackage || "garantie_wettelijk",
+        warrantyPackagePrice: options.warrantyPackagePrice || 0,
+        warrantyPackageName: warrantyPackageNames[options.deliveryPackage || "garantie_wettelijk"],
+        contractSentBy: user.id,
+        contractSentByName: sellerName,
+        contractSentDate: new Date().toISOString()
+      };
+
+      // Update vehicle to "afgeleverd" status with warranty info
+      const { error } = await supabase
+        .from('vehicles')
+        .update({
+          status: 'afgeleverd',
+          details: updatedDetails,
+          delivery_date: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', vehicle.id);
+
+      if (error) {
+        console.error("Error updating vehicle:", error);
+        throw error;
+      }
+
+      console.log("✅ Vehicle updated to afgeleverd with warranty package info");
+    } catch (error) {
+      console.error("Error saving warranty package:", error);
+      toast({
+        title: "Waarschuwing",
+        description: "Contract verstuurd maar kon garantiepakket niet opslaan",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleAddTradeIn = () => {

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import { X, Car, User, Euro, Calendar, FileText, Download, Eye, Undo2 } from "lucide-react";
+import { X, Car, User, Euro, Calendar, FileText, Download, Eye, Undo2, Shield } from "lucide-react";
 import { Vehicle } from "@/types/inventory";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -287,6 +287,48 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
             </div>
             
             <Separator />
+            
+            {/* Warranty Package Section */}
+            {vehicle.details?.warrantyPackage && (
+              <>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-blue-600" />
+                    <h3 className="text-lg font-semibold">Garantiepakket</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Pakket</p>
+                      <p className="font-medium">{vehicle.details.warrantyPackageName}</p>
+                    </div>
+                    
+                    {vehicle.details.warrantyPackagePrice > 0 && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Prijs</p>
+                        <p className="font-medium">€{vehicle.details.warrantyPackagePrice.toLocaleString('nl-NL')}</p>
+                      </div>
+                    )}
+                    
+                    {vehicle.details.contractSentByName && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Verkocht door</p>
+                        <p className="font-medium">{vehicle.details.contractSentByName}</p>
+                      </div>
+                    )}
+                    
+                    {vehicle.details.contractSentDate && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Contract verstuurd</p>
+                        <p className="font-medium">{formatDate(vehicle.details.contractSentDate)}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <Separator />
+              </>
+            )}
             
             {/* Delivery Information */}
             <div>

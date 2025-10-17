@@ -70,6 +70,23 @@ export interface User {
   isActive: boolean;
 }
 
+export interface VehicleDetails {
+  purchasePrice?: number;
+  customerEmail?: string;
+  papersReceived?: boolean;
+  
+  // Warranty package fields
+  warrantyPackage?: string;
+  warrantyPackagePrice?: number;
+  warrantyPackageName?: string;
+  contractSentBy?: string;
+  contractSentByName?: string;
+  contractSentDate?: string;
+  
+  // Other details
+  [key: string]: any;
+}
+
 export interface Vehicle {
   id: string;
   brand: string;
@@ -125,6 +142,9 @@ export interface Vehicle {
   supplierContact?: ContactInfo;    // Leverancier contact informatie  
   transporterContact?: ContactInfo; // Transporteur contact informatie
   year?: number; // Toegevoegd voor email templates
+  
+  // JSONB details field
+  details?: VehicleDetails;
 }
 
 export interface Supplier {

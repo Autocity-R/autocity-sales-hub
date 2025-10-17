@@ -142,6 +142,11 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
                 {renderSortIcon("deliveryDate")}
               </div>
             </TableHead>
+            <TableHead className="min-w-32">
+              <div className="flex items-center">
+                Garantiepakket
+              </div>
+            </TableHead>
             <TableHead className="min-w-20">
               <div className="flex items-center">
                 Docs
@@ -152,7 +157,7 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
         <TableBody>
           {vehicles.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                 Geen afgeleverde voertuigen gevonden
               </TableCell>
             </TableRow>
@@ -201,6 +206,24 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
                 </TableCell>
                 <TableCell className="align-middle">
                   {formatDeliveryDate(vehicle.deliveryDate)}
+                </TableCell>
+                <TableCell className="align-middle">
+                  {vehicle.details?.warrantyPackageName ? (
+                    <div className="text-sm">
+                      <div className="font-medium truncate max-w-[200px]" title={vehicle.details.warrantyPackageName}>
+                        {vehicle.details.warrantyPackageName}
+                      </div>
+                      {vehicle.details.warrantyPackagePrice > 0 && (
+                        <div className="text-muted-foreground text-xs">
+                          €{vehicle.details.warrantyPackagePrice.toLocaleString('nl-NL')}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <Badge variant="outline" className="bg-gray-100">
+                      Geen
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell className="align-middle">
                   {vehicle.papersReceived ? (
