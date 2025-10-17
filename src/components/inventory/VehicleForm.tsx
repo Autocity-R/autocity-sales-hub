@@ -38,7 +38,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
   onSubmit,
   initialData
 }) => {
-  const { data: salespeople } = useSalespeople();
+  const { data: salespeople, isLoading: salesLoading } = useSalespeople();
   const [formData, setFormData] = useState<Omit<Vehicle, "id"> & { supplierId?: string }>({
     brand: initialData?.brand || "",
     model: initialData?.model || "",
@@ -312,14 +312,21 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
                   handleChange('salespersonId', value);
                   handleChange('salespersonName', selectedSalesperson?.name || '');
                 }}
+                disabled={salesLoading || !salespeople || salespeople.length === 0}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecteer verkoper" />
+                  <SelectValue placeholder={
+                    salesLoading 
+                      ? "Laden..." 
+                      : !salespeople || salespeople.length === 0 
+                        ? "Geen verkopers gevonden" 
+                        : "Selecteer verkoper"
+                  } />
                 </SelectTrigger>
                 <SelectContent>
                   {salespeople?.map((salesperson) => (
                     <SelectItem key={salesperson.id} value={salesperson.id}>
-                      {salesperson.name}
+                      {salesperson.name} ({salesperson.role})
                     </SelectItem>
                   ))}
                 </SelectContent>
