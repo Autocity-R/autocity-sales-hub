@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReportPeriod } from "@/types/reports";
 import { purchaseReportsService } from "@/services/purchaseReportsService";
@@ -6,6 +7,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TrendingUp, Package, DollarSign, Percent } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
 
 interface PurchaseAnalyticsProps {
   period: ReportPeriod;
@@ -14,10 +16,35 @@ interface PurchaseAnalyticsProps {
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', '#8884d8', '#82ca9d', '#ffc658', '#ff8042'];
 
 export const PurchaseAnalytics = ({ period }: PurchaseAnalyticsProps) => {
+  const queryClient = useQueryClient();
+  
   const { data: purchaseData, isLoading } = useQuery({
     queryKey: ['purchase-analytics', period.startDate, period.endDate],
     queryFn: () => purchaseReportsService.getPurchaseAnalytics(period)
   });
+
+  // Real-time updates for vehicles
+  useEffect(() => {
+    const channel = supabase
+      .channel('purchase-analytics-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vehicles'
+        },
+        (payload) => {
+          console.log('Vehicle change detected in PurchaseAnalytics:', payload);
+          queryClient.invalidateQueries({ queryKey: ['purchase-analytics'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   if (isLoading) {
     return (

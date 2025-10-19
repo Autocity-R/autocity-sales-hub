@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { salesDataService } from "@/services/salesDataService";
 import { 
   TrendingUp, 
@@ -13,6 +13,7 @@ import {
   BarChart3
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   BarChart, 
   Bar, 
@@ -29,6 +30,7 @@ import {
 export const SalesAnalytics = () => {
   const [periodType, setPeriodType] = useState<"week" | "month" | "year">("month");
   const currentYear = new Date().getFullYear();
+  const queryClient = useQueryClient();
 
   // Fetch sales data for selected period
   const { data: salesData, isLoading } = useQuery({
@@ -43,6 +45,30 @@ export const SalesAnalytics = () => {
     queryFn: () => salesDataService.getMonthlySalesBreakdown(currentYear),
     enabled: periodType === "year",
   });
+
+  // Real-time updates for vehicles
+  useEffect(() => {
+    const channel = supabase
+      .channel('sales-analytics-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vehicles'
+        },
+        (payload) => {
+          console.log('Vehicle change detected in SalesAnalytics:', payload);
+          queryClient.invalidateQueries({ queryKey: ['sales-data'] });
+          queryClient.invalidateQueries({ queryKey: ['monthly-sales-breakdown'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("nl-NL", {

@@ -232,7 +232,7 @@ const Reports = () => {
     refetchOnWindowFocus: false
   });
 
-  // Real-time updates for vehicles that affect reports
+  // Real-time updates for ALL vehicle changes
   useEffect(() => {
     console.log('📡 Setting up real-time listeners for reports dashboard...');
     
@@ -251,59 +251,51 @@ const Reports = () => {
           const newVehicle = payload.new as any;
           const oldVehicle = payload.old as any;
           
-          // Check if it's a status change to sold
+          // Check for any significant changes
           const statusChanged = oldVehicle.status !== newVehicle.status;
-          const isSoldStatus = ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(newVehicle.status);
-          
-          // Check if prices changed
+          const supplierChanged = oldVehicle.supplier_id !== newVehicle.supplier_id;
           const sellingPriceChanged = oldVehicle.selling_price !== newVehicle.selling_price;
-          const oldPurchasePrice = oldVehicle.details?.purchasePrice;
-          const newPurchasePrice = newVehicle.details?.purchasePrice;
-          const purchasePriceChanged = oldPurchasePrice !== newPurchasePrice;
+          const purchasePriceChanged = oldVehicle.details?.purchasePrice !== newVehicle.details?.purchasePrice;
+          const locationChanged = oldVehicle.location !== newVehicle.location;
           
-          // If relevant changes occurred, update the dashboard
-          if ((statusChanged && isSoldStatus) || sellingPriceChanged || purchasePriceChanged) {
-            console.log('💰 Important financial change detected:', {
-              vehicle: `${newVehicle.brand} ${newVehicle.model}`,
-              statusChanged,
-              newStatus: newVehicle.status,
-              sellingPriceChanged,
-              oldSellingPrice: oldVehicle.selling_price,
-              newSellingPrice: newVehicle.selling_price,
-              purchasePriceChanged,
-              oldPurchasePrice,
-              newPurchasePrice
-            });
-            
-            // Show toast notification
-            if (statusChanged && isSoldStatus) {
-              toast.success(
-                `Verkoop geregistreerd: ${newVehicle.brand} ${newVehicle.model}`,
-                {
-                  description: `Status: ${newVehicle.status} • Verkoopprijs: €${newVehicle.selling_price?.toLocaleString() || 0}`
-                }
-              );
-            } else if (sellingPriceChanged) {
-              toast.info(
-                `Verkoopprijs aangepast: ${newVehicle.brand} ${newVehicle.model}`,
-                {
-                  description: `Van €${oldVehicle.selling_price?.toLocaleString() || 0} naar €${newVehicle.selling_price?.toLocaleString() || 0}`
-                }
-              );
-            } else if (purchasePriceChanged) {
-              toast.info(
-                `Inkoopprijs aangepast: ${newVehicle.brand} ${newVehicle.model}`,
-                {
-                  description: `Van €${oldPurchasePrice?.toLocaleString() || 0} naar €${newPurchasePrice?.toLocaleString() || 0}`
-                }
-              );
-            }
-            
-            // Invalidate all report queries to refresh the data
-            queryClient.invalidateQueries({ queryKey: ['reports'] });
-            queryClient.invalidateQueries({ queryKey: ['inventory-metrics'] });
-            console.log('✅ Reports data refreshed');
+          // Show relevant toast notifications
+          if (statusChanged) {
+            toast.info(
+              `Status aangepast: ${newVehicle.brand} ${newVehicle.model}`,
+              {
+                description: `Van ${oldVehicle.status} naar ${newVehicle.status}`
+              }
+            );
+          } else if (supplierChanged) {
+            toast.info(
+              `Leverancier aangepast: ${newVehicle.brand} ${newVehicle.model}`,
+              {
+                description: 'Leverancier is gewijzigd'
+              }
+            );
+          } else if (sellingPriceChanged) {
+            toast.info(
+              `Verkoopprijs aangepast: ${newVehicle.brand} ${newVehicle.model}`,
+              {
+                description: `Van €${oldVehicle.selling_price?.toLocaleString() || 0} naar €${newVehicle.selling_price?.toLocaleString() || 0}`
+              }
+            );
+          } else if (purchasePriceChanged) {
+            toast.info(
+              `Inkoopprijs aangepast: ${newVehicle.brand} ${newVehicle.model}`,
+              {
+                description: `Prijs is gewijzigd`
+              }
+            );
           }
+          
+          // Invalidate ALL report queries to refresh the data
+          queryClient.invalidateQueries({ queryKey: ['reports'] });
+          queryClient.invalidateQueries({ queryKey: ['inventory-metrics'] });
+          queryClient.invalidateQueries({ queryKey: ['sales-data'] });
+          queryClient.invalidateQueries({ queryKey: ['purchase-analytics'] });
+          queryClient.invalidateQueries({ queryKey: ['supplierAnalytics'] });
+          console.log('✅ All reports data refreshed');
         }
       )
       .on(
@@ -315,19 +307,20 @@ const Reports = () => {
         },
         (payload) => {
           const newVehicle = payload.new as any;
-          const isSoldStatus = ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(newVehicle.status);
+          console.log('🆕 New vehicle added:', newVehicle);
+          toast.success(
+            `Nieuw voertuig toegevoegd: ${newVehicle.brand} ${newVehicle.model}`,
+            {
+              description: `Status: ${newVehicle.status}`
+            }
+          );
           
-          if (isSoldStatus) {
-            console.log('🆕 New sold vehicle added:', newVehicle);
-            toast.success(
-              `Nieuw verkocht voertuig: ${newVehicle.brand} ${newVehicle.model}`,
-              {
-                description: `Status: ${newVehicle.status}`
-              }
-            );
-            queryClient.invalidateQueries({ queryKey: ['reports'] });
-            queryClient.invalidateQueries({ queryKey: ['inventory-metrics'] });
-          }
+          // Invalidate ALL report queries
+          queryClient.invalidateQueries({ queryKey: ['reports'] });
+          queryClient.invalidateQueries({ queryKey: ['inventory-metrics'] });
+          queryClient.invalidateQueries({ queryKey: ['sales-data'] });
+          queryClient.invalidateQueries({ queryKey: ['purchase-analytics'] });
+          queryClient.invalidateQueries({ queryKey: ['supplierAnalytics'] });
         }
       )
       .subscribe();
