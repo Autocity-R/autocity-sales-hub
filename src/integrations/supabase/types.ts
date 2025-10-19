@@ -1978,6 +1978,48 @@ export type Database = {
           },
         ]
       }
+      vehicle_purchase_audit_log: {
+        Row: {
+          change_metadata: Json | null
+          id: string
+          purchase_price: number | null
+          purchase_timestamp: string | null
+          purchased_by: string | null
+          vehicle_id: string
+        }
+        Insert: {
+          change_metadata?: Json | null
+          id?: string
+          purchase_price?: number | null
+          purchase_timestamp?: string | null
+          purchased_by?: string | null
+          vehicle_id: string
+        }
+        Update: {
+          change_metadata?: Json | null
+          id?: string
+          purchase_price?: number | null
+          purchase_timestamp?: string | null
+          purchased_by?: string | null
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_purchase_audit_log_purchased_by_fkey"
+            columns: ["purchased_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_purchase_audit_log_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_status_audit_log: {
         Row: {
           change_metadata: Json | null
@@ -2039,6 +2081,9 @@ export type Database = {
           mileage: number | null
           model: string
           notes: string | null
+          purchase_date: string | null
+          purchased_by_name: string | null
+          purchased_by_user_id: string | null
           selling_price: number | null
           sold_by_user_id: string | null
           sold_date: string | null
@@ -2064,6 +2109,9 @@ export type Database = {
           mileage?: number | null
           model: string
           notes?: string | null
+          purchase_date?: string | null
+          purchased_by_name?: string | null
+          purchased_by_user_id?: string | null
           selling_price?: number | null
           sold_by_user_id?: string | null
           sold_date?: string | null
@@ -2089,6 +2137,9 @@ export type Database = {
           mileage?: number | null
           model?: string
           notes?: string | null
+          purchase_date?: string | null
+          purchased_by_name?: string | null
+          purchased_by_user_id?: string | null
           selling_price?: number | null
           sold_by_user_id?: string | null
           sold_date?: string | null
@@ -2104,6 +2155,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_purchased_by_user_id_fkey"
+            columns: ["purchased_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

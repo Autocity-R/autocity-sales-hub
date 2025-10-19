@@ -28,6 +28,7 @@ import { SupplierSelector } from "./SupplierSelector";
 import { cn } from "@/lib/utils";
 import { Vehicle, ImportStatus, TransportStatus, WorkshopStatus, DamageStatus, LocationStatus, SalesStatus, PaymentStatus } from "@/types/inventory";
 import { useSalespeople } from "@/hooks/useSalespeople";
+import { supabase } from "@/integrations/supabase/client";
 
 interface VehicleFormProps {
   onSubmit: (data: Omit<Vehicle, "id">) => void;
@@ -39,6 +40,31 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
   initialData
 }) => {
   const { data: salespeople, isLoading: salesLoading } = useSalespeople();
+  const [currentUser, setCurrentUser] = React.useState<{ id: string; name: string } | null>(null);
+
+  // Get current user for default purchaser
+  React.useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile) {
+          const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+          setCurrentUser({
+            id: profile.id,
+            name: fullName || profile.email
+          });
+        }
+      }
+    };
+    fetchCurrentUser();
+  }, []);
+
   const [formData, setFormData] = useState<Omit<Vehicle, "id"> & { supplierId?: string }>({
     brand: initialData?.brand || "",
     model: initialData?.model || "",
@@ -73,7 +99,9 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
     customerId: initialData?.customerId || null,
     supplierId: "",
     salespersonId: initialData?.salespersonId || undefined,
-    salespersonName: initialData?.salespersonName || undefined
+    salespersonName: initialData?.salespersonName || undefined,
+    purchasedById: initialData?.purchasedById || currentUser?.id,
+    purchasedByName: initialData?.purchasedByName || currentUser?.name
   });
   
   const handleChange = (field: keyof Omit<Vehicle, "id" | "damage"> | "supplierId", value: any) => {
@@ -199,6 +227,37 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
               value={formData.sellingPrice}
               onChange={(e) => handleChange('sellingPrice', parseFloat(e.target.value))}
             />
+          </div>
+
+          {/* Inkoper */}
+          <div className="space-y-2">
+            <Label>Inkoper *</Label>
+            <Select
+              value={formData.purchasedById || ''}
+              onValueChange={(value) => {
+                const selected = salespeople?.find(s => s.id === value);
+                handleChange('purchasedById', value);
+                handleChange('purchasedByName', selected?.name || '');
+              }}
+              disabled={salesLoading || !salespeople || salespeople.length === 0}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={
+                  salesLoading 
+                    ? "Laden..." 
+                    : !salespeople || salespeople.length === 0 
+                      ? "Geen inkopers gevonden" 
+                      : "Selecteer inkoper"
+                } />
+              </SelectTrigger>
+              <SelectContent>
+                {salespeople?.map((person) => (
+                  <SelectItem key={person.id} value={person.id}>
+                    {person.name} ({person.role})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         

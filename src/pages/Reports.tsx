@@ -33,6 +33,7 @@ import { ReportPeriod, PerformanceData } from "@/types/reports";
 import { SalespersonPerformance } from "@/components/reports/SalespersonPerformance";
 import { SalesAnalytics } from "@/components/reports/SalesAnalytics";
 import { WarrantyReports } from "@/components/reports/WarrantyReports";
+import { PurchaseAnalytics } from "@/components/reports/PurchaseAnalytics";
 
 interface MockPerformanceData extends PerformanceData {
   revenue: number;
@@ -413,6 +414,7 @@ const Reports = () => {
           <TabsList>
             <TabsTrigger value="overview">Overzicht</TabsTrigger>
             <TabsTrigger value="sales">Verkoop</TabsTrigger>
+            <TabsTrigger value="purchase">Inkoop</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="financial">Financieel</TabsTrigger>
             <TabsTrigger value="inventory">Voorraad</TabsTrigger>
@@ -698,6 +700,10 @@ const Reports = () => {
                 )}
               </>
             )}
+          </TabsContent>
+
+          <TabsContent value="purchase" className="space-y-6">
+            <PurchaseAnalytics period={reportPeriod} />
           </TabsContent>
 
           <TabsContent value="warranty" className="space-y-6">

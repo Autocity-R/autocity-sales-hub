@@ -83,6 +83,10 @@ export interface VehicleDetails {
   contractSentByName?: string;
   contractSentDate?: string;
   
+  // Purchase tracking fields
+  purchasedById?: string;
+  purchasedByName?: string;
+  
   // Other details
   [key: string]: any;
 }
@@ -124,6 +128,9 @@ export interface Vehicle {
   deliveryDate?: Date | null; // Added delivery date
   salespersonId?: string;   // Added salesperson reference
   salespersonName?: string; // Added salesperson name for display
+  purchasedById?: string;   // Added purchaser reference
+  purchasedByName?: string; // Added purchaser name for display
+  purchaseDate?: Date | null; // Added purchase date
   
   // Contract information
   contractId?: string;      // Reference to the generated contract

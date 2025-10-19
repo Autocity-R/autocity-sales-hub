@@ -86,3 +86,27 @@ export interface ReportExport {
   data: PerformanceData;
   fileName: string;
 }
+
+export interface PurchaserStats {
+  id: string;
+  name: string;
+  totalPurchased: number;
+  totalPurchaseValue: number;
+  sold: number;
+  totalSalesValue: number;
+  profit: number;
+  profitMargin: number;
+  inStock: number;
+  stockValue: number;
+  avgPurchasePrice: number;
+  avgSalesPrice: number;
+}
+
+export interface PurchaseAnalyticsData {
+  totalPurchaseValue: number;
+  totalRealizedProfit: number;
+  averageMargin: number;
+  totalInStock: number;
+  purchasers: PurchaserStats[];
+  byBuyer: Array<{ name: string; value: number }>;
+}
