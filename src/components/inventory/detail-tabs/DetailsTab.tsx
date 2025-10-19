@@ -358,6 +358,43 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
             </p>
           </div>
 
+          {/* Purchaser Selection - For reporting and analytics */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium flex items-center">
+              <User className="h-4 w-4 mr-1 text-muted-foreground" />
+              Inkoper
+            </Label>
+            <Select 
+              value={editedVehicle.purchasedById || "none"} 
+              onValueChange={(value) => {
+                if (value === "none") {
+                  handleChange('purchasedById', null);
+                  handleChange('purchasedByName', '');
+                } else {
+                  const selectedPurchaser = salespeople?.find(sp => sp.id === value);
+                  handleChange('purchasedById', value);
+                  handleChange('purchasedByName', selectedPurchaser?.name || '');
+                }
+              }}
+              disabled={salesLoading}
+            >
+              <SelectTrigger className="w-full bg-background">
+                <SelectValue placeholder={salesLoading ? "Laden..." : "Selecteer inkoper"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                <SelectItem value="none">Geen inkoper toegewezen</SelectItem>
+                {salespeople?.map((person) => (
+                  <SelectItem key={person.id} value={person.id}>
+                    {person.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Koppel een inkoper voor inkoop rapportages en analytics
+            </p>
+          </div>
+
           {/* Show payment status when vehicle is sold */}
           {(editedVehicle.salesStatus === "verkocht_b2c" || editedVehicle.salesStatus === "verkocht_b2b") && (
             <div className="ml-6 mt-2 p-4 bg-green-50 border border-green-100 rounded-md space-y-4">
