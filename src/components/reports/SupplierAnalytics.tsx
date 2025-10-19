@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ReportPeriod } from "@/types/reports";
@@ -11,6 +11,7 @@ import { TrendingUp, Package, Euro, Percent, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SupplierAnalyticsProps {
   period: ReportPeriod;
@@ -22,11 +23,49 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<string>("totalVehicles");
   const [showAllTime, setShowAllTime] = useState(true);
+  const queryClient = useQueryClient();
 
   const { data: analytics, isLoading } = useQuery({
     queryKey: ['supplierAnalytics', period, showAllTime],
     queryFn: () => supplierReportsService.getSupplierAnalytics(period, showAllTime)
   });
+
+  // Real-time updates voor voertuigen
+  useEffect(() => {
+    const channel = supabase
+      .channel('supplier-analytics-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vehicles'
+        },
+        (payload) => {
+          console.log('Vehicle change detected:', payload);
+          // Invalideer de query om data opnieuw op te halen
+          queryClient.invalidateQueries({ queryKey: ['supplierAnalytics'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'contacts'
+        },
+        (payload) => {
+          console.log('Contact change detected:', payload);
+          // Invalideer de query om data opnieuw op te halen
+          queryClient.invalidateQueries({ queryKey: ['supplierAnalytics'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
