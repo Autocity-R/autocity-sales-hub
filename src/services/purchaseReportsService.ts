@@ -15,10 +15,14 @@ class PurchaseReportsService {
         details,
         selling_price,
         status,
-        sold_date
+        sold_date,
+        created_at
       `)
-      .gte('purchase_date', period.startDate)
-      .lte('purchase_date', period.endDate);
+      // CRITICAL FIX: Include vehicles without purchase_date OR within period
+      // This ensures vehicles with newly assigned purchasers show up
+      .or(`purchase_date.gte.${period.startDate},purchase_date.lte.${period.endDate},purchase_date.is.null`)
+      // Also include ALL vehicles with a purchaser assigned (critical for current data)
+      .not('purchased_by_user_id', 'is', null);
 
     if (error) {
       console.error("Error fetching purchase analytics:", error);

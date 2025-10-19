@@ -280,9 +280,19 @@ export class SupabaseInventoryService {
       purchased_by_name: vehicle.purchasedByName !== undefined
         ? vehicle.purchasedByName
         : existingVehicle.purchased_by_name,
-      purchase_date: vehicle.purchaseDate !== undefined
-        ? (vehicle.purchaseDate ? new Date(vehicle.purchaseDate).toISOString() : null)
-        : existingVehicle.purchase_date,
+      // CRITICAL FIX: Set purchase_date when purchaser is first assigned
+      purchase_date: (() => {
+        // If purchasedById is being set and there's no existing purchase_date, set it now
+        if (vehicle.purchasedById !== undefined && vehicle.purchasedById && !existingVehicle.purchase_date) {
+          return new Date().toISOString();
+        }
+        // If purchaseDate is explicitly provided, use it
+        if (vehicle.purchaseDate !== undefined) {
+          return vehicle.purchaseDate ? new Date(vehicle.purchaseDate).toISOString() : null;
+        }
+        // Otherwise keep existing
+        return existingVehicle.purchase_date;
+      })(),
         
       // CRITICAL FIX: Write salesperson to sold_by_user_id column for reports
       sold_by_user_id: vehicle.salespersonId !== undefined
