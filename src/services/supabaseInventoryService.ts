@@ -271,7 +271,23 @@ export class SupabaseInventoryService {
       details: details as any,
       email_reminder_settings: emailReminderSettings as any,
       sold_date: soldDate,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      
+      // CRITICAL FIX: Write purchaser to separate columns for reports
+      purchased_by_user_id: vehicle.purchasedById !== undefined 
+        ? vehicle.purchasedById 
+        : existingVehicle.purchased_by_user_id,
+      purchased_by_name: vehicle.purchasedByName !== undefined
+        ? vehicle.purchasedByName
+        : existingVehicle.purchased_by_name,
+      purchase_date: vehicle.purchaseDate !== undefined
+        ? (vehicle.purchaseDate ? new Date(vehicle.purchaseDate).toISOString() : null)
+        : existingVehicle.purchase_date,
+        
+      // CRITICAL FIX: Write salesperson to sold_by_user_id column for reports
+      sold_by_user_id: vehicle.salespersonId !== undefined
+        ? vehicle.salespersonId
+        : existingVehicle.sold_by_user_id
     };
 
     // Only update customer_id and supplier_id if they are explicitly provided (not undefined)
@@ -449,7 +465,15 @@ export class SupabaseInventoryService {
            supplier_id: vehicleData.supplierId,
            import_status: vehicleData.importStatus || 'niet_gestart',
           notes: vehicleData.notes,
-          details: details as any
+          details: details as any,
+          
+          // CRITICAL FIX: Set purchaser on vehicle creation
+          purchased_by_user_id: vehicleData.purchasedById || null,
+          purchased_by_name: vehicleData.purchasedByName || null,
+          purchase_date: vehicleData.purchaseDate ? new Date(vehicleData.purchaseDate).toISOString() : new Date().toISOString(),
+          
+          // CRITICAL FIX: Set salesperson on vehicle creation
+          sold_by_user_id: vehicleData.salespersonId || null
         }])
         .select()
         .single();
@@ -508,8 +532,16 @@ export class SupabaseInventoryService {
       papersDate: details.papersDate ? new Date(details.papersDate) : null,
       showroomOnline: details.showroomOnline || false,
       paymentStatus: details.paymentStatus || 'niet_betaald',
-      salespersonId: details.salespersonId || null,
+      
+      // CRITICAL FIX: Load purchaser from database columns
+      purchasedById: supabaseVehicle.purchased_by_user_id || null,
+      purchasedByName: supabaseVehicle.purchased_by_name || null,
+      purchaseDate: supabaseVehicle.purchase_date ? new Date(supabaseVehicle.purchase_date) : null,
+      
+      // CRITICAL FIX: Load salesperson from sold_by_user_id column
+      salespersonId: supabaseVehicle.sold_by_user_id || details.salespersonId || null,
       salespersonName: details.salespersonName || null,
+      
       mainPhotoUrl: details.mainPhotoUrl || null,
       photos: details.photos || [],
       
