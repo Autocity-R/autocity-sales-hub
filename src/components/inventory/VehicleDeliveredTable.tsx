@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { ChevronUp, ChevronDown, FileText } from "lucide-react";
 import { Vehicle } from "@/types/inventory";
+import { PurchaserQuickEdit } from "./PurchaserQuickEdit";
 
 interface VehicleDeliveredTableProps {
   vehicles: Vehicle[];
@@ -130,6 +131,12 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
                 {renderSortIcon("salespersonName")}
               </div>
             </TableHead>
+            <TableHead className="min-w-28 cursor-pointer" onClick={() => handleSort("purchasedByName")}>
+              <div className="flex items-center">
+                Inkoper
+                {renderSortIcon("purchasedByName")}
+              </div>
+            </TableHead>
             <TableHead className="min-w-24 cursor-pointer" onClick={() => handleSort("salesStatus")}>
               <div className="flex items-center">
                 Type
@@ -157,7 +164,7 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
         <TableBody>
           {vehicles.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                 Geen afgeleverde voertuigen gevonden
               </TableCell>
             </TableRow>
@@ -198,6 +205,13 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
                 </TableCell>
                 <TableCell className="align-middle truncate">
                   {vehicle.salespersonName || "Onbekend"}
+                </TableCell>
+                <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
+                  <PurchaserQuickEdit
+                    vehicleId={vehicle.id}
+                    currentPurchaserId={vehicle.purchasedById}
+                    currentPurchaserName={vehicle.purchasedByName}
+                  />
                 </TableCell>
                 <TableCell className="align-middle">
                   <Badge variant="outline" className={vehicle.salesStatus === "verkocht_b2c" ? "bg-blue-50 text-blue-800" : "bg-purple-50 text-purple-800"}>

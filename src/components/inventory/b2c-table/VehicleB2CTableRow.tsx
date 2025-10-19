@@ -7,6 +7,7 @@ import { VehicleActionsDropdown } from "./VehicleActionsDropdown";
 import { Vehicle, ImportStatus, WorkshopStatus, PaintStatus } from "@/types/inventory";
 import { Car } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
+import { PurchaserQuickEdit } from "../PurchaserQuickEdit";
 
 interface VehicleB2CTableRowProps {
   vehicle: Vehicle;
@@ -136,6 +137,13 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
       </TableCell>
       <TableCell className="align-middle">
         {vehicle.customerName || "Onbekend"}
+      </TableCell>
+      <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
+        <PurchaserQuickEdit
+          vehicleId={vehicle.id}
+          currentPurchaserId={vehicle.purchasedById}
+          currentPurchaserName={vehicle.purchasedByName}
+        />
       </TableCell>
       <TableCell className="align-middle">
         {renderImportStatusBadge(vehicle.importStatus)}

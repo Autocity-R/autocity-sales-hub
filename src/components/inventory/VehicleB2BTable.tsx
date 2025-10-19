@@ -34,6 +34,7 @@ import {
 import { CustomCheckbox } from "@/components/ui/custom-checkbox";
 import { Car } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
+import { PurchaserQuickEdit } from "./PurchaserQuickEdit";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -209,6 +210,9 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
               <TableHead className="min-w-28">
                 {renderSortableHeader("salespersonName", "Verkoper")}
               </TableHead>
+              <TableHead className="min-w-28">
+                {renderSortableHeader("purchasedByName", "Inkoper")}
+              </TableHead>
               <TableHead className="min-w-32">
                 {renderSortableHeader("importStatus", "Importstatus")}
               </TableHead>
@@ -279,6 +283,9 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
               </TableHead>
               <TableHead className="min-w-28">
                 {renderSortableHeader("salespersonName", "Verkoper")}
+              </TableHead>
+              <TableHead className="min-w-28">
+                {renderSortableHeader("purchasedByName", "Inkoper")}
               </TableHead>
               <TableHead className="min-w-32">
                 {renderSortableHeader("importStatus", "Importstatus")}
@@ -358,6 +365,13 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                   ) : (
                     <span className="text-muted-foreground text-sm">Niet toegewezen</span>
                   )}
+                </TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <PurchaserQuickEdit
+                    vehicleId={vehicle.id}
+                    currentPurchaserId={vehicle.purchasedById}
+                    currentPurchaserName={vehicle.purchasedByName}
+                  />
                 </TableCell>
                 <TableCell>{renderImportStatusBadge(vehicle.importStatus)}</TableCell>
                 <TableCell>

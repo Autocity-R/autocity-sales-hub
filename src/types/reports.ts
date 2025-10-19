@@ -110,3 +110,37 @@ export interface PurchaseAnalyticsData {
   purchasers: PurchaserStats[];
   byBuyer: Array<{ name: string; value: number }>;
 }
+
+export interface SupplierStats {
+  id: string;
+  name: string;
+  country?: string;
+  totalVehicles: number;
+  sold: number;
+  totalPurchaseValue: number;
+  totalSalesValue: number;
+  profit: number;
+  profitMargin: number;
+  inStock: number;
+  stockValue: number;
+  avgDaysInStock: number;
+  avgDaysToSell: number;
+  fastestSale: number | null;
+  slowestSale: number | null;
+  avgPurchasePrice: number;
+  avgSalesPrice: number;
+  roi: number;
+}
+
+export interface SupplierAnalyticsData {
+  totalSuppliers: number;
+  totalVehiclesPurchased: number;
+  totalInvestment: number;
+  totalRealized: number;
+  totalProfit: number;
+  avgMargin: number;
+  suppliers: SupplierStats[];
+  bySupplier: Array<{ name: string; value: number }>;
+  profitBySupplier: Array<{ name: string; profit: number; margin: number }>;
+  avgDaysBySupplier: Array<{ name: string; days: number }>;
+}
