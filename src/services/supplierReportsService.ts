@@ -60,18 +60,25 @@ class SupplierReportsService {
         sold_date,
         status,
         selling_price,
-        details,
-        contacts!vehicles_supplier_id_fkey (
-          id,
-          company_name,
-          first_name,
-          last_name,
-          type
-        )
+        details
       `)
       .not('supplier_id', 'is', null);
 
     if (vehiclesError) throw vehiclesError;
+    
+    // Haal alle unieke supplier contacts op
+    const supplierIds = [...new Set(vehicles?.map(v => v.supplier_id).filter(Boolean) as string[])];
+    const { data: contacts, error: contactsError } = await supabase
+      .from('contacts')
+      .select('id, company_name, first_name, last_name')
+      .in('id', supplierIds);
+    
+    if (contactsError) {
+      console.error('Error fetching supplier contacts:', contactsError);
+    }
+    
+    // Maak een map voor snelle lookup
+    const contactMap = new Map(contacts?.map(c => [c.id, c]) || []);
     
     // Filter voertuigen op basis van mode
     const filteredVehicles = showAllTime 
@@ -90,7 +97,8 @@ class SupplierReportsService {
     
     filteredVehicles?.forEach(vehicle => {
       const supplierId = vehicle.supplier_id || 'unknown';
-      const supplierName = this.getSupplierName(vehicle.contacts);
+      const contact = contactMap.get(supplierId);
+      const supplierName = this.getSupplierName(contact);
       
       if (!supplierMap.has(supplierId)) {
         supplierMap.set(supplierId, this.initSupplierStats(supplierId, supplierName));

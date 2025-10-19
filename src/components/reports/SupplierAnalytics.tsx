@@ -58,6 +58,38 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
 
   if (!analytics) return null;
 
+  if (analytics.suppliers.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-end">
+          <div className="inline-flex rounded-lg border p-1 bg-muted">
+            <Button
+              variant={showAllTime ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setShowAllTime(true)}
+            >
+              Alle tijd
+            </Button>
+            <Button
+              variant={!showAllTime ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setShowAllTime(false)}
+            >
+              Periode filter
+            </Button>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">
+              Geen leveranciersdata gevonden voor deze selectie.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Toggle voor alle tijd vs periode */}
