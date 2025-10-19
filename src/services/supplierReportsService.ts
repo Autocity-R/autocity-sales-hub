@@ -47,7 +47,8 @@ export interface SupplierAnalyticsData {
 }
 
 class SupplierReportsService {
-  async getSupplierAnalytics(period: ReportPeriod): Promise<SupplierAnalyticsData> {
+  async getSupplierAnalytics(period: ReportPeriod, showAllTime: boolean = false): Promise<SupplierAnalyticsData> {
+    // Haal alle voertuigen met supplier_id op
     const { data: vehicles, error: vehiclesError } = await supabase
       .from('vehicles')
       .select(`
@@ -68,14 +69,26 @@ class SupplierReportsService {
           type
         )
       `)
-      .gte('created_at', period.startDate)
-      .lte('created_at', period.endDate);
+      .not('supplier_id', 'is', null);
 
     if (vehiclesError) throw vehiclesError;
+    
+    // Filter voertuigen op basis van mode
+    const filteredVehicles = showAllTime 
+      ? vehicles 
+      : vehicles?.filter(v => {
+          const soldDate = v.sold_date ? new Date(v.sold_date) : null;
+          const periodStart = new Date(period.startDate);
+          const periodEnd = new Date(period.endDate);
+          
+          // Toon voertuig als het verkocht is binnen de periode OF op voorraad is
+          return (soldDate && soldDate >= periodStart && soldDate <= periodEnd) ||
+                 ['voorraad', 'onderweg', 'transport'].includes(v.status);
+        });
 
     const supplierMap = new Map<string, SupplierStats>();
     
-    vehicles?.forEach(vehicle => {
+    filteredVehicles?.forEach(vehicle => {
       const supplierId = vehicle.supplier_id || 'unknown';
       const supplierName = this.getSupplierName(vehicle.contacts);
       

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Package, Euro, Percent, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 interface SupplierAnalyticsProps {
   period: ReportPeriod;
@@ -20,10 +21,11 @@ const CHART_COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--c
 export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<string>("totalVehicles");
+  const [showAllTime, setShowAllTime] = useState(true);
 
   const { data: analytics, isLoading } = useQuery({
-    queryKey: ['supplierAnalytics', period],
-    queryFn: () => supplierReportsService.getSupplierAnalytics(period)
+    queryKey: ['supplierAnalytics', period, showAllTime],
+    queryFn: () => supplierReportsService.getSupplierAnalytics(period, showAllTime)
   });
 
   const formatCurrency = (value: number) => {
@@ -58,6 +60,26 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
 
   return (
     <div className="space-y-6">
+      {/* Toggle voor alle tijd vs periode */}
+      <div className="flex justify-end">
+        <div className="inline-flex rounded-lg border p-1 bg-muted">
+          <Button
+            variant={showAllTime ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setShowAllTime(true)}
+          >
+            Alle tijd
+          </Button>
+          <Button
+            variant={!showAllTime ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setShowAllTime(false)}
+          >
+            Periode filter
+          </Button>
+        </div>
+      </div>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -68,7 +90,7 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(analytics.totalInvestment)}</div>
             <p className="text-xs text-muted-foreground">
-              {analytics.totalVehiclesPurchased} voertuigen
+              {showAllTime ? "Totale inkoopwaarde" : "Inkoopwaarde in periode"} - {analytics.totalVehiclesPurchased} voertuigen
             </p>
           </CardContent>
         </Card>
@@ -81,7 +103,7 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(analytics.totalProfit)}</div>
             <p className="text-xs text-muted-foreground">
-              Gem. marge: {formatPercentage(analytics.avgMargin)}
+              {showAllTime ? "Alle verkopen" : "Verkocht in periode"} - Gem. marge: {formatPercentage(analytics.avgMargin)}
             </p>
           </CardContent>
         </Card>
@@ -109,7 +131,7 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
               {formatCurrency(analytics.suppliers.reduce((sum, s) => sum + s.stockValue, 0))}
             </div>
             <p className="text-xs text-muted-foreground">
-              {analytics.suppliers.reduce((sum, s) => sum + s.inStock, 0)} voertuigen op voorraad
+              {showAllTime ? "Op dit moment op voorraad" : "Voorraad in periode"} - {analytics.suppliers.reduce((sum, s) => sum + s.inStock, 0)} voertuigen
             </p>
           </CardContent>
         </Card>
