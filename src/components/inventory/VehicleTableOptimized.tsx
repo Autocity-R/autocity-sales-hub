@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Vehicle, ImportStatus } from "@/types/inventory";
 import { Avatar } from "@/components/ui/avatar";
+import { DeliveryConfirmationDialog, type DeliveryData } from "./DeliveryConfirmationDialog";
 
 interface VehicleTableProps {
   vehicles: Vehicle[];
