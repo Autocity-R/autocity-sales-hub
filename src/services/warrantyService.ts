@@ -1,4 +1,4 @@
-import { WarrantyClaim, WarrantyStats, LoanCar } from "@/types/warranty";
+import { WarrantyClaim, WarrantyStats, LoanCar, ActiveWarrantyVehicle, ActiveWarrantyStats } from "@/types/warranty";
 import { supabase } from "@/integrations/supabase/client";
 
 // Import from deliveredVehicleService instead
@@ -242,6 +242,136 @@ export const getWarrantyStats = async (): Promise<WarrantyStats> => {
       customerSatisfactionAvg: 0,
       totalCostThisMonth: 0,
       pendingClaims: 0
+    };
+  }
+};
+
+export const fetchActiveWarranties = async (): Promise<ActiveWarrantyVehicle[]> => {
+  try {
+    const now = new Date();
+    
+    // Fetch all delivered vehicles with customer data
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select(`
+        id,
+        brand,
+        model,
+        license_number,
+        vin,
+        customer_id,
+        selling_price,
+        sold_date,
+        status,
+        details,
+        customerContact:contacts!vehicles_customer_id_fkey(
+          first_name,
+          last_name,
+          email,
+          phone,
+          is_car_dealer
+        )
+      `)
+      .in('status', ['afgeleverd', 'verkocht_b2c', 'verkocht_b2b'])
+      .order('sold_date', { ascending: false });
+
+    if (error) throw error;
+
+    // Filter and map to active warranties
+    const activeWarranties = (data || [])
+      .filter((vehicle: any) => {
+        // Only B2C: exclude B2B sales to car dealers
+        if (vehicle.status === 'verkocht_b2b' && vehicle.customerContact?.is_car_dealer) {
+          return false;
+        }
+        
+        // Get delivery date
+        const deliveryDate = new Date(vehicle.details?.deliveryDate || vehicle.sold_date || now);
+        
+        // Calculate warranty end date (12 months from delivery)
+        const warrantyEndDate = new Date(deliveryDate);
+        warrantyEndDate.setMonth(warrantyEndDate.getMonth() + 12);
+        
+        // Only include if warranty hasn't expired
+        return warrantyEndDate > now;
+      })
+      .map((vehicle: any) => {
+        const deliveryDate = new Date(vehicle.details?.deliveryDate || vehicle.sold_date || now);
+        const warrantyEndDate = new Date(deliveryDate);
+        warrantyEndDate.setMonth(warrantyEndDate.getMonth() + 12);
+        
+        const daysRemaining = Math.ceil((warrantyEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // Determine risk level
+        let estimatedRisk: 'laag' | 'gemiddeld' | 'hoog' = 'laag';
+        if (daysRemaining < 30) {
+          estimatedRisk = 'hoog';
+        } else if (daysRemaining < 90) {
+          estimatedRisk = 'gemiddeld';
+        }
+        
+        return {
+          id: vehicle.id,
+          brand: vehicle.brand,
+          model: vehicle.model,
+          licenseNumber: vehicle.license_number || '',
+          vin: vehicle.vin,
+          customerId: vehicle.customer_id || '',
+          customerName: `${vehicle.customerContact?.first_name || ''} ${vehicle.customerContact?.last_name || ''}`.trim(),
+          customerEmail: vehicle.customerContact?.email,
+          customerPhone: vehicle.customerContact?.phone,
+          deliveryDate,
+          warrantyEndDate,
+          daysRemaining,
+          sellingPrice: vehicle.selling_price ? parseFloat(vehicle.selling_price) : undefined,
+          estimatedRisk,
+        } as ActiveWarrantyVehicle;
+      });
+
+    return activeWarranties;
+  } catch (error: any) {
+    console.error("Failed to fetch active warranties:", error);
+    return [];
+  }
+};
+
+export const getActiveWarrantyStats = async (): Promise<ActiveWarrantyStats> => {
+  try {
+    const warranties = await fetchActiveWarranties();
+    
+    const now = new Date();
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const endOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+    
+    const expiringThisMonth = warranties.filter(w => 
+      w.warrantyEndDate <= endOfMonth
+    ).length;
+    
+    const expiringNextMonth = warranties.filter(w => 
+      w.warrantyEndDate > endOfMonth && w.warrantyEndDate <= endOfNextMonth
+    ).length;
+    
+    const totalVehicleValue = warranties.reduce((sum, w) => sum + (w.sellingPrice || 0), 0);
+    
+    const averageDaysRemaining = warranties.length > 0
+      ? warranties.reduce((sum, w) => sum + w.daysRemaining, 0) / warranties.length
+      : 0;
+    
+    return {
+      totalActiveWarranties: warranties.length,
+      expiringThisMonth,
+      expiringNextMonth,
+      totalVehicleValue,
+      averageDaysRemaining: Math.round(averageDaysRemaining),
+    };
+  } catch (error: any) {
+    console.error("Failed to fetch active warranty stats:", error);
+    return {
+      totalActiveWarranties: 0,
+      expiringThisMonth: 0,
+      expiringNextMonth: 0,
+      totalVehicleValue: 0,
+      averageDaysRemaining: 0,
     };
   }
 };

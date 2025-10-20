@@ -24,6 +24,8 @@ import { fetchWarrantyClaims, getWarrantyStats } from "@/services/warrantyServic
 import { WarrantyClaim } from "@/types/warranty";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
+import { ActiveWarrantyOverview } from "./ActiveWarrantyOverview";
+import { Separator } from "@/components/ui/separator";
 
 export const WarrantyReports = () => {
   const { data: claims = [], isLoading: claimsLoading } = useQuery({
@@ -136,9 +138,21 @@ export const WarrantyReports = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="space-y-8">
+      {/* Active Warranties Section */}
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Actieve Garanties</h2>
+        <ActiveWarrantyOverview />
+      </div>
+
+      <Separator className="my-8" />
+
+      {/* Warranty Claims Section */}
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Garantie Claims</h2>
+        
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Actieve Claims</CardTitle>
@@ -407,6 +421,7 @@ export const WarrantyReports = () => {
           </Table>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 };

@@ -49,3 +49,28 @@ export interface WarrantyClaim {
   updatedAt: Date | string;
 }
 
+export interface ActiveWarrantyVehicle {
+  id: string;
+  brand: string;
+  model: string;
+  licenseNumber: string;
+  vin?: string;
+  customerId: string;
+  customerName: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  deliveryDate: Date;
+  warrantyEndDate: Date;
+  daysRemaining: number;
+  sellingPrice?: number;
+  estimatedRisk: 'laag' | 'gemiddeld' | 'hoog';
+}
+
+export interface ActiveWarrantyStats {
+  totalActiveWarranties: number;
+  expiringThisMonth: number;
+  expiringNextMonth: number;
+  totalVehicleValue: number;
+  averageDaysRemaining: number;
+}
+
