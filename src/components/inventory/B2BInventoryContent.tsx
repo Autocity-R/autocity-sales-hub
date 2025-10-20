@@ -21,7 +21,14 @@ interface B2BInventoryContentProps {
   onUpdateSellingPrice: (vehicleId: string, price: number) => void;
   onUpdatePaymentStatus: (vehicleId: string, status: PaymentStatus) => void;
   onChangeStatus: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
-  onMarkAsDelivered: (vehicleId: string) => void;
+  onMarkAsDelivered: (
+    vehicleId: string,
+    warrantyPackage: string,
+    warrantyPackageName: string,
+    deliveryDate: Date,
+    warrantyPackagePrice?: number,
+    deliveryNotes?: string
+  ) => void;
   onUpdateVehicle: (vehicle: Vehicle) => void;
   onPhotoUpload: (file: File, isMain: boolean) => void;
   onRemovePhoto: (photoUrl: string) => void;

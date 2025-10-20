@@ -35,17 +35,8 @@ import { CustomCheckbox } from "@/components/ui/custom-checkbox";
 import { Car } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { PurchaserQuickEdit } from "./PurchaserQuickEdit";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { EmailConfirmDialog } from "@/components/ui/email-confirm-dialog";
+import { DeliveryConfirmationDialog, DeliveryData } from "./DeliveryConfirmationDialog";
 
 interface VehicleB2BTableProps {
   vehicles: Vehicle[];
@@ -57,7 +48,14 @@ interface VehicleB2BTableProps {
   handleUpdateSellingPrice?: (vehicleId: string, price: number) => void;
   handleUpdatePaymentStatus?: (vehicleId: string, status: PaymentStatus) => void;
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
-  onMarkAsDelivered?: (vehicleId: string) => void;
+  onMarkAsDelivered?: (
+    vehicleId: string,
+    warrantyPackage: string,
+    warrantyPackageName: string,
+    deliveryDate: Date,
+    warrantyPackagePrice?: number,
+    deliveryNotes?: string
+  ) => void;
   onOpenContractConfig?: (vehicle: Vehicle, type: "b2b" | "b2c") => void;
   isLoading: boolean;
   error: unknown;
@@ -113,7 +111,7 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
   sortDirection
 }) => {
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
-  const [selectedVehicleForDelivery, setSelectedVehicleForDelivery] = useState<string | null>(null);
+  const [selectedVehicleForDelivery, setSelectedVehicleForDelivery] = useState<Vehicle | null>(null);
   const [emailConfirmOpen, setEmailConfirmOpen] = useState(false);
   const [pendingEmailAction, setPendingEmailAction] = useState<{ type: string; vehicleId: string; vehicle?: Vehicle } | null>(null);
 
@@ -129,18 +127,25 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
     }
   };
 
-  const handleDeliveryConfirm = () => {
-    if (selectedVehicleForDelivery && onMarkAsDelivered) {
-      onMarkAsDelivered(selectedVehicleForDelivery);
-      setSelectedVehicleForDelivery(null);
-      setDeliveryDialogOpen(false);
-    }
+  const handleDeliveryClick = (vehicle: Vehicle, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedVehicleForDelivery(vehicle);
+    setDeliveryDialogOpen(true);
   };
 
-  const openDeliveryDialog = (vehicleId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSelectedVehicleForDelivery(vehicleId);
-    setDeliveryDialogOpen(true);
+  const handleDeliveryConfirm = (deliveryData: DeliveryData) => {
+    if (selectedVehicleForDelivery && onMarkAsDelivered) {
+      onMarkAsDelivered(
+        selectedVehicleForDelivery.id,
+        deliveryData.warrantyPackage,
+        deliveryData.warrantyPackageName,
+        deliveryData.deliveryDate,
+        deliveryData.warrantyPackagePrice,
+        deliveryData.deliveryNotes
+      );
+      setDeliveryDialogOpen(false);
+      setSelectedVehicleForDelivery(null);
+    }
   };
 
   const renderSortIcon = (field: string) => {
@@ -497,7 +502,7 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                         <>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
-                            onClick={(e) => openDeliveryDialog(vehicle.id, e)}
+                            onClick={(e) => handleDeliveryClick(vehicle, e)}
                             className="text-red-500 focus:text-red-500"
                           >
                             <Truck className="h-4 w-4 mr-2" />
@@ -515,27 +520,13 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
         </Table>
       </div>
       
-      {/* Confirmation Dialog for Marking as Delivered */}
-      <AlertDialog open={deliveryDialogOpen} onOpenChange={setDeliveryDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Voertuig afgeleverd</AlertDialogTitle>
-            <AlertDialogDescription>
-              Weet u zeker dat u dit voertuig als afgeleverd wilt markeren? 
-              Het voertuig wordt verwijderd uit de B2B lijst.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuleren</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeliveryConfirm}
-              className="bg-red-500 hover:bg-red-600"
-            >
-              Afgeleverd
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeliveryConfirmationDialog
+        open={deliveryDialogOpen}
+        onOpenChange={setDeliveryDialogOpen}
+        onConfirm={handleDeliveryConfirm}
+        vehicleBrand={selectedVehicleForDelivery?.brand}
+        vehicleModel={selectedVehicleForDelivery?.model}
+      />
 
       <EmailConfirmDialog
         open={emailConfirmOpen}

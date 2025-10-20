@@ -303,9 +303,16 @@ export const markVehicleAsArrived = async (vehicleId: string): Promise<void> => 
   }
 };
 
-export const markVehicleAsDelivered = async (vehicleId: string): Promise<void> => {
+export const markVehicleAsDelivered = async (
+  vehicleId: string,
+  warrantyPackage: string,
+  warrantyPackageName: string,
+  deliveryDate: Date,
+  warrantyPackagePrice?: number,
+  deliveryNotes?: string
+): Promise<void> => {
   try {
-    console.log(`Marking vehicle ${vehicleId} as delivered`);
+    console.log(`Marking vehicle ${vehicleId} as delivered with warranty: ${warrantyPackage}`);
     
     if (isUseMockData) {
       console.log('Mock data mode - delivery update simulated');
@@ -313,8 +320,66 @@ export const markVehicleAsDelivered = async (vehicleId: string): Promise<void> =
     }
 
     try {
-      await supabaseInventoryService.updateVehicleStatus(vehicleId, 'afgeleverd');
-      console.log('Vehicle marked as delivered successfully via Supabase');
+      // Calculate warranty end date based on package
+      const warrantyMonths = {
+        "garantie_wettelijk": 12,
+        "6_maanden_autocity": 6,
+        "12_maanden_autocity": 12,
+        "12_maanden_bovag": 12,
+        "12_maanden_bovag_vervangend": 12
+      }[warrantyPackage] || 12;
+
+      const warrantyEndDate = new Date(deliveryDate);
+      warrantyEndDate.setMonth(warrantyEndDate.getMonth() + warrantyMonths);
+
+      // Fetch current vehicle to preserve existing details
+      const { data: currentVehicle, error: fetchError } = await supabase
+        .from('vehicles')
+        .select('details, notes')
+        .eq('id', vehicleId)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching vehicle:', fetchError);
+        throw fetchError;
+      }
+
+      const currentDetails = (currentVehicle?.details as Record<string, any>) || {};
+      const currentNotes = currentVehicle?.notes || '';
+
+      // Prepare updated details with warranty information
+      const updatedDetails = {
+        ...currentDetails,
+        warrantyPackage,
+        warrantyPackageName,
+        warrantyPackagePrice,
+        warrantyStartDate: deliveryDate.toISOString(),
+        warrantyEndDate: warrantyEndDate.toISOString(),
+        deliveryDate: deliveryDate.toISOString()
+      };
+
+      // Append delivery notes to existing notes if provided
+      const updatedNotes = deliveryNotes 
+        ? `${currentNotes}\n\n[Aflevering ${deliveryDate.toLocaleDateString('nl-NL')}]: ${deliveryNotes}`.trim()
+        : currentNotes;
+
+      // Update vehicle with delivery information
+      const { error: updateError } = await supabase
+        .from('vehicles')
+        .update({
+          status: 'afgeleverd',
+          details: updatedDetails,
+          notes: updatedNotes,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', vehicleId);
+
+      if (updateError) {
+        console.error('Error updating vehicle:', updateError);
+        throw updateError;
+      }
+
+      console.log('Vehicle marked as delivered successfully with warranty info');
     } catch (supabaseError) {
       console.warn('Supabase update failed:', supabaseError);
       throw supabaseError;

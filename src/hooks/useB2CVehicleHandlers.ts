@@ -144,8 +144,22 @@ export const useB2CVehicleHandlers = () => {
     updatePaintStatusMutation.mutate({ vehicleId, status });
   };
 
-  const handleMarkAsDelivered = (vehicleId: string) => {
-    markAsDeliveredMutation.mutate(vehicleId);
+  const handleMarkAsDelivered = (
+    vehicleId: string,
+    warrantyPackage: string,
+    warrantyPackageName: string,
+    deliveryDate: Date,
+    warrantyPackagePrice?: number,
+    deliveryNotes?: string
+  ) => {
+    markAsDeliveredMutation.mutate({
+      vehicleId,
+      warrantyPackage,
+      warrantyPackageName,
+      deliveryDate,
+      warrantyPackagePrice,
+      deliveryNotes
+    });
   };
   
   const handleSort = (field: string) => {

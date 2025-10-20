@@ -164,10 +164,31 @@ const InventoryOnline = () => {
   });
 
   const markAsDeliveredMutation = useMutation({
-    mutationFn: (vehicleId: string) => markVehicleAsDelivered(vehicleId),
+    mutationFn: ({ 
+      vehicleId, 
+      warrantyPackage, 
+      warrantyPackageName, 
+      deliveryDate, 
+      warrantyPackagePrice, 
+      deliveryNotes 
+    }: { 
+      vehicleId: string; 
+      warrantyPackage: string; 
+      warrantyPackageName: string; 
+      deliveryDate: Date; 
+      warrantyPackagePrice?: number; 
+      deliveryNotes?: string; 
+    }) => markVehicleAsDelivered(
+      vehicleId, 
+      warrantyPackage, 
+      warrantyPackageName, 
+      deliveryDate, 
+      warrantyPackagePrice, 
+      deliveryNotes
+    ),
     onSuccess: () => {
       toast({
-        description: "Voertuig gemarkeerd als afgeleverd"
+        description: "Voertuig afgeleverd met garantiegegevens"
       });
       queryClient.invalidateQueries({ queryKey: ["onlineVehicles"] });
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
@@ -276,8 +297,22 @@ const InventoryOnline = () => {
     updatePaymentStatusMutation.mutate({ vehicleId, status });
   };
 
-  const handleMarkAsDelivered = (vehicleId: string) => {
-    markAsDeliveredMutation.mutate(vehicleId);
+  const handleMarkAsDelivered = (
+    vehicleId: string,
+    warrantyPackage: string,
+    warrantyPackageName: string,
+    deliveryDate: Date,
+    warrantyPackagePrice?: number,
+    deliveryNotes?: string
+  ) => {
+    markAsDeliveredMutation.mutate({
+      vehicleId,
+      warrantyPackage,
+      warrantyPackageName,
+      deliveryDate,
+      warrantyPackagePrice,
+      deliveryNotes
+    });
   };
   
   const toggleSelectVehicle = (vehicleId: string, checked: boolean) => {

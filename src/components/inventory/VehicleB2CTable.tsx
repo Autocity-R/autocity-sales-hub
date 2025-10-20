@@ -1,22 +1,13 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { 
-  AlertDialog, 
-  AlertDialogAction, 
-  AlertDialogCancel, 
-  AlertDialogContent, 
-  AlertDialogDescription, 
-  AlertDialogFooter, 
-  AlertDialogHeader, 
-  AlertDialogTitle
-} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Vehicle, PaymentStatus, PaintStatus } from "@/types/inventory";
 import { VehicleB2CTableHeader } from "./b2c-table/VehicleB2CTableHeader";
 import { VehicleB2CTableRow } from "./b2c-table/VehicleB2CTableRow";
 import { VehicleMobileCard } from "./VehicleMobileCard";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { DeliveryConfirmationDialog, DeliveryData } from "./DeliveryConfirmationDialog";
 
 interface VehicleB2CTableProps {
   vehicles: Vehicle[];
@@ -28,7 +19,14 @@ interface VehicleB2CTableProps {
   handleUpdateSellingPrice: (vehicleId: string, price: number) => void;
   handleUpdatePaymentStatus: (vehicleId: string, status: PaymentStatus) => void;
   handleUpdatePaintStatus: (vehicleId: string, status: PaintStatus) => void;
-  onMarkAsDelivered: (vehicleId: string) => void;
+  onMarkAsDelivered: (
+    vehicleId: string,
+    warrantyPackage: string,
+    warrantyPackageName: string,
+    deliveryDate: Date,
+    warrantyPackagePrice?: number,
+    deliveryNotes?: string
+  ) => void;
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c") => void;
   isLoading: boolean;
@@ -55,19 +53,26 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
   sortDirection
 }) => {
   const isMobile = useIsMobile();
-  const [deliveryConfirmOpen, setDeliveryConfirmOpen] = React.useState(false);
-  const [selectedVehicleId, setSelectedVehicleId] = React.useState<string | null>(null);
+  const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
+  const [selectedVehicleForDelivery, setSelectedVehicleForDelivery] = useState<Vehicle | null>(null);
 
-  const handleDeliveryConfirm = (vehicleId: string) => {
-    setSelectedVehicleId(vehicleId);
-    setDeliveryConfirmOpen(true);
+  const handleDeliveryClick = (vehicle: Vehicle) => {
+    setSelectedVehicleForDelivery(vehicle);
+    setDeliveryDialogOpen(true);
   };
 
-  const confirmDelivery = () => {
-    if (selectedVehicleId) {
-      onMarkAsDelivered(selectedVehicleId);
-      setDeliveryConfirmOpen(false);
-      setSelectedVehicleId(null);
+  const handleDeliveryConfirm = (deliveryData: DeliveryData) => {
+    if (selectedVehicleForDelivery) {
+      onMarkAsDelivered(
+        selectedVehicleForDelivery.id,
+        deliveryData.warrantyPackage,
+        deliveryData.warrantyPackageName,
+        deliveryData.deliveryDate,
+        deliveryData.warrantyPackagePrice,
+        deliveryData.deliveryNotes
+      );
+      setDeliveryDialogOpen(false);
+      setSelectedVehicleForDelivery(null);
     }
   };
 
@@ -103,28 +108,20 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
                 onSelectVehicle={handleSelectVehicle}
                 onSendEmail={handleSendEmail}
                 onChangeStatus={handleChangeStatus}
-                onDeliveryConfirm={handleDeliveryConfirm}
+                onDeliveryConfirm={() => handleDeliveryClick(vehicle)}
                 onOpenContractConfig={onOpenContractConfig}
               />
             ))
           )}
         </div>
 
-        <AlertDialog open={deliveryConfirmOpen} onOpenChange={setDeliveryConfirmOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Voertuig afgeleverd markeren?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Weet u zeker dat u dit voertuig als afgeleverd wilt markeren? 
-                Het voertuig wordt verplaatst naar de 'Afgeleverd' sectie.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Annuleren</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDelivery}>Ja, markeer als afgeleverd</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <DeliveryConfirmationDialog
+          open={deliveryDialogOpen}
+          onOpenChange={setDeliveryDialogOpen}
+          onConfirm={handleDeliveryConfirm}
+          vehicleBrand={selectedVehicleForDelivery?.brand}
+          vehicleModel={selectedVehicleForDelivery?.model}
+        />
       </>
     );
   }
@@ -159,7 +156,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
                   handleSelectVehicle={handleSelectVehicle}
                   handleSendEmail={handleSendEmail}
                   handleChangeStatus={handleChangeStatus}
-                  onDeliveryConfirm={handleDeliveryConfirm}
+                  onDeliveryConfirm={() => handleDeliveryClick(vehicle)}
                   onOpenContractConfig={onOpenContractConfig}
                 />
               ))
@@ -168,21 +165,13 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
         </Table>
       </div>
 
-      <AlertDialog open={deliveryConfirmOpen} onOpenChange={setDeliveryConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Voertuig afgeleverd markeren?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Weet u zeker dat u dit voertuig als afgeleverd wilt markeren? 
-              Het voertuig wordt verplaatst naar de 'Afgeleverd' sectie.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuleren</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelivery}>Ja, markeer als afgeleverd</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeliveryConfirmationDialog
+        open={deliveryDialogOpen}
+        onOpenChange={setDeliveryDialogOpen}
+        onConfirm={handleDeliveryConfirm}
+        vehicleBrand={selectedVehicleForDelivery?.brand}
+        vehicleModel={selectedVehicleForDelivery?.model}
+      />
     </>
   );
 };

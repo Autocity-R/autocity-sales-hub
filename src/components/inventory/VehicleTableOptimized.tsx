@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from "react";
+import React, { useState, memo, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +23,14 @@ interface VehicleTableProps {
   handleSelectVehicle: (vehicle: Vehicle) => void;
   handleSendEmail: (type: string, vehicleId: string) => void;
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
-  handleMarkAsDelivered?: (vehicleId: string) => void;
+  handleMarkAsDelivered?: (
+    vehicleId: string,
+    warrantyPackage: string,
+    warrantyPackageName: string,
+    deliveryDate: Date,
+    warrantyPackagePrice?: number,
+    deliveryNotes?: string
+  ) => void;
   handleMarkAsArrived?: (vehicleId: string) => void;
   isLoading: boolean;
   error: unknown;
@@ -55,8 +62,16 @@ const VehicleRow = memo<{
   onSelectVehicle: (vehicle: Vehicle) => void;
   onSendEmail: (type: string, vehicleId: string) => void;
   onChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
-  onMarkAsDelivered?: (vehicleId: string) => void;
+  onMarkAsDelivered?: (
+    vehicleId: string,
+    warrantyPackage: string,
+    warrantyPackageName: string,
+    deliveryDate: Date,
+    warrantyPackagePrice?: number,
+    deliveryNotes?: string
+  ) => void;
   onMarkAsArrived?: (vehicleId: string) => void;
+  onOpenDeliveryDialog?: (vehicle: Vehicle) => void;
 }>(({ 
   vehicle, 
   isSelected, 
@@ -65,7 +80,8 @@ const VehicleRow = memo<{
   onSendEmail, 
   onChangeStatus, 
   onMarkAsDelivered,
-  onMarkAsArrived 
+  onMarkAsArrived,
+  onOpenDeliveryDialog
 }) => {
   const formatPrice = useMemo(() => {
     return (price: number | undefined) => {
@@ -242,10 +258,10 @@ const VehicleRow = memo<{
                 </DropdownMenuItem>
               </>
             )}
-            {onMarkAsDelivered && (
+            {onOpenDeliveryDialog && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onMarkAsDelivered(vehicle.id)}>
+                <DropdownMenuItem onClick={() => onOpenDeliveryDialog(vehicle)}>
                   <Truck className="h-4 w-4 mr-2" />
                   Afgeleverd
                 </DropdownMenuItem>
@@ -274,6 +290,29 @@ export const VehicleTable = memo<VehicleTableProps>(({
   sortField,
   sortDirection
 }) => {
+  const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
+  const [selectedVehicleForDelivery, setSelectedVehicleForDelivery] = useState<Vehicle | null>(null);
+
+  const handleDeliveryClick = (vehicle: Vehicle) => {
+    setSelectedVehicleForDelivery(vehicle);
+    setDeliveryDialogOpen(true);
+  };
+
+  const handleDeliveryConfirm = (deliveryData: DeliveryData) => {
+    if (selectedVehicleForDelivery && handleMarkAsDelivered) {
+      handleMarkAsDelivered(
+        selectedVehicleForDelivery.id,
+        deliveryData.warrantyPackage,
+        deliveryData.warrantyPackageName,
+        deliveryData.deliveryDate,
+        deliveryData.warrantyPackagePrice,
+        deliveryData.deliveryNotes
+      );
+      setDeliveryDialogOpen(false);
+      setSelectedVehicleForDelivery(null);
+    }
+  };
+
   const renderSortIcon = useMemo(() => {
     return (field: string) => {
       if (sortField !== field) return null;
@@ -412,11 +451,20 @@ export const VehicleTable = memo<VehicleTableProps>(({
                 onChangeStatus={handleChangeStatus}
                 onMarkAsDelivered={handleMarkAsDelivered}
                 onMarkAsArrived={handleMarkAsArrived}
+                onOpenDeliveryDialog={handleDeliveryClick}
               />
             ))
           )}
         </TableBody>
       </Table>
+      
+      <DeliveryConfirmationDialog
+        open={deliveryDialogOpen}
+        onOpenChange={setDeliveryDialogOpen}
+        onConfirm={handleDeliveryConfirm}
+        vehicleBrand={selectedVehicleForDelivery?.brand}
+        vehicleModel={selectedVehicleForDelivery?.model}
+      />
     </div>
   );
 });

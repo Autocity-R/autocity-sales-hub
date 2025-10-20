@@ -165,10 +165,31 @@ export const useB2CVehicleOperations = () => {
   });
 
   const markAsDeliveredMutation = useMutation({
-    mutationFn: (vehicleId: string) => markVehicleAsDelivered(vehicleId),
+    mutationFn: ({ 
+      vehicleId, 
+      warrantyPackage, 
+      warrantyPackageName, 
+      deliveryDate, 
+      warrantyPackagePrice, 
+      deliveryNotes 
+    }: { 
+      vehicleId: string; 
+      warrantyPackage: string; 
+      warrantyPackageName: string; 
+      deliveryDate: Date; 
+      warrantyPackagePrice?: number; 
+      deliveryNotes?: string; 
+    }) => markVehicleAsDelivered(
+      vehicleId, 
+      warrantyPackage, 
+      warrantyPackageName, 
+      deliveryDate, 
+      warrantyPackagePrice, 
+      deliveryNotes
+    ),
     onSuccess: () => {
       toast({
-        description: "Voertuig gemarkeerd als afgeleverd"
+        description: "Voertuig afgeleverd met garantiegegevens"
       });
       queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
       queryClient.invalidateQueries({ queryKey: ["deliveredVehicles"] });
@@ -176,7 +197,7 @@ export const useB2CVehicleOperations = () => {
     onError: (error) => {
       toast({
         variant: "destructive",
-        description: "Fout bij het markeren van het voertuig als afgeleverd"
+        description: "Fout bij het afleveren van het voertuig"
       });
       console.error("Error marking vehicle as delivered:", error);
     }

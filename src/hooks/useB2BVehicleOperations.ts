@@ -70,14 +70,38 @@ export const useB2BVehicleOperations = () => {
   });
 
   const markAsDeliveredMutation = useMutation({
-    mutationFn: (vehicleId: string) => 
-      updateSalesStatus(vehicleId, "afgeleverd"),
+    mutationFn: async ({ 
+      vehicleId, 
+      warrantyPackage, 
+      warrantyPackageName, 
+      deliveryDate, 
+      warrantyPackagePrice, 
+      deliveryNotes 
+    }: { 
+      vehicleId: string; 
+      warrantyPackage: string; 
+      warrantyPackageName: string; 
+      deliveryDate: Date; 
+      warrantyPackagePrice?: number; 
+      deliveryNotes?: string; 
+    }) => {
+      const { markVehicleAsDelivered } = await import("@/services/inventoryService");
+      return markVehicleAsDelivered(
+        vehicleId, 
+        warrantyPackage, 
+        warrantyPackageName, 
+        deliveryDate, 
+        warrantyPackagePrice, 
+        deliveryNotes
+      );
+    },
     onSuccess: () => {
-      toast.success("Voertuig gemarkeerd als afgeleverd");
+      toast.success("Voertuig afgeleverd met garantiegegevens");
       queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["deliveredVehicles"] });
     },
     onError: (error) => {
-      toast.error("Fout bij het markeren van het voertuig als afgeleverd");
+      toast.error("Fout bij het afleveren van het voertuig");
       console.error("Error marking vehicle as delivered:", error);
     }
   });
@@ -111,8 +135,22 @@ export const useB2BVehicleOperations = () => {
     updatePaymentStatusMutation.mutate({ vehicleId, status });
   };
   
-  const handleMarkAsDelivered = (vehicleId: string) => {
-    markAsDeliveredMutation.mutate(vehicleId);
+  const handleMarkAsDelivered = (
+    vehicleId: string,
+    warrantyPackage: string,
+    warrantyPackageName: string,
+    deliveryDate: Date,
+    warrantyPackagePrice?: number,
+    deliveryNotes?: string
+  ) => {
+    markAsDeliveredMutation.mutate({
+      vehicleId,
+      warrantyPackage,
+      warrantyPackageName,
+      deliveryDate,
+      warrantyPackagePrice,
+      deliveryNotes
+    });
   };
 
   const changeVehicleStatusMutation = useMutation({
