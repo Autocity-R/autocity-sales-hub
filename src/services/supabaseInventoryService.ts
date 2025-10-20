@@ -265,6 +265,9 @@ export class SupabaseInventoryService {
       selling_price: vehicle.sellingPrice !== undefined && vehicle.sellingPrice !== null
         ? vehicle.sellingPrice
         : existingVehicle.selling_price,
+      purchase_price: vehicle.purchasePrice !== undefined && vehicle.purchasePrice !== null
+        ? vehicle.purchasePrice
+        : existingVehicle.purchase_price,  // ✅ CRITICAL: Preserve purchase_price
       status: salesStatus,
       location: vehicle.location,
       import_status: vehicle.importStatus,
@@ -470,6 +473,7 @@ export class SupabaseInventoryService {
           vin: vehicleData.vin,
           mileage: vehicleData.mileage,
           selling_price: vehicleData.sellingPrice,
+          purchase_price: vehicleData.purchasePrice || 0,  // ✅ CRITICAL: Save to dedicated column
           status: vehicleData.salesStatus || 'voorraad',
           location: vehicleData.location || 'showroom',
            customer_id: vehicleData.customerId,
@@ -531,7 +535,8 @@ export class SupabaseInventoryService {
       notes: supabaseVehicle.notes || details.notes || '',
       
       // Map details fields with fallbacks
-      purchasePrice: details.purchasePrice || 0,
+      // ✅ CRITICAL: Read from purchase_price column first, fallback to details
+      purchasePrice: supabaseVehicle.purchase_price || details.purchasePrice || 0,
       workshopStatus: details.workshopStatus || 'wachten',
       paintStatus: details.paintStatus || 'geen_behandeling',
       damage: details.damage || { description: '', status: 'geen' },

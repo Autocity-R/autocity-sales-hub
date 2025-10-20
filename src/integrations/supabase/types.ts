@@ -2082,6 +2082,7 @@ export type Database = {
           model: string
           notes: string | null
           purchase_date: string | null
+          purchase_price: number | null
           purchased_by_name: string | null
           purchased_by_user_id: string | null
           selling_price: number | null
@@ -2110,6 +2111,7 @@ export type Database = {
           model: string
           notes?: string | null
           purchase_date?: string | null
+          purchase_price?: number | null
           purchased_by_name?: string | null
           purchased_by_user_id?: string | null
           selling_price?: number | null
@@ -2138,6 +2140,7 @@ export type Database = {
           model?: string
           notes?: string | null
           purchase_date?: string | null
+          purchase_price?: number | null
           purchased_by_name?: string | null
           purchased_by_user_id?: string | null
           selling_price?: number | null

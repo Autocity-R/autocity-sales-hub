@@ -12,7 +12,7 @@ class PurchaseReportsService {
         purchased_by_user_id,
         purchased_by_name,
         purchase_date,
-        details,
+        purchase_price,
         selling_price,
         status,
         sold_date,
@@ -77,7 +77,8 @@ class PurchaseReportsService {
       }
       
       const stats = grouped.get(buyerId)!;
-      const purchasePrice = vehicle.details?.purchasePrice || 0;
+      // ✅ Use purchase_price column instead of details
+      const purchasePrice = vehicle.purchase_price || 0;
       const isSold = ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(vehicle.status);
       
       stats.totalPurchased++;
@@ -109,14 +110,16 @@ class PurchaseReportsService {
   }
 
   private calculateTotalPurchaseValue(vehicles: any[]): number {
-    return vehicles.reduce((sum, v) => sum + (v.details?.purchasePrice || 0), 0);
+    // ✅ Use purchase_price column instead of details
+    return vehicles.reduce((sum, v) => sum + (v.purchase_price || 0), 0);
   }
 
   private calculateRealizedProfit(vehicles: any[]): number {
     return vehicles
       .filter(v => ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(v.status))
       .reduce((sum, v) => {
-        const purchasePrice = v.details?.purchasePrice || 0;
+        // ✅ Use purchase_price column instead of details
+        const purchasePrice = v.purchase_price || 0;
         const sellingPrice = v.selling_price || 0;
         return sum + (sellingPrice - purchasePrice);
       }, 0);
@@ -131,7 +134,8 @@ class PurchaseReportsService {
     if (soldVehicles.length === 0) return 0;
 
     const totalMargin = soldVehicles.reduce((sum, v) => {
-      const purchasePrice = v.details?.purchasePrice || 0;
+      // ✅ Use purchase_price column instead of details
+      const purchasePrice = v.purchase_price || 0;
       const sellingPrice = v.selling_price || 0;
       const margin = sellingPrice > 0 ? ((sellingPrice - purchasePrice) / sellingPrice) * 100 : 0;
       return sum + margin;
