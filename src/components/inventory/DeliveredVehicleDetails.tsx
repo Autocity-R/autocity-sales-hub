@@ -289,46 +289,48 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
             <Separator />
             
             {/* Warranty Package Section */}
-            {vehicle.details?.warrantyPackage && (
-              <>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-blue-600" />
-                    <h3 className="text-lg font-semibold">Garantiepakket</h3>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-blue-600" />
+                <h3 className="text-lg font-semibold">Garantiepakket</h3>
+              </div>
+              
+              {vehicle.details?.warrantyPackage ? (
+                <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pakket</p>
+                    <p className="font-medium">{vehicle.details.warrantyPackageName || 'Niet beschikbaar'}</p>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  {vehicle.details.warrantyPackagePrice && vehicle.details.warrantyPackagePrice > 0 && (
                     <div>
-                      <p className="text-sm text-muted-foreground">Pakket</p>
-                      <p className="font-medium">{vehicle.details.warrantyPackageName}</p>
+                      <p className="text-sm text-muted-foreground">Prijs</p>
+                      <p className="font-medium">€{vehicle.details.warrantyPackagePrice.toLocaleString('nl-NL')}</p>
                     </div>
-                    
-                    {vehicle.details.warrantyPackagePrice > 0 && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Prijs</p>
-                        <p className="font-medium">€{vehicle.details.warrantyPackagePrice.toLocaleString('nl-NL')}</p>
-                      </div>
-                    )}
-                    
-                    {vehicle.details.contractSentByName && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Verkocht door</p>
-                        <p className="font-medium">{vehicle.details.contractSentByName}</p>
-                      </div>
-                    )}
-                    
-                    {vehicle.details.contractSentDate && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Contract verstuurd</p>
-                        <p className="font-medium">{formatDate(vehicle.details.contractSentDate)}</p>
-                      </div>
-                    )}
-                  </div>
+                  )}
+                  
+                  {vehicle.details.warrantyStartDate && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Startdatum</p>
+                      <p className="font-medium">{formatDate(vehicle.details.warrantyStartDate)}</p>
+                    </div>
+                  )}
+                  
+                  {vehicle.details.warrantyEndDate && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Einddatum</p>
+                      <p className="font-medium">{formatDate(vehicle.details.warrantyEndDate)}</p>
+                    </div>
+                  )}
                 </div>
-
-                <Separator />
-              </>
-            )}
+              ) : (
+                <div className="p-4 bg-muted/50 rounded-lg border border-muted">
+                  <p className="text-sm text-muted-foreground">Geen garantiepakket geselecteerd</p>
+                </div>
+              )}
+            </div>
+            
+            <Separator />
             
             {/* Delivery Information */}
             <div>
@@ -339,7 +341,7 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Afleverdatum</label>
-                  <p className="text-sm">{formatDate(vehicle.deliveryDate)}</p>
+                  <p className="text-sm">{formatDate(vehicle.details?.deliveryDate)}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Papieren compleet</label>
