@@ -10,18 +10,19 @@ export const useDashboardStats = () => {
       const monthStart = startOfMonth(now).toISOString();
       const monthEnd = endOfMonth(now).toISOString();
 
-      // Voertuigen voorraad (status voorraad EN niet onderweg)
+      // Voertuigen binnen (alle binnengemelde voertuigen, niet onderweg, niet afgeleverd)
       const { count: voorraadCount } = await supabase
         .from("vehicles")
         .select("*", { count: "exact", head: true })
-        .eq("status", "voorraad")
-        .neq("location", "onderweg");
+        .not("details", "cs", JSON.stringify({ transportStatus: "onderweg" }))
+        .neq("status", "afgeleverd");
 
-      // Voertuigen onderweg (transport)
+      // Voertuigen onderweg (in transport menu, nog niet binnengemeld)
       const { count: transportCount } = await supabase
         .from("vehicles")
         .select("*", { count: "exact", head: true })
-        .in("import_status", ["in_transit", "onderweg"]);
+        .contains("details", { transportStatus: "onderweg" })
+        .neq("status", "afgeleverd");
 
       // Openstaande garantieclaims
       const { count: garantieCount } = await supabase
@@ -44,6 +45,6 @@ export const useDashboardStats = () => {
         verkocht: verkochtCount || 0,
       };
     },
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 5000, // Refresh every 5 seconds - real-time updates
   });
 };
