@@ -197,8 +197,7 @@ export const LoanCarManagement = () => {
   };
 
   const handleDeleteCar = (car: LoanCar) => {
-    if (!car.vehicleId) return;
-    deleteMutation.mutate({ id: car.id, vehicleId: car.vehicleId });
+    deleteMutation.mutate({ id: car.id, vehicleId: car.vehicleId || '' });
   };
 
   const toggleAvailability = (car: LoanCar) => {

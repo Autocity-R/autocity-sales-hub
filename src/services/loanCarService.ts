@@ -124,13 +124,20 @@ export const deleteLoanCar = async (id: string, vehicleId: string): Promise<void
 
     if (loanCarError) throw loanCarError;
 
-    // Then delete the vehicle
-    const { error: vehicleError } = await supabase
-      .from('vehicles')
-      .delete()
-      .eq('id', vehicleId);
+    // Try to delete the vehicle if vehicleId is provided
+    if (vehicleId) {
+      const { error: vehicleError } = await supabase
+        .from('vehicles')
+        .delete()
+        .eq('id', vehicleId);
 
-    if (vehicleError) throw vehicleError;
+      // Log vehicle deletion error but don't fail the entire operation
+      // This allows non-admin users to remove loan cars from the list
+      // even if they can't delete the underlying vehicle record due to RLS
+      if (vehicleError) {
+        console.warn("Could not delete vehicle record (may be due to RLS permissions):", vehicleError);
+      }
+    }
   } catch (error: any) {
     console.error("Failed to delete loan car:", error);
     throw error;
