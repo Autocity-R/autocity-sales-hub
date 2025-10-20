@@ -248,7 +248,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               type="number"
               value={editedVehicle.sellingPrice || ''}
               onChange={(e) => handleChange('sellingPrice', parseFloat(e.target.value))}
-              className="border-green-200 focus:border-green-300"
+              className="border-green-200 focus:border-green-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
         </div>

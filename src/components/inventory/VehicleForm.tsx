@@ -226,6 +226,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
               type="number"
               value={formData.sellingPrice}
               onChange={(e) => handleChange('sellingPrice', parseFloat(e.target.value))}
+              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
 
