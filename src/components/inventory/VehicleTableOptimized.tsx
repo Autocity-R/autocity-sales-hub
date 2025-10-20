@@ -165,9 +165,9 @@ const VehicleRow = memo<{
       </TableCell>
       <TableCell className="align-middle text-center">
         {vehicle.showroomOnline ? (
-          <Badge variant="default" className="bg-blue-100 text-blue-800">Online</Badge>
+          <Badge variant="default" className="bg-green-500 text-white hover:bg-green-600">Online</Badge>
         ) : (
-          <Badge variant="outline">Offline</Badge>
+          <Badge variant="default" className="bg-red-500 text-white hover:bg-red-600">Offline</Badge>
         )}
       </TableCell>
       <TableCell className="align-middle">

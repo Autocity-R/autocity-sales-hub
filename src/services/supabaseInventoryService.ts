@@ -60,6 +60,7 @@ export class SupabaseInventoryService {
         .select('*')
         .eq('status', 'voorraad')
         .neq('location', 'onderweg')
+        .contains('details', { showroomOnline: true })
         .order('created_at', { ascending: false });
 
       if (error) {
