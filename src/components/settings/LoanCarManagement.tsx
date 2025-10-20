@@ -354,7 +354,10 @@ export const LoanCarManagement = () => {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDeleteCar(car)}>
+                          <AlertDialogAction 
+                            onClick={() => handleDeleteCar(car)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
                             Verwijderen
                           </AlertDialogAction>
                         </AlertDialogFooter>
