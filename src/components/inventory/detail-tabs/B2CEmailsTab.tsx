@@ -79,24 +79,70 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
     const hasTemplate = isButtonLinkedToTemplate(buttonType);
     const isContractButton = buttonType.includes("contract");
     
-    const handleClick = () => {
+    const handleClick = async () => {
       if (isContractButton) {
         handleContractClick();
         return;
       }
       
-      // Determine recipient based on email type
+      // Determine recipient type
       const isPapersReminder = buttonType === "reminder_papers";
-      const recipientContact = isPapersReminder ? vehicle?.supplierContact : vehicle?.customerContact;
       const recipientType = isPapersReminder ? "leverancier" : "klant";
       
-      if (!recipientContact?.email) {
-        toast({
-          title: `Geen ${recipientType} email`,
-          description: `Dit voertuig heeft geen ${recipientType} met email adres gekoppeld.`,
-          variant: "destructive",
-        });
-        return;
+      // Get recipient email from database instead of enriched field
+      let recipientEmail: string | undefined;
+      let recipientName: string | undefined;
+      
+      if (isPapersReminder) {
+        // Papers reminder goes to supplier
+        if (!vehicle?.supplierId) {
+          toast({
+            title: "Geen leverancier",
+            description: "Dit voertuig heeft geen leverancier gekoppeld.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        const { supabaseCustomerService } = await import('@/services/supabaseCustomerService');
+        const supplier = await supabaseCustomerService.getContactById(vehicle.supplierId);
+        
+        if (!supplier?.email) {
+          toast({
+            title: "Geen leverancier email",
+            description: "De leverancier heeft geen email adres.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        recipientEmail = supplier.email;
+        recipientName = supplier.companyName || `${supplier.firstName} ${supplier.lastName}`;
+      } else {
+        // All other emails go to customer
+        if (!vehicle?.customerId) {
+          toast({
+            title: "Geen klant gekoppeld",
+            description: "Koppel eerst een klant aan dit voertuig in het 'Contacten' tabblad.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        const { supabaseCustomerService } = await import('@/services/supabaseCustomerService');
+        const customer = await supabaseCustomerService.getContactById(vehicle.customerId);
+        
+        if (!customer?.email) {
+          toast({
+            title: "Geen klant email",
+            description: "De klant heeft geen email adres.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        recipientEmail = customer.email;
+        recipientName = customer.companyName || `${customer.firstName} ${customer.lastName}`;
       }
 
       // Get template info for preview
@@ -104,8 +150,8 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
       
       setPendingEmailAction({ 
         type: buttonType,
-        recipientEmail: recipientContact.email,
-        recipientName: recipientContact.name || (isPapersReminder ? 'Leverancier' : 'Klant'),
+        recipientEmail,
+        recipientName,
         subject: template?.subject || label,
         previewContent: template?.content
       });
