@@ -1217,6 +1217,56 @@ export type Database = {
           },
         ]
       }
+      email_sent_log: {
+        Row: {
+          created_at: string
+          email_type: string
+          error_message: string | null
+          id: string
+          recipient_email: string
+          recipient_name: string | null
+          sent_at: string
+          sent_by: string | null
+          status: string
+          subject: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_type: string
+          error_message?: string | null
+          id?: string
+          recipient_email: string
+          recipient_name?: string | null
+          sent_at?: string
+          sent_by?: string | null
+          status?: string
+          subject: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          recipient_email?: string
+          recipient_name?: string | null
+          sent_at?: string
+          sent_by?: string | null
+          status?: string
+          subject?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_sent_log_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_threads: {
         Row: {
           created_at: string

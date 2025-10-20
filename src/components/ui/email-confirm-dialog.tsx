@@ -9,6 +9,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Mail, User, FileText } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 interface EmailConfirmDialogProps {
   open: boolean;
@@ -16,6 +18,9 @@ interface EmailConfirmDialogProps {
   onConfirm: () => void;
   emailType?: string;
   recipientInfo?: string;
+  recipientEmail?: string;
+  subject?: string;
+  previewContent?: string;
 }
 
 const getEmailTypeDescription = (emailType?: string): string => {
@@ -40,7 +45,10 @@ export const EmailConfirmDialog: React.FC<EmailConfirmDialogProps> = ({
   onOpenChange,
   onConfirm,
   emailType,
-  recipientInfo
+  recipientInfo,
+  recipientEmail,
+  subject,
+  previewContent,
 }) => {
   const handleConfirm = () => {
     onConfirm();
@@ -49,26 +57,60 @@ export const EmailConfirmDialog: React.FC<EmailConfirmDialogProps> = ({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent className="max-w-2xl">
         <AlertDialogHeader>
-          <AlertDialogTitle>E-mail versturen?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Weet je zeker dat je de{" "}
-            <span className="font-semibold">{getEmailTypeDescription(emailType)}</span>
-            {recipientInfo && (
+          <AlertDialogTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            E-mail versturen - {getEmailTypeDescription(emailType)}
+          </AlertDialogTitle>
+          <AlertDialogDescription className="space-y-4 text-left">
+            <div className="space-y-3">
+              {recipientInfo && recipientEmail && (
+                <div className="flex items-start gap-2">
+                  <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-foreground">{recipientInfo}</div>
+                    <div className="text-xs text-muted-foreground">{recipientEmail}</div>
+                  </div>
+                </div>
+              )}
+              
+              {subject && (
+                <div className="flex items-start gap-2">
+                  <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                  <div className="flex-1">
+                    <div className="text-xs text-muted-foreground">Onderwerp</div>
+                    <div className="text-sm font-medium text-foreground">{subject}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {previewContent && (
               <>
-                {" "}naar <span className="font-semibold">{recipientInfo}</span>
+                <Separator />
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-muted-foreground">Voorbeeld inhoud:</div>
+                  <div className="bg-muted/50 rounded-md p-3 max-h-[200px] overflow-y-auto">
+                    <div className="text-sm whitespace-pre-wrap text-foreground">
+                      {previewContent.substring(0, 500)}
+                      {previewContent.length > 500 && "..."}
+                    </div>
+                  </div>
+                </div>
               </>
-            )}{" "}
-            wilt versturen?
-            <br />
-            <br />
-            Deze actie kan niet ongedaan worden gemaakt.
+            )}
+
+            <Separator />
+            <div className="text-sm font-medium text-foreground">
+              Weet u zeker dat u deze e-mail wilt versturen?
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Annuleren</AlertDialogCancel>
           <AlertDialogAction onClick={handleConfirm}>
+            <Mail className="h-4 w-4 mr-2" />
             Ja, verstuur e-mail
           </AlertDialogAction>
         </AlertDialogFooter>

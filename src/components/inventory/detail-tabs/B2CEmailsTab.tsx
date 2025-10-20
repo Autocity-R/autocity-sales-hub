@@ -13,14 +13,23 @@ import { EmailConfirmDialog } from "@/components/ui/email-confirm-dialog";
 
 interface B2CEmailsTabProps {
   vehicle: Vehicle;
-  onSendEmail: (type: string, contractOptions?: ContractOptions) => void;
+  onSendEmail: (type: string, recipientEmail?: string, recipientName?: string, subject?: string, contractOptions?: ContractOptions) => void;
   onUpdateReminder: (type: 'payment_reminder', enabled: boolean) => void;
+}
+
+interface PendingEmailAction {
+  type: string;
+  recipientEmail?: string;
+  recipientName?: string;
+  subject?: string;
+  previewContent?: string;
+  options?: ContractOptions;
 }
 
 export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle, onUpdateReminder }) => {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [emailConfirmOpen, setEmailConfirmOpen] = useState(false);
-  const [pendingEmailAction, setPendingEmailAction] = useState<{ type: string; options?: ContractOptions } | null>(null);
+  const [pendingEmailAction, setPendingEmailAction] = useState<PendingEmailAction | null>(null);
   
   const isB2C = vehicle?.salesStatus === "verkocht_b2c";
   const isVehicleArrived = vehicle?.arrived;
@@ -30,31 +39,37 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
   };
 
   const handleSendContract = (options: ContractOptions) => {
-    // Check if vehicle has a customerId
     if (!vehicle.customerId) {
-      console.warn('[B2C_EMAIL] No customerId found, please link customer first');
       const { toast } = require('@/hooks/use-toast');
       toast({
         title: "Geen klant gekoppeld",
-        description: "Koppel eerst een klant aan dit voertuig in het 'Contacten' tabblad voordat u een contract verstuurt.",
+        description: "Koppel eerst een klant aan dit voertuig in het 'Contacten' tabblad.",
         variant: "destructive"
       });
       return;
     }
     
-    console.log('[B2C_EMAIL] Customer linked, preparing contract:', {
-      vehicleId: vehicle.id,
-      customerId: vehicle.customerId,
-      customerName: vehicle.customerName
+    const customerContact = vehicle?.customerContact;
+    setPendingEmailAction({ 
+      type: "contract_b2c_digital", 
+      options,
+      recipientEmail: customerContact?.email,
+      recipientName: customerContact?.name || 'Klant',
+      subject: "Koopcontract B2C - Digitaal",
+      previewContent: "Contract document wordt verzonden..."
     });
-    
-    setPendingEmailAction({ type: "contract_b2c_digital", options });
     setEmailConfirmOpen(true);
   };
 
   const handleConfirmEmail = () => {
     if (pendingEmailAction) {
-      onSendEmail(pendingEmailAction.type, pendingEmailAction.options);
+      onSendEmail(
+        pendingEmailAction.type, 
+        pendingEmailAction.recipientEmail,
+        pendingEmailAction.recipientName,
+        pendingEmailAction.subject,
+        pendingEmailAction.options
+      );
       setPendingEmailAction(null);
     }
   };
@@ -66,10 +81,32 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
     const handleClick = () => {
       if (isContractButton) {
         handleContractClick();
-      } else {
-        setPendingEmailAction({ type: buttonType });
-        setEmailConfirmOpen(true);
+        return;
       }
+      
+      const customerContact = vehicle?.customerContact;
+      if (!customerContact?.email) {
+        const { toast } = require('@/hooks/use-toast');
+        toast({
+          title: "Geen klant email",
+          description: "Dit voertuig heeft geen klant met email adres gekoppeld.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get template info for preview
+      const emailTemplates = require('@/services/emailTemplateService').emailTemplates;
+      const template = emailTemplates.find((t: any) => t.linkedButton === buttonType);
+      
+      setPendingEmailAction({ 
+        type: buttonType,
+        recipientEmail: customerContact.email,
+        recipientName: customerContact.name || 'Klant',
+        subject: template?.subject || label,
+        previewContent: template?.content
+      });
+      setEmailConfirmOpen(true);
     };
     
     return (
@@ -225,7 +262,10 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
         onOpenChange={setEmailConfirmOpen}
         onConfirm={handleConfirmEmail}
         emailType={pendingEmailAction?.type}
-        recipientInfo={vehicle?.customerContact?.email}
+        recipientInfo={pendingEmailAction?.recipientName}
+        recipientEmail={pendingEmailAction?.recipientEmail}
+        subject={pendingEmailAction?.subject}
+        previewContent={pendingEmailAction?.previewContent}
       />
     </div>
   );

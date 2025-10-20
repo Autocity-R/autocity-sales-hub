@@ -21,6 +21,7 @@ import { B2CEmailsTab } from "@/components/inventory/detail-tabs/B2CEmailsTab";
 import { PhotosTab } from "@/components/inventory/detail-tabs/PhotosTab";
 import { FilesTab } from "@/components/inventory/detail-tabs/FilesTab";
 import { ContactsTab } from "@/components/inventory/detail-tabs/ContactsTab";
+import { EmailHistoryTab } from "@/components/inventory/detail-tabs/EmailHistoryTab";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useWeeklySalesTracking } from "@/hooks/useWeeklySalesTracking";
@@ -30,7 +31,7 @@ interface VehicleDetailsProps {
   onClose: () => void;
   onUpdate: (vehicle: Vehicle) => void;
   onAutoSave?: (vehicle: Vehicle) => void;
-  onSendEmail: (type: string, vehicleId: string, contractOptions?: ContractOptions) => void;
+  onSendEmail: (type: string, recipientEmail?: string, recipientName?: string, subject?: string, vehicleId?: string, contractOptions?: ContractOptions) => void;
   onPhotoUpload: (file: File, isMain: boolean) => void;
   onRemovePhoto: (photoUrl: string) => void;
   onSetMainPhoto: (photoUrl: string) => void;
@@ -166,12 +167,13 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
           <div className="flex-1 overflow-hidden">
             <Tabs defaultValue="details" className="h-full flex flex-col">
               <div className="px-6 py-2 bg-background sticky top-0 z-[5]">
-                <TabsList className="w-full">
+                <TabsList className="w-full grid grid-cols-6">
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="contacts">Contacten</TabsTrigger>
                   <TabsTrigger value="photos">Foto's</TabsTrigger>
                   <TabsTrigger value="files">Documenten</TabsTrigger>
                   <TabsTrigger value="emails">Emails</TabsTrigger>
+                  <TabsTrigger value="history">Verzonden</TabsTrigger>
                 </TabsList>
                 <Separator className="mt-2" />
               </div>
@@ -206,7 +208,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                     files={filesData}
                     onFileUpload={onFileUpload || (() => {})}
                     onFileDelete={onFileDelete || (() => {})}
-                    onSendEmail={(type) => onSendEmail(type, vehicle.id)}
+                    onSendEmail={(type) => onSendEmail(type, undefined, undefined, undefined, vehicle.id)}
                   />
                 </TabsContent>
                 
@@ -214,16 +216,22 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                   {vehicle.salesStatus === "verkocht_b2c" ? (
                     <B2CEmailsTab 
                       vehicle={editedVehicle}
-                    onSendEmail={(type, contractOptions) => onSendEmail(type, vehicle.id, contractOptions)}
+                      onSendEmail={(type, recipientEmail, recipientName, subject, contractOptions) => 
+                        onSendEmail(type, recipientEmail, recipientName, subject, vehicle.id, contractOptions)
+                      }
                       onUpdateReminder={handleReminderUpdate}
                     />
                   ) : (
                     <EmailsTab 
                       vehicle={editedVehicle}
-                      onSendEmail={(type, contractOptions) => onSendEmail(type, vehicle.id, contractOptions)}
+                      onSendEmail={(type, contractOptions) => onSendEmail(type, undefined, undefined, undefined, vehicle.id, contractOptions)}
                       onUpdateReminder={handleReminderUpdate}
                     />
                   )}
+                </TabsContent>
+                
+                <TabsContent value="history" className="h-full mt-0 p-0">
+                  <EmailHistoryTab vehicleId={vehicle.id} />
                 </TabsContent>
                 
                 {/* Add sufficient bottom padding to ensure content isn't hidden under the footer */}

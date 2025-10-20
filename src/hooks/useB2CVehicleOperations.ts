@@ -2,6 +2,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useWeeklySalesTracking } from "@/hooks/useWeeklySalesTracking";
+import { supabase } from "@/integrations/supabase/client";
 import { ContractOptions } from "@/types/email";
 import { 
   updateVehicle,
@@ -39,19 +40,73 @@ export const useB2CVehicleOperations = () => {
   });
 
   const sendEmailMutation = useMutation({
-    mutationFn: ({ type, vehicleIds, contractOptions }: { type: string; vehicleIds: string[]; contractOptions?: ContractOptions }) => 
-      sendEmail(type, vehicleIds, contractOptions),
-    onSuccess: () => {
+    mutationFn: async ({ 
+      type, 
+      vehicleIds, 
+      contractOptions,
+      recipientEmail,
+      recipientName,
+      subject
+    }: { 
+      type: string; 
+      vehicleIds: string[]; 
+      contractOptions?: ContractOptions;
+      recipientEmail?: string;
+      recipientName?: string;
+      subject?: string;
+    }) => {
+      const result = await sendEmail(type, vehicleIds, contractOptions);
+      
+      // Log the sent email for each vehicle
+      if (vehicleIds.length > 0 && subject && recipientEmail) {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        const emailLogs = vehicleIds.map(vehicleId => ({
+          vehicle_id: vehicleId,
+          email_type: type,
+          recipient_email: recipientEmail,
+          recipient_name: recipientName || 'Onbekend',
+          subject: subject,
+          sent_by: user?.id,
+          status: 'sent',
+        }));
+
+        await supabase.from('email_sent_log').insert(emailLogs);
+      }
+      
+      return result;
+    },
+    onSuccess: (_, variables) => {
       toast({
-        description: "E-mail verzonden"
+        title: "E-mail verzonden",
+        description: `E-mail '${variables.subject || 'Bericht'}' succesvol verzonden naar ${variables.recipientName || 'ontvanger'}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
+      variables.vehicleIds.forEach(id => {
+        queryClient.invalidateQueries({ queryKey: ['email-history', id] });
       });
     },
-    onError: (error) => {
+    onError: async (error, variables) => {
       toast({
+        title: "Fout bij verzenden",
+        description: `Kon e-mail niet verzenden naar ${variables.recipientName || 'ontvanger'}: ${error.message}`,
         variant: "destructive",
-        description: "Fout bij het verzenden van e-mail"
       });
-      console.error("Error sending email:", error);
+      
+      // Log failed email attempt
+      if (variables.vehicleIds.length > 0 && variables.subject && variables.recipientEmail) {
+        const emailLogs = variables.vehicleIds.map(vehicleId => ({
+          vehicle_id: vehicleId,
+          email_type: variables.type,
+          recipient_email: variables.recipientEmail!,
+          recipient_name: variables.recipientName || 'Onbekend',
+          subject: variables.subject!,
+          status: 'failed',
+          error_message: error.message,
+        }));
+
+        await supabase.from('email_sent_log').insert(emailLogs);
+      }
     }
   });
 

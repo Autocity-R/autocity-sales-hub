@@ -105,8 +105,31 @@ export const useB2CVehicleHandlers = () => {
     setSelectedVehicle(null);
   };
   
-  const handleSendEmail = (type: string, vehicleId: string, contractOptions?: ContractOptions) => {
-    sendEmailMutation.mutate({ type, vehicleIds: [vehicleId], contractOptions });
+  const handleSendEmail = (
+    type: string, 
+    recipientEmail?: string, 
+    recipientName?: string, 
+    subject?: string, 
+    vehicleId?: string, 
+    contractOptions?: ContractOptions
+  ) => {
+    if (!vehicleId && !selectedVehicle?.id) {
+      toast({
+        title: "Fout",
+        description: "Geen voertuig geselecteerd",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    sendEmailMutation.mutate({ 
+      type, 
+      vehicleIds: [vehicleId || selectedVehicle!.id], 
+      contractOptions,
+      recipientEmail,
+      recipientName,
+      subject
+    });
   };
   
   const handleUpdateSellingPrice = (vehicleId: string, price: number) => {
