@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 interface B2CEmailsTabProps {
   vehicle: Vehicle;
   onSendEmail: (type: string, recipientEmail?: string, recipientName?: string, subject?: string, contractOptions?: ContractOptions) => void;
-  onUpdateReminder: (type: 'payment_reminder', enabled: boolean) => void;
+  onUpdateReminder: (type: 'payment_reminder' | 'papers_reminder', enabled: boolean) => void;
 }
 
 interface PendingEmailAction {
@@ -85,11 +85,15 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
         return;
       }
       
-      const customerContact = vehicle?.customerContact;
-      if (!customerContact?.email) {
+      // Determine recipient based on email type
+      const isPapersReminder = buttonType === "reminder_papers";
+      const recipientContact = isPapersReminder ? vehicle?.supplierContact : vehicle?.customerContact;
+      const recipientType = isPapersReminder ? "leverancier" : "klant";
+      
+      if (!recipientContact?.email) {
         toast({
-          title: "Geen klant email",
-          description: "Dit voertuig heeft geen klant met email adres gekoppeld.",
+          title: `Geen ${recipientType} email`,
+          description: `Dit voertuig heeft geen ${recipientType} met email adres gekoppeld.`,
           variant: "destructive",
         });
         return;
@@ -100,8 +104,8 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
       
       setPendingEmailAction({ 
         type: buttonType,
-        recipientEmail: customerContact.email,
-        recipientName: customerContact.name || 'Klant',
+        recipientEmail: recipientContact.email,
+        recipientName: recipientContact.name || (isPapersReminder ? 'Leverancier' : 'Klant'),
         subject: template?.subject || label,
         previewContent: template?.content
       });
@@ -202,24 +206,38 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
       )}
       
       <div className="border rounded-md p-4">
-        <h4 className="font-medium mb-4">Documenten</h4>
+        <h4 className="font-medium mb-4">Documenten Herinneringen</h4>
+        
+        <div className="flex items-center space-x-2 mb-4">
+          <Checkbox 
+            id="papers_reminder_enabled" 
+            checked={vehicle?.emailReminderSettings?.papers_reminder_enabled || false}
+            onCheckedChange={(checked) => onUpdateReminder('papers_reminder', checked as boolean)}
+          />
+          <Label htmlFor="papers_reminder_enabled">
+            Na een week automatisch herinnering sturen als papieren niet binnen
+          </Label>
+        </div>
+        
+        <Separator className="my-4" />
         
         <div className="space-y-3">
-          {!vehicle?.papersReceived && renderEmailButton(
+          {!vehicle?.details?.papersReceived && renderEmailButton(
             "reminder_papers", 
             <FileText className="mr-2 h-4 w-4" />, 
-            "Herinnering documenten"
+            "Herinnering documenten (handmatig naar leverancier)",
+            "outline"
           )}
         </div>
       </div>
       
       <div className="border rounded-md p-4">
-        <h4 className="font-medium mb-4">Herinneringen</h4>
+        <h4 className="font-medium mb-4">Betalings Herinneringen</h4>
         
         <div className="flex items-center space-x-2 mb-4">
           <Checkbox 
             id="payment_reminder_enabled" 
-            checked={(vehicle as any).emailReminderSettings?.payment_reminder_enabled || false}
+            checked={vehicle?.emailReminderSettings?.payment_reminder_enabled || false}
             onCheckedChange={(checked) => onUpdateReminder('payment_reminder', checked as boolean)}
           />
           <Label htmlFor="payment_reminder_enabled">
@@ -233,7 +251,7 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
           {renderEmailButton(
             "payment_reminder", 
             <Mail className="mr-2 h-4 w-4" />, 
-            "Handmatig betalingsherinnering sturen",
+            "Handmatig betalingsherinnering sturen (naar klant)",
             "outline"
           )}
         </div>

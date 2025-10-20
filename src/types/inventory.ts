@@ -150,6 +150,12 @@ export interface Vehicle {
   transporterContact?: ContactInfo; // Transporteur contact informatie
   year?: number; // Toegevoegd voor email templates
   
+  // Email reminder settings
+  emailReminderSettings?: {
+    payment_reminder_enabled?: boolean;
+    papers_reminder_enabled?: boolean;
+  };
+  
   // JSONB details field
   details?: VehicleDetails;
 }
