@@ -6,7 +6,7 @@ import { fetchVehicleFiles } from "./inventoryService";
 import { supabase } from "@/integrations/supabase/client";
 
 // Mock email templates - in productie zou dit vanuit een API komen
-let emailTemplates: EmailTemplate[] = [
+export let emailTemplates: EmailTemplate[] = [
   {
     id: "1",
     name: "CMR Leverancier",

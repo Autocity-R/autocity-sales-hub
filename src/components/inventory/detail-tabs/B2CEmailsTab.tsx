@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
-import { isButtonLinkedToTemplate } from "@/services/emailTemplateService";
+import { isButtonLinkedToTemplate, emailTemplates } from "@/services/emailTemplateService";
 import { ContractConfigDialog } from "../ContractConfigDialog";
 import { EmailConfirmDialog } from "@/components/ui/email-confirm-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface B2CEmailsTabProps {
   vehicle: Vehicle;
@@ -30,6 +31,7 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [emailConfirmOpen, setEmailConfirmOpen] = useState(false);
   const [pendingEmailAction, setPendingEmailAction] = useState<PendingEmailAction | null>(null);
+  const { toast } = useToast();
   
   const isB2C = vehicle?.salesStatus === "verkocht_b2c";
   const isVehicleArrived = vehicle?.arrived;
@@ -40,7 +42,6 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
 
   const handleSendContract = (options: ContractOptions) => {
     if (!vehicle.customerId) {
-      const { toast } = require('@/hooks/use-toast');
       toast({
         title: "Geen klant gekoppeld",
         description: "Koppel eerst een klant aan dit voertuig in het 'Contacten' tabblad.",
@@ -86,7 +87,6 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
       
       const customerContact = vehicle?.customerContact;
       if (!customerContact?.email) {
-        const { toast } = require('@/hooks/use-toast');
         toast({
           title: "Geen klant email",
           description: "Dit voertuig heeft geen klant met email adres gekoppeld.",
@@ -96,7 +96,6 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
       }
 
       // Get template info for preview
-      const emailTemplates = require('@/services/emailTemplateService').emailTemplates;
       const template = emailTemplates.find((t: any) => t.linkedButton === buttonType);
       
       setPendingEmailAction({ 
