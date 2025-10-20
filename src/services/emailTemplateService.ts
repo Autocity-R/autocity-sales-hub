@@ -102,7 +102,7 @@ export let emailTemplates: EmailTemplate[] = [
     name: "Aflevering Afspraak",
     subject: "Uw auto is gereed voor aflevering",
     content: "Beste {{VOORNAAM}} {{ACHTERNAAM}},\n\nUw auto staat gereed voor aflevering, graag plannen wij samen het moment wanneer u de auto zou willen ophalen.\nLaat het ons even weten per mail of telefoon wanneer u het beste schikt.\n\nOm alles zo soepel mogelijk te laten verlopen:\n- Ruilt u een auto in vergeet dan niet uw kentekencard en de tenaamstellingscode.\n- Wenst u het restant bedrag ter plekke over te maken of te pinnen vergeet dan niet uw limiet omhoog te zetten 4 uur van te voren.\n- Vergeet niet uw rijbewijs zodat wij het voertuig op uw naam kunnen registreren.\n\nMet vriendelijke groet,\nAutocity Automotive Group\n010-2623980\nwww.auto-city.nl",
-    senderEmail: "verkoop@auto-city.nl",
+    senderEmail: "administratie@auto-city.nl",
     linkedButton: "delivery_appointment",
     hasAttachment: false
   },
