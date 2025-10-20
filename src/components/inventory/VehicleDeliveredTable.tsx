@@ -219,7 +219,7 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
                   </Badge>
                 </TableCell>
                 <TableCell className="align-middle">
-                  {formatDeliveryDate(vehicle.deliveryDate)}
+                  {formatDeliveryDate(vehicle.deliveryDate || vehicle.details?.deliveryDate)}
                 </TableCell>
                 <TableCell className="align-middle">
                   {vehicle.details?.warrantyPackageName ? (

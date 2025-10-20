@@ -195,29 +195,30 @@ export class SupabaseInventoryService {
     const existingDetails = (existingVehicle.details as any) || {};
     
     // Prepare details object with all extra fields (convert dates to ISO strings)
-    // CRITICAL: Preserve existing purchasePrice if not provided in update
+    // CRITICAL: Use spread to preserve ALL existing details fields (warranty, delivery, etc.)
     const details = {
-      notes: vehicle.notes || existingDetails.notes || null,
-      workshopStatus: vehicle.workshopStatus || existingDetails.workshopStatus || 'wachten',
-      paintStatus: vehicle.paintStatus || existingDetails.paintStatus || 'geen_behandeling', 
-      transportStatus: vehicle.transportStatus || existingDetails.transportStatus || 'onderweg',
+      ...existingDetails, // Preserve everything first
+      notes: vehicle.notes ?? existingDetails.notes ?? null,
+      workshopStatus: vehicle.workshopStatus ?? existingDetails.workshopStatus ?? 'wachten',
+      paintStatus: vehicle.paintStatus ?? existingDetails.paintStatus ?? 'geen_behandeling', 
+      transportStatus: vehicle.transportStatus ?? existingDetails.transportStatus ?? 'onderweg',
       bpmRequested: vehicle.bpmRequested ?? existingDetails.bpmRequested ?? false,
       bpmStarted: vehicle.bpmStarted ?? existingDetails.bpmStarted ?? false,
-      damage: vehicle.damage || existingDetails.damage || { description: '', status: 'geen' },
+      damage: vehicle.damage ?? existingDetails.damage ?? { description: '', status: 'geen' },
       cmrSent: vehicle.cmrSent ?? existingDetails.cmrSent ?? false,
       cmrDate: vehicle.cmrDate ? vehicle.cmrDate.toISOString() : (existingDetails.cmrDate || null),
       papersReceived: vehicle.papersReceived ?? existingDetails.papersReceived ?? false,
       papersDate: vehicle.papersDate ? vehicle.papersDate.toISOString() : (existingDetails.papersDate || null),
       showroomOnline: vehicle.showroomOnline ?? existingDetails.showroomOnline ?? false,
-      paymentStatus: vehicle.paymentStatus || existingDetails.paymentStatus || 'niet_betaald',
+      paymentStatus: vehicle.paymentStatus ?? existingDetails.paymentStatus ?? 'niet_betaald',
       // CRITICAL: Always preserve purchase price - use new value if provided, otherwise keep existing
       purchasePrice: vehicle.purchasePrice !== undefined && vehicle.purchasePrice !== null 
         ? vehicle.purchasePrice 
         : (existingDetails.purchasePrice || 0),
-      salespersonId: vehicle.salespersonId || existingDetails.salespersonId || null,
-      salespersonName: vehicle.salespersonName || existingDetails.salespersonName || null,
-      mainPhotoUrl: vehicle.mainPhotoUrl || existingDetails.mainPhotoUrl || null,
-      photos: vehicle.photos || existingDetails.photos || []
+      salespersonId: vehicle.salespersonId ?? existingDetails.salespersonId ?? null,
+      salespersonName: vehicle.salespersonName ?? existingDetails.salespersonName ?? null,
+      mainPhotoUrl: vehicle.mainPhotoUrl ?? existingDetails.mainPhotoUrl ?? null,
+      photos: vehicle.photos ?? existingDetails.photos ?? []
     };
 
      // CRITICAL: Protect sold status from being accidentally changed
@@ -560,6 +561,12 @@ export class SupabaseInventoryService {
       
       mainPhotoUrl: details.mainPhotoUrl || null,
       photos: details.photos || [],
+      
+      // CRITICAL: Pass through entire details JSONB object for warranty, delivery, etc.
+      details: details,
+      
+      // CRITICAL: Map deliveryDate to top-level for sorting/filtering in tables
+      deliveryDate: details.deliveryDate ? new Date(details.deliveryDate) : null,
       
       // Derived fields
       arrived: supabaseVehicle.location !== 'onderweg'
