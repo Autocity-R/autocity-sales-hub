@@ -182,8 +182,9 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({ vehicle, onUpdate }) =
           </CardHeader>
           <CardContent className="space-y-4">
             <SearchableCustomerSelector
-              placeholder="Zoek klant..."
+              placeholder="Zoek klant (zakelijk of particulier)..."
               onValueChange={handleCustomerChange}
+              customerType="customer"
               value={vehicle.customerId || undefined}
               label="Klant selecteren"
             />

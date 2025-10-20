@@ -5,7 +5,7 @@ export class SupabaseCustomerService {
   /**
    * Search for contacts by name, email, or company name
    */
-  async searchContacts(searchTerm: string, type?: ContactType): Promise<Contact[]> {
+  async searchContacts(searchTerm: string, type?: ContactType | 'customer'): Promise<Contact[]> {
     try {
       let query = supabase
         .from('contacts')
@@ -14,7 +14,10 @@ export class SupabaseCustomerService {
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (type) {
+      if (type === 'customer') {
+        // For customers, filter only b2b and b2c (exclude suppliers and transporters)
+        query = query.in('type', ['b2b', 'b2c']);
+      } else if (type) {
         query = query.eq('type', type);
       }
 
@@ -57,13 +60,21 @@ export class SupabaseCustomerService {
   /**
    * Get all contacts by type
    */
-  async getContactsByType(type: ContactType): Promise<Contact[]> {
+  async getContactsByType(type: ContactType | 'customer'): Promise<Contact[]> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('contacts')
         .select('*')
-        .eq('type', type)
         .order('created_at', { ascending: false });
+
+      if (type === 'customer') {
+        // For customers, get only b2b and b2c (exclude suppliers and transporters)
+        query = query.in('type', ['b2b', 'b2c']);
+      } else {
+        query = query.eq('type', type);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error(`Failed to fetch ${type} contacts:`, error);

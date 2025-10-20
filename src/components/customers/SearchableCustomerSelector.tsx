@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 interface SearchableCustomerSelectorProps {
   value?: string;
   onValueChange: (customerId: string, customer: Contact) => void;
-  customerType?: ContactType; // optional: show all when omitted
+  customerType?: ContactType | 'customer'; // optional: show all when omitted, 'customer' for both b2b and b2c
   label?: string;
   placeholder?: string;
   disabled?: boolean;
@@ -261,11 +261,11 @@ const loadInitialCustomers = async () => {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              Nieuwe {customerType === 'b2b' ? 'zakelijke' : 'particuliere'} klant toevoegen
+              Nieuwe {customerType === 'b2b' ? 'zakelijke' : customerType === 'b2c' ? 'particuliere' : ''} klant toevoegen
             </DialogTitle>
           </DialogHeader>
           <ContactForm
-            contactType={customerType}
+            contactType={customerType === 'customer' ? 'b2c' : customerType}
             onSuccess={handleCreateNewCustomer}
             onCancel={() => setShowNewCustomerForm(false)}
           />
