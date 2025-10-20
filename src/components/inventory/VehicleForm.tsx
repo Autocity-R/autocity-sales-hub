@@ -233,7 +233,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
           <div className="space-y-2">
             <Label>Inkoper *</Label>
             <Select
-              value={formData.purchasedById || ''}
+              value={formData.purchasedById || undefined}
               onValueChange={(value) => {
                 const selected = salespeople?.find(s => s.id === value);
                 handleChange('purchasedById', value);
@@ -241,7 +241,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
               }}
               disabled={salesLoading || !salespeople || salespeople.length === 0}
             >
-              <SelectTrigger>
+              <SelectTrigger className="bg-background">
                 <SelectValue placeholder={
                   salesLoading 
                     ? "Laden..." 
@@ -250,7 +250,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
                       : "Selecteer inkoper"
                 } />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background border shadow-lg z-50">
                 {salespeople?.map((person) => (
                   <SelectItem key={person.id} value={person.id}>
                     {person.name} ({person.role})
@@ -365,7 +365,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
             <div className="space-y-2">
               <Label>Verkoper</Label>
               <Select 
-                value={formData.salespersonId || ""} 
+                value={formData.salespersonId || undefined} 
                 onValueChange={(value) => {
                   const selectedSalesperson = salespeople?.find(sp => sp.id === value);
                   handleChange('salespersonId', value);
@@ -373,7 +373,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
                 }}
                 disabled={salesLoading || !salespeople || salespeople.length === 0}
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-background">
                   <SelectValue placeholder={
                     salesLoading 
                       ? "Laden..." 
@@ -382,7 +382,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
                         : "Selecteer verkoper"
                   } />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background border shadow-lg z-50">
                   {salespeople?.map((salesperson) => (
                     <SelectItem key={salesperson.id} value={salesperson.id}>
                       {salesperson.name} ({salesperson.role})
