@@ -1,5 +1,5 @@
-import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Card,
@@ -24,33 +24,148 @@ interface WeeklySalesData {
 }
 
 const WeeklySalesLeaderboard = () => {
+  const queryClient = useQueryClient();
+  
   const { data: weeklyStats, isLoading } = useQuery({
     queryKey: ["weeklySalesLeaderboard"],
     queryFn: async (): Promise<WeeklySalesData[]> => {
-      // Calculate current week start (Monday)
+      // Bereken huidige week (maandag 00:00 t/m zondag 23:59)
       const now = new Date();
-      const startOfWeek = new Date(now);
+      const currentWeekStart = new Date(now);
       const day = now.getDay();
-      const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
-      startOfWeek.setDate(diff);
-      const weekStartString = startOfWeek.toISOString().split('T')[0];
+      const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+      currentWeekStart.setDate(diff);
+      currentWeekStart.setHours(0, 0, 0, 0);
 
-      const { data, error } = await supabase
-        .from('weekly_sales')
-        .select('*')
-        .gte('week_start_date', weekStartString)
-        .order('total_sales', { ascending: false })
-        .order('b2c_sales', { ascending: false });
+      const currentWeekEnd = new Date(currentWeekStart);
+      currentWeekEnd.setDate(currentWeekStart.getDate() + 6);
+      currentWeekEnd.setHours(23, 59, 59, 999);
+
+      console.log('📊 Fetching weekly sales for:', {
+        start: currentWeekStart.toISOString(),
+        end: currentWeekEnd.toISOString()
+      });
+
+      // Haal alle verkochte voertuigen van deze week
+      const { data: vehicles, error } = await supabase
+        .from('vehicles')
+        .select(`
+          id,
+          status,
+          sold_date,
+          sold_by_user_id,
+          details,
+          profiles:sold_by_user_id (
+            id,
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
+        .not('sold_date', 'is', null)
+        .not('sold_by_user_id', 'is', null)
+        .gte('sold_date', currentWeekStart.toISOString())
+        .lte('sold_date', currentWeekEnd.toISOString());
 
       if (error) {
-        console.error("Error fetching weekly sales:", error);
+        console.error("❌ Error fetching vehicles:", error);
         throw error;
       }
 
-      return data || [];
+      console.log(`✅ Found ${vehicles?.length || 0} vehicles sold this week`);
+
+      // Groepeer per verkoper
+      const salespersonMap = new Map<string, WeeklySalesData>();
+      
+      vehicles?.forEach((vehicle) => {
+        const sellerId = vehicle.sold_by_user_id;
+        if (!sellerId) return;
+
+        const profile = vehicle.profiles as any;
+        
+        // Bepaal de naam van de verkoper
+        let salespersonName = 'Onbekende verkoper';
+        if (profile) {
+          if (profile.first_name && profile.last_name) {
+            salespersonName = `${profile.first_name} ${profile.last_name}`;
+          } else if (profile.email) {
+            salespersonName = profile.email;
+          }
+        }
+        
+        // Fallback naar details als profile niet beschikbaar is
+        if (salespersonName === 'Onbekende verkoper' && vehicle.details) {
+          const details = vehicle.details as any;
+          if (details.salespersonName) {
+            salespersonName = details.salespersonName;
+          }
+        }
+        
+        if (!salespersonMap.has(sellerId)) {
+          salespersonMap.set(sellerId, {
+            id: sellerId,
+            salesperson_id: sellerId,
+            salesperson_name: salespersonName,
+            week_start_date: currentWeekStart.toISOString().split('T')[0],
+            week_end_date: currentWeekEnd.toISOString().split('T')[0],
+            b2b_sales: 0,
+            b2c_sales: 0,
+            total_sales: 0
+          });
+        }
+        
+        const salesperson = salespersonMap.get(sellerId)!;
+        
+        // Tel het juiste type verkoop
+        if (vehicle.status === 'verkocht_b2b') {
+          salesperson.b2b_sales++;
+        } else if (vehicle.status === 'verkocht_b2c' || vehicle.status === 'afgeleverd') {
+          salesperson.b2c_sales++;
+        }
+        
+        salesperson.total_sales++;
+      });
+
+      // Converteer naar array en sorteer op total_sales (desc), dan b2c_sales (desc)
+      const result = Array.from(salespersonMap.values())
+        .sort((a, b) => {
+          if (b.total_sales !== a.total_sales) {
+            return b.total_sales - a.total_sales;
+          }
+          return b.b2c_sales - a.b2c_sales;
+        });
+
+      console.log('📈 Weekly sales result:', result);
+      
+      return result;
     },
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    refetchInterval: 30 * 1000, // Refetch every 30 seconds
   });
+
+  // Real-time updates voor directe feedback
+  useEffect(() => {
+    const channel = supabase
+      .channel('weekly-sales-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'vehicles',
+          filter: 'status=in.(verkocht_b2b,verkocht_b2c,afgeleverd)'
+        },
+        (payload) => {
+          console.log('🔔 Vehicle sale changed:', payload);
+          queryClient.invalidateQueries({ queryKey: ["weeklySalesLeaderboard"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
