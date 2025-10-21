@@ -45,18 +45,8 @@ serve(async (req) => {
   }
 
   try {
-    // Validate API key for webhook security
-    const apiKey = req.headers.get('x-api-key');
-    const expectedKey = Deno.env.get('SHEETS_WEBHOOK_API_KEY');
+    console.log('📥 Received webhook request from Google Sheets');
     
-    if (!expectedKey || apiKey !== expectedKey) {
-      console.error('Invalid or missing API key');
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
