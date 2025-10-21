@@ -24,7 +24,6 @@ import { ContactsTab } from "@/components/inventory/detail-tabs/ContactsTab";
 import { EmailHistoryTab } from "@/components/inventory/detail-tabs/EmailHistoryTab";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { useDebounce } from "@/hooks/useDebounce";
-import { useWeeklySalesTracking } from "@/hooks/useWeeklySalesTracking";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface VehicleDetailsProps {
@@ -64,7 +63,6 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   
   // Always use the hook to fetch files for this vehicle
   const { vehicleFiles: hookVehicleFiles } = useVehicleFiles(vehicle);
-  const { trackSale } = useWeeklySalesTracking();
   const filesData = hookVehicleFiles;
   
   // Debounce the edited vehicle to trigger auto-save
@@ -94,22 +92,6 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   
   const handleChange = (field: keyof Vehicle, value: any) => {
     hasUserChangesRef.current = true; // Mark that user has made changes
-    
-    // Track weekly sales when salesStatus changes to sold
-    if (field === 'salesStatus' && 
-        (value === 'verkocht_b2b' || value === 'verkocht_b2c') &&
-        editedVehicle.salesStatus !== value &&
-        editedVehicle.salespersonId && 
-        editedVehicle.salespersonName) {
-      
-      const salesType = value === 'verkocht_b2b' ? 'b2b' : 'b2c';
-      trackSale({
-        salespersonId: editedVehicle.salespersonId,
-        salespersonName: editedVehicle.salespersonName,
-        salesType,
-        vehicleId: vehicle.id
-      });
-    }
     
     setEditedVehicle(prev => ({
       ...prev,
