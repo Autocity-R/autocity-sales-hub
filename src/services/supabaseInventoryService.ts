@@ -457,9 +457,11 @@ export class SupabaseInventoryService {
        papersDate: vehicleData.papersDate ? vehicleData.papersDate.toISOString() : null,
        showroomOnline: vehicleData.showroomOnline || false,
        paymentStatus: vehicleData.paymentStatus || 'niet_betaald',
-         salespersonId: vehicleData.salespersonId || null,
-         salespersonName: vehicleData.salespersonName || null,
-         mainPhotoUrl: vehicleData.mainPhotoUrl || null,
+       salespersonId: vehicleData.salespersonId || null,
+       salespersonName: vehicleData.salespersonName || null,
+       purchasedById: vehicleData.purchasedById || null,
+       purchasedByName: vehicleData.purchasedByName || null,
+       mainPhotoUrl: vehicleData.mainPhotoUrl || null,
        photos: vehicleData.photos || []
      };
     
@@ -551,9 +553,9 @@ export class SupabaseInventoryService {
       showroomOnline: details.showroomOnline || false,
       paymentStatus: details.paymentStatus || 'niet_betaald',
       
-      // CRITICAL FIX: Load purchaser from database columns
-      purchasedById: supabaseVehicle.purchased_by_user_id || null,
-      purchasedByName: supabaseVehicle.purchased_by_name || null,
+      // CRITICAL FIX: Load purchaser from database columns with fallback to details
+      purchasedById: supabaseVehicle.purchased_by_user_id || details.purchasedById || null,
+      purchasedByName: supabaseVehicle.purchased_by_name || details.purchasedByName || null,
       purchaseDate: supabaseVehicle.purchase_date ? new Date(supabaseVehicle.purchase_date) : null,
       
       // CRITICAL FIX: Load salesperson from sold_by_user_id column
