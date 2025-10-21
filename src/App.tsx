@@ -25,6 +25,7 @@ import ResetPassword from "@/pages/ResetPassword";
 import { Toaster } from "@/components/ui/toaster";
 import { DigitalSignaturePage } from "@/components/contracts/DigitalSignaturePage";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { RoleProtectedRoute } from "@/components/auth/RoleProtectedRoute";
 import "./App.css";
 
 function App() {
@@ -81,7 +82,9 @@ function App() {
         } />
         <Route path="/ai-agents" element={
           <ProtectedRoute>
-            <AIAgents />
+            <RoleProtectedRoute requiredAccess="ai-agents" fallbackPath="/">
+              <AIAgents />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } />
         <Route path="/leads" element={
@@ -126,7 +129,9 @@ function App() {
         } />
         <Route path="/reports" element={
           <ProtectedRoute>
-            <Reports />
+            <RoleProtectedRoute requiredAccess="reports" fallbackPath="/">
+              <Reports />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } />
         <Route path="/warranty" element={

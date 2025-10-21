@@ -1,6 +1,7 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import {
   BookIcon,
   BoxIcon,
@@ -31,6 +32,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   const location = useLocation();
+  const { hasReportsAccess, hasAIAgentsAccess, hasSettingsAccess } = useRoleAccess();
 
   const isActive = (path: string) => {
     if (path === "/") {
@@ -200,26 +202,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             ADMINISTRATIE
           </h2>
           <div className="space-y-1">
-            <Link to="/reports">
-              <Button
-                variant={isActive("/reports") ? "default" : "ghost"}
-                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <BarChart3 className="mr-2 h-4 w-4" />
-                Rapportages
-              </Button>
-            </Link>
-            <Link to="/ai-agents">
-              <Button
-                variant={isActive("/ai-agents") ? "default" : "ghost"}
-                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <Bot className="mr-2 h-4 w-4" />
-                AI Agents
-              </Button>
-            </Link>
+            {hasReportsAccess() && (
+              <Link to="/reports">
+                <Button
+                  variant={isActive("/reports") ? "default" : "ghost"}
+                  className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+                  size="sm"
+                >
+                  <BarChart3 className="mr-2 h-4 w-4" />
+                  Rapportages
+                </Button>
+              </Link>
+            )}
+            {hasAIAgentsAccess() && (
+              <Link to="/ai-agents">
+                <Button
+                  variant={isActive("/ai-agents") ? "default" : "ghost"}
+                  className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+                  size="sm"
+                >
+                  <Bot className="mr-2 h-4 w-4" />
+                  AI Agents
+                </Button>
+              </Link>
+            )}
             <Link to="/loan-cars">
               <Button
                 variant={isActive("/loan-cars") ? "default" : "ghost"}
@@ -245,16 +251,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
 
         <div className="mt-8 pb-4">
           <div className="space-y-1">
-            <Link to="/settings">
-              <Button
-                variant={isActive("/settings") ? "default" : "ghost"}
-                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <SettingsIcon className="mr-2 h-4 w-4" />
-                Instellingen
-              </Button>
-            </Link>
+            {hasSettingsAccess() && (
+              <Link to="/settings">
+                <Button
+                  variant={isActive("/settings") ? "default" : "ghost"}
+                  className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+                  size="sm"
+                >
+                  <SettingsIcon className="mr-2 h-4 w-4" />
+                  Instellingen
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </ScrollArea>
