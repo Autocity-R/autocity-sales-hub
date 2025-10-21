@@ -25,6 +25,7 @@ import { EmailHistoryTab } from "@/components/inventory/detail-tabs/EmailHistory
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useWeeklySalesTracking } from "@/hooks/useWeeklySalesTracking";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface VehicleDetailsProps {
   vehicle: Vehicle;
@@ -56,6 +57,10 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   const [editedVehicle, setEditedVehicle] = useState<Vehicle>(vehicle);
   const initialVehicleRef = useRef<Vehicle>(vehicle);
   const hasUserChangesRef = useRef(false);
+  
+  // Role-based access
+  const { hasPriceAccess, isOperationalUser } = useRoleAccess();
+  const isReadOnly = isOperationalUser();
   
   // Always use the hook to fetch files for this vehicle
   const { vehicleFiles: hookVehicleFiles } = useVehicleFiles(vehicle);
@@ -184,6 +189,8 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                     editedVehicle={editedVehicle}
                     handleChange={handleChange}
                     handleDamageChange={handleDamageChange}
+                    readOnly={isReadOnly}
+                    showPrices={hasPriceAccess()}
                   />
                 </TabsContent>
                 
@@ -200,6 +207,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                     onPhotoUpload={onPhotoUpload}
                     onRemovePhoto={onRemovePhoto}
                     onSetMainPhoto={onSetMainPhoto}
+                    readOnly={isReadOnly}
                   />
                 </TabsContent>
                 
@@ -209,6 +217,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                     onFileUpload={onFileUpload || (() => {})}
                     onFileDelete={onFileDelete || (() => {})}
                     onSendEmail={(type) => onSendEmail(type, undefined, undefined, undefined, vehicle.id)}
+                    readOnly={isReadOnly}
                   />
                 </TabsContent>
                 
@@ -243,11 +252,13 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
           {/* Sticky footer */}
           <div className="sticky bottom-0 left-0 right-0 flex justify-end gap-2 p-4 border-t bg-background z-10">
             <Button type="button" variant="secondary" onClick={onClose}>
-              Annuleren
+              {isReadOnly ? 'Sluiten' : 'Annuleren'}
             </Button>
-            <Button type="submit" onClick={handleSave}>
-              Opslaan
-            </Button>
+            {!isReadOnly && (
+              <Button type="submit" onClick={handleSave}>
+                Opslaan
+              </Button>
+            )}
           </div>
         </div>
 

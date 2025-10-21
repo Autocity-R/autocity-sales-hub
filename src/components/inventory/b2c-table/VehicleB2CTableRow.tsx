@@ -8,6 +8,7 @@ import { Vehicle, ImportStatus, WorkshopStatus, PaintStatus } from "@/types/inve
 import { Car } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { PurchaserQuickEdit } from "../PurchaserQuickEdit";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface VehicleB2CTableRowProps {
   vehicle: Vehicle;
@@ -77,6 +78,8 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
   onDeliveryConfirm,
   onOpenContractConfig
 }) => {
+  const { hasPriceAccess } = useRoleAccess();
+  
   const formatPrice = (price: number | undefined) => {
     if (!price) return "€ -";
     return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(price);
@@ -130,10 +133,14 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
         {vehicle.vin}
       </TableCell>
       <TableCell className="align-middle">
-        {formatPrice(vehicle.purchasePrice)}
+        {hasPriceAccess() ? formatPrice(vehicle.purchasePrice) : (
+          <Badge variant="secondary" className="text-muted-foreground">Verborgen</Badge>
+        )}
       </TableCell>
       <TableCell className="align-middle">
-        {formatPrice(vehicle.sellingPrice)}
+        {hasPriceAccess() ? formatPrice(vehicle.sellingPrice) : (
+          <Badge variant="secondary" className="text-muted-foreground">Verborgen</Badge>
+        )}
       </TableCell>
       <TableCell className="align-middle">
         {vehicle.customerName || "Onbekend"}

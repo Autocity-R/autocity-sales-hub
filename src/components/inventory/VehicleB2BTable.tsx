@@ -1,6 +1,7 @@
 
 import React, { useState } from "react";
 import { Vehicle, ImportStatus, PaymentStatus } from "@/types/inventory";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { 
   CircleCheck, 
   CircleX, 
@@ -110,6 +111,7 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
   sortField,
   sortDirection
 }) => {
+  const { hasPriceAccess } = useRoleAccess();
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   const [selectedVehicleForDelivery, setSelectedVehicleForDelivery] = useState<Vehicle | null>(null);
   const [emailConfirmOpen, setEmailConfirmOpen] = useState(false);
@@ -342,13 +344,21 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                 <TableCell>{vehicle.licenseNumber || '-'}</TableCell>
                 <TableCell className="truncate max-w-32">{vehicle.vin || '-'}</TableCell>
                 <TableCell className="font-medium">
-                  {vehicle.purchasePrice ? `€ ${vehicle.purchasePrice.toLocaleString('nl-NL')}` : '-'}
+                  {hasPriceAccess() ? (
+                    vehicle.purchasePrice ? `€ ${vehicle.purchasePrice.toLocaleString('nl-NL')}` : '-'
+                  ) : (
+                    <Badge variant="secondary" className="text-muted-foreground">Verborgen</Badge>
+                  )}
                 </TableCell>
                 <TableCell>
-                  {vehicle.sellingPrice ? (
-                    <span className="font-medium">€ {vehicle.sellingPrice.toLocaleString('nl-NL')}</span>
+                  {hasPriceAccess() ? (
+                    vehicle.sellingPrice ? (
+                      <span className="font-medium">€ {vehicle.sellingPrice.toLocaleString('nl-NL')}</span>
+                    ) : (
+                      <span className="text-muted-foreground">Niet ingesteld</span>
+                    )
                   ) : (
-                    <span className="text-muted-foreground">Niet ingesteld</span>
+                    <Badge variant="secondary" className="text-muted-foreground">Verborgen</Badge>
                   )}
                 </TableCell>
                 <TableCell>

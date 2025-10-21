@@ -33,12 +33,16 @@ interface DetailsTabProps {
   editedVehicle: Vehicle;
   handleChange: (field: keyof Vehicle, value: any) => void;
   handleDamageChange: (field: keyof Vehicle["damage"], value: any) => void;
+  readOnly?: boolean;
+  showPrices?: boolean;
 }
 
 export const DetailsTab: React.FC<DetailsTabProps> = ({
   editedVehicle,
   handleChange,
-  handleDamageChange
+  handleDamageChange,
+  readOnly = false,
+  showPrices = true
 }) => {
   const { data: salespeople, isLoading: salesLoading } = useSalespeople();
 
@@ -54,6 +58,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               id="brand"
               value={editedVehicle.brand}
               onChange={(e) => handleChange('brand', e.target.value)}
+              disabled={readOnly}
             />
           </div>
           <div className="space-y-2">
@@ -62,6 +67,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               id="model"
               value={editedVehicle.model}
               onChange={(e) => handleChange('model', e.target.value)}
+              disabled={readOnly}
             />
           </div>
           <div className="space-y-2">
@@ -71,6 +77,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               value={editedVehicle.color || ""}
               onChange={(e) => handleChange('color', e.target.value)}
               placeholder="Bijv. Zwart, Wit, Zilver"
+              disabled={readOnly}
             />
           </div>
         </div>
@@ -83,6 +90,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               id="licenseNumber"
               value={editedVehicle.licenseNumber}
               onChange={(e) => handleChange('licenseNumber', e.target.value)}
+              disabled={readOnly}
             />
           </div>
           <div className="space-y-2">
@@ -91,6 +99,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               id="vin"
               value={editedVehicle.vin}
               onChange={(e) => handleChange('vin', e.target.value)}
+              disabled={readOnly}
             />
           </div>
         </div>
@@ -110,6 +119,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
                 handleChange('salesStatus', 'voorraad');
               }
             }}
+            disabled={readOnly}
           >
             <SelectTrigger>
               <SelectValue placeholder="Selecteer transport status" />
@@ -128,6 +138,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
           <Select 
             value={editedVehicle.importStatus} 
             onValueChange={(value: ImportStatus) => handleChange('importStatus', value)}
+            disabled={readOnly}
           >
             <SelectTrigger>
               <SelectValue placeholder="Selecteer status" />
@@ -151,6 +162,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
           <Select 
             value={editedVehicle.workshopStatus} 
             onValueChange={(value: WorkshopStatus) => handleChange('workshopStatus', value)}
+            disabled={readOnly}
           >
             <SelectTrigger>
               <SelectValue placeholder="Selecteer werkplaats status" />
@@ -176,6 +188,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
           <Select 
             value={editedVehicle.paintStatus || "geen_behandeling"} 
             onValueChange={(value: PaintStatus) => handleChange('paintStatus', value)}
+            disabled={readOnly}
           >
             <SelectTrigger>
               <SelectValue placeholder="Selecteer lak status" />
@@ -227,31 +240,35 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
         </div>
         
         {/* Purchase Price & Selling Price */}
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="purchasePrice">Inkoopprijs (€)</Label>
-            <Input
-              id="purchasePrice"
-              type="number"
-              value={editedVehicle.purchasePrice}
-              onChange={(e) => handleChange('purchasePrice', parseFloat(e.target.value))}
-            />
-          </div>
+        {showPrices && (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="purchasePrice">Inkoopprijs (€)</Label>
+              <Input
+                id="purchasePrice"
+                type="number"
+                value={editedVehicle.purchasePrice}
+                onChange={(e) => handleChange('purchasePrice', parseFloat(e.target.value))}
+                disabled={readOnly}
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="sellingPrice" className="flex items-center">
-              <Euro className="h-4 w-4 mr-1 text-muted-foreground" />
-              <span>Verkoopprijs (€)</span>
-            </Label>
-            <Input
-              id="sellingPrice"
-              type="number"
-              value={editedVehicle.sellingPrice || ''}
-              onChange={(e) => handleChange('sellingPrice', parseFloat(e.target.value))}
-              className="border-green-200 focus:border-green-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
+            <div className="space-y-2">
+              <Label htmlFor="sellingPrice" className="flex items-center">
+                <Euro className="h-4 w-4 mr-1 text-muted-foreground" />
+                <span>Verkoopprijs (€)</span>
+              </Label>
+              <Input
+                id="sellingPrice"
+                type="number"
+                value={editedVehicle.sellingPrice || ''}
+                onChange={(e) => handleChange('sellingPrice', parseFloat(e.target.value))}
+                disabled={readOnly}
+                className="border-green-200 focus:border-green-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+            </div>
           </div>
-        </div>
+        )}
         
         {/* Damage */}
         <div className="space-y-2">
@@ -261,10 +278,12 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
             onChange={(e) => handleDamageChange('description', e.target.value)}
             placeholder="Beschrijf eventuele schade..."
             className="min-h-[80px]"
+            disabled={readOnly}
           />
           <Select 
             value={editedVehicle.damage.status} 
             onValueChange={(value: DamageStatus) => handleDamageChange('status', value)}
+            disabled={readOnly}
           >
             <SelectTrigger className="mt-2">
               <SelectValue placeholder="Selecteer schade status" />
@@ -292,6 +311,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               value={editedVehicle.year || ''}
               onChange={(e) => handleChange('year', e.target.value ? parseInt(e.target.value) : null)}
               placeholder="Bijv. 2020"
+              disabled={readOnly}
             />
           </div>
           
@@ -302,6 +322,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               type="number"
               value={editedVehicle.mileage}
               onChange={(e) => handleChange('mileage', parseInt(e.target.value))}
+              disabled={readOnly}
             />
           </div>
         </div>
@@ -315,6 +336,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               onCheckedChange={(checked) => 
                 handleChange('salesStatus', checked ? "voorraad" : "verkocht_b2c")
               }
+              disabled={readOnly}
             />
             <Label htmlFor="onInventory" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
               Op Voorraad
@@ -339,7 +361,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
                   handleChange('salespersonName', selectedSalesperson?.name || '');
                 }
               }}
-              disabled={salesLoading}
+              disabled={salesLoading || readOnly}
             >
               <SelectTrigger className="w-full bg-background">
                 <SelectValue placeholder={salesLoading ? "Laden..." : "Selecteer verkoper"} />
@@ -376,7 +398,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
                   handleChange('purchasedByName', selectedPurchaser?.name || '');
                 }
               }}
-              disabled={salesLoading}
+              disabled={salesLoading || readOnly}
             >
               <SelectTrigger className="w-full bg-background">
                 <SelectValue placeholder={salesLoading ? "Laden..." : "Selecteer inkoper"} />
@@ -404,6 +426,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
                 <Select 
                   value={editedVehicle.paymentStatus || "niet_betaald"} 
                   onValueChange={(value) => handleChange('paymentStatus', value)}
+                  disabled={readOnly}
                 >
                   <SelectTrigger className="w-full bg-background">
                     <SelectValue placeholder="Selecteer betaalstatus" />
@@ -425,6 +448,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               onCheckedChange={(checked) => 
                 handleChange('bpmRequested', Boolean(checked))
               }
+              disabled={readOnly}
             />
             <Label htmlFor="bpmRequested" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
               BPM Huys aangemeld

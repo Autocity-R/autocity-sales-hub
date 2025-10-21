@@ -36,7 +36,7 @@ export const useRoleAccess = () => {
   };
 
   const isOperationalUser = () => {
-    return userRole === 'user';
+    return userRole === 'user' || userRole === 'operationeel';
   };
 
   return {

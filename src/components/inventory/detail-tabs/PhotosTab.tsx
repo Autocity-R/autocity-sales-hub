@@ -10,13 +10,15 @@ interface PhotosTabProps {
   onPhotoUpload: (file: File, isMain: boolean) => void;
   onRemovePhoto: (photoUrl: string) => void;
   onSetMainPhoto: (photoUrl: string) => void;
+  readOnly?: boolean;
 }
 
 export const PhotosTab: React.FC<PhotosTabProps> = ({
   vehicle,
   onPhotoUpload,
   onRemovePhoto,
-  onSetMainPhoto
+  onSetMainPhoto,
+  readOnly = false
 }) => {
   const [uploading, setUploading] = React.useState(false);
 
@@ -31,17 +33,19 @@ export const PhotosTab: React.FC<PhotosTabProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="border rounded-md p-4 space-y-4">
-        <h3 className="text-lg font-medium">Foto's toevoegen</h3>
-        <FileUploader 
-          onFileUpload={handleFileUpload} 
-          acceptedFileTypes=".jpg,.jpeg,.png"
-          isLoading={uploading}
-        />
-        <p className="text-sm text-muted-foreground">
-          Upload foto's van het voertuig. De eerste foto wordt automatisch als hoofdfoto ingesteld.
-        </p>
-      </div>
+      {!readOnly && (
+        <div className="border rounded-md p-4 space-y-4">
+          <h3 className="text-lg font-medium">Foto's toevoegen</h3>
+          <FileUploader 
+            onFileUpload={handleFileUpload} 
+            acceptedFileTypes=".jpg,.jpeg,.png"
+            isLoading={uploading}
+          />
+          <p className="text-sm text-muted-foreground">
+            Upload foto's van het voertuig. De eerste foto wordt automatisch als hoofdfoto ingesteld.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-4">
         <h3 className="text-lg font-medium">Hoofdfoto</h3>
@@ -52,15 +56,17 @@ export const PhotosTab: React.FC<PhotosTabProps> = ({
               alt="Hoofdfoto" 
               className="w-full h-64 object-cover"
             />
-            <div className="absolute top-2 right-2 flex space-x-2">
-              <Button 
-                variant="destructive" 
-                size="sm"
-                onClick={() => onRemovePhoto(vehicle.mainPhotoUrl!)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+            {!readOnly && (
+              <div className="absolute top-2 right-2 flex space-x-2">
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={() => onRemovePhoto(vehicle.mainPhotoUrl!)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
             <div className="absolute top-2 left-2">
               <Button 
                 variant="secondary" 
@@ -88,24 +94,26 @@ export const PhotosTab: React.FC<PhotosTabProps> = ({
                 alt={`Foto ${index + 1}`}
                 className="w-full h-48 object-cover"
               />
-              <div className="absolute top-2 right-2 flex space-x-2">
-                {photoUrl !== vehicle.mainPhotoUrl && (
+              {!readOnly && (
+                <div className="absolute top-2 right-2 flex space-x-2">
+                  {photoUrl !== vehicle.mainPhotoUrl && (
+                    <Button 
+                      variant="secondary" 
+                      size="sm"
+                      onClick={() => onSetMainPhoto(photoUrl)}
+                    >
+                      <Star className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button 
-                    variant="secondary" 
+                    variant="destructive" 
                     size="sm"
-                    onClick={() => onSetMainPhoto(photoUrl)}
+                    onClick={() => onRemovePhoto(photoUrl)}
                   >
-                    <Star className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
-                )}
-                <Button 
-                  variant="destructive" 
-                  size="sm"
-                  onClick={() => onRemovePhoto(photoUrl)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+                </div>
+              )}
               {photoUrl === vehicle.mainPhotoUrl && (
                 <div className="absolute top-2 left-2">
                   <Button 

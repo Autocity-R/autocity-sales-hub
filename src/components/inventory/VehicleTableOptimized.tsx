@@ -4,6 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronUp, ChevronDown, MoreHorizontal, Mail, Truck, Car, FileText, Check } from "lucide-react";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { 
   DropdownMenu, 
   DropdownMenuTrigger, 
@@ -84,6 +85,8 @@ const VehicleRow = memo<{
   onMarkAsArrived,
   onOpenDeliveryDialog
 }) => {
+  const { hasPriceAccess } = useRoleAccess();
+  
   const formatPrice = useMemo(() => {
     return (price: number | undefined) => {
       if (!price) return "€ -";
@@ -150,10 +153,18 @@ const VehicleRow = memo<{
         {vehicle.vin}
       </TableCell>
       <TableCell className="align-middle">
-        {formatPrice(vehicle.purchasePrice)}
+        {hasPriceAccess() ? formatPrice(vehicle.purchasePrice) : (
+          <Badge variant="secondary" className="text-muted-foreground">
+            Verborgen
+          </Badge>
+        )}
       </TableCell>
       <TableCell className="align-middle">
-        {formatPrice(vehicle.sellingPrice)}
+        {hasPriceAccess() ? formatPrice(vehicle.sellingPrice) : (
+          <Badge variant="secondary" className="text-muted-foreground">
+            Verborgen
+          </Badge>
+        )}
       </TableCell>
       <TableCell className="align-middle">
         {formatMileage(vehicle.mileage)}
