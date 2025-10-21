@@ -156,7 +156,8 @@ const Transport = () => {
         ...vehicle, 
         arrived: true, 
         importStatus: "aangekomen" as ImportStatus,
-        transportStatus: "aangekomen" as const
+        transportStatus: "aangekomen" as const,
+        location: "showroom" // Auto-set locatie naar showroom bij binnenmelden
       });
     }
   };

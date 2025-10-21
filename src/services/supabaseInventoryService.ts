@@ -251,33 +251,46 @@ export class SupabaseInventoryService {
        console.log(`[UPDATE_VEHICLE] Setting sold_date for vehicle ${vehicle.id}`);
      }
 
-    // Prepare email reminder settings
-    const emailReminderSettings = (vehicle as any).emailReminderSettings || {};
-    
-    // Prepare update data
-    // CRITICAL: Preserve selling_price - use new value if provided, otherwise keep existing
-    const updateData: any = {
-      brand: vehicle.brand,
-      model: vehicle.model,
-      year: vehicle.year,
-      color: vehicle.color,
-      license_number: vehicle.licenseNumber,
-      vin: vehicle.vin,
-      mileage: vehicle.mileage,
-      selling_price: vehicle.sellingPrice !== undefined && vehicle.sellingPrice !== null
-        ? vehicle.sellingPrice
-        : existingVehicle.selling_price,
-      purchase_price: vehicle.purchasePrice !== undefined && vehicle.purchasePrice !== null
-        ? vehicle.purchasePrice
-        : existingVehicle.purchase_price,  // ✅ CRITICAL: Preserve purchase_price
-      status: salesStatus,
-      location: vehicle.location,
-      import_status: vehicle.importStatus,
-      notes: vehicle.notes,
-      details: details as any,
-      email_reminder_settings: emailReminderSettings as any,
-      sold_date: soldDate,
-      updated_at: new Date().toISOString(),
+     // Prepare email reminder settings
+     const emailReminderSettings = (vehicle as any).emailReminderSettings || {};
+     
+     // Auto-sync location with transport status
+     let locationToSet = vehicle.location;
+     
+     // If transport status is 'onderweg' and no location is set, auto-set to 'onderweg'
+     if (vehicle.transportStatus === 'onderweg' && !vehicle.location) {
+       locationToSet = 'onderweg';
+     }
+     
+     // If transport status is 'aangekomen' and no location is set, auto-set to 'showroom'
+     if (vehicle.transportStatus === 'aangekomen' && !vehicle.location) {
+       locationToSet = 'showroom';
+     }
+     
+     // Prepare update data
+     // CRITICAL: Preserve selling_price - use new value if provided, otherwise keep existing
+     const updateData: any = {
+       brand: vehicle.brand,
+       model: vehicle.model,
+       year: vehicle.year,
+       color: vehicle.color,
+       license_number: vehicle.licenseNumber,
+       vin: vehicle.vin,
+       mileage: vehicle.mileage,
+       selling_price: vehicle.sellingPrice !== undefined && vehicle.sellingPrice !== null
+         ? vehicle.sellingPrice
+         : existingVehicle.selling_price,
+       purchase_price: vehicle.purchasePrice !== undefined && vehicle.purchasePrice !== null
+         ? vehicle.purchasePrice
+         : existingVehicle.purchase_price,  // ✅ CRITICAL: Preserve purchase_price
+       status: salesStatus,
+       location: locationToSet,
+       import_status: vehicle.importStatus,
+       notes: vehicle.notes,
+       details: details as any,
+       email_reminder_settings: emailReminderSettings as any,
+       sold_date: soldDate,
+       updated_at: new Date().toISOString(),
       
       // CRITICAL FIX: Write purchaser to separate columns for reports
       purchased_by_user_id: vehicle.purchasedById !== undefined 

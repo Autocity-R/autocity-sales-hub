@@ -50,7 +50,7 @@ export class DeliveredVehicleService {
 
       const currentDetails = (vehicle?.details as any) || {};
       
-      // Update the vehicle transportStatus and importStatus in details
+      // Update the vehicle transportStatus, importStatus AND location
       const { error } = await supabase
         .from('vehicles')
         .update({ 
@@ -59,6 +59,7 @@ export class DeliveredVehicleService {
             transportStatus: 'onderweg',
             importStatus: 'onderweg'
           } as any,
+          location: 'onderweg', // Auto-set locatie naar onderweg
           updated_at: new Date().toISOString()
         })
         .eq('id', vehicleId);
