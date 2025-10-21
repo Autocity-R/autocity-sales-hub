@@ -460,6 +460,13 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                         <Mail className="h-4 w-4 mr-2" />
                         Kenteken update
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => {
+                        e.stopPropagation();
+                        handleEmailClick("invoice_request", vehicle.id, vehicle);
+                      }}>
+                        <Mail className="h-4 w-4 mr-2" />
+                        Factuur aanvragen
+                      </DropdownMenuItem>
                       
                       {handleChangeStatus && (
                         <>

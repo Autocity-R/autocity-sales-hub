@@ -133,6 +133,16 @@ export let emailTemplates: EmailTemplate[] = [
     linkedButton: "contract_b2b",
     hasAttachment: true,
     attachmentType: "generated-contract"
+  },
+  {
+    id: "14",
+    name: "Facturatie aanvraag",
+    subject: "Facturatie – {{MERK}} {{MODEL}} ({{VIN}})",
+    content: "Beste administratie,\n\nHet volgende voertuig is afgeleverd aan de klant en kan worden gefactureerd:\n\nVoertuiggegevens:\n\nMerk: {{MERK}}\n\nModel: {{MODEL}}\n\nVIN: {{VIN}}\n\nKlantgegevens:\n\nNaam / Bedrijfsnaam: {{KLANT_NAAM}}\n\nAdres: {{KLANT_ADRES}}\n\nE-mailadres voor factuur: {{KLANT_EMAIL}}\n\nVerkoopprijs: €{{VERKOOPPRIJS}}\n\nDe factuur mag nu worden opgemaakt en verzonden naar de klant.\n\nMet vriendelijke groet,\n{{VERKOPER_NAAM}}\nAutocity Automotive Group\n📞 010 262 3980",
+    senderEmail: "verkoop@auto-city.nl",
+    linkedButton: "invoice_request",
+    hasAttachment: false,
+    recipientOverride: "administratie@auto-city.nl"
   }
 ];
 
@@ -289,7 +299,11 @@ export const sendEmailWithTemplate = async (
     return false;
   }
 
-  const recipient = await determineRecipient(buttonValue, vehicleData);
+  // Use recipientOverride if available (for fixed recipients like administratie)
+  let recipient = template.recipientOverride 
+    ? { email: template.recipientOverride, name: 'Administratie' }
+    : await determineRecipient(buttonValue, vehicleData);
+    
   if (!recipient) {
     console.warn(`❌ Geen ontvanger gevonden voor knop: ${buttonValue}`);
     console.warn(`Vehicle ID: ${vehicleData.id}, customerId: ${vehicleData.customerId}, customerContact:`, vehicleData.customerContact);
@@ -318,9 +332,9 @@ export const sendEmailWithTemplate = async (
     const { supabase } = await import('@/integrations/supabase/client');
     const { toast } = await import('@/hooks/use-toast');
 
-    // Vervang variabelen in de template
-    let processedSubject = replaceVariables(template.subject, vehicleData, recipient);
-    let processedContent = replaceVariables(template.content, vehicleData, recipient);
+    // Vervang variabelen in de template (now async)
+    let processedSubject = await replaceVariables(template.subject, vehicleData, recipient);
+    let processedContent = await replaceVariables(template.content, vehicleData, recipient);
     
     // Add signature URL for digital contracts
     if (signatureUrl && (buttonValue.includes("digital") || buttonValue.includes("contract"))) {
@@ -562,7 +576,7 @@ const getImportStatusLabel = (status: ImportStatus): string => {
   return statusLabels[status] || status;
 };
 
-const replaceVariables = (text: string, vehicleData: Vehicle, recipient?: { email: string; name: string }): string => {
+const replaceVariables = async (text: string, vehicleData: Vehicle, recipient?: { email: string; name: string }): Promise<string> => {
   // Debug logging
   console.log('🔍 replaceVariables DEBUG:', {
     recipientName: recipient?.name,
@@ -572,6 +586,25 @@ const replaceVariables = (text: string, vehicleData: Vehicle, recipient?: { emai
   });
 
   let result = text;
+  
+  // Get salesperson name from auth and profile
+  let salespersonName = 'Verkoper';
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', user.id)
+        .single();
+      
+      if (profile && profile.first_name && profile.last_name) {
+        salespersonName = `${profile.first_name} ${profile.last_name}`;
+      }
+    }
+  } catch (error) {
+    console.warn('Could not fetch salesperson name:', error);
+  }
   
   // Extract first and last name from recipient with safe parsing
   const { firstName: recipientFirstName, lastName: recipientLastName } = parseNameSafely(recipient?.name);
@@ -586,15 +619,22 @@ const replaceVariables = (text: string, vehicleData: Vehicle, recipient?: { emai
   result = result.replace(/{{JAAR}}/g, vehicleData.year?.toString() || '');
   result = result.replace(/{{KLEUR}}/g, vehicleData.color || '');
   result = result.replace(/{{PRIJS}}/g, vehicleData.sellingPrice?.toLocaleString('nl-NL') || '0');
+  result = result.replace(/{{VERKOOPPRIJS}}/g, vehicleData.sellingPrice?.toLocaleString('nl-NL') || 'Niet ingesteld');
   result = result.replace(/{{STATUS}}/g, getImportStatusLabel(vehicleData.importStatus));
+  result = result.replace(/{{VERKOPER_NAAM}}/g, salespersonName);
   
   // Customer/recipient variables - use safe parsing
   const customerName = vehicleData.customerContact?.name || recipient?.name || '';
+  const customerAddress = vehicleData.customerContact?.address || 'Geen adres beschikbaar';
+  const customerEmail = vehicleData.customerContact?.email || recipient?.email || '';
   const { firstName: customerFirstName, lastName: customerLastName } = parseNameSafely(customerName);
   
   result = result.replace(/{{VOORNAAM}}/g, customerFirstName);
   result = result.replace(/{{ACHTERNAAM}}/g, customerLastName);
-  result = result.replace(/{{EMAIL}}/g, vehicleData.customerContact?.email || recipient?.email || '[Email niet beschikbaar]');
+  result = result.replace(/{{KLANT_NAAM}}/g, customerName || 'Klant naam onbekend');
+  result = result.replace(/{{KLANT_ADRES}}/g, customerAddress);
+  result = result.replace(/{{KLANT_EMAIL}}/g, customerEmail);
+  result = result.replace(/{{EMAIL}}/g, customerEmail || '[Email niet beschikbaar]');
   result = result.replace(/{{TELEFOON}}/g, vehicleData.customerContact?.phone || '');
   
   // Transporteur variabelen

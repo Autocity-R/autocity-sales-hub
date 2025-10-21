@@ -175,6 +175,11 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
           BPM Huys aanmelden
         </DropdownMenuItem>
         
+        <DropdownMenuItem onClick={() => handleEmailClick("invoice_request", vehicle.id)}>
+          <Mail className="h-4 w-4 mr-2" />
+          Factuur aanvragen
+        </DropdownMenuItem>
+        
         {!vehicle.arrived && onMarkAsArrived && (
           <>
             <DropdownMenuSeparator />

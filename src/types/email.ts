@@ -10,6 +10,7 @@ export interface EmailTemplate {
   attachmentType?: "auto-upload" | "generated-contract" | "static-file";
   staticAttachmentType?: string; // For CMR, Pickup documents etc.
   contractConfiguration?: ContractConfiguration;
+  recipientOverride?: string; // Voor vaste ontvanger zoals administratie
 }
 
 export interface ContractConfiguration {
