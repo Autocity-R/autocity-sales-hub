@@ -366,12 +366,37 @@ export const sendEmailWithTemplate = async (
       }));
     }
 
-    // Get current user for CC
+    // Get current user for sender email and CC
     const { data: { user } } = await supabase.auth.getUser();
+    
+    // Dynamically determine sender email from user's profile
+    let senderEmail = template.senderEmail; // Fallback to template default
+    
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('id', user.id)
+        .single();
+      
+      if (profile?.email) {
+        senderEmail = profile.email;
+        console.log(`📧 Using user's email as sender: ${senderEmail}`);
+      } else {
+        console.log(`⚠️ User profile email not found, using template default: ${senderEmail}`);
+      }
+    }
+
+    console.log(`📧 Email sender info:`, {
+      userId: user?.id,
+      userProfileEmail: user ? 'fetched from profiles' : 'no user',
+      templateDefault: template.senderEmail,
+      finalSender: senderEmail
+    });
 
     // Prepare email payload for queue
     const emailPayload = {
-      senderEmail: template.senderEmail,
+      senderEmail: senderEmail,
       to: [recipient.email],
       cc: user?.email ? [user.email] : [],
       subject: processedSubject,
