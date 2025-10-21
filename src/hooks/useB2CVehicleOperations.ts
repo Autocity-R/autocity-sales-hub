@@ -1,7 +1,6 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useWeeklySalesTracking } from "@/hooks/useWeeklySalesTracking";
 import { supabase } from "@/integrations/supabase/client";
 import { ContractOptions } from "@/types/email";
 import { 
@@ -20,7 +19,6 @@ import { Vehicle, PaymentStatus, PaintStatus, FileCategory } from "@/types/inven
 export const useB2CVehicleOperations = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { trackSale } = useWeeklySalesTracking();
 
   const updateVehicleMutation = useMutation({
     mutationFn: (vehicle: Vehicle) => updateVehicle(vehicle),
@@ -277,22 +275,6 @@ export const useB2CVehicleOperations = () => {
       console.log(`✅ Vehicle ${vehicleId} validation passed - Customer: ${vehicle.customerId}, Salesperson: ${vehicle.salespersonId} (${vehicle.salespersonName})`);
     }
     
-    // Track sales when changing FROM voorraad TO verkocht status (not vice versa)
-    if ((status === 'verkocht_b2b' || status === 'verkocht_b2c') && vehicle && vehicle.salesStatus === 'voorraad' && vehicle.salespersonId && vehicle.salespersonName) {
-      const salesType = status === 'verkocht_b2b' ? 'b2b' : 'b2c';
-      console.log(`📊 Tracking sale for vehicle ${vehicleId}: ${vehicle.salespersonName} - ${salesType}`);
-      
-      trackSale({
-        salespersonId: vehicle.salespersonId,
-        salespersonName: vehicle.salespersonName,
-        salesType,
-        vehicleId
-      });
-      
-      console.log(`✅ Sale tracking initiated for ${vehicle.salespersonName}`);
-    } else if ((status === 'verkocht_b2b' || status === 'verkocht_b2c') && vehicle) {
-      console.warn(`⚠️ Sale not tracked for vehicle ${vehicleId} - Status: ${vehicle.salesStatus}, Salesperson: ${vehicle.salespersonId}, Name: ${vehicle.salespersonName}`);
-    }
     
     // When marking as sold, also set transportStatus to 'aangekomen' so it doesn't show in transport list
     if (vehicle && (status === 'verkocht_b2b' || status === 'verkocht_b2c')) {

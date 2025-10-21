@@ -3,8 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Vehicle, PaymentStatus } from "@/types/inventory";
 import { FileCategory } from "@/types/inventory";
-import { useWeeklySalesTracking } from "@/hooks/useWeeklySalesTracking";
-import { 
+import {
   updateVehicle, 
   sendEmail, 
   updateSellingPrice,
@@ -17,7 +16,6 @@ import {
 
 export const useB2BVehicleOperations = () => {
   const queryClient = useQueryClient();
-  const { trackSale } = useWeeklySalesTracking();
   
   const updateVehicleMutation = useMutation({
     mutationFn: (vehicle: Vehicle) => updateVehicle(vehicle),
@@ -198,22 +196,6 @@ export const useB2BVehicleOperations = () => {
       console.log(`✅ Vehicle ${vehicleId} validation passed - Customer: ${vehicle.customerId}, Salesperson: ${vehicle.salespersonId} (${vehicle.salespersonName})`);
     }
     
-    // Track sales when changing FROM voorraad TO verkocht status (not vice versa)
-    if ((status === 'verkocht_b2b' || status === 'verkocht_b2c') && vehicle && vehicle.salesStatus === 'voorraad' && vehicle.salespersonId && vehicle.salespersonName) {
-      const salesType = status === 'verkocht_b2b' ? 'b2b' : 'b2c';
-      console.log(`📊 Tracking sale for vehicle ${vehicleId}: ${vehicle.salespersonName} - ${salesType}`);
-      
-      trackSale({
-        salespersonId: vehicle.salespersonId,
-        salespersonName: vehicle.salespersonName,
-        salesType,
-        vehicleId
-      });
-      
-      console.log(`✅ Sale tracking initiated for ${vehicle.salespersonName}`);
-    } else if ((status === 'verkocht_b2b' || status === 'verkocht_b2c') && vehicle) {
-      console.warn(`⚠️ Sale not tracked for vehicle ${vehicleId} - Status: ${vehicle.salesStatus}, Salesperson: ${vehicle.salespersonId}, Name: ${vehicle.salespersonName}`);
-    }
     
     changeVehicleStatusMutation.mutate({ vehicleId, status });
     console.log(`✅ Vehicle ${vehicleId} status change mutation initiated`);
