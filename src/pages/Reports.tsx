@@ -654,17 +654,26 @@ const Reports = () => {
                         <span className="text-2xl font-bold mt-1">
                           {inventoryMetrics?.avgTransportDays || 0} dagen
                         </span>
+                        <span className="text-xs text-muted-foreground mt-1">
+                          Tijd van transport menu tot binnengemeld
+                        </span>
                       </div>
                       <div className="flex flex-col">
                         <span className="text-sm text-muted-foreground">Voertuigen Onderweg</span>
                         <span className="text-2xl font-bold mt-1">
                           {inventoryMetrics?.inTransportCount || 0}
                         </span>
+                        <span className="text-xs text-muted-foreground mt-1">
+                          Totaal in transport menu (location=onderweg)
+                        </span>
                       </div>
                       <div className="flex flex-col">
                         <span className="text-sm text-muted-foreground">In Bestelling</span>
                         <span className="text-2xl font-bold mt-1">
                           {inventoryMetrics?.stockByStatus.in_bestelling || 0}
+                        </span>
+                        <span className="text-xs text-muted-foreground mt-1">
+                          Verkocht (B2B/B2C) maar nog onderweg
                         </span>
                       </div>
                     </div>

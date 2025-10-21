@@ -245,49 +245,63 @@ export class SystemReportsService {
       }, 0) || 0;
 
 
-      // Calculate average transport lead time
-      // Only calculate for vehicles that have completed transport (have both start and arrival dates)
-      const vehiclesWithCompletedTransport = soldVehicles?.filter(v => {
-        const details = v.details as any;
-        return details?.transportAddedDate && details?.arrived;
-      }) || [];
+      // TRANSPORT STATISTICS
+      // ==================
+      
+      // 1. Calculate average transport lead time (doorlooptijd)
+      // Time from when vehicle was added to transport (location='onderweg') until it was marked as arrived
+      // Get vehicles that have completed transport journey (were onderweg, now in showroom)
+      const { data: completedTransportVehicles, error: completedError } = await supabase
+        .from('vehicles')
+        .select('*')
+        .neq('location', 'onderweg')
+        .not('purchase_date', 'is', null); // Has a purchase/arrival date
+
+      if (completedError) console.error('Error fetching completed transport:', completedError);
 
       let avgTransportDays = 0;
-      if (vehiclesWithCompletedTransport.length > 0) {
-        const transportDays = vehiclesWithCompletedTransport.map(v => {
-          const details = v.details as any;
-          const added = new Date(details.transportAddedDate || v.created_at);
-          const arrived = new Date(details.arrivedDate || details.arrived);
-          return Math.floor((arrived.getTime() - added.getTime()) / (1000 * 60 * 60 * 24));
-        });
-        avgTransportDays = Math.round(transportDays.reduce((a, b) => a + b, 0) / transportDays.length);
+      if (completedTransportVehicles && completedTransportVehicles.length > 0) {
+        const transportDaysArray = completedTransportVehicles
+          .filter(v => {
+            const details = v.details as any;
+            // Must have been in transport and have arrival timestamp
+            return details?.transportStartDate && v.purchase_date;
+          })
+          .map(v => {
+            const details = v.details as any;
+            const startDate = new Date(details.transportStartDate);
+            const arrivedDate = new Date(v.purchase_date); // When marked as arrived
+            return Math.max(0, Math.floor((arrivedDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+          })
+          .filter(days => days > 0 && days < 365); // Filter unrealistic values
+        
+        avgTransportDays = transportDaysArray.length > 0
+          ? Math.round(transportDaysArray.reduce((a, b) => a + b, 0) / transportDaysArray.length)
+          : 0;
       }
 
-      // Get vehicles currently in transport (onderweg status, not yet arrived)
+      // 2. Get vehicles currently in transport (onderweg)
+      // This should match exactly what's shown in the Transport menu
       const { data: transportVehicles, error: transportError } = await supabase
         .from('vehicles')
         .select('*')
-        .eq('status', 'onderweg');
+        .eq('location', 'onderweg');
 
-      if (transportError) throw transportError;
+      if (transportError) console.error('Error fetching transport vehicles:', transportError);
 
       const inTransportCount = transportVehicles?.length || 0;
 
-      // Get vehicles that are sold but still in transport (in bestelling)
-      // These are vehicles with verkocht status but also have transport details indicating they're still onderweg
+      // 3. Get vehicles "in bestelling" (sold but still in transport/onderweg)
+      // These are B2B/B2C sold vehicles that are still onderweg
       const { data: orderedVehicles, error: orderedError } = await supabase
         .from('vehicles')
         .select('*')
-        .in('status', ['verkocht_b2b', 'verkocht_b2c']);
+        .in('status', ['verkocht_b2b', 'verkocht_b2c'])
+        .eq('location', 'onderweg'); // Still in transport
 
-      if (orderedError) throw orderedError;
+      if (orderedError) console.error('Error fetching ordered vehicles:', orderedError);
 
-      // Filter sold vehicles that are still in transport (not yet arrived)
-      const inBestellingCount = orderedVehicles?.filter(v => {
-        const details = v.details as any;
-        // Vehicle is in bestelling if it's sold but transport hasn't completed yet
-        return details?.transportAddedDate && !details?.arrived;
-      }).length || 0;
+      const inBestellingCount = orderedVehicles?.length || 0;
 
       return {
         totalVehicles,
@@ -296,11 +310,10 @@ export class SystemReportsService {
         totalInventoryValue: Math.round(totalInventoryValue),
         avgTransportDays,
         inTransportCount,
-        inBestellingCount,
         stockByStatus: {
           voorraad: stockVehicles?.filter(v => v.status === 'voorraad').length || 0,
-          onderweg: inTransportCount,
-          in_bestelling: inBestellingCount
+          onderweg: inTransportCount, // Total vehicles in transport menu
+          in_bestelling: inBestellingCount // Sold vehicles still in transport
         },
         _metadata: {
           dataSource: 'System Database',
@@ -308,7 +321,7 @@ export class SystemReportsService {
           recordCounts: {
             stockVehicles: stockVehicles?.length || 0,
             soldVehicles: soldVehicles?.length || 0,
-            transportVehicles: vehiclesWithCompletedTransport.length,
+            transportVehicles: completedTransportVehicles?.length || 0,
             orderedVehicles: inBestellingCount
           }
         }
