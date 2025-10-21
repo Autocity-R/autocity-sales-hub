@@ -133,6 +133,7 @@ export class SupabaseCustomerService {
           address_postal_code: contactData.address?.zipCode,
           address_city: contactData.address?.city,
           additional_emails: contactData.additionalEmails || [],
+          is_car_dealer: contactData.isCarDealer || false,
         })
         .select()
         .single();
@@ -168,6 +169,7 @@ export class SupabaseCustomerService {
           address_postal_code: contact.address?.zipCode,
           address_city: contact.address?.city,
           additional_emails: contact.additionalEmails || [],
+          is_car_dealer: contact.isCarDealer || false,
           updated_at: new Date().toISOString()
         })
         .eq('id', contact.id)
@@ -207,6 +209,7 @@ export class SupabaseCustomerService {
         country: "Nederland"
       },
       notes: "",
+      isCarDealer: supabaseContact.is_car_dealer || false,
       createdAt: supabaseContact.created_at,
       updatedAt: supabaseContact.updated_at
     };
