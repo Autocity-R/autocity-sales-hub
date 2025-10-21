@@ -536,6 +536,7 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
         onConfirm={handleDeliveryConfirm}
         vehicleBrand={selectedVehicleForDelivery?.brand}
         vehicleModel={selectedVehicleForDelivery?.model}
+        isCarDealer={selectedVehicleForDelivery?.customerContact?.isCarDealer}
       />
 
       <EmailConfirmDialog

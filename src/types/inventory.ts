@@ -61,6 +61,7 @@ export interface ContactInfo {
   email: string;
   phone?: string;
   address?: string;
+  isCarDealer?: boolean;
 }
 
 export interface User {

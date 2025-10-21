@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ interface DeliveryConfirmationDialogProps {
   onConfirm: (data: DeliveryData) => void;
   vehicleBrand?: string;
   vehicleModel?: string;
+  isCarDealer?: boolean;
 }
 
 export interface DeliveryData {
@@ -24,6 +25,7 @@ export interface DeliveryData {
 }
 
 const WARRANTY_PACKAGES = [
+  { value: "geen_garantie_b2b", label: "Geen garantie (B2B autobedrijf)", price: 0 },
   { value: "garantie_wettelijk", label: "Wettelijke garantie (12 maanden)", price: 0 },
   { value: "6_maanden_autocity", label: "6 maanden Auto City garantie", price: 500 },
   { value: "12_maanden_autocity", label: "12 maanden Auto City garantie", price: 750 },
@@ -36,7 +38,8 @@ export const DeliveryConfirmationDialog = ({
   onOpenChange,
   onConfirm,
   vehicleBrand,
-  vehicleModel
+  vehicleModel,
+  isCarDealer = false
 }: DeliveryConfirmationDialogProps) => {
   const [warrantyPackage, setWarrantyPackage] = useState<string>("");
   const [deliveryDate, setDeliveryDate] = useState<string>(
@@ -45,19 +48,31 @@ export const DeliveryConfirmationDialog = ({
   const [customPrice, setCustomPrice] = useState<string>("");
   const [deliveryNotes, setDeliveryNotes] = useState<string>("");
 
+  // Auto-select "geen garantie" for car dealers
+  React.useEffect(() => {
+    if (open && isCarDealer) {
+      setWarrantyPackage("geen_garantie_b2b");
+    } else if (open && !isCarDealer) {
+      setWarrantyPackage("");
+    }
+  }, [open, isCarDealer]);
+
   const selectedPackage = WARRANTY_PACKAGES.find(p => p.value === warrantyPackage);
-  const shouldShowCustomPrice = warrantyPackage && !["garantie_wettelijk"].includes(warrantyPackage);
+  const shouldShowCustomPrice = warrantyPackage && !["garantie_wettelijk", "geen_garantie_b2b"].includes(warrantyPackage);
+  const shouldShowWarrantyField = !isCarDealer;
 
   const handleConfirm = () => {
-    if (!warrantyPackage || !deliveryDate) {
+    // For car dealers, warranty is auto-selected
+    // For others, warranty must be manually selected
+    if ((!isCarDealer && !warrantyPackage) || !deliveryDate) {
       return;
     }
 
     const price = customPrice ? parseFloat(customPrice) : selectedPackage?.price;
 
     onConfirm({
-      warrantyPackage,
-      warrantyPackageName: selectedPackage?.label || warrantyPackage,
+      warrantyPackage: isCarDealer ? "geen_garantie_b2b" : warrantyPackage,
+      warrantyPackageName: isCarDealer ? "Geen garantie (B2B autobedrijf)" : (selectedPackage?.label || warrantyPackage),
       warrantyPackagePrice: price,
       deliveryDate: new Date(deliveryDate),
       deliveryNotes: deliveryNotes.trim() || undefined
@@ -70,7 +85,7 @@ export const DeliveryConfirmationDialog = ({
     setDeliveryNotes("");
   };
 
-  const isValid = warrantyPackage && deliveryDate;
+  const isValid = (isCarDealer || warrantyPackage) && deliveryDate;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -87,23 +102,34 @@ export const DeliveryConfirmationDialog = ({
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="warranty-package">
-              Garantiepakket <span className="text-destructive">*</span>
-            </Label>
-            <Select value={warrantyPackage} onValueChange={setWarrantyPackage}>
-              <SelectTrigger id="warranty-package">
-                <SelectValue placeholder="Selecteer garantiepakket..." />
-              </SelectTrigger>
-              <SelectContent>
-                {WARRANTY_PACKAGES.map((pkg) => (
-                  <SelectItem key={pkg.value} value={pkg.value}>
-                    {pkg.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {shouldShowWarrantyField && (
+            <div className="grid gap-2">
+              <Label htmlFor="warranty-package">
+                Garantiepakket <span className="text-destructive">*</span>
+              </Label>
+              <Select value={warrantyPackage} onValueChange={setWarrantyPackage}>
+                <SelectTrigger id="warranty-package">
+                  <SelectValue placeholder="Selecteer garantiepakket..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {WARRANTY_PACKAGES.filter(pkg => pkg.value !== "geen_garantie_b2b").map((pkg) => (
+                    <SelectItem key={pkg.value} value={pkg.value}>
+                      {pkg.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {isCarDealer && (
+            <div className="grid gap-2">
+              <Label>Garantiepakket</Label>
+              <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+                <strong>Geen garantie (B2B autobedrijf)</strong> - Voor zakelijke verkopen aan autobedrijven wordt geen garantie verstrekt.
+              </p>
+            </div>
+          )}
 
           {shouldShowCustomPrice && (
             <div className="grid gap-2">

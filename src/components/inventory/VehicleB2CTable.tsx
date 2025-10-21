@@ -121,6 +121,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
           onConfirm={handleDeliveryConfirm}
           vehicleBrand={selectedVehicleForDelivery?.brand}
           vehicleModel={selectedVehicleForDelivery?.model}
+          isCarDealer={false}
         />
       </>
     );
@@ -171,6 +172,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
         onConfirm={handleDeliveryConfirm}
         vehicleBrand={selectedVehicleForDelivery?.brand}
         vehicleModel={selectedVehicleForDelivery?.model}
+        isCarDealer={false}
       />
     </>
   );

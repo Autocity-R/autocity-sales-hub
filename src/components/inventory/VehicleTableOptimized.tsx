@@ -476,6 +476,7 @@ export const VehicleTable = memo<VehicleTableProps>(({
         onConfirm={handleDeliveryConfirm}
         vehicleBrand={selectedVehicleForDelivery?.brand}
         vehicleModel={selectedVehicleForDelivery?.model}
+        isCarDealer={selectedVehicleForDelivery?.customerContact?.isCarDealer}
       />
     </div>
   );
