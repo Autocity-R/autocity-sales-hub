@@ -15,6 +15,7 @@ interface VehicleActionsDropdownProps {
   onDeliveryConfirm: (vehicleId: string) => void;
   onMarkAsArrived?: (vehicleId: string) => void;
   onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c") => void;
+  onMoveBackToTransport?: (vehicleId: string) => void;
 }
 
 export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
@@ -23,7 +24,8 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
   handleChangeStatus,
   onDeliveryConfirm,
   onMarkAsArrived,
-  onOpenContractConfig
+  onOpenContractConfig,
+  onMoveBackToTransport
 }) => {
   const [emailConfirmOpen, setEmailConfirmOpen] = useState(false);
   const [pendingEmailAction, setPendingEmailAction] = useState<{ type: string; vehicleId: string } | null>(null);
@@ -220,6 +222,17 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
             Auto afgeleverd
           </DropdownMenuItem>
         </>
+        
+        {onMoveBackToTransport && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Transport</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => onMoveBackToTransport(vehicle.id)}>
+              <Car className="h-4 w-4 mr-2" />
+              Terugplaatsen naar Transport
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
 

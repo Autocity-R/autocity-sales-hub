@@ -19,6 +19,7 @@ interface VehicleB2CTableRowProps {
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   onDeliveryConfirm: (vehicleId: string) => void;
   onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c") => void;
+  onMoveBackToTransport?: (vehicleId: string) => void;
 }
 
 const renderImportStatusBadge = (status: ImportStatus | undefined) => {
@@ -76,7 +77,8 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
   handleSendEmail,
   handleChangeStatus,
   onDeliveryConfirm,
-  onOpenContractConfig
+  onOpenContractConfig,
+  onMoveBackToTransport
 }) => {
   const { hasPriceAccess } = useRoleAccess();
   
@@ -172,6 +174,8 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
           onSendEmail={handleSendEmail}
           handleChangeStatus={handleChangeStatus}
           onDeliveryConfirm={onDeliveryConfirm}
+          onOpenContractConfig={onOpenContractConfig}
+          onMoveBackToTransport={onMoveBackToTransport}
         />
       </TableCell>
     </TableRow>

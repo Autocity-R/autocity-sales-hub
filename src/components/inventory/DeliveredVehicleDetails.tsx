@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import { X, Car, User, Euro, Calendar, FileText, Download, Eye, Undo2, Shield } from "lucide-react";
+import { X, Car, User, Euro, Calendar, FileText, Download, Eye, Undo2, Shield, Truck } from "lucide-react";
 import { Vehicle } from "@/types/inventory";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +43,8 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
   const [showMoveBackDialog, setShowMoveBackDialog] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<'verkocht_b2b' | 'verkocht_b2c' | 'voorraad'>('voorraad');
   const [isMovingBack, setIsMovingBack] = useState(false);
+  const [showMoveToTransportDialog, setShowMoveToTransportDialog] = useState(false);
+  const [isMovingToTransport, setIsMovingToTransport] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -84,6 +86,28 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
     }
   };
 
+  const handleMoveToTransport = async () => {
+    setIsMovingToTransport(true);
+    try {
+      await deliveredVehicleService.moveVehicleBackToTransport(vehicle.id);
+      
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ["deliveredVehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
+      
+      toast.success('Voertuig succesvol teruggeplaatst naar Transport');
+      onClose();
+    } catch (error) {
+      console.error('Error moving vehicle to transport:', error);
+      toast.error('Fout bij het terugplaatsen naar Transport');
+    } finally {
+      setIsMovingToTransport(false);
+      setShowMoveToTransportDialog(false);
+    }
+  };
+
   const formatPrice = (price: number | undefined) => {
     if (!price) return "Niet beschikbaar";
     return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(price);
@@ -110,15 +134,26 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
                 <Car className="h-5 w-5" />
                 {vehicle.brand} {vehicle.model}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowMoveBackDialog(true)}
-                className="flex items-center gap-2"
-              >
-                <Undo2 className="h-4 w-4" />
-                Terugplaatsen
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowMoveToTransportDialog(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Truck className="h-4 w-4" />
+                  Terug naar Transport
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowMoveBackDialog(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Undo2 className="h-4 w-4" />
+                  Terugplaatsen
+                </Button>
+              </div>
             </DialogTitle>
             <DialogDescription>
               Volledige informatie van het afgeleverde voertuig
@@ -424,6 +459,37 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
                 </Button>
                 <Button onClick={handleMoveBack} disabled={isMovingBack}>
                   {isMovingBack ? 'Bezig...' : 'Terugplaatsen'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Move to Transport Dialog */}
+      {showMoveToTransportDialog && (
+        <Dialog open onOpenChange={setShowMoveToTransportDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Terugplaatsen naar Transport</DialogTitle>
+              <DialogDescription>
+                Dit voertuig wordt teruggeplaatst naar het Transport menu als "onderweg".
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="bg-blue-50 p-4 rounded-md">
+                <p className="text-sm text-blue-800">
+                  Het voertuig krijgt de status "onderweg" en verschijnt weer in het Transport overzicht.
+                </p>
+              </div>
+              
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowMoveToTransportDialog(false)}>
+                  Annuleren
+                </Button>
+                <Button onClick={handleMoveToTransport} disabled={isMovingToTransport}>
+                  {isMovingToTransport ? 'Bezig...' : 'Terugplaatsen'}
                 </Button>
               </div>
             </div>

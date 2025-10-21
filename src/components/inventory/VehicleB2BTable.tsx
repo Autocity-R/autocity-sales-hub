@@ -58,6 +58,7 @@ interface VehicleB2BTableProps {
     deliveryNotes?: string
   ) => void;
   onOpenContractConfig?: (vehicle: Vehicle, type: "b2b" | "b2c") => void;
+  onMoveBackToTransport?: (vehicleId: string) => void;
   isLoading: boolean;
   error: unknown;
   onSort?: (field: string) => void;
@@ -105,6 +106,7 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
   handleChangeStatus,
   onMarkAsDelivered,
   onOpenContractConfig,
+  onMoveBackToTransport,
   isLoading,
   error,
   onSort,
@@ -489,6 +491,20 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                             handleChangeStatus(vehicle.id, "voorraad");
                           }}>
                             Terug naar voorraad
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      
+                      {onMoveBackToTransport && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>Transport</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            onMoveBackToTransport(vehicle.id);
+                          }}>
+                            <Truck className="h-4 w-4 mr-2" />
+                            Terugplaatsen naar Transport
                           </DropdownMenuItem>
                         </>
                       )}

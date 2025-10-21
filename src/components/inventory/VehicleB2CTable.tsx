@@ -29,6 +29,7 @@ interface VehicleB2CTableProps {
   ) => void;
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c") => void;
+  onMoveBackToTransport?: (vehicleId: string) => void;
   isLoading: boolean;
   error: unknown;
   onSort: (field: string) => void;
@@ -46,6 +47,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
   onMarkAsDelivered,
   handleChangeStatus,
   onOpenContractConfig,
+  onMoveBackToTransport,
   isLoading,
   error,
   onSort,
@@ -159,6 +161,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
                   handleChangeStatus={handleChangeStatus}
                   onDeliveryConfirm={() => handleDeliveryClick(vehicle)}
                   onOpenContractConfig={onOpenContractConfig}
+                  onMoveBackToTransport={onMoveBackToTransport}
                 />
               ))
             )}

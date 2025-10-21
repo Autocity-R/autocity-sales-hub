@@ -75,6 +75,28 @@ const InventoryB2C = () => {
     setContractVehicle(null);
   };
 
+  const handleMoveBackToTransport = async (vehicleId: string) => {
+    try {
+      const { deliveredVehicleService } = await import("@/services/deliveredVehicleService");
+      await deliveredVehicleService.moveVehicleBackToTransport(vehicleId);
+      
+      // Refresh queries
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
+      
+      toast({
+        title: "Voertuig teruggeplaatst",
+        description: "Het voertuig is teruggeplaatst naar het Transport menu",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Fout",
+        description: "Er ging iets mis bij het terugplaatsen van het voertuig",
+      });
+    }
+  };
+
   const handleBulkAction = async (action: string, value?: string) => {
     if (action === 'delete') {
       if (!confirm(`Weet u zeker dat u ${selectedVehicles.length} voertuig(en) wilt verwijderen? Dit verwijdert ook alle gerelateerde documenten en data.`)) {
@@ -234,6 +256,7 @@ const InventoryB2C = () => {
             onMarkAsDelivered={handleMarkAsDelivered}
             handleChangeStatus={handleChangeStatus}
             onOpenContractConfig={handleOpenContractConfig}
+            onMoveBackToTransport={handleMoveBackToTransport}
             isLoading={isLoading}
             error={error}
             onSort={handleSort}

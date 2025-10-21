@@ -35,6 +35,47 @@ export class DeliveredVehicleService {
   }
 
   /**
+   * Move a vehicle back to transport status
+   */
+  async moveVehicleBackToTransport(vehicleId: string): Promise<void> {
+    try {
+      console.log(`Moving vehicle ${vehicleId} back to transport`);
+      
+      // First, get the current vehicle to preserve other details
+      const { data: vehicle } = await supabase
+        .from('vehicles')
+        .select('details')
+        .eq('id', vehicleId)
+        .single();
+
+      const currentDetails = (vehicle?.details as any) || {};
+      
+      // Update the vehicle transportStatus and importStatus in details
+      const { error } = await supabase
+        .from('vehicles')
+        .update({ 
+          details: {
+            ...currentDetails,
+            transportStatus: 'onderweg',
+            importStatus: 'onderweg'
+          } as any,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', vehicleId);
+
+      if (error) {
+        console.error('Failed to move vehicle back to transport:', error);
+        throw error;
+      }
+
+      console.log(`Vehicle ${vehicleId} moved back to transport successfully`);
+    } catch (error) {
+      console.error('Error moving vehicle back to transport:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get vehicle details including delivery information
    */
   async getDeliveredVehicleDetails(vehicleId: string): Promise<Vehicle | null> {
