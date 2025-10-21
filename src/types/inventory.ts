@@ -46,7 +46,8 @@ export type SalesStatus =
   | "voorraad" 
   | "verkocht_b2b" 
   | "verkocht_b2c"
-  | "afgeleverd";    // Added the "afgeleverd" status
+  | "afgeleverd"
+  | "leenauto";     // Added for loan cars that shouldn't appear in inventory
 
 export type PaymentStatus =  // New type
   | "niet_betaald"

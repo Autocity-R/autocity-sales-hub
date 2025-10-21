@@ -72,8 +72,10 @@ const Inventory = () => {
       case 'b2b':
         return b2bVehicles;
       default:
-        // Filter out delivered vehicles from all vehicles view
-        return allVehicles.filter(vehicle => vehicle.salesStatus !== 'afgeleverd');
+        // Filter out delivered vehicles and loan cars from all vehicles view
+        return allVehicles.filter(vehicle => 
+          vehicle.salesStatus !== 'afgeleverd' && vehicle.salesStatus !== 'leenauto'
+        );
     }
   }, [activeTab, allVehicles, b2cVehicles, b2bVehicles]);
 
