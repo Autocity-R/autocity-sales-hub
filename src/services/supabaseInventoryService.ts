@@ -257,14 +257,18 @@ export class SupabaseInventoryService {
      // Auto-sync location with transport status
      let locationToSet = vehicle.location;
      
-     // If transport status is 'onderweg' and no location is set, auto-set to 'onderweg'
-     if (vehicle.transportStatus === 'onderweg' && !vehicle.location) {
+     // Auto-sync: Als transportStatus wordt meegegeven, sync de locatie
+     if (vehicle.transportStatus === 'onderweg') {
        locationToSet = 'onderweg';
      }
      
-     // If transport status is 'aangekomen' and no location is set, auto-set to 'showroom'
-     if (vehicle.transportStatus === 'aangekomen' && !vehicle.location) {
+     if (vehicle.transportStatus === 'aangekomen') {
        locationToSet = 'showroom';
+     }
+     
+     // Als de gebruiker expliciet een custom locatie meegeeft, respecteer die
+     if (vehicle.location && vehicle.location !== 'showroom' && vehicle.location !== 'onderweg') {
+       locationToSet = vehicle.location; // Respecteer handmatige custom locaties zoals "werkplaats"
      }
      
      // Prepare update data
