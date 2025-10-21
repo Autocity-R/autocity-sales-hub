@@ -54,18 +54,66 @@ const InventoryB2B = () => {
 
   const handleBulkAction = async (action: string, value?: string) => {
     if (action === 'delete') {
-      // Delete selected vehicles
+      if (!confirm(`Weet u zeker dat u ${selectedVehicles.length} voertuig(en) wilt verwijderen? Dit verwijdert ook alle gerelateerde documenten en data.`)) {
+        return;
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+
       for (const vehicleId of selectedVehicles) {
         try {
-          await supabase.from('vehicles').delete().eq('id', vehicleId);
+          // 1. Haal alle files op voor dit voertuig
+          const { data: files } = await supabase
+            .from('vehicle_files')
+            .select('*')
+            .eq('vehicle_id', vehicleId);
+          
+          // 2. Verwijder alle files uit storage
+          if (files && files.length > 0) {
+            for (const file of files) {
+              try {
+                await supabase.storage
+                  .from('vehicle-documents')
+                  .remove([file.file_path]);
+              } catch (err) {
+                console.warn('Could not delete file from storage:', err);
+              }
+            }
+          }
+          
+          // 3. Verwijder het voertuig (trigger ruimt rest op)
+          const { error } = await supabase
+            .from('vehicles')
+            .delete()
+            .eq('id', vehicleId);
+          
+          if (error) {
+            console.error('Error deleting vehicle:', vehicleId, error);
+            errorCount++;
+          } else {
+            successCount++;
+          }
         } catch (error) {
-          console.error('Error deleting vehicle:', error);
+          console.error('Exception deleting vehicle:', vehicleId, error);
+          errorCount++;
         }
       }
-      toast({
-        title: "Voertuigen verwijderd",
-        description: `${selectedVehicles.length} voertuig(en) succesvol verwijderd`,
-      });
+
+      if (successCount > 0) {
+        toast({
+          title: "Voertuigen verwijderd",
+          description: `${successCount} voertuig(en) en alle gerelateerde data succesvol verwijderd`,
+        });
+      }
+
+      if (errorCount > 0) {
+        toast({
+          variant: "destructive",
+          title: "Fout bij verwijderen",
+          description: `${errorCount} voertuig(en) konden niet worden verwijderd`,
+        });
+      }
     } else if (action === 'status' && value) {
       // Change status of selected vehicles
       console.log(`[BULK_ACTION] Updating ${selectedVehicles.length} vehicles to status: ${value}`);

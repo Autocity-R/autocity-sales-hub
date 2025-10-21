@@ -318,6 +318,10 @@ const Inventory = () => {
 
   const handleBulkAction = async (action: string, value?: string) => {
     if (action === 'delete') {
+      if (!confirm(`Weet u zeker dat u ${selectedVehicles.length} voertuig(en) wilt verwijderen? Dit verwijdert ook alle gerelateerde documenten en data.`)) {
+        return;
+      }
+
       console.log(`[BULK_DELETE] Deleting ${selectedVehicles.length} vehicles from Inventory (voorraad menu)`);
       
       let successCount = 0;
@@ -325,6 +329,26 @@ const Inventory = () => {
       
       for (const vehicleId of selectedVehicles) {
         try {
+          // 1. Haal alle files op voor dit voertuig
+          const { data: files } = await supabase
+            .from('vehicle_files')
+            .select('*')
+            .eq('vehicle_id', vehicleId);
+          
+          // 2. Verwijder alle files uit storage
+          if (files && files.length > 0) {
+            for (const file of files) {
+              try {
+                await supabase.storage
+                  .from('vehicle-documents')
+                  .remove([file.file_path]);
+              } catch (err) {
+                console.warn('Could not delete file from storage:', err);
+              }
+            }
+          }
+          
+          // 3. Verwijder het voertuig (trigger ruimt rest op)
           const { error } = await supabase
             .from('vehicles')
             .delete()
@@ -346,7 +370,7 @@ const Inventory = () => {
       if (successCount > 0) {
         toast({
           title: "Voertuigen verwijderd",
-          description: `${successCount} voertuig(en) succesvol verwijderd uit alle lijsten`,
+          description: `${successCount} voertuig(en) en alle gerelateerde data succesvol verwijderd`,
         });
       }
       
