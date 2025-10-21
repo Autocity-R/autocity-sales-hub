@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, Truck, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,7 @@ import { TransportVehicleTable } from "@/components/transport/TransportVehicleTa
 import { TransportSupplierForm } from "@/components/transport/TransportSupplierForm";
 import { TransportDetails } from "@/components/transport/TransportDetails";
 import { TransportBulkActions } from "@/components/transport/TransportBulkActions";
+import { supabase } from "@/integrations/supabase/client";
 
 const Transport = () => {
   const { toast } = useToast();
@@ -29,6 +30,30 @@ const Transport = () => {
     queryFn: fetchVehicles,
     select: (data) => data.filter(v => v.transportStatus === "onderweg")
   });
+
+  // Real-time subscription for transport changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('vehicles-transport-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'vehicles'
+        },
+        (payload) => {
+          console.log('Vehicle updated (Transport):', payload);
+          // Alleen invalideren als het een transport-relevant voertuig is
+          queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   // Update vehicle mutation
   const updateMutation = useMutation({

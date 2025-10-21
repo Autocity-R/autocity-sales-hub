@@ -34,6 +34,7 @@ interface VehicleTableProps {
     deliveryNotes?: string
   ) => void;
   handleMarkAsArrived?: (vehicleId: string) => void;
+  onMoveBackToTransport?: (vehicleId: string) => void;
   isLoading: boolean;
   error: unknown;
   onSort: (field: string) => void;
@@ -74,6 +75,7 @@ const VehicleRow = memo<{
   ) => void;
   onMarkAsArrived?: (vehicleId: string) => void;
   onOpenDeliveryDialog?: (vehicle: Vehicle) => void;
+  onMoveBackToTransport?: (vehicleId: string) => void;
 }>(({ 
   vehicle, 
   isSelected, 
@@ -83,7 +85,8 @@ const VehicleRow = memo<{
   onChangeStatus, 
   onMarkAsDelivered,
   onMarkAsArrived,
-  onOpenDeliveryDialog
+  onOpenDeliveryDialog,
+  onMoveBackToTransport
 }) => {
   const { hasPriceAccess } = useRoleAccess();
   
@@ -279,6 +282,17 @@ const VehicleRow = memo<{
                 </DropdownMenuItem>
               </>
             )}
+            
+            {onMoveBackToTransport && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Transport</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => onMoveBackToTransport(vehicle.id)}>
+                  <Truck className="h-4 w-4 mr-2" />
+                  Terugplaatsen naar Transport
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>
@@ -296,6 +310,7 @@ export const VehicleTable = memo<VehicleTableProps>(({
   handleChangeStatus,
   handleMarkAsDelivered,
   handleMarkAsArrived,
+  onMoveBackToTransport,
   isLoading,
   error,
   onSort,
@@ -464,6 +479,7 @@ export const VehicleTable = memo<VehicleTableProps>(({
                 onMarkAsDelivered={handleMarkAsDelivered}
                 onMarkAsArrived={handleMarkAsArrived}
                 onOpenDeliveryDialog={handleDeliveryClick}
+                onMoveBackToTransport={onMoveBackToTransport}
               />
             ))
           )}

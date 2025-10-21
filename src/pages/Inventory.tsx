@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
@@ -18,6 +18,7 @@ import { DataSourceIndicator } from "@/components/common/DataSourceIndicator";
 import { useToast } from "@/hooks/use-toast";
 import { InventoryBulkActions } from "@/components/inventory/InventoryBulkActions";
 import { supabase } from "@/integrations/supabase/client";
+import { deliveredVehicleService } from "@/services/deliveredVehicleService";
 
 const Inventory = () => {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
@@ -63,6 +64,30 @@ const Inventory = () => {
     refetchOnMount: true,
     refetchOnWindowFocus: false
   });
+
+  // Real-time subscription for inventory changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('vehicles-inventory-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'vehicles'
+        },
+        (payload) => {
+          console.log('Vehicle changed (Inventory):', payload);
+          // Invalidate alle vehicle queries
+          queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   // Get current vehicles based on active tab
   const currentVehicles = useMemo(() => {
@@ -197,6 +222,29 @@ const Inventory = () => {
       toast({
         title: "Error",
         description: "Failed to mark vehicle as arrived",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleMoveBackToTransport = async (vehicleId: string) => {
+    try {
+      await deliveredVehicleService.moveVehicleBackToTransport(vehicleId);
+      
+      // Refresh all vehicle queries
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['b2bVehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['b2cVehicles'] });
+      
+      toast({
+        title: "Voertuig teruggeplaatst",
+        description: "Het voertuig is teruggeplaatst naar het Transport menu",
+      });
+    } catch (error) {
+      console.error('Error moving vehicle back to transport:', error);
+      toast({
+        title: "Fout",
+        description: "Er is een fout opgetreden bij het terugplaatsen van het voertuig",
         variant: "destructive"
       });
     }
@@ -607,6 +655,7 @@ const Inventory = () => {
               handleSendEmail={handleSendEmail}
               handleChangeStatus={handleChangeStatus}
               handleMarkAsArrived={handleMarkAsArrived}
+              onMoveBackToTransport={handleMoveBackToTransport}
               isLoading={isLoading}
               error={hasError}
               onSort={handleSort}

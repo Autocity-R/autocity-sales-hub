@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FileText, Mail, Plus } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -74,6 +73,30 @@ const InventoryB2C = () => {
     setContractDialogOpen(false);
     setContractVehicle(null);
   };
+
+  // Real-time subscription for B2C changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('vehicles-b2c-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vehicles'
+        },
+        (payload) => {
+          console.log('Vehicle changed (B2C):', payload);
+          queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+          queryClient.invalidateQueries({ queryKey: ['b2cVehicles'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const handleMoveBackToTransport = async (vehicleId: string) => {
     try {

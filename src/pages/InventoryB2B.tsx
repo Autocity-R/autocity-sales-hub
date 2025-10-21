@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { B2BInventoryHeader } from "@/components/inventory/B2BInventoryHeader";
 import { B2BInventoryContent } from "@/components/inventory/B2BInventoryContent";
@@ -51,6 +50,30 @@ const InventoryB2B = () => {
     setContractDialogOpen(false);
     setContractVehicle(null);
   };
+
+  // Real-time subscription for B2B changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('vehicles-b2b-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vehicles'
+        },
+        (payload) => {
+          console.log('Vehicle changed (B2B):', payload);
+          queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+          queryClient.invalidateQueries({ queryKey: ['b2bVehicles'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const handleMoveBackToTransport = async (vehicleId: string) => {
     try {
