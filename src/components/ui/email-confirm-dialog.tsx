@@ -63,47 +63,49 @@ export const EmailConfirmDialog: React.FC<EmailConfirmDialogProps> = ({
             <Mail className="h-5 w-5" />
             E-mail versturen - {getEmailTypeDescription(emailType)}
           </AlertDialogTitle>
-          <AlertDialogDescription className="space-y-4 text-left">
-            <div className="space-y-3">
-              {recipientInfo && recipientEmail && (
-                <div className="flex items-start gap-2">
-                  <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-foreground">{recipientInfo}</div>
-                    <div className="text-xs text-muted-foreground">{recipientEmail}</div>
-                  </div>
-                </div>
-              )}
-              
-              {subject && (
-                <div className="flex items-start gap-2">
-                  <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                  <div className="flex-1">
-                    <div className="text-xs text-muted-foreground">Onderwerp</div>
-                    <div className="text-sm font-medium text-foreground">{subject}</div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {previewContent && (
-              <>
-                <Separator />
-                <div className="space-y-2">
-                  <div className="text-xs font-medium text-muted-foreground">Voorbeeld inhoud:</div>
-                  <div className="bg-muted/50 rounded-md p-3 max-h-[200px] overflow-y-auto">
-                    <div className="text-sm whitespace-pre-wrap text-foreground">
-                      {previewContent.substring(0, 500)}
-                      {previewContent.length > 500 && "..."}
+          <AlertDialogDescription asChild>
+            <div className="space-y-4 text-left">
+              <div className="space-y-3">
+                {recipientInfo && recipientEmail && (
+                  <div className="flex items-start gap-2">
+                    <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-foreground">{recipientInfo}</div>
+                      <div className="text-xs text-muted-foreground">{recipientEmail}</div>
                     </div>
                   </div>
-                </div>
-              </>
-            )}
+                )}
+                
+                {subject && (
+                  <div className="flex items-start gap-2">
+                    <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div className="flex-1">
+                      <div className="text-xs text-muted-foreground">Onderwerp</div>
+                      <div className="text-sm font-medium text-foreground">{subject}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-            <Separator />
-            <div className="text-sm font-medium text-foreground">
-              Weet u zeker dat u deze e-mail wilt versturen?
+              {previewContent && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground">Voorbeeld inhoud:</div>
+                    <div className="bg-muted/50 rounded-md p-3 max-h-[200px] overflow-y-auto">
+                      <div className="text-sm whitespace-pre-wrap text-foreground">
+                        {previewContent.substring(0, 500)}
+                        {previewContent.length > 500 && "..."}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <Separator />
+              <div className="text-sm font-medium text-foreground">
+                Weet u zeker dat u deze e-mail wilt versturen?
+              </div>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>

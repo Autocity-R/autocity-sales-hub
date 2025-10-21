@@ -425,6 +425,7 @@ export const sendEmail = async (type: string, vehicleIds: string[], contractOpti
       'payment_reminder': 'payment_reminder',
       'auto_gereed': 'auto_gereed',
       'happy_call': 'happy_call',
+      'invoice_request': 'invoice_request',
     };
 
     const buttonValue = emailTypeToButtonMap[type];
