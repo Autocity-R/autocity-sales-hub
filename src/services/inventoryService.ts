@@ -321,16 +321,21 @@ export const markVehicleAsDelivered = async (
 
     try {
       // Calculate warranty end date based on package
-      const warrantyMonths = {
+      const warrantyMonthsMap: Record<string, number> = {
+        "geen_garantie_b2b": 0,
         "garantie_wettelijk": 12,
         "6_maanden_autocity": 6,
         "12_maanden_autocity": 12,
         "12_maanden_bovag": 12,
         "12_maanden_bovag_vervangend": 12
-      }[warrantyPackage] || 12;
+      };
+      
+      const warrantyMonths = warrantyMonthsMap[warrantyPackage] ?? 0;
 
-      const warrantyEndDate = new Date(deliveryDate);
-      warrantyEndDate.setMonth(warrantyEndDate.getMonth() + warrantyMonths);
+      const warrantyStartDate = warrantyMonths > 0 ? deliveryDate.toISOString() : null;
+      const warrantyEndDate = warrantyMonths > 0 
+        ? new Date(new Date(deliveryDate).setMonth(new Date(deliveryDate).getMonth() + warrantyMonths)).toISOString()
+        : null;
 
       // Fetch current vehicle to preserve existing details
       const { data: currentVehicle, error: fetchError } = await supabase
@@ -353,8 +358,8 @@ export const markVehicleAsDelivered = async (
         warrantyPackage,
         warrantyPackageName,
         warrantyPackagePrice,
-        warrantyStartDate: deliveryDate.toISOString(),
-        warrantyEndDate: warrantyEndDate.toISOString(),
+        warrantyStartDate,
+        warrantyEndDate,
         deliveryDate: deliveryDate.toISOString()
       };
 

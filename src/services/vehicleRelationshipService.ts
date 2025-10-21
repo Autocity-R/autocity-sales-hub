@@ -19,7 +19,7 @@ export const loadVehicleRelationships = async (vehicles: any[]): Promise<any[]> 
     if (customerIds.length > 0) {
       const { data: customerData } = await supabase
         .from('contacts')
-        .select('id, first_name, last_name, company_name, email, phone, address_street, address_number, address_postal_code, address_city')
+        .select('id, first_name, last_name, company_name, is_car_dealer, email, phone, address_street, address_number, address_postal_code, address_city')
         .in('id', customerIds);
       
       console.log('[RELATIONSHIP_SERVICE] 👥 Fetched contacts:', customerData?.length);
@@ -41,7 +41,8 @@ export const loadVehicleRelationships = async (vehicles: any[]): Promise<any[]> 
           name,
           email: customer.email,
           phone: customer.phone,
-          address
+          address,
+          isCarDealer: !!customer.is_car_dealer
         };
         
         // 🔍 BELANGRIJKE LOG voor test-klant
@@ -58,7 +59,7 @@ export const loadVehicleRelationships = async (vehicles: any[]): Promise<any[]> 
     if (supplierIds.length > 0) {
       const { data: supplierData } = await supabase
         .from('contacts')
-        .select('id, first_name, last_name, company_name, email, phone, address_street, address_number, address_postal_code, address_city')
+        .select('id, first_name, last_name, company_name, is_car_dealer, email, phone, address_street, address_number, address_postal_code, address_city')
         .in('id', supplierIds);
       
       supplierData?.forEach(supplier => {
@@ -76,7 +77,8 @@ export const loadVehicleRelationships = async (vehicles: any[]): Promise<any[]> 
             name,
             email: supplier.email,
             phone: supplier.phone,
-            address
+            address,
+            isCarDealer: !!supplier.is_car_dealer
           }
         });
       });
