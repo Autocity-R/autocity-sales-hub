@@ -213,15 +213,13 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
           </>
         )}
         
-        {vehicle.paymentStatus === "volledig_betaald" && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onDeliveryConfirm(vehicle.id)}>
-              <Car className="h-4 w-4 mr-2" />
-              Auto afgeleverd
-            </DropdownMenuItem>
-          </>
-        )}
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => onDeliveryConfirm(vehicle.id)}>
+            <Car className="h-4 w-4 mr-2" />
+            Auto afgeleverd
+          </DropdownMenuItem>
+        </>
       </DropdownMenuContent>
     </DropdownMenu>
 

@@ -514,19 +514,17 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                         Volledig betaald
                       </DropdownMenuItem>
                       
-                      {/* Add the Afgeleverd option only for fully paid vehicles */}
-                      {vehicle.paymentStatus === "volledig_betaald" && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={(e) => handleDeliveryClick(vehicle, e)}
-                            className="text-red-500 focus:text-red-500"
-                          >
-                            <Truck className="h-4 w-4 mr-2" />
-                            Afgeleverd
-                          </DropdownMenuItem>
-                        </>
-                      )}
+                      {/* Afgeleverd option - always available */}
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={(e) => handleDeliveryClick(vehicle, e)}
+                          className="text-red-500 focus:text-red-500"
+                        >
+                          <Truck className="h-4 w-4 mr-2" />
+                          Afgeleverd
+                        </DropdownMenuItem>
+                      </>
                     </DropdownMenuContent>
                   </DropdownMenu>
                   </div>
