@@ -11,13 +11,15 @@ interface FilesTabProps {
   onFileUpload: (file: File, category: FileCategory) => void;
   onFileDelete: (fileId: string, filePath: string) => void;
   onSendEmail?: (type: string) => void;
+  readOnly?: boolean;
 }
 
 export const FilesTab: React.FC<FilesTabProps> = ({ 
   files, 
   onFileUpload,
   onFileDelete,
-  onSendEmail
+  onSendEmail,
+  readOnly = false
 }) => {
   return (
     <div className="grid grid-cols-1 gap-4">
@@ -32,10 +34,12 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                 {files.filter(f => f.category === "damage").length}
               </Badge>
             </div>
-            <FileUploader 
-              onFileUpload={(file) => onFileUpload(file, "damage")} 
-              acceptedFileTypes=".jpg,.jpeg,.png,.pdf"
-            />
+            {!readOnly && (
+              <FileUploader 
+                onFileUpload={(file) => onFileUpload(file, "damage")} 
+                acceptedFileTypes=".jpg,.jpeg,.png,.pdf"
+              />
+            )}
             <p className="text-sm text-muted-foreground">
               Upload schaderapport documenten voor intern gebruik.
             </p>
@@ -66,14 +70,16 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                           <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
                         </Button>
                       )}
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        onClick={() => onFileDelete(file.id, file.filePath || '')}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      {!readOnly && (
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => onFileDelete(file.id, file.filePath || '')}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -92,10 +98,12 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                 {files.filter(f => f.category === "cmr").length}
               </Badge>
             </div>
-            <FileUploader 
-              onFileUpload={(file) => onFileUpload(file, "cmr")} 
-              acceptedFileTypes=".pdf,.doc,.docx"
-            />
+            {!readOnly && (
+              <FileUploader 
+                onFileUpload={(file) => onFileUpload(file, "cmr")} 
+                acceptedFileTypes=".pdf,.doc,.docx"
+              />
+            )}
             <p className="text-sm text-muted-foreground">
               Upload CMR documenten voor verzending naar leverancier.
             </p>
@@ -126,14 +134,16 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                           <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
                         </Button>
                       )}
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        onClick={() => onFileDelete(file.id, file.filePath || '')}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      {!readOnly && (
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => onFileDelete(file.id, file.filePath || '')}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -152,10 +162,12 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                 {files.filter(f => f.category === "pickup").length}
               </Badge>
             </div>
-            <FileUploader 
-              onFileUpload={(file) => onFileUpload(file, "pickup")} 
-              acceptedFileTypes=".pdf,.doc,.docx"
-            />
+            {!readOnly && (
+              <FileUploader 
+                onFileUpload={(file) => onFileUpload(file, "pickup")} 
+                acceptedFileTypes=".pdf,.doc,.docx"
+              />
+            )}
             <p className="text-sm text-muted-foreground">
               Upload pickup documenten voor verzending naar transporteur.
             </p>
@@ -186,14 +198,16 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                           <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
                         </Button>
                       )}
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        onClick={() => onFileDelete(file.id, file.filePath || '')}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      {!readOnly && (
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => onFileDelete(file.id, file.filePath || '')}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -217,7 +231,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
               Verstuur het CMR document naar de leverancier.
             </p>
             <Button 
-              disabled={!files.some(file => file.category === "cmr")}
+              disabled={readOnly || !files.some(file => file.category === "cmr")}
               onClick={() => onSendEmail?.('cmr_supplier')}
               className="w-full"
             >
@@ -237,7 +251,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
               Verstuur het pickup document naar de transporteur.
             </p>
             <Button 
-              disabled={!files.some(file => file.category === "pickup")}
+              disabled={readOnly || !files.some(file => file.category === "pickup")}
               onClick={() => onSendEmail?.('transport_pickup')}
               className="w-full"
             >
