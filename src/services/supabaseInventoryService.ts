@@ -219,7 +219,10 @@ export class SupabaseInventoryService {
       salespersonId: vehicle.salespersonId ?? existingDetails.salespersonId ?? null,
       salespersonName: vehicle.salespersonName ?? existingDetails.salespersonName ?? null,
       mainPhotoUrl: vehicle.mainPhotoUrl ?? existingDetails.mainPhotoUrl ?? null,
-      photos: vehicle.photos ?? existingDetails.photos ?? []
+      photos: vehicle.photos ?? existingDetails.photos ?? [],
+      // CRITICAL: Preserve trade-in status
+      isTradeIn: vehicle.details?.isTradeIn ?? existingDetails.isTradeIn ?? false,
+      tradeInDate: vehicle.details?.tradeInDate ?? existingDetails.tradeInDate ?? null
     };
 
      // CRITICAL: Protect sold status from being accidentally changed
@@ -479,7 +482,10 @@ export class SupabaseInventoryService {
        purchasedById: vehicleData.purchasedById || null,
        purchasedByName: vehicleData.purchasedByName || null,
        mainPhotoUrl: vehicleData.mainPhotoUrl || null,
-       photos: vehicleData.photos || []
+       photos: vehicleData.photos || [],
+       // CRITICAL: Save trade-in status
+       isTradeIn: vehicleData.details?.isTradeIn || false,
+       tradeInDate: vehicleData.details?.isTradeIn ? new Date().toISOString() : null
      };
     
     try {
