@@ -656,8 +656,14 @@ export const bulkUpdateVehicles = async (vehicles: Vehicle[]): Promise<void> => 
       return;
     }
 
-    // In a real implementation, this would bulk update vehicles in Supabase
-    console.log('Bulk update functionality not implemented yet');
+    // Update each vehicle in parallel via Supabase service
+    const updatePromises = vehicles.map(vehicle => 
+      supabaseInventoryService.updateVehicle(vehicle)
+    );
+    
+    await Promise.all(updatePromises);
+    
+    console.log(`✅ Successfully bulk updated ${vehicles.length} vehicles`);
   } catch (error) {
     console.error('Error in bulkUpdateVehicles:', error);
     throw error;
