@@ -16,6 +16,10 @@ export interface SalesData {
   normalPurchaseCount: number;    // Aantal normale inkoop verkopen
   tradeInRevenue: number;         // Omzet uit inruil
   normalPurchaseRevenue: number;  // Omzet uit normale inkoop
+  tradeInProfit: number;          // Winst uit inruil
+  normalPurchaseProfit: number;   // Winst uit normale inkoop
+  tradeInProfitMargin: number;    // Winstmarge inruil (%)
+  normalPurchaseProfitMargin: number; // Winstmarge normale inkoop (%)
   
   vehicles: Array<{
     id: string;
@@ -130,6 +134,25 @@ export const salesDataService = {
       (sum, v) => sum + (v.selling_price || 0), 0
     );
 
+    // Calculate trade-in costs and profits
+    const tradeInCost = tradeInVehicles.reduce((sum, v) => {
+      if (!v.details || typeof v.details !== 'object') return sum;
+      const details = v.details as any;
+      return sum + (details.purchasePrice || 0);
+    }, 0);
+
+    const normalPurchaseCost = normalPurchaseVehicles.reduce((sum, v) => {
+      if (!v.details || typeof v.details !== 'object') return sum;
+      const details = v.details as any;
+      return sum + (details.purchasePrice || 0);
+    }, 0);
+
+    const tradeInProfit = tradeInRevenue - tradeInCost;
+    const normalPurchaseProfit = normalPurchaseRevenue - normalPurchaseCost;
+    
+    const tradeInProfitMargin = tradeInRevenue > 0 ? (tradeInProfit / tradeInRevenue) * 100 : 0;
+    const normalPurchaseProfitMargin = normalPurchaseRevenue > 0 ? (normalPurchaseProfit / normalPurchaseRevenue) * 100 : 0;
+
     return {
       totalVehicles,
       totalRevenue,
@@ -143,6 +166,10 @@ export const salesDataService = {
       normalPurchaseCount,
       tradeInRevenue,
       normalPurchaseRevenue,
+      tradeInProfit,
+      normalPurchaseProfit,
+      tradeInProfitMargin,
+      normalPurchaseProfitMargin,
       vehicles: filteredVehicles || [],
     };
   },
