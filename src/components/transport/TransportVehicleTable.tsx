@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { ChevronRight, FileText, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { 
   Table, 
   TableBody, 
@@ -73,10 +74,21 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
   };
 
   const getPickupStatus = (vehicle: Vehicle) => {
-    if (vehicle.cmrSent) {
-      return "Pickup ready";
+    const hasPickupDocument = vehicle.details?.pickupDocumentSent || vehicle.cmrSent;
+    
+    if (hasPickupDocument) {
+      return {
+        label: "Transport verstuurd",
+        variant: "default" as const,
+        className: "bg-green-100 text-green-800 border-green-300 hover:bg-green-100"
+      };
     }
-    return "Niet ready";
+    
+    return {
+      label: "Niet ready",
+      variant: "destructive" as const,
+      className: "bg-red-100 text-red-800 border-red-300 hover:bg-red-100"
+    };
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -149,7 +161,19 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
               <TableCell className="align-middle">{vehicle.licenseNumber || "Onbekend"}</TableCell>
               <TableCell className="align-middle truncate max-w-32">{vehicle.vin}</TableCell>
               <TableCell className="align-middle">€{vehicle.purchasePrice.toLocaleString('nl-NL')}</TableCell>
-              <TableCell className="align-middle">{getPickupStatus(vehicle)}</TableCell>
+              <TableCell className="align-middle">
+                {(() => {
+                  const status = getPickupStatus(vehicle);
+                  return (
+                    <Badge 
+                      variant={status.variant}
+                      className={status.className}
+                    >
+                      {status.label}
+                    </Badge>
+                  );
+                })()}
+              </TableCell>
               <TableCell className="align-middle">{formatImportStatus(vehicle.importStatus)}</TableCell>
               <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
                 <div className="flex justify-center space-x-2">

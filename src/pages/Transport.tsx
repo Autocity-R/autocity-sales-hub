@@ -98,9 +98,31 @@ const Transport = () => {
 
   // Email sending mutation
   const emailMutation = useMutation({
-    mutationFn: ({ type, vehicleIds }: { type: string, vehicleIds: string[] }) => 
-      sendEmail(type, vehicleIds),
+    mutationFn: async ({ type, vehicleIds }: { type: string, vehicleIds: string[] }) => {
+      // Send the email first
+      await sendEmail(type, vehicleIds);
+      
+      // If this is a pickup document, update the vehicle to mark document as sent
+      if (type === "transport_pickup") {
+        const vehiclesToUpdate = vehicles
+          .filter(v => vehicleIds.includes(v.id))
+          .map(v => ({
+            ...v,
+            details: {
+              ...v.details,
+              pickupDocumentSent: true,
+              pickupDocumentSentDate: new Date().toISOString()
+            }
+          }));
+        
+        // Update vehicles in batch
+        if (vehiclesToUpdate.length > 0) {
+          await bulkUpdateVehicles(vehiclesToUpdate);
+        }
+      }
+    },
     onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
       toast({
         title: "Pickup document verstuurd",
         description: "De pickup documenten zijn succesvol naar de transporteur verstuurd.",

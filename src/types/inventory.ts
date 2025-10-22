@@ -89,6 +89,11 @@ export interface VehicleDetails {
   purchasedById?: string;
   purchasedByName?: string;
   
+  // Transport/Pickup tracking fields
+  pickupDocumentSent?: boolean;
+  pickupDocumentSentDate?: string;
+  pickupDocumentSentBy?: string;
+  
   // Other details
   [key: string]: any;
 }
