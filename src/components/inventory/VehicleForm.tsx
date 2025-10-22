@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -130,10 +131,57 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left column */}
         <div className="space-y-4">
-          <SupplierSelector
-            value={formData.supplierId}
-            onValueChange={(value) => handleChange('supplierId', value)}
-          />
+          {/* Inruil Toggle */}
+          <div className="space-y-2 col-span-2">
+            <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg border">
+              <Switch
+                id="isTradeIn"
+                checked={formData.details?.isTradeIn || false}
+                onCheckedChange={(checked) => {
+                  setFormData({
+                    ...formData,
+                    details: {
+                      ...formData.details,
+                      isTradeIn: checked,
+                      tradeInDate: checked ? new Date().toISOString() : undefined,
+                    },
+                    supplierId: checked ? undefined : formData.supplierId
+                  });
+                }}
+              />
+              <div className="flex-1">
+                <Label htmlFor="isTradeIn" className="font-semibold cursor-pointer">
+                  Dit is een inruil voertuig
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Voertuig is ingeruild, niet ingekocht bij leverancier
+                </p>
+              </div>
+              {formData.details?.isTradeIn && (
+                <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
+                  Inruil
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          {/* Leverancier - alleen tonen als NIET inruil */}
+          {!formData.details?.isTradeIn && (
+            <SupplierSelector
+              value={formData.supplierId}
+              onValueChange={(value) => handleChange('supplierId', value)}
+            />
+          )}
+
+          {/* Als inruil: toon melding */}
+          {formData.details?.isTradeIn && (
+            <div className="space-y-2">
+              <Label>Leverancier</Label>
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-md text-sm text-emerald-700">
+                Geen leverancier - dit is een inruil voertuig
+              </div>
+            </div>
+          )}
           
           {/* Brand & Model */}
           <div className="space-y-2">
@@ -232,7 +280,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
 
           {/* Inkoper */}
           <div className="space-y-2">
-            <Label>Inkoper *</Label>
+            <Label>{formData.details?.isTradeIn ? 'Inruil door' : 'Inkoper'} *</Label>
             <Select
               value={formData.purchasedById || undefined}
               onValueChange={(value) => {

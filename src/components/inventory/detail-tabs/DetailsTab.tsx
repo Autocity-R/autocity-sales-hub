@@ -5,6 +5,7 @@ import { nl } from "date-fns/locale";
 import { 
   CalendarIcon, CircleCheck, MapPin, Euro, User, Wrench, Palette
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Vehicle, ImportStatus, TransportStatus, LocationStatus, DamageStatus, WorkshopStatus, PaintStatus } from "@/types/inventory";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,41 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Left column */}
       <div className="space-y-5">
+        {/* Inruil Informatie */}
+        {editedVehicle.details?.isTradeIn && (
+          <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
+            <div className="flex items-center gap-2 mb-3">
+              <Badge variant="outline" className="bg-emerald-100 text-emerald-700">
+                Inruil
+              </Badge>
+              <h4 className="font-semibold text-emerald-900">
+                Inruil Voertuig
+              </h4>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Inruil datum:</span>
+                <span className="font-medium">
+                  {editedVehicle.details.tradeInDate 
+                    ? new Date(editedVehicle.details.tradeInDate).toLocaleDateString('nl-NL')
+                    : 'Niet opgegeven'
+                  }
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Deal gesloten door:</span>
+                <span className="font-medium">{editedVehicle.purchasedByName || 'Onbekend'}</span>
+              </div>
+              {editedVehicle.details.tradeInNotes && (
+                <div className="pt-2 border-t border-emerald-200">
+                  <span className="text-muted-foreground block mb-1">Notities:</span>
+                  <p className="text-sm">{editedVehicle.details.tradeInNotes}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Brand & Model */}
         <div className="space-y-4">
           <div className="space-y-2">

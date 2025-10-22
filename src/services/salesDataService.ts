@@ -10,6 +10,13 @@ export interface SalesData {
   b2bCount: number;
   b2cCount: number;
   averageSalePrice: number;
+  
+  // Inruil tracking
+  tradeInCount: number;           // Aantal inruil verkopen
+  normalPurchaseCount: number;    // Aantal normale inkoop verkopen
+  tradeInRevenue: number;         // Omzet uit inruil
+  normalPurchaseRevenue: number;  // Omzet uit normale inkoop
+  
   vehicles: Array<{
     id: string;
     brand: string;
@@ -99,6 +106,30 @@ export const salesDataService = {
 
     const averageSalePrice = totalVehicles > 0 ? totalRevenue / totalVehicles : 0;
 
+    // Filter inruil vs normale inkoop
+    const tradeInVehicles = filteredVehicles?.filter(v => {
+      if (!v.details || typeof v.details !== 'object' || Array.isArray(v.details)) return false;
+      const details = v.details as Record<string, any>;
+      return details.isTradeIn === true;
+    }) || [];
+
+    const normalPurchaseVehicles = filteredVehicles?.filter(v => {
+      if (!v.details || typeof v.details !== 'object' || Array.isArray(v.details)) return true;
+      const details = v.details as Record<string, any>;
+      return !details.isTradeIn;
+    }) || [];
+
+    const tradeInCount = tradeInVehicles.length;
+    const normalPurchaseCount = normalPurchaseVehicles.length;
+
+    const tradeInRevenue = tradeInVehicles.reduce(
+      (sum, v) => sum + (v.selling_price || 0), 0
+    );
+
+    const normalPurchaseRevenue = normalPurchaseVehicles.reduce(
+      (sum, v) => sum + (v.selling_price || 0), 0
+    );
+
     return {
       totalVehicles,
       totalRevenue,
@@ -108,6 +139,10 @@ export const salesDataService = {
       b2bCount,
       b2cCount,
       averageSalePrice,
+      tradeInCount,
+      normalPurchaseCount,
+      tradeInRevenue,
+      normalPurchaseRevenue,
       vehicles: filteredVehicles || [],
     };
   },

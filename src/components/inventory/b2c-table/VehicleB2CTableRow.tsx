@@ -148,11 +148,18 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
         {vehicle.customerName || "Onbekend"}
       </TableCell>
       <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
-        <PurchaserQuickEdit
-          vehicleId={vehicle.id}
-          currentPurchaserId={vehicle.purchasedById}
-          currentPurchaserName={vehicle.purchasedByName}
-        />
+        <div className="flex flex-col gap-1">
+          <PurchaserQuickEdit
+            vehicleId={vehicle.id}
+            currentPurchaserId={vehicle.purchasedById}
+            currentPurchaserName={vehicle.purchasedByName}
+          />
+          {vehicle.details?.isTradeIn && (
+            <Badge variant="outline" className="w-fit bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
+              Inruil
+            </Badge>
+          )}
+        </div>
       </TableCell>
       <TableCell className="align-middle">
         {renderImportStatusBadge(vehicle.importStatus)}

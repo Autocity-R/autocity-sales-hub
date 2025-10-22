@@ -12,6 +12,7 @@ import {
   Building2,
   BarChart3
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -168,6 +169,31 @@ export const SalesAnalytics = () => {
             </p>
           </CardContent>
         </Card>
+
+        {/* Inruil Voertuigen */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Inruil Voertuigen</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-600">
+              {salesData?.tradeInCount || 0}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              van {salesData?.totalVehicles || 0} totaal verkocht
+            </p>
+            <div className="mt-2 flex items-center gap-2 text-xs">
+              <Badge variant="outline" className="bg-emerald-50 text-emerald-700">
+                {salesData?.tradeInRevenue 
+                  ? formatCurrency(salesData.tradeInRevenue)
+                  : '€0'
+                }
+              </Badge>
+              <span className="text-muted-foreground">inruil omzet</span>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Charts */}
@@ -239,6 +265,67 @@ export const SalesAnalytics = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Inruil vs Normale Inkoop Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Inruil vs Normale Inkoop
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart
+                data={[
+                  {
+                    name: "Verkopen",
+                    "Inruil": salesData?.tradeInCount || 0,
+                    "Normale Inkoop": salesData?.normalPurchaseCount || 0,
+                  },
+                  {
+                    name: "Omzet",
+                    "Inruil": Math.round((salesData?.tradeInRevenue || 0) / 1000),
+                    "Normale Inkoop": Math.round((salesData?.normalPurchaseRevenue || 0) / 1000),
+                  }
+                ]}
+              >
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis 
+                  dataKey="name" 
+                  className="text-xs"
+                />
+                <YAxis className="text-xs" />
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--background))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px'
+                  }}
+                  formatter={(value: number, name: string) => {
+                    if (name.includes("Omzet")) {
+                      return [`€${(value * 1000).toLocaleString('nl-NL')}`, name];
+                    }
+                    return [value, name];
+                  }}
+                />
+                <Legend />
+                <Bar 
+                  dataKey="Inruil" 
+                  fill="#10b981" 
+                  name="Inruil" 
+                  radius={[8, 8, 0, 0]}
+                />
+                <Bar 
+                  dataKey="Normale Inkoop" 
+                  fill="hsl(var(--primary))" 
+                  name="Normale Inkoop" 
+                  radius={[8, 8, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Detailed Vehicle List */}
@@ -266,15 +353,22 @@ export const SalesAnalytics = () => {
                           {vehicle.brand} {vehicle.model}
                         </td>
                         <td className="p-2">
-                          <span
-                            className={`px-2 py-1 rounded text-xs ${
-                              vehicle.status === "verkocht_b2b"
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-green-100 text-green-800"
-                            }`}
-                          >
-                            {vehicle.status === "verkocht_b2b" ? "B2B" : "B2C"}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`px-2 py-1 rounded text-xs ${
+                                vehicle.status === "verkocht_b2b"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-green-100 text-green-800"
+                              }`}
+                            >
+                              {vehicle.status === "verkocht_b2b" ? "B2B" : "B2C"}
+                            </span>
+                            {vehicle.details?.isTradeIn && (
+                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                                Inruil
+                              </Badge>
+                            )}
+                          </div>
                         </td>
                         <td className="p-2 text-right font-medium">
                           {formatCurrency(vehicle.selling_price || 0)}

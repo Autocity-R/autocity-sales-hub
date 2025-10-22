@@ -89,6 +89,11 @@ export interface VehicleDetails {
   purchasedById?: string;
   purchasedByName?: string;
   
+  // Inruil tracking
+  isTradeIn?: boolean;              // TRUE = inruil, FALSE = normale inkoop
+  tradeInDate?: string;             // Datum van inruil
+  tradeInNotes?: string;            // Optionele notities
+  
   // Transport/Pickup tracking fields
   pickupDocumentSent?: boolean;
   pickupDocumentSentDate?: string;
