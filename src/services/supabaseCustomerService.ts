@@ -10,7 +10,7 @@ export class SupabaseCustomerService {
       let query = supabase
         .from('contacts')
         .select('*')
-        .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,additional_emails.cs.{${searchTerm}}`)
+        .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`)
         .order('created_at', { ascending: false })
         .limit(100);
 
