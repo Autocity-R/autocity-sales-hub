@@ -10,9 +10,9 @@ export class SupabaseCustomerService {
       let query = supabase
         .from('contacts')
         .select('*')
-        .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%`)
+        .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,additional_emails.cs.{${searchTerm}}`)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(100);
 
       if (type === 'customer') {
         // For customers, filter only b2b and b2c (exclude suppliers and transporters)

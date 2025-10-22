@@ -45,7 +45,7 @@ export const SearchableCustomerSelector: React.FC<SearchableCustomerSelectorProp
     }
 
     searchTimeoutRef.current = setTimeout(async () => {
-      if (searchTerm.length >= 2) {
+      if (searchTerm.length >= 1) {
         setLoading(true);
         try {
           const results = await supabaseCustomerService.searchContacts(searchTerm, customerType);
@@ -65,7 +65,7 @@ export const SearchableCustomerSelector: React.FC<SearchableCustomerSelectorProp
       } else {
         setCustomers([]);
       }
-    }, 300);
+    }, 200);
 
     return () => {
       if (searchTimeoutRef.current) {
@@ -81,7 +81,7 @@ const loadInitialCustomers = async () => {
     const results = customerType
       ? await supabaseCustomerService.getContactsByType(customerType)
       : await supabaseCustomerService.getAllContacts();
-    setCustomers(results.slice(0, 10)); // Limit initial results
+    setCustomers(results.slice(0, 50)); // Show more initial results
   } catch (error) {
     console.error("Error loading customers:", error);
     toast({
@@ -170,24 +170,24 @@ const loadInitialCustomers = async () => {
               <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[400px] p-0" align="start">
-            <Command>
+          <PopoverContent className="w-[500px] p-0 bg-background z-50" align="start">
+            <Command shouldFilter={false}>
               <CommandInput
-                placeholder="Zoek klanten..."
+                placeholder="Zoek op naam, bedrijf, email of telefoonnummer..."
                 value={searchTerm}
                 onValueChange={setSearchTerm}
               />
-              <CommandList>
+              <CommandList className="max-h-[400px] overflow-y-auto">
                 {loading && (
                   <div className="p-4 text-center text-sm text-muted-foreground">
                     Zoeken...
                   </div>
                 )}
                 
-                {!loading && customers.length === 0 && searchTerm.length >= 2 && (
+                {!loading && customers.length === 0 && searchTerm.length >= 1 && (
                   <CommandEmpty>
-                    <div className="text-center space-y-2">
-                      <p>Geen klanten gevonden</p>
+                    <div className="text-center space-y-2 p-4">
+                      <p>Geen klanten gevonden voor "{searchTerm}"</p>
                       <Button 
                         variant="outline" 
                         size="sm"
@@ -237,8 +237,8 @@ const loadInitialCustomers = async () => {
                   </CommandGroup>
                 )}
 
-                {!loading && searchTerm.length < 2 && (
-                  <div className="p-4">
+                {!loading && customers.length > 0 && searchTerm.length === 0 && (
+                  <div className="p-4 border-t">
                     <Button 
                       variant="outline" 
                       size="sm"
