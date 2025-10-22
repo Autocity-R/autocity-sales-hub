@@ -51,6 +51,43 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Left column */}
       <div className="space-y-5">
+        {/* Trade-in Toggle */}
+        <div className="space-y-2">
+          <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg border">
+            <Switch
+              id="isTradeIn"
+              checked={Boolean(editedVehicle.details?.isTradeIn)}
+              onCheckedChange={(checked) => {
+                const newDetails = {
+                  ...(editedVehicle.details || {}),
+                  isTradeIn: checked,
+                  tradeInDate: checked
+                    ? (editedVehicle.details?.tradeInDate || new Date().toISOString())
+                    : undefined,
+                };
+                handleChange('details', newDetails as any);
+                if (checked) {
+                  handleChange('supplierId', null);
+                }
+              }}
+              disabled={readOnly}
+            />
+            <div className="flex-1">
+              <Label htmlFor="isTradeIn" className="font-semibold cursor-pointer">
+                Dit is een inruil voertuig
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Voertuig is ingeruild, niet ingekocht bij leverancier
+              </p>
+            </div>
+            {editedVehicle.details?.isTradeIn && (
+              <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
+                Inruil
+              </Badge>
+            )}
+          </div>
+        </div>
+
         {/* Inruil Informatie */}
         {editedVehicle.details?.isTradeIn && (
           <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
@@ -420,7 +457,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
           <div className="space-y-2">
             <Label className="text-sm font-medium flex items-center">
               <User className="h-4 w-4 mr-1 text-muted-foreground" />
-              Inkoper
+              {editedVehicle.details?.isTradeIn ? 'Inruil door' : 'Inkoper'}
             </Label>
             <Select 
               value={editedVehicle.purchasedById || "none"} 

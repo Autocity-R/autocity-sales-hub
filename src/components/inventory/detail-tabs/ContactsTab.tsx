@@ -87,6 +87,12 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({ vehicle, onUpdate }) =
     <div className="space-y-6">
       <h3 className="text-lg font-medium">Contacten</h3>
       
+      {vehicle.details?.isTradeIn && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-md text-sm text-emerald-700">
+          <strong>Dit is een inruil voertuig.</strong> Leverancier blijft bewust leeg.
+        </div>
+      )}
+      
       <div className="space-y-6">
         <Card>
           <CardHeader>
