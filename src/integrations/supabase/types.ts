@@ -2226,7 +2226,11 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          manual_customer_name: string | null
+          manual_customer_phone: string | null
           manual_license_number: string | null
+          manual_vehicle_brand: string | null
+          manual_vehicle_model: string | null
           resolution_date: string | null
           resolution_description: string | null
           updated_at: string
@@ -2238,7 +2242,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          manual_customer_name?: string | null
+          manual_customer_phone?: string | null
           manual_license_number?: string | null
+          manual_vehicle_brand?: string | null
+          manual_vehicle_model?: string | null
           resolution_date?: string | null
           resolution_description?: string | null
           updated_at?: string
@@ -2250,7 +2258,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          manual_customer_name?: string | null
+          manual_customer_phone?: string | null
           manual_license_number?: string | null
+          manual_vehicle_brand?: string | null
+          manual_vehicle_model?: string | null
           resolution_date?: string | null
           resolution_description?: string | null
           updated_at?: string
