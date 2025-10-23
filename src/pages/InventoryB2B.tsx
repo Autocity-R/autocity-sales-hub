@@ -54,6 +54,26 @@ const InventoryB2B = () => {
     setContractDialogOpen(true);
   };
 
+  // Wrapper to handle both B2B (3 params) and general (6 params) email patterns
+  const handleSendEmailWrapper = (
+    type: string,
+    recipientEmail?: string,
+    recipientName?: string,
+    subject?: string,
+    vehicleId?: string,
+    contractOptions?: any
+  ) => {
+    // Detect if it's B2B pattern (type + vehicleId) or general pattern (all 6 params)
+    if (!recipientName && !subject && recipientEmail && !vehicleId) {
+      // B2B pattern: (type, vehicleId, contractOptions)
+      const actualVehicleId = recipientEmail; // Second param is vehicleId in B2B pattern
+      handleSendEmail(type, actualVehicleId, contractOptions);
+    } else {
+      // General pattern from VehicleDetails: (type, recipientEmail, recipientName, subject, vehicleId, contractOptions)
+      handleSendEmail(type, vehicleId || '', contractOptions);
+    }
+  };
+
   const handleSendContract = (options: ContractOptions) => {
     if (!contractVehicle) return;
     
@@ -255,7 +275,7 @@ const InventoryB2B = () => {
           toggleSelectAll={toggleSelectAll}
           toggleSelectVehicle={toggleSelectVehicle}
           setSelectedVehicle={setSelectedVehicle}
-          onSendEmail={handleSendEmail}
+          onSendEmail={handleSendEmailWrapper}
           onUpdateSellingPrice={handleUpdateSellingPrice}
           onUpdatePaymentStatus={handleUpdatePaymentStatus}
           onChangeStatus={handleChangeStatus}

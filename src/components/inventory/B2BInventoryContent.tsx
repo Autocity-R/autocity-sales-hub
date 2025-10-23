@@ -17,7 +17,14 @@ interface B2BInventoryContentProps {
   toggleSelectAll: (checked: boolean) => void;
   toggleSelectVehicle: (vehicleId: string, checked: boolean) => void;
   setSelectedVehicle: (vehicle: Vehicle | null) => void;
-  onSendEmail: (type: string, vehicleId: string) => void;
+  onSendEmail: (
+    type: string,
+    recipientEmail?: string,
+    recipientName?: string,
+    subject?: string,
+    vehicleId?: string,
+    contractOptions?: any
+  ) => void;
   onUpdateSellingPrice: (vehicleId: string, price: number) => void;
   onUpdatePaymentStatus: (vehicleId: string, status: PaymentStatus) => void;
   onChangeStatus: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;

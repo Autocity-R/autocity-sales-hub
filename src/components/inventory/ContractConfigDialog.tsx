@@ -322,10 +322,11 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
     } catch (error) {
       console.error("Error saving warranty package:", error);
       toast({
-        title: "Waarschuwing",
-        description: "Contract verstuurd maar kon garantiepakket niet opslaan",
+        title: "Fout",
+        description: "Kon garantiepakket niet opslaan",
         variant: "destructive"
       });
+      throw error; // Re-throw to stop the contract send flow
     }
   };
 
