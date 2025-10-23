@@ -407,6 +407,7 @@ const generateHtmlContract = (
             font-size: 12px;
             word-break: break-word;
             overflow-wrap: anywhere;
+            text-align: left;
         }
         
         .info-value {
@@ -417,13 +418,15 @@ const generateHtmlContract = (
             overflow-wrap: anywhere;
             white-space: normal;
             hyphens: auto;
+            padding-left: 5px;
         }
         
         .vehicle-grid {
             display: grid;
-            grid-template-columns: 160px 1fr;
-            gap: 6px 12px;
+            grid-template-columns: auto 1fr auto 1fr;
+            gap: 8px 20px;
             padding: 0;
+            align-items: baseline;
         }
         
         .price-section {
@@ -623,35 +626,36 @@ const generateHtmlContract = (
                 <div class="section-header">Voertuig</div>
                 <div class="section-content">
                     <div class="vehicle-grid">
-                        <div>
-                            <div class="info-item">
-                                <span class="info-label">Merk:</span>
-                                <span class="info-value">${vehicle.brand}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Model:</span>
-                                <span class="info-value">${vehicle.model}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Kenteken:</span>
-                                <span class="info-value">${vehicle.licenseNumber}</span>
-                            </div>
+                        <div class="info-item">
+                            <span class="info-label">Merk:</span>
+                            <span class="info-value">${vehicle.brand}</span>
                         </div>
-                        <div>
-                            <div class="info-item">
-                                <span class="info-label">VIN:</span>
-                                <span class="info-value">${vehicle.vin}</span>
-                            </div>
-                            ${vehicle.year ? `
-                            <div class="info-item">
-                                <span class="info-label">Bouwjaar:</span>
-                                <span class="info-value">${vehicle.year}</span>
-                            </div>
-                            ` : ''}
-                            <div class="info-item">
-                                <span class="info-label">KM Stand:</span>
-                                <span class="info-value">${vehicle.mileage?.toLocaleString('nl-NL')} km</span>
-                            </div>
+                        <div class="info-item">
+                            <span class="info-label">VIN:</span>
+                            <span class="info-value">${vehicle.vin}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Model:</span>
+                            <span class="info-value">${vehicle.model}</span>
+                        </div>
+                        ${vehicle.year ? `
+                        <div class="info-item">
+                            <span class="info-label">Bouwjaar:</span>
+                            <span class="info-value">${vehicle.year}</span>
+                        </div>
+                        ` : `
+                        <div class="info-item">
+                            <span class="info-label"></span>
+                            <span class="info-value"></span>
+                        </div>
+                        `}
+                        <div class="info-item">
+                            <span class="info-label">Kenteken:</span>
+                            <span class="info-value">${vehicle.licenseNumber}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">KM Stand:</span>
+                            <span class="info-value">${vehicle.mileage?.toLocaleString('nl-NL')} km</span>
                         </div>
                     </div>
                     ${isB2B && options.bpmIncluded ? `
