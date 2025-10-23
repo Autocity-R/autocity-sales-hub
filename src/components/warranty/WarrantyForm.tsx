@@ -38,7 +38,15 @@ interface WarrantyFormProps {
 }
 
 export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
+  const [inputMode, setInputMode] = useState<"existing" | "manual">("existing");
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  
+  // Manual input fields
+  const [manualBrand, setManualBrand] = useState("");
+  const [manualModel, setManualModel] = useState("");
+  const [manualCustomerName, setManualCustomerName] = useState("");
+  const [manualCustomerPhone, setManualCustomerPhone] = useState("");
+  
   const [problemDescription, setProblemDescription] = useState("");
   const [priority, setPriority] = useState<string>("normaal");
   const [reportDate, setReportDate] = useState<Date>(new Date());
@@ -73,13 +81,25 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedVehicle) {
+    // Validate based on input mode
+    if (inputMode === "existing" && !selectedVehicle) {
       toast({
         title: "Fout",
         description: "Selecteer een voertuig",
         variant: "destructive"
       });
       return;
+    }
+
+    if (inputMode === "manual") {
+      if (!manualBrand.trim() || !manualModel.trim() || !manualCustomerName.trim()) {
+        toast({
+          title: "Fout",
+          description: "Vul merk, model en klantnaam in",
+          variant: "destructive"
+        });
+        return;
+      }
     }
 
     if (!problemDescription.trim()) {
@@ -103,16 +123,40 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
     setIsSubmitting(true);
 
     try {
-      const claimData = {
+      const claimData = inputMode === "existing" && selectedVehicle ? {
         vehicleId: selectedVehicle.id,
         customerId: selectedVehicle.customerId || "",
         customerName: selectedVehicle.customerName || "Onbekend",
         vehicleBrand: selectedVehicle.brand,
         vehicleModel: selectedVehicle.model,
         vehicleLicenseNumber: selectedVehicle.licenseNumber,
+        vehicleVin: selectedVehicle.vin,
         deliveryDate: selectedVehicle.deliveryDate || new Date(),
         warrantyStartDate: selectedVehicle.deliveryDate || new Date(),
         warrantyEndDate: new Date(new Date(selectedVehicle.deliveryDate || new Date()).setFullYear(new Date().getFullYear() + 1)),
+        problemDescription,
+        reportDate,
+        status: "actief" as const,
+        priority: priority as any,
+        loanCarAssigned,
+        loanCarId: loanCarAssigned ? selectedLoanCar : undefined,
+        loanCarDetails: loanCarAssigned ? loanCars.find((car: LoanCar) => car.id === selectedLoanCar) : undefined,
+        estimatedCost,
+        additionalNotes,
+        attachments: [],
+        assignedTo: assignedTo || undefined
+      } : {
+        // Manual input mode
+        vehicleId: "", // No vehicle ID for manual entries
+        customerId: "",
+        customerName: manualCustomerName,
+        customerPhone: manualCustomerPhone || undefined,
+        vehicleBrand: manualBrand,
+        vehicleModel: manualModel,
+        vehicleLicenseNumber: "Onbekend",
+        deliveryDate: new Date(),
+        warrantyStartDate: new Date(),
+        warrantyEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
         problemDescription,
         reportDate,
         status: "actief" as const,
@@ -137,19 +181,23 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         const endTime = new Date(startTime);
         endTime.setHours(startTime.getHours() + 1); // Default 1 hour appointment
 
+        const vehicleBrand = inputMode === "existing" && selectedVehicle ? selectedVehicle.brand : manualBrand;
+        const vehicleModel = inputMode === "existing" && selectedVehicle ? selectedVehicle.model : manualModel;
+        const customerName = inputMode === "existing" && selectedVehicle ? selectedVehicle.customerName : manualCustomerName;
+
         const appointmentData = {
-          title: `Garantie reparatie: ${selectedVehicle.brand} ${selectedVehicle.model}`,
+          title: `Garantie reparatie: ${vehicleBrand} ${vehicleModel}`,
           description: `Garantieclaim: ${problemDescription}`,
           startTime,
           endTime,
           type: appointmentType as any,
           status: "gepland" as any,
-          customerId: selectedVehicle.customerId,
-          customerName: selectedVehicle.customerName || "Onbekend",
-          vehicleId: selectedVehicle.id,
-          vehicleBrand: selectedVehicle.brand,
-          vehicleModel: selectedVehicle.model,
-          vehicleLicenseNumber: selectedVehicle.licenseNumber,
+          customerId: inputMode === "existing" && selectedVehicle ? selectedVehicle.customerId : undefined,
+          customerName: customerName || "Onbekend",
+          vehicleId: inputMode === "existing" && selectedVehicle ? selectedVehicle.id : undefined,
+          vehicleBrand,
+          vehicleModel,
+          vehicleLicenseNumber: inputMode === "existing" && selectedVehicle ? selectedVehicle.licenseNumber : "Onbekend",
           location: "Werkplaats",
           notes: `Garantieclaim ID: ${createdClaim.id}${appointmentNotes ? `\n${appointmentNotes}` : ''}`,
           createdBy: "Garantieafdeling",
@@ -205,33 +253,125 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <SearchableVehicleSelector
-            value={selectedVehicle?.id}
-            onValueChange={(vehicle) => setSelectedVehicle(vehicle)}
-            vehicles={vehicles}
-            label="Selecteer Voertuig *"
-            placeholder="Zoek op kenteken, merk, model, VIN of klant..."
-            loading={vehiclesLoading}
-          />
+          {/* Input Mode Selection */}
+          <div className="flex gap-4 p-3 bg-muted/50 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <input
+                type="radio"
+                id="existing"
+                name="inputMode"
+                value="existing"
+                checked={inputMode === "existing"}
+                onChange={(e) => setInputMode(e.target.value as "existing" | "manual")}
+                className="w-4 h-4"
+              />
+              <Label htmlFor="existing" className="cursor-pointer font-medium">
+                Selecteer voertuig uit systeem
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="radio"
+                id="manual"
+                name="inputMode"
+                value="manual"
+                checked={inputMode === "manual"}
+                onChange={(e) => setInputMode(e.target.value as "existing" | "manual")}
+                className="w-4 h-4"
+              />
+              <Label htmlFor="manual" className="cursor-pointer font-medium">
+                Voer handmatig in
+              </Label>
+            </div>
+          </div>
 
-          {selectedVehicle && (
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+          {inputMode === "existing" ? (
+            <>
+              <SearchableVehicleSelector
+                value={selectedVehicle?.id}
+                onValueChange={(vehicle) => setSelectedVehicle(vehicle)}
+                vehicles={vehicles}
+                label="Selecteer Voertuig *"
+                placeholder="Zoek op kenteken, merk, model, VIN of klant..."
+                loading={vehiclesLoading}
+              />
+
+              {selectedVehicle && (
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Klant:</span> {selectedVehicle.customerName}
+                    </div>
+                    <div>
+                      <span className="font-medium">Afgeleverd:</span> {
+                        selectedVehicle.deliveryDate 
+                          ? format(new Date(selectedVehicle.deliveryDate), "dd MMMM yyyy", { locale: nl })
+                          : "Onbekend"
+                      }
+                    </div>
+                    <div>
+                      <span className="font-medium">Garantie t/m:</span> {getWarrantyEndDate(selectedVehicle.deliveryDate)}
+                    </div>
+                    <div>
+                      <span className="font-medium">VIN:</span> {selectedVehicle.vin}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="space-y-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+              <div className="flex items-start gap-2 text-sm text-amber-800 mb-4">
+                <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <p>
+                  <strong>Let op:</strong> Deze garantieclaim wordt niet gekoppeld aan een voertuig in het systeem.
+                  Gebruik deze optie alleen voor eerdere verkopen die nog niet zijn geregistreerd.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="font-medium">Klant:</span> {selectedVehicle.customerName}
+                  <Label htmlFor="manualBrand">Merk *</Label>
+                  <Input
+                    id="manualBrand"
+                    placeholder="Bijv. Toyota"
+                    value={manualBrand}
+                    onChange={(e) => setManualBrand(e.target.value)}
+                    required
+                  />
                 </div>
                 <div>
-                  <span className="font-medium">Afgeleverd:</span> {
-                    selectedVehicle.deliveryDate 
-                      ? format(new Date(selectedVehicle.deliveryDate), "dd MMMM yyyy", { locale: nl })
-                      : "Onbekend"
-                  }
+                  <Label htmlFor="manualModel">Model *</Label>
+                  <Input
+                    id="manualModel"
+                    placeholder="Bijv. Yaris"
+                    value={manualModel}
+                    onChange={(e) => setManualModel(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="manualCustomerName">Klantnaam *</Label>
+                  <Input
+                    id="manualCustomerName"
+                    placeholder="Naam klant"
+                    value={manualCustomerName}
+                    onChange={(e) => setManualCustomerName(e.target.value)}
+                    required
+                  />
                 </div>
                 <div>
-                  <span className="font-medium">Garantie t/m:</span> {getWarrantyEndDate(selectedVehicle.deliveryDate)}
-                </div>
-                <div>
-                  <span className="font-medium">VIN:</span> {selectedVehicle.vin}
+                  <Label htmlFor="manualCustomerPhone">Telefoonnummer</Label>
+                  <Input
+                    id="manualCustomerPhone"
+                    type="tel"
+                    placeholder="06-12345678"
+                    value={manualCustomerPhone}
+                    onChange={(e) => setManualCustomerPhone(e.target.value)}
+                  />
                 </div>
               </div>
             </div>
