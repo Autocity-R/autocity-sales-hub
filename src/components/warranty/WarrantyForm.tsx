@@ -46,6 +46,7 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
   const [manualModel, setManualModel] = useState("");
   const [manualCustomerName, setManualCustomerName] = useState("");
   const [manualCustomerPhone, setManualCustomerPhone] = useState("");
+  const [manualLicenseNumber, setManualLicenseNumber] = useState("");
   
   const [problemDescription, setProblemDescription] = useState("");
   const [priority, setPriority] = useState<string>("normaal");
@@ -153,7 +154,7 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         customerPhone: manualCustomerPhone || undefined,
         vehicleBrand: manualBrand,
         vehicleModel: manualModel,
-        vehicleLicenseNumber: "Onbekend",
+        vehicleLicenseNumber: manualLicenseNumber || "N.v.t.",
         deliveryDate: new Date(),
         warrantyStartDate: new Date(),
         warrantyEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
@@ -167,7 +168,13 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         estimatedCost,
         additionalNotes,
         attachments: [],
-        assignedTo: assignedTo || undefined
+        assignedTo: assignedTo || undefined,
+        // Manual entry fields for database storage
+        manualCustomerName: manualCustomerName,
+        manualCustomerPhone: manualCustomerPhone || undefined,
+        manualVehicleBrand: manualBrand,
+        manualVehicleModel: manualModel,
+        manualLicenseNumber: manualLicenseNumber || undefined
       };
 
       const createdClaim = await createWarrantyClaim(claimData);
@@ -373,6 +380,16 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
                     onChange={(e) => setManualCustomerPhone(e.target.value)}
                   />
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="manualLicenseNumber">Kenteken</Label>
+                <Input
+                  id="manualLicenseNumber"
+                  placeholder="XX-XX-XX"
+                  value={manualLicenseNumber}
+                  onChange={(e) => setManualLicenseNumber(e.target.value)}
+                />
               </div>
             </div>
           )}

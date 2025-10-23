@@ -2226,6 +2226,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          manual_license_number: string | null
           resolution_date: string | null
           resolution_description: string | null
           updated_at: string
@@ -2237,6 +2238,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          manual_license_number?: string | null
           resolution_date?: string | null
           resolution_description?: string | null
           updated_at?: string
@@ -2248,6 +2250,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          manual_license_number?: string | null
           resolution_date?: string | null
           resolution_description?: string | null
           updated_at?: string
@@ -2314,10 +2317,7 @@ export type Database = {
         Args: { task_id: string; user_id: string }
         Returns: boolean
       }
-      clean_expired_exact_online_cache: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      clean_expired_exact_online_cache: { Args: never; Returns: number }
       get_valid_exact_online_token: {
         Args: { user_uuid: string }
         Returns: {
@@ -2329,7 +2329,7 @@ export type Database = {
         }[]
       }
       get_vehicles_needing_reminders: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           days_since_last_email: number
           email_type: string
@@ -2338,10 +2338,7 @@ export type Database = {
           vehicle_id: string
         }[]
       }
-      get_week_start_date: {
-        Args: { input_date?: string }
-        Returns: string
-      }
+      get_week_start_date: { Args: { input_date?: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2349,14 +2346,8 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin_or_owner: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_admin_user: {
-        Args: { user_id: string }
-        Returns: boolean
-      }
+      is_admin_or_owner: { Args: never; Returns: boolean }
+      is_admin_user: { Args: { user_id: string }; Returns: boolean }
       update_weekly_sales: {
         Args: {
           p_sales_type: string

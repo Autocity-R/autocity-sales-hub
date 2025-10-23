@@ -47,6 +47,12 @@ export interface WarrantyClaim {
   customerSatisfaction?: number;
   createdAt: Date | string;
   updatedAt: Date | string;
+  // Manual entry fields (for claims without vehicle_id)
+  manualCustomerName?: string;
+  manualCustomerPhone?: string;
+  manualVehicleBrand?: string;
+  manualVehicleModel?: string;
+  manualLicenseNumber?: string;
 }
 
 export interface ActiveWarrantyVehicle {

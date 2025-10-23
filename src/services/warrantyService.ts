@@ -72,12 +72,22 @@ export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
       id: claim.id,
       vehicleId: claim.vehicle_id,
       customerId: claim.vehicles?.customer_id || '',
-      customerName: `${claim.vehicles?.customerContact?.first_name || ''} ${claim.vehicles?.customerContact?.last_name || ''}`.trim(),
+      customerName: claim.vehicle_id 
+        ? `${claim.vehicles?.customerContact?.first_name || ''} ${claim.vehicles?.customerContact?.last_name || ''}`.trim()
+        : (claim.manual_customer_name || 'Onbekend'),
       customerEmail: claim.vehicles?.customerContact?.email,
-      customerPhone: claim.vehicles?.customerContact?.phone,
-      vehicleBrand: claim.vehicles?.brand || '',
-      vehicleModel: claim.vehicles?.model || '',
-      vehicleLicenseNumber: claim.vehicles?.license_number || '',
+      customerPhone: claim.vehicle_id
+        ? claim.vehicles?.customerContact?.phone
+        : claim.manual_customer_phone,
+      vehicleBrand: claim.vehicle_id
+        ? claim.vehicles?.brand || ''
+        : (claim.manual_vehicle_brand || ''),
+      vehicleModel: claim.vehicle_id
+        ? claim.vehicles?.model || ''
+        : (claim.manual_vehicle_model || ''),
+      vehicleLicenseNumber: claim.vehicle_id
+        ? claim.vehicles?.license_number || 'N.v.t.'
+        : (claim.manual_license_number || 'N.v.t.'),
       vehicleVin: claim.vehicles?.vin || '',
       deliveryDate: claim.vehicles?.details?.deliveryDate || new Date(),
       warrantyStartDate: claim.vehicles?.details?.deliveryDate || new Date(),
@@ -93,7 +103,13 @@ export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
       resolutionDescription: claim.resolution_description || undefined,
       attachments: [],
       createdAt: claim.created_at,
-      updatedAt: claim.updated_at
+      updatedAt: claim.updated_at,
+      // Manual entry fields
+      manualCustomerName: claim.manual_customer_name,
+      manualCustomerPhone: claim.manual_customer_phone,
+      manualVehicleBrand: claim.manual_vehicle_brand,
+      manualVehicleModel: claim.manual_vehicle_model,
+      manualLicenseNumber: claim.manual_license_number
     }));
   } catch (error: any) {
     console.error("Failed to fetch warranty claims:", error);
@@ -110,7 +126,12 @@ export const createWarrantyClaim = async (claim: Omit<WarrantyClaim, 'id' | 'cre
         vehicle_id: claim.vehicleId || null,
         description: claim.problemDescription,
         claim_status: claim.status ? mapUiStatusToDb(claim.status as any) : 'pending',
-        claim_amount: claim.estimatedCost
+        claim_amount: claim.estimatedCost,
+        manual_customer_name: claim.manualCustomerName || null,
+        manual_customer_phone: claim.manualCustomerPhone || null,
+        manual_vehicle_brand: claim.manualVehicleBrand || null,
+        manual_vehicle_model: claim.manualVehicleModel || null,
+        manual_license_number: claim.manualLicenseNumber || null
       })
       .select()
       .single();
