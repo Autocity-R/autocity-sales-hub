@@ -158,6 +158,7 @@ export const updateWarrantyClaim = async (claimId: string, updates: Partial<Warr
     if (updates.status) updateData.claim_status = mapUiStatusToDb(updates.status as any);
     if (updates.estimatedCost !== undefined) updateData.claim_amount = updates.estimatedCost;
     if (updates.actualCost !== undefined) updateData.claim_amount = updates.actualCost;
+    if (updates.additionalNotes !== undefined) updateData.resolution_description = updates.additionalNotes;
 
     const { data, error } = await supabase
       .from('warranty_claims')
@@ -177,6 +178,20 @@ export const updateWarrantyClaim = async (claimId: string, updates: Partial<Warr
     return updatedClaim;
   } catch (error: any) {
     console.error("Failed to update warranty claim:", error);
+    throw error;
+  }
+};
+
+export const deleteWarrantyClaim = async (claimId: string): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('warranty_claims')
+      .delete()
+      .eq('id', claimId);
+
+    if (error) throw error;
+  } catch (error: any) {
+    console.error("Failed to delete warranty claim:", error);
     throw error;
   }
 };

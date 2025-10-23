@@ -1,5 +1,6 @@
 
 import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,7 +20,18 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { 
@@ -34,10 +46,13 @@ import {
   Save,
   X,
   Heart,
-  Phone
+  Phone,
+  Trash2,
+  CarFront
 } from "lucide-react";
-import { WarrantyClaim } from "@/types/warranty";
+import { WarrantyClaim, LoanCar } from "@/types/warranty";
 import { useToast } from "@/hooks/use-toast";
+import { fetchLoanCars } from "@/services/warrantyService";
 
 interface WarrantyClaimDetailProps {
   claim: WarrantyClaim;
@@ -49,6 +64,7 @@ interface WarrantyClaimDetailProps {
     actualCost: number;
     customerSatisfaction: number;
   }) => void;
+  onDelete: (claimId: string) => void;
 }
 
 export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
@@ -56,17 +72,27 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
   isOpen,
   onClose,
   onUpdate,
-  onResolve
+  onResolve,
+  onDelete
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedClaim, setEditedClaim] = useState(claim);
   const [showResolveDialog, setShowResolveDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedLoanCarId, setSelectedLoanCarId] = useState<string>(claim.loanCarId || "");
   const [resolutionData, setResolutionData] = useState({
     resolutionDescription: "",
     actualCost: claim.estimatedCost,
     customerSatisfaction: 5
   });
   const { toast } = useToast();
+
+  const { data: loanCars = [], isLoading: loanCarsLoading } = useQuery({
+    queryKey: ["loanCars"],
+    queryFn: fetchLoanCars
+  });
+
+  const availableLoanCars = loanCars.filter((car: LoanCar) => car.available);
 
   const formatDate = (date: Date | string) => {
     const dateObj = typeof date === "string" ? new Date(date) : date;
@@ -131,6 +157,25 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
       title: "Claim afgewikkeld",
       description: "De garantieclaim is succesvol afgewikkeld.",
     });
+  };
+
+  const handleAssignLoanCar = () => {
+    onUpdate(claim.id, { 
+      loanCarAssigned: selectedLoanCarId !== "",
+      loanCarId: selectedLoanCarId || undefined 
+    });
+    toast({
+      title: selectedLoanCarId ? "Leenauto toegewezen" : "Leenauto verwijderd",
+      description: selectedLoanCarId 
+        ? "De leenauto is succesvol toegewezen aan deze claim." 
+        : "De leenauto toewijzing is verwijderd.",
+    });
+  };
+
+  const handleDelete = () => {
+    onDelete(claim.id);
+    setShowDeleteDialog(false);
+    onClose();
   };
 
   const handleSendReadyEmail = async () => {
@@ -419,15 +464,6 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
                 )}
               </div>
 
-              {claim.loanCarAssigned && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Leenauto</p>
-                  <p className="mt-1 text-green-600">
-                    ✓ Toegewezen: {claim.loanCarDetails?.licenseNumber || "Onbekend"}
-                  </p>
-                </div>
-              )}
-
               {isEditing && (
                 <div className="flex gap-2 pt-4">
                   <Button onClick={handleSave}>
@@ -440,6 +476,53 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
                   </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Leenauto Toewijzing */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CarFront className="h-5 w-5" />
+                Leenauto
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm text-muted-foreground">Leenauto toewijzen</label>
+                <div className="flex gap-2 mt-2">
+                  <Select
+                    value={selectedLoanCarId}
+                    onValueChange={setSelectedLoanCarId}
+                    disabled={loanCarsLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecteer leenauto..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Geen leenauto</SelectItem>
+                      {availableLoanCars.map((car: LoanCar) => (
+                        <SelectItem key={car.id} value={car.id}>
+                          {car.brand} {car.model} - {car.licenseNumber}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button 
+                    onClick={handleAssignLoanCar}
+                    disabled={selectedLoanCarId === (claim.loanCarId || "")}
+                  >
+                    Toewijzen
+                  </Button>
+                </div>
+                {claim.loanCarAssigned && claim.loanCarDetails && (
+                  <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-sm text-green-800">
+                      <strong>Huidige leenauto:</strong> {claim.loanCarDetails.brand} {claim.loanCarDetails.model} - {claim.loanCarDetails.licenseNumber}
+                    </p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -507,28 +590,60 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
           )}
 
           {/* Acties */}
-          <div className="flex gap-2 pt-4">
-            {claim.status !== "opgelost" && (
-              <>
-                <Button onClick={() => setShowResolveDialog(true)} className="bg-green-600 hover:bg-green-700">
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Claim Afwikkelen
+          <div className="flex gap-2 pt-4 justify-between">
+            <div className="flex gap-2">
+              {claim.status !== "opgelost" && (
+                <>
+                  <Button onClick={() => setShowResolveDialog(true)} className="bg-green-600 hover:bg-green-700">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Claim Afwikkelen
+                  </Button>
+                  <Button variant="outline" onClick={handleSendReadyEmail}>
+                    <Mail className="h-4 w-4 mr-2" />
+                    Email: Auto Gereed
+                  </Button>
+                </>
+              )}
+              {claim.status === "opgelost" && (
+                <Button variant="outline" onClick={handleSendHappyCall} className="border-pink-200 text-pink-700 hover:bg-pink-50">
+                  <Heart className="h-4 w-4 mr-2" />
+                  Happy Call
                 </Button>
-                <Button variant="outline" onClick={handleSendReadyEmail}>
-                  <Mail className="h-4 w-4 mr-2" />
-                  Email: Auto Gereed
-                </Button>
-              </>
-            )}
-            {claim.status === "opgelost" && (
-              <Button variant="outline" onClick={handleSendHappyCall} className="border-pink-200 text-pink-700 hover:bg-pink-50">
-                <Heart className="h-4 w-4 mr-2" />
-                Happy Call
-              </Button>
-            )}
+              )}
+            </div>
+            <Button 
+              variant="destructive" 
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Verwijder Claim
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Claim verwijderen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Weet je zeker dat je deze garantieclaim wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.
+              <br /><br />
+              <strong>Claim:</strong> {claim.vehicleBrand} {claim.vehicleModel} - {claim.customerName}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuleren</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Verwijderen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Resolve Dialog */}
       <Dialog open={showResolveDialog} onOpenChange={setShowResolveDialog}>

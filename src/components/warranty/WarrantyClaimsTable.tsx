@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { WarrantyClaim } from "@/types/warranty";
 import { WarrantyClaimDetail } from "./WarrantyClaimDetail";
-import { updateWarrantyClaim, resolveWarrantyClaim } from "@/services/warrantyService";
+import { updateWarrantyClaim, resolveWarrantyClaim, deleteWarrantyClaim } from "@/services/warrantyService";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
@@ -133,6 +133,25 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
       toast({
         title: "Fout bij afwikkelen",
         description: "Er is een fout opgetreden bij het afwikkelen van de claim.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteClaim = async (claimId: string) => {
+    try {
+      await deleteWarrantyClaim(claimId);
+      queryClient.invalidateQueries({ queryKey: ["warrantyClaims"] });
+      queryClient.invalidateQueries({ queryKey: ["warrantyStats"] });
+      toast({
+        title: "Claim verwijderd",
+        description: "De garantieclaim is succesvol verwijderd.",
+      });
+    } catch (error) {
+      console.error("Error deleting claim:", error);
+      toast({
+        title: "Fout bij verwijderen",
+        description: "Er is een fout opgetreden bij het verwijderen van de claim.",
         variant: "destructive"
       });
     }
@@ -313,6 +332,7 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
           onClose={() => setSelectedClaim(null)}
           onUpdate={handleUpdateClaim}
           onResolve={handleResolveClaim}
+          onDelete={handleDeleteClaim}
         />
       )}
     </>
