@@ -2226,6 +2226,8 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          loan_car_assigned: boolean | null
+          loan_car_id: string | null
           manual_customer_name: string | null
           manual_customer_phone: string | null
           manual_license_number: string | null
@@ -2242,6 +2244,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          loan_car_assigned?: boolean | null
+          loan_car_id?: string | null
           manual_customer_name?: string | null
           manual_customer_phone?: string | null
           manual_license_number?: string | null
@@ -2258,6 +2262,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          loan_car_assigned?: boolean | null
+          loan_car_id?: string | null
           manual_customer_name?: string | null
           manual_customer_phone?: string | null
           manual_license_number?: string | null
@@ -2269,6 +2275,13 @@ export type Database = {
           vehicle_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "warranty_claims_loan_car_id_fkey"
+            columns: ["loan_car_id"]
+            isOneToOne: false
+            referencedRelation: "loan_cars"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "warranty_claims_vehicle_id_fkey"
             columns: ["vehicle_id"]

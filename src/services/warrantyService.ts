@@ -62,6 +62,16 @@ export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
             email,
             phone
           )
+        ),
+        loan_cars!warranty_claims_loan_car_id_fkey (
+          id,
+          vehicle_id,
+          status,
+          vehicles!loan_cars_vehicle_id_fkey (
+            brand,
+            model,
+            license_number
+          )
         )
       `)
       .order('created_at', { ascending: false });
@@ -96,7 +106,16 @@ export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
       reportDate: claim.created_at,
       status: mapDbStatusToUi(claim.claim_status),
       priority: 'normaal',
-      loanCarAssigned: false,
+      loanCarAssigned: claim.loan_car_assigned || false,
+      loanCarId: claim.loan_car_id || undefined,
+      loanCarDetails: claim.loan_car_id && claim.loan_cars ? {
+        id: claim.loan_cars.id,
+        brand: claim.loan_cars.vehicles?.brand || '',
+        model: claim.loan_cars.vehicles?.model || '',
+        licenseNumber: claim.loan_cars.vehicles?.license_number || '',
+        available: claim.loan_cars.status === 'beschikbaar',
+        vehicleId: claim.loan_cars.vehicle_id
+      } : undefined,
       estimatedCost: claim.claim_amount || 0,
       actualCost: claim.claim_status === 'resolved' ? claim.claim_amount : undefined,
       resolutionDate: claim.resolution_date || (claim.claim_status === 'resolved' ? claim.updated_at : undefined),
@@ -131,10 +150,20 @@ export const createWarrantyClaim = async (claim: Omit<WarrantyClaim, 'id' | 'cre
         manual_customer_phone: claim.manualCustomerPhone || null,
         manual_vehicle_brand: claim.manualVehicleBrand || null,
         manual_vehicle_model: claim.manualVehicleModel || null,
-        manual_license_number: claim.manualLicenseNumber || null
+        manual_license_number: claim.manualLicenseNumber || null,
+        loan_car_id: claim.loanCarId || null,
+        loan_car_assigned: claim.loanCarAssigned || false
       })
       .select()
       .single();
+    
+    // Update loan car status if assigned
+    if (claim.loanCarId && claim.loanCarAssigned) {
+      await supabase
+        .from('loan_cars')
+        .update({ status: 'uitgeleend' })
+        .eq('id', claim.loanCarId);
+    }
 
     if (error) throw error;
 
@@ -159,6 +188,27 @@ export const updateWarrantyClaim = async (claimId: string, updates: Partial<Warr
     if (updates.estimatedCost !== undefined) updateData.claim_amount = updates.estimatedCost;
     if (updates.actualCost !== undefined) updateData.claim_amount = updates.actualCost;
     if (updates.additionalNotes !== undefined) updateData.resolution_description = updates.additionalNotes;
+    if (updates.loanCarId !== undefined) updateData.loan_car_id = updates.loanCarId || null;
+    if (updates.loanCarAssigned !== undefined) updateData.loan_car_assigned = updates.loanCarAssigned;
+
+    // Update loan car status if assignment changed
+    if (updates.loanCarId !== undefined) {
+      if (updates.loanCarId && updates.loanCarAssigned) {
+        // Assign loan car - set status to 'uitgeleend'
+        await supabase
+          .from('loan_cars')
+          .update({ status: 'uitgeleend' })
+          .eq('id', updates.loanCarId);
+      } else if (!updates.loanCarAssigned) {
+        // Unassign loan car - set status to 'beschikbaar'
+        if (updates.loanCarId) {
+          await supabase
+            .from('loan_cars')
+            .update({ status: 'beschikbaar' })
+            .eq('id', updates.loanCarId);
+        }
+      }
+    }
 
     const { data, error } = await supabase
       .from('warranty_claims')
