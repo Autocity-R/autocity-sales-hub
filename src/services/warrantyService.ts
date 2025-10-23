@@ -107,7 +107,7 @@ export const createWarrantyClaim = async (claim: Omit<WarrantyClaim, 'id' | 'cre
     const { data, error } = await supabase
       .from('warranty_claims')
       .insert({
-        vehicle_id: claim.vehicleId,
+        vehicle_id: claim.vehicleId || null,
         description: claim.problemDescription,
         claim_status: claim.status ? mapUiStatusToDb(claim.status as any) : 'pending',
         claim_amount: claim.estimatedCost

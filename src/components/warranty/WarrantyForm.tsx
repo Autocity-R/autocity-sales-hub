@@ -147,8 +147,8 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         assignedTo: assignedTo || undefined
       } : {
         // Manual input mode
-        vehicleId: "", // No vehicle ID for manual entries
-        customerId: "",
+        vehicleId: null, // No vehicle ID for manual entries
+        customerId: null,
         customerName: manualCustomerName,
         customerPhone: manualCustomerPhone || undefined,
         vehicleBrand: manualBrand,
