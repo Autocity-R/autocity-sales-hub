@@ -160,13 +160,14 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
   };
 
   const handleAssignLoanCar = () => {
+    const loanCarId = selectedLoanCarId === "none" ? "" : selectedLoanCarId;
     onUpdate(claim.id, { 
-      loanCarAssigned: selectedLoanCarId !== "",
-      loanCarId: selectedLoanCarId || undefined 
+      loanCarAssigned: loanCarId !== "",
+      loanCarId: loanCarId || undefined 
     });
     toast({
-      title: selectedLoanCarId ? "Leenauto toegewezen" : "Leenauto verwijderd",
-      description: selectedLoanCarId 
+      title: loanCarId ? "Leenauto toegewezen" : "Leenauto verwijderd",
+      description: loanCarId 
         ? "De leenauto is succesvol toegewezen aan deze claim." 
         : "De leenauto toewijzing is verwijderd.",
     });
@@ -492,15 +493,15 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
                 <label className="text-sm text-muted-foreground">Leenauto toewijzen</label>
                 <div className="flex gap-2 mt-2">
                   <Select
-                    value={selectedLoanCarId}
-                    onValueChange={setSelectedLoanCarId}
+                    value={selectedLoanCarId || "none"}
+                    onValueChange={(value) => setSelectedLoanCarId(value === "none" ? "" : value)}
                     disabled={loanCarsLoading}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecteer leenauto..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Geen leenauto</SelectItem>
+                      <SelectItem value="none">Geen leenauto</SelectItem>
                       {availableLoanCars.map((car: LoanCar) => (
                         <SelectItem key={car.id} value={car.id}>
                           {car.brand} {car.model} - {car.licenseNumber}
