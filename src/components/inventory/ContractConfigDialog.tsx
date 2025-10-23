@@ -228,8 +228,12 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
       console.log("Digitaal contract verzonden naar:", selectedCustomer.email);
       console.log("Ondertekeningslink:", signatureUrl);
       
-      // Save warranty package info and move to delivered
-      await saveWarrantyPackageAndDeliver();
+      // Only save warranty package for B2C contracts
+      if (contractType === "b2c") {
+        await saveWarrantyPackageAndDeliver();
+      } else {
+        await updateVehicleSaleInfo();
+      }
       
       toast({
         title: "Contract verzonden",
@@ -253,13 +257,76 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
     // Save address to contact if requested
     await saveAddressIfNeeded();
     
-    // Save warranty package info and move to delivered
-    await saveWarrantyPackageAndDeliver();
+    // Only save warranty package and update status for B2C contracts
+    if (contractType === "b2c") {
+      await saveWarrantyPackageAndDeliver();
+    } else {
+      // For B2B, just update the vehicle with sale info (no warranty)
+      await updateVehicleSaleInfo();
+    }
     
     onSendContract(options);
     onClose();
   };
 
+  // Update vehicle sale info for B2B sales (no warranty package)
+  const updateVehicleSaleInfo = async () => {
+    if (!user) {
+      console.error("No authenticated user found");
+      return;
+    }
+
+    try {
+      // Get current user profile for name
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', user.id)
+        .single();
+
+      const sellerName = profile 
+        ? `${profile.first_name} ${profile.last_name}`.trim()
+        : user.email || 'Onbekend';
+
+      // Update vehicle details with salesperson info
+      const updatedDetails = {
+        ...vehicle.details,
+        contractSentBy: user.id,
+        contractSentByName: sellerName,
+        contractSentDate: new Date().toISOString(),
+        salespersonEmail: user.email,
+        purchasePrice: vehicle.purchasePrice
+      };
+
+      // Update vehicle with sale info (status already set to verkocht_b2b)
+      const { error } = await supabase
+        .from('vehicles')
+        .update({
+          details: updatedDetails,
+          updated_at: new Date().toISOString(),
+          sold_by_user_id: user.id,
+          sold_date: new Date().toISOString()
+        })
+        .eq('id', vehicle.id);
+
+      if (error) {
+        console.error("Error updating vehicle:", error);
+        throw error;
+      }
+
+      console.log("✅ Vehicle updated with B2B sale info");
+    } catch (error) {
+      console.error("Error updating vehicle sale info:", error);
+      toast({
+        title: "Fout",
+        description: "Kon verkoopinformatie niet opslaan",
+        variant: "destructive"
+      });
+      throw error;
+    }
+  };
+
+  // Save warranty package and move to delivered status (B2C only)
   const saveWarrantyPackageAndDeliver = async () => {
     if (!user) {
       console.error("No authenticated user found");
@@ -306,7 +373,6 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
         .update({
           status: 'afgeleverd',
           details: updatedDetails,
-          delivery_date: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           sold_by_user_id: user.id,
           sold_date: new Date().toISOString()
