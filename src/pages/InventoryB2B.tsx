@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { Search, Filter } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { B2BInventoryHeader } from "@/components/inventory/B2BInventoryHeader";
 import { B2BInventoryContent } from "@/components/inventory/B2BInventoryContent";
 import { ContractConfigDialog } from "@/components/inventory/ContractConfigDialog";
@@ -18,13 +21,24 @@ const InventoryB2B = () => {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [contractVehicle, setContractVehicle] = useState<Vehicle | null>(null);
   const [contractType, setContractType] = useState<"b2b" | "b2c">("b2b");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Custom hooks for managing state and operations
   const { vehicles, isLoading, error, sortField, sortDirection, onSort } = useB2BVehicles();
-  const { selectedVehicles, setSelectedVehicles, selectedVehicle, setSelectedVehicle, toggleSelectVehicle, toggleSelectAll } = useB2BVehicleSelection(vehicles);
+  
+  // Filter vehicles based on search term
+  const filteredVehicles = useMemo(() => {
+    return vehicles.filter(vehicle =>
+      `${vehicle.brand} ${vehicle.model} ${vehicle.licenseNumber} ${vehicle.vin}`
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
+    );
+  }, [vehicles, searchTerm]);
+  
+  const { selectedVehicles, setSelectedVehicles, selectedVehicle, setSelectedVehicle, toggleSelectVehicle, toggleSelectAll } = useB2BVehicleSelection(filteredVehicles);
   const { handleUpdateVehicle, handleSendEmail, handleUpdateSellingPrice, handleUpdatePaymentStatus, handleMarkAsDelivered, handleChangeStatus, uploadFileMutation } = useB2BVehicleOperations();
   const { vehicleFiles = [] } = useVehicleFiles(selectedVehicle);
   const { handleUploadPhoto, handleRemovePhoto, handleSetMainPhoto } = useVehiclePhotos(selectedVehicle, setSelectedVehicle);
@@ -202,9 +216,34 @@ const InventoryB2B = () => {
           selectedVehicles={selectedVehicles}
           onBulkAction={handleBulkAction}
         />
+
+        {/* Search and Filters */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Zoek voertuigen..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
+          <div className="flex gap-2">
+            <Badge variant="outline" className="flex items-center gap-1">
+              <Filter className="h-3 w-3" />
+              {filteredVehicles.length} resultaten
+            </Badge>
+            {selectedVehicles.length > 0 && (
+              <Badge variant="secondary">
+                {selectedVehicles.length} geselecteerd
+              </Badge>
+            )}
+          </div>
+        </div>
         
         <B2BInventoryContent
-          vehicles={vehicles}
+          vehicles={filteredVehicles}
           selectedVehicles={selectedVehicles}
           selectedVehicle={selectedVehicle}
           vehicleFiles={vehicleFiles}

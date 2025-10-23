@@ -1,12 +1,14 @@
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FileText, Mail, Plus } from "lucide-react";
+import { FileText, Mail, Plus, Search, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { VehicleTable } from "@/components/inventory/VehicleTable";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Vehicle, PaymentStatus, FileCategory } from "@/types/inventory";
 import { PageHeader } from "@/components/ui/page-header";
 import { useOnlineVehicles } from "@/hooks/useOnlineVehicles";
@@ -27,6 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 const InventoryOnline = () => {
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -87,6 +90,15 @@ const InventoryOnline = () => {
     sortDirection,
     onSort
   } = useOnlineVehicles();
+
+  // Filter vehicles based on search term
+  const filteredVehicles = useMemo(() => {
+    return vehicles.filter(vehicle =>
+      `${vehicle.brand} ${vehicle.model} ${vehicle.licenseNumber} ${vehicle.vin}`
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
+    );
+  }, [vehicles, searchTerm]);
 
   // Get files for the selected vehicle
   const { vehicleFiles } = useVehicleFiles(selectedVehicle);
@@ -324,7 +336,7 @@ const InventoryOnline = () => {
   };
   
   const toggleSelectAll = (checked: boolean) => {
-    setSelectedVehicles(checked ? vehicles.map(v => v.id) : []);
+    setSelectedVehicles(checked ? filteredVehicles.map(v => v.id) : []);
   };
 
   // New mutation for uploading files
@@ -390,10 +402,35 @@ const InventoryOnline = () => {
             onBulkAction={handleBulkAction}
           />
         </PageHeader>
+
+        {/* Search and Filters */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Zoek voertuigen..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
+          <div className="flex gap-2">
+            <Badge variant="outline" className="flex items-center gap-1">
+              <Filter className="h-3 w-3" />
+              {filteredVehicles.length} resultaten
+            </Badge>
+            {selectedVehicles.length > 0 && (
+              <Badge variant="secondary">
+                {selectedVehicles.length} geselecteerd
+              </Badge>
+            )}
+          </div>
+        </div>
         
         <div className="bg-white rounded-md shadow">
           <VehicleTable 
-            vehicles={vehicles}
+            vehicles={filteredVehicles}
             selectedVehicles={selectedVehicles}
             toggleSelectAll={toggleSelectAll}
             toggleSelectVehicle={toggleSelectVehicle}
