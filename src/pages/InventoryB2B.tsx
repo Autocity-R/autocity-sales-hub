@@ -231,7 +231,7 @@ const InventoryB2B = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-4 md:space-y-6">
+      <div className="space-y-4">
         <B2BInventoryHeader
           selectedVehicles={selectedVehicles}
           onBulkAction={handleBulkAction}
