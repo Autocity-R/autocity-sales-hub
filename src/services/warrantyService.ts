@@ -123,7 +123,7 @@ export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
         available: claim.loan_cars.status === 'beschikbaar',
         vehicleId: claim.loan_cars.vehicle_id
       } : undefined,
-      estimatedCost: claim.claim_amount || 0,
+      estimatedCost: claim.estimated_amount || 0,
       actualCost: claim.claim_status === 'resolved' ? claim.claim_amount : undefined,
       resolutionDate: claim.resolution_date || (claim.claim_status === 'resolved' ? claim.updated_at : undefined),
       resolutionDescription: claim.resolution_description || undefined,
@@ -158,7 +158,8 @@ export const createWarrantyClaim = async (claim: Omit<WarrantyClaim, 'id' | 'cre
         vehicle_id: claim.vehicleId || null,
         description: claim.problemDescription,
         claim_status: claim.status ? mapUiStatusToDb(claim.status as any) : 'pending',
-        claim_amount: claim.estimatedCost,
+        estimated_amount: claim.estimatedCost,
+        claim_amount: null, // Actual cost is null until claim is resolved
         manual_customer_name: claim.manualCustomerName || null,
         manual_customer_phone: claim.manualCustomerPhone || null,
         manual_vehicle_brand: claim.manualVehicleBrand || null,
@@ -199,7 +200,7 @@ export const updateWarrantyClaim = async (claimId: string, updates: Partial<Warr
     
     if (updates.problemDescription) updateData.description = updates.problemDescription;
     if (updates.status) updateData.claim_status = mapUiStatusToDb(updates.status as any);
-    if (updates.estimatedCost !== undefined) updateData.claim_amount = updates.estimatedCost;
+    if (updates.estimatedCost !== undefined) updateData.estimated_amount = updates.estimatedCost;
     if (updates.actualCost !== undefined) updateData.claim_amount = updates.actualCost;
     if (updates.additionalNotes !== undefined) updateData.resolution_description = updates.additionalNotes;
     if (updates.loanCarId !== undefined) updateData.loan_car_id = updates.loanCarId || null;
@@ -271,7 +272,8 @@ export const resolveWarrantyClaim = async (claimId: string, resolutionData: {
       .from('warranty_claims')
       .update({
         claim_status: 'resolved',
-        claim_amount: resolutionData.actualCost,
+        claim_amount: resolutionData.actualCost, // Store actual cost here
+        // estimated_amount remains unchanged - preserves original estimate
         resolution_description: resolutionData.resolutionDescription,
         resolution_date: new Date().toISOString()
       })

@@ -2226,6 +2226,7 @@ export type Database = {
           claim_status: string
           created_at: string
           description: string | null
+          estimated_amount: number | null
           id: string
           loan_car_assigned: boolean | null
           loan_car_id: string | null
@@ -2245,6 +2246,7 @@ export type Database = {
           claim_status?: string
           created_at?: string
           description?: string | null
+          estimated_amount?: number | null
           id?: string
           loan_car_assigned?: boolean | null
           loan_car_id?: string | null
@@ -2264,6 +2266,7 @@ export type Database = {
           claim_status?: string
           created_at?: string
           description?: string | null
+          estimated_amount?: number | null
           id?: string
           loan_car_assigned?: boolean | null
           loan_car_id?: string | null
