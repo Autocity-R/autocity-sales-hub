@@ -289,7 +289,7 @@ const generateHtmlContract = (
         .contract {
             max-width: 210mm;
             margin: 0 auto;
-            padding: 8mm;
+            padding: 5mm 8mm;
             background: white;
         }
         
@@ -363,7 +363,7 @@ const generateHtmlContract = (
         .main-content {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            gap: 12px;
             margin-bottom: 15px;
         }
         
@@ -387,13 +387,13 @@ const generateHtmlContract = (
         }
         
         .section-content {
-            padding: 15px;
+            padding: 12px;
         }
         
         .contract-details {
             display: grid;
-            grid-template-columns: 180px 1fr;
-            gap: 6px 12px;
+            grid-template-columns: 150px 1fr;
+            gap: 5px 10px;
             padding: 0;
             align-items: start;
         }
@@ -405,7 +405,7 @@ const generateHtmlContract = (
         .info-label {
             font-weight: 600;
             color: #666666;
-            font-size: 12px;
+            font-size: 11px;
             text-align: left;
             white-space: nowrap;
             flex-shrink: 0;
@@ -414,11 +414,11 @@ const generateHtmlContract = (
         .info-value {
             color: #000000;
             font-weight: 500;
-            font-size: 13px;
+            font-size: 12px;
             white-space: normal;
             word-break: keep-all;
             overflow-wrap: break-word;
-            padding-left: 5px;
+            padding-left: 3px;
         }
         
         .price-section {
