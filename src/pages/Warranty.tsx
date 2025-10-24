@@ -118,7 +118,7 @@ const Warranty = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         <PageHeader 
           title="Garantiebeheer" 
           description="Beheer voertuiggaranties, claims en klanttevredenheid"

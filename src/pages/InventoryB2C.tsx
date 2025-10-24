@@ -267,7 +267,7 @@ const InventoryB2C = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-4">
+      <div className="space-y-4 md:space-y-6">
         <PageHeader 
           title="Verkocht B2C" 
           description="Beheer uw verkochte voertuigen aan particuliere klanten"
