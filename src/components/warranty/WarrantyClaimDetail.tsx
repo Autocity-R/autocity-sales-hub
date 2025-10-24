@@ -348,6 +348,45 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
             </CardContent>
           </Card>
 
+          {/* Afspraak Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Afspraak Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {claim.appointmentDate ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Datum</p>
+                      <p className="font-medium">{formatDate(claim.appointmentDate)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Tijd</p>
+                      <p className="font-medium">{claim.appointmentTime || 'Niet beschikbaar'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950 rounded-lg">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <span className="text-sm text-green-800 dark:text-green-200">
+                      Afspraak ingepland - check Google Agenda voor details
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    Geen afspraak ingepland voor deze garantieclaim
+                  </span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Claim Details */}
           <Card>
             <CardHeader>

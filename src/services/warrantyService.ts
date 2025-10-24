@@ -72,6 +72,13 @@ export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
             model,
             license_number
           )
+        ),
+        appointments!warranty_claims_appointment_id_fkey (
+          id,
+          starttime,
+          endtime,
+          type,
+          status
         )
       `)
       .order('created_at', { ascending: false });
@@ -128,7 +135,13 @@ export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
       manualCustomerPhone: claim.manual_customer_phone,
       manualVehicleBrand: claim.manual_vehicle_brand,
       manualVehicleModel: claim.manual_vehicle_model,
-      manualLicenseNumber: claim.manual_license_number
+      manualLicenseNumber: claim.manual_license_number,
+      // Appointment fields
+      appointmentId: claim.appointment_id || undefined,
+      appointmentDate: claim.appointments?.starttime || undefined,
+      appointmentTime: claim.appointments?.starttime 
+        ? new Date(claim.appointments.starttime).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
+        : undefined,
     }));
   } catch (error: any) {
     console.error("Failed to fetch warranty claims:", error);
@@ -137,7 +150,7 @@ export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
 };
 
 
-export const createWarrantyClaim = async (claim: Omit<WarrantyClaim, 'id' | 'createdAt' | 'updatedAt'>): Promise<WarrantyClaim> => {
+export const createWarrantyClaim = async (claim: Omit<WarrantyClaim, 'id' | 'createdAt' | 'updatedAt'> & { appointmentId?: string }): Promise<WarrantyClaim> => {
   try {
     const { data, error } = await supabase
       .from('warranty_claims')
@@ -152,7 +165,8 @@ export const createWarrantyClaim = async (claim: Omit<WarrantyClaim, 'id' | 'cre
         manual_vehicle_model: claim.manualVehicleModel || null,
         manual_license_number: claim.manualLicenseNumber || null,
         loan_car_id: claim.loanCarId || null,
-        loan_car_assigned: claim.loanCarAssigned || false
+        loan_car_assigned: claim.loanCarAssigned || false,
+        appointment_id: claim.appointmentId || null
       })
       .select()
       .single();
@@ -179,7 +193,7 @@ export const createWarrantyClaim = async (claim: Omit<WarrantyClaim, 'id' | 'cre
   }
 };
 
-export const updateWarrantyClaim = async (claimId: string, updates: Partial<WarrantyClaim>): Promise<WarrantyClaim> => {
+export const updateWarrantyClaim = async (claimId: string, updates: Partial<WarrantyClaim> & { appointmentId?: string }): Promise<WarrantyClaim> => {
   try {
     const updateData: any = {};
     
@@ -190,6 +204,7 @@ export const updateWarrantyClaim = async (claimId: string, updates: Partial<Warr
     if (updates.additionalNotes !== undefined) updateData.resolution_description = updates.additionalNotes;
     if (updates.loanCarId !== undefined) updateData.loan_car_id = updates.loanCarId || null;
     if (updates.loanCarAssigned !== undefined) updateData.loan_car_assigned = updates.loanCarAssigned;
+    if (updates.appointmentId !== undefined) updateData.appointment_id = updates.appointmentId || null;
 
     // Update loan car status if assignment changed
     if (updates.loanCarId !== undefined) {

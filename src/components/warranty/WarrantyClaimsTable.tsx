@@ -188,6 +188,7 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
             <TableHead>Status</TableHead>
             <TableHead>Prioriteit</TableHead>
             <TableHead>Leen Auto</TableHead>
+            <TableHead>Afspraak</TableHead>
             <TableHead>Datum Gemeld</TableHead>
             {showResolved ? (
               <>
@@ -208,7 +209,7 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
         <TableBody>
           {claims.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={showResolved ? 12 : 10} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={showResolved ? 13 : 11} className="text-center py-8 text-muted-foreground">
                 Geen garantieclaims gevonden
               </TableCell>
             </TableRow>
@@ -251,6 +252,22 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
                   ) : (
                     <div className="flex items-center gap-1 text-gray-500">
                       <span className="text-sm">Niet toegewezen</span>
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {claim.appointmentDate ? (
+                    <div className="flex items-center gap-1 text-blue-600">
+                      <Calendar className="h-4 w-4" />
+                      <div className="text-sm">
+                        <div>{formatDate(claim.appointmentDate)}</div>
+                        <div className="text-xs text-muted-foreground">{claim.appointmentTime}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      <span className="text-sm">Geen afspraak</span>
                     </div>
                   )}
                 </TableCell>

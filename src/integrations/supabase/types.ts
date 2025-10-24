@@ -2221,6 +2221,7 @@ export type Database = {
       }
       warranty_claims: {
         Row: {
+          appointment_id: string | null
           claim_amount: number | null
           claim_status: string
           created_at: string
@@ -2239,6 +2240,7 @@ export type Database = {
           vehicle_id: string | null
         }
         Insert: {
+          appointment_id?: string | null
           claim_amount?: number | null
           claim_status?: string
           created_at?: string
@@ -2257,6 +2259,7 @@ export type Database = {
           vehicle_id?: string | null
         }
         Update: {
+          appointment_id?: string | null
           claim_amount?: number | null
           claim_status?: string
           created_at?: string
@@ -2275,6 +2278,13 @@ export type Database = {
           vehicle_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "warranty_claims_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "warranty_claims_loan_car_id_fkey"
             columns: ["loan_car_id"]

@@ -27,7 +27,7 @@ import { CalendarIcon, Car, User, AlertTriangle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Vehicle } from "@/types/inventory";
 import { LoanCar, WarrantyClaim } from "@/types/warranty";
-import { fetchLoanCars, createWarrantyClaim } from "@/services/warrantyService";
+import { fetchLoanCars, createWarrantyClaim, updateWarrantyClaim } from "@/services/warrantyService";
 import { fetchDeliveredVehiclesForWarranty } from "@/services/deliveredVehicleService";
 import { createAppointment } from "@/services/calendarService";
 import { toast } from "@/hooks/use-toast";
@@ -201,17 +201,22 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
           status: "gepland" as any,
           customerId: inputMode === "existing" && selectedVehicle ? selectedVehicle.customerId : undefined,
           customerName: customerName || "Onbekend",
+          customerEmail: inputMode === "existing" && selectedVehicle ? undefined : undefined,
+          customerPhone: inputMode === "manual" ? manualCustomerPhone || undefined : undefined,
           vehicleId: inputMode === "existing" && selectedVehicle ? selectedVehicle.id : undefined,
           vehicleBrand,
           vehicleModel,
-          vehicleLicenseNumber: inputMode === "existing" && selectedVehicle ? selectedVehicle.licenseNumber : "Onbekend",
+          vehicleLicenseNumber: inputMode === "existing" && selectedVehicle ? selectedVehicle.licenseNumber : manualLicenseNumber || "Onbekend",
           location: "Werkplaats",
           notes: `Garantieclaim ID: ${createdClaim.id}${appointmentNotes ? `\n${appointmentNotes}` : ''}`,
           createdBy: "Garantieafdeling",
           assignedTo: assignedTo || undefined
         };
 
-        await createAppointment(appointmentData);
+        const createdAppointment = await createAppointment(appointmentData);
+        
+        // Update claim with appointment ID
+        await updateWarrantyClaim(createdClaim.id, { appointmentId: createdAppointment.id });
         
         toast({
           title: "Succesvol",

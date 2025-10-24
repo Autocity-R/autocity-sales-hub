@@ -53,6 +53,10 @@ export interface WarrantyClaim {
   manualVehicleBrand?: string;
   manualVehicleModel?: string;
   manualLicenseNumber?: string;
+  // Appointment details
+  appointmentId?: string;
+  appointmentDate?: Date | string;
+  appointmentTime?: string;
 }
 
 export interface ActiveWarrantyVehicle {
