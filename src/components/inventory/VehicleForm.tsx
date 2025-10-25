@@ -75,7 +75,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
     vin: initialData?.vin || "",
     mileage: initialData?.mileage || 0,
     importStatus: initialData?.importStatus || "niet_aangemeld",
-    transportStatus: initialData?.transportStatus || "onderweg",
+    transportStatus: initialData?.transportStatus || (initialData?.details?.isTradeIn ? "aangekomen" : "onderweg"),
     arrived: initialData?.arrived || false,
     workshopStatus: initialData?.workshopStatus || "wachten",
     location: initialData?.location || "showroom",
@@ -145,7 +145,9 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
                       isTradeIn: checked,
                       tradeInDate: checked ? new Date().toISOString() : undefined,
                     },
-                    supplierId: checked ? undefined : formData.supplierId
+                    supplierId: checked ? undefined : formData.supplierId,
+                    transportStatus: checked ? "aangekomen" : "onderweg",
+                    location: checked ? "showroom" : formData.location
                   });
                 }}
               />
@@ -312,23 +314,35 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
         
         {/* Right column */}
         <div className="space-y-4">
-          {/* Transport Status */}
-          <div className="space-y-2">
-            <Label>Transport Status</Label>
-            <Select 
-              value={formData.transportStatus} 
-              onValueChange={(value: TransportStatus) => handleChange('transportStatus', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecteer transport status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="onderweg">Onderweg</SelectItem>
-                <SelectItem value="transport_geregeld">Transport Geregeld</SelectItem>
-                <SelectItem value="aangekomen">Aangekomen</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Transport Status - Alleen tonen voor NIET-inruil auto's */}
+          {!formData.details?.isTradeIn && (
+            <div className="space-y-2">
+              <Label>Transport Status</Label>
+              <Select 
+                value={formData.transportStatus} 
+                onValueChange={(value: TransportStatus) => handleChange('transportStatus', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecteer transport status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="onderweg">Onderweg</SelectItem>
+                  <SelectItem value="transport_geregeld">Transport Geregeld</SelectItem>
+                  <SelectItem value="aangekomen">Aangekomen</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Voor inruil auto's: toon melding */}
+          {formData.details?.isTradeIn && (
+            <div className="space-y-2">
+              <Label>Transport Status</Label>
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-md text-sm text-emerald-700">
+                <strong>Aangekomen</strong> - Inruil voertuigen zijn direct beschikbaar
+              </div>
+            </div>
+          )}
 
           {/* Import Status */}
           <div className="space-y-2">
