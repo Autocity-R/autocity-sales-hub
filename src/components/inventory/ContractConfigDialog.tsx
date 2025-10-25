@@ -228,9 +228,9 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
       console.log("Digitaal contract verzonden naar:", selectedCustomer.email);
       console.log("Ondertekeningslink:", signatureUrl);
       
-      // Only save warranty package for B2C contracts
+      // Save warranty package info WITHOUT changing status
       if (contractType === "b2c") {
-        await saveWarrantyPackageAndDeliver();
+        await saveWarrantyPackageInfo();
       } else {
         await updateVehicleSaleInfo();
       }
@@ -257,9 +257,9 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
     // Save address to contact if requested
     await saveAddressIfNeeded();
     
-    // Only save warranty package and update status for B2C contracts
+    // Save contract info and warranty package WITHOUT changing status
     if (contractType === "b2c") {
-      await saveWarrantyPackageAndDeliver();
+      await saveWarrantyPackageInfo();
     } else {
       // For B2B, just update the vehicle with sale info (no warranty)
       await updateVehicleSaleInfo();
@@ -326,8 +326,8 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
     }
   };
 
-  // Save warranty package and move to delivered status (B2C only)
-  const saveWarrantyPackageAndDeliver = async () => {
+  // Save warranty package info WITHOUT changing vehicle status (B2C only)
+  const saveWarrantyPackageInfo = async () => {
     if (!user) {
       console.error("No authenticated user found");
       return;
@@ -354,7 +354,7 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
         ? `${profile.first_name} ${profile.last_name}`.trim()
         : user.email || 'Onbekend';
 
-      // Update vehicle details with warranty package info AND salesperson info
+      // Update vehicle details with warranty package info AND contract/salesperson info
       const updatedDetails = {
         ...vehicle.details,
         warrantyPackage: options.deliveryPackage || "garantie_wettelijk",
@@ -367,15 +367,15 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
         purchasePrice: vehicle.purchasePrice
       };
 
-      // Update vehicle to "afgeleverd" status with warranty info AND salesperson tracking
+      // Update vehicle with contract/warranty info but KEEP CURRENT STATUS (verkocht_b2c)
       const { error } = await supabase
         .from('vehicles')
         .update({
-          status: 'afgeleverd',
           details: updatedDetails,
           updated_at: new Date().toISOString(),
           sold_by_user_id: user.id,
           sold_date: new Date().toISOString()
+          // NOTE: NO status change - vehicle stays at verkocht_b2c
         })
         .eq('id', vehicle.id);
 
@@ -384,15 +384,15 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
         throw error;
       }
 
-      console.log("✅ Vehicle updated to afgeleverd with warranty package and salesperson info");
+      console.log("✅ Vehicle updated with warranty package and contract info (status unchanged)");
     } catch (error) {
-      console.error("Error saving warranty package:", error);
+      console.error("Error saving warranty package info:", error);
       toast({
         title: "Fout",
-        description: "Kon garantiepakket niet opslaan",
+        description: "Kon garantiepakket informatie niet opslaan",
         variant: "destructive"
       });
-      throw error; // Re-throw to stop the contract send flow
+      throw error;
     }
   };
 
