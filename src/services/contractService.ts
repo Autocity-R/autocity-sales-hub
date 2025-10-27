@@ -283,7 +283,7 @@ const generateHtmlContract = (
             line-height: 1.4;
             color: #1a1a1a;
             background: white;
-            font-size: 13px;
+            font-size: 12px;
         }
         
         .contract {
@@ -296,13 +296,13 @@ const generateHtmlContract = (
         .header {
             background: #000000;
             color: white;
-            padding: 20px;
+            padding: 12px 15px;
             margin: -8mm -8mm 15px -8mm;
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
             position: relative;
-            min-height: 85px;
+            min-height: 60px;
         }
         
         .logo-section {
@@ -313,8 +313,8 @@ const generateHtmlContract = (
         }
         
         .logo-container {
-            width: 80px;
-            height: 80px;
+            width: 60px;
+            height: 60px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -333,7 +333,7 @@ const generateHtmlContract = (
         }
         
         .header-title {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 700;
             color: white;
             text-transform: uppercase;
@@ -350,7 +350,7 @@ const generateHtmlContract = (
         .company-info {
             flex: 0 0 auto;
             text-align: right;
-            font-size: 11px;
+            font-size: 10px;
             color: #ffffff;
             line-height: 1.6;
             max-width: 200px;
@@ -361,10 +361,8 @@ const generateHtmlContract = (
         }
         
         .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 15px;
+            display: block;
+            margin-bottom: 10px;
         }
         
         .section {
@@ -372,7 +370,7 @@ const generateHtmlContract = (
             border: 2px solid #000000;
             border-radius: 8px;
             overflow: hidden;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             page-break-inside: avoid;
             break-inside: avoid;
         }
@@ -380,20 +378,20 @@ const generateHtmlContract = (
         .section-header {
             background: #000000;
             color: white;
-            padding: 12px 15px;
+            padding: 10px 12px;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13px;
             text-transform: uppercase;
         }
         
         .section-content {
-            padding: 12px;
+            padding: 10px;
         }
         
         .contract-details {
             display: grid;
-            grid-template-columns: 150px 1fr;
-            gap: 5px 10px;
+            grid-template-columns: 140px 1fr;
+            gap: 4px 8px;
             padding: 0;
             align-items: start;
         }
@@ -405,7 +403,7 @@ const generateHtmlContract = (
         .info-label {
             font-weight: 600;
             color: #666666;
-            font-size: 11px;
+            font-size: 10px;
             text-align: left;
             white-space: nowrap;
             flex-shrink: 0;
@@ -414,11 +412,12 @@ const generateHtmlContract = (
         .info-value {
             color: #000000;
             font-weight: 500;
-            font-size: 12px;
+            font-size: 11px;
             white-space: normal;
-            word-break: keep-all;
+            word-break: break-word;
             overflow-wrap: break-word;
             padding-left: 3px;
+            line-height: 1.3;
         }
         
         .price-section {
@@ -435,9 +434,9 @@ const generateHtmlContract = (
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 15px;
+            padding: 8px 12px;
             border-bottom: 1px solid #eeeeee;
-            font-size: 13px;
+            font-size: 12px;
         }
         
         .price-item:last-child {
@@ -457,8 +456,8 @@ const generateHtmlContract = (
         .price-total {
             background: #000000;
             color: white;
-            padding: 15px;
-            font-size: 18px;
+            padding: 12px;
+            font-size: 16px;
             font-weight: 700;
             text-align: center;
         }
@@ -468,22 +467,22 @@ const generateHtmlContract = (
         }
         
         .terms-content {
-            font-size: ${isB2B ? '11px' : '12px'};
-            line-height: 1.5;
+            font-size: ${isB2B ? '10px' : '11px'};
+            line-height: 1.4;
             color: #4b5563;
         }
         
         .terms-content p {
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
         
         .terms-content ul {
-            margin: 8px 0;
-            padding-left: 18px;
+            margin: 6px 0;
+            padding-left: 16px;
         }
         
         .terms-content li {
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
         
         .digital-signature {
@@ -527,10 +526,15 @@ const generateHtmlContract = (
         }
         
         @media print {
+            body {
+                font-size: 11px;
+            }
+            
             .contract {
                 margin: 0;
-                padding: 6mm;
-                font-size: 12px;
+                padding: 4mm;
+                font-size: 11px;
+                page-break-inside: avoid;
             }
             
             .digital-signature {
@@ -538,21 +542,35 @@ const generateHtmlContract = (
             }
             
             .header {
-                padding: 12px 15px;
-                margin: -6mm -6mm 12px -6mm;
+                padding: 10px 12px;
+                margin: -4mm -4mm 8px -4mm;
+                min-height: 55px;
             }
             
             .main-content {
-                gap: 12px;
-                margin-bottom: 12px;
-            }
-            
-            .section {
                 margin-bottom: 8px;
             }
             
+            .section {
+                margin-bottom: 6px;
+                page-break-inside: avoid;
+            }
+            
             .section-content {
-                padding: 12px;
+                padding: 8px;
+            }
+            
+            .section-header {
+                padding: 8px 10px;
+                font-size: 12px;
+            }
+            
+            .price-section {
+                page-break-inside: avoid;
+            }
+            
+            .full-width-section {
+                page-break-inside: avoid;
             }
             
             .terms-content {
