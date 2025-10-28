@@ -20,6 +20,7 @@ interface VehicleMobileCardProps {
   onChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   onDeliveryConfirm: (vehicleId: string) => void;
   onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c") => void;
+  onInvoiceRequest?: (vehicle: Vehicle) => void;
 }
 
 export const VehicleMobileCard: React.FC<VehicleMobileCardProps> = ({
@@ -29,6 +30,7 @@ export const VehicleMobileCard: React.FC<VehicleMobileCardProps> = ({
   onChangeStatus,
   onDeliveryConfirm,
   onOpenContractConfig,
+  onInvoiceRequest
 }) => {
   const getPaymentStatusBadge = (status: PaymentStatus | undefined) => {
     if (!status || status === 'niet_betaald') return null;

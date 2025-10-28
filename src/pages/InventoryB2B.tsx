@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { B2BInventoryHeader } from "@/components/inventory/B2BInventoryHeader";
 import { B2BInventoryContent } from "@/components/inventory/B2BInventoryContent";
 import { ContractConfigDialog } from "@/components/inventory/ContractConfigDialog";
+import { InvoiceRequestDialog } from "@/components/inventory/InvoiceRequestDialog";
 import { useB2BVehicles } from "@/hooks/useB2BVehicles";
 import { useB2BVehicleSelection } from "@/hooks/useB2BVehicleSelection";
 import { useB2BVehicleOperations } from "@/hooks/useB2BVehicleOperations";
@@ -21,7 +22,8 @@ const InventoryB2B = () => {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [contractVehicle, setContractVehicle] = useState<Vehicle | null>(null);
   const [contractType, setContractType] = useState<"b2b" | "b2c">("b2b");
-  const [isInvoiceRequest, setIsInvoiceRequest] = useState(false);
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [invoiceVehicle, setInvoiceVehicle] = useState<Vehicle | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   const { toast } = useToast();
@@ -49,11 +51,25 @@ const InventoryB2B = () => {
     uploadFileMutation.mutate({ file, category, vehicleId: selectedVehicle.id });
   };
 
-  const handleOpenContractConfig = (vehicle: Vehicle, type: "b2b" | "b2c", isInvoice: boolean = false) => {
+  const handleOpenContractConfig = (vehicle: Vehicle, type: "b2b" | "b2c") => {
     setContractVehicle(vehicle);
     setContractType(type);
-    setIsInvoiceRequest(isInvoice);
     setContractDialogOpen(true);
+  };
+
+  const handleInvoiceRequest = (vehicle: Vehicle) => {
+    setInvoiceVehicle(vehicle);
+    setInvoiceDialogOpen(true);
+  };
+
+  const handleInvoiceConfirm = (bpmIncluded: boolean) => {
+    if (!invoiceVehicle) return;
+    
+    // Verstuur facturatie e-mail met BPM keuze
+    handleSendEmail("invoice_request", invoiceVehicle.id, { bpmIncluded });
+    
+    setInvoiceDialogOpen(false);
+    setInvoiceVehicle(null);
   };
 
   // Wrapper to handle both B2B (3 params) and general (6 params) email patterns
@@ -79,18 +95,12 @@ const InventoryB2B = () => {
   const handleSendContract = (options: ContractOptions) => {
     if (!contractVehicle) return;
     
-    if (isInvoiceRequest) {
-      // Voor invoice request: stuur email met BPM info
-      handleSendEmail("invoice_request", contractVehicle.id, options);
-    } else {
-      // Bestaande logica voor contracten
-      const emailType = contractType === "b2b" ? "contract_b2b" : "contract_send";
-      handleSendEmail(emailType, contractVehicle.id, options);
-    }
+    // Contracten versturen (B2B of B2C)
+    const emailType = contractType === "b2b" ? "contract_b2b" : "contract_send";
+    handleSendEmail(emailType, contractVehicle.id, options);
     
     setContractDialogOpen(false);
     setContractVehicle(null);
-    setIsInvoiceRequest(false);
   };
 
   // Real-time subscription for B2B changes
@@ -294,6 +304,7 @@ const InventoryB2B = () => {
           onSetMainPhoto={handleSetMainPhoto}
           onFileUpload={handleFileUpload}
           onOpenContractConfig={handleOpenContractConfig}
+          onInvoiceRequest={handleInvoiceRequest}
           onMoveBackToTransport={handleMoveBackToTransport}
         />
       </div>
@@ -304,14 +315,22 @@ const InventoryB2B = () => {
           onClose={() => {
             setContractDialogOpen(false);
             setContractVehicle(null);
-            setIsInvoiceRequest(false);
           }}
           vehicle={contractVehicle}
           contractType={contractType}
           onSendContract={handleSendContract}
-          isInvoiceRequest={isInvoiceRequest}
         />
       )}
+
+      <InvoiceRequestDialog
+        isOpen={invoiceDialogOpen}
+        onClose={() => {
+          setInvoiceDialogOpen(false);
+          setInvoiceVehicle(null);
+        }}
+        onConfirm={handleInvoiceConfirm}
+        vehicle={invoiceVehicle}
+      />
     </DashboardLayout>
   );
 };

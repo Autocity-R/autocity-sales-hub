@@ -42,6 +42,7 @@ interface B2BInventoryContentProps {
   onSetMainPhoto: (photoUrl: string) => void;
   onFileUpload: (file: File, category: FileCategory) => void;
   onOpenContractConfig: (vehicle: Vehicle, type: "b2b" | "b2c") => void;
+  onInvoiceRequest?: (vehicle: Vehicle) => void;
   onMoveBackToTransport?: (vehicleId: string) => void;
 }
 
@@ -69,6 +70,7 @@ export const B2BInventoryContent = ({
   onSetMainPhoto,
   onFileUpload,
   onOpenContractConfig,
+  onInvoiceRequest,
   onMoveBackToTransport
 }: B2BInventoryContentProps) => {
   return (
@@ -86,6 +88,7 @@ export const B2BInventoryContent = ({
           handleChangeStatus={onChangeStatus}
           onMarkAsDelivered={onMarkAsDelivered}
           onOpenContractConfig={onOpenContractConfig}
+          onInvoiceRequest={onInvoiceRequest}
           onMoveBackToTransport={onMoveBackToTransport}
           isLoading={isLoading}
           error={error}

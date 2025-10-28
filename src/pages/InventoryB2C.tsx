@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { VehicleB2CTable } from "@/components/inventory/VehicleB2CTable";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
 import { ContractConfigDialog } from "@/components/inventory/ContractConfigDialog";
+import { InvoiceRequestDialog } from "@/components/inventory/InvoiceRequestDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +24,8 @@ const InventoryB2C = () => {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [contractVehicle, setContractVehicle] = useState<Vehicle | null>(null);
   const [contractType, setContractType] = useState<"b2b" | "b2c">("b2c");
-  const [isInvoiceRequest, setIsInvoiceRequest] = useState(false);
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [invoiceVehicle, setInvoiceVehicle] = useState<Vehicle | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   const queryClient = useQueryClient();
@@ -61,29 +63,36 @@ const InventoryB2C = () => {
   // Properly fetch files for selected vehicle using our hook
   const { vehicleFiles } = useVehicleFiles(selectedVehicle);
 
-  const handleOpenContractConfig = (vehicle: Vehicle, type: "b2b" | "b2c", isInvoice: boolean = false) => {
+  const handleOpenContractConfig = (vehicle: Vehicle, type: "b2b" | "b2c") => {
     setContractVehicle(vehicle);
     setContractType(type);
-    setIsInvoiceRequest(isInvoice);
     setContractDialogOpen(true);
+  };
+
+  const handleInvoiceRequest = (vehicle: Vehicle) => {
+    setInvoiceVehicle(vehicle);
+    setInvoiceDialogOpen(true);
+  };
+
+  const handleInvoiceConfirm = (bpmIncluded: boolean) => {
+    if (!invoiceVehicle) return;
+    
+    // Verstuur facturatie e-mail met BPM keuze
+    handleSendEmail("invoice_request", undefined, undefined, undefined, invoiceVehicle.id, { bpmIncluded });
+    
+    setInvoiceDialogOpen(false);
+    setInvoiceVehicle(null);
   };
 
   const handleSendContract = (options: ContractOptions) => {
     if (!contractVehicle) return;
     
-    if (isInvoiceRequest) {
-      // Voor invoice request: stuur email met BPM info
-      // handleSendEmail signature: (type, recipientEmail?, recipientName?, subject?, vehicleId?, contractOptions?)
-      handleSendEmail("invoice_request", undefined, undefined, undefined, contractVehicle.id, options);
-    } else {
-      // Bestaande logica voor contracten
-      const emailType = contractType === "b2b" ? "contract_b2b_digital" : "contract_b2c_digital";
-      handleSendEmail(emailType, undefined, undefined, undefined, contractVehicle.id, options);
-    }
+    // Contracten versturen (B2B of B2C)
+    const emailType = contractType === "b2b" ? "contract_b2b_digital" : "contract_b2c_digital";
+    handleSendEmail(emailType, undefined, undefined, undefined, contractVehicle.id, options);
     
     setContractDialogOpen(false);
     setContractVehicle(null);
-    setIsInvoiceRequest(false);
   };
 
   // Real-time subscription for B2C changes
@@ -326,6 +335,7 @@ const InventoryB2C = () => {
             onMarkAsDelivered={handleMarkAsDelivered}
             handleChangeStatus={handleChangeStatus}
             onOpenContractConfig={handleOpenContractConfig}
+            onInvoiceRequest={handleInvoiceRequest}
             onMoveBackToTransport={handleMoveBackToTransport}
             isLoading={isLoading}
             error={error}
@@ -356,14 +366,22 @@ const InventoryB2C = () => {
           onClose={() => {
             setContractDialogOpen(false);
             setContractVehicle(null);
-            setIsInvoiceRequest(false);
           }}
           vehicle={contractVehicle}
           contractType={contractType}
           onSendContract={handleSendContract}
-          isInvoiceRequest={isInvoiceRequest}
         />
       )}
+
+      <InvoiceRequestDialog
+        isOpen={invoiceDialogOpen}
+        onClose={() => {
+          setInvoiceDialogOpen(false);
+          setInvoiceVehicle(null);
+        }}
+        onConfirm={handleInvoiceConfirm}
+        vehicle={invoiceVehicle}
+      />
     </DashboardLayout>
   );
 };
