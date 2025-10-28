@@ -138,7 +138,7 @@ export let emailTemplates: EmailTemplate[] = [
     id: "14",
     name: "Facturatie aanvraag",
     subject: "Facturatie – {{MERK}} {{MODEL}} ({{VIN}})",
-    content: "Beste administratie,\n\nHet volgende voertuig is afgeleverd aan de klant en kan worden gefactureerd:\n\nVoertuiggegevens:\n\nMerk: {{MERK}}\n\nModel: {{MODEL}}\n\nVIN: {{VIN}}\n\nKlantgegevens:\n\nNaam / Bedrijfsnaam: {{KLANT_NAAM}}\n\nAdres: {{KLANT_ADRES}}\n\nE-mailadres voor factuur: {{KLANT_EMAIL}}\n\nVerkoopprijs: €{{VERKOOPPRIJS}}\n\nDe factuur mag nu worden opgemaakt en verzonden naar de klant.\n\nMet vriendelijke groet,\n{{VERKOPER_NAAM}}\nAutocity Automotive Group\n📞 010 262 3980",
+    content: "Beste administratie,\n\nHet volgende voertuig is afgeleverd aan de klant en kan worden gefactureerd:\n\nVoertuiggegevens:\n\nMerk: {{MERK}}\n\nModel: {{MODEL}}\n\nVIN: {{VIN}}\n\nKlantgegevens:\n\nNaam / Bedrijfsnaam: {{KLANT_NAAM}}\n\nAdres: {{KLANT_ADRES}}\n\nE-mailadres voor factuur: {{KLANT_EMAIL}}\n\nVerkoopprijs: €{{VERKOOPPRIJS_MET_BPM}}\n\nDe factuur mag nu worden opgemaakt en verzonden naar de klant.\n\nMet vriendelijke groet,\n{{VERKOPER_NAAM}}\nAutocity Automotive Group\n📞 010 262 3980",
     senderEmail: "verkoop@auto-city.nl",
     linkedButton: "invoice_request",
     hasAttachment: false,
@@ -333,8 +333,8 @@ export const sendEmailWithTemplate = async (
     const { toast } = await import('@/hooks/use-toast');
 
     // Vervang variabelen in de template (now async)
-    let processedSubject = await replaceVariables(template.subject, vehicleData, recipient);
-    let processedContent = await replaceVariables(template.content, vehicleData, recipient);
+    let processedSubject = await replaceVariables(template.subject, vehicleData, recipient, contractOptions);
+    let processedContent = await replaceVariables(template.content, vehicleData, recipient, contractOptions);
     
     // Add signature URL for digital contracts
     if (signatureUrl && (buttonValue.includes("digital") || buttonValue.includes("contract"))) {
@@ -601,7 +601,12 @@ const getImportStatusLabel = (status: ImportStatus): string => {
   return statusLabels[status] || status;
 };
 
-const replaceVariables = async (text: string, vehicleData: Vehicle, recipient?: { email: string; name: string }): Promise<string> => {
+const replaceVariables = async (
+  text: string, 
+  vehicleData: Vehicle, 
+  recipient?: { email: string; name: string },
+  contractOptions?: ContractOptions
+): Promise<string> => {
   // Debug logging
   console.log('🔍 replaceVariables DEBUG:', {
     recipientName: recipient?.name,
@@ -645,6 +650,16 @@ const replaceVariables = async (text: string, vehicleData: Vehicle, recipient?: 
   result = result.replace(/{{KLEUR}}/g, vehicleData.color || '');
   result = result.replace(/{{PRIJS}}/g, vehicleData.sellingPrice?.toLocaleString('nl-NL') || '0');
   result = result.replace(/{{VERKOOPPRIJS}}/g, vehicleData.sellingPrice?.toLocaleString('nl-NL') || 'Niet ingesteld');
+  
+  // Verkoopprijs met BPM indicator (alleen als contractOptions beschikbaar zijn)
+  const bpmText = contractOptions?.bpmIncluded === true 
+    ? ' (inclusief BPM)' 
+    : contractOptions?.bpmIncluded === false 
+      ? ' (exclusief BPM)' 
+      : '';
+  const verkoopprijsMetBpm = (vehicleData.sellingPrice?.toLocaleString('nl-NL') || 'Niet ingesteld') + bpmText;
+  result = result.replace(/{{VERKOOPPRIJS_MET_BPM}}/g, verkoopprijsMetBpm);
+  
   result = result.replace(/{{STATUS}}/g, getImportStatusLabel(vehicleData.importStatus));
   result = result.replace(/{{VERKOPER_NAAM}}/g, salespersonName);
   

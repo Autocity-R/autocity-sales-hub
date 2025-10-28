@@ -57,7 +57,7 @@ interface VehicleB2BTableProps {
     warrantyPackagePrice?: number,
     deliveryNotes?: string
   ) => void;
-  onOpenContractConfig?: (vehicle: Vehicle, type: "b2b" | "b2c") => void;
+  onOpenContractConfig?: (vehicle: Vehicle, type: "b2b" | "b2c", isInvoice?: boolean) => void;
   onMoveBackToTransport?: (vehicleId: string) => void;
   isLoading: boolean;
   error: unknown;
@@ -471,7 +471,7 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={(e) => {
                         e.stopPropagation();
-                        handleEmailClick("invoice_request", vehicle.id, vehicle);
+                        onOpenContractConfig && onOpenContractConfig(vehicle, "b2b", true);
                       }}>
                         <Mail className="h-4 w-4 mr-2" />
                         Factuur aanvragen

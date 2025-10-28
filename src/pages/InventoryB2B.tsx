@@ -21,6 +21,7 @@ const InventoryB2B = () => {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [contractVehicle, setContractVehicle] = useState<Vehicle | null>(null);
   const [contractType, setContractType] = useState<"b2b" | "b2c">("b2b");
+  const [isInvoiceRequest, setIsInvoiceRequest] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   const { toast } = useToast();
@@ -48,9 +49,10 @@ const InventoryB2B = () => {
     uploadFileMutation.mutate({ file, category, vehicleId: selectedVehicle.id });
   };
 
-  const handleOpenContractConfig = (vehicle: Vehicle, type: "b2b" | "b2c") => {
+  const handleOpenContractConfig = (vehicle: Vehicle, type: "b2b" | "b2c", isInvoice: boolean = false) => {
     setContractVehicle(vehicle);
     setContractType(type);
+    setIsInvoiceRequest(isInvoice);
     setContractDialogOpen(true);
   };
 
@@ -77,12 +79,18 @@ const InventoryB2B = () => {
   const handleSendContract = (options: ContractOptions) => {
     if (!contractVehicle) return;
     
-    // Determine email type based on contract type
-    const emailType = contractType === "b2b" ? "contract_b2b" : "contract_send";
-    handleSendEmail(emailType, contractVehicle.id, options);
+    if (isInvoiceRequest) {
+      // Voor invoice request: stuur email met BPM info
+      handleSendEmail("invoice_request", contractVehicle.id, options);
+    } else {
+      // Bestaande logica voor contracten
+      const emailType = contractType === "b2b" ? "contract_b2b" : "contract_send";
+      handleSendEmail(emailType, contractVehicle.id, options);
+    }
     
     setContractDialogOpen(false);
     setContractVehicle(null);
+    setIsInvoiceRequest(false);
   };
 
   // Real-time subscription for B2B changes
@@ -296,10 +304,12 @@ const InventoryB2B = () => {
           onClose={() => {
             setContractDialogOpen(false);
             setContractVehicle(null);
+            setIsInvoiceRequest(false);
           }}
           vehicle={contractVehicle}
           contractType={contractType}
           onSendContract={handleSendContract}
+          isInvoiceRequest={isInvoiceRequest}
         />
       )}
     </DashboardLayout>

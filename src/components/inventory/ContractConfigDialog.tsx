@@ -27,6 +27,7 @@ interface ContractConfigDialogProps {
   vehicle: Vehicle;
   contractType: "b2b" | "b2c";
   onSendContract: (options: ContractOptions) => void;
+  isInvoiceRequest?: boolean;
 }
 
 export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
@@ -34,7 +35,8 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
   onClose,
   vehicle,
   contractType,
-  onSendContract
+  onSendContract,
+  isInvoiceRequest = false
 }) => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -481,7 +483,7 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Koopcontract Configuratie - {isB2B ? "Zakelijke klant" : "Particuliere klant"}
+            {isInvoiceRequest ? "Facturatie Aanvraag" : `Koopcontract Configuratie - ${isB2B ? "Zakelijke klant" : "Particuliere klant"}`}
             <Button variant="ghost" size="sm" onClick={onClose} className="ml-auto">
               <X className="h-4 w-4" />
             </Button>
@@ -636,6 +638,49 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
           )}
 
           <Separator />
+
+          {/* Facturatie Opties (voor invoice request) */}
+          {isInvoiceRequest && (
+            <div className="space-y-4">
+              <h4 className="font-medium">Facturatie opties</h4>
+              
+              <div className="space-y-2">
+                <Label>Verkoopprijs BPM behandeling</Label>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="bpm-included-invoice"
+                      checked={options.bpmIncluded === true}
+                      onCheckedChange={(checked) => 
+                        setOptions(prev => ({ ...prev, bpmIncluded: checked as boolean }))
+                      }
+                    />
+                    <Label htmlFor="bpm-included-invoice" className="font-normal">
+                      Inclusief BPM
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="bpm-excluded-invoice"
+                      checked={options.bpmIncluded === false}
+                      onCheckedChange={(checked) => 
+                        setOptions(prev => ({ ...prev, bpmIncluded: !checked as boolean }))
+                      }
+                    />
+                    <Label htmlFor="bpm-excluded-invoice" className="font-normal">
+                      Exclusief BPM
+                    </Label>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Deze keuze wordt weergegeven in de facturatie e-mail naar de administratie
+                </p>
+              </div>
+            </div>
+          )}
+
+          {isInvoiceRequest && <Separator />}
+          
           {/* Vehicle Info */}
           <div className="p-4 bg-muted rounded-lg">
             <h4 className="font-medium mb-2">Voertuig informatie</h4>

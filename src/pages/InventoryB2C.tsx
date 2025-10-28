@@ -23,6 +23,7 @@ const InventoryB2C = () => {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [contractVehicle, setContractVehicle] = useState<Vehicle | null>(null);
   const [contractType, setContractType] = useState<"b2b" | "b2c">("b2c");
+  const [isInvoiceRequest, setIsInvoiceRequest] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   const queryClient = useQueryClient();
@@ -60,21 +61,29 @@ const InventoryB2C = () => {
   // Properly fetch files for selected vehicle using our hook
   const { vehicleFiles } = useVehicleFiles(selectedVehicle);
 
-  const handleOpenContractConfig = (vehicle: Vehicle, type: "b2b" | "b2c") => {
+  const handleOpenContractConfig = (vehicle: Vehicle, type: "b2b" | "b2c", isInvoice: boolean = false) => {
     setContractVehicle(vehicle);
     setContractType(type);
+    setIsInvoiceRequest(isInvoice);
     setContractDialogOpen(true);
   };
 
   const handleSendContract = (options: ContractOptions) => {
     if (!contractVehicle) return;
     
-    // Determine email type based on contract type
-    const emailType = contractType === "b2b" ? "contract_b2b_digital" : "contract_b2c_digital";
-    handleSendEmail(emailType, contractVehicle.id);
+    if (isInvoiceRequest) {
+      // Voor invoice request: stuur email met BPM info
+      // handleSendEmail signature: (type, recipientEmail?, recipientName?, subject?, vehicleId?, contractOptions?)
+      handleSendEmail("invoice_request", undefined, undefined, undefined, contractVehicle.id, options);
+    } else {
+      // Bestaande logica voor contracten
+      const emailType = contractType === "b2b" ? "contract_b2b_digital" : "contract_b2c_digital";
+      handleSendEmail(emailType, undefined, undefined, undefined, contractVehicle.id, options);
+    }
     
     setContractDialogOpen(false);
     setContractVehicle(null);
+    setIsInvoiceRequest(false);
   };
 
   // Real-time subscription for B2C changes
@@ -347,10 +356,12 @@ const InventoryB2C = () => {
           onClose={() => {
             setContractDialogOpen(false);
             setContractVehicle(null);
+            setIsInvoiceRequest(false);
           }}
           vehicle={contractVehicle}
           contractType={contractType}
           onSendContract={handleSendContract}
+          isInvoiceRequest={isInvoiceRequest}
         />
       )}
     </DashboardLayout>

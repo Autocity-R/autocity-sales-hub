@@ -14,7 +14,7 @@ interface VehicleActionsDropdownProps {
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   onDeliveryConfirm: (vehicleId: string) => void;
   onMarkAsArrived?: (vehicleId: string) => void;
-  onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c") => void;
+  onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c", isInvoice?: boolean) => void;
   onMoveBackToTransport?: (vehicleId: string) => void;
 }
 
@@ -177,7 +177,7 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
           BPM Huys aanmelden
         </DropdownMenuItem>
         
-        <DropdownMenuItem onClick={() => handleEmailClick("invoice_request", vehicle.id)}>
+        <DropdownMenuItem onClick={() => onOpenContractConfig && onOpenContractConfig(vehicle, "b2c", true)}>
           <Mail className="h-4 w-4 mr-2" />
           Factuur aanvragen
         </DropdownMenuItem>

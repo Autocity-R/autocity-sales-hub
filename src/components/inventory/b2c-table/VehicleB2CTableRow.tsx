@@ -18,7 +18,7 @@ interface VehicleB2CTableRowProps {
   handleSendEmail: (type: string, vehicleId: string) => void;
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   onDeliveryConfirm: (vehicleId: string) => void;
-  onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c") => void;
+  onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c", isInvoice?: boolean) => void;
   onMoveBackToTransport?: (vehicleId: string) => void;
 }
 

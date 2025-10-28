@@ -28,7 +28,7 @@ interface VehicleB2CTableProps {
     deliveryNotes?: string
   ) => void;
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
-  onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c") => void;
+  onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c", isInvoice?: boolean) => void;
   onMoveBackToTransport?: (vehicleId: string) => void;
   isLoading: boolean;
   error: unknown;
