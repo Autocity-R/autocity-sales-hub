@@ -14,7 +14,7 @@ import {
   updateLoanCar, 
   deleteLoanCar, 
   toggleLoanCarAvailability 
-} from "@/services/warrantyService";
+} from "@/services/loanCarService";
 import { LoanCar } from "@/types/warranty";
 import {
   Dialog,
