@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableVehicleSelector } from "@/components/warranty/SearchableVehicleSelector";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -167,23 +168,16 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="vehicleId">Voertuig</Label>
-              <Select value={formData.vehicleId} onValueChange={(value) => setFormData({...formData, vehicleId: value})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecteer voertuig (optioneel)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vehicles.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.brand} {vehicle.model} {vehicle.vin ? `- ${vehicle.vin}` : vehicle.licenseNumber ? `- ${vehicle.licenseNumber}` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <SearchableVehicleSelector
+            value={formData.vehicleId}
+            onValueChange={(vehicle) => setFormData({...formData, vehicleId: vehicle?.id || ""})}
+            vehicles={vehicles}
+            label="Voertuig (optioneel)"
+            placeholder="Zoek op merk, model, VIN, kenteken..."
+            loading={false}
+          />
 
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Vervaldatum *</Label>
               <Popover>
