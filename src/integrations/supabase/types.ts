@@ -2351,6 +2351,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_assign_tasks: { Args: { user_id: string }; Returns: boolean }
       can_manage_task: {
         Args: { task_id: string; user_id: string }
         Returns: boolean
