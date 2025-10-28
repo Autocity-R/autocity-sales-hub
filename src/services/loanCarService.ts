@@ -22,7 +22,7 @@ export const fetchLoanCars = async (): Promise<LoanCar[]> => {
       brand: loanCar.vehicles?.brand || '',
       model: loanCar.vehicles?.model || '',
       licenseNumber: loanCar.vehicles?.license_number || '',
-      available: loanCar.status === 'beschikbaar',
+      available: (loanCar.status || '').toLowerCase() === 'beschikbaar',
       vehicleId: loanCar.vehicle_id
     }));
   } catch (error: any) {
@@ -140,6 +140,38 @@ export const deleteLoanCar = async (id: string, vehicleId: string): Promise<void
     }
   } catch (error: any) {
     console.error("Failed to delete loan car:", error);
+    throw error;
+  }
+};
+
+export const setLoanCarAvailability = async (
+  id: string,
+  makeAvailable: boolean
+): Promise<void> => {
+  try {
+    const updateData: any = {
+      status: makeAvailable ? 'beschikbaar' : 'uitgeleend'
+    };
+
+    // When marking as available, clear customer relationship data
+    if (makeAvailable) {
+      updateData.customer_id = null;
+      updateData.start_date = null;
+      updateData.end_date = null;
+      updateData.notes = null;
+    }
+    
+    const { error } = await supabase
+      .from('loan_cars')
+      .update(updateData)
+      .eq('id', id);
+
+    if (error) {
+      console.error("Supabase error updating loan car:", error);
+      throw error;
+    }
+  } catch (error: any) {
+    console.error("Failed to set loan car availability:", error);
     throw error;
   }
 };

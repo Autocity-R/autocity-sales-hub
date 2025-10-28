@@ -13,7 +13,7 @@ import {
   createLoanCar, 
   updateLoanCar, 
   deleteLoanCar, 
-  toggleLoanCarAvailability 
+  setLoanCarAvailability 
 } from "@/services/loanCarService";
 import { LoanCar } from "@/types/warranty";
 import {
@@ -114,20 +114,45 @@ export const LoanCarManagement = () => {
   });
 
   const toggleMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) =>
-      toggleLoanCarAvailability(id, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["loanCars"] });
+    mutationFn: ({ id, makeAvailable }: { id: string; makeAvailable: boolean }) =>
+      setLoanCarAvailability(id, makeAvailable),
+    onMutate: async ({ id, makeAvailable }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["loanCars"] });
+
+      // Snapshot the previous value
+      const previousLoanCars = queryClient.getQueryData(["loanCars"]);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(["loanCars"], (old: LoanCar[] | undefined) => {
+        if (!old) return old;
+        return old.map(car => 
+          car.id === id ? { ...car, available: makeAvailable } : car
+        );
+      });
+
+      // Return a context object with the snapshotted value
+      return { previousLoanCars };
+    },
+    onError: (error: any, _variables, context) => {
+      // Rollback to the previous value on error
+      if (context?.previousLoanCars) {
+        queryClient.setQueryData(["loanCars"], context.previousLoanCars);
+      }
       toast({
-        title: "Status bijgewerkt",
-        description: "De beschikbaarheidsstatus is bijgewerkt."
+        title: "Fout bij status bijwerken",
+        description: error.message || "Kon de status niet bijwerken. Controleer je rechten.",
+        variant: "destructive"
       });
     },
-    onError: (error: any) => {
+    onSettled: () => {
+      // Always refetch after error or success
+      queryClient.invalidateQueries({ queryKey: ["loanCars"] });
+    },
+    onSuccess: () => {
       toast({
-        title: "Fout",
-        description: error.message || "Er is een fout opgetreden bij het bijwerken van de status.",
-        variant: "destructive"
+        title: "Status bijgewerkt",
+        description: "De beschikbaarheidsstatus is succesvol bijgewerkt."
       });
     }
   });
@@ -201,8 +226,8 @@ export const LoanCarManagement = () => {
   };
 
   const toggleAvailability = (car: LoanCar) => {
-    const currentStatus = car.available ? 'beschikbaar' : 'uitgeleend';
-    toggleMutation.mutate({ id: car.id, status: currentStatus });
+    const makeAvailable = !car.available;
+    toggleMutation.mutate({ id: car.id, makeAvailable });
   };
 
   return (
