@@ -47,12 +47,18 @@ export const SearchableVehicleSelector: React.FC<SearchableVehicleSelectorProps>
     if (!searchTerm) return true;
     
     const searchLower = searchTerm.toLowerCase();
+    const brand = vehicle.brand?.toLowerCase() || '';
+    const model = vehicle.model?.toLowerCase() || '';
+    const license = vehicle.licenseNumber?.toLowerCase() || '';
+    const vin = vehicle.vin?.toLowerCase() || '';
+    const customer = vehicle.customerName?.toLowerCase() || '';
+    
     return (
-      vehicle.brand?.toLowerCase().includes(searchLower) ||
-      vehicle.model?.toLowerCase().includes(searchLower) ||
-      vehicle.licenseNumber?.toLowerCase().includes(searchLower) ||
-      vehicle.vin?.toLowerCase().includes(searchLower) ||
-      vehicle.customerName?.toLowerCase().includes(searchLower)
+      brand.includes(searchLower) ||
+      model.includes(searchLower) ||
+      license.includes(searchLower) ||
+      vin.includes(searchLower) ||
+      customer.includes(searchLower)
     );
   });
 
@@ -103,7 +109,7 @@ export const SearchableVehicleSelector: React.FC<SearchableVehicleSelectorProps>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[500px] p-0" align="start">
-          <Command>
+          <Command shouldFilter={false}>
             <CommandInput
               placeholder="Zoek op merk, model, kenteken, VIN of klant..."
               value={searchTerm}
