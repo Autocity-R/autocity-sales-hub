@@ -138,7 +138,7 @@ export let emailTemplates: EmailTemplate[] = [
     id: "14",
     name: "Facturatie aanvraag",
     subject: "Facturatie – {{MERK}} {{MODEL}} ({{VIN}})",
-    content: "Beste administratie,\n\nHet volgende voertuig is afgeleverd aan de klant en kan worden gefactureerd:\n\nVoertuiggegevens:\n\nMerk: {{MERK}}\n\nModel: {{MODEL}}\n\nVIN: {{VIN}}\n\nKlantgegevens:\n\nNaam / Bedrijfsnaam: {{KLANT_NAAM}}\n\nAdres: {{KLANT_ADRES}}\n\nE-mailadres voor factuur: {{KLANT_EMAIL}}\n\nVerkoopprijs: €{{VERKOOPPRIJS_MET_BPM}}\n\nDe factuur mag nu worden opgemaakt en verzonden naar de klant.\n\nMet vriendelijke groet,\n{{VERKOPER_NAAM}}\nAutocity Automotive Group\n📞 010 262 3980",
+    content: "Beste administratie,\n\nHet volgende voertuig is afgeleverd aan de klant en kan worden gefactureerd:\n\nVoertuiggegevens:\n\nMerk: {{MERK}}\n\nModel: {{MODEL}}\n\nVIN: {{VIN}}{{KENTEKEN_INDIEN_INRUIL}}\n\nKlantgegevens:\n\nNaam / Bedrijfsnaam: {{KLANT_NAAM}}\n\nAdres: {{KLANT_ADRES}}\n\nE-mailadres voor factuur: {{KLANT_EMAIL}}\n\nVerkoopprijs: €{{VERKOOPPRIJS_MET_BPM}}\n\nDe factuur mag nu worden opgemaakt en verzonden naar de klant.\n\nMet vriendelijke groet,\n{{VERKOPER_NAAM}}\nAutocity Automotive Group\n📞 010 262 3980",
     senderEmail: "verkoop@auto-city.nl",
     linkedButton: "invoice_request",
     hasAttachment: false,
@@ -659,6 +659,13 @@ const replaceVariables = async (
       : '';
   const verkoopprijsMetBpm = (vehicleData.sellingPrice?.toLocaleString('nl-NL') || 'Niet ingesteld') + bpmText;
   result = result.replace(/{{VERKOOPPRIJS_MET_BPM}}/g, verkoopprijsMetBpm);
+  
+  // Kenteken alleen tonen bij inruil auto's
+  const isTradeIn = vehicleData.details?.isTradeIn === true;
+  const kentekenLine = isTradeIn && vehicleData.licenseNumber 
+    ? `\n\nKenteken: ${vehicleData.licenseNumber}` 
+    : '';
+  result = result.replace(/{{KENTEKEN_INDIEN_INRUIL}}/g, kentekenLine);
   
   result = result.replace(/{{STATUS}}/g, getImportStatusLabel(vehicleData.importStatus));
   result = result.replace(/{{VERKOPER_NAAM}}/g, salespersonName);
