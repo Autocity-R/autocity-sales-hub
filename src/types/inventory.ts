@@ -39,8 +39,9 @@ export type LocationStatus =
   | "werkplaats"
   | "poetser"
   | "spuiter"
-  | "onderweg"       // Added
-  | "oud_beijerland";
+  | "onderweg"
+  | "oud_beijerland"
+  | "afgeleverd";
 
 export type SalesStatus = 
   | "voorraad" 

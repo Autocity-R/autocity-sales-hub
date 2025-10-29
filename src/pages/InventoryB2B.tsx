@@ -42,7 +42,7 @@ const InventoryB2B = () => {
   }, [vehicles, searchTerm]);
   
   const { selectedVehicles, setSelectedVehicles, selectedVehicle, setSelectedVehicle, toggleSelectVehicle, toggleSelectAll } = useB2BVehicleSelection(filteredVehicles);
-  const { handleUpdateVehicle, handleSendEmail, handleUpdateSellingPrice, handleUpdatePaymentStatus, handleMarkAsDelivered, handleChangeStatus, uploadFileMutation } = useB2BVehicleOperations();
+  const { handleUpdateVehicle, handleSendEmail, handleUpdateSellingPrice, handleUpdatePaymentStatus, handleMarkAsDelivered, handleChangeStatus, handleUpdateLocation, uploadFileMutation } = useB2BVehicleOperations();
   const { vehicleFiles = [] } = useVehicleFiles(selectedVehicle);
   const { handleUploadPhoto, handleRemovePhoto, handleSetMainPhoto } = useVehiclePhotos(selectedVehicle, setSelectedVehicle);
 
@@ -296,6 +296,7 @@ const InventoryB2B = () => {
           onSendEmail={handleSendEmailWrapper}
           onUpdateSellingPrice={handleUpdateSellingPrice}
           onUpdatePaymentStatus={handleUpdatePaymentStatus}
+          onUpdateLocation={handleUpdateLocation}
           onChangeStatus={handleChangeStatus}
           onMarkAsDelivered={handleMarkAsDelivered}
           onUpdateVehicle={handleUpdateVehicle}

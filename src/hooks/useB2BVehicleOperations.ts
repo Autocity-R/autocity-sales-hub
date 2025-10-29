@@ -167,6 +167,25 @@ export const useB2BVehicleOperations = () => {
     }
   });
 
+  const updateLocationMutation = useMutation({
+    mutationFn: ({ vehicleId, location }: { vehicleId: string; location: string }) => {
+      const { updateVehicleLocation } = require("@/services/supabaseInventoryService");
+      return updateVehicleLocation(vehicleId, location);
+    },
+    onSuccess: () => {
+      toast.success("Locatie bijgewerkt");
+      queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
+    },
+    onError: (error) => {
+      toast.error("Fout bij het bijwerken van de locatie");
+      console.error("Error updating location:", error);
+    }
+  });
+
+  const handleUpdateLocation = (vehicleId: string, location: string) => {
+    updateLocationMutation.mutate({ vehicleId, location });
+  };
+
   const handleChangeStatus = async (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => {
     // Find the vehicle to get info for validation and tracking
     const currentVehicles = queryClient.getQueryData<Vehicle[]>(["b2bVehicles"]) || [];
@@ -208,6 +227,7 @@ export const useB2BVehicleOperations = () => {
     handleUpdatePaymentStatus,
     handleMarkAsDelivered,
     handleChangeStatus,
+    handleUpdateLocation,
     uploadFileMutation
   };
 };

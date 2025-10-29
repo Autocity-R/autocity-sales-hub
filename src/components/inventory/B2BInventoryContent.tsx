@@ -27,6 +27,7 @@ interface B2BInventoryContentProps {
   ) => void;
   onUpdateSellingPrice: (vehicleId: string, price: number) => void;
   onUpdatePaymentStatus: (vehicleId: string, status: PaymentStatus) => void;
+  onUpdateLocation?: (vehicleId: string, location: string) => void;
   onChangeStatus: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   onMarkAsDelivered: (
     vehicleId: string,
@@ -62,6 +63,7 @@ export const B2BInventoryContent = ({
   onSendEmail,
   onUpdateSellingPrice,
   onUpdatePaymentStatus,
+  onUpdateLocation,
   onChangeStatus,
   onMarkAsDelivered,
   onUpdateVehicle,
@@ -85,6 +87,7 @@ export const B2BInventoryContent = ({
           handleSendEmail={onSendEmail}
           handleUpdateSellingPrice={onUpdateSellingPrice}
           handleUpdatePaymentStatus={onUpdatePaymentStatus}
+          handleUpdateLocation={onUpdateLocation}
           handleChangeStatus={onChangeStatus}
           onMarkAsDelivered={onMarkAsDelivered}
           onOpenContractConfig={onOpenContractConfig}
