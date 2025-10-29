@@ -34,8 +34,7 @@ const TaskManagement = () => {
   } = useQuery({
     queryKey: ["tasks", statusFilter, user?.id],
     queryFn: () => fetchTasks({ 
-      status: statusFilter !== "all" ? statusFilter : undefined,
-      assignedTo: isAdmin ? undefined : user?.id 
+      status: statusFilter !== "all" ? statusFilter : undefined
     }),
     enabled: !!user,
   });
