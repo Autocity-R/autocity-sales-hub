@@ -257,22 +257,23 @@ export class SupabaseInventoryService {
      // Prepare email reminder settings
      const emailReminderSettings = (vehicle as any).emailReminderSettings || {};
      
-     // Auto-sync location with transport status
-     let locationToSet = vehicle.location;
-     
-     // Auto-sync: Als transportStatus wordt meegegeven, sync de locatie
-     if (vehicle.transportStatus === 'onderweg') {
-       locationToSet = 'onderweg';
-     }
-     
-     if (vehicle.transportStatus === 'aangekomen') {
-       locationToSet = 'showroom';
-     }
-     
-     // Als de gebruiker expliciet een custom locatie meegeeft, respecteer die
-     if (vehicle.location && vehicle.location !== 'showroom' && vehicle.location !== 'onderweg') {
-       locationToSet = vehicle.location; // Respecteer handmatige custom locaties zoals "werkplaats"
-     }
+      // Auto-sync location with transport status
+      let locationToSet = existingVehicle.location;
+      
+      // Als location expliciet wordt meegegeven in de update, gebruik die altijd
+      // Anders pas auto-sync toe op basis van transportStatus
+      if (vehicle.location !== undefined) {
+        // Respecteer ALLE handmatige locatie keuzes (inclusief "afgeleverd")
+        locationToSet = vehicle.location;
+      } else if (vehicle.transportStatus !== undefined) {
+        // Auto-sync alleen als location niet expliciet is opgegeven
+        if (vehicle.transportStatus === 'onderweg') {
+          locationToSet = 'onderweg';
+        } else if (vehicle.transportStatus === 'aangekomen' && existingVehicle.location === 'onderweg') {
+          // Alleen auto-sync van onderweg naar showroom
+          locationToSet = 'showroom';
+        }
+      }
      
      // Prepare update data
      // CRITICAL: Preserve selling_price - use new value if provided, otherwise keep existing

@@ -168,30 +168,51 @@ export const useB2BVehicleOperations = () => {
   });
 
   const updateLocationMutation = useMutation({
-    mutationFn: ({ vehicleId, location }: { vehicleId: string; location: string }) => {
+    mutationFn: async ({ vehicleId, location }: { vehicleId: string; location: string }) => {
       console.log(`🔄 Starting location update for vehicle ${vehicleId} to ${location}`);
       const { supabaseInventoryService } = require("@/services/supabaseInventoryService");
-      return supabaseInventoryService.updateVehicleLocation(vehicleId, location);
+      // Gebruik updateVehicle met alleen location parameter om de auto-sync logica te respecteren
+      return supabaseInventoryService.updateVehicle({ 
+        id: vehicleId, 
+        location: location as LocationStatus 
+      } as any);
+    },
+    onMutate: async ({ vehicleId, location }) => {
+      // Cancel lopende queries
+      await queryClient.cancelQueries({ queryKey: ["b2bVehicles"] });
+      
+      // Snapshot van vorige state
+      const previousVehicles = queryClient.getQueryData<Vehicle[]>(["b2bVehicles"]);
+      
+      // Optimistic update: direct de UI updaten
+      queryClient.setQueryData<Vehicle[]>(["b2bVehicles"], (old = []) =>
+        old.map(v => v.id === vehicleId ? { ...v, location: location as LocationStatus } : v)
+      );
+      
+      console.log(`✨ Optimistic update: vehicle ${vehicleId} location set to ${location}`);
+      
+      return { previousVehicles };
     },
     onSuccess: (_, { vehicleId, location }) => {
       console.log(`✅ Location update successful for vehicle ${vehicleId} to ${location}`);
       toast.success("Locatie bijgewerkt");
       
-      // Update the vehicle in the cache immediately
-      queryClient.setQueryData<Vehicle[]>(["b2bVehicles"], (oldData: Vehicle[] = []) => {
-        return oldData.map((vehicle) =>
-          vehicle.id === vehicleId
-            ? { ...vehicle, location: location as LocationStatus }
-            : vehicle
-        );
-      });
-      
-      // Force refresh to ensure we have the latest data
+      // Invalideer query om definitieve data op te halen
       queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
     },
-    onError: (error, { vehicleId, location }) => {
+    onError: (error, { vehicleId, location }, context) => {
       console.error(`❌ Location update failed for vehicle ${vehicleId} to ${location}:`, error);
+      
+      // Rollback bij fout
+      if (context?.previousVehicles) {
+        queryClient.setQueryData(["b2bVehicles"], context.previousVehicles);
+      }
+      
       toast.error("Fout bij het bijwerken van de locatie");
+    },
+    onSettled: () => {
+      // Forceer refresh na afloop (zowel bij success als error)
+      queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
     }
   });
 

@@ -309,6 +309,10 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               <MapPin className="h-4 w-4 mr-2" />
               Oud Beijerland
             </ToggleGroupItem>
+            <ToggleGroupItem value="afgeleverd" aria-label="Afgeleverd">
+              <MapPin className="h-4 w-4 mr-2" />
+              🚚 Afgeleverd
+            </ToggleGroupItem>
           </ToggleGroup>
         </div>
         
