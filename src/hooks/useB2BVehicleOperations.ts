@@ -1,7 +1,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Vehicle, PaymentStatus } from "@/types/inventory";
+import { Vehicle, PaymentStatus, LocationStatus } from "@/types/inventory";
 import { FileCategory } from "@/types/inventory";
 import {
   updateVehicle, 
@@ -169,20 +169,34 @@ export const useB2BVehicleOperations = () => {
 
   const updateLocationMutation = useMutation({
     mutationFn: ({ vehicleId, location }: { vehicleId: string; location: string }) => {
+      console.log(`🔄 Starting location update for vehicle ${vehicleId} to ${location}`);
       const { supabaseInventoryService } = require("@/services/supabaseInventoryService");
       return supabaseInventoryService.updateVehicleLocation(vehicleId, location);
     },
-    onSuccess: () => {
+    onSuccess: (_, { vehicleId, location }) => {
+      console.log(`✅ Location update successful for vehicle ${vehicleId} to ${location}`);
       toast.success("Locatie bijgewerkt");
+      
+      // Update the vehicle in the cache immediately
+      queryClient.setQueryData<Vehicle[]>(["b2bVehicles"], (oldData: Vehicle[] = []) => {
+        return oldData.map((vehicle) =>
+          vehicle.id === vehicleId
+            ? { ...vehicle, location: location as LocationStatus }
+            : vehicle
+        );
+      });
+      
+      // Force refresh to ensure we have the latest data
       queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
     },
-    onError: (error) => {
+    onError: (error, { vehicleId, location }) => {
+      console.error(`❌ Location update failed for vehicle ${vehicleId} to ${location}:`, error);
       toast.error("Fout bij het bijwerken van de locatie");
-      console.error("Error updating location:", error);
     }
   });
 
   const handleUpdateLocation = (vehicleId: string, location: string) => {
+    console.log(`📍 Handling location update for vehicle ${vehicleId} to ${location}`);
     updateLocationMutation.mutate({ vehicleId, location });
   };
 
