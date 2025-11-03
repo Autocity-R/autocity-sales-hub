@@ -327,22 +327,27 @@ export class SupabaseInventoryService {
         : existingVehicle.sold_by_user_id
     };
 
-    // Only update customer_id and supplier_id if they are explicitly provided (not undefined)
+    // Only update customer_id, supplier_id, and transporter_id if they are explicitly provided (not undefined)
     if (vehicle.customerId !== undefined) {
       updateData.customer_id = vehicle.customerId;
     }
     if (vehicle.supplierId !== undefined) {
       updateData.supplier_id = vehicle.supplierId;
     }
+    if (vehicle.transporter_id !== undefined) {
+      updateData.transporter_id = vehicle.transporter_id;
+    }
 
     console.log('[UPDATE_VEHICLE] Updating vehicle:', {
       id: vehicle.id,
       customerId: vehicle.customerId,
       supplierId: vehicle.supplierId,
+      transporterId: vehicle.transporter_id,
       sellingPrice: updateData.selling_price,
       purchasePrice: details.purchasePrice,
       willUpdateCustomerId: vehicle.customerId !== undefined,
-      willUpdateSupplierId: vehicle.supplierId !== undefined
+      willUpdateSupplierId: vehicle.supplierId !== undefined,
+      willUpdateTransporterId: vehicle.transporter_id !== undefined
     });
     
     try {
