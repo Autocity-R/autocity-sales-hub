@@ -116,15 +116,21 @@ export const loadVehicleRelationships = async (vehicles: any[]): Promise<any[]> 
     }
 
     // Add names and contact info to vehicles
-    const enrichedVehicles = vehicles.map(vehicle => ({
-      ...vehicle,
-      customerName: customers.get(vehicle.customerId)?.name || null,
-      supplierName: suppliers.get(vehicle.supplierId)?.name || null,
-      transporterName: transporters.get(vehicle.transporter_id)?.name || null,
-      customerContact: customers.get(vehicle.customerId)?.contact || null,
-      supplierContact: suppliers.get(vehicle.supplierId)?.contact || null,
-      transporterContact: transporters.get(vehicle.transporter_id)?.contact || null,
-    }));
+    const enrichedVehicles = vehicles.map(vehicle => {
+      const customerData = customers.get(vehicle.customerId);
+      const supplierData = suppliers.get(vehicle.supplierId);
+      const transporterData = transporters.get(vehicle.transporter_id);
+      
+      return {
+        ...vehicle,
+        customerName: customerData?.name || null,
+        supplierName: supplierData?.name || null,
+        transporterName: transporterData?.name || null,
+        customerContact: customerData?.contact || null,
+        supplierContact: supplierData?.contact || null,
+        transporterContact: transporterData?.contact || null,
+      };
+    });
     
     // 🔍 LOG voor test-voertuig
     const testVehicle = enrichedVehicles.find(v => v.id === 'a95829f7-150e-43d6-84be-ced28f90c974');

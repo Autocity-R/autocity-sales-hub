@@ -60,6 +60,7 @@ const Transport = () => {
     mutationFn: updateVehicle,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
       toast({
         title: "Voertuig bijgewerkt",
         description: "De wijzigingen zijn succesvol opgeslagen.",
