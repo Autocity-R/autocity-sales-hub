@@ -559,6 +559,7 @@ export class SupabaseInventoryService {
       salesStatus: supabaseVehicle.status as any,
       customerId: supabaseVehicle.customer_id,
       supplierId: supabaseVehicle.supplier_id,
+      transporter_id: supabaseVehicle.transporter_id,
       customerName: null, // Will be loaded separately when needed
       createdAt: supabaseVehicle.created_at,
       
