@@ -87,7 +87,6 @@ export const B2BInventoryContent = ({
           handleSendEmail={onSendEmail}
           handleUpdateSellingPrice={onUpdateSellingPrice}
           handleUpdatePaymentStatus={onUpdatePaymentStatus}
-          handleUpdateLocation={onUpdateLocation}
           handleChangeStatus={onChangeStatus}
           onMarkAsDelivered={onMarkAsDelivered}
           onOpenContractConfig={onOpenContractConfig}

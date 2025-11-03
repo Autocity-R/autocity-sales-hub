@@ -55,7 +55,6 @@ interface VehicleB2BTableProps {
   handleSendEmail: (type: string, vehicleId: string) => void;
   handleUpdateSellingPrice?: (vehicleId: string, price: number) => void;
   handleUpdatePaymentStatus?: (vehicleId: string, status: PaymentStatus) => void;
-  handleUpdateLocation?: (vehicleId: string, location: string) => void;
   handleChangeStatus?: (vehicleId: string, status: 'verkocht_b2b' | 'verkocht_b2c' | 'voorraad') => void;
   onMarkAsDelivered?: (
     vehicleId: string,
@@ -112,7 +111,6 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
   handleSendEmail,
   handleUpdateSellingPrice,
   handleUpdatePaymentStatus,
-  handleUpdateLocation,
   handleChangeStatus,
   onMarkAsDelivered,
   onOpenContractConfig,
@@ -409,38 +407,12 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                   </div>
                 </TableCell>
                 <TableCell>{renderImportStatusBadge(vehicle.importStatus)}</TableCell>
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                  {handleUpdateLocation ? (
-                    <Select
-                      value={vehicle.location}
-                      onValueChange={(value) => handleUpdateLocation(vehicle.id, value)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue>
-                          <Badge variant="outline" className="capitalize">
-                            {vehicle.location === 'afgeleverd' && '🚚 '}
-                            {vehicle.location.replace(/_/g, ' ')}
-                          </Badge>
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="showroom">Showroom</SelectItem>
-                        <SelectItem value="opslag">Opslag</SelectItem>
-                        <SelectItem value="calandstraat">Calandstraat</SelectItem>
-                        <SelectItem value="werkplaats">Werkplaats</SelectItem>
-                        <SelectItem value="poetser">Poetser</SelectItem>
-                        <SelectItem value="spuiter">Spuiter</SelectItem>
-                        <SelectItem value="onderweg">Onderweg</SelectItem>
-                        <SelectItem value="oud_beijerland">Oud Beijerland</SelectItem>
-                        <SelectItem value="afgeleverd">🚚 Afgeleverd</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Badge variant="outline" className="capitalize truncate">
-                      {vehicle.location === 'afgeleverd' && '🚚 '}
-                      {vehicle.location}
-                    </Badge>
-                  )}
+                <TableCell>
+                  <Badge variant="outline" className="capitalize">
+                    {vehicle.location === 'afgeleverd' && '🚚 '}
+                    {vehicle.location === 'onderweg' && '🚗 '}
+                    {vehicle.location.replace(/_/g, ' ')}
+                  </Badge>
                 </TableCell>
                 <TableCell className="text-center">
                   {vehicle.papersReceived ? (
