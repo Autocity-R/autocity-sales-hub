@@ -169,8 +169,8 @@ export const useB2BVehicleOperations = () => {
 
   const updateLocationMutation = useMutation({
     mutationFn: ({ vehicleId, location }: { vehicleId: string; location: string }) => {
-      const { updateVehicleLocation } = require("@/services/supabaseInventoryService");
-      return updateVehicleLocation(vehicleId, location);
+      const { supabaseInventoryService } = require("@/services/supabaseInventoryService");
+      return supabaseInventoryService.updateVehicleLocation(vehicleId, location);
     },
     onSuccess: () => {
       toast.success("Locatie bijgewerkt");
