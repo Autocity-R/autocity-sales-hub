@@ -207,8 +207,8 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
                   <div>
                     <Label>Transporteur</Label>
                     <Select 
-                      value={updatedVehicle.supplierId || ""} 
-                      onValueChange={(value) => setUpdatedVehicle({...updatedVehicle, supplierId: value})}
+                      value={updatedVehicle.transporter_id || ""} 
+                      onValueChange={(value) => setUpdatedVehicle({...updatedVehicle, transporter_id: value})}
                     >
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder="Selecteer transporteur" />

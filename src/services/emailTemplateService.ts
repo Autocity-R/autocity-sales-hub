@@ -153,14 +153,32 @@ export const getEmailTemplateByButton = (buttonValue: string): EmailTemplate | n
 export const determineRecipient = async (buttonValue: string, vehicleData: Vehicle): Promise<{ email: string; name: string } | null> => {
   switch (buttonValue) {
     case "transport_pickup":
-      // Get transporter contact from contacts table
+      // Get transporter contact from NEW transporter_id field
+      if (vehicleData.transporter_id) {
+        const { supabaseCustomerService } = await import('./supabaseCustomerService');
+        const contact = await supabaseCustomerService.getContactById(vehicleData.transporter_id);
+        
+        // transporter_id should always point to a transporter
+        if (contact) {
+          // Validate email address
+          if (!contact.email || !contact.email.includes('@')) {
+            console.warn(`Transporter ${contact.id} has invalid email: ${contact.email}`);
+            return null;
+          }
+          return {
+            email: contact.email,
+            name: contact.companyName || `${contact.firstName} ${contact.lastName}`
+          };
+        }
+      }
+      
+      // Fallback: check old supplierId for backward compatibility (oude data)
       if (vehicleData.supplierId) {
         const { supabaseCustomerService } = await import('./supabaseCustomerService');
         const contact = await supabaseCustomerService.getContactById(vehicleData.supplierId);
         
-        // Verify it's actually a transporter
+        // Only use if it's actually a transporter type
         if (contact && contact.type === 'transporter') {
-          // Validate email address
           if (!contact.email || !contact.email.includes('@')) {
             console.warn(`Contact ${contact.id} has invalid email: ${contact.email}`);
             return null;
@@ -169,12 +187,10 @@ export const determineRecipient = async (buttonValue: string, vehicleData: Vehic
             email: contact.email,
             name: contact.companyName || `${contact.firstName} ${contact.lastName}`
           };
-        } else if (contact && contact.type !== 'transporter') {
-          console.warn(`Contact ${contact.id} is not type 'transporter', but '${contact.type}'`);
-          return null;
         }
       }
-      // Fallback to legacy transporterContact
+      
+      // Final fallback to legacy transporterContact
       return vehicleData.transporterContact || null;
       
     case "cmr_supplier":

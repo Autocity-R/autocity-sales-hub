@@ -10,9 +10,10 @@ export const loadVehicleRelationships = async (vehicles: any[]): Promise<any[]> 
       vehicles.find(v => v.id === 'a95829f7-150e-43d6-84be-ced28f90c974')?.customerId
     );
     
-    // Get unique customer and supplier IDs
+    // Get unique customer, supplier and transporter IDs
     const customerIds = [...new Set(vehicles.map(v => v.customerId).filter(Boolean))];
     const supplierIds = [...new Set(vehicles.map(v => v.supplierId).filter(Boolean))];
+    const transporterIds = [...new Set(vehicles.map(v => v.transporter_id).filter(Boolean))];
 
     // Load customers
     const customers = new Map();
@@ -84,13 +85,45 @@ export const loadVehicleRelationships = async (vehicles: any[]): Promise<any[]> 
       });
     }
 
+    // Load transporters
+    const transporters = new Map();
+    if (transporterIds.length > 0) {
+      const { data: transporterData } = await supabase
+        .from('contacts')
+        .select('id, first_name, last_name, company_name, is_car_dealer, email, phone, address_street, address_number, address_postal_code, address_city')
+        .in('id', transporterIds);
+      
+      transporterData?.forEach(transporter => {
+        const name = transporter.company_name || `${transporter.first_name} ${transporter.last_name}`.trim();
+        const addressParts = [
+          transporter.address_street,
+          transporter.address_number,
+          transporter.address_postal_code,
+          transporter.address_city
+        ].filter(Boolean);
+        const address = addressParts.join(', ');
+        transporters.set(transporter.id, {
+          name,
+          contact: {
+            name,
+            email: transporter.email,
+            phone: transporter.phone,
+            address,
+            isCarDealer: !!transporter.is_car_dealer
+          }
+        });
+      });
+    }
+
     // Add names and contact info to vehicles
     const enrichedVehicles = vehicles.map(vehicle => ({
       ...vehicle,
       customerName: customers.get(vehicle.customerId)?.name || null,
       supplierName: suppliers.get(vehicle.supplierId)?.name || null,
+      transporterName: transporters.get(vehicle.transporter_id)?.name || null,
       customerContact: customers.get(vehicle.customerId)?.contact || null,
       supplierContact: suppliers.get(vehicle.supplierId)?.contact || null,
+      transporterContact: transporters.get(vehicle.transporter_id)?.contact || null,
     }));
     
     // 🔍 LOG voor test-voertuig

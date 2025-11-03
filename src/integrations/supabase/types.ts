@@ -2140,6 +2140,7 @@ export type Database = {
           sold_date: string | null
           status: string
           supplier_id: string | null
+          transporter_id: string | null
           updated_at: string
           vin: string | null
           year: number | null
@@ -2169,6 +2170,7 @@ export type Database = {
           sold_date?: string | null
           status?: string
           supplier_id?: string | null
+          transporter_id?: string | null
           updated_at?: string
           vin?: string | null
           year?: number | null
@@ -2198,6 +2200,7 @@ export type Database = {
           sold_date?: string | null
           status?: string
           supplier_id?: string | null
+          transporter_id?: string | null
           updated_at?: string
           vin?: string | null
           year?: number | null
@@ -2215,6 +2218,13 @@ export type Database = {
             columns: ["purchased_by_user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_transporter_id_fkey"
+            columns: ["transporter_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
         ]

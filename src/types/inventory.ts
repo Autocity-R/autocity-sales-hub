@@ -156,6 +156,7 @@ export interface Vehicle {
   customerId?: string;              // Reference to customer in contacts table
   supplierId?: string;              // Reference to supplier in contacts table
   transporterId?: string;           // Reference to transporter in contacts table
+  transporter_id?: string;          // New field: Reference to transporter in contacts table (separate from supplier)
   
   // Contact informatie voor email verzending
   customerContact?: ContactInfo;    // Klant contact informatie
