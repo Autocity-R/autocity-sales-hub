@@ -214,8 +214,17 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
                   />
                 </TableCell>
                 <TableCell className="align-middle">
-                  <Badge variant="outline" className={vehicle.salesStatus === "verkocht_b2c" ? "bg-blue-50 text-blue-800" : "bg-purple-50 text-purple-800"}>
-                    {vehicle.salesStatus === "verkocht_b2c" ? "B2C" : "B2B"}
+                  <Badge 
+                    variant="outline" 
+                    className={
+                      (vehicle.details?.originalSalesStatus === "verkocht_b2c" || vehicle.salesStatus === "verkocht_b2c")
+                        ? "bg-blue-50 text-blue-800" 
+                        : "bg-purple-50 text-purple-800"
+                    }
+                  >
+                    {(vehicle.details?.originalSalesStatus === "verkocht_b2c" || vehicle.salesStatus === "verkocht_b2c") 
+                      ? "B2C" 
+                      : "B2B"}
                   </Badge>
                 </TableCell>
                 <TableCell className="align-middle">

@@ -337,12 +337,12 @@ export const markVehicleAsDelivered = async (
         ? new Date(new Date(deliveryDate).setMonth(new Date(deliveryDate).getMonth() + warrantyMonths)).toISOString()
         : null;
 
-      // Fetch current vehicle to preserve existing details
-      const { data: currentVehicle, error: fetchError } = await supabase
-        .from('vehicles')
-        .select('details, notes')
-        .eq('id', vehicleId)
-        .single();
+    // Fetch current vehicle to preserve existing details and status
+    const { data: currentVehicle, error: fetchError } = await supabase
+      .from('vehicles')
+      .select('details, notes, status')
+      .eq('id', vehicleId)
+      .single();
 
       if (fetchError) {
         console.error('Error fetching vehicle:', fetchError);
@@ -352,16 +352,17 @@ export const markVehicleAsDelivered = async (
       const currentDetails = (currentVehicle?.details as Record<string, any>) || {};
       const currentNotes = currentVehicle?.notes || '';
 
-      // Prepare updated details with warranty information
-      const updatedDetails = {
-        ...currentDetails,
-        warrantyPackage,
-        warrantyPackageName,
-        warrantyPackagePrice,
-        warrantyStartDate,
-        warrantyEndDate,
-        deliveryDate: deliveryDate.toISOString()
-      };
+    // Prepare updated details with warranty information and original sales status
+    const updatedDetails = {
+      ...currentDetails,
+      warrantyPackage,
+      warrantyPackageName,
+      warrantyPackagePrice,
+      warrantyStartDate,
+      warrantyEndDate,
+      deliveryDate: deliveryDate.toISOString(),
+      originalSalesStatus: currentVehicle.status, // Bewaar originele status (verkocht_b2b of verkocht_b2c)
+    };
 
       // Append delivery notes to existing notes if provided
       const updatedNotes = deliveryNotes 
