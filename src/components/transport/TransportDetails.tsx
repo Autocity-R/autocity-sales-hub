@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { FileText, X, Mail, Upload, CheckCircle, Trash2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +21,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Vehicle, ImportStatus, FileCategory } from "@/types/inventory";
+import { Vehicle, ImportStatus, FileCategory, PaymentStatus } from "@/types/inventory";
 import { TransportFileUploader } from "./TransportFileUploader";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -118,6 +119,29 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
   // Get damage files
   const damageFiles = vehicleFiles.filter(file => file.category === "damage");
 
+  const getPaymentStatusBadge = (vehicle: Vehicle) => {
+    const paymentStatus = vehicle.details?.paymentStatus || vehicle.paymentStatus || "niet_betaald";
+    
+    if (paymentStatus === "volledig_betaald") {
+      return {
+        label: "Ja - Volledig betaald",
+        className: "bg-green-100 text-green-800 border-green-300 hover:bg-green-100"
+      };
+    }
+    
+    if (paymentStatus === "aanbetaling") {
+      return {
+        label: "Deels - Aanbetaling",
+        className: "bg-orange-100 text-orange-800 border-orange-300 hover:bg-orange-100"
+      };
+    }
+    
+    return {
+      label: "Nee - Niet betaald",
+      className: "bg-red-100 text-red-800 border-red-300 hover:bg-red-100"
+    };
+  };
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-[90%] sm:max-w-[800px] max-h-[90vh] p-0 flex flex-col">
@@ -173,6 +197,14 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
                     <div className="text-sm mt-1">€{updatedVehicle.purchasePrice.toLocaleString('nl-NL')}</div>
                   </div>
                   <div>
+                    <Label>Betaalstatus</Label>
+                    <div className="mt-1">
+                      <Badge className={getPaymentStatusBadge(updatedVehicle).className}>
+                        {getPaymentStatusBadge(updatedVehicle).label}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
                     <Label>Schade</Label>
                     <div className="text-sm mt-1 capitalize">{updatedVehicle.damage.status}</div>
                   </div>
@@ -225,6 +257,33 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
                             </SelectItem>
                           ))
                         )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="paymentStatus">Betaalstatus</Label>
+                    <Select
+                      value={updatedVehicle.paymentStatus || updatedVehicle.details?.paymentStatus || "niet_betaald"}
+                      onValueChange={(value: PaymentStatus) => {
+                        setUpdatedVehicle({
+                          ...updatedVehicle,
+                          paymentStatus: value
+                        });
+                      }}
+                    >
+                      <SelectTrigger id="paymentStatus" className="mt-1">
+                        <SelectValue placeholder="Selecteer betaalstatus" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="niet_betaald">
+                          🔴 Nee - Niet betaald
+                        </SelectItem>
+                        <SelectItem value="aanbetaling">
+                          🟠 Deels - Aanbetaling gedaan
+                        </SelectItem>
+                        <SelectItem value="volledig_betaald">
+                          🟢 Ja - Volledig betaald
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
