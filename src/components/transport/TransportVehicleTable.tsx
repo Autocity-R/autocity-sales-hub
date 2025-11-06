@@ -73,6 +73,29 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
     }
   };
 
+  const getPaymentStatusBadge = (vehicle: Vehicle) => {
+    const paymentStatus = vehicle.details?.paymentStatus || vehicle.paymentStatus || "niet_betaald";
+    
+    if (paymentStatus === "volledig_betaald") {
+      return {
+        label: "Ja",
+        className: "bg-green-100 text-green-800 border-green-300 hover:bg-green-100"
+      };
+    }
+    
+    if (paymentStatus === "aanbetaling") {
+      return {
+        label: "Deels",
+        className: "bg-orange-100 text-orange-800 border-orange-300 hover:bg-orange-100"
+      };
+    }
+    
+    return {
+      label: "Nee",
+      className: "bg-red-100 text-red-800 border-red-300 hover:bg-red-100"
+    };
+  };
+
   const getPickupStatus = (vehicle: Vehicle) => {
     const hasPickupDocument = vehicle.details?.pickupDocumentSent || vehicle.cmrSent;
     
@@ -134,6 +157,7 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
             <TableHead className="min-w-28">Kenteken</TableHead>
             <TableHead className="min-w-32">VIN</TableHead>
             <TableHead className="min-w-28">Inkoopprijs</TableHead>
+            <TableHead className="min-w-20">Betaald</TableHead>
             <TableHead className="min-w-28">Pickup status</TableHead>
             <TableHead className="min-w-32">Transport status</TableHead>
             <TableHead className="min-w-24 text-center">Acties</TableHead>
@@ -161,6 +185,16 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
               <TableCell className="align-middle">{vehicle.licenseNumber || "Onbekend"}</TableCell>
               <TableCell className="align-middle truncate max-w-32">{vehicle.vin}</TableCell>
               <TableCell className="align-middle">€{vehicle.purchasePrice.toLocaleString('nl-NL')}</TableCell>
+              <TableCell className="align-middle">
+                {(() => {
+                  const paymentStatus = getPaymentStatusBadge(vehicle);
+                  return (
+                    <Badge className={paymentStatus.className}>
+                      {paymentStatus.label}
+                    </Badge>
+                  );
+                })()}
+              </TableCell>
               <TableCell className="align-middle">
                 {(() => {
                   const status = getPickupStatus(vehicle);
