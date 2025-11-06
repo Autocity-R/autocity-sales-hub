@@ -141,7 +141,8 @@ export let emailTemplates: EmailTemplate[] = [
     content: "Beste administratie,\n\nHet volgende voertuig is afgeleverd aan de klant en kan worden gefactureerd:\n\nVoertuiggegevens:\n\nMerk: {{MERK}}\n\nModel: {{MODEL}}\n\nVIN: {{VIN}}{{KENTEKEN_INDIEN_INRUIL}}\n\nKlantgegevens:\n\nNaam / Bedrijfsnaam: {{KLANT_NAAM}}\n\nAdres: {{KLANT_ADRES}}\n\nE-mailadres voor factuur: {{KLANT_EMAIL}}\n\nVerkoopprijs: €{{VERKOOPPRIJS_MET_BPM}}\n\nDe factuur mag nu worden opgemaakt en verzonden naar de klant.\n\nMet vriendelijke groet,\n{{VERKOPER_NAAM}}\nAutocity Automotive Group\n📞 010 262 3980",
     senderEmail: "verkoop@auto-city.nl",
     linkedButton: "invoice_request",
-    hasAttachment: false,
+    hasAttachment: true,
+    attachmentType: "latest-contract",
     recipientOverride: "administratie@auto-city.nl"
   }
 ];
@@ -519,43 +520,53 @@ const getEmailAttachments = async (
       break;
 
     case "generated-contract":
-      // Generate contract document
+      // Generate contract document AND save it to vehicle_files
       if (contractOptions) {
         const contractType = template.linkedButton.includes("b2b") ? "b2b" : "b2c";
-        const contract = await generateContract(vehicleData, contractType, contractOptions, signatureUrl);
         
-        // Generate PDF from HTML to preserve styling and layout
-        const { generatePdfFromHtml } = await import("./contractPdfService");
-        const pdfBlob = await generatePdfFromHtml(contract.htmlContent);
-        const fileName = contract.fileName;
-        const filePath = `${vehicleData.id}/contracts/${Date.now()}-${fileName}`;
+        // Save contract to vehicle using the new service
+        const { saveContractToVehicle } = await import("./contractStorageService");
+        const savedContract = await saveContractToVehicle(vehicleData, contractType, contractOptions, signatureUrl);
         
-        // Upload to Supabase Storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('vehicle-documents')
-          .upload(filePath, pdfBlob, {
-            contentType: 'application/pdf',
-            upsert: false
-          });
-        
-        if (uploadError) {
-          console.error('Error uploading contract PDF:', uploadError);
-          throw new Error(`Failed to upload contract PDF: ${uploadError.message}`);
+        if (savedContract) {
+          console.log('[EMAIL_ATTACHMENTS] ✅ Contract saved to vehicle_files:', savedContract);
+          
+          // Get signed URL for email attachment
+          const { data: urlData } = await supabase.storage
+            .from('vehicle-documents')
+            .createSignedUrl(savedContract.filePath!, 3600);
+          
+          if (urlData?.signedUrl) {
+            attachments.push({
+              name: savedContract.fileName!,
+              url: urlData.signedUrl
+            });
+          }
+        } else {
+          console.error('[EMAIL_ATTACHMENTS] ❌ Failed to save contract');
         }
-        
-        // Get signed URL (valid for 1 hour)
+      }
+      break;
+
+    case "latest-contract":
+      // Attach the latest saved contract for the vehicle
+      const { getLatestContractForVehicle } = await import("./contractStorageService");
+      const latestContract = await getLatestContractForVehicle(vehicleData.id);
+      
+      if (latestContract) {
         const { data: urlData } = await supabase.storage
           .from('vehicle-documents')
-          .createSignedUrl(filePath, 3600);
+          .createSignedUrl(latestContract.filePath!, 3600);
         
-        if (!urlData?.signedUrl) {
-          throw new Error('Failed to generate signed URL for contract PDF');
+        if (urlData?.signedUrl) {
+          attachments.push({
+            name: latestContract.fileName!,
+            url: urlData.signedUrl
+          });
+          console.log('[EMAIL_ATTACHMENTS] ✅ Latest contract attached:', latestContract.fileName);
         }
-        
-        attachments.push({
-          name: fileName,
-          url: urlData.signedUrl
-        });
+      } else {
+        console.warn('[EMAIL_ATTACHMENTS] ⚠️ No saved contract found for vehicle:', vehicleData.id);
       }
       break;
 

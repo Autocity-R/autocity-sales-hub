@@ -1,90 +1,220 @@
-
-import { Vehicle } from "@/types/inventory";
+import { Vehicle, VehicleFile } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
-import { generateContract, GeneratedContract } from "./contractService";
+import { generateContract } from "./contractService";
+import { generatePdfFromHtml } from "./contractPdfService";
+import { supabase } from "@/integrations/supabase/client";
 
-export interface StoredContract {
-  id: string;
-  vehicleId: string;
-  customerId?: string;
+export interface SavedContractMetadata {
   contractType: "b2b" | "b2c";
-  options: ContractOptions;
-  htmlContent: string;
-  textContent: string;
-  fileName: string;
-  pdfUrl?: string;
-  signatureUrl?: string;
-  createdAt: Date;
-  isDelivered: boolean;
+  contractOptions: ContractOptions;
+  savedAt: string;
+  vehicleSnapshot: {
+    brand: string;
+    model: string;
+    vin: string;
+    licenseNumber?: string;
+  };
 }
 
-// Mock storage for contracts (in real app this would be a database)
-const contractStorage: StoredContract[] = [];
-
-export const storeContract = async (
+/**
+ * Saves a contract as a PDF file in Supabase Storage and links it to the vehicle
+ */
+export const saveContractToVehicle = async (
   vehicle: Vehicle,
   contractType: "b2b" | "b2c",
-  options: ContractOptions,
+  contractOptions: ContractOptions,
   signatureUrl?: string
-): Promise<StoredContract> => {
-  // Generate the contract
-  const generatedContract = await generateContract(vehicle, contractType, options, signatureUrl);
-  
-  // Create stored contract record
-  const contractId = `contract-${vehicle.id}-${Date.now()}`;
-  const storedContract: StoredContract = {
-    id: contractId,
-    vehicleId: vehicle.id,
-    customerId: vehicle.customerId,
-    contractType,
-    options,
-    htmlContent: generatedContract.htmlContent,
-    textContent: generatedContract.content,
-    fileName: generatedContract.fileName,
-    pdfUrl: generatedContract.pdfUrl,
-    signatureUrl: generatedContract.signatureUrl,
-    createdAt: new Date(),
-    isDelivered: vehicle.salesStatus === "afgeleverd"
-  };
-  
-  // Store in mock storage (in real app this would save to database)
-  contractStorage.push(storedContract);
-  
-  console.log("Contract stored:", contractId);
-  
-  return storedContract;
-};
-
-export const getContractByVehicleId = async (vehicleId: string): Promise<StoredContract | null> => {
-  // In real app this would query the database
-  const contract = contractStorage.find(c => c.vehicleId === vehicleId);
-  return contract || null;
-};
-
-export const getContractById = async (contractId: string): Promise<StoredContract | null> => {
-  // In real app this would query the database
-  const contract = contractStorage.find(c => c.id === contractId);
-  return contract || null;
-};
-
-export const linkContractToVehicle = async (
-  vehicleId: string,
-  contractId: string,
-  contractUrl: string,
-  contractType: "b2b" | "b2c",
-  contractOptions: ContractOptions
-): Promise<boolean> => {
+): Promise<VehicleFile | null> => {
   try {
-    // In real app this would update the database
-    console.log("Linking contract to vehicle:", { vehicleId, contractId, contractUrl, contractType });
-    return true;
+    console.log(`[CONTRACT_STORAGE] Saving ${contractType} contract for vehicle ${vehicle.id}`);
+
+    // 1. Generate contract HTML
+    const generatedContract = await generateContract(vehicle, contractType, contractOptions, signatureUrl);
+    
+    // 2. Convert HTML to PDF
+    const pdfBlob = await generatePdfFromHtml(generatedContract.htmlContent);
+    
+    // 3. Create unique filename
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = `contract_${contractType}_${vehicle.brand}_${vehicle.model}_${timestamp}.pdf`;
+    const filePath = `${vehicle.id}/contracts/${fileName}`;
+    
+    // 4. Upload PDF to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('vehicle-documents')
+      .upload(filePath, pdfBlob, {
+        contentType: 'application/pdf',
+        upsert: false
+      });
+    
+    if (uploadError) {
+      console.error('[CONTRACT_STORAGE] Upload error:', uploadError);
+      throw uploadError;
+    }
+    
+    // 5. Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('vehicle-documents')
+      .getPublicUrl(filePath);
+    
+    // 6. Create metadata
+    const metadata: SavedContractMetadata = {
+      contractType,
+      contractOptions,
+      savedAt: new Date().toISOString(),
+      vehicleSnapshot: {
+        brand: vehicle.brand,
+        model: vehicle.model,
+        vin: vehicle.vin || '',
+        licenseNumber: vehicle.licenseNumber
+      }
+    };
+    
+    // 7. Insert record in vehicle_files table
+    const { data: fileRecord, error: dbError } = await supabase
+      .from('vehicle_files')
+      .insert({
+        vehicle_id: vehicle.id,
+        file_name: fileName,
+        file_path: filePath,
+        file_url: publicUrl,
+        category: contractType === 'b2b' ? 'contract_b2b' : 'contract_b2c',
+        file_size: pdfBlob.size,
+        uploaded_by: (await supabase.auth.getUser()).data.user?.id,
+        metadata: metadata
+      })
+      .select()
+      .single();
+    
+    if (dbError) {
+      console.error('[CONTRACT_STORAGE] Database error:', dbError);
+      // Try to clean up uploaded file
+      await supabase.storage.from('vehicle-documents').remove([filePath]);
+      throw dbError;
+    }
+    
+    console.log(`[CONTRACT_STORAGE] ✅ Contract saved successfully:`, fileRecord);
+    
+    return {
+      id: fileRecord.id,
+      vehicleId: fileRecord.vehicle_id,
+      name: fileRecord.file_name,
+      fileName: fileRecord.file_name,
+      filePath: fileRecord.file_path,
+      url: publicUrl,
+      fileUrl: publicUrl,
+      category: fileRecord.category as any,
+      fileSize: fileRecord.file_size,
+      size: fileRecord.file_size,
+      uploadedBy: fileRecord.uploaded_by,
+      uploadedAt: fileRecord.created_at,
+      createdAt: fileRecord.created_at,
+      isLargeFile: false
+    };
+    
   } catch (error) {
-    console.error("Failed to link contract to vehicle:", error);
-    return false;
+    console.error('[CONTRACT_STORAGE] Failed to save contract:', error);
+    return null;
   }
 };
 
-export const getAllContractsForVehicle = async (vehicleId: string): Promise<StoredContract[]> => {
-  // In real app this would query all contracts for a vehicle
-  return contractStorage.filter(c => c.vehicleId === vehicleId);
+/**
+ * Retrieves the latest contract for a vehicle by type
+ */
+export const getLatestContractForVehicle = async (
+  vehicleId: string,
+  contractType?: "b2b" | "b2c"
+): Promise<VehicleFile | null> => {
+  try {
+    let query = supabase
+      .from('vehicle_files')
+      .select('*')
+      .eq('vehicle_id', vehicleId);
+    
+    if (contractType) {
+      query = query.eq('category', contractType === 'b2b' ? 'contract_b2b' : 'contract_b2c');
+    } else {
+      query = query.in('category', ['contract_b2b', 'contract_b2c']);
+    }
+    
+    const { data, error } = await query
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (error || !data) {
+      return null;
+    }
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('vehicle-documents')
+      .getPublicUrl(data.file_path);
+
+    return {
+      id: data.id,
+      vehicleId: data.vehicle_id,
+      name: data.file_name,
+      fileName: data.file_name,
+      filePath: data.file_path,
+      url: publicUrl,
+      fileUrl: publicUrl,
+      category: data.category as any,
+      fileSize: data.file_size,
+      size: data.file_size,
+      uploadedBy: data.uploaded_by,
+      uploadedAt: data.created_at,
+      createdAt: data.created_at,
+      isLargeFile: false,
+      metadata: (data as any).metadata as SavedContractMetadata
+    };
+  } catch (error) {
+    console.error('[CONTRACT_STORAGE] Failed to get latest contract:', error);
+    return null;
+  }
+};
+
+/**
+ * Gets all contracts for a vehicle
+ */
+export const getAllContractsForVehicle = async (vehicleId: string): Promise<VehicleFile[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('vehicle_files')
+      .select('*')
+      .eq('vehicle_id', vehicleId)
+      .in('category', ['contract_b2b', 'contract_b2c'])
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('[CONTRACT_STORAGE] Error fetching contracts:', error);
+      return [];
+    }
+    
+    return (data || []).map(file => {
+      const { data: { publicUrl } } = supabase.storage
+        .from('vehicle-documents')
+        .getPublicUrl(file.file_path);
+
+      return {
+        id: file.id,
+        vehicleId: file.vehicle_id,
+        name: file.file_name,
+        fileName: file.file_name,
+        filePath: file.file_path,
+        url: publicUrl,
+        fileUrl: publicUrl,
+        category: file.category as any,
+        fileSize: file.file_size,
+        size: file.file_size,
+        uploadedBy: file.uploaded_by,
+        uploadedAt: file.created_at,
+        createdAt: file.created_at,
+        isLargeFile: false,
+        metadata: (file as any).metadata as SavedContractMetadata
+      };
+    });
+  } catch (error) {
+    console.error('[CONTRACT_STORAGE] Failed to get contracts:', error);
+    return [];
+  }
 };

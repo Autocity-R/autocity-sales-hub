@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileUploader } from "@/components/inventory/FileUploader";
 import { VehicleFile, FileCategory } from "@/types/inventory";
+import { SavedContractMetadata } from "@/services/contractStorageService";
 
 interface FilesTabProps {
   files: VehicleFile[];
@@ -21,17 +22,80 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   onSendEmail,
   readOnly = false
 }) => {
+  const contractFiles = files.filter(f => f.category === 'contract_b2b' || f.category === 'contract_b2c');
+  const damageFiles = files.filter(f => f.category === 'damage');
+  const cmrFiles = files.filter(f => f.category === 'cmr');
+  const pickupFiles = files.filter(f => f.category === 'pickup');
+
   return (
     <div className="grid grid-cols-1 gap-4">
       <div className="space-y-4">
         <h3 className="text-lg font-medium">Documenten</h3>
+        
+        {/* Contracten Sectie */}
+        {contractFiles.length > 0 && (
+          <div className="border rounded-md p-4 space-y-4 bg-primary/5">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-primary">Contracten</h4>
+              <Badge variant="default" className="ml-2">
+                {contractFiles.length}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Opgeslagen koopcontracten (laatst verstuurde contract).
+            </p>
+            <ul className="space-y-2">
+              {contractFiles.map(file => {
+                const metadata = file.metadata as SavedContractMetadata | undefined;
+                const hasTradeIn = metadata?.contractOptions?.tradeInVehicle;
+                
+                return (
+                  <li key={file.id} className="flex items-center justify-between text-sm p-2 bg-background rounded border">
+                    <div className="flex items-center flex-1 gap-2">
+                      <FileText className="h-4 w-4 text-primary" />
+                      <div className="flex flex-col flex-1">
+                        <span className="font-medium truncate max-w-[200px]" title={file.name}>
+                          {file.name}
+                        </span>
+                        {metadata && (
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(metadata.savedAt).toLocaleDateString('nl-NL', { 
+                              year: 'numeric', 
+                              month: 'short', 
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        <Badge variant="outline" className="text-xs">
+                          {file.category === 'contract_b2b' ? 'B2B' : 'B2C'}
+                        </Badge>
+                        {hasTradeIn && (
+                          <Badge variant="secondary" className="text-xs bg-amber-500 text-white">
+                            Inruil
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <Button size="sm" variant="ghost">
+                      <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="border rounded-md p-4 space-y-4">
             <div className="flex items-center justify-between">
               <h4 className="font-medium">Schade documenten</h4>
               <Badge variant="outline" className="ml-2">
-                {files.filter(f => f.category === "damage").length}
+                {damageFiles.length}
               </Badge>
             </div>
             {!readOnly && (
@@ -44,8 +108,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
               Upload schaderapport documenten voor intern gebruik.
             </p>
             <ul className="space-y-2 max-h-48 overflow-y-auto">
-              {files
-                .filter(file => file.category === "damage")
+              {damageFiles
                 .slice(0, 10) // Limit to 10 files for performance
                 .map(file => (
                   <li key={file.id} className="flex items-center justify-between text-sm">
@@ -83,9 +146,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                     </div>
                   </li>
                 ))}
-              {files.filter(file => file.category === "damage").length > 10 && (
+              {damageFiles.length > 10 && (
                 <li className="text-sm text-muted-foreground text-center">
-                  ... en {files.filter(file => file.category === "damage").length - 10} meer
+                  ... en {damageFiles.length - 10} meer
                 </li>
               )}
             </ul>
@@ -95,7 +158,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
             <div className="flex items-center justify-between">
               <h4 className="font-medium">CMR documenten</h4>
               <Badge variant="outline" className="ml-2">
-                {files.filter(f => f.category === "cmr").length}
+                {cmrFiles.length}
               </Badge>
             </div>
             {!readOnly && (
@@ -108,8 +171,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
               Upload CMR documenten voor verzending naar leverancier.
             </p>
             <ul className="space-y-2 max-h-48 overflow-y-auto">
-              {files
-                .filter(file => file.category === "cmr")
+              {cmrFiles
                 .slice(0, 10)
                 .map(file => (
                   <li key={file.id} className="flex items-center justify-between text-sm">
@@ -147,9 +209,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                     </div>
                   </li>
                 ))}
-              {files.filter(file => file.category === "cmr").length > 10 && (
+              {cmrFiles.length > 10 && (
                 <li className="text-sm text-muted-foreground text-center">
-                  ... en {files.filter(file => file.category === "cmr").length - 10} meer
+                  ... en {cmrFiles.length - 10} meer
                 </li>
               )}
             </ul>
@@ -159,7 +221,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
             <div className="flex items-center justify-between">
               <h4 className="font-medium">Pickup documenten</h4>
               <Badge variant="outline" className="ml-2">
-                {files.filter(f => f.category === "pickup").length}
+                {pickupFiles.length}
               </Badge>
             </div>
             {!readOnly && (
@@ -172,8 +234,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
               Upload pickup documenten voor verzending naar transporteur.
             </p>
             <ul className="space-y-2 max-h-48 overflow-y-auto">
-              {files
-                .filter(file => file.category === "pickup")
+              {pickupFiles
                 .slice(0, 10)
                 .map(file => (
                   <li key={file.id} className="flex items-center justify-between text-sm">
@@ -258,7 +319,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
               <FileText className="mr-2 h-4 w-4" />
               Verstuur pickup naar transporteur
             </Button>
-            {!files.some(file => file.category === "pickup") && (
+            {!pickupFiles.length && (
               <p className="text-xs text-destructive mt-2">
                 Upload eerst een pickup document
               </p>

@@ -196,7 +196,7 @@ export interface Customer {
 }
 
 // Moving the FileCategory and VehicleFile types from files.ts to inventory.ts since they're related to vehicles
-export type FileCategory = "damage" | "cmr" | "pickup";
+export type FileCategory = "damage" | "cmr" | "pickup" | "contract_b2b" | "contract_b2c";
 
 export interface VehicleFile {
   id: string;
@@ -207,8 +207,12 @@ export interface VehicleFile {
   createdAt: string;
   size?: number;
   type?: string;
-  isLargeFile?: boolean; // Added for performance optimization
-  filePath?: string; // Added for delete functionality
+  isLargeFile?: boolean;
+  filePath?: string;
   uploadedAt?: string;
   uploadedBy?: string;
+  fileName?: string;
+  fileUrl?: string;
+  fileSize?: number;
+  metadata?: any;
 }

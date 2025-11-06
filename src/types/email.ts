@@ -7,7 +7,7 @@ export interface EmailTemplate {
   senderEmail: string; // Specifieke afzender per template
   linkedButton: string;
   hasAttachment: boolean;
-  attachmentType?: "auto-upload" | "generated-contract" | "static-file";
+  attachmentType?: "auto-upload" | "generated-contract" | "static-file" | "latest-contract";
   staticAttachmentType?: string; // For CMR, Pickup documents etc.
   contractConfiguration?: ContractConfiguration;
   recipientOverride?: string; // Voor vaste ontvanger zoals administratie

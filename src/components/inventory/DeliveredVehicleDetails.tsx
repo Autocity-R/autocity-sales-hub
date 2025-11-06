@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/select";
 import { Avatar } from "@/components/ui/avatar";
 import { ContractViewer } from "@/components/contracts/ContractViewer";
-import { getContractByVehicleId, StoredContract } from "@/services/contractStorageService";
+import { getLatestContractForVehicle } from "@/services/contractStorageService";
+import { VehicleFile } from "@/types/inventory";
 import { deliveredVehicleService } from "@/services/deliveredVehicleService";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,7 +38,7 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
   vehicle,
   onClose,
 }) => {
-  const [contract, setContract] = useState<StoredContract | null>(null);
+  const [contract, setContract] = useState<VehicleFile | null>(null);
   const [showContractViewer, setShowContractViewer] = useState(false);
   const [loadingContract, setLoadingContract] = useState(true);
   const [showMoveBackDialog, setShowMoveBackDialog] = useState(false);
@@ -50,7 +51,7 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
   useEffect(() => {
     const loadContract = async () => {
       try {
-        const storedContract = await getContractByVehicleId(vehicle.id);
+        const storedContract = await getLatestContractForVehicle(vehicle.id);
         setContract(storedContract);
       } catch (error) {
         console.error("Failed to load contract:", error);
@@ -278,17 +279,17 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Contract Type</label>
-                      <Badge variant="outline" className={contract.contractType === "b2c" ? "bg-blue-50 text-blue-800" : "bg-purple-50 text-purple-800"}>
-                        {contract.contractType === "b2c" ? "B2C (Particulier)" : "B2B (Zakelijk)"}
+                      <Badge variant="outline" className={contract.category === "contract_b2c" ? "bg-blue-50 text-blue-800" : "bg-purple-50 text-purple-800"}>
+                        {contract.category === "contract_b2c" ? "B2C (Particulier)" : "B2B (Zakelijk)"}
                       </Badge>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Contract Datum</label>
-                      <p className="text-sm">{format(contract.createdAt, "d MMMM yyyy 'om' HH:mm", { locale: nl })}</p>
+                      <p className="text-sm">{format(new Date(contract.createdAt), "d MMMM yyyy 'om' HH:mm", { locale: nl })}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Bestandsnaam</label>
-                      <p className="text-sm font-mono">{contract.fileName}</p>
+                      <p className="text-sm font-mono">{contract.fileName || contract.name}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Status</label>
@@ -306,12 +307,12 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
                       <Eye className="h-4 w-4 mr-2" />
                       Bekijk Contract
                     </Button>
-                    {contract.pdfUrl && (
-                      <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm">
+                      <a href={contract.url} target="_blank" rel="noopener noreferrer" className="flex items-center">
                         <Download className="h-4 w-4 mr-2" />
                         Download PDF
-                      </Button>
-                    )}
+                      </a>
+                    </Button>
                   </div>
                 </div>
               ) : (

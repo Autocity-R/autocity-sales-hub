@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Download, FileText, Calendar, User } from "lucide-react";
+import { X, Download, FileText, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -10,13 +10,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { StoredContract } from "@/services/contractStorageService";
+import { VehicleFile } from "@/types/inventory";
+import { SavedContractMetadata } from "@/services/contractStorageService";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 
 
 interface ContractViewerProps {
-  contract: StoredContract;
+  contract: VehicleFile;
   onClose: () => void;
 }
 
@@ -24,26 +25,20 @@ export const ContractViewer: React.FC<ContractViewerProps> = ({
   contract,
   onClose,
 }) => {
+  const metadata = contract.metadata as SavedContractMetadata | undefined;
+  
   const handleDownload = () => {
-    // Create a blob with the HTML content
-    const blob = new Blob([contract.htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = contract.fileName.replace('.pdf', '.html');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // Open the PDF URL
+    window.open(contract.url, '_blank');
   };
 
   const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
+    // Open PDF in new window for printing
+    const printWindow = window.open(contract.url, '_blank');
     if (printWindow) {
-      printWindow.document.write(contract.htmlContent);
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
+      printWindow.onload = () => {
+        printWindow.print();
+      };
     }
   };
 
@@ -65,17 +60,17 @@ export const ContractViewer: React.FC<ContractViewerProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className={contract.contractType === "b2c" ? "bg-blue-50 text-blue-800" : "bg-purple-50 text-purple-800"}>
-                  {contract.contractType === "b2c" ? "B2C (Particulier)" : "B2B (Zakelijk)"}
+                <Badge variant="outline" className={metadata?.contractType === "b2c" ? "bg-blue-50 text-blue-800" : "bg-purple-50 text-purple-800"}>
+                  {metadata?.contractType === "b2c" ? "B2C (Particulier)" : "B2B (Zakelijk)"}
                 </Badge>
               </div>
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
-                {format(contract.createdAt, "d MMMM yyyy 'om' HH:mm", { locale: nl })}
+                {format(new Date(contract.createdAt), "d MMMM yyyy 'om' HH:mm", { locale: nl })}
               </div>
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <FileText className="h-4 w-4" />
-                {contract.fileName}
+                {contract.name}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -93,12 +88,13 @@ export const ContractViewer: React.FC<ContractViewerProps> = ({
         
         <Separator />
         
-        {/* Contract Content */}
+        {/* Contract Content - PDF Viewer */}
         <div className="flex-1 overflow-auto bg-white">
           <iframe
             title="Contract Content"
-            srcDoc={contract.htmlContent}
+            src={contract.url}
             className="w-full h-full"
+            style={{ minHeight: '600px' }}
           />
         </div>
         
