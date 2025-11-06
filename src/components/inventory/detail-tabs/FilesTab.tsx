@@ -33,62 +33,68 @@ export const FilesTab: React.FC<FilesTabProps> = ({
         <h3 className="text-lg font-medium">Documenten</h3>
         
         {/* Contracten Sectie */}
-        {contractFiles.length > 0 && (
-          <div className="border rounded-md p-4 space-y-4 bg-primary/5">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium text-primary">Contracten</h4>
-              <Badge variant="default" className="ml-2">
-                {contractFiles.length}
-              </Badge>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Opgeslagen koopcontracten (laatst verstuurde contract).
-            </p>
-            <ul className="space-y-2">
-              {contractFiles.map(file => {
-                const metadata = file.metadata as SavedContractMetadata | undefined;
-                const hasTradeIn = metadata?.contractOptions?.tradeInVehicle;
-                
-                return (
-                  <li key={file.id} className="flex items-center justify-between text-sm p-2 bg-background rounded border">
-                    <div className="flex items-center flex-1 gap-2">
-                      <FileText className="h-4 w-4 text-primary" />
-                      <div className="flex flex-col flex-1">
-                        <span className="font-medium truncate max-w-[200px]" title={file.name}>
-                          {file.name}
-                        </span>
-                        {metadata && (
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(metadata.savedAt).toLocaleDateString('nl-NL', { 
-                              year: 'numeric', 
-                              month: 'short', 
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex gap-1">
-                        <Badge variant="outline" className="text-xs">
-                          {file.category === 'contract_b2b' ? 'B2B' : 'B2C'}
-                        </Badge>
-                        {hasTradeIn && (
-                          <Badge variant="secondary" className="text-xs bg-amber-500 text-white">
-                            Inruil
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <Button size="sm" variant="ghost">
-                      <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
-                    </Button>
-                  </li>
-                );
-              })}
-            </ul>
+        <div className="border rounded-md p-4 space-y-4 bg-primary/5">
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium text-primary">Contracten</h4>
+            <Badge variant="default" className="ml-2">
+              {contractFiles.length}
+            </Badge>
           </div>
-        )}
+          {contractFiles.length > 0 ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Opgeslagen koopcontracten (laatst verstuurde contract).
+              </p>
+              <ul className="space-y-2">
+                {contractFiles.map(file => {
+                  const metadata = file.metadata as SavedContractMetadata | undefined;
+                  const hasTradeIn = metadata?.contractOptions?.tradeInVehicle;
+                  
+                  return (
+                    <li key={file.id} className="flex items-center justify-between text-sm p-2 bg-background rounded border">
+                      <div className="flex items-center flex-1 gap-2">
+                        <FileText className="h-4 w-4 text-primary" />
+                        <div className="flex flex-col flex-1">
+                          <span className="font-medium truncate max-w-[200px]" title={file.name}>
+                            {file.name}
+                          </span>
+                          {metadata && (
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(metadata.savedAt).toLocaleDateString('nl-NL', { 
+                                year: 'numeric', 
+                                month: 'short', 
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex gap-1">
+                          <Badge variant="outline" className="text-xs">
+                            {file.category === 'contract_b2b' ? 'B2B' : 'B2C'}
+                          </Badge>
+                          {hasTradeIn && (
+                            <Badge variant="secondary" className="text-xs bg-amber-500 text-white">
+                              Inruil
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <Button size="sm" variant="ghost">
+                        <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Nog geen contracten verstuurd. Contracten worden hier automatisch opgeslagen na het versturen.
+            </p>
+          )}
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="border rounded-md p-4 space-y-4">
