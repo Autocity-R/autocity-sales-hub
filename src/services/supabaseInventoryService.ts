@@ -376,10 +376,10 @@ export class SupabaseInventoryService {
    */
   async updateVehicleStatus(vehicleId: string, status: string): Promise<void> {
     try {
-      // First get current vehicle to check if sold_date is already set
+      // First get current vehicle to check if sold_date is already set and get details
       const { data: currentVehicle } = await supabase
         .from('vehicles')
-        .select('sold_date')
+        .select('sold_date, details')
         .eq('id', vehicleId)
         .single();
 
@@ -393,6 +393,18 @@ export class SupabaseInventoryService {
       if (['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(status) && !currentVehicle?.sold_date) {
         updateData.sold_date = new Date().toISOString();
         console.log(`Setting sold_date for vehicle ${vehicleId} to ${updateData.sold_date}`);
+      }
+
+      // Automatically disable showroom online when vehicle is sold
+      if (['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(status)) {
+        const currentDetails = (currentVehicle?.details || {}) as Record<string, any>;
+        if (currentDetails.showroomOnline === true) {
+          updateData.details = {
+            ...currentDetails,
+            showroomOnline: false
+          };
+          console.log(`Auto-disabling showroomOnline for vehicle ${vehicleId} - status changed to ${status}`);
+        }
       }
 
       const { error } = await supabase
