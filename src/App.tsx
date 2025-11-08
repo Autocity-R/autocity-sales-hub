@@ -1,45 +1,61 @@
 
 import { Routes, Route } from "react-router-dom";
-import Index from "@/pages/Index";
-import Transport from "@/pages/Transport";
-import Inventory from "@/pages/Inventory";
-import InventoryB2B from "@/pages/InventoryB2B";
-import InventoryB2C from "@/pages/InventoryB2C";
-import InventoryDelivered from "@/pages/InventoryDelivered";
-import InventoryOnline from "@/pages/InventoryOnline";
-import LoanCars from "@/pages/LoanCars";
-import AIAgents from "@/pages/AIAgents";
-import Leads from "@/pages/Leads";
-import Calendar from "@/pages/Calendar";
-import TaskManagement from "@/pages/TaskManagement";
-import Customers from "@/pages/Customers";
-import CustomerDetail from "@/pages/CustomerDetail";
-import Reports from "@/pages/Reports";
-import Warranty from "@/pages/Warranty";
-import Settings from "@/pages/Settings";
-import NotFound from "@/pages/NotFound";
-import TestContract from "@/pages/TestContract";
-import ContractPreview from "@/pages/ContractPreview";
+import { lazy, Suspense } from "react";
 import Auth from "@/pages/Auth";
 import ResetPassword from "@/pages/ResetPassword";
 import { Toaster } from "@/components/ui/toaster";
 import { DigitalSignaturePage } from "@/components/contracts/DigitalSignaturePage";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { RoleProtectedRoute } from "@/components/auth/RoleProtectedRoute";
+import { Skeleton } from "@/components/ui/skeleton";
 import "./App.css";
+
+// Lazy load pages for better performance
+const Index = lazy(() => import("@/pages/Index"));
+const Transport = lazy(() => import("@/pages/Transport"));
+const Inventory = lazy(() => import("@/pages/Inventory"));
+const InventoryB2B = lazy(() => import("@/pages/InventoryB2B"));
+const InventoryB2C = lazy(() => import("@/pages/InventoryB2C"));
+const InventoryDelivered = lazy(() => import("@/pages/InventoryDelivered"));
+const InventoryOnline = lazy(() => import("@/pages/InventoryOnline"));
+const LoanCars = lazy(() => import("@/pages/LoanCars"));
+const AIAgents = lazy(() => import("@/pages/AIAgents"));
+const Leads = lazy(() => import("@/pages/Leads"));
+const Calendar = lazy(() => import("@/pages/Calendar"));
+const TaskManagement = lazy(() => import("@/pages/TaskManagement"));
+const Customers = lazy(() => import("@/pages/Customers"));
+const CustomerDetail = lazy(() => import("@/pages/CustomerDetail"));
+const Reports = lazy(() => import("@/pages/Reports"));
+const Warranty = lazy(() => import("@/pages/Warranty"));
+const Settings = lazy(() => import("@/pages/Settings"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
+const TestContract = lazy(() => import("@/pages/TestContract"));
+const ContractPreview = lazy(() => import("@/pages/ContractPreview"));
+
+// Loading fallback component
+const PageLoader = () => (
+  <div className="flex h-screen items-center justify-center">
+    <div className="space-y-4 w-full max-w-md p-4">
+      <Skeleton className="h-12 w-3/4" />
+      <Skeleton className="h-64 w-full" />
+      <Skeleton className="h-32 w-full" />
+    </div>
+  </div>
+);
 
 function App() {
   return (
     <>
-      <Routes>
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/contract/sign/:token" element={<DigitalSignaturePage />} />
-        <Route path="/" element={
-          <ProtectedRoute>
-            <Index />
-          </ProtectedRoute>
-        } />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/contract/sign/:token" element={<DigitalSignaturePage />} />
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Index />
+            </ProtectedRoute>
+          } />
         <Route path="/transport" element={
           <ProtectedRoute>
             <Transport />
@@ -154,8 +170,9 @@ function App() {
             <ContractPreview />
           </ProtectedRoute>
         } />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
       <Toaster />
     </>
   );

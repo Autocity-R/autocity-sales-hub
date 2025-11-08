@@ -54,13 +54,7 @@ const WeeklySalesLeaderboard = () => {
           status,
           sold_date,
           sold_by_user_id,
-          details,
-          profiles:sold_by_user_id (
-            id,
-            first_name,
-            last_name,
-            email
-          )
+          details
         `)
         .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
         .not('sold_date', 'is', null)
@@ -78,11 +72,20 @@ const WeeklySalesLeaderboard = () => {
       // Groepeer per verkoper
       const salespersonMap = new Map<string, WeeklySalesData>();
       
+      // Fetch profile data separately to avoid foreign key errors
+      const userIds = [...new Set(vehicles?.map(v => v.sold_by_user_id).filter(Boolean))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .in('id', userIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
       vehicles?.forEach((vehicle) => {
         const sellerId = vehicle.sold_by_user_id;
         if (!sellerId) return;
 
-        const profile = vehicle.profiles as any;
+        const profile = profileMap.get(sellerId);
         
         // Bepaal de naam van de verkoper
         let salespersonName = 'Onbekende verkoper';
@@ -140,7 +143,8 @@ const WeeklySalesLeaderboard = () => {
       
       return result;
     },
-    refetchInterval: 30 * 1000, // Refetch every 30 seconds
+    staleTime: 60 * 1000, // Consider data fresh for 60 seconds
+    refetchInterval: 60 * 1000, // Refetch every 60 seconds (reduced from 30s)
   });
 
   // Real-time updates voor directe feedback
