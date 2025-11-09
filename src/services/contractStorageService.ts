@@ -239,3 +239,61 @@ export const getAllContractsForVehicle = async (vehicleId: string): Promise<Vehi
     return [];
   }
 };
+
+/**
+ * Delete a contract file from a vehicle
+ * Removes both the storage file and database record
+ */
+export const deleteContractFromVehicle = async (
+  fileId: string
+): Promise<boolean> => {
+  try {
+    console.log(`[CONTRACT_STORAGE] 🗑️ Deleting contract file: ${fileId}`);
+    
+    // 1. Get file details first
+    const { data: fileRecord, error: fetchError } = await supabase
+      .from('vehicle_files')
+      .select('file_path, file_url')
+      .eq('id', fileId)
+      .single();
+    
+    if (fetchError) {
+      console.error('[CONTRACT_STORAGE] ❌ Error fetching file:', fetchError);
+      throw fetchError;
+    }
+    
+    if (!fileRecord) {
+      console.error('[CONTRACT_STORAGE] ❌ File not found');
+      return false;
+    }
+    
+    // 2. Delete from storage
+    console.log(`[CONTRACT_STORAGE] 🗑️ Deleting from storage: ${fileRecord.file_path}`);
+    const { error: storageError } = await supabase.storage
+      .from('vehicle-documents')
+      .remove([fileRecord.file_path]);
+    
+    if (storageError) {
+      console.error('[CONTRACT_STORAGE] ⚠️ Storage deletion error:', storageError);
+      // Continue anyway - file might not exist in storage
+    }
+    
+    // 3. Delete database record
+    console.log(`[CONTRACT_STORAGE] 🗑️ Deleting database record`);
+    const { error: dbError } = await supabase
+      .from('vehicle_files')
+      .delete()
+      .eq('id', fileId);
+    
+    if (dbError) {
+      console.error('[CONTRACT_STORAGE] ❌ Database deletion error:', dbError);
+      throw dbError;
+    }
+    
+    console.log(`[CONTRACT_STORAGE] ✅ Contract deleted successfully`);
+    return true;
+  } catch (error) {
+    console.error('[CONTRACT_STORAGE] ❌ Error deleting contract:', error);
+    return false;
+  }
+};

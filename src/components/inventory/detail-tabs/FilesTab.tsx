@@ -1,11 +1,22 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { FileText, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileUploader } from "@/components/inventory/FileUploader";
 import { VehicleFile, FileCategory } from "@/types/inventory";
-import { SavedContractMetadata } from "@/services/contractStorageService";
+import { SavedContractMetadata, deleteContractFromVehicle } from "@/services/contractStorageService";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface FilesTabProps {
   files: VehicleFile[];
@@ -22,12 +33,53 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   onSendEmail,
   readOnly = false
 }) => {
+  const { toast } = useToast();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contractToDelete, setContractToDelete] = useState<VehicleFile | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   const contractFiles = files.filter(f => f.category === 'contract_b2b' || f.category === 'contract_b2c');
   const damageFiles = files.filter(f => f.category === 'damage');
   const cmrFiles = files.filter(f => f.category === 'cmr');
   const pickupFiles = files.filter(f => f.category === 'pickup');
 
+  const handleDeleteContract = async () => {
+    if (!contractToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      const success = await deleteContractFromVehicle(contractToDelete.id);
+      
+      if (success) {
+        toast({
+          title: "Contract verwijderd",
+          description: "Het contract is succesvol verwijderd.",
+        });
+        // Also call the parent's delete handler to update UI
+        onFileDelete(contractToDelete.id, contractToDelete.filePath || '');
+      } else {
+        toast({
+          title: "Fout bij verwijderen",
+          description: "Het contract kon niet worden verwijderd.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting contract:', error);
+      toast({
+        title: "Fout bij verwijderen",
+        description: "Er is een fout opgetreden bij het verwijderen van het contract.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setContractToDelete(null);
+    }
+  };
+
   return (
+    <>
     <div className="grid grid-cols-1 gap-4">
       <div className="space-y-4">
         <h3 className="text-lg font-medium">Documenten</h3>
@@ -81,9 +133,24 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                           )}
                         </div>
                       </div>
-                      <Button size="sm" variant="ghost">
-                        <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost">
+                          <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
+                        </Button>
+                        {!readOnly && (
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => {
+                              setContractToDelete(file);
+                              setDeleteDialogOpen(true);
+                            }}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
                     </li>
                   );
                 })}
@@ -334,5 +401,35 @@ export const FilesTab: React.FC<FilesTabProps> = ({
         </div>
       </div>
     </div>
+    
+    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Contract verwijderen</AlertDialogTitle>
+          <AlertDialogDescription>
+            Weet je zeker dat je dit contract wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.
+            {contractToDelete && (
+              <div className="mt-3 p-3 bg-muted rounded-md">
+                <p className="font-medium text-foreground">{contractToDelete.name}</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {contractToDelete.category === 'contract_b2b' ? 'B2B Contract' : 'B2C Contract'}
+                </p>
+              </div>
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Annuleren</AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={handleDeleteContract}
+            disabled={isDeleting}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isDeleting ? 'Verwijderen...' : 'Verwijderen'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 };
