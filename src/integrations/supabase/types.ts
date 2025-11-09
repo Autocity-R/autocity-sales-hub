@@ -1912,7 +1912,9 @@ export type Database = {
           file_path: string
           file_size: number | null
           file_type: string | null
+          file_url: string | null
           id: string
+          metadata: Json | null
           updated_at: string
           uploaded_by: string | null
           vehicle_id: string
@@ -1924,7 +1926,9 @@ export type Database = {
           file_path: string
           file_size?: number | null
           file_type?: string | null
+          file_url?: string | null
           id?: string
+          metadata?: Json | null
           updated_at?: string
           uploaded_by?: string | null
           vehicle_id: string
@@ -1936,7 +1940,9 @@ export type Database = {
           file_path?: string
           file_size?: number | null
           file_type?: string | null
+          file_url?: string | null
           id?: string
+          metadata?: Json | null
           updated_at?: string
           uploaded_by?: string | null
           vehicle_id?: string
