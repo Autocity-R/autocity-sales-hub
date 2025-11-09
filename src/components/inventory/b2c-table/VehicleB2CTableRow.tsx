@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { memo } from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { CustomCheckbox } from "@/components/ui/custom-checkbox";
@@ -70,7 +70,7 @@ const renderPaintStatusBadge = (status: PaintStatus | undefined) => {
   return <Badge variant={variant}>{label}</Badge>;
 };
 
-export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
+const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
   vehicle,
   selectedVehicles,
   toggleSelectVehicle,
@@ -191,3 +191,12 @@ export const VehicleB2CTableRow: React.FC<VehicleB2CTableRowProps> = ({
     </TableRow>
   );
 };
+
+// Memoize component for better performance
+export const VehicleB2CTableRow = memo(VehicleB2CTableRowComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.vehicle.id === nextProps.vehicle.id &&
+    prevProps.selectedVehicles.length === nextProps.selectedVehicles.length &&
+    prevProps.selectedVehicles.includes(prevProps.vehicle.id) === nextProps.selectedVehicles.includes(nextProps.vehicle.id)
+  );
+});

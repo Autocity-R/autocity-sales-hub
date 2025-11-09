@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState, useEffect } from "react";
 import { FileText, Mail, Plus, Search, Filter } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { VehicleB2CTable } from "@/components/inventory/VehicleB2CTable";
@@ -10,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
-import { fetchB2CVehicles } from "@/services/inventoryService";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { useB2CVehicleHandlers } from "@/hooks/useB2CVehicleHandlers";
+import { useB2CVehicles } from "@/hooks/useB2CVehicles";
 import { InventoryBulkActions } from "@/components/inventory/InventoryBulkActions";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -31,10 +30,13 @@ const InventoryB2C = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Fetch B2C sold vehicles only
-  const { data: vehicles = [], isLoading, error } = useQuery({
-    queryKey: ["b2cVehicles"],
-    queryFn: fetchB2CVehicles
+  // Use optimized B2C vehicles hook with filtering and sorting
+  const {
+    vehicles,
+    isLoading,
+    error
+  } = useB2CVehicles({
+    searchTerm
   });
 
   // Use the custom hook for all handlers and state
@@ -95,7 +97,7 @@ const InventoryB2C = () => {
     setContractVehicle(null);
   };
 
-  // Real-time subscription for B2C changes
+  // Optimized real-time subscription for B2C changes only
   useEffect(() => {
     const channel = supabase
       .channel('vehicles-b2c-changes')
@@ -104,12 +106,19 @@ const InventoryB2C = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'vehicles'
+          table: 'vehicles',
+          filter: 'status=eq.verkocht_b2c' // Only B2C vehicles
         },
         (payload) => {
-          console.log('Vehicle changed (B2C):', payload);
-          queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+          console.log('B2C Vehicle changed:', payload);
+          
+          // Optimized: Only invalidate B2C queries
           queryClient.invalidateQueries({ queryKey: ['b2cVehicles'] });
+          
+          // If we have specific vehicle details open, invalidate that too
+          if (selectedVehicle) {
+            queryClient.invalidateQueries({ queryKey: ['vehicleFiles', selectedVehicle.id] });
+          }
         }
       )
       .subscribe();
@@ -117,7 +126,7 @@ const InventoryB2C = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, selectedVehicle]);
 
   const handleMoveBackToTransport = async (vehicleId: string) => {
     try {
@@ -227,61 +236,9 @@ const InventoryB2C = () => {
       });
     }
     
-    // Refresh ALL vehicle queries to ensure vehicles move between lists
-    await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
-    await queryClient.invalidateQueries({ queryKey: ['b2bVehicles'] });
+    // Only invalidate relevant queries (not all)
     await queryClient.invalidateQueries({ queryKey: ['b2cVehicles'] });
-    await queryClient.invalidateQueries({ queryKey: ['onlineVehicles'] });
-    await queryClient.invalidateQueries({ queryKey: ['deliveredVehicles'] });
   };
-  
-  // Filter and sort vehicles based on search term and sort configuration
-  const filteredAndSortedVehicles = useMemo(() => {
-    // First filter
-    const filtered = vehicles.filter(vehicle =>
-      `${vehicle.brand} ${vehicle.model} ${vehicle.licenseNumber} ${vehicle.vin}`
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
-    );
-    
-    // Then sort
-    return [...filtered].sort((a, b) => {
-    if (!sortField) return 0;
-    
-    // Handle nested fields
-    let aValue: any = a;
-    let bValue: any = b;
-    
-    const fields = sortField.split(".");
-    for (const field of fields) {
-      aValue = aValue?.[field];
-      bValue = bValue?.[field];
-    }
-    
-    if (aValue === undefined || bValue === undefined) return 0;
-    
-    // For numbers
-    if (typeof aValue === "number" && typeof bValue === "number") {
-      return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
-    }
-    
-    // For strings
-    if (typeof aValue === "string" && typeof bValue === "string") {
-      return sortDirection === "asc" 
-        ? aValue.localeCompare(bValue) 
-        : bValue.localeCompare(aValue);
-    }
-    
-    // For booleans
-    if (typeof aValue === "boolean" && typeof bValue === "boolean") {
-      return sortDirection === "asc" 
-        ? (aValue === bValue ? 0 : aValue ? 1 : -1)
-        : (aValue === bValue ? 0 : bValue ? 1 : -1);
-    }
-    
-    return 0;
-    });
-  }, [vehicles, searchTerm, sortField, sortDirection]);
 
   return (
     <DashboardLayout>
@@ -311,7 +268,7 @@ const InventoryB2C = () => {
           <div className="flex gap-2">
             <Badge variant="outline" className="flex items-center gap-1">
               <Filter className="h-3 w-3" />
-              {filteredAndSortedVehicles.length} resultaten
+              {vehicles.length} resultaten
             </Badge>
             {selectedVehicles.length > 0 && (
               <Badge variant="secondary">
@@ -323,9 +280,9 @@ const InventoryB2C = () => {
         
         <div className="bg-white rounded-md shadow">
           <VehicleB2CTable 
-            vehicles={filteredAndSortedVehicles}
+            vehicles={vehicles}
             selectedVehicles={selectedVehicles}
-            toggleSelectAll={(checked) => toggleSelectAll(checked, filteredAndSortedVehicles)}
+            toggleSelectAll={(checked) => toggleSelectAll(checked, vehicles)}
             toggleSelectVehicle={toggleSelectVehicle}
             handleSelectVehicle={setSelectedVehicle}
             handleSendEmail={handleSendEmail}

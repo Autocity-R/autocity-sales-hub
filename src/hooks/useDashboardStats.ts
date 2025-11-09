@@ -45,7 +45,9 @@ export const useDashboardStats = () => {
         verkocht: verkochtCount || 0,
       };
     },
-    staleTime: 30 * 1000, // Consider data fresh for 30 seconds
-    refetchInterval: 30 * 1000, // Refresh every 30 seconds (reduced from 5s to improve performance)
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchInterval: false, // No auto-refetch
+    refetchOnWindowFocus: false,
   });
 };

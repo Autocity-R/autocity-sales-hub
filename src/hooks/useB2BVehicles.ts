@@ -8,10 +8,13 @@ export const useB2BVehicles = () => {
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   
-  // Fetch B2B sold vehicles
+  // Fetch B2B sold vehicles with optimized caching
   const { data: vehicles = [], isLoading, error } = useQuery({
     queryKey: ["b2bVehicles"],
-    queryFn: fetchB2BVehicles
+    queryFn: fetchB2BVehicles,
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
   });
   
   const handleSort = (field: string) => {
