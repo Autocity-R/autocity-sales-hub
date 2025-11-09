@@ -87,16 +87,17 @@ export const saveContractToVehicle = async (
     console.log(`[CONTRACT_STORAGE] 🔨 Step 4: Saving to database...`);
     const { data: fileRecord, error: dbError } = await supabase
       .from('vehicle_files')
-      .insert({
+      .insert([{
         vehicle_id: vehicle.id,
         file_name: fileName,
         file_path: filePath,
         file_url: publicUrl,
+        file_type: 'application/pdf',
         category: contractType === 'b2b' ? 'contract_b2b' : 'contract_b2c',
         file_size: pdfBlob.size,
         uploaded_by: (await supabase.auth.getUser()).data.user?.id,
         metadata: metadata
-      })
+      }] as any)
       .select()
       .single();
     

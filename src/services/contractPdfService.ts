@@ -7,28 +7,31 @@ import html2pdf from 'html2pdf.js';
  */
 export const generatePdfFromHtml = async (htmlContent: string): Promise<Blob> => {
   const opt = {
-    margin: 10,
+    margin: 3 as any, // Use single number for all sides
     filename: 'contract.pdf',
     image: { 
       type: 'jpeg' as const, 
-      quality: 0.98 
+      quality: 0.95 
     },
     html2canvas: { 
       scale: 2,
       useCORS: true,
-      allowTaint: true,
       logging: false,
       letterRendering: true,
-      backgroundColor: '#ffffff'
+      backgroundColor: '#ffffff',
+      windowWidth: 794, // A4 width in pixels at 96 DPI
+      windowHeight: 1123 // A4 height in pixels at 96 DPI
     },
     jsPDF: { 
       unit: 'mm' as const, 
       format: 'a4' as const, 
       orientation: 'portrait' as const,
-      compress: true
+      compress: true,
+      hotfixes: ['px_scaling'] as any[] // Fix pixel scaling issues
     },
     pagebreak: { 
-      mode: ['avoid-all', 'css', 'legacy'] 
+      mode: ['css', 'legacy'],
+      avoid: ['.section', '.price-section', '.header']
     }
   };
 

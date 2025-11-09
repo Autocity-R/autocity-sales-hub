@@ -280,29 +280,29 @@ const generateHtmlContract = (
         
         body {
             font-family: 'Inter', sans-serif;
-            line-height: 1.4;
+            line-height: 1.3;
             color: #1a1a1a;
             background: white;
-            font-size: 12px;
+            font-size: 10px;
         }
         
         .contract {
             max-width: 210mm;
             margin: 0 auto;
-            padding: 5mm 8mm;
+            padding: 3mm 6mm;
             background: white;
         }
         
         .header {
             background: #000000;
             color: white;
-            padding: 12px 15px;
-            margin: -8mm -8mm 15px -8mm;
+            padding: 8px 12px;
+            margin: -6mm -6mm 10px -6mm;
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
             position: relative;
-            min-height: 60px;
+            min-height: 50px;
         }
         
         .logo-section {
@@ -313,8 +313,8 @@ const generateHtmlContract = (
         }
         
         .logo-container {
-            width: 60px;
-            height: 60px;
+            width: 50px;
+            height: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -333,12 +333,12 @@ const generateHtmlContract = (
         }
         
         .header-title {
-            font-size: 20px;
+            font-size: 16px;
             font-weight: 700;
             color: white;
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         
         .contract-date {
@@ -370,7 +370,7 @@ const generateHtmlContract = (
             border: 2px solid #000000;
             border-radius: 8px;
             overflow: hidden;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             page-break-inside: avoid;
             break-inside: avoid;
         }
@@ -378,20 +378,20 @@ const generateHtmlContract = (
         .section-header {
             background: #000000;
             color: white;
-            padding: 10px 12px;
+            padding: 6px 10px;
             font-weight: 600;
-            font-size: 13px;
+            font-size: 11px;
             text-transform: uppercase;
         }
         
         .section-content {
-            padding: 10px;
+            padding: 8px;
         }
         
         .contract-details {
             display: grid;
             grid-template-columns: 140px 1fr;
-            gap: 4px 8px;
+            gap: 3px 8px;
             padding: 0;
             align-items: start;
         }
@@ -403,7 +403,7 @@ const generateHtmlContract = (
         .info-label {
             font-weight: 600;
             color: #666666;
-            font-size: 10px;
+            font-size: 9px;
             text-align: left;
             white-space: nowrap;
             flex-shrink: 0;
@@ -412,7 +412,7 @@ const generateHtmlContract = (
         .info-value {
             color: #000000;
             font-weight: 500;
-            font-size: 11px;
+            font-size: 10px;
             white-space: normal;
             word-break: break-word;
             overflow-wrap: break-word;
@@ -467,18 +467,18 @@ const generateHtmlContract = (
         }
         
         .terms-content {
-            font-size: ${isB2B ? '10px' : '11px'};
-            line-height: 1.4;
+            font-size: 9px;
+            line-height: 1.3;
             color: #4b5563;
         }
         
         .terms-content p {
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
         
         .terms-content ul {
-            margin: 6px 0;
-            padding-left: 16px;
+            margin: 4px 0;
+            padding-left: 14px;
         }
         
         .terms-content li {
@@ -516,24 +516,29 @@ const generateHtmlContract = (
         }
         
         .footer {
-            margin-top: 15px;
-            padding-top: 10px;
+            margin-top: 10px;
+            padding-top: 6px;
             border-top: 1px solid #e5e7eb;
-            font-size: 12px;
+            font-size: 10px;
             color: #6b7280;
             text-align: center;
             line-height: 1.5;
+            page-break-inside: avoid;
         }
         
         @media print {
+            @page {
+                size: A4;
+                margin: 5mm;
+            }
+            
             body {
-                font-size: 11px;
+                font-size: 9px;
             }
             
             .contract {
                 margin: 0;
-                padding: 4mm;
-                font-size: 11px;
+                padding: 2mm;
                 page-break-inside: avoid;
             }
             
@@ -542,27 +547,27 @@ const generateHtmlContract = (
             }
             
             .header {
-                padding: 10px 12px;
-                margin: -4mm -4mm 8px -4mm;
-                min-height: 55px;
+                padding: 6px 10px;
+                margin: -2mm -2mm 6px -2mm;
+                min-height: 45px;
             }
             
             .main-content {
-                margin-bottom: 8px;
+                margin-bottom: 6px;
             }
             
             .section {
-                margin-bottom: 6px;
+                margin-bottom: 4px;
                 page-break-inside: avoid;
             }
             
             .section-content {
-                padding: 8px;
+                padding: 6px;
             }
             
             .section-header {
-                padding: 8px 10px;
-                font-size: 12px;
+                padding: 6px 8px;
+                font-size: 10px;
             }
             
             .price-section {
@@ -573,8 +578,13 @@ const generateHtmlContract = (
                 page-break-inside: avoid;
             }
             
+            .footer {
+                margin-top: 6px;
+                padding-top: 4px;
+            }
+            
             .terms-content {
-                font-size: ${isB2B ? '10px' : '11px'};
+                font-size: 9px;
             }
         }
     </style>
