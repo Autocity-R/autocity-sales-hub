@@ -137,8 +137,8 @@ export interface Vehicle {
   mainPhotoUrl: string | null;
   photos: string[];
   createdAt?: string | Date;
+  deliveryDate?: string | Date;  // Date when vehicle was delivered (afgeleverd)
   customerName?: string;    // Added customer name for display
-  deliveryDate?: Date | null; // Added delivery date
   salespersonId?: string;   // Added salesperson reference
   salespersonName?: string; // Added salesperson name for display
   purchasedById?: string;   // Added purchaser reference

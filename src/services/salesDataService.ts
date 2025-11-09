@@ -67,12 +67,12 @@ export const salesDataService = {
       }
     }
 
-    // Fetch sold vehicles - include vehicles with or without sold_date
-    // We check status as the source of truth for sold vehicles
+    // CRITICAL: Only fetch verkocht_b2b and verkocht_b2c, NOT afgeleverd
+    // Afgeleverd represents delivery date, not sales date
     const { data: vehicles, error } = await supabase
       .from("vehicles")
       .select("id, brand, model, status, selling_price, sold_date, created_at, details")
-      .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"])
+      .in("status", ["verkocht_b2b", "verkocht_b2c"])
       .order("sold_date", { ascending: false, nullsFirst: false });
 
     if (error) {
@@ -104,9 +104,7 @@ export const salesDataService = {
 
     // Count B2B vs B2C
     const b2bCount = filteredVehicles?.filter((v) => v.status === "verkocht_b2b").length || 0;
-    const b2cCount = filteredVehicles?.filter((v) => 
-      v.status === "verkocht_b2c" || v.status === "afgeleverd"
-    ).length || 0;
+    const b2cCount = filteredVehicles?.filter((v) => v.status === "verkocht_b2c").length || 0;
 
     const averageSalePrice = totalVehicles > 0 ? totalRevenue / totalVehicles : 0;
 
@@ -185,10 +183,11 @@ export const salesDataService = {
     const startDate = new Date(year, 0, 1);
     const endDate = new Date(year, 11, 31);
 
+    // CRITICAL: Only fetch verkocht_b2b and verkocht_b2c, NOT afgeleverd
     const { data: vehicles, error } = await supabase
       .from("vehicles")
       .select("status, selling_price, sold_date, created_at")
-      .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"]);
+      .in("status", ["verkocht_b2b", "verkocht_b2c"]);
 
     if (error) throw error;
 

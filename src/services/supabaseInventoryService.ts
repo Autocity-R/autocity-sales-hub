@@ -246,12 +246,22 @@ export class SupabaseInventoryService {
        salesStatus = 'voorraad';
      }
 
-     // Determine if we need to set sold_date
+     // CRITICAL: Set sold_date ONLY when status changes to verkocht_b2b or verkocht_b2c
      let soldDate = existingVehicle.sold_date;
-     // If status is changing to a sold status and there's no sold_date yet, set it
-     if (['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(salesStatus) && !soldDate) {
+     let deliveryDate = existingVehicle.delivery_date;
+     
+     // Set sold_date when status changes to sold (but NOT afgeleverd)
+     if (['verkocht_b2b', 'verkocht_b2c'].includes(salesStatus) && 
+         !['verkocht_b2b', 'verkocht_b2c'].includes(existingVehicle.status) && 
+         !soldDate) {
        soldDate = new Date().toISOString();
        console.log(`[UPDATE_VEHICLE] Setting sold_date for vehicle ${vehicle.id}`);
+     }
+     
+     // Set delivery_date ONLY when status changes to afgeleverd
+     if (salesStatus === 'afgeleverd' && existingVehicle.status !== 'afgeleverd' && !deliveryDate) {
+       deliveryDate = new Date().toISOString();
+       console.log(`[UPDATE_VEHICLE] Setting delivery_date for vehicle ${vehicle.id}`);
      }
 
      // Prepare email reminder settings
@@ -297,7 +307,8 @@ export class SupabaseInventoryService {
        notes: vehicle.notes,
        details: details as any,
        email_reminder_settings: emailReminderSettings as any,
-       sold_date: soldDate,
+        sold_date: soldDate,
+        delivery_date: deliveryDate,
        updated_at: new Date().toISOString(),
       
       // CRITICAL FIX: Write purchaser to separate columns for reports
@@ -574,6 +585,7 @@ export class SupabaseInventoryService {
       transporter_id: supabaseVehicle.transporter_id,
       customerName: null, // Will be loaded separately when needed
       createdAt: supabaseVehicle.created_at,
+      deliveryDate: supabaseVehicle.delivery_date,
       
       // Map import_status and notes from top-level columns
       importStatus: supabaseVehicle.import_status || 'niet_aangemeld',
@@ -609,9 +621,6 @@ export class SupabaseInventoryService {
       
       // CRITICAL: Pass through entire details JSONB object for warranty, delivery, etc.
       details: details,
-      
-      // CRITICAL: Map deliveryDate to top-level for sorting/filtering in tables
-      deliveryDate: details.deliveryDate ? new Date(details.deliveryDate) : null,
       
       // Derived fields
       arrived: supabaseVehicle.location !== 'onderweg'

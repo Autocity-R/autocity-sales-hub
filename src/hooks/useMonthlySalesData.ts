@@ -14,11 +14,12 @@ export const useMonthlySalesData = () => {
       // Get all months of the current year
       const months = eachMonthOfInterval({ start: yearStart, end: yearEnd });
 
-      // Fetch all sold vehicles for this year
+      // CRITICAL: Only count verkocht_b2b and verkocht_b2c, NOT afgeleverd
+      // Afgeleverd is delivery date, not sales date
       const { data: vehicles, error } = await supabase
         .from("vehicles")
         .select("status, sold_date")
-        .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"])
+        .in("status", ["verkocht_b2b", "verkocht_b2c"])
         .gte("sold_date", yearStart.toISOString())
         .lte("sold_date", yearEnd.toISOString())
         .not("sold_date", "is", null);
@@ -40,7 +41,7 @@ export const useMonthlySalesData = () => {
         ).length;
         
         const b2c = monthVehicles.filter(
-          (v) => v.status === "verkocht_b2c" || v.status === "afgeleverd"
+          (v) => v.status === "verkocht_b2c"
         ).length;
 
         return {

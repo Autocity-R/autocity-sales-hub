@@ -2126,6 +2126,7 @@ export type Database = {
           color: string | null
           created_at: string
           customer_id: string | null
+          delivery_date: string | null
           details: Json
           email_reminder_settings: Json
           external_sheet_reference: string | null
@@ -2156,6 +2157,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           customer_id?: string | null
+          delivery_date?: string | null
           details?: Json
           email_reminder_settings?: Json
           external_sheet_reference?: string | null
@@ -2186,6 +2188,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           customer_id?: string | null
+          delivery_date?: string | null
           details?: Json
           email_reminder_settings?: Json
           external_sheet_reference?: string | null

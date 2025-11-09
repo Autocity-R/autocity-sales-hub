@@ -46,7 +46,8 @@ const WeeklySalesLeaderboard = () => {
         end: currentWeekEnd.toISOString()
       });
 
-      // Haal alle verkochte voertuigen van deze week
+      // CRITICAL: Only count verkocht_b2b and verkocht_b2c, NOT afgeleverd
+      // Afgeleverd is delivery date, not sales date
       const { data: vehicles, error } = await supabase
         .from('vehicles')
         .select(`
@@ -56,7 +57,7 @@ const WeeklySalesLeaderboard = () => {
           sold_by_user_id,
           details
         `)
-        .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
+        .in('status', ['verkocht_b2b', 'verkocht_b2c'])
         .not('sold_date', 'is', null)
         .not('sold_by_user_id', 'is', null)
         .gte('sold_date', currentWeekStart.toISOString())
