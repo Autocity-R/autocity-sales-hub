@@ -256,19 +256,34 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
   };
 
   const handleSendEmail = async () => {
-    // Save address to contact if requested
-    await saveAddressIfNeeded();
-    
-    // Save contract info and warranty package WITHOUT changing status
-    if (contractType === "b2c") {
-      await saveWarrantyPackageInfo();
-    } else {
-      // For B2B, just update the vehicle with sale info (no warranty)
-      await updateVehicleSaleInfo();
+    setLoading(true);
+    try {
+      console.log('[CONTRACT_DIALOG] 📧 Starting email send process...');
+      
+      // Save address to contact if requested
+      await saveAddressIfNeeded();
+      
+      // Save contract info and warranty package WITHOUT changing status
+      if (contractType === "b2c") {
+        await saveWarrantyPackageInfo();
+      } else {
+        // For B2B, just update the vehicle with sale info (no warranty)
+        await updateVehicleSaleInfo();
+      }
+      
+      console.log('[CONTRACT_DIALOG] ✅ Vehicle info saved, proceeding to send email...');
+      onSendContract(options);
+      onClose();
+    } catch (error) {
+      console.error('[CONTRACT_DIALOG] ❌ Error during send process:', error);
+      toast({
+        title: "Fout bij verzenden",
+        description: error instanceof Error ? error.message : "Kon contract niet verzenden",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-    
-    onSendContract(options);
-    onClose();
   };
 
   // Update vehicle sale info for B2B sales (no warranty package)

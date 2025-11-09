@@ -26,20 +26,31 @@ export const saveContractToVehicle = async (
   signatureUrl?: string
 ): Promise<VehicleFile | null> => {
   try {
-    console.log(`[CONTRACT_STORAGE] Saving ${contractType} contract for vehicle ${vehicle.id}`);
+    console.log(`[CONTRACT_STORAGE] 📝 Starting contract save for vehicle ${vehicle.id}`, {
+      contractType,
+      vehicleBrand: vehicle.brand,
+      vehicleModel: vehicle.model,
+      hasSignatureUrl: !!signatureUrl
+    });
 
     // 1. Generate contract HTML
+    console.log(`[CONTRACT_STORAGE] 🔨 Step 1: Generating contract HTML...`);
     const generatedContract = await generateContract(vehicle, contractType, contractOptions, signatureUrl);
+    console.log(`[CONTRACT_STORAGE] ✅ Step 1: Contract HTML generated (${generatedContract.htmlContent.length} chars)`);
     
-    // 2. Convert HTML to PDF
+    // 2. Convert HTML to PDF using html2pdf.js
+    console.log(`[CONTRACT_STORAGE] 🔨 Step 2: Converting HTML to PDF...`);
     const pdfBlob = await generatePdfFromHtml(generatedContract.htmlContent);
+    console.log(`[CONTRACT_STORAGE] ✅ Step 2: PDF generated (${pdfBlob.size} bytes)`);
     
     // 3. Create unique filename
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const fileName = `contract_${contractType}_${vehicle.brand}_${vehicle.model}_${timestamp}.pdf`;
     const filePath = `${vehicle.id}/contracts/${fileName}`;
+    console.log(`[CONTRACT_STORAGE] 📁 File path: ${filePath}`);
     
     // 4. Upload PDF to Supabase Storage
+    console.log(`[CONTRACT_STORAGE] 🔨 Step 3: Uploading to Supabase Storage...`);
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('vehicle-documents')
       .upload(filePath, pdfBlob, {
@@ -48,14 +59,16 @@ export const saveContractToVehicle = async (
       });
     
     if (uploadError) {
-      console.error('[CONTRACT_STORAGE] Upload error:', uploadError);
-      throw uploadError;
+      console.error('[CONTRACT_STORAGE] ❌ Step 3 FAILED: Upload error:', uploadError);
+      throw new Error(`Storage upload failed: ${uploadError.message}`);
     }
+    console.log(`[CONTRACT_STORAGE] ✅ Step 3: Uploaded to storage:`, uploadData);
     
     // 5. Get public URL
     const { data: { publicUrl } } = supabase.storage
       .from('vehicle-documents')
       .getPublicUrl(filePath);
+    console.log(`[CONTRACT_STORAGE] 🔗 Public URL: ${publicUrl}`);
     
     // 6. Create metadata
     const metadata: SavedContractMetadata = {
@@ -71,6 +84,7 @@ export const saveContractToVehicle = async (
     };
     
     // 7. Insert record in vehicle_files table
+    console.log(`[CONTRACT_STORAGE] 🔨 Step 4: Saving to database...`);
     const { data: fileRecord, error: dbError } = await supabase
       .from('vehicle_files')
       .insert({
@@ -87,13 +101,19 @@ export const saveContractToVehicle = async (
       .single();
     
     if (dbError) {
-      console.error('[CONTRACT_STORAGE] Database error:', dbError);
+      console.error('[CONTRACT_STORAGE] ❌ Step 4 FAILED: Database error:', dbError);
       // Try to clean up uploaded file
+      console.log('[CONTRACT_STORAGE] 🧹 Cleaning up orphaned file...');
       await supabase.storage.from('vehicle-documents').remove([filePath]);
-      throw dbError;
+      throw new Error(`Database save failed: ${dbError.message}`);
     }
     
-    console.log(`[CONTRACT_STORAGE] ✅ Contract saved successfully:`, fileRecord);
+    console.log(`[CONTRACT_STORAGE] 🎉 SUCCESS! Contract saved:`, {
+      id: fileRecord.id,
+      fileName: fileRecord.file_name,
+      category: fileRecord.category,
+      size: fileRecord.file_size
+    });
     
     return {
       id: fileRecord.id,
@@ -113,8 +133,8 @@ export const saveContractToVehicle = async (
     };
     
   } catch (error) {
-    console.error('[CONTRACT_STORAGE] Failed to save contract:', error);
-    return null;
+    console.error('[CONTRACT_STORAGE] ❌ FAILED to save contract:', error);
+    throw error; // Re-throw so caller can handle
   }
 };
 

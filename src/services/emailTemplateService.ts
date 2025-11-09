@@ -364,23 +364,35 @@ export const sendEmailWithTemplate = async (
     // Handle attachments based on template type
     let attachments: Array<{ filename: string; url?: string; base64Content?: string }> = [];
     if (template.hasAttachment) {
-      const attachmentData = await getEmailAttachments(template, vehicleData, contractOptions, signatureUrl);
-      
-      if (attachmentData.length === 0 && template.attachmentType === "auto-upload") {
-        console.warn(`Geen documenten gevonden voor ${template.staticAttachmentType} van voertuig ${vehicleData.id}`);
+      try {
+        const attachmentData = await getEmailAttachments(template, vehicleData, contractOptions, signatureUrl);
+        
+        if (attachmentData.length === 0 && template.attachmentType === "auto-upload") {
+          console.warn(`Geen documenten gevonden voor ${template.staticAttachmentType} van voertuig ${vehicleData.id}`);
+          toast({
+            title: "Geen bijlagen gevonden",
+            description: `Er zijn geen ${template.staticAttachmentType} documenten geüpload voor dit voertuig.`,
+            variant: "destructive"
+          });
+          return false;
+        }
+
+        attachments = attachmentData.map(att => ({
+          filename: att.name,
+          url: att.url,
+          base64Content: att.content
+        }));
+        
+        console.log(`[EMAIL_SEND] ✅ ${attachments.length} bijlage(n) voorbereid`);
+      } catch (attachmentError) {
+        console.error('[EMAIL_SEND] ❌ Fout bij voorbereiden bijlagen:', attachmentError);
         toast({
-          title: "Geen bijlagen gevonden",
-          description: `Er zijn geen ${template.staticAttachmentType} documenten geüpload voor dit voertuig.`,
+          title: "Bijlage fout",
+          description: attachmentError instanceof Error ? attachmentError.message : "Kon bijlage niet voorbereiden. Email is niet verzonden.",
           variant: "destructive"
         });
         return false;
       }
-
-      attachments = attachmentData.map(att => ({
-        filename: att.name,
-        url: att.url,
-        base64Content: att.content
-      }));
     }
 
     // Get current user for sender email and CC
@@ -524,26 +536,36 @@ const getEmailAttachments = async (
       if (contractOptions) {
         const contractType = template.linkedButton.includes("b2b") ? "b2b" : "b2c";
         
-        // Save contract to vehicle using the new service
-        const { saveContractToVehicle } = await import("./contractStorageService");
-        const savedContract = await saveContractToVehicle(vehicleData, contractType, contractOptions, signatureUrl);
+        console.log('[EMAIL_ATTACHMENTS] 📝 Saving contract for vehicle:', vehicleData.id);
         
-        if (savedContract) {
-          console.log('[EMAIL_ATTACHMENTS] ✅ Contract saved to vehicle_files:', savedContract);
+        try {
+          // Save contract to vehicle using the new service
+          const { saveContractToVehicle } = await import("./contractStorageService");
+          const savedContract = await saveContractToVehicle(vehicleData, contractType, contractOptions, signatureUrl);
           
-          // Get signed URL for email attachment
-          const { data: urlData } = await supabase.storage
+          console.log('[EMAIL_ATTACHMENTS] ✅ Contract saved successfully:', savedContract);
+          
+          // Get signed URL for email attachment (24 hour expiry)
+          const { data: urlData, error: urlError } = await supabase.storage
             .from('vehicle-documents')
-            .createSignedUrl(savedContract.filePath!, 3600);
+            .createSignedUrl(savedContract.filePath!, 86400); // 24 hours
+          
+          if (urlError) {
+            console.error('[EMAIL_ATTACHMENTS] ❌ Failed to create signed URL:', urlError);
+            throw new Error(`Failed to create signed URL: ${urlError.message}`);
+          }
           
           if (urlData?.signedUrl) {
             attachments.push({
               name: savedContract.fileName!,
               url: urlData.signedUrl
             });
+            console.log('[EMAIL_ATTACHMENTS] 📎 Attachment ready:', savedContract.fileName);
           }
-        } else {
-          console.error('[EMAIL_ATTACHMENTS] ❌ Failed to save contract');
+        } catch (error) {
+          console.error('[EMAIL_ATTACHMENTS] ❌ Failed to save/attach contract:', error);
+          // Re-throw to prevent email from being sent without attachment
+          throw new Error(`Contract opslag mislukt: ${error instanceof Error ? error.message : 'Onbekende fout'}. Email kan niet worden verzonden zonder contract.`);
         }
       }
       break;
@@ -554,9 +576,14 @@ const getEmailAttachments = async (
       const latestContract = await getLatestContractForVehicle(vehicleData.id);
       
       if (latestContract) {
-        const { data: urlData } = await supabase.storage
+        const { data: urlData, error: urlError } = await supabase.storage
           .from('vehicle-documents')
-          .createSignedUrl(latestContract.filePath!, 3600);
+          .createSignedUrl(latestContract.filePath!, 86400); // 24 hours
+        
+        if (urlError) {
+          console.error('[EMAIL_ATTACHMENTS] ❌ Failed to create signed URL:', urlError);
+          throw new Error(`Failed to create signed URL for latest contract: ${urlError.message}`);
+        }
         
         if (urlData?.signedUrl) {
           attachments.push({
@@ -567,6 +594,7 @@ const getEmailAttachments = async (
         }
       } else {
         console.warn('[EMAIL_ATTACHMENTS] ⚠️ No saved contract found for vehicle:', vehicleData.id);
+        throw new Error(`Geen opgeslagen contract gevonden voor dit voertuig. Genereer eerst een contract voordat u een facturatie email verstuurt.`);
       }
       break;
 
