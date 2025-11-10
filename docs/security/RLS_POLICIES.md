@@ -195,11 +195,11 @@ This document provides a comprehensive reference of all Row-Level Security polic
 - **Check**: `can_manage_task(auth.uid(), id)`
 - **Purpose**: Users can update tasks they created or are assigned to
 
-**"Admins can delete tasks"**
+**"Admins and task creators can delete tasks"**
 - **Command**: DELETE
-- **Using**: `is_admin_user(auth.uid())`
-- **Purpose**: Only admins can delete tasks
-- **Security Level**: High - proper restriction
+- **Using**: `is_admin_user(auth.uid()) OR assigned_by = auth.uid()`
+- **Purpose**: Admins and users who created the task can delete it
+- **Security Level**: Medium - users can only delete tasks they created
 
 ### Table: `task_history`
 **RLS Enabled**: Yes
