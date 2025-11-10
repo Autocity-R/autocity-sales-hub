@@ -1740,6 +1740,7 @@ export type Database = {
           category: string
           completed_at: string | null
           created_at: string
+          damage_parts: Json | null
           description: string
           due_date: string
           estimated_duration: number | null
@@ -1762,6 +1763,7 @@ export type Database = {
           category?: string
           completed_at?: string | null
           created_at?: string
+          damage_parts?: Json | null
           description: string
           due_date: string
           estimated_duration?: number | null
@@ -1784,6 +1786,7 @@ export type Database = {
           category?: string
           completed_at?: string | null
           created_at?: string
+          damage_parts?: Json | null
           description?: string
           due_date?: string
           estimated_duration?: number | null

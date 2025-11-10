@@ -156,6 +156,21 @@ const TaskCard = memo<{
           </div>
         </div>
 
+        {task.category === "schadeherstel" && task.damageParts && task.damageParts.parts.length > 0 && (
+          <div className="mt-3 p-3 bg-orange-50 dark:bg-orange-950/20 rounded-md border border-orange-200 dark:border-orange-900">
+            <p className="text-sm font-medium mb-2 text-orange-900 dark:text-orange-100">
+              Beschadigde delen ({task.damageParts.parts.length}):
+            </p>
+            <ul className="text-sm space-y-1">
+              {task.damageParts.parts.map((part, idx) => (
+                <li key={idx} className="text-orange-800 dark:text-orange-200">
+                  <span className="font-medium">{part.name}:</span> {part.instruction}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="mt-4 flex justify-between">
           {/* Edit/Delete buttons - only for task creator or admin */}
           <div className="flex space-x-2">

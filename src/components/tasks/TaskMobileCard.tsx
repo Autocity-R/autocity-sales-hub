@@ -218,6 +218,21 @@ export const TaskMobileCard = memo<TaskMobileCardProps>(({
             <span className="font-medium text-foreground">{formattedDate}</span>
           </div>
         </div>
+
+        {task.category === "schadeherstel" && task.damageParts && task.damageParts.parts.length > 0 && (
+          <div className="mt-2 p-2 bg-orange-50 dark:bg-orange-950/20 rounded border border-orange-200 dark:border-orange-900">
+            <p className="text-xs font-medium mb-1 text-orange-900 dark:text-orange-100">
+              Beschadigde delen ({task.damageParts.parts.length}):
+            </p>
+            <ul className="text-xs space-y-0.5">
+              {task.damageParts.parts.map((part, idx) => (
+                <li key={idx} className="text-orange-800 dark:text-orange-200">
+                  <span className="font-medium">{part.name}:</span> {part.instruction}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

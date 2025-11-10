@@ -61,6 +61,9 @@ export const fetchTasks = async (filters?: any): Promise<Task[]> => {
       estimatedDuration: task.estimated_duration,
       completedAt: task.completed_at,
       notes: task.notes,
+      damageParts: task.damage_parts && typeof task.damage_parts === 'object' && 'parts' in task.damage_parts 
+        ? { parts: (task.damage_parts as any).parts || [] } 
+        : undefined,
       createdAt: task.created_at,
       updatedAt: task.updated_at,
       // Pass through the joined profile data
@@ -121,7 +124,7 @@ export const createTask = async (task: Omit<Task, 'id' | 'createdAt' | 'updatedA
       throw new Error("User not authenticated");
     }
 
-    const taskData = {
+    const taskData: any = {
       title: task.title,
       description: task.description,
       assigned_to: task.assignedTo,
@@ -137,7 +140,8 @@ export const createTask = async (task: Omit<Task, 'id' | 'createdAt' | 'updatedA
       category: task.category,
       location: task.location || null,
       estimated_duration: task.estimatedDuration || null,
-      notes: task.notes || null
+      notes: task.notes || null,
+      damage_parts: task.damageParts ? { parts: task.damageParts.parts } : null
     };
 
     const { data, error } = await supabase
@@ -170,6 +174,9 @@ export const createTask = async (task: Omit<Task, 'id' | 'createdAt' | 'updatedA
       estimatedDuration: data.estimated_duration,
       completedAt: data.completed_at,
       notes: data.notes,
+      damageParts: data.damage_parts && typeof data.damage_parts === 'object' && 'parts' in data.damage_parts 
+        ? { parts: (data.damage_parts as any).parts || [] } 
+        : undefined,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
@@ -197,6 +204,7 @@ export const updateTask = async (taskId: string, updates: Partial<Task>): Promis
       location: updates.location || null,
       estimated_duration: updates.estimatedDuration || null,
       notes: updates.notes || null,
+      damage_parts: updates.damageParts ? { parts: updates.damageParts.parts } : null,
       updated_at: new Date().toISOString()
     };
 
@@ -231,6 +239,9 @@ export const updateTask = async (taskId: string, updates: Partial<Task>): Promis
       estimatedDuration: data.estimated_duration,
       completedAt: data.completed_at,
       notes: data.notes,
+      damageParts: data.damage_parts && typeof data.damage_parts === 'object' && 'parts' in data.damage_parts 
+        ? { parts: (data.damage_parts as any).parts || [] } 
+        : undefined,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
@@ -302,6 +313,9 @@ export const updateTaskStatus = async (taskId: string, status: TaskStatus): Prom
       estimatedDuration: data.estimated_duration,
       completedAt: data.completed_at,
       notes: data.notes,
+      damageParts: data.damage_parts && typeof data.damage_parts === 'object' && 'parts' in data.damage_parts 
+        ? { parts: (data.damage_parts as any).parts || [] } 
+        : undefined,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };

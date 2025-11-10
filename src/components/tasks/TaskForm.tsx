@@ -13,11 +13,12 @@ import { SearchableVehicleSelector } from "@/components/warranty/SearchableVehic
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { Task, TaskPriority, TaskCategory } from "@/types/tasks";
+import { Task, TaskPriority, TaskCategory, DamagePart } from "@/types/tasks";
 import { fetchEmployees, createTask, updateTask } from "@/services/taskService";
 import { fetchVehicles } from "@/services/inventoryService";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { VehicleDamageSelector } from "./VehicleDamageSelector";
 
 interface TaskFormProps {
   task?: Task | null;
@@ -39,6 +40,10 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
     estimatedDuration: task?.estimatedDuration || 60,
     notes: task?.notes || ""
   });
+  
+  const [damageParts, setDamageParts] = useState<DamagePart[]>(
+    task?.damageParts?.parts || []
+  );
 
   const { data: employees = [] } = useQuery({
     queryKey: ["employees"],
@@ -80,7 +85,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
     
     const selectedVehicle = vehicles.find(v => v.id === formData.vehicleId);
     
-    const taskData = {
+    const taskData: any = {
       title: formData.title,
       description: formData.description,
       assignedTo: formData.assignedTo,
@@ -98,6 +103,13 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
       estimatedDuration: formData.estimatedDuration,
       notes: formData.notes
     };
+    
+    // Add damage parts if category is schadeherstel
+    if (formData.category === "schadeherstel" && damageParts.length > 0) {
+      taskData.damageParts = {
+        parts: damageParts
+      };
+    }
 
     saveTaskMutation.mutate(taskData);
   };
@@ -115,6 +127,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
     { value: "inspectie", label: "Inspectie" },
     { value: "schoonmaak", label: "Schoonmaak" },
     { value: "reparatie", label: "Reparatie" },
+    { value: "schadeherstel", label: "Schadeherstel" },
     { value: "administratie", label: "Administratie" },
     { value: "aflevering", label: "Aflevering" },
     { value: "ophalen", label: "Ophalen" },
@@ -272,6 +285,15 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
                 rows={2}
               />
             </div>
+
+          {formData.category === "schadeherstel" && (
+            <div className="space-y-4 border-t pt-4">
+              <VehicleDamageSelector
+                selectedParts={damageParts}
+                onPartsChange={setDamageParts}
+              />
+            </div>
+          )}
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>

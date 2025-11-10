@@ -18,6 +18,7 @@ export interface Task {
   estimatedDuration?: number; // in minutes
   completedAt?: Date | string;
   notes?: string;
+  damageParts?: DamageDetails;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -37,10 +38,21 @@ export type TaskCategory =
   | "inspectie"
   | "schoonmaak"
   | "reparatie"
+  | "schadeherstel"
   | "administratie"
   | "aflevering"
   | "ophalen"
   | "overig";
+
+export interface DamagePart {
+  id: string;
+  name: string;
+  instruction: string;
+}
+
+export interface DamageDetails {
+  parts: DamagePart[];
+}
 
 export interface Employee {
   id: string;
