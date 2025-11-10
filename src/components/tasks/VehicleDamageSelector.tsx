@@ -4,7 +4,6 @@ import { CarDiagram, CAR_PARTS } from './CarDiagram';
 import { DamagePartDialog } from './DamagePartDialog';
 import { DamagePartsList } from './DamagePartsList';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface VehicleDamageSelectorProps {
   selectedParts: DamagePart[];
@@ -75,35 +74,35 @@ export const VehicleDamageSelector: React.FC<VehicleDamageSelectorProps> = ({
     : undefined;
 
   return (
-    <ScrollArea className="h-[400px] w-full rounded-md border p-4">
-      <div className="space-y-6">
-        <div>
-          <Label className="mb-3 block">Selecteer beschadigde delen</Label>
-          <CarDiagram
-            selectedPartIds={selectedParts.map(p => p.id)}
-            onPartClick={handlePartClick}
-          />
-        </div>
-
-        <div>
-          <Label className="mb-3 block">Geselecteerde delen ({selectedParts.length})</Label>
-          <DamagePartsList
-            parts={selectedParts}
-            onEdit={handleEditPart}
-            onRemove={handleRemovePart}
-          />
-        </div>
-
-        {currentPart && (
-          <DamagePartDialog
-            isOpen={dialogOpen}
-            partName={currentPart.name}
-            currentInstruction={currentInstruction}
-            onSave={handleSaveInstruction}
-            onClose={handleDialogClose}
-          />
-        )}
+    <div className="space-y-6">
+      <div>
+        <Label className="mb-3 block">Selecteer beschadigde delen</Label>
+        <CarDiagram
+          selectedPartIds={selectedParts.map(p => p.id)}
+          onPartClick={handlePartClick}
+        />
       </div>
-    </ScrollArea>
+
+      <div>
+        <Label className="mb-3 block">
+          Geselecteerde delen ({selectedParts.length})
+        </Label>
+        <DamagePartsList
+          parts={selectedParts}
+          onEdit={handleEditPart}
+          onRemove={handleRemovePart}
+        />
+      </div>
+
+      {currentPart && (
+        <DamagePartDialog
+          isOpen={dialogOpen}
+          partName={currentPart.name}
+          currentInstruction={currentInstruction}
+          onSave={handleSaveInstruction}
+          onClose={handleDialogClose}
+        />
+      )}
+    </div>
   );
 };

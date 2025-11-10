@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { CalendarIcon, X } from "lucide-react";
+import { CalendarIcon, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,8 @@ import { fetchEmployees, createTask, updateTask } from "@/services/taskService";
 import { fetchVehicles } from "@/services/inventoryService";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { VehicleDamageSelector } from "./VehicleDamageSelector";
+import { DamageSelectionDialog } from "./DamageSelectionDialog";
+import { Badge } from "@/components/ui/badge";
 
 interface TaskFormProps {
   task?: Task | null;
@@ -44,6 +45,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
   const [damageParts, setDamageParts] = useState<DamagePart[]>(
     task?.damageParts?.parts || []
   );
+  const [damageDialogOpen, setDamageDialogOpen] = useState(false);
 
   const { data: employees = [] } = useQuery({
     queryKey: ["employees"],
@@ -287,11 +289,38 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
             </div>
 
           {formData.category === "schadeherstel" && (
-            <div className="space-y-4 border-t pt-4">
-              <VehicleDamageSelector
-                selectedParts={damageParts}
-                onPartsChange={setDamageParts}
-              />
+            <div className="space-y-3 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <Label>Schadedelen</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDamageDialogOpen(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  {damageParts.length === 0 ? 'Schade Toevoegen' : 'Bewerken'}
+                </Button>
+              </div>
+              
+              {damageParts.length > 0 ? (
+                <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                  <p className="text-sm font-medium">
+                    {damageParts.length} beschadigd{damageParts.length > 1 ? 'e' : ''} {damageParts.length > 1 ? 'delen' : 'deel'}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {damageParts.map(part => (
+                      <Badge key={part.id} variant="destructive">
+                        {part.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Geen schadedelen geselecteerd
+                </p>
+              )}
             </div>
           )}
 
@@ -304,6 +333,13 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
             </Button>
           </div>
         </form>
+
+        <DamageSelectionDialog
+          isOpen={damageDialogOpen}
+          initialParts={damageParts}
+          onSave={setDamageParts}
+          onClose={() => setDamageDialogOpen(false)}
+        />
       </DialogContent>
     </Dialog>
   );
