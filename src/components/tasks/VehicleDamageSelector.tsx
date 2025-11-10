@@ -75,7 +75,7 @@ export const VehicleDamageSelector: React.FC<VehicleDamageSelectorProps> = ({
     : undefined;
 
   return (
-    <ScrollArea className="h-[600px] w-full rounded-md border p-4">
+    <ScrollArea className="h-[400px] w-full rounded-md border p-4">
       <div className="space-y-6">
         <div>
           <Label className="mb-3 block">Selecteer beschadigde delen</Label>
