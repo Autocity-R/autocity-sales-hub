@@ -80,10 +80,10 @@ export const InvoiceRequestDialog: React.FC<InvoiceRequestDialogProps> = ({
         <div className="space-y-4 py-4">
           {/* Waarschuwing als er geen contract is */}
           {!hasContract && (
-            <Alert variant="destructive">
+            <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Geen contract gevonden voor dit voertuig. Stuur eerst een contract voordat u de factuur aanvraagt.
+                Geen koopcontract gevonden. De facturatie aanvraag wordt verzonden zonder contract als bijlage.
               </AlertDescription>
             </Alert>
           )}

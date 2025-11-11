@@ -592,10 +592,12 @@ const getEmailAttachments = async (
           });
           console.log('[EMAIL_ATTACHMENTS] ✅ Latest contract attached:', latestContract.fileName);
         }
-      } else {
-        console.warn('[EMAIL_ATTACHMENTS] ⚠️ No saved contract found for vehicle:', vehicleData.id);
-        throw new Error(`Geen opgeslagen contract gevonden voor dit voertuig. Genereer eerst een contract voordat u een facturatie email verstuurt.`);
-      }
+    } else {
+      console.warn('[EMAIL_ATTACHMENTS] ⚠️ No saved contract found for vehicle:', vehicleData.id);
+      console.log('[EMAIL_ATTACHMENTS] 📧 Continuing without contract attachment for invoice request');
+      // Don't throw error - allow invoice request without contract attachment
+      // This is acceptable as the invoice can be based on vehicle data alone
+    }
       break;
 
     case "static-file":
