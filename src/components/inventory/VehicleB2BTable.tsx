@@ -92,9 +92,9 @@ export const renderImportStatusBadge = (status: ImportStatus) => {
 
 export const renderPaymentStatusBadge = (status: PaymentStatus) => {
   const statusMap: Record<PaymentStatus, { label: string, variant: "default" | "outline" | "secondary" | "destructive" }> = {
-    niet_betaald: { label: "Niet betaald", variant: "destructive" },
-    aanbetaling: { label: "Aanbetaling", variant: "secondary" },
-    volledig_betaald: { label: "Volledig betaald", variant: "default" }
+    niet_betaald: { label: "Klant moet betalen", variant: "destructive" },
+    aanbetaling: { label: "Aanbetaling ontvangen", variant: "secondary" },
+    volledig_betaald: { label: "Betaald door klant", variant: "default" }
   };
   
   const { label, variant } = statusMap[status];
@@ -422,7 +422,8 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                   )}
                 </TableCell>
                 <TableCell>
-                  {renderPaymentStatusBadge(vehicle.paymentStatus || "niet_betaald")}
+                  {/* ✅ Gebruik SALES payment status (verkoop betaling van klant) */}
+                  {renderPaymentStatusBadge(vehicle.details?.sales_payment_status || "niet_betaald")}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">

@@ -505,16 +505,20 @@ export const updateSellingPrice = async (vehicleId: string, price: number): Prom
   }
 };
 
-export const updatePaymentStatus = async (vehicleId: string, status: PaymentStatus): Promise<void> => {
+export const updatePaymentStatus = async (
+  vehicleId: string, 
+  status: PaymentStatus,
+  type: 'purchase' | 'sales' = 'sales'  // ← Nieuwe parameter
+): Promise<void> => {
   try {
-    console.log(`Updating payment status for vehicle ${vehicleId} to ${status}`);
+    console.log(`Updating ${type} payment status for vehicle ${vehicleId} to ${status}`);
     
     if (isUseMockData) {
       console.log('Mock data mode - payment status update simulated');
       return;
     }
 
-    // Update payment status in Supabase via details.paymentStatus
+    // Fetch current details
     const { data: vehicle, error: fetchError } = await supabase
       .from('vehicles')
       .select('details')
@@ -526,10 +530,12 @@ export const updatePaymentStatus = async (vehicleId: string, status: PaymentStat
       throw fetchError;
     }
 
+    // Update correct veld op basis van type
+    const fieldName = type === 'sales' ? 'sales_payment_status' : 'purchase_payment_status';
     const currentDetails = (vehicle?.details as Record<string, any>) || {};
     const updatedDetails = {
       ...currentDetails,
-      paymentStatus: status
+      [fieldName]: status
     };
 
     const { error } = await supabase
@@ -545,7 +551,7 @@ export const updatePaymentStatus = async (vehicleId: string, status: PaymentStat
       throw error;
     }
 
-    console.log(`Payment status updated successfully for vehicle ${vehicleId}`);
+    console.log(`Vehicle ${type} payment status updated successfully`);
   } catch (error) {
     console.error('Error in updatePaymentStatus:', error);
     throw error;

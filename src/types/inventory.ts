@@ -78,6 +78,16 @@ export interface VehicleDetails {
   customerEmail?: string;
   papersReceived?: boolean;
   
+  // Payment status fields - GESCHEIDEN
+  // ⚠️ DEPRECATED - Gebruik purchase_payment_status of sales_payment_status
+  paymentStatus?: PaymentStatus;
+  
+  // ✅ NIEUW - Inkoop betaling (Transport menu - "Hebben WIJ aan leverancier betaald?")
+  purchase_payment_status?: PaymentStatus;
+  
+  // ✅ NIEUW - Verkoop betaling (B2B/B2C verkoop - "Heeft KLANT aan ons betaald?")
+  sales_payment_status?: PaymentStatus;
+  
   // Warranty package fields
   warrantyPackage?: string;
   warrantyPackagePrice?: number;

@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Vehicle, PaymentStatus, LocationStatus } from "@/types/inventory";
 import { FileCategory } from "@/types/inventory";
+import { supabase } from "@/integrations/supabase/client";
 import {
   updateVehicle, 
   sendEmail, 
@@ -55,10 +56,31 @@ export const useB2BVehicleOperations = () => {
   });
   
   const updatePaymentStatusMutation = useMutation({
-    mutationFn: ({ vehicleId, status }: { vehicleId: string; status: PaymentStatus }) => 
-      updatePaymentStatus(vehicleId, status),
+    mutationFn: async ({ vehicleId, status }: { vehicleId: string; status: PaymentStatus }) => {
+      // ✅ Update SALES payment status voor B2B (verkoop betaling)
+      const { data: currentVehicle, error: fetchError } = await supabase
+        .from('vehicles')
+        .select('details')
+        .eq('id', vehicleId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const updatedDetails = {
+        ...(currentVehicle?.details as Record<string, any> || {}),
+        sales_payment_status: status  // ← Specifiek voor VERKOOP betaling
+      };
+
+      const { data, error } = await supabase
+        .from('vehicles')
+        .update({ details: updatedDetails })
+        .eq('id', vehicleId);
+
+      if (error) throw error;
+      return data;
+    },
     onSuccess: () => {
-      toast.success("Betaalstatus bijgewerkt");
+      toast.success("Betaalstatus klant bijgewerkt");
       queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
     },
     onError: (error) => {

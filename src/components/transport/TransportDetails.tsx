@@ -120,24 +120,25 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
   const damageFiles = vehicleFiles.filter(file => file.category === "damage");
 
   const getPaymentStatusBadge = (vehicle: Vehicle) => {
-    const paymentStatus = vehicle.details?.paymentStatus || vehicle.paymentStatus || "niet_betaald";
+    // ✅ Gebruik PURCHASE payment status voor transport (inkoop betaling)
+    const paymentStatus = vehicle.details?.purchase_payment_status || "niet_betaald";
     
     if (paymentStatus === "volledig_betaald") {
       return {
-        label: "Ja - Volledig betaald",
+        label: "Ja - Betaald aan leverancier",
         className: "bg-green-100 text-green-800 border-green-300 hover:bg-green-100"
       };
     }
     
     if (paymentStatus === "aanbetaling") {
       return {
-        label: "Deels - Aanbetaling",
+        label: "Deels - Aanbetaling aan leverancier",
         className: "bg-orange-100 text-orange-800 border-orange-300 hover:bg-orange-100"
       };
     }
     
     return {
-      label: "Nee - Niet betaald",
+      label: "Nee - Leverancier niet betaald",
       className: "bg-red-100 text-red-800 border-red-300 hover:bg-red-100"
     };
   };
@@ -261,13 +262,16 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="paymentStatus">Betaalstatus</Label>
+                    <Label htmlFor="paymentStatus">Betaalstatus (Inkoop aan leverancier)</Label>
                     <Select
-                      value={updatedVehicle.paymentStatus || updatedVehicle.details?.paymentStatus || "niet_betaald"}
+                      value={updatedVehicle.details?.purchase_payment_status || "niet_betaald"}
                       onValueChange={(value: PaymentStatus) => {
                         setUpdatedVehicle({
                           ...updatedVehicle,
-                          paymentStatus: value
+                          details: {
+                            ...updatedVehicle.details,
+                            purchase_payment_status: value  // ← Update ALLEEN purchase
+                          }
                         });
                       }}
                     >
@@ -276,13 +280,13 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="niet_betaald">
-                          🔴 Nee - Niet betaald
+                          🔴 Nee - Leverancier nog niet betaald
                         </SelectItem>
                         <SelectItem value="aanbetaling">
-                          🟠 Deels - Aanbetaling gedaan
+                          🟠 Deels - Aanbetaling aan leverancier gedaan
                         </SelectItem>
                         <SelectItem value="volledig_betaald">
-                          🟢 Ja - Volledig betaald
+                          🟢 Ja - Volledig betaald aan leverancier
                         </SelectItem>
                       </SelectContent>
                     </Select>

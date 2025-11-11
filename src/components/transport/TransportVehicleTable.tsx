@@ -74,11 +74,12 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
   };
 
   const getPaymentStatusBadge = (vehicle: Vehicle) => {
-    const paymentStatus = vehicle.details?.paymentStatus || vehicle.paymentStatus || "niet_betaald";
+    // ✅ Gebruik PURCHASE payment status (inkoop betaling)
+    const paymentStatus = vehicle.details?.purchase_payment_status || "niet_betaald";
     
     if (paymentStatus === "volledig_betaald") {
       return {
-        label: "Ja",
+        label: "Ja (Betaald)",
         className: "bg-green-100 text-green-800 border-green-300 hover:bg-green-100"
       };
     }
