@@ -314,8 +314,8 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
               <TableHead className="min-w-20 text-center">
                 {renderSortableHeader("papersReceived", "Papieren")}
               </TableHead>
-              <TableHead className="min-w-28">
-                {renderSortableHeader("paymentStatus", "Betaalstatus")}
+              <TableHead className="min-w-40">
+                {renderSortableHeader("paymentStatus", "Klant Betaling")}
               </TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
@@ -421,9 +421,35 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                     <CircleX className="h-5 w-5 text-red-500 mx-auto" />
                   )}
                 </TableCell>
-                <TableCell>
-                  {/* ✅ Gebruik SALES payment status (verkoop betaling van klant) */}
-                  {renderPaymentStatusBadge(vehicle.details?.sales_payment_status || "niet_betaald")}
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <Select
+                    value={vehicle.details?.sales_payment_status || "niet_betaald"}
+                    onValueChange={(value) => handleUpdatePaymentStatus?.(vehicle.id, value as PaymentStatus)}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="niet_betaald">
+                        <div className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-red-500"></span>
+                          Klant moet betalen
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="aanbetaling">
+                        <div className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-orange-500"></span>
+                          Aanbetaling van klant
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="volledig_betaald">
+                        <div className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-green-500"></span>
+                          Volledig betaald door klant
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
