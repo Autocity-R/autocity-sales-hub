@@ -194,35 +194,40 @@ export class SupabaseInventoryService {
 
     // Preserve existing data from details
     const existingDetails = (existingVehicle.details as any) || {};
+    const incomingDetails = (vehicle.details as any) || {};
     
     // Prepare details object with all extra fields (convert dates to ISO strings)
     // CRITICAL: Use spread to preserve ALL existing details fields (warranty, delivery, etc.)
     const details = {
       ...existingDetails, // Preserve everything first
-      notes: vehicle.notes ?? existingDetails.notes ?? null,
-      workshopStatus: vehicle.workshopStatus ?? existingDetails.workshopStatus ?? 'wachten',
-      paintStatus: vehicle.paintStatus ?? existingDetails.paintStatus ?? 'geen_behandeling', 
-      transportStatus: vehicle.transportStatus ?? existingDetails.transportStatus ?? 'onderweg',
-      bpmRequested: vehicle.bpmRequested ?? existingDetails.bpmRequested ?? false,
-      bpmStarted: vehicle.bpmStarted ?? existingDetails.bpmStarted ?? false,
-      damage: vehicle.damage ?? existingDetails.damage ?? { description: '', status: 'geen' },
-      cmrSent: vehicle.cmrSent ?? existingDetails.cmrSent ?? false,
-      cmrDate: vehicle.cmrDate ? vehicle.cmrDate.toISOString() : (existingDetails.cmrDate || null),
-      papersReceived: vehicle.papersReceived ?? existingDetails.papersReceived ?? false,
-      papersDate: vehicle.papersDate ? vehicle.papersDate.toISOString() : (existingDetails.papersDate || null),
-      showroomOnline: vehicle.showroomOnline ?? existingDetails.showroomOnline ?? false,
-      paymentStatus: vehicle.paymentStatus ?? existingDetails.paymentStatus ?? 'niet_betaald',
+      ...incomingDetails, // Then merge incoming details (nieuwe/gewijzigde keys hebben voorrang)
+      notes: vehicle.notes ?? incomingDetails.notes ?? existingDetails.notes ?? null,
+      workshopStatus: vehicle.workshopStatus ?? incomingDetails.workshopStatus ?? existingDetails.workshopStatus ?? 'wachten',
+      paintStatus: vehicle.paintStatus ?? incomingDetails.paintStatus ?? existingDetails.paintStatus ?? 'geen_behandeling', 
+      transportStatus: vehicle.transportStatus ?? incomingDetails.transportStatus ?? existingDetails.transportStatus ?? 'onderweg',
+      bpmRequested: vehicle.bpmRequested ?? incomingDetails.bpmRequested ?? existingDetails.bpmRequested ?? false,
+      bpmStarted: vehicle.bpmStarted ?? incomingDetails.bpmStarted ?? existingDetails.bpmStarted ?? false,
+      damage: vehicle.damage ?? incomingDetails.damage ?? existingDetails.damage ?? { description: '', status: 'geen' },
+      cmrSent: vehicle.cmrSent ?? incomingDetails.cmrSent ?? existingDetails.cmrSent ?? false,
+      cmrDate: vehicle.cmrDate ? vehicle.cmrDate.toISOString() : (incomingDetails.cmrDate ?? existingDetails.cmrDate ?? null),
+      papersReceived: vehicle.papersReceived ?? incomingDetails.papersReceived ?? existingDetails.papersReceived ?? false,
+      papersDate: vehicle.papersDate ? vehicle.papersDate.toISOString() : (incomingDetails.papersDate ?? existingDetails.papersDate ?? null),
+      showroomOnline: vehicle.showroomOnline ?? incomingDetails.showroomOnline ?? existingDetails.showroomOnline ?? false,
+      paymentStatus: vehicle.paymentStatus ?? incomingDetails.paymentStatus ?? existingDetails.paymentStatus ?? 'niet_betaald',
       // CRITICAL: Always preserve purchase price - use new value if provided, otherwise keep existing
       purchasePrice: vehicle.purchasePrice !== undefined && vehicle.purchasePrice !== null 
         ? vehicle.purchasePrice 
-        : (existingDetails.purchasePrice || 0),
-      salespersonId: vehicle.salespersonId ?? existingDetails.salespersonId ?? null,
-      salespersonName: vehicle.salespersonName ?? existingDetails.salespersonName ?? null,
-      mainPhotoUrl: vehicle.mainPhotoUrl ?? existingDetails.mainPhotoUrl ?? null,
-      photos: vehicle.photos ?? existingDetails.photos ?? [],
+        : (incomingDetails.purchasePrice ?? existingDetails.purchasePrice ?? 0),
+      salespersonId: vehicle.salespersonId ?? incomingDetails.salespersonId ?? existingDetails.salespersonId ?? null,
+      salespersonName: vehicle.salespersonName ?? incomingDetails.salespersonName ?? existingDetails.salespersonName ?? null,
+      mainPhotoUrl: vehicle.mainPhotoUrl ?? incomingDetails.mainPhotoUrl ?? existingDetails.mainPhotoUrl ?? null,
+      photos: vehicle.photos ?? incomingDetails.photos ?? existingDetails.photos ?? [],
       // CRITICAL: Preserve trade-in status
-      isTradeIn: vehicle.details?.isTradeIn ?? existingDetails.isTradeIn ?? false,
-      tradeInDate: vehicle.details?.tradeInDate ?? existingDetails.tradeInDate ?? null
+      isTradeIn: incomingDetails.isTradeIn ?? existingDetails.isTradeIn ?? false,
+      tradeInDate: incomingDetails.tradeInDate ?? existingDetails.tradeInDate ?? null,
+      // CRITICAL: Expliciet meenemen van beide betaalstatussen met defaults
+      purchase_payment_status: incomingDetails.purchase_payment_status ?? existingDetails.purchase_payment_status ?? 'niet_betaald',
+      sales_payment_status: incomingDetails.sales_payment_status ?? existingDetails.sales_payment_status ?? 'niet_betaald',
     };
 
      // CRITICAL: Protect sold status from being accidentally changed

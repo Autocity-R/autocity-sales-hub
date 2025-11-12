@@ -423,7 +423,9 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                 </TableCell>
                 <TableCell>
                   {(() => {
-                    const status = vehicle.details?.sales_payment_status || "niet_betaald";
+                    const status = vehicle.details?.sales_payment_status 
+                      ?? vehicle.details?.paymentStatus 
+                      ?? "niet_betaald";
                     if (status === "volledig_betaald") {
                       return (
                         <Badge className="bg-green-500 hover:bg-green-600 text-white">
