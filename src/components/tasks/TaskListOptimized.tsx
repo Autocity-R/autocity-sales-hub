@@ -241,13 +241,10 @@ export const TaskList = memo<TaskListProps>(({
   const isMobile = useIsMobile();
   
   const filteredTasks = useMemo(() => {
-    return statusFilter === "all" 
-      ? tasks.filter(task => 
-          task.status !== "voltooid" && 
-          task.status !== "geannuleerd" && 
-          task.status !== "uitgesteld"
-        )
-      : tasks.filter(task => task.status === statusFilter);
+    if (statusFilter === "all") {
+      return tasks;
+    }
+    return tasks.filter(task => task.status === statusFilter);
   }, [tasks, statusFilter]);
 
   return (
@@ -261,7 +258,7 @@ export const TaskList = memo<TaskListProps>(({
             <SelectValue placeholder="Filter op status" />
           </SelectTrigger>
           <SelectContent className="bg-background">
-            <SelectItem value="all">Actieve taken</SelectItem>
+            <SelectItem value="all">Alle taken</SelectItem>
             <SelectItem value="toegewezen">Toegewezen</SelectItem>
             <SelectItem value="in_uitvoering">In uitvoering</SelectItem>
             <SelectItem value="voltooid">Voltooid</SelectItem>

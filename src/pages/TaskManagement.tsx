@@ -96,18 +96,11 @@ const TaskManagement = () => {
   };
 
   const getStatusCounts = () => {
-    // Filter alleen actieve taken (niet voltooid, geannuleerd of uitgesteld)
-    const activeTasks = tasks.filter(t => 
-      t.status !== "voltooid" && 
-      t.status !== "geannuleerd" && 
-      t.status !== "uitgesteld"
-    );
-    
     const counts = {
       toegewezen: tasks.filter(t => t.status === "toegewezen").length,
       in_uitvoering: tasks.filter(t => t.status === "in_uitvoering").length,
       voltooid: tasks.filter(t => t.status === "voltooid").length,
-      total: activeTasks.length // Alleen actieve taken tellen
+      total: tasks.length
     };
     return counts;
   };
