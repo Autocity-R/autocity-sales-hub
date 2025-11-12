@@ -105,6 +105,7 @@ export const B2BInventoryContent = ({
           vehicle={selectedVehicle}
           onClose={() => setSelectedVehicle(null)}
           onUpdate={onUpdateVehicle}
+          onAutoSave={onUpdateVehicle}
           onSendEmail={onSendEmail}
           onPhotoUpload={onPhotoUpload}
           onRemovePhoto={onRemovePhoto}
