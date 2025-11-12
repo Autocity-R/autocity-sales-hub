@@ -30,17 +30,41 @@ export const useB2BVehicles = () => {
   const sortedVehicles = [...vehicles].sort((a, b) => {
     if (!sortField) return 0;
     
-    // Handle nested fields
-    let aValue: any = a;
-    let bValue: any = b;
+    // Handle special fields for payment status
+    let aValue: any;
+    let bValue: any;
     
-    const fields = sortField.split(".");
-    for (const field of fields) {
-      aValue = aValue?.[field];
-      bValue = bValue?.[field];
+    if (sortField === "sales_payment_status") {
+      aValue = a.details?.sales_payment_status ?? a.details?.paymentStatus ?? "niet_betaald";
+      bValue = b.details?.sales_payment_status ?? b.details?.paymentStatus ?? "niet_betaald";
+    } else if (sortField === "purchase_payment_status") {
+      aValue = a.details?.purchase_payment_status ?? "niet_betaald";
+      bValue = b.details?.purchase_payment_status ?? "niet_betaald";
+    } else {
+      // Handle nested fields
+      aValue = a;
+      bValue = b;
+      
+      const fields = sortField.split(".");
+      for (const field of fields) {
+        aValue = aValue?.[field];
+        bValue = bValue?.[field];
+      }
     }
     
     if (aValue === undefined || bValue === undefined) return 0;
+    
+    // For payment status, define sort order: niet_betaald < aanbetaling < volledig_betaald
+    if (sortField === "sales_payment_status" || sortField === "purchase_payment_status") {
+      const statusOrder: Record<string, number> = {
+        "niet_betaald": 1,
+        "aanbetaling": 2,
+        "volledig_betaald": 3
+      };
+      const aOrder = statusOrder[aValue] || 0;
+      const bOrder = statusOrder[bValue] || 0;
+      return sortDirection === "asc" ? aOrder - bOrder : bOrder - aOrder;
+    }
     
     // For numbers
     if (typeof aValue === "number" && typeof bValue === "number") {
