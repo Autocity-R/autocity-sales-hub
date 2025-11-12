@@ -11,6 +11,7 @@ import { Task, TaskStatus } from "@/types/tasks";
 import { fetchTasks, updateTaskStatus, deleteTask } from "@/services/taskService";
 import { TaskForm } from "@/components/tasks/TaskForm";
 import { TaskList } from "@/components/tasks/TaskList";
+import { TaskDetail } from "@/components/tasks/TaskDetail";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTasksRealtime } from "@/hooks/useTasksRealtime";
 
@@ -248,6 +249,17 @@ const TaskManagement = () => {
             onTaskAdded={handleTaskAdded}
           />
         )}
+
+        {/* Task Detail Dialog */}
+        <TaskDetail
+          task={selectedTask}
+          open={!!selectedTask}
+          onOpenChange={(open) => !open && setSelectedTask(null)}
+          onCompleteTask={handleCompleteTask}
+          onStartTask={handleStartTask}
+          onEditTask={handleEditTask}
+          onDeleteTask={handleDeleteTask}
+        />
       </div>
     </DashboardLayout>
   );
