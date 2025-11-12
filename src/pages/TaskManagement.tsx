@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { Plus, CheckCircle, Clock, AlertCircle, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,8 @@ const TaskManagement = () => {
       status: statusFilter !== "all" ? statusFilter : undefined
     }),
     enabled: !!user,
+    staleTime: 0,
+    refetchOnMount: 'always'
   });
 
   const updateStatusMutation = useMutation({
@@ -107,9 +109,15 @@ const TaskManagement = () => {
 
   const statusCounts = getStatusCounts();
 
+  const handleForceRefresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    toast({
+      description: "Taken opnieuw geladen"
+    });
+  };
+
   const handleStatCardClick = (status: TaskStatus | "all") => {
     if (status === "all") {
-      // Voor "all" laten we alleen actieve taken zien
       setStatusFilter("all");
     } else {
       setStatusFilter(status);
@@ -154,10 +162,16 @@ const TaskManagement = () => {
           title="Taken Beheer" 
           description={isAdmin ? "Beheer alle taken voor medewerkers en voertuigen" : "Bekijk en beheer je toegewezen taken"}
         >
-          <Button onClick={() => setShowTaskForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nieuwe Taak
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleForceRefresh}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Ververs
+            </Button>
+            <Button onClick={() => setShowTaskForm(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nieuwe Taak
+            </Button>
+          </div>
         </PageHeader>
 
         {/* Statistics Cards */}
