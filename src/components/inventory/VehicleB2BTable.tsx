@@ -314,6 +314,9 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
               <TableHead className="min-w-20 text-center">
                 {renderSortableHeader("papersReceived", "Papieren")}
               </TableHead>
+              <TableHead className="min-w-32 text-center">
+                Betaalstatus
+              </TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
@@ -417,6 +420,30 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                   ) : (
                     <CircleX className="h-5 w-5 text-red-500 mx-auto" />
                   )}
+                </TableCell>
+                <TableCell>
+                  {(() => {
+                    const status = vehicle.details?.sales_payment_status || "niet_betaald";
+                    if (status === "volledig_betaald") {
+                      return (
+                        <Badge className="bg-green-500 hover:bg-green-600 text-white">
+                          Betaald
+                        </Badge>
+                      );
+                    } else if (status === "aanbetaling") {
+                      return (
+                        <Badge className="bg-orange-500 hover:bg-orange-600 text-white">
+                          Aanbetaling
+                        </Badge>
+                      );
+                    } else {
+                      return (
+                        <Badge className="bg-red-500 hover:bg-red-600 text-white">
+                          Niet betaald
+                        </Badge>
+                      );
+                    }
+                  })()}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
