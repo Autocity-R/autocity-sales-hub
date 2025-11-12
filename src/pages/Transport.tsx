@@ -15,10 +15,12 @@ import { TransportSupplierForm } from "@/components/transport/TransportSupplierF
 import { TransportDetails } from "@/components/transport/TransportDetails";
 import { TransportBulkActions } from "@/components/transport/TransportBulkActions";
 import { supabase } from "@/integrations/supabase/client";
+import { useTransportVehicleOperations } from "@/hooks/useTransportVehicleOperations";
 
 const Transport = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { handleBulkAssignTransporter } = useTransportVehicleOperations();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
@@ -241,6 +243,12 @@ const Transport = () => {
     }
   };
 
+  // Handle bulk transporter assignment
+  const handleAssignTransporter = (vehicleIds: string[], transporterId: string) => {
+    handleBulkAssignTransporter(vehicleIds, transporterId);
+    setSelectedVehicleIds([]);
+  };
+
   // Create new supplier mutation
   const createSupplierMutation = useMutation({
     mutationFn: async (supplierData: Supplier) => {
@@ -321,6 +329,7 @@ const Transport = () => {
           onClearSelection={() => setSelectedVehicleIds([])}
           onSendBulkEmails={handleSendBulkEmails}
           onUpdateBulkStatus={handleUpdateBulkStatus}
+          onAssignTransporter={handleAssignTransporter}
         />
         
         <div className="rounded-md border overflow-hidden">

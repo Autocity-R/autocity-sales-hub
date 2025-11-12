@@ -6,6 +6,43 @@ import { supabase } from "@/integrations/supabase/client";
 export const useTransportVehicleOperations = () => {
   const queryClient = useQueryClient();
   
+  const bulkAssignTransporterMutation = useMutation({
+    mutationFn: async ({ 
+      vehicleIds, 
+      transporterId 
+    }: { 
+      vehicleIds: string[]; 
+      transporterId: string;
+    }) => {
+      // Update meerdere voertuigen met de transporteur
+      const updates = vehicleIds.map(vehicleId => 
+        supabase
+          .from('vehicles')
+          .update({ transporter_id: transporterId })
+          .eq('id', vehicleId)
+      );
+      
+      const results = await Promise.all(updates);
+      
+      // Check voor fouten
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) {
+        throw new Error(`${errors.length} voertuigen konden niet worden bijgewerkt`);
+      }
+      
+      return results;
+    },
+    onSuccess: (_, variables) => {
+      toast.success(`Transporteur toegewezen aan ${variables.vehicleIds.length} voertuig(en)`);
+      queryClient.invalidateQueries({ queryKey: ["transportVehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+    },
+    onError: (error) => {
+      toast.error("Fout bij toewijzen transporteur");
+      console.error("Error assigning transporter:", error);
+    }
+  });
+  
   const updatePurchasePaymentStatusMutation = useMutation({
     mutationFn: async ({ 
       vehicleId, 
@@ -50,9 +87,15 @@ export const useTransportVehicleOperations = () => {
   const handleUpdatePurchasePaymentStatus = (vehicleId: string, status: PaymentStatus) => {
     updatePurchasePaymentStatusMutation.mutate({ vehicleId, status });
   };
+
+  const handleBulkAssignTransporter = (vehicleIds: string[], transporterId: string) => {
+    bulkAssignTransporterMutation.mutate({ vehicleIds, transporterId });
+  };
   
   return {
     handleUpdatePurchasePaymentStatus,
-    updatePurchasePaymentStatusMutation
+    handleBulkAssignTransporter,
+    updatePurchasePaymentStatusMutation,
+    bulkAssignTransporterMutation
   };
 };

@@ -15,6 +15,8 @@ import { Loader2 } from "lucide-react";
 interface SupplierSelectorProps {
   value?: string;
   onValueChange: (value: string) => void;
+  contactType?: "supplier" | "transporter";
+  placeholder?: string;
 }
 
 interface Supplier {
@@ -28,15 +30,17 @@ interface Supplier {
 
 export const SupplierSelector: React.FC<SupplierSelectorProps> = ({ 
   value, 
-  onValueChange 
+  onValueChange,
+  contactType = "supplier",
+  placeholder = "Selecteer leverancier"
 }) => {
   const { data: suppliers, isLoading, error } = useQuery({
-    queryKey: ["contacts", "supplier"],
+    queryKey: ["contacts", contactType],
     queryFn: async (): Promise<Supplier[]> => {
       const { data, error } = await supabase
         .from('contacts')
         .select('id, company_name, first_name, last_name, email, address_city')
-        .eq('type', 'supplier')
+        .eq('type', contactType)
         .order('company_name', { ascending: true, nullsFirst: false });
 
       if (error) {
@@ -67,13 +71,15 @@ export const SupplierSelector: React.FC<SupplierSelectorProps> = ({
     return parts.join(' - ');
   };
 
+  const label = contactType === "transporter" ? "Transporteur" : "Leverancier";
+
   if (isLoading) {
     return (
       <div className="space-y-2">
-        <Label>Leverancier *</Label>
+        <Label>{label} *</Label>
         <div className="flex items-center justify-center p-3 border rounded-md">
           <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          <span className="text-sm text-muted-foreground">Leveranciers laden...</span>
+          <span className="text-sm text-muted-foreground">{label}s laden...</span>
         </div>
       </div>
     );
@@ -82,9 +88,9 @@ export const SupplierSelector: React.FC<SupplierSelectorProps> = ({
   if (error) {
     return (
       <div className="space-y-2">
-        <Label>Leverancier *</Label>
+        <Label>{label} *</Label>
         <div className="p-3 border rounded-md border-destructive/50 bg-destructive/10">
-          <span className="text-sm text-destructive">Fout bij laden leveranciers</span>
+          <span className="text-sm text-destructive">Fout bij laden {label.toLowerCase()}s</span>
         </div>
       </div>
     );
@@ -92,10 +98,10 @@ export const SupplierSelector: React.FC<SupplierSelectorProps> = ({
 
   return (
     <div className="space-y-2">
-      <Label>Leverancier *</Label>
+      <Label>{label} *</Label>
       <Select value={value} onValueChange={onValueChange}>
         <SelectTrigger>
-          <SelectValue placeholder="Selecteer leverancier" />
+          <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
           {suppliers && suppliers.length > 0 ? (
@@ -113,14 +119,14 @@ export const SupplierSelector: React.FC<SupplierSelectorProps> = ({
             ))
           ) : (
             <SelectItem value="no-suppliers-available" disabled>
-              <span className="text-muted-foreground">Geen leveranciers gevonden</span>
+              <span className="text-muted-foreground">Geen {label.toLowerCase()}s gevonden</span>
             </SelectItem>
           )}
         </SelectContent>
       </Select>
       {suppliers && suppliers.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          Voeg eerst leveranciers toe via Klanten → Type: Leverancier
+          Voeg eerst {label.toLowerCase()}s toe via Klanten → Type: {label}
         </p>
       )}
     </div>

@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { Mail, CheckCircle, X } from "lucide-react";
+import { Mail, CheckCircle, X, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
   Dialog, 
@@ -20,25 +20,30 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ImportStatus } from "@/types/inventory";
+import { SupplierSelector } from "@/components/inventory/SupplierSelector";
 
 interface TransportBulkActionsProps {
   selectedVehicleIds: string[];
   onClearSelection: () => void;
   onSendBulkEmails: (vehicleIds: string[], transporterId: string) => void;
   onUpdateBulkStatus: (vehicleIds: string[], status: ImportStatus) => void;
+  onAssignTransporter: (vehicleIds: string[], transporterId: string) => void;
 }
 
 export const TransportBulkActions: React.FC<TransportBulkActionsProps> = ({
   selectedVehicleIds,
   onClearSelection,
   onSendBulkEmails,
-  onUpdateBulkStatus
+  onUpdateBulkStatus,
+  onAssignTransporter
 }) => {
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
+  const [isTransporterDialogOpen, setIsTransporterDialogOpen] = useState(false);
   const [transporterId, setTransporterId] = useState("");
   const [emailContent, setEmailContent] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<ImportStatus>("aanvraag_ontvangen");
+  const [bulkTransporterId, setBulkTransporterId] = useState("");
 
   const handleSendEmails = () => {
     if (transporterId) {
@@ -50,6 +55,14 @@ export const TransportBulkActions: React.FC<TransportBulkActionsProps> = ({
   const handleUpdateStatus = () => {
     onUpdateBulkStatus(selectedVehicleIds, selectedStatus);
     setIsStatusDialogOpen(false);
+  };
+
+  const handleAssignTransporter = () => {
+    if (bulkTransporterId) {
+      onAssignTransporter(selectedVehicleIds, bulkTransporterId);
+      setIsTransporterDialogOpen(false);
+      setBulkTransporterId("");
+    }
   };
 
   if (selectedVehicleIds.length === 0) return null;
@@ -74,6 +87,14 @@ export const TransportBulkActions: React.FC<TransportBulkActionsProps> = ({
         >
           <CheckCircle className="mr-2 h-4 w-4" />
           Status wijzigen
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setIsTransporterDialogOpen(true)}
+        >
+          <Truck className="mr-2 h-4 w-4" />
+          Transporteur toewijzen
         </Button>
         <Button
           size="sm"
@@ -152,6 +173,30 @@ export const TransportBulkActions: React.FC<TransportBulkActionsProps> = ({
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsStatusDialogOpen(false)}>Annuleren</Button>
             <Button onClick={handleUpdateStatus}>Bijwerken</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transporteur Dialog */}
+      <Dialog open={isTransporterDialogOpen} onOpenChange={setIsTransporterDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Transporteur toewijzen</DialogTitle>
+            <DialogDescription>
+              Wijs een transporteur toe aan {selectedVehicleIds.length} geselecteerde voertuigen.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <SupplierSelector
+              value={bulkTransporterId}
+              onValueChange={setBulkTransporterId}
+              contactType="transporter"
+              placeholder="Selecteer transporteur"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsTransporterDialogOpen(false)}>Annuleren</Button>
+            <Button onClick={handleAssignTransporter} disabled={!bulkTransporterId}>Toewijzen</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
