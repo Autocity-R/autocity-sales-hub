@@ -24,9 +24,19 @@ export const useB2BVehicleOperations = () => {
       toast.success("Voertuig bijgewerkt");
       queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
     },
-    onError: (error) => {
-      toast.error("Fout bij het bijwerken van het voertuig");
-      console.error("Error updating vehicle:", error);
+    onError: (error: any) => {
+      // Specifieke foutmeldingen voor prijsvalidatie
+      const errorMessage = error?.message || '';
+      if (errorMessage.includes('selling_price') || errorMessage.includes('Sold vehicles must have a valid selling_price')) {
+        toast.error("Kan niet opslaan: Verkoopprijs ontbreekt (verplicht voor verkochte voertuigen)");
+        console.error("Price validation failed - missing selling_price:", error);
+      } else if (errorMessage.includes('purchase_price') || errorMessage.includes('Sold vehicles must have a valid purchase_price')) {
+        toast.error("Kan niet opslaan: Inkoopprijs ontbreekt (verplicht voor verkochte voertuigen)");
+        console.error("Price validation failed - missing purchase_price:", error);
+      } else {
+        toast.error("Fout bij het bijwerken van het voertuig");
+        console.error("Error updating vehicle:", error);
+      }
     }
   });
   
@@ -83,9 +93,19 @@ export const useB2BVehicleOperations = () => {
       toast.success("Betaalstatus klant bijgewerkt");
       queryClient.invalidateQueries({ queryKey: ["b2bVehicles"] });
     },
-    onError: (error) => {
-      toast.error("Fout bij het bijwerken van de betaalstatus");
-      console.error("Error updating payment status:", error);
+    onError: (error: any) => {
+      // Specifieke foutmeldingen voor prijsvalidatie
+      const errorMessage = error?.message || '';
+      if (errorMessage.includes('selling_price') || errorMessage.includes('Sold vehicles must have a valid selling_price')) {
+        toast.error("Kan betaalstatus niet wijzigen: Verkoopprijs ontbreekt (verplicht voor verkochte voertuigen)");
+        console.error("Payment status update failed - missing selling_price:", error);
+      } else if (errorMessage.includes('purchase_price') || errorMessage.includes('Sold vehicles must have a valid purchase_price')) {
+        toast.error("Kan betaalstatus niet wijzigen: Inkoopprijs ontbreekt (verplicht voor verkochte voertuigen)");
+        console.error("Payment status update failed - missing purchase_price:", error);
+      } else {
+        toast.error("Fout bij het bijwerken van de betaalstatus");
+        console.error("Error updating payment status:", error);
+      }
     }
   });
 

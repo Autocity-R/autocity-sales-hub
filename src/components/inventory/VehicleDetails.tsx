@@ -81,6 +81,22 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
     if (onAutoSave && hasUserChangesRef.current && debouncedVehicle.id === initialVehicleRef.current.id) {
       // Check if there are actual changes from initial state
       const hasChanges = JSON.stringify(debouncedVehicle) !== JSON.stringify(initialVehicleRef.current);
+      
+      // Validatie: voorkom auto-save als verplichte prijzen ontbreken voor verkochte voertuigen
+      const isSold = debouncedVehicle.salesStatus === 'verkocht_b2b' || debouncedVehicle.salesStatus === 'verkocht_b2c';
+      const hasSellingPrice = debouncedVehicle.sellingPrice && debouncedVehicle.sellingPrice > 0;
+      const hasPurchasePrice = (debouncedVehicle.purchasePrice && debouncedVehicle.purchasePrice > 0) || 
+                               (debouncedVehicle.details?.purchasePrice && debouncedVehicle.details.purchasePrice > 0);
+      
+      if (isSold && (!hasSellingPrice || !hasPurchasePrice)) {
+        console.warn('⚠️ Auto-save geblokkeerd: verkocht voertuig mist verplichte prijzen', {
+          vehicleId: debouncedVehicle.id,
+          hasSellingPrice,
+          hasPurchasePrice
+        });
+        return;
+      }
+      
       if (hasChanges) {
         console.log('Auto-saving vehicle changes...');
         onAutoSave(debouncedVehicle);
@@ -125,6 +141,17 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   };
 
   const handleSave = () => {
+    // Validatie: voorkom opslaan als verplichte prijzen ontbreken voor verkochte voertuigen
+    const isSold = editedVehicle.salesStatus === 'verkocht_b2b' || editedVehicle.salesStatus === 'verkocht_b2c';
+    const hasSellingPrice = editedVehicle.sellingPrice && editedVehicle.sellingPrice > 0;
+    const hasPurchasePrice = (editedVehicle.purchasePrice && editedVehicle.purchasePrice > 0) || 
+                             (editedVehicle.details?.purchasePrice && editedVehicle.details.purchasePrice > 0);
+    
+    if (isSold && (!hasSellingPrice || !hasPurchasePrice)) {
+      console.error('❌ Opslaan geblokkeerd: verkocht voertuig mist verplichte prijzen');
+      return;
+    }
+    
     onUpdate(editedVehicle);
   };
 
@@ -236,11 +263,23 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
             <Button type="button" variant="secondary" onClick={onClose}>
               {isReadOnly ? 'Sluiten' : 'Annuleren'}
             </Button>
-            {!isReadOnly && (
-              <Button type="submit" onClick={handleSave}>
-                Opslaan
-              </Button>
-            )}
+            {!isReadOnly && (() => {
+              const isSold = editedVehicle.salesStatus === 'verkocht_b2b' || editedVehicle.salesStatus === 'verkocht_b2c';
+              const hasSellingPrice = editedVehicle.sellingPrice && editedVehicle.sellingPrice > 0;
+              const hasPurchasePrice = (editedVehicle.purchasePrice && editedVehicle.purchasePrice > 0) || 
+                                       (editedVehicle.details?.purchasePrice && editedVehicle.details.purchasePrice > 0);
+              const missingPrices = isSold && (!hasSellingPrice || !hasPurchasePrice);
+              
+              return (
+                <Button 
+                  type="submit" 
+                  onClick={handleSave}
+                  disabled={missingPrices}
+                >
+                  Opslaan
+                </Button>
+              );
+            })()}
           </div>
         </div>
 
