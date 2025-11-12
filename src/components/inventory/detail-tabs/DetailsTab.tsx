@@ -497,21 +497,84 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
           {/* Show payment status when vehicle is sold */}
           {(editedVehicle.salesStatus === "verkocht_b2c" || editedVehicle.salesStatus === "verkocht_b2b") && (
             <div className="ml-6 mt-2 p-4 bg-green-50 border border-green-100 rounded-md space-y-4">
-              {/* Payment Status */}
+              {/* Supplier Payment Status (Transport) */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Betaalstatus</Label>
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Leverancier Betaling (Transport)
+                </Label>
                 <Select 
-                  value={editedVehicle.paymentStatus || "niet_betaald"} 
-                  onValueChange={(value) => handleChange('paymentStatus', value)}
+                  value={editedVehicle.details?.purchase_payment_status || "niet_betaald"} 
+                  onValueChange={(value) => {
+                    const newDetails = {
+                      ...(editedVehicle.details || {}),
+                      purchase_payment_status: value
+                    };
+                    handleChange('details', newDetails);
+                  }}
                   disabled={readOnly}
                 >
                   <SelectTrigger className="w-full bg-background">
                     <SelectValue placeholder="Selecteer betaalstatus" />
                   </SelectTrigger>
                   <SelectContent className="bg-background border z-50">
-                    <SelectItem value="niet_betaald">Niet betaald</SelectItem>
-                    <SelectItem value="aanbetaling">Aanbetaling</SelectItem>
-                    <SelectItem value="volledig_betaald">Volledig betaald</SelectItem>
+                    <SelectItem value="niet_betaald">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-red-500"></span>
+                        Leverancier nog niet betaald
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="aanbetaling">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-orange-500"></span>
+                        Aanbetaling aan leverancier
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="volledig_betaald">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-green-500"></span>
+                        Leverancier volledig betaald
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Customer Payment Status */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Klant Betaling</Label>
+                <Select 
+                  value={editedVehicle.details?.sales_payment_status || "niet_betaald"} 
+                  onValueChange={(value) => {
+                    const newDetails = {
+                      ...(editedVehicle.details || {}),
+                      sales_payment_status: value
+                    };
+                    handleChange('details', newDetails);
+                  }}
+                  disabled={readOnly}
+                >
+                  <SelectTrigger className="w-full bg-background">
+                    <SelectValue placeholder="Selecteer betaalstatus" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border z-50">
+                    <SelectItem value="niet_betaald">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-red-500"></span>
+                        Klant moet betalen
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="aanbetaling">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-orange-500"></span>
+                        Aanbetaling ontvangen
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="volledig_betaald">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-green-500"></span>
+                        Volledig betaald door klant
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
