@@ -104,6 +104,16 @@ const Inventory = () => {
     }
   }, [activeTab, allVehicles, b2cVehicles, b2bVehicles]);
 
+  // Helper function to determine online status priority for sorting
+  const getOnlineStatusPriority = (vehicle: Vehicle): number => {
+    // Check if sold first
+    if (vehicle.salesStatus === 'verkocht_b2b' || vehicle.salesStatus === 'verkocht_b2c') {
+      return 0; // Verkocht = highest priority
+    }
+    // Then check online/offline
+    return vehicle.showroomOnline ? 1 : 2; // Online = 1, Offline = 2
+  };
+
   // Filter and sort vehicles
   const filteredAndSortedVehicles = useMemo(() => {
     let filtered = currentVehicles.filter(vehicle =>
@@ -114,6 +124,17 @@ const Inventory = () => {
 
     if (sortField) {
       filtered.sort((a, b) => {
+        // Special handling for showroomOnline field
+        if (sortField === 'showroomOnline') {
+          const aPriority = getOnlineStatusPriority(a);
+          const bPriority = getOnlineStatusPriority(b);
+          
+          return sortDirection === 'asc' 
+            ? aPriority - bPriority 
+            : bPriority - aPriority;
+        }
+        
+        // Default sorting logic for other fields
         let aVal = a[sortField as keyof Vehicle];
         let bVal = b[sortField as keyof Vehicle];
 
