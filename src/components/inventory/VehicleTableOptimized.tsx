@@ -16,6 +16,7 @@ import {
 import { Vehicle, ImportStatus } from "@/types/inventory";
 import { Avatar } from "@/components/ui/avatar";
 import { DeliveryConfirmationDialog, type DeliveryData } from "./DeliveryConfirmationDialog";
+import { OnlineStatusBadge } from "./OnlineStatusBadge";
 
 interface VehicleTableProps {
   vehicles: Vehicle[];
@@ -195,11 +196,10 @@ const VehicleRow = memo<{
         )}
       </TableCell>
       <TableCell className="align-middle text-center">
-        {vehicle.showroomOnline ? (
-          <Badge variant="default" className="bg-green-500 text-white hover:bg-green-600">Online</Badge>
-        ) : (
-          <Badge variant="default" className="bg-red-500 text-white hover:bg-red-600">Offline</Badge>
-        )}
+        <OnlineStatusBadge 
+          isOnline={vehicle.showroomOnline} 
+          salesStatus={vehicle.salesStatus}
+        />
       </TableCell>
       <TableCell className="align-middle">
         <Badge variant="secondary">
