@@ -114,6 +114,16 @@ const Inventory = () => {
     return vehicle.showroomOnline ? 1 : 2; // Online = 1, Offline = 2
   };
 
+  // Helper function to determine location priority for sorting
+  const getLocationPriority = (vehicle: Vehicle): { priority: number; location: string } => {
+    // Check if vehicle is in transport (onderweg)
+    if (vehicle.transportStatus === "onderweg") {
+      return { priority: 0, location: "onderweg" }; // Onderweg = highest priority
+    }
+    // Regular location sorting
+    return { priority: 1, location: vehicle.location?.toLowerCase() || "" };
+  };
+
   // Filter and sort vehicles
   const filteredAndSortedVehicles = useMemo(() => {
     let filtered = currentVehicles.filter(vehicle =>
@@ -132,6 +142,28 @@ const Inventory = () => {
           return sortDirection === 'asc' 
             ? aPriority - bPriority 
             : bPriority - aPriority;
+        }
+
+        // Special handling for location field
+        if (sortField === 'location') {
+          const aLocationData = getLocationPriority(a);
+          const bLocationData = getLocationPriority(b);
+          
+          // First sort by priority (onderweg vs regular)
+          if (aLocationData.priority !== bLocationData.priority) {
+            return sortDirection === 'asc' 
+              ? aLocationData.priority - bLocationData.priority 
+              : bLocationData.priority - aLocationData.priority;
+          }
+          
+          // If same priority, sort alphabetically by location name
+          if (sortDirection === 'asc') {
+            return aLocationData.location < bLocationData.location ? -1 : 
+                   aLocationData.location > bLocationData.location ? 1 : 0;
+          } else {
+            return aLocationData.location > bLocationData.location ? -1 : 
+                   aLocationData.location < bLocationData.location ? 1 : 0;
+          }
         }
         
         // Default sorting logic for other fields
