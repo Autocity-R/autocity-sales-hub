@@ -491,6 +491,45 @@ export const sendEmailWithTemplate = async (
       }
     }
     
+    // Update CMR Verstuurd when email is sent to supplier
+    if (buttonValue === 'cmr_supplier') {
+      try {
+        const { data: currentVehicle, error: fetchError } = await supabase
+          .from('vehicles')
+          .select('details')
+          .eq('id', vehicleData.id)
+          .single();
+        
+        if (fetchError) {
+          console.error('Failed to fetch vehicle details for CMR update:', fetchError);
+        } else {
+          const currentDetails = (currentVehicle.details && typeof currentVehicle.details === 'object') 
+            ? currentVehicle.details as Record<string, any>
+            : {};
+          
+          // Set CMR sent with today's date
+          const updatedDetails = {
+            ...currentDetails,
+            cmrSent: true,
+            cmrSentDate: new Date().toISOString()
+          };
+          
+          const { error: updateError } = await supabase
+            .from('vehicles')
+            .update({ details: updatedDetails })
+            .eq('id', vehicleData.id);
+          
+          if (updateError) {
+            console.error('Failed to update vehicle CMR status:', updateError);
+          } else {
+            console.log('✅ Vehicle CMR Verstuurd status updated with date');
+          }
+        }
+      } catch (updateError) {
+        console.error('Error updating vehicle CMR status:', updateError);
+      }
+    }
+    
     toast({
       title: "Email verzonden",
       description: `De email naar ${recipient.name} is succesvol verzonden.`
