@@ -177,9 +177,15 @@ const VehicleRow = memo<{
         {renderImportStatusBadge(vehicle.importStatus)}
       </TableCell>
       <TableCell className="align-middle">
-        <Badge variant="outline" className="capitalize">
-          {vehicle.location}
-        </Badge>
+        {vehicle.transportStatus === "onderweg" ? (
+          <Badge variant="destructive" className="font-semibold">
+            Onderweg
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="capitalize">
+            {vehicle.location}
+          </Badge>
+        )}
       </TableCell>
       <TableCell className="align-middle text-center">
         {vehicle.arrived ? (
