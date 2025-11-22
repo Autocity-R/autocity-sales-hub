@@ -304,10 +304,16 @@ export const SalesAnalytics = () => {
                               className={`px-2 py-1 rounded text-xs ${
                                 vehicle.status === "verkocht_b2b"
                                   ? "bg-blue-100 text-blue-800"
-                                  : "bg-green-100 text-green-800"
+                                  : vehicle.status === "verkocht_b2c"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-purple-100 text-purple-800"
                               }`}
                             >
-                              {vehicle.status === "verkocht_b2b" ? "B2B" : "B2C"}
+                              {vehicle.status === "verkocht_b2b" 
+                                ? "B2B" 
+                                : vehicle.status === "verkocht_b2c"
+                                ? "B2C"
+                                : "Afgeleverd"}
                             </span>
                             {vehicle.details?.isTradeIn && (
                               <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
