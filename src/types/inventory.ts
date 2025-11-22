@@ -73,6 +73,19 @@ export interface User {
   isActive: boolean;
 }
 
+export interface ChecklistItem {
+  id: string;
+  description: string;
+  completed: boolean;
+  createdAt: string;
+  createdBy: string;
+  createdByName: string;
+  completedAt?: string;
+  completedBy?: string;
+  completedByName?: string;
+  [key: string]: any; // Make compatible with Json type
+}
+
 export interface VehicleDetails {
   purchasePrice?: number;
   customerEmail?: string;
@@ -109,6 +122,9 @@ export interface VehicleDetails {
   pickupDocumentSent?: boolean;
   pickupDocumentSentDate?: string;
   pickupDocumentSentBy?: string;
+  
+  // Pre-delivery checklist for B2C sales
+  preDeliveryChecklist?: ChecklistItem[];
   
   // Other details
   [key: string]: any;
