@@ -14,12 +14,11 @@ export const useMonthlySalesData = () => {
       // Get all months of the current year
       const months = eachMonthOfInterval({ start: yearStart, end: yearEnd });
 
-      // CRITICAL: Only count verkocht_b2b and verkocht_b2c, NOT afgeleverd
-      // Afgeleverd is delivery date, not sales date
+      // Count all sold vehicles: verkocht_b2b, verkocht_b2c, and afgeleverd
       const { data: vehicles, error } = await supabase
         .from("vehicles")
-        .select("status, sold_date")
-        .in("status", ["verkocht_b2b", "verkocht_b2c"])
+        .select("status, sold_date, details")
+        .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"])
         .gte("sold_date", yearStart.toISOString())
         .lte("sold_date", yearEnd.toISOString())
         .not("sold_date", "is", null);
@@ -36,12 +35,15 @@ export const useMonthlySalesData = () => {
           return soldMonth === monthStr;
         }) || [];
 
+        // Categorize based on status and salesType for afgeleverd vehicles
         const b2b = monthVehicles.filter(
-          (v) => v.status === "verkocht_b2b"
+          (v) => v.status === "verkocht_b2b" || 
+                 (v.status === "afgeleverd" && (v as any).details?.salesType === "b2b")
         ).length;
         
         const b2c = monthVehicles.filter(
-          (v) => v.status === "verkocht_b2c"
+          (v) => v.status === "verkocht_b2c" || 
+                 (v.status === "afgeleverd" && (!(v as any).details?.salesType || (v as any).details?.salesType === "b2c"))
         ).length;
 
         return {
