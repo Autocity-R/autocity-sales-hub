@@ -22,6 +22,9 @@ import { PhotosTab } from "@/components/inventory/detail-tabs/PhotosTab";
 import { FilesTab } from "@/components/inventory/detail-tabs/FilesTab";
 import { ContactsTab } from "@/components/inventory/detail-tabs/ContactsTab";
 import { EmailHistoryTab } from "@/components/inventory/detail-tabs/EmailHistoryTab";
+import { ChecklistTab } from "@/components/inventory/detail-tabs/ChecklistTab";
+import { ClipboardCheck } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
@@ -181,11 +184,20 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
           <div className="flex-1 overflow-hidden">
             <Tabs defaultValue="details" className="h-full flex flex-col">
               <div className="px-6 py-2 bg-background sticky top-0 z-[5]">
-                <TabsList className="w-full grid grid-cols-6">
+                <TabsList className={cn(
+                  "w-full grid",
+                  vehicle.salesStatus === 'verkocht_b2c' ? "grid-cols-7" : "grid-cols-6"
+                )}>
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="contacts">Contacten</TabsTrigger>
                   <TabsTrigger value="photos">Foto's</TabsTrigger>
                   <TabsTrigger value="files">Documenten</TabsTrigger>
+                  {vehicle.salesStatus === 'verkocht_b2c' && (
+                    <TabsTrigger value="checklist">
+                      <ClipboardCheck className="h-4 w-4 mr-1" />
+                      Checklist
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger value="emails">Emails</TabsTrigger>
                   <TabsTrigger value="history">Verzonden</TabsTrigger>
                 </TabsList>
@@ -229,6 +241,19 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                     readOnly={isReadOnly}
                   />
                 </TabsContent>
+                
+                {vehicle.salesStatus === 'verkocht_b2c' && (
+                  <TabsContent value="checklist" className="h-full mt-0 p-0">
+                    <ChecklistTab 
+                      vehicle={editedVehicle}
+                      onUpdate={(updatedVehicle) => {
+                        hasUserChangesRef.current = true;
+                        setEditedVehicle(updatedVehicle);
+                      }}
+                      readOnly={isReadOnly}
+                    />
+                  </TabsContent>
+                )}
                 
                 <TabsContent value="emails" className="h-full mt-0 p-0">
                   {vehicle.salesStatus === "verkocht_b2c" ? (
