@@ -292,6 +292,33 @@ export const TransportDetails: React.FC<TransportDetailsProps> = ({
                     </Select>
                   </div>
                   <div>
+                    <Label htmlFor="pickupStatus">Pickup status transport</Label>
+                    <Select
+                      value={updatedVehicle.details?.pickupDocumentSent ? "verstuurd" : "niet_verstuurd"}
+                      onValueChange={(value) => {
+                        setUpdatedVehicle({
+                          ...updatedVehicle,
+                          details: {
+                            ...updatedVehicle.details,
+                            pickupDocumentSent: value === "verstuurd"
+                          }
+                        });
+                      }}
+                    >
+                      <SelectTrigger id="pickupStatus" className="mt-1">
+                        <SelectValue placeholder="Selecteer pickup status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="niet_verstuurd">
+                          🔴 Niet ready
+                        </SelectItem>
+                        <SelectItem value="verstuurd">
+                          🟢 Transport verstuurd
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
                     <Label>Land van herkomst</Label>
                     <Input 
                       className="mt-1"
