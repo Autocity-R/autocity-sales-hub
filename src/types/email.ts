@@ -68,4 +68,7 @@ export interface ContractOptions {
   // Common options
   additionalClauses?: string;
   specialAgreements?: string;
+  
+  // Invoice specific
+  invoiceNotes?: string;  // Extra notities voor administratie
 }

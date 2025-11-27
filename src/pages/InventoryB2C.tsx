@@ -76,11 +76,14 @@ const InventoryB2C = () => {
     setInvoiceDialogOpen(true);
   };
 
-  const handleInvoiceConfirm = (bpmIncluded: boolean) => {
+  const handleInvoiceConfirm = (bpmIncluded: boolean, notes?: string) => {
     if (!invoiceVehicle) return;
     
-    // Verstuur facturatie e-mail met BPM keuze
-    handleSendEmail("invoice_request", undefined, undefined, undefined, invoiceVehicle.id, { bpmIncluded });
+    // Verstuur facturatie e-mail met BPM keuze en eventuele notities
+    handleSendEmail("invoice_request", undefined, undefined, undefined, invoiceVehicle.id, { 
+      bpmIncluded,
+      invoiceNotes: notes 
+    });
     
     setInvoiceDialogOpen(false);
     setInvoiceVehicle(null);
