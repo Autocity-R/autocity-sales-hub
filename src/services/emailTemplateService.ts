@@ -138,7 +138,7 @@ export let emailTemplates: EmailTemplate[] = [
     id: "14",
     name: "Facturatie aanvraag",
     subject: "Facturatie – {{MERK}} {{MODEL}} ({{VIN}})",
-    content: "Beste administratie,\n\nHet volgende voertuig is afgeleverd aan de klant en kan worden gefactureerd:\n\nVoertuiggegevens:\n\nMerk: {{MERK}}\n\nModel: {{MODEL}}\n\nVIN: {{VIN}}{{KENTEKEN_INDIEN_INRUIL}}\n\nKlantgegevens:\n\nNaam / Bedrijfsnaam: {{KLANT_NAAM}}\n\nAdres: {{KLANT_ADRES}}\n\nE-mailadres voor factuur: {{KLANT_EMAIL}}\n\nVerkoopprijs: €{{VERKOOPPRIJS_MET_BPM}}\n\nDe factuur mag nu worden opgemaakt en verzonden naar de klant.\n\nMet vriendelijke groet,\n{{VERKOPER_NAAM}}\nAutocity Automotive Group\n📞 010 262 3980",
+    content: "Beste administratie,\n\nHet volgende voertuig is afgeleverd aan de klant en kan worden gefactureerd:\n\nVoertuiggegevens:\n\nMerk: {{MERK}}\n\nModel: {{MODEL}}\n\nVIN: {{VIN}}{{KENTEKEN_INDIEN_INRUIL}}\n\nKlantgegevens:\n\nNaam / Bedrijfsnaam: {{KLANT_NAAM}}\n\nAdres: {{KLANT_ADRES}}\n\nE-mailadres voor factuur: {{KLANT_EMAIL}}\n\nVerkoopprijs: €{{VERKOOPPRIJS_MET_BPM}}\n\nDe factuur mag nu worden opgemaakt en verzonden naar de klant.\n\n{{EXTRA_NOTITIES}}\n\nMet vriendelijke groet,\n{{VERKOPER_NAAM}}\nAutocity Automotive Group\n📞 010 262 3980",
     senderEmail: "verkoop@auto-city.nl",
     linkedButton: "invoice_request",
     hasAttachment: true,
@@ -786,6 +786,12 @@ const replaceVariables = async (
     result = result.replace(/{{TRANSPORTEUR_NAAM}}/g, transporterName);
     result = result.replace(/{{TRANSPORTEUR_EMAIL}}/g, vehicleData.transporterContact?.email || recipient?.email || '');
   }
+  
+  // Extra notities voor facturatie
+  const extraNotities = contractOptions?.invoiceNotes 
+    ? `Extra opmerkingen:\n${contractOptions.invoiceNotes}` 
+    : '';
+  result = result.replace(/{{EXTRA_NOTITIES}}/g, extraNotities);
   
   // Legacy {variabele} syntax (backwards compatibility)
   result = result.replace(/{voertuig_merk}/g, vehicleData.brand || '[Merk]');

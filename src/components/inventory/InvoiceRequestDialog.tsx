@@ -13,13 +13,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { FileText, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface InvoiceRequestDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (bpmIncluded: boolean) => void;
+  onConfirm: (bpmIncluded: boolean, notes?: string) => void;
   vehicle: Vehicle | null;
 }
 
@@ -30,6 +31,7 @@ export const InvoiceRequestDialog: React.FC<InvoiceRequestDialogProps> = ({
   vehicle,
 }) => {
   const [bpmChoice, setBpmChoice] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
   const [contractMetadata, setContractMetadata] = useState<SavedContractMetadata | null>(null);
   const [hasContract, setHasContract] = useState(false);
 
@@ -53,13 +55,15 @@ export const InvoiceRequestDialog: React.FC<InvoiceRequestDialogProps> = ({
 
   const handleConfirm = () => {
     if (bpmChoice === "") return;
-    onConfirm(bpmChoice === "inclusief");
+    onConfirm(bpmChoice === "inclusief", notes || undefined);
     setBpmChoice("");
+    setNotes("");
     onClose();
   };
 
   const handleClose = () => {
     setBpmChoice("");
+    setNotes("");
     onClose();
   };
 
@@ -188,6 +192,23 @@ export const InvoiceRequestDialog: React.FC<InvoiceRequestDialogProps> = ({
                 </Label>
               </div>
             </RadioGroup>
+          </div>
+
+          {/* Extra notities voor administratie */}
+          <div className="space-y-2">
+            <Label htmlFor="invoiceNotes" className="text-base font-medium">
+              Extra opmerkingen voor administratie
+            </Label>
+            <Textarea 
+              id="invoiceNotes"
+              placeholder="Bijv. 'Factuur naar lease maatschappij' of 'Per pin betaald' of 'Per kas voldaan'"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="min-h-[100px]"
+            />
+            <p className="text-xs text-muted-foreground">
+              Deze opmerkingen worden meegestuurd naar de administratie in de facturatie email.
+            </p>
           </div>
         </div>
 
