@@ -12,14 +12,21 @@ export interface SalesData {
   averageSalePrice: number;
   
   // Inruil tracking
-  tradeInCount: number;           // Aantal inruil verkopen
-  normalPurchaseCount: number;    // Aantal normale inkoop verkopen
-  tradeInRevenue: number;         // Omzet uit inruil
-  normalPurchaseRevenue: number;  // Omzet uit normale inkoop
-  tradeInProfit: number;          // Winst uit inruil
-  normalPurchaseProfit: number;   // Winst uit normale inkoop
-  tradeInProfitMargin: number;    // Winstmarge inruil (%)
-  normalPurchaseProfitMargin: number; // Winstmarge normale inkoop (%)
+  tradeInCount: number;
+  normalPurchaseCount: number;
+  tradeInRevenue: number;
+  normalPurchaseRevenue: number;
+  tradeInProfit: number;
+  normalPurchaseProfit: number;
+  tradeInProfitMargin: number;
+  normalPurchaseProfitMargin: number;
+  
+  // Garantiepakket tracking (B2C only)
+  warrantyPackageCount: number;
+  warrantyPackageRevenue: number;
+  warrantyConversionRate: number;
+  totalRevenueWithWarranty: number;
+  totalProfitWithWarranty: number;
   
   vehicles: Array<{
     id: string;
@@ -159,6 +166,31 @@ export const salesDataService = {
     const tradeInProfitMargin = tradeInRevenue > 0 ? (tradeInProfit / tradeInRevenue) * 100 : 0;
     const normalPurchaseProfitMargin = normalPurchaseRevenue > 0 ? (normalPurchaseProfit / normalPurchaseRevenue) * 100 : 0;
 
+    // Garantiepakket berekeningen (B2C only)
+    const b2cVehicles = filteredVehicles?.filter((v) => {
+      const details = v.details as any;
+      return v.status === "verkocht_b2c" || 
+             (v.status === "afgeleverd" && (!details?.salesType || details?.salesType === "b2c"));
+    }) || [];
+
+    const vehiclesWithWarrantyPackage = b2cVehicles.filter(v => {
+      const details = v.details as any;
+      return details?.warrantyPackagePrice && details.warrantyPackagePrice > 0;
+    });
+
+    const warrantyPackageCount = vehiclesWithWarrantyPackage.length;
+    const warrantyPackageRevenue = vehiclesWithWarrantyPackage.reduce((sum, v) => {
+      const details = v.details as any;
+      return sum + (details?.warrantyPackagePrice || 0);
+    }, 0);
+
+    const warrantyConversionRate = b2cVehicles.length > 0 
+      ? (warrantyPackageCount / b2cVehicles.length) * 100 
+      : 0;
+
+    const totalRevenueWithWarranty = totalRevenue + warrantyPackageRevenue;
+    const totalProfitWithWarranty = totalProfit + warrantyPackageRevenue; // 100% marge op pakketten
+
     return {
       totalVehicles,
       totalRevenue,
@@ -176,6 +208,11 @@ export const salesDataService = {
       normalPurchaseProfit,
       tradeInProfitMargin,
       normalPurchaseProfitMargin,
+      warrantyPackageCount,
+      warrantyPackageRevenue,
+      warrantyConversionRate,
+      totalRevenueWithWarranty,
+      totalProfitWithWarranty,
       vehicles: filteredVehicles || [],
     };
   },

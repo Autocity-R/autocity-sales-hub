@@ -19,18 +19,40 @@ import {
   AlertCircle,
   Calendar,
   BarChart3,
+  Package,
+  Percent,
 } from "lucide-react";
 import { fetchWarrantyClaims, getWarrantyStats } from "@/services/warrantyService";
+import { warrantyPackageService } from "@/services/warrantyPackageService";
 import { WarrantyClaim } from "@/types/warranty";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
 import { ActiveWarrantyOverview } from "./ActiveWarrantyOverview";
 import { Separator } from "@/components/ui/separator";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+} from "recharts";
 
 export const WarrantyReports = () => {
+  const currentYear = new Date().getFullYear();
+
   const { data: claims = [], isLoading: claimsLoading } = useQuery({
     queryKey: ["warranty-claims"],
     queryFn: fetchWarrantyClaims,
+  });
+
+  const { data: packageStats, isLoading: packageStatsLoading } = useQuery({
+    queryKey: ["warranty-package-stats", currentYear],
+    queryFn: () => warrantyPackageService.getWarrantyPackageStats(currentYear),
   });
 
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -128,7 +150,16 @@ export const WarrantyReports = () => {
     return diffDays;
   };
 
-  if (claimsLoading || statsLoading) {
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("nl-NL", {
+      style: "currency",
+      currency: "EUR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  if (claimsLoading || statsLoading || packageStatsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Shield className="h-6 w-6 animate-pulse mr-2" />
@@ -139,6 +170,145 @@ export const WarrantyReports = () => {
 
   return (
     <div className="space-y-8">
+      {/* Warranty Package Sales Section */}
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Garantie Pakketten Verkoop (B2C)</h2>
+        
+        {/* Package KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pakketten Verkocht</CardTitle>
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{packageStats?.totalPackagesSold || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                dit jaar ({currentYear})
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Totale Omzet</CardTitle>
+              <Euro className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-emerald-600">
+                {formatCurrency(packageStats?.totalPackageRevenue || 0)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                100% marge
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Conversie B2C</CardTitle>
+              <Percent className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {packageStats?.conversionRate?.toFixed(1) || 0}%
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {packageStats?.totalPackagesSold || 0} van {packageStats?.totalB2CSales || 0} B2C
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Gem. Pakketprijs</CardTitle>
+              <Euro className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(packageStats?.avgPackagePrice || 0)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                per verkocht pakket
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Package Type Breakdown & Monthly Trend */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Package Type Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Pakket Verdeling
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {packageStats?.byPackageType && packageStats.byPackageType.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Pakket Type</TableHead>
+                      <TableHead className="text-right">Aantal</TableHead>
+                      <TableHead className="text-right">Omzet</TableHead>
+                      <TableHead className="text-right">Gem. Prijs</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {packageStats.byPackageType.map((pkg) => (
+                      <TableRow key={pkg.packageName}>
+                        <TableCell className="font-medium">{pkg.packageName}</TableCell>
+                        <TableCell className="text-right">{pkg.count}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(pkg.revenue)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(pkg.avgPrice)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  Geen garantiepakketten verkocht dit jaar
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Monthly Trend Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Maandelijkse Trend {currentYear}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={packageStats?.monthlyTrend || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis yAxisId="left" />
+                  <YAxis yAxisId="right" orientation="right" />
+                  <Tooltip 
+                    formatter={(value: number, name: string) => {
+                      if (name === "Pakketten") return [value, name];
+                      if (name === "Conversie %") return [`${value.toFixed(1)}%`, name];
+                      return [value, name];
+                    }}
+                  />
+                  <Legend />
+                  <Bar yAxisId="left" dataKey="packagesCount" name="Pakketten" fill="hsl(var(--primary))" />
+                  <Line yAxisId="right" type="monotone" dataKey="conversionRate" name="Conversie %" stroke="hsl(var(--accent))" strokeWidth={2} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <Separator className="my-8" />
+
       {/* Active Warranties Section */}
       <div>
         <h2 className="text-2xl font-bold mb-4">Actieve Garanties</h2>

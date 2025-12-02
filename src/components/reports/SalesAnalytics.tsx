@@ -10,7 +10,9 @@ import {
   Percent,
   Users,
   Building2,
-  BarChart3
+  BarChart3,
+  Shield,
+  Package
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -132,10 +134,15 @@ export const SalesAnalytics = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(salesData?.totalRevenue || 0)}
+              {formatCurrency(salesData?.totalRevenueWithWarranty || salesData?.totalRevenue || 0)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Gem: {formatCurrency(salesData?.averageSalePrice || 0)}
+              {(salesData?.warrantyPackageRevenue || 0) > 0 && (
+                <span className="text-emerald-600">incl. {formatCurrency(salesData?.warrantyPackageRevenue || 0)} garantie</span>
+              )}
+              {(salesData?.warrantyPackageRevenue || 0) === 0 && (
+                <span>Gem: {formatCurrency(salesData?.averageSalePrice || 0)}</span>
+              )}
             </p>
           </CardContent>
         </Card>
@@ -147,10 +154,15 @@ export const SalesAnalytics = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(salesData?.totalProfit || 0)}
+              {formatCurrency(salesData?.totalProfitWithWarranty || salesData?.totalProfit || 0)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Kosten: {formatCurrency(salesData?.totalCost || 0)}
+              {(salesData?.warrantyPackageRevenue || 0) > 0 && (
+                <span className="text-emerald-600">incl. {formatCurrency(salesData?.warrantyPackageRevenue || 0)} garantie</span>
+              )}
+              {(salesData?.warrantyPackageRevenue || 0) === 0 && (
+                <span>Kosten: {formatCurrency(salesData?.totalCost || 0)}</span>
+              )}
             </p>
           </CardContent>
         </Card>
@@ -166,6 +178,38 @@ export const SalesAnalytics = () => {
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Van totale omzet
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Garantie Omzet */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Garantie Omzet</CardTitle>
+            <Shield className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-600">
+              {formatCurrency(salesData?.warrantyPackageRevenue || 0)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {salesData?.warrantyPackageCount || 0} pakketten verkocht
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Garantie Conversie */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Garantie Conversie</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {salesData?.warrantyConversionRate?.toFixed(1) || 0}%
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              van B2C verkopen
             </p>
           </CardContent>
         </Card>
