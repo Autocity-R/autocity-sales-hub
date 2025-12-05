@@ -1,7 +1,12 @@
+import ExcelJS from 'exceljs';
 import { Vehicle } from "@/types/inventory";
 
-export const exportVehiclesToExcel = (vehicles: Vehicle[]) => {
-  // CSV header met Nederlandse kolomnamen
+export const exportVehiclesToExcel = async (vehicles: Vehicle[]) => {
+  // Maak workbook en worksheet
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Verkooplijst');
+
+  // Headers
   const headers = [
     'Merk',
     'Model',
@@ -14,43 +19,74 @@ export const exportVehiclesToExcel = (vehicles: Vehicle[]) => {
     'Verkoopprijs'
   ];
 
-  // Map vehicles naar rijen
-  const rows = vehicles.map(v => [
-    v.brand || '',
-    v.model || '',
-    v.year?.toString() || '',
-    v.color || '',
-    v.vin || '',
-    v.mileage ? v.mileage.toLocaleString('nl-NL') : '',
-    v.damage?.description || '',
-    v.purchasePrice ? `€ ${v.purchasePrice.toLocaleString('nl-NL')}` : '',
-    v.sellingPrice ? `€ ${v.sellingPrice.toLocaleString('nl-NL')}` : ''
-  ]);
+  // Voeg header rij toe
+  const headerRow = worksheet.addRow(headers);
+  
+  // Style header rij - BOLD met grijze achtergrond
+  headerRow.eachCell((cell) => {
+    cell.font = { bold: true };
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE9E9E9' }
+    };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FF000000' } },
+      left: { style: 'thin', color: { argb: 'FF000000' } },
+      bottom: { style: 'thin', color: { argb: 'FF000000' } },
+      right: { style: 'thin', color: { argb: 'FF000000' } }
+    };
+    cell.alignment = { vertical: 'middle' };
+  });
 
-  // Escape functie voor CSV cellen
-  const escapeCell = (cell: string) => {
-    // Als de cel speciale karakters bevat, wrap in quotes en escape bestaande quotes
-    if (cell.includes(';') || cell.includes('"') || cell.includes('\n') || cell.includes('\r')) {
-      return `"${cell.replace(/"/g, '""')}"`;
-    }
-    return `"${cell}"`;
-  };
+  // Voeg data rijen toe
+  vehicles.forEach(v => {
+    const row = worksheet.addRow([
+      v.brand || '',
+      v.model || '',
+      v.year?.toString() || '',
+      v.color || '',
+      v.vin || '',
+      v.mileage ? v.mileage.toLocaleString('nl-NL') : '',
+      v.damage?.description || '',
+      v.purchasePrice ? `€ ${v.purchasePrice.toLocaleString('nl-NL')}` : '',
+      v.sellingPrice ? `€ ${v.sellingPrice.toLocaleString('nl-NL')}` : ''
+    ]);
 
-  // Maak CSV content met ; separator voor Nederlandse Excel
-  const csvContent = [
-    headers.map(escapeCell).join(';'),
-    ...rows.map(row => row.map(escapeCell).join(';'))
-  ].join('\r\n');
+    // Voeg randen toe aan elke cel
+    row.eachCell({ includeEmpty: true }, (cell) => {
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FF000000' } },
+        left: { style: 'thin', color: { argb: 'FF000000' } },
+        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+        right: { style: 'thin', color: { argb: 'FF000000' } }
+      };
+    });
+  });
 
-  // Maak blob met UTF-8 BOM voor correcte weergave van € en speciale tekens
-  const BOM = '\ufeff';
-  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8' });
+  // Stel kolombreedtes in
+  worksheet.columns = [
+    { width: 12 },  // Merk
+    { width: 15 },  // Model
+    { width: 10 },  // Bouwjaar
+    { width: 12 },  // Kleur
+    { width: 20 },  // VIN
+    { width: 12 },  // KM stand
+    { width: 30 },  // Schadeomschrijving
+    { width: 14 },  // Inkoopprijs
+    { width: 14 },  // Verkoopprijs
+  ];
 
   // Genereer bestandsnaam met datum
   const today = new Date().toISOString().split('T')[0];
-  const filename = `Auto_City_Verkooplijst_${today}.csv`;
+  const filename = `Auto_City_Verkooplijst_${today}.xlsx`;
 
-  // Trigger download
+  // Genereer buffer en download
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { 
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+  });
+  
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

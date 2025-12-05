@@ -16,7 +16,7 @@ export const InventoryBulkActions = ({ selectedVehicles, vehicles, onBulkAction 
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleExportToExcel = () => {
+  const handleExportToExcel = async () => {
     // Filter vehicles to only include selected ones
     const vehiclesToExport = vehicles.filter(v => selectedVehicles.includes(v.id));
     
@@ -29,7 +29,7 @@ export const InventoryBulkActions = ({ selectedVehicles, vehicles, onBulkAction 
       return;
     }
 
-    const result = exportVehiclesToExcel(vehiclesToExport);
+    const result = await exportVehiclesToExcel(vehiclesToExport);
     
     if (result.success) {
       toast({
