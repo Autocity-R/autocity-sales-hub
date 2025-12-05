@@ -86,11 +86,11 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
         <TableHead className="min-w-32">
           {renderSortableHeader("importStatus", "Import status")}
         </TableHead>
+        <TableHead className="min-w-24">
+          {renderSortableHeader("checklistProgress", "Voortgang")}
+        </TableHead>
         <TableHead className="min-w-32">
           {renderSortableHeader("workshopStatus", "Werkplaats status")}
-        </TableHead>
-        <TableHead className="min-w-24">
-          {renderSortableHeader("paintStatus", "Lak status")}
         </TableHead>
         <TableHead className="min-w-24">
           {renderSortableHeader("location", "Locatie")}

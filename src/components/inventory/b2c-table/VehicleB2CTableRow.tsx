@@ -4,11 +4,12 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { CustomCheckbox } from "@/components/ui/custom-checkbox";
 import { VehicleActionsDropdown } from "./VehicleActionsDropdown";
-import { Vehicle, ImportStatus, WorkshopStatus, PaintStatus } from "@/types/inventory";
+import { Vehicle, ImportStatus, WorkshopStatus } from "@/types/inventory";
 import { Car } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { PurchaserQuickEdit } from "../PurchaserQuickEdit";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { Progress } from "@/components/ui/progress";
 
 interface VehicleB2CTableRowProps {
   vehicle: Vehicle;
@@ -56,18 +57,18 @@ const renderWorkshopStatusBadge = (status: WorkshopStatus) => {
   return <Badge variant={variant}>{label}</Badge>;
 };
 
-const renderPaintStatusBadge = (status: PaintStatus | undefined) => {
-  const normalized = (status ?? "geen_behandeling") as PaintStatus;
+const getChecklistProgress = (vehicle: Vehicle) => {
+  const checklist = vehicle.details?.preDeliveryChecklist || [];
+  if (checklist.length === 0) return { percentage: 0, hasItems: false };
+  const completed = checklist.filter((item: { completed?: boolean }) => item.completed).length;
+  return { percentage: Math.round((completed / checklist.length) * 100), hasItems: true };
+};
 
-  const statusMap: Record<PaintStatus, { label: string, variant: "default" | "outline" | "secondary" | "destructive" }> = {
-    geen_behandeling: { label: "Geen behandeling", variant: "outline" },
-    hersteld: { label: "Hersteld", variant: "default" },
-    in_behandeling: { label: "In behandeling", variant: "secondary" }
-  };
-
-  const statusInfo = statusMap[normalized] ?? { label: (normalized as string).replace(/_/g, " ").toUpperCase() || "ONBEKEND", variant: "outline" as const };
-  const { label, variant } = statusInfo;
-  return <Badge variant={variant}>{label}</Badge>;
+const getProgressColor = (percentage: number) => {
+  if (percentage === 100) return "bg-emerald-500";
+  if (percentage >= 50) return "bg-blue-500";
+  if (percentage > 0) return "bg-orange-500";
+  return "bg-muted";
 };
 
 const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
@@ -167,10 +168,26 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
         {renderImportStatusBadge(vehicle.importStatus)}
       </TableCell>
       <TableCell className="align-middle">
-        {renderWorkshopStatusBadge(vehicle.workshopStatus)}
+        {(() => {
+          const { percentage, hasItems } = getChecklistProgress(vehicle);
+          if (!hasItems) {
+            return <span className="text-muted-foreground text-sm">—</span>;
+          }
+          return (
+            <div className="flex items-center gap-2 min-w-20">
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className={`h-full transition-all ${getProgressColor(percentage)}`}
+                  style={{ width: `${percentage}%` }}
+                />
+              </div>
+              <span className="text-xs font-medium w-8 text-right">{percentage}%</span>
+            </div>
+          );
+        })()}
       </TableCell>
       <TableCell className="align-middle">
-        {renderPaintStatusBadge(vehicle.paintStatus)}
+        {renderWorkshopStatusBadge(vehicle.workshopStatus)}
       </TableCell>
       <TableCell className="align-middle">
         <Badge variant="outline" className="capitalize">
