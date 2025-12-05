@@ -578,6 +578,7 @@ const Inventory = () => {
           <div className="flex gap-2">
             <InventoryBulkActions 
               selectedVehicles={selectedVehicles}
+              vehicles={filteredAndSortedVehicles}
               onBulkAction={handleBulkAction}
             />
             <Button onClick={() => setShowForm(true)} className="gap-2">

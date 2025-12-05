@@ -399,6 +399,7 @@ const InventoryOnline = () => {
         >
           <InventoryBulkActions 
             selectedVehicles={selectedVehicles}
+            vehicles={filteredVehicles}
             onBulkAction={handleBulkAction}
           />
         </PageHeader>

@@ -252,6 +252,7 @@ const InventoryB2C = () => {
         >
           <InventoryBulkActions 
             selectedVehicles={selectedVehicles}
+            vehicles={vehicles}
             onBulkAction={handleBulkAction}
           />
         </PageHeader>
