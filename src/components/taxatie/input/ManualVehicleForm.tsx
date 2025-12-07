@@ -178,12 +178,12 @@ export const ManualVehicleForm = ({ onSubmit, disabled, loading }: ManualVehicle
             Modeljaar
             <span className="text-muted-foreground">(optioneel)</span>
           </Label>
-          <Select value={modelYear} onValueChange={setModelYear} disabled={disabled}>
+          <Select value={modelYear} onValueChange={(v) => setModelYear(v === '__none__' ? '' : v)} disabled={disabled}>
             <SelectTrigger>
               <SelectValue placeholder="Jaar" />
             </SelectTrigger>
             <SelectContent className="max-h-[300px]">
-              <SelectItem value="">-</SelectItem>
+              <SelectItem value="__none__">-</SelectItem>
               {yearOptions.map((y) => (
                 <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
               ))}
@@ -258,12 +258,12 @@ export const ManualVehicleForm = ({ onSubmit, disabled, loading }: ManualVehicle
         
         <div className="space-y-1.5">
           <Label className="text-xs">Uitvoering / Trim</Label>
-          <Select value={trim} onValueChange={setTrim} disabled={disabled || !brand}>
+          <Select value={trim || '__none__'} onValueChange={(v) => setTrim(v === '__none__' ? '' : v)} disabled={disabled || !brand}>
             <SelectTrigger>
               <SelectValue placeholder="Selecteer" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">-</SelectItem>
+              <SelectItem value="__none__">-</SelectItem>
               {availableTrims.map((t) => (
                 <SelectItem key={t} value={t}>{t}</SelectItem>
               ))}
