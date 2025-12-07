@@ -10,9 +10,10 @@ import {
   TaxatieColumnC,
   TaxatieFooter,
 } from './layout/TaxatieLayout';
+import { TaxatieHeader } from './layout/TaxatieHeader';
 
 // Input components
-import { LicensePlateSearch } from './input/LicensePlateSearch';
+import { VehicleInputCard } from './input/VehicleInputCard';
 import { VehicleDataDisplay } from './input/VehicleDataDisplay';
 import { OptionsSelector } from './input/OptionsSelector';
 
@@ -28,10 +29,14 @@ import { TaxatieActionButtons } from './actions/TaxatieActionButtons';
 
 export function NewValuationForm() {
   const {
+    inputMode,
+    setInputMode,
     licensePlate,
     setLicensePlate,
     vehicleData,
     selectedOptions,
+    keywords,
+    setKeywords,
     portalAnalysis,
     jpCarsData,
     internalComparison,
@@ -40,6 +45,7 @@ export function NewValuationForm() {
     taxatieStarted,
     taxatieComplete,
     handleLicensePlateSearch,
+    handleManualVehicleSubmit,
     toggleOption,
     startTaxatie,
     submitFeedback,
@@ -58,13 +64,19 @@ export function NewValuationForm() {
 
   return (
     <div className="space-y-6">
+      {/* Professional Header */}
+      <TaxatieHeader />
+
       <TaxatieLayout>
         {/* Kolom A: Voertuiggegevens */}
         <TaxatieColumnA>
-          <LicensePlateSearch
+          <VehicleInputCard
+            inputMode={inputMode}
+            onInputModeChange={setInputMode}
             licensePlate={licensePlate}
             onLicensePlateChange={setLicensePlate}
             onSearch={handleLicensePlateSearch}
+            onManualSubmit={handleManualVehicleSubmit}
             loading={loading.rdw}
             disabled={taxatieStarted}
           />
@@ -75,6 +87,8 @@ export function NewValuationForm() {
               <OptionsSelector
                 selectedOptions={selectedOptions}
                 onToggleOption={toggleOption}
+                keywords={keywords}
+                onKeywordsChange={setKeywords}
                 disabled={taxatieStarted}
               />
             </>

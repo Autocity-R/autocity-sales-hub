@@ -1,0 +1,97 @@
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Search, Loader2, Car, Edit } from 'lucide-react';
+import type { TaxatieInputMode, TaxatieVehicleData } from '@/types/taxatie';
+import { ManualVehicleForm } from './ManualVehicleForm';
+
+interface VehicleInputCardProps {
+  inputMode: TaxatieInputMode;
+  onInputModeChange: (mode: TaxatieInputMode) => void;
+  licensePlate: string;
+  onLicensePlateChange: (value: string) => void;
+  onSearch: () => void;
+  onManualSubmit: (data: TaxatieVehicleData) => void;
+  loading: boolean;
+  disabled?: boolean;
+}
+
+export const VehicleInputCard = ({
+  inputMode,
+  onInputModeChange,
+  licensePlate,
+  onLicensePlateChange,
+  onSearch,
+  onManualSubmit,
+  loading,
+  disabled,
+}: VehicleInputCardProps) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !loading && !disabled) {
+      onSearch();
+    }
+  };
+
+  return (
+    <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Car className="h-5 w-5 text-primary" />
+          Voertuig Invoer
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs value={inputMode} onValueChange={(v) => onInputModeChange(v as TaxatieInputMode)}>
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="kenteken" className="flex items-center gap-2" disabled={disabled}>
+              <Search className="h-4 w-4" />
+              Kenteken
+            </TabsTrigger>
+            <TabsTrigger value="handmatig" className="flex items-center gap-2" disabled={disabled}>
+              <Edit className="h-4 w-4" />
+              Handmatig
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="kenteken" className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder="AA-123-BB"
+                value={licensePlate}
+                onChange={(e) => onLicensePlateChange(e.target.value.toUpperCase())}
+                onKeyDown={handleKeyDown}
+                className="font-mono text-lg tracking-wider"
+                disabled={disabled}
+              />
+              <Button onClick={onSearch} disabled={loading || disabled}>
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              🇳🇱 Nederlands kenteken - automatische RDW lookup
+            </p>
+          </TabsContent>
+          
+          <TabsContent value="handmatig">
+            <div className="mb-3 p-3 rounded-lg bg-muted/50 border border-muted">
+              <p className="text-xs text-muted-foreground flex items-center gap-2">
+                🇩🇪 🇧🇪 🇦🇹 🇫🇷 Handmatige invoer voor buitenlandse voertuigen
+              </p>
+            </div>
+            <ManualVehicleForm 
+              onSubmit={onManualSubmit} 
+              disabled={disabled}
+              loading={loading}
+            />
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
+  );
+};

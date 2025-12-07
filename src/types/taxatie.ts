@@ -9,8 +9,8 @@ export interface PortalListing {
   title: string;
   options: string[];
   color?: string;
-  matchScore?: number; // 0-1 hoe vergelijkbaar met "jouw" auto
-  isPrimaryComparable?: boolean; // true = deze listing telt mee voor berekening
+  matchScore?: number;
+  isPrimaryComparable?: boolean;
   isLogicalDeviation?: boolean;
   deviationReason?: string;
 }
@@ -22,9 +22,23 @@ export interface JPCarsData {
   totalValue: number;
   range: { min: number; max: number };
   confidence: number;
-  apr: number; // Average Price Ratio (0-1, hoger = onder markt)
-  etr: number; // Expected Time to Retail (dagen)
+  apr: number;
+  etr: number;
   courantheid: 'hoog' | 'gemiddeld' | 'laag';
+}
+
+// Portal zoekfilters met correcte KM-logica
+export interface PortalSearchFilters {
+  brand: string;
+  model: string;
+  buildYearFrom: number;
+  buildYearTo: number;
+  mileageMax: number; // ALLEEN maximum (afgerond + 20k)
+  fuelType: string;
+  transmission: 'Automaat' | 'Handgeschakeld' | 'Beide';
+  bodyType?: string;
+  keywords: string[];
+  requiredOptions: string[];
 }
 
 // Portal analyse resultaat
@@ -34,13 +48,7 @@ export interface PortalAnalysis {
   highestPrice: number;
   listingCount: number;
   primaryComparableCount: number;
-  appliedFilters: {
-    brand: string;
-    model: string;
-    buildYearRange: string;
-    mileageRange: string;
-    fuelType?: string;
-  };
+  appliedFilters: PortalSearchFilters;
   listings: PortalListing[];
   logicalDeviations: string[];
 }
@@ -57,7 +65,7 @@ export interface SimilarVehicleSale {
   margin: number;
   daysToSell: number;
   channel: 'B2B' | 'B2C';
-  soldAt: string; // ISO datum
+  soldAt: string;
 }
 
 // Interne vergelijking
@@ -76,15 +84,15 @@ export interface AITaxatieAdvice {
   targetMargin: number;
   recommendation: 'kopen' | 'niet_kopen' | 'twijfel';
   reasoning: string;
-  jpcarsDeviation: string; // Waarom JP Cars afwijkt
+  jpcarsDeviation: string;
   riskFactors: string[];
   opportunities: string[];
-  primaryListingsUsed: number; // Hoeveel listings gebruikt voor berekening
+  primaryListingsUsed: number;
 }
 
 // Taxatie feedback
 export interface TaxatieFeedback {
-  rating: number; // 1-5
+  rating: number;
   wasAccurate: boolean;
   reason?: 'te_hoog' | 'te_laag' | 'te_voorzichtig' | 'te_agressief' | 'anders';
   notes: string;
@@ -99,18 +107,21 @@ export interface TaxatieOutcome {
   actualMargin?: number;
 }
 
-// Voertuiggegevens
+// Voertuiggegevens - uitgebreid voor JP Cars & Gaspedaal
 export interface TaxatieVehicleData {
   brand: string;
   model: string;
   buildYear: number;
+  modelYear?: number; // Kan afwijken van bouwjaar
   mileage: number;
   fuelType: string;
-  transmission: string;
+  transmission: 'Automaat' | 'Handgeschakeld';
+  bodyType: string; // Hatchback, Sedan, SUV, etc.
   power: number;
   trim: string;
   color: string;
   options: string[];
+  keywords?: string[]; // Extra zoektermen zoals "R-Line"
 }
 
 // Complete taxatie record
@@ -119,30 +130,16 @@ export interface TaxatieValuation {
   createdAt: string;
   createdBy: string;
   createdByName: string;
-
-  // Link naar CRM
-  vehicleId?: string; // FK naar vehicles tabel
-  aiModelVersion?: string; // bijv. "gpt-4.1-mini-taxatie-v1"
-
-  // Voertuiggegevens
+  vehicleId?: string;
+  aiModelVersion?: string;
   licensePlate: string;
   vehicleData: TaxatieVehicleData;
-
-  // Data bronnen
   portalAnalysis: PortalAnalysis | null;
   jpCarsData: JPCarsData | null;
   internalComparison: InternalComparison | null;
-
-  // AI Resultaat
   aiAdvice: AITaxatieAdvice | null;
-
-  // Status
   status: 'concept' | 'in_behandeling' | 'voltooid' | 'gekocht' | 'afgewezen';
-
-  // Feedback (voor learning)
   feedback?: TaxatieFeedback;
-
-  // Werkelijke uitkomst (voor learning)
   outcome?: TaxatieOutcome;
 }
 
@@ -154,3 +151,6 @@ export interface TaxatieLoadingState {
   internalHistory: boolean;
   aiAnalysis: boolean;
 }
+
+// Invoer mode
+export type TaxatieInputMode = 'kenteken' | 'handmatig';

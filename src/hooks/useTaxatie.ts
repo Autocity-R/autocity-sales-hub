@@ -7,6 +7,7 @@ import type {
   AITaxatieAdvice,
   TaxatieLoadingState,
   TaxatieFeedback,
+  TaxatieInputMode,
 } from '@/types/taxatie';
 import {
   lookupRDW,
@@ -19,9 +20,14 @@ import {
 import { toast } from 'sonner';
 
 export const useTaxatie = () => {
+  // Input mode
+  const [inputMode, setInputMode] = useState<TaxatieInputMode>('kenteken');
+  
+  // Vehicle data
   const [licensePlate, setLicensePlate] = useState('');
   const [vehicleData, setVehicleData] = useState<TaxatieVehicleData | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
+  const [keywords, setKeywords] = useState<string[]>([]);
 
   // Data bronnen
   const [portalAnalysis, setPortalAnalysis] = useState<PortalAnalysis | null>(null);
@@ -42,7 +48,7 @@ export const useTaxatie = () => {
   const [taxatieStarted, setTaxatieStarted] = useState(false);
   const [taxatieComplete, setTaxatieComplete] = useState(false);
 
-  // RDW lookup
+  // RDW lookup (voor Nederlandse kentekens)
   const handleLicensePlateSearch = useCallback(async () => {
     if (!licensePlate.trim()) {
       toast.error('Vul een kenteken in');
@@ -65,23 +71,30 @@ export const useTaxatie = () => {
     }
   }, [licensePlate]);
 
+  // Handmatige invoer (voor buitenlandse voertuigen)
+  const handleManualVehicleSubmit = useCallback((data: TaxatieVehicleData) => {
+    setVehicleData(data);
+    toast.success('Voertuiggegevens toegevoegd');
+  }, []);
+
   // Toggle optie
-  const toggleOption = useCallback((option: string) => {
+  const toggleOption = useCallback((optionId: string) => {
     setSelectedOptions(prev =>
-      prev.includes(option) ? prev.filter(o => o !== option) : [...prev, option]
+      prev.includes(optionId) ? prev.filter(o => o !== optionId) : [...prev, optionId]
     );
   }, []);
 
   // Start volledige taxatie
   const startTaxatie = useCallback(async () => {
     if (!vehicleData) {
-      toast.error('Eerst voertuiggegevens ophalen');
+      toast.error('Eerst voertuiggegevens invoeren');
       return;
     }
 
     const vehicleWithOptions: TaxatieVehicleData = {
       ...vehicleData,
       options: selectedOptions,
+      keywords: keywords,
     };
 
     setTaxatieStarted(true);
@@ -104,7 +117,7 @@ export const useTaxatie = () => {
 
       const [portalData, jpData, internalData] = await Promise.all([
         fetchPortalAnalysis(vehicleWithOptions),
-        fetchJPCarsData(licensePlate),
+        fetchJPCarsData(licensePlate || 'MANUAL'),
         fetchInternalComparison(vehicleWithOptions),
       ]);
 
@@ -137,7 +150,7 @@ export const useTaxatie = () => {
         aiAnalysis: false,
       });
     }
-  }, [vehicleData, selectedOptions, licensePlate]);
+  }, [vehicleData, selectedOptions, keywords, licensePlate]);
 
   // Feedback geven
   const submitFeedback = useCallback(async (feedback: TaxatieFeedback) => {
@@ -151,9 +164,11 @@ export const useTaxatie = () => {
 
   // Reset alles
   const resetTaxatie = useCallback(() => {
+    setInputMode('kenteken');
     setLicensePlate('');
     setVehicleData(null);
     setSelectedOptions([]);
+    setKeywords([]);
     setPortalAnalysis(null);
     setJpCarsData(null);
     setInternalComparison(null);
@@ -163,12 +178,18 @@ export const useTaxatie = () => {
   }, []);
 
   return {
+    // Input mode
+    inputMode,
+    setInputMode,
+    
     // State
     licensePlate,
     setLicensePlate,
     vehicleData,
     setVehicleData,
     selectedOptions,
+    keywords,
+    setKeywords,
     portalAnalysis,
     jpCarsData,
     internalComparison,
@@ -179,6 +200,7 @@ export const useTaxatie = () => {
 
     // Actions
     handleLicensePlateSearch,
+    handleManualVehicleSubmit,
     toggleOption,
     startTaxatie,
     submitFeedback,
