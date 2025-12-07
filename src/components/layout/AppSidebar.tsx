@@ -15,7 +15,8 @@ import {
   ShieldIcon,
   Flag,
   Bot,
-  ClipboardList
+  ClipboardList,
+  Calculator
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,7 +37,7 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 export function AppSidebar() {
   const location = useLocation();
-  const { hasReportsAccess, hasLeadsAccess, hasCustomersAccess, hasAIAgentsAccess, hasSettingsAccess } = useRoleAccess();
+  const { hasReportsAccess, hasLeadsAccess, hasCustomersAccess, hasAIAgentsAccess, hasSettingsAccess, hasTaxatieAccess } = useRoleAccess();
 
   const isActive = (path: string) => {
     if (path === "/") {
@@ -129,6 +130,16 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {hasTaxatieAccess() && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/taxatie")}>
+                    <Link to="/taxatie" className="text-white hover:text-white hover:bg-gray-800">
+                      <Calculator className="mr-2 h-4 w-4" />
+                      <span>Taxatie</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
