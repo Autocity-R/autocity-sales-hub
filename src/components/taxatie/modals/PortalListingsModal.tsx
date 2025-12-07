@@ -127,8 +127,8 @@ export const PortalListingsModal = ({ open, onOpenChange, data }: PortalListings
           <Filter className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Filters:</span>
           <Badge variant="outline">{data.appliedFilters.brand} {data.appliedFilters.model}</Badge>
-          <Badge variant="outline">{data.appliedFilters.buildYearRange}</Badge>
-          <Badge variant="outline">{data.appliedFilters.mileageRange}</Badge>
+          <Badge variant="outline">{data.appliedFilters.buildYearFrom} - {data.appliedFilters.buildYearTo}</Badge>
+          <Badge variant="outline">t/m {data.appliedFilters.mileageMax?.toLocaleString()} km</Badge>
           {data.appliedFilters.fuelType && (
             <Badge variant="outline">{data.appliedFilters.fuelType}</Badge>
           )}

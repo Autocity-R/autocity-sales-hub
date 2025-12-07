@@ -1,19 +1,19 @@
 import type {
   TaxatieVehicleData,
   PortalAnalysis,
+  PortalSearchFilters,
   JPCarsData,
   InternalComparison,
   AITaxatieAdvice,
   TaxatieValuation,
   TaxatieFeedback,
 } from '@/types/taxatie';
+import { calculateMaxMileage, calculateBuildYearRange } from '@/utils/taxatieHelpers';
 
 // Mock RDW lookup
 export const lookupRDW = async (licensePlate: string): Promise<TaxatieVehicleData | null> => {
-  // Simuleer API delay
   await new Promise(resolve => setTimeout(resolve, 800));
 
-  // Mock data voor demonstratie
   if (licensePlate.toUpperCase().includes('TEST')) {
     return null;
   }
@@ -25,16 +25,39 @@ export const lookupRDW = async (licensePlate: string): Promise<TaxatieVehicleDat
     mileage: 45000,
     fuelType: 'Benzine',
     transmission: 'Automaat',
+    bodyType: 'Hatchback',
     power: 150,
     trim: 'R-Line',
-    color: 'Grijs Metallic',
+    color: 'Grijs',
     options: [],
+    keywords: [],
   };
 };
 
-// Mock Portal Analysis
+// Build search filters based on vehicle data and correct KM logic
+const buildSearchFilters = (vehicleData: TaxatieVehicleData): PortalSearchFilters => {
+  const yearRange = calculateBuildYearRange(vehicleData.buildYear);
+  const mileageMax = calculateMaxMileage(vehicleData.mileage);
+
+  return {
+    brand: vehicleData.brand,
+    model: vehicleData.model,
+    buildYearFrom: yearRange.from,
+    buildYearTo: yearRange.to,
+    mileageMax, // ALLEEN max, geen min
+    fuelType: vehicleData.fuelType,
+    transmission: vehicleData.transmission,
+    bodyType: vehicleData.bodyType,
+    keywords: vehicleData.keywords || [],
+    requiredOptions: vehicleData.options || [],
+  };
+};
+
+// Mock Portal Analysis with correct filter structure
 export const fetchPortalAnalysis = async (vehicleData: TaxatieVehicleData): Promise<PortalAnalysis> => {
   await new Promise(resolve => setTimeout(resolve, 1500));
+
+  const filters = buildSearchFilters(vehicleData);
 
   return {
     lowestPrice: 28500,
@@ -42,13 +65,7 @@ export const fetchPortalAnalysis = async (vehicleData: TaxatieVehicleData): Prom
     highestPrice: 34900,
     listingCount: 12,
     primaryComparableCount: 5,
-    appliedFilters: {
-      brand: vehicleData.brand,
-      model: vehicleData.model,
-      buildYearRange: `${vehicleData.buildYear - 1} - ${vehicleData.buildYear + 1}`,
-      mileageRange: `${Math.max(0, vehicleData.mileage - 15000)} - ${vehicleData.mileage + 15000} km`,
-      fuelType: vehicleData.fuelType,
-    },
+    appliedFilters: filters,
     listings: [
       {
         id: '1',
@@ -140,7 +157,7 @@ export const fetchPortalAnalysis = async (vehicleData: TaxatieVehicleData): Prom
   };
 };
 
-// Mock JP Cars lookup (inclusief APR/ETR)
+// Mock JP Cars lookup
 export const fetchJPCarsData = async (licensePlate: string): Promise<JPCarsData> => {
   await new Promise(resolve => setTimeout(resolve, 1200));
 
@@ -150,8 +167,8 @@ export const fetchJPCarsData = async (licensePlate: string): Promise<JPCarsData>
     totalValue: 32600,
     range: { min: 28000, max: 35000 },
     confidence: 0.82,
-    apr: 0.85, // 85% = onder marktgemiddelde = goed
-    etr: 18, // Verwacht 18 dagen statijd
+    apr: 0.85,
+    etr: 18,
     courantheid: 'hoog',
   };
 };
@@ -217,8 +234,7 @@ export const generateAIAdvice = async (
 ): Promise<AITaxatieAdvice> => {
   await new Promise(resolve => setTimeout(resolve, 2000));
 
-  // Bereken op basis van portaaldata (LEIDEND)
-  const recommendedSellingPrice = Math.round(portalAnalysis.lowestPrice * 0.98); // Net onder laagste
+  const recommendedSellingPrice = Math.round(portalAnalysis.lowestPrice * 0.98);
   const targetMargin = 18;
   const recommendedPurchasePrice = Math.round(recommendedSellingPrice * (1 - targetMargin / 100));
 
@@ -243,7 +259,7 @@ export const generateAIAdvice = async (
   };
 };
 
-// Taxatie opslaan (mock)
+// Taxatie opslaan
 export const saveTaxatieValuation = async (valuation: Partial<TaxatieValuation>): Promise<TaxatieValuation> => {
   await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -254,11 +270,12 @@ export const saveTaxatieValuation = async (valuation: Partial<TaxatieValuation>)
     createdByName: 'Demo User',
     aiModelVersion: 'gpt-4.1-mini-taxatie-v1',
     status: 'voltooid',
+    licensePlate: '',
     ...valuation,
   } as TaxatieValuation;
 };
 
-// Feedback opslaan (mock)
+// Feedback opslaan
 export const saveTaxatieFeedback = async (
   valuationId: string,
   feedback: TaxatieFeedback
@@ -267,7 +284,7 @@ export const saveTaxatieFeedback = async (
   console.log('Feedback saved:', { valuationId, feedback });
 };
 
-// Taxatie historie ophalen (mock)
+// Taxatie historie ophalen
 export const fetchTaxatieHistory = async (): Promise<TaxatieValuation[]> => {
   await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -286,6 +303,7 @@ export const fetchTaxatieHistory = async (): Promise<TaxatieValuation[]> => {
         mileage: 35000,
         fuelType: 'Diesel',
         transmission: 'Automaat',
+        bodyType: 'Sedan',
         power: 190,
         trim: 'M Sport',
         color: 'Zwart',
@@ -322,6 +340,7 @@ export const fetchTaxatieHistory = async (): Promise<TaxatieValuation[]> => {
         mileage: 62000,
         fuelType: 'Benzine',
         transmission: 'Automaat',
+        bodyType: 'Sedan',
         power: 150,
         trim: 'S-Line',
         color: 'Wit',
