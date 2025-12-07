@@ -1,0 +1,140 @@
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Zap, Clock, TrendingUp } from 'lucide-react';
+import type { JPCarsData } from '@/types/taxatie';
+
+interface CourantheidCardProps {
+  data: JPCarsData | null;
+  loading: boolean;
+}
+
+export const CourantheidCard = ({ data, loading }: CourantheidCardProps) => {
+  if (loading) {
+    return (
+      <Card className="border-2 border-blue-500/30 bg-blue-500/5">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-5 w-5 rounded" />
+            <Skeleton className="h-6 w-32" />
+            <Skeleton className="h-5 w-20" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const aprPercentage = Math.round(data.apr * 100);
+  const etrStatus = data.etr <= 14 ? 'excellent' : data.etr <= 21 ? 'goed' : data.etr <= 30 ? 'gemiddeld' : 'langzaam';
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'excellent':
+        return 'text-green-600 bg-green-500/10 border-green-500/20';
+      case 'goed':
+        return 'text-blue-600 bg-blue-500/10 border-blue-500/20';
+      case 'gemiddeld':
+        return 'text-amber-600 bg-amber-500/10 border-amber-500/20';
+      default:
+        return 'text-red-600 bg-red-500/10 border-red-500/20';
+    }
+  };
+
+  const getCourantheidBadge = (courantheid: string) => {
+    switch (courantheid) {
+      case 'hoog':
+        return <Badge className="bg-green-500 hover:bg-green-600">Hoog</Badge>;
+      case 'gemiddeld':
+        return <Badge className="bg-amber-500 hover:bg-amber-600">Gemiddeld</Badge>;
+      default:
+        return <Badge className="bg-red-500 hover:bg-red-600">Laag</Badge>;
+    }
+  };
+
+  return (
+    <Card className="border-2 border-blue-500/50 bg-gradient-to-br from-blue-500/5 to-blue-500/10">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Zap className="h-5 w-5 text-blue-500" />
+            Courantheid
+            <Badge className="bg-blue-500 hover:bg-blue-600 text-white">
+              ⚡ BINDEND
+            </Badge>
+          </CardTitle>
+          {getCourantheidBadge(data.courantheid)}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* APR */}
+        <div className="p-3 rounded-lg border bg-card">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">APR (Average Price Ratio)</span>
+            </div>
+            <span className="text-lg font-bold">{aprPercentage}%</span>
+          </div>
+          <Progress value={aprPercentage} className="h-2" />
+          <p className="text-xs text-muted-foreground mt-2">
+            {aprPercentage >= 85
+              ? '✅ Onder marktgemiddelde - goede positie'
+              : aprPercentage >= 70
+              ? '⚠️ Rond marktgemiddelde'
+              : '❌ Boven marktgemiddelde - let op!'}
+          </p>
+        </div>
+
+        {/* ETR */}
+        <div className={`p-3 rounded-lg border ${getStatusColor(etrStatus)}`}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              <span className="text-sm font-medium">ETR (Expected Time to Retail)</span>
+            </div>
+            <span className="text-lg font-bold">{data.etr} dagen</span>
+          </div>
+          <p className="text-xs">
+            {etrStatus === 'excellent'
+              ? '🚀 Zeer snelle doorlooptijd verwacht'
+              : etrStatus === 'goed'
+              ? '✅ Goede doorlooptijd verwacht'
+              : etrStatus === 'gemiddeld'
+              ? '⚠️ Gemiddelde doorlooptijd'
+              : '🐌 Langere statijd verwacht'}
+          </p>
+        </div>
+
+        {/* Advies op basis van APR/ETR */}
+        <div className="p-3 bg-muted/50 rounded-lg text-xs">
+          <p className="font-medium mb-1">Strategie op basis van courantheid:</p>
+          {data.courantheid === 'hoog' ? (
+            <p className="text-muted-foreground">
+              Hoge APR + lage ETR = <span className="text-green-600 font-medium">scherper inkopen mogelijk</span>, 
+              snelle omloop verwacht
+            </p>
+          ) : data.courantheid === 'gemiddeld' ? (
+            <p className="text-muted-foreground">
+              Gemiddelde courantheid = <span className="text-amber-600 font-medium">standaard marge aanhouden</span>
+            </p>
+          ) : (
+            <p className="text-muted-foreground">
+              Lage APR + hoge ETR = <span className="text-red-600 font-medium">voorzichtiger inkopen</span>, 
+              hogere marge nodig
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
