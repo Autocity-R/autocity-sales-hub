@@ -6,6 +6,7 @@ import {
   BookIcon,
   BoxIcon,
   CalendarIcon,
+  Calculator,
   CarIcon,
   CreditCardIcon,
   FileTextIcon,
@@ -144,6 +145,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
               >
                 <ShieldIcon className="mr-2 h-4 w-4" />
                 Garantie
+              </Button>
+            </Link>
+            {/* TODO: Tijdelijk geen rol-check - later terugzetten */}
+            <Link to="/taxatie">
+              <Button
+                variant={isActive("/taxatie") ? "default" : "ghost"}
+                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+                size="sm"
+              >
+                <Calculator className="mr-2 h-4 w-4" />
+                Taxatie
               </Button>
             </Link>
           </div>
