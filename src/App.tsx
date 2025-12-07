@@ -156,11 +156,10 @@ function App() {
             <Warranty />
           </ProtectedRoute>
         } />
+        {/* TODO: Tijdelijk geen rol-check - later terugzetten met RoleProtectedRoute */}
         <Route path="/taxatie" element={
           <ProtectedRoute>
-            <RoleProtectedRoute requiredAccess="taxatie" fallbackPath="/">
-              <Taxatie />
-            </RoleProtectedRoute>
+            <Taxatie />
           </ProtectedRoute>
         } />
         <Route path="/settings" element={

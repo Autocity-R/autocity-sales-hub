@@ -133,16 +133,15 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {hasTaxatieAccess() && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/taxatie")}>
-                    <Link to="/taxatie" className="text-white hover:text-white hover:bg-gray-800">
-                      <Calculator className="mr-2 h-4 w-4" />
-                      <span>Taxatie</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
+              {/* TODO: Tijdelijk geen rol-check - later terugzetten met hasTaxatieAccess() */}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/taxatie")}>
+                  <Link to="/taxatie" className="text-white hover:text-white hover:bg-gray-800">
+                    <Calculator className="mr-2 h-4 w-4" />
+                    <span>Taxatie</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
