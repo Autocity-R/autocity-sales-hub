@@ -3,6 +3,9 @@ import { useAuth } from "@/contexts/AuthContext";
 export const useRoleAccess = () => {
   const { userRole, isAdmin } = useAuth();
 
+  // Debug logging
+  console.log('[useRoleAccess] Current userRole:', userRole, 'isAdmin:', isAdmin);
+
   const hasReportsAccess = () => {
     return isAdmin || userRole === 'manager';
   };

@@ -37,7 +37,10 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 export function AppSidebar() {
   const location = useLocation();
-  const { hasReportsAccess, hasLeadsAccess, hasCustomersAccess, hasAIAgentsAccess, hasSettingsAccess, hasTaxatieAccess } = useRoleAccess();
+  const { hasReportsAccess, hasLeadsAccess, hasCustomersAccess, hasAIAgentsAccess, hasSettingsAccess, hasTaxatieAccess, userRole, isAdmin } = useRoleAccess();
+
+  // Debug logging for Taxatie menu visibility
+  console.log('[AppSidebar] userRole:', userRole, 'isAdmin:', isAdmin, 'hasTaxatieAccess():', hasTaxatieAccess());
 
   const isActive = (path: string) => {
     if (path === "/") {
