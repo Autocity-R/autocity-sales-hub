@@ -65,108 +65,48 @@ const buildSearchFilters = (vehicleData: TaxatieVehicleData): PortalSearchFilter
   };
 };
 
-// Mock Portal Analysis with correct filter structure
+// Portal Analysis via OpenAI Edge Function
 export const fetchPortalAnalysis = async (vehicleData: TaxatieVehicleData): Promise<PortalAnalysis> => {
-  await new Promise(resolve => setTimeout(resolve, 1500));
+  try {
+    console.log('🔍 Fetching portal analysis via OpenAI...');
+    
+    const { data, error } = await supabase.functions.invoke('taxatie-portal-search', {
+      body: { vehicleData }
+    });
 
-  const filters = buildSearchFilters(vehicleData);
+    if (error) {
+      console.error('❌ Portal search edge function error:', error);
+      throw new Error(error.message || 'Portal search failed');
+    }
 
-  return {
-    lowestPrice: 28500,
-    medianPrice: 31200,
-    highestPrice: 34900,
-    listingCount: 12,
-    primaryComparableCount: 5,
-    appliedFilters: filters,
-    listings: [
-      {
-        id: '1',
-        portal: 'gaspedaal',
-        url: 'https://www.gaspedaal.nl/example1',
-        price: 28500,
-        mileage: 52000,
-        buildYear: 2020,
-        title: `${vehicleData.brand} ${vehicleData.model} 1.5 TSI Style`,
-        options: ['Navigatie', 'Cruise Control'],
-        color: 'Zwart',
-        matchScore: 0.75,
-        isPrimaryComparable: true,
-        isLogicalDeviation: true,
-        deviationReason: 'Ouder bouwjaar, mist R-Line pakket en leder',
-      },
-      {
-        id: '2',
-        portal: 'autoscout24',
-        url: 'https://www.autoscout24.nl/example2',
-        price: 29900,
-        mileage: 48000,
-        buildYear: 2021,
-        title: `${vehicleData.brand} ${vehicleData.model} 1.5 TSI R-Line`,
-        options: ['Navigatie', 'LED', 'Cruise Control'],
-        color: 'Grijs',
-        matchScore: 0.92,
-        isPrimaryComparable: true,
-      },
-      {
-        id: '3',
-        portal: 'marktplaats',
-        url: 'https://www.marktplaats.nl/example3',
-        price: 30500,
-        mileage: 42000,
-        buildYear: 2021,
-        title: `${vehicleData.brand} ${vehicleData.model} 1.5 TSI R-Line Business`,
-        options: ['Navigatie', 'LED', 'ACC', 'Leder'],
-        color: 'Wit',
-        matchScore: 0.88,
-        isPrimaryComparable: true,
-      },
-      {
-        id: '4',
-        portal: 'autotrack',
-        url: 'https://www.autotrack.nl/example4',
-        price: 31200,
-        mileage: 38000,
-        buildYear: 2021,
-        title: `${vehicleData.brand} ${vehicleData.model} 1.5 TSI R-Line`,
-        options: ['Navigatie', 'LED', 'Panoramadak'],
-        color: 'Blauw',
-        matchScore: 0.85,
-        isPrimaryComparable: true,
-      },
-      {
-        id: '5',
-        portal: 'gaspedaal',
-        url: 'https://www.gaspedaal.nl/example5',
-        price: 32500,
-        mileage: 35000,
-        buildYear: 2022,
-        title: `${vehicleData.brand} ${vehicleData.model} 1.5 TSI R-Line`,
-        options: ['Navigatie', 'LED', 'ACC', 'Harman Kardon'],
-        color: 'Grijs',
-        matchScore: 0.78,
-        isPrimaryComparable: true,
-      },
-      {
-        id: '6',
-        portal: 'autoscout24',
-        url: 'https://www.autoscout24.nl/example6',
-        price: 34900,
-        mileage: 28000,
-        buildYear: 2022,
-        title: `${vehicleData.brand} ${vehicleData.model} 2.0 TSI R Full Options`,
-        options: ['Navigatie', 'LED Matrix', 'ACC', 'Panorama', 'Leder', 'Harman Kardon'],
-        color: 'Zwart',
-        matchScore: 0.65,
-        isPrimaryComparable: false,
-        isLogicalDeviation: true,
-        deviationReason: 'Full options, nieuwer, veel minder km - logisch hoger geprijsd',
-      },
-    ],
-    logicalDeviations: [
-      '€28.500 listing mist R-Line pakket en heeft ouder bouwjaar',
-      '€34.900 heeft full options en slechts 28.000 km - logisch hoger geprijsd',
-    ],
-  };
+    if (!data?.success || !data?.data) {
+      console.error('❌ Invalid portal search response:', data);
+      throw new Error(data?.error || 'Invalid response from portal search');
+    }
+
+    console.log('✅ Portal analysis received:', {
+      listingCount: data.data.listingCount,
+      priceRange: `€${data.data.lowestPrice} - €${data.data.highestPrice}`
+    });
+    
+    return data.data;
+
+  } catch (err) {
+    console.error('❌ Portal analysis failed, returning empty result:', err);
+    
+    // Return empty fallback
+    const filters = buildSearchFilters(vehicleData);
+    return {
+      lowestPrice: 0,
+      medianPrice: 0,
+      highestPrice: 0,
+      listingCount: 0,
+      primaryComparableCount: 0,
+      appliedFilters: filters,
+      listings: [],
+      logicalDeviations: ['Portal analyse niet beschikbaar - probeer opnieuw'],
+    };
+  }
 };
 
 // JP Cars lookup via Edge Function
@@ -236,56 +176,43 @@ export const fetchJPCarsData = async (
   }
 };
 
-// Mock interne vergelijking
+// Internal comparison via database Edge Function
 export const fetchInternalComparison = async (vehicleData: TaxatieVehicleData): Promise<InternalComparison> => {
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  try {
+    console.log('🔍 Fetching internal comparison from database...');
+    
+    const { data, error } = await supabase.functions.invoke('taxatie-internal-search', {
+      body: { vehicleData }
+    });
 
-  return {
-    averageMargin: 18.5,
-    averageDaysToSell: 22,
-    soldLastYear: 8,
-    similarVehicles: [
-      {
-        id: 'sold-1',
-        brand: vehicleData.brand,
-        model: vehicleData.model,
-        buildYear: 2021,
-        mileage: 42000,
-        purchasePrice: 25500,
-        sellingPrice: 30500,
-        margin: 19.6,
-        daysToSell: 18,
-        channel: 'B2C',
-        soldAt: '2024-10-15',
-      },
-      {
-        id: 'sold-2',
-        brand: vehicleData.brand,
-        model: vehicleData.model,
-        buildYear: 2020,
-        mileage: 55000,
-        purchasePrice: 22000,
-        sellingPrice: 26500,
-        margin: 20.5,
-        daysToSell: 25,
-        channel: 'B2C',
-        soldAt: '2024-09-20',
-      },
-      {
-        id: 'sold-3',
-        brand: vehicleData.brand,
-        model: vehicleData.model,
-        buildYear: 2021,
-        mileage: 38000,
-        purchasePrice: 26500,
-        sellingPrice: 31000,
-        margin: 17.0,
-        daysToSell: 14,
-        channel: 'B2C',
-        soldAt: '2024-11-05',
-      },
-    ],
-  };
+    if (error) {
+      console.error('❌ Internal search edge function error:', error);
+      throw new Error(error.message || 'Internal search failed');
+    }
+
+    if (!data?.success || !data?.data) {
+      console.error('❌ Invalid internal search response:', data);
+      throw new Error(data?.error || 'Invalid response from internal search');
+    }
+
+    console.log('✅ Internal comparison received:', {
+      soldLastYear: data.data.soldLastYear,
+      averageMargin: `${data.data.averageMargin}%`
+    });
+    
+    return data.data;
+
+  } catch (err) {
+    console.error('❌ Internal comparison failed, returning empty result:', err);
+    
+    // Return empty fallback
+    return {
+      averageMargin: 0,
+      averageDaysToSell: 0,
+      soldLastYear: 0,
+      similarVehicles: [],
+    };
+  }
 };
 
 // Fallback advice when AI is unavailable
