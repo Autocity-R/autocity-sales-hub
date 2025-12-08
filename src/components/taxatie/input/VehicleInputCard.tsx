@@ -12,10 +12,13 @@ interface VehicleInputCardProps {
   onInputModeChange: (mode: TaxatieInputMode) => void;
   licensePlate: string;
   onLicensePlateChange: (value: string) => void;
+  mileage: number;
+  onMileageChange: (value: number) => void;
   onSearch: () => void;
   onManualSubmit: (data: TaxatieVehicleData) => void;
   loading: boolean;
   disabled?: boolean;
+  vehicleLoaded?: boolean;
 }
 
 export const VehicleInputCard = ({
@@ -23,15 +26,23 @@ export const VehicleInputCard = ({
   onInputModeChange,
   licensePlate,
   onLicensePlateChange,
+  mileage,
+  onMileageChange,
   onSearch,
   onManualSubmit,
   loading,
   disabled,
+  vehicleLoaded,
 }: VehicleInputCardProps) => {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !loading && !disabled) {
       onSearch();
     }
+  };
+
+  const handleMileageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value.replace(/\D/g, ''), 10) || 0;
+    onMileageChange(value);
   };
 
   return (
@@ -73,6 +84,27 @@ export const VehicleInputCard = ({
                 )}
               </Button>
             </div>
+            
+            {/* Mileage input - always visible for kenteken flow */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Kilometerstand *</label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Bijv. 45000"
+                  value={mileage > 0 ? mileage.toLocaleString('nl-NL') : ''}
+                  onChange={handleMileageChange}
+                  disabled={disabled}
+                  className={`${mileage <= 0 && vehicleLoaded ? 'border-destructive' : ''}`}
+                />
+                <span className="text-sm text-muted-foreground">km</span>
+              </div>
+              {mileage <= 0 && vehicleLoaded && (
+                <p className="text-xs text-destructive">Verplicht voor JP Cars taxatie</p>
+              )}
+            </div>
+            
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               🇳🇱 Nederlands kenteken - automatische RDW lookup
             </p>

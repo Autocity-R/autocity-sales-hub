@@ -76,10 +76,13 @@ export function NewValuationForm() {
             onInputModeChange={setInputMode}
             licensePlate={licensePlate}
             onLicensePlateChange={setLicensePlate}
+            mileage={vehicleData?.mileage || 0}
+            onMileageChange={updateVehicleMileage}
             onSearch={handleLicensePlateSearch}
             onManualSubmit={handleManualVehicleSubmit}
             loading={loading.rdw}
             disabled={taxatieStarted}
+            vehicleLoaded={!!vehicleData}
           />
 
           {vehicleData && (
