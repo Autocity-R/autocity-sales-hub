@@ -136,9 +136,20 @@ export const fetchJPCarsData = async (
       requestBody.hp = vehicleData.power;
       requestBody.body = vehicleData.bodyType;
       
-      // Convert options array to string
+      // Extra parameters voor betere JP Cars matching
+      if (vehicleData.modelYear) {
+        requestBody.modelYear = vehicleData.modelYear;
+      }
+      if (vehicleData.powerKw) {
+        requestBody.kw = vehicleData.powerKw;
+      }
+      if (vehicleData.color) {
+        requestBody.color = vehicleData.color;
+      }
+      
+      // Pass options als array (edge function doet de mapping)
       if (vehicleData.options && vehicleData.options.length > 0) {
-        requestBody.options = vehicleData.options.join(' ');
+        requestBody.options = vehicleData.options;
       }
     }
 

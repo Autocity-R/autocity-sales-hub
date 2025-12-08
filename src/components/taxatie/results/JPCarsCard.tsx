@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, Info, Clock, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Info, Clock, TrendingUp, Package, CheckCircle, ExternalLink, Users } from 'lucide-react';
 import type { JPCarsData } from '@/types/taxatie';
 
 interface JPCarsCardProps {
@@ -24,6 +24,7 @@ export const JPCarsCard = ({ data, loading }: JPCarsCardProps) => {
         <CardContent className="space-y-3">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-16 w-full" />
         </CardContent>
       </Card>
     );
@@ -89,7 +90,7 @@ export const JPCarsCard = ({ data, loading }: JPCarsCardProps) => {
           </div>
         </div>
 
-        {/* APR & ETR - Belangrijke marktindicatoren voor inkopers */}
+        {/* APR & ETR - Belangrijke marktindicatoren */}
         <div className="grid grid-cols-2 gap-3 text-sm pt-2 border-t">
           <div className="flex items-start gap-2">
             <TrendingUp className="h-4 w-4 text-muted-foreground mt-0.5" />
@@ -118,6 +119,127 @@ export const JPCarsCard = ({ data, loading }: JPCarsCardProps) => {
             </div>
           </div>
         </div>
+
+        {/* Statijd Details - Voorraad & Verkocht */}
+        {(data.stockStats || data.salesStats) && (
+          <div className="grid grid-cols-2 gap-3 text-sm pt-2 border-t">
+            {/* Voorraad stats */}
+            {data.stockStats && data.stockStats.count > 0 && (
+              <div className="p-2 rounded bg-blue-500/10 border border-blue-500/20">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Package className="h-3 w-3" />
+                  Voorraad
+                </p>
+                <p className="font-semibold">{data.stockStats.count} auto's</p>
+                {data.stockStats.avgDays !== null && (
+                  <p className="text-xs text-blue-600">
+                    {data.stockStats.avgDays} dagen gem.
+                  </p>
+                )}
+              </div>
+            )}
+            
+            {/* Verkocht stats */}
+            {data.salesStats && data.salesStats.count > 0 && (
+              <div className="p-2 rounded bg-green-500/10 border border-green-500/20">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3" />
+                  Verkocht
+                </p>
+                <p className="font-semibold">{data.salesStats.count} auto's</p>
+                {data.salesStats.avgDays !== null && (
+                  <p className="text-xs text-green-600">
+                    {data.salesStats.avgDays} dagen gem.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Marktdiscount */}
+        {data.marketDiscount && data.marketDiscount > 0 && (
+          <div className="flex items-center justify-between text-sm pt-2 border-t">
+            <span className="text-muted-foreground">Marktdiscount gem.</span>
+            <span className="font-medium text-amber-600">
+              €{data.marketDiscount.toLocaleString()}
+            </span>
+          </div>
+        )}
+
+        {/* Portal Links */}
+        {data.portalUrls && Object.values(data.portalUrls).some(url => url) && (
+          <div className="pt-2 border-t">
+            <p className="text-xs text-muted-foreground mb-2">Bekijk vergelijkbare:</p>
+            <div className="flex flex-wrap gap-2">
+              {data.portalUrls.gaspedaal && (
+                <a
+                  href={data.portalUrls.gaspedaal}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-500 hover:underline flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Gaspedaal
+                </a>
+              )}
+              {data.portalUrls.autoscout24 && (
+                <a
+                  href={data.portalUrls.autoscout24}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-500 hover:underline flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  AutoScout24
+                </a>
+              )}
+              {data.portalUrls.marktplaats && (
+                <a
+                  href={data.portalUrls.marktplaats}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-500 hover:underline flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Marktplaats
+                </a>
+              )}
+              {data.portalUrls.jpCarsWindow && (
+                <a
+                  href={data.portalUrls.jpCarsWindow}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-amber-500 hover:underline flex items-center gap-1 bg-amber-500/10 px-2 py-1 rounded"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  JP Cars Window
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Top Dealers (als beschikbaar) */}
+        {data.topDealers && data.topDealers.length > 0 && (
+          <div className="pt-2 border-t">
+            <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              Top dealers met dit model:
+            </p>
+            <div className="space-y-1">
+              {data.topDealers.slice(0, 3).map((dealer, idx) => (
+                <div key={idx} className="flex items-center justify-between text-xs bg-muted/50 px-2 py-1 rounded">
+                  <span className="truncate max-w-[60%]">{dealer.name}</span>
+                  <span className="text-muted-foreground">
+                    {dealer.stockCount > 0 && `${dealer.stockCount} op voorraad`}
+                    {dealer.soldCount > 0 && ` • ${dealer.soldCount} verkocht`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Courantheid badge */}
         <div className="flex items-center justify-between text-xs pt-2 border-t">
