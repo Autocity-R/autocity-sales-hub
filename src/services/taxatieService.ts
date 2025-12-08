@@ -158,20 +158,71 @@ export const fetchPortalAnalysis = async (vehicleData: TaxatieVehicleData): Prom
   };
 };
 
-// Mock JP Cars lookup
-export const fetchJPCarsData = async (licensePlate: string): Promise<JPCarsData> => {
-  await new Promise(resolve => setTimeout(resolve, 1200));
+// JP Cars lookup via Edge Function
+export const fetchJPCarsData = async (
+  licensePlate: string,
+  vehicleData?: TaxatieVehicleData
+): Promise<JPCarsData> => {
+  try {
+    console.log('🚗 Fetching JP Cars data for:', licensePlate);
+    
+    const requestBody: Record<string, unknown> = {
+      mileage: vehicleData?.mileage || 0,
+    };
 
-  return {
-    baseValue: 30500,
-    optionValue: 2100,
-    totalValue: 32600,
-    range: { min: 28000, max: 35000 },
-    confidence: 0.82,
-    apr: 0.85,
-    etr: 18,
-    courantheid: 'hoog',
-  };
+    // Use license plate if available
+    if (licensePlate) {
+      requestBody.licensePlate = licensePlate;
+    }
+    
+    // Add vehicle data for better matching
+    if (vehicleData) {
+      requestBody.make = vehicleData.brand;
+      requestBody.model = vehicleData.model;
+      requestBody.fuel = vehicleData.fuelType;
+      requestBody.gear = vehicleData.transmission;
+      requestBody.build = vehicleData.buildYear;
+      requestBody.hp = vehicleData.power;
+      requestBody.body = vehicleData.bodyType;
+      
+      // Convert options array to string
+      if (vehicleData.options && vehicleData.options.length > 0) {
+        requestBody.options = vehicleData.options.join(' ');
+      }
+    }
+
+    const { data, error } = await supabase.functions.invoke('jpcars-lookup', {
+      body: requestBody
+    });
+
+    if (error) {
+      console.error('❌ JP Cars edge function error:', error);
+      throw new Error(error.message || 'JP Cars lookup failed');
+    }
+
+    if (!data?.success || !data?.data) {
+      console.error('❌ Invalid JP Cars response:', data);
+      throw new Error(data?.error || 'Invalid response from JP Cars');
+    }
+
+    console.log('✅ JP Cars data received:', data.data);
+    return data.data;
+
+  } catch (err) {
+    console.error('❌ JP Cars lookup failed, using fallback:', err);
+    
+    // Return fallback mock data if API fails
+    return {
+      baseValue: 0,
+      optionValue: 0,
+      totalValue: 0,
+      range: { min: 0, max: 0 },
+      confidence: 0,
+      apr: 0,
+      etr: 30,
+      courantheid: 'gemiddeld',
+    };
+  }
 };
 
 // Mock interne vergelijking

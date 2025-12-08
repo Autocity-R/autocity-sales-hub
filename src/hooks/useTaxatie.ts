@@ -117,7 +117,7 @@ export const useTaxatie = () => {
 
       const [portalData, jpData, internalData] = await Promise.all([
         fetchPortalAnalysis(vehicleWithOptions),
-        fetchJPCarsData(licensePlate || 'MANUAL'),
+        fetchJPCarsData(licensePlate || '', vehicleWithOptions),
         fetchInternalComparison(vehicleWithOptions),
       ]);
 

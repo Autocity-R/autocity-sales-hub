@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.taxatie-ai-advice]
 verify_jwt = false
+
+[functions.jpcars-lookup]
+verify_jwt = false
