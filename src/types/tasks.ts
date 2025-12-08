@@ -33,16 +33,14 @@ export type TaskStatus =
 export type TaskPriority = "laag" | "normaal" | "hoog" | "urgent";
 
 export type TaskCategory = 
-  | "voorbereiding"
+  | "klaarmaken"
+  | "onderdelen_bestellen"
   | "transport"
-  | "inspectie"
   | "schoonmaak"
   | "reparatie"
   | "schadeherstel"
   | "werkplaats"
-  | "administratie"
   | "aflevering"
-  | "ophalen"
   | "overig";
 
 export interface DamagePart {
