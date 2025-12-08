@@ -26,6 +26,7 @@ export const useTaxatie = () => {
   // Vehicle data
   const [licensePlate, setLicensePlate] = useState('');
   const [vehicleData, setVehicleData] = useState<TaxatieVehicleData | null>(null);
+  const [enteredMileage, setEnteredMileage] = useState(0); // Separate state for mileage input
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [keywords, setKeywords] = useState<string[]>([]);
 
@@ -59,7 +60,8 @@ export const useTaxatie = () => {
     try {
       const data = await lookupRDW(licensePlate);
       if (data) {
-        setVehicleData(data);
+        // Preserve user-entered mileage after RDW lookup
+        setVehicleData({ ...data, mileage: enteredMileage || data.mileage });
         toast.success('Voertuiggegevens opgehaald');
       } else {
         toast.error('Kenteken niet gevonden');
@@ -69,7 +71,7 @@ export const useTaxatie = () => {
     } finally {
       setLoading(prev => ({ ...prev, rdw: false }));
     }
-  }, [licensePlate]);
+  }, [licensePlate, enteredMileage]);
 
   // Handmatige invoer (voor buitenlandse voertuigen)
   const handleManualVehicleSubmit = useCallback((data: TaxatieVehicleData) => {
@@ -86,6 +88,7 @@ export const useTaxatie = () => {
 
   // Update vehicle mileage
   const updateVehicleMileage = useCallback((mileage: number) => {
+    setEnteredMileage(mileage);
     if (vehicleData) {
       setVehicleData({ ...vehicleData, mileage });
     }
@@ -185,6 +188,7 @@ export const useTaxatie = () => {
     setInputMode('kenteken');
     setLicensePlate('');
     setVehicleData(null);
+    setEnteredMileage(0);
     setSelectedOptions([]);
     setKeywords([]);
     setPortalAnalysis(null);
