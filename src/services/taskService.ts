@@ -189,24 +189,26 @@ export const createTask = async (task: Omit<Task, 'id' | 'createdAt' | 'updatedA
 export const updateTask = async (taskId: string, updates: Partial<Task>): Promise<Task> => {
   try {
     const updateData: any = {
-      title: updates.title,
-      description: updates.description,
-      assigned_to: updates.assignedTo,
-      vehicle_id: updates.vehicleId || null,
-      vehicle_brand: updates.vehicleBrand || null,
-      vehicle_model: updates.vehicleModel || null,
-      vehicle_license_number: updates.vehicleLicenseNumber || null,
-      vehicle_vin: updates.vehicleVin || null,
-      due_date: typeof updates.dueDate === 'string' ? updates.dueDate : updates.dueDate?.toISOString(),
-      status: updates.status,
-      priority: updates.priority,
-      category: updates.category,
-      location: updates.location || null,
-      estimated_duration: updates.estimatedDuration || null,
-      notes: updates.notes || null,
-      damage_parts: updates.damageParts ? { parts: updates.damageParts.parts } : null,
       updated_at: new Date().toISOString()
     };
+
+    // Only include fields that are explicitly provided
+    if (updates.title !== undefined) updateData.title = updates.title;
+    if (updates.description !== undefined) updateData.description = updates.description;
+    if (updates.assignedTo !== undefined) updateData.assigned_to = updates.assignedTo;
+    if (updates.vehicleId !== undefined) updateData.vehicle_id = updates.vehicleId || null;
+    if (updates.vehicleBrand !== undefined) updateData.vehicle_brand = updates.vehicleBrand || null;
+    if (updates.vehicleModel !== undefined) updateData.vehicle_model = updates.vehicleModel || null;
+    if (updates.vehicleLicenseNumber !== undefined) updateData.vehicle_license_number = updates.vehicleLicenseNumber || null;
+    if (updates.vehicleVin !== undefined) updateData.vehicle_vin = updates.vehicleVin || null;
+    if (updates.dueDate !== undefined) updateData.due_date = typeof updates.dueDate === 'string' ? updates.dueDate : updates.dueDate?.toISOString();
+    if (updates.status !== undefined) updateData.status = updates.status;
+    if (updates.priority !== undefined) updateData.priority = updates.priority;
+    if (updates.category !== undefined) updateData.category = updates.category;
+    if (updates.location !== undefined) updateData.location = updates.location || null;
+    if (updates.estimatedDuration !== undefined) updateData.estimated_duration = updates.estimatedDuration || null;
+    if (updates.notes !== undefined) updateData.notes = updates.notes || null;
+    if (updates.damageParts !== undefined) updateData.damage_parts = updates.damageParts ? { parts: updates.damageParts.parts } : null;
 
     const { data, error } = await supabase
       .from('tasks')
