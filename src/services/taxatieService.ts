@@ -9,6 +9,7 @@ import type {
   TaxatieFeedback,
 } from '@/types/taxatie';
 import { calculateMaxMileage, calculateBuildYearRange } from '@/utils/taxatieHelpers';
+import { supabase } from '@/integrations/supabase/client';
 
 // Mock RDW lookup
 export const lookupRDW = async (licensePlate: string): Promise<TaxatieVehicleData | null> => {
@@ -225,17 +226,14 @@ export const fetchInternalComparison = async (vehicleData: TaxatieVehicleData): 
   };
 };
 
-// Mock AI analyse
-export const generateAIAdvice = async (
+// Fallback advice when AI is unavailable
+const generateFallbackAdvice = (
   vehicleData: TaxatieVehicleData,
   portalAnalysis: PortalAnalysis,
-  jpCarsData: JPCarsData,
-  internalComparison: InternalComparison
-): Promise<AITaxatieAdvice> => {
-  await new Promise(resolve => setTimeout(resolve, 2000));
-
+  jpCarsData: JPCarsData
+): AITaxatieAdvice => {
   const recommendedSellingPrice = Math.round(portalAnalysis.lowestPrice * 0.98);
-  const targetMargin = 18;
+  const targetMargin = 20;
   const recommendedPurchasePrice = Math.round(recommendedSellingPrice * (1 - targetMargin / 100));
 
   return {
@@ -243,20 +241,57 @@ export const generateAIAdvice = async (
     recommendedPurchasePrice,
     expectedDaysToSell: jpCarsData.etr,
     targetMargin,
-    recommendation: 'kopen',
-    reasoning: `Op basis van ${portalAnalysis.primaryComparableCount} vergelijkbare listings adviseren wij een verkoopprijs van €${recommendedSellingPrice.toLocaleString()}. Dit ligt net onder de laagste vergelijkbare advertentie (€${portalAnalysis.lowestPrice.toLocaleString()}) waardoor Autocity de scherpste aanbieder wordt. Met een verwachte statijd van ${jpCarsData.etr} dagen en een doelmarge van ${targetMargin}%, is de aanbevolen inkoopprijs €${recommendedPurchasePrice.toLocaleString()}.`,
-    jpcarsDeviation: `JP Cars waardeert dit voertuig op €${jpCarsData.totalValue.toLocaleString()}, wat €${(jpCarsData.totalValue - portalAnalysis.lowestPrice).toLocaleString()} hoger is dan de laagste marktprijs. Dit verschil ontstaat doordat JP Cars optiewaarde (€${jpCarsData.optionValue.toLocaleString()}) zwaarder meeweegt dan de daadwerkelijke markt. Wij volgen daarom de portaaldata.`,
-    riskFactors: [
-      'R-Line uitvoering is populair maar concurrentie is hoog',
-      'Kilometerstand (45.000 km) is gemiddeld voor dit bouwjaar',
-    ],
-    opportunities: [
-      'Hoge courantheid (APR 0.85) = snelle doorlooptijd verwacht',
-      'Autocity heeft dit model 8x verkocht afgelopen jaar met 18.5% marge',
-      'Grijs metallic is een courante kleur',
-    ],
+    recommendation: 'twijfel',
+    reasoning: `⚠️ AI advies niet beschikbaar. Dit is een automatische berekening op basis van portaaldata. 
+    
+Verkoopprijs: Laagste vergelijkbare listing (€${portalAnalysis.lowestPrice.toLocaleString()}) minus 2% = €${recommendedSellingPrice.toLocaleString()}.
+Inkoopprijs: Verkoopprijs met 20% standaardmarge = €${recommendedPurchasePrice.toLocaleString()}.
+Verwachte statijd: JP Cars ETR van ${jpCarsData.etr} dagen.
+
+⚠️ Controleer dit advies handmatig voordat je een bod uitbrengt.`,
+    jpcarsDeviation: 'Geen AI analyse beschikbaar - handmatige verificatie aanbevolen',
+    riskFactors: ['Automatisch berekend - handmatige verificatie noodzakelijk'],
+    opportunities: [],
     primaryListingsUsed: portalAnalysis.primaryComparableCount,
   };
+};
+
+// AI-powered advice generation via Edge Function
+export const generateAIAdvice = async (
+  vehicleData: TaxatieVehicleData,
+  portalAnalysis: PortalAnalysis,
+  jpCarsData: JPCarsData,
+  internalComparison: InternalComparison
+): Promise<AITaxatieAdvice> => {
+  try {
+    console.log('🤖 Calling taxatie-ai-advice edge function...');
+    
+    const { data, error } = await supabase.functions.invoke('taxatie-ai-advice', {
+      body: {
+        vehicleData,
+        portalAnalysis,
+        jpCarsData,
+        internalComparison,
+      }
+    });
+
+    if (error) {
+      console.error('❌ Edge function error:', error);
+      throw new Error(error.message || 'Edge function call failed');
+    }
+
+    if (!data?.success || !data?.advice) {
+      console.error('❌ Invalid response from edge function:', data);
+      throw new Error(data?.error || 'Invalid response from AI');
+    }
+
+    console.log('✅ AI advice received:', data.advice.recommendation);
+    return data.advice;
+
+  } catch (err) {
+    console.error('❌ AI advice generation failed, using fallback:', err);
+    return generateFallbackAdvice(vehicleData, portalAnalysis, jpCarsData);
+  }
 };
 
 // Taxatie opslaan
@@ -268,7 +303,7 @@ export const saveTaxatieValuation = async (valuation: Partial<TaxatieValuation>)
     createdAt: new Date().toISOString(),
     createdBy: 'current-user-id',
     createdByName: 'Demo User',
-    aiModelVersion: 'gpt-4.1-mini-taxatie-v1',
+    aiModelVersion: 'gemini-2.5-flash-taxatie-v1',
     status: 'voltooid',
     licensePlate: '',
     ...valuation,
@@ -295,7 +330,7 @@ export const fetchTaxatieHistory = async (): Promise<TaxatieValuation[]> => {
       createdBy: 'user-1',
       createdByName: 'Jan de Vries',
       licensePlate: 'AB-123-CD',
-      aiModelVersion: 'gpt-4.1-mini-taxatie-v1',
+      aiModelVersion: 'gemini-2.5-flash-taxatie-v1',
       vehicleData: {
         brand: 'BMW',
         model: '3 Serie',
@@ -332,7 +367,7 @@ export const fetchTaxatieHistory = async (): Promise<TaxatieValuation[]> => {
       createdBy: 'user-2',
       createdByName: 'Piet Jansen',
       licensePlate: 'EF-456-GH',
-      aiModelVersion: 'gpt-4.1-mini-taxatie-v1',
+      aiModelVersion: 'gemini-2.5-flash-taxatie-v1',
       vehicleData: {
         brand: 'Audi',
         model: 'A4',

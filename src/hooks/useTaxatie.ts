@@ -139,7 +139,13 @@ export const useTaxatie = () => {
 
       setLoading(prev => ({ ...prev, aiAnalysis: false }));
       setTaxatieComplete(true);
-      toast.success('Taxatie voltooid');
+      
+      // Check if fallback was used
+      if (advice.reasoning.includes('⚠️ AI advies niet beschikbaar')) {
+        toast.warning('AI advies niet beschikbaar - automatische berekening getoond');
+      } else {
+        toast.success('Taxatie voltooid');
+      }
     } catch (error) {
       toast.error('Fout bij taxatie');
       setLoading({
