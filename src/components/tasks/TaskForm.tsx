@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CalendarIcon, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ interface TaskFormProps {
 
 export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     title: task?.title || "",
     description: task?.description || "",
@@ -60,15 +61,27 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
 
   const saveTaskMutation = useMutation({
     mutationFn: async (taskData: any) => {
+      console.log('[TaskForm] mutationFn called with:', taskData);
+      console.log('[TaskForm] Category being sent:', taskData.category);
       if (task) {
-        console.log('[TaskForm] Updating task with data:', taskData);
-        return updateTask(task.id, taskData);
+        console.log('[TaskForm] Updating existing task:', task.id);
+        const result = await updateTask(task.id, taskData);
+        console.log('[TaskForm] Update result:', result);
+        return result;
       }
+      console.log('[TaskForm] Creating new task');
       return createTask(taskData);
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('[TaskForm] Task saved successfully:', data);
       toast.success(task ? "Taak succesvol bijgewerkt" : "Taak succesvol aangemaakt");
+      
+      // Force invalidate and refetch all task queries before closing
+      console.log('[TaskForm] Invalidating and refetching task queries...');
+      await queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      await queryClient.refetchQueries({ queryKey: ["tasks"], type: 'active' });
+      console.log('[TaskForm] Queries refreshed, calling onTaskAdded');
+      
       onTaskAdded();
     },
     onError: (error) => {
@@ -77,8 +90,12 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
     }
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log('[TaskForm] handleSubmit called');
+    console.log('[TaskForm] Current formData:', formData);
+    console.log('[TaskForm] Current formData.category:', formData.category);
     
     if (!user) {
       toast.error("Je moet ingelogd zijn om een taak aan te maken");
@@ -118,7 +135,14 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
       };
     }
 
-    saveTaskMutation.mutate(taskData);
+    console.log('[TaskForm] Final taskData to submit:', taskData);
+
+    try {
+      await saveTaskMutation.mutateAsync(taskData);
+      console.log('[TaskForm] mutateAsync completed successfully');
+    } catch (error) {
+      console.error('[TaskForm] mutateAsync error:', error);
+    }
   };
 
   const priorityOptions = [
@@ -246,7 +270,13 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
 
             <div className="space-y-2">
               <Label htmlFor="category">Categorie</Label>
-              <Select value={formData.category} onValueChange={(value: TaskCategory) => setFormData({...formData, category: value})}>
+              <Select 
+                value={formData.category} 
+                onValueChange={(value: TaskCategory) => {
+                  console.log('[TaskForm] Category changed from', formData.category, 'to', value);
+                  setFormData({...formData, category: value});
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
