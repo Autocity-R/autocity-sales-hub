@@ -51,6 +51,7 @@ export function NewValuationForm() {
     submitFeedback,
     resetTaxatie,
     updateVehicleMileage,
+    updateVehicleData,
   } = useTaxatie();
 
   const handleSave = () => {
@@ -89,6 +90,7 @@ export function NewValuationForm() {
             <>
               <VehicleDataDisplay 
                 vehicleData={vehicleData} 
+                onVehicleDataChange={updateVehicleData}
                 onMileageChange={updateVehicleMileage}
                 disabled={taxatieStarted}
               />

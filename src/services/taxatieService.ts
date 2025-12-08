@@ -58,7 +58,7 @@ const buildSearchFilters = (vehicleData: TaxatieVehicleData): PortalSearchFilter
     buildYearTo: yearRange.to,
     mileageMax, // ALLEEN max, geen min
     fuelType: vehicleData.fuelType,
-    transmission: vehicleData.transmission,
+    transmission: vehicleData.transmission === 'Onbekend' ? 'Beide' : vehicleData.transmission,
     bodyType: vehicleData.bodyType,
     keywords: vehicleData.keywords || [],
     requiredOptions: vehicleData.options || [],
