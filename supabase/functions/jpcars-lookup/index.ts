@@ -10,7 +10,7 @@ interface JPCarsRequest {
   licensePlate?: string;
   mileage: number;
   options?: string;
-  // Alternative: manual vehicle data
+  // Vehicle data fields
   make?: string;
   model?: string;
   body?: string;
@@ -21,7 +21,6 @@ interface JPCarsRequest {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -38,7 +37,12 @@ serve(async (req) => {
       licensePlate: requestBody.licensePlate,
       mileage: requestBody.mileage,
       make: requestBody.make,
-      model: requestBody.model
+      model: requestBody.model,
+      body: requestBody.body,
+      fuel: requestBody.fuel,
+      gear: requestBody.gear,
+      build: requestBody.build,
+      hp: requestBody.hp
     });
 
     // Build the JP Cars API request body
@@ -46,19 +50,32 @@ serve(async (req) => {
       mileage: requestBody.mileage || 0,
     };
 
-    // Prefer license plate if available
+    // Use license plate if available
     if (requestBody.licensePlate) {
       jpCarsRequestBody.license_plate = requestBody.licensePlate.replace(/[-\s]/g, '').toUpperCase();
-    } else if (requestBody.make && requestBody.model) {
-      // Use manual vehicle data
-      jpCarsRequestBody.make = requestBody.make.toUpperCase();
-      jpCarsRequestBody.model = requestBody.model.toUpperCase();
-      if (requestBody.body) jpCarsRequestBody.body = requestBody.body;
-      if (requestBody.fuel) jpCarsRequestBody.fuel = mapFuelType(requestBody.fuel);
-      if (requestBody.gear) jpCarsRequestBody.gear = mapGearType(requestBody.gear);
-      if (requestBody.build) jpCarsRequestBody.build = requestBody.build;
-      if (requestBody.hp) jpCarsRequestBody.hp = requestBody.hp;
     }
+    
+    // Always add vehicle data for better matching (even with license plate)
+    if (requestBody.make) {
+      jpCarsRequestBody.make = requestBody.make.toUpperCase();
+    }
+    if (requestBody.model) {
+      jpCarsRequestBody.model = requestBody.model.toUpperCase();
+    }
+    if (requestBody.body) {
+      jpCarsRequestBody.body = mapBodyType(requestBody.body);
+    }
+    if (requestBody.fuel) {
+      jpCarsRequestBody.fuel = mapFuelType(requestBody.fuel);
+    }
+    if (requestBody.gear) {
+      jpCarsRequestBody.gear = mapGearType(requestBody.gear);
+    }
+    if (requestBody.build) {
+      jpCarsRequestBody.build = requestBody.build;
+    }
+    // HP is required by JP Cars, use 0 as fallback if not provided
+    jpCarsRequestBody.hp = requestBody.hp || 0;
 
     // Add options if provided
     if (requestBody.options) {
@@ -127,7 +144,7 @@ serve(async (req) => {
     // Map JP Cars response to our internal format
     const jpCarsData = {
       baseValue: data.topdown_value || data.value || 0,
-      optionValue: 0, // JP Cars doesn't split this out clearly
+      optionValue: 0,
       totalValue: data.value || 0,
       range: {
         min: calculateRangeMin(data),
@@ -137,7 +154,6 @@ serve(async (req) => {
       apr: data.apr || 0,
       etr: calculateETR(data),
       courantheid: determineCourantheid(data.apr),
-      // Additional raw data for debugging/advanced use
       rawData: {
         windowSize: data.window_size,
         mileageMean: data.mileage_mean,
@@ -169,7 +185,31 @@ serve(async (req) => {
   }
 });
 
-// Helper functions
+// Body type mapping: Dutch -> JP Cars format
+function mapBodyType(body: string): string {
+  const bodyMap: Record<string, string> = {
+    'Hatchback': 'SmallCar',
+    'Sedan': 'Sedan',
+    'Stationwagen': 'StationWagon',
+    'Station': 'StationWagon',
+    'SUV': 'SUV',
+    'Terreinwagen': 'SUV',
+    'Coupé': 'Coupe',
+    'Coupe': 'Coupe',
+    'Cabrio': 'Cabrio',
+    'Cabriolet': 'Cabrio',
+    'MPV': 'MPV',
+    'MVP': 'MPV',
+    'Pick-up': 'Pickup',
+    'Pickup': 'Pickup',
+    'Bus': 'Bus',
+    'Bestelwagen': 'Van',
+    'Van': 'Van',
+  };
+  return bodyMap[body] || body;
+}
+
+// Fuel type mapping: Dutch -> JP Cars format
 function mapFuelType(fuel: string): string {
   const fuelMap: Record<string, string> = {
     'Benzine': 'PETROL',
@@ -177,22 +217,27 @@ function mapFuelType(fuel: string): string {
     'Elektrisch': 'ELECTRIC',
     'Hybride': 'HYBRID',
     'Plug-in Hybride': 'PLUGIN_HYBRID',
+    'Plug-in hybride': 'PLUGIN_HYBRID',
     'LPG': 'LPG',
     'CNG': 'CNG',
+    'Waterstof': 'HYDROGEN',
   };
   return fuelMap[fuel] || fuel.toUpperCase();
 }
 
+// Gear type mapping: Dutch -> JP Cars format
 function mapGearType(gear: string): string {
   const gearMap: Record<string, string> = {
     'Automaat': 'AUTOMATIC_GEAR',
+    'Automatisch': 'AUTOMATIC_GEAR',
     'Handgeschakeld': 'MANUAL_GEAR',
+    'Handmatig': 'MANUAL_GEAR',
+    'CVT': 'AUTOMATIC_GEAR',
   };
   return gearMap[gear] || gear.toUpperCase();
 }
 
 function calculateRangeMin(data: Record<string, unknown>): number {
-  // Use percents array if available (e.g., 10th percentile)
   const percents = data.percents as Array<{ percent: number; target_value: number }> | undefined;
   if (percents && percents.length > 0) {
     const p10 = percents.find(p => p.percent === 10);
@@ -203,7 +248,6 @@ function calculateRangeMin(data: Record<string, unknown>): number {
 }
 
 function calculateRangeMax(data: Record<string, unknown>): number {
-  // Use percents array if available (e.g., 90th percentile)
   const percents = data.percents as Array<{ percent: number; target_value: number }> | undefined;
   if (percents && percents.length > 0) {
     const p90 = percents.find(p => p.percent === 90);
@@ -215,7 +259,6 @@ function calculateRangeMax(data: Record<string, unknown>): number {
 
 function calculateConfidence(data: Record<string, unknown>): number {
   const windowSize = data.window_size as number || 0;
-  // More comparable vehicles = higher confidence
   if (windowSize >= 20) return 0.95;
   if (windowSize >= 10) return 0.85;
   if (windowSize >= 5) return 0.75;
@@ -224,19 +267,14 @@ function calculateConfidence(data: Record<string, unknown>): number {
 }
 
 function calculateETR(data: Record<string, unknown>): number {
-  // ETR (Expected Time to Retail) - estimate based on turnover stats
   const turnoverExt = data.stat_turnover_ext as number || 0;
   const turnoverInt = data.stat_turnover_int as number || 0;
   const avgTurnover = (turnoverExt + turnoverInt) / 2;
   
-  // Convert turnover rate to estimated days
-  // Higher turnover = lower days to sell
   if (avgTurnover > 0) {
-    // Assume turnover is monthly rate, convert to days
     return Math.round(30 / avgTurnover);
   }
   
-  // Default based on APR if turnover not available
   const apr = data.apr as number || 0;
   if (apr >= 0.8) return 15;
   if (apr >= 0.6) return 22;

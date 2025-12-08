@@ -11,28 +11,39 @@ import type {
 import { calculateMaxMileage, calculateBuildYearRange } from '@/utils/taxatieHelpers';
 import { supabase } from '@/integrations/supabase/client';
 
-// Mock RDW lookup
+// RDW lookup via Edge Function
 export const lookupRDW = async (licensePlate: string): Promise<TaxatieVehicleData | null> => {
-  await new Promise(resolve => setTimeout(resolve, 800));
+  try {
+    console.log('🔍 Looking up license plate via RDW:', licensePlate);
+    
+    const { data, error } = await supabase.functions.invoke('rdw-lookup', {
+      body: { licensePlate }
+    });
 
-  if (licensePlate.toUpperCase().includes('TEST')) {
+    if (error) {
+      console.error('❌ RDW edge function error:', error);
+      throw new Error(error.message || 'RDW lookup failed');
+    }
+
+    if (!data?.success || !data?.data) {
+      console.warn('⚠️ RDW lookup returned no data:', data);
+      return null;
+    }
+
+    console.log('✅ RDW data received:', data.data);
+    
+    // The data from RDW doesn't include mileage, user needs to fill this in
+    return {
+      ...data.data,
+      mileage: 0, // User must enter this manually
+      options: [],
+      keywords: [],
+    };
+
+  } catch (err) {
+    console.error('❌ RDW lookup failed:', err);
     return null;
   }
-
-  return {
-    brand: 'Volkswagen',
-    model: 'Golf',
-    buildYear: 2021,
-    mileage: 45000,
-    fuelType: 'Benzine',
-    transmission: 'Automaat',
-    bodyType: 'Hatchback',
-    power: 150,
-    trim: 'R-Line',
-    color: 'Grijs',
-    options: [],
-    keywords: [],
-  };
 };
 
 // Build search filters based on vehicle data and correct KM logic
