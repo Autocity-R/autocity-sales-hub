@@ -1,7 +1,7 @@
 
 import React, { memo, useMemo, useCallback } from "react";
 import { format } from "date-fns";
-import { CheckCircle, Clock, AlertCircle, Car, User, Play, Edit, Trash2, Wrench, Truck, FileText, Sparkles, Shield, Package, ClipboardList, Tag } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, Car, User, Play, Edit, Trash2, Wrench, Truck, Sparkles, Shield, Package, ClipboardList, Tag } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,16 +13,14 @@ import { TaskMobileCard } from "./TaskMobileCard";
 
 // Category configuration with colors and icons
 const categoryConfig: Record<TaskCategory, { label: string; color: string; bgColor: string; icon: React.ElementType }> = {
+  klaarmaken: { label: "Klaarmaken", color: "text-cyan-700 dark:text-cyan-300", bgColor: "bg-cyan-100 dark:bg-cyan-900/30 border-cyan-200 dark:border-cyan-800", icon: ClipboardList },
+  onderdelen_bestellen: { label: "Onderdelen Bestellen", color: "text-amber-700 dark:text-amber-300", bgColor: "bg-amber-100 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800", icon: Package },
   werkplaats: { label: "Werkplaats", color: "text-blue-700 dark:text-blue-300", bgColor: "bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800", icon: Wrench },
   schadeherstel: { label: "Schadeherstel", color: "text-orange-700 dark:text-orange-300", bgColor: "bg-orange-100 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800", icon: Shield },
   transport: { label: "Transport", color: "text-green-700 dark:text-green-300", bgColor: "bg-green-100 dark:bg-green-900/30 border-green-200 dark:border-green-800", icon: Truck },
   schoonmaak: { label: "Schoonmaak", color: "text-purple-700 dark:text-purple-300", bgColor: "bg-purple-100 dark:bg-purple-900/30 border-purple-200 dark:border-purple-800", icon: Sparkles },
-  administratie: { label: "Administratie", color: "text-gray-700 dark:text-gray-300", bgColor: "bg-gray-100 dark:bg-gray-900/30 border-gray-200 dark:border-gray-800", icon: FileText },
-  voorbereiding: { label: "Voorbereiding", color: "text-cyan-700 dark:text-cyan-300", bgColor: "bg-cyan-100 dark:bg-cyan-900/30 border-cyan-200 dark:border-cyan-800", icon: ClipboardList },
-  inspectie: { label: "Inspectie", color: "text-yellow-700 dark:text-yellow-300", bgColor: "bg-yellow-100 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800", icon: ClipboardList },
   reparatie: { label: "Reparatie", color: "text-red-700 dark:text-red-300", bgColor: "bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800", icon: Wrench },
   aflevering: { label: "Aflevering", color: "text-emerald-700 dark:text-emerald-300", bgColor: "bg-emerald-100 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800", icon: Package },
-  ophalen: { label: "Ophalen", color: "text-teal-700 dark:text-teal-300", bgColor: "bg-teal-100 dark:bg-teal-900/30 border-teal-200 dark:border-teal-800", icon: Car },
   overig: { label: "Overig", color: "text-slate-700 dark:text-slate-300", bgColor: "bg-slate-100 dark:bg-slate-900/30 border-slate-200 dark:border-slate-800", icon: Tag },
 };
 
@@ -292,16 +290,14 @@ export const TaskList = memo<TaskListProps>(({
             </SelectTrigger>
             <SelectContent className="bg-background">
               <SelectItem value="all">Alle categorieën</SelectItem>
+              <SelectItem value="klaarmaken">📋 Klaarmaken</SelectItem>
+              <SelectItem value="onderdelen_bestellen">📦 Onderdelen Bestellen</SelectItem>
               <SelectItem value="werkplaats">🔧 Werkplaats</SelectItem>
               <SelectItem value="schadeherstel">🛡️ Schadeherstel</SelectItem>
               <SelectItem value="transport">🚚 Transport</SelectItem>
               <SelectItem value="schoonmaak">✨ Schoonmaak</SelectItem>
               <SelectItem value="reparatie">🔨 Reparatie</SelectItem>
-              <SelectItem value="voorbereiding">📋 Voorbereiding</SelectItem>
-              <SelectItem value="inspectie">🔍 Inspectie</SelectItem>
-              <SelectItem value="administratie">📄 Administratie</SelectItem>
               <SelectItem value="aflevering">📦 Aflevering</SelectItem>
-              <SelectItem value="ophalen">🚗 Ophalen</SelectItem>
               <SelectItem value="overig">🏷️ Overig</SelectItem>
             </SelectContent>
           </Select>

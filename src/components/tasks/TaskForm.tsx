@@ -37,7 +37,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
     vehicleId: task?.vehicleId || "",
     dueDate: task?.dueDate ? new Date(task.dueDate) : new Date(),
     priority: (task?.priority || "normaal") as TaskPriority,
-    category: (task?.category || "voorbereiding") as TaskCategory,
+    category: (task?.category || "klaarmaken") as TaskCategory,
     location: task?.location || "",
     estimatedDuration: task?.estimatedDuration || 60,
     notes: task?.notes || ""
@@ -153,16 +153,14 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
   ];
 
   const categoryOptions = [
-    { value: "voorbereiding", label: "Voorbereiding" },
+    { value: "klaarmaken", label: "Klaarmaken" },
+    { value: "onderdelen_bestellen", label: "Onderdelen Bestellen" },
     { value: "transport", label: "Transport" },
-    { value: "inspectie", label: "Inspectie" },
     { value: "schoonmaak", label: "Schoonmaak" },
     { value: "reparatie", label: "Reparatie" },
     { value: "schadeherstel", label: "Schadeherstel" },
     { value: "werkplaats", label: "Werkplaats" },
-    { value: "administratie", label: "Administratie" },
     { value: "aflevering", label: "Aflevering" },
-    { value: "ophalen", label: "Ophalen" },
     { value: "overig", label: "Overig" }
   ];
 
