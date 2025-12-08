@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, Info } from 'lucide-react';
+import { AlertTriangle, Info, Clock, TrendingUp } from 'lucide-react';
 import type { JPCarsData } from '@/types/taxatie';
 
 interface JPCarsCardProps {
@@ -32,6 +32,9 @@ export const JPCarsCard = ({ data, loading }: JPCarsCardProps) => {
   if (!data) {
     return null;
   }
+
+  // Format APR als percentage
+  const aprPercent = Math.round(data.apr * 100);
 
   return (
     <Card className="border border-amber-500/40 bg-gradient-to-br from-amber-500/5 to-orange-500/5 opacity-90">
@@ -84,6 +87,53 @@ export const JPCarsCard = ({ data, loading }: JPCarsCardProps) => {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* APR & ETR - Belangrijke marktindicatoren voor inkopers */}
+        <div className="grid grid-cols-2 gap-3 text-sm pt-2 border-t">
+          <div className="flex items-start gap-2">
+            <TrendingUp className="h-4 w-4 text-muted-foreground mt-0.5" />
+            <div>
+              <p className="text-xs text-muted-foreground">APR (Price Ratio)</p>
+              <p className={`font-semibold ${
+                aprPercent >= 70 ? 'text-green-600' : 
+                aprPercent >= 40 ? 'text-amber-600' : 
+                'text-red-600'
+              }`}>
+                {aprPercent}%
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground mt-0.5" />
+            <div>
+              <p className="text-xs text-muted-foreground">ETR (Statijd)</p>
+              <p className={`font-semibold ${
+                data.etr <= 21 ? 'text-green-600' : 
+                data.etr <= 35 ? 'text-amber-600' : 
+                'text-red-600'
+              }`}>
+                ~{data.etr} dagen
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Courantheid badge */}
+        <div className="flex items-center justify-between text-xs pt-2 border-t">
+          <span className="text-muted-foreground">Courantheid:</span>
+          <Badge 
+            variant="outline" 
+            className={
+              data.courantheid === 'hoog' 
+                ? 'border-green-500/50 text-green-600 bg-green-500/10' 
+                : data.courantheid === 'gemiddeld'
+                ? 'border-amber-500/50 text-amber-600 bg-amber-500/10'
+                : 'border-red-500/50 text-red-600 bg-red-500/10'
+            }
+          >
+            {data.courantheid.charAt(0).toUpperCase() + data.courantheid.slice(1)}
+          </Badge>
         </div>
 
         {/* Confidence */}

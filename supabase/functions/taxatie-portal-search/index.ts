@@ -79,7 +79,7 @@ serve(async (req) => {
     const buildYearTo = vehicleData.buildYear + 1;
     const mileageMax = Math.ceil((vehicleData.mileage + 20000) / 10000) * 10000;
 
-    // Volledige inkoper-prompt met web search instructies
+    // Volledige inkoper-prompt met STRIKTE filters
     const searchPrompt = `
 # OPDRACHT: ECHTE PORTAL SEARCH ALS AUTOCITY INKOPER
 
@@ -101,76 +101,111 @@ Kleur: ${vehicleData.color}
 Opties: ${vehicleData.options?.join(', ') || 'Standaard'}
 ${vehicleData.keywords?.length ? `Keywords: ${vehicleData.keywords.join(', ')}` : ''}
 
-## ZOEKSTRATEGIE (zoals een echte inkoper)
+## FILTERING REGELS (VERPLICHT!)
 
-### Zoekfilters toepassen:
-- Bouwjaar: ${buildYearFrom} tot ${buildYearTo}
-- Max kilometerstand: ${mileageMax.toLocaleString('nl-NL')} km (afgerond naar boven)
-- Exacte match op: merk, model, brandstof, transmissie
+### HARDE FILTERS - Listings MOETEN voldoen aan:
+- Bouwjaar: MOET tussen ${buildYearFrom} en ${buildYearTo} liggen
+- Kilometerstand: MOET onder ${mileageMax.toLocaleString('nl-NL')} km zijn
+- Brandstof: ${vehicleData.fuelType}
+- Transmissie: ${vehicleData.transmission}
+- Merk & Model: ${vehicleData.brand} ${vehicleData.model}
 
-### Portalen om te doorzoeken:
-1. **Gaspedaal.nl** - zoek naar "${vehicleData.brand} ${vehicleData.model}" ${vehicleData.trim || ''} ${vehicleData.fuelType} ${vehicleData.transmission}
-2. **AutoScout24.nl** - zoek naar "${vehicleData.brand} ${vehicleData.model}" bouwjaar ${buildYearFrom}-${buildYearTo}
-3. **Marktplaats.nl/auto** - zoek naar "${vehicleData.brand} ${vehicleData.model}" 
-4. **Autotrack.nl** - zoek naar "${vehicleData.brand} ${vehicleData.model}"
+### PRIMARY COMPARABLE criteria:
+✓ Bouwjaar ${buildYearFrom}-${buildYearTo}
+✓ Kilometerstand < ${mileageMax.toLocaleString('nl-NL')} km
+✓ Zelfde brandstof: ${vehicleData.fuelType}
+✓ Zelfde transmissie: ${vehicleData.transmission}
+✓ Vergelijkbare uitvoering/trim
 
-### Wat zoek je per listing:
-- De ECHTE, WERKENDE URL naar de advertentie
-- De vraagprijs in euro's
-- De exacte kilometerstand
-- Het bouwjaar
-- De titel/kop van de advertentie
-- Welke opties/uitvoering (pano, leder, R-Line, etc.)
-- Of het een LOGISCHE VERGELIJKING is (primary comparable)
+### LOGISCHE AFWIJKING markeren als:
+- Bouwjaar buiten ${buildYearFrom}-${buildYearTo} → deviationReason: "Bouwjaar X buiten range ${buildYearFrom}-${buildYearTo}"
+- KM boven ${mileageMax.toLocaleString('nl-NL')} → deviationReason: "Te veel km: X vs max ${mileageMax.toLocaleString('nl-NL')}"
+- Andere brandstof → deviationReason: "Verkeerde brandstof: X ipv ${vehicleData.fuelType}"
+- Andere transmissie → deviationReason: "Verkeerde transmissie: X ipv ${vehicleData.transmission}"
+- Te kaal (veel minder opties) → deviationReason: "Te kaal: mist opties X, Y, Z"
+- Beschadigd → deviationReason: "Schade vermeld in advertentie"
 
-### Logische vergelijkbaarheid bepalen (zoals een inkoper):
-PRIMARY COMPARABLE als:
-✓ Zelfde merk, model, uitvoering
-✓ Bouwjaar binnen ${buildYearFrom}-${buildYearTo}
-✓ Kilometerstand onder ${mileageMax.toLocaleString('nl-NL')} km
-✓ Zelfde brandstof en transmissie
-✓ Vergelijkbare opties
+## ZOEKOPDRACHTEN PER PORTAL
 
-LOGISCHE AFWIJKING als:
-- Te kaal (veel minder opties)
-- Te veel km (>30% meer)
-- Verkeerd bouwjaar
-- Andere uitvoering (bijv. R-Line vs basis)
-- Beschadigd/ongevalvrij vermelding
+Voer deze EXACTE zoekopdrachten uit:
+
+1. **gaspedaal.nl**: 
+   Zoek: "${vehicleData.brand} ${vehicleData.model}" 
+   Filters: bouwjaar ${buildYearFrom}-${buildYearTo}, max ${mileageMax} km, ${vehicleData.fuelType}, ${vehicleData.transmission}
+   
+2. **autoscout24.nl**: 
+   Zoek: ${vehicleData.brand} ${vehicleData.model}
+   Filters: Erstzulassung ${buildYearFrom}-${buildYearTo}, max ${mileageMax} km
+   
+3. **marktplaats.nl/auto**: 
+   Zoek: "${vehicleData.brand} ${vehicleData.model}"
+   Filters: bouwjaar, kilometerstand
+   
+4. **autotrack.nl**: 
+   Zoek: ${vehicleData.brand} ${vehicleData.model}
+   Filters: bouwjaar ${buildYearFrom}-${buildYearTo}
 
 ## VEREISTE OUTPUT
 
-Zoek 6-10 ECHTE listings en retourneer ALLEEN dit JSON object (geen andere tekst):
+Zoek 8-12 ECHTE listings en retourneer ALLEEN dit JSON object (geen andere tekst):
+
 {
-  "lowestPrice": getal (laagste primary comparable prijs),
-  "medianPrice": getal (mediaan van primary comparables),
-  "highestPrice": getal (hoogste prijs),
+  "lowestPrice": getal (laagste PRIMARY COMPARABLE prijs),
+  "medianPrice": getal (mediaan van PRIMARY COMPARABLES),
+  "highestPrice": getal (hoogste prijs van alle listings),
   "listingCount": getal (totaal gevonden),
-  "primaryComparableCount": getal (aantal echte vergelijkingen),
+  "primaryComparableCount": getal (alleen listings die aan ALLE harde filters voldoen),
   "listings": [
     {
-      "id": "unieke id",
-      "portal": "gaspedaal" | "autoscout24" | "marktplaats" | "autotrack",
-      "url": "ECHTE URL naar de advertentie",
-      "price": getal,
-      "mileage": getal,
-      "buildYear": getal,
-      "title": "advertentie titel",
-      "options": ["gevonden opties"],
-      "color": "kleur indien vermeld",
-      "matchScore": 0-1 (hoe vergelijkbaar),
-      "isPrimaryComparable": true/false,
-      "isLogicalDeviation": true/false,
-      "deviationReason": "reden als afwijking of null"
+      "id": "unieke-id-1",
+      "portal": "gaspedaal",
+      "url": "https://www.gaspedaal.nl/... of https://www.vaartland.nl/...",
+      "price": 27500,
+      "mileage": 45000,
+      "buildYear": 2021,
+      "title": "Volledige advertentie titel",
+      "options": ["Navigatie", "LED", "Achteruitrijcamera"],
+      "color": "Zwart",
+      "matchScore": 0.95,
+      "isPrimaryComparable": true,
+      "isLogicalDeviation": false,
+      "deviationReason": null
+    },
+    {
+      "id": "unieke-id-2", 
+      "portal": "autoscout24",
+      "url": "https://www.autoscout24.nl/...",
+      "price": 24900,
+      "mileage": 85000,
+      "buildYear": 2020,
+      "title": "Advertentie titel",
+      "options": ["Airco"],
+      "color": "Grijs",
+      "matchScore": 0.60,
+      "isPrimaryComparable": false,
+      "isLogicalDeviation": true,
+      "deviationReason": "Te veel km: 85.000 vs max ${mileageMax.toLocaleString('nl-NL')}"
     }
   ],
-  "logicalDeviations": ["uitleg per afwijking"]
+  "logicalDeviations": [
+    "Listing X heeft te veel km (85.000 vs max ${mileageMax.toLocaleString('nl-NL')})",
+    "Listing Y is bouwjaar 2019 (buiten range ${buildYearFrom}-${buildYearTo})"
+  ]
 }
 
-BELANGRIJK: Alleen ECHTE URLs die werken. Geen verzonnen data!
+## KRITIEKE INSTRUCTIES
+
+1. ALLEEN ECHTE URLs die daadwerkelijk werken - geen verzonnen links!
+2. De URL kan een doorverwijzing zijn (bijv. vaartland.nl via gaspedaal.nl)
+3. ALLE listings moeten een werkende URL hebben
+4. Als je minder dan 6 listings vindt, zoek breder maar markeer de afwijkingen
+5. PRIMARY COMPARABLE = voldoet aan ALLE harde filters
+6. Bereken lowestPrice en medianPrice ALLEEN op basis van primaryComparables
+7. Log ELKE afwijking in logicalDeviations array
 `;
 
     console.log('📡 Calling OpenAI Responses API with web_search_preview...');
+    console.log('🎯 Filters:', { buildYearFrom, buildYearTo, mileageMax, fuelType: vehicleData.fuelType, transmission: vehicleData.transmission });
 
     // OpenAI Responses API met web search tool
     const response = await fetch('https://api.openai.com/v1/responses', {
@@ -239,15 +274,23 @@ BELANGRIJK: Alleen ECHTE URLs die werken. Geen verzonnen data!
     const analysisData = JSON.parse(jsonContent);
 
     // Valideer dat URLs echt zijn van portalen
+    const portalUrls = ['gaspedaal.nl', 'autoscout24.nl', 'autoscout24.be', 'marktplaats.nl', 'autotrack.nl', 'vaartland.nl', 'autohopper.nl', 'autowereld.nl'];
+    
     const hasRealUrls = analysisData.listings?.some((l: PortalListing) => 
-      l.url && (
-        l.url.includes('gaspedaal.nl') || 
-        l.url.includes('autoscout24.nl') ||
-        l.url.includes('autoscout24.be') ||
-        l.url.includes('marktplaats.nl') ||
-        l.url.includes('autotrack.nl')
-      )
+      l.url && portalUrls.some(portal => l.url.includes(portal))
     );
+
+    // Log gevonden listings voor debugging
+    console.log('📋 Gevonden listings:', analysisData.listings?.map((l: PortalListing) => ({
+      portal: l.portal,
+      title: l.title?.substring(0, 50),
+      price: l.price,
+      mileage: l.mileage,
+      buildYear: l.buildYear,
+      isPrimaryComparable: l.isPrimaryComparable,
+      deviationReason: l.deviationReason,
+      urlValid: portalUrls.some(p => l.url?.includes(p))
+    })));
 
     if (!hasRealUrls) {
       console.warn('⚠️ Geen echte portal URLs gevonden in response - web search mogelijk niet volledig succesvol');
@@ -255,9 +298,20 @@ BELANGRIJK: Alleen ECHTE URLs die werken. Geen verzonnen data!
       console.log('✅ Echte portal URLs gevonden in listings');
     }
 
+    // Validate and count primary comparables
+    const primaryComparables = analysisData.listings?.filter((l: PortalListing) => l.isPrimaryComparable) || [];
+    const logicalDeviations = analysisData.listings?.filter((l: PortalListing) => l.isLogicalDeviation) || [];
+    
+    console.log('📊 Listing breakdown:', {
+      total: analysisData.listings?.length || 0,
+      primaryComparables: primaryComparables.length,
+      logicalDeviations: logicalDeviations.length
+    });
+
     // Add the applied filters to the response
     const portalAnalysis: PortalAnalysis = {
       ...analysisData,
+      primaryComparableCount: primaryComparables.length,
       appliedFilters: {
         brand: vehicleData.brand,
         model: vehicleData.model,
@@ -275,7 +329,7 @@ BELANGRIJK: Alleen ECHTE URLs die werken. Geen verzonnen data!
     console.log('📊 Portal analysis complete:', {
       listingCount: portalAnalysis.listingCount,
       primaryComparableCount: portalAnalysis.primaryComparableCount,
-      priceRange: `€${portalAnalysis.lowestPrice} - €€${portalAnalysis.highestPrice}`,
+      priceRange: `€${portalAnalysis.lowestPrice} - €${portalAnalysis.highestPrice}`,
       median: `€${portalAnalysis.medianPrice}`,
       hasRealUrls
     });
