@@ -69,13 +69,13 @@ const TaskManagement = () => {
     updateStatusMutation.mutate({ taskId, status: "in_uitvoering" });
   };
 
-  const handleTaskAdded = () => {
+  const handleTaskAdded = async () => {
+    const wasEditing = !!editingTask;
     setShowTaskForm(false);
     setEditingTask(null);
-    queryClient.invalidateQueries({ queryKey: ["tasks"] });
-    toast({
-      description: editingTask ? "Taak succesvol bijgewerkt" : "Taak succesvol toegevoegd"
-    });
+    // Force invalidate and refetch all task queries
+    await queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    await queryClient.refetchQueries({ queryKey: ["tasks"] });
   };
 
   const handleEditTask = (task: Task) => {
