@@ -146,7 +146,7 @@ export interface TaxatieVehicleData {
   modelYear?: number; // Kan afwijken van bouwjaar
   mileage: number;
   fuelType: string;
-  transmission: 'Automaat' | 'Handgeschakeld';
+  transmission: 'Automaat' | 'Handgeschakeld' | 'Onbekend';
   bodyType: string; // Hatchback, Sedan, SUV, etc.
   power: number;
   powerKw?: number; // KW naast PK

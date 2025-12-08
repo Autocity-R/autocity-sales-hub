@@ -94,6 +94,15 @@ export const useTaxatie = () => {
     }
   }, [vehicleData]);
 
+  // Update full vehicle data (for inline editing)
+  const updateVehicleData = useCallback((updatedData: TaxatieVehicleData) => {
+    setVehicleData(updatedData);
+    // Sync mileage state
+    if (updatedData.mileage !== enteredMileage) {
+      setEnteredMileage(updatedData.mileage);
+    }
+  }, [enteredMileage]);
+
   // Start volledige taxatie
   const startTaxatie = useCallback(async () => {
     if (!vehicleData) {
@@ -103,6 +112,12 @@ export const useTaxatie = () => {
 
     if (vehicleData.mileage <= 0) {
       toast.error('Vul eerst de kilometerstand in');
+      return;
+    }
+
+    // Transmissie is verplicht
+    if (!vehicleData.transmission || vehicleData.transmission === 'Onbekend') {
+      toast.error('Selecteer eerst de transmissie (Automaat of Handgeschakeld)');
       return;
     }
 
@@ -228,5 +243,6 @@ export const useTaxatie = () => {
     submitFeedback,
     resetTaxatie,
     updateVehicleMileage,
+    updateVehicleData,
   };
 };
