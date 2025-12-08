@@ -130,6 +130,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
     { value: "schoonmaak", label: "Schoonmaak" },
     { value: "reparatie", label: "Reparatie" },
     { value: "schadeherstel", label: "Schadeherstel" },
+    { value: "werkplaats", label: "Werkplaats" },
     { value: "administratie", label: "Administratie" },
     { value: "aflevering", label: "Aflevering" },
     { value: "ophalen", label: "Ophalen" },

@@ -39,6 +39,7 @@ export type TaskCategory =
   | "schoonmaak"
   | "reparatie"
   | "schadeherstel"
+  | "werkplaats"
   | "administratie"
   | "aflevering"
   | "ophalen"

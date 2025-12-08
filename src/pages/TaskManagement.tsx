@@ -1,13 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, CheckCircle, Clock, AlertCircle, RefreshCw } from "lucide-react";
+import { Plus, CheckCircle, Clock, AlertCircle, RefreshCw, Wrench, Shield, Truck, Sparkles, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Task, TaskStatus } from "@/types/tasks";
+import { Task, TaskStatus, TaskCategory } from "@/types/tasks";
 import { fetchTasks, updateTaskStatus, deleteTask } from "@/services/taskService";
 import { TaskForm } from "@/components/tasks/TaskForm";
 import { TaskList } from "@/components/tasks/TaskList";
@@ -20,6 +20,7 @@ const TaskManagement = () => {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
+  const [categoryFilter, setCategoryFilter] = useState<TaskCategory | "all">("all");
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -109,6 +110,30 @@ const TaskManagement = () => {
 
   const statusCounts = getStatusCounts();
 
+  // Category counts for quick filter chips
+  const categoryCounts = useMemo(() => {
+    const counts: Record<TaskCategory, number> = {
+      werkplaats: 0, schadeherstel: 0, transport: 0, schoonmaak: 0,
+      reparatie: 0, voorbereiding: 0, inspectie: 0, administratie: 0,
+      aflevering: 0, ophalen: 0, overig: 0
+    };
+    tasks.forEach(t => {
+      if (counts[t.category] !== undefined) {
+        counts[t.category]++;
+      }
+    });
+    return counts;
+  }, [tasks]);
+
+  // Main category chips to show
+  const mainCategories: { key: TaskCategory; label: string; icon: React.ElementType; color: string }[] = [
+    { key: "werkplaats", label: "Werkplaats", icon: Wrench, color: "bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300" },
+    { key: "schadeherstel", label: "Schadeherstel", icon: Shield, color: "bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-300" },
+    { key: "transport", label: "Transport", icon: Truck, color: "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300" },
+    { key: "schoonmaak", label: "Schoonmaak", icon: Sparkles, color: "bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300" },
+    { key: "administratie", label: "Administratie", icon: FileText, color: "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-900/30 dark:text-gray-300" },
+  ];
+
   const handleForceRefresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["tasks"] });
     toast({
@@ -174,11 +199,35 @@ const TaskManagement = () => {
           </div>
         </PageHeader>
 
+        {/* Category Quick Filters */}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={categoryFilter === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setCategoryFilter("all")}
+            className="h-8"
+          >
+            Alle ({tasks.length})
+          </Button>
+          {mainCategories.map(({ key, label, icon: Icon, color }) => (
+            <Button
+              key={key}
+              variant="outline"
+              size="sm"
+              onClick={() => setCategoryFilter(categoryFilter === key ? "all" : key)}
+              className={`h-8 ${categoryFilter === key ? "ring-2 ring-primary " + color : ""}`}
+            >
+              <Icon className="h-3.5 w-3.5 mr-1.5" />
+              {label} ({categoryCounts[key]})
+            </Button>
+          ))}
+        </div>
+
         {/* Statistics Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <Card 
-            className={`cursor-pointer touch-manipulation transition-all hover:shadow-md ${statusFilter === "all" ? "ring-2 ring-primary" : ""}`}
-            onClick={() => handleStatCardClick("all")}
+            className={`cursor-pointer touch-manipulation transition-all hover:shadow-md ${statusFilter === "all" && categoryFilter === "all" ? "ring-2 ring-primary" : ""}`}
+            onClick={() => { handleStatCardClick("all"); setCategoryFilter("all"); }}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 md:p-6">
               <CardTitle className="text-xs md:text-sm font-medium">Actief</CardTitle>
@@ -243,6 +292,8 @@ const TaskManagement = () => {
           onDeleteTask={handleDeleteTask}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
+          categoryFilter={categoryFilter}
+          onCategoryFilterChange={setCategoryFilter}
         />
 
         {/* Task Form Dialog */}
