@@ -125,7 +125,9 @@ serve(async (req) => {
     console.log('✅ JP Cars response received:', {
       value: data.value,
       apr: data.apr,
-      windowSize: data.window_size
+      windowSize: data.window_size,
+      statTurnoverExt: data.stat_turnover_ext,
+      statTurnoverInt: data.stat_turnover_int
     });
 
     // Check for valuation errors
@@ -141,6 +143,14 @@ serve(async (req) => {
       });
     }
 
+    // BELANGRIJK: APR normalisatie
+    // JP Cars geeft APR als percentage getal (bijv. 5 = 5%, 80 = 80%)
+    // We normaliseren naar decimaal (0.05, 0.80) voor interne berekeningen
+    const rawApr = data.apr || 0;
+    const normalizedApr = rawApr > 1 ? rawApr / 100 : rawApr;
+    
+    console.log('📊 APR normalisatie:', { rawApr, normalizedApr });
+
     // Map JP Cars response to our internal format
     const jpCarsData = {
       baseValue: data.topdown_value || data.value || 0,
@@ -151,9 +161,9 @@ serve(async (req) => {
         max: calculateRangeMax(data)
       },
       confidence: calculateConfidence(data),
-      apr: data.apr || 0,
-      etr: calculateETR(data),
-      courantheid: determineCourantheid(data.apr),
+      apr: normalizedApr, // Genormaliseerde APR (0-1 schaal)
+      etr: calculateETR(data, rawApr), // Pass raw APR for ETR calculation
+      courantheid: determineCourantheid(normalizedApr),
       rawData: {
         windowSize: data.window_size,
         mileageMean: data.mileage_mean,
@@ -162,9 +172,17 @@ serve(async (req) => {
         statTurnoverInt: data.stat_turnover_int,
         percents: data.percents,
         windowUrl: data.window_url,
-        topdownBreakdown: data.topdown_value_breakdown
+        topdownBreakdown: data.topdown_value_breakdown,
+        rawApr: rawApr // Bewaar ook de originele waarde voor debugging
       }
     };
+
+    console.log('📈 Final JP Cars data:', {
+      totalValue: jpCarsData.totalValue,
+      apr: jpCarsData.apr,
+      etr: jpCarsData.etr,
+      courantheid: jpCarsData.courantheid
+    });
 
     return new Response(JSON.stringify({ 
       success: true,
@@ -266,24 +284,41 @@ function calculateConfidence(data: Record<string, unknown>): number {
   return 0.40;
 }
 
-function calculateETR(data: Record<string, unknown>): number {
+// ETR berekening - gebruikt turnover data als beschikbaar, anders APR-gebaseerde schatting
+function calculateETR(data: Record<string, unknown>, rawApr: number): number {
+  // Prioriteit 1: Directe turnover statistieken van JP Cars
   const turnoverExt = data.stat_turnover_ext as number || 0;
   const turnoverInt = data.stat_turnover_int as number || 0;
-  const avgTurnover = (turnoverExt + turnoverInt) / 2;
   
-  if (avgTurnover > 0) {
-    return Math.round(30 / avgTurnover);
+  if (turnoverExt > 0 || turnoverInt > 0) {
+    const avgTurnover = turnoverExt > 0 && turnoverInt > 0 
+      ? (turnoverExt + turnoverInt) / 2 
+      : (turnoverExt || turnoverInt);
+    
+    if (avgTurnover > 0) {
+      const etr = Math.round(30 / avgTurnover);
+      console.log('📊 ETR from turnover:', { turnoverExt, turnoverInt, avgTurnover, etr });
+      return etr;
+    }
   }
   
-  const apr = data.apr as number || 0;
-  if (apr >= 0.8) return 15;
-  if (apr >= 0.6) return 22;
-  if (apr >= 0.4) return 30;
-  return 45;
+  // Prioriteit 2: APR-gebaseerde schatting
+  // rawApr is in percentage (bijv. 5 = 5%, 80 = 80%)
+  const aprPercent = rawApr > 1 ? rawApr : rawApr * 100;
+  
+  console.log('📊 ETR from APR:', { rawApr, aprPercent });
+  
+  // APR is "Average Price Ratio" - hoe hoger, hoe couranter
+  if (aprPercent >= 80) return 15;   // Zeer courant: ~2 weken
+  if (aprPercent >= 60) return 22;   // Courant: ~3 weken  
+  if (aprPercent >= 40) return 35;   // Gemiddeld: ~5 weken
+  if (aprPercent >= 20) return 50;   // Minder courant: ~7 weken
+  return 60;                          // Niet courant: ~2 maanden
 }
 
-function determineCourantheid(apr: number): 'hoog' | 'gemiddeld' | 'laag' {
-  if (apr >= 0.7) return 'hoog';
-  if (apr >= 0.4) return 'gemiddeld';
-  return 'laag';
+// Courantheid bepalen op basis van genormaliseerde APR (0-1 schaal)
+function determineCourantheid(normalizedApr: number): 'hoog' | 'gemiddeld' | 'laag' {
+  if (normalizedApr >= 0.7) return 'hoog';      // 70%+ APR
+  if (normalizedApr >= 0.4) return 'gemiddeld'; // 40-70% APR
+  return 'laag';                                 // <40% APR
 }
