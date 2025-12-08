@@ -98,7 +98,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
       vehicleLicenseNumber: selectedVehicle?.licenseNumber,
       vehicleVin: selectedVehicle?.vin,
       dueDate: formData.dueDate,
-      status: "toegewezen" as const,
+      status: task?.status || "toegewezen",
       priority: formData.priority,
       category: formData.category,
       location: formData.location,
