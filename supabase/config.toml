@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.jpcars-lookup]
 verify_jwt = false
+
+[functions.rdw-lookup]
+verify_jwt = false
