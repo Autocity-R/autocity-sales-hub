@@ -26,3 +26,9 @@ verify_jwt = false
 
 [functions.rdw-lookup]
 verify_jwt = false
+
+[functions.taxatie-portal-search]
+verify_jwt = false
+
+[functions.taxatie-internal-search]
+verify_jwt = false
