@@ -9,7 +9,7 @@ const corsHeaders = {
 interface JPCarsRequest {
   licensePlate?: string;
   mileage: number;
-  options?: string;
+  options?: string[];
   // Vehicle data fields
   make?: string;
   model?: string;
@@ -17,7 +17,10 @@ interface JPCarsRequest {
   fuel?: string;
   gear?: string;
   build?: number;
+  modelYear?: number;
   hp?: number;
+  kw?: number;
+  color?: string;
 }
 
 serve(async (req) => {
@@ -33,17 +36,7 @@ serve(async (req) => {
     }
 
     const requestBody: JPCarsRequest = await req.json();
-    console.log('🚗 JP Cars lookup request:', {
-      licensePlate: requestBody.licensePlate,
-      mileage: requestBody.mileage,
-      make: requestBody.make,
-      model: requestBody.model,
-      body: requestBody.body,
-      fuel: requestBody.fuel,
-      gear: requestBody.gear,
-      build: requestBody.build,
-      hp: requestBody.hp
-    });
+    console.log('🚗 JP Cars lookup request:', JSON.stringify(requestBody, null, 2));
 
     // Build the JP Cars API request body
     const jpCarsRequestBody: Record<string, unknown> = {
@@ -55,7 +48,7 @@ serve(async (req) => {
       jpCarsRequestBody.license_plate = requestBody.licensePlate.replace(/[-\s]/g, '').toUpperCase();
     }
     
-    // Always add vehicle data for better matching (even with license plate)
+    // Always add vehicle data for better matching
     if (requestBody.make) {
       jpCarsRequestBody.make = requestBody.make.toUpperCase();
     }
@@ -74,17 +67,42 @@ serve(async (req) => {
     if (requestBody.build) {
       jpCarsRequestBody.build = requestBody.build;
     }
+    // Model year (kan afwijken van build year)
+    if (requestBody.modelYear) {
+      jpCarsRequestBody.model_year = requestBody.modelYear;
+    }
     // HP is required by JP Cars, use 0 as fallback if not provided
     jpCarsRequestBody.hp = requestBody.hp || 0;
-
-    // Add options if provided
-    if (requestBody.options) {
-      jpCarsRequestBody.options = requestBody.options;
+    // KW voor meer precisie
+    if (requestBody.kw) {
+      jpCarsRequestBody.kw = requestBody.kw;
+    }
+    // Color voor betere matching
+    if (requestBody.color) {
+      jpCarsRequestBody.color = mapColor(requestBody.color);
+    }
+    // Bepaal four_doors op basis van bodyType
+    if (requestBody.body) {
+      jpCarsRequestBody.four_doors = determineFourDoors(requestBody.body);
     }
 
-    console.log('📤 Calling JP Cars API with:', jpCarsRequestBody);
+    // Map options van Nederlands naar Engels voor JP Cars
+    if (requestBody.options && requestBody.options.length > 0) {
+      const mappedOptions = mapOptionsToJPCars(requestBody.options);
+      if (mappedOptions) {
+        jpCarsRequestBody.options = mappedOptions;
+      }
+    }
 
-    const response = await fetch('https://api.nl.jp.cars/api/valuate', {
+    console.log('📤 Calling JP Cars Extended API with:', JSON.stringify(jpCarsRequestBody, null, 2));
+
+    // Gebruik de EXTENDED endpoint met extra query parameters
+    const url = new URL('https://api.nl.jp.cars/api/valuate/extended');
+    url.searchParams.append('enable_portal_urls', 'true');
+    url.searchParams.append('enable_top_dealers', 'true');
+    url.searchParams.append('percents', '10,25,50,75,90');
+
+    const response = await fetch(url.toString(), {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${JPCARS_API_TOKEN}`,
@@ -122,13 +140,9 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    console.log('✅ JP Cars response received:', {
-      value: data.value,
-      apr: data.apr,
-      windowSize: data.window_size,
-      statTurnoverExt: data.stat_turnover_ext,
-      statTurnoverInt: data.stat_turnover_int
-    });
+    
+    // LOG VOLLEDIGE RESPONSE VOOR DEBUGGING
+    console.log('📊 VOLLEDIGE JP Cars Extended Response:', JSON.stringify(data, null, 2));
 
     // Check for valuation errors
     if (data.error) {
@@ -143,27 +157,93 @@ serve(async (req) => {
       });
     }
 
-    // BELANGRIJK: APR normalisatie
-    // JP Cars geeft APR als percentage getal (bijv. 5 = 5%, 80 = 80%)
-    // We normaliseren naar decimaal (0.05, 0.80) voor interne berekeningen
+    // APR normalisatie
     const rawApr = data.apr || 0;
     const normalizedApr = rawApr > 1 ? rawApr / 100 : rawApr;
     
-    console.log('📊 APR normalisatie:', { rawApr, normalizedApr });
+    // ETR - gebruik directe waarde van JP Cars indien beschikbaar
+    const directEtr = data.etr || data.stat_turnover_days || null;
+    const calculatedEtr = directEtr || calculateETR(data, rawApr);
+    
+    // Stock stats
+    const windowSize = data.window_size || 0;
+    const stockDaysAvg = data.stock_days_average || data.stat_stock_days || null;
+    
+    // Sold stats
+    const soldCount = data.sold_count || data.stat_sold_count || 0;
+    const soldDaysAvg = data.sold_days_average || data.stat_sold_days || directEtr || calculatedEtr;
+
+    // Market discount
+    const marketDiscount = data.price_sensitivity || data.market_discount || null;
+
+    // Portal URLs
+    const portalUrls = {
+      gaspedaal: data.url_gaspedaal || null,
+      autoscout24: data.url_autoscout24 || null,
+      marktplaats: data.url_marktplaats || null,
+      jpCarsWindow: data.window_url || null,
+    };
+
+    // Top dealers
+    const topDealers = data.top_dealers?.map((dealer: Record<string, unknown>) => ({
+      name: dealer.name || dealer.dealer_name,
+      stockCount: dealer.stock_count || dealer.count || 0,
+      soldCount: dealer.sold_count || 0,
+      turnover: dealer.turnover || dealer.avg_turnover || 0,
+    })) || [];
+
+    // Value breakdown
+    const valueBreakdown = data.topdown_value_breakdown || null;
+
+    // ITR (Internal Turnover Rate)
+    const itr = data.itr || data.stat_turnover_int || null;
+
+    console.log('📈 Parsed JP Cars data:', {
+      totalValue: data.value,
+      apr: normalizedApr,
+      rawApr,
+      directEtr,
+      calculatedEtr,
+      windowSize,
+      stockDaysAvg,
+      soldCount,
+      soldDaysAvg,
+      marketDiscount,
+      itr,
+      hasPortalUrls: Object.values(portalUrls).some(v => v !== null),
+      topDealersCount: topDealers.length
+    });
 
     // Map JP Cars response to our internal format
     const jpCarsData = {
       baseValue: data.topdown_value || data.value || 0,
-      optionValue: 0,
+      optionValue: data.option_value || 0,
       totalValue: data.value || 0,
       range: {
         min: calculateRangeMin(data),
         max: calculateRangeMax(data)
       },
       confidence: calculateConfidence(data),
-      apr: normalizedApr, // Genormaliseerde APR (0-1 schaal)
-      etr: calculateETR(data, rawApr), // Pass raw APR for ETR calculation
+      apr: normalizedApr,
+      etr: calculatedEtr,
       courantheid: determineCourantheid(normalizedApr),
+      
+      // Nieuwe uitgebreide data
+      stockStats: {
+        count: windowSize,
+        avgDays: stockDaysAvg,
+      },
+      salesStats: {
+        count: soldCount,
+        avgDays: soldDaysAvg,
+      },
+      marketDiscount,
+      itr,
+      portalUrls,
+      topDealers: topDealers.length > 0 ? topDealers : undefined,
+      valueBreakdown,
+      
+      // Raw data voor debugging
       rawData: {
         windowSize: data.window_size,
         mileageMean: data.mileage_mean,
@@ -171,18 +251,9 @@ serve(async (req) => {
         statTurnoverExt: data.stat_turnover_ext,
         statTurnoverInt: data.stat_turnover_int,
         percents: data.percents,
-        windowUrl: data.window_url,
-        topdownBreakdown: data.topdown_value_breakdown,
-        rawApr: rawApr // Bewaar ook de originele waarde voor debugging
+        rawApr: rawApr
       }
     };
-
-    console.log('📈 Final JP Cars data:', {
-      totalValue: jpCarsData.totalValue,
-      apr: jpCarsData.apr,
-      etr: jpCarsData.etr,
-      courantheid: jpCarsData.courantheid
-    });
 
     return new Response(JSON.stringify({ 
       success: true,
@@ -202,6 +273,171 @@ serve(async (req) => {
     });
   }
 });
+
+// Options mapping: Dutch -> English JP Cars keywords
+function mapOptionsToJPCars(options: string[]): string {
+  const optionMap: Record<string, string> = {
+    // Dak opties
+    'panoramadak': 'panorama roof',
+    'panorama dak': 'panorama roof',
+    'schuifdak': 'sunroof',
+    'schuif-/kanteldak': 'sunroof',
+    
+    // Interieur
+    'leder': 'leather',
+    'lederen bekleding': 'leather',
+    'leer': 'leather',
+    'alcantara': 'alcantara',
+    'stoelverwarming': 'heated seats',
+    'verwarmde stoelen': 'heated seats',
+    'stoelkoeling': 'ventilated seats',
+    'geventileerde stoelen': 'ventilated seats',
+    'elektrische stoelen': 'electric seats',
+    'sportstoelen': 'sport seats',
+    'massagestoelen': 'massage seats',
+    
+    // Navigatie & Audio
+    'navigatie': 'navigation',
+    'navigatiesysteem': 'navigation',
+    'navi': 'navigation',
+    'harman kardon': 'harman kardon',
+    'harman': 'harman kardon',
+    'bose': 'bose',
+    'bang olufsen': 'bang olufsen',
+    'b&o': 'bang olufsen',
+    'burmester': 'burmester',
+    
+    // Rijhulpsystemen
+    'acc': 'adaptive cruise control',
+    'adaptive cruise control': 'adaptive cruise control',
+    'adaptieve cruisecontrol': 'adaptive cruise control',
+    'lane assist': 'lane assist',
+    'rijstrookassistent': 'lane assist',
+    'dodehoekassistent': 'blind spot',
+    'dode hoek': 'blind spot',
+    'head-up display': 'head up display',
+    'head up display': 'head up display',
+    'headup': 'head up display',
+    'hud': 'head up display',
+    
+    // Camera's
+    'camera 360': '360 camera',
+    '360 camera': '360 camera',
+    '360 graden camera': '360 camera',
+    'achteruitrijcamera': 'rear camera',
+    'camera achter': 'rear camera',
+    'parkeer camera': 'rear camera',
+    
+    // Verlichting
+    'led': 'LED',
+    'led koplampen': 'LED',
+    'matrix led': 'matrix LED',
+    'matrix': 'matrix LED',
+    'laser': 'laser',
+    'laserlicht': 'laser',
+    'adaptieve verlichting': 'adaptive lights',
+    
+    // Trekhaak
+    'trekhaak': 'tow bar',
+    'afneembare trekhaak': 'tow bar',
+    'elektrische trekhaak': 'tow bar',
+    
+    // Keyless
+    'keyless': 'keyless',
+    'keyless entry': 'keyless',
+    'keyless go': 'keyless',
+    'comfort access': 'keyless',
+    
+    // Pakketten / Uitvoeringen
+    'r-line': 'R-Line',
+    's-line': 'S-Line',
+    'amg': 'AMG',
+    'amg line': 'AMG',
+    'm pakket': 'M sport',
+    'm sport': 'M sport',
+    'gt line': 'GT Line',
+    'rs line': 'RS Line',
+    
+    // Wielopties
+    'lichtmetalen velgen': 'alloy wheels',
+    'lm velgen': 'alloy wheels',
+    '19 inch': '19 inch',
+    '20 inch': '20 inch',
+    '21 inch': '21 inch',
+    
+    // Overig
+    'elektrische achterklep': 'electric tailgate',
+    'privacy glass': 'privacy glass',
+    'getint glas': 'tinted glass',
+    'stuurverwarming': 'heated steering wheel',
+    'verwarmde stuur': 'heated steering wheel',
+    'draadloos opladen': 'wireless charging',
+    'apple carplay': 'apple carplay',
+    'android auto': 'android auto',
+    'digitaal instrumentenpaneel': 'digital cockpit',
+    'virtual cockpit': 'digital cockpit',
+  };
+
+  const mappedOptions: string[] = [];
+  
+  for (const option of options) {
+    const lowerOption = option.toLowerCase().trim();
+    
+    // Check exacte match
+    if (optionMap[lowerOption]) {
+      mappedOptions.push(optionMap[lowerOption]);
+      continue;
+    }
+    
+    // Check partial matches
+    for (const [dutch, english] of Object.entries(optionMap)) {
+      if (lowerOption.includes(dutch) || dutch.includes(lowerOption)) {
+        if (!mappedOptions.includes(english)) {
+          mappedOptions.push(english);
+        }
+        break;
+      }
+    }
+  }
+
+  console.log('🏷️ Options mapping:', { original: options, mapped: mappedOptions });
+  
+  return mappedOptions.join(' ');
+}
+
+// Color mapping: Dutch -> JP Cars format
+function mapColor(color: string): string {
+  const colorMap: Record<string, string> = {
+    'zwart': 'BLACK',
+    'wit': 'WHITE',
+    'grijs': 'GREY',
+    'zilver': 'SILVER',
+    'blauw': 'BLUE',
+    'rood': 'RED',
+    'groen': 'GREEN',
+    'bruin': 'BROWN',
+    'beige': 'BEIGE',
+    'geel': 'YELLOW',
+    'oranje': 'ORANGE',
+    'paars': 'PURPLE',
+    'goud': 'GOLD',
+  };
+  return colorMap[color.toLowerCase()] || color.toUpperCase();
+}
+
+// Determine four_doors based on body type
+function determineFourDoors(body: string): boolean {
+  const fourDoorTypes = ['Sedan', 'Stationwagen', 'Station', 'SUV', 'MPV', 'Hatchback'];
+  const twoDoorTypes = ['Coupé', 'Coupe', 'Cabrio', 'Cabriolet'];
+  
+  if (twoDoorTypes.some(t => body.toLowerCase().includes(t.toLowerCase()))) {
+    return false;
+  }
+  if (fourDoorTypes.some(t => body.toLowerCase().includes(t.toLowerCase()))) {
+    return true;
+  }
+  return true; // Default to 4 doors
+}
 
 // Body type mapping: Dutch -> JP Cars format
 function mapBodyType(body: string): string {
@@ -284,7 +520,7 @@ function calculateConfidence(data: Record<string, unknown>): number {
   return 0.40;
 }
 
-// ETR berekening - gebruikt turnover data als beschikbaar, anders APR-gebaseerde schatting
+// ETR berekening - fallback als directe ETR niet beschikbaar is
 function calculateETR(data: Record<string, unknown>, rawApr: number): number {
   // Prioriteit 1: Directe turnover statistieken van JP Cars
   const turnoverExt = data.stat_turnover_ext as number || 0;
@@ -303,22 +539,20 @@ function calculateETR(data: Record<string, unknown>, rawApr: number): number {
   }
   
   // Prioriteit 2: APR-gebaseerde schatting
-  // rawApr is in percentage (bijv. 5 = 5%, 80 = 80%)
   const aprPercent = rawApr > 1 ? rawApr : rawApr * 100;
   
   console.log('📊 ETR from APR:', { rawApr, aprPercent });
   
-  // APR is "Average Price Ratio" - hoe hoger, hoe couranter
-  if (aprPercent >= 80) return 15;   // Zeer courant: ~2 weken
-  if (aprPercent >= 60) return 22;   // Courant: ~3 weken  
-  if (aprPercent >= 40) return 35;   // Gemiddeld: ~5 weken
-  if (aprPercent >= 20) return 50;   // Minder courant: ~7 weken
-  return 60;                          // Niet courant: ~2 maanden
+  if (aprPercent >= 80) return 15;
+  if (aprPercent >= 60) return 22;
+  if (aprPercent >= 40) return 35;
+  if (aprPercent >= 20) return 50;
+  return 60;
 }
 
 // Courantheid bepalen op basis van genormaliseerde APR (0-1 schaal)
 function determineCourantheid(normalizedApr: number): 'hoog' | 'gemiddeld' | 'laag' {
-  if (normalizedApr >= 0.7) return 'hoog';      // 70%+ APR
-  if (normalizedApr >= 0.4) return 'gemiddeld'; // 40-70% APR
-  return 'laag';                                 // <40% APR
+  if (normalizedApr >= 0.7) return 'hoog';
+  if (normalizedApr >= 0.4) return 'gemiddeld';
+  return 'laag';
 }

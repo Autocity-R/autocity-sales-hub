@@ -15,7 +15,7 @@ export interface PortalListing {
   deviationReason?: string;
 }
 
-// JP Cars data (inclusief APR/ETR)
+// JP Cars data (inclusief APR/ETR en uitgebreide stats)
 export interface JPCarsData {
   baseValue: number;
   optionValue: number;
@@ -25,6 +25,37 @@ export interface JPCarsData {
   apr: number;
   etr: number;
   courantheid: 'hoog' | 'gemiddeld' | 'laag';
+  
+  // Uitgebreide statijd data
+  stockStats?: {
+    count: number;      // Aantal vergelijkbare auto's in voorraad (window_size)
+    avgDays: number | null;    // Gemiddelde statijd voorraad
+  };
+  salesStats?: {
+    count: number;      // Aantal vergelijkbare auto's verkocht
+    avgDays: number | null;    // Gemiddelde tijd tot verkoop
+  };
+  marketDiscount?: number | null;  // Gemiddelde marktdiscount (vraag - verkoop)
+  itr?: number | null;             // Internal Turnover Rate
+  
+  // Portal links van JP Cars
+  portalUrls?: {
+    gaspedaal?: string | null;
+    autoscout24?: string | null;
+    marktplaats?: string | null;
+    jpCarsWindow?: string | null;
+  };
+  
+  // Top dealers data
+  topDealers?: Array<{
+    name: string;
+    stockCount: number;
+    soldCount: number;
+    turnover: number;
+  }>;
+  
+  // Waarde breakdown
+  valueBreakdown?: Record<string, number> | null;
 }
 
 // Portal zoekfilters met correcte KM-logica
@@ -118,6 +149,7 @@ export interface TaxatieVehicleData {
   transmission: 'Automaat' | 'Handgeschakeld';
   bodyType: string; // Hatchback, Sedan, SUV, etc.
   power: number;
+  powerKw?: number; // KW naast PK
   trim: string;
   color: string;
   options: string[];
