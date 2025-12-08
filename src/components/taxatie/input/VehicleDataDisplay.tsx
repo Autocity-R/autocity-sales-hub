@@ -1,16 +1,25 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Car, Calendar, Gauge, Fuel, Settings2, Zap, Palette, Info, Box } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Car, Calendar, Gauge, Fuel, Settings2, Zap, Palette, Info, Box, Search } from 'lucide-react';
 import type { TaxatieVehicleData } from '@/types/taxatie';
 import { calculateMaxMileage, formatMileage } from '@/utils/taxatieHelpers';
 
 interface VehicleDataDisplayProps {
   vehicleData: TaxatieVehicleData;
+  onMileageChange?: (mileage: number) => void;
+  disabled?: boolean;
 }
 
-export const VehicleDataDisplay = ({ vehicleData }: VehicleDataDisplayProps) => {
+export const VehicleDataDisplay = ({ vehicleData, onMileageChange, disabled }: VehicleDataDisplayProps) => {
   const maxMileage = calculateMaxMileage(vehicleData.mileage);
+  const hasMileage = vehicleData.mileage > 0;
+
+  const handleMileageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value.replace(/\D/g, ''), 10) || 0;
+    onMileageChange?.(value);
+  };
 
   return (
     <Card className="border-l-4 border-l-primary">
@@ -39,10 +48,6 @@ export const VehicleDataDisplay = ({ vehicleData }: VehicleDataDisplayProps) => 
             )}
           </DataRow>
 
-          <DataRow icon={<Gauge className="h-4 w-4" />} label="KM-stand">
-            {formatMileage(vehicleData.mileage)}
-          </DataRow>
-
           <DataRow icon={<Fuel className="h-4 w-4" />} label="Brandstof">
             {vehicleData.fuelType}
           </DataRow>
@@ -64,6 +69,29 @@ export const VehicleDataDisplay = ({ vehicleData }: VehicleDataDisplayProps) => 
           )}
         </div>
 
+        {/* Editable mileage input */}
+        <div className="pt-3 border-t">
+          <div className="flex items-center gap-2 mb-2">
+            <Gauge className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">KM-stand:</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              type="text"
+              inputMode="numeric"
+              value={vehicleData.mileage > 0 ? vehicleData.mileage.toLocaleString('nl-NL') : ''}
+              onChange={handleMileageChange}
+              placeholder="Bijv. 45000"
+              disabled={disabled}
+              className={`font-medium ${!hasMileage ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+            />
+            <span className="text-sm text-muted-foreground">km</span>
+          </div>
+          {!hasMileage && (
+            <p className="text-xs text-destructive mt-1">Vul de kilometerstand in voor de taxatie</p>
+          )}
+        </div>
+
         {vehicleData.trim && (
           <div className="pt-2 border-t">
             <Badge variant="secondary" className="font-medium">
@@ -74,13 +102,17 @@ export const VehicleDataDisplay = ({ vehicleData }: VehicleDataDisplayProps) => 
 
         {/* Portal zoekfilter preview */}
         <div className="pt-2 border-t">
-          <div className="flex items-center gap-2 p-2 rounded-md bg-primary/10 border border-primary/20">
-            <Info className="h-4 w-4 text-primary flex-shrink-0" />
+          <div className={`flex items-center gap-2 p-2 rounded-md ${hasMileage ? 'bg-primary/10 border border-primary/20' : 'bg-muted border border-border'}`}>
+            <Search className="h-4 w-4 text-primary flex-shrink-0" />
             <div className="text-xs">
               <span className="text-primary font-medium">Portal zoekfilter:</span>
-              <span className="text-muted-foreground ml-1">
-                t/m {formatMileage(maxMileage)}
-              </span>
+              {hasMileage ? (
+                <span className="text-muted-foreground ml-1">
+                  t/m {formatMileage(maxMileage)} <span className="opacity-60">(+20k, afgerond op 10.000)</span>
+                </span>
+              ) : (
+                <span className="text-muted-foreground ml-1 italic">Vul km-stand in</span>
+              )}
             </div>
           </div>
         </div>

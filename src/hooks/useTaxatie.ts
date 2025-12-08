@@ -84,10 +84,22 @@ export const useTaxatie = () => {
     );
   }, []);
 
+  // Update vehicle mileage
+  const updateVehicleMileage = useCallback((mileage: number) => {
+    if (vehicleData) {
+      setVehicleData({ ...vehicleData, mileage });
+    }
+  }, [vehicleData]);
+
   // Start volledige taxatie
   const startTaxatie = useCallback(async () => {
     if (!vehicleData) {
       toast.error('Eerst voertuiggegevens invoeren');
+      return;
+    }
+
+    if (vehicleData.mileage <= 0) {
+      toast.error('Vul eerst de kilometerstand in');
       return;
     }
 
@@ -211,5 +223,6 @@ export const useTaxatie = () => {
     startTaxatie,
     submitFeedback,
     resetTaxatie,
+    updateVehicleMileage,
   };
 };
