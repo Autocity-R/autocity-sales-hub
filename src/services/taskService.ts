@@ -188,6 +188,8 @@ export const createTask = async (task: Omit<Task, 'id' | 'createdAt' | 'updatedA
 
 export const updateTask = async (taskId: string, updates: Partial<Task>): Promise<Task> => {
   try {
+    console.log('[taskService] updateTask called with id:', taskId, 'updates:', updates);
+    
     const updateData: any = {
       updated_at: new Date().toISOString()
     };
@@ -209,6 +211,8 @@ export const updateTask = async (taskId: string, updates: Partial<Task>): Promis
     if (updates.estimatedDuration !== undefined) updateData.estimated_duration = updates.estimatedDuration || null;
     if (updates.notes !== undefined) updateData.notes = updates.notes || null;
     if (updates.damageParts !== undefined) updateData.damage_parts = updates.damageParts ? { parts: updates.damageParts.parts } : null;
+
+    console.log('[taskService] Sending update to Supabase:', updateData);
 
     const { data, error } = await supabase
       .from('tasks')

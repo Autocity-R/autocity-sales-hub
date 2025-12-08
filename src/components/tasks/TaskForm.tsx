@@ -59,15 +59,20 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
   });
 
   const saveTaskMutation = useMutation({
-    mutationFn: task ? 
-      (taskData: any) => updateTask(task.id, taskData) :
-      createTask,
-    onSuccess: () => {
+    mutationFn: async (taskData: any) => {
+      if (task) {
+        console.log('[TaskForm] Updating task with data:', taskData);
+        return updateTask(task.id, taskData);
+      }
+      return createTask(taskData);
+    },
+    onSuccess: (data) => {
+      console.log('[TaskForm] Task saved successfully:', data);
       toast.success(task ? "Taak succesvol bijgewerkt" : "Taak succesvol aangemaakt");
       onTaskAdded();
     },
     onError: (error) => {
-      console.error("Error saving task:", error);
+      console.error("[TaskForm] Error saving task:", error);
       toast.error(task ? "Fout bij het bijwerken van de taak" : "Fout bij het aanmaken van de taak");
     }
   });
