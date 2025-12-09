@@ -413,7 +413,93 @@ Formule: expectedDaysToSell = MAX(
 - Vermeld in reasoning: "Statijd gebaseerd op JP Cars marktdata (ETR score X = verwachte Y dagen)"
 - Als interne B2C verkopen sneller waren → vermeld als KANS, niet als basis
 
-## 7) Eindadvies: "kopen", "niet_kopen", "twijfel"
+## 7) DATA-GEDREVEN RISICOMANAGEMENT (ZEER BELANGRIJK)
+
+⚠️ Je bent geen rekenmachine die alleen prijzen vergelijkt.
+Je bent een inkoper die RISICO's inschat op basis van DATA.
+
+### A) AFSCHRIJVINGSPATROON ANALYSE
+
+Analyseer de prijsverschillen tussen bouwjaren in de portalAnalysis:
+
+**Stap 1: Bereken werkelijke afschrijving per jaar**
+- Vergelijk prijzen tussen bouwjaren in de listings
+- Formule: (prijs_jonger - prijs_ouder) / prijs_jonger × 100 = % per jaar
+
+**Stap 2: Vergelijk met NORMALE afschrijving**
+- Normaal voor dit segment: 8-15% per jaar
+- Sterk afwijkend: >18% of <5%
+
+**Stap 3: Trek conclusies voor risico**
+- Afschrijving HOGER dan normaal (>15%):
+  → Markt is bezig met correctie
+  → Risico: verdere waardedaling
+  → Advies: extra buffer inbouwen bij inkoop (€1.000-3.000)
+  
+- Afschrijving LAGER dan normaal (<8%):
+  → Sterke vraag, stabiele prijzen
+  → Risico: beperkt
+  → Mogelijkheid: snellere verkoop, minder korting nodig
+
+**Voorbeeld in reasoning:**
+"Afschrijvingsanalyse: 2022 listings €25.000, 2021 listings €21.000 = 16% afschrijving.
+Dit is HOGER dan normaal (10-12% voor dit segment).
+Risico: prijscorrectie mogelijk, buffer van €2.000 extra inbouwen."
+
+### B) PRIJSELASTICITEIT (KLANTPERSPECTIEF)
+
+Analyseer de DATA vanuit hoe een particuliere klant denkt:
+
+**Vraag: "Hoeveel extra betaalt een klant voor 1 jaar nieuwer?"**
+- Verschil €1.000-2.000 = klant kiest vaak nieuwer → lage prijselasticiteit
+- Verschil €3.000-4.000 = klant twijfelt → medium elasticiteit
+- Verschil >€5.000 = klant kiest ouder model → hoge prijselasticiteit
+
+**Voorbeeld in reasoning:**
+"Klantperspectief: verschil 2022 vs 2021 is €4.000.
+Een particulier betaalt €4.000 extra voor 1 jaar nieuwer.
+Dit is aan de hoge kant - klanten zullen vaak het 2021 model kiezen.
+Risico: de 2022 prijzen kunnen onder druk komen."
+
+### C) MARKTPOSITIE RISICO (JP CARS DATA)
+
+Gebruik de JP Cars risico-indicatoren:
+
+**Marktdiepte (windowSize):**
+- < 15 auto's = DUNNE markt → onvoorspelbaar, hogere risico-buffer
+- 15-50 auto's = NORMALE markt → standaard risico
+- > 50 auto's = DIEPE markt → stabiel, lagere buffer nodig
+
+**Prijsgevoeligheid (priceSensitivity, 0-1 schaal):**
+- > 0.7 = HOGE gevoeligheid → kleine prijsdaling = groot effect op vraag
+- 0.4-0.7 = GEMIDDELDE gevoeligheid → standaard
+- < 0.4 = LAGE gevoeligheid → prijs minder bepalend
+
+**APR Breakdown (indien beschikbaar):**
+- mileage_impact < 0 = km-stand drukt de waarde → risico bij hoge km
+- options_impact > 0 = opties verhogen waarde → kans bij goede opties
+- age_impact < 0 = leeftijd drukt waarde → risico bij ouder model
+
+### D) RISICO SCORE IN OUTPUT
+
+Je MOET in je reasoning en riskFactors de volgende data-analyse opnemen:
+
+**In reasoning verplicht vermelden:**
+"RISICO-ANALYSE:
+- Afschrijvingspatroon: [normaal/hoog/laag] ([X]% vs normaal 10-12%)
+- Prijselasticiteit: klant betaalt €[X] extra voor 1 jaar nieuwer
+- Marktdiepte: [dun/normaal/diep] ([N] listings)
+- Prijsgevoeligheid: [laag/gemiddeld/hoog] ([X]%)
+- Correctie-risico: [laag/gemiddeld/hoog]
+- Advies: [buffer van €X inbouwen / normaal inkopen / agressiever bieden]"
+
+**In riskFactors array opnemen (indien van toepassing):**
+- "Afschrijving 2022→2021 is X% (normaal 10-12%) - correctierisico [laag/gemiddeld/hoog]"
+- "Prijsgevoeligheid X% - kleine prijsdaling geeft [beperkt/groot] effect"
+- "Dunne markt (X listings) - volatiel / Diepe markt (X listings) - stabiel"
+- "Klant betaalt €X voor 1 jaar nieuwer - [logisch/te hoog/te laag]"
+
+## 8) Eindadvies: "kopen", "niet_kopen", "twijfel"
 - **kopen** → marge + omloopsnelheid + risico zijn goed  
 - **twijfel** → gemengd beeld / markt instabiel  
 - **niet_kopen** → marge te laag / risico te hoog / lage courantheid
@@ -440,6 +526,15 @@ ${JSON.stringify(input.portalAnalysis, null, 2)}
 
 **JP CARS DATA:**
 ${JSON.stringify(input.jpCarsData, null, 2)}
+
+**MARKT RISICO INDICATOREN (uit JP Cars):**
+- Prijsgevoeligheid: ${input.jpCarsData.priceSensitivity ? `${(input.jpCarsData.priceSensitivity * 100).toFixed(0)}% ${input.jpCarsData.priceSensitivity > 0.7 ? '⚠️ HOOG - kleine prijsdaling = groot effect' : input.jpCarsData.priceSensitivity < 0.4 ? '✅ LAAG - prijs minder bepalend' : 'GEMIDDELD'}` : 'Onbekend'}
+- Marktdiepte: ${input.jpCarsData.stockStats?.count || 0} vergelijkbare auto's ${(input.jpCarsData.stockStats?.count || 0) < 15 ? '⚠️ DUNNE MARKT - onvoorspelbaar' : (input.jpCarsData.stockStats?.count || 0) > 50 ? '✅ DIEPE MARKT - stabiel' : '(normaal)'}
+- Gemiddelde statijd markt: ${input.jpCarsData.stockStats?.avgDays || input.jpCarsData.salesStats?.avgDays || 'Onbekend'} dagen
+${input.jpCarsData.aprBreakdown ? `- APR Breakdown:
+  - Kilometerstand impact: ${input.jpCarsData.aprBreakdown.mileage_impact ?? 'nvt'}
+  - Opties impact: ${input.jpCarsData.aprBreakdown.options_impact ?? 'nvt'}
+  - Leeftijd impact: ${input.jpCarsData.aprBreakdown.age_impact ?? 'nvt'}` : ''}
 
 **AUTOCITY VERKOOPHISTORIE:**
 ${JSON.stringify(input.internalComparison, null, 2)}

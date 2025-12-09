@@ -272,8 +272,16 @@ serve(async (req) => {
     const soldCount = data.sold_count || data.stat_sold_count || 0;
     const soldDaysAvg = data.sold_days_average || data.stat_sold_days || null;
 
-    // Market discount
-    const marketDiscount = data.price_sensitivity || data.market_discount || null;
+    // Market discount & price sensitivity
+    const marketDiscount = data.market_discount || null;
+    const priceSensitivity = data.price_sensitivity || null;
+    
+    // APR Breakdown - geeft inzicht in WAAROM de APR score zo is
+    const aprBreakdown = data.apr_breakdown ? {
+      mileage_impact: data.apr_breakdown.mileage_impact || null,
+      options_impact: data.apr_breakdown.options_impact || null,
+      age_impact: data.apr_breakdown.age_impact || null,
+    } : null;
 
     // Portal URLs
     const portalUrls = {
@@ -306,6 +314,8 @@ serve(async (req) => {
       soldCount,
       soldDaysAvg,
       marketDiscount,
+      priceSensitivity,
+      aprBreakdown,
       itr,
       hasPortalUrls: Object.values(portalUrls).some(v => v !== null),
       topDealersCount: topDealers.length
@@ -335,6 +345,8 @@ serve(async (req) => {
         avgDays: soldDaysAvg,
       },
       marketDiscount,
+      priceSensitivity,
+      aprBreakdown,
       itr,
       portalUrls,
       topDealers: topDealers.length > 0 ? topDealers : undefined,
