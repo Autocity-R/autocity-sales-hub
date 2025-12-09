@@ -59,6 +59,34 @@ interface PortalAnalysis {
   logicalDeviations: string[];
 }
 
+// Gaspedaal numerieke codes voor brandstof
+function getFuelCode(fuelType: string): string {
+  const fuelMap: Record<string, string> = {
+    'benzine': '1',
+    'diesel': '2',
+    'hybride': '25',
+    'elektrisch': '9',
+    'lpg': '4',
+    'plug-in hybride': '25',
+    'mild hybride': '25',
+    'full hybride': '25',
+  };
+  const normalized = fuelType.toLowerCase().trim();
+  return fuelMap[normalized] || '';
+}
+
+// Gaspedaal numerieke codes voor transmissie
+function getTransmissionCode(transmission: string): string {
+  const transMap: Record<string, string> = {
+    'automaat': '14',
+    'handgeschakeld': '16',
+    'handmatig': '16',
+    'manueel': '16',
+  };
+  const normalized = transmission.toLowerCase().trim();
+  return transMap[normalized] || '';
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -74,24 +102,39 @@ serve(async (req) => {
       throw new Error('OPENAI_API_KEY not configured');
     }
 
-    // Build search filters - ZELFDE BOUWJAAR OF NIEUWER (accurate taxatie)
-    const buildYearFrom = vehicleData.buildYear;      // Zelfde bouwjaar als minimum
-    const buildYearTo = vehicleData.buildYear + 1;    // Max 1 jaar jonger
+    // Build search filters
+    // Primaire range: zelfde bouwjaar of nieuwer
+    const buildYearFrom = vehicleData.buildYear;
+    const buildYearTo = vehicleData.buildYear + 1;
+    // Fallback range: 1 jaar ouder toevoegen als primaire zoek niets vindt
+    const buildYearFallback = vehicleData.buildYear - 1;
     const mileageMax = Math.ceil((vehicleData.mileage + 20000) / 10000) * 10000;
     
-    // Genereer directe portal zoek-URLs
+    // Genereer directe portal zoek-URLs met CORRECTE codes
     const brandSlug = vehicleData.brand.toLowerCase().replace(/\s+/g, '-');
     const modelSlug = vehicleData.model.toLowerCase().replace(/\s+/g, '-');
     const fuelSlug = vehicleData.fuelType.toLowerCase().replace(/\s+/g, '-');
-    const transmissionSlug = vehicleData.transmission === 'Automaat' ? 'AUTOMATISCH' : 'HANDGESCHAKELD';
+    
+    // Gaspedaal gebruikt numerieke codes
+    const transmissionCode = getTransmissionCode(vehicleData.transmission);
+    const fuelCode = getFuelCode(vehicleData.fuelType);
+    
+    // Bouw Gaspedaal URL met numerieke codes (ZONDER bmax - die is te restrictief)
+    let gaspedaalUrl = `https://www.gaspedaal.nl/${brandSlug}/${modelSlug}`;
+    if (fuelSlug) gaspedaalUrl += `/${fuelSlug}`;
+    gaspedaalUrl += `?bmin=${buildYearFrom}&kmax=${mileageMax}`;
+    if (transmissionCode) gaspedaalUrl += `&trns=${transmissionCode}`;
+    gaspedaalUrl += `&srt=pr-a`;
     
     const directSearchUrls = {
-      gaspedaal: `https://www.gaspedaal.nl/${brandSlug}/${modelSlug}/${fuelSlug}?bmin=${buildYearFrom}&bmax=${buildYearTo}&kmax=${mileageMax}&trns=${transmissionSlug}&srt=pr-a`,
-      autoscout24: `https://www.autoscout24.nl/lst/${brandSlug}/${modelSlug}?fregfrom=${buildYearFrom}&fregto=${buildYearTo}&kmto=${mileageMax}&fuel=${fuelSlug}&sort=price&asc=true`,
-      autotrack: `https://www.autotrack.nl/auto/${brandSlug}/${modelSlug}?bouwjaar_van=${buildYearFrom}&bouwjaar_tot=${buildYearTo}&km_tot=${mileageMax}`
+      gaspedaal: gaspedaalUrl,
+      autoscout24: `https://www.autoscout24.nl/lst/${brandSlug}/${modelSlug}?fregfrom=${buildYearFrom}&kmto=${mileageMax}&fuel=${fuelSlug}&sort=price&asc=true`,
+      autotrack: `https://www.autotrack.nl/auto/${brandSlug}/${modelSlug}?bouwjaar_van=${buildYearFrom}&km_tot=${mileageMax}`
     };
 
-    // Volledige inkoper-prompt met STRIKTE filters
+    console.log('🔗 Direct search URLs generated:', directSearchUrls);
+
+    // Volledige inkoper-prompt met STRIKTE filters en FALLBACK instructies
     const searchPrompt = `
 # OPDRACHT: ECHTE PORTAL SEARCH ALS AUTOCITY INKOPER
 
@@ -115,22 +158,28 @@ ${vehicleData.keywords?.length ? `Keywords: ${vehicleData.keywords.join(', ')}` 
 
 ## FILTERING REGELS (VERPLICHT!)
 
-### HARDE FILTERS - Listings MOETEN voldoen aan:
-- Bouwjaar: MOET tussen ${buildYearFrom} en ${buildYearTo} liggen
-- Kilometerstand: MOET onder ${mileageMax.toLocaleString('nl-NL')} km zijn
+### STAP 1: PRIMAIRE ZOEKOPDRACHT
+Zoek EERST met deze filters:
+- Bouwjaar: ${buildYearFrom} en nieuwer (bmin=${buildYearFrom}, GEEN bmax!)
+- Kilometerstand: onder ${mileageMax.toLocaleString('nl-NL')} km
 - Brandstof: ${vehicleData.fuelType}
 - Transmissie: ${vehicleData.transmission}
-- Merk & Model: ${vehicleData.brand} ${vehicleData.model}
+
+### STAP 2: FALLBACK BIJ WEINIG RESULTATEN
+Als je MINDER DAN 5 listings vindt met bouwjaar ${buildYearFrom}+:
+→ Zoek OOK naar bouwjaar ${buildYearFallback} (1 jaar ouder)
+→ Markeer deze als isLogicalDeviation: true
+→ deviationReason: "Bouwjaar ${buildYearFallback} (1 jaar ouder dan ${buildYearFrom})"
 
 ### PRIMARY COMPARABLE criteria:
-✓ Bouwjaar ${buildYearFrom}-${buildYearTo}
+✓ Bouwjaar ${buildYearFrom} of nieuwer
 ✓ Kilometerstand < ${mileageMax.toLocaleString('nl-NL')} km
 ✓ Zelfde brandstof: ${vehicleData.fuelType}
 ✓ Zelfde transmissie: ${vehicleData.transmission}
 ✓ Vergelijkbare uitvoering/trim
 
 ### LOGISCHE AFWIJKING markeren als:
-- Bouwjaar buiten ${buildYearFrom}-${buildYearTo} → deviationReason: "Bouwjaar X buiten range ${buildYearFrom}-${buildYearTo}"
+- Bouwjaar ${buildYearFallback} (1 jaar ouder) → deviationReason: "Bouwjaar ${buildYearFallback} (1 jaar ouder)"
 - KM boven ${mileageMax.toLocaleString('nl-NL')} → deviationReason: "Te veel km: X vs max ${mileageMax.toLocaleString('nl-NL')}"
 - Andere brandstof → deviationReason: "Verkeerde brandstof: X ipv ${vehicleData.fuelType}"
 - Andere transmissie → deviationReason: "Verkeerde transmissie: X ipv ${vehicleData.transmission}"
@@ -139,34 +188,21 @@ ${vehicleData.keywords?.length ? `Keywords: ${vehicleData.keywords.join(', ')}` 
 
 ## ZOEKOPDRACHTEN PER PORTAL
 
-Voer deze EXACTE zoekopdrachten uit:
+Gebruik deze EXACTE URLs om te zoeken (sorteer op laagste prijs):
 
-1. **gaspedaal.nl**: 
-   Zoek: "${vehicleData.brand} ${vehicleData.model}" 
-   Filters: bouwjaar ${buildYearFrom}-${buildYearTo}, max ${mileageMax} km, ${vehicleData.fuelType}, ${vehicleData.transmission}
+1. **gaspedaal.nl**: ${directSearchUrls.gaspedaal}
    
-2. **autoscout24.nl**: 
-   Zoek: ${vehicleData.brand} ${vehicleData.model}
-   Filters: Erstzulassung ${buildYearFrom}-${buildYearTo}, max ${mileageMax} km
+2. **autoscout24.nl**: ${directSearchUrls.autoscout24}
    
-3. **marktplaats.nl/auto**: 
-   Zoek: "${vehicleData.brand} ${vehicleData.model}"
-   Filters: bouwjaar, kilometerstand
+3. **marktplaats.nl/auto**: Zoek "${vehicleData.brand} ${vehicleData.model}" met bouwjaar ${buildYearFrom}+
    
-4. **autotrack.nl**: 
-   Zoek: ${vehicleData.brand} ${vehicleData.model}
-   Filters: bouwjaar ${buildYearFrom}-${buildYearTo}
+4. **autotrack.nl**: ${directSearchUrls.autotrack}
 
 ## KRITIEKE ZOEKSTRATEGIE - SORTEER OP LAAGSTE PRIJS!
 
 **ALS INKOPER WIL IK DE ONDERKANT VAN DE MARKT ZIEN!**
 
-1. SORTEER ALTIJD OP PRIJS VAN LAAG NAAR HOOG op elke portal:
-   - Gaspedaal: voeg "srt=pr-a" toe aan URL (prijs oplopend)
-   - AutoScout24: sort=price&asc=true
-   - Marktplaats: sorteer op prijs laag-hoog
-   - AutoTrack: sorteer op prijs
-
+1. SORTEER ALTIJD OP PRIJS VAN LAAG NAAR HOOG op elke portal
 2. Begin bij de GOEDKOOPSTE advertenties en werk naar boven
 3. De goedkoopste listings zijn CRUCIAAL voor taxatie!
 4. Als alle prijzen binnen €3.000 van elkaar liggen, zoek breder
@@ -188,7 +224,7 @@ Zoek 15-20 ECHTE listings (minstens 15!) en retourneer ALLEEN dit JSON object (g
       "url": "https://www.gaspedaal.nl/... of https://www.vaartland.nl/...",
       "price": 27500,
       "mileage": 45000,
-      "buildYear": 2021,
+      "buildYear": 2023,
       "title": "Volledige advertentie titel",
       "options": ["Navigatie", "LED", "Achteruitrijcamera"],
       "color": "Zwart",
@@ -203,19 +239,19 @@ Zoek 15-20 ECHTE listings (minstens 15!) en retourneer ALLEEN dit JSON object (g
       "url": "https://www.autoscout24.nl/...",
       "price": 24900,
       "mileage": 85000,
-      "buildYear": 2020,
+      "buildYear": ${buildYearFallback},
       "title": "Advertentie titel",
       "options": ["Airco"],
       "color": "Grijs",
       "matchScore": 0.60,
       "isPrimaryComparable": false,
       "isLogicalDeviation": true,
-      "deviationReason": "Te veel km: 85.000 vs max ${mileageMax.toLocaleString('nl-NL')}"
+      "deviationReason": "Bouwjaar ${buildYearFallback} (1 jaar ouder)"
     }
   ],
   "logicalDeviations": [
-    "Listing X heeft te veel km (85.000 vs max ${mileageMax.toLocaleString('nl-NL')})",
-    "Listing Y is bouwjaar 2019 (buiten range ${buildYearFrom}-${buildYearTo})"
+    "Listing X heeft bouwjaar ${buildYearFallback} (1 jaar ouder dan ${buildYearFrom})",
+    "Listing Y heeft te veel km (85.000 vs max ${mileageMax.toLocaleString('nl-NL')})"
   ]
 }
 
@@ -224,8 +260,8 @@ Zoek 15-20 ECHTE listings (minstens 15!) en retourneer ALLEEN dit JSON object (g
 1. ALLEEN ECHTE URLs die daadwerkelijk werken - geen verzonnen links!
 2. De URL kan een doorverwijzing zijn (bijv. vaartland.nl via gaspedaal.nl)
 3. ALLE listings moeten een werkende URL hebben
-4. Als je minder dan 10 listings vindt, zoek breder maar markeer de afwijkingen
-5. PRIMARY COMPARABLE = voldoet aan ALLE harde filters
+4. Als je minder dan 10 listings vindt met bouwjaar ${buildYearFrom}+, zoek ook bouwjaar ${buildYearFallback} en markeer als logische afwijking
+5. PRIMARY COMPARABLE = voldoet aan ALLE harde filters (bouwjaar ${buildYearFrom}+)
 6. Bereken lowestPrice en medianPrice ALLEEN op basis van primaryComparables
 7. Log ELKE afwijking in logicalDeviations array
 8. START ALTIJD MET DE GOEDKOOPSTE ADVERTENTIES - dit is de onderkant van de markt!
@@ -233,7 +269,16 @@ Zoek 15-20 ECHTE listings (minstens 15!) en retourneer ALLEEN dit JSON object (g
 `;
 
     console.log('📡 Calling OpenAI Responses API with web_search_preview...');
-    console.log('🎯 Filters:', { buildYearFrom, buildYearTo, mileageMax, fuelType: vehicleData.fuelType, transmission: vehicleData.transmission });
+    console.log('🎯 Filters:', { 
+      buildYearFrom, 
+      buildYearTo, 
+      buildYearFallback,
+      mileageMax, 
+      fuelType: vehicleData.fuelType, 
+      fuelCode,
+      transmission: vehicleData.transmission,
+      transmissionCode 
+    });
 
     // OpenAI Responses API met web search tool
     const response = await fetch('https://api.openai.com/v1/responses', {
@@ -284,6 +329,7 @@ Zoek 15-20 ECHTE listings (minstens 15!) en retourneer ALLEEN dit JSON object (g
     }
 
     console.log('✅ Output text received, length:', outputText.length);
+    console.log('📝 First 500 chars of output:', outputText.substring(0, 500));
 
     // Extract JSON from the output (may be wrapped in markdown code blocks)
     let jsonContent = outputText;
@@ -297,6 +343,43 @@ Zoek 15-20 ECHTE listings (minstens 15!) en retourneer ALLEEN dit JSON object (g
       if (jsonStartIndex !== -1 && jsonEndIndex !== -1) {
         jsonContent = outputText.substring(jsonStartIndex, jsonEndIndex + 1);
       }
+    }
+
+    // Check if we got valid JSON
+    if (!jsonContent.startsWith('{')) {
+      console.error('❌ No valid JSON found in response. Got:', jsonContent.substring(0, 200));
+      console.log('⚠️ OpenAI returned text instead of JSON - market may be thin or search failed');
+      
+      // Return empty result with warning
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          lowestPrice: 0,
+          medianPrice: 0,
+          highestPrice: 0,
+          listingCount: 0,
+          primaryComparableCount: 0,
+          listings: [],
+          logicalDeviations: ['OpenAI kon geen listings vinden - controleer handmatig via de directe links'],
+          appliedFilters: {
+            brand: vehicleData.brand,
+            model: vehicleData.model,
+            buildYearFrom,
+            buildYearTo,
+            mileageMax,
+            fuelType: vehicleData.fuelType,
+            transmission: vehicleData.transmission,
+            bodyType: vehicleData.bodyType,
+            keywords: vehicleData.keywords || [],
+            requiredOptions: vehicleData.options || [],
+          },
+          directSearchUrls,
+          searchFailed: true,
+          failureReason: 'OpenAI returned text instead of structured JSON - check direct URLs manually'
+        }
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const analysisData = JSON.parse(jsonContent);
