@@ -38,6 +38,10 @@ interface InternalComparison {
   averageMargin: number;
   averageDaysToSell: number;
   soldLastYear: number;
+  soldB2C: number;
+  soldB2B: number;
+  averageDaysToSell_B2C: number | null;
+  note: string;
   similarVehicles: SimilarVehicleSale[];
 }
 
@@ -130,21 +134,37 @@ serve(async (req) => {
       validCount++;
     }
 
-    // Calculate averages
+    // Separate B2B and B2C sales
+    const b2cVehicles = similarVehicles.filter(v => v.channel === 'B2C');
+    const b2bVehicles = similarVehicles.filter(v => v.channel === 'B2B');
+
+    // Calculate averages (all channels - for context)
     const averageMargin = validCount > 0 ? Math.round((totalMargin / validCount) * 10) / 10 : 18;
     const averageDaysToSell = validCount > 0 ? Math.round(totalDaysToSell / validCount) : 21;
+
+    // Calculate B2C-only average (more relevant for market comparison)
+    const b2cDaysSum = b2cVehicles.reduce((sum, v) => sum + v.daysToSell, 0);
+    const averageDaysToSell_B2C = b2cVehicles.length > 0 
+      ? Math.round(b2cDaysSum / b2cVehicles.length) 
+      : null;
 
     const internalComparison: InternalComparison = {
       averageMargin,
       averageDaysToSell,
       soldLastYear: validCount,
+      soldB2C: b2cVehicles.length,
+      soldB2B: b2bVehicles.length,
+      averageDaysToSell_B2C,
+      note: `⚠️ Interne data is INFORMATIEF. B2B verkopen (${b2bVehicles.length}x) niet meegeteld voor statijd. Gebruik JP Cars ETR als primaire bron.`,
       similarVehicles: similarVehicles.slice(0, 10), // Return max 10 vehicles
     };
 
     console.log('✅ Internal comparison complete:', {
       soldLastYear: validCount,
+      soldB2C: b2cVehicles.length,
+      soldB2B: b2bVehicles.length,
       averageMargin: `${averageMargin}%`,
-      averageDaysToSell: `${averageDaysToSell} dagen`
+      averageDaysToSell_B2C: averageDaysToSell_B2C ? `${averageDaysToSell_B2C} dagen` : 'geen B2C data'
     });
 
     return new Response(JSON.stringify({

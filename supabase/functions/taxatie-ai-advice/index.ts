@@ -63,6 +63,10 @@ interface InternalComparison {
   averageMargin: number;
   averageDaysToSell: number;
   soldLastYear: number;
+  soldB2C: number;
+  soldB2B: number;
+  averageDaysToSell_B2C: number | null;
+  note?: string;
   similarVehicles: Array<{
     id: string;
     brand: string;
@@ -190,24 +194,51 @@ Inkoop =
 - Directe kosten = schade, reparaties, transport  
 - Rond af naar logische biedbedragen (tientallen/duizenden)
 
-## 4) JP Cars (APR/ETR) is NIET bindend — alleen indicatief
-Gebruik JP Cars als volgt:
+## 4) JP Cars (APR/ETR/Stock Days) is BINDEND voor STATIJD
+⚠️ ZEER BELANGRIJK - JP Cars bepaalt de verwachte statijd:
 
-- **APR hoog, ETR laag → zeer courant → lagere marge oké → bied iets hoger**  
-- **APR laag of ETR hoog → risicovol → hogere marge nodig → bied lager**  
-- Als JP Cars boven de markt zit → benoemen → volg portalprijzen  
-- Als JP Cars onder de markt zit → benoemen → waarschuw voor dalende markt
+- **JP Cars ETR (Expected Turnover Rate)** = PRIMAIRE BRON voor expectedDaysToSell
+- JP Cars ETR is OPTIMISTISCH - corrigeer met factor 3-5x voor realistische B2C statijd
+- Als JP Cars ETR = 5 dagen → expectedDaysToSell = minimaal 20-35 dagen
+- Als stockStats.avgDays beschikbaar → dit is realistischer dan ETR
+- Als salesStats.avgDays beschikbaar → combineer met stockStats voor beste schatting
 
-## 5) Autocity-historie (internalComparison)
-- Lage statijden + gezonde marges → agressiever advies  
-- Hoge statijden of lage marges → voorzichtiger advies  
-- B2C verkopen wegen zwaarder dan B2B
+**BINDING:** expectedDaysToSell = MAX(JP Cars stockStats.avgDays, ETR × 4, 20)
 
-## 6) Omloopsnelheid boven marge
-- Geef expectedDaysToSell mee met realistische schatting  
-- targetMargin past bij strategisch advies  
-- Snelle verkoop (<15 dagen) → lagere targetMargin acceptabel  
-- Trage verkoop (>30 dagen) → hogere targetMargin nodig
+Gebruik JP Cars courantheid als volgt:
+- **courantheid = 'hoog'** → expectedDaysToSell = 20-30 dagen  
+- **courantheid = 'gemiddeld'** → expectedDaysToSell = 30-45 dagen  
+- **courantheid = 'laag'** → expectedDaysToSell = 45-60+ dagen
+
+## 5) Autocity-historie (internalComparison) = INFORMATIEF, NIET BINDEND voor statijd
+⚠️ KRITIEK: Interne verkopen bepalen NIET de expectedDaysToSell!
+
+- **soldB2B** = B2B verkopen (vaak 2-10 dagen) - NIET gebruiken voor statijd!
+- **soldB2C** = B2C verkopen - ter info, maar sample size vaak te klein
+- **averageDaysToSell** = ALLEEN ter context, niet bindend
+- Als sample size < 5 → negeer interne statijden volledig
+
+Gebruik interne data WEL voor:
+- Bevestiging dat Autocity dit type succesvol verkoopt
+- Marge-verwachtingen (averageMargin)
+- Risico-inschatting ("wij verkochten 3x vergelijkbaar met goede marge")
+
+⛔ NIET DOEN:
+- Interne B2B statijden (2-10 dagen) gebruiken voor expectedDaysToSell
+- Concluderen "10 dagen statijd" omdat wij 1x snel verkochtten
+- Sample size < 5 als betrouwbare data behandelen
+
+## 6) Omloopsnelheid berekening (BELANGRIJK)
+De expectedDaysToSell MOET gebaseerd zijn op JP Cars data:
+
+Formule: expectedDaysToSell = MAX(
+  JP Cars stockStats.avgDays,
+  JP Cars ETR × 4,
+  courantheid === 'laag' ? 45 : courantheid === 'gemiddeld' ? 30 : 20
+)
+
+- Vermeld in reasoning: "Statijd gebaseerd op JP Cars marktdata"
+- Als interne B2C verkopen sneller waren → vermeld als KANS, niet als basis
 
 ## 7) Eindadvies: "kopen", "niet_kopen", "twijfel"
 - **kopen** → marge + omloopsnelheid + risico zijn goed  
