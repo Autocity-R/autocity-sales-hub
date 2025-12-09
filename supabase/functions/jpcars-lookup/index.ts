@@ -253,10 +253,16 @@ serve(async (req) => {
     // APR & ETR - Schaal 1-5 van JP Cars (NL markt)
     // APR: 5 = beste prijspositie, 1 = slechtste
     // ETR: 5 = snelste doorlooptijd, 1 = langzaamste
+    // BELANGRIJK: ETR zit in stat_turnover_ext, NIET in data.etr!
     const apr = data.apr || 3; // Default naar gemiddeld (3)
-    const etr = data.etr || 3; // Default naar gemiddeld (3)
+    const etr = data.stat_turnover_ext || 3; // FIXED: was data.etr, nu correct: stat_turnover_ext
     
-    console.log('📊 JP Cars APR/ETR (1-5 schaal):', { apr, etr });
+    console.log('📊 JP Cars APR/ETR (1-5 schaal):', { 
+      apr, 
+      etr, 
+      rawStatTurnoverExt: data.stat_turnover_ext,
+      rawStatTurnoverInt: data.stat_turnover_int
+    });
     
     // Stock stats - ECHTE DAGEN
     const windowSize = data.window_size || 0;
@@ -288,8 +294,8 @@ serve(async (req) => {
     // Value breakdown
     const valueBreakdown = data.topdown_value_breakdown || null;
 
-    // ITR (Internal Turnover Rate)
-    const itr = data.itr || data.stat_turnover_int || null;
+    // ITR (Internal Turnover Rate) - ook schaal 1-5
+    const itr = data.stat_turnover_int || null;
 
     console.log('📈 Parsed JP Cars data:', {
       totalValue: data.value,
@@ -315,8 +321,8 @@ serve(async (req) => {
         max: calculateRangeMax(data)
       },
       confidence: calculateConfidence(data),
-      apr: apr,  // Schaal 1-5
-      etr: etr,  // Schaal 1-5
+      apr: apr,  // Schaal 1-5 (prijspositie)
+      etr: etr,  // Schaal 1-5 (doorloopsnelheid) - nu correct uit stat_turnover_ext
       courantheid: determineCourantheid(apr, etr),
       
       // Nieuwe uitgebreide data
@@ -333,6 +339,14 @@ serve(async (req) => {
       portalUrls,
       topDealers: topDealers.length > 0 ? topDealers : undefined,
       valueBreakdown,
+      
+      // Extra velden uit JP Cars API
+      rankTarget: data.rank_target || null,
+      rankCurrent: data.rank_current || null,
+      targetPerc: data.target_perc || null,
+      valueExex: data.value_exex || null,  // Waarde ex-BTW
+      topdownValue: data.topdown_value || null,
+      valueAtMaturity: data.value_at_maturity || null,
       
       // Fallback info
       fallbackWarning,
