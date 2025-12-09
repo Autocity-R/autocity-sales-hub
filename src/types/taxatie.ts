@@ -221,4 +221,4 @@ export interface TaxatieLoadingState {
 }
 
 // Invoer mode
-export type TaxatieInputMode = 'kenteken' | 'handmatig';
+export type TaxatieInputMode = 'kenteken' | 'handmatig' | 'jpcars';

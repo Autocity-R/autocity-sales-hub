@@ -76,7 +76,19 @@ export const useTaxatie = () => {
   // Handmatige invoer (voor buitenlandse voertuigen)
   const handleManualVehicleSubmit = useCallback((data: TaxatieVehicleData) => {
     setVehicleData(data);
+    setEnteredMileage(data.mileage);
     toast.success('Voertuiggegevens toegevoegd');
+  }, []);
+
+  // JP Cars catalogus builder (gegarandeerd werkend)
+  const handleJPCarsVehicleSubmit = useCallback((data: TaxatieVehicleData) => {
+    setVehicleData({
+      ...data,
+      // Mark as JP Cars native - no mapping needed
+    });
+    setEnteredMileage(data.mileage);
+    setInputMode('jpcars');
+    toast.success('Voertuig geladen via JP Cars catalogus');
   }, []);
 
   // Toggle optie
@@ -238,6 +250,7 @@ export const useTaxatie = () => {
     // Actions
     handleLicensePlateSearch,
     handleManualVehicleSubmit,
+    handleJPCarsVehicleSubmit,
     toggleOption,
     startTaxatie,
     submitFeedback,
