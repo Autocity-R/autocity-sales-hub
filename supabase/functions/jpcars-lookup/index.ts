@@ -123,9 +123,17 @@ serve(async (req) => {
       body: JSON.stringify(jpCarsRequestBody),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ JP Cars API error:', response.status, errorText);
+    // Probeer ALTIJD de response body te parsen, ook bij errors
+    // JP Cars kan een error status geven maar toch partial data bevatten
+    let data: Record<string, unknown>;
+    let apiErrorOccurred = false;
+    
+    try {
+      const responseText = await response.text();
+      console.log('📊 Raw JP Cars response (status ' + response.status + '):', responseText);
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('❌ Could not parse JP Cars response:', parseError);
       
       if (response.status === 401) {
         return new Response(JSON.stringify({ 
@@ -140,18 +148,28 @@ serve(async (req) => {
       if (response.status === 422) {
         return new Response(JSON.stringify({ 
           error: 'Ongeldige voertuiggegevens voor JP Cars',
-          code: 'VALIDATION_ERROR',
-          details: errorText
+          code: 'VALIDATION_ERROR'
         }), {
           status: 422,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       
-      throw new Error(`JP Cars API error: ${response.status}`);
+      throw new Error(`JP Cars API error: ${response.status} - unparseable response`);
     }
 
-    const data = await response.json();
+    // Check of de API een error teruggaf maar wel data heeft
+    if (!response.ok || data.error) {
+      console.warn('⚠️ JP Cars returned error but checking for partial data:', {
+        status: response.status,
+        error: data.error,
+        errorMessage: data.error_message,
+        hasWindowUrl: !!data.window_url,
+        hasValue: !!data.value,
+        hasEtr: data.etr !== undefined
+      });
+      apiErrorOccurred = true;
+    }
     
     // LOG VOLLEDIGE RESPONSE VOOR DEBUGGING
     console.log('📊 VOLLEDIGE JP Cars Extended Response:', JSON.stringify(data, null, 2));
@@ -160,9 +178,19 @@ serve(async (req) => {
     let fallbackWarning: string | undefined;
     let originalHp: number | undefined;
     let usedFallback = false;
+    let hasPartialData = false;
+    
+    // Check of we partial data hebben ondanks een error
+    const hasUsableData = !!(
+      data.window_url || 
+      data.value || 
+      (data.apr !== undefined && data.apr !== 0) ||
+      (data.etr !== undefined && data.etr !== 0)
+    );
     
     if (data.error) {
       console.warn('⚠️ JP Cars valuation warning:', data.error, data.error_message);
+      console.log('📊 Checking for partial data despite error, hasUsableData:', hasUsableData);
       
       // Check of het een HP-gerelateerde fout is
       const isHpError = data.error === 'ERROR_INVALID_CAR' && 
@@ -202,33 +230,53 @@ serve(async (req) => {
             fallbackWarning = `De opgegeven ${originalHp} pk staat niet in de JP Cars catalogus. Taxatie uitgevoerd zonder HP-filter (alle vermogensvarianten).`;
             console.log('✅ Fallback gelukt, ga door met verwerking');
           } else {
-            // Retry ook gefaald
+            // Retry ook gefaald - maar check of we partial data hebben
             console.warn('❌ Retry ook gefaald:', retryData.error_message);
-            return new Response(JSON.stringify({ 
-              success: false,
-              error: retryData.error_message || 'Voertuig kon niet gewaardeerd worden',
-              code: retryData.error,
-              hints: {
-                message: `Het voertuig kon niet worden gevonden in de JP Cars database.`,
-                suggestion: 'Controleer of merk, model en bouwjaar correct zijn.',
-                vehicleRecognized: {
-                  make: data.make,
-                  model: data.model,
-                  fuel: data.fuel
+            
+            // Als we partial data hebben, ga door met die data
+            if (hasUsableData) {
+              console.log('🔄 Using partial data despite retry failure');
+              hasPartialData = true;
+              fallbackWarning = `JP Cars kon geen volledige taxatie uitvoeren: ${data.error_message}. Partial data wordt gebruikt.`;
+            } else {
+              return new Response(JSON.stringify({ 
+                success: false,
+                error: retryData.error_message || 'Voertuig kon niet gewaardeerd worden',
+                code: retryData.error,
+                hints: {
+                  message: `Het voertuig kon niet worden gevonden in de JP Cars database.`,
+                  suggestion: 'Controleer of merk, model en bouwjaar correct zijn.',
+                  vehicleRecognized: {
+                    make: data.make,
+                    model: data.model,
+                    fuel: data.fuel
+                  }
                 }
-              }
-            }), {
-              status: 400,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
+              }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
           }
         } else {
           console.error('❌ Retry request failed:', retryResponse.status);
+          // Check partial data
+          if (hasUsableData) {
+            console.log('🔄 Using partial data despite retry request failure');
+            hasPartialData = true;
+            fallbackWarning = `JP Cars API fout, maar partial data beschikbaar: ${data.error_message}`;
+          }
         }
+      } else if (hasUsableData) {
+        // Niet een HP error, maar we hebben wel partial data
+        console.log('🔄 Error but has partial data, continuing with available data');
+        hasPartialData = true;
+        fallbackWarning = `JP Cars melding: ${data.error_message || data.error}. Beschikbare data wordt gebruikt.`;
+        usedFallback = true; // Markeer als fallback zodat we doorgaan
       }
       
-      // Als we hier komen zonder fallback, return error
-      if (!usedFallback) {
+      // Als we hier komen zonder fallback EN zonder partial data, return error
+      if (!usedFallback && !hasPartialData) {
         return new Response(JSON.stringify({ 
           success: false,
           error: data.error_message || 'Voertuig kon niet gewaardeerd worden',
