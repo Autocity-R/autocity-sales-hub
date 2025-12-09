@@ -115,7 +115,7 @@ export const useTaxatie = () => {
     }
   }, [enteredMileage]);
 
-  // Start volledige taxatie
+  // Start volledige taxatie - WATERDICHT met Promise.allSettled
   const startTaxatie = useCallback(async () => {
     if (!vehicleData) {
       toast.error('Eerst voertuiggegevens invoeren');
@@ -149,7 +149,7 @@ export const useTaxatie = () => {
     setAiAdvice(null);
 
     try {
-      // Parallel fetch: Portalen, JP Cars, Interne historie
+      // Parallel fetch met Promise.allSettled - nooit stoppen bij individuele fouten
       setLoading(prev => ({
         ...prev,
         portals: true,
@@ -157,11 +157,67 @@ export const useTaxatie = () => {
         internalHistory: true,
       }));
 
-      const [portalData, jpData, internalData] = await Promise.all([
+      const [portalResult, jpResult, internalResult] = await Promise.allSettled([
         fetchPortalAnalysis(vehicleWithOptions),
         fetchJPCarsData(licensePlate || '', vehicleWithOptions),
         fetchInternalComparison(vehicleWithOptions),
       ]);
+
+      // Portal data - VERPLICHT (maar functie heeft eigen fallback)
+      const portalData = portalResult.status === 'fulfilled' 
+        ? portalResult.value 
+        : {
+            lowestPrice: 0,
+            medianPrice: 0,
+            highestPrice: 0,
+            listingCount: 0,
+            primaryComparableCount: 0,
+            appliedFilters: {} as any,
+            listings: [],
+            logicalDeviations: ['Portaalanalyse mislukt - controleer verbinding'],
+          };
+      
+      if (portalResult.status === 'rejected') {
+        console.error('❌ Portal analysis failed:', portalResult.reason);
+        toast.warning('Portaalanalyse niet volledig beschikbaar');
+      }
+
+      // JP Cars data - OPTIONEEL (fallback naar lege waarden)
+      const jpData = jpResult.status === 'fulfilled'
+        ? jpResult.value
+        : {
+            baseValue: 0,
+            optionValue: 0,
+            totalValue: 0,
+            range: { min: 0, max: 0 },
+            confidence: 0,
+            apr: 0,
+            etr: 30,
+            courantheid: 'gemiddeld' as const,
+          };
+      
+      if (jpResult.status === 'rejected') {
+        console.error('❌ JP Cars lookup failed:', jpResult.reason);
+        toast.warning('JP Cars data niet beschikbaar - taxatie doorgegaan met portaaldata');
+      }
+
+      // Internal data - OPTIONEEL
+      const internalData = internalResult.status === 'fulfilled'
+        ? internalResult.value
+        : {
+            averageMargin: 0,
+            averageDaysToSell: 0,
+            soldLastYear: 0,
+            soldB2C: 0,
+            soldB2B: 0,
+            averageDaysToSell_B2C: null,
+            note: 'Interne data niet beschikbaar',
+            similarVehicles: [],
+          };
+
+      if (internalResult.status === 'rejected') {
+        console.error('❌ Internal comparison failed:', internalResult.reason);
+      }
 
       setPortalAnalysis(portalData);
       setJpCarsData(jpData);
@@ -175,21 +231,29 @@ export const useTaxatie = () => {
         aiAnalysis: true,
       }));
 
-      // AI analyse
+      // AI analyse - altijd proberen, met fallback in de service
       const advice = await generateAIAdvice(vehicleWithOptions, portalData, jpData, internalData);
       setAiAdvice(advice);
 
       setLoading(prev => ({ ...prev, aiAnalysis: false }));
       setTaxatieComplete(true);
       
-      // Check if fallback was used
-      if (advice.reasoning.includes('⚠️ AI advies niet beschikbaar')) {
+      // Status meldingen
+      const warnings: string[] = [];
+      if (portalResult.status === 'rejected') warnings.push('portaaldata');
+      if (jpResult.status === 'rejected') warnings.push('JP Cars');
+      if (internalResult.status === 'rejected') warnings.push('interne historie');
+      
+      if (warnings.length > 0) {
+        toast.warning(`Taxatie voltooid (zonder ${warnings.join(', ')})`);
+      } else if (advice.reasoning.includes('⚠️ AI advies niet beschikbaar')) {
         toast.warning('AI advies niet beschikbaar - automatische berekening getoond');
       } else {
         toast.success('Taxatie voltooid');
       }
     } catch (error) {
-      toast.error('Fout bij taxatie');
+      console.error('❌ Taxatie error:', error);
+      toast.error('Fout bij taxatie - probeer opnieuw');
       setLoading({
         rdw: false,
         portals: false,

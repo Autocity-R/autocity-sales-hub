@@ -47,7 +47,8 @@ serve(async (req) => {
     if (body) params.append('body', body);
     if (build) params.append('build', build.toString());
 
-    const apiUrl = `https://api.jpcars.nl/api/values?${params.toString()}`;
+    // Use the working JP Cars API host (same as valuate endpoint)
+    const apiUrl = `https://api.nl.jp.cars/api/catalog/values?${params.toString()}`;
     console.log('🌐 Calling JP Cars Values API:', apiUrl);
 
     const response = await fetch(apiUrl, {
