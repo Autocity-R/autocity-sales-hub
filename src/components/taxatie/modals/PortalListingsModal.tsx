@@ -70,10 +70,10 @@ const ListingCard = ({ listing }: { listing: PortalListing }) => {
           <p className="font-medium text-sm mb-1">{listing.title}</p>
           <div className="flex gap-4 text-xs text-muted-foreground mb-2">
             <span>{listing.buildYear}</span>
-            <span>{listing.mileage.toLocaleString()} km</span>
+            <span>{(listing.mileage ?? 0).toLocaleString()} km</span>
             {listing.color && <span>{listing.color}</span>}
           </div>
-          {listing.options.length > 0 && (
+          {listing.options && listing.options.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-2">
               {listing.options.slice(0, 5).map((opt, i) => (
                 <Badge key={i} variant="secondary" className="text-xs">
@@ -109,9 +109,10 @@ const ListingCard = ({ listing }: { listing: PortalListing }) => {
 };
 
 export const PortalListingsModal = ({ open, onOpenChange, data }: PortalListingsModalProps) => {
-  const primaryListings = data.listings.filter((l) => l.isPrimaryComparable);
-  const deviatingListings = data.listings.filter((l) => l.isLogicalDeviation);
-  const otherListings = data.listings.filter((l) => !l.isPrimaryComparable && !l.isLogicalDeviation);
+  const listings = data.listings ?? [];
+  const primaryListings = listings.filter((l) => l.isPrimaryComparable);
+  const deviatingListings = listings.filter((l) => l.isLogicalDeviation);
+  const otherListings = listings.filter((l) => !l.isPrimaryComparable && !l.isLogicalDeviation);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -123,19 +124,21 @@ export const PortalListingsModal = ({ open, onOpenChange, data }: PortalListings
         </DialogHeader>
 
         {/* Filters */}
-        <div className="flex items-center gap-2 flex-wrap p-3 bg-muted/50 rounded-lg">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Filters:</span>
-          <Badge variant="outline">{data.appliedFilters.brand} {data.appliedFilters.model}</Badge>
-          <Badge variant="outline">{data.appliedFilters.buildYearFrom} - {data.appliedFilters.buildYearTo}</Badge>
-          <Badge variant="outline">t/m {data.appliedFilters.mileageMax?.toLocaleString()} km</Badge>
-          {data.appliedFilters.fuelType && (
-            <Badge variant="outline">{data.appliedFilters.fuelType}</Badge>
-          )}
-          <span className="text-xs text-muted-foreground ml-auto">
-            Gesorteerd op prijs (laag → hoog)
-          </span>
-        </div>
+        {data.appliedFilters && (
+          <div className="flex items-center gap-2 flex-wrap p-3 bg-muted/50 rounded-lg">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Filters:</span>
+            <Badge variant="outline">{data.appliedFilters.brand} {data.appliedFilters.model}</Badge>
+            <Badge variant="outline">{data.appliedFilters.buildYearFrom} - {data.appliedFilters.buildYearTo}</Badge>
+            <Badge variant="outline">t/m {(data.appliedFilters.mileageMax ?? 0).toLocaleString()} km</Badge>
+            {data.appliedFilters.fuelType && (
+              <Badge variant="outline">{data.appliedFilters.fuelType}</Badge>
+            )}
+            <span className="text-xs text-muted-foreground ml-auto">
+              Gesorteerd op prijs (laag → hoog)
+            </span>
+          </div>
+        )}
 
         <ScrollArea className="h-[500px] pr-4">
           <div className="space-y-6">
