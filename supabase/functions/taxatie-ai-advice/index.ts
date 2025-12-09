@@ -356,18 +356,31 @@ Inkoopadvies: €XX.XXX (20% marge)"
 ⚠️ JP Cars marktdata is je BELANGRIJKSTE bron voor expectedDaysToSell.
 Interne Autocity statistieken zijn alleen ter CONTEXT en MOGELIJKE NUANCE, niet leidend.
 
-- **JP Cars ETR (Expected Turnover Rate)** = PRIMAIRE BRON voor expectedDaysToSell
-- JP Cars ETR is OPTIMISTISCH - corrigeer met factor 3-5x voor realistische B2C statijd
-- Als JP Cars ETR = 5 dagen → expectedDaysToSell = minimaal 20-35 dagen
-- Als stockStats.avgDays beschikbaar → dit is realistischer dan ETR
+**BELANGRIJK: ETR is een SCORE (1-5), GEEN DAGEN!**
+- ETR = Expected Turnover Rate (externe markt doorloopsnelheid)
+- **Score 5** = SNELSTE verkoop (hoogste doorloop, zeer courant)
+- **Score 4** = Snelle verkoop (goed courant)
+- **Score 3** = Gemiddelde verkoop (normaal courant)
+- **Score 2** = Trage verkoop (matig courant)
+- **Score 1** = TRAAGSTE verkoop (laagste doorloop, slecht courant)
+
+**ETR SCORE → VERWACHTE STATIJD CONVERSIE:**
+- **ETR 5** → expectedDaysToSell = 15-25 dagen (zeer courant, snelle omzet)
+- **ETR 4** → expectedDaysToSell = 20-30 dagen (goed courant)
+- **ETR 3** → expectedDaysToSell = 30-40 dagen (gemiddeld)
+- **ETR 2** → expectedDaysToSell = 40-55 dagen (matig courant)
+- **ETR 1** → expectedDaysToSell = 55-70+ dagen (slecht courant)
+
+**FORMULE:** expectedDaysToSell = 70 - (ETR × 10) + correctie voor stockStats/courantheid
+
+- Als stockStats.avgDays beschikbaar → dit is REALISTISCHER dan ETR score
 - Als salesStats.avgDays beschikbaar → combineer met stockStats voor beste schatting
+- ETR is een indicatie, stockStats/salesStats zijn echte dagen
 
-**FORMULE:** expectedDaysToSell = MAX(JP Cars stockStats.avgDays, ETR × 4, 20)
-
-Gebruik JP Cars courantheid als volgt:
-- **courantheid = 'hoog'** → expectedDaysToSell = 20-30 dagen  
+Gebruik JP Cars courantheid als bevestiging:
+- **courantheid = 'hoog'** (APR+ETR hoog) → expectedDaysToSell = 15-30 dagen  
 - **courantheid = 'gemiddeld'** → expectedDaysToSell = 30-45 dagen  
-- **courantheid = 'laag'** → expectedDaysToSell = 45-60+ dagen
+- **courantheid = 'laag'** → expectedDaysToSell = 45-70+ dagen
 
 ## 5) Autocity-historie (internalComparison) = INFORMATIEF, NIET BINDEND voor statijd
 ⚠️ KRITIEK: Interne verkopen bepalen NIET de expectedDaysToSell!
@@ -386,17 +399,18 @@ Gebruik interne data WEL voor:
 - Interne B2B statijden (2-10 dagen) gebruiken voor expectedDaysToSell
 - Concluderen "10 dagen statijd" omdat wij 1x snel verkochtten
 - Sample size < 5 als betrouwbare data behandelen
+- ETR score interpreteren als dagen (ETR 3 ≠ 3 dagen!)
 
 ## 6) Omloopsnelheid berekening (BELANGRIJK)
 De expectedDaysToSell MOET gebaseerd zijn op JP Cars data:
 
 Formule: expectedDaysToSell = MAX(
-  JP Cars stockStats.avgDays,
-  JP Cars ETR × 4,
+  JP Cars stockStats.avgDays (indien beschikbaar),
+  70 - (ETR × 10),
   courantheid === 'laag' ? 45 : courantheid === 'gemiddeld' ? 30 : 20
 )
 
-- Vermeld in reasoning: "Statijd gebaseerd op JP Cars marktdata"
+- Vermeld in reasoning: "Statijd gebaseerd op JP Cars marktdata (ETR score X = verwachte Y dagen)"
 - Als interne B2C verkopen sneller waren → vermeld als KANS, niet als basis
 
 ## 7) Eindadvies: "kopen", "niet_kopen", "twijfel"

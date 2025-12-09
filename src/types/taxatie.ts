@@ -16,14 +16,17 @@ export interface PortalListing {
 }
 
 // JP Cars data (inclusief APR/ETR en uitgebreide stats)
+// BELANGRIJK: APR en ETR zijn SCORES (1-5), geen dagen!
+// APR = prijspositie (5 = beste prijs tov markt)
+// ETR = doorloopsnelheid (5 = snelste verkoop)
 export interface JPCarsData {
   baseValue: number;
   optionValue: number;
   totalValue: number;
   range: { min: number; max: number };
   confidence: number;
-  apr: number;
-  etr: number;
+  apr: number;  // Score 1-5 (prijspositie)
+  etr: number;  // Score 1-5 (doorloopsnelheid, uit stat_turnover_ext)
   courantheid: 'hoog' | 'gemiddeld' | 'laag';
   
   // Safety fallback info
@@ -36,14 +39,14 @@ export interface JPCarsData {
   // Uitgebreide statijd data
   stockStats?: {
     count: number;      // Aantal vergelijkbare auto's in voorraad (window_size)
-    avgDays: number | null;    // Gemiddelde statijd voorraad
+    avgDays: number | null;    // Gemiddelde statijd voorraad (ECHTE DAGEN)
   };
   salesStats?: {
     count: number;      // Aantal vergelijkbare auto's verkocht
-    avgDays: number | null;    // Gemiddelde tijd tot verkoop
+    avgDays: number | null;    // Gemiddelde tijd tot verkoop (ECHTE DAGEN)
   };
   marketDiscount?: number | null;  // Gemiddelde marktdiscount (vraag - verkoop)
-  itr?: number | null;             // Internal Turnover Rate
+  itr?: number | null;             // Internal Turnover Rate (score 1-5)
   
   // Portal links van JP Cars
   portalUrls?: {
@@ -63,6 +66,14 @@ export interface JPCarsData {
   
   // Waarde breakdown
   valueBreakdown?: Record<string, number> | null;
+  
+  // Extra JP Cars velden
+  rankTarget?: number | null;      // Target ranking positie
+  rankCurrent?: number | null;     // Huidige ranking positie
+  targetPerc?: number | null;      // Target percentage
+  valueExex?: number | null;       // Waarde exclusief BTW
+  topdownValue?: number | null;    // Top-down berekende waarde
+  valueAtMaturity?: number | null; // Waarde bij volwassenheid/standaard km
 }
 
 // Portal zoekfilters met correcte KM-logica
