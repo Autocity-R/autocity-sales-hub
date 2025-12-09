@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Info, Clock, TrendingUp, Package, CheckCircle, ExternalLink, Users } from 'lucide-react';
 import type { JPCarsData } from '@/types/taxatie';
 
@@ -58,6 +59,20 @@ export const JPCarsCard = ({ data, loading }: JPCarsCardProps) => {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Fallback Warning - als HP niet gevonden werd */}
+        {data.fallbackWarning && (
+          <Alert className="border-orange-500/50 bg-orange-500/10">
+            <AlertTriangle className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-xs text-orange-700 dark:text-orange-400">
+              <strong>Let op:</strong> {data.fallbackWarning}
+              <br />
+              <span className="text-muted-foreground">
+                Controleer handmatig of het vergelijkingsmodel klopt.
+              </span>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Disclaimer */}
         <div className="flex items-start gap-2 p-2 bg-amber-500/10 rounded border border-amber-500/20">
           <Info className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />

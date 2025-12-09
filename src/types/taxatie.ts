@@ -26,6 +26,13 @@ export interface JPCarsData {
   etr: number;
   courantheid: 'hoog' | 'gemiddeld' | 'laag';
   
+  // Safety fallback info
+  fallbackWarning?: string;
+  originalRequest?: {
+    hp?: number;
+    usedFallback: boolean;
+  };
+  
   // Uitgebreide statijd data
   stockStats?: {
     count: number;      // Aantal vergelijkbare auto's in voorraad (window_size)
