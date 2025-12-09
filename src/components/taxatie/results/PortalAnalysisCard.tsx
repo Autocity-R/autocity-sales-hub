@@ -46,8 +46,14 @@ export const PortalAnalysisCard = ({ data, loading }: PortalAnalysisCardProps) =
     return null;
   }
 
-  const priceRange = data.highestPrice - data.lowestPrice;
-  const priceSpread = Math.round((priceRange / data.medianPrice) * 100);
+  // Safe fallbacks for price values
+  const lowestPrice = data.lowestPrice ?? 0;
+  const medianPrice = data.medianPrice ?? 0;
+  const highestPrice = data.highestPrice ?? 0;
+  const mileageMax = data.appliedFilters?.mileageMax ?? 0;
+
+  const priceRange = highestPrice - lowestPrice;
+  const priceSpread = medianPrice > 0 ? Math.round((priceRange / medianPrice) * 100) : 0;
 
   return (
     <>
@@ -75,13 +81,13 @@ export const PortalAnalysisCard = ({ data, loading }: PortalAnalysisCardProps) =
                 Laagste
               </div>
               <div className="text-lg font-bold text-green-600">
-                €{data.lowestPrice.toLocaleString()}
+                €{lowestPrice.toLocaleString()}
               </div>
             </div>
             <div className="text-center p-3 bg-muted/50 rounded-lg border">
               <div className="text-xs text-muted-foreground mb-1">Mediaan</div>
               <div className="text-lg font-bold">
-                €{data.medianPrice.toLocaleString()}
+                €{medianPrice.toLocaleString()}
               </div>
             </div>
             <div className="text-center p-3 bg-red-500/10 rounded-lg border border-red-500/20">
@@ -90,7 +96,7 @@ export const PortalAnalysisCard = ({ data, loading }: PortalAnalysisCardProps) =
                 Hoogste
               </div>
               <div className="text-lg font-bold text-red-600">
-                €{data.highestPrice.toLocaleString()}
+                €{highestPrice.toLocaleString()}
               </div>
             </div>
           </div>
@@ -121,7 +127,7 @@ export const PortalAnalysisCard = ({ data, loading }: PortalAnalysisCardProps) =
                   </div>
                   <div>
                     <span className="text-muted-foreground">KM-stand:</span>
-                    <span className="ml-1 font-medium text-primary">t/m {data.appliedFilters.mileageMax.toLocaleString()} km</span>
+                    <span className="ml-1 font-medium text-primary">t/m {mileageMax.toLocaleString()} km</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Brandstof:</span>
