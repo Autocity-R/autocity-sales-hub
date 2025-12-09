@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Car, ChevronRight, RotateCcw } from 'lucide-react';
+import { Loader2, Car, RotateCcw, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import type { TaxatieVehicleData } from '@/types/taxatie';
+import { VEHICLE_BRANDS, FUEL_TYPES, BODY_TYPES, TRANSMISSION_TYPES } from '@/data/vehicleData';
 
 interface JPCarsVehicleBuilderProps {
   onSubmit: (data: TaxatieVehicleData) => void;
@@ -39,6 +39,14 @@ const STEP_LABELS: Record<ValueType, string> = {
 
 const STEPS: ValueType[] = ['make', 'model', 'fuel', 'gear', 'hp', 'body', 'build'];
 
+// Fallback static data when JP Cars API is unavailable
+const FALLBACK_MAKES = Object.keys(VEHICLE_BRANDS);
+const FALLBACK_FUELS = [...FUEL_TYPES];
+const FALLBACK_GEARS = [...TRANSMISSION_TYPES];
+const FALLBACK_BODIES = [...BODY_TYPES];
+const FALLBACK_YEARS = Array.from({ length: 15 }, (_, i) => (new Date().getFullYear() - i).toString());
+const FALLBACK_HP = ['90', '110', '120', '150', '163', '190', '204', '252', '300', '340', '400'];
+
 export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehicleBuilderProps) => {
   const [state, setState] = useState<BuilderState>({
     make: '',
@@ -63,6 +71,38 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
 
   const [loadingStep, setLoadingStep] = useState<ValueType | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fallbackMode, setFallbackMode] = useState(false);
+
+  // Fallback to static lists when API fails
+  const useFallback = useCallback((type: ValueType) => {
+    console.warn(`⚠️ Using fallback for ${type}`);
+    setFallbackMode(true);
+    
+    switch (type) {
+      case 'make':
+        setOptions(prev => ({ ...prev, make: FALLBACK_MAKES }));
+        break;
+      case 'model':
+        const models = VEHICLE_BRANDS[state.make] || [];
+        setOptions(prev => ({ ...prev, model: models }));
+        break;
+      case 'fuel':
+        setOptions(prev => ({ ...prev, fuel: FALLBACK_FUELS }));
+        break;
+      case 'gear':
+        setOptions(prev => ({ ...prev, gear: FALLBACK_GEARS }));
+        break;
+      case 'hp':
+        setOptions(prev => ({ ...prev, hp: FALLBACK_HP }));
+        break;
+      case 'body':
+        setOptions(prev => ({ ...prev, body: FALLBACK_BODIES }));
+        break;
+      case 'build':
+        setOptions(prev => ({ ...prev, build: FALLBACK_YEARS }));
+        break;
+    }
+  }, [state.make]);
 
   const fetchValues = useCallback(async (type: ValueType) => {
     setLoadingStep(type);
@@ -85,24 +125,26 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
 
       if (fetchError) {
         console.error(`❌ Error fetching ${type}:`, fetchError);
-        setError(`Fout bij laden ${STEP_LABELS[type]}`);
+        useFallback(type);
         return;
       }
 
-      if (data?.success && data?.values) {
+      if (data?.success && data?.values && data.values.length > 0) {
         console.log(`✅ Received ${data.values.length} options for ${type}`);
         setOptions(prev => ({ ...prev, [type]: data.values }));
+        // Reset fallback mode if API works
+        if (type === 'make') setFallbackMode(false);
       } else {
-        console.warn(`⚠️ No values returned for ${type}:`, data);
-        setOptions(prev => ({ ...prev, [type]: [] }));
+        console.warn(`⚠️ No values returned for ${type}, using fallback`);
+        useFallback(type);
       }
     } catch (err) {
       console.error(`❌ Failed to fetch ${type}:`, err);
-      setError(`Fout bij laden ${STEP_LABELS[type]}`);
+      useFallback(type);
     } finally {
       setLoadingStep(null);
     }
-  }, [state]);
+  }, [state, useFallback]);
 
   // Load makes on mount
   useEffect(() => {
@@ -441,9 +483,18 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
         </Button>
       </div>
 
-      <p className="text-xs text-muted-foreground text-center">
-        ✓ Alle waarden komen direct uit JP Cars catalogus
-      </p>
+      {fallbackMode ? (
+        <div className="flex items-center justify-center gap-2 p-2 rounded bg-warning/10 border border-warning/20">
+          <AlertTriangle className="h-3 w-3 text-warning" />
+          <p className="text-xs text-warning">
+            JP Cars catalogus niet beschikbaar - statische lijsten gebruikt
+          </p>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground text-center">
+          ✓ Waarden uit JP Cars catalogus
+        </p>
+      )}
     </div>
   );
 };
