@@ -46,6 +46,7 @@ export function NewValuationForm() {
     taxatieComplete,
     handleLicensePlateSearch,
     handleManualVehicleSubmit,
+    handleJPCarsVehicleSubmit,
     toggleOption,
     startTaxatie,
     submitFeedback,
@@ -81,6 +82,7 @@ export function NewValuationForm() {
             onMileageChange={updateVehicleMileage}
             onSearch={handleLicensePlateSearch}
             onManualSubmit={handleManualVehicleSubmit}
+            onJPCarsSubmit={handleJPCarsVehicleSubmit}
             loading={loading.rdw}
             disabled={taxatieStarted}
             vehicleLoaded={!!vehicleData}
