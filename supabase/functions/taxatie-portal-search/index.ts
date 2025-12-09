@@ -53,17 +53,14 @@ function buildGaspedaalUrl(vehicleData: VehicleData): string {
   const yearTo = vehicleData.buildYear + 1;
   const mileageMax = Math.ceil(vehicleData.mileage * 1.15 / 1000) * 1000;
   
-  // Build base URL
   let url = `https://www.gaspedaal.nl/${brandSlug}/${modelSlug}`;
   
-  // Add filters
   const params = new URLSearchParams();
   params.set('bmin', yearFrom.toString());
   params.set('bmax', yearTo.toString());
   params.set('kmmax', mileageMax.toString());
   params.set('sort', 'prijs-oplopend');
   
-  // Add fuel type filter
   if (vehicleData.fuelType) {
     const fuelMap: Record<string, string> = {
       'Benzine': 'benzine',
@@ -80,9 +77,122 @@ function buildGaspedaalUrl(vehicleData: VehicleData): string {
   return `${url}?${params.toString()}`;
 }
 
-// Calculate max mileage with 15% buffer
 function calculateMaxMileage(mileage: number): number {
   return Math.ceil(mileage * 1.15 / 1000) * 1000;
+}
+
+// Calculate match score based on vehicle comparison
+function calculateMatchScore(listing: any, vehicleData: VehicleData): number {
+  let score = 100;
+  
+  // Year difference penalty (5 points per year)
+  const yearDiff = Math.abs((listing.buildYear || vehicleData.buildYear) - vehicleData.buildYear);
+  score -= yearDiff * 5;
+  
+  // Mileage difference penalty (1 point per 5000km difference)
+  const mileageDiff = Math.abs((listing.mileage || vehicleData.mileage) - vehicleData.mileage);
+  score -= Math.floor(mileageDiff / 5000);
+  
+  return Math.max(0, Math.min(100, score));
+}
+
+// Determine if listing is a primary comparable
+function isPrimaryComparable(listing: any, vehicleData: VehicleData): boolean {
+  const yearDiff = Math.abs((listing.buildYear || vehicleData.buildYear) - vehicleData.buildYear);
+  const mileageDiff = Math.abs((listing.mileage || vehicleData.mileage) - vehicleData.mileage);
+  const mileageBuffer = vehicleData.mileage * 0.15;
+  
+  return yearDiff <= 1 && mileageDiff <= mileageBuffer;
+}
+
+// Determine if listing has logical deviation
+function hasLogicalDeviation(listing: any, vehicleData: VehicleData): { isDeviation: boolean; reason?: string } {
+  const mileageMax = vehicleData.mileage * 1.15;
+  
+  if (listing.mileage > mileageMax * 1.5) {
+    return { isDeviation: true, reason: `Zeer hoge km-stand (${listing.mileage?.toLocaleString('nl-NL')} km)` };
+  }
+  
+  const yearDiff = Math.abs((listing.buildYear || vehicleData.buildYear) - vehicleData.buildYear);
+  if (yearDiff > 2) {
+    return { isDeviation: true, reason: `Bouwjaar wijkt sterk af (${listing.buildYear})` };
+  }
+  
+  return { isDeviation: false };
+}
+
+// Robust JSON parsing with multiple recovery strategies
+function parseJsonRobust(text: string): any {
+  // Strategy 1: Direct parse
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    console.log('📝 Direct parse failed, trying recovery...');
+  }
+  
+  // Strategy 2: Clean common issues
+  try {
+    const cleaned = text
+      .replace(/,\s*}/g, '}')
+      .replace(/,\s*]/g, ']')
+      .replace(/[\x00-\x1F\x7F]/g, ' ')
+      .replace(/\n/g, ' ')
+      .replace(/\r/g, ' ')
+      .replace(/\t/g, ' ');
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.log('📝 Cleaned parse failed, trying truncation...');
+  }
+  
+  // Strategy 3: Try to find and fix truncated JSON
+  try {
+    let fixed = text;
+    // Count brackets
+    const openBrackets = (fixed.match(/\[/g) || []).length;
+    const closeBrackets = (fixed.match(/\]/g) || []).length;
+    const openBraces = (fixed.match(/\{/g) || []).length;
+    const closeBraces = (fixed.match(/\}/g) || []).length;
+    
+    // Add missing closing brackets/braces
+    fixed = fixed.replace(/,\s*$/, ''); // Remove trailing comma
+    for (let i = 0; i < openBrackets - closeBrackets; i++) fixed += ']';
+    for (let i = 0; i < openBraces - closeBraces; i++) fixed += '}';
+    
+    return JSON.parse(fixed);
+  } catch (e) {
+    console.log('📝 Truncation fix failed, trying listing extraction...');
+  }
+  
+  // Strategy 4: Extract individual listings with regex
+  try {
+    const listingsMatch = text.match(/"listings"\s*:\s*\[([\s\S]*)/);
+    if (listingsMatch) {
+      const listingsContent = listingsMatch[1];
+      const listings: any[] = [];
+      
+      // Find each object in the listings array
+      const objectMatches = listingsContent.matchAll(/\{[^{}]*"title"[^{}]*"price"[^{}]*\}/g);
+      for (const match of objectMatches) {
+        try {
+          const obj = JSON.parse(match[0]);
+          if (obj.price && obj.title) {
+            listings.push(obj);
+          }
+        } catch (e) {
+          // Skip malformed listing
+        }
+      }
+      
+      if (listings.length > 0) {
+        console.log(`📝 Extracted ${listings.length} listings via regex`);
+        return { listings, extractedViaRegex: true };
+      }
+    }
+  } catch (e) {
+    console.log('📝 Regex extraction failed');
+  }
+  
+  return null;
 }
 
 serve(async (req) => {
@@ -97,14 +207,13 @@ serve(async (req) => {
     };
     
     console.log('🔍 Portal search for:', vehicleData.brand, vehicleData.model, vehicleData.trim);
-    console.log('🔗 JP Cars URLs:', jpCarsUrls);
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
       throw new Error('OPENAI_API_KEY not configured');
     }
 
-    // Build the applied filters object
+    // Build filters
     const yearFrom = vehicleData.buildYear - 1;
     const yearTo = vehicleData.buildYear + 1;
     const mileageMax = calculateMaxMileage(vehicleData.mileage);
@@ -122,90 +231,42 @@ serve(async (req) => {
       requiredOptions: vehicleData.options || [],
     };
 
-    // Prefer real Gaspedaal URL over JP Cars tiny URLs
     const gaspedaalUrl = buildGaspedaalUrl(vehicleData);
-    const autoscoutUrl = jpCarsUrls?.autoscout24 || null;
-    const marktplaatsUrl = jpCarsUrls?.marktplaats || null;
     const jpCarsWindowUrl = jpCarsUrls?.jpCarsWindow || null;
 
     const directSearchUrls = {
       gaspedaal: gaspedaalUrl,
-      autoscout24: autoscoutUrl,
-      marktplaats: marktplaatsUrl,
+      autoscout24: jpCarsUrls?.autoscout24 || null,
+      marktplaats: jpCarsUrls?.marktplaats || null,
       jpCarsWindow: jpCarsWindowUrl,
     };
 
     console.log('📡 Using Gaspedaal URL:', gaspedaalUrl);
 
-    // Build the AI prompt
+    // SIMPLIFIED AI PROMPT - max 10 listings, only essential fields
     const searchPrompt = `
-# OPDRACHT: Zoek vergelijkbare auto's op Gaspedaal.nl
+Zoek auto's op Gaspedaal.nl voor taxatie.
 
-## TE TAXEREN AUTO
-${vehicleData.brand} ${vehicleData.model} ${vehicleData.trim || ''}
-Bouwjaar: ${vehicleData.buildYear}
-KM-stand: ${vehicleData.mileage.toLocaleString('nl-NL')} km
-Brandstof: ${vehicleData.fuelType}
-Vermogen: ${vehicleData.power} PK
-Transmissie: ${vehicleData.transmission}
+AUTO: ${vehicleData.brand} ${vehicleData.model} ${vehicleData.trim || ''}, ${vehicleData.buildYear}, ${vehicleData.mileage.toLocaleString('nl-NL')} km, ${vehicleData.fuelType}
 
-## ZOEK OP DEZE LINK
-${gaspedaalUrl}
+LINK: ${gaspedaalUrl}
 
-## FILTERS TOEGEPAST
-- Bouwjaar: ${yearFrom} - ${yearTo}
-- KM-stand: maximaal ${mileageMax.toLocaleString('nl-NL')} km
-- Brandstof: ${vehicleData.fuelType}
-- Gesorteerd op prijs (laag naar hoog)
-
-## WAT JE MOET DOEN
-1. Open de link hierboven
-2. Bekijk de eerste 15-20 auto's (gesorteerd op prijs, laag naar hoog)
-3. Beoordeel per auto:
-   - Is dit een PRIMAIRE vergelijking (zelfde motor, vergelijkbare uitvoering)?
-   - Zijn er LOGISCHE AFWIJKINGEN (andere motor, schade, te hoge km)?
-4. Geef per auto: titel, prijs (in hele euros, bijv. 45000 niet 45.0), km-stand, bouwjaar, URL, opties, kleur indien zichtbaar, of het een primaire vergelijking is
-
-## RETURN DIT JSON FORMAT (alleen JSON, geen tekst ervoor of erna)
+Geef MAX 10 listings in dit SIMPELE JSON format:
 {
-  "listingCount": 15,
-  "lowestPrice": 45000,
-  "medianPrice": 52000,
-  "highestPrice": 62000,
-  "primaryComparableCount": 8,
-  "logicalDeviations": [
-    "Listing #3: Andere motorvariant (150 PK ipv 190 PK)",
-    "Listing #7: Zeer hoge km-stand (120.000 km)"
-  ],
   "listings": [
-    {
-      "id": "listing-1",
-      "portal": "gaspedaal",
-      "title": "BMW 3-serie 320i M Sport",
-      "price": 45000,
-      "mileage": 35000,
-      "buildYear": 2023,
-      "url": "https://www.gaspedaal.nl/...",
-      "options": ["Navigatie", "LED", "ACC"],
-      "color": "Zwart",
-      "isPrimaryComparable": true,
-      "isLogicalDeviation": false,
-      "matchScore": 95
-    }
+    {"title": "Auto titel", "price": 45000, "mileage": 35000, "buildYear": 2023, "url": "https://..."}
   ]
 }
 
-BELANGRIJK:
-- Prijzen in HELE euros (45000, niet 45.0 of 45,000)
-- Geef ECHTE listings met WERKENDE URLs
-- Sorteer op prijs (laagste eerst)
-- Maximaal 15-20 listings
-- Markeer PRIMAIRE vergelijkingen (isPrimaryComparable: true)
-- Markeer LOGISCHE AFWIJKINGEN (isLogicalDeviation: true) met reden
-- matchScore: 0-100 gebaseerd op hoe goed de auto matcht
+REGELS:
+- Maximaal 10 listings
+- Prijs in hele euros (45000 niet 45.0)
+- Alleen: title, price, mileage, buildYear, url
+- Sorteer op prijs laag-hoog
+- Alleen JSON, geen tekst
 `;
 
-    console.log('📡 Calling OpenAI with portal search prompt...');
+    console.log('📡 Calling OpenAI with simplified prompt...');
 
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -223,7 +284,25 @@ BELANGRIJK:
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ OpenAI API error:', response.status, errorText);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      
+      // Fallback to JP Cars Window
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          lowestPrice: 0,
+          medianPrice: 0,
+          highestPrice: 0,
+          listingCount: 0,
+          primaryComparableCount: 0,
+          appliedFilters,
+          listings: [],
+          logicalDeviations: ['AI search niet beschikbaar - gebruik JP Cars Window link'],
+          directSearchUrls,
+          fallbackMode: true,
+        }
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const aiResponse = await response.json();
@@ -246,6 +325,9 @@ BELANGRIJK:
       }
     }
 
+    console.log('📝 Output length:', outputText.length);
+    console.log('📝 Raw output (first 1000):', outputText.substring(0, 1000));
+
     if (!outputText) {
       console.error('❌ No output text in response');
       return new Response(JSON.stringify({
@@ -258,16 +340,14 @@ BELANGRIJK:
           primaryComparableCount: 0,
           appliedFilters,
           listings: [],
-          logicalDeviations: ['Geen response van AI - probeer handmatig via de links'],
+          logicalDeviations: ['Geen AI response - gebruik handmatige links'],
           directSearchUrls,
+          fallbackMode: true,
         }
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    console.log('📝 Output length:', outputText.length);
-    console.log('📝 First 500 chars:', outputText.substring(0, 500));
 
     // Extract JSON from response
     let jsonContent = outputText;
@@ -282,17 +362,15 @@ BELANGRIJK:
       }
     }
 
-    // Parse JSON
-    let analysisData;
-    try {
-      const cleanedJson = jsonContent
-        .replace(/,\s*}/g, '}')
-        .replace(/,\s*]/g, ']')
-        .replace(/[\x00-\x1F\x7F]/g, ' ');
-      analysisData = JSON.parse(cleanedJson);
-    } catch (parseError) {
-      console.error('❌ JSON parse error:', parseError.message);
-      console.log('📝 JSON content:', jsonContent.substring(0, 500));
+    console.log('📝 JSON content length:', jsonContent.length);
+    console.log('📝 JSON content (first 500):', jsonContent.substring(0, 500));
+
+    // Use robust JSON parsing
+    const analysisData = parseJsonRobust(jsonContent);
+    
+    if (!analysisData) {
+      console.error('❌ All JSON parsing strategies failed');
+      console.log('📝 Full JSON content:', jsonContent);
       
       return new Response(JSON.stringify({
         success: true,
@@ -304,41 +382,55 @@ BELANGRIJK:
           primaryComparableCount: 0,
           appliedFilters,
           listings: [],
-          logicalDeviations: ['JSON parsing fout - check handmatig via links'],
+          logicalDeviations: ['JSON parsing mislukt - gebruik handmatige links'],
           directSearchUrls,
+          fallbackMode: true,
         }
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Process and validate listings
+    console.log('✅ JSON parsed successfully');
+
+    // Process listings - calculate matchScore and isPrimaryComparable ourselves
     const rawListings = analysisData.listings || [];
+    const logicalDeviations: string[] = [];
+    
     const listings: PortalListing[] = rawListings
       .filter((l: any) => l.url && l.price && typeof l.price === 'number')
-      .map((l: any, index: number) => ({
-        id: l.id || `listing-${index + 1}`,
-        portal: l.portal || 'gaspedaal',
-        title: l.title || '',
-        price: normalizePrice(l.price),
-        mileage: l.mileage || 0,
-        buildYear: l.buildYear || vehicleData.buildYear,
-        url: l.url,
-        options: l.options || [],
-        color: l.color || undefined,
-        isPrimaryComparable: l.isPrimaryComparable ?? true,
-        isLogicalDeviation: l.isLogicalDeviation ?? false,
-        matchScore: l.matchScore ?? 80,
-        deviationReason: l.deviationReason || undefined,
-      }));
+      .map((l: any, index: number) => {
+        const matchScore = calculateMatchScore(l, vehicleData);
+        const isPrimary = isPrimaryComparable(l, vehicleData);
+        const deviation = hasLogicalDeviation(l, vehicleData);
+        
+        if (deviation.isDeviation && deviation.reason) {
+          logicalDeviations.push(`Listing #${index + 1}: ${deviation.reason}`);
+        }
+        
+        return {
+          id: `listing-${index + 1}`,
+          portal: 'gaspedaal',
+          title: l.title || '',
+          price: normalizePrice(l.price),
+          mileage: l.mileage || 0,
+          buildYear: l.buildYear || vehicleData.buildYear,
+          url: l.url,
+          options: [],
+          color: undefined,
+          isPrimaryComparable: isPrimary,
+          isLogicalDeviation: deviation.isDeviation,
+          matchScore,
+          deviationReason: deviation.reason,
+        };
+      });
 
     // Calculate statistics
-    const prices = listings.map((l) => l.price).sort((a, b) => a - b);
+    const prices = listings.map((l) => l.price).filter(p => p > 0).sort((a, b) => a - b);
     const lowestPrice = prices.length > 0 ? prices[0] : 0;
     const highestPrice = prices.length > 0 ? prices[prices.length - 1] : 0;
     const medianPrice = prices.length > 0 ? prices[Math.floor(prices.length / 2)] : 0;
     const primaryComparableCount = listings.filter(l => l.isPrimaryComparable).length;
-    const logicalDeviations = analysisData.logicalDeviations || [];
 
     console.log('✅ Portal search complete:', {
       listingCount: listings.length,
@@ -380,14 +472,11 @@ BELANGRIJK:
 
 // Normalize price - ensure it's a valid whole number in euros
 function normalizePrice(price: number): number {
-  // If price looks like it's in thousands (e.g., 45.5 meaning 45500)
   if (price < 500 && price > 0) {
     return Math.round(price * 1000);
   }
-  // If price looks like it has decimal for thousands separator (e.g., 45.000)
   if (price > 100 && price < 200) {
     return Math.round(price * 1000);
   }
-  // Normal price in whole euros
   return Math.round(price);
 }
