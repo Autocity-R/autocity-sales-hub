@@ -74,10 +74,22 @@ serve(async (req) => {
       throw new Error('OPENAI_API_KEY not configured');
     }
 
-    // Build search filters (zoals een inkoper)
-    const buildYearFrom = vehicleData.buildYear - 1;
-    const buildYearTo = vehicleData.buildYear + 1;
+    // Build search filters (zoals een inkoper) - BREDER BEREIK
+    const buildYearFrom = vehicleData.buildYear - 2;  // 2 jaar ouder voor meer vergelijking
+    const buildYearTo = vehicleData.buildYear + 1;    // 1 jaar jonger
     const mileageMax = Math.ceil((vehicleData.mileage + 20000) / 10000) * 10000;
+    
+    // Genereer directe portal zoek-URLs
+    const brandSlug = vehicleData.brand.toLowerCase().replace(/\s+/g, '-');
+    const modelSlug = vehicleData.model.toLowerCase().replace(/\s+/g, '-');
+    const fuelSlug = vehicleData.fuelType.toLowerCase().replace(/\s+/g, '-');
+    const transmissionSlug = vehicleData.transmission === 'Automaat' ? 'AUTOMATISCH' : 'HANDGESCHAKELD';
+    
+    const directSearchUrls = {
+      gaspedaal: `https://www.gaspedaal.nl/${brandSlug}/${modelSlug}/${fuelSlug}?bmin=${buildYearFrom}&bmax=${buildYearTo}&kmax=${mileageMax}&trns=${transmissionSlug}&srt=pr-a`,
+      autoscout24: `https://www.autoscout24.nl/lst/${brandSlug}/${modelSlug}?fregfrom=${buildYearFrom}&fregto=${buildYearTo}&kmto=${mileageMax}&fuel=${fuelSlug}&sort=price&asc=true`,
+      autotrack: `https://www.autotrack.nl/auto/${brandSlug}/${modelSlug}?bouwjaar_van=${buildYearFrom}&bouwjaar_tot=${buildYearTo}&km_tot=${mileageMax}`
+    };
 
     // Volledige inkoper-prompt met STRIKTE filters
     const searchPrompt = `
@@ -145,9 +157,23 @@ Voer deze EXACTE zoekopdrachten uit:
    Zoek: ${vehicleData.brand} ${vehicleData.model}
    Filters: bouwjaar ${buildYearFrom}-${buildYearTo}
 
+## KRITIEKE ZOEKSTRATEGIE - SORTEER OP LAAGSTE PRIJS!
+
+**ALS INKOPER WIL IK DE ONDERKANT VAN DE MARKT ZIEN!**
+
+1. SORTEER ALTIJD OP PRIJS VAN LAAG NAAR HOOG op elke portal:
+   - Gaspedaal: voeg "srt=pr-a" toe aan URL (prijs oplopend)
+   - AutoScout24: sort=price&asc=true
+   - Marktplaats: sorteer op prijs laag-hoog
+   - AutoTrack: sorteer op prijs
+
+2. Begin bij de GOEDKOOPSTE advertenties en werk naar boven
+3. De goedkoopste listings zijn CRUCIAAL voor taxatie!
+4. Als alle prijzen binnen €3.000 van elkaar liggen, zoek breder
+
 ## VEREISTE OUTPUT
 
-Zoek 8-12 ECHTE listings en retourneer ALLEEN dit JSON object (geen andere tekst):
+Zoek 15-20 ECHTE listings (minstens 15!) en retourneer ALLEEN dit JSON object (geen andere tekst):
 
 {
   "lowestPrice": getal (laagste PRIMARY COMPARABLE prijs),
@@ -198,10 +224,12 @@ Zoek 8-12 ECHTE listings en retourneer ALLEEN dit JSON object (geen andere tekst
 1. ALLEEN ECHTE URLs die daadwerkelijk werken - geen verzonnen links!
 2. De URL kan een doorverwijzing zijn (bijv. vaartland.nl via gaspedaal.nl)
 3. ALLE listings moeten een werkende URL hebben
-4. Als je minder dan 6 listings vindt, zoek breder maar markeer de afwijkingen
+4. Als je minder dan 10 listings vindt, zoek breder maar markeer de afwijkingen
 5. PRIMARY COMPARABLE = voldoet aan ALLE harde filters
 6. Bereken lowestPrice en medianPrice ALLEEN op basis van primaryComparables
 7. Log ELKE afwijking in logicalDeviations array
+8. START ALTIJD MET DE GOEDKOOPSTE ADVERTENTIES - dit is de onderkant van de markt!
+9. Als de goedkoopste advertentie NIET in je resultaten zit, heb je het VERKEERD gedaan!
 `;
 
     console.log('📡 Calling OpenAI Responses API with web_search_preview...');
@@ -308,6 +336,14 @@ Zoek 8-12 ECHTE listings en retourneer ALLEEN dit JSON object (geen andere tekst
       logicalDeviations: logicalDeviations.length
     });
 
+    // Check voor smalle prijsspread (mogelijk niet alle goedkope listings gevonden)
+    const priceSpread = analysisData.lowestPrice > 0 
+      ? (analysisData.highestPrice - analysisData.lowestPrice) / analysisData.lowestPrice 
+      : 0;
+    const priceSpreadWarning = priceSpread < 0.10 && analysisData.listingCount > 3
+      ? "Prijsspread < 10% - mogelijk niet alle goedkope advertenties gevonden. Controleer handmatig via de directe link."
+      : null;
+
     // Add the applied filters to the response
     const portalAnalysis: PortalAnalysis = {
       ...analysisData,
@@ -323,7 +359,9 @@ Zoek 8-12 ECHTE listings en retourneer ALLEEN dit JSON object (geen andere tekst
         bodyType: vehicleData.bodyType,
         keywords: vehicleData.keywords || [],
         requiredOptions: vehicleData.options || [],
-      }
+      },
+      directSearchUrls,
+      priceSpreadWarning,
     };
 
     console.log('📊 Portal analysis complete:', {
