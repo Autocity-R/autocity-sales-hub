@@ -21,6 +21,13 @@ interface VehicleData {
   keywords?: string[];
 }
 
+interface JPCarsPortalUrls {
+  gaspedaal?: string | null;
+  autoscout24?: string | null;
+  marktplaats?: string | null;
+  jpCarsWindow?: string | null;
+}
+
 interface PortalListing {
   id: string;
   portal: 'gaspedaal' | 'autoscout24' | 'autotrack' | 'marktplaats';
@@ -59,43 +66,19 @@ interface PortalAnalysis {
   logicalDeviations: string[];
 }
 
-// Gaspedaal numerieke codes voor brandstof
-function getFuelCode(fuelType: string): string {
-  const fuelMap: Record<string, string> = {
-    'benzine': '1',
-    'diesel': '2',
-    'hybride': '25',
-    'elektrisch': '9',
-    'lpg': '4',
-    'plug-in hybride': '25',
-    'mild hybride': '25',
-    'full hybride': '25',
-  };
-  const normalized = fuelType.toLowerCase().trim();
-  return fuelMap[normalized] || '';
-}
-
-// Gaspedaal numerieke codes voor transmissie
-function getTransmissionCode(transmission: string): string {
-  const transMap: Record<string, string> = {
-    'automaat': '14',
-    'handgeschakeld': '16',
-    'handmatig': '16',
-    'manueel': '16',
-  };
-  const normalized = transmission.toLowerCase().trim();
-  return transMap[normalized] || '';
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { vehicleData } = await req.json() as { vehicleData: VehicleData };
+    const { vehicleData, jpCarsUrls } = await req.json() as { 
+      vehicleData: VehicleData; 
+      jpCarsUrls?: JPCarsPortalUrls;
+    };
     
     console.log('🔍 Portal search request for:', vehicleData.brand, vehicleData.model, vehicleData.trim);
+    console.log('🔗 JP Cars URLs provided:', jpCarsUrls);
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
@@ -103,72 +86,36 @@ serve(async (req) => {
     }
 
     // Build search filters
-    // Primaire range: zelfde bouwjaar of nieuwer
     const buildYearFrom = vehicleData.buildYear;
     const buildYearTo = vehicleData.buildYear + 1;
-    // Fallback range: 1 jaar ouder toevoegen als primaire zoek niets vindt
     const buildYearFallback = vehicleData.buildYear - 1;
     const mileageMax = Math.ceil((vehicleData.mileage + 20000) / 10000) * 10000;
     
-    // Genereer directe portal zoek-URLs met CORRECTE codes
-    const brandSlug = vehicleData.brand.toLowerCase().replace(/\s+/g, '-');
-    const modelSlug = vehicleData.model.toLowerCase().replace(/\s+/g, '-');
-    const fuelSlug = vehicleData.fuelType.toLowerCase().replace(/\s+/g, '-');
+    // === GEBRUIK JP CARS URLs ALS BESCHIKBAAR ===
+    let gaspedaalUrl = jpCarsUrls?.gaspedaal || null;
+    let autoscoutUrl = jpCarsUrls?.autoscout24 || null;
+    let marktplaatsUrl = jpCarsUrls?.marktplaats || null;
+    const jpCarsWindowUrl = jpCarsUrls?.jpCarsWindow || null;
     
-    // Gaspedaal gebruikt numerieke codes
-    const transmissionCode = getTransmissionCode(vehicleData.transmission);
-    const fuelCode = getFuelCode(vehicleData.fuelType);
-    
-    // === NIEUW: Bouw zoektermen met trim + opties + keywords ===
-    const searchTerms: string[] = [];
-    
-    // Trim/uitvoering is KRITIEK (B4, T5, GTI, R-Line, etc.)
-    if (vehicleData.trim && vehicleData.trim !== 'Standaard' && vehicleData.trim.length > 0) {
-      searchTerms.push(vehicleData.trim);
+    // Simpele fallback als JP Cars geen URLs geeft
+    if (!gaspedaalUrl && !autoscoutUrl && !marktplaatsUrl) {
+      console.log('⚠️ No JP Cars URLs provided, building simple fallback URLs');
+      const brandSlug = vehicleData.brand.toLowerCase().replace(/\s+/g, '-');
+      const modelSlug = vehicleData.model.toLowerCase().replace(/\s+/g, '-');
+      gaspedaalUrl = `https://www.gaspedaal.nl/${brandSlug}/${modelSlug}?bmin=${buildYearFrom}&kmax=${mileageMax}&srt=pr-a`;
+      autoscoutUrl = `https://www.autoscout24.nl/lst/${brandSlug}/${modelSlug}?fregfrom=${buildYearFrom}&kmto=${mileageMax}&sort=price&asc=true`;
     }
-    
-    // Prioriteits-opties die de waarde significant beïnvloeden
-    const valueOptions = ['panoramadak', 'panorama', 'leder', 'head-up', 'harman', 'bowers', 'bang', 'burmester', 'meridian'];
-    const criticalOptions = vehicleData.options?.filter(opt => 
-      valueOptions.some(vo => opt.toLowerCase().includes(vo))
-    ) || [];
-    searchTerms.push(...criticalOptions.map(o => o.toLowerCase().replace(/-/g, ' ')));
-    
-    // Custom keywords van gebruiker
-    if (vehicleData.keywords?.length) {
-      searchTerms.push(...vehicleData.keywords);
-    }
-    
-    // URL-encode de zoektermen
-    const queryParam = searchTerms.length > 0 
-      ? `&q=${encodeURIComponent(searchTerms.join(' '))}` 
-      : '';
-    
-    console.log('🔍 Search terms for portals:', searchTerms);
-    console.log('🎯 Critical options filter:', criticalOptions);
-    
-    // Bouw Gaspedaal URL met numerieke codes + zoektermen
-    let gaspedaalUrl = `https://www.gaspedaal.nl/${brandSlug}/${modelSlug}`;
-    if (fuelSlug) gaspedaalUrl += `/${fuelSlug}`;
-    gaspedaalUrl += `?bmin=${buildYearFrom}&kmax=${mileageMax}${queryParam}`;
-    if (transmissionCode) gaspedaalUrl += `&trns=${transmissionCode}`;
-    gaspedaalUrl += `&srt=pr-a`;
-    
-    // Autoscout24 met zoektermen
-    const autoscoutQuery = searchTerms.length > 0 ? `&search=${encodeURIComponent(searchTerms.join(' '))}` : '';
-    
-    // Autotrack met zoektermen
-    const autotrackQuery = searchTerms.length > 0 ? `&zoekterm=${encodeURIComponent(searchTerms.join(' '))}` : '';
-    
+
     const directSearchUrls = {
       gaspedaal: gaspedaalUrl,
-      autoscout24: `https://www.autoscout24.nl/lst/${brandSlug}/${modelSlug}?fregfrom=${buildYearFrom}&kmto=${mileageMax}&fuel=${fuelSlug}${autoscoutQuery}&sort=price&asc=true`,
-      autotrack: `https://www.autotrack.nl/auto/${brandSlug}/${modelSlug}?bouwjaar_van=${buildYearFrom}&km_tot=${mileageMax}${autotrackQuery}`
+      autoscout24: autoscoutUrl,
+      marktplaats: marktplaatsUrl,
+      jpCarsWindow: jpCarsWindowUrl,
     };
 
-    console.log('🔗 Direct search URLs generated:', directSearchUrls);
+    console.log('🔗 Search URLs to use:', directSearchUrls);
 
-    // Volledige inkoper-prompt met STRIKTE filters en FALLBACK instructies
+    // Volledige inkoper-prompt
     const searchPrompt = `
 # OPDRACHT: ECHTE PORTAL SEARCH ALS AUTOCITY INKOPER
 
@@ -194,7 +141,7 @@ ${vehicleData.keywords?.length ? `Keywords: ${vehicleData.keywords.join(', ')}` 
 
 ### STAP 1: PRIMAIRE ZOEKOPDRACHT
 Zoek EERST met deze filters:
-- Bouwjaar: ${buildYearFrom} en nieuwer (bmin=${buildYearFrom}, GEEN bmax!)
+- Bouwjaar: ${buildYearFrom} en nieuwer (GEEN max bouwjaar!)
 - Kilometerstand: onder ${mileageMax.toLocaleString('nl-NL')} km
 - Brandstof: ${vehicleData.fuelType}
 - Transmissie: ${vehicleData.transmission}
@@ -211,37 +158,29 @@ Als je MINDER DAN 5 listings vindt met bouwjaar ${buildYearFrom}+:
 ✓ Zelfde brandstof: ${vehicleData.fuelType}
 ✓ Zelfde transmissie: ${vehicleData.transmission}
 ${vehicleData.trim && vehicleData.trim !== 'Standaard' ? `
-✓ **VERPLICHT - Uitvoering/Motortype: "${vehicleData.trim}"**
-  - Een ${vehicleData.brand} ${vehicleData.model} ${vehicleData.trim} is NIET vergelijkbaar met een andere motorvariant!
-  - Andere uitvoeringen (bijv. T5 ipv B4, 2.0T ipv 1.5T) zijn GEEN primary comparables!
+✓ **Vergelijkbare uitvoering/Motortype: "${vehicleData.trim}"**
+  - Let op: auto's met dezelfde motor maar ander uitrustingsniveau (Active vs Allure) ZIJN vergelijkbaar
+  - Auto's met ANDERE motor (bijv. 1.2 vs 2.0, B4 vs T5) zijn NIET direct vergelijkbaar
 ` : '✓ Vergelijkbare uitvoering/trim'}
-${criticalOptions.length > 0 ? `
-✓ **VERPLICHTE OPTIES: ${criticalOptions.join(', ')}**
-  - Auto's ZONDER deze opties zijn GEEN primary comparables!
-  - Een auto met panoramadak is €1500-3000 meer waard dan zonder!
-  - Markeer auto's zonder deze opties als isPrimaryComparable: false
-` : ''}
 
 ### LOGISCHE AFWIJKING markeren als:
 - Bouwjaar ${buildYearFallback} (1 jaar ouder) → deviationReason: "Bouwjaar ${buildYearFallback} (1 jaar ouder)"
 - KM boven ${mileageMax.toLocaleString('nl-NL')} → deviationReason: "Te veel km: X vs max ${mileageMax.toLocaleString('nl-NL')}"
 - Andere brandstof → deviationReason: "Verkeerde brandstof: X ipv ${vehicleData.fuelType}"
 - Andere transmissie → deviationReason: "Verkeerde transmissie: X ipv ${vehicleData.transmission}"
-${vehicleData.trim && vehicleData.trim !== 'Standaard' ? `- **Andere uitvoering/motortype** → isPrimaryComparable: false, deviationReason: "Verkeerde uitvoering: [gevonden] ipv ${vehicleData.trim}"` : '- Te kaal (veel minder opties) → deviationReason: "Te kaal: mist opties X, Y, Z"'}
-${criticalOptions.length > 0 ? `- **Mist verplichte opties** → isPrimaryComparable: false, deviationReason: "Mist opties: [ontbrekende opties]"` : ''}
 - Beschadigd → deviationReason: "Schade vermeld in advertentie"
 
-## ZOEKOPDRACHTEN PER PORTAL
+## ZOEKOPDRACHTEN - GEBRUIK DEZE URLs!
 
-Gebruik deze EXACTE URLs om te zoeken (sorteer op laagste prijs):
+JP Cars heeft de juiste zoek-URLs al samengesteld. Gebruik deze als startpunt:
 
-1. **gaspedaal.nl**: ${directSearchUrls.gaspedaal}
+${gaspedaalUrl ? `1. **gaspedaal.nl**: ${gaspedaalUrl}` : '1. **gaspedaal.nl**: Zoek handmatig'}
    
-2. **autoscout24.nl**: ${directSearchUrls.autoscout24}
+${autoscoutUrl ? `2. **autoscout24.nl**: ${autoscoutUrl}` : '2. **autoscout24.nl**: Zoek handmatig'}
    
-3. **marktplaats.nl/auto**: Zoek "${vehicleData.brand} ${vehicleData.model}" met bouwjaar ${buildYearFrom}+
-   
-4. **autotrack.nl**: ${directSearchUrls.autotrack}
+${marktplaatsUrl ? `3. **marktplaats.nl**: ${marktplaatsUrl}` : `3. **marktplaats.nl**: Zoek "${vehicleData.brand} ${vehicleData.model}" met bouwjaar ${buildYearFrom}+`}
+
+${jpCarsWindowUrl ? `4. **JP Cars overzicht** (referentie): ${jpCarsWindowUrl}` : ''}
 
 ## KRITIEKE ZOEKSTRATEGIE - SORTEER OP LAAGSTE PRIJS!
 
@@ -310,7 +249,6 @@ Zoek 15-20 ECHTE listings (minstens 15!) en retourneer ALLEEN dit JSON object (g
 6. Bereken lowestPrice en medianPrice ALLEEN op basis van primaryComparables
 7. Log ELKE afwijking in logicalDeviations array
 8. START ALTIJD MET DE GOEDKOOPSTE ADVERTENTIES - dit is de onderkant van de markt!
-9. Als de goedkoopste advertentie NIET in je resultaten zit, heb je het VERKEERD gedaan!
 `;
 
     console.log('📡 Calling OpenAI Responses API with web_search_preview...');
@@ -320,9 +258,8 @@ Zoek 15-20 ECHTE listings (minstens 15!) en retourneer ALLEEN dit JSON object (g
       buildYearFallback,
       mileageMax, 
       fuelType: vehicleData.fuelType, 
-      fuelCode,
       transmission: vehicleData.transmission,
-      transmissionCode 
+      jpCarsUrlsProvided: !!jpCarsUrls
     });
 
     // OpenAI Responses API met web search tool
@@ -351,11 +288,9 @@ Zoek 15-20 ECHTE listings (minstens 15!) en retourneer ALLEEN dit JSON object (g
     // Parse de Responses API output
     let outputText = '';
     
-    // De Responses API kan output in verschillende formaten teruggeven
     if (aiResponse.output_text) {
       outputText = aiResponse.output_text;
     } else if (aiResponse.output && Array.isArray(aiResponse.output)) {
-      // Zoek naar message content in de output array
       for (const item of aiResponse.output) {
         if (item.type === 'message' && item.content) {
           for (const contentItem of item.content) {
@@ -376,13 +311,12 @@ Zoek 15-20 ECHTE listings (minstens 15!) en retourneer ALLEEN dit JSON object (g
     console.log('✅ Output text received, length:', outputText.length);
     console.log('📝 First 500 chars of output:', outputText.substring(0, 500));
 
-    // Extract JSON from the output (may be wrapped in markdown code blocks)
+    // Extract JSON from the output
     let jsonContent = outputText;
     const jsonMatch = outputText.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) {
       jsonContent = jsonMatch[1].trim();
     } else {
-      // Try to find JSON object directly
       const jsonStartIndex = outputText.indexOf('{');
       const jsonEndIndex = outputText.lastIndexOf('}');
       if (jsonStartIndex !== -1 && jsonEndIndex !== -1) {
@@ -395,7 +329,6 @@ Zoek 15-20 ECHTE listings (minstens 15!) en retourneer ALLEEN dit JSON object (g
       console.error('❌ No valid JSON found in response. Got:', jsonContent.substring(0, 200));
       console.log('⚠️ OpenAI returned text instead of JSON - market may be thin or search failed');
       
-      // Return empty result with warning
       return new Response(JSON.stringify({
         success: true,
         data: {
@@ -427,12 +360,12 @@ Zoek 15-20 ECHTE listings (minstens 15!) en retourneer ALLEEN dit JSON object (g
       });
     }
 
-    // Try to fix common JSON issues before parsing
+    // Clean and parse JSON
     let cleanedJson = jsonContent
-      .replace(/,\s*}/g, '}')  // Remove trailing commas before }
-      .replace(/,\s*]/g, ']')  // Remove trailing commas before ]
-      .replace(/[\x00-\x1F\x7F]/g, ' ')  // Remove control characters
-      .replace(/\n\s*\n/g, '\n');  // Remove double newlines
+      .replace(/,\s*}/g, '}')
+      .replace(/,\s*]/g, ']')
+      .replace(/[\x00-\x1F\x7F]/g, ' ')
+      .replace(/\n\s*\n/g, '\n');
     
     let analysisData;
     try {
@@ -440,9 +373,7 @@ Zoek 15-20 ECHTE listings (minstens 15!) en retourneer ALLEEN dit JSON object (g
     } catch (parseError) {
       console.error('❌ JSON parse error after cleanup:', parseError.message);
       console.log('📝 First 500 chars of cleaned JSON:', cleanedJson.substring(0, 500));
-      console.log('📝 Last 500 chars of cleaned JSON:', cleanedJson.substring(cleanedJson.length - 500));
       
-      // Return empty result with the parse error
       return new Response(JSON.stringify({
         success: true,
         data: {
@@ -474,52 +405,32 @@ Zoek 15-20 ECHTE listings (minstens 15!) en retourneer ALLEEN dit JSON object (g
       });
     }
 
-    // Valideer dat URLs echt zijn van portalen
-    const portalUrls = ['gaspedaal.nl', 'autoscout24.nl', 'autoscout24.be', 'marktplaats.nl', 'autotrack.nl', 'vaartland.nl', 'autohopper.nl', 'autowereld.nl'];
+    // Validate and enhance the data
+    const listings = analysisData.listings || [];
     
-    const hasRealUrls = analysisData.listings?.some((l: PortalListing) => 
-      l.url && portalUrls.some(portal => l.url.includes(portal))
-    );
-
-    // Log gevonden listings voor debugging
-    console.log('📋 Gevonden listings:', analysisData.listings?.map((l: PortalListing) => ({
-      portal: l.portal,
-      title: l.title?.substring(0, 50),
-      price: l.price,
-      mileage: l.mileage,
-      buildYear: l.buildYear,
-      isPrimaryComparable: l.isPrimaryComparable,
-      deviationReason: l.deviationReason,
-      urlValid: portalUrls.some(p => l.url?.includes(p))
-    })));
-
-    if (!hasRealUrls) {
-      console.warn('⚠️ Geen echte portal URLs gevonden in response - web search mogelijk niet volledig succesvol');
-    } else {
-      console.log('✅ Echte portal URLs gevonden in listings');
-    }
-
-    // Validate and count primary comparables
-    const primaryComparables = analysisData.listings?.filter((l: PortalListing) => l.isPrimaryComparable) || [];
-    const logicalDeviations = analysisData.listings?.filter((l: PortalListing) => l.isLogicalDeviation) || [];
-    
-    console.log('📊 Listing breakdown:', {
-      total: analysisData.listings?.length || 0,
-      primaryComparables: primaryComparables.length,
-      logicalDeviations: logicalDeviations.length
+    // Filter valid portal URLs
+    const validListings = listings.filter((listing: PortalListing) => {
+      if (!listing.url) return false;
+      const validDomains = ['gaspedaal.nl', 'autoscout24.nl', 'autotrack.nl', 'marktplaats.nl', 
+                          'vaartland.nl', 'autoweek.nl', 'viabovag.nl', 'autowereld.nl'];
+      return validDomains.some(domain => listing.url.includes(domain));
     });
 
-    // Check voor smalle prijsspread (mogelijk niet alle goedkope listings gevonden)
-    const priceSpread = analysisData.lowestPrice > 0 
-      ? (analysisData.highestPrice - analysisData.lowestPrice) / analysisData.lowestPrice 
-      : 0;
-    const priceSpreadWarning = priceSpread < 0.10 && analysisData.listingCount > 3
-      ? "Prijsspread < 10% - mogelijk niet alle goedkope advertenties gevonden. Controleer handmatig via de directe link."
-      : null;
+    // Calculate statistics
+    const primaryComparables = validListings.filter((l: PortalListing) => l.isPrimaryComparable);
+    const primaryPrices = primaryComparables.map((l: PortalListing) => l.price).sort((a: number, b: number) => a - b);
+    
+    const lowestPrice = primaryPrices.length > 0 ? primaryPrices[0] : (analysisData.lowestPrice || 0);
+    const medianPrice = primaryPrices.length > 0 
+      ? primaryPrices[Math.floor(primaryPrices.length / 2)]
+      : (analysisData.medianPrice || 0);
+    const highestPrice = analysisData.highestPrice || (primaryPrices.length > 0 ? primaryPrices[primaryPrices.length - 1] : 0);
 
-    // Add the applied filters to the response
-    const portalAnalysis: PortalAnalysis = {
-      ...analysisData,
+    const result: PortalAnalysis = {
+      lowestPrice,
+      medianPrice,
+      highestPrice,
+      listingCount: validListings.length,
       primaryComparableCount: primaryComparables.length,
       appliedFilters: {
         brand: vehicleData.brand,
@@ -533,32 +444,32 @@ Zoek 15-20 ECHTE listings (minstens 15!) en retourneer ALLEEN dit JSON object (g
         keywords: vehicleData.keywords || [],
         requiredOptions: vehicleData.options || [],
       },
-      directSearchUrls,
-      priceSpreadWarning,
+      listings: validListings,
+      logicalDeviations: analysisData.logicalDeviations || [],
     };
 
-    console.log('📊 Portal analysis complete:', {
-      listingCount: portalAnalysis.listingCount,
-      primaryComparableCount: portalAnalysis.primaryComparableCount,
-      priceRange: `€${portalAnalysis.lowestPrice} - €${portalAnalysis.highestPrice}`,
-      median: `€${portalAnalysis.medianPrice}`,
-      hasRealUrls
+    console.log('✅ Portal analysis complete:', {
+      listingCount: result.listingCount,
+      primaryComparableCount: result.primaryComparableCount,
+      priceRange: `€${result.lowestPrice} - €${result.highestPrice}`,
+      jpCarsUrlsUsed: !!jpCarsUrls
     });
 
     return new Response(JSON.stringify({
       success: true,
-      data: portalAnalysis
+      data: {
+        ...result,
+        directSearchUrls,
+      }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
     console.error('❌ Portal search error:', error);
-    
     return new Response(JSON.stringify({
       success: false,
-      error: error.message || 'Portal search failed',
-      data: null
+      error: error instanceof Error ? error.message : 'Unknown error',
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
