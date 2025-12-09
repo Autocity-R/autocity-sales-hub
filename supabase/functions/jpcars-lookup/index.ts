@@ -71,10 +71,22 @@ serve(async (req) => {
     if (requestBody.modelYear) {
       jpCarsRequestBody.model_year = requestBody.modelYear;
     }
-    // HP is required by JP Cars, use 0 as fallback if not provided
-    jpCarsRequestBody.hp = requestBody.hp || 0;
-    // KW voor meer precisie
-    if (requestBody.kw) {
+    // HP - JP Cars vereist dit veld, maar 0 geeft ERROR_INVALID_CAR
+    // Als we geen HP hebben, bereken van KW of gebruik default op basis van fuel type
+    if (requestBody.hp && requestBody.hp > 0) {
+      jpCarsRequestBody.hp = requestBody.hp;
+    } else if (requestBody.kw && requestBody.kw > 0) {
+      // Converteer KW naar HP (1 kW = 1.36 HP)
+      jpCarsRequestBody.hp = Math.round(requestBody.kw * 1.36);
+      console.log('🔄 HP berekend van KW:', requestBody.kw, '→', jpCarsRequestBody.hp, 'HP');
+    } else {
+      // Geen HP of KW beschikbaar - stuur GEEN hp veld
+      // JP Cars kan dan proberen te matchen op andere velden
+      console.log('⚠️ Geen HP/KW beschikbaar, HP veld wordt weggelaten');
+    }
+    
+    // KW voor meer precisie (optioneel)
+    if (requestBody.kw && requestBody.kw > 0) {
       jpCarsRequestBody.kw = requestBody.kw;
     }
     // Color voor betere matching
@@ -249,7 +261,8 @@ serve(async (req) => {
         statTurnoverExt: data.stat_turnover_ext,
         statTurnoverInt: data.stat_turnover_int,
         percents: data.percents,
-        rawApr: rawApr
+        rawApr: data.apr,
+        rawEtr: data.etr
       }
     };
 
