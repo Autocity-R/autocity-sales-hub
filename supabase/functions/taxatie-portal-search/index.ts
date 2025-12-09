@@ -74,9 +74,9 @@ serve(async (req) => {
       throw new Error('OPENAI_API_KEY not configured');
     }
 
-    // Build search filters (zoals een inkoper) - BREDER BEREIK
-    const buildYearFrom = vehicleData.buildYear - 2;  // 2 jaar ouder voor meer vergelijking
-    const buildYearTo = vehicleData.buildYear + 1;    // 1 jaar jonger
+    // Build search filters - ZELFDE BOUWJAAR OF NIEUWER (accurate taxatie)
+    const buildYearFrom = vehicleData.buildYear;      // Zelfde bouwjaar als minimum
+    const buildYearTo = vehicleData.buildYear + 1;    // Max 1 jaar jonger
     const mileageMax = Math.ceil((vehicleData.mileage + 20000) / 10000) * 10000;
     
     // Genereer directe portal zoek-URLs
