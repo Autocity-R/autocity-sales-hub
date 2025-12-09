@@ -119,17 +119,51 @@ serve(async (req) => {
     const transmissionCode = getTransmissionCode(vehicleData.transmission);
     const fuelCode = getFuelCode(vehicleData.fuelType);
     
-    // Bouw Gaspedaal URL met numerieke codes (ZONDER bmax - die is te restrictief)
+    // === NIEUW: Bouw zoektermen met trim + opties + keywords ===
+    const searchTerms: string[] = [];
+    
+    // Trim/uitvoering is KRITIEK (B4, T5, GTI, R-Line, etc.)
+    if (vehicleData.trim && vehicleData.trim !== 'Standaard' && vehicleData.trim.length > 0) {
+      searchTerms.push(vehicleData.trim);
+    }
+    
+    // Prioriteits-opties die de waarde significant beïnvloeden
+    const valueOptions = ['panoramadak', 'panorama', 'leder', 'head-up', 'harman', 'bowers', 'bang', 'burmester', 'meridian'];
+    const criticalOptions = vehicleData.options?.filter(opt => 
+      valueOptions.some(vo => opt.toLowerCase().includes(vo))
+    ) || [];
+    searchTerms.push(...criticalOptions.map(o => o.toLowerCase().replace(/-/g, ' ')));
+    
+    // Custom keywords van gebruiker
+    if (vehicleData.keywords?.length) {
+      searchTerms.push(...vehicleData.keywords);
+    }
+    
+    // URL-encode de zoektermen
+    const queryParam = searchTerms.length > 0 
+      ? `&q=${encodeURIComponent(searchTerms.join(' '))}` 
+      : '';
+    
+    console.log('🔍 Search terms for portals:', searchTerms);
+    console.log('🎯 Critical options filter:', criticalOptions);
+    
+    // Bouw Gaspedaal URL met numerieke codes + zoektermen
     let gaspedaalUrl = `https://www.gaspedaal.nl/${brandSlug}/${modelSlug}`;
     if (fuelSlug) gaspedaalUrl += `/${fuelSlug}`;
-    gaspedaalUrl += `?bmin=${buildYearFrom}&kmax=${mileageMax}`;
+    gaspedaalUrl += `?bmin=${buildYearFrom}&kmax=${mileageMax}${queryParam}`;
     if (transmissionCode) gaspedaalUrl += `&trns=${transmissionCode}`;
     gaspedaalUrl += `&srt=pr-a`;
     
+    // Autoscout24 met zoektermen
+    const autoscoutQuery = searchTerms.length > 0 ? `&search=${encodeURIComponent(searchTerms.join(' '))}` : '';
+    
+    // Autotrack met zoektermen
+    const autotrackQuery = searchTerms.length > 0 ? `&zoekterm=${encodeURIComponent(searchTerms.join(' '))}` : '';
+    
     const directSearchUrls = {
       gaspedaal: gaspedaalUrl,
-      autoscout24: `https://www.autoscout24.nl/lst/${brandSlug}/${modelSlug}?fregfrom=${buildYearFrom}&kmto=${mileageMax}&fuel=${fuelSlug}&sort=price&asc=true`,
-      autotrack: `https://www.autotrack.nl/auto/${brandSlug}/${modelSlug}?bouwjaar_van=${buildYearFrom}&km_tot=${mileageMax}`
+      autoscout24: `https://www.autoscout24.nl/lst/${brandSlug}/${modelSlug}?fregfrom=${buildYearFrom}&kmto=${mileageMax}&fuel=${fuelSlug}${autoscoutQuery}&sort=price&asc=true`,
+      autotrack: `https://www.autotrack.nl/auto/${brandSlug}/${modelSlug}?bouwjaar_van=${buildYearFrom}&km_tot=${mileageMax}${autotrackQuery}`
     };
 
     console.log('🔗 Direct search URLs generated:', directSearchUrls);
@@ -171,19 +205,30 @@ Als je MINDER DAN 5 listings vindt met bouwjaar ${buildYearFrom}+:
 → Markeer deze als isLogicalDeviation: true
 → deviationReason: "Bouwjaar ${buildYearFallback} (1 jaar ouder dan ${buildYearFrom})"
 
-### PRIMARY COMPARABLE criteria:
+### PRIMARY COMPARABLE criteria (HARDE FILTERS!):
 ✓ Bouwjaar ${buildYearFrom} of nieuwer
 ✓ Kilometerstand < ${mileageMax.toLocaleString('nl-NL')} km
 ✓ Zelfde brandstof: ${vehicleData.fuelType}
 ✓ Zelfde transmissie: ${vehicleData.transmission}
-✓ Vergelijkbare uitvoering/trim
+${vehicleData.trim && vehicleData.trim !== 'Standaard' ? `
+✓ **VERPLICHT - Uitvoering/Motortype: "${vehicleData.trim}"**
+  - Een ${vehicleData.brand} ${vehicleData.model} ${vehicleData.trim} is NIET vergelijkbaar met een andere motorvariant!
+  - Andere uitvoeringen (bijv. T5 ipv B4, 2.0T ipv 1.5T) zijn GEEN primary comparables!
+` : '✓ Vergelijkbare uitvoering/trim'}
+${criticalOptions.length > 0 ? `
+✓ **VERPLICHTE OPTIES: ${criticalOptions.join(', ')}**
+  - Auto's ZONDER deze opties zijn GEEN primary comparables!
+  - Een auto met panoramadak is €1500-3000 meer waard dan zonder!
+  - Markeer auto's zonder deze opties als isPrimaryComparable: false
+` : ''}
 
 ### LOGISCHE AFWIJKING markeren als:
 - Bouwjaar ${buildYearFallback} (1 jaar ouder) → deviationReason: "Bouwjaar ${buildYearFallback} (1 jaar ouder)"
 - KM boven ${mileageMax.toLocaleString('nl-NL')} → deviationReason: "Te veel km: X vs max ${mileageMax.toLocaleString('nl-NL')}"
 - Andere brandstof → deviationReason: "Verkeerde brandstof: X ipv ${vehicleData.fuelType}"
 - Andere transmissie → deviationReason: "Verkeerde transmissie: X ipv ${vehicleData.transmission}"
-- Te kaal (veel minder opties) → deviationReason: "Te kaal: mist opties X, Y, Z"
+${vehicleData.trim && vehicleData.trim !== 'Standaard' ? `- **Andere uitvoering/motortype** → isPrimaryComparable: false, deviationReason: "Verkeerde uitvoering: [gevonden] ipv ${vehicleData.trim}"` : '- Te kaal (veel minder opties) → deviationReason: "Te kaal: mist opties X, Y, Z"'}
+${criticalOptions.length > 0 ? `- **Mist verplichte opties** → isPrimaryComparable: false, deviationReason: "Mist opties: [ontbrekende opties]"` : ''}
 - Beschadigd → deviationReason: "Schade vermeld in advertentie"
 
 ## ZOEKOPDRACHTEN PER PORTAL

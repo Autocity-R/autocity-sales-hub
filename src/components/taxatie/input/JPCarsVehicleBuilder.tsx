@@ -6,11 +6,16 @@ import { Loader2, Car, RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { TaxatieVehicleData } from '@/types/taxatie';
 import { VEHICLE_BRANDS, FUEL_TYPES, BODY_TYPES, TRANSMISSION_TYPES } from '@/data/vehicleData';
+import { OptionsSelector } from './OptionsSelector';
 
 interface JPCarsVehicleBuilderProps {
   onSubmit: (data: TaxatieVehicleData) => void;
   disabled?: boolean;
   loading?: boolean;
+  selectedOptions: string[];
+  onToggleOption: (option: string) => void;
+  keywords: string[];
+  onKeywordsChange: (keywords: string[]) => void;
 }
 
 interface BuilderState {
@@ -22,6 +27,7 @@ interface BuilderState {
   body: string;
   build: string;
   mileage: number;
+  trim: string;
 }
 
 // Static data - no API dependency
@@ -32,7 +38,15 @@ const BODIES = [...BODY_TYPES];
 const YEARS = Array.from({ length: 20 }, (_, i) => (new Date().getFullYear() - i).toString());
 const HP_OPTIONS = ['75', '90', '100', '110', '120', '130', '140', '150', '163', '177', '190', '204', '220', '252', '286', '300', '340', '400', '450', '500'];
 
-export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehicleBuilderProps) => {
+export const JPCarsVehicleBuilder = ({ 
+  onSubmit, 
+  disabled, 
+  loading,
+  selectedOptions,
+  onToggleOption,
+  keywords,
+  onKeywordsChange,
+}: JPCarsVehicleBuilderProps) => {
   const [state, setState] = useState<BuilderState>({
     make: '',
     model: '',
@@ -42,6 +56,7 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
     body: '',
     build: '',
     mileage: 0,
+    trim: '',
   });
 
   const [models, setModels] = useState<string[]>([]);
@@ -67,12 +82,14 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
       updates.hp = '';
       updates.body = '';
       updates.build = '';
+      updates.trim = '';
     } else if (field === 'model') {
       updates.fuel = '';
       updates.gear = '';
       updates.hp = '';
       updates.body = '';
       updates.build = '';
+      updates.trim = '';
     }
     
     setState(prev => ({ ...prev, ...updates }));
@@ -81,6 +98,10 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
   const handleMileageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value.replace(/\D/g, ''), 10) || 0;
     setState(prev => ({ ...prev, mileage: value }));
+  };
+
+  const handleTrimChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setState(prev => ({ ...prev, trim: e.target.value }));
   };
 
   const handleReset = () => {
@@ -93,6 +114,7 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
       body: '',
       build: '',
       mileage: 0,
+      trim: '',
     });
   };
 
@@ -112,13 +134,15 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
       transmission: mapTransmission(state.gear),
       bodyType: state.body,
       power: parseInt(state.hp, 10) || 0,
-      trim: '',
+      trim: state.trim,
       color: '',
-      options: [],
-      keywords: [],
+      options: selectedOptions,
+      keywords: keywords,
     };
 
     console.log('🚗 JP Cars builder submitting:', vehicleData);
+    console.log('🎯 With options:', selectedOptions);
+    console.log('🏷️ With keywords:', keywords);
     onSubmit(vehicleData);
   };
 
@@ -145,6 +169,7 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
         <div className="flex flex-wrap gap-2">
           {state.make && <Badge variant="secondary">{state.make}</Badge>}
           {state.model && <Badge variant="secondary">{state.model}</Badge>}
+          {state.trim && <Badge variant="default">{state.trim}</Badge>}
           {state.fuel && <Badge variant="secondary">{state.fuel}</Badge>}
           {state.gear && <Badge variant="secondary">{state.gear}</Badge>}
           {state.hp && <Badge variant="secondary">{state.hp} PK</Badge>}
@@ -185,6 +210,26 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        )}
+
+        {/* Trim / Uitvoering - NIEUW EN BELANGRIJK */}
+        {state.model && (
+          <div className="space-y-1">
+            <label className="text-sm font-medium flex items-center gap-2">
+              Uitvoering / Motortype
+              <Badge variant="outline" className="text-xs">Belangrijk!</Badge>
+            </label>
+            <Input
+              placeholder="bijv. B4, T5, R-Design, M Sport, GTI, 2.0 TDI"
+              value={state.trim}
+              onChange={handleTrimChange}
+              disabled={disabled}
+              className="font-medium"
+            />
+            <p className="text-xs text-muted-foreground">
+              Kritiek voor accurate vergelijking (B4 ≠ T5, 1.5T ≠ 2.0T)
+            </p>
           </div>
         )}
 
@@ -288,6 +333,19 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
               />
               <span className="text-sm text-muted-foreground">km</span>
             </div>
+          </div>
+        )}
+
+        {/* Opties & Keywords - KRITIEK voor accurate taxatie */}
+        {state.build && state.mileage > 0 && (
+          <div className="border-t pt-4 mt-4">
+            <OptionsSelector
+              selectedOptions={selectedOptions}
+              onToggleOption={onToggleOption}
+              keywords={keywords}
+              onKeywordsChange={onKeywordsChange}
+              disabled={disabled}
+            />
           </div>
         )}
       </div>
