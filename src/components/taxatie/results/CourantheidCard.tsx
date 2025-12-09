@@ -1,9 +1,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Zap, Clock, TrendingUp } from 'lucide-react';
+import { Zap, TrendingUp, Clock, Package } from 'lucide-react';
 import type { JPCarsData } from '@/types/taxatie';
 
 interface CourantheidCardProps {
@@ -34,20 +33,24 @@ export const CourantheidCard = ({ data, loading }: CourantheidCardProps) => {
     return null;
   }
 
-  const aprPercentage = Math.round(data.apr * 100);
-  const etrStatus = data.etr <= 14 ? 'excellent' : data.etr <= 21 ? 'goed' : data.etr <= 30 ? 'gemiddeld' : 'langzaam';
+  // APR en ETR zijn nu schaal 1-5 (5 = beste)
+  const apr = data.apr;
+  const etr = data.etr;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'excellent':
-        return 'text-green-600 bg-green-500/10 border-green-500/20';
-      case 'goed':
-        return 'text-blue-600 bg-blue-500/10 border-blue-500/20';
-      case 'gemiddeld':
-        return 'text-amber-600 bg-amber-500/10 border-amber-500/20';
-      default:
-        return 'text-red-600 bg-red-500/10 border-red-500/20';
+  const getScoreBadge = (score: number, type: 'apr' | 'etr') => {
+    if (score >= 4) {
+      return <Badge className="bg-green-500 hover:bg-green-600">{type === 'apr' ? 'Uitstekend' : 'Snel'}</Badge>;
     }
+    if (score >= 3) {
+      return <Badge className="bg-amber-500 hover:bg-amber-600">Gemiddeld</Badge>;
+    }
+    return <Badge className="bg-red-500 hover:bg-red-600">{type === 'apr' ? 'Laag' : 'Traag'}</Badge>;
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 4) return 'text-green-600';
+    if (score >= 3) return 'text-amber-600';
+    return 'text-red-600';
   };
 
   const getCourantheidBadge = (courantheid: string) => {
@@ -76,51 +79,70 @@ export const CourantheidCard = ({ data, loading }: CourantheidCardProps) => {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* APR */}
+        {/* APR - Schaal 1-5 */}
         <div className="p-3 rounded-lg border bg-card">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">APR (Average Price Ratio)</span>
+              <span className="text-sm font-medium">APR (Prijspositie)</span>
             </div>
-            <span className="text-lg font-bold">{aprPercentage}%</span>
+            <div className="flex items-center gap-2">
+              <span className={`text-lg font-bold ${getScoreColor(apr)}`}>{apr}/5 ⭐</span>
+              {getScoreBadge(apr, 'apr')}
+            </div>
           </div>
-          <Progress value={aprPercentage} className="h-2" />
-          <p className="text-xs text-muted-foreground mt-2">
-            {aprPercentage >= 85
-              ? '✅ Onder marktgemiddelde - goede positie'
-              : aprPercentage >= 70
-              ? '⚠️ Rond marktgemiddelde'
+          <p className="text-xs text-muted-foreground">
+            {apr >= 4
+              ? '✅ Scherp geprijsd - snelle verkoop verwacht'
+              : apr >= 3
+              ? '⚠️ Marktconform geprijsd'
               : '❌ Boven marktgemiddelde - let op!'}
           </p>
         </div>
 
-        {/* ETR */}
-        <div className={`p-3 rounded-lg border ${getStatusColor(etrStatus)}`}>
+        {/* ETR - Schaal 1-5 */}
+        <div className="p-3 rounded-lg border bg-card">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              <span className="text-sm font-medium">ETR (Expected Time to Retail)</span>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">ETR (Doorloopsnelheid)</span>
             </div>
-            <span className="text-lg font-bold">{data.etr} dagen</span>
+            <div className="flex items-center gap-2">
+              <span className={`text-lg font-bold ${getScoreColor(etr)}`}>{etr}/5 ⭐</span>
+              {getScoreBadge(etr, 'etr')}
+            </div>
           </div>
-          <p className="text-xs">
-            {etrStatus === 'excellent'
+          <p className="text-xs text-muted-foreground">
+            {etr >= 4
               ? '🚀 Zeer snelle doorlooptijd verwacht'
-              : etrStatus === 'goed'
-              ? '✅ Goede doorlooptijd verwacht'
-              : etrStatus === 'gemiddeld'
+              : etr >= 3
               ? '⚠️ Gemiddelde doorlooptijd'
               : '🐌 Langere statijd verwacht'}
           </p>
         </div>
+
+        {/* Echte statijd in DAGEN (apart) */}
+        {data.stockStats?.avgDays && (
+          <div className="p-3 rounded-lg border bg-muted/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Gem. statijd markt</span>
+              </div>
+              <span className="text-lg font-bold">{Math.round(data.stockStats.avgDays)} dagen</span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              📊 Gebaseerd op {data.stockStats.count} vergelijkbare auto's in voorraad
+            </p>
+          </div>
+        )}
 
         {/* Advies op basis van APR/ETR */}
         <div className="p-3 bg-muted/50 rounded-lg text-xs">
           <p className="font-medium mb-1">Strategie op basis van courantheid:</p>
           {data.courantheid === 'hoog' ? (
             <p className="text-muted-foreground">
-              Hoge APR + lage ETR = <span className="text-green-600 font-medium">scherper inkopen mogelijk</span>, 
+              Hoge APR + hoge ETR = <span className="text-green-600 font-medium">scherper inkopen mogelijk</span>, 
               snelle omloop verwacht
             </p>
           ) : data.courantheid === 'gemiddeld' ? (
@@ -129,7 +151,7 @@ export const CourantheidCard = ({ data, loading }: CourantheidCardProps) => {
             </p>
           ) : (
             <p className="text-muted-foreground">
-              Lage APR + hoge ETR = <span className="text-red-600 font-medium">voorzichtiger inkopen</span>, 
+              Lage APR + lage ETR = <span className="text-red-600 font-medium">voorzichtiger inkopen</span>, 
               hogere marge nodig
             </p>
           )}

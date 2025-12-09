@@ -157,21 +157,21 @@ serve(async (req) => {
       });
     }
 
-    // APR normalisatie
-    const rawApr = data.apr || 0;
-    const normalizedApr = rawApr > 1 ? rawApr / 100 : rawApr;
+    // APR & ETR - Schaal 1-5 van JP Cars (NL markt)
+    // APR: 5 = beste prijspositie, 1 = slechtste
+    // ETR: 5 = snelste doorlooptijd, 1 = langzaamste
+    const apr = data.apr || 3; // Default naar gemiddeld (3)
+    const etr = data.etr || 3; // Default naar gemiddeld (3)
     
-    // ETR - gebruik directe waarde van JP Cars indien beschikbaar
-    const directEtr = data.etr || data.stat_turnover_days || null;
-    const calculatedEtr = directEtr || calculateETR(data, rawApr);
+    console.log('📊 JP Cars APR/ETR (1-5 schaal):', { apr, etr });
     
-    // Stock stats
+    // Stock stats - ECHTE DAGEN
     const windowSize = data.window_size || 0;
     const stockDaysAvg = data.stock_days_average || data.stat_stock_days || null;
     
-    // Sold stats
+    // Sold stats - ECHTE DAGEN
     const soldCount = data.sold_count || data.stat_sold_count || 0;
-    const soldDaysAvg = data.sold_days_average || data.stat_sold_days || directEtr || calculatedEtr;
+    const soldDaysAvg = data.sold_days_average || data.stat_sold_days || null;
 
     // Market discount
     const marketDiscount = data.price_sensitivity || data.market_discount || null;
@@ -200,10 +200,8 @@ serve(async (req) => {
 
     console.log('📈 Parsed JP Cars data:', {
       totalValue: data.value,
-      apr: normalizedApr,
-      rawApr,
-      directEtr,
-      calculatedEtr,
+      apr,
+      etr,
       windowSize,
       stockDaysAvg,
       soldCount,
@@ -224,9 +222,9 @@ serve(async (req) => {
         max: calculateRangeMax(data)
       },
       confidence: calculateConfidence(data),
-      apr: normalizedApr,
-      etr: calculatedEtr,
-      courantheid: determineCourantheid(normalizedApr),
+      apr: apr,  // Schaal 1-5
+      etr: etr,  // Schaal 1-5
+      courantheid: determineCourantheid(apr, etr),
       
       // Nieuwe uitgebreide data
       stockStats: {
@@ -520,39 +518,14 @@ function calculateConfidence(data: Record<string, unknown>): number {
   return 0.40;
 }
 
-// ETR berekening - fallback als directe ETR niet beschikbaar is
-function calculateETR(data: Record<string, unknown>, rawApr: number): number {
-  // Prioriteit 1: Directe turnover statistieken van JP Cars
-  const turnoverExt = data.stat_turnover_ext as number || 0;
-  const turnoverInt = data.stat_turnover_int as number || 0;
+// Courantheid bepalen op basis van APR + ETR (beide schaal 1-5)
+// APR: 5 = beste prijspositie, 1 = slechtste
+// ETR: 5 = snelste doorlooptijd, 1 = langzaamste
+function determineCourantheid(apr: number, etr: number): 'hoog' | 'gemiddeld' | 'laag' {
+  const combined = (apr + etr) / 2;  // Gemiddelde van beide scores
+  console.log('📊 Courantheid berekening:', { apr, etr, combined });
   
-  if (turnoverExt > 0 || turnoverInt > 0) {
-    const avgTurnover = turnoverExt > 0 && turnoverInt > 0 
-      ? (turnoverExt + turnoverInt) / 2 
-      : (turnoverExt || turnoverInt);
-    
-    if (avgTurnover > 0) {
-      const etr = Math.round(30 / avgTurnover);
-      console.log('📊 ETR from turnover:', { turnoverExt, turnoverInt, avgTurnover, etr });
-      return etr;
-    }
-  }
-  
-  // Prioriteit 2: APR-gebaseerde schatting
-  const aprPercent = rawApr > 1 ? rawApr : rawApr * 100;
-  
-  console.log('📊 ETR from APR:', { rawApr, aprPercent });
-  
-  if (aprPercent >= 80) return 15;
-  if (aprPercent >= 60) return 22;
-  if (aprPercent >= 40) return 35;
-  if (aprPercent >= 20) return 50;
-  return 60;
-}
-
-// Courantheid bepalen op basis van genormaliseerde APR (0-1 schaal)
-function determineCourantheid(normalizedApr: number): 'hoog' | 'gemiddeld' | 'laag' {
-  if (normalizedApr >= 0.7) return 'hoog';
-  if (normalizedApr >= 0.4) return 'gemiddeld';
-  return 'laag';
+  if (combined >= 4) return 'hoog';      // 4-5 = hoge courantheid
+  if (combined >= 2.5) return 'gemiddeld';  // 2.5-4 = gemiddeld
+  return 'laag';  // 1-2.5 = lage courantheid
 }
