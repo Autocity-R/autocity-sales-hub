@@ -55,7 +55,6 @@ serve(async (req) => {
     
     console.log('🔍 Internal search for:', vehicleData.brand, vehicleData.model);
 
-    // Create Supabase client with service role for database access
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -65,13 +64,17 @@ serve(async (req) => {
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     const oneYearAgoISO = oneYearAgo.toISOString();
 
-    // Query sold vehicles from the database
-    // Filter by brand (case insensitive) and sold status
-    const { data: soldVehicles, error } = await supabase
+    // Extract first word of model for matching (e.g., "Ioniq 5" from "Ioniq 5 73 kWh Lounge")
+    const modelSearchTerm = vehicleData.model.split(' ').slice(0, 2).join(' ').trim();
+    console.log(`🔎 Searching for model containing: "${modelSearchTerm}"`);
+
+    // First attempt: search by brand + model
+    let { data: soldVehicles, error } = await supabase
       .from('vehicles')
       .select('id, brand, model, year, mileage, purchase_price, selling_price, sold_date, purchase_date, status')
       .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
       .ilike('brand', vehicleData.brand)
+      .ilike('model', `%${modelSearchTerm}%`)
       .gte('sold_date', oneYearAgoISO)
       .not('purchase_price', 'is', null)
       .not('selling_price', 'is', null)
@@ -83,7 +86,33 @@ serve(async (req) => {
       throw new Error(`Database query failed: ${error.message}`);
     }
 
-    console.log(`📊 Found ${soldVehicles?.length || 0} sold vehicles for ${vehicleData.brand}`);
+    let searchedByModel = true;
+    const modelMatchCount = soldVehicles?.length || 0;
+    console.log(`📊 Found ${modelMatchCount} sold vehicles matching "${vehicleData.brand} ${modelSearchTerm}"`);
+
+    // Fallback: if <2 model matches, search by brand only
+    if (modelMatchCount < 2) {
+      console.log('⚠️ Te weinig model-matches, fallback naar merk-zoeken');
+      searchedByModel = false;
+
+      const fallbackResult = await supabase
+        .from('vehicles')
+        .select('id, brand, model, year, mileage, purchase_price, selling_price, sold_date, purchase_date, status')
+        .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
+        .ilike('brand', vehicleData.brand)
+        .gte('sold_date', oneYearAgoISO)
+        .not('purchase_price', 'is', null)
+        .not('selling_price', 'is', null)
+        .order('sold_date', { ascending: false })
+        .limit(20);
+
+      if (fallbackResult.error) {
+        console.error('❌ Fallback query error:', fallbackResult.error);
+      } else {
+        soldVehicles = fallbackResult.data;
+        console.log(`📊 Fallback: Found ${soldVehicles?.length || 0} ${vehicleData.brand} vehicles (all models)`);
+      }
+    }
 
     // Process the results
     const similarVehicles: SimilarVehicleSale[] = [];
@@ -97,22 +126,18 @@ serve(async (req) => {
       
       if (purchasePrice <= 0 || sellingPrice <= 0) continue;
 
-      // Calculate margin percentage
       const margin = ((sellingPrice - purchasePrice) / purchasePrice) * 100;
 
-      // Calculate days to sell
-      let daysToSell = 21; // Default
+      let daysToSell = 21;
       if (vehicle.sold_date && vehicle.purchase_date) {
         const soldDate = new Date(vehicle.sold_date);
         const purchaseDate = new Date(vehicle.purchase_date);
         const diffTime = Math.abs(soldDate.getTime() - purchaseDate.getTime());
         daysToSell = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        // Sanity check: cap at 365 days
         if (daysToSell > 365) daysToSell = 365;
         if (daysToSell < 1) daysToSell = 1;
       }
 
-      // Determine channel based on status
       const channel: 'B2B' | 'B2C' = vehicle.status === 'verkocht_b2b' ? 'B2B' : 'B2C';
 
       similarVehicles.push({
@@ -134,19 +159,21 @@ serve(async (req) => {
       validCount++;
     }
 
-    // Separate B2B and B2C sales
     const b2cVehicles = similarVehicles.filter(v => v.channel === 'B2C');
     const b2bVehicles = similarVehicles.filter(v => v.channel === 'B2B');
 
-    // Calculate averages (all channels - for context)
     const averageMargin = validCount > 0 ? Math.round((totalMargin / validCount) * 10) / 10 : 18;
     const averageDaysToSell = validCount > 0 ? Math.round(totalDaysToSell / validCount) : 21;
 
-    // Calculate B2C-only average (more relevant for market comparison)
     const b2cDaysSum = b2cVehicles.reduce((sum, v) => sum + v.daysToSell, 0);
     const averageDaysToSell_B2C = b2cVehicles.length > 0 
       ? Math.round(b2cDaysSum / b2cVehicles.length) 
       : null;
+
+    // Build descriptive note based on search method
+    const searchDescription = searchedByModel
+      ? `Gezocht op: ${vehicleData.brand} ${modelSearchTerm}`
+      : `⚠️ Te weinig "${modelSearchTerm}" data - alle ${vehicleData.brand} modellen getoond`;
 
     const internalComparison: InternalComparison = {
       averageMargin,
@@ -155,11 +182,13 @@ serve(async (req) => {
       soldB2C: b2cVehicles.length,
       soldB2B: b2bVehicles.length,
       averageDaysToSell_B2C,
-      note: `⚠️ Interne data is INFORMATIEF. B2B verkopen (${b2bVehicles.length}x) niet meegeteld voor statijd. Gebruik JP Cars ETR als primaire bron.`,
-      similarVehicles: similarVehicles.slice(0, 10), // Return max 10 vehicles
+      note: `${searchDescription}. B2B verkopen (${b2bVehicles.length}x) niet meegeteld voor statijd. Gebruik JP Cars ETR als primaire bron.`,
+      similarVehicles: similarVehicles.slice(0, 10),
     };
 
     console.log('✅ Internal comparison complete:', {
+      searchedByModel,
+      modelSearchTerm,
       soldLastYear: validCount,
       soldB2C: b2cVehicles.length,
       soldB2B: b2bVehicles.length,
@@ -177,7 +206,6 @@ serve(async (req) => {
   } catch (error) {
     console.error('❌ Internal search error:', error);
     
-    // Return empty fallback on error
     return new Response(JSON.stringify({
       success: false,
       error: error.message || 'Internal search failed',
