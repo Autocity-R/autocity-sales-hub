@@ -104,6 +104,10 @@ export interface InternalComparison {
   averageMargin: number;
   averageDaysToSell: number;
   soldLastYear: number;
+  soldB2C: number;
+  soldB2B: number;
+  averageDaysToSell_B2C: number | null;
+  note?: string;
   similarVehicles: SimilarVehicleSale[];
 }
 

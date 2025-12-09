@@ -221,6 +221,10 @@ export const fetchInternalComparison = async (vehicleData: TaxatieVehicleData): 
       averageMargin: 0,
       averageDaysToSell: 0,
       soldLastYear: 0,
+      soldB2C: 0,
+      soldB2B: 0,
+      averageDaysToSell_B2C: null,
+      note: 'Geen interne data beschikbaar',
       similarVehicles: [],
     };
   }

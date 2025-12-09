@@ -128,6 +128,8 @@ export function NewValuationForm() {
           <AIAdviceCard
             data={aiAdvice}
             loading={loading.aiAnalysis}
+            jpCarsData={jpCarsData}
+            internalComparison={internalComparison}
             onFeedbackSubmit={submitFeedback}
           />
         </TaxatieColumnC>

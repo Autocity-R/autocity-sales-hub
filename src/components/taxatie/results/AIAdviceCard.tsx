@@ -16,16 +16,18 @@ import {
   AlertTriangle,
   Lightbulb
 } from 'lucide-react';
-import type { AITaxatieAdvice } from '@/types/taxatie';
+import type { AITaxatieAdvice, JPCarsData, InternalComparison } from '@/types/taxatie';
 import { FeedbackModal } from '../modals/FeedbackModal';
 
 interface AIAdviceCardProps {
   data: AITaxatieAdvice | null;
   loading: boolean;
+  jpCarsData?: JPCarsData | null;
+  internalComparison?: InternalComparison | null;
   onFeedbackSubmit: (feedback: { rating: number; reason?: string; notes: string }) => void;
 }
 
-export const AIAdviceCard = ({ data, loading, onFeedbackSubmit }: AIAdviceCardProps) => {
+export const AIAdviceCard = ({ data, loading, jpCarsData, internalComparison, onFeedbackSubmit }: AIAdviceCardProps) => {
   const [showFeedback, setShowFeedback] = useState(false);
   const [quickFeedback, setQuickFeedback] = useState<'positive' | 'negative' | null>(null);
 
@@ -136,15 +138,35 @@ export const AIAdviceCard = ({ data, loading, onFeedbackSubmit }: AIAdviceCardPr
             </div>
           </div>
 
-          {/* Verwachtingen */}
-          <div className="flex gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span>Verwachte statijd: <strong>{data.expectedDaysToSell} dagen</strong></span>
+          {/* Verwachtingen met bronvermelding */}
+          <div className="space-y-2">
+            <div className="flex gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span>Verwachte statijd: <strong>{data.expectedDaysToSell} dagen</strong></span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Target className="h-4 w-4 text-muted-foreground" />
+                <span>Doelmarge: <strong>{data.targetMargin}%</strong></span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-muted-foreground" />
-              <span>Doelmarge: <strong>{data.targetMargin}%</strong></span>
+            
+            {/* Statijd bronvermelding */}
+            <div className="text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1.5 flex flex-wrap items-center gap-x-2">
+              <span className="font-medium">📊 Statijd bron:</span>
+              <span>JP Cars marktdata</span>
+              {jpCarsData?.stockStats?.avgDays && (
+                <span className="text-blue-600">(voorraad gem. {jpCarsData.stockStats.avgDays} dagen)</span>
+              )}
+              {jpCarsData?.etr && (
+                <span className="text-purple-600">(ETR: {jpCarsData.etr} dagen)</span>
+              )}
+              {internalComparison && internalComparison.soldB2C > 0 && (
+                <span className="text-green-600">
+                  • Autocity verkocht {internalComparison.soldB2C}x B2C vergelijkbaar
+                  {internalComparison.averageDaysToSell_B2C && ` (gem. ${internalComparison.averageDaysToSell_B2C}d)`}
+                </span>
+              )}
             </div>
           </div>
 
