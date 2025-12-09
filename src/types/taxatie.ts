@@ -48,6 +48,14 @@ export interface JPCarsData {
   marketDiscount?: number | null;  // Gemiddelde marktdiscount (vraag - verkoop)
   itr?: number | null;             // Internal Turnover Rate (score 1-5)
   
+  // RISICO-MANAGEMENT DATA
+  priceSensitivity?: number | null;  // 0-1, hoe prijsgevoelig de markt is (1 = zeer gevoelig)
+  aprBreakdown?: {
+    mileage_impact?: number;   // Impact van km op APR score
+    options_impact?: number;   // Impact van opties op APR score
+    age_impact?: number;       // Impact van leeftijd op APR score
+  } | null;
+  
   // Portal links van JP Cars
   portalUrls?: {
     gaspedaal?: string | null;
