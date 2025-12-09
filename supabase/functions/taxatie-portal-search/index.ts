@@ -382,7 +382,52 @@ Zoek 15-20 ECHTE listings (minstens 15!) en retourneer ALLEEN dit JSON object (g
       });
     }
 
-    const analysisData = JSON.parse(jsonContent);
+    // Try to fix common JSON issues before parsing
+    let cleanedJson = jsonContent
+      .replace(/,\s*}/g, '}')  // Remove trailing commas before }
+      .replace(/,\s*]/g, ']')  // Remove trailing commas before ]
+      .replace(/[\x00-\x1F\x7F]/g, ' ')  // Remove control characters
+      .replace(/\n\s*\n/g, '\n');  // Remove double newlines
+    
+    let analysisData;
+    try {
+      analysisData = JSON.parse(cleanedJson);
+    } catch (parseError) {
+      console.error('❌ JSON parse error after cleanup:', parseError.message);
+      console.log('📝 First 500 chars of cleaned JSON:', cleanedJson.substring(0, 500));
+      console.log('📝 Last 500 chars of cleaned JSON:', cleanedJson.substring(cleanedJson.length - 500));
+      
+      // Return empty result with the parse error
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          lowestPrice: 0,
+          medianPrice: 0,
+          highestPrice: 0,
+          listingCount: 0,
+          primaryComparableCount: 0,
+          listings: [],
+          logicalDeviations: [`JSON parse error: ${parseError.message} - controleer handmatig via de directe links`],
+          appliedFilters: {
+            brand: vehicleData.brand,
+            model: vehicleData.model,
+            buildYearFrom,
+            buildYearTo,
+            mileageMax,
+            fuelType: vehicleData.fuelType,
+            transmission: vehicleData.transmission,
+            bodyType: vehicleData.bodyType,
+            keywords: vehicleData.keywords || [],
+            requiredOptions: vehicleData.options || [],
+          },
+          directSearchUrls,
+          searchFailed: true,
+          failureReason: `JSON parse error: ${parseError.message}`
+        }
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Valideer dat URLs echt zijn van portalen
     const portalUrls = ['gaspedaal.nl', 'autoscout24.nl', 'autoscout24.be', 'marktplaats.nl', 'autotrack.nl', 'vaartland.nl', 'autohopper.nl', 'autowereld.nl'];
