@@ -34,8 +34,12 @@ export const JPCarsCard = ({ data, loading }: JPCarsCardProps) => {
     return null;
   }
 
-  // Format APR als percentage
-  const aprPercent = Math.round(data.apr * 100);
+  // APR en ETR zijn nu schaal 1-5 (5 = beste)
+  const getScoreColor = (score: number) => {
+    if (score >= 4) return 'text-green-600';
+    if (score >= 3) return 'text-amber-600';
+    return 'text-red-600';
+  };
 
   return (
     <Card className="border border-amber-500/40 bg-gradient-to-br from-amber-500/5 to-orange-500/5 opacity-90">
@@ -90,37 +94,29 @@ export const JPCarsCard = ({ data, loading }: JPCarsCardProps) => {
           </div>
         </div>
 
-        {/* APR & ETR - Belangrijke marktindicatoren */}
+        {/* APR & ETR - Nu als 1-5 schaal */}
         <div className="grid grid-cols-2 gap-3 text-sm pt-2 border-t">
           <div className="flex items-start gap-2">
             <TrendingUp className="h-4 w-4 text-muted-foreground mt-0.5" />
             <div>
-              <p className="text-xs text-muted-foreground">APR (Price Ratio)</p>
-              <p className={`font-semibold ${
-                aprPercent >= 70 ? 'text-green-600' : 
-                aprPercent >= 40 ? 'text-amber-600' : 
-                'text-red-600'
-              }`}>
-                {aprPercent}%
+              <p className="text-xs text-muted-foreground">APR (Prijspositie)</p>
+              <p className={`font-semibold ${getScoreColor(data.apr)}`}>
+                {data.apr}/5 ⭐
               </p>
             </div>
           </div>
           <div className="flex items-start gap-2">
             <Clock className="h-4 w-4 text-muted-foreground mt-0.5" />
             <div>
-              <p className="text-xs text-muted-foreground">ETR (Statijd)</p>
-              <p className={`font-semibold ${
-                data.etr <= 21 ? 'text-green-600' : 
-                data.etr <= 35 ? 'text-amber-600' : 
-                'text-red-600'
-              }`}>
-                ~{data.etr} dagen
+              <p className="text-xs text-muted-foreground">ETR (Doorloopsnelheid)</p>
+              <p className={`font-semibold ${getScoreColor(data.etr)}`}>
+                {data.etr}/5 ⭐
               </p>
             </div>
           </div>
         </div>
 
-        {/* Statijd Details - Voorraad & Verkocht */}
+        {/* Statijd Details - Voorraad & Verkocht (ECHTE DAGEN) */}
         {(data.stockStats || data.salesStats) && (
           <div className="grid grid-cols-2 gap-3 text-sm pt-2 border-t">
             {/* Voorraad stats */}
@@ -133,7 +129,7 @@ export const JPCarsCard = ({ data, loading }: JPCarsCardProps) => {
                 <p className="font-semibold">{data.stockStats.count} auto's</p>
                 {data.stockStats.avgDays !== null && (
                   <p className="text-xs text-blue-600">
-                    {data.stockStats.avgDays} dagen gem.
+                    {Math.round(data.stockStats.avgDays)} dagen gem.
                   </p>
                 )}
               </div>
@@ -149,7 +145,7 @@ export const JPCarsCard = ({ data, loading }: JPCarsCardProps) => {
                 <p className="font-semibold">{data.salesStats.count} auto's</p>
                 {data.salesStats.avgDays !== null && (
                   <p className="text-xs text-green-600">
-                    {data.salesStats.avgDays} dagen gem.
+                    {Math.round(data.salesStats.avgDays)} dagen gem.
                   </p>
                 )}
               </div>
