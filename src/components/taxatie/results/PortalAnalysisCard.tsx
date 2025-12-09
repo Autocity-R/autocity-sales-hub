@@ -187,7 +187,7 @@ export const PortalAnalysisCard = ({ data, loading }: PortalAnalysisCardProps) =
           )}
 
           {/* Logische afwijkingen */}
-          {data.logicalDeviations.length > 0 && (
+          {data.logicalDeviations && data.logicalDeviations.length > 0 && (
             <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
               <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-1">
                 Logische afwijkingen gedetecteerd:
