@@ -149,40 +149,20 @@ export const useTaxatie = () => {
     setAiAdvice(null);
 
     try {
-      // Parallel fetch met Promise.allSettled - nooit stoppen bij individuele fouten
+      // STAP 1: Eerst JP Cars ophalen (deze geeft portal URLs terug)
       setLoading(prev => ({
         ...prev,
-        portals: true,
         jpCars: true,
         internalHistory: true,
       }));
 
-      const [portalResult, jpResult, internalResult] = await Promise.allSettled([
-        fetchPortalAnalysis(vehicleWithOptions),
+      // JP Cars en interne data parallel ophalen
+      const [jpResult, internalResult] = await Promise.allSettled([
         fetchJPCarsData(licensePlate || '', vehicleWithOptions),
         fetchInternalComparison(vehicleWithOptions),
       ]);
 
-      // Portal data - VERPLICHT (maar functie heeft eigen fallback)
-      const portalData = portalResult.status === 'fulfilled' 
-        ? portalResult.value 
-        : {
-            lowestPrice: 0,
-            medianPrice: 0,
-            highestPrice: 0,
-            listingCount: 0,
-            primaryComparableCount: 0,
-            appliedFilters: {} as any,
-            listings: [],
-            logicalDeviations: ['Portaalanalyse mislukt - controleer verbinding'],
-          };
-      
-      if (portalResult.status === 'rejected') {
-        console.error('❌ Portal analysis failed:', portalResult.reason);
-        toast.warning('Portaalanalyse niet volledig beschikbaar');
-      }
-
-      // JP Cars data - OPTIONEEL (fallback naar lege waarden)
+      // JP Cars data verwerken (we hebben de URLs nodig voor portal search)
       const jpData = jpResult.status === 'fulfilled'
         ? jpResult.value
         : {
@@ -199,6 +179,34 @@ export const useTaxatie = () => {
       if (jpResult.status === 'rejected') {
         console.error('❌ JP Cars lookup failed:', jpResult.reason);
         toast.warning('JP Cars data niet beschikbaar - taxatie doorgegaan met portaaldata');
+      }
+
+      setJpCarsData(jpData);
+      setLoading(prev => ({ ...prev, jpCars: false, portals: true }));
+
+      // STAP 2: Portal analyse met JP Cars URLs
+      console.log('🔗 JP Cars portal URLs:', jpData.portalUrls);
+      const [portalResult] = await Promise.allSettled([
+        fetchPortalAnalysis(vehicleWithOptions, jpData.portalUrls),
+      ]);
+
+      // Portal data verwerken
+      const portalData = portalResult.status === 'fulfilled' 
+        ? portalResult.value 
+        : {
+            lowestPrice: 0,
+            medianPrice: 0,
+            highestPrice: 0,
+            listingCount: 0,
+            primaryComparableCount: 0,
+            appliedFilters: {} as any,
+            listings: [],
+            logicalDeviations: ['Portaalanalyse mislukt - controleer verbinding'],
+          };
+      
+      if (portalResult.status === 'rejected') {
+        console.error('❌ Portal analysis failed:', portalResult.reason);
+        toast.warning('Portaalanalyse niet volledig beschikbaar');
       }
 
       // Internal data - OPTIONEEL
@@ -220,7 +228,6 @@ export const useTaxatie = () => {
       }
 
       setPortalAnalysis(portalData);
-      setJpCarsData(jpData);
       setInternalComparison(internalData);
 
       setLoading(prev => ({

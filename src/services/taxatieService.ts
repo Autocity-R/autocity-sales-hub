@@ -65,13 +65,25 @@ const buildSearchFilters = (vehicleData: TaxatieVehicleData): PortalSearchFilter
   };
 };
 
+// Portal URLs type from JP Cars
+interface JPCarsPortalUrls {
+  gaspedaal?: string | null;
+  autoscout24?: string | null;
+  marktplaats?: string | null;
+  jpCarsWindow?: string | null;
+}
+
 // Portal Analysis via OpenAI Edge Function
-export const fetchPortalAnalysis = async (vehicleData: TaxatieVehicleData): Promise<PortalAnalysis> => {
+export const fetchPortalAnalysis = async (
+  vehicleData: TaxatieVehicleData,
+  jpCarsUrls?: JPCarsPortalUrls
+): Promise<PortalAnalysis> => {
   try {
     console.log('🔍 Fetching portal analysis via OpenAI...');
+    console.log('🔗 Using JP Cars URLs:', jpCarsUrls);
     
     const { data, error } = await supabase.functions.invoke('taxatie-portal-search', {
-      body: { vehicleData }
+      body: { vehicleData, jpCarsUrls }
     });
 
     if (error) {
