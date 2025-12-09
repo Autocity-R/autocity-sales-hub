@@ -521,6 +521,33 @@ Gebruik dit om je advies te verbeteren:
 **VOERTUIG DATA:**
 ${JSON.stringify(input.vehicleData, null, 2)}
 
+${input.vehicleData.options && input.vehicleData.options.length > 0 ? `
+⚠️ **KRITIEKE OPTIES - WAARDE-BEÏNVLOEDEND!**
+De te taxeren auto heeft: ${input.vehicleData.options.join(', ')}
+
+REGELS:
+1. Auto's ZONDER deze opties zijn NIET 1-op-1 vergelijkbaar
+2. Panoramadak = €1.500-3.000 meerwaarde
+3. Leder = €800-1.500 meerwaarde  
+4. Head-up display = €500-1.000 meerwaarde
+5. Premium audio (Harman, B&O, etc.) = €500-1.000 meerwaarde
+
+Als portallistings deze opties MISSEN:
+- Corrigeer de vergelijkingsprijs OMHOOG
+- Vermeld dit expliciet in je reasoning
+- Neem "Vergelijking met kale uitvoeringen - gecorrigeerd voor opties" op in riskFactors indien van toepassing
+` : ''}
+
+${input.vehicleData.trim && input.vehicleData.trim !== 'Standaard' && input.vehicleData.trim.length > 0 ? `
+⚠️ **KRITIEKE MOTORVARIANT/UITVOERING: ${input.vehicleData.trim}**
+Dit is een specifieke uitvoering. ${input.vehicleData.brand} ${input.vehicleData.model} ${input.vehicleData.trim} is NIET vergelijkbaar met andere varianten!
+
+REGELS:
+1. Vergelijk ALLEEN met dezelfde motorvariant (${input.vehicleData.trim})
+2. Andere varianten (bijv. T5 ipv B4, 2.0T ipv 1.5T) zijn GEEN primary comparables
+3. Als er weinig vergelijkbare ${input.vehicleData.trim} listings zijn, vermeld dit als risico
+` : ''}
+
 **PORTAAL ANALYSE:**
 ${JSON.stringify(input.portalAnalysis, null, 2)}
 

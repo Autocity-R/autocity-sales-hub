@@ -20,6 +20,11 @@ interface VehicleInputCardProps {
   loading: boolean;
   disabled?: boolean;
   vehicleLoaded?: boolean;
+  // Options & keywords props
+  selectedOptions: string[];
+  onToggleOption: (option: string) => void;
+  keywords: string[];
+  onKeywordsChange: (keywords: string[]) => void;
 }
 
 export const VehicleInputCard = ({
@@ -35,6 +40,10 @@ export const VehicleInputCard = ({
   loading,
   disabled,
   vehicleLoaded,
+  selectedOptions,
+  onToggleOption,
+  keywords,
+  onKeywordsChange,
 }: VehicleInputCardProps) => {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !loading && !disabled) {
@@ -135,6 +144,10 @@ export const VehicleInputCard = ({
               onSubmit={handleBuilderSubmit}
               disabled={disabled}
               loading={loading}
+              selectedOptions={selectedOptions}
+              onToggleOption={onToggleOption}
+              keywords={keywords}
+              onKeywordsChange={onKeywordsChange}
             />
           </TabsContent>
         </Tabs>

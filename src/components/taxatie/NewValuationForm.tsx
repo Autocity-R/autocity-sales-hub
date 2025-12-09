@@ -86,6 +86,10 @@ export function NewValuationForm() {
             loading={loading.rdw}
             disabled={taxatieStarted}
             vehicleLoaded={!!vehicleData}
+            selectedOptions={selectedOptions}
+            onToggleOption={toggleOption}
+            keywords={keywords}
+            onKeywordsChange={setKeywords}
           />
 
           {vehicleData && (
