@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Car, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Loader2, Car, RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
 import type { TaxatieVehicleData } from '@/types/taxatie';
 import { VEHICLE_BRANDS, FUEL_TYPES, BODY_TYPES, TRANSMISSION_TYPES } from '@/data/vehicleData';
 
@@ -13,8 +12,6 @@ interface JPCarsVehicleBuilderProps {
   disabled?: boolean;
   loading?: boolean;
 }
-
-type ValueType = 'make' | 'model' | 'fuel' | 'gear' | 'hp' | 'body' | 'build';
 
 interface BuilderState {
   make: string;
@@ -27,25 +24,13 @@ interface BuilderState {
   mileage: number;
 }
 
-const STEP_LABELS: Record<ValueType, string> = {
-  make: 'Merk',
-  model: 'Model',
-  fuel: 'Brandstof',
-  gear: 'Transmissie',
-  hp: 'Vermogen (PK)',
-  body: 'Carrosserie',
-  build: 'Bouwjaar',
-};
-
-const STEPS: ValueType[] = ['make', 'model', 'fuel', 'gear', 'hp', 'body', 'build'];
-
-// Fallback static data when JP Cars API is unavailable
-const FALLBACK_MAKES = Object.keys(VEHICLE_BRANDS);
-const FALLBACK_FUELS = [...FUEL_TYPES];
-const FALLBACK_GEARS = [...TRANSMISSION_TYPES];
-const FALLBACK_BODIES = [...BODY_TYPES];
-const FALLBACK_YEARS = Array.from({ length: 15 }, (_, i) => (new Date().getFullYear() - i).toString());
-const FALLBACK_HP = ['90', '110', '120', '150', '163', '190', '204', '252', '300', '340', '400'];
+// Static data - no API dependency
+const MAKES = Object.keys(VEHICLE_BRANDS);
+const FUELS = [...FUEL_TYPES];
+const GEARS = [...TRANSMISSION_TYPES];
+const BODIES = [...BODY_TYPES];
+const YEARS = Array.from({ length: 20 }, (_, i) => (new Date().getFullYear() - i).toString());
+const HP_OPTIONS = ['75', '90', '100', '110', '120', '130', '140', '150', '163', '177', '190', '204', '220', '252', '286', '300', '340', '400', '450', '500'];
 
 export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehicleBuilderProps) => {
   const [state, setState] = useState<BuilderState>({
@@ -59,147 +44,38 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
     mileage: 0,
   });
 
-  const [options, setOptions] = useState<Record<ValueType, string[]>>({
-    make: [],
-    model: [],
-    fuel: [],
-    gear: [],
-    hp: [],
-    body: [],
-    build: [],
-  });
+  const [models, setModels] = useState<string[]>([]);
 
-  const [loadingStep, setLoadingStep] = useState<ValueType | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [fallbackMode, setFallbackMode] = useState(false);
+  // Update models when make changes
+  useEffect(() => {
+    if (state.make) {
+      const makeModels = VEHICLE_BRANDS[state.make] || [];
+      setModels(makeModels);
+    } else {
+      setModels([]);
+    }
+  }, [state.make]);
 
-  // Fallback to static lists when API fails
-  const useFallback = useCallback((type: ValueType) => {
-    console.warn(`⚠️ Using fallback for ${type}`);
-    setFallbackMode(true);
+  const handleSelect = (field: keyof BuilderState, value: string) => {
+    const updates: Partial<BuilderState> = { [field]: value };
     
-    switch (type) {
-      case 'make':
-        setOptions(prev => ({ ...prev, make: FALLBACK_MAKES }));
-        break;
-      case 'model':
-        const models = VEHICLE_BRANDS[state.make] || [];
-        setOptions(prev => ({ ...prev, model: models }));
-        break;
-      case 'fuel':
-        setOptions(prev => ({ ...prev, fuel: FALLBACK_FUELS }));
-        break;
-      case 'gear':
-        setOptions(prev => ({ ...prev, gear: FALLBACK_GEARS }));
-        break;
-      case 'hp':
-        setOptions(prev => ({ ...prev, hp: FALLBACK_HP }));
-        break;
-      case 'body':
-        setOptions(prev => ({ ...prev, body: FALLBACK_BODIES }));
-        break;
-      case 'build':
-        setOptions(prev => ({ ...prev, build: FALLBACK_YEARS }));
-        break;
-    }
-  }, [state.make]);
-
-  const fetchValues = useCallback(async (type: ValueType) => {
-    setLoadingStep(type);
-    setError(null);
-
-    try {
-      const params: Record<string, string | number> = { type };
-      
-      if (state.make && type !== 'make') params.make = state.make;
-      if (state.model && ['fuel', 'gear', 'hp', 'body', 'build'].includes(type)) params.model = state.model;
-      if (state.fuel && ['gear', 'hp', 'body', 'build'].includes(type)) params.fuel = state.fuel;
-      if (state.gear && ['hp', 'body', 'build'].includes(type)) params.gear = state.gear;
-      if (state.body && ['hp', 'build'].includes(type)) params.body = state.body;
-
-      console.log(`📋 Fetching JP Cars values for ${type}:`, params);
-
-      const { data, error: fetchError } = await supabase.functions.invoke('jpcars-values', {
-        body: params,
-      });
-
-      if (fetchError) {
-        console.error(`❌ Error fetching ${type}:`, fetchError);
-        useFallback(type);
-        return;
-      }
-
-      if (data?.success && data?.values && data.values.length > 0) {
-        console.log(`✅ Received ${data.values.length} options for ${type}`);
-        setOptions(prev => ({ ...prev, [type]: data.values }));
-        // Reset fallback mode if API works
-        if (type === 'make') setFallbackMode(false);
-      } else {
-        console.warn(`⚠️ No values returned for ${type}, using fallback`);
-        useFallback(type);
-      }
-    } catch (err) {
-      console.error(`❌ Failed to fetch ${type}:`, err);
-      useFallback(type);
-    } finally {
-      setLoadingStep(null);
-    }
-  }, [state, useFallback]);
-
-  // Load makes on mount
-  useEffect(() => {
-    fetchValues('make');
-  }, []);
-
-  // Load next options when selection changes
-  useEffect(() => {
-    if (state.make && options.model.length === 0) {
-      fetchValues('model');
-    }
-  }, [state.make]);
-
-  useEffect(() => {
-    if (state.model) {
-      fetchValues('fuel');
-    }
-  }, [state.model]);
-
-  useEffect(() => {
-    if (state.fuel) {
-      fetchValues('gear');
-    }
-  }, [state.fuel]);
-
-  useEffect(() => {
-    if (state.gear) {
-      fetchValues('hp');
-      fetchValues('body');
-    }
-  }, [state.gear]);
-
-  useEffect(() => {
-    if (state.hp || state.body) {
-      fetchValues('build');
-    }
-  }, [state.hp, state.body]);
-
-  const handleSelect = (type: ValueType, value: string) => {
     // Reset dependent fields
-    const stepIndex = STEPS.indexOf(type);
-    const resetFields: Partial<BuilderState> = {};
+    if (field === 'make') {
+      updates.model = '';
+      updates.fuel = '';
+      updates.gear = '';
+      updates.hp = '';
+      updates.body = '';
+      updates.build = '';
+    } else if (field === 'model') {
+      updates.fuel = '';
+      updates.gear = '';
+      updates.hp = '';
+      updates.body = '';
+      updates.build = '';
+    }
     
-    for (let i = stepIndex + 1; i < STEPS.length; i++) {
-      resetFields[STEPS[i] as keyof BuilderState] = '' as never;
-    }
-
-    // Reset options for dependent fields
-    const resetOptions: Partial<Record<ValueType, string[]>> = {};
-    for (let i = stepIndex + 1; i < STEPS.length; i++) {
-      resetOptions[STEPS[i]] = [];
-    }
-
-    setState(prev => ({ ...prev, [type]: value, ...resetFields }));
-    setOptions(prev => ({ ...prev, ...resetOptions }));
+    setState(prev => ({ ...prev, ...updates }));
   };
 
   const handleMileageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -218,16 +94,12 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
       build: '',
       mileage: 0,
     });
-    setOptions({
-      make: options.make, // Keep makes loaded
-      model: [],
-      fuel: [],
-      gear: [],
-      hp: [],
-      body: [],
-      build: [],
-    });
-    setError(null);
+  };
+
+  const mapTransmission = (gear: string): 'Automaat' | 'Handgeschakeld' | 'Onbekend' => {
+    if (gear === 'Automaat') return 'Automaat';
+    if (gear === 'Handgeschakeld') return 'Handgeschakeld';
+    return 'Onbekend';
   };
 
   const handleSubmit = () => {
@@ -236,7 +108,7 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
       model: state.model,
       buildYear: parseInt(state.build, 10),
       mileage: state.mileage,
-      fuelType: mapFuelType(state.fuel),
+      fuelType: state.fuel,
       transmission: mapTransmission(state.gear),
       bodyType: state.body,
       power: parseInt(state.hp, 10) || 0,
@@ -253,36 +125,28 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
   const isComplete = state.make && state.model && state.fuel && state.gear && 
                      state.hp && state.build && state.mileage > 0;
 
-  const getCompletedSteps = () => {
-    return STEPS.filter(step => state[step as keyof BuilderState]).length;
-  };
+  const completedSteps = [state.make, state.model, state.fuel, state.gear, state.hp, state.build, state.mileage > 0].filter(Boolean).length;
 
   return (
     <div className="space-y-4">
       {/* Progress indicator */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <span>Stap {getCompletedSteps() + 1} van {STEPS.length + 1}</span>
+        <span>Stap {completedSteps + 1} van 7</span>
         <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
           <div 
             className="h-full bg-primary transition-all duration-300"
-            style={{ width: `${((getCompletedSteps() + (state.mileage > 0 ? 1 : 0)) / (STEPS.length + 1)) * 100}%` }}
+            style={{ width: `${(completedSteps / 7) * 100}%` }}
           />
         </div>
       </div>
-
-      {error && (
-        <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-          {error}
-        </div>
-      )}
 
       {/* Selected values badges */}
       {(state.make || state.model) && (
         <div className="flex flex-wrap gap-2">
           {state.make && <Badge variant="secondary">{state.make}</Badge>}
           {state.model && <Badge variant="secondary">{state.model}</Badge>}
-          {state.fuel && <Badge variant="secondary">{mapFuelType(state.fuel)}</Badge>}
-          {state.gear && <Badge variant="secondary">{mapTransmission(state.gear)}</Badge>}
+          {state.fuel && <Badge variant="secondary">{state.fuel}</Badge>}
+          {state.gear && <Badge variant="secondary">{state.gear}</Badge>}
           {state.hp && <Badge variant="secondary">{state.hp} PK</Badge>}
           {state.body && <Badge variant="secondary">{state.body}</Badge>}
           {state.build && <Badge variant="secondary">{state.build}</Badge>}
@@ -290,21 +154,17 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
         </div>
       )}
 
-      {/* Cascading dropdowns */}
+      {/* Form fields */}
       <div className="space-y-3">
         {/* Make */}
         <div className="space-y-1">
           <label className="text-sm font-medium">Merk *</label>
-          <Select
-            value={state.make}
-            onValueChange={(v) => handleSelect('make', v)}
-            disabled={disabled || loadingStep === 'make'}
-          >
+          <Select value={state.make} onValueChange={(v) => handleSelect('make', v)} disabled={disabled}>
             <SelectTrigger>
-              <SelectValue placeholder={loadingStep === 'make' ? 'Laden...' : 'Selecteer merk'} />
+              <SelectValue placeholder="Selecteer merk" />
             </SelectTrigger>
             <SelectContent>
-              {options.make.map((value) => (
+              {MAKES.map((value) => (
                 <SelectItem key={value} value={value}>{value}</SelectItem>
               ))}
             </SelectContent>
@@ -315,16 +175,12 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
         {state.make && (
           <div className="space-y-1">
             <label className="text-sm font-medium">Model *</label>
-            <Select
-              value={state.model}
-              onValueChange={(v) => handleSelect('model', v)}
-              disabled={disabled || loadingStep === 'model' || options.model.length === 0}
-            >
+            <Select value={state.model} onValueChange={(v) => handleSelect('model', v)} disabled={disabled || models.length === 0}>
               <SelectTrigger>
-                <SelectValue placeholder={loadingStep === 'model' ? 'Laden...' : 'Selecteer model'} />
+                <SelectValue placeholder="Selecteer model" />
               </SelectTrigger>
               <SelectContent>
-                {options.model.map((value) => (
+                {models.map((value) => (
                   <SelectItem key={value} value={value}>{value}</SelectItem>
                 ))}
               </SelectContent>
@@ -336,17 +192,13 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
         {state.model && (
           <div className="space-y-1">
             <label className="text-sm font-medium">Brandstof *</label>
-            <Select
-              value={state.fuel}
-              onValueChange={(v) => handleSelect('fuel', v)}
-              disabled={disabled || loadingStep === 'fuel' || options.fuel.length === 0}
-            >
+            <Select value={state.fuel} onValueChange={(v) => handleSelect('fuel', v)} disabled={disabled}>
               <SelectTrigger>
-                <SelectValue placeholder={loadingStep === 'fuel' ? 'Laden...' : 'Selecteer brandstof'} />
+                <SelectValue placeholder="Selecteer brandstof" />
               </SelectTrigger>
               <SelectContent>
-                {options.fuel.map((value) => (
-                  <SelectItem key={value} value={value}>{mapFuelType(value)}</SelectItem>
+                {FUELS.map((value) => (
+                  <SelectItem key={value} value={value}>{value}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -357,17 +209,13 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
         {state.fuel && (
           <div className="space-y-1">
             <label className="text-sm font-medium">Transmissie *</label>
-            <Select
-              value={state.gear}
-              onValueChange={(v) => handleSelect('gear', v)}
-              disabled={disabled || loadingStep === 'gear' || options.gear.length === 0}
-            >
+            <Select value={state.gear} onValueChange={(v) => handleSelect('gear', v)} disabled={disabled}>
               <SelectTrigger>
-                <SelectValue placeholder={loadingStep === 'gear' ? 'Laden...' : 'Selecteer transmissie'} />
+                <SelectValue placeholder="Selecteer transmissie" />
               </SelectTrigger>
               <SelectContent>
-                {options.gear.map((value) => (
-                  <SelectItem key={value} value={value}>{mapTransmission(value)}</SelectItem>
+                {GEARS.map((value) => (
+                  <SelectItem key={value} value={value}>{value}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -378,16 +226,12 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
         {state.gear && (
           <div className="space-y-1">
             <label className="text-sm font-medium">Vermogen *</label>
-            <Select
-              value={state.hp}
-              onValueChange={(v) => handleSelect('hp', v)}
-              disabled={disabled || loadingStep === 'hp' || options.hp.length === 0}
-            >
+            <Select value={state.hp} onValueChange={(v) => handleSelect('hp', v)} disabled={disabled}>
               <SelectTrigger>
-                <SelectValue placeholder={loadingStep === 'hp' ? 'Laden...' : 'Selecteer vermogen'} />
+                <SelectValue placeholder="Selecteer vermogen" />
               </SelectTrigger>
               <SelectContent>
-                {options.hp.map((value) => (
+                {HP_OPTIONS.map((value) => (
                   <SelectItem key={value} value={value}>{value} PK</SelectItem>
                 ))}
               </SelectContent>
@@ -395,20 +239,16 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
           </div>
         )}
 
-        {/* Body (optional but helpful) */}
-        {state.gear && options.body.length > 0 && (
+        {/* Body */}
+        {state.hp && (
           <div className="space-y-1">
             <label className="text-sm font-medium">Carrosserie</label>
-            <Select
-              value={state.body}
-              onValueChange={(v) => handleSelect('body', v)}
-              disabled={disabled || loadingStep === 'body'}
-            >
+            <Select value={state.body} onValueChange={(v) => handleSelect('body', v)} disabled={disabled}>
               <SelectTrigger>
-                <SelectValue placeholder={loadingStep === 'body' ? 'Laden...' : 'Selecteer carrosserie'} />
+                <SelectValue placeholder="Selecteer carrosserie" />
               </SelectTrigger>
               <SelectContent>
-                {options.body.map((value) => (
+                {BODIES.map((value) => (
                   <SelectItem key={value} value={value}>{value}</SelectItem>
                 ))}
               </SelectContent>
@@ -420,16 +260,12 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
         {state.hp && (
           <div className="space-y-1">
             <label className="text-sm font-medium">Bouwjaar *</label>
-            <Select
-              value={state.build}
-              onValueChange={(v) => handleSelect('build', v)}
-              disabled={disabled || loadingStep === 'build' || options.build.length === 0}
-            >
+            <Select value={state.build} onValueChange={(v) => handleSelect('build', v)} disabled={disabled}>
               <SelectTrigger>
-                <SelectValue placeholder={loadingStep === 'build' ? 'Laden...' : 'Selecteer bouwjaar'} />
+                <SelectValue placeholder="Selecteer bouwjaar" />
               </SelectTrigger>
               <SelectContent>
-                {options.build.map((value) => (
+                {YEARS.map((value) => (
                   <SelectItem key={value} value={value}>{value}</SelectItem>
                 ))}
               </SelectContent>
@@ -483,39 +319,11 @@ export const JPCarsVehicleBuilder = ({ onSubmit, disabled, loading }: JPCarsVehi
         </Button>
       </div>
 
-      {fallbackMode ? (
-        <div className="flex items-center justify-center gap-2 p-2 rounded bg-warning/10 border border-warning/20">
-          <AlertTriangle className="h-3 w-3 text-warning" />
-          <p className="text-xs text-warning">
-            JP Cars catalogus niet beschikbaar - statische lijsten gebruikt
-          </p>
-        </div>
-      ) : (
-        <p className="text-xs text-muted-foreground text-center">
-          ✓ Waarden uit JP Cars catalogus
-        </p>
-      )}
+      <p className="text-xs text-muted-foreground text-center">
+        Handmatige invoer voor buitenlandse of onbekende kentekens
+      </p>
     </div>
   );
 };
 
-// Helper functions to map JP Cars values to display values
-function mapFuelType(fuel: string): string {
-  const mapping: Record<string, string> = {
-    'PETROL': 'Benzine',
-    'DIESEL': 'Diesel',
-    'ELECTRIC': 'Elektrisch',
-    'HYBRID': 'Hybride',
-    'PLUGIN_HYBRID': 'Plug-in Hybride',
-    'LPG': 'LPG',
-    'CNG': 'CNG',
-  };
-  return mapping[fuel] || fuel;
-}
-
-function mapTransmission(gear: string): 'Automaat' | 'Handgeschakeld' | 'Onbekend' {
-  const lowerGear = gear.toLowerCase();
-  if (lowerGear.includes('auto') || lowerGear === 'a') return 'Automaat';
-  if (lowerGear.includes('manual') || lowerGear === 'm' || lowerGear.includes('hand')) return 'Handgeschakeld';
-  return 'Onbekend';
-}
+export default JPCarsVehicleBuilder;
