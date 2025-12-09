@@ -410,7 +410,7 @@ Jouw kernprincipes:
       marketFloor: advice.marketFloorPrice
     });
 
-    return new Response(JSON.stringify(advice), {
+    return new Response(JSON.stringify({ success: true, advice }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 

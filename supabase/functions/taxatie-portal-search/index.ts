@@ -18,6 +18,7 @@ interface VehicleData {
   trim: string;
   color: string;
   options: string[];
+  keywords?: string[];
 }
 
 interface JPCarsPortalUrls {
@@ -28,11 +29,60 @@ interface JPCarsPortalUrls {
 }
 
 interface PortalListing {
+  id: string;
+  portal: string;
   title: string;
   price: number;
   mileage: number;
   buildYear: number;
   url: string;
+  options: string[];
+  color?: string;
+  isPrimaryComparable: boolean;
+  isLogicalDeviation: boolean;
+  matchScore: number;
+  deviationReason?: string;
+}
+
+// Build Gaspedaal search URL from vehicle data
+function buildGaspedaalUrl(vehicleData: VehicleData): string {
+  const brandSlug = vehicleData.brand.toLowerCase().replace(/\s+/g, '-');
+  const modelSlug = vehicleData.model.toLowerCase().replace(/\s+/g, '-');
+  
+  const yearFrom = vehicleData.buildYear - 1;
+  const yearTo = vehicleData.buildYear + 1;
+  const mileageMax = Math.ceil(vehicleData.mileage * 1.15 / 1000) * 1000;
+  
+  // Build base URL
+  let url = `https://www.gaspedaal.nl/${brandSlug}/${modelSlug}`;
+  
+  // Add filters
+  const params = new URLSearchParams();
+  params.set('bmin', yearFrom.toString());
+  params.set('bmax', yearTo.toString());
+  params.set('kmmax', mileageMax.toString());
+  params.set('sort', 'prijs-oplopend');
+  
+  // Add fuel type filter
+  if (vehicleData.fuelType) {
+    const fuelMap: Record<string, string> = {
+      'Benzine': 'benzine',
+      'Diesel': 'diesel',
+      'Hybride': 'hybride',
+      'Elektrisch': 'elektrisch',
+      'LPG': 'lpg',
+    };
+    if (fuelMap[vehicleData.fuelType]) {
+      params.set('brandstof', fuelMap[vehicleData.fuelType]);
+    }
+  }
+  
+  return `${url}?${params.toString()}`;
+}
+
+// Calculate max mileage with 15% buffer
+function calculateMaxMileage(mileage: number): number {
+  return Math.ceil(mileage * 1.15 / 1000) * 1000;
 }
 
 serve(async (req) => {
@@ -54,30 +104,29 @@ serve(async (req) => {
       throw new Error('OPENAI_API_KEY not configured');
     }
 
-    // Gebruik JP Cars URLs - deze hebben al de juiste filters!
-    const gaspedaalUrl = jpCarsUrls?.gaspedaal || null;
+    // Build the applied filters object
+    const yearFrom = vehicleData.buildYear - 1;
+    const yearTo = vehicleData.buildYear + 1;
+    const mileageMax = calculateMaxMileage(vehicleData.mileage);
+    
+    const appliedFilters = {
+      brand: vehicleData.brand,
+      model: vehicleData.model,
+      buildYearFrom: yearFrom,
+      buildYearTo: yearTo,
+      mileageMax,
+      fuelType: vehicleData.fuelType,
+      transmission: vehicleData.transmission,
+      bodyType: vehicleData.bodyType,
+      keywords: vehicleData.keywords || [],
+      requiredOptions: vehicleData.options || [],
+    };
+
+    // Prefer real Gaspedaal URL over JP Cars tiny URLs
+    const gaspedaalUrl = buildGaspedaalUrl(vehicleData);
     const autoscoutUrl = jpCarsUrls?.autoscout24 || null;
     const marktplaatsUrl = jpCarsUrls?.marktplaats || null;
     const jpCarsWindowUrl = jpCarsUrls?.jpCarsWindow || null;
-    
-    // Fallback als geen URLs
-    const fallbackUrl = gaspedaalUrl || autoscoutUrl || marktplaatsUrl;
-    if (!fallbackUrl) {
-      console.log('⚠️ No JP Cars URLs provided - returning empty');
-      return new Response(JSON.stringify({
-        success: true,
-        data: {
-          lowestPrice: 0,
-          medianPrice: 0,
-          listingCount: 0,
-          listings: [],
-          directSearchUrls: {},
-          message: 'Geen JP Cars URLs beschikbaar'
-        }
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
     const directSearchUrls = {
       gaspedaal: gaspedaalUrl,
@@ -86,48 +135,77 @@ serve(async (req) => {
       jpCarsWindow: jpCarsWindowUrl,
     };
 
-    // === SIMPEL PROMPT - GEEN COMPLEXE FILTERING ===
+    console.log('📡 Using Gaspedaal URL:', gaspedaalUrl);
+
+    // Build the AI prompt
     const searchPrompt = `
-# OPDRACHT: Zoek vergelijkbare auto's
+# OPDRACHT: Zoek vergelijkbare auto's op Gaspedaal.nl
 
 ## TE TAXEREN AUTO
 ${vehicleData.brand} ${vehicleData.model} ${vehicleData.trim || ''}
 Bouwjaar: ${vehicleData.buildYear}
 KM-stand: ${vehicleData.mileage.toLocaleString('nl-NL')} km
 Brandstof: ${vehicleData.fuelType}
+Vermogen: ${vehicleData.power} PK
+Transmissie: ${vehicleData.transmission}
 
 ## ZOEK OP DEZE LINK
-${gaspedaalUrl || autoscoutUrl || marktplaatsUrl}
+${gaspedaalUrl}
+
+## FILTERS TOEGEPAST
+- Bouwjaar: ${yearFrom} - ${yearTo}
+- KM-stand: maximaal ${mileageMax.toLocaleString('nl-NL')} km
+- Brandstof: ${vehicleData.fuelType}
+- Gesorteerd op prijs (laag naar hoog)
 
 ## WAT JE MOET DOEN
 1. Open de link hierboven
-2. Bekijk de eerste 10-15 auto's (gesorteerd op prijs, laag naar hoog)
-3. Geef per auto: titel, prijs, km-stand, bouwjaar, URL
+2. Bekijk de eerste 15-20 auto's (gesorteerd op prijs, laag naar hoog)
+3. Beoordeel per auto:
+   - Is dit een PRIMAIRE vergelijking (zelfde motor, vergelijkbare uitvoering)?
+   - Zijn er LOGISCHE AFWIJKINGEN (andere motor, schade, te hoge km)?
+4. Geef per auto: titel, prijs (in hele euros, bijv. 45000 niet 45.0), km-stand, bouwjaar, URL, opties, kleur indien zichtbaar, of het een primaire vergelijking is
 
 ## RETURN DIT JSON FORMAT (alleen JSON, geen tekst ervoor of erna)
 {
   "listingCount": 15,
   "lowestPrice": 45000,
   "medianPrice": 52000,
+  "highestPrice": 62000,
+  "primaryComparableCount": 8,
+  "logicalDeviations": [
+    "Listing #3: Andere motorvariant (150 PK ipv 190 PK)",
+    "Listing #7: Zeer hoge km-stand (120.000 km)"
+  ],
   "listings": [
     {
+      "id": "listing-1",
+      "portal": "gaspedaal",
       "title": "BMW 3-serie 320i M Sport",
       "price": 45000,
       "mileage": 35000,
       "buildYear": 2023,
-      "url": "https://www.gaspedaal.nl/..."
+      "url": "https://www.gaspedaal.nl/...",
+      "options": ["Navigatie", "LED", "ACC"],
+      "color": "Zwart",
+      "isPrimaryComparable": true,
+      "isLogicalDeviation": false,
+      "matchScore": 95
     }
   ]
 }
 
 BELANGRIJK:
-- Geen filtering nodig - de zoek-URL heeft al de juiste filters!
+- Prijzen in HELE euros (45000, niet 45.0 of 45,000)
 - Geef ECHTE listings met WERKENDE URLs
 - Sorteer op prijs (laagste eerst)
-- Maximaal 15 listings
+- Maximaal 15-20 listings
+- Markeer PRIMAIRE vergelijkingen (isPrimaryComparable: true)
+- Markeer LOGISCHE AFWIJKINGEN (isLogicalDeviation: true) met reden
+- matchScore: 0-100 gebaseerd op hoe goed de auto matcht
 `;
 
-    console.log('📡 Calling OpenAI with simplified prompt...');
+    console.log('📡 Calling OpenAI with portal search prompt...');
 
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -175,10 +253,13 @@ BELANGRIJK:
         data: {
           lowestPrice: 0,
           medianPrice: 0,
+          highestPrice: 0,
           listingCount: 0,
+          primaryComparableCount: 0,
+          appliedFilters,
           listings: [],
+          logicalDeviations: ['Geen response van AI - probeer handmatig via de links'],
           directSearchUrls,
-          message: 'Geen response van AI'
         }
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -186,9 +267,9 @@ BELANGRIJK:
     }
 
     console.log('📝 Output length:', outputText.length);
-    console.log('📝 First 300 chars:', outputText.substring(0, 300));
+    console.log('📝 First 500 chars:', outputText.substring(0, 500));
 
-    // Extract JSON
+    // Extract JSON from response
     let jsonContent = outputText;
     const jsonMatch = outputText.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) {
@@ -218,30 +299,54 @@ BELANGRIJK:
         data: {
           lowestPrice: 0,
           medianPrice: 0,
+          highestPrice: 0,
           listingCount: 0,
+          primaryComparableCount: 0,
+          appliedFilters,
           listings: [],
+          logicalDeviations: ['JSON parsing fout - check handmatig via links'],
           directSearchUrls,
-          message: 'Kon JSON niet parsen - check handmatig via links'
         }
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Simpele validatie
-    const listings = (analysisData.listings || []).filter((l: PortalListing) => 
-      l.url && l.price && typeof l.price === 'number'
-    );
+    // Process and validate listings
+    const rawListings = analysisData.listings || [];
+    const listings: PortalListing[] = rawListings
+      .filter((l: any) => l.url && l.price && typeof l.price === 'number')
+      .map((l: any, index: number) => ({
+        id: l.id || `listing-${index + 1}`,
+        portal: l.portal || 'gaspedaal',
+        title: l.title || '',
+        price: normalizePrice(l.price),
+        mileage: l.mileage || 0,
+        buildYear: l.buildYear || vehicleData.buildYear,
+        url: l.url,
+        options: l.options || [],
+        color: l.color || undefined,
+        isPrimaryComparable: l.isPrimaryComparable ?? true,
+        isLogicalDeviation: l.isLogicalDeviation ?? false,
+        matchScore: l.matchScore ?? 80,
+        deviationReason: l.deviationReason || undefined,
+      }));
 
-    // Bereken statistieken
-    const prices = listings.map((l: PortalListing) => l.price).sort((a: number, b: number) => a - b);
+    // Calculate statistics
+    const prices = listings.map((l) => l.price).sort((a, b) => a - b);
     const lowestPrice = prices.length > 0 ? prices[0] : 0;
+    const highestPrice = prices.length > 0 ? prices[prices.length - 1] : 0;
     const medianPrice = prices.length > 0 ? prices[Math.floor(prices.length / 2)] : 0;
+    const primaryComparableCount = listings.filter(l => l.isPrimaryComparable).length;
+    const logicalDeviations = analysisData.logicalDeviations || [];
 
     console.log('✅ Portal search complete:', {
       listingCount: listings.length,
+      primaryComparableCount,
       lowestPrice,
-      medianPrice
+      medianPrice,
+      highestPrice,
+      deviationsFound: logicalDeviations.length
     });
 
     return new Response(JSON.stringify({
@@ -249,8 +354,12 @@ BELANGRIJK:
       data: {
         lowestPrice,
         medianPrice,
+        highestPrice,
         listingCount: listings.length,
+        primaryComparableCount,
+        appliedFilters,
         listings,
+        logicalDeviations,
         directSearchUrls,
       }
     }), {
@@ -268,3 +377,17 @@ BELANGRIJK:
     });
   }
 });
+
+// Normalize price - ensure it's a valid whole number in euros
+function normalizePrice(price: number): number {
+  // If price looks like it's in thousands (e.g., 45.5 meaning 45500)
+  if (price < 500 && price > 0) {
+    return Math.round(price * 1000);
+  }
+  // If price looks like it has decimal for thousands separator (e.g., 45.000)
+  if (price > 100 && price < 200) {
+    return Math.round(price * 1000);
+  }
+  // Normal price in whole euros
+  return Math.round(price);
+}
