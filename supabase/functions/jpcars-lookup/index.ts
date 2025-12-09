@@ -156,17 +156,98 @@ serve(async (req) => {
     // LOG VOLLEDIGE RESPONSE VOOR DEBUGGING
     console.log('📊 VOLLEDIGE JP Cars Extended Response:', JSON.stringify(data, null, 2));
 
-    // Check for valuation errors
+    // Check for valuation errors - met RETRY FALLBACK voor HP mismatches
+    let fallbackWarning: string | undefined;
+    let originalHp: number | undefined;
+    let usedFallback = false;
+    
     if (data.error) {
       console.warn('⚠️ JP Cars valuation warning:', data.error, data.error_message);
-      return new Response(JSON.stringify({ 
-        success: false,
-        error: data.error_message || 'Voertuig kon niet gewaardeerd worden',
-        code: data.error
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      
+      // Check of het een HP-gerelateerde fout is
+      const isHpError = data.error === 'ERROR_INVALID_CAR' && 
+        (data.error_message?.includes('hp not found') || 
+         data.error_message?.includes('hp') ||
+         data.error_message?.includes('power'));
+      
+      if (isHpError && jpCarsRequestBody.hp) {
+        console.log('🔄 HP niet gevonden in catalogus, retry zonder HP...');
+        console.log('📊 Originele HP waarde:', jpCarsRequestBody.hp);
+        
+        // Bewaar originele HP voor warning
+        originalHp = jpCarsRequestBody.hp as number;
+        
+        // Verwijder HP en KW uit request
+        delete jpCarsRequestBody.hp;
+        delete jpCarsRequestBody.kw;
+        
+        // Retry de API call
+        const retryResponse = await fetch(url.toString(), {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${JPCARS_API_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(jpCarsRequestBody),
+        });
+        
+        if (retryResponse.ok) {
+          const retryData = await retryResponse.json();
+          console.log('✅ Retry SUCCESVOL zonder HP:', JSON.stringify(retryData, null, 2));
+          
+          if (!retryData.error) {
+            // Retry was succesvol! Gebruik deze data met warning
+            Object.assign(data, retryData);
+            usedFallback = true;
+            fallbackWarning = `De opgegeven ${originalHp} pk staat niet in de JP Cars catalogus. Taxatie uitgevoerd zonder HP-filter (alle vermogensvarianten).`;
+            console.log('✅ Fallback gelukt, ga door met verwerking');
+          } else {
+            // Retry ook gefaald
+            console.warn('❌ Retry ook gefaald:', retryData.error_message);
+            return new Response(JSON.stringify({ 
+              success: false,
+              error: retryData.error_message || 'Voertuig kon niet gewaardeerd worden',
+              code: retryData.error,
+              hints: {
+                message: `Het voertuig kon niet worden gevonden in de JP Cars database.`,
+                suggestion: 'Controleer of merk, model en bouwjaar correct zijn.',
+                vehicleRecognized: {
+                  make: data.make,
+                  model: data.model,
+                  fuel: data.fuel
+                }
+              }
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        } else {
+          console.error('❌ Retry request failed:', retryResponse.status);
+        }
+      }
+      
+      // Als we hier komen zonder fallback, return error
+      if (!usedFallback) {
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: data.error_message || 'Voertuig kon niet gewaardeerd worden',
+          code: data.error,
+          hints: {
+            message: data.error_message,
+            suggestion: 'Probeer de taxatie opnieuw met andere gegevens.',
+            requestedHp: jpCarsRequestBody.hp,
+            vehicleRecognized: {
+              make: data.make,
+              model: data.model,
+              fuel: data.fuel
+            }
+          }
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // APR & ETR - Schaal 1-5 van JP Cars (NL markt)
@@ -252,6 +333,13 @@ serve(async (req) => {
       portalUrls,
       topDealers: topDealers.length > 0 ? topDealers : undefined,
       valueBreakdown,
+      
+      // Fallback info
+      fallbackWarning,
+      originalRequest: usedFallback ? {
+        hp: originalHp,
+        usedFallback: true
+      } : undefined,
       
       // Raw data voor debugging
       rawData: {
