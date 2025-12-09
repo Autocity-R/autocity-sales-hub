@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingDown, TrendingUp, ExternalLink, Filter, Flame, ChevronDown, ChevronUp } from 'lucide-react';
+import { TrendingDown, TrendingUp, ExternalLink, Filter, Flame, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import type { PortalAnalysis } from '@/types/taxatie';
 import { PortalListingsModal } from '../modals/PortalListingsModal';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -168,6 +168,16 @@ export const PortalAnalysisCard = ({ data, loading }: PortalAnalysisCardProps) =
             <span>{data.primaryComparableCount} primair vergelijkbaar</span>
           </div>
 
+          {/* Prijsspread waarschuwing */}
+          {data.priceSpreadWarning && (
+            <div className="p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/30 flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
+              <p className="text-xs text-yellow-700 dark:text-yellow-400">
+                {data.priceSpreadWarning}
+              </p>
+            </div>
+          )}
+
           {/* Logische afwijkingen */}
           {data.logicalDeviations.length > 0 && (
             <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
@@ -182,13 +192,25 @@ export const PortalAnalysisCard = ({ data, loading }: PortalAnalysisCardProps) =
             </div>
           )}
 
+          {/* Directe Gaspedaal link */}
+          {data.directSearchUrls?.gaspedaal && (
+            <Button
+              variant="default"
+              className="w-full bg-orange-500 hover:bg-orange-600"
+              onClick={() => window.open(data.directSearchUrls!.gaspedaal, '_blank')}
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Bekijk alle resultaten op Gaspedaal ↗
+            </Button>
+          )}
+
           <Button
             variant="outline"
             className="w-full"
             onClick={() => setShowListings(true)}
           >
             <ExternalLink className="h-4 w-4 mr-2" />
-            Bekijk alle {data.listingCount} listings
+            Bekijk {data.listingCount} gevonden listings
           </Button>
         </CardContent>
       </Card>

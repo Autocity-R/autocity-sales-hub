@@ -89,6 +89,12 @@ export interface PortalAnalysis {
   appliedFilters: PortalSearchFilters;
   listings: PortalListing[];
   logicalDeviations: string[];
+  directSearchUrls?: {
+    gaspedaal: string;
+    autoscout24: string;
+    autotrack: string;
+  };
+  priceSpreadWarning?: string | null;
 }
 
 // Vergelijkbare verkoop uit historie
