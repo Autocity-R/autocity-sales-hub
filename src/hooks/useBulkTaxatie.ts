@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
-import type { BulkTaxatieInput, BulkTaxatieResult, ColumnMapping, BulkTaxatieState } from '@/types/bulkTaxatie';
+import type { BulkTaxatieInput, BulkTaxatieResult, ColumnMapping, BulkTaxatieState, ParsedVehicle } from '@/types/bulkTaxatie';
 import type { TaxatieVehicleData } from '@/types/taxatie';
 import {
   fetchJPCarsData,
@@ -10,6 +10,8 @@ import {
   generateAIAdvice,
   saveTaxatieValuation,
 } from '@/services/taxatieService';
+import { detectSupplier, findColumnForField, type SupplierTemplate } from '@/config/supplierTemplates';
+import { supabase } from '@/integrations/supabase/client';
 
 const initialColumnMapping: ColumnMapping = {
   brand: null,
@@ -22,17 +24,22 @@ const initialColumnMapping: ColumnMapping = {
   supplierName: null,
   color: null,
   power: null,
+  combinedDescription: null,
 };
 
 const initialState: BulkTaxatieState = {
   isUploading: false,
   isProcessing: false,
+  isParsing: false,
   progress: { current: 0, total: 0, currentVehicle: '' },
   rawData: [],
   columnMapping: initialColumnMapping,
   availableColumns: [],
   inputs: [],
   results: [],
+  detectedSupplier: null,
+  parsedVehicles: [],
+  filename: '',
 };
 
 // Rate limiter - max 2 concurrent requests
@@ -41,9 +48,9 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export const useBulkTaxatie = () => {
   const [state, setState] = useState<BulkTaxatieState>(initialState);
 
-  // Parse Excel file
+  // Parse Excel file with supplier detection
   const parseExcelFile = useCallback(async (file: File) => {
-    setState(prev => ({ ...prev, isUploading: true }));
+    setState(prev => ({ ...prev, isUploading: true, filename: file.name }));
     
     try {
       const data = await file.arrayBuffer();
@@ -59,8 +66,11 @@ export const useBulkTaxatie = () => {
       // Get column names from first row
       const columns = Object.keys(jsonData[0]);
       
-      // Auto-detect column mappings
-      const autoMapping = autoDetectColumns(columns);
+      // Detect supplier from filename and columns
+      const supplier = detectSupplier(file.name, columns);
+      
+      // Auto-detect column mappings (with supplier hints if available)
+      const autoMapping = autoDetectColumns(columns, supplier);
 
       setState(prev => ({
         ...prev,
@@ -68,9 +78,19 @@ export const useBulkTaxatie = () => {
         rawData: jsonData,
         availableColumns: columns,
         columnMapping: autoMapping,
+        detectedSupplier: supplier ? {
+          id: supplier.id,
+          name: supplier.name,
+          requiresAIParsing: supplier.requiresAIParsing,
+        } : null,
+        parsedVehicles: [],
       }));
 
-      toast.success(`${jsonData.length} rijen geïmporteerd`);
+      if (supplier) {
+        toast.success(`${jsonData.length} rijen geïmporteerd - Leverancier herkend: ${supplier.name}`);
+      } else {
+        toast.success(`${jsonData.length} rijen geïmporteerd`);
+      }
     } catch (err) {
       console.error('Excel parse error:', err);
       toast.error('Fout bij het lezen van Excel bestand');
@@ -78,8 +98,8 @@ export const useBulkTaxatie = () => {
     }
   }, []);
 
-  // Auto-detect column mappings based on common names
-  const autoDetectColumns = (columns: string[]): ColumnMapping => {
+  // Auto-detect column mappings based on common names and supplier hints
+  const autoDetectColumns = (columns: string[], supplier: SupplierTemplate | null): ColumnMapping => {
     const mapping: ColumnMapping = { ...initialColumnMapping };
     const lowerColumns = columns.map(c => c.toLowerCase());
 
@@ -87,16 +107,32 @@ export const useBulkTaxatie = () => {
       brand: ['merk', 'brand', 'make', 'fabrikant'],
       model: ['model', 'type', 'uitvoering'],
       buildYear: ['bouwjaar', 'jaar', 'build', 'year', 'bj'],
-      mileage: ['km', 'kilometerstand', 'mileage', 'kilometers', 'km stand'],
+      mileage: ['km', 'kilometerstand', 'mileage', 'kilometers', 'km stand', 'odometer'],
       fuelType: ['brandstof', 'fuel', 'motor'],
       transmission: ['transmissie', 'versnelling', 'transmission', 'bak'],
-      askingPrice: ['prijs', 'vraagprijs', 'price', 'bedrag', 'inkoopprijs'],
+      askingPrice: ['prijs', 'vraagprijs', 'price', 'bedrag', 'inkoopprijs', 'residual', 'value', 'restwaarde'],
       supplierName: ['leverancier', 'supplier', 'verkoper', 'dealer'],
       color: ['kleur', 'color', 'colour'],
       power: ['pk', 'vermogen', 'power', 'hp', 'kw'],
+      combinedDescription: ['vehicle', 'description', 'omschrijving', 'asset', 'voertuig', 'auto'],
     };
 
+    // Apply supplier-specific hints first
+    if (supplier?.columnHints) {
+      for (const [field, hints] of Object.entries(supplier.columnHints)) {
+        if (hints) {
+          const foundCol = findColumnForField(columns, hints);
+          if (foundCol) {
+            mapping[field as keyof ColumnMapping] = foundCol;
+          }
+        }
+      }
+    }
+
+    // Fill in remaining fields with generic patterns
     for (const [field, searchTerms] of Object.entries(patterns)) {
+      if (mapping[field as keyof ColumnMapping]) continue; // Already mapped by supplier hints
+      
       const matchIndex = lowerColumns.findIndex(col => 
         searchTerms.some(term => col.includes(term))
       );
@@ -113,35 +149,130 @@ export const useBulkTaxatie = () => {
     setState(prev => ({
       ...prev,
       columnMapping: { ...prev.columnMapping, [field]: column },
+      // Clear parsed vehicles if changing combined description
+      parsedVehicles: field === 'combinedDescription' ? [] : prev.parsedVehicles,
     }));
   }, []);
 
-  // Convert raw data to inputs based on mapping
-  const prepareInputs = useCallback((): BulkTaxatieInput[] => {
+  // Parse vehicle descriptions with AI
+  const parseVehicleDescriptions = useCallback(async () => {
     const { rawData, columnMapping } = state;
     
-    if (!columnMapping.brand || !columnMapping.model || !columnMapping.buildYear || !columnMapping.mileage) {
-      toast.error('Map minimaal Merk, Model, Bouwjaar en KM');
+    if (!columnMapping.combinedDescription) {
+      toast.error('Selecteer eerst een kolom met voertuigbeschrijvingen');
+      return;
+    }
+
+    setState(prev => ({ ...prev, isParsing: true }));
+
+    try {
+      // Extract descriptions from raw data
+      const descriptions = rawData
+        .map(row => String(row[columnMapping.combinedDescription!] || '').trim())
+        .filter(d => d.length > 0);
+
+      if (descriptions.length === 0) {
+        throw new Error('Geen beschrijvingen gevonden');
+      }
+
+      // Process in batches of 20
+      const batchSize = 20;
+      const allParsed: ParsedVehicle[] = [];
+
+      for (let i = 0; i < descriptions.length; i += batchSize) {
+        const batch = descriptions.slice(i, i + batchSize);
+        
+        const { data, error } = await supabase.functions.invoke('parse-vehicle-description', {
+          body: { descriptions: batch },
+        });
+
+        if (error) {
+          console.error('Parse error:', error);
+          // Continue with empty results for this batch
+          allParsed.push(...batch.map(desc => ({
+            brand: null,
+            model: null,
+            variant: null,
+            buildYear: null,
+            fuelType: null,
+            transmission: null,
+            bodyType: null,
+            power: null,
+            confidence: 0,
+            originalDescription: desc,
+          })));
+        } else if (data?.results) {
+          allParsed.push(...data.results);
+        }
+
+        // Small delay between batches
+        if (i + batchSize < descriptions.length) {
+          await delay(500);
+        }
+      }
+
+      setState(prev => ({
+        ...prev,
+        isParsing: false,
+        parsedVehicles: allParsed,
+      }));
+
+      const highConfidence = allParsed.filter(p => p.confidence >= 0.7).length;
+      toast.success(`${allParsed.length} beschrijvingen geparseerd (${highConfidence} met hoge betrouwbaarheid)`);
+
+    } catch (err) {
+      console.error('Error parsing descriptions:', err);
+      toast.error('Fout bij het parsen van beschrijvingen');
+      setState(prev => ({ ...prev, isParsing: false }));
+    }
+  }, [state.rawData, state.columnMapping]);
+
+  // Convert raw data to inputs based on mapping (with parsed data if available)
+  const prepareInputs = useCallback((): BulkTaxatieInput[] => {
+    const { rawData, columnMapping, parsedVehicles } = state;
+    const useParsedData = parsedVehicles.length > 0 && columnMapping.combinedDescription;
+    
+    // If using parsed data, don't require brand/model columns
+    if (!useParsedData && (!columnMapping.brand || !columnMapping.model || !columnMapping.buildYear || !columnMapping.mileage)) {
+      toast.error('Map minimaal Merk, Model, Bouwjaar en KM (of gebruik AI parsing)');
       return [];
     }
 
-    const inputs: BulkTaxatieInput[] = rawData.map((row, index) => ({
-      rowIndex: index + 1,
-      brand: String(row[columnMapping.brand!] || '').trim(),
-      model: String(row[columnMapping.model!] || '').trim(),
-      buildYear: parseInt(String(row[columnMapping.buildYear!])) || 0,
-      mileage: parseInt(String(row[columnMapping.mileage!]).replace(/\D/g, '')) || 0,
-      fuelType: columnMapping.fuelType ? String(row[columnMapping.fuelType] || '').trim() : undefined,
-      transmission: columnMapping.transmission ? String(row[columnMapping.transmission] || '').trim() : undefined,
-      askingPrice: columnMapping.askingPrice ? parseInt(String(row[columnMapping.askingPrice]).replace(/\D/g, '')) : undefined,
-      supplierName: columnMapping.supplierName ? String(row[columnMapping.supplierName] || '').trim() : undefined,
-      color: columnMapping.color ? String(row[columnMapping.color] || '').trim() : undefined,
-      power: columnMapping.power ? parseInt(String(row[columnMapping.power]).replace(/\D/g, '')) : undefined,
-    })).filter(input => input.brand && input.model && input.buildYear > 1990 && input.mileage > 0);
+    if (useParsedData && !columnMapping.mileage) {
+      toast.error('Map minimaal de Kilometerstand kolom');
+      return [];
+    }
+
+    const inputs: BulkTaxatieInput[] = rawData.map((row, index) => {
+      const parsed = useParsedData ? parsedVehicles[index] : null;
+      
+      return {
+        rowIndex: index + 1,
+        brand: parsed?.brand || (columnMapping.brand ? String(row[columnMapping.brand] || '').trim() : ''),
+        model: parsed?.model || (columnMapping.model ? String(row[columnMapping.model] || '').trim() : ''),
+        buildYear: parsed?.buildYear || (columnMapping.buildYear ? parseInt(String(row[columnMapping.buildYear])) : 0) || 0,
+        mileage: parseInt(String(row[columnMapping.mileage!]).replace(/\D/g, '')) || 0,
+        fuelType: parsed?.fuelType || (columnMapping.fuelType ? String(row[columnMapping.fuelType] || '').trim() : undefined),
+        transmission: parsed?.transmission || (columnMapping.transmission ? String(row[columnMapping.transmission] || '').trim() : undefined),
+        askingPrice: columnMapping.askingPrice ? parseInt(String(row[columnMapping.askingPrice]).replace(/\D/g, '')) : undefined,
+        supplierName: columnMapping.supplierName ? String(row[columnMapping.supplierName] || '').trim() : undefined,
+        color: columnMapping.color ? String(row[columnMapping.color] || '').trim() : undefined,
+        power: parsed?.power || (columnMapping.power ? parseInt(String(row[columnMapping.power]).replace(/\D/g, '')) : undefined),
+        variant: parsed?.variant || undefined,
+        bodyType: parsed?.bodyType || undefined,
+        originalDescription: parsed?.originalDescription,
+        parseConfidence: parsed?.confidence,
+      };
+    }).filter(input => 
+      input.brand && 
+      input.model && 
+      input.buildYear > 1990 && 
+      input.mileage > 0
+    );
 
     setState(prev => ({ ...prev, inputs }));
     return inputs;
-  }, [state.rawData, state.columnMapping]);
+  }, [state.rawData, state.columnMapping, state.parsedVehicles]);
 
   // Process single vehicle
   const processSingleVehicle = async (input: BulkTaxatieInput): Promise<BulkTaxatieResult> => {
@@ -153,9 +284,9 @@ export const useBulkTaxatie = () => {
       fuelType: input.fuelType || 'Benzine',
       transmission: (input.transmission?.toLowerCase().includes('auto') ? 'Automaat' : 
                     input.transmission?.toLowerCase().includes('hand') ? 'Handgeschakeld' : 'Onbekend') as 'Automaat' | 'Handgeschakeld' | 'Onbekend',
-      bodyType: '',
+      bodyType: input.bodyType || '',
       power: input.power || 0,
-      trim: '',
+      trim: input.variant || '',
       color: input.color || '',
       options: [],
       keywords: [],
@@ -298,6 +429,7 @@ export const useBulkTaxatie = () => {
     ...state,
     parseExcelFile,
     updateColumnMapping,
+    parseVehicleDescriptions,
     prepareInputs,
     startBulkProcessing,
     reset,

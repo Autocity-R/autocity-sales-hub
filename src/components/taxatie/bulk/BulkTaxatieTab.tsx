@@ -2,18 +2,24 @@ import { useBulkTaxatie } from '@/hooks/useBulkTaxatie';
 import { BulkTaxatieUploader } from './BulkTaxatieUploader';
 import { BulkTaxatieProgress } from './BulkTaxatieProgress';
 import { BulkTaxatieResults } from './BulkTaxatieResults';
+import { BulkTaxatiePreview } from './BulkTaxatiePreview';
 
 export const BulkTaxatieTab = () => {
   const {
     isUploading,
     isProcessing,
+    isParsing,
     progress,
     rawData,
     columnMapping,
     availableColumns,
     results,
+    detectedSupplier,
+    parsedVehicles,
+    filename,
     parseExcelFile,
     updateColumnMapping,
+    parseVehicleDescriptions,
     startBulkProcessing,
     reset,
   } = useBulkTaxatie();
@@ -47,16 +53,32 @@ export const BulkTaxatieTab = () => {
     );
   }
 
-  // Show uploader
+  // Show uploader and preview
   return (
-    <BulkTaxatieUploader
-      isUploading={isUploading}
-      availableColumns={availableColumns}
-      columnMapping={columnMapping}
-      rawDataCount={rawData.length}
-      onFileUpload={parseExcelFile}
-      onColumnMappingChange={updateColumnMapping}
-      onStartProcessing={startBulkProcessing}
-    />
+    <div className="space-y-6">
+      <BulkTaxatieUploader
+        isUploading={isUploading}
+        isParsing={isParsing}
+        availableColumns={availableColumns}
+        columnMapping={columnMapping}
+        rawDataCount={rawData.length}
+        detectedSupplier={detectedSupplier}
+        parsedVehicles={parsedVehicles}
+        filename={filename}
+        onFileUpload={parseExcelFile}
+        onColumnMappingChange={updateColumnMapping}
+        onParseDescriptions={parseVehicleDescriptions}
+        onStartProcessing={startBulkProcessing}
+      />
+      
+      {/* Show parsed preview if available */}
+      {parsedVehicles.length > 0 && (
+        <BulkTaxatiePreview 
+          parsedVehicles={parsedVehicles}
+          rawData={rawData}
+          columnMapping={columnMapping}
+        />
+      )}
+    </div>
   );
 };
