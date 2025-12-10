@@ -318,6 +318,7 @@ export const useTaxatie = () => {
     loading,
     taxatieStarted,
     taxatieComplete,
+    enteredMileage, // Expose mileage state for input field
 
     // Actions
     handleLicensePlateSearch,

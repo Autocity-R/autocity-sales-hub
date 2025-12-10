@@ -44,6 +44,7 @@ export function NewValuationForm() {
     loading,
     taxatieStarted,
     taxatieComplete,
+    enteredMileage,
     handleLicensePlateSearch,
     handleManualVehicleSubmit,
     handleJPCarsVehicleSubmit,
@@ -78,7 +79,7 @@ export function NewValuationForm() {
             onInputModeChange={setInputMode}
             licensePlate={licensePlate}
             onLicensePlateChange={setLicensePlate}
-            mileage={vehicleData?.mileage || 0}
+            mileage={enteredMileage}
             onMileageChange={updateVehicleMileage}
             onSearch={handleLicensePlateSearch}
             onManualSubmit={handleManualVehicleSubmit}
