@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, CheckCircle, Clock, AlertCircle, RefreshCw, Wrench, Shield, Truck, Sparkles, ClipboardList, Package, Cog } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -8,9 +8,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Task, TaskStatus, TaskCategory } from "@/types/tasks";
-import { fetchTasks, updateTaskStatus, deleteTask } from "@/services/taskService";
+import { fetchTasks, updateTaskStatus, deleteTask, reorderTasks } from "@/services/taskService";
 import { TaskForm } from "@/components/tasks/TaskForm";
-import { TaskList } from "@/components/tasks/TaskList";
+import { DraggableTaskList } from "@/components/tasks/DraggableTaskList";
 import { TaskDetail } from "@/components/tasks/TaskDetail";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTasksRealtime } from "@/hooks/useTasksRealtime";
@@ -149,6 +149,47 @@ const TaskManagement = () => {
     }
   };
 
+  // Handle reordering tasks after drag & drop
+  const handleReorder = useCallback(async (reorderedTasks: Task[]) => {
+    try {
+      // Create the new sort order mappings
+      const taskOrders = reorderedTasks.map((task, index) => ({
+        id: task.id,
+        sortOrder: index + 1
+      }));
+
+      // Optimistically update the cache
+      queryClient.setQueryData(["tasks", statusFilter, user?.id], (oldTasks: Task[] | undefined) => {
+        if (!oldTasks) return reorderedTasks;
+        
+        // Create a map of new positions
+        const orderMap = new Map(taskOrders.map(t => [t.id, t.sortOrder]));
+        
+        // Update sort_order in old tasks and sort
+        return [...oldTasks].sort((a, b) => {
+          const orderA = orderMap.get(a.id) ?? Infinity;
+          const orderB = orderMap.get(b.id) ?? Infinity;
+          return orderA - orderB;
+        });
+      });
+
+      // Save to database
+      await reorderTasks(taskOrders);
+      
+      toast({
+        description: "Taakvolgorde opgeslagen"
+      });
+    } catch (error) {
+      console.error("Failed to reorder tasks:", error);
+      toast({
+        variant: "destructive",
+        description: "Fout bij het opslaan van de volgorde"
+      });
+      // Refetch to restore correct order
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    }
+  }, [queryClient, statusFilter, user?.id, toast]);
+
   if (!user) {
     return (
       <DashboardLayout>
@@ -283,13 +324,14 @@ const TaskManagement = () => {
         </div>
 
         {/* Task List */}
-        <TaskList 
+        <DraggableTaskList 
           tasks={tasks}
           onCompleteTask={handleCompleteTask}
           onStartTask={handleStartTask}
           onTaskSelect={setSelectedTask}
           onEditTask={handleEditTask}
           onDeleteTask={handleDeleteTask}
+          onReorder={handleReorder}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
           categoryFilter={categoryFilter}

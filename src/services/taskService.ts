@@ -24,6 +24,7 @@ export const fetchTasks = async (filters?: any): Promise<Task[]> => {
         assigned_by_profile:profiles!tasks_assigned_by_fkey(id, first_name, last_name, email),
         vehicle:vehicles(id, brand, model, license_number, vin)
       `)
+      .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false });
 
     // Apply filters
@@ -353,5 +354,47 @@ export const fetchTaskHistory = async (taskId: string) => {
   } catch (error: any) {
     console.error("Failed to fetch task history:", error);
     return [];
+  }
+};
+
+// Update sort order for a single task
+export const updateTaskSortOrder = async (taskId: string, sortOrder: number): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('tasks')
+      .update({ sort_order: sortOrder, updated_at: new Date().toISOString() })
+      .eq('id', taskId);
+
+    if (error) {
+      console.error("Failed to update task sort order:", error);
+      throw error;
+    }
+  } catch (error: any) {
+    console.error("Failed to update task sort order:", error);
+    throw error;
+  }
+};
+
+// Reorder multiple tasks at once
+export const reorderTasks = async (taskOrders: { id: string; sortOrder: number }[]): Promise<void> => {
+  try {
+    // Update each task's sort_order
+    const updates = taskOrders.map(({ id, sortOrder }) => 
+      supabase
+        .from('tasks')
+        .update({ sort_order: sortOrder, updated_at: new Date().toISOString() })
+        .eq('id', id)
+    );
+
+    const results = await Promise.all(updates);
+    
+    const errors = results.filter(r => r.error);
+    if (errors.length > 0) {
+      console.error("Failed to reorder some tasks:", errors);
+      throw new Error("Failed to reorder tasks");
+    }
+  } catch (error: any) {
+    console.error("Failed to reorder tasks:", error);
+    throw error;
   }
 };
