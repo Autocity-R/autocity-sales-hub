@@ -1,5 +1,19 @@
 import type { TaxatieVehicleData, JPCarsData, PortalAnalysis, InternalComparison, AITaxatieAdvice } from './taxatie';
 
+// Parsed vehicle from AI
+export interface ParsedVehicle {
+  brand: string | null;
+  model: string | null;
+  variant: string | null;
+  buildYear: number | null;
+  fuelType: string | null;
+  transmission: string | null;
+  bodyType: string | null;
+  power: number | null;
+  confidence: number;
+  originalDescription: string;
+}
+
 // Excel row input from supplier
 export interface BulkTaxatieInput {
   rowIndex: number;
@@ -13,6 +27,10 @@ export interface BulkTaxatieInput {
   supplierName?: string;
   color?: string;
   power?: number;
+  variant?: string;
+  bodyType?: string;
+  originalDescription?: string;
+  parseConfidence?: number;
 }
 
 // Result per vehicle
@@ -40,12 +58,21 @@ export interface ColumnMapping {
   supplierName: string | null;
   color: string | null;
   power: string | null;
+  combinedDescription: string | null; // For AI parsing
+}
+
+// Detected supplier info
+export interface DetectedSupplier {
+  id: string;
+  name: string;
+  requiresAIParsing: boolean;
 }
 
 // Processing state
 export interface BulkTaxatieState {
   isUploading: boolean;
   isProcessing: boolean;
+  isParsing: boolean;
   progress: {
     current: number;
     total: number;
@@ -56,6 +83,9 @@ export interface BulkTaxatieState {
   availableColumns: string[];
   inputs: BulkTaxatieInput[];
   results: BulkTaxatieResult[];
+  detectedSupplier: DetectedSupplier | null;
+  parsedVehicles: ParsedVehicle[];
+  filename: string;
 }
 
 // Export format options

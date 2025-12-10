@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.taxatie-internal-search]
 verify_jwt = false
+
+[functions.parse-vehicle-description]
+verify_jwt = false
