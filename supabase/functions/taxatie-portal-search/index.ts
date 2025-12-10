@@ -44,7 +44,28 @@ interface PortalListing {
   deviationReason?: string;
 }
 
-// Build Gaspedaal search URL from vehicle data
+// Parse filters from a Gaspedaal URL
+function parseGaspedaalUrl(url: string): { 
+  buildYearFrom?: number; 
+  buildYearTo?: number; 
+  mileageMax?: number;
+  fuelType?: string;
+} {
+  try {
+    const urlObj = new URL(url);
+    const params = urlObj.searchParams;
+    return {
+      buildYearFrom: params.get('bmin') ? parseInt(params.get('bmin')!) : undefined,
+      buildYearTo: params.get('bmax') ? parseInt(params.get('bmax')!) : undefined,
+      mileageMax: params.get('kmmax') ? parseInt(params.get('kmmax')!) : undefined,
+      fuelType: params.get('brandstof') || undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+// Build Gaspedaal search URL from vehicle data (fallback)
 function buildGaspedaalUrl(vehicleData: VehicleData): string {
   const brandSlug = vehicleData.brand.toLowerCase().replace(/\s+/g, '-');
   const modelSlug = vehicleData.model.toLowerCase().replace(/\s+/g, '-');
@@ -213,26 +234,37 @@ serve(async (req) => {
       throw new Error('OPENAI_API_KEY not configured');
     }
 
-    // Build filters
-    const yearFrom = vehicleData.buildYear - 1;
-    const yearTo = vehicleData.buildYear + 1;
-    const mileageMax = calculateMaxMileage(vehicleData.mileage);
+    // Use JP Cars Gaspedaal URL if available, otherwise build our own
+    const gaspedaalUrl = jpCarsUrls?.gaspedaal || buildGaspedaalUrl(vehicleData);
+    const urlSource = jpCarsUrls?.gaspedaal ? 'JP Cars' : 'Self-calculated';
+    const jpCarsWindowUrl = jpCarsUrls?.jpCarsWindow || null;
+
+    console.log('📡 Gaspedaal URL source:', urlSource);
+    console.log('📡 Using Gaspedaal URL:', gaspedaalUrl);
+
+    // Parse filters from the ACTUAL URL being used
+    const parsedFilters = parseGaspedaalUrl(gaspedaalUrl);
     
+    // Fallback values if URL parsing fails
+    const fallbackYearFrom = vehicleData.buildYear - 1;
+    const fallbackYearTo = vehicleData.buildYear + 1;
+    const fallbackMileageMax = calculateMaxMileage(vehicleData.mileage);
+    
+    // Use parsed filters from URL, fallback to calculated values
     const appliedFilters = {
       brand: vehicleData.brand,
       model: vehicleData.model,
-      buildYearFrom: yearFrom,
-      buildYearTo: yearTo,
-      mileageMax,
-      fuelType: vehicleData.fuelType,
+      buildYearFrom: parsedFilters.buildYearFrom || fallbackYearFrom,
+      buildYearTo: parsedFilters.buildYearTo || fallbackYearTo,
+      mileageMax: parsedFilters.mileageMax || fallbackMileageMax,
+      fuelType: parsedFilters.fuelType || vehicleData.fuelType,
       transmission: vehicleData.transmission,
       bodyType: vehicleData.bodyType,
       keywords: vehicleData.keywords || [],
       requiredOptions: vehicleData.options || [],
     };
 
-    const gaspedaalUrl = buildGaspedaalUrl(vehicleData);
-    const jpCarsWindowUrl = jpCarsUrls?.jpCarsWindow || null;
+    console.log('📡 Applied filters:', JSON.stringify(appliedFilters));
 
     const directSearchUrls = {
       gaspedaal: gaspedaalUrl,
@@ -241,17 +273,20 @@ serve(async (req) => {
       jpCarsWindow: jpCarsWindowUrl,
     };
 
-    console.log('📡 Using Gaspedaal URL:', gaspedaalUrl);
-
-    // SIMPLIFIED AI PROMPT - max 10 listings, only essential fields
+    // SIMPLIFIED AI PROMPT - use the exact JP Cars URL
     const searchPrompt = `
-Zoek auto's op Gaspedaal.nl voor taxatie.
+OPDRACHT: Open deze EXACTE link en geef de auto listings terug.
 
-AUTO: ${vehicleData.brand} ${vehicleData.model} ${vehicleData.trim || ''}, ${vehicleData.buildYear}, ${vehicleData.mileage.toLocaleString('nl-NL')} km, ${vehicleData.fuelType}
+LINK (gebruik deze precies): ${gaspedaalUrl}
 
-LINK: ${gaspedaalUrl}
+Deze link heeft al de juiste filters ingesteld:
+- Bouwjaar: ${appliedFilters.buildYearFrom} - ${appliedFilters.buildYearTo}
+- Max km: ${appliedFilters.mileageMax?.toLocaleString('nl-NL')} km
+${appliedFilters.fuelType ? `- Brandstof: ${appliedFilters.fuelType}` : ''}
 
-Geef MAX 10 listings in dit SIMPELE JSON format:
+AUTO ter vergelijking: ${vehicleData.brand} ${vehicleData.model} ${vehicleData.trim || ''}, ${vehicleData.buildYear}, ${vehicleData.mileage.toLocaleString('nl-NL')} km
+
+Geef MAX 10 listings van DEZE pagina in dit JSON format:
 {
   "listings": [
     {"title": "Auto titel", "price": 45000, "mileage": 35000, "buildYear": 2023, "url": "https://..."}
@@ -259,6 +294,7 @@ Geef MAX 10 listings in dit SIMPELE JSON format:
 }
 
 REGELS:
+- Gebruik ALLEEN listings van de gegeven link
 - Maximaal 10 listings
 - Prijs in hele euros (45000 niet 45.0)
 - Alleen: title, price, mileage, buildYear, url
