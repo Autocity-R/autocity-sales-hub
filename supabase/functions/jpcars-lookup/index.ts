@@ -415,6 +415,9 @@ serve(async (req) => {
         usedFallback: true
       } : undefined,
       
+      // JP Cars Window data (alle vergelijkbare listings)
+      window: data.window || [],
+      
       // Raw data voor debugging
       rawData: {
         windowSize: data.window_size,
@@ -424,7 +427,8 @@ serve(async (req) => {
         statTurnoverInt: data.stat_turnover_int,
         percents: data.percents,
         rawApr: data.apr,
-        rawEtr: data.etr
+        rawEtr: data.etr,
+        windowItemsCount: (data.window as unknown[])?.length || 0,
       }
     };
 

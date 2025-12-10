@@ -184,10 +184,11 @@ export const useTaxatie = () => {
       setJpCarsData(jpData);
       setLoading(prev => ({ ...prev, jpCars: false, portals: true }));
 
-      // STAP 2: Portal analyse met JP Cars URLs
+      // STAP 2: Portal analyse met JP Cars URLs en Window data
       console.log('🔗 JP Cars portal URLs:', jpData.portalUrls);
+      console.log('📊 JP Cars window items:', jpData.window?.length || 0);
       const [portalResult] = await Promise.allSettled([
-        fetchPortalAnalysis(vehicleWithOptions, jpData.portalUrls),
+        fetchPortalAnalysis(vehicleWithOptions, jpData.portalUrls, jpData.window),
       ]);
 
       // Portal data verwerken

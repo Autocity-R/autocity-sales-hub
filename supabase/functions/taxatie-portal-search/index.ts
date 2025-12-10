@@ -28,6 +28,20 @@ interface JPCarsPortalUrls {
   jpCarsWindow?: string | null;
 }
 
+// JP Cars Window item from their API
+interface JPCarsWindowItem {
+  make?: string;
+  model?: string;
+  price_local?: number;
+  mileage?: number;
+  build?: number;
+  url?: string;
+  dealer_name?: string;
+  days_in_stock?: number;
+  sold_since?: number;
+  options?: string[];
+}
+
 interface PortalListing {
   id: string;
   portal: string;
@@ -222,25 +236,19 @@ serve(async (req) => {
   }
 
   try {
-    const { vehicleData, jpCarsUrls } = await req.json() as { 
+    const { vehicleData, jpCarsUrls, jpCarsWindow } = await req.json() as { 
       vehicleData: VehicleData; 
       jpCarsUrls?: JPCarsPortalUrls;
+      jpCarsWindow?: JPCarsWindowItem[];
     };
     
     console.log('🔍 Portal search for:', vehicleData.brand, vehicleData.model, vehicleData.trim);
+    console.log('📊 JP Cars Window items received:', jpCarsWindow?.length || 0);
 
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OPENAI_API_KEY not configured');
-    }
-
-    // Use JP Cars Gaspedaal URL if available, otherwise build our own
+    // Build filter info
     const gaspedaalUrl = jpCarsUrls?.gaspedaal || buildGaspedaalUrl(vehicleData);
     const urlSource = jpCarsUrls?.gaspedaal ? 'JP Cars' : 'Self-calculated';
     const jpCarsWindowUrl = jpCarsUrls?.jpCarsWindow || null;
-
-    console.log('📡 Gaspedaal URL source:', urlSource);
-    console.log('📡 Using Gaspedaal URL:', gaspedaalUrl);
 
     // Parse filters from the ACTUAL URL being used
     const parsedFilters = parseGaspedaalUrl(gaspedaalUrl);
@@ -264,14 +272,113 @@ serve(async (req) => {
       requiredOptions: vehicleData.options || [],
     };
 
-    console.log('📡 Applied filters:', JSON.stringify(appliedFilters));
-
     const directSearchUrls = {
       gaspedaal: gaspedaalUrl,
       autoscout24: jpCarsUrls?.autoscout24 || null,
       marktplaats: jpCarsUrls?.marktplaats || null,
       jpCarsWindow: jpCarsWindowUrl,
     };
+
+    // ============================================
+    // PRIMARY: Use JP Cars Window data if available
+    // ============================================
+    if (jpCarsWindow && jpCarsWindow.length > 0) {
+      console.log('✅ Using JP Cars Window data (primary source)');
+      console.log('📊 Processing', jpCarsWindow.length, 'listings from JP Cars');
+
+      // Transform JP Cars window data to our listing format
+      const listings: PortalListing[] = jpCarsWindow
+        .filter((item) => item.price_local && item.price_local > 0)
+        .slice(0, 50) // Limit to 50 for performance
+        .map((item, index) => {
+          const matchScore = calculateMatchScore({
+            buildYear: item.build || vehicleData.buildYear,
+            mileage: item.mileage || vehicleData.mileage,
+          }, vehicleData);
+          
+          const isPrimary = isPrimaryComparable({
+            buildYear: item.build || vehicleData.buildYear,
+            mileage: item.mileage || vehicleData.mileage,
+          }, vehicleData);
+          
+          const deviation = hasLogicalDeviation({
+            buildYear: item.build || vehicleData.buildYear,
+            mileage: item.mileage || vehicleData.mileage,
+          }, vehicleData);
+
+          return {
+            id: `jpcars-${index + 1}`,
+            portal: 'jpcars_window',
+            title: `${item.make || vehicleData.brand} ${item.model || vehicleData.model}`,
+            price: normalizePrice(item.price_local || 0),
+            mileage: item.mileage || 0,
+            buildYear: item.build || vehicleData.buildYear,
+            url: item.url || '',
+            options: item.options || [],
+            color: undefined,
+            isPrimaryComparable: isPrimary,
+            isLogicalDeviation: deviation.isDeviation,
+            matchScore,
+            deviationReason: deviation.reason,
+            // Extra JP Cars data
+            dealer: item.dealer_name,
+            daysInStock: item.days_in_stock,
+            soldSince: item.sold_since,
+          };
+        });
+
+      // Calculate statistics from JP Cars data
+      const prices = listings.map((l) => l.price).filter(p => p > 0).sort((a, b) => a - b);
+      const lowestPrice = prices.length > 0 ? prices[0] : 0;
+      const highestPrice = prices.length > 0 ? prices[prices.length - 1] : 0;
+      const medianPrice = prices.length > 0 ? prices[Math.floor(prices.length / 2)] : 0;
+      const primaryComparableCount = listings.filter(l => l.isPrimaryComparable).length;
+
+      // Find logical deviations
+      const logicalDeviations = listings
+        .filter(l => l.isLogicalDeviation && l.deviationReason)
+        .slice(0, 5)
+        .map((l, i) => `Listing #${i + 1}: ${l.deviationReason}`);
+
+      console.log('✅ JP Cars Window analysis complete:', {
+        listingCount: listings.length,
+        primaryComparableCount,
+        lowestPrice,
+        medianPrice,
+        highestPrice,
+        source: 'JP Cars Window (direct)',
+      });
+
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          lowestPrice,
+          medianPrice,
+          highestPrice,
+          listingCount: listings.length,
+          primaryComparableCount,
+          appliedFilters,
+          listings: listings.slice(0, 20), // Return max 20 for UI
+          logicalDeviations,
+          directSearchUrls,
+          dataSource: 'jpcars_window',
+        }
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ============================================
+    // FALLBACK: Use AI web search if no JP Cars Window data
+    // ============================================
+    console.log('⚠️ No JP Cars Window data, falling back to AI search...');
+    console.log('📡 Gaspedaal URL source:', urlSource);
+    console.log('📡 Using Gaspedaal URL:', gaspedaalUrl);
+
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      throw new Error('OPENAI_API_KEY not configured');
+    }
 
     // SIMPLIFIED AI PROMPT - use the exact JP Cars URL
     const searchPrompt = `

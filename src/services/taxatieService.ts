@@ -73,17 +73,33 @@ interface JPCarsPortalUrls {
   jpCarsWindow?: string | null;
 }
 
-// Portal Analysis via OpenAI Edge Function
+// JP Cars Window item type
+interface JPCarsWindowItem {
+  make?: string;
+  model?: string;
+  price_local?: number;
+  mileage?: number;
+  build?: number;
+  url?: string;
+  dealer_name?: string;
+  days_in_stock?: number;
+  sold_since?: number;
+  options?: string[];
+}
+
+// Portal Analysis via JP Cars Window data (primary) or OpenAI Edge Function (fallback)
 export const fetchPortalAnalysis = async (
   vehicleData: TaxatieVehicleData,
-  jpCarsUrls?: JPCarsPortalUrls
+  jpCarsUrls?: JPCarsPortalUrls,
+  jpCarsWindow?: JPCarsWindowItem[]
 ): Promise<PortalAnalysis> => {
   try {
-    console.log('🔍 Fetching portal analysis via OpenAI...');
-    console.log('🔗 Using JP Cars URLs:', jpCarsUrls);
+    console.log('🔍 Fetching portal analysis...');
+    console.log('🔗 JP Cars URLs:', jpCarsUrls);
+    console.log('📊 JP Cars Window items:', jpCarsWindow?.length || 0);
     
     const { data, error } = await supabase.functions.invoke('taxatie-portal-search', {
-      body: { vehicleData, jpCarsUrls }
+      body: { vehicleData, jpCarsUrls, jpCarsWindow }
     });
 
     if (error) {
