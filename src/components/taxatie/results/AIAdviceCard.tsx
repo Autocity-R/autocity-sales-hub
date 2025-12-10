@@ -147,7 +147,14 @@ export const AIAdviceCard = ({ data, loading, jpCarsData, internalComparison, on
               </div>
               <div className="flex items-center gap-2">
                 <Target className="h-4 w-4 text-muted-foreground" />
-                <span>Doelmarge: <strong>{data.targetMargin}%</strong></span>
+                <span>
+                  Doelmarge: <strong>€{data.targetMargin?.toLocaleString('nl-NL') || 0}</strong>
+                  {data.recommendedSellingPrice > 0 && data.targetMargin > 0 && (
+                    <span className="text-muted-foreground ml-1">
+                      ({Math.round((data.targetMargin / data.recommendedSellingPrice) * 100)}%)
+                    </span>
+                  )}
+                </span>
               </div>
             </div>
             
