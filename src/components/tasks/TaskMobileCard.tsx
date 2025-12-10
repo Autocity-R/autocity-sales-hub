@@ -1,6 +1,6 @@
 import React, { memo, useMemo, useCallback } from "react";
 import { format } from "date-fns";
-import { CheckCircle, Clock, AlertCircle, Car, User, MoreVertical, Play, Edit, Trash2, Wrench, Truck, Sparkles, Shield, Package, ClipboardList, Tag } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, Car, User, MoreVertical, Play, Edit, Trash2, Wrench, Truck, Sparkles, Shield, Package, ClipboardList, Tag, Cog } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { Task, TaskStatus, TaskCategory } from "@/types/tasks";
 // Category configuration with colors and icons
 const categoryConfig: Record<TaskCategory, { label: string; color: string; bgColor: string; icon: React.ElementType }> = {
   klaarmaken: { label: "Klaarmaken", color: "text-cyan-700 dark:text-cyan-300", bgColor: "bg-cyan-100 dark:bg-cyan-900/30 border-cyan-200 dark:border-cyan-800", icon: ClipboardList },
+  onderdelen: { label: "Onderdelen", color: "text-slate-700 dark:text-slate-300", bgColor: "bg-slate-100 dark:bg-slate-900/30 border-slate-200 dark:border-slate-800", icon: Cog },
   onderdelen_bestellen: { label: "Onderdelen Bestellen", color: "text-amber-700 dark:text-amber-300", bgColor: "bg-amber-100 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800", icon: Package },
   werkplaats: { label: "Werkplaats", color: "text-blue-700 dark:text-blue-300", bgColor: "bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800", icon: Wrench },
   schadeherstel: { label: "Schadeherstel", color: "text-orange-700 dark:text-orange-300", bgColor: "bg-orange-100 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800", icon: Shield },
