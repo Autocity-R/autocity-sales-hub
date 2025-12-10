@@ -32,10 +32,9 @@ export const lookupRDW = async (licensePlate: string): Promise<TaxatieVehicleDat
 
     console.log('✅ RDW data received:', data.data);
     
-    // The data from RDW doesn't include mileage, user needs to fill this in
     return {
       ...data.data,
-      mileage: 0, // User must enter this manually
+      mileage: 0,
       options: [],
       keywords: [],
     };
@@ -56,7 +55,7 @@ const buildSearchFilters = (vehicleData: TaxatieVehicleData): PortalSearchFilter
     model: vehicleData.model,
     buildYearFrom: yearRange.from,
     buildYearTo: yearRange.to,
-    mileageMax, // ALLEEN max, geen min
+    mileageMax,
     fuelType: vehicleData.fuelType,
     transmission: vehicleData.transmission === 'Onbekend' ? 'Beide' : vehicleData.transmission,
     bodyType: vehicleData.bodyType,
@@ -122,7 +121,6 @@ export const fetchPortalAnalysis = async (
   } catch (err) {
     console.error('❌ Portal analysis failed, returning empty result:', err);
     
-    // Return empty fallback
     const filters = buildSearchFilters(vehicleData);
     return {
       lowestPrice: 0,
@@ -149,12 +147,10 @@ export const fetchJPCarsData = async (
       mileage: vehicleData?.mileage || 0,
     };
 
-    // Use license plate if available
     if (licensePlate) {
       requestBody.licensePlate = licensePlate;
     }
     
-    // Add vehicle data for better matching
     if (vehicleData) {
       requestBody.make = vehicleData.brand;
       requestBody.model = vehicleData.model;
@@ -164,7 +160,6 @@ export const fetchJPCarsData = async (
       requestBody.hp = vehicleData.power;
       requestBody.body = vehicleData.bodyType;
       
-      // Extra parameters voor betere JP Cars matching
       if (vehicleData.modelYear) {
         requestBody.modelYear = vehicleData.modelYear;
       }
@@ -175,7 +170,6 @@ export const fetchJPCarsData = async (
         requestBody.color = vehicleData.color;
       }
       
-      // Pass options als array (edge function doet de mapping)
       if (vehicleData.options && vehicleData.options.length > 0) {
         requestBody.options = vehicleData.options;
       }
@@ -201,7 +195,6 @@ export const fetchJPCarsData = async (
   } catch (err) {
     console.error('❌ JP Cars lookup failed, using fallback:', err);
     
-    // Return fallback mock data if API fails
     return {
       baseValue: 0,
       optionValue: 0,
@@ -244,7 +237,6 @@ export const fetchInternalComparison = async (vehicleData: TaxatieVehicleData): 
   } catch (err) {
     console.error('❌ Internal comparison failed, returning empty result:', err);
     
-    // Return empty fallback
     return {
       averageMargin: 0,
       averageDaysToSell: 0,
@@ -288,7 +280,63 @@ Verwachte statijd: JP Cars ETR van ${jpCarsData.etr} dagen.
   };
 };
 
-// AI-powered advice generation via Edge Function
+// Fetch recent feedback for AI learning context
+export const fetchRecentFeedback = async (limit: number = 50): Promise<Array<{
+  feedback_type: string;
+  notes: string | null;
+  vehicle_brand: string;
+  vehicle_model: string;
+  ai_recommendation: string;
+  ai_purchase_price: number;
+  ai_selling_price: number;
+  actual_outcome: Record<string, unknown> | null;
+}>> => {
+  try {
+    console.log('📚 Fetching recent feedback for AI learning...');
+    
+    const { data, error } = await supabase
+      .from('taxatie_feedback')
+      .select(`
+        feedback_type,
+        notes,
+        actual_outcome,
+        taxatie_valuations!inner (
+          vehicle_data,
+          ai_advice
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('❌ Error fetching feedback:', error);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
+      console.log('ℹ️ No feedback found');
+      return [];
+    }
+
+    // Transform data for AI context
+    return data.map((item: any) => ({
+      feedback_type: item.feedback_type,
+      notes: item.notes,
+      vehicle_brand: item.taxatie_valuations?.vehicle_data?.brand || 'Onbekend',
+      vehicle_model: item.taxatie_valuations?.vehicle_data?.model || 'Onbekend',
+      ai_recommendation: item.taxatie_valuations?.ai_advice?.recommendation || 'Onbekend',
+      ai_purchase_price: item.taxatie_valuations?.ai_advice?.recommendedPurchasePrice || 0,
+      ai_selling_price: item.taxatie_valuations?.ai_advice?.recommendedSellingPrice || 0,
+      actual_outcome: item.actual_outcome,
+    }));
+
+  } catch (err) {
+    console.error('❌ Failed to fetch feedback:', err);
+    return [];
+  }
+};
+
+// AI-powered advice generation via Edge Function (now with learning context)
 export const generateAIAdvice = async (
   vehicleData: TaxatieVehicleData,
   portalAnalysis: PortalAnalysis,
@@ -298,12 +346,17 @@ export const generateAIAdvice = async (
   try {
     console.log('🤖 Calling taxatie-ai-advice edge function...');
     
+    // Fetch recent feedback for learning context
+    const recentFeedback = await fetchRecentFeedback(30);
+    console.log(`📊 Including ${recentFeedback.length} feedback items for AI learning`);
+    
     const { data, error } = await supabase.functions.invoke('taxatie-ai-advice', {
       body: {
         vehicleData,
         portalAnalysis,
         jpCarsData,
         internalComparison,
+        feedbackHistory: recentFeedback, // Pass feedback for learning
       }
     });
 
@@ -326,109 +379,141 @@ export const generateAIAdvice = async (
   }
 };
 
-// Taxatie opslaan
-export const saveTaxatieValuation = async (valuation: Partial<TaxatieValuation>): Promise<TaxatieValuation> => {
-  await new Promise(resolve => setTimeout(resolve, 500));
+// Save taxatie valuation to database
+export const saveTaxatieValuation = async (valuation: {
+  licensePlate?: string;
+  vehicleData: TaxatieVehicleData;
+  portalAnalysis?: PortalAnalysis | null;
+  jpCarsData?: JPCarsData | null;
+  internalComparison?: InternalComparison | null;
+  aiAdvice?: AITaxatieAdvice | null;
+  status?: string;
+}): Promise<{ id: string } | null> => {
+  try {
+    console.log('💾 Saving taxatie valuation to database...');
+    
+    const { data: userData } = await supabase.auth.getUser();
+    
+    const insertData = {
+      created_by: userData.user?.id || null,
+      license_plate: valuation.licensePlate || null,
+      vehicle_data: valuation.vehicleData as unknown as Record<string, unknown>,
+      portal_analysis: (valuation.portalAnalysis || {}) as unknown as Record<string, unknown>,
+      jpcars_data: (valuation.jpCarsData || {}) as unknown as Record<string, unknown>,
+      internal_comparison: (valuation.internalComparison || {}) as unknown as Record<string, unknown>,
+      ai_advice: (valuation.aiAdvice || {}) as unknown as Record<string, unknown>,
+      ai_model_version: 'gpt-4o',
+      status: valuation.status || 'voltooid',
+    };
+    
+    const { data, error } = await supabase
+      .from('taxatie_valuations')
+      .insert(insertData as any)
+      .select('id')
+      .single();
 
-  return {
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-    createdBy: 'current-user-id',
-    createdByName: 'Demo User',
-    aiModelVersion: 'gemini-2.5-flash-taxatie-v1',
-    status: 'voltooid',
-    licensePlate: '',
-    ...valuation,
-  } as TaxatieValuation;
+    if (error) {
+      console.error('❌ Error saving valuation:', error);
+      throw error;
+    }
+
+    console.log('✅ Valuation saved with ID:', data.id);
+    return { id: data.id };
+
+  } catch (err) {
+    console.error('❌ Failed to save valuation:', err);
+    return null;
+  }
 };
 
-// Feedback opslaan
+// Save feedback linked to a valuation
 export const saveTaxatieFeedback = async (
   valuationId: string,
   feedback: TaxatieFeedback
-): Promise<void> => {
-  await new Promise(resolve => setTimeout(resolve, 300));
-  console.log('Feedback saved:', { valuationId, feedback });
+): Promise<boolean> => {
+  try {
+    console.log('💾 Saving taxatie feedback to database...');
+    
+    const { data: userData } = await supabase.auth.getUser();
+    
+    const insertData = {
+      valuation_id: valuationId,
+      created_by: userData.user?.id || null,
+      feedback_type: feedback.reason || 'algemeen',
+      rating: feedback.rating || null,
+      notes: feedback.notes || null,
+      actual_outcome: {} as Record<string, unknown>,
+    };
+    
+    const { error } = await supabase
+      .from('taxatie_feedback')
+      .insert(insertData as any);
+
+    if (error) {
+      console.error('❌ Error saving feedback:', error);
+      throw error;
+    }
+
+    console.log('✅ Feedback saved for valuation:', valuationId);
+    return true;
+
+  } catch (err) {
+    console.error('❌ Failed to save feedback:', err);
+    return false;
+  }
 };
 
-// Taxatie historie ophalen
+// Fetch taxatie history from database
 export const fetchTaxatieHistory = async (): Promise<TaxatieValuation[]> => {
-  await new Promise(resolve => setTimeout(resolve, 800));
+  try {
+    console.log('📚 Fetching taxatie history from database...');
+    
+    const { data, error } = await supabase
+      .from('taxatie_valuations')
+      .select(`
+        id,
+        created_at,
+        created_by,
+        license_plate,
+        vehicle_data,
+        portal_analysis,
+        jpcars_data,
+        internal_comparison,
+        ai_advice,
+        ai_model_version,
+        status
+      `)
+      .order('created_at', { ascending: false })
+      .limit(100);
 
-  return [
-    {
-      id: '1',
-      createdAt: '2024-12-06T14:30:00Z',
-      createdBy: 'user-1',
-      createdByName: 'Jan de Vries',
-      licensePlate: 'AB-123-CD',
-      aiModelVersion: 'gemini-2.5-flash-taxatie-v1',
-      vehicleData: {
-        brand: 'BMW',
-        model: '3 Serie',
-        buildYear: 2022,
-        mileage: 35000,
-        fuelType: 'Diesel',
-        transmission: 'Automaat',
-        bodyType: 'Sedan',
-        power: 190,
-        trim: 'M Sport',
-        color: 'Zwart',
-        options: ['Navigatie', 'LED', 'ACC'],
-      },
-      portalAnalysis: null,
-      jpCarsData: null,
-      internalComparison: null,
-      aiAdvice: {
-        recommendedSellingPrice: 42500,
-        recommendedPurchasePrice: 35000,
-        expectedDaysToSell: 21,
-        targetMargin: 17.5,
-        recommendation: 'kopen',
-        reasoning: 'Goede auto',
-        jpcarsDeviation: 'Kleine afwijking',
-        riskFactors: [],
-        opportunities: [],
-        primaryListingsUsed: 4,
-      },
-      status: 'gekocht',
-    },
-    {
-      id: '2',
-      createdAt: '2024-12-05T10:15:00Z',
-      createdBy: 'user-2',
-      createdByName: 'Piet Jansen',
-      licensePlate: 'EF-456-GH',
-      aiModelVersion: 'gemini-2.5-flash-taxatie-v1',
-      vehicleData: {
-        brand: 'Audi',
-        model: 'A4',
-        buildYear: 2020,
-        mileage: 62000,
-        fuelType: 'Benzine',
-        transmission: 'Automaat',
-        bodyType: 'Sedan',
-        power: 150,
-        trim: 'S-Line',
-        color: 'Wit',
-        options: ['Navigatie'],
-      },
-      portalAnalysis: null,
-      jpCarsData: null,
-      internalComparison: null,
-      aiAdvice: {
-        recommendedSellingPrice: 28900,
-        recommendedPurchasePrice: 23500,
-        expectedDaysToSell: 28,
-        targetMargin: 18.7,
-        recommendation: 'twijfel',
-        reasoning: 'Hoge kilometerstand',
-        jpcarsDeviation: 'JP Cars te optimistisch',
-        riskFactors: ['Hoge km'],
-        opportunities: [],
-        primaryListingsUsed: 6,
-      },
-      status: 'afgewezen',
-    },
-  ];
+    if (error) {
+      console.error('❌ Error fetching history:', error);
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      console.log('ℹ️ No taxatie history found');
+      return [];
+    }
+
+    // Transform database rows to TaxatieValuation objects
+    return data.map((row: any) => ({
+      id: row.id,
+      createdAt: row.created_at,
+      createdBy: row.created_by,
+      createdByName: 'Gebruiker', // Would need to join profiles table for names
+      licensePlate: row.license_plate || '',
+      aiModelVersion: row.ai_model_version || 'gpt-4o',
+      vehicleData: row.vehicle_data as TaxatieVehicleData,
+      portalAnalysis: row.portal_analysis as PortalAnalysis | null,
+      jpCarsData: row.jpcars_data as JPCarsData | null,
+      internalComparison: row.internal_comparison as InternalComparison | null,
+      aiAdvice: row.ai_advice as AITaxatieAdvice | null,
+      status: row.status || 'voltooid',
+    }));
+
+  } catch (err) {
+    console.error('❌ Failed to fetch history:', err);
+    return [];
+  }
 };

@@ -1830,6 +1830,89 @@ export type Database = {
           },
         ]
       }
+      taxatie_feedback: {
+        Row: {
+          actual_outcome: Json | null
+          created_at: string
+          created_by: string | null
+          feedback_type: string
+          id: string
+          notes: string | null
+          rating: number | null
+          valuation_id: string
+        }
+        Insert: {
+          actual_outcome?: Json | null
+          created_at?: string
+          created_by?: string | null
+          feedback_type: string
+          id?: string
+          notes?: string | null
+          rating?: number | null
+          valuation_id: string
+        }
+        Update: {
+          actual_outcome?: Json | null
+          created_at?: string
+          created_by?: string | null
+          feedback_type?: string
+          id?: string
+          notes?: string | null
+          rating?: number | null
+          valuation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "taxatie_feedback_valuation_id_fkey"
+            columns: ["valuation_id"]
+            isOneToOne: false
+            referencedRelation: "taxatie_valuations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      taxatie_valuations: {
+        Row: {
+          ai_advice: Json | null
+          ai_model_version: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          internal_comparison: Json | null
+          jpcars_data: Json | null
+          license_plate: string | null
+          portal_analysis: Json | null
+          status: string
+          vehicle_data: Json
+        }
+        Insert: {
+          ai_advice?: Json | null
+          ai_model_version?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          internal_comparison?: Json | null
+          jpcars_data?: Json | null
+          license_plate?: string | null
+          portal_analysis?: Json | null
+          status?: string
+          vehicle_data?: Json
+        }
+        Update: {
+          ai_advice?: Json | null
+          ai_model_version?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          internal_comparison?: Json | null
+          jpcars_data?: Json | null
+          license_plate?: string | null
+          portal_analysis?: Json | null
+          status?: string
+          vehicle_data?: Json
+        }
+        Relationships: []
+      }
       user_calendar_settings: {
         Row: {
           auto_sync: boolean | null

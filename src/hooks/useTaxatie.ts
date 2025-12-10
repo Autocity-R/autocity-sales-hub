@@ -15,6 +15,7 @@ import {
   fetchJPCarsData,
   fetchInternalComparison,
   generateAIAdvice,
+  saveTaxatieValuation,
   saveTaxatieFeedback,
 } from '@/services/taxatieService';
 import { toast } from 'sonner';
@@ -26,7 +27,7 @@ export const useTaxatie = () => {
   // Vehicle data
   const [licensePlate, setLicensePlate] = useState('');
   const [vehicleData, setVehicleData] = useState<TaxatieVehicleData | null>(null);
-  const [enteredMileage, setEnteredMileage] = useState(0); // Separate state for mileage input
+  const [enteredMileage, setEnteredMileage] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [keywords, setKeywords] = useState<string[]>([]);
 
@@ -48,6 +49,9 @@ export const useTaxatie = () => {
   // Taxatie status
   const [taxatieStarted, setTaxatieStarted] = useState(false);
   const [taxatieComplete, setTaxatieComplete] = useState(false);
+  
+  // Track saved valuation ID for feedback linking
+  const [currentValuationId, setCurrentValuationId] = useState<string | null>(null);
 
   // RDW lookup (voor Nederlandse kentekens)
   const handleLicensePlateSearch = useCallback(async () => {
@@ -60,7 +64,6 @@ export const useTaxatie = () => {
     try {
       const data = await lookupRDW(licensePlate);
       if (data) {
-        // Preserve user-entered mileage after RDW lookup
         setVehicleData({ ...data, mileage: enteredMileage || data.mileage });
         toast.success('Voertuiggegevens opgehaald');
       } else {
@@ -84,7 +87,6 @@ export const useTaxatie = () => {
   const handleJPCarsVehicleSubmit = useCallback((data: TaxatieVehicleData) => {
     setVehicleData({
       ...data,
-      // Mark as JP Cars native - no mapping needed
     });
     setEnteredMileage(data.mileage);
     setInputMode('jpcars');
@@ -109,7 +111,6 @@ export const useTaxatie = () => {
   // Update full vehicle data (for inline editing)
   const updateVehicleData = useCallback((updatedData: TaxatieVehicleData) => {
     setVehicleData(updatedData);
-    // Sync mileage state
     if (updatedData.mileage !== enteredMileage) {
       setEnteredMileage(updatedData.mileage);
     }
@@ -127,7 +128,6 @@ export const useTaxatie = () => {
       return;
     }
 
-    // Transmissie is verplicht
     if (!vehicleData.transmission || vehicleData.transmission === 'Onbekend') {
       toast.error('Selecteer eerst de transmissie (Automaat of Handgeschakeld)');
       return;
@@ -141,6 +141,7 @@ export const useTaxatie = () => {
 
     setTaxatieStarted(true);
     setTaxatieComplete(false);
+    setCurrentValuationId(null);
 
     // Reset previous data
     setPortalAnalysis(null);
@@ -149,20 +150,18 @@ export const useTaxatie = () => {
     setAiAdvice(null);
 
     try {
-      // STAP 1: Eerst JP Cars ophalen (deze geeft portal URLs terug)
+      // STAP 1: Eerst JP Cars ophalen
       setLoading(prev => ({
         ...prev,
         jpCars: true,
         internalHistory: true,
       }));
 
-      // JP Cars en interne data parallel ophalen
       const [jpResult, internalResult] = await Promise.allSettled([
         fetchJPCarsData(licensePlate || '', vehicleWithOptions),
         fetchInternalComparison(vehicleWithOptions),
       ]);
 
-      // JP Cars data verwerken (we hebben de URLs nodig voor portal search)
       const jpData = jpResult.status === 'fulfilled'
         ? jpResult.value
         : {
@@ -191,7 +190,6 @@ export const useTaxatie = () => {
         fetchPortalAnalysis(vehicleWithOptions, jpData.portalUrls, jpData.window),
       ]);
 
-      // Portal data verwerken
       const portalData = portalResult.status === 'fulfilled' 
         ? portalResult.value 
         : {
@@ -210,7 +208,6 @@ export const useTaxatie = () => {
         toast.warning('Portaalanalyse niet volledig beschikbaar');
       }
 
-      // Internal data - OPTIONEEL
       const internalData = internalResult.status === 'fulfilled'
         ? internalResult.value
         : {
@@ -246,6 +243,25 @@ export const useTaxatie = () => {
       setLoading(prev => ({ ...prev, aiAnalysis: false }));
       setTaxatieComplete(true);
       
+      // AUTO-SAVE: Save the valuation to database
+      console.log('💾 Auto-saving valuation...');
+      const savedValuation = await saveTaxatieValuation({
+        licensePlate: licensePlate || undefined,
+        vehicleData: vehicleWithOptions,
+        portalAnalysis: portalData,
+        jpCarsData: jpData,
+        internalComparison: internalData,
+        aiAdvice: advice,
+        status: 'voltooid',
+      });
+      
+      if (savedValuation?.id) {
+        setCurrentValuationId(savedValuation.id);
+        console.log('✅ Valuation auto-saved with ID:', savedValuation.id);
+      } else {
+        console.warn('⚠️ Failed to auto-save valuation');
+      }
+      
       // Status meldingen
       const warnings: string[] = [];
       if (portalResult.status === 'rejected') warnings.push('portaaldata');
@@ -257,7 +273,7 @@ export const useTaxatie = () => {
       } else if (advice.reasoning.includes('⚠️ AI advies niet beschikbaar')) {
         toast.warning('AI advies niet beschikbaar - automatische berekening getoond');
       } else {
-        toast.success('Taxatie voltooid');
+        toast.success('Taxatie voltooid en opgeslagen');
       }
     } catch (error) {
       console.error('❌ Taxatie error:', error);
@@ -272,15 +288,24 @@ export const useTaxatie = () => {
     }
   }, [vehicleData, selectedOptions, keywords, licensePlate]);
 
-  // Feedback geven
+  // Feedback geven - now linked to saved valuation
   const submitFeedback = useCallback(async (feedback: TaxatieFeedback) => {
+    if (!currentValuationId) {
+      toast.error('Geen taxatie beschikbaar voor feedback');
+      return;
+    }
+    
     try {
-      await saveTaxatieFeedback('current-valuation-id', feedback);
-      toast.success('Feedback opgeslagen');
+      const success = await saveTaxatieFeedback(currentValuationId, feedback);
+      if (success) {
+        toast.success('Feedback opgeslagen - AI leert hiervan!');
+      } else {
+        toast.error('Fout bij opslaan feedback');
+      }
     } catch (error) {
       toast.error('Fout bij opslaan feedback');
     }
-  }, []);
+  }, [currentValuationId]);
 
   // Reset alles
   const resetTaxatie = useCallback(() => {
@@ -296,6 +321,7 @@ export const useTaxatie = () => {
     setAiAdvice(null);
     setTaxatieStarted(false);
     setTaxatieComplete(false);
+    setCurrentValuationId(null);
   }, []);
 
   return {
@@ -318,7 +344,8 @@ export const useTaxatie = () => {
     loading,
     taxatieStarted,
     taxatieComplete,
-    enteredMileage, // Expose mileage state for input field
+    enteredMileage,
+    currentValuationId, // Expose for debugging/display
 
     // Actions
     handleLicensePlateSearch,
