@@ -1,7 +1,7 @@
 // Portal listing (van AI zoekopdracht)
 export interface PortalListing {
   id: string;
-  portal: 'gaspedaal' | 'autoscout24' | 'autotrack' | 'marktplaats';
+  portal: 'gaspedaal' | 'autoscout24' | 'autotrack' | 'marktplaats' | 'jpcars_window';
   url: string;
   price: number;
   mileage: number;
@@ -13,6 +13,24 @@ export interface PortalListing {
   isPrimaryComparable?: boolean;
   isLogicalDeviation?: boolean;
   deviationReason?: string;
+  // Extra JP Cars Window fields
+  dealer?: string;
+  daysInStock?: number;
+  soldSince?: number;
+}
+
+// JP Cars Window item (from their API)
+export interface JPCarsWindowItem {
+  make?: string;
+  model?: string;
+  price_local?: number;
+  mileage?: number;
+  build?: number;
+  url?: string;
+  dealer_name?: string;
+  days_in_stock?: number;
+  sold_since?: number;
+  options?: string[];
 }
 
 // JP Cars data (inclusief APR/ETR en uitgebreide stats)
@@ -82,6 +100,9 @@ export interface JPCarsData {
   valueExex?: number | null;       // Waarde exclusief BTW
   topdownValue?: number | null;    // Top-down berekende waarde
   valueAtMaturity?: number | null; // Waarde bij volwassenheid/standaard km
+  
+  // JP Cars Window data (alle vergelijkbare listings)
+  window?: JPCarsWindowItem[];
 }
 
 // Portal zoekfilters met correcte KM-logica
