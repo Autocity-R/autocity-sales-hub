@@ -127,8 +127,7 @@ const TaskManagement = () => {
   // Main category chips to show
   const mainCategories: { key: TaskCategory; label: string; icon: React.ElementType; color: string }[] = [
     { key: "klaarmaken", label: "Klaarmaken", icon: ClipboardList, color: "bg-cyan-100 text-cyan-700 hover:bg-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300" },
-    { key: "onderdelen", label: "Onderdelen", icon: Cog, color: "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-900/30 dark:text-slate-300" },
-    { key: "onderdelen_bestellen", label: "Bestellen", icon: Package, color: "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300" },
+    { key: "onderdelen_bestellen", label: "Onderdelen", icon: Package, color: "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300" },
     { key: "werkplaats", label: "Werkplaats", icon: Wrench, color: "bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300" },
     { key: "schadeherstel", label: "Schadeherstel", icon: Shield, color: "bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-300" },
     { key: "transport", label: "Transport", icon: Truck, color: "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300" },
