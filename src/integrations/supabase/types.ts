@@ -1748,6 +1748,7 @@ export type Database = {
           location: string | null
           notes: string | null
           priority: string
+          sort_order: number | null
           status: string
           title: string
           updated_at: string
@@ -1771,6 +1772,7 @@ export type Database = {
           location?: string | null
           notes?: string | null
           priority?: string
+          sort_order?: number | null
           status?: string
           title: string
           updated_at?: string
@@ -1794,6 +1796,7 @@ export type Database = {
           location?: string | null
           notes?: string | null
           priority?: string
+          sort_order?: number | null
           status?: string
           title?: string
           updated_at?: string
