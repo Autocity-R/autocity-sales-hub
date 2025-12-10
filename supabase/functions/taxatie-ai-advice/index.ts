@@ -78,19 +78,151 @@ interface InternalComparison {
   }>;
 }
 
+interface FeedbackItem {
+  feedback_type: string;
+  notes: string | null;
+  vehicle_brand: string;
+  vehicle_model: string;
+  ai_recommendation: string;
+  ai_purchase_price: number;
+  ai_selling_price: number;
+  actual_outcome: Record<string, unknown> | null;
+}
+
 interface TaxatieRequest {
   vehicleData: TaxatieVehicleData;
   portalAnalysis: PortalAnalysis;
   jpCarsData: JPCarsData;
   internalComparison: InternalComparison;
+  feedbackHistory?: FeedbackItem[];
+}
+
+function buildFeedbackLearningSection(feedback: FeedbackItem[]): string {
+  if (!feedback || feedback.length === 0) {
+    return '';
+  }
+
+  // Analyze feedback patterns
+  const feedbackByType: Record<string, number> = {};
+  const feedbackByBrand: Record<string, { type: string; count: number }[]> = {};
+  
+  feedback.forEach(item => {
+    // Count by type
+    feedbackByType[item.feedback_type] = (feedbackByType[item.feedback_type] || 0) + 1;
+    
+    // Group by brand
+    if (!feedbackByBrand[item.vehicle_brand]) {
+      feedbackByBrand[item.vehicle_brand] = [];
+    }
+    const existing = feedbackByBrand[item.vehicle_brand].find(f => f.type === item.feedback_type);
+    if (existing) {
+      existing.count++;
+    } else {
+      feedbackByBrand[item.vehicle_brand].push({ type: item.feedback_type, count: 1 });
+    }
+  });
+
+  // Build learning context string
+  let learningSection = `
+---
+
+## 🧠 FEEDBACK LEARNING - BELANGRIJKE INZICHTEN
+
+Je hebt ${feedback.length} feedback items ontvangen. Hieronder de patronen die je MOET meenemen in je advies:
+
+**Algemene Feedback Verdeling:**
+`;
+
+  Object.entries(feedbackByType).forEach(([type, count]) => {
+    const percentage = Math.round((count / feedback.length) * 100);
+    let interpretation = '';
+    
+    switch(type) {
+      case 'te_hoog':
+        interpretation = '→ Je adviseert vaak te hoge prijzen. Wees CONSERVATIEVER.';
+        break;
+      case 'te_laag':
+        interpretation = '→ Je adviseert vaak te lage prijzen. Je mag OPTIMISTISCHER zijn.';
+        break;
+      case 'te_voorzichtig':
+        interpretation = '→ Je bent te voorzichtig met "kopen" adviezen.';
+        break;
+      case 'te_agressief':
+        interpretation = '→ Je adviseert te snel "kopen". Wees kritischer.';
+        break;
+      case 'goede_taxatie':
+        interpretation = '→ Goed gedaan! Dit was een correcte inschatting.';
+        break;
+      default:
+        interpretation = '';
+    }
+    
+    learningSection += `- ${type}: ${count}x (${percentage}%) ${interpretation}\n`;
+  });
+
+  // Brand-specific patterns
+  const brandPatterns = Object.entries(feedbackByBrand)
+    .filter(([_, items]) => items.length >= 2) // Only show if 2+ feedback items
+    .map(([brand, items]) => {
+      const dominantFeedback = items.sort((a, b) => b.count - a.count)[0];
+      return { brand, feedback: dominantFeedback };
+    })
+    .filter(p => p.feedback.count >= 2);
+
+  if (brandPatterns.length > 0) {
+    learningSection += `
+**Merk-specifieke Patronen:**
+`;
+    brandPatterns.forEach(({ brand, feedback: fb }) => {
+      let advice = '';
+      switch(fb.type) {
+        case 'te_hoog':
+          advice = `Bij ${brand} zijn je prijzen vaak te hoog. Corrigeer -5% t.o.v. je normale berekening.`;
+          break;
+        case 'te_laag':
+          advice = `Bij ${brand} onderschat je de markt. Corrigeer +5% t.o.v. je normale berekening.`;
+          break;
+        case 'te_voorzichtig':
+          advice = `Bij ${brand} ben je te voorzichtig. Dit merk verkoopt goed, durf "kopen" te adviseren.`;
+          break;
+        case 'te_agressief':
+          advice = `Bij ${brand} ben je te positief. Wees kritischer bij dit merk.`;
+          break;
+      }
+      learningSection += `- **${brand}**: ${fb.count}x "${fb.type}" → ${advice}\n`;
+    });
+  }
+
+  // Recent specific examples
+  const recentExamples = feedback.slice(0, 5);
+  if (recentExamples.length > 0) {
+    learningSection += `
+**Recente Feedback Voorbeelden:**
+`;
+    recentExamples.forEach((item, i) => {
+      learningSection += `${i + 1}. ${item.vehicle_brand} ${item.vehicle_model}: "${item.feedback_type}"`;
+      if (item.notes) {
+        learningSection += ` - "${item.notes}"`;
+      }
+      learningSection += `\n   Je adviseerde: €${item.ai_purchase_price?.toLocaleString('nl-NL')} inkoop, €${item.ai_selling_price?.toLocaleString('nl-NL')} verkoop (${item.ai_recommendation})\n`;
+    });
+  }
+
+  learningSection += `
+**⚠️ ACTIE:** Pas je advies aan op basis van bovenstaande patronen! Als je vaak "te_hoog" feedback krijgt, wees dan conservatiever. Als je vaak "te_laag" feedback krijgt, wees dan optimistischer.
+`;
+
+  return learningSection;
 }
 
 function buildTaxatiePrompt(input: TaxatieRequest): string {
-  // Bereken statijd info
   const stockDays = input.jpCarsData.stockStats?.avgDays;
   const salesDays = input.jpCarsData.salesStats?.avgDays;
   const stockCount = input.jpCarsData.stockStats?.count || 0;
   const salesCount = input.jpCarsData.salesStats?.count || 0;
+
+  // Add feedback learning section if available
+  const feedbackSection = buildFeedbackLearningSection(input.feedbackHistory || []);
 
   return `# ROL & DOEL
 
@@ -98,7 +230,7 @@ Je bent een zeer ervaren en slimme inkoper bij Autocity. Je bent geen data-anali
 Je doel is niet om de perfecte analyse te maken, maar om een praktisch en winstgevend inkoopadvies te geven.
 
 **Jouw Mantra:** "Winst maak je bij de inkoop. Omloopsnelheid is koning."
-
+${feedbackSection}
 ---
 
 # JOUW DENKPROCES (VOLG EXACT DEZE 6 STAPPEN)
@@ -282,11 +414,12 @@ serve(async (req) => {
       trim: input.vehicleData.trim,
       jpCarsValue: input.jpCarsData?.totalValue,
       listingCount: input.portalAnalysis?.listingCount,
-      lowestPrice: input.portalAnalysis?.lowestPrice
+      lowestPrice: input.portalAnalysis?.lowestPrice,
+      feedbackCount: input.feedbackHistory?.length || 0
     });
 
     const prompt = buildTaxatiePrompt(input);
-    console.log('🤖 Sending to OpenAI with Manus v2.0 prompt...');
+    console.log('🤖 Sending to OpenAI with learning context...');
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -306,7 +439,9 @@ Jouw kernprincipes:
 - Omloopsnelheid is belangrijker dan maximale marge
 - De marktvloer (laagste serieuze concurrent) is je ankerpunt
 - Standaard marge = 20% op verkoopprijs
-- Redeneer in percentages bij uitrustingsverschillen`
+- Redeneer in percentages bij uitrustingsverschillen
+
+BELANGRIJK: Je LEERT van feedback! Als je feedback krijgt dat je te hoog of te laag adviseert, pas dan je toekomstige adviezen aan.`
           },
           { role: 'user', content: prompt }
         ],
@@ -341,7 +476,7 @@ Jouw kernprincipes:
                 },
                 reasoning: {
                   type: 'string',
-                  description: 'Complete analyse volgens 6-stappen: JP Cars waarde → Marktvloer → Uitvoering/KM correcties → Historie → Risicos → Prijsberekening'
+                  description: 'Complete analyse volgens 6-stappen: JP Cars waarde → Marktvloer → Uitvoering/KM correcties → Historie → Risicos → Prijsberekening. Vermeld ook of je je advies hebt aangepast op basis van feedback.'
                 },
                 jpcarsDeviation: {
                   type: 'string',
@@ -364,6 +499,10 @@ Jouw kernprincipes:
                 marketFloorReasoning: {
                   type: 'string',
                   description: 'Waarom is dit de marktvloer? Welke listing, en waarom is deze relevant?'
+                },
+                feedbackAdjustment: {
+                  type: 'string',
+                  description: 'Optioneel: Beschrijf hoe je dit advies hebt aangepast op basis van eerdere feedback'
                 }
               },
               required: ['recommendation', 'recommendedSellingPrice', 'recommendedPurchasePrice', 'expectedDaysToSell', 'targetMargin', 'reasoning', 'riskFactors', 'opportunities']
@@ -402,12 +541,13 @@ Jouw kernprincipes:
     }
 
     const advice = JSON.parse(toolCall.function.arguments);
-    console.log('📋 Taxatie advice generated (Manus v2.0):', {
+    console.log('📋 Taxatie advice generated with learning:', {
       recommendation: advice.recommendation,
       sellingPrice: advice.recommendedSellingPrice,
       purchasePrice: advice.recommendedPurchasePrice,
       margin: advice.targetMargin,
-      marketFloor: advice.marketFloorPrice
+      marketFloor: advice.marketFloorPrice,
+      feedbackAdjustment: advice.feedbackAdjustment || 'none'
     });
 
     return new Response(JSON.stringify({ success: true, advice }), {
