@@ -34,6 +34,7 @@ export type TaskPriority = "laag" | "normaal" | "hoog" | "urgent";
 
 export type TaskCategory = 
   | "klaarmaken"
+  | "onderdelen"
   | "onderdelen_bestellen"
   | "transport"
   | "schoonmaak"

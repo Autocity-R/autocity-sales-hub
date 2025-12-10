@@ -154,6 +154,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
 
   const categoryOptions = [
     { value: "klaarmaken", label: "Klaarmaken" },
+    { value: "onderdelen", label: "Onderdelen" },
     { value: "onderdelen_bestellen", label: "Onderdelen Bestellen" },
     { value: "transport", label: "Transport" },
     { value: "schoonmaak", label: "Schoonmaak" },
