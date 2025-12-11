@@ -10,13 +10,15 @@ export const exportBulkTaxatieToExcel = async (results: BulkTaxatieResult[]) => 
     views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }],
   });
 
-  // Define simplified 11 columns
+  // Define columns including JP Cars status
   worksheet.columns = [
     { header: 'Merk', key: 'brand', width: 14 },
     { header: 'Model', key: 'model', width: 18 },
     { header: 'Brandstof', key: 'fuelType', width: 12 },
     { header: 'KM', key: 'mileage', width: 12 },
     { header: 'Bouwjaar', key: 'buildYear', width: 10 },
+    { header: 'Vermogen', key: 'power', width: 10 },
+    { header: 'JP Status', key: 'jpStatus', width: 16 },
     { header: 'APR', key: 'apr', width: 8 },
     { header: 'ETR', key: 'etr', width: 8 },
     { header: 'JP Prijs', key: 'jpPrice', width: 14 },
@@ -41,21 +43,37 @@ export const exportBulkTaxatieToExcel = async (results: BulkTaxatieResult[]) => 
     const recommendation = result.aiAdvice?.recommendation || '';
     const gaspedaalUrl = result.jpCarsData?.portalUrls?.gaspedaal || '';
     
+    // Determine JP Cars status based on available data
+    let jpStatus = '✓ Getaxeerd';
+    if (!result.jpCarsData?.totalValue) {
+      if (result.status === 'error') {
+        jpStatus = '✗ Fout bij taxatie';
+      } else if (!result.input.power) {
+        jpStatus = '⚠ Vermogen ontbreekt';
+      } else if (!result.jpCarsData?.apr && !result.jpCarsData?.etr) {
+        jpStatus = '⚠ Model niet gevonden';
+      } else {
+        jpStatus = '⚠ Geen JP waarde';
+      }
+    }
+    
     const row = worksheet.addRow({
       brand: result.input.brand,
       model: result.input.model,
       fuelType: result.input.fuelType || '-',
       mileage: result.input.mileage,
       buildYear: result.input.buildYear,
+      power: result.input.power || '-',
+      jpStatus: jpStatus,
       apr: result.jpCarsData?.apr || null,
       etr: result.jpCarsData?.etr || null,
       jpPrice: result.jpCarsData?.totalValue || null,
       aiSellingPrice: result.aiAdvice?.recommendedSellingPrice || null,
       aiPurchasePrice: result.aiAdvice?.recommendedPurchasePrice || null,
-      gaspedaalLink: gaspedaalUrl ? 'Bekijk' : '-',
+      gaspedaalLink: gaspedaalUrl ? 'Bekijk →' : '-',
     });
 
-    // Add hyperlink to Gaspedaal cell
+    // Add hyperlink to Gaspedaal cell - always if URL available, even without JP value
     if (gaspedaalUrl) {
       const linkCell = row.getCell('gaspedaalLink');
       linkCell.value = {
@@ -65,7 +83,7 @@ export const exportBulkTaxatieToExcel = async (results: BulkTaxatieResult[]) => 
       linkCell.font = { color: { argb: 'FF0066CC' }, underline: true };
     }
 
-    // Color code row based on recommendation
+    // Color code row based on recommendation OR JP status
     let bgColor = 'FFFFFFFF';
     if (recommendation === 'kopen') {
       bgColor = 'FFE8F5E9'; // Light green
@@ -73,11 +91,23 @@ export const exportBulkTaxatieToExcel = async (results: BulkTaxatieResult[]) => 
       bgColor = 'FFFFEBEE'; // Light red
     } else if (recommendation === 'twijfel') {
       bgColor = 'FFFFF8E1'; // Light amber
+    } else if (jpStatus.startsWith('✗') || jpStatus.startsWith('⚠')) {
+      bgColor = 'FFF5F5F5'; // Light gray for failed/warning
+    }
+
+    // Style JP Status cell based on status
+    const jpStatusCell = row.getCell('jpStatus');
+    if (jpStatus.startsWith('✓')) {
+      jpStatusCell.font = { color: { argb: 'FF2E7D32' }, bold: true };
+    } else if (jpStatus.startsWith('⚠')) {
+      jpStatusCell.font = { color: { argb: 'FFF57C00' }, bold: true };
+    } else if (jpStatus.startsWith('✗')) {
+      jpStatusCell.font = { color: { argb: 'FFC62828' }, bold: true };
     }
 
     row.eachCell((cell, colNumber) => {
-      // Don't override hyperlink styling for link cell
-      if (colNumber !== 11) {
+      // Don't override hyperlink styling for link cell (now column 14)
+      if (colNumber !== 14 && colNumber !== 7) { // Skip gaspedaal and jpStatus
         cell.fill = {
           type: 'pattern',
           pattern: 'solid',

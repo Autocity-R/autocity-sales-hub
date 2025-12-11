@@ -70,6 +70,23 @@ JE EXPERTISE:
 - Je kan bouwjaren, kilometerstanden en prijzen uit verschillende formaten halen
 - Je denkt als een mens - een automotive professional die naar data kijkt
 
+VERMOGEN EXTRACTIE (KRITIEK VOOR JP CARS):
+JP Cars heeft vermogen (PK) nodig voor nauwkeurige taxaties. Zoek ALTIJD naar vermogen:
+1. Directe vermelding: "150pk", "150 pk", "150 PK", "150hp", "150 HP"
+2. kW naar PK: "110 kW" = 110 * 1.36 = ~150 PK
+3. Motorcodes met standaard vermogen:
+   - Audi: "35 TFSI" = 150pk, "40 TFSI" = 190pk, "45 TFSI" = 245pk, "55 TFSI" = 340pk
+   - Audi: "30 TDI" = 136pk, "35 TDI" = 163pk, "40 TDI" = 204pk, "50 TDI" = 286pk
+   - BMW: "18i/20i" = 136-156pk, "30i" = 245pk, "40i" = 340pk, "M40i" = 340-387pk
+   - BMW: "18d/20d" = 150pk, "30d" = 265pk, "40d" = 340pk
+   - Mercedes: "180" = 136pk, "200" = 163-184pk, "300" = 245-258pk, "400" = 333pk
+   - VW/Skoda: "1.0 TSI" = 95-115pk, "1.5 TSI" = 150pk, "2.0 TSI" = 190-245pk
+   - VW/Skoda: "2.0 TDI" = 115-200pk (meestal 150pk)
+   - Volvo: "T4" = 190pk, "T5" = 250pk, "T6" = 310pk, "T8" = 390pk
+   - Volvo: "D3" = 150pk, "D4" = 190pk, "D5" = 235pk
+4. Cilinder/motor aanduiding: "2.0" diesel vaak ~150pk, "3.0" diesel vaak ~245-286pk
+5. Als je het ECHT niet kan vinden, laat null maar geef lagere confidence
+
 RETOURNEER VOOR ELK VOERTUIG:
 {
   "rowIndex": nummer,
@@ -81,15 +98,18 @@ RETOURNEER VOOR ELK VOERTUIG:
   "fuelType": "Benzine" | "Diesel" | "Elektrisch" | "Hybride" | "Plug-in Hybride" | "LPG",
   "transmission": "Automaat" | "Handgeschakeld",
   "bodyType": "Sedan" | "Hatchback" | "Station" | "SUV" | "Coupé" | "Cabrio" | "MPV" | null,
-  "power": vermogen in PK als getal of null,
+  "power": vermogen in PK als getal (PROBEER ALTIJD te bepalen, zie motorcodes hierboven),
+  "powerSource": "direct" | "kW_conversie" | "motorcode" | "geschat" | null,
   "askingPrice": prijs als getal of null,
   "color": kleur of null,
-  "confidence": 0.0-1.0 betrouwbaarheidsscore,
+  "confidence": 0.0-1.0 betrouwbaarheidsscore (lager als vermogen geschat),
   "originalData": originele beschrijving/tekst waar je dit uit hebt gehaald
 }
 
 BELANGRIJKE REGELS:
 - Wees flexibel met kolomnamen - leveranciers gebruiken allemaal verschillende namen
+- PROBEER ALTIJD vermogen te bepalen - dit is cruciaal voor JP Cars taxatie
+- Als je vermogen schat op basis van motorcode, geef powerSource: "motorcode"
 - Als je iets niet zeker weet, geef een lagere confidence score
 - Sla rijen over die geen auto's lijken te zijn (lege rijen, headers, etc.)
 - Geef ALLEEN een JSON array terug, geen andere tekst`;
