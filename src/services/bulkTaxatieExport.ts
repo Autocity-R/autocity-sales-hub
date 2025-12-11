@@ -10,27 +10,19 @@ export const exportBulkTaxatieToExcel = async (results: BulkTaxatieResult[]) => 
     views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }],
   });
 
-  // Define columns
+  // Define simplified 11 columns
   worksheet.columns = [
-    { header: '#', key: 'rowIndex', width: 6 },
-    { header: 'Merk', key: 'brand', width: 15 },
-    { header: 'Model', key: 'model', width: 20 },
-    { header: 'Bouwjaar', key: 'buildYear', width: 12 },
-    { header: 'KM', key: 'mileage', width: 12 },
+    { header: 'Merk', key: 'brand', width: 14 },
+    { header: 'Model', key: 'model', width: 18 },
     { header: 'Brandstof', key: 'fuelType', width: 12 },
-    { header: 'Vraagprijs', key: 'askingPrice', width: 14 },
+    { header: 'KM', key: 'mileage', width: 12 },
+    { header: 'Bouwjaar', key: 'buildYear', width: 10 },
     { header: 'APR', key: 'apr', width: 8 },
     { header: 'ETR', key: 'etr', width: 8 },
-    { header: 'Courantheid', key: 'courantheid', width: 14 },
-    { header: 'JP Cars Waarde', key: 'jpCarsValue', width: 16 },
-    { header: 'Advies', key: 'recommendation', width: 14 },
-    { header: 'Max Inkoopprijs', key: 'maxPurchasePrice', width: 16 },
-    { header: 'Verw. Verkoopprijs', key: 'expectedSellingPrice', width: 18 },
-    { header: 'Verw. Marge %', key: 'targetMargin', width: 14 },
-    { header: 'Verw. Statijd', key: 'expectedDays', width: 14 },
-    { header: 'Risico\'s', key: 'risks', width: 40 },
-    { header: 'Kansen', key: 'opportunities', width: 40 },
-    { header: 'Status', key: 'status', width: 12 },
+    { header: 'JP Prijs', key: 'jpPrice', width: 14 },
+    { header: 'AI Verkoopprijs', key: 'aiSellingPrice', width: 16 },
+    { header: 'AI Inkoopprijs', key: 'aiPurchasePrice', width: 16 },
+    { header: 'Gaspedaal', key: 'gaspedaalLink', width: 14 },
   ];
 
   // Style header row
@@ -45,34 +37,35 @@ export const exportBulkTaxatieToExcel = async (results: BulkTaxatieResult[]) => 
   headerRow.height = 24;
 
   // Add data rows
-  results.forEach((result, index) => {
+  results.forEach((result) => {
     const recommendation = result.aiAdvice?.recommendation || '';
+    const gaspedaalUrl = result.jpCarsData?.portalUrls?.gaspedaal || '';
+    
     const row = worksheet.addRow({
-      rowIndex: result.input.rowIndex,
       brand: result.input.brand,
       model: result.input.model,
-      buildYear: result.input.buildYear,
-      mileage: result.input.mileage,
       fuelType: result.input.fuelType || '-',
-      askingPrice: result.input.askingPrice || null,
+      mileage: result.input.mileage,
+      buildYear: result.input.buildYear,
       apr: result.jpCarsData?.apr || null,
       etr: result.jpCarsData?.etr || null,
-      courantheid: result.jpCarsData?.courantheid || '-',
-      jpCarsValue: result.jpCarsData?.totalValue || null,
-      recommendation: recommendation === 'kopen' ? '✓ KOPEN' : 
-                     recommendation === 'niet_kopen' ? '✗ NIET KOPEN' : 
-                     recommendation === 'twijfel' ? '? TWIJFEL' : '-',
-      maxPurchasePrice: result.aiAdvice?.recommendedPurchasePrice || null,
-      expectedSellingPrice: result.aiAdvice?.recommendedSellingPrice || null,
-      targetMargin: result.aiAdvice?.targetMargin || null,
-      expectedDays: result.aiAdvice?.expectedDaysToSell || null,
-      risks: result.aiAdvice?.riskFactors?.join('; ') || '-',
-      opportunities: result.aiAdvice?.opportunities?.join('; ') || '-',
-      status: result.status === 'completed' ? 'Voltooid' : 
-              result.status === 'error' ? 'Fout' : 'In behandeling',
+      jpPrice: result.jpCarsData?.totalValue || null,
+      aiSellingPrice: result.aiAdvice?.recommendedSellingPrice || null,
+      aiPurchasePrice: result.aiAdvice?.recommendedPurchasePrice || null,
+      gaspedaalLink: gaspedaalUrl ? 'Bekijk' : '-',
     });
 
-    // Color code based on recommendation
+    // Add hyperlink to Gaspedaal cell
+    if (gaspedaalUrl) {
+      const linkCell = row.getCell('gaspedaalLink');
+      linkCell.value = {
+        text: 'Bekijk →',
+        hyperlink: gaspedaalUrl,
+      };
+      linkCell.font = { color: { argb: 'FF0066CC' }, underline: true };
+    }
+
+    // Color code row based on recommendation
     let bgColor = 'FFFFFFFF';
     if (recommendation === 'kopen') {
       bgColor = 'FFE8F5E9'; // Light green
@@ -82,12 +75,15 @@ export const exportBulkTaxatieToExcel = async (results: BulkTaxatieResult[]) => 
       bgColor = 'FFFFF8E1'; // Light amber
     }
 
-    row.eachCell((cell) => {
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: bgColor },
-      };
+    row.eachCell((cell, colNumber) => {
+      // Don't override hyperlink styling for link cell
+      if (colNumber !== 11) {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: bgColor },
+        };
+      }
       cell.border = {
         top: { style: 'thin', color: { argb: 'FFE0E0E0' } },
         bottom: { style: 'thin', color: { argb: 'FFE0E0E0' } },
@@ -97,22 +93,18 @@ export const exportBulkTaxatieToExcel = async (results: BulkTaxatieResult[]) => 
     });
 
     // Format currency cells
-    ['askingPrice', 'jpCarsValue', 'maxPurchasePrice', 'expectedSellingPrice'].forEach(key => {
+    ['jpPrice', 'aiSellingPrice', 'aiPurchasePrice'].forEach(key => {
       const cell = row.getCell(key);
-      if (cell.value) {
+      if (cell.value && typeof cell.value === 'number') {
         cell.numFmt = '€#,##0';
       }
     });
 
-    // Format percentage
-    const marginCell = row.getCell('targetMargin');
-    if (marginCell.value) {
-      marginCell.numFmt = '0"%"';
-    }
-
     // Format KM
     const kmCell = row.getCell('mileage');
-    kmCell.numFmt = '#,##0" km"';
+    if (kmCell.value) {
+      kmCell.numFmt = '#,##0';
+    }
 
     // APR/ETR color coding
     const aprCell = row.getCell('apr');
@@ -132,16 +124,6 @@ export const exportBulkTaxatieToExcel = async (results: BulkTaxatieResult[]) => 
     } else if (etrValue < 3) {
       etrCell.font = { color: { argb: 'FFC62828' }, bold: true };
     }
-
-    // Recommendation cell styling
-    const recCell = row.getCell('recommendation');
-    if (recommendation === 'kopen') {
-      recCell.font = { color: { argb: 'FF2E7D32' }, bold: true };
-    } else if (recommendation === 'niet_kopen') {
-      recCell.font = { color: { argb: 'FFC62828' }, bold: true };
-    } else if (recommendation === 'twijfel') {
-      recCell.font = { color: { argb: 'FFF57C00' }, bold: true };
-    }
   });
 
   // Add summary row
@@ -153,7 +135,7 @@ export const exportBulkTaxatieToExcel = async (results: BulkTaxatieResult[]) => 
   worksheet.getCell(`A${summaryRowNum}`).value = 'SAMENVATTING';
   worksheet.getCell(`A${summaryRowNum}`).font = { bold: true, size: 12 };
 
-  worksheet.getCell(`A${summaryRowNum + 1}`).value = 'Totaal getaxeerd:';
+  worksheet.getCell(`A${summaryRowNum + 1}`).value = 'Totaal:';
   worksheet.getCell(`B${summaryRowNum + 1}`).value = results.length;
 
   worksheet.getCell(`A${summaryRowNum + 2}`).value = '✓ Kopen:';
@@ -164,7 +146,7 @@ export const exportBulkTaxatieToExcel = async (results: BulkTaxatieResult[]) => 
   worksheet.getCell(`B${summaryRowNum + 3}`).value = twijfelCount;
   worksheet.getCell(`B${summaryRowNum + 3}`).font = { color: { argb: 'FFF57C00' }, bold: true };
 
-  worksheet.getCell(`A${summaryRowNum + 4}`).value = '✗ Niet Kopen:';
+  worksheet.getCell(`A${summaryRowNum + 4}`).value = '✗ Niet kopen:';
   worksheet.getCell(`B${summaryRowNum + 4}`).value = nietKopenCount;
   worksheet.getCell(`B${summaryRowNum + 4}`).font = { color: { argb: 'FFC62828' }, bold: true };
 
