@@ -46,29 +46,16 @@ export interface DamageRepairStats {
 export const damageRepairReportsService = {
   async getDamageRepairStats(period: ReportPeriod): Promise<DamageRepairStats> {
     try {
-      // Fetch completed schadeherstel tasks within the period
-      const { data: tasks, error } = await supabase
-        .from('tasks')
-        .select(`
-          id,
-          vehicle_id,
-          vehicle_brand,
-          vehicle_model,
-          vehicle_vin,
-          vehicle_license_number,
-          damage_parts,
-          completed_at,
-          assigned_to,
-          assigned_to_profile:profiles!tasks_assigned_to_fkey(id, first_name, last_name, email)
-        `)
-        .eq('category', 'schadeherstel')
-        .eq('status', 'voltooid')
+      // Fetch from permanent damage_repair_records table
+      const { data: records, error } = await supabase
+        .from('damage_repair_records')
+        .select('*')
         .gte('completed_at', period.startDate)
         .lte('completed_at', period.endDate)
         .order('completed_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching damage repair tasks:', error);
+        console.error('Error fetching damage repair records:', error);
         throw error;
       }
 
@@ -80,52 +67,45 @@ export const damageRepairReportsService = {
 
       let totalParts = 0;
 
-      for (const task of tasks || []) {
-        // Extract parts from damage_parts JSON
-        const damageParts = task.damage_parts as { parts?: Array<{ name: string }> } | null;
-        const parts = damageParts?.parts?.map(p => p.name) || [];
-        const partCount = parts.length;
+      for (const record of records || []) {
+        const parts = (record.repaired_parts as string[]) || [];
+        const partCount = record.part_count || parts.length;
         totalParts += partCount;
 
         // Track vehicle
-        if (task.vehicle_id) {
-          vehicleIds.add(task.vehicle_id);
+        if (record.vehicle_id) {
+          vehicleIds.add(record.vehicle_id);
         }
-
-        // Get employee name
-        const profile = task.assigned_to_profile as { first_name?: string; last_name?: string; email?: string } | null;
-        const employeeName = profile 
-          ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Onbekend'
-          : 'Onbekend';
 
         // Add to repair history
         repairHistory.push({
-          taskId: task.id,
-          vehicleId: task.vehicle_id,
-          vehicleBrand: task.vehicle_brand || '-',
-          vehicleModel: task.vehicle_model || '-',
-          vehicleVin: task.vehicle_vin || '-',
-          vehicleLicenseNumber: task.vehicle_license_number || '-',
+          taskId: record.task_id || record.id,
+          vehicleId: record.vehicle_id,
+          vehicleBrand: record.vehicle_brand || '-',
+          vehicleModel: record.vehicle_model || '-',
+          vehicleVin: record.vehicle_vin || '-',
+          vehicleLicenseNumber: record.vehicle_license_number || '-',
           repairedParts: parts,
           partCount,
-          repairCost: partCount * COST_PER_PART,
-          completedAt: task.completed_at,
-          assignedTo: task.assigned_to,
-          employeeName
+          repairCost: record.repair_cost || partCount * COST_PER_PART,
+          completedAt: record.completed_at,
+          assignedTo: record.employee_id,
+          employeeName: record.employee_name || 'Onbekend'
         });
 
         // Update employee stats
-        const existingStats = employeeStats.get(task.assigned_to) || {
-          employeeId: task.assigned_to,
-          employeeName,
+        const employeeKey = record.employee_id || 'unknown';
+        const existingStats = employeeStats.get(employeeKey) || {
+          employeeId: record.employee_id || '',
+          employeeName: record.employee_name || 'Onbekend',
           totalParts: 0,
           totalRevenue: 0,
           totalTasks: 0
         };
         existingStats.totalParts += partCount;
-        existingStats.totalRevenue += partCount * COST_PER_PART;
+        existingStats.totalRevenue += record.repair_cost || partCount * COST_PER_PART;
         existingStats.totalTasks += 1;
-        employeeStats.set(task.assigned_to, existingStats);
+        employeeStats.set(employeeKey, existingStats);
 
         // Update part stats
         for (const part of parts) {
@@ -150,7 +130,7 @@ export const damageRepairReportsService = {
       const totalVehicles = vehicleIds.size;
 
       return {
-        totalTasks: tasks?.length || 0,
+        totalTasks: records?.length || 0,
         totalParts,
         totalRevenue,
         totalVehicles,

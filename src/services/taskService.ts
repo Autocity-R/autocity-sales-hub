@@ -277,16 +277,32 @@ export const deleteTask = async (taskId: string): Promise<void> => {
 
 export const updateTaskStatus = async (taskId: string, status: TaskStatus): Promise<Task> => {
   try {
+    const completedAt = new Date().toISOString();
     const updateData: any = {
       status,
-      updated_at: new Date().toISOString()
+      updated_at: completedAt
     };
 
     // Set completed_at when task is completed
     if (status === 'voltooid') {
-      updateData.completed_at = new Date().toISOString();
+      updateData.completed_at = completedAt;
     } else {
       updateData.completed_at = null;
+    }
+
+    // First, get the full task data including employee info
+    const { data: taskData, error: fetchError } = await supabase
+      .from('tasks')
+      .select(`
+        *,
+        assigned_to_profile:profiles!tasks_assigned_to_fkey(id, first_name, last_name, email)
+      `)
+      .eq('id', taskId)
+      .single();
+
+    if (fetchError) {
+      console.error("Failed to fetch task for status update:", fetchError);
+      throw fetchError;
     }
 
     const { data, error } = await supabase
@@ -299,6 +315,11 @@ export const updateTaskStatus = async (taskId: string, status: TaskStatus): Prom
     if (error) {
       console.error("Failed to update task status:", error);
       throw error;
+    }
+
+    // Register damage repair when schadeherstel task is completed
+    if (status === 'voltooid' && taskData.category === 'schadeherstel') {
+      await registerDamageRepair(taskId, taskData, completedAt);
     }
 
     return {
@@ -329,6 +350,61 @@ export const updateTaskStatus = async (taskId: string, status: TaskStatus): Prom
   } catch (error: any) {
     console.error("Failed to update task status:", error);
     throw error;
+  }
+};
+
+// Register damage repair in permanent table
+const registerDamageRepair = async (taskId: string, taskData: any, completedAt: string): Promise<void> => {
+  try {
+    // Check if already registered (prevent duplicates)
+    const { data: existing } = await supabase
+      .from('damage_repair_records')
+      .select('id')
+      .eq('task_id', taskId)
+      .maybeSingle();
+
+    if (existing) {
+      console.log('[taskService] Damage repair already registered for task:', taskId);
+      return;
+    }
+
+    const COST_PER_PART = 300;
+    const damageParts = taskData.damage_parts as { parts?: Array<{ name: string }> } | null;
+    const parts = damageParts?.parts?.map((p: { name: string }) => p.name) || [];
+    const partCount = parts.length;
+
+    // Get employee name from profile
+    const profile = taskData.assigned_to_profile as { first_name?: string; last_name?: string; email?: string } | null;
+    const employeeName = profile 
+      ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Onbekend'
+      : 'Onbekend';
+
+    const { error } = await supabase
+      .from('damage_repair_records')
+      .insert({
+        task_id: taskId,
+        vehicle_id: taskData.vehicle_id,
+        vehicle_brand: taskData.vehicle_brand || '-',
+        vehicle_model: taskData.vehicle_model || '-',
+        vehicle_vin: taskData.vehicle_vin,
+        vehicle_license_number: taskData.vehicle_license_number,
+        repaired_parts: parts,
+        part_count: partCount,
+        repair_cost: partCount * COST_PER_PART,
+        completed_at: completedAt,
+        employee_id: taskData.assigned_to,
+        employee_name: employeeName
+      });
+
+    if (error) {
+      console.error('[taskService] Failed to register damage repair:', error);
+      // Don't throw - we don't want to fail the task status update
+    } else {
+      console.log('[taskService] Damage repair registered successfully for task:', taskId);
+    }
+  } catch (error) {
+    console.error('[taskService] Error registering damage repair:', error);
+    // Don't throw - we don't want to fail the task status update
   }
 };
 

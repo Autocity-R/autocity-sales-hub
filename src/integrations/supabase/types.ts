@@ -929,6 +929,57 @@ export type Database = {
           },
         ]
       }
+      damage_repair_records: {
+        Row: {
+          completed_at: string
+          created_at: string
+          employee_id: string | null
+          employee_name: string | null
+          id: string
+          part_count: number
+          repair_cost: number
+          repaired_parts: Json
+          task_id: string | null
+          vehicle_brand: string
+          vehicle_id: string | null
+          vehicle_license_number: string | null
+          vehicle_model: string
+          vehicle_vin: string | null
+        }
+        Insert: {
+          completed_at: string
+          created_at?: string
+          employee_id?: string | null
+          employee_name?: string | null
+          id?: string
+          part_count?: number
+          repair_cost?: number
+          repaired_parts?: Json
+          task_id?: string | null
+          vehicle_brand: string
+          vehicle_id?: string | null
+          vehicle_license_number?: string | null
+          vehicle_model: string
+          vehicle_vin?: string | null
+        }
+        Update: {
+          completed_at?: string
+          created_at?: string
+          employee_id?: string | null
+          employee_name?: string | null
+          id?: string
+          part_count?: number
+          repair_cost?: number
+          repaired_parts?: Json
+          task_id?: string | null
+          vehicle_brand?: string
+          vehicle_id?: string | null
+          vehicle_license_number?: string | null
+          vehicle_model?: string
+          vehicle_vin?: string | null
+        }
+        Relationships: []
+      }
       email_logs: {
         Row: {
           attachment_count: number | null
