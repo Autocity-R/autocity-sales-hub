@@ -35,6 +35,7 @@ import { SalesAnalytics } from "@/components/reports/SalesAnalytics";
 import { WarrantyReports } from "@/components/reports/WarrantyReports";
 import { PurchaseAnalytics } from "@/components/reports/PurchaseAnalytics";
 import { SupplierAnalytics } from "@/components/reports/SupplierAnalytics";
+import { DamageRepairAnalytics } from "@/components/reports/DamageRepairAnalytics";
 
 interface MockPerformanceData extends PerformanceData {
   revenue: number;
@@ -405,7 +406,7 @@ const Reports = () => {
         />
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="overview">Overzicht</TabsTrigger>
             <TabsTrigger value="sales">Verkoop</TabsTrigger>
             <TabsTrigger value="purchase">Inkoop</TabsTrigger>
@@ -414,6 +415,7 @@ const Reports = () => {
             <TabsTrigger value="financial">Financieel</TabsTrigger>
             <TabsTrigger value="inventory">Voorraad</TabsTrigger>
             <TabsTrigger value="warranty">Garantie</TabsTrigger>
+            <TabsTrigger value="schadeherstel">Schadeherstel</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -716,6 +718,10 @@ const Reports = () => {
 
           <TabsContent value="warranty" className="space-y-6">
             <WarrantyReports />
+          </TabsContent>
+
+          <TabsContent value="schadeherstel" className="space-y-6">
+            <DamageRepairAnalytics period={reportPeriod} />
           </TabsContent>
         </Tabs>
       </div>
