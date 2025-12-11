@@ -2,7 +2,6 @@ import { useBulkTaxatie } from '@/hooks/useBulkTaxatie';
 import { BulkTaxatieUploader } from './BulkTaxatieUploader';
 import { BulkTaxatieProgress } from './BulkTaxatieProgress';
 import { BulkTaxatieResults } from './BulkTaxatieResults';
-import { BulkTaxatiePreview } from './BulkTaxatiePreview';
 
 export const BulkTaxatieTab = () => {
   const {
@@ -11,15 +10,11 @@ export const BulkTaxatieTab = () => {
     isParsing,
     progress,
     rawData,
-    columnMapping,
-    availableColumns,
+    inputs,
     results,
-    detectedSupplier,
-    parsedVehicles,
     filename,
     parseExcelFile,
-    updateColumnMapping,
-    parseVehicleDescriptions,
+    analyzeExcelWithAI,
     startBulkProcessing,
     reset,
   } = useBulkTaxatie();
@@ -53,32 +48,17 @@ export const BulkTaxatieTab = () => {
     );
   }
 
-  // Show uploader and preview
+  // Show uploader with AI analysis
   return (
-    <div className="space-y-6">
-      <BulkTaxatieUploader
-        isUploading={isUploading}
-        isParsing={isParsing}
-        availableColumns={availableColumns}
-        columnMapping={columnMapping}
-        rawDataCount={rawData.length}
-        detectedSupplier={detectedSupplier}
-        parsedVehicles={parsedVehicles}
-        filename={filename}
-        onFileUpload={parseExcelFile}
-        onColumnMappingChange={updateColumnMapping}
-        onParseDescriptions={parseVehicleDescriptions}
-        onStartProcessing={startBulkProcessing}
-      />
-      
-      {/* Show parsed preview if available */}
-      {parsedVehicles.length > 0 && (
-        <BulkTaxatiePreview 
-          parsedVehicles={parsedVehicles}
-          rawData={rawData}
-          columnMapping={columnMapping}
-        />
-      )}
-    </div>
+    <BulkTaxatieUploader
+      isUploading={isUploading}
+      isParsing={isParsing}
+      rawDataCount={rawData.length}
+      inputs={inputs}
+      filename={filename}
+      onFileUpload={parseExcelFile}
+      onAnalyzeWithAI={analyzeExcelWithAI}
+      onStartProcessing={startBulkProcessing}
+    />
   );
 };
