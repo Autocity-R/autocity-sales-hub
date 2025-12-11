@@ -2,56 +2,29 @@ import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Upload, FileSpreadsheet, Check, AlertCircle, Bot, Building2, Sparkles } from 'lucide-react';
-import type { ColumnMapping, DetectedSupplier, ParsedVehicle } from '@/types/bulkTaxatie';
+import { Upload, FileSpreadsheet, Check, Bot, Sparkles, Car } from 'lucide-react';
+import type { BulkTaxatieInput } from '@/types/bulkTaxatie';
 
 interface BulkTaxatieUploaderProps {
   isUploading: boolean;
   isParsing: boolean;
-  availableColumns: string[];
-  columnMapping: ColumnMapping;
   rawDataCount: number;
-  detectedSupplier: DetectedSupplier | null;
-  parsedVehicles: ParsedVehicle[];
+  inputs: BulkTaxatieInput[];
   filename: string;
   onFileUpload: (file: File) => void;
-  onColumnMappingChange: (field: keyof ColumnMapping, column: string | null) => void;
-  onParseDescriptions: () => void;
+  onAnalyzeWithAI: () => void;
   onStartProcessing: () => void;
 }
-
-const REQUIRED_FIELDS: (keyof ColumnMapping)[] = ['brand', 'model', 'buildYear', 'mileage'];
-const OPTIONAL_FIELDS: (keyof ColumnMapping)[] = ['fuelType', 'transmission', 'askingPrice', 'supplierName', 'color', 'power'];
-
-const FIELD_LABELS: Record<keyof ColumnMapping, string> = {
-  brand: 'Merk',
-  model: 'Model',
-  buildYear: 'Bouwjaar',
-  mileage: 'Kilometerstand',
-  fuelType: 'Brandstof',
-  transmission: 'Transmissie',
-  askingPrice: 'Vraagprijs',
-  supplierName: 'Leverancier',
-  color: 'Kleur',
-  power: 'Vermogen (PK)',
-  combinedDescription: 'Gecombineerde beschrijving',
-};
 
 export const BulkTaxatieUploader = ({
   isUploading,
   isParsing,
-  availableColumns,
-  columnMapping,
   rawDataCount,
-  detectedSupplier,
-  parsedVehicles,
+  inputs,
   filename,
   onFileUpload,
-  onColumnMappingChange,
-  onParseDescriptions,
+  onAnalyzeWithAI,
   onStartProcessing,
 }: BulkTaxatieUploaderProps) => {
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -68,20 +41,13 @@ export const BulkTaxatieUploader = ({
       'text/csv': ['.csv'],
     },
     maxFiles: 1,
-    disabled: isUploading,
+    disabled: isUploading || isParsing,
   });
 
-  const hasParsedData = parsedVehicles.length > 0;
-  const useCombinedDescription = !!columnMapping.combinedDescription;
-  
-  // If using parsed data, only mileage is required
-  const requiredMapped = hasParsedData 
-    ? !!columnMapping.mileage
-    : REQUIRED_FIELDS.every(f => columnMapping[f]);
-  
-  const mappedCount = Object.values(columnMapping).filter(Boolean).length;
-  const highConfidenceCount = parsedVehicles.filter(p => p.confidence >= 0.7).length;
-  const lowConfidenceCount = parsedVehicles.filter(p => p.confidence < 0.5).length;
+  const hasAnalyzedData = inputs.length > 0;
+  const highConfidenceCount = inputs.filter(v => (v.parseConfidence || 0) >= 0.7).length;
+  const mediumConfidenceCount = inputs.filter(v => (v.parseConfidence || 0) >= 0.5 && (v.parseConfidence || 0) < 0.7).length;
+  const lowConfidenceCount = inputs.filter(v => (v.parseConfidence || 0) < 0.5).length;
 
   return (
     <div className="space-y-6">
@@ -93,7 +59,7 @@ export const BulkTaxatieUploader = ({
             Excel Bestand Uploaden
           </CardTitle>
           <CardDescription>
-            Upload een Excel bestand met voertuiggegevens van je leverancier
+            Upload een Excel bestand van je leverancier - AI herkent automatisch alle voertuiggegevens
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -102,7 +68,7 @@ export const BulkTaxatieUploader = ({
             className={`
               border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
               ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}
-              ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}
+              ${isUploading || isParsing ? 'opacity-50 cursor-not-allowed' : ''}
             `}
           >
             <input {...getInputProps()} />
@@ -122,241 +88,144 @@ export const BulkTaxatieUploader = ({
           </div>
 
           {rawDataCount > 0 && (
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 space-y-3">
               <div className="flex items-center gap-2 text-sm">
                 <Check className="h-4 w-4 text-green-500" />
                 <span className="text-green-600 font-medium">
-                  {rawDataCount} voertuigen gevonden in "{filename}"
+                  {rawDataCount} rijen gevonden in "{filename}"
                 </span>
               </div>
-              
-              {detectedSupplier && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Building2 className="h-4 w-4 text-blue-500" />
-                  <span className="text-blue-600 font-medium">
-                    Leverancier herkend: {detectedSupplier.name}
-                  </span>
-                  {detectedSupplier.requiresAIParsing && (
-                    <Badge variant="outline" className="text-xs">
-                      <Bot className="h-3 w-3 mr-1" />
-                      AI parsing aanbevolen
-                    </Badge>
-                  )}
-                </div>
-              )}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Column Mapping */}
-      {availableColumns.length > 0 && (
+      {/* AI Analysis Section */}
+      {rawDataCount > 0 && !hasAnalyzedData && (
         <Card>
           <CardHeader>
-            <CardTitle>Kolom Mapping</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="h-5 w-5" />
+              AI Expert Analyse
+            </CardTitle>
             <CardDescription>
-              Koppel de kolommen uit je Excel aan de juiste velden, of gebruik AI parsing voor gecombineerde beschrijvingen
+              Onze AI Expert analyseert automatisch alle kolommen en herkent merken, modellen, bouwjaren, kilometerstanden en meer
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* AI Parsing Option */}
-            <div className="bg-muted/50 rounded-lg p-4 border">
-              <div className="flex items-start gap-3">
-                <Bot className="h-5 w-5 text-primary mt-0.5" />
-                <div className="flex-1">
-                  <h4 className="font-medium mb-2">AI Voertuigherkenning</h4>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Als je leverancier alle voertuiginfo in één kolom heeft (bijv. "BMW 320i Touring 2020 Benzine"), 
-                    kan AI deze automatisch splitsen.
-                  </p>
-                  
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="flex-1">
-                      <Label className="text-sm mb-1.5 block">Kolom met voertuigbeschrijving</Label>
-                      <Select
-                        value={columnMapping.combinedDescription || 'none'}
-                        onValueChange={val => onColumnMappingChange('combinedDescription', val === 'none' ? null : val)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecteer kolom" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">-- Niet gebruiken --</SelectItem>
-                          {availableColumns.map(col => (
-                            <SelectItem key={col} value={col}>{col}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="flex items-end">
-                      <Button
-                        onClick={onParseDescriptions}
-                        disabled={!columnMapping.combinedDescription || isParsing}
-                        variant="secondary"
-                      >
-                        {isParsing ? (
-                          <>
-                            <Sparkles className="h-4 w-4 mr-2 animate-pulse" />
-                            Parsing...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            Parse met AI
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Parsed Results Summary */}
-                  {hasParsedData && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Badge variant="default" className="bg-green-500">
-                        {highConfidenceCount} hoge betrouwbaarheid
-                      </Badge>
-                      {parsedVehicles.length - highConfidenceCount - lowConfidenceCount > 0 && (
-                        <Badge variant="secondary">
-                          {parsedVehicles.length - highConfidenceCount - lowConfidenceCount} gemiddeld
-                        </Badge>
-                      )}
-                      {lowConfidenceCount > 0 && (
-                        <Badge variant="outline" className="text-orange-600 border-orange-300">
-                          {lowConfidenceCount} lage betrouwbaarheid
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+          <CardContent>
+            <div className="bg-muted/50 rounded-lg p-6 text-center">
+              <Bot className="h-12 w-12 mx-auto mb-4 text-primary" />
+              <h3 className="font-semibold mb-2">Klaar om te analyseren</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                De AI Expert kijkt naar alle {rawDataCount} rijen en herkent automatisch de voertuiggegevens, 
+                ongeacht welke kolomnamen je leverancier gebruikt.
+              </p>
+              <Button
+                onClick={onAnalyzeWithAI}
+                disabled={isParsing}
+                size="lg"
+                className="min-w-[200px]"
+              >
+                {isParsing ? (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2 animate-pulse" />
+                    Analyseren...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Analyseer met AI Expert
+                  </>
+                )}
+              </Button>
             </div>
+          </CardContent>
+        </Card>
+      )}
 
-            {/* Divider */}
-            {!hasParsedData && (
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">of handmatig mappen</span>
-                </div>
-              </div>
-            )}
-
-            {/* Required Fields - Hide if using parsed data */}
-            {!hasParsedData && (
-              <div>
-                <h4 className="font-medium mb-3 flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-destructive" />
-                  Verplichte velden
-                </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {REQUIRED_FIELDS.map(field => (
-                    <div key={field} className="space-y-2">
-                      <Label className="text-sm">
-                        {FIELD_LABELS[field]}
-                        <span className="text-destructive ml-1">*</span>
-                      </Label>
-                      <Select
-                        value={columnMapping[field] || 'none'}
-                        onValueChange={val => onColumnMappingChange(field, val === 'none' ? null : val)}
-                      >
-                        <SelectTrigger className={!columnMapping[field] ? 'border-destructive' : ''}>
-                          <SelectValue placeholder="Selecteer kolom" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">-- Geen --</SelectItem>
-                          {availableColumns.map(col => (
-                            <SelectItem key={col} value={col}>{col}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Mileage (always required, even with parsed data) */}
-            {hasParsedData && (
-              <div>
-                <h4 className="font-medium mb-3 flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-destructive" />
-                  Verplicht veld (niet uit beschrijving te halen)
-                </h4>
-                <div className="max-w-xs">
-                  <Label className="text-sm">
-                    Kilometerstand
-                    <span className="text-destructive ml-1">*</span>
-                  </Label>
-                  <Select
-                    value={columnMapping.mileage || 'none'}
-                    onValueChange={val => onColumnMappingChange('mileage', val === 'none' ? null : val)}
-                  >
-                    <SelectTrigger className={!columnMapping.mileage ? 'border-destructive' : ''}>
-                      <SelectValue placeholder="Selecteer kolom" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">-- Geen --</SelectItem>
-                      {availableColumns.map(col => (
-                        <SelectItem key={col} value={col}>{col}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
-
-            {/* Optional Fields */}
-            <div>
-              <h4 className="font-medium mb-3">Optionele velden</h4>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                {OPTIONAL_FIELDS.map(field => (
-                  <div key={field} className="space-y-2">
-                    <Label className="text-sm">{FIELD_LABELS[field]}</Label>
-                    <Select
-                      value={columnMapping[field] || 'none'}
-                      onValueChange={val => onColumnMappingChange(field, val === 'none' ? null : val)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecteer" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">-- Geen --</SelectItem>
-                        {availableColumns.map(col => (
-                          <SelectItem key={col} value={col}>{col}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Status & Start */}
-            <div className="flex items-center justify-between pt-4 border-t">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant={requiredMapped ? 'default' : 'secondary'}>
-                  {hasParsedData ? `${parsedVehicles.length} geparseerd` : `${mappedCount} velden gekoppeld`}
+      {/* Analysis Results Preview */}
+      {hasAnalyzedData && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Car className="h-5 w-5" />
+              AI Expert Resultaten
+            </CardTitle>
+            <CardDescription>
+              {inputs.length} voertuigen succesvol herkend
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Confidence Summary */}
+            <div className="flex flex-wrap gap-2">
+              {highConfidenceCount > 0 && (
+                <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+                  ✓ {highConfidenceCount} hoge betrouwbaarheid
                 </Badge>
-                {!requiredMapped && !hasParsedData && (
-                  <span className="text-sm text-destructive">
-                    Koppel alle verplichte velden of gebruik AI parsing
-                  </span>
-                )}
-                {!requiredMapped && hasParsedData && (
-                  <span className="text-sm text-destructive">
-                    Koppel de kilometerstand kolom
-                  </span>
-                )}
+              )}
+              {mediumConfidenceCount > 0 && (
+                <Badge variant="secondary">
+                  {mediumConfidenceCount} gemiddeld
+                </Badge>
+              )}
+              {lowConfidenceCount > 0 && (
+                <Badge variant="outline" className="text-orange-600 border-orange-300">
+                  ⚠ {lowConfidenceCount} lage betrouwbaarheid
+                </Badge>
+              )}
+            </div>
+
+            {/* Preview Table */}
+            <div className="border rounded-lg overflow-hidden">
+              <div className="max-h-[300px] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted sticky top-0">
+                    <tr>
+                      <th className="text-left p-2 font-medium">#</th>
+                      <th className="text-left p-2 font-medium">Merk</th>
+                      <th className="text-left p-2 font-medium">Model</th>
+                      <th className="text-left p-2 font-medium">Bouwjaar</th>
+                      <th className="text-left p-2 font-medium">KM</th>
+                      <th className="text-left p-2 font-medium">Brandstof</th>
+                      <th className="text-left p-2 font-medium">Transmissie</th>
+                      <th className="text-left p-2 font-medium">Prijs</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inputs.slice(0, 10).map((vehicle, idx) => (
+                      <tr key={idx} className="border-t hover:bg-muted/50">
+                        <td className="p-2 text-muted-foreground">{vehicle.rowIndex}</td>
+                        <td className="p-2 font-medium">{vehicle.brand}</td>
+                        <td className="p-2">{vehicle.model}</td>
+                        <td className="p-2">{vehicle.buildYear}</td>
+                        <td className="p-2">{vehicle.mileage.toLocaleString('nl-NL')} km</td>
+                        <td className="p-2">{vehicle.fuelType || '-'}</td>
+                        <td className="p-2">{vehicle.transmission || '-'}</td>
+                        <td className="p-2">
+                          {vehicle.askingPrice 
+                            ? `€${vehicle.askingPrice.toLocaleString('nl-NL')}` 
+                            : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+              {inputs.length > 10 && (
+                <div className="p-2 bg-muted text-center text-sm text-muted-foreground">
+                  + {inputs.length - 10} meer voertuigen...
+                </div>
+              )}
+            </div>
+
+            {/* Start Processing Button */}
+            <div className="flex justify-end pt-4 border-t">
               <Button
                 onClick={onStartProcessing}
-                disabled={!requiredMapped || rawDataCount === 0 || isParsing}
                 size="lg"
+                className="min-w-[250px]"
               >
-                Start Bulk Taxatie ({rawDataCount} auto's)
+                Start JP Cars Taxaties ({inputs.length} voertuigen)
               </Button>
             </div>
           </CardContent>

@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.parse-vehicle-description]
 verify_jwt = false
+
+[functions.analyze-excel-vehicles]
+verify_jwt = false
