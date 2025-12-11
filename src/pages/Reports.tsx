@@ -721,7 +721,7 @@ const Reports = () => {
           </TabsContent>
 
           <TabsContent value="schadeherstel" className="space-y-6">
-            <DamageRepairAnalytics period={reportPeriod} />
+            <DamageRepairAnalytics />
           </TabsContent>
         </Tabs>
       </div>
