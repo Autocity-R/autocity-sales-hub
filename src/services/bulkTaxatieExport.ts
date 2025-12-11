@@ -38,8 +38,23 @@ export const exportBulkTaxatieToExcel = async (results: BulkTaxatieResult[]) => 
   headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
   headerRow.height = 24;
 
+  // Sorteer resultaten: ETR primair (hoogste eerst), APR secundair (hoogste eerst)
+  const sortedResults = [...results].sort((a, b) => {
+    const etrA = a.jpCarsData?.etr || 0;
+    const etrB = b.jpCarsData?.etr || 0;
+    const aprA = a.jpCarsData?.apr || 0;
+    const aprB = b.jpCarsData?.apr || 0;
+    
+    // Eerst sorteren op ETR (hoogste eerst)
+    if (etrB !== etrA) {
+      return etrB - etrA;
+    }
+    // Bij gelijke ETR, sorteren op APR (hoogste eerst)
+    return aprB - aprA;
+  });
+
   // Add data rows
-  results.forEach((result) => {
+  sortedResults.forEach((result) => {
     const recommendation = result.aiAdvice?.recommendation || '';
     const gaspedaalUrl = result.jpCarsData?.portalUrls?.gaspedaal || '';
     
