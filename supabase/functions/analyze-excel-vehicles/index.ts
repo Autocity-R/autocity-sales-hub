@@ -65,10 +65,14 @@ serve(async (req) => {
 JE TAAK:
 Je ontvangt een Excel export van een autoleverancier. Analyseer de COMPLETE dataset als een ervaren professional.
 
-BELANGRIJK - BEKIJK ALLE KOLOMMEN:
-- Je krijgt alle kolomnamen EN alle data per rij
-- Het bouwjaar staat VAAK in een datum kolom zoals "Registration date", "Datum eerste toelating", "1ère immatriculation"
-- Als je een datum ziet zoals "15/03/2021" → het JAAR is 2021
+BOUWJAAR UIT DATUM KOLOMMEN (ZEER BELANGRIJK):
+Het bouwjaar staat in kolommen als "Registration date", "Datum eerste toelating", "1ère immatriculation"
+Herken ALLE datumformaten:
+- "15/03/2021" of "2021-03-15" → jaar 2021
+- "Mar-21" of "mar-21" of "feb-21" → jaar 2021 (maand-jaar format!)
+- "jan-20" → jaar 2020, "dec-23" → jaar 2023
+- Het getal NA de streepje is het JAAR: "feb-21" = 2021
+- Voeg "20" toe voor 2-cijferige jaren: 21→2021, 19→2019, 23→2023
 - Kilometerstand kan in kolommen staan als "Km", "Odometer", "Kilometerstand"
 - Prijs kan in "Net Value", "Catalogprijs", "Prix" staan
 
