@@ -229,17 +229,52 @@ Analyseer deze data en extraheer de voertuiggegevens. Retourneer ALLEEN een JSON
       }
     }
 
+    // Debug: Log alle voertuigen VOOR validatie om te zien wat er mis gaat
+    console.log(`\n🔍 DEBUG - Eerste 5 voertuigen RAW van AI:`);
+    vehicles.slice(0, 5).forEach((v, i) => {
+      console.log(`  ${i+1}. make="${v.make}" | model="${v.model}" | year=${v.buildYear} | km=${v.mileage} | fuel="${v.fuelType}"`);
+      console.log(`     original: "${String(v.originalData || '').substring(0, 100)}"`);
+    });
+
     // Validate and clean the results - mileage can be 0 for new cars
+    const currentYear = new Date().getFullYear();
     const validVehicles = vehicles.filter(v => 
       v.make && 
       v.model && 
-      v.buildYear && v.buildYear > 1990 && v.buildYear <= new Date().getFullYear() + 1 &&
+      v.buildYear && v.buildYear > 1990 && v.buildYear <= currentYear + 1 &&
       (v.mileage !== undefined && v.mileage >= 0) // 0 km is valid for new cars
     );
 
-    console.log(`📤 Verzonden: ${dataForAI.length} rijen naar AI`);
+    // Debug: Log gefaalde voertuigen met reden
+    const failedVehicles = vehicles.filter(v => 
+      !v.make || 
+      !v.model || 
+      !v.buildYear || v.buildYear <= 1990 || v.buildYear > currentYear + 1 ||
+      v.mileage === undefined || v.mileage < 0
+    );
+
+    if (failedVehicles.length > 0) {
+      console.log(`\n❌ DEBUG - ${failedVehicles.length} voertuigen GEFAALD:`);
+      failedVehicles.slice(0, 15).forEach((v, i) => {
+        const reasons: string[] = [];
+        if (!v.make) reasons.push('GEEN MAKE');
+        if (!v.model) reasons.push('GEEN MODEL');
+        if (!v.buildYear) reasons.push('GEEN JAAR');
+        else if (v.buildYear <= 1990) reasons.push(`JAAR TE OUD: ${v.buildYear}`);
+        else if (v.buildYear > currentYear + 1) reasons.push(`JAAR TOEKOMST: ${v.buildYear}`);
+        if (v.mileage === undefined) reasons.push('GEEN KM');
+        else if (v.mileage < 0) reasons.push(`KM NEGATIEF: ${v.mileage}`);
+        
+        console.log(`  ${i+1}. [${reasons.join(' | ')}]`);
+        console.log(`     make="${v.make}", model="${v.model}", year=${v.buildYear}, km=${v.mileage}`);
+        console.log(`     original: "${String(v.originalData || '').substring(0, 80)}..."`);
+      });
+    }
+
+    console.log(`\n📤 Verzonden: ${dataForAI.length} rijen naar AI`);
     console.log(`📥 Ontvangen: ${vehicles.length} voertuigen van AI`);
     console.log(`✅ Geldig: ${validVehicles.length} voertuigen na validatie`);
+    console.log(`❌ Gefaald: ${failedVehicles.length} voertuigen\n`);
 
     return new Response(JSON.stringify({ 
       vehicles: validVehicles,
