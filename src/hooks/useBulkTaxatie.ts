@@ -61,7 +61,49 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export const useBulkTaxatie = () => {
   const [state, setState] = useState<BulkTaxatieState>(initialState);
 
-  // Parse Excel file
+  // Find the real header row by looking for common column keywords
+  const findHeaderRow = (sheetAsArray: unknown[][]): number => {
+    const headerKeywords = [
+      'position', 'mileage', 'commercial', 'registration', 'brand', 'model', 
+      'km', 'year', 'bouwjaar', 'kilometerstand', 'merk', 'kenteken', 
+      'prijs', 'price', 'fuel', 'brandstof', 'transmission', 'owner'
+    ];
+
+    for (let i = 0; i < Math.min(20, sheetAsArray.length); i++) {
+      const row = sheetAsArray[i];
+      if (!row || !Array.isArray(row) || row.length === 0) continue;
+
+      // Convert row to lowercase string for keyword matching
+      const rowText = row
+        .map(cell => String(cell || '').toLowerCase())
+        .join(' ');
+
+      // Count how many keywords match
+      const matchCount = headerKeywords.filter(kw => rowText.includes(kw)).length;
+
+      // If we find 2+ keywords, this is likely the header row
+      if (matchCount >= 2) {
+        console.log(`✅ Header rij gevonden op rij ${i + 1}: "${row.slice(0, 4).join(', ')}..."`);
+        return i;
+      }
+    }
+
+    // Fallback: look for a row with many filled columns (likely the header)
+    for (let i = 0; i < Math.min(10, sheetAsArray.length); i++) {
+      const row = sheetAsArray[i];
+      if (!row || !Array.isArray(row)) continue;
+      
+      const filledCells = row.filter(cell => cell && String(cell).trim() !== '').length;
+      if (filledCells >= 5) {
+        console.log(`📋 Fallback: Header rij op ${i + 1} met ${filledCells} gevulde kolommen`);
+        return i;
+      }
+    }
+
+    return 0; // Default to first row
+  };
+
+  // Parse Excel file with smart header detection
   const parseExcelFile = useCallback(async (file: File) => {
     setState(prev => ({ ...prev, isUploading: true, filename: file.name }));
     
@@ -70,25 +112,69 @@ export const useBulkTaxatie = () => {
       const workbook = XLSX.read(data, { type: 'array' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
 
-      if (jsonData.length === 0) {
+      // First, read as array to detect header row
+      const sheetAsArray = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as unknown[][];
+      
+      if (sheetAsArray.length === 0) {
         throw new Error('Excel bestand is leeg');
       }
 
-      const columns = Object.keys(jsonData[0]);
+      // Find the real header row
+      const headerRowIndex = findHeaderRow(sheetAsArray);
+      console.log(`📊 Excel parsing met header op rij ${headerRowIndex + 1}`);
+
+      // Now parse with the correct header row
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+        range: headerRowIndex,
+        defval: '',
+        raw: false,
+      }) as Record<string, unknown>[];
+
+      if (jsonData.length === 0) {
+        throw new Error('Geen data gevonden na header rij');
+      }
+
+      // Get columns and filter out __EMPTY ones
+      let columns = Object.keys(jsonData[0]);
+      const realColumns = columns.filter(c => !c.startsWith('__EMPTY'));
+
+      console.log(`📋 Kolommen gevonden: ${realColumns.length > 0 ? realColumns.join(', ') : columns.join(', ')}`);
+
+      // If all columns are __EMPTY, combine all values into description
+      let processedData = jsonData;
+      let finalColumns = realColumns.length > 0 ? realColumns : columns;
+
+      if (realColumns.length < 3) {
+        console.log(`⚠️ Weinig bruikbare kolommen, combineer alle data tot beschrijving`);
+        processedData = jsonData.map((row, idx) => ({
+          rowIndex: idx,
+          combinedDescription: Object.values(row)
+            .filter(v => v && String(v).trim() !== '')
+            .join(' | '),
+        }));
+        finalColumns = ['rowIndex', 'combinedDescription'];
+      }
+
+      // Filter rows that have actual data (at least 2 non-empty values)
+      const validData = processedData.filter(row => {
+        const values = Object.values(row).filter(v => v && String(v).trim() !== '');
+        return values.length >= 2;
+      });
+
+      console.log(`✅ ${validData.length} data rijen geïmporteerd (van ${jsonData.length} totaal)`);
 
       setState(prev => ({
         ...prev,
         isUploading: false,
-        rawData: jsonData,
-        availableColumns: columns,
+        rawData: validData,
+        availableColumns: finalColumns,
         inputs: [],
         results: [],
         parsedVehicles: [],
       }));
 
-      toast.success(`${jsonData.length} rijen geïmporteerd uit "${file.name}"`);
+      toast.success(`${validData.length} rijen geïmporteerd uit "${file.name}"`);
     } catch (err) {
       console.error('Excel parse error:', err);
       toast.error('Fout bij het lezen van Excel bestand');
