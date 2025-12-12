@@ -106,8 +106,19 @@ RETOURNEER VOOR ELK VOERTUIG:
   "originalData": originele beschrijving/tekst waar je dit uit hebt gehaald
 }
 
+KRITIEK - MERK HERLEIDING:
+Als er geen merk expliciet wordt genoemd maar je herkent de modelnaam, dan MOET je het merk afleiden.
+Dit is standaard automotive kennis - elke modelnaam is uniek voor één fabrikant.
+
+Voorbeeld: "208 premium pack 1.2 PureTech / 2019"
+→ Je herkent "208" als een Peugeot model
+→ Dus: make = "Peugeot", model = "208"
+
+Pas deze logica toe op ALLE modellen die je herkent. Vertrouw op je automotive kennis.
+
 BELANGRIJKE REGELS:
 - Wees flexibel met kolomnamen - leveranciers gebruiken allemaal verschillende namen
+- HERLEID HET MERK uit de modelnaam als het merk niet expliciet is genoemd
 - PROBEER ALTIJD vermogen te bepalen - dit is cruciaal voor JP Cars taxatie
 - Als je vermogen schat op basis van motorcode, geef powerSource: "motorcode"
 - Als je iets niet zeker weet, geef een lagere confidence score
