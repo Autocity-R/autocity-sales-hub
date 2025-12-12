@@ -192,12 +192,12 @@ Analyseer deze data en extraheer de voertuiggegevens. Retourneer ALLEEN een JSON
       throw new Error('Kon AI response niet parsen');
     }
 
-    // Validate and clean the results
+    // Validate and clean the results - mileage can be 0 for new cars
     const validVehicles = vehicles.filter(v => 
       v.make && 
       v.model && 
       v.buildYear && v.buildYear > 1990 && v.buildYear <= new Date().getFullYear() + 1 &&
-      v.mileage && v.mileage > 0
+      (v.mileage !== undefined && v.mileage >= 0) // 0 km is valid for new cars
     );
 
     console.log(`✅ Successfully analyzed ${validVehicles.length} vehicles out of ${vehicles.length} parsed`);
