@@ -133,7 +133,7 @@ ${JSON.stringify(dataForAI, null, 2)}
 
 Analyseer deze data en extraheer de voertuiggegevens. Retourneer ALLEEN een JSON array.`;
 
-    console.log('🤖 Calling AI to analyze vehicles...');
+    console.log(`🤖 Calling OpenAI GPT-5-mini to analyze ${dataForAI.length} vehicles...`);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -142,11 +142,12 @@ Analyseer deze data en extraheer de voertuiggegevens. Retourneer ALLEEN een JSON
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'openai/gpt-5-mini',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
+        max_completion_tokens: 16384,
       }),
     });
 
