@@ -243,8 +243,8 @@ export const useBulkTaxatie = () => {
     setState(prev => ({ ...prev, isParsing: true }));
 
     try {
-      // Process in batches of 100 rows
-      const batchSize = 100;
+      // Process in batches of 150 rows (Gemini can handle this within timeout)
+      const batchSize = 150;
       const allVehicles: BulkTaxatieInput[] = [];
 
       for (let i = 0; i < rawData.length; i += batchSize) {

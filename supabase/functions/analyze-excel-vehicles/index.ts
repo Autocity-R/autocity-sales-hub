@@ -48,7 +48,8 @@ serve(async (req) => {
     }
 
     // Build the data representation for AI
-    const dataForAI = rows.slice(0, 100).map((row, idx) => {
+    // Support up to 150 vehicles per batch
+    const dataForAI = rows.slice(0, 150).map((row, idx) => {
       const rowData: Record<string, string> = {};
       headers.forEach(h => {
         const val = row[h];
@@ -123,7 +124,9 @@ BELANGRIJKE REGELS:
 - Als je vermogen schat op basis van motorcode, geef powerSource: "motorcode"
 - Als je iets niet zeker weet, geef een lagere confidence score
 - Sla rijen over die geen auto's lijken te zijn (lege rijen, headers, etc.)
-- Geef ALLEEN een JSON array terug, geen andere tekst`;
+- Geef ALLEEN een JSON array terug, geen andere tekst
+
+KRITIEK: Je analyseert ${dataForAI.length} voertuigen. Retourneer ALLE ${dataForAI.length} voertuigen in je response. Stop NOOIT halverwege.`;
 
     const userPrompt = `KOLOMMEN IN DIT EXCEL BESTAND:
 ${headers.join(' | ')}
@@ -133,7 +136,8 @@ ${JSON.stringify(dataForAI, null, 2)}
 
 Analyseer deze data en extraheer de voertuiggegevens. Retourneer ALLEEN een JSON array.`;
 
-    console.log(`🤖 Calling OpenAI GPT-5-mini to analyze ${dataForAI.length} vehicles...`);
+    console.log(`🤖 Calling Gemini 2.5 Flash to analyze ${dataForAI.length} vehicles...`);
+    const startTime = Date.now();
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -142,14 +146,16 @@ Analyseer deze data en extraheer de voertuiggegevens. Retourneer ALLEEN een JSON
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'openai/gpt-5-mini',
+        model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        max_completion_tokens: 16384,
+        max_tokens: 32768,
       }),
     });
+
+    console.log(`⏱️ AI API response in ${Date.now() - startTime}ms, status: ${response.status}`);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -212,7 +218,9 @@ Analyseer deze data en extraheer de voertuiggegevens. Retourneer ALLEEN een JSON
       (v.mileage !== undefined && v.mileage >= 0) // 0 km is valid for new cars
     );
 
-    console.log(`✅ Successfully analyzed ${validVehicles.length} vehicles out of ${vehicles.length} parsed`);
+    console.log(`📤 Verzonden: ${dataForAI.length} rijen naar AI`);
+    console.log(`📥 Ontvangen: ${vehicles.length} voertuigen van AI`);
+    console.log(`✅ Geldig: ${validVehicles.length} voertuigen na validatie`);
 
     return new Response(JSON.stringify({ 
       vehicles: validVehicles,
