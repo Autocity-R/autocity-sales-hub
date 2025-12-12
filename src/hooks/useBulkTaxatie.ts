@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import type { BulkTaxatieInput, BulkTaxatieResult, BulkTaxatieState } from '@/types/bulkTaxatie';
@@ -9,6 +9,7 @@ import {
   fetchInternalComparison,
   generateAIAdvice,
   saveTaxatieValuation,
+  fetchRecentFeedback,
 } from '@/services/taxatieService';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -27,6 +28,18 @@ interface AIAnalyzedVehicle {
   color: string | null;
   confidence: number;
   originalData: string;
+}
+
+// Feedback context type for bulk processing
+interface FeedbackContext {
+  feedback_type: string;
+  notes: string | null;
+  vehicle_brand: string;
+  vehicle_model: string;
+  ai_recommendation: string;
+  ai_purchase_price: number;
+  ai_selling_price: number;
+  actual_outcome: Record<string, unknown> | null;
 }
 
 const initialState: BulkTaxatieState = {
@@ -58,8 +71,41 @@ const initialState: BulkTaxatieState = {
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Timeout wrapper for promises
+const withTimeout = <T>(promise: Promise<T>, ms: number, operation: string): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout na ${ms / 1000}s bij ${operation}`)), ms)
+    ),
+  ]);
+};
+
+// Retry wrapper for API calls
+const withRetry = async <T>(
+  fn: () => Promise<T>,
+  retries: number,
+  delayMs: number,
+  operation: string
+): Promise<T> => {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      console.warn(`⚠️ ${operation} poging ${attempt + 1}/${retries + 1} mislukt:`, lastError.message);
+      if (attempt < retries) {
+        await delay(delayMs);
+      }
+    }
+  }
+  throw lastError;
+};
+
 export const useBulkTaxatie = () => {
   const [state, setState] = useState<BulkTaxatieState>(initialState);
+  const feedbackCacheRef = useRef<FeedbackContext[] | null>(null);
 
   // Find the real header row by looking for common column keywords
   const findHeaderRow = (sheetAsArray: unknown[][]): number => {
@@ -164,6 +210,9 @@ export const useBulkTaxatie = () => {
 
       console.log(`✅ ${validData.length} data rijen geïmporteerd (van ${jsonData.length} totaal)`);
 
+      // Clear feedback cache when new file is uploaded
+      feedbackCacheRef.current = null;
+
       setState(prev => ({
         ...prev,
         isUploading: false,
@@ -262,8 +311,11 @@ export const useBulkTaxatie = () => {
     }
   }, [state.rawData, state.availableColumns]);
 
-  // Process single vehicle
-  const processSingleVehicle = async (input: BulkTaxatieInput): Promise<BulkTaxatieResult> => {
+  // Process single vehicle with timeouts and cached feedback
+  const processSingleVehicle = async (
+    input: BulkTaxatieInput,
+    feedbackContext: FeedbackContext[]
+  ): Promise<BulkTaxatieResult> => {
     const vehicleData: TaxatieVehicleData = {
       brand: input.brand,
       model: input.model,
@@ -281,24 +333,37 @@ export const useBulkTaxatie = () => {
     };
 
     try {
-      const jpCarsData = await fetchJPCarsData('', vehicleData);
-      await delay(500);
-      
-      const portalAnalysis = await fetchPortalAnalysis(
-        vehicleData,
-        jpCarsData?.portalUrls,
-        jpCarsData?.window
+      // JP Cars with 30s timeout and 2 retries
+      const jpCarsData = await withRetry(
+        () => withTimeout(fetchJPCarsData('', vehicleData), 30000, 'JP Cars'),
+        2, 2000, 'JP Cars'
       );
       await delay(300);
       
-      const internalComparison = await fetchInternalComparison(vehicleData);
-      await delay(300);
+      // Portal analysis with 45s timeout and 2 retries
+      const portalAnalysis = await withRetry(
+        () => withTimeout(
+          fetchPortalAnalysis(vehicleData, jpCarsData?.portalUrls, jpCarsData?.window),
+          45000, 'Portal analyse'
+        ),
+        2, 2000, 'Portal analyse'
+      );
+      await delay(200);
       
-      const aiAdvice = await generateAIAdvice(
-        vehicleData,
-        portalAnalysis,
-        jpCarsData,
-        internalComparison
+      // Internal comparison with 15s timeout and 1 retry
+      const internalComparison = await withRetry(
+        () => withTimeout(fetchInternalComparison(vehicleData), 15000, 'Interne vergelijking'),
+        1, 1000, 'Interne vergelijking'
+      );
+      await delay(200);
+      
+      // AI advice with 60s timeout and 2 retries (uses cached feedback)
+      const aiAdvice = await withRetry(
+        () => withTimeout(
+          generateAIAdviceWithFeedback(vehicleData, portalAnalysis, jpCarsData, internalComparison, feedbackContext),
+          60000, 'AI advies'
+        ),
+        2, 3000, 'AI advies'
       );
 
       const saved = await saveTaxatieValuation({
@@ -321,7 +386,7 @@ export const useBulkTaxatie = () => {
         savedValuationId: saved?.id,
       };
     } catch (err) {
-      console.error(`Error processing ${input.brand} ${input.model}:`, err);
+      console.error(`❌ Error processing ${input.brand} ${input.model}:`, err);
       return {
         input,
         vehicleData,
@@ -335,13 +400,58 @@ export const useBulkTaxatie = () => {
     }
   };
 
-  // Start bulk processing
+  // Generate AI advice with pre-fetched feedback (no additional fetch per vehicle)
+  const generateAIAdviceWithFeedback = async (
+    vehicleData: TaxatieVehicleData,
+    portalAnalysis: any,
+    jpCarsData: any,
+    internalComparison: any,
+    feedbackContext: FeedbackContext[]
+  ) => {
+    const { data, error } = await supabase.functions.invoke('taxatie-ai-advice', {
+      body: {
+        vehicleData,
+        portalAnalysis,
+        jpCarsData,
+        internalComparison,
+        feedbackHistory: feedbackContext,
+      }
+    });
+
+    if (error) {
+      throw new Error(error.message || 'AI advice failed');
+    }
+
+    if (!data?.success || !data?.advice) {
+      throw new Error(data?.error || 'Invalid AI response');
+    }
+
+    return data.advice;
+  };
+
+  // Start bulk processing with robust error handling
   const startBulkProcessing = useCallback(async () => {
     const { inputs } = state;
     
     if (inputs.length === 0) {
       toast.error('Analyseer eerst de Excel data met AI');
       return;
+    }
+
+    // Fetch feedback ONCE at the start
+    console.log('📚 Fetching feedback context (eenmalig)...');
+    let feedbackContext: FeedbackContext[] = [];
+    try {
+      if (feedbackCacheRef.current) {
+        feedbackContext = feedbackCacheRef.current;
+        console.log(`📋 Gebruikte gecachte feedback: ${feedbackContext.length} items`);
+      } else {
+        feedbackContext = await withTimeout(fetchRecentFeedback(30), 10000, 'Feedback ophalen');
+        feedbackCacheRef.current = feedbackContext;
+        console.log(`✅ Feedback opgehaald: ${feedbackContext.length} items`);
+      }
+    } catch (err) {
+      console.warn('⚠️ Feedback ophalen mislukt, doorgaan zonder:', err);
     }
 
     setState(prev => ({
@@ -360,10 +470,13 @@ export const useBulkTaxatie = () => {
     }));
 
     const results: BulkTaxatieResult[] = [];
+    let successCount = 0;
+    let errorCount = 0;
 
     for (let i = 0; i < inputs.length; i++) {
       const input = inputs[i];
       
+      // Update progress with "processing" status
       setState(prev => ({
         ...prev,
         progress: {
@@ -371,11 +484,40 @@ export const useBulkTaxatie = () => {
           total: inputs.length,
           currentVehicle: `${input.brand} ${input.model}`,
         },
+        results: prev.results.map((r, idx) => 
+          idx === i ? { ...r, status: 'processing' as const } : r
+        ),
       }));
 
-      const result = await processSingleVehicle(input);
-      results.push(result);
+      console.log(`🚗 [${i + 1}/${inputs.length}] Processing: ${input.brand} ${input.model}`);
 
+      // Process with full error isolation
+      let result: BulkTaxatieResult;
+      try {
+        result = await processSingleVehicle(input, feedbackContext);
+      } catch (err) {
+        console.error(`❌ Unhandled error for ${input.brand} ${input.model}:`, err);
+        result = {
+          input,
+          vehicleData: {} as TaxatieVehicleData,
+          jpCarsData: null,
+          portalAnalysis: null,
+          internalComparison: null,
+          aiAdvice: null,
+          status: 'error',
+          error: err instanceof Error ? err.message : 'Onbekende fout',
+        };
+      }
+
+      results.push(result);
+      
+      if (result.status === 'completed') {
+        successCount++;
+      } else {
+        errorCount++;
+      }
+
+      // Update result in state
       setState(prev => ({
         ...prev,
         results: prev.results.map((r, idx) => 
@@ -383,8 +525,9 @@ export const useBulkTaxatie = () => {
         ),
       }));
 
+      // Delay between vehicles (shorter since we have timeouts now)
       if (i < inputs.length - 1) {
-        await delay(1500);
+        await delay(1000);
       }
     }
 
@@ -394,14 +537,13 @@ export const useBulkTaxatie = () => {
       results,
     }));
 
-    const successCount = results.filter(r => r.status === 'completed').length;
-    const errorCount = results.filter(r => r.status === 'error').length;
-    
+    console.log(`✅ Bulk processing voltooid: ${successCount} succesvol, ${errorCount} mislukt`);
     toast.success(`Bulk taxatie voltooid: ${successCount} succesvol, ${errorCount} mislukt`);
   }, [state.inputs]);
 
   // Reset state
   const reset = useCallback(() => {
+    feedbackCacheRef.current = null;
     setState(initialState);
   }, []);
 
