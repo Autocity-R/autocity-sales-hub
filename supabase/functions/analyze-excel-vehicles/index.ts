@@ -60,7 +60,7 @@ serve(async (req) => {
       return { rowIndex: idx, ...rowData };
     });
 
-    const systemPrompt = `JE IDENTITEIT:
+  const systemPrompt = `JE IDENTITEIT:
 Je bent een SENIOR AUTOMOTIVE TAXATIE EXPERT én EXCEL DATA SPECIALIST.
 
 ALS EXCEL DATA SPECIALIST:
@@ -78,6 +78,19 @@ ALS AUTOMOTIVE EXPERT (30+ jaar ervaring):
 
 JE DOEL:
 Elk voertuig uit de Excel correct terugkoppelen met alle relevante data.
+
+BOUWJAAR EXTRACTIE (KRITIEK - LEES DIT GOED):
+Leveranciers gebruiken diverse velden voor bouwjaar/registratiedatum:
+- "Registration date", "Datum eerste toelating", "Eerste registratie", "Bouwjaar", "Year", "Jaar", "Date of first registration"
+- Datumformaten die je MOET herkennen:
+  * "15-03-2020" → bouwjaar = 2020
+  * "2020-03-15" → bouwjaar = 2020
+  * "03/15/2020" → bouwjaar = 2020
+  * "03/2020" → bouwjaar = 2020
+  * "2020" → bouwjaar = 2020
+  * Excel nummer (bijv. 44621) → bereken terug naar datum → extract jaar
+- JE RETOURNEERT ALTIJD EEN 4-CIJFERIG JAAR (bijv. 2020), NOOIT een datum
+- Als een kolom "date" of "datum" bevat en een jaar zichtbaar is, gebruik dat jaar
 
 VERMOGEN EXTRACTIE (KRITIEK VOOR JP CARS):
 JP Cars heeft vermogen (PK) nodig voor nauwkeurige taxaties. Zoek ALTIJD naar vermogen:
@@ -196,7 +209,7 @@ Analyseer deze data en extraheer de voertuiggegevens. Retourneer ALLEEN een JSON
     let vehicles: AnalyzedVehicle[];
     try {
       vehicles = JSON.parse(jsonStr);
-    } catch (parseError) {
+    } catch (parseError: unknown) {
       console.error('JSON parse error:', parseError);
       console.log('🔧 Attempting to recover partial JSON...');
       
@@ -236,8 +249,33 @@ Analyseer deze data en extraheer de voertuiggegevens. Retourneer ALLEEN een JSON
       console.log(`     original: "${String(v.originalData || '').substring(0, 100)}"`);
     });
 
-    // Validate and clean the results - mileage can be 0 for new cars
+    // Fallback: Probeer bouwjaar te extracten uit originalData als het ontbreekt
     const currentYear = new Date().getFullYear();
+    const extractYearFromString = (str: string): number | null => {
+      if (!str) return null;
+      // Match 4-digit year between 1990-2030
+      const yearMatch = str.match(/\b(19[9][0-9]|20[0-2][0-9]|2030)\b/);
+      if (yearMatch) return parseInt(yearMatch[1], 10);
+      // Match dd-mm-yyyy or yyyy-mm-dd patterns
+      const dateMatch = str.match(/(\d{2})[.\-\/](\d{2})[.\-\/](\d{4})/);
+      if (dateMatch) return parseInt(dateMatch[3], 10);
+      const dateMatch2 = str.match(/(\d{4})[.\-\/](\d{2})[.\-\/](\d{2})/);
+      if (dateMatch2) return parseInt(dateMatch2[1], 10);
+      return null;
+    };
+
+    // Apply fallback for missing buildYear
+    vehicles.forEach(v => {
+      if (!v.buildYear || v.buildYear <= 1990 || v.buildYear > currentYear + 1) {
+        const extractedYear = extractYearFromString(v.originalData || '');
+        if (extractedYear && extractedYear > 1990 && extractedYear <= currentYear + 1) {
+          console.log(`🔧 Fallback: Extracted year ${extractedYear} from "${String(v.originalData).substring(0, 50)}..."`);
+          v.buildYear = extractedYear;
+        }
+      }
+    });
+
+    // Validate and clean the results - mileage can be 0 for new cars
     const validVehicles = vehicles.filter(v => 
       v.make && 
       v.model && 
