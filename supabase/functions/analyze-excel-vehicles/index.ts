@@ -151,7 +151,7 @@ Analyseer deze data en extraheer de voertuiggegevens. Retourneer ALLEEN een JSON
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        max_tokens: 32768,
+        max_tokens: 65536,
       }),
     });
 
@@ -178,12 +178,18 @@ Analyseer deze data en extraheer de voertuiggegevens. Retourneer ALLEEN een JSON
 
     const aiResponse = await response.json();
     const content = aiResponse.choices?.[0]?.message?.content;
+    const finishReason = aiResponse.choices?.[0]?.finish_reason;
 
     if (!content) {
       throw new Error('Geen response van AI ontvangen');
     }
 
-    console.log('📝 AI response received, parsing JSON...');
+    console.log(`📝 AI response received, finish_reason: ${finishReason}, content length: ${content.length}`);
+
+    // Check if response was truncated
+    if (finishReason === 'length') {
+      console.warn('⚠️ AI response was truncated due to max_tokens limit');
+    }
 
     // Extract JSON from response (handle markdown code blocks)
     let jsonStr = content;
@@ -206,8 +212,35 @@ Analyseer deze data en extraheer de voertuiggegevens. Retourneer ALLEEN een JSON
       vehicles = JSON.parse(jsonStr);
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
-      console.error('Content was:', jsonStr.substring(0, 500));
-      throw new Error('Kon AI response niet parsen');
+      console.log('🔧 Attempting to recover partial JSON...');
+      
+      // Try to recover partial JSON by finding the last complete object
+      const lastCompleteObject = jsonStr.lastIndexOf('},');
+      if (lastCompleteObject > 0) {
+        const recoveredJson = jsonStr.substring(0, lastCompleteObject + 1) + ']';
+        try {
+          vehicles = JSON.parse(recoveredJson);
+          console.log(`✅ Recovered ${vehicles.length} vehicles from partial JSON`);
+        } catch {
+          // Try finding last complete object without comma
+          const lastObject = jsonStr.lastIndexOf('}');
+          if (lastObject > 0) {
+            const recovered2 = jsonStr.substring(0, lastObject + 1) + ']';
+            try {
+              vehicles = JSON.parse(recovered2);
+              console.log(`✅ Recovered ${vehicles.length} vehicles from partial JSON (method 2)`);
+            } catch {
+              console.error('Content preview:', jsonStr.substring(0, 1000));
+              throw new Error('Kon AI response niet parsen, ook niet na recovery poging');
+            }
+          } else {
+            throw new Error('Kon AI response niet parsen');
+          }
+        }
+      } else {
+        console.error('Content preview:', jsonStr.substring(0, 1000));
+        throw new Error('Kon AI response niet parsen');
+      }
     }
 
     // Validate and clean the results - mileage can be 0 for new cars
