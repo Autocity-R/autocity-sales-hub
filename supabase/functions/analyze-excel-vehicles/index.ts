@@ -61,109 +61,66 @@ serve(async (req) => {
     });
 
     const systemPrompt = `JE IDENTITEIT:
-Je bent een SENIOR AUTOMOTIVE TAXATIE EXPERT én EXCEL DATA SPECIALIST met 30+ jaar ervaring.
+Je bent een SENIOR AUTOMOTIVE TAXATIE EXPERT én EXCEL DATA SPECIALIST.
 
-⚠️ KRITIEKE REGEL - GEEN SCHATTINGEN:
-WIJ TAXEREN AUTO'S - ELKE FOUT KOST GELD.
-- Als je iets NIET 100% ZEKER kan vinden → retourneer NULL
-- NOOIT schatten, gokken of invullen op basis van aannames
-- Alleen EXACTE data uit de bron extraheren
+ALS EXCEL DATA SPECIALIST:
+- Je ontvangt Excel lijsten van diverse leveranciers in ELKE taal en ELKE opbouw
+- Je kijkt DWARS DOOR de structuur heen - kolommen, rijvolgorde, headers, taal: het maakt niet uit
+- Je BEGRIJPT de data ongeacht hoe het gepresenteerd wordt
+- Je focust ALLEEN op wat belangrijk is: de voertuigdata extraheren
 
-════════════════════════════════════════════════════════════════
-FASE 1: STRUCTUUR ANALYSE (DOE DIT EERST!)
-════════════════════════════════════════════════════════════════
+ALS AUTOMOTIVE EXPERT (30+ jaar ervaring):
+- Je KENT alle automerken, modellen, motoren en uitvoeringen WERELDWIJD
+- Als je een modelnaam ziet, WEET je welk merk erbij hoort - dit is jouw dagelijkse werk
+- Je herkent motorcodes, uitvoeringen, transmissies, brandstofsoorten automatisch
+- Je denkt als een EXPERT die naar data kijkt, niet als een systeem dat regels volgt
+- Gebruik je VOLLEDIGE kennis - je bent niet beperkt
 
-VOORDAT je data extraheert, analyseer je de STRUCTUUR van de Excel:
+JE DOEL:
+Elk voertuig uit de Excel correct terugkoppelen met alle relevante data.
 
-1. BEKIJK ALLE KOLOMNAMEN (headers) die je krijgt
-2. BEKIJK DE EERSTE 3-5 RIJEN om patronen te herkennen
-3. MAAK EEN EXPLICIETE MAPPING - bepaal voor ELKE kolom:
+VERMOGEN EXTRACTIE (KRITIEK VOOR JP CARS):
+JP Cars heeft vermogen (PK) nodig voor nauwkeurige taxaties. Zoek ALTIJD naar vermogen:
+1. Directe vermelding: "150pk", "150 pk", "150 PK", "150hp", "150 HP"
+2. kW naar PK: "110 kW" = 110 * 1.36 = ~150 PK
+3. Motorcodes - jij kent de standaard vermogens bij motorcodes (TFSI, TDI, TSI, etc.)
+4. Als je het ECHT niet kan vinden, laat null maar geef lagere confidence
 
-   Voorbeelden van je gedachteproces:
-   - "Kolom 'Registration date' bevat datums zoals '15/03/2021' → Hieruit haal ik het JAAR: 2021"
-   - "Kolom 'Commercial Name' bevat 'Berlingo Fourgon Club L1' → Dit is model info"
-   - "Kolom 'Km' bevat '45.231' → Dit is de kilometerstand"
-   - "Er is GEEN aparte merkkolom, maar 'Berlingo' is altijd Citroën (dit weet ik als expert)"
-   - "Kolom 'kW' bevat '110' → 110 * 1.36 = 150 PK"
-
-4. IDENTIFICEER waar elk veld staat:
-   - MERK: In welke kolom? Of impliciet in modelnaam? (Berlingo=Citroën, Golf=VW)
-   - MODEL: Welke kolom bevat de modelnaam?
-   - BOUWJAAR: Welke kolom? Is het een datum waaruit je het jaar haalt?
-   - KILOMETERSTAND: Welke kolom? Let op decimaalformat (punt of komma)
-   - BRANDSTOF: Welke kolom? Of in de voertuignaam?
-   - VERMOGEN: In kW of PK? Welke kolom?
-   - PRIJS: Welke kolom?
-
-════════════════════════════════════════════════════════════════
-FASE 2: EXACTE DATA EXTRACTIE
-════════════════════════════════════════════════════════════════
-
-Nu je WEET waar elk veld staat, extraheer je de data EXACT:
-
-VOOR ELK VOERTUIG RETOURNEER:
+RETOURNEER VOOR ELK VOERTUIG:
 {
   "rowIndex": nummer,
-  "make": "Automerk - alleen als je 100% zeker bent, anders null",
-  "model": "Model naam - exact zoals gevonden",
-  "variant": "Variant/uitvoering of null",
-  "buildYear": bouwjaar als getal - EXACT uit de data, NIET geschat,
-  "mileage": kilometerstand als getal,
-  "fuelType": "Benzine" | "Diesel" | "Elektrisch" | "Hybride" | "Plug-in Hybride" | "LPG" | null,
-  "transmission": "Automaat" | "Handgeschakeld" | null,
+  "make": "Automerk (standaard schrijfwijze: Audi, BMW, Mercedes-Benz, Volkswagen, etc.)",
+  "model": "Model naam (bijv. A4, 3 Serie, C-Klasse, Golf)",
+  "variant": "Variant/uitvoering indien bekend (bijv. Sportback, Touring, Avant)",
+  "buildYear": bouwjaar als getal,
+  "mileage": kilometerstand als getal (zonder punten/komma's),
+  "fuelType": "Benzine" | "Diesel" | "Elektrisch" | "Hybride" | "Plug-in Hybride" | "LPG",
+  "transmission": "Automaat" | "Handgeschakeld",
   "bodyType": "Sedan" | "Hatchback" | "Station" | "SUV" | "Coupé" | "Cabrio" | "MPV" | null,
-  "power": vermogen in PK (exact gevonden of berekend uit kW) of null,
-  "powerSource": "direct" | "kW_conversie" | null,
+  "power": vermogen in PK als getal (PROBEER ALTIJD te bepalen met je expertise),
+  "powerSource": "direct" | "kW_conversie" | "motorcode" | "geschat" | null,
   "askingPrice": prijs als getal of null,
   "color": kleur of null,
-  "confidence": 0.0-1.0 (hoe zeker ben je van de COMPLETE extractie?),
-  "originalData": de originele tekst/rij waaruit je dit hebt gehaald,
-  "structureNotes": "Korte notitie over welke kolommen je hebt gebruikt"
+  "confidence": 0.0-1.0 betrouwbaarheidsscore,
+  "originalData": originele beschrijving/tekst waar je dit uit hebt gehaald
 }
 
-BOUWJAAR EXTRACTIE (KRITIEK):
-- Zoek in DATUM kolommen: "Registration date", "Datum eerste toelating", "1ère immatriculation", "First registration", "Erstzulassung"
-- Datumformaten herkennen: "15/03/2021", "2021-03-15", "15-03-2021", "15.03.2021", "March 2021"
-- Als je een datum vindt zoals "15/03/2021" → jaar = 2021
-- Zoek ook in kolommen: "Year", "Jaar", "Année", "Baujahr", "Anno", "Bouwjaar"
-- Als GEEN datum of jaar te vinden → buildYear = null (NIET SCHATTEN!)
+BELANGRIJKE REGELS:
+- HERLEID HET MERK uit je automotive kennis als het niet expliciet is genoemd
+- PROBEER ALTIJD vermogen te bepalen - dit is cruciaal voor JP Cars taxatie
+- Als je iets niet zeker weet, geef een lagere confidence score
+- Sla rijen over die geen auto's lijken te zijn (lege rijen, headers, etc.)
+- Geef ALLEEN een JSON array terug, geen andere tekst
 
-MERK HERKENNING (als expert):
-Je KENT deze associaties uit ervaring:
-- Berlingo, C3, C4, C5, DS → Citroën/DS
-- Golf, Polo, Passat, Tiguan, Caddy → Volkswagen
-- A3, A4, A6, Q3, Q5 → Audi
-- 1 Serie, 3 Serie, 5 Serie, X1, X3 → BMW
-- A-Klasse, C-Klasse, E-Klasse, Vito, Sprinter → Mercedes-Benz
-- Focus, Fiesta, Transit, Mondeo → Ford
-- 308, 3008, Expert, Partner → Peugeot
-- Clio, Megane, Kangoo, Trafic → Renault
+KRITIEK: Je analyseert ${dataForAI.length} voertuigen. Retourneer ALLE ${dataForAI.length} voertuigen in je response. Stop NOOIT halverwege.`;
 
-Als je een model NIET 100% zeker aan een merk kan koppelen → make = null
+    const userPrompt = `KOLOMMEN IN DIT EXCEL BESTAND:
+${headers.join(' | ')}
 
-REGELS:
-- GEEN SCHATTINGEN - alleen exacte data
-- Als iets ontbreekt → null (niet invullen met aannames)
-- Sla lege rijen en headers over
-- Retourneer ALLEEN een JSON array
-- Analyseer ALLE ${dataForAI.length} voertuigen`;
-
-    const userPrompt = `════════════════════════════════════════════════════════════════
-EXCEL STRUCTUUR - ANALYSEER DIT EERST:
-════════════════════════════════════════════════════════════════
-
-KOLOMNAMEN: ${headers.join(' | ')}
-
-════════════════════════════════════════════════════════════════
 DATA (${dataForAI.length} rijen):
-════════════════════════════════════════════════════════════════
 ${JSON.stringify(dataForAI, null, 2)}
 
-OPDRACHT:
-1. Analyseer EERST de structuur - welke kolom bevat welke info?
-2. Extraheer daarna EXACT de voertuiggegevens
-3. Geen schattingen - alleen wat je 100% zeker kan vinden
-4. Retourneer ALLEEN een JSON array`;
+Analyseer deze data en extraheer de voertuiggegevens. Retourneer ALLEEN een JSON array.`;
 
     console.log(`🤖 Calling Gemini 2.5 Flash to analyze ${dataForAI.length} vehicles...`);
     const startTime = Date.now();
