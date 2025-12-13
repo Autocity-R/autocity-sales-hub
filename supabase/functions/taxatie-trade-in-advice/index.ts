@@ -120,11 +120,20 @@ ${input.portalAnalysis.listings?.slice(0, 8).map((l, i) =>
 
 ---
 
-## STAP 2: STANDAARD CORRECTIE (10%)
+## STAP 2: STANDAARD CORRECTIE (minimaal €1.500)
 
-- Max inkoopprijs = Referentieprijs × 0.90
-- Dit is het "officiële" bod naar de klant
-- Je vertelt: "Standaard handelsmarge van 10%"
+De marge moet MINIMAAL €1.500 zijn. Dit betekent:
+- Bij Referentieprijs < €15.000: Trek €1.500 af (vast bedrag)
+- Bij Referentieprijs ≥ €15.000: Trek 10% af (percentage)
+
+Voorbeelden:
+- €9.000 → max inkoop = €7.500 (marge €1.500)
+- €12.000 → max inkoop = €10.500 (marge €1.500)
+- €15.000 → max inkoop = €13.500 (marge €1.500 = 10%)
+- €20.000 → max inkoop = €18.000 (marge €2.000 = 10%)
+- €25.000 → max inkoop = €22.500 (marge €2.500 = 10%)
+
+Je communiceert: "Standaard handelsmarge voor reconditie en winst"
 
 ---
 
@@ -408,11 +417,11 @@ De verkoper ziet dezelfde data + hints om nog scherper in te kopen.
                 },
                 maxPurchasePrice: {
                   type: 'number',
-                  description: 'Max inkoopprijs: referentieprijs × 0.90 (10% correctie)'
+                  description: 'Max inkoopprijs: referentieprijs minus marge (min €1.500 of 10% bij ≥€15k)'
                 },
                 standardCorrectionPercentage: {
                   type: 'number',
-                  description: 'Altijd 10'
+                  description: 'Berekend percentage: bij <€15k is dit (1500/referentieprijs)*100, bij ≥€15k is dit 10'
                 },
                 portalUrl: {
                   type: 'string',
