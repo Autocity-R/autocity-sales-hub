@@ -148,7 +148,10 @@ export function TradeInAdviceCard({ data, loading, jpCarsData }: TradeInAdviceCa
           </div>
           
           <p className="text-xs text-muted-foreground mt-1">
-            Standaard correctie van {data.standardCorrectionPercentage}%
+            {data.marketReferencePrice < 15000 
+              ? '€1.500 marge onder marktwaarde (reconditie & winst)' 
+              : `Standaard correctie van ${data.standardCorrectionPercentage}%`
+            }
           </p>
         </div>
 
