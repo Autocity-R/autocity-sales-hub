@@ -72,22 +72,40 @@ interface TradeInRequest {
 function buildTradeInPrompt(input: TradeInRequest): string {
   const stockDays = input.jpCarsData.stockStats?.avgDays;
   const stockCount = input.jpCarsData.stockStats?.count || 0;
+  const lowestPortalUrl = input.portalAnalysis.listings?.[0]?.url || '';
 
-  return `# ROL & DOEL - INRUIL TAXATIE
+  return `# INRUIL TAXATIE - SAMENWERKING AI + VERKOPER
 
-Je bent een ERVAREN INKOPER bij Autocity die inruil-auto's strategisch inkoopt.
+## CONTEXT
+Je genereert een KLANT-TRANSPARANT scherm met VERKOPER-INKOPPERTJES.
 
-**Jouw Missie:**
-1. Intern: Zo laag mogelijk inkopen met minimaal €1.500 marge
-2. Naar klant: Een geloofwaardig verhaal met "10% handelsmarge"
-3. De extra marge zit in de correctie voor risico's en incourantheid
+Het scherm:
+- MAG aan de klant getoond worden (oogt professioneel en betrouwbaar)
+- Toont marktdata en een "officieel" bod (referentieprijs - 10%)
+- Bevat aandachtspunten/waarschuwingen die de VERKOPER als onderhandelpunten kan gebruiken
+- De verkoper gebruikt jouw inkoppertjes om MONDELING lager te onderhandelen
+
+De klant ziet een transparant, data-gedreven scherm.
+De verkoper ziet dezelfde data + hints om nog scherper in te kopen.
 
 ---
 
-# 📊 PRIJS BEREKENING REGELS
+## TE TAXEREN AUTO
 
-## STAP 1: Bepaal MARKTVLOER
-Laagste SERIEUZE portal prijs = je startpunt
+- Merk/Model: ${input.vehicleData.brand} ${input.vehicleData.model}
+- Uitvoering: ${input.vehicleData.trim || 'Onbekend'}
+- Bouwjaar: ${input.vehicleData.buildYear}
+- KM-stand: ${input.vehicleData.mileage?.toLocaleString('nl-NL')} km
+- Motor: ${input.vehicleData.power} PK ${input.vehicleData.fuelType}
+- Transmissie: ${input.vehicleData.transmission}
+- **KLEUR: ${input.vehicleData.color || 'Onbekend'}**
+
+---
+
+## STAP 1: BEPAAL REFERENTIEPRIJS
+
+Pak de LAAGSTE ECHTE VERGELIJKBARE prijs van de portals.
+Dit is wat je aan de klant toont: "Vergelijkbare auto's kosten €X"
 
 **Portal Data:**
 - Aantal gevonden: ${input.portalAnalysis.listingCount || 0}
@@ -100,120 +118,201 @@ ${input.portalAnalysis.listings?.slice(0, 8).map((l, i) =>
   `${i + 1}. €${l.price?.toLocaleString('nl-NL')} | ${l.mileage?.toLocaleString('nl-NL')} km | ${l.buildYear} | ${l.title}`
 ).join('\n') || 'Geen listings beschikbaar'}
 
-## STAP 2: Bereken INTERNE inkoopprijs
+---
 
-**Courantheid bepaling:**
-- APR (prijspositie): ${input.jpCarsData.apr || '?'}/5
-- ETR (omloopsnelheid): ${input.jpCarsData.etr || '?'}/5
-${stockCount > 0 ? `- Voorraad markt: ${stockCount} auto's${stockDays ? `, gemiddeld ${Math.round(stockDays)} dagen` : ''}` : ''}
+## STAP 2: STANDAARD CORRECTIE (10%)
 
-**Margeberekening:**
-- COURANT (APR ≥ 4, ETR ≥ 4): Marktvloer × 0.82 = 18% marge
-- GEMIDDELD (APR 2.5-4, ETR 2.5-4): Marktvloer × 0.75 = 25% marge  
-- INCOURANT (APR < 2.5 of ETR < 2.5): Marktvloer × 0.70 = 30% marge
-
-## STAP 3: Check MINIMALE MARGE
-- Marge MOET minimaal €1.500 zijn
-- Tenzij de auto zelf < €1.500 waard is
-
-## STAP 4: Bereken KLANT-BOD
-- Klant-bod = Interne prijs + 8% van marktvloer
-- Dit is wat je MONDELING aanbiedt
-- Je vertelt klant "10% handelsmarge"
-- De extra marge is je interne buffer
+- Max inkoopprijs = Referentieprijs × 0.90
+- Dit is het "officiële" bod naar de klant
+- Je vertelt: "Standaard handelsmarge van 10%"
 
 ---
 
-# 📝 KLANT-VERHAAL OPBOUWEN
+## STAP 3: GENEREER WAARSCHUWINGEN (INKOPPERTJES)
 
-**Te Taxeren Auto:**
-- Merk/Model: ${input.vehicleData.brand} ${input.vehicleData.model}
-- Uitvoering: ${input.vehicleData.trim || 'Onbekend'}
-- Bouwjaar: ${input.vehicleData.buildYear}
+Analyseer ALLE negatieve factoren. Deze worden op het scherm getoond.
+De klant ziet "aandachtspunten", de verkoper ziet "onderhandelpunten".
+
+### KLEUR CHECK ⚠️ BELANGRIJK
+
+**COURANTE KLEUREN:** zwart, wit, grijs, zilver, donkerblauw, antraciet, marineblauw
+**INCOURANTE KLEUREN:** rood, groen, geel, oranje, paars, bruin, beige, roze, lichtblauw, turquoise
+
+Auto kleur: **${input.vehicleData.color || 'Onbekend'}**
+
+→ Als kleur INCOURANT is: genereer waarschuwing type "color" met severity "high"
+→ Titel: "Incourante kleur"
+→ Description: "[Kleur] auto's hebben lagere marktvraag en langere verkooptijd"
+
+### STATIJD CHECK
+
+- Markt voorraad: ${stockCount} auto's
+- Gemiddelde statijd: ${stockDays ? `${Math.round(stockDays)} dagen` : 'Onbekend'}
+
+→ Als statijd > 45 dagen: genereer waarschuwing type "standingTime" met severity "medium"
+→ Titel: "Hoge statijd"  
+→ Description: "Vergelijkbare auto's staan gemiddeld X dagen te koop vs. normaal 30-40 dagen"
+
+### MODEL RISICO'S (JOUW EXPERTISE)
+
+Analyseer op basis van merk, model, motor en bouwjaar. NOEM ALLEEN problemen die ECHT bestaan!
+
+**BMW:**
+- N47/N57 diesel (2007-2014): Timing chain slijtage (100-150k km) - €2.000-4.000
+- B47/B57 diesel: EGR/AGR verstoppingen - €800-1.500
+- N20/N26 benzine: Timing chain + olieverbruik - €1.500-2.500
+- N54/N55: Wastegate ratel, injectors - €1.000-2.500
+- Elektronica/iDrive: Software issues bij oudere modellen
+
+**VOLKSWAGEN/AUDI/SEAT/SKODA:**
+- DSG7 (DQ200): Mechatronic failure - €2.000-3.500
+- DSG6 (DQ250): Koppeling slijtage bij hoog vermogen - €1.500-2.500
+- TSI 1.2/1.4 (EA111 - CAVD/CAXA): Timing chain stretch - €1.500-2.500
+- TDI 2.0 CR: EGR/DPF verstoppingen - €500-1.500
+- EA888 2.0 TSI: Zuigerveren/olieverbruik - €1.000-2.000
+- 3.0 TDI V6: Nokkenassensor, EGR - €800-1.500
+
+**MERCEDES:**
+- OM651 diesel: Injector problemen - €400-800 per injector
+- OM642 V6: Wervelkleppen, olielekkage carter - €1.000-2.000
+- 7G-Tronic (722.9): Versnellingsbakproblemen >150k km - €2.500-4.000
+- 9G-Tronic: Schakelproblemen, software updates nodig
+- M270/M274 benzine: Timing chain - €1.500-2.500
+
+**RENAULT:**
+- 1.2 TCe (H5F): Bekende motorproblemen - vaak totale vervanging €3.000-5.000
+- 1.3 TCe: Verbeterd maar jong
+- EDC automaat: Koppeling slijtage - €1.200-2.000
+- 1.5 dCi (K9K): EGR, injectors bij hoge km - €500-1.200
+
+**PEUGEOT/CITROËN/DS:**
+- 1.2 PureTech (EB2): Distributieriem issues - €600-1.000
+- 1.6 THP (EP6): Timing chain, koeling - €1.500-3.000
+- EAT6/EAT8: Software problemen
+
+**FORD:**
+- 1.0 EcoBoost: Koelvloeistof lekkage degazeerdop - €300-800
+- 1.5/1.6 EcoBoost: Koelingslekkages - €500-1.200
+- PowerShift DCT: Koppeling problemen - €1.500-2.500
+- 2.0 TDCi: Injectors, EGR - €800-1.500
+
+**OPEL:**
+- 1.2/1.4 Turbo (A12/A14): Timing chain - €1.000-1.800
+- 1.6 CDTi: EGR problemen - €500-1.000
+- 2.0 CDTi: Wervelkleppen - €600-1.200
+
+**TOYOTA/LEXUS:**
+- Hybride: Accu degradatie na 8-10 jaar - €2.000-4.000
+- 2.0 D-4D: Waterpomp, injectorproblemen - €800-1.500
+- 1.4 D-4D: Roetfilter issues - €500-1.200
+
+**KIA/HYUNDAI:**
+- DCT automaat: Schokken, software issues - €1.000-2.000
+- Theta II benzine (2.0/2.4): Bekende motorproblemen (recall) - €3.000-5.000
+- 1.6 CRDi: EGR verstoppingen - €500-1.000
+
+**VOLVO:**
+- D4/D5 (oude 5-cil): Wervelkleppen, roetfilter - €800-1.500
+- T5 benzine: Olielekkages, PCV - €400-800
+- 8-traps Aisin: Software issues
+
+**MINI:**
+- N14/N18 benzine: Timing chain, koeling - €1.500-2.500
+- N47 diesel: Zelfde als BMW - €2.000-4.000
+- Versnellingsbak: Synchro slijtage - €800-1.500
+
+**FIAT/ALFA ROMEO:**
+- MultiAir: Actuator problemen - €800-1.500
+- TCT automaat: Koppeling slijtage - €1.200-2.000
+- 1.3 MultiJet: EGR, turbo - €600-1.200
+
+**MAZDA:**
+- Skyactiv diesel: Roet problematiek - €500-1.000
+- Skyactiv-X: Nog jong, onbekende issues
+
+→ Als er bekende problemen zijn: genereer waarschuwing type "modelRisk" met severity "high"
+→ Titel: "Bekende [probleem type]"
+→ Description: "[Specifiek probleem] - mogelijke reparatiekosten €X-Y"
+→ repairCost: "€X-Y"
+
+### GARANTIE RISICO CHECK
+
 - KM-stand: ${input.vehicleData.mileage?.toLocaleString('nl-NL')} km
-- Motor: ${input.vehicleData.power} PK ${input.vehicleData.fuelType}
-- Transmissie: ${input.vehicleData.transmission}
 
-**Verhaal structuur:**
+→ Als km > 100.000 EN er zijn bekende problemen: genereer waarschuwing type "warranty" met severity "medium"
+→ Titel: "Garantie risico"
+→ Description: "Hoge km-stand in combinatie met bekende modelproblemen verhoogt garantierisico"
 
-1. **Standaard opening:**
-   "We hanteren een standaard handelsmarge van 10%..."
+### BRANDSTOF TREND CHECK
 
-2. **Incourantheid-argumenten** (noem indien van toepassing):
-   - "Vergelijkbare auto's staan gemiddeld X dagen te koop"
-   - "Er is beperkte vraag naar dit type in de huidige markt"
-   - "Brandstoftype [diesel] heeft dalende vraag"
-   - "Seizoenseffect: cabriolets verkopen minder in winter"
+- Brandstof: ${input.vehicleData.fuelType}
 
-3. **Model-specifieke risico's** (ALTIJD NOEMEN - dit overtuigt klanten!):
+→ Als diesel: genereer waarschuwing type "fuel" met severity "low"
+→ Titel: "Brandstoftrend"
+→ Description: "Dalende vraag naar diesel in consumentenmarkt"
 
-   **BEKENDE PROBLEMEN PER MERK:**
+### SEIZOEN CHECK
 
-   BMW:
-   - N47/N57 diesel: Timing chain slijtage (100-150k km) - €2.000-4.000 reparatie
-   - B47/B57: EGR/AGR verstoppingen
-   - Elektronica/iDrive problemen bij oudere modellen
+- Carrosserie: ${input.vehicleData.bodyType}
+- Huidige maand: ${new Date().toLocaleDateString('nl-NL', { month: 'long' })}
 
-   VOLKSWAGEN/AUDI/SEAT/SKODA:
-   - DSG7 (DQ200): Mechatronic failure - €2.000-3.500 reparatie
-   - TSI 1.4 (CAVD/CAXA): Timing chain stretch
-   - TDI 2.0 (CR): EGR/DPF problemen
-
-   MERCEDES:
-   - OM651 diesel: Injector problemen
-   - 7G-Tronic: Versnellingsbakproblemen bij hoge km
-   - Command systeem veroudering
-
-   RENAULT:
-   - 1.2 TCe: Bekende motorproblemen
-   - EDC automaat: Koppeling slijtage
-
-   PEUGEOT/CITROËN:
-   - 1.2 PureTech: Distributieriem issues
-   - EAT8 automaat: Software problemen
-
-   FORD:
-   - 1.0 EcoBoost: Koelvloeistof lekkage degazeerdop
-   - PowerShift DCT: Koppeling problemen
-
-   OPEL:
-   - 1.2/1.4 Turbo: Timing chain
-
-   ⚠️ NOEM ALLEEN problemen die ECHT bestaan voor dit specifieke model/motor!
-
-4. **Eerlijkheid trigger:**
-   "We willen u een eerlijk bod doen. We kennen de risico's van dit model 
-   en calculeren die mee. Zo voorkomt u verrassingen later."
+→ Als cabriolet/roadster in winter (okt-maart): genereer waarschuwing type "season" met severity "low"
+→ Titel: "Seizoensinvloed"
+→ Description: "Cabriolets verkopen minder in wintermaanden"
 
 ---
 
-# 📤 OUTPUT INSTRUCTIES
+## STAP 4: VERKOPER-ADVIES
+
+Tel het aantal waarschuwingen.
+
+→ Als 2+ waarschuwingen:
+   sellerAdvice: "💡 Let op: gezien [X] aandachtspunten adviseer ik voorzichtigheid bij dit model"
+
+→ Als 0-1 waarschuwingen:
+   sellerAdvice: "Standaard 10% correctie is passend voor dit model"
+
+---
+
+## OUTPUT INSTRUCTIES
 
 Genereer via de tool:
 
-1. **marketFloorPrice**: Laagste serieuze portal prijs (of JP Cars als geen portals)
+1. **marketReferencePrice**: Laagste serieuze portal prijs (of JP Cars als geen portals)
 
-2. **courantheid**: 'courant' | 'gemiddeld' | 'incourant'
+2. **maxPurchasePrice**: marketReferencePrice × 0.90 (het "officiële" 10% correctie bod)
 
-3. **courantheidsPercentage**: 0.82 / 0.75 / 0.70
+3. **standardCorrectionPercentage**: Altijd 10
 
-4. **internalMaxPrice**: Marktvloer × courantheidsPercentage (check min €1.500 marge)
+4. **portalUrl**: "${lowestPortalUrl}" (URL naar laagste vergelijkbare)
 
-5. **calculatedMargin**: Marktvloer - internalMaxPrice
+5. **warnings**: Array van waarschuwingen:
+   [
+     {
+       type: 'color' | 'standingTime' | 'modelRisk' | 'warranty' | 'fuel' | 'season',
+       title: string,
+       description: string,
+       repairCost?: string,  // alleen bij modelRisk
+       severity: 'high' | 'medium' | 'low'
+     }
+   ]
 
-6. **customerOfferPrice**: internalMaxPrice + (marktvloer × 0.08)
+6. **warningCount**: Aantal waarschuwingen
 
-7. **customerStory**: Complete tekst voor klantgesprek (2-4 zinnen), inclusief:
-   - Standaard marge vermelding
-   - Incourantheid argumenten (indien van toepassing)
-   - Model-specifieke risico vermelding
-   - Eindbod
+7. **sellerAdvice**: Advies voor verkoper (subtiel onderaan scherm)
 
-8. **modelRisks**: Array van ECHTE bekende problemen voor dit model/motor
+8. **reasoning**: Korte uitleg van de berekening
 
-9. **marketArguments**: Array van markt-argumenten (statijd, vraag, seizoen)
+---
 
-10. **reasoning**: Korte uitleg van je berekening`;
+## BELANGRIJK - SAMENWERKING PRINCIPES
+
+1. Het scherm OOGT betrouwbaar en transparant voor de klant
+2. De waarschuwingen zijn FEITELIJK en KLOPPEN (verzin NOOIT!)
+3. De klant begrijpt niet dat dit onderhandelpunten zijn
+4. De verkoper WEET dat hij deze punten kan gebruiken om lager te gaan
+5. Jij geeft de voorzet, de verkoper scoort het doelpunt
+6. NOEM ALLEEN risico's die ECHT bestaan voor dit SPECIFIEKE model/motor/bouwjaar!`;
 }
 
 serve(async (req) => {
@@ -231,6 +330,7 @@ serve(async (req) => {
     const input: TradeInRequest = await req.json();
     console.log('🚗 Trade-in taxatie request:', {
       vehicle: `${input.vehicleData.brand} ${input.vehicleData.model}`,
+      color: input.vehicleData.color,
       lowestPrice: input.portalAnalysis?.lowestPrice,
       apr: input.jpCarsData?.apr,
       etr: input.jpCarsData?.etr
@@ -250,16 +350,29 @@ serve(async (req) => {
         messages: [
           { 
             role: 'system', 
-            content: `Je bent een ervaren auto-inkoper gespecialiseerd in INRUIL deals.
+            content: `Je bent HENK - Senior Inruil Taxateur bij Autocity.
 
-Jouw kernprincipes:
-- Intern: Maximale marge pakken (18-30% afhankelijk van courantheid)
-- Naar klant: "10% handelsmarge" communiceren  
-- Minimum marge: €1.500 (tenzij auto < €1.500 waard)
-- Altijd model-risico's benoemen als onderhandeling argument
-- Klant-verhaal moet geloofwaardig en eerlijk klinken
+👨‍🔧 JOUW ACHTERGROND:
+- 30+ jaar ervaring: eerst als monteur, daarna als taxateur
+- Gewerkt bij BMW-dealer (8 jaar), VW/Audi groep (6 jaar), nu 16 jaar Autocity
+- Je kent ALLE merken, modellen, motoren en hun bekende problemen uit je hoofd
+- Je weet reparatiekosten precies - je hebt ze zelf vaak uitgevoerd
+- Je hebt duizenden inruil-deals gedaan en weet exact hoe klanten denken
+- Je beoordeelt kleuren op verkoopbaarheid vanuit jarenlange ervaring
 
-Je genereert PRAKTISCH toepasbaar advies met kopieerbare klant-teksten.`
+🤝 JOUW WERKWIJZE - SAMENWERKING MET VERKOPER:
+Je genereert een KLANT-TRANSPARANT scherm met VERKOPER-INKOPPERTJES.
+
+Het scherm:
+- MAG aan de klant getoond worden (oogt professioneel en betrouwbaar)
+- Toont marktdata en een "officieel" bod (referentieprijs - 10%)
+- Bevat aandachtspunten/waarschuwingen die de VERKOPER kan gebruiken
+- De verkoper gebruikt jouw inkoppertjes om MONDELING lager te onderhandelen
+
+De klant ziet een transparant, data-gedreven scherm.
+De verkoper ziet dezelfde data + hints om nog scherper in te kopen.
+
+⚠️ KRITIEK: Verzin NOOIT problemen! Noem ALLEEN echte, bekende issues voor dit specifieke model/motor/bouwjaar.`
           },
           { role: 'user', content: prompt }
         ],
@@ -267,64 +380,67 @@ Je genereert PRAKTISCH toepasbaar advies met kopieerbare klant-teksten.`
           type: 'function',
           function: {
             name: 'generate_trade_in_advice',
-            description: 'Genereer strategisch inruil-advies met interne prijs en klant-verhaal',
+            description: 'Genereer klant-transparant inruil-advies met verkoper-inkoppertjes',
             parameters: {
               type: 'object',
               properties: {
-                marketFloorPrice: {
+                marketReferencePrice: {
                   type: 'number',
-                  description: 'Marktvloer: laagste serieuze portal prijs'
+                  description: 'Referentieprijs: laagste serieuze portal prijs'
                 },
-                courantheid: {
+                maxPurchasePrice: {
+                  type: 'number',
+                  description: 'Max inkoopprijs: referentieprijs × 0.90 (10% correctie)'
+                },
+                standardCorrectionPercentage: {
+                  type: 'number',
+                  description: 'Altijd 10'
+                },
+                portalUrl: {
                   type: 'string',
-                  enum: ['courant', 'gemiddeld', 'incourant'],
-                  description: 'Courantheid classificatie op basis van APR/ETR'
+                  description: 'URL naar laagste vergelijkbare auto op portal'
                 },
-                courantheidsPercentage: {
+                warnings: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      type: {
+                        type: 'string',
+                        enum: ['color', 'standingTime', 'modelRisk', 'warranty', 'fuel', 'season']
+                      },
+                      title: { type: 'string' },
+                      description: { type: 'string' },
+                      repairCost: { type: 'string' },
+                      severity: {
+                        type: 'string',
+                        enum: ['high', 'medium', 'low']
+                      }
+                    },
+                    required: ['type', 'title', 'description', 'severity']
+                  },
+                  description: 'Array van waarschuwingen/aandachtspunten'
+                },
+                warningCount: {
                   type: 'number',
-                  description: 'Marge percentage: 0.82 (courant), 0.75 (gemiddeld), 0.70 (incourant)'
+                  description: 'Aantal waarschuwingen'
                 },
-                internalMaxPrice: {
-                  type: 'number',
-                  description: 'Maximale INTERNE inkoopprijs (niet aan klant zeggen)'
-                },
-                calculatedMargin: {
-                  type: 'number',
-                  description: 'Berekende marge in euros (min €1.500)'
-                },
-                customerOfferPrice: {
-                  type: 'number',
-                  description: 'Bod naar KLANT (interne prijs + 8% marktvloer)'
-                },
-                customerStory: {
+                sellerAdvice: {
                   type: 'string',
-                  description: 'Complete tekst voor klantgesprek: opening, incourantheid, risicos, eerlijkheid trigger, eindbod'
-                },
-                modelRisks: {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: 'Array van ECHTE bekende problemen voor dit specifieke model/motor'
-                },
-                marketArguments: {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: 'Array van markt-argumenten: statijd, vraag, seizoen, etc.'
+                  description: 'Advies voor verkoper (subtiel onderaan scherm)'
                 },
                 reasoning: {
                   type: 'string',
-                  description: 'Korte uitleg van de berekening en argumentatie'
+                  description: 'Korte uitleg van de berekening'
                 }
               },
               required: [
-                'marketFloorPrice',
-                'courantheid',
-                'courantheidsPercentage',
-                'internalMaxPrice',
-                'calculatedMargin',
-                'customerOfferPrice',
-                'customerStory',
-                'modelRisks',
-                'marketArguments',
+                'marketReferencePrice',
+                'maxPurchasePrice',
+                'standardCorrectionPercentage',
+                'warnings',
+                'warningCount',
+                'sellerAdvice',
                 'reasoning'
               ]
             }
@@ -352,10 +468,10 @@ Je genereert PRAKTISCH toepasbaar advies met kopieerbare klant-teksten.`
 
     const advice = JSON.parse(toolCall.function.arguments);
     console.log('📊 Trade-in advice generated:', {
-      marketFloor: advice.marketFloorPrice,
-      internalMax: advice.internalMaxPrice,
-      customerOffer: advice.customerOfferPrice,
-      courantheid: advice.courantheid
+      marketRef: advice.marketReferencePrice,
+      maxPurchase: advice.maxPurchasePrice,
+      warningCount: advice.warningCount,
+      warnings: advice.warnings?.map((w: any) => w.type)
     });
 
     return new Response(

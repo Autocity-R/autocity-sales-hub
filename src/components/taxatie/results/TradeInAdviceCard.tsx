@@ -5,19 +5,20 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { 
-  Lock, 
-  MessageSquare, 
-  Copy, 
-  Check, 
-  AlertTriangle, 
   TrendingDown,
   Euro,
+  AlertTriangle,
+  ExternalLink,
+  Lightbulb,
+  Palette,
+  Clock,
+  Wrench,
   Shield,
-  Target
+  Fuel,
+  Sun
 } from 'lucide-react';
-import type { TradeInAdvice } from '@/services/tradeInTaxatieService';
+import type { TradeInAdvice, TradeInWarning } from '@/services/tradeInTaxatieService';
 import type { JPCarsData } from '@/types/taxatie';
-import { toast } from 'sonner';
 
 interface TradeInAdviceCardProps {
   data: TradeInAdvice | null;
@@ -26,26 +27,13 @@ interface TradeInAdviceCardProps {
 }
 
 export function TradeInAdviceCard({ data, loading, jpCarsData }: TradeInAdviceCardProps) {
-  const [copied, setCopied] = useState(false);
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      toast.success('Klant-verhaal gekopieerd!');
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      toast.error('Kopiëren mislukt');
-    }
-  };
-
   if (loading) {
     return (
       <Card className="border-orange-500/30">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <TrendingDown className="h-5 w-5 text-orange-500" />
-            Inruil Advies
+            Inruil Taxatie
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -63,33 +51,45 @@ export function TradeInAdviceCard({ data, loading, jpCarsData }: TradeInAdviceCa
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg text-muted-foreground">
             <TrendingDown className="h-5 w-5" />
-            Inruil Advies
+            Inruil Taxatie
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-8">
-            Start de taxatie om het strategisch inruil-advies te genereren
+            Start de taxatie om het inruil-advies te genereren
           </p>
         </CardContent>
       </Card>
     );
   }
 
-  const getCourantheidsColor = (courantheid: string) => {
-    switch (courantheid) {
-      case 'courant': return 'bg-green-500/10 text-green-600 border-green-500/30';
-      case 'gemiddeld': return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30';
-      case 'incourant': return 'bg-red-500/10 text-red-600 border-red-500/30';
-      default: return 'bg-muted text-muted-foreground';
+  const getWarningIcon = (type: TradeInWarning['type']) => {
+    switch (type) {
+      case 'color': return <Palette className="h-4 w-4" />;
+      case 'standingTime': return <Clock className="h-4 w-4" />;
+      case 'modelRisk': return <Wrench className="h-4 w-4" />;
+      case 'warranty': return <Shield className="h-4 w-4" />;
+      case 'fuel': return <Fuel className="h-4 w-4" />;
+      case 'season': return <Sun className="h-4 w-4" />;
+      default: return <AlertTriangle className="h-4 w-4" />;
     }
   };
 
-  const getCourantheidsLabel = (courantheid: string) => {
-    switch (courantheid) {
-      case 'courant': return 'Courant (18% marge)';
-      case 'gemiddeld': return 'Gemiddeld (25% marge)';
-      case 'incourant': return 'Incourant (30% marge)';
-      default: return courantheid;
+  const getSeverityColor = (severity: TradeInWarning['severity']) => {
+    switch (severity) {
+      case 'high': return 'bg-red-500/10 border-red-500/30 text-red-700';
+      case 'medium': return 'bg-amber-500/10 border-amber-500/30 text-amber-700';
+      case 'low': return 'bg-blue-500/10 border-blue-500/30 text-blue-700';
+      default: return 'bg-muted border-border';
+    }
+  };
+
+  const getSeverityBadge = (severity: TradeInWarning['severity']) => {
+    switch (severity) {
+      case 'high': return <span className="inline-block w-2 h-2 rounded-full bg-red-500" />;
+      case 'medium': return <span className="inline-block w-2 h-2 rounded-full bg-amber-500" />;
+      case 'low': return <span className="inline-block w-2 h-2 rounded-full bg-blue-500" />;
+      default: return null;
     }
   };
 
@@ -99,142 +99,129 @@ export function TradeInAdviceCard({ data, loading, jpCarsData }: TradeInAdviceCa
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
             <TrendingDown className="h-5 w-5 text-orange-500" />
-            Inruil Advies
+            Inruil Taxatie
           </CardTitle>
-          <Badge className={getCourantheidsColor(data.courantheid)}>
-            {getCourantheidsLabel(data.courantheid)}
-          </Badge>
+          {data.warningCount > 0 && (
+            <Badge variant="outline" className="text-amber-600 border-amber-500/30">
+              {data.warningCount} aandachtspunt{data.warningCount !== 1 ? 'en' : ''}
+            </Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Interne Prijzen - NIET aan klant tonen */}
-        <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/20">
-          <div className="flex items-center gap-2 mb-3">
-            <Lock className="h-4 w-4 text-red-500" />
-            <span className="text-sm font-semibold text-red-600">INTERN - Niet aan klant tonen</span>
+        {/* Marktwaarde Sectie */}
+        <div className="p-4 rounded-lg bg-background/50 border">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm font-medium text-muted-foreground">📊 Marktwaarde</span>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="flex items-baseline justify-between">
             <div>
-              <p className="text-xs text-muted-foreground">Marktvloer</p>
-              <p className="text-lg font-bold">€{data.marketFloorPrice.toLocaleString('nl-NL')}</p>
+              <p className="text-xs text-muted-foreground">Laagste vergelijkbare</p>
+              <p className="text-2xl font-bold">€{data.marketReferencePrice.toLocaleString('nl-NL')}</p>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Max. Inkoop</p>
-              <p className="text-2xl font-bold text-red-600">€{data.internalMaxPrice.toLocaleString('nl-NL')}</p>
-            </div>
-          </div>
-          
-          <div className="mt-3 flex items-center gap-2">
-            <Target className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm">
-              Marge: <span className="font-semibold text-green-600">€{data.calculatedMargin.toLocaleString('nl-NL')}</span>
-              {data.calculatedMargin < 1500 && data.marketFloorPrice > 1500 && (
-                <span className="text-amber-600 ml-2">(min. €1.500 toegepast)</span>
-              )}
-            </span>
+            {data.portalUrl && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-7"
+                onClick={() => window.open(data.portalUrl, '_blank')}
+              >
+                <ExternalLink className="h-3 w-3 mr-1" />
+                Bekijk
+              </Button>
+            )}
           </div>
         </div>
 
-        <Separator />
-
-        {/* Klant-gericht Bod */}
+        {/* Max Inkoopprijs Sectie */}
         <div className="p-4 rounded-lg bg-green-500/5 border border-green-500/20">
-          <div className="flex items-center gap-2 mb-3">
-            <MessageSquare className="h-4 w-4 text-green-500" />
-            <span className="text-sm font-semibold text-green-600">NAAR KLANT - Dit zeg je</span>
+          <div className="flex items-center gap-2 mb-2">
+            <Euro className="h-4 w-4 text-green-600" />
+            <span className="text-sm font-medium text-green-700">Max Inkoopprijs</span>
           </div>
           
-          <div className="flex items-baseline gap-2 mb-2">
-            <Euro className="h-5 w-5 text-green-600" />
+          <div className="flex items-baseline gap-2">
             <span className="text-3xl font-bold text-green-600">
-              {data.customerOfferPrice.toLocaleString('nl-NL')}
+              €{data.maxPurchasePrice.toLocaleString('nl-NL')}
             </span>
           </div>
           
-          <p className="text-sm text-muted-foreground">
-            "Wij bieden u €{data.customerOfferPrice.toLocaleString('nl-NL')} inclusief 10% handelsmarge"
+          <p className="text-xs text-muted-foreground mt-1">
+            Standaard correctie van {data.standardCorrectionPercentage}%
           </p>
         </div>
 
         <Separator />
 
-        {/* Klant-verhaal - Kopieerbaar */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Klant-verhaal (kopieerbaar)
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => copyToClipboard(data.customerStory)}
-              className="h-8"
-            >
-              {copied ? (
-                <>
-                  <Check className="h-3 w-3 mr-1" />
-                  Gekopieerd
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3 w-3 mr-1" />
-                  Kopieer
-                </>
-              )}
-            </Button>
+        {/* Aandachtspunten / Waarschuwingen */}
+        {data.warnings && data.warnings.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <span className="text-sm font-semibold">Aandachtspunten bij dit model</span>
+            </div>
+            
+            <div className="space-y-2">
+              {data.warnings.map((warning, index) => (
+                <div 
+                  key={index} 
+                  className={`p-3 rounded-lg border ${getSeverityColor(warning.severity)}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5">
+                      {getSeverityBadge(warning.severity)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        {getWarningIcon(warning.type)}
+                        <span className="font-medium text-sm">{warning.title}</span>
+                      </div>
+                      <p className="text-sm opacity-90">{warning.description}</p>
+                      {warning.repairCost && (
+                        <p className="text-xs mt-1 font-medium">
+                          Geschatte reparatiekosten: {warning.repairCost}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          
-          <div className="p-3 rounded-lg bg-muted/50 border text-sm whitespace-pre-wrap">
-            {data.customerStory}
+        )}
+
+        {/* Geen aandachtspunten */}
+        {(!data.warnings || data.warnings.length === 0) && (
+          <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/20 text-center">
+            <p className="text-sm text-green-700">
+              ✓ Geen bijzondere aandachtspunten voor dit model
+            </p>
+          </div>
+        )}
+
+        <Separator />
+
+        {/* Verkoper Hint - Subtiel onderaan */}
+        <div className="p-3 rounded-lg bg-muted/30 border border-dashed">
+          <div className="flex items-start gap-2">
+            <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+            <p className="text-sm text-muted-foreground">
+              {data.sellerAdvice}
+            </p>
           </div>
         </div>
 
-        {/* Model Risico's */}
-        {data.modelRisks && data.modelRisks.length > 0 && (
-          <div className="space-y-2">
-            <span className="text-sm font-semibold flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              Model Risico's (gebruik in gesprek)
-            </span>
-            <div className="space-y-1">
-              {data.modelRisks.map((risk, i) => (
-                <div key={i} className="flex items-start gap-2 text-sm p-2 rounded bg-amber-500/5 border border-amber-500/20">
-                  <AlertTriangle className="h-3 w-3 text-amber-500 mt-0.5 shrink-0" />
-                  <span>{risk}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Markt Argumenten */}
-        {data.marketArguments && data.marketArguments.length > 0 && (
-          <div className="space-y-2">
-            <span className="text-sm font-semibold flex items-center gap-2">
-              <Shield className="h-4 w-4 text-blue-500" />
-              Markt Argumenten
-            </span>
-            <div className="space-y-1">
-              {data.marketArguments.map((arg, i) => (
-                <div key={i} className="flex items-start gap-2 text-sm p-2 rounded bg-blue-500/5 border border-blue-500/20">
-                  <Shield className="h-3 w-3 text-blue-500 mt-0.5 shrink-0" />
-                  <span>{arg}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* AI Reasoning */}
+        {/* AI Reasoning - Klein onderaan */}
         {data.reasoning && (
-          <div className="space-y-2">
-            <span className="text-sm font-semibold">AI Analyse</span>
-            <div className="p-3 rounded-lg bg-muted/30 text-sm text-muted-foreground whitespace-pre-wrap max-h-48 overflow-y-auto">
+          <details className="group">
+            <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+              Toon berekening
+            </summary>
+            <div className="mt-2 p-2 rounded bg-muted/30 text-xs text-muted-foreground whitespace-pre-wrap">
               {data.reasoning}
             </div>
-          </div>
+          </details>
         )}
       </CardContent>
     </Card>
