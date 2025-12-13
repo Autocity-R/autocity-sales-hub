@@ -28,43 +28,24 @@ import { TaxatieActionButtons } from './actions/TaxatieActionButtons';
 
 // Header
 import { Card, CardContent } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { CarFront, TrendingDown, SlidersHorizontal } from 'lucide-react';
+import { CarFront, TrendingDown } from 'lucide-react';
 
-interface TradeInHeaderProps {
-  salesMode: boolean;
-  onSalesModeChange: (value: boolean) => void;
-}
-
-function TradeInHeader({ salesMode, onSalesModeChange }: TradeInHeaderProps) {
+function TradeInHeader() {
   return (
     <Card className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-orange-500/20">
       <CardContent className="py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-orange-500/20">
-              <CarFront className="h-6 w-6 text-orange-600" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-                Inruil Taxatie
-                <TrendingDown className="h-5 w-5 text-orange-500" />
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Data analyse automotive inruil taxatie
-              </p>
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-orange-500/20">
+            <CarFront className="h-6 w-6 text-orange-600" />
           </div>
-          
-          {/* Subtiele toggle - lijkt op een "meer opties" functie */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <SlidersHorizontal className="h-4 w-4" />
-            <span>Details</span>
-            <Switch 
-              checked={salesMode} 
-              onCheckedChange={onSalesModeChange}
-              className="scale-75"
-            />
+          <div>
+            <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+              Inruil Taxatie
+              <TrendingDown className="h-5 w-5 text-orange-500" />
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Data analyse automotive inruil taxatie
+            </p>
           </div>
         </div>
       </CardContent>
@@ -114,8 +95,8 @@ export function TradeInValuationForm() {
 
   return (
     <div className="space-y-6">
-      {/* Inruil Header met Sales Toggle */}
-      <TradeInHeader salesMode={salesMode} onSalesModeChange={setSalesMode} />
+      {/* Inruil Header */}
+      <TradeInHeader />
 
       <TaxatieLayout>
         {/* Kolom A: Voertuiggegevens */}
@@ -211,6 +192,8 @@ export function TradeInValuationForm() {
               canStart={!!vehicleData}
               taxatieComplete={taxatieComplete}
               taxatieStarted={taxatieStarted}
+              salesMode={salesMode}
+              onSalesModeChange={setSalesMode}
             />
           </div>
         </TaxatieFooter>

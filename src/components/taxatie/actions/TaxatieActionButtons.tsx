@@ -10,7 +10,9 @@ import {
   Database,
   Globe,
   Car,
-  Brain
+  Brain,
+  SlidersHorizontal,
+  Check
 } from 'lucide-react';
 import type { TaxatieLoadingState } from '@/types/taxatie';
 
@@ -23,6 +25,8 @@ interface TaxatieActionButtonsProps {
   canStart: boolean;
   taxatieComplete: boolean;
   taxatieStarted: boolean;
+  salesMode: boolean;
+  onSalesModeChange: (value: boolean) => void;
 }
 
 export const TaxatieActionButtons = ({
@@ -34,6 +38,8 @@ export const TaxatieActionButtons = ({
   canStart,
   taxatieComplete,
   taxatieStarted,
+  salesMode,
+  onSalesModeChange,
 }: TaxatieActionButtonsProps) => {
   const isLoading = Object.values(loading).some(Boolean);
 
@@ -133,6 +139,16 @@ export const TaxatieActionButtons = ({
           >
             <RotateCcw className="h-4 w-4 mr-2" />
             Reset
+          </Button>
+          <Button
+            size="lg"
+            variant="ghost"
+            onClick={() => onSalesModeChange(!salesMode)}
+            className="text-muted-foreground"
+          >
+            <SlidersHorizontal className="h-4 w-4 mr-2" />
+            Details
+            {salesMode && <Check className="h-3 w-3 ml-1 text-green-500" />}
           </Button>
         </div>
       </CardContent>
