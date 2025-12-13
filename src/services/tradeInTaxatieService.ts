@@ -6,26 +6,29 @@ import type {
 } from '@/types/taxatie';
 import { supabase } from '@/integrations/supabase/client';
 
-// Trade-in specific advice interface
+// Warning type for trade-in advice
+export interface TradeInWarning {
+  type: 'color' | 'standingTime' | 'modelRisk' | 'warranty' | 'fuel' | 'season';
+  title: string;
+  description: string;
+  repairCost?: string;
+  severity: 'high' | 'medium' | 'low';
+}
+
+// Trade-in specific advice interface - klant-transparant format
 export interface TradeInAdvice {
-  // Interne prijzen (niet aan klant tonen)
-  internalMaxPrice: number;
-  calculatedMargin: number;
-  marketFloorPrice: number;
+  // Klant-zichtbaar
+  marketReferencePrice: number;
+  maxPurchasePrice: number;
+  standardCorrectionPercentage: number;
+  portalUrl?: string;
   
-  // Klant-gericht
-  customerOfferPrice: number;
+  // Waarschuwingen (klant ziet "aandachtspunten", verkoper ziet "inkoppertjes")
+  warnings: TradeInWarning[];
+  warningCount: number;
   
-  // Courantheid
-  courantheid: 'courant' | 'gemiddeld' | 'incourant';
-  courantheidsPercentage: number;
-  
-  // Verhaal voor klant
-  customerStory: string;
-  
-  // Risico's en argumenten
-  modelRisks: string[];
-  marketArguments: string[];
+  // Verkoper-hint (subtiel onderaan)
+  sellerAdvice: string;
   
   // Reasoning
   reasoning: string;
@@ -37,42 +40,43 @@ const generateFallbackTradeInAdvice = (
   portalAnalysis: PortalAnalysis,
   jpCarsData: JPCarsData
 ): TradeInAdvice => {
-  const marketFloor = portalAnalysis.lowestPrice || jpCarsData.totalValue || 0;
+  const marketRef = portalAnalysis.lowestPrice || jpCarsData.totalValue || 0;
+  const maxPurchase = Math.round(marketRef * 0.90);
   
-  // Bepaal courantheid
-  let courantheid: 'courant' | 'gemiddeld' | 'incourant' = 'gemiddeld';
-  let courantheidsPercentage = 0.75; // 25% marge
+  const warnings: TradeInWarning[] = [];
   
-  if (jpCarsData.apr >= 75 && jpCarsData.etr < 20) {
-    courantheid = 'courant';
-    courantheidsPercentage = 0.82; // 18% marge
-  } else if (jpCarsData.apr < 50 || jpCarsData.etr > 45) {
-    courantheid = 'incourant';
-    courantheidsPercentage = 0.70; // 30% marge
+  // Check kleur
+  const incouranteKleuren = ['rood', 'groen', 'geel', 'oranje', 'paars', 'bruin', 'beige', 'roze'];
+  const kleur = vehicleData.color?.toLowerCase() || '';
+  if (incouranteKleuren.some(k => kleur.includes(k))) {
+    warnings.push({
+      type: 'color',
+      title: 'Incourante kleur',
+      description: `${vehicleData.color} auto's hebben lagere marktvraag`,
+      severity: 'high'
+    });
   }
   
-  const internalMaxPrice = Math.round(marketFloor * courantheidsPercentage);
-  const calculatedMargin = marketFloor - internalMaxPrice;
-  
-  // Minimale marge check
-  const finalInternalPrice = calculatedMargin < 1500 && marketFloor > 1500 
-    ? marketFloor - 1500 
-    : internalMaxPrice;
-  
-  // Klant-bod: interne prijs + 8% van marktvloer
-  const customerOfferPrice = Math.round(finalInternalPrice + (marketFloor * 0.08));
+  // Check diesel
+  if (vehicleData.fuelType?.toLowerCase().includes('diesel')) {
+    warnings.push({
+      type: 'fuel',
+      title: 'Brandstoftrend',
+      description: 'Dalende vraag naar diesel in consumentenmarkt',
+      severity: 'low'
+    });
+  }
 
   return {
-    internalMaxPrice: finalInternalPrice,
-    calculatedMargin: marketFloor - finalInternalPrice,
-    marketFloorPrice: marketFloor,
-    customerOfferPrice,
-    courantheid,
-    courantheidsPercentage,
-    customerStory: `We hanteren een standaard handelsmarge van 10%. Op basis van de huidige marktomstandigheden voor de ${vehicleData.brand} ${vehicleData.model} komen we uit op een bod van €${customerOfferPrice.toLocaleString('nl-NL')}.`,
-    modelRisks: ['Automatisch berekend - handmatige verificatie noodzakelijk'],
-    marketArguments: [],
-    reasoning: `⚠️ AI advies niet beschikbaar. Dit is een automatische berekening op basis van marktvloer €${marketFloor.toLocaleString('nl-NL')} met ${Math.round((1 - courantheidsPercentage) * 100)}% marge (${courantheid}).`,
+    marketReferencePrice: marketRef,
+    maxPurchasePrice: maxPurchase,
+    standardCorrectionPercentage: 10,
+    warnings,
+    warningCount: warnings.length,
+    sellerAdvice: warnings.length >= 2 
+      ? `💡 Let op: gezien ${warnings.length} aandachtspunten adviseer ik voorzichtigheid` 
+      : 'Standaard 10% correctie is passend voor dit model',
+    reasoning: `⚠️ AI advies niet beschikbaar. Dit is een automatische berekening op basis van marktreferentie €${marketRef.toLocaleString('nl-NL')} met standaard 10% correctie.`,
   };
 };
 

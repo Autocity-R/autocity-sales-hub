@@ -44,7 +44,7 @@ function TradeInHeader() {
               <TrendingDown className="h-5 w-5 text-orange-500" />
             </h1>
             <p className="text-sm text-muted-foreground">
-              Strategisch inkopen met klant-verhaal • 18-30% marge • Min. €1.500
+              Klant-transparant scherm met verkoper-inkoppertjes • Standaard 10% correctie
             </p>
           </div>
         </div>
@@ -87,7 +87,7 @@ export function TradeInValuationForm() {
 
   const handleUseAsPurchase = () => {
     if (tradeInAdvice) {
-      toast.success(`Interne inkoopprijs €${tradeInAdvice.internalMaxPrice.toLocaleString('nl-NL')} overgenomen`);
+      toast.success(`Max inkoopprijs €${tradeInAdvice.maxPurchasePrice.toLocaleString('nl-NL')} overgenomen`);
     }
   };
 
