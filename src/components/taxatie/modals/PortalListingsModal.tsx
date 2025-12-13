@@ -73,7 +73,7 @@ const ListingCard = ({ listing }: { listing: PortalListing }) => {
             <span>{(listing.mileage ?? 0).toLocaleString()} km</span>
             {listing.color && <span>{listing.color}</span>}
           </div>
-          {listing.options && listing.options.length > 0 && (
+          {Array.isArray(listing.options) && listing.options.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-2">
               {listing.options.slice(0, 5).map((opt, i) => (
                 <Badge key={i} variant="secondary" className="text-xs">
