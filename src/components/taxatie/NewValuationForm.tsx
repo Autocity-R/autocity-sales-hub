@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTaxatie } from '@/hooks/useTaxatie';
 import { toast } from 'sonner';
 
@@ -28,6 +28,7 @@ import { InternalComparisonCard } from './results/InternalComparisonCard';
 import { TaxatieActionButtons } from './actions/TaxatieActionButtons';
 
 export function NewValuationForm() {
+  const [salesMode, setSalesMode] = useState(true); // Default true voor reguliere taxatie
   const {
     inputMode,
     setInputMode,
@@ -158,6 +159,8 @@ export function NewValuationForm() {
               canStart={!!vehicleData}
               taxatieComplete={taxatieComplete}
               taxatieStarted={taxatieStarted}
+              salesMode={salesMode}
+              onSalesModeChange={setSalesMode}
             />
           </div>
         </TaxatieFooter>
