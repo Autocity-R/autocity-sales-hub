@@ -153,6 +153,24 @@ Auto kleur: **${input.vehicleData.color || 'Onbekend'}**
 → Titel: "Hoge statijd"  
 → Description: "Vergelijkbare auto's staan gemiddeld X dagen te koop vs. normaal 30-40 dagen"
 
+### COURANTHEID CHECK (JP CARS ETR) ⚠️ BELANGRIJK
+
+- ETR Score: ${input.jpCarsData?.etr || 'Onbekend'} / 5
+- Courantheid: ${input.jpCarsData?.courantheid || 'Onbekend'}
+
+ETR = Expected Time to Retail (verwachte verkooptijd)
+- ETR 5: Zeer courant, zeer snel verkocht
+- ETR 4: Courant, normale verkooptijd → GEEN waarschuwing
+- ETR ONDER 4: INCOURANT → WEL waarschuwing
+
+→ Als ETR < 4: genereer waarschuwing type "courantheid"
+→ Titel: "Incourant model"
+→ Description: "ETR score [ETR waarde]/5 - incourant, lange statijd verwacht"
+
+Severity bepaling:
+- ETR 3 tot 4: severity "medium" (incourant)
+- ETR 1 tot 3: severity "high" (zeer incourant)
+
 ### MODEL RISICO'S (JOUW EXPERTISE)
 
 Analyseer op basis van merk, model, motor en bouwjaar. NOEM ALLEEN problemen die ECHT bestaan!
@@ -289,7 +307,7 @@ Genereer via de tool:
 5. **warnings**: Array van waarschuwingen:
    [
      {
-       type: 'color' | 'standingTime' | 'modelRisk' | 'warranty' | 'fuel' | 'season',
+       type: 'color' | 'standingTime' | 'modelRisk' | 'warranty' | 'fuel' | 'season' | 'courantheid',
        title: string,
        description: string,
        repairCost?: string,  // alleen bij modelRisk
@@ -407,7 +425,7 @@ De verkoper ziet dezelfde data + hints om nog scherper in te kopen.
                     properties: {
                       type: {
                         type: 'string',
-                        enum: ['color', 'standingTime', 'modelRisk', 'warranty', 'fuel', 'season']
+                        enum: ['color', 'standingTime', 'modelRisk', 'warranty', 'fuel', 'season', 'courantheid']
                       },
                       title: { type: 'string' },
                       description: { type: 'string' },
