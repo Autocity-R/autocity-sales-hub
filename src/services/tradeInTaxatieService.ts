@@ -41,7 +41,13 @@ const generateFallbackTradeInAdvice = (
   jpCarsData: JPCarsData
 ): TradeInAdvice => {
   const marketRef = portalAnalysis.lowestPrice || jpCarsData.totalValue || 0;
-  const maxPurchase = Math.round(marketRef * 0.90);
+  
+  // Minimale marge is €1.500, of 10% bij auto's ≥ €15.000
+  const minMargin = 1500;
+  const percentageMargin = marketRef * 0.10;
+  const margin = Math.max(minMargin, percentageMargin);
+  const maxPurchase = Math.round(marketRef - margin);
+  const correctionPercentage = marketRef > 0 ? Math.round((margin / marketRef) * 100) : 10;
   
   const warnings: TradeInWarning[] = [];
   
@@ -70,13 +76,15 @@ const generateFallbackTradeInAdvice = (
   return {
     marketReferencePrice: marketRef,
     maxPurchasePrice: maxPurchase,
-    standardCorrectionPercentage: 10,
+    standardCorrectionPercentage: correctionPercentage,
     warnings,
     warningCount: warnings.length,
     sellerAdvice: warnings.length >= 2 
       ? `💡 Let op: gezien ${warnings.length} aandachtspunten adviseer ik voorzichtigheid` 
-      : 'Standaard 10% correctie is passend voor dit model',
-    reasoning: `⚠️ AI advies niet beschikbaar. Dit is een automatische berekening op basis van marktreferentie €${marketRef.toLocaleString('nl-NL')} met standaard 10% correctie.`,
+      : marketRef < 15000 
+        ? 'Vaste marge €1.500 toegepast (auto onder €15k)'
+        : 'Standaard 10% correctie is passend voor dit model',
+    reasoning: `⚠️ AI advies niet beschikbaar. Dit is een automatische berekening op basis van marktreferentie €${marketRef.toLocaleString('nl-NL')} met ${marketRef < 15000 ? '€1.500 vaste marge' : '10% correctie'}.`,
   };
 };
 
