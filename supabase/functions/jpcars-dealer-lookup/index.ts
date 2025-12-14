@@ -96,18 +96,22 @@ serve(async (req) => {
     console.log(`[Dealer Lookup] Vehicle: ${brand} ${model} (${buildYear}), estimated mileage: ${mileage}`);
 
     // Step 2: Call JP Cars valuate/extended endpoint
-    const jpCarsUrl = 'https://jpcars.nl/api/valuate/extended';
+    // BELANGRIJK: Gebruik api.nl.jp.cars voor correcte SSL certificaten
+    const url = new URL('https://api.nl.jp.cars/api/valuate/extended');
+    url.searchParams.append('enable_portal_urls', 'true');
+    url.searchParams.append('enable_top_dealers', 'true');
+    
     const jpCarsBody = {
       make: brand.toUpperCase(),
       model: model.toUpperCase(),
       build: buildYear,
       mileage: mileage,
-      plate: licensePlate.replace(/-/g, '').toUpperCase(),
+      license_plate: licensePlate.replace(/-/g, '').toUpperCase(),
     };
 
     console.log(`[Dealer Lookup] Calling JP Cars API with:`, jpCarsBody);
 
-    const jpCarsResponse = await fetch(jpCarsUrl, {
+    const jpCarsResponse = await fetch(url.toString(), {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${JPCARS_API_TOKEN}`,
