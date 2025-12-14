@@ -51,6 +51,7 @@ interface DealerSearchResult {
   totalVehicles: number;
   inStock: DealerVehicle[];
   sold: DealerVehicle[];
+  uniqueDealers: { name: string; count: number }[];
   stats: {
     avgPrice: number;
     avgStockDays: number;
@@ -126,6 +127,7 @@ serve(async (req) => {
         totalVehicles: 0,
         inStock: [],
         sold: [],
+        uniqueDealers: [],
         stats: {
           avgPrice: 0,
           avgStockDays: 0,
@@ -186,15 +188,30 @@ serve(async (req) => {
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
-    // Get actual dealer name from first result if available
-    const actualDealerName = data[0]?.dealer_name || dealerName;
+    // Get unique dealers from results
+    const dealerCounts: Record<string, number> = {};
+    data.forEach((v: JPCarsVehicle) => {
+      if (v.dealer_name) {
+        dealerCounts[v.dealer_name] = (dealerCounts[v.dealer_name] || 0) + 1;
+      }
+    });
+    
+    const uniqueDealers = Object.entries(dealerCounts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Get actual dealer name - use the most common one if multiple
+    const actualDealerName = uniqueDealers.length > 0 ? uniqueDealers[0].name : dealerName;
+
+    console.log(`Found ${uniqueDealers.length} unique dealers:`, uniqueDealers.map(d => d.name));
 
     const result: DealerSearchResult = {
       dealerName: actualDealerName,
       searchQuery: dealerName,
       totalVehicles: vehicles.length,
-      inStock: inStock.sort((a, b) => a.stockDays - b.stockDays), // Sort by newest first
-      sold: sold.sort((a, b) => (a.soldSince || 0) - (b.soldSince || 0)), // Sort by recently sold first
+      inStock: inStock.sort((a, b) => a.stockDays - b.stockDays),
+      sold: sold.sort((a, b) => (a.soldSince || 0) - (b.soldSince || 0)),
+      uniqueDealers,
       stats: {
         avgPrice,
         avgStockDays,

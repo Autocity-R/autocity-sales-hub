@@ -5,13 +5,23 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Building2, Car, TrendingUp, Clock, CheckCircle, ExternalLink, Download, Loader2, Star } from 'lucide-react';
+import { Search, Building2, Car, TrendingUp, Clock, CheckCircle, ExternalLink, Download, Loader2, Star, History, X, Lightbulb, Users } from 'lucide-react';
 import { useDealerSearch, DealerVehicle } from '@/hooks/useDealerSearch';
 import { exportDealerSearchToExcel } from '@/services/dealerSearchExport';
 
+// Suggested dealers for quick search
+const SUGGESTED_DEALERS = [
+  'Van Mossel',
+  'Louwman',
+  'Stern',
+  'Van der Linde',
+  'Broekhuis',
+  'Muntstad',
+];
+
 export const CompetitorMonitor = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const { results, isSearching, error, searchDealer, reset } = useDealerSearch();
+  const { results, isSearching, error, recentSearches, searchDealer, reset, clearRecentSearches } = useDealerSearch();
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -222,6 +232,42 @@ export const CompetitorMonitor = () => {
             </Card>
           </div>
 
+          {/* Multiple Dealers Found */}
+          {results.uniqueDealers && results.uniqueDealers.length > 1 && (
+            <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Users className="h-4 w-4 text-blue-500" />
+                  {results.uniqueDealers.length} dealers gevonden
+                </CardTitle>
+                <CardDescription>
+                  Je zoekopdracht "{results.searchQuery}" matchte meerdere dealers
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex flex-wrap gap-2">
+                  {results.uniqueDealers.map(({ name, count }) => (
+                    <Button
+                      key={name}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSearchQuery(name);
+                        searchDealer(name);
+                      }}
+                      className="h-8"
+                    >
+                      {name}
+                      <Badge variant="secondary" className="ml-2">
+                        {count}
+                      </Badge>
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Dealer Info & Top Brands */}
           <Card>
             <CardHeader className="pb-2">
@@ -230,6 +276,9 @@ export const CompetitorMonitor = () => {
                   <CardTitle>{results.dealerName}</CardTitle>
                   <CardDescription>
                     Totaal {results.totalVehicles} voertuigen gevonden
+                    {results.uniqueDealers && results.uniqueDealers.length > 1 && (
+                      <span className="ml-1">bij {results.uniqueDealers.length} dealers</span>
+                    )}
                   </CardDescription>
                 </div>
                 <Button variant="outline" onClick={handleExport}>
@@ -278,16 +327,119 @@ export const CompetitorMonitor = () => {
         </>
       )}
 
-      {/* Empty state */}
+      {/* Empty state with suggestions */}
       {!results && !isSearching && !error && (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Building2 className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Zoek een dealer</h3>
-            <p className="text-muted-foreground text-center max-w-md">
-              Voer een dealer naam in om hun huidige voorraad en recente verkopen te bekijken.
-              Je kunt zoeken op (delen van) de bedrijfsnaam.
-            </p>
+        <div className="space-y-4">
+          {/* Recent searches */}
+          {recentSearches.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <History className="h-4 w-4" />
+                    Recente zoekopdrachten
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={clearRecentSearches} className="h-8 text-xs">
+                    <X className="h-3 w-3 mr-1" />
+                    Wissen
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex flex-wrap gap-2">
+                  {recentSearches.map((search) => (
+                    <Button
+                      key={search.query}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSearchQuery(search.query);
+                        searchDealer(search.query);
+                      }}
+                      className="h-8"
+                    >
+                      {search.dealerName}
+                      <Badge variant="secondary" className="ml-2 text-xs">
+                        {search.vehicleCount}
+                      </Badge>
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Suggested dealers */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Lightbulb className="h-4 w-4 text-yellow-500" />
+                Populaire dealers
+              </CardTitle>
+              <CardDescription>Klik op een dealer om te zoeken</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex flex-wrap gap-2">
+                {SUGGESTED_DEALERS.map((dealer) => (
+                  <Button
+                    key={dealer}
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setSearchQuery(dealer);
+                      searchDealer(dealer);
+                    }}
+                    className="h-8"
+                  >
+                    {dealer}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Instructions */}
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-8">
+              <Building2 className="h-10 w-10 text-muted-foreground/50 mb-3" />
+              <h3 className="text-lg font-medium mb-2">Zoek een dealer</h3>
+              <p className="text-muted-foreground text-center max-w-md text-sm">
+                Voer een (deel van de) dealer naam in. JP Cars zoekt op gedeeltelijke match, 
+                dus "Van Mossel" vindt alle Van Mossel vestigingen.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* No results found state */}
+      {results && results.totalVehicles === 0 && (
+        <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800">
+          <CardContent className="py-8">
+            <div className="flex flex-col items-center text-center">
+              <Search className="h-10 w-10 text-orange-500 mb-3" />
+              <h3 className="text-lg font-medium mb-2">Geen resultaten voor "{results.searchQuery}"</h3>
+              <p className="text-muted-foreground text-sm mb-4 max-w-md">
+                Probeer een kortere of andere zoekterm. De zoekfunctie matcht op (delen van) de dealer naam.
+              </p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                <span className="text-sm text-muted-foreground">Probeer:</span>
+                {SUGGESTED_DEALERS.slice(0, 4).map((dealer) => (
+                  <Button
+                    key={dealer}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearchQuery(dealer);
+                      searchDealer(dealer);
+                    }}
+                    className="h-7 text-xs"
+                  >
+                    {dealer}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
