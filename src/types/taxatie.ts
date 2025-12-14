@@ -178,13 +178,35 @@ export interface AITaxatieAdvice {
   primaryListingsUsed: number;
 }
 
-// Taxatie feedback
+// Taxatie feedback - extended for reasoning-based learning
 export interface TaxatieFeedback {
   rating: number;
   wasAccurate: boolean;
-  reason?: 'te_hoog' | 'te_laag' | 'te_voorzichtig' | 'te_agressief' | 'anders';
+  reason?: TaxatieFeedbackType;
   notes: string;
+  // Enhanced fields for reasoning-based learning
+  referencedListingId?: string;
+  userReasoning?: string;
+  userSuggestedPrice?: number;
+  correctionType?: TaxatieCorrectionType;
 }
+
+// Extended feedback types including positive feedback
+export type TaxatieFeedbackType = 
+  | 'te_hoog' 
+  | 'te_laag' 
+  | 'te_voorzichtig' 
+  | 'te_agressief' 
+  | 'listing_niet_herkend'
+  | 'verkeerde_referentie'
+  | 'km_correctie_fout'
+  | 'uitvoering_correctie_fout'
+  | 'markt_verkeerd_ingeschat'
+  | 'goede_taxatie'
+  | 'anders';
+
+// Correction types for detailed analysis
+export type TaxatieCorrectionType = 'km' | 'uitvoering' | 'markt' | 'listing' | 'anders';
 
 // Taxatie uitkomst (voor learning)
 export interface TaxatieOutcome {

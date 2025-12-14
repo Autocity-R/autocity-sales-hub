@@ -78,6 +78,7 @@ interface InternalComparison {
   }>;
 }
 
+// Enhanced feedback item with reasoning-based learning fields
 interface FeedbackItem {
   feedback_type: string;
   notes: string | null;
@@ -87,6 +88,11 @@ interface FeedbackItem {
   ai_purchase_price: number;
   ai_selling_price: number;
   actual_outcome: Record<string, unknown> | null;
+  // Enhanced fields for reasoning-based learning
+  user_reasoning: string | null;
+  user_suggested_price: number | null;
+  correction_type: string | null;
+  referenced_listing_id: string | null;
 }
 
 interface TaxatieRequest {
@@ -95,6 +101,52 @@ interface TaxatieRequest {
   jpCarsData: JPCarsData;
   internalComparison: InternalComparison;
   feedbackHistory?: FeedbackItem[];
+}
+
+// Analyze reasoning patterns from enhanced feedback
+function analyzeReasoningPatterns(feedback: FeedbackItem[]): {
+  listingLessons: Array<{ brand: string; model: string; userReasoning: string; lesson: string }>;
+  kmCorrectionLessons: Array<{ example: string; lesson: string }>;
+  marketLessons: Array<{ lesson: string }>;
+  positiveExamples: Array<{ vehicle: string; reasoning: string }>;
+} {
+  const listingLessons: Array<{ brand: string; model: string; userReasoning: string; lesson: string }> = [];
+  const kmCorrectionLessons: Array<{ example: string; lesson: string }> = [];
+  const marketLessons: Array<{ lesson: string }> = [];
+  const positiveExamples: Array<{ vehicle: string; reasoning: string }> = [];
+  
+  feedback.forEach(item => {
+    // Process feedback with user reasoning (the most valuable learning data)
+    if (item.user_reasoning) {
+      if (item.correction_type === 'listing' || item.feedback_type === 'listing_niet_herkend' || item.feedback_type === 'verkeerde_referentie') {
+        listingLessons.push({
+          brand: item.vehicle_brand,
+          model: item.vehicle_model,
+          userReasoning: item.user_reasoning,
+          lesson: `Bij ${item.vehicle_brand}: ${item.user_reasoning}`,
+        });
+      } else if (item.correction_type === 'km' || item.feedback_type === 'km_correctie_fout') {
+        kmCorrectionLessons.push({
+          example: `${item.vehicle_brand} ${item.vehicle_model}`,
+          lesson: item.user_reasoning,
+        });
+      } else if (item.correction_type === 'markt' || item.feedback_type === 'markt_verkeerd_ingeschat') {
+        marketLessons.push({
+          lesson: `${item.vehicle_brand} ${item.vehicle_model}: ${item.user_reasoning}`,
+        });
+      }
+    }
+    
+    // Collect positive examples to learn what works
+    if (item.feedback_type === 'goede_taxatie') {
+      positiveExamples.push({
+        vehicle: `${item.vehicle_brand} ${item.vehicle_model}`,
+        reasoning: item.notes || 'Correcte taxatie',
+      });
+    }
+  });
+  
+  return { listingLessons, kmCorrectionLessons, marketLessons, positiveExamples };
 }
 
 function buildFeedbackLearningSection(feedback: FeedbackItem[]): string {
@@ -122,11 +174,14 @@ function buildFeedbackLearningSection(feedback: FeedbackItem[]): string {
     }
   });
 
+  // Analyze reasoning patterns (NEW - the key to reasoning-based learning)
+  const reasoningPatterns = analyzeReasoningPatterns(feedback);
+
   // Build learning context string
   let learningSection = `
 ---
 
-## 🧠 FEEDBACK LEARNING - BELANGRIJKE INZICHTEN
+## 🧠 FEEDBACK LEARNING - DENKWIJZE AANPASSINGEN
 
 Je hebt ${feedback.length} feedback items ontvangen. Hieronder de patronen die je MOET meenemen in je advies:
 
@@ -153,6 +208,21 @@ Je hebt ${feedback.length} feedback items ontvangen. Hieronder de patronen die j
       case 'goede_taxatie':
         interpretation = '→ Goed gedaan! Dit was een correcte inschatting.';
         break;
+      case 'listing_niet_herkend':
+        interpretation = '→ Let beter op welke listings je als referentie gebruikt.';
+        break;
+      case 'verkeerde_referentie':
+        interpretation = '→ Kies zorgvuldiger welke listing je als primaire referentie gebruikt.';
+        break;
+      case 'km_correctie_fout':
+        interpretation = '→ Pas je kilometerstand-correcties aan.';
+        break;
+      case 'uitvoering_correctie_fout':
+        interpretation = '→ Waardeer uitrustingsniveaus nauwkeuriger.';
+        break;
+      case 'markt_verkeerd_ingeschat':
+        interpretation = '→ Analyseer de marktdynamiek beter.';
+        break;
       default:
         interpretation = '';
     }
@@ -160,9 +230,50 @@ Je hebt ${feedback.length} feedback items ontvangen. Hieronder de patronen die j
     learningSection += `- ${type}: ${count}x (${percentage}%) ${interpretation}\n`;
   });
 
+  // Add reasoning-based lessons (NEW - the key learning)
+  if (reasoningPatterns.listingLessons.length > 0) {
+    learningSection += `
+**🔍 LESSEN OVER LISTINGS HERKENNEN:**
+${reasoningPatterns.listingLessons.slice(0, 5).map((l, i) => 
+  `${i + 1}. ${l.brand} ${l.model}:
+   "${l.userReasoning}"
+   → **Les:** ${l.lesson}`
+).join('\n\n')}
+`;
+  }
+
+  if (reasoningPatterns.kmCorrectionLessons.length > 0) {
+    learningSection += `
+**📏 LESSEN OVER KM-CORRECTIES:**
+${reasoningPatterns.kmCorrectionLessons.slice(0, 3).map((l, i) =>
+  `${i + 1}. ${l.example}:
+   "${l.lesson}"`
+).join('\n\n')}
+`;
+  }
+
+  if (reasoningPatterns.marketLessons.length > 0) {
+    learningSection += `
+**📊 LESSEN OVER MARKTINSCHATTING:**
+${reasoningPatterns.marketLessons.slice(0, 3).map((l, i) =>
+  `${i + 1}. ${l.lesson}`
+).join('\n')}
+`;
+  }
+
+  // Add positive examples - what worked well
+  if (reasoningPatterns.positiveExamples.length > 0) {
+    learningSection += `
+**✅ WAT GOED WERKTE (behoud deze denkwijze):**
+${reasoningPatterns.positiveExamples.slice(0, 3).map((ex, i) =>
+  `${i + 1}. ${ex.vehicle}: ${ex.reasoning}`
+).join('\n')}
+`;
+  }
+
   // Brand-specific patterns
   const brandPatterns = Object.entries(feedbackByBrand)
-    .filter(([_, items]) => items.length >= 2) // Only show if 2+ feedback items
+    .filter(([_, items]) => items.length >= 2)
     .map(([brand, items]) => {
       const dominantFeedback = items.sort((a, b) => b.count - a.count)[0];
       return { brand, feedback: dominantFeedback };
@@ -193,23 +304,26 @@ Je hebt ${feedback.length} feedback items ontvangen. Hieronder de patronen die j
     });
   }
 
-  // Recent specific examples
-  const recentExamples = feedback.slice(0, 5);
-  if (recentExamples.length > 0) {
+  // Recent specific examples with reasoning
+  const recentWithReasoning = feedback.filter(f => f.user_reasoning).slice(0, 3);
+  if (recentWithReasoning.length > 0) {
     learningSection += `
-**Recente Feedback Voorbeelden:**
+**Recente Feedback met Uitleg:**
 `;
-    recentExamples.forEach((item, i) => {
-      learningSection += `${i + 1}. ${item.vehicle_brand} ${item.vehicle_model}: "${item.feedback_type}"`;
-      if (item.notes) {
-        learningSection += ` - "${item.notes}"`;
-      }
-      learningSection += `\n   Je adviseerde: €${item.ai_purchase_price?.toLocaleString('nl-NL')} inkoop, €${item.ai_selling_price?.toLocaleString('nl-NL')} verkoop (${item.ai_recommendation})\n`;
+    recentWithReasoning.forEach((item, i) => {
+      learningSection += `${i + 1}. ${item.vehicle_brand} ${item.vehicle_model}: "${item.feedback_type}"
+   - AI advies: €${item.ai_purchase_price?.toLocaleString('nl-NL')} inkoop → €${item.ai_selling_price?.toLocaleString('nl-NL')} verkoop
+   - Gebruiker zegt: "${item.user_reasoning}"
+   ${item.user_suggested_price ? `- Gebruiker suggereerde: €${item.user_suggested_price.toLocaleString('nl-NL')}` : ''}
+   ${item.correction_type ? `- Type correctie: ${item.correction_type}` : ''}
+`;
     });
   }
 
   learningSection += `
-**⚠️ ACTIE:** Pas je advies aan op basis van bovenstaande patronen! Als je vaak "te_hoog" feedback krijgt, wees dan conservatiever. Als je vaak "te_laag" feedback krijgt, wees dan optimistischer.
+**⚠️ ACTIE:** Gebruik deze lessen om je DENKWIJZE aan te passen, niet alleen je getallen! 
+Als je consistent feedback krijgt over bepaalde merken, uitvoeringen of markten, pas dan je 
+MANIER VAN DENKEN aan - niet alleen de prijscorrectie.
 `;
 
   return learningSection;

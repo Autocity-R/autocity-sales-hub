@@ -1884,32 +1884,44 @@ export type Database = {
       taxatie_feedback: {
         Row: {
           actual_outcome: Json | null
+          correction_type: string | null
           created_at: string
           created_by: string | null
           feedback_type: string
           id: string
           notes: string | null
           rating: number | null
+          referenced_listing_id: string | null
+          user_reasoning: string | null
+          user_suggested_price: number | null
           valuation_id: string
         }
         Insert: {
           actual_outcome?: Json | null
+          correction_type?: string | null
           created_at?: string
           created_by?: string | null
           feedback_type: string
           id?: string
           notes?: string | null
           rating?: number | null
+          referenced_listing_id?: string | null
+          user_reasoning?: string | null
+          user_suggested_price?: number | null
           valuation_id: string
         }
         Update: {
           actual_outcome?: Json | null
+          correction_type?: string | null
           created_at?: string
           created_by?: string | null
           feedback_type?: string
           id?: string
           notes?: string | null
           rating?: number | null
+          referenced_listing_id?: string | null
+          user_reasoning?: string | null
+          user_suggested_price?: number | null
           valuation_id?: string
         }
         Relationships: [
