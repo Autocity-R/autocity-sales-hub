@@ -203,6 +203,8 @@ export const useDealerAnalysis = () => {
             power: v.power || undefined,
             bodyType: v.bodyType || undefined,
             variant: v.variant || undefined,
+            mileage: v.mileage || undefined,
+            rowIndex: v.rowIndex + 2, // +2 voor header offset naar Excel rijnummer
           }));
 
           allVehicles.push(...inputs);
