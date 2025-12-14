@@ -32,6 +32,7 @@ export interface DealerAnalysisResult {
   };
   status: 'pending' | 'processing' | 'completed' | 'error';
   error?: string;
+  windowUrl?: string;
 }
 
 export interface DealerAnalysisState {

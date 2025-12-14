@@ -54,9 +54,8 @@ export const DealerAnalysisResults = ({ results, onReset }: DealerAnalysisResult
   };
 
   const formatSoldSince = (days: number | null) => {
-    if (days === null) return 'Te koop';
-    if (days === 0) return 'Vandaag';
-    if (days === 1) return 'Gisteren';
+    if (days === null || days === 0) return 'Te koop';
+    if (days === 1) return '1 dag geleden';
     return `${days} dgn geleden`;
   };
 
@@ -181,11 +180,24 @@ export const DealerAnalysisResults = ({ results, onReset }: DealerAnalysisResult
                         <Clock className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm">{result.stats.avgDaysInStock} dgn</span>
                       </div>
-                      {result.stats.fastestSale !== null && (
+                      {result.stats.fastestSale !== null && result.stats.fastestSale > 0 && (
                         <Badge variant="default" className="bg-green-500">
                           <TrendingUp className="h-3 w-3 mr-1" />
                           Snelste: {result.stats.fastestSale}d
                         </Badge>
+                      )}
+                      {result.windowUrl && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(result.windowUrl, '_blank');
+                          }}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          JP Cars
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -202,10 +214,11 @@ export const DealerAnalysisResults = ({ results, onReset }: DealerAnalysisResult
                       <TableHeader>
                         <TableRow>
                           <TableHead>Dealer</TableHead>
+                          <TableHead className="text-right">Bouwjaar</TableHead>
                           <TableHead className="text-right">Prijs</TableHead>
                           <TableHead className="text-right">KM</TableHead>
                           <TableHead className="text-right">Stadagen</TableHead>
-                          <TableHead className="text-right">Verkocht</TableHead>
+                          <TableHead className="text-right">Status</TableHead>
                           <TableHead className="text-center">Link</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -213,6 +226,7 @@ export const DealerAnalysisResults = ({ results, onReset }: DealerAnalysisResult
                         {result.dealers.map((dealer, dIdx) => (
                           <TableRow key={dIdx}>
                             <TableCell className="font-medium">{dealer.dealerName}</TableCell>
+                            <TableCell className="text-right">{dealer.buildYear || '-'}</TableCell>
                             <TableCell className="text-right">{formatPrice(dealer.price)}</TableCell>
                             <TableCell className="text-right">
                               {dealer.mileage.toLocaleString('nl-NL')} km
@@ -221,11 +235,11 @@ export const DealerAnalysisResults = ({ results, onReset }: DealerAnalysisResult
                             <TableCell className="text-right">
                               <span
                                 className={
-                                  dealer.soldSince !== null && dealer.soldSince <= 7
+                                  dealer.soldSince !== null && dealer.soldSince > 0 && dealer.soldSince <= 7
                                     ? 'text-green-600 font-medium'
-                                    : dealer.soldSince !== null && dealer.soldSince <= 30
+                                    : dealer.soldSince !== null && dealer.soldSince > 7 && dealer.soldSince <= 30
                                     ? 'text-blue-600'
-                                    : ''
+                                    : 'text-muted-foreground'
                                 }
                               >
                                 {formatSoldSince(dealer.soldSince)}

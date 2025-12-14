@@ -236,7 +236,7 @@ export const useDealerAnalysis = () => {
   }, []);
 
   // Fetch JP Cars window data for a single vehicle
-  const fetchDealerData = async (vehicle: VehicleInput): Promise<DealerListing[]> => {
+  const fetchDealerData = async (vehicle: VehicleInput): Promise<{ dealers: DealerListing[]; windowUrl: string | null }> => {
     const { data, error } = await supabase.functions.invoke('jpcars-lookup', {
       body: {
         make: vehicle.brand,
@@ -255,10 +255,11 @@ export const useDealerAnalysis = () => {
     }
 
     if (!data?.success || !data?.data?.window) {
-      return [];
+      return { dealers: [], windowUrl: null };
     }
 
     const windowItems = data.data.window as JPCarsWindowItem[];
+    const windowUrl = data.data.window_url || null;
 
     // Convert to DealerListing format, filter only items with dealer info
     const dealers: DealerListing[] = windowItems
@@ -280,7 +281,7 @@ export const useDealerAnalysis = () => {
         return a.soldSince - b.soldSince;
       });
 
-    return dealers;
+    return { dealers, windowUrl };
   };
 
   // Calculate stats for a set of dealer listings
@@ -356,7 +357,7 @@ export const useDealerAnalysis = () => {
       console.log(`🔍 [${i + 1}/${vehicles.length}] Analyzing: ${vehicle.brand} ${vehicle.model}`);
 
       try {
-        const dealers = await withTimeout(
+        const { dealers, windowUrl } = await withTimeout(
           fetchDealerData(vehicle),
           30000,
           `${vehicle.brand} ${vehicle.model}`
@@ -369,6 +370,7 @@ export const useDealerAnalysis = () => {
           dealers,
           stats,
           status: 'completed',
+          windowUrl: windowUrl || undefined,
         };
 
         results.push(result);
