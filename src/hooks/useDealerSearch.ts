@@ -2,9 +2,6 @@ import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-const RECENT_SEARCHES_KEY = 'dealer_search_history';
-const MAX_RECENT_SEARCHES = 10;
-
 export interface DealerVehicle {
   licensePlate: string;
   brand: string;
@@ -29,6 +26,8 @@ export interface UniqueDealer {
 export interface DealerSearchResult {
   dealerName: string;
   searchQuery: string;
+  matchedVariant: string | null;
+  triedVariants: string[];
   totalVehicles: number;
   inStock: DealerVehicle[];
   sold: DealerVehicle[];
@@ -44,11 +43,14 @@ export interface DealerSearchResult {
 export interface RecentSearch {
   query: string;
   dealerName: string;
+  matchedVariant: string | null;
   vehicleCount: number;
   timestamp: number;
 }
 
-// Helper functions for localStorage
+const RECENT_SEARCHES_KEY = 'dealer-search-history';
+const MAX_RECENT_SEARCHES = 10;
+
 const getRecentSearches = (): RecentSearch[] => {
   try {
     const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
@@ -58,19 +60,16 @@ const getRecentSearches = (): RecentSearch[] => {
   }
 };
 
-const saveRecentSearch = (query: string, dealerName: string, vehicleCount: number) => {
+const saveRecentSearch = (search: RecentSearch) => {
   try {
-    const searches = getRecentSearches();
-    // Remove existing entry with same query
-    const filtered = searches.filter(s => s.query.toLowerCase() !== query.toLowerCase());
-    // Add new entry at the beginning
-    const updated = [
-      { query, dealerName, vehicleCount, timestamp: Date.now() },
-      ...filtered
-    ].slice(0, MAX_RECENT_SEARCHES);
+    const existing = getRecentSearches();
+    // Remove duplicates by dealerName (exact JP Cars name)
+    const filtered = existing.filter(s => s.dealerName !== search.dealerName);
+    const updated = [search, ...filtered].slice(0, MAX_RECENT_SEARCHES);
     localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+    return updated;
   } catch {
-    // Ignore localStorage errors
+    return getRecentSearches();
   }
 };
 
@@ -116,7 +115,14 @@ export const useDealerSearch = () => {
 
       // Save successful search with results
       if (result.totalVehicles > 0) {
-        saveRecentSearch(dealerName.trim(), result.dealerName, result.totalVehicles);
+        const newSearch: RecentSearch = {
+          query: dealerName.trim(),
+          dealerName: result.dealerName,
+          matchedVariant: result.matchedVariant,
+          vehicleCount: result.totalVehicles,
+          timestamp: Date.now()
+        };
+        saveRecentSearch(newSearch);
         setRecentSearches(getRecentSearches());
         toast.success(`${result.totalVehicles} voertuigen gevonden voor "${result.dealerName}"`);
       } else {

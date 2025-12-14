@@ -268,6 +268,25 @@ export const CompetitorMonitor = () => {
             </Card>
           )}
 
+          {/* Matched Variant Info */}
+          {results.matchedVariant && results.matchedVariant !== results.searchQuery && (
+            <Card className="border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800">
+              <CardContent className="py-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <span>
+                    Zoekopdracht "<strong>{results.searchQuery}</strong>" gematcht via variant "<strong>{results.matchedVariant}</strong>"
+                  </span>
+                </div>
+                {results.triedVariants && results.triedVariants.length > 1 && (
+                  <p className="text-xs text-muted-foreground mt-1 ml-6">
+                    Geprobeerde varianten: {results.triedVariants.join(', ')}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Dealer Info & Top Brands */}
           <Card>
             <CardHeader className="pb-2">
@@ -349,14 +368,16 @@ export const CompetitorMonitor = () => {
                 <div className="flex flex-wrap gap-2">
                   {recentSearches.map((search) => (
                     <Button
-                      key={search.query}
+                      key={search.dealerName}
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        setSearchQuery(search.query);
-                        searchDealer(search.query);
+                        // Use the exact JP Cars dealer name for direct match
+                        setSearchQuery(search.dealerName);
+                        searchDealer(search.dealerName);
                       }}
                       className="h-8"
+                      title={search.matchedVariant ? `Oorspronkelijke zoekopdracht: "${search.query}" → gematcht via "${search.matchedVariant}"` : undefined}
                     >
                       {search.dealerName}
                       <Badge variant="secondary" className="ml-2 text-xs">
@@ -419,9 +440,33 @@ export const CompetitorMonitor = () => {
             <div className="flex flex-col items-center text-center">
               <Search className="h-10 w-10 text-orange-500 mb-3" />
               <h3 className="text-lg font-medium mb-2">Geen resultaten voor "{results.searchQuery}"</h3>
-              <p className="text-muted-foreground text-sm mb-4 max-w-md">
-                Probeer een kortere of andere zoekterm. De zoekfunctie matcht op (delen van) de dealer naam.
-              </p>
+              
+              {/* Show tried variants */}
+              {results.triedVariants && results.triedVariants.length > 0 && (
+                <div className="mb-4 text-sm text-muted-foreground">
+                  <p className="mb-1">Geprobeerde zoekvarianten:</p>
+                  <div className="flex flex-wrap gap-1 justify-center">
+                    {results.triedVariants.map((variant, idx) => (
+                      <Badge key={idx} variant="outline" className="text-xs">
+                        {variant}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-muted/50 rounded-lg p-4 mb-4 max-w-md">
+                <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <Lightbulb className="h-4 w-4 text-yellow-500" />
+                  Tips voor zoeken:
+                </p>
+                <ul className="text-xs text-muted-foreground text-left space-y-1">
+                  <li>• Probeer de website domeinnaam (bijv. "vanrijswijkautos")</li>
+                  <li>• Zoek op alleen de achternaam (bijv. "Rijswijk")</li>
+                  <li>• Gebruik kortere zoektermen zonder "Autobedrijf" of "B.V."</li>
+                </ul>
+              </div>
+
               <div className="flex flex-wrap gap-2 justify-center">
                 <span className="text-sm text-muted-foreground">Probeer:</span>
                 {SUGGESTED_DEALERS.slice(0, 4).map((dealer) => (
