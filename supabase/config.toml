@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.jpcars-dealer-search]
 verify_jwt = false
+
+[functions.jpcars-dealer-lookup]
+verify_jwt = false

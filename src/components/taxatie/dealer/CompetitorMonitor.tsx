@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Building2, Car, TrendingUp, Clock, CheckCircle, ExternalLink, Download, Loader2, Star, History, X, Lightbulb, Users } from 'lucide-react';
+import { Search, Building2, Car, TrendingUp, Clock, CheckCircle, ExternalLink, Download, Loader2, Star, History, X, Lightbulb, Users, FileSearch, AlertTriangle } from 'lucide-react';
 import { useDealerSearch, DealerVehicle } from '@/hooks/useDealerSearch';
 import { exportDealerSearchToExcel } from '@/services/dealerSearchExport';
 
@@ -20,12 +20,20 @@ const SUGGESTED_DEALERS = [
 ];
 
 export const CompetitorMonitor = () => {
+  const [searchMode, setSearchMode] = useState<'plate' | 'name'>('plate');
   const [searchQuery, setSearchQuery] = useState('');
-  const { results, isSearching, error, recentSearches, searchDealer, reset, clearRecentSearches } = useDealerSearch();
+  const [licensePlate, setLicensePlate] = useState('');
+  const { results, lookupResult, isSearching, error, recentSearches, searchDealer, searchByLicensePlate, reset, clearRecentSearches } = useDealerSearch();
 
   const handleSearch = () => {
-    if (searchQuery.trim()) {
-      searchDealer(searchQuery);
+    if (searchMode === 'plate') {
+      if (licensePlate.trim()) {
+        searchByLicensePlate(licensePlate);
+      }
+    } else {
+      if (searchQuery.trim()) {
+        searchDealer(searchQuery);
+      }
     }
   };
 
@@ -39,6 +47,7 @@ export const CompetitorMonitor = () => {
     if (results) {
       exportDealerSearchToExcel(results);
     }
+    // TODO: Add export for lookupResult
   };
 
   const formatPrice = (price: number) => {
@@ -124,6 +133,10 @@ export const CompetitorMonitor = () => {
     </div>
   );
 
+  // Check if we have any results to show
+  const hasResults = results || lookupResult;
+  const currentResult = lookupResult || results;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -137,38 +150,104 @@ export const CompetitorMonitor = () => {
             Zoek een dealer en bekijk hun huidige voorraad en verkochte auto's via JP Cars
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Zoek op dealer naam (bijv. Van Mossel, Louwman)..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="pl-10"
-                disabled={isSearching}
-              />
-            </div>
-            <Button onClick={handleSearch} disabled={isSearching || !searchQuery.trim()}>
-              {isSearching ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Zoeken...
-                </>
-              ) : (
-                <>
-                  <Search className="h-4 w-4 mr-2" />
-                  Zoeken
-                </>
-              )}
-            </Button>
-            {results && (
-              <Button variant="outline" onClick={reset}>
-                Wissen
-              </Button>
-            )}
-          </div>
+        <CardContent className="space-y-4">
+          {/* Search Mode Tabs */}
+          <Tabs value={searchMode} onValueChange={(v) => setSearchMode(v as 'plate' | 'name')}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="plate" className="flex items-center gap-2">
+                <FileSearch className="h-4 w-4" />
+                Via Kenteken
+                <Badge variant="secondary" className="ml-1 text-xs">Aanbevolen</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="name" className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Via Dealer Naam
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="plate" className="mt-4">
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Voer een kenteken in van een auto die bij de concurrent te koop staat. 
+                  We vinden dan de dealer en tonen vergelijkbare voertuigen.
+                </p>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <FileSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Bijv. XX-123-YY of XX123YY"
+                      value={licensePlate}
+                      onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
+                      onKeyPress={handleKeyPress}
+                      className="pl-10 font-mono"
+                      disabled={isSearching}
+                    />
+                  </div>
+                  <Button onClick={handleSearch} disabled={isSearching || !licensePlate.trim()}>
+                    {isSearching ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Zoeken...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="h-4 w-4 mr-2" />
+                        Zoek Dealer
+                      </>
+                    )}
+                  </Button>
+                  {hasResults && (
+                    <Button variant="outline" onClick={reset}>
+                      Wissen
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="name" className="mt-4">
+              <div className="space-y-3">
+                <div className="flex items-start gap-2 p-3 rounded-md bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800">
+                  <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-orange-700 dark:text-orange-300">
+                    <strong>Let op:</strong> Zoeken op dealer naam is minder betrouwbaar. 
+                    We raden aan om via kenteken te zoeken voor de beste resultaten.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Zoek op dealer naam (bijv. Van Mossel, Louwman)..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      className="pl-10"
+                      disabled={isSearching}
+                    />
+                  </div>
+                  <Button onClick={handleSearch} disabled={isSearching || !searchQuery.trim()}>
+                    {isSearching ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Zoeken...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="h-4 w-4 mr-2" />
+                        Zoeken
+                      </>
+                    )}
+                  </Button>
+                  {hasResults && (
+                    <Button variant="outline" onClick={reset}>
+                      Wissen
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
@@ -181,7 +260,141 @@ export const CompetitorMonitor = () => {
         </Card>
       )}
 
-      {/* Results */}
+      {/* Lookup Result (via license plate) */}
+      {lookupResult && (
+        <>
+          {/* Success message */}
+          <Card className="border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800">
+            <CardContent className="py-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <div>
+                  <p className="font-medium text-green-700 dark:text-green-300">
+                    Dealer gevonden: {lookupResult.dealerName}
+                  </p>
+                  <p className="text-sm text-green-600 dark:text-green-400">
+                    {lookupResult.message}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2">
+                  <Car className="h-5 w-5 text-blue-500" />
+                  <div>
+                    <p className="text-2xl font-bold">{lookupResult.inStock.length}</p>
+                    <p className="text-sm text-muted-foreground">In voorraad</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-green-500" />
+                  <div>
+                    <p className="text-2xl font-bold">{formatPrice(lookupResult.stats.avgPrice)}</p>
+                    <p className="text-sm text-muted-foreground">Gem. prijs</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-orange-500" />
+                  <div>
+                    <p className="text-2xl font-bold">{lookupResult.stats.avgStockDays} dgn</p>
+                    <p className="text-sm text-muted-foreground">Gem. stadagen</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-purple-500" />
+                  <div>
+                    <p className="text-2xl font-bold">{lookupResult.stats.soldLast30Days}</p>
+                    <p className="text-sm text-muted-foreground">Verkocht (30d)</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Dealer Info & Top Brands */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>{lookupResult.dealerName}</CardTitle>
+                  <CardDescription>
+                    {lookupResult.totalVehicles} vergelijkbare voertuigen gevonden via kenteken {lookupResult.lookupLicensePlate}
+                  </CardDescription>
+                </div>
+                {/* <Button variant="outline" onClick={handleExport}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Excel
+                </Button> */}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {lookupResult.stats.topBrands.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-sm text-muted-foreground">Top merken:</span>
+                  {lookupResult.stats.topBrands.map(({ brand, count }) => (
+                    <Badge key={brand} variant="secondary">
+                      {brand} ({count})
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Vehicle Tabs */}
+          <Card>
+            <CardContent className="pt-6">
+              <Tabs defaultValue="inStock">
+                <TabsList>
+                  <TabsTrigger value="inStock" className="flex items-center gap-2">
+                    <Car className="h-4 w-4" />
+                    Voorraad ({lookupResult.inStock.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="sold" className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    Verkocht ({lookupResult.sold.length})
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="inStock" className="mt-4">
+                  <VehicleTable vehicles={lookupResult.inStock} />
+                </TabsContent>
+                <TabsContent value="sold" className="mt-4">
+                  <VehicleTable vehicles={lookupResult.sold} showSoldDays />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+
+          {/* Note about window data */}
+          <Card className="border-dashed">
+            <CardContent className="py-4">
+              <p className="text-sm text-muted-foreground">
+                <strong>Let op:</strong> De getoonde voertuigen zijn vergelijkbare auto's uit de JP Cars window data. 
+                Om meer voertuigen van deze dealer te ontdekken, probeer kentekens van verschillende type auto's.
+              </p>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {/* Name Search Results */}
       {results && (
         <>
           {/* Stats Cards */}
@@ -347,7 +560,7 @@ export const CompetitorMonitor = () => {
       )}
 
       {/* Empty state with suggestions */}
-      {!results && !isSearching && !error && (
+      {!hasResults && !isSearching && !error && (
         <div className="space-y-4">
           {/* Recent searches */}
           {recentSearches.length > 0 && (
@@ -368,17 +581,24 @@ export const CompetitorMonitor = () => {
                 <div className="flex flex-wrap gap-2">
                   {recentSearches.map((search) => (
                     <Button
-                      key={search.dealerName}
+                      key={`${search.dealerName}-${search.timestamp}`}
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        // Use the exact JP Cars dealer name for direct match
-                        setSearchQuery(search.dealerName);
-                        searchDealer(search.dealerName);
+                        if (search.method === 'plate') {
+                          setSearchMode('plate');
+                          setLicensePlate(search.query);
+                          searchByLicensePlate(search.query);
+                        } else {
+                          setSearchMode('name');
+                          setSearchQuery(search.dealerName);
+                          searchDealer(search.dealerName);
+                        }
                       }}
                       className="h-8"
-                      title={search.matchedVariant ? `Oorspronkelijke zoekopdracht: "${search.query}" → gematcht via "${search.matchedVariant}"` : undefined}
+                      title={search.method === 'plate' ? `Gezocht via kenteken: ${search.query}` : undefined}
                     >
+                      {search.method === 'plate' && <FileSearch className="h-3 w-3 mr-1" />}
                       {search.dealerName}
                       <Badge variant="secondary" className="ml-2 text-xs">
                         {search.vehicleCount}
@@ -390,44 +610,62 @@ export const CompetitorMonitor = () => {
             </Card>
           )}
 
-          {/* Suggested dealers */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Lightbulb className="h-4 w-4 text-yellow-500" />
-                Populaire dealers
-              </CardTitle>
-              <CardDescription>Klik op een dealer om te zoeken</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="flex flex-wrap gap-2">
-                {SUGGESTED_DEALERS.map((dealer) => (
-                  <Button
-                    key={dealer}
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      setSearchQuery(dealer);
-                      searchDealer(dealer);
-                    }}
-                    className="h-8"
-                  >
-                    {dealer}
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Suggested dealers (only for name search) */}
+          {searchMode === 'name' && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Lightbulb className="h-4 w-4 text-yellow-500" />
+                  Populaire dealers
+                </CardTitle>
+                <CardDescription>Klik op een dealer om te zoeken</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex flex-wrap gap-2">
+                  {SUGGESTED_DEALERS.map((dealer) => (
+                    <Button
+                      key={dealer}
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setSearchQuery(dealer);
+                        searchDealer(dealer);
+                      }}
+                      className="h-8"
+                    >
+                      {dealer}
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Instructions */}
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-8">
-              <Building2 className="h-10 w-10 text-muted-foreground/50 mb-3" />
-              <h3 className="text-lg font-medium mb-2">Zoek een dealer</h3>
-              <p className="text-muted-foreground text-center max-w-md text-sm">
-                Voer een (deel van de) dealer naam in. JP Cars zoekt op gedeeltelijke match, 
-                dus "Van Mossel" vindt alle Van Mossel vestigingen.
-              </p>
+              {searchMode === 'plate' ? (
+                <>
+                  <FileSearch className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                  <h3 className="text-lg font-medium mb-2">Zoek een dealer via kenteken</h3>
+                  <p className="text-muted-foreground text-center max-w-md text-sm">
+                    Voer een kenteken in van een auto die bij de concurrent te koop staat. 
+                    We vinden de dealer en tonen vergelijkbare voertuigen uit hun voorraad.
+                  </p>
+                  <div className="mt-4 p-3 rounded-md bg-muted/50 text-sm">
+                    <strong>Tip:</strong> Ga naar de website van de concurrent en kopieer een kenteken van een auto die ze aanbieden.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Building2 className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                  <h3 className="text-lg font-medium mb-2">Zoek een dealer</h3>
+                  <p className="text-muted-foreground text-center max-w-md text-sm">
+                    Voer een (deel van de) dealer naam in. JP Cars zoekt op gedeeltelijke match, 
+                    dus "Van Mossel" vindt alle Van Mossel vestigingen.
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -439,50 +677,36 @@ export const CompetitorMonitor = () => {
           <CardContent className="py-8">
             <div className="flex flex-col items-center text-center">
               <Search className="h-10 w-10 text-orange-500 mb-3" />
-              <h3 className="text-lg font-medium mb-2">Geen resultaten voor "{results.searchQuery}"</h3>
+              <h3 className="text-lg font-medium mb-2">Geen voertuigen gevonden</h3>
+              <p className="text-muted-foreground max-w-md text-sm mb-4">
+                We konden geen voertuigen vinden voor "{results.searchQuery}".
+              </p>
               
               {/* Show tried variants */}
               {results.triedVariants && results.triedVariants.length > 0 && (
-                <div className="mb-4 text-sm text-muted-foreground">
-                  <p className="mb-1">Geprobeerde zoekvarianten:</p>
-                  <div className="flex flex-wrap gap-1 justify-center">
-                    {results.triedVariants.map((variant, idx) => (
-                      <Badge key={idx} variant="outline" className="text-xs">
+                <div className="mb-4 p-3 rounded-md bg-white dark:bg-gray-900 border text-left w-full max-w-md">
+                  <p className="text-xs text-muted-foreground mb-1">Geprobeerde zoekvarianten:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {results.triedVariants.map((variant, i) => (
+                      <Badge key={i} variant="outline" className="text-xs">
                         {variant}
                       </Badge>
                     ))}
                   </div>
                 </div>
               )}
-
-              <div className="bg-muted/50 rounded-lg p-4 mb-4 max-w-md">
+              
+              <div className="text-left bg-white dark:bg-gray-900 p-4 rounded-md border w-full max-w-md">
                 <p className="text-sm font-medium mb-2 flex items-center gap-2">
                   <Lightbulb className="h-4 w-4 text-yellow-500" />
-                  Tips voor zoeken:
+                  Tips voor betere resultaten:
                 </p>
-                <ul className="text-xs text-muted-foreground text-left space-y-1">
-                  <li>• Probeer de website domeinnaam (bijv. "vanrijswijkautos")</li>
-                  <li>• Zoek op alleen de achternaam (bijv. "Rijswijk")</li>
-                  <li>• Gebruik kortere zoektermen zonder "Autobedrijf" of "B.V."</li>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Gebruik kenteken lookup</strong> - dit is betrouwbaarder</li>
+                  <li>• Probeer de website domeinnaam (bijv. "vanrijswijkautos.nl")</li>
+                  <li>• Zoek op alleen de achternaam (bijv. "rijswijk")</li>
+                  <li>• Voeg "autos" toe (bijv. "rijswijkautos")</li>
                 </ul>
-              </div>
-
-              <div className="flex flex-wrap gap-2 justify-center">
-                <span className="text-sm text-muted-foreground">Probeer:</span>
-                {SUGGESTED_DEALERS.slice(0, 4).map((dealer) => (
-                  <Button
-                    key={dealer}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSearchQuery(dealer);
-                      searchDealer(dealer);
-                    }}
-                    className="h-7 text-xs"
-                  >
-                    {dealer}
-                  </Button>
-                ))}
               </div>
             </div>
           </CardContent>
