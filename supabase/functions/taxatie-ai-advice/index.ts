@@ -78,12 +78,23 @@ interface InternalComparison {
   }>;
 }
 
-// Enhanced feedback item with reasoning-based learning fields
+// Portal listing context for feedback learning
+interface FeedbackListingContext {
+  price: number;
+  mileage: number;
+  buildYear: number;
+  title: string;
+  portal?: string;
+}
+
+// Enhanced feedback item with reasoning-based learning fields + market context
 interface FeedbackItem {
   feedback_type: string;
   notes: string | null;
   vehicle_brand: string;
   vehicle_model: string;
+  vehicle_mileage: number;
+  vehicle_build_year: number;
   ai_recommendation: string;
   ai_purchase_price: number;
   ai_selling_price: number;
@@ -93,6 +104,9 @@ interface FeedbackItem {
   user_suggested_price: number | null;
   correction_type: string | null;
   referenced_listing_id: string | null;
+  // Market context at the time of valuation
+  portal_listings: FeedbackListingContext[];
+  jpcars_value: number | null;
 }
 
 interface TaxatieRequest {
@@ -103,37 +117,66 @@ interface TaxatieRequest {
   feedbackHistory?: FeedbackItem[];
 }
 
-// Analyze reasoning patterns from enhanced feedback
+// Lesson with market context for deeper learning
+interface LessonWithContext {
+  brand: string;
+  model: string;
+  vehicleMileage: number;
+  vehicleBuildYear: number;
+  userReasoning: string;
+  lesson: string;
+  aiPurchasePrice: number;
+  userSuggestedPrice?: number | null;
+  marketContext: string; // Formatted market listings at the time
+  jpCarsValue?: number | null;
+}
+
+// Analyze reasoning patterns from enhanced feedback with market context
 function analyzeReasoningPatterns(feedback: FeedbackItem[]): {
-  listingLessons: Array<{ brand: string; model: string; userReasoning: string; lesson: string }>;
-  kmCorrectionLessons: Array<{ example: string; lesson: string }>;
-  marketLessons: Array<{ lesson: string }>;
-  positiveExamples: Array<{ vehicle: string; reasoning: string }>;
+  listingLessons: LessonWithContext[];
+  kmCorrectionLessons: LessonWithContext[];
+  marketLessons: LessonWithContext[];
+  positiveExamples: Array<{ vehicle: string; reasoning: string; marketContext: string }>;
 } {
-  const listingLessons: Array<{ brand: string; model: string; userReasoning: string; lesson: string }> = [];
-  const kmCorrectionLessons: Array<{ example: string; lesson: string }> = [];
-  const marketLessons: Array<{ lesson: string }> = [];
-  const positiveExamples: Array<{ vehicle: string; reasoning: string }> = [];
+  const listingLessons: LessonWithContext[] = [];
+  const kmCorrectionLessons: LessonWithContext[] = [];
+  const marketLessons: LessonWithContext[] = [];
+  const positiveExamples: Array<{ vehicle: string; reasoning: string; marketContext: string }> = [];
+  
+  // Helper to format market context
+  const formatMarketContext = (item: FeedbackItem): string => {
+    if (!item.portal_listings || item.portal_listings.length === 0) {
+      return 'Geen marktdata beschikbaar';
+    }
+    return item.portal_listings.slice(0, 3).map(l => 
+      `€${l.price.toLocaleString('nl-NL')} | ${l.mileage.toLocaleString('nl-NL')} km | ${l.buildYear}`
+    ).join(' | ');
+  };
   
   feedback.forEach(item => {
+    const marketContext = formatMarketContext(item);
+    
     // Process feedback with user reasoning (the most valuable learning data)
     if (item.user_reasoning) {
+      const lessonBase: LessonWithContext = {
+        brand: item.vehicle_brand,
+        model: item.vehicle_model,
+        vehicleMileage: item.vehicle_mileage,
+        vehicleBuildYear: item.vehicle_build_year,
+        userReasoning: item.user_reasoning,
+        lesson: `Bij ${item.vehicle_brand}: ${item.user_reasoning}`,
+        aiPurchasePrice: item.ai_purchase_price,
+        userSuggestedPrice: item.user_suggested_price,
+        marketContext,
+        jpCarsValue: item.jpcars_value,
+      };
+      
       if (item.correction_type === 'listing' || item.feedback_type === 'listing_niet_herkend' || item.feedback_type === 'verkeerde_referentie') {
-        listingLessons.push({
-          brand: item.vehicle_brand,
-          model: item.vehicle_model,
-          userReasoning: item.user_reasoning,
-          lesson: `Bij ${item.vehicle_brand}: ${item.user_reasoning}`,
-        });
+        listingLessons.push(lessonBase);
       } else if (item.correction_type === 'km' || item.feedback_type === 'km_correctie_fout') {
-        kmCorrectionLessons.push({
-          example: `${item.vehicle_brand} ${item.vehicle_model}`,
-          lesson: item.user_reasoning,
-        });
+        kmCorrectionLessons.push(lessonBase);
       } else if (item.correction_type === 'markt' || item.feedback_type === 'markt_verkeerd_ingeschat') {
-        marketLessons.push({
-          lesson: `${item.vehicle_brand} ${item.vehicle_model}: ${item.user_reasoning}`,
-        });
+        marketLessons.push(lessonBase);
       }
     }
     
@@ -142,6 +185,7 @@ function analyzeReasoningPatterns(feedback: FeedbackItem[]): {
       positiveExamples.push({
         vehicle: `${item.vehicle_brand} ${item.vehicle_model}`,
         reasoning: item.notes || 'Correcte taxatie',
+        marketContext,
       });
     }
   });
@@ -230,13 +274,18 @@ Je hebt ${feedback.length} feedback items ontvangen. Hieronder de patronen die j
     learningSection += `- ${type}: ${count}x (${percentage}%) ${interpretation}\n`;
   });
 
-  // Add reasoning-based lessons (NEW - the key learning)
+  // Add reasoning-based lessons WITH MARKET CONTEXT (the key learning)
   if (reasoningPatterns.listingLessons.length > 0) {
     learningSection += `
-**🔍 LESSEN OVER LISTINGS HERKENNEN:**
+**🔍 LESSEN OVER LISTINGS HERKENNEN (met marktcontext):**
 ${reasoningPatterns.listingLessons.slice(0, 5).map((l, i) => 
-  `${i + 1}. ${l.brand} ${l.model}:
-   "${l.userReasoning}"
+  `${i + 1}. **${l.brand} ${l.model} (${l.vehicleBuildYear}, ${l.vehicleMileage.toLocaleString('nl-NL')} km)**
+   - AI adviseerde: €${l.aiPurchasePrice.toLocaleString('nl-NL')} inkoop${l.jpCarsValue ? ` (JP Cars: €${l.jpCarsValue.toLocaleString('nl-NL')})` : ''}
+   ${l.userSuggestedPrice ? `- Gebruiker suggereerde: €${l.userSuggestedPrice.toLocaleString('nl-NL')}` : ''}
+   - Gebruiker uitleg: "${l.userReasoning}"
+   
+   📊 **Markt op dat moment:** ${l.marketContext}
+   
    → **Les:** ${l.lesson}`
 ).join('\n\n')}
 `;
@@ -244,29 +293,43 @@ ${reasoningPatterns.listingLessons.slice(0, 5).map((l, i) =>
 
   if (reasoningPatterns.kmCorrectionLessons.length > 0) {
     learningSection += `
-**📏 LESSEN OVER KM-CORRECTIES:**
+**📏 LESSEN OVER KM-CORRECTIES (met marktcontext):**
 ${reasoningPatterns.kmCorrectionLessons.slice(0, 3).map((l, i) =>
-  `${i + 1}. ${l.example}:
-   "${l.lesson}"`
+  `${i + 1}. **${l.brand} ${l.model} (${l.vehicleBuildYear}, ${l.vehicleMileage.toLocaleString('nl-NL')} km)**
+   - AI adviseerde: €${l.aiPurchasePrice.toLocaleString('nl-NL')}
+   ${l.userSuggestedPrice ? `- Gebruiker suggereerde: €${l.userSuggestedPrice.toLocaleString('nl-NL')}` : ''}
+   - Uitleg: "${l.userReasoning}"
+   
+   📊 **Markt op dat moment:** ${l.marketContext}
+   
+   → Begrijp WAAROM de km-correctie niet klopte door te kijken naar de prijzen/km's hierboven.`
 ).join('\n\n')}
 `;
   }
 
   if (reasoningPatterns.marketLessons.length > 0) {
     learningSection += `
-**📊 LESSEN OVER MARKTINSCHATTING:**
+**📊 LESSEN OVER MARKTINSCHATTING (met marktcontext):**
 ${reasoningPatterns.marketLessons.slice(0, 3).map((l, i) =>
-  `${i + 1}. ${l.lesson}`
-).join('\n')}
+  `${i + 1}. **${l.brand} ${l.model} (${l.vehicleBuildYear}, ${l.vehicleMileage.toLocaleString('nl-NL')} km)**
+   - AI adviseerde: €${l.aiPurchasePrice.toLocaleString('nl-NL')}${l.jpCarsValue ? ` (JP Cars: €${l.jpCarsValue.toLocaleString('nl-NL')})` : ''}
+   ${l.userSuggestedPrice ? `- Gebruiker suggereerde: €${l.userSuggestedPrice.toLocaleString('nl-NL')}` : ''}
+   - Uitleg: "${l.userReasoning}"
+   
+   📊 **Markt op dat moment:** ${l.marketContext}
+   
+   → Analyseer de discrepantie tussen AI advies en marktdata hierboven.`
+).join('\n\n')}
 `;
   }
 
-  // Add positive examples - what worked well
+  // Add positive examples with market context - what worked well
   if (reasoningPatterns.positiveExamples.length > 0) {
     learningSection += `
 **✅ WAT GOED WERKTE (behoud deze denkwijze):**
 ${reasoningPatterns.positiveExamples.slice(0, 3).map((ex, i) =>
-  `${i + 1}. ${ex.vehicle}: ${ex.reasoning}`
+  `${i + 1}. ${ex.vehicle}: ${ex.reasoning}
+   📊 Markt: ${ex.marketContext}`
 ).join('\n')}
 `;
   }

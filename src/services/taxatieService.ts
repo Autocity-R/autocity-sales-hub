@@ -280,12 +280,23 @@ Verwachte statijd: JP Cars ETR van ${jpCarsData.etr} dagen.
   };
 };
 
+// Portal listing context for feedback learning
+export interface FeedbackListingContext {
+  price: number;
+  mileage: number;
+  buildYear: number;
+  title: string;
+  portal?: string;
+}
+
 // Enhanced feedback item type for AI learning
 export interface EnhancedFeedbackItem {
   feedback_type: string;
   notes: string | null;
   vehicle_brand: string;
   vehicle_model: string;
+  vehicle_mileage: number;
+  vehicle_build_year: number;
   ai_recommendation: string;
   ai_purchase_price: number;
   ai_selling_price: number;
@@ -295,12 +306,15 @@ export interface EnhancedFeedbackItem {
   user_suggested_price: number | null;
   correction_type: string | null;
   referenced_listing_id: string | null;
+  // Market context at the time of valuation
+  portal_listings: FeedbackListingContext[];
+  jpcars_value: number | null;
 }
 
-// Fetch recent feedback for AI learning context - enhanced version
+// Fetch recent feedback for AI learning context - enhanced version with market context
 export const fetchRecentFeedback = async (limit: number = 50): Promise<EnhancedFeedbackItem[]> => {
   try {
-    console.log('📚 Fetching recent feedback for AI learning (enhanced)...');
+    console.log('📚 Fetching recent feedback for AI learning (enhanced with market context)...');
     
     const { data, error } = await supabase
       .from('taxatie_feedback')
@@ -314,7 +328,9 @@ export const fetchRecentFeedback = async (limit: number = 50): Promise<EnhancedF
         referenced_listing_id,
         taxatie_valuations!inner (
           vehicle_data,
-          ai_advice
+          ai_advice,
+          portal_analysis,
+          jpcars_data
         )
       `)
       .order('created_at', { ascending: false })
@@ -330,22 +346,45 @@ export const fetchRecentFeedback = async (limit: number = 50): Promise<EnhancedF
       return [];
     }
 
-    // Transform data for AI context with enhanced fields
-    return data.map((item: any) => ({
-      feedback_type: item.feedback_type,
-      notes: item.notes,
-      vehicle_brand: item.taxatie_valuations?.vehicle_data?.brand || 'Onbekend',
-      vehicle_model: item.taxatie_valuations?.vehicle_data?.model || 'Onbekend',
-      ai_recommendation: item.taxatie_valuations?.ai_advice?.recommendation || 'Onbekend',
-      ai_purchase_price: item.taxatie_valuations?.ai_advice?.recommendedPurchasePrice || 0,
-      ai_selling_price: item.taxatie_valuations?.ai_advice?.recommendedSellingPrice || 0,
-      actual_outcome: item.actual_outcome,
-      // Enhanced fields
-      user_reasoning: item.user_reasoning,
-      user_suggested_price: item.user_suggested_price,
-      correction_type: item.correction_type,
-      referenced_listing_id: item.referenced_listing_id,
-    }));
+    // Transform data for AI context with enhanced fields + market context
+    return data.map((item: any) => {
+      const valuation = item.taxatie_valuations;
+      const vehicleData = valuation?.vehicle_data;
+      const portalAnalysis = valuation?.portal_analysis;
+      const jpCarsData = valuation?.jpcars_data;
+      
+      // Extract relevant listing context (top 5 by price)
+      const portalListings: FeedbackListingContext[] = (portalAnalysis?.listings || [])
+        .slice(0, 5)
+        .map((l: any) => ({
+          price: l.price || 0,
+          mileage: l.mileage || 0,
+          buildYear: l.buildYear || 0,
+          title: l.title || '',
+          portal: l.portal || 'onbekend',
+        }));
+      
+      return {
+        feedback_type: item.feedback_type,
+        notes: item.notes,
+        vehicle_brand: vehicleData?.brand || 'Onbekend',
+        vehicle_model: vehicleData?.model || 'Onbekend',
+        vehicle_mileage: vehicleData?.mileage || 0,
+        vehicle_build_year: vehicleData?.buildYear || 0,
+        ai_recommendation: valuation?.ai_advice?.recommendation || 'Onbekend',
+        ai_purchase_price: valuation?.ai_advice?.recommendedPurchasePrice || 0,
+        ai_selling_price: valuation?.ai_advice?.recommendedSellingPrice || 0,
+        actual_outcome: item.actual_outcome,
+        // Enhanced fields
+        user_reasoning: item.user_reasoning,
+        user_suggested_price: item.user_suggested_price,
+        correction_type: item.correction_type,
+        referenced_listing_id: item.referenced_listing_id,
+        // Market context at the time of valuation
+        portal_listings: portalListings,
+        jpcars_value: jpCarsData?.totalValue || null,
+      };
+    });
 
   } catch (err) {
     console.error('❌ Failed to fetch feedback:', err);
