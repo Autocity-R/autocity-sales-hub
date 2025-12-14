@@ -1,6 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+const RECENT_SEARCHES_KEY = 'dealer_search_history';
+const MAX_RECENT_SEARCHES = 10;
 
 export interface DealerVehicle {
   licensePlate: string;
@@ -18,12 +21,18 @@ export interface DealerVehicle {
   apr: number;
 }
 
+export interface UniqueDealer {
+  name: string;
+  count: number;
+}
+
 export interface DealerSearchResult {
   dealerName: string;
   searchQuery: string;
   totalVehicles: number;
   inStock: DealerVehicle[];
   sold: DealerVehicle[];
+  uniqueDealers: UniqueDealer[];
   stats: {
     avgPrice: number;
     avgStockDays: number;
@@ -32,10 +41,49 @@ export interface DealerSearchResult {
   };
 }
 
+export interface RecentSearch {
+  query: string;
+  dealerName: string;
+  vehicleCount: number;
+  timestamp: number;
+}
+
+// Helper functions for localStorage
+const getRecentSearches = (): RecentSearch[] => {
+  try {
+    const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveRecentSearch = (query: string, dealerName: string, vehicleCount: number) => {
+  try {
+    const searches = getRecentSearches();
+    // Remove existing entry with same query
+    const filtered = searches.filter(s => s.query.toLowerCase() !== query.toLowerCase());
+    // Add new entry at the beginning
+    const updated = [
+      { query, dealerName, vehicleCount, timestamp: Date.now() },
+      ...filtered
+    ].slice(0, MAX_RECENT_SEARCHES);
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+  } catch {
+    // Ignore localStorage errors
+  }
+};
+
 export const useDealerSearch = () => {
   const [results, setResults] = useState<DealerSearchResult | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
+
+  // Load recent searches on mount
+  useEffect(() => {
+    setRecentSearches(getRecentSearches());
+  }, []);
 
   const searchDealer = useCallback(async (dealerName: string, includeSold = true) => {
     if (!dealerName || dealerName.trim().length < 2) {
@@ -63,12 +111,16 @@ export const useDealerSearch = () => {
         throw new Error(data.error);
       }
 
-      setResults(data as DealerSearchResult);
+      const result = data as DealerSearchResult;
+      setResults(result);
 
-      if (data.totalVehicles === 0) {
-        toast.info(`Geen voertuigen gevonden voor "${dealerName}"`);
+      // Save successful search with results
+      if (result.totalVehicles > 0) {
+        saveRecentSearch(dealerName.trim(), result.dealerName, result.totalVehicles);
+        setRecentSearches(getRecentSearches());
+        toast.success(`${result.totalVehicles} voertuigen gevonden voor "${result.dealerName}"`);
       } else {
-        toast.success(`${data.totalVehicles} voertuigen gevonden voor "${data.dealerName}"`);
+        toast.info(`Geen voertuigen gevonden voor "${dealerName}"`);
       }
 
     } catch (err) {
@@ -86,11 +138,18 @@ export const useDealerSearch = () => {
     setError(null);
   }, []);
 
+  const clearRecentSearches = useCallback(() => {
+    localStorage.removeItem(RECENT_SEARCHES_KEY);
+    setRecentSearches([]);
+  }, []);
+
   return { 
     results, 
     isSearching, 
     error, 
+    recentSearches,
     searchDealer, 
-    reset 
+    reset,
+    clearRecentSearches
   };
 };
