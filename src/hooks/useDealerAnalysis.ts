@@ -17,6 +17,7 @@ interface AIAnalyzedVehicle {
   power: number | null;
   confidence: number;
   originalData: string;
+  askingPrice: number | null;
 }
 
 interface JPCarsWindowItem {
@@ -205,6 +206,7 @@ export const useDealerAnalysis = () => {
             variant: v.variant || undefined,
             mileage: v.mileage || undefined,
             rowIndex: v.rowIndex + 2, // +2 voor header offset naar Excel rijnummer
+            askingPrice: v.askingPrice || undefined,
           }));
 
           allVehicles.push(...inputs);
