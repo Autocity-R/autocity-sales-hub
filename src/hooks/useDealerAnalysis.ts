@@ -235,6 +235,33 @@ export const useDealerAnalysis = () => {
     }));
   }, []);
 
+  // RDW lookup for license plate
+  const lookupRDW = async (licensePlate: string): Promise<VehicleInput | null> => {
+    const { data, error } = await supabase.functions.invoke('rdw-lookup', {
+      body: { licensePlate }
+    });
+    
+    if (error) {
+      console.error('RDW lookup error:', error);
+      return null;
+    }
+
+    if (data?.success && data?.data) {
+      const rdwData = data.data;
+      return {
+        brand: rdwData.brand || '',
+        model: rdwData.model || '',
+        buildYear: rdwData.buildYear || new Date().getFullYear(),
+        fuelType: rdwData.fuelType || 'Benzine',
+        transmission: rdwData.transmission || 'Handgeschakeld',
+        power: rdwData.power || undefined,
+        bodyType: rdwData.bodyType || undefined,
+        licensePlate: licensePlate.toUpperCase().replace(/[-\s]/g, ''),
+      };
+    }
+    return null;
+  };
+
   // Fetch JP Cars window data for a single vehicle
   const fetchDealerData = async (vehicle: VehicleInput): Promise<{ dealers: DealerListing[]; windowUrl: string | null }> => {
     const { data, error } = await supabase.functions.invoke('jpcars-lookup', {
@@ -261,9 +288,16 @@ export const useDealerAnalysis = () => {
     const windowItems = data.data.window as JPCarsWindowItem[];
     const windowUrl = data.data.window_url || null;
 
-    // Convert to DealerListing format, filter only items with dealer info
+    // Convert to DealerListing format
+    // FILTER: Only sold vehicles (soldSince > 0), not "Te koop" (soldSince = 0 or null)
     const dealers: DealerListing[] = windowItems
-      .filter(item => item.dealer_name && item.price_local)
+      .filter(item => 
+        item.dealer_name && 
+        item.price_local &&
+        item.sold_since !== undefined &&
+        item.sold_since !== null &&
+        item.sold_since > 0  // Only actually sold vehicles
+      )
       .map(item => ({
         dealerName: item.dealer_name || 'Onbekend',
         price: item.price_local || 0,
@@ -427,6 +461,7 @@ export const useDealerAnalysis = () => {
     parseExcelFile,
     analyzeExcelWithAI,
     addSingleVehicle,
+    lookupRDW,
     startAnalysis,
     reset,
   };

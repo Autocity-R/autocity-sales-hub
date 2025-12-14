@@ -22,6 +22,7 @@ export const DealerAnalysisTab = () => {
     parseExcelFile,
     analyzeExcelWithAI,
     addSingleVehicle,
+    lookupRDW,
     startAnalysis,
     reset,
   } = useDealerAnalysis();
@@ -80,6 +81,7 @@ export const DealerAnalysisTab = () => {
             vehicles={vehicles}
             onStartAnalysis={startAnalysis}
             isProcessing={isProcessing}
+            onLookupRDW={lookupRDW}
           />
         </TabsContent>
 

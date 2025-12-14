@@ -15,6 +15,7 @@ export const exportDealerAnalysisToExcel = async (results: DealerAnalysisResult[
     { header: 'Merk', key: 'brand', width: 12 },
     { header: 'Model', key: 'model', width: 16 },
     { header: 'Bouwjaar', key: 'buildYear', width: 10 },
+    { header: 'Kenteken', key: 'licensePlate', width: 12 },
     { header: 'Dealer', key: 'dealer', width: 28 },
     { header: 'Verkoopprijs', key: 'price', width: 14 },
     { header: 'KM-stand', key: 'mileage', width: 12 },
@@ -52,7 +53,8 @@ export const exportDealerAnalysisToExcel = async (results: DealerAnalysisResult[
     vehicleHeaderRow.getCell(1).value = result.vehicle.brand;
     vehicleHeaderRow.getCell(2).value = result.vehicle.model;
     vehicleHeaderRow.getCell(3).value = result.vehicle.buildYear;
-    vehicleHeaderRow.getCell(4).value = `📊 ${result.dealers.length} dealers gevonden`;
+    vehicleHeaderRow.getCell(4).value = result.vehicle.licensePlate || '-';
+    vehicleHeaderRow.getCell(5).value = `📊 ${result.dealers.length} verkochte voertuigen`;
 
     vehicleHeaderRow.font = { bold: true, size: 11 };
     vehicleHeaderRow.fill = {
@@ -80,11 +82,12 @@ export const exportDealerAnalysisToExcel = async (results: DealerAnalysisResult[
         brand: '',
         model: '',
         buildYear: '',
+        licensePlate: '',
         dealer: dealer.dealerName,
         price: dealer.price,
         mileage: dealer.mileage,
         daysInStock: dealer.daysInStock,
-        soldSince: dealer.soldSince !== null ? `${dealer.soldSince} dagen` : 'Te koop',
+        soldSince: `${dealer.soldSince} dagen`,
         website: dealer.url ? 'Bekijk →' : '-',
       });
 
