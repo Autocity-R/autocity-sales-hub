@@ -22,6 +22,7 @@ export interface VehicleInput {
   licensePlate?: string;
   mileage?: number;
   rowIndex?: number;
+  askingPrice?: number;
 }
 
 export interface DealerAnalysisResult {
