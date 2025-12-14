@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.analyze-excel-vehicles]
 verify_jwt = false
+
+[functions.jpcars-dealer-search]
+verify_jwt = false
