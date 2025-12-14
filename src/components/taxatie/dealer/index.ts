@@ -3,3 +3,4 @@ export { SingleVehicleAnalysis } from './SingleVehicleAnalysis';
 export { BulkDealerUploader } from './BulkDealerUploader';
 export { DealerAnalysisResults } from './DealerAnalysisResults';
 export { DealerAnalysisProgress } from './DealerAnalysisProgress';
+export { CompetitorMonitor } from './CompetitorMonitor';

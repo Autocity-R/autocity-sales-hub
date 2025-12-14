@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import OptimizedDashboardLayout from "@/components/layout/OptimizedDashboardLayout";
-import { Calculator, History, FileSpreadsheet, CarFront, Building2 } from "lucide-react";
+import { Calculator, History, FileSpreadsheet, CarFront, Building2, Eye } from "lucide-react";
 import { NewValuationForm } from "@/components/taxatie/NewValuationForm";
 import { ValuationHistory } from "@/components/taxatie/ValuationHistory";
 import { BulkTaxatieTab } from "@/components/taxatie/bulk/BulkTaxatieTab";
 import { TradeInValuationForm } from "@/components/taxatie/TradeInValuationForm";
-import { DealerAnalysisTab } from "@/components/taxatie/dealer";
+import { DealerAnalysisTab, CompetitorMonitor } from "@/components/taxatie/dealer";
 
 const Taxatie = () => {
   const [activeTab, setActiveTab] = useState("new");
@@ -15,7 +15,7 @@ const Taxatie = () => {
     <OptimizedDashboardLayout>
       <div className="space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="bg-muted/50">
+          <TabsList className="bg-muted/50 flex-wrap h-auto gap-1 p-1">
             <TabsTrigger value="new" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Calculator className="h-4 w-4" />
               Nieuwe Taxatie
@@ -32,9 +32,13 @@ const Taxatie = () => {
               <Building2 className="h-4 w-4" />
               Dealer Analyse
             </TabsTrigger>
+            <TabsTrigger value="competitor" className="flex items-center gap-2 data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+              <Eye className="h-4 w-4" />
+              Concurrentie Monitor
+            </TabsTrigger>
             <TabsTrigger value="history" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <History className="h-4 w-4" />
-              Taxatie Historie
+              Historie
             </TabsTrigger>
           </TabsList>
 
@@ -52,6 +56,10 @@ const Taxatie = () => {
 
           <TabsContent value="dealer" className="space-y-4">
             <DealerAnalysisTab />
+          </TabsContent>
+
+          <TabsContent value="competitor" className="space-y-4">
+            <CompetitorMonitor />
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4">
