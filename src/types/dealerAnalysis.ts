@@ -19,6 +19,7 @@ export interface VehicleInput {
   power?: number;
   bodyType?: string;
   variant?: string;
+  licensePlate?: string;
 }
 
 export interface DealerAnalysisResult {
