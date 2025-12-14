@@ -1,10 +1,20 @@
 import ExcelJS from 'exceljs';
 import { Vehicle } from "@/types/inventory";
+import { getExportWatermark } from "@/services/exportWatermarkService";
 
 export const exportVehiclesToExcel = async (vehicles: Vehicle[]) => {
+  // Get watermark info before creating workbook
+  const watermark = await getExportWatermark();
+  
   // Maak workbook en worksheet
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Verkooplijst');
+
+  // Set metadata (watermark for non-owners)
+  if (watermark.shouldWatermark) {
+    workbook.creator = `AutoCity CRM - ${watermark.exportedBy}`;
+    workbook.subject = `Export ID: ${watermark.exportId}`;
+  }
 
   // Headers
   const headers = [
@@ -76,6 +86,15 @@ export const exportVehiclesToExcel = async (vehicles: Vehicle[]) => {
     { width: 14 },  // Inkoopprijs
     { width: 14 },  // Verkoopprijs
   ];
+
+  // Add watermark footer for non-owners
+  if (watermark.shouldWatermark) {
+    worksheet.addRow([]);
+    const footerRow = worksheet.addRow([
+      `Geëxporteerd door: ${watermark.exportedBy} | ${watermark.exportedAt} | ID: ${watermark.exportId}`
+    ]);
+    footerRow.getCell(1).font = { size: 9, italic: true, color: { argb: 'FF888888' } };
+  }
 
   // Genereer bestandsnaam met datum
   const today = new Date().toISOString().split('T')[0];

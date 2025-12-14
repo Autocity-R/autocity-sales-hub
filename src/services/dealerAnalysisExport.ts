@@ -1,10 +1,19 @@
 import ExcelJS from 'exceljs';
 import type { DealerAnalysisResult } from '@/types/dealerAnalysis';
+import { getExportWatermark } from './exportWatermarkService';
 
 export const exportDealerAnalysisToExcel = async (results: DealerAnalysisResult[]) => {
+  const watermark = await getExportWatermark();
+  
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Auto City - Dealer Analyse';
   workbook.created = new Date();
+  
+  if (watermark.shouldWatermark) {
+    workbook.creator = `AutoCity CRM - ${watermark.exportedBy}`;
+    workbook.subject = `Export ID: ${watermark.exportId}`;
+  } else {
+    workbook.creator = 'Auto City - Dealer Analyse';
+  }
 
   const worksheet = workbook.addWorksheet('Dealer Analyse', {
     views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }],
@@ -199,6 +208,13 @@ export const exportDealerAnalysisToExcel = async (results: DealerAnalysisResult[
     worksheet.getCell(`A${summaryStartRow + 4}`).value = 'Snelste verkoop:';
     worksheet.getCell(`B${summaryStartRow + 4}`).value = `${fastestOverall} dagen geleden`;
     worksheet.getCell(`B${summaryStartRow + 4}`).font = { bold: true, color: { argb: 'FF2E7D32' } };
+  }
+
+  // Add watermark footer for non-owners
+  if (watermark.shouldWatermark) {
+    const watermarkRow = summaryStartRow + 6;
+    worksheet.getCell(`A${watermarkRow}`).value = `Geëxporteerd door: ${watermark.exportedBy} | ${watermark.exportedAt} | ID: ${watermark.exportId}`;
+    worksheet.getCell(`A${watermarkRow}`).font = { size: 9, italic: true, color: { argb: 'FF888888' } };
   }
 
   // Generate and download file

@@ -1,10 +1,19 @@
 import ExcelJS from 'exceljs';
 import type { BulkTaxatieResult } from '@/types/bulkTaxatie';
+import { getExportWatermark } from './exportWatermarkService';
 
 export const exportBulkTaxatieToExcel = async (results: BulkTaxatieResult[]) => {
+  const watermark = await getExportWatermark();
+  
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Auto City Taxatie';
   workbook.created = new Date();
+  
+  if (watermark.shouldWatermark) {
+    workbook.creator = `AutoCity CRM - ${watermark.exportedBy}`;
+    workbook.subject = `Export ID: ${watermark.exportId}`;
+  } else {
+    workbook.creator = 'Auto City Taxatie';
+  }
 
   const worksheet = workbook.addWorksheet('Bulk Taxatie Resultaten', {
     views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }],
@@ -194,6 +203,12 @@ export const exportBulkTaxatieToExcel = async (results: BulkTaxatieResult[]) => 
   worksheet.getCell(`A${summaryRowNum + 4}`).value = '✗ Niet kopen:';
   worksheet.getCell(`B${summaryRowNum + 4}`).value = nietKopenCount;
   worksheet.getCell(`B${summaryRowNum + 4}`).font = { color: { argb: 'FFC62828' }, bold: true };
+
+  // Add watermark footer for non-owners
+  if (watermark.shouldWatermark) {
+    worksheet.getCell(`A${summaryRowNum + 6}`).value = `Geëxporteerd door: ${watermark.exportedBy} | ${watermark.exportedAt} | ID: ${watermark.exportId}`;
+    worksheet.getCell(`A${summaryRowNum + 6}`).font = { size: 9, italic: true, color: { argb: 'FF888888' } };
+  }
 
   // Generate and download file
   const buffer = await workbook.xlsx.writeBuffer();
