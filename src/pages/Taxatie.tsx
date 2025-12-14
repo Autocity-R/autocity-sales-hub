@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import OptimizedDashboardLayout from "@/components/layout/OptimizedDashboardLayout";
-import { Calculator, History, FileSpreadsheet, CarFront } from "lucide-react";
+import { Calculator, History, FileSpreadsheet, CarFront, Building2 } from "lucide-react";
 import { NewValuationForm } from "@/components/taxatie/NewValuationForm";
 import { ValuationHistory } from "@/components/taxatie/ValuationHistory";
 import { BulkTaxatieTab } from "@/components/taxatie/bulk/BulkTaxatieTab";
 import { TradeInValuationForm } from "@/components/taxatie/TradeInValuationForm";
+import { DealerAnalysisTab } from "@/components/taxatie/dealer";
 
 const Taxatie = () => {
   const [activeTab, setActiveTab] = useState("new");
@@ -27,6 +28,10 @@ const Taxatie = () => {
               <FileSpreadsheet className="h-4 w-4" />
               Bulk Import
             </TabsTrigger>
+            <TabsTrigger value="dealer" className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+              <Building2 className="h-4 w-4" />
+              Dealer Analyse
+            </TabsTrigger>
             <TabsTrigger value="history" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <History className="h-4 w-4" />
               Taxatie Historie
@@ -43,6 +48,10 @@ const Taxatie = () => {
 
           <TabsContent value="bulk" className="space-y-4">
             <BulkTaxatieTab />
+          </TabsContent>
+
+          <TabsContent value="dealer" className="space-y-4">
+            <DealerAnalysisTab />
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4">
