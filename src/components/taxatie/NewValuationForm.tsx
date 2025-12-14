@@ -138,6 +138,7 @@ export function NewValuationForm() {
             loading={loading.aiAnalysis}
             jpCarsData={jpCarsData}
             internalComparison={internalComparison}
+            listings={portalAnalysis?.listings || []}
             onFeedbackSubmit={submitFeedback}
           />
         </TaxatieColumnC>

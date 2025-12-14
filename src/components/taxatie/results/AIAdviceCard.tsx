@@ -16,7 +16,7 @@ import {
   AlertTriangle,
   Lightbulb
 } from 'lucide-react';
-import type { AITaxatieAdvice, JPCarsData, InternalComparison } from '@/types/taxatie';
+import type { AITaxatieAdvice, JPCarsData, InternalComparison, PortalListing, TaxatieFeedbackType, TaxatieCorrectionType } from '@/types/taxatie';
 import { FeedbackModal } from '../modals/FeedbackModal';
 
 interface AIAdviceCardProps {
@@ -24,10 +24,19 @@ interface AIAdviceCardProps {
   loading: boolean;
   jpCarsData?: JPCarsData | null;
   internalComparison?: InternalComparison | null;
-  onFeedbackSubmit: (feedback: { rating: number; reason?: string; notes: string }) => void;
+  listings?: PortalListing[];
+  onFeedbackSubmit: (feedback: {
+    rating: number;
+    reason?: TaxatieFeedbackType;
+    notes: string;
+    referencedListingId?: string;
+    userReasoning?: string;
+    userSuggestedPrice?: number;
+    correctionType?: TaxatieCorrectionType;
+  }) => void;
 }
 
-export const AIAdviceCard = ({ data, loading, jpCarsData, internalComparison, onFeedbackSubmit }: AIAdviceCardProps) => {
+export const AIAdviceCard = ({ data, loading, jpCarsData, internalComparison, listings = [], onFeedbackSubmit }: AIAdviceCardProps) => {
   const [showFeedback, setShowFeedback] = useState(false);
   const [quickFeedback, setQuickFeedback] = useState<'positive' | 'negative' | null>(null);
 
@@ -87,7 +96,8 @@ export const AIAdviceCard = ({ data, loading, jpCarsData, internalComparison, on
     if (type === 'negative') {
       setShowFeedback(true);
     } else {
-      onFeedbackSubmit({ rating: 5, notes: 'Goed advies' });
+      // Positive quick feedback - open modal to confirm as "goede_taxatie"
+      onFeedbackSubmit({ rating: 5, reason: 'goede_taxatie', notes: 'Goed advies' });
     }
   };
 
@@ -260,6 +270,7 @@ export const AIAdviceCard = ({ data, loading, jpCarsData, internalComparison, on
           onFeedbackSubmit(feedback);
           setShowFeedback(false);
         }}
+        listings={listings}
       />
     </>
   );

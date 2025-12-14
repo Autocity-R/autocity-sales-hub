@@ -280,8 +280,8 @@ Verwachte statijd: JP Cars ETR van ${jpCarsData.etr} dagen.
   };
 };
 
-// Fetch recent feedback for AI learning context
-export const fetchRecentFeedback = async (limit: number = 50): Promise<Array<{
+// Enhanced feedback item type for AI learning
+export interface EnhancedFeedbackItem {
   feedback_type: string;
   notes: string | null;
   vehicle_brand: string;
@@ -290,9 +290,17 @@ export const fetchRecentFeedback = async (limit: number = 50): Promise<Array<{
   ai_purchase_price: number;
   ai_selling_price: number;
   actual_outcome: Record<string, unknown> | null;
-}>> => {
+  // Enhanced fields for reasoning-based learning
+  user_reasoning: string | null;
+  user_suggested_price: number | null;
+  correction_type: string | null;
+  referenced_listing_id: string | null;
+}
+
+// Fetch recent feedback for AI learning context - enhanced version
+export const fetchRecentFeedback = async (limit: number = 50): Promise<EnhancedFeedbackItem[]> => {
   try {
-    console.log('📚 Fetching recent feedback for AI learning...');
+    console.log('📚 Fetching recent feedback for AI learning (enhanced)...');
     
     const { data, error } = await supabase
       .from('taxatie_feedback')
@@ -300,6 +308,10 @@ export const fetchRecentFeedback = async (limit: number = 50): Promise<Array<{
         feedback_type,
         notes,
         actual_outcome,
+        user_reasoning,
+        user_suggested_price,
+        correction_type,
+        referenced_listing_id,
         taxatie_valuations!inner (
           vehicle_data,
           ai_advice
@@ -318,7 +330,7 @@ export const fetchRecentFeedback = async (limit: number = 50): Promise<Array<{
       return [];
     }
 
-    // Transform data for AI context
+    // Transform data for AI context with enhanced fields
     return data.map((item: any) => ({
       feedback_type: item.feedback_type,
       notes: item.notes,
@@ -328,6 +340,11 @@ export const fetchRecentFeedback = async (limit: number = 50): Promise<Array<{
       ai_purchase_price: item.taxatie_valuations?.ai_advice?.recommendedPurchasePrice || 0,
       ai_selling_price: item.taxatie_valuations?.ai_advice?.recommendedSellingPrice || 0,
       actual_outcome: item.actual_outcome,
+      // Enhanced fields
+      user_reasoning: item.user_reasoning,
+      user_suggested_price: item.user_suggested_price,
+      correction_type: item.correction_type,
+      referenced_listing_id: item.referenced_listing_id,
     }));
 
   } catch (err) {
@@ -426,7 +443,7 @@ export const saveTaxatieValuation = async (valuation: {
   }
 };
 
-// Save feedback linked to a valuation
+// Save feedback linked to a valuation - enhanced for reasoning-based learning
 export const saveTaxatieFeedback = async (
   valuationId: string,
   feedback: TaxatieFeedback
@@ -443,6 +460,11 @@ export const saveTaxatieFeedback = async (
       rating: feedback.rating || null,
       notes: feedback.notes || null,
       actual_outcome: {} as Record<string, unknown>,
+      // New enhanced fields for reasoning-based learning
+      referenced_listing_id: feedback.referencedListingId || null,
+      user_reasoning: feedback.userReasoning || null,
+      user_suggested_price: feedback.userSuggestedPrice || null,
+      correction_type: feedback.correctionType || null,
     };
     
     const { error } = await supabase
@@ -454,7 +476,11 @@ export const saveTaxatieFeedback = async (
       throw error;
     }
 
-    console.log('✅ Feedback saved for valuation:', valuationId);
+    console.log('✅ Feedback saved for valuation:', valuationId, {
+      type: feedback.reason,
+      hasReasoning: !!feedback.userReasoning,
+      correctionType: feedback.correctionType,
+    });
     return true;
 
   } catch (err) {
