@@ -20,6 +20,8 @@ export interface VehicleInput {
   bodyType?: string;
   variant?: string;
   licensePlate?: string;
+  mileage?: number;
+  rowIndex?: number;
 }
 
 export interface DealerAnalysisResult {

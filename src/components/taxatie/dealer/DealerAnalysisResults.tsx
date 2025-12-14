@@ -160,12 +160,21 @@ export const DealerAnalysisResults = ({ results, onReset }: DealerAnalysisResult
                         }`}
                       />
                       <div>
-                        <CardTitle className="text-lg">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          {result.vehicle.rowIndex && (
+                            <Badge variant="outline" className="font-mono text-xs">#{result.vehicle.rowIndex}</Badge>
+                          )}
                           {result.vehicle.brand} {result.vehicle.model} {result.vehicle.buildYear}
                         </CardTitle>
-                        <CardDescription className="flex items-center gap-2 mt-1">
+                        <CardDescription className="flex items-center gap-2 mt-1 flex-wrap">
                           <Badge variant="secondary">{result.vehicle.fuelType}</Badge>
                           <Badge variant="secondary">{result.vehicle.transmission}</Badge>
+                          {result.vehicle.mileage && (
+                            <Badge variant="secondary">{result.vehicle.mileage.toLocaleString('nl-NL')} km</Badge>
+                          )}
+                          {result.vehicle.licensePlate && (
+                            <Badge variant="outline">{result.vehicle.licensePlate}</Badge>
+                          )}
                         </CardDescription>
                       </div>
                     </div>

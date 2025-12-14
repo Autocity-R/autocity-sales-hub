@@ -12,9 +12,13 @@ export const exportDealerAnalysisToExcel = async (results: DealerAnalysisResult[
 
   // Define columns
   worksheet.columns = [
+    { header: '#', key: 'rowIndex', width: 6 },
     { header: 'Merk', key: 'brand', width: 12 },
     { header: 'Model', key: 'model', width: 16 },
     { header: 'Bouwjaar', key: 'buildYear', width: 10 },
+    { header: 'Brandstof', key: 'fuelType', width: 12 },
+    { header: 'Transmissie', key: 'transmission', width: 14 },
+    { header: 'KM (zoek)', key: 'searchMileage', width: 12 },
     { header: 'Kenteken', key: 'licensePlate', width: 12 },
     { header: 'Dealer', key: 'dealer', width: 28 },
     { header: 'Verkoopprijs', key: 'price', width: 14 },
@@ -50,11 +54,15 @@ export const exportDealerAnalysisToExcel = async (results: DealerAnalysisResult[
 
     // Add vehicle header row
     const vehicleHeaderRow = worksheet.getRow(currentRow);
-    vehicleHeaderRow.getCell(1).value = result.vehicle.brand;
-    vehicleHeaderRow.getCell(2).value = result.vehicle.model;
-    vehicleHeaderRow.getCell(3).value = result.vehicle.buildYear;
-    vehicleHeaderRow.getCell(4).value = result.vehicle.licensePlate || '-';
-    vehicleHeaderRow.getCell(5).value = `📊 ${result.dealers.length} verkochte voertuigen`;
+    vehicleHeaderRow.getCell(1).value = result.vehicle.rowIndex || '-';
+    vehicleHeaderRow.getCell(2).value = result.vehicle.brand;
+    vehicleHeaderRow.getCell(3).value = result.vehicle.model;
+    vehicleHeaderRow.getCell(4).value = result.vehicle.buildYear;
+    vehicleHeaderRow.getCell(5).value = result.vehicle.fuelType;
+    vehicleHeaderRow.getCell(6).value = result.vehicle.transmission;
+    vehicleHeaderRow.getCell(7).value = result.vehicle.mileage ? result.vehicle.mileage.toLocaleString('nl-NL') : '-';
+    vehicleHeaderRow.getCell(8).value = result.vehicle.licensePlate || '-';
+    vehicleHeaderRow.getCell(9).value = `📊 ${result.dealers.length} verkochte voertuigen`;
 
     vehicleHeaderRow.font = { bold: true, size: 11 };
     vehicleHeaderRow.fill = {
@@ -79,9 +87,13 @@ export const exportDealerAnalysisToExcel = async (results: DealerAnalysisResult[
       totalDealers++;
 
       const row = worksheet.addRow({
+        rowIndex: '',
         brand: '',
         model: '',
         buildYear: '',
+        fuelType: '',
+        transmission: '',
+        searchMileage: '',
         licensePlate: '',
         dealer: dealer.dealerName,
         price: dealer.price,
@@ -135,16 +147,16 @@ export const exportDealerAnalysisToExcel = async (results: DealerAnalysisResult[
 
     // Add subtotal row for vehicle
     const subtotalRow = worksheet.getRow(currentRow);
-    subtotalRow.getCell(4).value = `Gemiddeld:`;
-    subtotalRow.getCell(5).value = result.stats.avgPrice;
-    subtotalRow.getCell(7).value = result.stats.avgDaysInStock;
-    subtotalRow.getCell(8).value = result.stats.fastestSale !== null 
+    subtotalRow.getCell(8).value = `Gemiddeld:`;
+    subtotalRow.getCell(10).value = result.stats.avgPrice;
+    subtotalRow.getCell(12).value = result.stats.avgDaysInStock;
+    subtotalRow.getCell(13).value = result.stats.fastestSale !== null 
       ? `Snelste: ${result.stats.fastestSale} dgn` 
       : '-';
 
     subtotalRow.font = { italic: true, color: { argb: 'FF666666' } };
-    subtotalRow.getCell(5).numFmt = '€#,##0';
-    subtotalRow.getCell(7).numFmt = '#,##0';
+    subtotalRow.getCell(10).numFmt = '€#,##0';
+    subtotalRow.getCell(12).numFmt = '#,##0';
 
     currentRow += 2; // Add empty row between vehicles
   }
