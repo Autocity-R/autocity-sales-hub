@@ -40,12 +40,29 @@ export interface DealerSearchResult {
   };
 }
 
+export interface DealerLookupResult {
+  success: boolean;
+  dealerName: string;
+  lookupLicensePlate: string;
+  totalVehicles: number;
+  inStock: DealerVehicle[];
+  sold: DealerVehicle[];
+  stats: {
+    avgPrice: number;
+    avgStockDays: number;
+    soldLast30Days: number;
+    topBrands: { brand: string; count: number }[];
+  };
+  message?: string;
+}
+
 export interface RecentSearch {
   query: string;
   dealerName: string;
   matchedVariant: string | null;
   vehicleCount: number;
   timestamp: number;
+  method: 'name' | 'plate';
 }
 
 const RECENT_SEARCHES_KEY = 'dealer-search-history';
@@ -75,6 +92,7 @@ const saveRecentSearch = (search: RecentSearch) => {
 
 export const useDealerSearch = () => {
   const [results, setResults] = useState<DealerSearchResult | null>(null);
+  const [lookupResult, setLookupResult] = useState<DealerLookupResult | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
@@ -93,6 +111,7 @@ export const useDealerSearch = () => {
     setIsSearching(true);
     setError(null);
     setResults(null);
+    setLookupResult(null);
 
     try {
       console.log(`Searching for dealer: ${dealerName}`);
@@ -120,7 +139,8 @@ export const useDealerSearch = () => {
           dealerName: result.dealerName,
           matchedVariant: result.matchedVariant,
           vehicleCount: result.totalVehicles,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          method: 'name',
         };
         saveRecentSearch(newSearch);
         setRecentSearches(getRecentSearches());
@@ -139,8 +159,66 @@ export const useDealerSearch = () => {
     }
   }, []);
 
+  const searchByLicensePlate = useCallback(async (licensePlate: string) => {
+    if (!licensePlate || licensePlate.trim().length < 4) {
+      toast.error('Voer een geldig kenteken in');
+      return;
+    }
+
+    setIsSearching(true);
+    setError(null);
+    setResults(null);
+    setLookupResult(null);
+
+    try {
+      console.log(`Looking up dealer via license plate: ${licensePlate}`);
+      
+      const { data, error: fnError } = await supabase.functions.invoke('jpcars-dealer-lookup', {
+        body: { licensePlate: licensePlate.trim() }
+      });
+
+      if (fnError) {
+        console.error('Edge function error:', fnError);
+        throw new Error(fnError.message || 'Fout bij zoeken');
+      }
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Geen resultaten gevonden');
+      }
+
+      const result = data as DealerLookupResult;
+      setLookupResult(result);
+
+      // Save successful search
+      if (result.totalVehicles > 0) {
+        const newSearch: RecentSearch = {
+          query: licensePlate.trim(),
+          dealerName: result.dealerName,
+          matchedVariant: null,
+          vehicleCount: result.totalVehicles,
+          timestamp: Date.now(),
+          method: 'plate',
+        };
+        saveRecentSearch(newSearch);
+        setRecentSearches(getRecentSearches());
+        toast.success(`Dealer "${result.dealerName}" gevonden met ${result.totalVehicles} voertuigen`);
+      } else {
+        toast.info('Geen dealer informatie gevonden voor dit kenteken');
+      }
+
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Onbekende fout bij zoeken';
+      console.error('License plate lookup error:', err);
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
   const reset = useCallback(() => {
     setResults(null);
+    setLookupResult(null);
     setError(null);
   }, []);
 
@@ -151,10 +229,12 @@ export const useDealerSearch = () => {
 
   return { 
     results, 
+    lookupResult,
     isSearching, 
     error, 
     recentSearches,
     searchDealer, 
+    searchByLicensePlate,
     reset,
     clearRecentSearches
   };
