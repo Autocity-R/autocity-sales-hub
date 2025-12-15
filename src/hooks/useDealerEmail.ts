@@ -25,7 +25,7 @@ export interface EmailFormData {
 
 // Banner URL - use Supabase Storage for email compatibility
 // Upload the banner to: https://supabase.com/dashboard/project/fnwagrmoyfyimdoaynkg/storage/buckets/email-assets
-const BANNER_URL = 'https://fnwagrmoyfyimdoaynkg.supabase.co/storage/v1/object/public/email-assets/autocity-banner.png';
+const BANNER_URL = 'https://fnwagrmoyfyimdoaynkg.supabase.co/storage/v1/object/public/email-assets/Autocity%20logo.png';
 
 export const useDealerEmail = () => {
   const [isGenerating, setIsGenerating] = useState(false);
