@@ -21,12 +21,34 @@ interface ScrapedVehicle {
   imageUrl?: string;
 }
 
+// Browser-like headers with cookie consent and referer
+function getHeaders(): Record<string, string> {
+  return {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1',
+    'Referer': 'https://www.google.com/',
+    'Cookie': 'CookieConsent=true; euconsent-v2=CPxxxxxAA; OptanonAlertBoxClosed=2024-01-01T00:00:00.000Z; OptanonConsent=isGpcEnabled=0&datestamp=2024-01-01&version=202401&landingPath=NotLandingPage&groups=C0001:1,C0002:1,C0003:1,C0004:1',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'cross-site',
+    'Sec-Fetch-User': '?1',
+    'Cache-Control': 'max-age=0',
+    'sec-ch-ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+  };
+}
+
 // Generate fingerprint for vehicle matching
 function generateFingerprint(vehicle: ScrapedVehicle): string {
   const brand = (vehicle.brand || '').toUpperCase().trim();
   const model = (vehicle.model || '').toUpperCase().trim();
   const year = vehicle.buildYear || 0;
-  const mileageBucket = Math.floor((vehicle.mileage || 0) / 2000); // Per 2000km bucket
+  const mileageBucket = Math.floor((vehicle.mileage || 0) / 2000);
   const color = (vehicle.color || 'ONBEKEND').toUpperCase().trim();
   
   return `${brand}|${model}|${year}|${mileageBucket}|${color}`;
@@ -36,36 +58,30 @@ function generateFingerprint(vehicle: ScrapedVehicle): string {
 function parseAutoWereldVehicles(html: string, baseUrl: string): ScrapedVehicle[] {
   const vehicles: ScrapedVehicle[] = [];
   
-  // Match vehicle listings - AutoWereld uses a consistent structure
-  // Look for vehicle cards with data
-  const vehicleMatches = html.matchAll(/<div[^>]*class="[^"]*vehicle-card[^"]*"[^>]*>[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/gi);
-  
-  // Alternative: match individual vehicle links with their data
-  const linkPattern = /<a[^>]*href="([^"]*\/auto\/[^"]*)"[^>]*>[\s\S]*?<\/a>/gi;
-  const pricePattern = /€\s*([\d.,]+)/g;
-  const yearPattern = /\b(19\d{2}|20\d{2})\b/g;
-  const mileagePattern = /([\d.,]+)\s*km/gi;
-  
-  // Parse the page sections for vehicle data
-  // Split by vehicle entries
-  const sections = html.split(/<article|<div[^>]*data-vehicle/gi);
+  // Split by vehicle entries - multiple patterns for different page structures
+  const sections = html.split(/<article|<div[^>]*data-vehicle|<div[^>]*class="[^"]*vehicle-item[^"]*"|<div[^>]*class="[^"]*car-item[^"]*"|<li[^>]*class="[^"]*result[^"]*"/gi);
   
   for (const section of sections) {
-    if (section.length < 100) continue; // Skip empty sections
+    if (section.length < 100) continue;
     
     // Extract URL
-    const urlMatch = section.match(/href="([^"]*(?:\/auto\/|\/details|\/voertuig)[^"]*)"/i);
+    const urlMatch = section.match(/href="([^"]*(?:\/auto\/|\/details|\/voertuig|\/occasion)[^"]*)"/i);
     if (!urlMatch) continue;
     
     let url = urlMatch[1];
     if (!url.startsWith('http')) {
-      url = new URL(url, baseUrl).toString();
+      try {
+        url = new URL(url, baseUrl).toString();
+      } catch {
+        continue;
+      }
     }
     
     // Extract title (brand + model)
     const titleMatch = section.match(/<h[23][^>]*>([^<]+)<\/h[23]>/i) 
       || section.match(/title="([^"]+)"/i)
-      || section.match(/alt="([^"]+)"/i);
+      || section.match(/alt="([^"]+)"/i)
+      || section.match(/<span[^>]*class="[^"]*title[^"]*"[^>]*>([^<]+)</i);
     
     if (!titleMatch) continue;
     
@@ -76,7 +92,7 @@ function parseAutoWereldVehicles(html: string, baseUrl: string): ScrapedVehicle[
     const variant = titleParts.slice(3).join(' ') || undefined;
     
     // Extract price
-    const priceMatch = section.match(/€\s*([\d.,]+)/);
+    const priceMatch = section.match(/€\s*([\d.,]+)/) || section.match(/(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*€/);
     const price = priceMatch ? parseFloat(priceMatch[1].replace(/\./g, '').replace(',', '.')) : undefined;
     
     // Extract year
@@ -98,14 +114,15 @@ function parseAutoWereldVehicles(html: string, baseUrl: string): ScrapedVehicle[
     // Extract transmission
     let transmission: string | undefined;
     if (/automaat/i.test(section)) transmission = 'Automaat';
-    else if (/handgeschakeld/i.test(section)) transmission = 'Handgeschakeld';
+    else if (/handgeschakeld|manueel/i.test(section)) transmission = 'Handgeschakeld';
     
     // Extract color
     const colorMatch = section.match(/(?:kleur|color)[:\s]*([a-zA-Z]+)/i);
     const color = colorMatch ? colorMatch[1] : undefined;
     
     // Extract image
-    const imgMatch = section.match(/src="([^"]*(?:\.jpg|\.jpeg|\.png|\.webp)[^"]*)"/i);
+    const imgMatch = section.match(/src="([^"]*(?:\.jpg|\.jpeg|\.png|\.webp)[^"]*)"/i)
+      || section.match(/data-src="([^"]*(?:\.jpg|\.jpeg|\.png|\.webp)[^"]*)"/i);
     const imageUrl = imgMatch ? imgMatch[1] : undefined;
     
     vehicles.push({
@@ -123,8 +140,164 @@ function parseAutoWereldVehicles(html: string, baseUrl: string): ScrapedVehicle[
     });
   }
   
-  console.log(`[Scraper] Parsed ${vehicles.length} vehicles from HTML`);
+  console.log(`[Scraper] Parsed ${vehicles.length} vehicles from HTML section`);
   return vehicles;
+}
+
+// Check if there's a next page
+function hasNextPage(html: string, currentPage: number): boolean {
+  // Look for pagination links
+  const nextPageNum = currentPage + 1;
+  
+  // Common pagination patterns
+  const patterns = [
+    new RegExp(`page=${nextPageNum}`, 'i'),
+    new RegExp(`pagina=${nextPageNum}`, 'i'),
+    new RegExp(`p=${nextPageNum}`, 'i'),
+    new RegExp(`/page/${nextPageNum}`, 'i'),
+    new RegExp(`class="[^"]*pagination[^"]*"[^>]*>[\\s\\S]*?>${nextPageNum}<`, 'i'),
+    /class="[^"]*next[^"]*"/i,
+    />volgende</i,
+    /›|»/,
+  ];
+  
+  return patterns.some(p => p.test(html));
+}
+
+// Build paginated URL
+function buildPageUrl(baseUrl: string, page: number): string {
+  if (page === 1) return baseUrl;
+  
+  const url = new URL(baseUrl);
+  
+  // Check if URL already has pagination parameter
+  if (url.searchParams.has('page')) {
+    url.searchParams.set('page', page.toString());
+  } else if (url.searchParams.has('pagina')) {
+    url.searchParams.set('pagina', page.toString());
+  } else if (url.searchParams.has('p')) {
+    url.searchParams.set('p', page.toString());
+  } else {
+    // Add page parameter
+    url.searchParams.set('page', page.toString());
+  }
+  
+  return url.toString();
+}
+
+// Fetch a single page with retry logic
+async function fetchPage(url: string, attempt = 1): Promise<string> {
+  console.log(`[Scraper] Fetching: ${url} (attempt ${attempt})`);
+  
+  const headers = getHeaders();
+  
+  try {
+    const response = await fetch(url, { headers });
+    
+    if (!response.ok) {
+      console.log(`[Scraper] Response status: ${response.status}, headers:`, Object.fromEntries(response.headers.entries()));
+      
+      if (attempt < 3) {
+        // Retry with different headers
+        console.log(`[Scraper] Retrying with alternative headers...`);
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+        
+        const altHeaders = attempt === 2 
+          ? { 
+              'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+              'Accept': 'text/html',
+              'Referer': 'https://www.google.com/',
+            }
+          : {
+              'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              'Accept-Language': 'nl-NL,nl;q=0.9',
+              'Cookie': 'CookieConsent=true',
+            };
+        
+        const retryResponse = await fetch(url, { headers: altHeaders });
+        if (retryResponse.ok) {
+          return await retryResponse.text();
+        }
+      }
+      
+      throw new Error(`Failed to fetch page: ${response.status} ${response.statusText}`);
+    }
+    
+    return await response.text();
+  } catch (error) {
+    if (attempt < 3) {
+      console.log(`[Scraper] Fetch error, retrying: ${error.message}`);
+      await new Promise(r => setTimeout(r, 1000 * attempt));
+      return fetchPage(url, attempt + 1);
+    }
+    throw error;
+  }
+}
+
+// Scrape all pages for a dealer
+async function scrapeAllPages(baseUrl: string): Promise<ScrapedVehicle[]> {
+  const allVehicles: ScrapedVehicle[] = [];
+  const seenUrls = new Set<string>();
+  let page = 1;
+  const maxPages = 25;
+  
+  while (page <= maxPages) {
+    const pageUrl = buildPageUrl(baseUrl, page);
+    console.log(`[Scraper] Fetching page ${page}: ${pageUrl}`);
+    
+    try {
+      const html = await fetchPage(pageUrl);
+      console.log(`[Scraper] Page ${page}: received ${html.length} bytes`);
+      
+      // Check for cookie consent popup blocking content
+      if (html.includes('cookie-consent') && html.length < 5000) {
+        console.log(`[Scraper] Cookie consent popup detected, content may be blocked`);
+      }
+      
+      const vehicles = parseAutoWereldVehicles(html, baseUrl);
+      
+      // Deduplicate by URL
+      let newVehicles = 0;
+      for (const v of vehicles) {
+        if (!seenUrls.has(v.externalUrl)) {
+          seenUrls.add(v.externalUrl);
+          allVehicles.push(v);
+          newVehicles++;
+        }
+      }
+      
+      console.log(`[Scraper] Page ${page}: ${vehicles.length} vehicles found, ${newVehicles} new`);
+      
+      // Stop if no new vehicles found (reached end or duplicate page)
+      if (newVehicles === 0) {
+        console.log(`[Scraper] No new vehicles on page ${page}, stopping pagination`);
+        break;
+      }
+      
+      // Check if there's a next page
+      if (!hasNextPage(html, page)) {
+        console.log(`[Scraper] No next page found after page ${page}`);
+        break;
+      }
+      
+      page++;
+      
+      // Small delay between pages to avoid rate limiting
+      if (page <= maxPages) {
+        await new Promise(r => setTimeout(r, 750));
+      }
+      
+    } catch (error) {
+      console.error(`[Scraper] Error fetching page ${page}:`, error.message);
+      // If first page fails, throw error. Otherwise, stop pagination.
+      if (page === 1) throw error;
+      break;
+    }
+  }
+  
+  console.log(`[Scraper] Total: ${allVehicles.length} unique vehicles from ${page} page(s)`);
+  return allVehicles;
 }
 
 serve(async (req) => {
@@ -167,54 +340,11 @@ serve(async (req) => {
       );
     }
     
-    console.log(`[Scraper] Fetching URL: ${dealer.scrape_url}`);
+    console.log(`[Scraper] Dealer: ${dealer.name}, URL: ${dealer.scrape_url}`);
     
-    // Fetch the dealer page with browser-like headers to avoid 403
-    const response = await fetch(dealer.scrape_url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language': 'nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Cache-Control': 'max-age=0',
-        'sec-ch-ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"Windows"',
-      },
-    });
-    
-    if (!response.ok) {
-      // Try alternative approach with simpler headers
-      console.log(`[Scraper] First attempt failed with ${response.status}, trying alternative...`);
-      
-      const altResponse = await fetch(dealer.scrape_url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
-          'Accept': 'text/html',
-        },
-      });
-      
-      if (!altResponse.ok) {
-        throw new Error(`Failed to fetch page: ${response.status} ${response.statusText}`);
-      }
-      
-      const html = await altResponse.text();
-      console.log(`[Scraper] Alternative fetch received ${html.length} bytes of HTML`);
-      return await processHtml(req, dealer, dealerId, html, startTime);
-    }
-    
-    const html = await response.text();
-    console.log(`[Scraper] Received ${html.length} bytes of HTML`);
-    
-    // Parse vehicles from HTML
-    const scrapedVehicles = parseAutoWereldVehicles(html, dealer.scrape_url);
-    console.log(`[Scraper] Found ${scrapedVehicles.length} vehicles`);
+    // Scrape all pages
+    const scrapedVehicles = await scrapeAllPages(dealer.scrape_url);
+    console.log(`[Scraper] Total scraped: ${scrapedVehicles.length} vehicles`);
     
     // Get existing vehicles for this dealer
     const { data: existingVehicles, error: vehiclesError } = await supabase
@@ -289,12 +419,11 @@ serve(async (req) => {
           updates.sold_at = null;
           updates.reappeared_count = (existing.reappeared_count || 0) + 1;
           vehiclesReappeared++;
-          console.log(`[Scraper] Reappeared: ${scraped.brand} ${scraped.model} (count: ${updates.reappeared_count})`);
+          console.log(`[Scraper] Reappeared: ${scraped.brand} ${scraped.model}`);
         }
         
         // Check price change
         if (scraped.price && existing.price && scraped.price !== existing.price) {
-          // Log price change
           await supabase.from('competitor_price_history').insert({
             vehicle_id: existing.id,
             old_price: existing.price,
@@ -323,7 +452,6 @@ serve(async (req) => {
         const missedScrapes = (existing.consecutive_missing_scrapes || 0) + 1;
         
         if (missedScrapes >= 2) {
-          // Mark as SOLD after 2+ missed scrapes
           await supabase
             .from('competitor_vehicles')
             .update({
@@ -336,7 +464,6 @@ serve(async (req) => {
           vehiclesSold++;
           console.log(`[Scraper] Marked as sold: ${existing.brand} ${existing.model}`);
         } else {
-          // Just increment counter
           await supabase
             .from('competitor_vehicles')
             .update({
@@ -348,12 +475,6 @@ serve(async (req) => {
         }
       }
     }
-    
-    // Update stock days for all in_stock vehicles
-    await supabase.rpc('update_competitor_stock_days', { dealer_uuid: dealerId }).catch(() => {
-      // RPC might not exist yet, update manually
-      console.log('[Scraper] RPC not available, skipping stock days update');
-    });
     
     // Log the scrape
     const duration = Date.now() - startTime;
