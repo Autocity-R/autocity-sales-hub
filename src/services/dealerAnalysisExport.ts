@@ -31,6 +31,8 @@ export const exportDealerAnalysisToExcel = async (results: DealerAnalysisResult[
     { header: 'KM (zoek)', key: 'searchMileage', width: 12 },
     { header: 'Kenteken', key: 'licensePlate', width: 12 },
     { header: 'Dealer', key: 'dealer', width: 28 },
+    { header: 'Email', key: 'email', width: 28 },
+    { header: 'Telefoon', key: 'phone', width: 16 },
     { header: 'Verkoopprijs', key: 'price', width: 14 },
     { header: 'KM-stand', key: 'mileage', width: 12 },
     { header: 'Stadagen', key: 'daysInStock', width: 12 },
@@ -116,6 +118,8 @@ export const exportDealerAnalysisToExcel = async (results: DealerAnalysisResult[
         searchMileage: '',
         licensePlate: '',
         dealer: dealer.dealerName,
+        email: dealer.dealerEmail || '-',
+        phone: dealer.dealerPhone || '-',
         price: dealer.price,
         mileage: dealer.mileage,
         daysInStock: dealer.daysInStock,
@@ -123,7 +127,29 @@ export const exportDealerAnalysisToExcel = async (results: DealerAnalysisResult[
         website: dealer.url ? 'Bekijk →' : '-',
       });
 
-      // Add hyperlink
+      // Add email hyperlink (mailto:)
+      if (dealer.dealerEmail) {
+        const emailCell = row.getCell('email');
+        emailCell.value = {
+          text: dealer.dealerEmail,
+          hyperlink: `mailto:${dealer.dealerEmail}`,
+        };
+        emailCell.font = { color: { argb: 'FF0066CC' }, underline: true };
+      }
+
+      // Add phone hyperlink (tel:)
+      if (dealer.dealerPhone) {
+        const phoneCell = row.getCell('phone');
+        // Clean phone number for tel: link
+        const cleanPhone = dealer.dealerPhone.replace(/[\s.-]/g, '');
+        phoneCell.value = {
+          text: dealer.dealerPhone,
+          hyperlink: `tel:${cleanPhone}`,
+        };
+        phoneCell.font = { color: { argb: 'FF0066CC' }, underline: true };
+      }
+
+      // Add website hyperlink
       if (dealer.url) {
         const linkCell = row.getCell('website');
         linkCell.value = {
@@ -166,17 +192,20 @@ export const exportDealerAnalysisToExcel = async (results: DealerAnalysisResult[
     }
 
     // Add subtotal row for vehicle
+    // Columns: 1:#, 2:Merk, 3:Model, 4:Bouwjaar, 5:Vraagprijs, 6:Brandstof, 7:Transmissie, 
+    // 8:KM(zoek), 9:Kenteken, 10:Dealer, 11:Email, 12:Telefoon, 13:Verkoopprijs, 
+    // 14:KM-stand, 15:Stadagen, 16:Verkocht geleden, 17:Website
     const subtotalRow = worksheet.getRow(currentRow);
-    subtotalRow.getCell(9).value = `Gemiddeld:`;
-    subtotalRow.getCell(11).value = result.stats.avgPrice;
-    subtotalRow.getCell(13).value = result.stats.avgDaysInStock;
-    subtotalRow.getCell(14).value = result.stats.fastestSale !== null 
+    subtotalRow.getCell(10).value = `Gemiddeld:`;
+    subtotalRow.getCell(13).value = result.stats.avgPrice;
+    subtotalRow.getCell(15).value = result.stats.avgDaysInStock;
+    subtotalRow.getCell(16).value = result.stats.fastestSale !== null 
       ? `Snelste: ${result.stats.fastestSale} dgn` 
       : '-';
 
     subtotalRow.font = { italic: true, color: { argb: 'FF666666' } };
-    subtotalRow.getCell(11).numFmt = '€#,##0';
-    subtotalRow.getCell(13).numFmt = '#,##0';
+    subtotalRow.getCell(13).numFmt = '€#,##0';
+    subtotalRow.getCell(15).numFmt = '#,##0';
 
     currentRow += 2; // Add empty row between vehicles
   }

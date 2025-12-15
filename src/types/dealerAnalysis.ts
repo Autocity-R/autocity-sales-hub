@@ -8,6 +8,10 @@ export interface DealerListing {
   soldSince: number | null;
   url: string;
   buildYear?: number;
+  // Contact info extracted from dealer website
+  dealerEmail?: string;
+  dealerPhone?: string;
+  dealerWebsite?: string;
 }
 
 export interface VehicleInput {
