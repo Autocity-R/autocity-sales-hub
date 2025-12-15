@@ -13,7 +13,7 @@ import type { VehicleInput } from '@/types/dealerAnalysis';
 
 const MAKES = Object.keys(VEHICLE_BRANDS);
 const YEARS = Array.from({ length: 15 }, (_, i) => (new Date().getFullYear() - i).toString());
-const HP_OPTIONS = ['75', '90', '100', '110', '120', '130', '140', '150', '163', '177', '190', '204', '220', '252', '286', '300', '340', '400', '450', '500'];
+const HP_OPTIONS_FALLBACK = ['75', '90', '100', '110', '120', '130', '140', '150', '163', '177', '190', '204', '220', '252', '286', '300', '340', '400', '450', '500'];
 
 interface JPCarsOption {
   id: string;
@@ -51,12 +51,57 @@ export const SingleVehicleAnalysis = ({
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
 
+  // Dynamic HP options state
+  const [hpOptions, setHpOptions] = useState<string[]>(HP_OPTIONS_FALLBACK);
+  const [isLoadingHp, setIsLoadingHp] = useState(false);
+
   // License plate input state
   const [licensePlate, setLicensePlate] = useState('');
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [rdwResult, setRdwResult] = useState<VehicleInput | null>(null);
 
   const models = make ? VEHICLE_BRANDS[make] || [] : [];
+
+  // Auto-load HP options when make, model, fuel, and transmission are selected
+  useEffect(() => {
+    const loadHpOptions = async () => {
+      if (!make || !model || !fuelType || !transmission) {
+        setHpOptions(HP_OPTIONS_FALLBACK);
+        return;
+      }
+
+      setIsLoadingHp(true);
+      setPower(''); // Reset power when dependencies change
+      try {
+        const { data, error } = await supabase.functions.invoke('jpcars-values', {
+          body: { 
+            type: 'hp',
+            make, 
+            model, 
+            fuel: fuelType,
+            gear: transmission
+          },
+        });
+
+        if (error) throw error;
+
+        if (data?.success && data.values?.length > 0) {
+          console.log('✅ JP Cars HP options loaded:', data.values);
+          setHpOptions(data.values.map((v: string | number) => String(v)));
+        } else {
+          console.log('⚠️ No HP options from JP Cars, using fallback');
+          setHpOptions(HP_OPTIONS_FALLBACK);
+        }
+      } catch (err) {
+        console.error('Error loading HP options:', err);
+        setHpOptions(HP_OPTIONS_FALLBACK);
+      } finally {
+        setIsLoadingHp(false);
+      }
+    };
+
+    loadHpOptions();
+  }, [make, model, fuelType, transmission]);
 
   // Auto-load options when make and fuel are selected
   useEffect(() => {
@@ -348,16 +393,19 @@ export const SingleVehicleAnalysis = ({
                 </div>
               )}
 
-              {/* Power (PK) - NEW */}
+              {/* Power (PK) - Dynamic from JP Cars */}
               {transmission && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Vermogen (PK) *</label>
-                  <Select value={power} onValueChange={setPower}>
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    Vermogen (PK) *
+                    {isLoadingHp && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                  </label>
+                  <Select value={power} onValueChange={setPower} disabled={isLoadingHp}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecteer vermogen" />
+                      <SelectValue placeholder={isLoadingHp ? "Laden..." : "Selecteer vermogen"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {HP_OPTIONS.map((hp) => (
+                      {hpOptions.map((hp) => (
                         <SelectItem key={hp} value={hp}>{hp} PK</SelectItem>
                       ))}
                     </SelectContent>
