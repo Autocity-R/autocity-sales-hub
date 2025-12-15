@@ -227,3 +227,22 @@ export const CATEGORY_LABELS: Record<string, string> = {
   tech: '📱 Technologie',
   veiligheid: '🛡️ Veiligheid',
 };
+
+// WAARDE-BEPALENDE OPTIES - Alleen de opties die significant effect hebben op de waarde
+export interface ValueOption {
+  id: string;
+  label: string;
+  icon: string;
+  valueImpact: 'hoog' | 'medium' | 'laag';
+  searchKeyword: string;
+  evOnly?: boolean;
+}
+
+export const VALUE_OPTIONS: ValueOption[] = [
+  { id: 'panoramadak', label: 'Panoramadak / Open Dak', icon: '🌤️', valueImpact: 'hoog', searchKeyword: 'panorama roof' },
+  { id: 'luchtvering', label: 'Luchtvering', icon: '🛋️', valueImpact: 'hoog', searchKeyword: 'air suspension' },
+  { id: 'premium_audio', label: 'Premium Audio (B&W/Burmester/Harman)', icon: '🔊', valueImpact: 'medium', searchKeyword: 'premium audio' },
+  { id: '7_zitter', label: '7 Zitter', icon: '👨‍👩‍👧‍👦', valueImpact: 'medium', searchKeyword: '7 seater' },
+  { id: 'trekhaak', label: 'Trekhaak', icon: '🚗', valueImpact: 'laag', searchKeyword: 'tow bar' },
+  { id: 'long_range', label: 'Long Range (EV)', icon: '🔋', valueImpact: 'hoog', searchKeyword: 'long range', evOnly: true },
+];

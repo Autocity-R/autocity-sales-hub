@@ -117,6 +117,46 @@ interface TaxatieRequest {
   feedbackHistory?: FeedbackItem[];
 }
 
+// Build explicit value options section for AI prompt
+function buildValueOptionsSection(options: string[] | undefined, fuelType: string): string {
+  const valueOptions = [
+    { id: 'panoramadak', label: 'Panoramadak', value: '€1.500 - €3.000' },
+    { id: 'luchtvering', label: 'Luchtvering', value: '€1.000 - €2.500' },
+    { id: 'premium_audio', label: 'Premium Audio (B&W/Burmester/Harman)', value: '€500 - €1.500' },
+    { id: '7_zitter', label: '7 Zitter', value: '€500 - €1.500' },
+    { id: 'trekhaak', label: 'Trekhaak', value: '€300 - €800' },
+    { id: 'long_range', label: 'Long Range (EV)', value: '€2.000 - €5.000' },
+  ];
+
+  const isEV = fuelType?.toLowerCase().includes('elektr') || fuelType?.toLowerCase().includes('ev');
+  const relevantOptions = valueOptions.filter(opt => opt.id !== 'long_range' || isEV);
+  
+  let section = '';
+  
+  // PANORAMADAK EXPLICIET HIGHLIGHTEN - dit is het belangrijkst
+  const hasPanoramadak = options?.includes('panoramadak');
+  section += `- **🌤️ PANORAMADAK: ${hasPanoramadak ? '✅ JA AANWEZIG' : '❌ NIET AANWEZIG'}**\n`;
+  if (hasPanoramadak) {
+    section += `  → Dit verhoogt de waarde met ${valueOptions.find(o => o.id === 'panoramadak')?.value}\n`;
+  }
+  section += '\n';
+  
+  // Andere waarde-bepalende opties
+  relevantOptions.filter(opt => opt.id !== 'panoramadak').forEach(opt => {
+    const hasOption = options?.includes(opt.id);
+    section += `- ${opt.label}: ${hasOption ? `✅ JA (+${opt.value})` : '❌ NEE'}\n`;
+  });
+
+  // Eventuele extra opties die niet in de standaard lijst zitten
+  const knownOptionIds = valueOptions.map(o => o.id);
+  const extraOptions = options?.filter(o => !knownOptionIds.includes(o)) || [];
+  if (extraOptions.length > 0) {
+    section += `\n**Overige opties:** ${extraOptions.join(', ')}\n`;
+  }
+
+  return section;
+}
+
 // Lesson with market context for deeper learning
 interface LessonWithContext {
   brand: string;
@@ -472,7 +512,9 @@ Je weet dat een exacte kloon zeldzaam is. Je moet MENTAAL CORRIGEREN voor versch
 - KM-stand: ${input.vehicleData.mileage?.toLocaleString('nl-NL')} km
 - Motor: ${input.vehicleData.power} PK ${input.vehicleData.fuelType}
 - Transmissie: ${input.vehicleData.transmission}
-- Opties: ${input.vehicleData.options?.join(', ') || 'Geen opties bekend'}
+
+**⭐ WAARDE-BEPALENDE OPTIES:**
+${buildValueOptionsSection(input.vehicleData.options, input.vehicleData.fuelType)}
 
 **Vergelijkingsregels:**
 

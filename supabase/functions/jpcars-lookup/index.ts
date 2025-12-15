@@ -451,11 +451,22 @@ serve(async (req) => {
   }
 });
 
-// Options mapping: Dutch -> English JP Cars keywords
+// Options mapping: Vereenvoudigde waarde-bepalende opties -> JP Cars keywords
 function mapOptionsToJPCars(options: string[]): string {
-  const optionMap: Record<string, string> = {
-    // Dak opties
+  // Mapping voor de vereenvoudigde VALUE_OPTIONS
+  const valueOptionMap: Record<string, string> = {
+    // Waarde-bepalende opties (primair)
     'panoramadak': 'panorama roof',
+    'luchtvering': 'air suspension',
+    'premium_audio': 'premium audio',
+    '7_zitter': '7 seater',
+    'trekhaak': 'tow bar',
+    'long_range': 'long range',
+  };
+  
+  // Legacy mapping voor backwards compatibility
+  const legacyOptionMap: Record<string, string> = {
+    // Dak opties
     'panorama dak': 'panorama roof',
     'schuifdak': 'sunroof',
     'schuif-/kanteldak': 'sunroof',
@@ -554,6 +565,9 @@ function mapOptionsToJPCars(options: string[]): string {
     'digitaal instrumentenpaneel': 'digital cockpit',
     'virtual cockpit': 'digital cockpit',
   };
+
+  // Combineer beide maps met prioriteit voor valueOptionMap
+  const optionMap = { ...legacyOptionMap, ...valueOptionMap };
 
   const mappedOptions: string[] = [];
   
