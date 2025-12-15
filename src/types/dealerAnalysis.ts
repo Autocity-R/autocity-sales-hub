@@ -23,6 +23,8 @@ export interface VehicleInput {
   mileage?: number;
   rowIndex?: number;
   askingPrice?: number;
+  options?: string[];
+  keywords?: string[];
 }
 
 export interface DealerAnalysisResult {

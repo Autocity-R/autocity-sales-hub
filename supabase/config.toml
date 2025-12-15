@@ -33,6 +33,9 @@ verify_jwt = false
 [functions.jpcars-values]
 verify_jwt = false
 
+[functions.jpcars-options]
+verify_jwt = false
+
 [functions.rdw-lookup]
 verify_jwt = false
 
