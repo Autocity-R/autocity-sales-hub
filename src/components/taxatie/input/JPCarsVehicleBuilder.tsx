@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import type { TaxatieVehicleData } from '@/types/taxatie';
 import { VEHICLE_BRANDS, FUEL_TYPES, BODY_TYPES, TRANSMISSION_TYPES } from '@/data/vehicleData';
 import { OptionsSelector } from './OptionsSelector';
+import { supabase } from '@/integrations/supabase/client';
 
 interface JPCarsVehicleBuilderProps {
   onSubmit: (data: TaxatieVehicleData) => void;
@@ -36,7 +37,7 @@ const FUELS = [...FUEL_TYPES];
 const GEARS = [...TRANSMISSION_TYPES];
 const BODIES = [...BODY_TYPES];
 const YEARS = Array.from({ length: 20 }, (_, i) => (new Date().getFullYear() - i).toString());
-const HP_OPTIONS = ['75', '90', '100', '110', '120', '130', '140', '150', '163', '177', '190', '204', '220', '252', '286', '300', '340', '400', '450', '500'];
+const HP_OPTIONS_FALLBACK = ['75', '90', '100', '110', '120', '130', '140', '150', '163', '177', '190', '204', '220', '252', '286', '300', '340', '400', '450', '500'];
 
 export const JPCarsVehicleBuilder = ({ 
   onSubmit, 
@@ -60,6 +61,8 @@ export const JPCarsVehicleBuilder = ({
   });
 
   const [models, setModels] = useState<string[]>([]);
+  const [hpOptions, setHpOptions] = useState<string[]>(HP_OPTIONS_FALLBACK);
+  const [isLoadingHp, setIsLoadingHp] = useState(false);
 
   // Update models when make changes
   useEffect(() => {
@@ -70,6 +73,46 @@ export const JPCarsVehicleBuilder = ({
       setModels([]);
     }
   }, [state.make]);
+
+  // Load HP options from JP Cars API
+  useEffect(() => {
+    const loadHpOptions = async () => {
+      if (!state.make || !state.model || !state.fuel || !state.gear) {
+        setHpOptions(HP_OPTIONS_FALLBACK);
+        return;
+      }
+
+      setIsLoadingHp(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('jpcars-values', {
+          body: { 
+            type: 'hp',
+            make: state.make, 
+            model: state.model, 
+            fuel: state.fuel,
+            gear: state.gear
+          },
+        });
+
+        if (error) throw error;
+
+        if (data?.success && data.values?.length > 0) {
+          console.log('✅ JP Cars HP options loaded:', data.values);
+          setHpOptions(data.values.map((v: string | number) => String(v)));
+        } else {
+          console.log('⚠️ No HP options from JP Cars, using fallback');
+          setHpOptions(HP_OPTIONS_FALLBACK);
+        }
+      } catch (err) {
+        console.error('Error loading HP options:', err);
+        setHpOptions(HP_OPTIONS_FALLBACK);
+      } finally {
+        setIsLoadingHp(false);
+      }
+    };
+
+    loadHpOptions();
+  }, [state.make, state.model, state.fuel, state.gear]);
 
   const handleSelect = (field: keyof BuilderState, value: string) => {
     const updates: Partial<BuilderState> = { [field]: value };
@@ -267,16 +310,19 @@ export const JPCarsVehicleBuilder = ({
           </div>
         )}
 
-        {/* HP */}
+        {/* HP - Dynamic from JP Cars */}
         {state.gear && (
           <div className="space-y-1">
-            <label className="text-sm font-medium">Vermogen *</label>
-            <Select value={state.hp} onValueChange={(v) => handleSelect('hp', v)} disabled={disabled}>
+            <label className="text-sm font-medium flex items-center gap-2">
+              Vermogen *
+              {isLoadingHp && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+            </label>
+            <Select value={state.hp} onValueChange={(v) => handleSelect('hp', v)} disabled={disabled || isLoadingHp}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecteer vermogen" />
+                <SelectValue placeholder={isLoadingHp ? "Laden..." : "Selecteer vermogen"} />
               </SelectTrigger>
               <SelectContent>
-                {HP_OPTIONS.map((value) => (
+                {hpOptions.map((value) => (
                   <SelectItem key={value} value={value}>{value} PK</SelectItem>
                 ))}
               </SelectContent>
