@@ -108,7 +108,7 @@ export const BulkTaxatieResults = ({ results, onReset }: BulkTaxatieResultsProps
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12">#</TableHead>
+                  <TableHead className="w-12">Orig. Rij</TableHead>
                   <TableHead>Voertuig</TableHead>
                   <TableHead className="text-right">Vraagprijs</TableHead>
                   <TableHead className="text-center">APR</TableHead>
