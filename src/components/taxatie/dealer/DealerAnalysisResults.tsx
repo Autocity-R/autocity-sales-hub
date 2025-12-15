@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Download, RotateCcw, ChevronDown, ExternalLink, Building2, TrendingUp, Clock, AlertCircle } from 'lucide-react';
+import { Download, RotateCcw, ChevronDown, ExternalLink, Building2, TrendingUp, Clock, AlertCircle, Mail } from 'lucide-react';
 import { useState } from 'react';
-import type { DealerAnalysisResult } from '@/types/dealerAnalysis';
+import type { DealerAnalysisResult, DealerListing, VehicleInput } from '@/types/dealerAnalysis';
 import { exportDealerAnalysisToExcel } from '@/services/dealerAnalysisExport';
 import { toast } from 'sonner';
+import { DealerEmailDialog } from './DealerEmailDialog';
 
 interface DealerAnalysisResultsProps {
   results: DealerAnalysisResult[];
@@ -17,6 +18,11 @@ interface DealerAnalysisResultsProps {
 export const DealerAnalysisResults = ({ results, onReset }: DealerAnalysisResultsProps) => {
   const [openVehicles, setOpenVehicles] = useState<Set<number>>(new Set([0]));
   const [isExporting, setIsExporting] = useState(false);
+  
+  // Email dialog state
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<VehicleInput | null>(null);
+  const [selectedDealer, setSelectedDealer] = useState<DealerListing | null>(null);
 
   const completedResults = results.filter(r => r.status === 'completed');
   const errorResults = results.filter(r => r.status === 'error');
@@ -43,6 +49,16 @@ export const DealerAnalysisResults = ({ results, onReset }: DealerAnalysisResult
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const handleOpenEmailDialog = (vehicle: VehicleInput, dealer: DealerListing) => {
+    if (!dealer.dealerEmail) {
+      toast.error('Geen email adres beschikbaar voor deze dealer');
+      return;
+    }
+    setSelectedVehicle(vehicle);
+    setSelectedDealer(dealer);
+    setEmailDialogOpen(true);
   };
 
   const formatPrice = (price: number) => {
@@ -228,13 +244,20 @@ export const DealerAnalysisResults = ({ results, onReset }: DealerAnalysisResult
                           <TableHead className="text-right">KM</TableHead>
                           <TableHead className="text-right">Stadagen</TableHead>
                           <TableHead className="text-right">Status</TableHead>
-                          <TableHead className="text-center">Link</TableHead>
+                          <TableHead className="text-center">Acties</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {result.dealers.map((dealer, dIdx) => (
                           <TableRow key={dIdx}>
-                            <TableCell className="font-medium">{dealer.dealerName}</TableCell>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{dealer.dealerName}</p>
+                                {dealer.dealerEmail && (
+                                  <p className="text-xs text-muted-foreground">{dealer.dealerEmail}</p>
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell className="text-right">{dealer.buildYear || '-'}</TableCell>
                             <TableCell className="text-right">{formatPrice(dealer.price)}</TableCell>
                             <TableCell className="text-right">
@@ -255,17 +278,29 @@ export const DealerAnalysisResults = ({ results, onReset }: DealerAnalysisResult
                               </span>
                             </TableCell>
                             <TableCell className="text-center">
-                              {dealer.url ? (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => window.open(dealer.url, '_blank')}
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </Button>
-                              ) : (
-                                '-'
-                              )}
+                              <div className="flex items-center justify-center gap-1">
+                                {dealer.dealerEmail && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleOpenEmailDialog(result.vehicle, dealer)}
+                                    title="Stuur B2B email"
+                                  >
+                                    <Mail className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {dealer.url && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => window.open(dealer.url, '_blank')}
+                                    title="Open advertentie"
+                                  >
+                                    <ExternalLink className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {!dealer.dealerEmail && !dealer.url && '-'}
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -278,6 +313,20 @@ export const DealerAnalysisResults = ({ results, onReset }: DealerAnalysisResult
           </Card>
         ))}
       </div>
+
+      {/* Email Dialog */}
+      {selectedVehicle && selectedDealer && (
+        <DealerEmailDialog
+          open={emailDialogOpen}
+          onOpenChange={setEmailDialogOpen}
+          vehicle={selectedVehicle}
+          dealer={selectedDealer}
+          onSuccess={() => {
+            setSelectedVehicle(null);
+            setSelectedDealer(null);
+          }}
+        />
+      )}
     </div>
   );
 };
