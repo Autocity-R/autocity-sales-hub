@@ -20,12 +20,12 @@ export interface EmailFormData {
   b2bPrice: number;
   maxDamage: number;
   extraOptions: string;
+  includeBanner: boolean;
 }
 
-interface UseDealerEmailOptions {
-  vehicle: VehicleInput;
-  dealer: DealerListing;
-}
+// Banner URL - use Supabase Storage for email compatibility
+// Upload the banner to: https://supabase.com/dashboard/project/fnwagrmoyfyimdoaynkg/storage/buckets/email-assets
+const BANNER_URL = 'https://fnwagrmoyfyimdoaynkg.supabase.co/storage/v1/object/public/email-assets/autocity-banner.png';
 
 export const useDealerEmail = () => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -88,6 +88,68 @@ Thurledeweg 61
 3044 ER Rotterdam
 Tel: 010-2623980
 Email: verkoop@auto-city.nl`;
+  };
+
+  const buildHtmlTemplate = (textBody: string, includeBanner: boolean): string => {
+    // Convert plain text to HTML with proper formatting
+    const htmlContent = textBody
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━/g, '<hr style="border: none; border-top: 2px solid #1e3a5f; margin: 15px 0;" />')
+      .replace(/━━━━━━━━━━━━━━━━━━━━━━━━/g, '<hr style="border: none; border-top: 1px solid #1e3a5f; margin: 10px 0;" />')
+      .replace(/\n\n/g, '</p><p style="margin: 15px 0; line-height: 1.6;">')
+      .replace(/\n/g, '<br />')
+      .replace(/•/g, '&#8226;');
+
+    // Find where to insert banner (after "Autocity Automotive Group" signature)
+    const signatureMarker = 'Autocity Automotive Group';
+    const bannerHtml = includeBanner ? `
+      <div style="margin: 20px 0; text-align: center;">
+        <img 
+          src="${BANNER_URL}" 
+          alt="Autocity Automotive Group" 
+          style="max-width: 100%; width: 500px; height: auto; border-radius: 4px;"
+        />
+      </div>
+    ` : '';
+
+    // Build the HTML email
+    return `
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>B2B Aanbod - Autocity Automotive Group</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td style="padding: 20px;">
+        <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="padding: 30px;">
+              <div style="color: #333333; font-size: 14px;">
+                <p style="margin: 15px 0; line-height: 1.6;">
+                  ${htmlContent.includes(signatureMarker) 
+                    ? htmlContent.replace(
+                        new RegExp(`(${signatureMarker})`, 'g'), 
+                        `$1${bannerHtml}`
+                      )
+                    : htmlContent + bannerHtml
+                  }
+                </p>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `.trim();
   };
 
   const generateWithAI = async (
@@ -153,16 +215,20 @@ Email: verkoop@auto-city.nl`;
     recipientEmail: string,
     recipientName: string,
     subject: string,
-    body: string
+    body: string,
+    includeBanner: boolean = true
   ): Promise<boolean> => {
     setIsSending(true);
     
     try {
+      const htmlBody = buildHtmlTemplate(body, includeBanner);
+      
       const { data, error } = await supabase.functions.invoke('send-gmail', {
         body: {
           to: recipientEmail,
           subject,
-          body,
+          body: body, // Plain text fallback
+          htmlBody: htmlBody, // HTML version with banner
           from: 'verkoop@auto-city.nl',
           fromName: 'Autocity Automotive Group'
         }
@@ -203,8 +269,10 @@ Email: verkoop@auto-city.nl`;
     isGenerating,
     isSending,
     buildDefaultTemplate,
+    buildHtmlTemplate,
     generateWithAI,
     sendEmail,
-    buildSubject
+    buildSubject,
+    BANNER_URL
   };
 };

@@ -10,10 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Send, Sparkles, FileText, RefreshCw, Car, Euro, Info } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Send, Sparkles, FileText, RefreshCw, Car, Euro, Info, Image } from 'lucide-react';
 import type { VehicleInput, DealerListing } from '@/types/dealerAnalysis';
 import { useDealerEmail, type EmailFormData } from '@/hooks/useDealerEmail';
 
@@ -32,7 +32,7 @@ export const DealerEmailDialog = ({
   dealer,
   onSuccess
 }: DealerEmailDialogProps) => {
-  const { isGenerating, isSending, buildDefaultTemplate, generateWithAI, sendEmail, buildSubject } = useDealerEmail();
+  const { isGenerating, isSending, buildDefaultTemplate, generateWithAI, sendEmail, buildSubject, BANNER_URL } = useDealerEmail();
   
   // Form state
   const [formData, setFormData] = useState<EmailFormData>({
@@ -50,7 +50,8 @@ export const DealerEmailDialog = ({
     vin: '',
     b2bPrice: 0,
     maxDamage: 0,
-    extraOptions: ''
+    extraOptions: '',
+    includeBanner: true
   });
 
   // Initialize form when dialog opens
@@ -71,7 +72,8 @@ export const DealerEmailDialog = ({
         vin: '',
         b2bPrice: 0,
         maxDamage: 0,
-        extraOptions: ''
+        extraOptions: '',
+        includeBanner: true
       };
       setFormData(initialData);
       // Start with template
@@ -80,7 +82,7 @@ export const DealerEmailDialog = ({
     }
   }, [open, vehicle, dealer]);
 
-  const updateField = (field: keyof EmailFormData, value: string | number) => {
+  const updateField = (field: keyof EmailFormData, value: string | number | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -105,7 +107,8 @@ export const DealerEmailDialog = ({
       formData.recipientEmail,
       formData.recipientName,
       formData.subject,
-      formData.body
+      formData.body,
+      formData.includeBanner
     );
     
     if (success) {
@@ -317,7 +320,7 @@ export const DealerEmailDialog = ({
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <Textarea 
                 value={formData.body}
                 onChange={(e) => updateField('body', e.target.value)}
@@ -325,6 +328,39 @@ export const DealerEmailDialog = ({
                 className="font-mono text-sm"
                 placeholder="Schrijf je email hier of gebruik de template/AI knoppen..."
               />
+              
+              {/* Banner Toggle */}
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
+                <div className="flex items-center gap-3">
+                  <Image className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <Label className="text-sm font-medium">Autocity Banner</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Banner tonen onder handtekening in de email
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={formData.includeBanner}
+                  onCheckedChange={(checked) => updateField('includeBanner', checked)}
+                />
+              </div>
+              
+              {/* Banner Preview */}
+              {formData.includeBanner && (
+                <div className="p-3 bg-muted/30 rounded-lg border">
+                  <Label className="text-xs text-muted-foreground mb-2 block">Banner Preview:</Label>
+                  <img 
+                    src={BANNER_URL} 
+                    alt="Autocity Banner" 
+                    className="max-w-full h-auto rounded border"
+                    style={{ maxHeight: '80px' }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
 
