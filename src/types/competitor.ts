@@ -103,3 +103,18 @@ export interface CompetitorStats {
   soldThisWeek: number;
   topBrands: { brand: string; count: number }[];
 }
+
+export interface TopVehicleGroup {
+  brand: string;
+  model: string;
+  buildYear: number;
+  mileageRange: string;
+  mileageBucket: number;
+  minPrice: number;
+  maxPrice: number;
+  avgPrice: number;
+  inStock: number;
+  sold: number;
+  avgStockDays: number;
+  vehicleIds: string[];
+}

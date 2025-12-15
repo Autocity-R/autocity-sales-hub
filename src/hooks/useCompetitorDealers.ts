@@ -9,6 +9,8 @@ import {
   fetchCompetitorStats,
   fetchScrapeLogs,
   triggerDealerScrape,
+  fetchTopVehicleGroups,
+  fetchVehiclesByIds,
 } from '@/services/competitorService';
 import type { CompetitorDealer, CompetitorVehicleFilters } from '@/types/competitor';
 
@@ -111,4 +113,23 @@ export function useCompetitorScrapeLogs(dealerId?: string) {
   });
 
   return { logs, isLoading, error };
+}
+
+export function useTopVehicleGroups(dealerId?: string) {
+  const { data: groups = [], isLoading, error } = useQuery({
+    queryKey: ['competitor-top-groups', dealerId],
+    queryFn: () => fetchTopVehicleGroups(dealerId),
+  });
+
+  return { groups, isLoading, error };
+}
+
+export function useVehiclesByIds(ids: string[], enabled: boolean = true) {
+  const { data: vehicles = [], isLoading, error } = useQuery({
+    queryKey: ['competitor-vehicles-by-ids', ids],
+    queryFn: () => fetchVehiclesByIds(ids),
+    enabled: enabled && ids.length > 0,
+  });
+
+  return { vehicles, isLoading, error };
 }
