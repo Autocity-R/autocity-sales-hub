@@ -19,8 +19,9 @@ export const exportBulkTaxatieToExcel = async (results: BulkTaxatieResult[]) => 
     views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }],
   });
 
-  // Define columns including JP Cars status
+  // Define columns including JP Cars status - Rij als eerste kolom voor referentie naar originele import
   worksheet.columns = [
+    { header: 'Rij', key: 'rowIndex', width: 6 },
     { header: 'Merk', key: 'brand', width: 14 },
     { header: 'Model', key: 'model', width: 18 },
     { header: 'Brandstof', key: 'fuelType', width: 12 },
@@ -82,6 +83,7 @@ export const exportBulkTaxatieToExcel = async (results: BulkTaxatieResult[]) => 
     }
     
     const row = worksheet.addRow({
+      rowIndex: result.input.rowIndex,
       brand: result.input.brand,
       model: result.input.model,
       fuelType: result.input.fuelType || '-',
@@ -130,8 +132,8 @@ export const exportBulkTaxatieToExcel = async (results: BulkTaxatieResult[]) => 
     }
 
     row.eachCell((cell, colNumber) => {
-      // Don't override hyperlink styling for link cell (now column 14)
-      if (colNumber !== 14 && colNumber !== 7) { // Skip gaspedaal and jpStatus
+      // Don't override hyperlink styling for link cell (now column 15) and jpStatus (column 8)
+      if (colNumber !== 15 && colNumber !== 8) { // Skip gaspedaal and jpStatus
         cell.fill = {
           type: 'pattern',
           pattern: 'solid',
