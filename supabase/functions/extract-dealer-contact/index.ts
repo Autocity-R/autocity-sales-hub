@@ -65,6 +65,50 @@ function getBaseUrl(url: string): string | null {
   }
 }
 
+// Build dealer website URL from dealer name
+// JP Cars dealer names often contain the actual website domain (e.g., "henkscholten.nl", "bluekens.com")
+function buildDealerWebsiteUrl(dealerName: string | null): string | null {
+  if (!dealerName) return null;
+  
+  const cleanName = dealerName.trim().toLowerCase();
+  
+  // Check if dealer name already looks like a domain
+  const domainPatterns = [
+    /^(www\.)?([a-z0-9-]+\.(nl|com|be|de|eu|net|org))$/i,
+    /([a-z0-9-]+\.(nl|com|be|de|eu|net|org))$/i,
+  ];
+  
+  for (const pattern of domainPatterns) {
+    const match = cleanName.match(pattern);
+    if (match) {
+      const domain = match[2] || match[1];
+      console.log(`   Detected domain in dealer name: ${domain}`);
+      return `https://www.${domain.replace(/^www\./, '')}`;
+    }
+  }
+  
+  // Check if the name contains a TLD anywhere (e.g., "Auto Dealer henkscholten.nl")
+  const tldMatch = cleanName.match(/([a-z0-9-]+\.(nl|com|be|de|eu|net|org))/i);
+  if (tldMatch) {
+    console.log(`   Found domain in dealer name: ${tldMatch[1]}`);
+    return `https://www.${tldMatch[1].replace(/^www\./, '')}`;
+  }
+  
+  // Fallback: try to construct URL from dealer name (remove spaces, add .nl)
+  // Only do this if the name looks like it could be a business name
+  const simplifiedName = cleanName
+    .replace(/\s+(bv|b\.v\.|vof|v\.o\.f\.)$/i, '') // Remove business suffixes
+    .replace(/[^a-z0-9]/g, '') // Remove special chars
+    .trim();
+  
+  if (simplifiedName.length >= 3 && simplifiedName.length <= 30) {
+    console.log(`   Trying constructed URL: www.${simplifiedName}.nl`);
+    return `https://www.${simplifiedName}.nl`;
+  }
+  
+  return null;
+}
+
 // Fetch HTML content with timeout
 async function fetchHtml(url: string, timeoutMs: number = 5000): Promise<string | null> {
   const controller = new AbortController();
@@ -150,24 +194,30 @@ serve(async (req) => {
     console.log(`🔍 Extracting contact for dealer: ${dealerName || 'unknown'}`);
     console.log(`   Listing URL: ${listingUrl}`);
     
-    if (!listingUrl) {
-      return new Response(
-        JSON.stringify({ email: null, phone: null, website: null }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // PRIORITY: Use dealerName to build website URL (JP Cars dealer names often contain the domain)
+    // Only fall back to listingUrl if dealerName doesn't work
+    let baseUrl = buildDealerWebsiteUrl(dealerName);
     
-    const baseUrl = getBaseUrl(listingUrl);
+    if (baseUrl) {
+      console.log(`   ✅ Built URL from dealer name: ${baseUrl}`);
+    } else if (listingUrl) {
+      // Fallback to listing URL (but skip if it's a JP Cars redirect URL)
+      const listingBaseUrl = getBaseUrl(listingUrl);
+      if (listingBaseUrl && !listingBaseUrl.includes('jp.cars') && !listingBaseUrl.includes('jpcars')) {
+        baseUrl = listingBaseUrl;
+        console.log(`   ⚠️ Fallback to listing URL: ${baseUrl}`);
+      }
+    }
     
     if (!baseUrl) {
-      console.log('❌ Could not extract base URL');
+      console.log('❌ Could not determine dealer website URL');
       return new Response(
         JSON.stringify({ email: null, phone: null, website: null }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    console.log(`   Base URL: ${baseUrl}`);
+    console.log(`   🌐 Target website: ${baseUrl}`);
     
     let allEmails: string[] = [];
     let allPhones: string[] = [];
