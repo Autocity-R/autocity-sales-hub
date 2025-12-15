@@ -59,3 +59,6 @@ verify_jwt = false
 
 [functions.extract-dealer-contact]
 verify_jwt = false
+
+[functions.generate-b2b-email]
+verify_jwt = false
