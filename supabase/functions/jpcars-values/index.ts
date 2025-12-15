@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 interface ValuesRequest {
-  type: 'make' | 'model' | 'fuel' | 'gear' | 'hp' | 'body' | 'build';
+  type: 'make' | 'model' | 'fuel' | 'gear' | 'hp' | 'body' | 'build' | 'options';
   make?: string;
   model?: string;
   fuel?: string;
@@ -15,409 +15,40 @@ interface ValuesRequest {
   build?: number;
 }
 
-// Comprehensive HP database per brand/model - based on common Dutch market configurations
-const HP_DATABASE: Record<string, Record<string, string[]>> = {
-  // VOLVO
-  'volvo': {
-    'xc40': ['129', '163', '197', '211', '231', '252', '408'],
-    'xc60': ['197', '235', '250', '300', '340', '350', '455'],
-    'xc90': ['235', '250', '300', '310', '340', '390', '455'],
-    'v40': ['109', '120', '150', '177', '190', '245'],
-    'v60': ['129', '163', '190', '197', '250', '340', '405'],
-    'v90': ['190', '235', '250', '300', '340', '390'],
-    's60': ['163', '190', '250', '340', '405'],
-    's90': ['190', '235', '250', '340', '390'],
-    'c40': ['231', '252', '408'],
-    'ex30': ['272', '315', '428'],
-    'ex40': ['252', '408'],
-    'ex90': ['408', '517'],
-    '_default': ['129', '163', '190', '197', '235', '250', '300', '340', '390', '408', '455'],
-  },
-  
-  // BMW
-  'bmw': {
-    '1 serie': ['109', '116', '136', '140', '156', '178', '231', '265', '306'],
-    '2 serie': ['136', '150', '156', '178', '190', '231', '252', '265', '306', '374'],
-    '3 serie': ['150', '156', '184', '190', '245', '252', '286', '374', '510'],
-    '4 serie': ['184', '245', '286', '374', '450', '510'],
-    '5 serie': ['184', '190', '245', '252', '286', '299', '340', '381', '394', '530', '571'],
-    '7 serie': ['245', '286', '340', '394', '449', '530', '571', '660'],
-    'x1': ['136', '150', '170', '190', '231', '313'],
-    'x2': ['136', '150', '190', '231', '306'],
-    'x3': ['150', '184', '190', '245', '252', '286', '360', '510'],
-    'x4': ['184', '252', '286', '360', '510'],
-    'x5': ['231', '265', '286', '340', '394', '449', '530', '571', '625'],
-    'x6': ['286', '340', '530', '625'],
-    'x7': ['340', '394', '530', '660'],
-    'ix': ['326', '385', '455', '523', '619'],
-    'ix1': ['170', '204', '313'],
-    'ix3': ['286'],
-    'i4': ['286', '340', '544'],
-    'i5': ['340', '442', '601'],
-    'i7': ['449', '544', '660'],
-    'z4': ['197', '258', '340'],
-    '_default': ['136', '150', '184', '190', '231', '245', '252', '286', '340', '374', '450', '510'],
-  },
-  
-  // MERCEDES-BENZ
-  'mercedes-benz': {
-    'a-klasse': ['109', '136', '163', '190', '224', '306', '421'],
-    'b-klasse': ['109', '136', '163', '190', '224'],
-    'c-klasse': ['156', '170', '184', '197', '204', '258', '313', '390', '510'],
-    'e-klasse': ['156', '194', '197', '220', '258', '299', '313', '367', '457', '612'],
-    's-klasse': ['299', '367', '449', '503', '612', '802'],
-    'cla': ['136', '163', '190', '224', '306', '421'],
-    'cls': ['299', '367', '457', '612'],
-    'gla': ['136', '163', '190', '224', '306', '421'],
-    'glb': ['136', '163', '190', '224', '306'],
-    'glc': ['170', '197', '204', '258', '313', '381', '435', '510', '680'],
-    'gle': ['197', '272', '313', '367', '435', '510', '612'],
-    'gls': ['330', '367', '435', '489', '612'],
-    'eqa': ['190', '228', '292'],
-    'eqb': ['190', '228', '292'],
-    'eqc': ['408'],
-    'eqe': ['292', '360', '626', '687'],
-    'eqs': ['333', '449', '658', '761'],
-    '_default': ['136', '163', '190', '197', '224', '258', '299', '313', '367', '421', '457', '510'],
-  },
-  
-  // AUDI
-  'audi': {
-    'a1': ['95', '110', '116', '150', '200', '231'],
-    'a3': ['110', '150', '180', '190', '200', '245', '310', '400'],
-    'a4': ['136', '150', '163', '190', '204', '245', '265', '347', '450'],
-    'a5': ['150', '163', '190', '204', '245', '265', '347', '450'],
-    'a6': ['163', '190', '204', '231', '245', '265', '286', '340', '367', '450', '500', '600'],
-    'a7': ['204', '231', '245', '286', '340', '450', '600'],
-    'a8': ['286', '340', '460', '571'],
-    'q2': ['116', '150', '190', '231', '310'],
-    'q3': ['150', '180', '190', '231', '245', '400'],
-    'q4 e-tron': ['170', '204', '286', '340'],
-    'q5': ['150', '163', '190', '204', '265', '286', '367', '381'],
-    'q7': ['231', '245', '286', '340', '435', '507'],
-    'q8': ['286', '340', '462', '600'],
-    'e-tron': ['313', '360', '408', '503'],
-    'e-tron gt': ['476', '530', '646'],
-    '_default': ['116', '150', '163', '190', '204', '231', '245', '265', '286', '340', '367', '450'],
-  },
-  
-  // VOLKSWAGEN
-  'volkswagen': {
-    'polo': ['80', '95', '110', '150', '207'],
-    'golf': ['90', '110', '115', '130', '150', '180', '204', '245', '300', '320'],
-    'id.3': ['150', '170', '204', '231'],
-    'id.4': ['170', '204', '286'],
-    'id.5': ['174', '204', '286', '340'],
-    'id.7': ['286'],
-    'id. buzz': ['204', '286', '340'],
-    'tiguan': ['130', '150', '180', '190', '200', '220', '245', '265', '320'],
-    'touareg': ['231', '286', '340', '381', '462'],
-    't-roc': ['110', '150', '190', '300'],
-    'passat': ['120', '150', '190', '218', '272', '280'],
-    'arteon': ['150', '190', '200', '272', '280', '320'],
-    't-cross': ['95', '110', '150'],
-    'taigo': ['95', '110', '150'],
-    'up!': ['60', '65', '83'],
-    '_default': ['95', '110', '130', '150', '180', '190', '204', '231', '245', '286', '320'],
-  },
-  
-  // FORD
-  'ford': {
-    'fiesta': ['75', '85', '95', '100', '125', '140', '155', '200'],
-    'focus': ['100', '120', '125', '150', '155', '182', '206', '280'],
-    'puma': ['125', '155', '182', '200'],
-    'kuga': ['120', '150', '182', '190', '225', '243'],
-    'mustang mach-e': ['269', '294', '351', '487'],
-    'explorer': ['340', '450', '457'],
-    'mondeo': ['150', '165', '187', '190', '240'],
-    'ranger': ['130', '170', '213'],
-    's-max': ['150', '165', '190'],
-    'galaxy': ['150', '165', '190'],
-    '_default': ['100', '120', '125', '150', '155', '182', '190', '200', '225', '243', '280'],
-  },
-  
-  // KIA
-  'kia': {
-    'picanto': ['67', '84', '100'],
-    'rio': ['84', '100', '120'],
-    'ceed': ['100', '120', '136', '160', '204', '280'],
-    'xceed': ['120', '136', '160', '204', '265'],
-    'niro': ['105', '141', '183', '204'],
-    'ev6': ['170', '229', '325', '585'],
-    'ev9': ['204', '283', '384'],
-    'sportage': ['150', '180', '186', '230', '265'],
-    'sorento': ['193', '202', '230', '265'],
-    'stinger': ['245', '366'],
-    '_default': ['100', '120', '136', '160', '183', '204', '230', '265', '325'],
-  },
-  
-  // HYUNDAI
-  'hyundai': {
-    'i10': ['67', '84', '100'],
-    'i20': ['84', '100', '120', '204'],
-    'i30': ['100', '120', '136', '160', '204', '280'],
-    'kona': ['120', '136', '141', '183', '204', '218', '305'],
-    'tucson': ['150', '180', '186', '230', '265'],
-    'santa fe': ['193', '202', '230', '265', '350'],
-    'ioniq 5': ['170', '229', '325', '605'],
-    'ioniq 6': ['151', '229', '325'],
-    '_default': ['100', '120', '136', '160', '183', '204', '230', '265', '325'],
-  },
-  
-  // TOYOTA
-  'toyota': {
-    'aygo': ['72'],
-    'yaris': ['72', '92', '116', '130', '261'],
-    'yaris cross': ['116', '130'],
-    'corolla': ['122', '140', '180', '196'],
-    'c-hr': ['116', '122', '184', '200'],
-    'rav4': ['163', '178', '218', '306'],
-    'highlander': ['248'],
-    'land cruiser': ['204', '299', '309', '415'],
-    'camry': ['178', '218'],
-    'bz4x': ['204', '218'],
-    'supra': ['258', '340', '387'],
-    '_default': ['92', '116', '122', '140', '163', '178', '196', '204', '218', '261', '306'],
-  },
-  
-  // PEUGEOT
-  'peugeot': {
-    '108': ['72'],
-    '208': ['75', '100', '130', '136', '156'],
-    'e-208': ['136', '156'],
-    '308': ['110', '130', '131', '180', '225'],
-    '408': ['130', '180', '225'],
-    '508': ['130', '160', '180', '225', '360'],
-    '2008': ['100', '130', '136', '156', '225'],
-    'e-2008': ['136', '156'],
-    '3008': ['130', '160', '180', '225', '300', '320'],
-    '5008': ['130', '160', '180', '225', '300'],
-    '_default': ['100', '110', '130', '136', '156', '160', '180', '225', '300'],
-  },
-  
-  // RENAULT
-  'renault': {
-    'clio': ['65', '91', '100', '140'],
-    'captur': ['91', '100', '140', '160'],
-    'megane': ['115', '140', '160', '218', '220'],
-    'megane e-tech': ['130', '220'],
-    'scenic': ['140', '170', '220'],
-    'austral': ['140', '160', '200'],
-    'arkana': ['140', '145', '160'],
-    'kadjar': ['130', '140', '160'],
-    'koleos': ['150', '175', '190'],
-    'zoe': ['109', '135'],
-    '_default': ['91', '100', '115', '130', '140', '160', '175', '200', '218'],
-  },
-  
-  // SKODA
-  'skoda': {
-    'fabia': ['80', '95', '110', '150'],
-    'scala': ['95', '110', '150'],
-    'octavia': ['110', '115', '150', '190', '200', '245'],
-    'superb': ['150', '190', '200', '272', '280'],
-    'kamiq': ['95', '110', '150'],
-    'karoq': ['110', '150', '190'],
-    'kodiaq': ['150', '190', '200', '245'],
-    'enyaq': ['132', '177', '204', '265', '299', '340'],
-    '_default': ['95', '110', '115', '150', '190', '200', '245', '265'],
-  },
-  
-  // SEAT / CUPRA
-  'seat': {
-    'ibiza': ['80', '95', '110', '150'],
-    'leon': ['90', '110', '130', '150', '190', '204', '245', '300', '310'],
-    'ateca': ['110', '150', '190', '300'],
-    'arona': ['95', '110', '150'],
-    'tarraco': ['150', '190', '200', '245'],
-    '_default': ['95', '110', '130', '150', '190', '204', '245', '300'],
-  },
-  'cupra': {
-    'formentor': ['150', '190', '204', '245', '310', '390'],
-    'leon': ['204', '245', '300', '310'],
-    'born': ['150', '170', '204', '231'],
-    'ateca': ['300'],
-    'tavascan': ['286', '340'],
-    '_default': ['150', '190', '204', '231', '245', '300', '310', '340', '390'],
-  },
-  
-  // TESLA
-  'tesla': {
-    'model 3': ['238', '283', '324', '460', '510'],
-    'model y': ['283', '378', '456', '534'],
-    'model s': ['493', '670', '1020'],
-    'model x': ['493', '670', '1020'],
-    '_default': ['238', '283', '324', '378', '456', '493', '534', '670'],
-  },
-  
-  // PORSCHE
-  'porsche': {
-    '911': ['385', '450', '480', '530', '580', '650', '700', '750'],
-    'taycan': ['408', '476', '530', '598', '700', '761'],
-    'cayenne': ['340', '353', '462', '500', '544', '680', '740'],
-    'macan': ['245', '265', '380', '400', '440'],
-    'panamera': ['330', '353', '462', '560', '680', '700'],
-    'boxster': ['300', '350', '400'],
-    'cayman': ['300', '350', '400', '420', '500'],
-    '_default': ['300', '340', '380', '408', '450', '462', '500', '530', '580', '680'],
-  },
-  
-  // MAZDA
-  'mazda': {
-    '2': ['75', '90'],
-    '3': ['122', '150', '186'],
-    '6': ['145', '165', '194'],
-    'cx-3': ['121'],
-    'cx-30': ['122', '150', '186'],
-    'cx-5': ['165', '194'],
-    'cx-60': ['200', '241', '280', '327'],
-    'mx-5': ['132', '184'],
-    'mx-30': ['145'],
-    '_default': ['122', '145', '150', '165', '186', '194', '241', '280'],
-  },
-  
-  // MINI
-  'mini': {
-    'cooper': ['102', '136', '163', '178', '231', '306'],
-    'countryman': ['125', '136', '163', '178', '220', '306'],
-    'clubman': ['102', '136', '163', '178', '192', '231', '306'],
-    'electric': ['184', '218'],
-    '_default': ['102', '125', '136', '163', '178', '192', '218', '231', '306'],
-  },
-  
-  // OPEL
-  'opel': {
-    'corsa': ['75', '100', '130', '136'],
-    'astra': ['110', '130', '145', '180', '225'],
-    'mokka': ['100', '130', '136'],
-    'crossland': ['83', '110', '130'],
-    'grandland': ['130', '180', '225', '300'],
-    '_default': ['83', '100', '110', '130', '145', '180', '225'],
-  },
-  
-  // CITROEN
-  'citroën': {
-    'c3': ['83', '100', '110', '136'],
-    'c3 aircross': ['100', '110', '130', '136'],
-    'c4': ['100', '130', '136', '156', '180', '225'],
-    'c5 aircross': ['130', '180', '225', '300'],
-    'c5 x': ['130', '180', '225'],
-    '_default': ['83', '100', '110', '130', '136', '180', '225'],
-  },
-  'citroen': {
-    'c3': ['83', '100', '110', '136'],
-    'c3 aircross': ['100', '110', '130', '136'],
-    'c4': ['100', '130', '136', '156', '180', '225'],
-    'c5 aircross': ['130', '180', '225', '300'],
-    'c5 x': ['130', '180', '225'],
-    '_default': ['83', '100', '110', '130', '136', '180', '225'],
-  },
-  
-  // NISSAN
-  'nissan': {
-    'micra': ['92', '100', '117'],
-    'juke': ['114', '117', '143'],
-    'qashqai': ['140', '158', '190', '213'],
-    'x-trail': ['150', '163', '204', '213'],
-    'leaf': ['150', '217'],
-    'ariya': ['218', '242', '306'],
-    '_default': ['114', '140', '150', '158', '190', '204', '213', '218', '242'],
-  },
-  
-  // HONDA
-  'honda': {
-    'jazz': ['109', '122'],
-    'civic': ['126', '143', '182', '320'],
-    'hr-v': ['131'],
-    'cr-v': ['143', '184'],
-    'zr-v': ['184'],
-    'e:ny1': ['204'],
-    '_default': ['109', '122', '126', '131', '143', '182', '184', '204'],
-  },
-  
-  // JEEP
-  'jeep': {
-    'renegade': ['120', '150', '180', '190', '240'],
-    'compass': ['130', '150', '180', '190', '240'],
-    'wrangler': ['200', '272', '380', '470'],
-    'grand cherokee': ['250', '294', '375', '380', '471'],
-    'avenger': ['100', '115', '156'],
-    '_default': ['120', '130', '150', '180', '190', '240', '272', '375'],
-  },
-  
-  // LAND ROVER / RANGE ROVER
-  'land rover': {
-    'defender': ['200', '250', '300', '400', '525', '635'],
-    'discovery': ['249', '300', '360', '525'],
-    'discovery sport': ['163', '200', '249'],
-    'range rover': ['300', '350', '400', '460', '530', '615'],
-    'range rover sport': ['250', '300', '350', '400', '460', '530', '635'],
-    'range rover velar': ['163', '204', '249', '300', '400', '550'],
-    'range rover evoque': ['163', '200', '249', '300'],
-    '_default': ['163', '200', '249', '300', '350', '400', '460', '525', '550'],
-  },
-  
-  // FIAT
-  'fiat': {
-    '500': ['69', '70', '85', '95', '118'],
-    '500e': ['95', '118'],
-    '500x': ['120', '150', '170'],
-    'panda': ['69', '70', '85'],
-    'tipo': ['95', '100', '130', '160'],
-    '_default': ['69', '70', '85', '95', '100', '118', '130', '150', '160'],
-  },
-  
-  // DACIA
-  'dacia': {
-    'sandero': ['65', '90', '100', '140'],
-    'duster': ['90', '100', '130', '150'],
-    'jogger': ['100', '110', '140'],
-    'spring': ['45', '65'],
-    '_default': ['65', '90', '100', '110', '130', '140', '150'],
-  },
-};
+// Map fuel types to JP Cars format
+function mapFuelToJPCars(fuel: string): string {
+  const fuelLower = fuel.toLowerCase();
+  if (fuelLower.includes('benzine')) return 'PETROL';
+  if (fuelLower.includes('diesel')) return 'DIESEL';
+  if (fuelLower.includes('elektr')) return 'ELECTRIC';
+  if (fuelLower.includes('hybride') && fuelLower.includes('plug')) return 'PLUG_IN_HYBRID';
+  if (fuelLower.includes('hybride')) return 'HYBRID';
+  if (fuelLower.includes('lpg')) return 'LPG';
+  if (fuelLower.includes('waterstof') || fuelLower.includes('hydrogen')) return 'HYDROGEN';
+  return 'PETROL';
+}
 
-// Fallback HP options when brand/model not found
-const DEFAULT_HP_OPTIONS = [
+// Map gear types to JP Cars format
+function mapGearToJPCars(gear: string): string {
+  const gearLower = gear.toLowerCase();
+  if (gearLower.includes('automaat') || gearLower.includes('automatic')) return 'AUTOMATIC_GEAR';
+  if (gearLower.includes('hand') || gearLower.includes('manual')) return 'MANUAL_GEAR';
+  return 'AUTOMATIC_GEAR';
+}
+
+// Fallback HP options when API fails
+const FALLBACK_HP_OPTIONS = [
   '75', '90', '100', '110', '120', '130', '140', '150', '163', '177', 
   '190', '204', '220', '231', '245', '252', '265', '286', '300', '320', 
   '340', '360', '380', '400', '450', '500'
 ];
 
-function getHpOptionsForVehicle(make: string, model: string): string[] {
-  const makeLower = make.toLowerCase().trim();
-  const modelLower = model.toLowerCase().trim();
-  
-  // Get brand HP options
-  const brandOptions = HP_DATABASE[makeLower];
-  
-  if (!brandOptions) {
-    console.log(`⚠️ Brand "${make}" not found in HP database, using defaults`);
-    return DEFAULT_HP_OPTIONS;
-  }
-  
-  // Try to find exact model match
-  for (const [dbModel, hpValues] of Object.entries(brandOptions)) {
-    if (dbModel === '_default') continue;
-    
-    // Check for exact match or partial match
-    if (modelLower === dbModel || 
-        modelLower.includes(dbModel) || 
-        dbModel.includes(modelLower)) {
-      console.log(`✅ Found HP options for ${make} ${model}: ${hpValues.join(', ')}`);
-      return hpValues;
-    }
-  }
-  
-  // Fall back to brand default
-  if (brandOptions['_default']) {
-    console.log(`⚠️ Model "${model}" not found for ${make}, using brand defaults`);
-    return brandOptions['_default'];
-  }
-  
-  console.log(`⚠️ No HP options found for ${make} ${model}, using global defaults`);
-  return DEFAULT_HP_OPTIONS;
-}
+// Fallback options when API fails
+const FALLBACK_OPTIONS = [
+  'panorama roof', 'air suspension', 'leather', 'heated seats', 'navigation',
+  'adaptive cruise', '360 camera', 'head up display', 'premium audio',
+  'sunroof', 'tow bar', '4x4', '7 seater', 'LED', 'keyless'
+];
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -431,46 +62,99 @@ serve(async (req) => {
 
     console.log('📋 JP Cars Values request:', { type, make, model, fuel, gear, body, build });
 
-    // For HP type, use our local database
-    if (type === 'hp' && make && model) {
-      const hpValues = getHpOptionsForVehicle(make, model);
-      
-      console.log(`✅ Returning ${hpValues.length} HP options from database`);
-      
+    const apiToken = Deno.env.get('JPCARS_API_TOKEN');
+    if (!apiToken) {
+      console.error('❌ JPCARS_API_TOKEN not configured');
       return new Response(
         JSON.stringify({ 
-          success: true, 
-          type: 'hp',
-          values: hpValues,
-          count: hpValues.length,
-          source: 'database'
+          success: false, 
+          error: 'JP Cars API token not configured',
+          values: type === 'hp' ? FALLBACK_HP_OPTIONS : FALLBACK_OPTIONS,
+          source: 'fallback'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // For other types, return fallback
-    console.log(`⚠️ Type "${type}" not implemented, returning empty values`);
+    // Build API URL
+    const apiUrl = new URL('https://api.nl.jp.cars/api/values');
+    apiUrl.searchParams.append('type', type === 'options' ? 'options' : type);
+    
+    if (make) apiUrl.searchParams.append('make', make);
+    if (model) apiUrl.searchParams.append('model', model);
+    if (fuel) apiUrl.searchParams.append('fuel', mapFuelToJPCars(fuel));
+    if (gear) apiUrl.searchParams.append('gear', mapGearToJPCars(gear));
+    if (body) apiUrl.searchParams.append('body', body);
+    if (build) apiUrl.searchParams.append('build', build.toString());
+
+    console.log('🔗 Calling JP Cars API:', apiUrl.toString());
+
+    const response = await fetch(apiUrl.toString(), {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiToken}`,
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`❌ JP Cars API error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('Error body:', errorText);
+      
+      // Return fallback values
+      const fallbackValues = type === 'hp' ? FALLBACK_HP_OPTIONS : 
+                            type === 'options' ? FALLBACK_OPTIONS : [];
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          type,
+          values: fallbackValues,
+          count: fallbackValues.length,
+          source: 'fallback',
+          apiError: `${response.status}: ${response.statusText}`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const data = await response.json();
+    console.log('✅ JP Cars API response:', JSON.stringify(data).substring(0, 500));
+
+    // JP Cars API returns { results: [...] }
+    const results = data.results || data.values || [];
+    
+    // Convert to string array and filter empty values
+    const values = results
+      .map((v: unknown) => String(v))
+      .filter((v: string) => v && v.trim() !== '');
+
+    console.log(`✅ Returning ${values.length} ${type} values from JP Cars API`);
+
     return new Response(
       JSON.stringify({ 
         success: true, 
         type,
-        values: [],
-        count: 0,
-        source: 'fallback'
+        values,
+        count: values.length,
+        source: 'api'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('❌ JP Cars Values function error:', error);
+    
+    // Return fallback on any error
     return new Response(
       JSON.stringify({ 
         success: false, 
         error: error.message || 'Internal server error',
-        values: [] 
+        values: FALLBACK_HP_OPTIONS,
+        source: 'fallback'
       }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

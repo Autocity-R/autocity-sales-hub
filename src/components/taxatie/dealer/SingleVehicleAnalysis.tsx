@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Plus, Play, Car, FileText, Loader2, X } from 'lucide-react';
+import { Search, Plus, Play, Car, FileText, Loader2 } from 'lucide-react';
 import { VEHICLE_BRANDS, FUEL_TYPES, TRANSMISSION_TYPES, BODY_TYPES } from '@/data/vehicleData';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -103,7 +103,7 @@ export const SingleVehicleAnalysis = ({
     loadHpOptions();
   }, [make, model, fuelType, transmission]);
 
-  // Auto-load options when make and fuel are selected
+  // Auto-load options from JP Cars API when all required fields are selected
   useEffect(() => {
     const loadOptions = async () => {
       if (!make || !fuelType) {
@@ -113,31 +113,46 @@ export const SingleVehicleAnalysis = ({
 
       setIsLoadingOptions(true);
       try {
-        const { data, error } = await supabase.functions.invoke('jpcars-options', {
-          body: { make, model, fuel: fuelType },
+        const { data, error } = await supabase.functions.invoke('jpcars-values', {
+          body: { 
+            type: 'options',
+            make, 
+            model: model || undefined, 
+            fuel: fuelType,
+            gear: transmission || undefined,
+            build: buildYear ? parseInt(buildYear) : undefined,
+          },
         });
 
         if (error) throw error;
 
-        if (data?.success && data.options) {
-          setAvailableOptions(data.options);
+        if (data?.success && data.values?.length > 0) {
+          console.log('✅ JP Cars options loaded:', data.values.length);
+          const options: JPCarsOption[] = data.values.map((opt: string) => ({
+            id: opt.toLowerCase().replace(/\s+/g, '_'),
+            label: opt.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '),
+            jpcarsKey: opt,
+          }));
+          setAvailableOptions(options);
+        } else {
+          setAvailableOptions([]);
         }
       } catch (err) {
         console.error('Error loading JP Cars options:', err);
-        // Silent fail - options are optional
+        setAvailableOptions([]);
       } finally {
         setIsLoadingOptions(false);
       }
     };
 
     loadOptions();
-  }, [make, fuelType, model]);
+  }, [make, model, fuelType, transmission, buildYear]);
 
-  const toggleOption = (optionId: string) => {
+  const toggleOption = (optionKey: string) => {
     setSelectedOptions(prev => 
-      prev.includes(optionId) 
-        ? prev.filter(id => id !== optionId)
-        : [...prev, optionId]
+      prev.includes(optionKey) 
+        ? prev.filter(key => key !== optionKey)
+        : [...prev, optionKey]
     );
   };
 
@@ -197,33 +212,6 @@ export const SingleVehicleAnalysis = ({
   };
 
   const isComplete = make && model && buildYear && fuelType && transmission && power;
-
-  // Group options by category for display
-  const groupedOptions = useMemo(() => {
-    return availableOptions.reduce((acc, opt) => {
-      const cat = opt.category || 'overig';
-      if (!acc[cat]) acc[cat] = [];
-      acc[cat].push(opt);
-      return acc;
-    }, {} as Record<string, JPCarsOption[]>);
-  }, [availableOptions]);
-
-  const categoryLabels: Record<string, string> = {
-    package: 'Pakketten',
-    audio: 'Audio',
-    technology: 'Technologie',
-    lighting: 'Verlichting',
-    safety: 'Veiligheid & Assistentie',
-    suspension: 'Onderstel',
-    performance: 'Performance',
-    roof: 'Dak',
-    interior: 'Interieur',
-    camera: 'Camera & Sensoren',
-    config: 'Configuratie',
-    ev: 'Elektrisch',
-    other: 'Overig',
-    overig: 'Overig',
-  };
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
@@ -447,42 +435,41 @@ export const SingleVehicleAnalysis = ({
                 </div>
               )}
 
-              {/* JP Cars Options Section - Auto-loaded based on make + fuel */}
-              {fuelType && availableOptions.length > 0 && (
-                <div className="border-t pt-4 mt-4 space-y-3">
+              {/* JP Cars Options Section - Compact Grid from API */}
+              {fuelType && (
+                <div className="border-t pt-3 mt-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">JP Cars Opties</label>
-                    {isLoadingOptions && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                    <label className="text-xs font-medium">JP Cars Opties</label>
+                    {isLoadingOptions && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                   </div>
 
-                  <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
-                    {Object.entries(groupedOptions).map(([category, options]) => (
-                      <div key={category}>
-                        <p className="text-xs font-medium text-muted-foreground mb-1.5">
-                          {categoryLabels[category] || category}
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {options.map((opt) => (
-                            <Badge
-                              key={opt.id}
-                              variant={selectedOptions.includes(opt.id) ? 'default' : 'outline'}
-                              className="cursor-pointer transition-all hover:opacity-80"
-                              onClick={() => toggleOption(opt.id)}
-                            >
-                              {opt.label}
-                              {selectedOptions.includes(opt.id) && (
-                                <X className="h-3 w-3 ml-1" />
-                              )}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  {availableOptions.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-1 max-h-32 overflow-y-auto p-0.5">
+                      {availableOptions.map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => toggleOption(opt.jpcarsKey || opt.id)}
+                          className={`
+                            text-[10px] px-1.5 py-1 rounded border truncate transition-all text-left
+                            ${(selectedOptions.includes(opt.jpcarsKey || '') || selectedOptions.includes(opt.id))
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-muted/30 border-border hover:bg-muted hover:border-primary/50'
+                            }
+                          `}
+                          title={opt.label}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : !isLoadingOptions ? (
+                    <p className="text-[10px] text-muted-foreground">Geen opties beschikbaar</p>
+                  ) : null}
 
                   {selectedOptions.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      {selectedOptions.length} optie(s) geselecteerd
+                    <p className="text-[10px] text-muted-foreground">
+                      {selectedOptions.length} geselecteerd
                     </p>
                   )}
                 </div>
