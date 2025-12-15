@@ -9,252 +9,409 @@ interface OptionsRequest {
   make: string;
   model: string;
   fuel?: string;
-  gear?: string;
-  hp?: number;
-  body?: string;
-  build?: number;
 }
 
 interface JPCarsOption {
   id: string;
   label: string;
-  category?: string;
+  jpcarsKey: string;
+  category: string;
+}
+
+// =============================================================================
+// COMPLETE JP CARS OPTIONS DATABASE - Brand Specific
+// Based on actual JP Cars website options per manufacturer
+// =============================================================================
+
+const BRAND_OPTIONS: Record<string, JPCarsOption[]> = {
+  // MERCEDES-BENZ
+  'mercedes-benz': [
+    { id: 'amg_pakket', label: 'AMG Pakket', jpcarsKey: 'AMG', category: 'package' },
+    { id: 'burmester', label: 'Burmester', jpcarsKey: 'burmester', category: 'audio' },
+    { id: 'widescreen', label: 'Widescreen Cockpit', jpcarsKey: 'widescreen', category: 'technology' },
+    { id: 'multibeam_led', label: 'Multibeam LED', jpcarsKey: 'multibeam', category: 'lighting' },
+    { id: 'airmatic', label: 'Airmatic', jpcarsKey: 'airmatic', category: 'suspension' },
+    { id: 'distronic', label: 'Distronic Plus', jpcarsKey: 'distronic', category: 'safety' },
+    { id: 'night_pakket', label: 'Night Pakket', jpcarsKey: 'night package', category: 'package' },
+  ],
+  'mercedes': [
+    { id: 'amg_pakket', label: 'AMG Pakket', jpcarsKey: 'AMG', category: 'package' },
+    { id: 'burmester', label: 'Burmester', jpcarsKey: 'burmester', category: 'audio' },
+    { id: 'widescreen', label: 'Widescreen Cockpit', jpcarsKey: 'widescreen', category: 'technology' },
+    { id: 'multibeam_led', label: 'Multibeam LED', jpcarsKey: 'multibeam', category: 'lighting' },
+    { id: 'airmatic', label: 'Airmatic', jpcarsKey: 'airmatic', category: 'suspension' },
+    { id: 'distronic', label: 'Distronic Plus', jpcarsKey: 'distronic', category: 'safety' },
+    { id: 'night_pakket', label: 'Night Pakket', jpcarsKey: 'night package', category: 'package' },
+  ],
+
+  // BMW
+  'bmw': [
+    { id: 'm_sport', label: 'M Sport Pakket', jpcarsKey: 'M sport', category: 'package' },
+    { id: 'm_performance', label: 'M Performance', jpcarsKey: 'M performance', category: 'package' },
+    { id: 'harman_kardon', label: 'Harman Kardon', jpcarsKey: 'harman kardon', category: 'audio' },
+    { id: 'laser_light', label: 'Laser Light', jpcarsKey: 'laser', category: 'lighting' },
+    { id: 'live_cockpit', label: 'Live Cockpit Professional', jpcarsKey: 'live cockpit', category: 'technology' },
+    { id: 'driving_assistant', label: 'Driving Assistant Professional', jpcarsKey: 'driving assistant', category: 'safety' },
+    { id: 'shadowline', label: 'Shadowline', jpcarsKey: 'shadowline', category: 'package' },
+  ],
+
+  // AUDI
+  'audi': [
+    { id: 's_line', label: 'S-Line', jpcarsKey: 'S-Line', category: 'package' },
+    { id: 'bang_olufsen', label: 'Bang & Olufsen', jpcarsKey: 'bang olufsen', category: 'audio' },
+    { id: 'virtual_cockpit', label: 'Virtual Cockpit', jpcarsKey: 'virtual cockpit', category: 'technology' },
+    { id: 'matrix_led', label: 'Matrix LED', jpcarsKey: 'matrix', category: 'lighting' },
+    { id: 'black_edition', label: 'Black Edition', jpcarsKey: 'black edition', category: 'package' },
+    { id: 'tour_pakket', label: 'Tour Pakket', jpcarsKey: 'tour package', category: 'package' },
+    { id: 'comfort_pakket', label: 'Comfort Pakket', jpcarsKey: 'comfort package', category: 'package' },
+  ],
+
+  // VOLKSWAGEN
+  'volkswagen': [
+    { id: 'r_line', label: 'R-Line', jpcarsKey: 'R-Line', category: 'package' },
+    { id: 'gti_pakket', label: 'GTI Pakket', jpcarsKey: 'GTI', category: 'package' },
+    { id: 'gte_pakket', label: 'GTE Pakket', jpcarsKey: 'GTE', category: 'package' },
+    { id: 'dynaudio', label: 'Dynaudio', jpcarsKey: 'dynaudio', category: 'audio' },
+    { id: 'digital_cockpit', label: 'Digital Cockpit Pro', jpcarsKey: 'digital cockpit', category: 'technology' },
+    { id: 'iq_light', label: 'IQ.Light', jpcarsKey: 'IQ light', category: 'lighting' },
+  ],
+
+  // FORD
+  'ford': [
+    { id: 'st_line', label: 'ST-Line', jpcarsKey: 'ST-Line', category: 'package' },
+    { id: 'titanium', label: 'Titanium', jpcarsKey: 'titanium', category: 'package' },
+    { id: 'vignale', label: 'Vignale', jpcarsKey: 'vignale', category: 'package' },
+    { id: 'winterpakket', label: 'Winterpakket', jpcarsKey: 'winter pack', category: 'package' },
+    { id: 'b_o_sound', label: 'B&O Sound System', jpcarsKey: 'bang olufsen', category: 'audio' },
+    { id: 'active_park_assist', label: 'Active Park Assist', jpcarsKey: 'park assist', category: 'safety' },
+  ],
+
+  // VOLVO
+  'volvo': [
+    { id: 'inscription', label: 'Inscription', jpcarsKey: 'inscription', category: 'package' },
+    { id: 'r_design', label: 'R-Design', jpcarsKey: 'R-Design', category: 'package' },
+    { id: 'bowers_wilkins', label: 'Bowers & Wilkins', jpcarsKey: 'bowers wilkins', category: 'audio' },
+    { id: 'pilot_assist', label: 'Pilot Assist', jpcarsKey: 'pilot assist', category: 'safety' },
+    { id: 'air_suspension', label: 'Luchtvering', jpcarsKey: 'air suspension', category: 'suspension' },
+    { id: 'winter_pack', label: 'Winter Pack', jpcarsKey: 'winter pack', category: 'package' },
+  ],
+
+  // KIA
+  'kia': [
+    { id: 'gt_line', label: 'GT-Line', jpcarsKey: 'GT-Line', category: 'package' },
+    { id: 'drive_wise', label: 'DriveWise', jpcarsKey: 'drivewise', category: 'safety' },
+    { id: 'meridian', label: 'Meridian Sound', jpcarsKey: 'meridian', category: 'audio' },
+    { id: 'jbl', label: 'JBL Sound System', jpcarsKey: 'JBL', category: 'audio' },
+    { id: 'plus_pack', label: 'Plus Pack', jpcarsKey: 'plus pack', category: 'package' },
+  ],
+
+  // HYUNDAI
+  'hyundai': [
+    { id: 'n_line', label: 'N-Line', jpcarsKey: 'N-Line', category: 'package' },
+    { id: 'n_performance', label: 'N Performance', jpcarsKey: 'N performance', category: 'package' },
+    { id: 'bose', label: 'Bose Sound System', jpcarsKey: 'bose', category: 'audio' },
+    { id: 'krell', label: 'Krell Premium Audio', jpcarsKey: 'krell', category: 'audio' },
+    { id: 'comfort_pakket', label: 'Comfort Pakket', jpcarsKey: 'comfort package', category: 'package' },
+  ],
+
+  // TOYOTA
+  'toyota': [
+    { id: 'gr_sport', label: 'GR Sport', jpcarsKey: 'GR sport', category: 'package' },
+    { id: 'premium_pack', label: 'Premium Pack', jpcarsKey: 'premium', category: 'package' },
+    { id: 'jbl', label: 'JBL Sound System', jpcarsKey: 'JBL', category: 'audio' },
+    { id: 'safety_sense', label: 'Safety Sense', jpcarsKey: 'safety sense', category: 'safety' },
+  ],
+
+  // PEUGEOT
+  'peugeot': [
+    { id: 'gt_line', label: 'GT-Line', jpcarsKey: 'GT-Line', category: 'package' },
+    { id: 'gt', label: 'GT', jpcarsKey: 'GT', category: 'package' },
+    { id: 'focal', label: 'Focal Sound System', jpcarsKey: 'focal', category: 'audio' },
+    { id: 'i_cockpit', label: 'i-Cockpit', jpcarsKey: 'i-cockpit', category: 'technology' },
+    { id: 'night_vision', label: 'Night Vision', jpcarsKey: 'night vision', category: 'safety' },
+  ],
+
+  // RENAULT
+  'renault': [
+    { id: 'rs_line', label: 'RS Line', jpcarsKey: 'RS Line', category: 'package' },
+    { id: 'intens', label: 'Intens', jpcarsKey: 'intens', category: 'package' },
+    { id: 'bose', label: 'Bose Sound System', jpcarsKey: 'bose', category: 'audio' },
+    { id: 'techno', label: 'Techno', jpcarsKey: 'techno', category: 'package' },
+  ],
+
+  // SKODA
+  'skoda': [
+    { id: 'sportline', label: 'Sportline', jpcarsKey: 'sportline', category: 'package' },
+    { id: 'l_k', label: 'L&K', jpcarsKey: 'L&K', category: 'package' },
+    { id: 'canton', label: 'Canton Sound System', jpcarsKey: 'canton', category: 'audio' },
+    { id: 'virtual_cockpit', label: 'Virtual Cockpit', jpcarsKey: 'virtual cockpit', category: 'technology' },
+  ],
+
+  // SEAT / CUPRA
+  'seat': [
+    { id: 'fr', label: 'FR', jpcarsKey: 'FR', category: 'package' },
+    { id: 'xcellence', label: 'Xcellence', jpcarsKey: 'xcellence', category: 'package' },
+    { id: 'beats', label: 'Beats Audio', jpcarsKey: 'beats', category: 'audio' },
+  ],
+  'cupra': [
+    { id: 'vz', label: 'VZ', jpcarsKey: 'VZ', category: 'package' },
+    { id: 'beats', label: 'Beats Audio', jpcarsKey: 'beats', category: 'audio' },
+    { id: 'brembo', label: 'Brembo Remmen', jpcarsKey: 'brembo', category: 'performance' },
+  ],
+
+  // PORSCHE
+  'porsche': [
+    { id: 'sport_chrono', label: 'Sport Chrono Pakket', jpcarsKey: 'sport chrono', category: 'package' },
+    { id: 'bose', label: 'Bose Surround Sound', jpcarsKey: 'bose', category: 'audio' },
+    { id: 'burmester', label: 'Burmester', jpcarsKey: 'burmester', category: 'audio' },
+    { id: 'pasm', label: 'PASM', jpcarsKey: 'PASM', category: 'suspension' },
+    { id: 'pdls', label: 'PDLS+', jpcarsKey: 'PDLS', category: 'lighting' },
+    { id: 'sport_design', label: 'Sport Design Pakket', jpcarsKey: 'sport design', category: 'package' },
+  ],
+
+  // MAZDA
+  'mazda': [
+    { id: 'luxury', label: 'Luxury', jpcarsKey: 'luxury', category: 'package' },
+    { id: 'bose', label: 'Bose Sound System', jpcarsKey: 'bose', category: 'audio' },
+    { id: 'signature', label: 'Signature', jpcarsKey: 'signature', category: 'package' },
+  ],
+
+  // NISSAN
+  'nissan': [
+    { id: 'tekna', label: 'Tekna', jpcarsKey: 'tekna', category: 'package' },
+    { id: 'n_connecta', label: 'N-Connecta', jpcarsKey: 'n-connecta', category: 'package' },
+    { id: 'bose', label: 'Bose Sound System', jpcarsKey: 'bose', category: 'audio' },
+    { id: 'propilot', label: 'ProPilot', jpcarsKey: 'propilot', category: 'safety' },
+  ],
+
+  // LEXUS
+  'lexus': [
+    { id: 'f_sport', label: 'F Sport', jpcarsKey: 'F sport', category: 'package' },
+    { id: 'mark_levinson', label: 'Mark Levinson', jpcarsKey: 'mark levinson', category: 'audio' },
+    { id: 'luxury_line', label: 'Luxury Line', jpcarsKey: 'luxury', category: 'package' },
+  ],
+
+  // OPEL
+  'opel': [
+    { id: 'gs_line', label: 'GS Line', jpcarsKey: 'GS Line', category: 'package' },
+    { id: 'ultimate', label: 'Ultimate', jpcarsKey: 'ultimate', category: 'package' },
+    { id: 'intelli_lux', label: 'IntelliLux LED', jpcarsKey: 'intellilux', category: 'lighting' },
+  ],
+
+  // TESLA
+  'tesla': [
+    { id: 'full_self_driving', label: 'Full Self-Driving', jpcarsKey: 'FSD', category: 'technology' },
+    { id: 'premium_audio', label: 'Premium Audio', jpcarsKey: 'premium audio', category: 'audio' },
+    { id: 'performance', label: 'Performance', jpcarsKey: 'performance', category: 'package' },
+  ],
+
+  // LAND ROVER / RANGE ROVER
+  'land rover': [
+    { id: 'hse', label: 'HSE', jpcarsKey: 'HSE', category: 'package' },
+    { id: 'r_dynamic', label: 'R-Dynamic', jpcarsKey: 'R-Dynamic', category: 'package' },
+    { id: 'meridian', label: 'Meridian Sound', jpcarsKey: 'meridian', category: 'audio' },
+    { id: 'terrain_response', label: 'Terrain Response', jpcarsKey: 'terrain response', category: 'technology' },
+  ],
+
+  // JAGUAR
+  'jaguar': [
+    { id: 'r_sport', label: 'R-Sport', jpcarsKey: 'R-Sport', category: 'package' },
+    { id: 's_pakket', label: 'S Pakket', jpcarsKey: 'S package', category: 'package' },
+    { id: 'meridian', label: 'Meridian Sound', jpcarsKey: 'meridian', category: 'audio' },
+  ],
+
+  // MINI
+  'mini': [
+    { id: 'john_cooper_works', label: 'John Cooper Works', jpcarsKey: 'JCW', category: 'package' },
+    { id: 'chili_pack', label: 'Chili Pack', jpcarsKey: 'chili', category: 'package' },
+    { id: 'harman_kardon', label: 'Harman Kardon', jpcarsKey: 'harman kardon', category: 'audio' },
+  ],
+
+  // FIAT
+  'fiat': [
+    { id: 'sport', label: 'Sport', jpcarsKey: 'sport', category: 'package' },
+    { id: 'city_cross', label: 'City Cross', jpcarsKey: 'city cross', category: 'package' },
+    { id: 'beats', label: 'Beats Audio', jpcarsKey: 'beats', category: 'audio' },
+  ],
+
+  // ALFA ROMEO
+  'alfa romeo': [
+    { id: 'veloce', label: 'Veloce', jpcarsKey: 'veloce', category: 'package' },
+    { id: 'quadrifoglio', label: 'Quadrifoglio', jpcarsKey: 'quadrifoglio', category: 'package' },
+    { id: 'harman_kardon', label: 'Harman Kardon', jpcarsKey: 'harman kardon', category: 'audio' },
+  ],
+
+  // JEEP
+  'jeep': [
+    { id: 'trailhawk', label: 'Trailhawk', jpcarsKey: 'trailhawk', category: 'package' },
+    { id: 'overland', label: 'Overland', jpcarsKey: 'overland', category: 'package' },
+    { id: 's_pakket', label: 'S Pakket', jpcarsKey: 'S package', category: 'package' },
+    { id: 'alpine', label: 'Alpine Sound', jpcarsKey: 'alpine', category: 'audio' },
+  ],
+
+  // SUZUKI
+  'suzuki': [
+    { id: 'style', label: 'Style', jpcarsKey: 'style', category: 'package' },
+    { id: 'allgrip', label: 'AllGrip', jpcarsKey: 'allgrip', category: 'technology' },
+  ],
+
+  // HONDA
+  'honda': [
+    { id: 'sport_line', label: 'Sport Line', jpcarsKey: 'sport line', category: 'package' },
+    { id: 'advance', label: 'Advance', jpcarsKey: 'advance', category: 'package' },
+    { id: 'sensing', label: 'Honda Sensing', jpcarsKey: 'sensing', category: 'safety' },
+  ],
+
+  // CITROEN
+  'citroen': [
+    { id: 'shine', label: 'Shine', jpcarsKey: 'shine', category: 'package' },
+    { id: 'feel', label: 'Feel', jpcarsKey: 'feel', category: 'package' },
+    { id: 'focal', label: 'Focal Sound System', jpcarsKey: 'focal', category: 'audio' },
+  ],
+
+  // DS
+  'ds': [
+    { id: 'performance_line', label: 'Performance Line', jpcarsKey: 'performance line', category: 'package' },
+    { id: 'opera', label: 'Opera', jpcarsKey: 'opera', category: 'package' },
+    { id: 'focal', label: 'Focal Electra', jpcarsKey: 'focal', category: 'audio' },
+  ],
+
+  // MG
+  'mg': [
+    { id: 'luxury', label: 'Luxury', jpcarsKey: 'luxury', category: 'package' },
+    { id: 'trophy', label: 'Trophy', jpcarsKey: 'trophy', category: 'package' },
+  ],
+
+  // POLESTAR
+  'polestar': [
+    { id: 'performance', label: 'Performance Pack', jpcarsKey: 'performance', category: 'package' },
+    { id: 'pilot', label: 'Pilot Pack', jpcarsKey: 'pilot', category: 'safety' },
+    { id: 'harman_kardon', label: 'Harman Kardon', jpcarsKey: 'harman kardon', category: 'audio' },
+  ],
+
+  // DACIA
+  'dacia': [
+    { id: 'extreme', label: 'Extreme', jpcarsKey: 'extreme', category: 'package' },
+    { id: 'journey', label: 'Journey', jpcarsKey: 'journey', category: 'package' },
+  ],
+};
+
+// Generic options available for all brands
+const GENERIC_OPTIONS: JPCarsOption[] = [
+  // Roof
+  { id: 'panorama_dak', label: 'Open/Panorama Dak', jpcarsKey: 'panorama roof', category: 'roof' },
+  { id: 'schuifdak', label: 'Schuifdak', jpcarsKey: 'sunroof', category: 'roof' },
+
+  // Interior
+  { id: 'leder', label: 'Half Lederen Bekleding', jpcarsKey: 'leather', category: 'interior' },
+  { id: 'stoelverwarming', label: 'Stoelverwarming', jpcarsKey: 'heated seats', category: 'interior' },
+  { id: 'stoelkoeling', label: 'Stoelkoeling', jpcarsKey: 'ventilated seats', category: 'interior' },
+  { id: 'climate_control', label: 'Climate Control', jpcarsKey: 'climate control', category: 'interior' },
+  { id: 'elektrische_stoelen', label: 'Elektrische Stoelen', jpcarsKey: 'electric seats', category: 'interior' },
+
+  // Technology
+  { id: 'navigatie', label: 'Navigatie', jpcarsKey: 'navigation', category: 'technology' },
+  { id: 'head_up_display', label: 'Head-up Display', jpcarsKey: 'head up display', category: 'technology' },
+  { id: 'smartphone_integration', label: 'Smartphone Integration', jpcarsKey: 'smartphone integration', category: 'technology' },
+  { id: 'keyless', label: 'Keyless Entry/Go', jpcarsKey: 'keyless', category: 'technology' },
+  { id: 'wireless_charging', label: 'Draadloos Opladen', jpcarsKey: 'wireless charging', category: 'technology' },
+
+  // Camera & Sensors
+  { id: 'achteruitrijcamera', label: 'Achteruitrijcamera', jpcarsKey: 'rear camera', category: 'camera' },
+  { id: '360_camera', label: '360° Camera', jpcarsKey: '360 camera', category: 'camera' },
+  { id: 'pdc', label: 'PDC Voor + Achter', jpcarsKey: 'PDC', category: 'camera' },
+
+  // Safety
+  { id: 'adaptive_cruise', label: 'Adaptive Cruise Control', jpcarsKey: 'adaptive cruise', category: 'safety' },
+  { id: 'lane_assist', label: 'Lane Assist', jpcarsKey: 'lane assist', category: 'safety' },
+  { id: 'dodehoek', label: 'Dodehoek Detectie', jpcarsKey: 'blind spot', category: 'safety' },
+
+  // Lighting
+  { id: 'led_verlichting', label: 'LED Verlichting', jpcarsKey: 'LED', category: 'lighting' },
+  { id: 'ambient_light', label: 'Ambient Verlichting', jpcarsKey: 'ambient', category: 'lighting' },
+
+  // Config
+  { id: '7_zitter', label: '7 Zitter', jpcarsKey: '7 seater', category: 'config' },
+  { id: '4x4', label: '4x4 / AWD', jpcarsKey: '4x4', category: 'config' },
+
+  // Other
+  { id: 'trekhaak', label: 'Trekhaak', jpcarsKey: 'tow bar', category: 'other' },
+  { id: 'lm_velgen', label: 'Lichtmetalen Velgen', jpcarsKey: 'alloy wheels', category: 'other' },
+  { id: 'premium_audio', label: 'Premium Audio', jpcarsKey: 'premium audio', category: 'audio' },
+];
+
+// EV-specific options (only for electric/plug-in vehicles)
+const EV_OPTIONS: JPCarsOption[] = [
+  { id: 'long_range', label: 'Long Range', jpcarsKey: 'long range', category: 'ev' },
+  { id: 'warmtepomp', label: 'Warmtepomp', jpcarsKey: 'heat pump', category: 'ev' },
+  { id: 'v2l', label: 'Vehicle-to-Load (V2L)', jpcarsKey: 'V2L', category: 'ev' },
+];
+
+function getOptionsForVehicle(make: string, fuel: string): JPCarsOption[] {
+  const makeLower = make.toLowerCase();
+  const fuelLower = fuel?.toLowerCase() || '';
+
+  // Get brand-specific options
+  const brandOptions = BRAND_OPTIONS[makeLower] || [];
+
+  // Get EV options if applicable
+  const isEV = fuelLower.includes('elektr') || fuelLower.includes('electric') || fuelLower.includes('plug-in') || fuelLower.includes('hybride');
+  const evOptions = isEV ? EV_OPTIONS : [];
+
+  // Combine all options
+  const allOptions = [...brandOptions, ...GENERIC_OPTIONS, ...evOptions];
+
+  // Deduplicate by id
+  const uniqueOptions = allOptions.filter((opt, index, arr) =>
+    arr.findIndex(o => o.id === opt.id) === index
+  );
+
+  return uniqueOptions;
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const requestData: OptionsRequest = await req.json();
-    const { make, model, fuel, gear, hp, body, build } = requestData;
+    const { make, model, fuel } = requestData;
 
-    console.log('📋 JP Cars Options request:', { make, model, fuel, gear, hp, body, build });
+    console.log('📋 JP Cars Options request:', { make, model, fuel });
 
-    if (!make || !model) {
+    if (!make) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Make and model are required',
-          options: [] 
-        }),
+        JSON.stringify({ success: false, error: 'Make is required', options: [] }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const JPCARS_API_TOKEN = Deno.env.get('JPCARS_API_TOKEN');
-    if (!JPCARS_API_TOKEN) {
-      console.error('❌ JPCARS_API_TOKEN not configured');
-      return new Response(
-        JSON.stringify({ success: false, error: 'JP Cars API token not configured', options: [] }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const options = getOptionsForVehicle(make, fuel || '');
 
-    // Build query parameters for the JP Cars catalog/values API with type=option
-    const params = new URLSearchParams();
-    params.append('type', 'option');
-    params.append('make', make);
-    params.append('model', model);
-    
-    if (fuel) params.append('fuel', fuel);
-    if (gear) params.append('gear', gear);
-    if (hp) params.append('hp', hp.toString());
-    if (body) params.append('body', body);
-    if (build) params.append('build', build.toString());
-
-    const apiUrl = `https://api.nl.jp.cars/api/catalog/values?${params.toString()}`;
-    console.log('🌐 Calling JP Cars Options API:', apiUrl);
-
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${JPCARS_API_TOKEN}`,
-        'Accept': 'application/json',
-      },
-    });
-
-    const responseText = await response.text();
-    console.log('📥 JP Cars Options response status:', response.status);
-
-    let responseData;
-    try {
-      responseData = JSON.parse(responseText);
-    } catch {
-      console.error('❌ Failed to parse JP Cars response:', responseText.substring(0, 500));
-      
-      // Return static fallback options
-      const fallbackOptions = getStaticOptions(make, model);
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          options: fallbackOptions,
-          source: 'fallback',
-          count: fallbackOptions.length
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!response.ok) {
-      console.error('❌ JP Cars Options API error:', responseData);
-      
-      // Return static fallback options on error
-      const fallbackOptions = getStaticOptions(make, model);
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          options: fallbackOptions,
-          source: 'fallback',
-          error: responseData?.error || `JP Cars API error: ${response.status}`,
-          count: fallbackOptions.length
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // JP Cars returns { values: [...] } or just an array
-    let rawOptions = Array.isArray(responseData) 
-      ? responseData 
-      : (responseData.values || responseData.data || responseData.options || []);
-
-    // Transform the options into our format
-    const options: JPCarsOption[] = rawOptions.map((opt: string | { id?: string; name?: string; label?: string; value?: string }) => {
-      if (typeof opt === 'string') {
-        return { id: opt, label: opt };
-      }
-      return {
-        id: opt.id || opt.value || opt.name || String(opt),
-        label: opt.label || opt.name || opt.value || opt.id || String(opt),
-      };
-    });
-
-    // If no options from API, use fallback
-    if (options.length === 0) {
-      const fallbackOptions = getStaticOptions(make, model);
-      console.log(`⚠️ No options from API, using ${fallbackOptions.length} fallback options`);
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          options: fallbackOptions,
-          source: 'fallback',
-          count: fallbackOptions.length
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`✅ JP Cars Options returned ${options.length} options`);
+    console.log(`✅ Returning ${options.length} options for ${make}`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         options,
-        source: 'jpcars',
-        count: options.length 
+        source: 'database',
+        count: options.length
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('❌ JP Cars Options function error:', error);
-    
-    // Return static options on any error
-    const fallbackOptions = getStaticOptions('', '');
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        options: fallbackOptions,
+      JSON.stringify({
+        success: false,
+        options: GENERIC_OPTIONS,
         source: 'fallback',
         error: error.message || 'Internal server error',
-        count: fallbackOptions.length
+        count: GENERIC_OPTIONS.length
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
-
-// Static fallback options based on common vehicle features
-function getStaticOptions(make: string, model: string): JPCarsOption[] {
-  const baseOptions: JPCarsOption[] = [
-    // Premium/Performance packages
-    { id: 'amg_line', label: 'AMG Line', category: 'package' },
-    { id: 'm_sport', label: 'M Sport', category: 'package' },
-    { id: 's_line', label: 'S-Line', category: 'package' },
-    { id: 'r_line', label: 'R-Line', category: 'package' },
-    { id: 'gt_line', label: 'GT-Line', category: 'package' },
-    { id: 'f_sport', label: 'F Sport', category: 'package' },
-    { id: 'inscription', label: 'Inscription', category: 'package' },
-    { id: 'r_design', label: 'R-Design', category: 'package' },
-    
-    // Roof options
-    { id: 'panoramadak', label: 'Panoramadak', category: 'roof' },
-    { id: 'schuifdak', label: 'Schuifdak', category: 'roof' },
-    { id: 'glazen_dak', label: 'Glazen dak', category: 'roof' },
-    
-    // Interior
-    { id: 'leder', label: 'Leder interieur', category: 'interior' },
-    { id: 'alcantara', label: 'Alcantara', category: 'interior' },
-    { id: 'stoelverwarming', label: 'Stoelverwarming', category: 'interior' },
-    { id: 'stoelkoeling', label: 'Stoelkoeling', category: 'interior' },
-    { id: 'elektrische_stoelen', label: 'Elektrische stoelen', category: 'interior' },
-    { id: 'massagestoelen', label: 'Massagestoelen', category: 'interior' },
-    
-    // Technology
-    { id: 'navigatie', label: 'Navigatie', category: 'technology' },
-    { id: 'head_up_display', label: 'Head-up Display', category: 'technology' },
-    { id: 'apple_carplay', label: 'Apple CarPlay', category: 'technology' },
-    { id: 'android_auto', label: 'Android Auto', category: 'technology' },
-    { id: 'harman_kardon', label: 'Harman Kardon', category: 'technology' },
-    { id: 'bose', label: 'Bose Sound', category: 'technology' },
-    { id: 'burmester', label: 'Burmester', category: 'technology' },
-    { id: 'bang_olufsen', label: 'Bang & Olufsen', category: 'technology' },
-    { id: '360_camera', label: '360° Camera', category: 'technology' },
-    
-    // Lighting
-    { id: 'led_koplampen', label: 'LED koplampen', category: 'lighting' },
-    { id: 'matrix_led', label: 'Matrix LED', category: 'lighting' },
-    { id: 'laser_light', label: 'Laser Light', category: 'lighting' },
-    { id: 'ambient_light', label: 'Ambient verlichting', category: 'lighting' },
-    
-    // Safety & Assist
-    { id: 'adaptive_cruise', label: 'Adaptive Cruise Control', category: 'safety' },
-    { id: 'lane_assist', label: 'Lane Assist', category: 'safety' },
-    { id: 'blind_spot', label: 'Dodehoek detectie', category: 'safety' },
-    { id: 'park_assist', label: 'Park Assist', category: 'safety' },
-    
-    // Wheels & exterior
-    { id: 'lichtmetalen_velgen', label: 'Lichtmetalen velgen', category: 'exterior' },
-    { id: '19_inch', label: '19 inch velgen', category: 'exterior' },
-    { id: '20_inch', label: '20 inch velgen', category: 'exterior' },
-    { id: '21_inch', label: '21 inch velgen', category: 'exterior' },
-    { id: 'metallic_lak', label: 'Metallic lak', category: 'exterior' },
-    
-    // Towing
-    { id: 'trekhaak', label: 'Trekhaak', category: 'other' },
-    { id: 'elektrische_trekhaak', label: 'Elektrische trekhaak', category: 'other' },
-  ];
-
-  // Filter brand-specific options
-  const makeLower = make.toLowerCase();
-  
-  return baseOptions.filter(opt => {
-    // Brand-specific filtering
-    if (opt.id === 'amg_line' && makeLower !== 'mercedes-benz' && makeLower !== 'mercedes') return false;
-    if (opt.id === 'm_sport' && makeLower !== 'bmw') return false;
-    if (opt.id === 's_line' && makeLower !== 'audi') return false;
-    if (opt.id === 'r_line' && makeLower !== 'volkswagen') return false;
-    if (opt.id === 'gt_line' && !['peugeot', 'kia'].includes(makeLower)) return false;
-    if (opt.id === 'f_sport' && makeLower !== 'lexus') return false;
-    if (opt.id === 'inscription' && makeLower !== 'volvo') return false;
-    if (opt.id === 'r_design' && makeLower !== 'volvo') return false;
-    if (opt.id === 'burmester' && !['mercedes-benz', 'mercedes', 'porsche'].includes(makeLower)) return false;
-    if (opt.id === 'bang_olufsen' && !['audi', 'bmw', 'ford'].includes(makeLower)) return false;
-    if (opt.id === 'harman_kardon' && !['bmw', 'mercedes-benz', 'mercedes', 'volvo', 'subaru'].includes(makeLower)) return false;
-    if (opt.id === 'bose' && !['audi', 'mazda', 'nissan', 'porsche', 'cadillac', 'chevrolet'].includes(makeLower)) return false;
-    
-    return true;
-  });
-}
