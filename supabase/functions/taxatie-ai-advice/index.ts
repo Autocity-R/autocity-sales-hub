@@ -117,59 +117,299 @@ interface TaxatieRequest {
   feedbackHistory?: FeedbackItem[];
 }
 
+// DYNAMISCHE OPTIE CATEGORIEËN - Voor alle merken en JP Cars opties
+const optionCategories: Record<string, { label: string; valueImpact: string; emoji: string; aliases: string[] }> = {
+  // SPORT/LUXE PAKKETTEN (alle merken)
+  'sport_package': {
+    label: 'Sport/Luxe Pakket',
+    valueImpact: '+€500 - €2.500',
+    emoji: '🏎️',
+    aliases: [
+      // Ford
+      'st-line', 'st line', 'stline', 'titanium', 'vignale', 'active',
+      // BMW
+      'm sport', 'm-sport', 'msport', 'm performance', 'm pakket', 'shadowline', 'shadow line',
+      // Mercedes
+      'amg', 'amg pakket', 'amg line', 'amg-line', 'night pakket', 'night package', 'avantgarde',
+      // Audi
+      's-line', 's line', 'sline', 'black edition', 'competition',
+      // VW
+      'r-line', 'r line', 'rline', 'gti', 'gte', 'gtd', 'sport', 'highline',
+      // Volvo
+      'r-design', 'r design', 'rdesign', 'inscription', 'momentum',
+      // Hyundai/Kia
+      'n-line', 'n line', 'nline', 'gt-line', 'gt line', 'gtline',
+      // Peugeot/Citroen/DS
+      'gt', 'gt-line', 'allure', 'shine',
+      // Renault
+      'rs line', 'rs-line', 'intens', 'techno', 'iconic',
+      // Skoda
+      'sportline', 'sport line', 'l&k', 'laurin klement', 'monte carlo',
+      // Seat/Cupra
+      'fr', 'xcellence', 'vz', 'cupra',
+      // Porsche
+      'sport chrono', 'sport design', 'gts',
+      // Lexus
+      'f sport', 'f-sport', 'fsport',
+      // Land Rover/Jaguar
+      'hse', 'r-dynamic', 'r dynamic', 'autobiography',
+      // Toyota
+      'gr sport', 'gr-sport', 'grsport',
+      // Mazda
+      'luxury', 'sportive', 'signature',
+      // Generiek
+      'sport pakket', 'sport package', 'sportpakket', 'sportpackage', 'sport',
+      'luxe pakket', 'luxury package', 'luxepakket'
+    ]
+  },
+  
+  // PREMIUM AUDIO SYSTEMEN
+  'premium_audio': {
+    label: 'Premium Audio',
+    valueImpact: '+€500 - €1.500',
+    emoji: '🔊',
+    aliases: [
+      // Merken
+      'harman kardon', 'harman_kardon', 'harmankardon', 'harman',
+      'b&w', 'bowers wilkins', 'bowers_wilkins', 'bowers & wilkins',
+      'burmester', 'b&o', 'bang olufsen', 'bang & olufsen', 'bang&olufsen',
+      'meridian', 'mark levinson', 'marklevinson', 'levinson',
+      'naim', 'focal', 'dynaudio', 'bose', 'jbl', 'krell', 'canton', 
+      'alpine', 'beats', 'infinity', 'logic7', 'logic 7', 'revel',
+      'lexicon', 'mcintosh', 'olufsen', 'devialet', 'sonos',
+      // Generiek
+      'premium audio', 'premium_audio', 'premium sound', 'surround sound',
+      'audio', 'sound system', 'soundsystem', 'hifi', 'hi-fi'
+    ]
+  },
+  
+  // DAK OPTIES
+  'roof': {
+    label: 'Panoramadak/Open Dak',
+    valueImpact: '+€1.500 - €3.000',
+    emoji: '🌤️',
+    aliases: [
+      // Nederlands
+      'panoramadak', 'panorama dak', 'open dak', 'schuifdak', 'glazen dak', 'glasdak',
+      // Engels
+      'panorama roof', 'panoramic roof', 'panoramaroof', 'panoramicroof',
+      'sunroof', 'sun roof', 'moonroof', 'moon roof', 'open roof',
+      'glass roof', 'glassroof', 'sky roof', 'skyroof',
+      // Kort (JP Cars)
+      'roof', 'panorama', 'dak'
+    ]
+  },
+  
+  // WINTER/COMFORT PAKKETTEN
+  'winter_package': {
+    label: 'Winter/Comfort Pakket',
+    valueImpact: '+€300 - €1.000',
+    emoji: '❄️',
+    aliases: [
+      'winterpakket', 'winter pakket', 'winter pack', 'winter package', 'winterpack',
+      'comfort pakket', 'comfort package', 'comfortpakket', 'comfortpackage',
+      'plus pack', 'plus pakket', 'tour pakket', 'tour package', 'touring pakket',
+      'verwarmde stoelen', 'heated seats', 'stuurverwarming', 'heated steering',
+      'winter', 'winterbanden', 'winterset'
+    ]
+  },
+  
+  // LUCHTVERING
+  'suspension': {
+    label: 'Luchtvering/Adaptief Onderstel',
+    valueImpact: '+€1.000 - €2.500',
+    emoji: '🛋️',
+    aliases: [
+      'luchtvering', 'lucht vering', 'air suspension', 'airsuspension',
+      'airmatic', 'air matic', 'pasm', 'adaptive suspension', 'adaptief onderstel',
+      'air ride', 'airride', 'pneumatic suspension', 'pneumatisch',
+      'dcc', 'dynamic chassis control', 'four-c', 'active body control', 'abc',
+      'magic body control', 'active ride', 'continuous damping control'
+    ]
+  },
+  
+  // 7-ZITTER
+  'seating': {
+    label: '7-Zitter/Extra Zitplaatsen',
+    valueImpact: '+€500 - €1.500',
+    emoji: '👨‍👩‍👧‍👦',
+    aliases: [
+      '7 zitter', '7-zitter', '7zitter', '7 seater', '7-seater', '7seater',
+      '7 zits', '7-zits', '7zits', 'seven seater', 'seven-seater',
+      'third row', '3rd row', 'derde rij', 'extra zitplaatsen', 'extra seats',
+      '6 zitter', '6-zitter', '6 seater', '6-seater',
+      'zitter', 'seater', 'zits'
+    ]
+  },
+  
+  // TREKHAAK
+  'towing': {
+    label: 'Trekhaak',
+    valueImpact: '+€300 - €800',
+    emoji: '🚗',
+    aliases: [
+      'trekhaak', 'trek haak', 'tow bar', 'towbar', 'tow-bar',
+      'towing', 'trailer hitch', 'trailerhitch', 'anhängerkupplung',
+      'tow hook', 'towhook', 'towing package', 'tow package',
+      'haak', 'hitch', 'tow'
+    ]
+  },
+  
+  // EV SPECIFIEK - LONG RANGE
+  'ev_range': {
+    label: 'Long Range / Grote Batterij',
+    valueImpact: '+€2.000 - €5.000',
+    emoji: '🔋',
+    aliases: [
+      'long range', 'long_range', 'longrange', 'extended range', 'extendedrange',
+      'large battery', 'largebattery', 'groot bereik', 'big battery',
+      'range', 'extended', 'plus', 'max', 'performance', 'awd'
+    ]
+  },
+  
+  // TECHNOLOGIE PAKKETTEN
+  'technology': {
+    label: 'Technologie Pakket',
+    valueImpact: '+€500 - €1.500',
+    emoji: '🖥️',
+    aliases: [
+      'head up display', 'head-up display', 'head up', 'head-up', 'hud',
+      '360 camera', '360camera', '360 graden', 'surround view', 'surroundview',
+      'digital cockpit', 'digitalcockpit', 'virtual cockpit', 'virtualcockpit',
+      'live cockpit', 'livecockpit', 'widescreen', 'wide screen',
+      'distronic', 'pilot assist', 'pilotassist', 'propilot', 'pro pilot',
+      'drive wise', 'drivewise', 'tech pakket', 'technology package', 'techpakket',
+      'assistance pakket', 'driver assistance', 'adas', 'autopilot', 'auto pilot',
+      'lane assist', 'adaptive cruise', 'acc', 'night vision', 'nightvision'
+    ]
+  },
+  
+  // PREMIUM VERLICHTING
+  'lighting': {
+    label: 'Premium Verlichting',
+    valueImpact: '+€300 - €1.000',
+    emoji: '💡',
+    aliases: [
+      'matrix led', 'matrixled', 'multibeam', 'multi beam', 'laser light', 'laserlight',
+      'iq.light', 'iqlight', 'iq light', 'intellilux', 'intelli lux',
+      'pdls', 'pdls+', 'dynamic light', 'adaptive led', 'adaptiveled',
+      'led matrix', 'ledmatrix', 'pixel led', 'pixelled', 'digital light',
+      'laser', 'xenon', 'bi-xenon', 'bixenon', 'led', 'full led', 'fullled'
+    ]
+  },
+  
+  // INTERIEUR LEDER/PREMIUM
+  'interior': {
+    label: 'Premium Interieur/Leder',
+    valueImpact: '+€500 - €2.000',
+    emoji: '🪑',
+    aliases: [
+      'leder', 'leer', 'leather', 'nappa', 'nappa leder', 'nappaleather',
+      'alcantara', 'sensatec', 'vernasca', 'merino', 'designo', 'exclusive',
+      'individual', 'premium interieur', 'premium interior',
+      'sport stoelen', 'sport seats', 'sportstoelen', 'sportseats',
+      'elektrisch verstelbaar', 'electric seats', 'power seats',
+      'massage', 'massagestoelen', 'massage seats', 'ventilatie', 'ventilated',
+      'memory', 'memory seats', 'geheugenstoelen'
+    ]
+  }
+};
+
 // Build explicit value options section for AI prompt
 function buildValueOptionsSection(options: string[] | undefined, fuelType: string): string {
-  // Mapping: Alle mogelijke namen voor elke waarde-bepalende optie (NL + EN + varianten)
-  const optionAliases: Record<string, string[]> = {
-    'panoramadak': ['panoramadak', 'panorama roof', 'panorama_roof', 'sunroof', 'open dak', 'panoramic roof', 'glass roof'],
-    'luchtvering': ['luchtvering', 'air suspension', 'air_suspension', 'adaptive suspension', 'pneumatic suspension'],
-    'premium_audio': ['premium_audio', 'premium audio', 'harman kardon', 'harman_kardon', 'bowers wilkins', 'bowers_wilkins', 'b&w', 'burmester', 'b&o', 'bang olufsen', 'bang & olufsen', 'meridian', 'mark levinson', 'naim'],
-    '7_zitter': ['7_zitter', '7 seater', '7_seater', '7-seater', 'third row', '7 zits', '7-zits', 'seven seater'],
-    'trekhaak': ['trekhaak', 'tow bar', 'tow_bar', 'towbar', 'towing', 'trailer hitch', 'anhängerkupplung'],
-    'long_range': ['long_range', 'long range', 'extended range', 'groot bereik', 'large battery'],
-  };
+  if (!options || options.length === 0) {
+    console.log('🔍 No options provided to buildValueOptionsSection');
+    return '**Geen opties geselecteerd**\n';
+  }
 
-  const valueOptions = [
-    { id: 'panoramadak', label: 'Panoramadak', value: '€1.500 - €3.000' },
-    { id: 'luchtvering', label: 'Luchtvering', value: '€1.000 - €2.500' },
-    { id: 'premium_audio', label: 'Premium Audio (B&W/Burmester/Harman)', value: '€500 - €1.500' },
-    { id: '7_zitter', label: '7 Zitter', value: '€500 - €1.500' },
-    { id: 'trekhaak', label: 'Trekhaak', value: '€300 - €800' },
-    { id: 'long_range', label: 'Long Range (EV)', value: '€2.000 - €5.000' },
-  ];
-
-  // Check of een optie aanwezig is (any alias match)
-  const hasOption = (optionKey: string): boolean => {
-    const aliases = optionAliases[optionKey] || [optionKey];
-    return aliases.some(alias => 
-      options?.some(opt => opt.toLowerCase().includes(alias.toLowerCase()))
-    );
-  };
-
-  const isEV = fuelType?.toLowerCase().includes('elektr') || fuelType?.toLowerCase().includes('ev');
-  const relevantOptions = valueOptions.filter(opt => opt.id !== 'long_range' || isEV);
+  console.log('🔍 Checking options:', JSON.stringify(options));
   
+  // Normalize all options for matching
+  const normalizedOptions = options.map(o => o.toLowerCase().trim());
+  
+  // Detecteer welke categorieën aanwezig zijn met bidirectionele matching
+  const detectedCategories: Array<{ 
+    categoryKey: string; 
+    matchedOption: string; 
+    originalOption: string;
+    info: typeof optionCategories[string] 
+  }> = [];
+  
+  for (const [categoryKey, categoryInfo] of Object.entries(optionCategories)) {
+    for (const alias of categoryInfo.aliases) {
+      const aliasLower = alias.toLowerCase();
+      
+      // Zoek een match in de opties
+      const matchIndex = normalizedOptions.findIndex(opt => {
+        // Exacte match
+        if (opt === aliasLower) return true;
+        
+        // Optie bevat alias (bijv. "premium audio system" bevat "audio")
+        if (opt.includes(aliasLower) && aliasLower.length >= 3) return true;
+        
+        // Alias bevat optie (bijv. "panorama roof" bevat "roof")
+        if (aliasLower.includes(opt) && opt.length >= 3) return true;
+        
+        return false;
+      });
+      
+      if (matchIndex !== -1) {
+        // Check of deze categorie nog niet gedetecteerd is
+        if (!detectedCategories.some(d => d.categoryKey === categoryKey)) {
+          detectedCategories.push({
+            categoryKey,
+            matchedOption: normalizedOptions[matchIndex],
+            originalOption: options[matchIndex],
+            info: categoryInfo
+          });
+          console.log(`✅ Category "${categoryKey}" matched via alias "${alias}" for option "${options[matchIndex]}"`);
+        }
+        break; // Stop na eerste match per categorie
+      }
+    }
+  }
+
+  // Filter EV-specifieke opties als het geen EV is
+  const isEV = fuelType?.toLowerCase().includes('elektr') || 
+               fuelType?.toLowerCase().includes('ev') ||
+               fuelType?.toLowerCase().includes('electric');
+  
+  const filteredDetected = detectedCategories.filter(d => 
+    d.categoryKey !== 'ev_range' || isEV
+  );
+
   let section = '';
   
-  // PANORAMADAK EXPLICIET HIGHLIGHTEN - dit is het belangrijkst
-  const hasPanoramadak = hasOption('panoramadak');
-  section += `- **🌤️ PANORAMADAK: ${hasPanoramadak ? '✅ JA AANWEZIG' : '❌ NIET AANWEZIG'}**\n`;
-  if (hasPanoramadak) {
-    section += `  → Dit verhoogt de waarde met ${valueOptions.find(o => o.id === 'panoramadak')?.value}\n`;
-  }
-  section += '\n';
+  // GEDETECTEERDE WAARDE-BEPALENDE OPTIES
+  section += '**🔍 GEDETECTEERDE WAARDE-BEPALENDE OPTIES:**\n';
   
-  // Andere waarde-bepalende opties
-  relevantOptions.filter(opt => opt.id !== 'panoramadak').forEach(opt => {
-    const present = hasOption(opt.id);
-    section += `- ${opt.label}: ${present ? `✅ JA (+${opt.value})` : '❌ NEE'}\n`;
-  });
-
-  // Alle geselecteerde opties toevoegen (volledig beeld voor AI)
-  if (options && options.length > 0) {
-    section += `\n**Alle geselecteerde opties (${options.length}):** ${options.join(', ')}\n`;
+  if (filteredDetected.length > 0) {
+    filteredDetected.forEach(({ originalOption, info }) => {
+      section += `- ${info.emoji} **${info.label}:** "${originalOption}" (${info.valueImpact})\n`;
+    });
+    
+    // Bereken totale potentiële meerwaarde
+    section += `\n📊 **Totaal ${filteredDetected.length} waarde-bepalende opties gedetecteerd**\n`;
+  } else {
+    section += '- ❌ Geen premium waarde-bepalende opties automatisch gedetecteerd\n';
   }
-
+  
+  // Specifiek PANORAMADAK highlighten (meest gevraagd)
+  const hasPanorama = filteredDetected.some(d => d.categoryKey === 'roof');
+  section += `\n🌤️ **PANORAMADAK:** ${hasPanorama ? '✅ JA AANWEZIG' : '❌ NIET GEDETECTEERD'}\n`;
+  
+  // ALLE opties tonen voor volledig beeld aan AI
+  section += `\n**📋 ALLE ${options.length} GESELECTEERDE JP CARS OPTIES:**\n`;
+  section += options.map(opt => `  • ${opt}`).join('\n');
+  
+  // Instructie voor AI
+  section += `\n\n⚠️ **INSTRUCTIE:** Bovenstaande opties komen rechtstreeks van JP Cars.\n`;
+  section += `Interpreteer ze correct - bijv. "ST-Line" = sport pakket, "roof" = panoramadak, "winter pack" = winterpakket.\n`;
+  section += `Opties die niet automatisch zijn gecategoriseerd kunnen OOK waarde toevoegen - gebruik je handelaarservaring!\n`;
+  
+  console.log(`📊 Detected ${filteredDetected.length} value-adding categories:`, 
+    filteredDetected.map(d => d.categoryKey).join(', '));
+  
   return section;
 }
 
