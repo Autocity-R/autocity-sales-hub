@@ -119,6 +119,16 @@ interface TaxatieRequest {
 
 // Build explicit value options section for AI prompt
 function buildValueOptionsSection(options: string[] | undefined, fuelType: string): string {
+  // Mapping: Alle mogelijke namen voor elke waarde-bepalende optie (NL + EN + varianten)
+  const optionAliases: Record<string, string[]> = {
+    'panoramadak': ['panoramadak', 'panorama roof', 'panorama_roof', 'sunroof', 'open dak', 'panoramic roof', 'glass roof'],
+    'luchtvering': ['luchtvering', 'air suspension', 'air_suspension', 'adaptive suspension', 'pneumatic suspension'],
+    'premium_audio': ['premium_audio', 'premium audio', 'harman kardon', 'harman_kardon', 'bowers wilkins', 'bowers_wilkins', 'b&w', 'burmester', 'b&o', 'bang olufsen', 'bang & olufsen', 'meridian', 'mark levinson', 'naim'],
+    '7_zitter': ['7_zitter', '7 seater', '7_seater', '7-seater', 'third row', '7 zits', '7-zits', 'seven seater'],
+    'trekhaak': ['trekhaak', 'tow bar', 'tow_bar', 'towbar', 'towing', 'trailer hitch', 'anhängerkupplung'],
+    'long_range': ['long_range', 'long range', 'extended range', 'groot bereik', 'large battery'],
+  };
+
   const valueOptions = [
     { id: 'panoramadak', label: 'Panoramadak', value: '€1.500 - €3.000' },
     { id: 'luchtvering', label: 'Luchtvering', value: '€1.000 - €2.500' },
@@ -128,13 +138,21 @@ function buildValueOptionsSection(options: string[] | undefined, fuelType: strin
     { id: 'long_range', label: 'Long Range (EV)', value: '€2.000 - €5.000' },
   ];
 
+  // Check of een optie aanwezig is (any alias match)
+  const hasOption = (optionKey: string): boolean => {
+    const aliases = optionAliases[optionKey] || [optionKey];
+    return aliases.some(alias => 
+      options?.some(opt => opt.toLowerCase().includes(alias.toLowerCase()))
+    );
+  };
+
   const isEV = fuelType?.toLowerCase().includes('elektr') || fuelType?.toLowerCase().includes('ev');
   const relevantOptions = valueOptions.filter(opt => opt.id !== 'long_range' || isEV);
   
   let section = '';
   
   // PANORAMADAK EXPLICIET HIGHLIGHTEN - dit is het belangrijkst
-  const hasPanoramadak = options?.includes('panoramadak');
+  const hasPanoramadak = hasOption('panoramadak');
   section += `- **🌤️ PANORAMADAK: ${hasPanoramadak ? '✅ JA AANWEZIG' : '❌ NIET AANWEZIG'}**\n`;
   if (hasPanoramadak) {
     section += `  → Dit verhoogt de waarde met ${valueOptions.find(o => o.id === 'panoramadak')?.value}\n`;
@@ -143,15 +161,13 @@ function buildValueOptionsSection(options: string[] | undefined, fuelType: strin
   
   // Andere waarde-bepalende opties
   relevantOptions.filter(opt => opt.id !== 'panoramadak').forEach(opt => {
-    const hasOption = options?.includes(opt.id);
-    section += `- ${opt.label}: ${hasOption ? `✅ JA (+${opt.value})` : '❌ NEE'}\n`;
+    const present = hasOption(opt.id);
+    section += `- ${opt.label}: ${present ? `✅ JA (+${opt.value})` : '❌ NEE'}\n`;
   });
 
-  // Eventuele extra opties die niet in de standaard lijst zitten
-  const knownOptionIds = valueOptions.map(o => o.id);
-  const extraOptions = options?.filter(o => !knownOptionIds.includes(o)) || [];
-  if (extraOptions.length > 0) {
-    section += `\n**Overige opties:** ${extraOptions.join(', ')}\n`;
+  // Alle geselecteerde opties toevoegen (volledig beeld voor AI)
+  if (options && options.length > 0) {
+    section += `\n**Alle geselecteerde opties (${options.length}):** ${options.join(', ')}\n`;
   }
 
   return section;
