@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Plus, Play, Car, FileText, Loader2, Settings, X } from 'lucide-react';
+import { Search, Plus, Play, Car, FileText, Loader2, X } from 'lucide-react';
 import { VEHICLE_BRANDS, FUEL_TYPES, TRANSMISSION_TYPES, BODY_TYPES } from '@/data/vehicleData';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +18,7 @@ const HP_OPTIONS = ['75', '90', '100', '110', '120', '130', '140', '150', '163',
 interface JPCarsOption {
   id: string;
   label: string;
+  jpcarsKey?: string;
   category?: string;
 }
 
@@ -49,7 +50,6 @@ export const SingleVehicleAnalysis = ({
   const [availableOptions, setAvailableOptions] = useState<JPCarsOption[]>([]);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
-  const [optionsLoaded, setOptionsLoaded] = useState(false);
 
   // License plate input state
   const [licensePlate, setLicensePlate] = useState('');
@@ -58,42 +58,35 @@ export const SingleVehicleAnalysis = ({
 
   const models = make ? VEHICLE_BRANDS[make] || [] : [];
 
-  const loadJPCarsOptions = async () => {
-    if (!make || !model) {
-      toast.error('Selecteer eerst merk en model');
-      return;
-    }
-
-    setIsLoadingOptions(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('jpcars-options', {
-        body: {
-          make,
-          model,
-          fuel: fuelType || undefined,
-          gear: transmission || undefined,
-          hp: power ? parseInt(power) : undefined,
-          body: bodyType || undefined,
-          build: buildYear ? parseInt(buildYear) : undefined,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.success && data.options) {
-        setAvailableOptions(data.options);
-        setOptionsLoaded(true);
-        toast.success(`${data.options.length} opties geladen van ${data.source === 'jpcars' ? 'JP Cars' : 'standaard lijst'}`);
-      } else {
-        toast.error('Kon geen opties ophalen');
+  // Auto-load options when make and fuel are selected
+  useEffect(() => {
+    const loadOptions = async () => {
+      if (!make || !fuelType) {
+        setAvailableOptions([]);
+        return;
       }
-    } catch (err) {
-      console.error('Error loading JP Cars options:', err);
-      toast.error('Fout bij ophalen opties');
-    } finally {
-      setIsLoadingOptions(false);
-    }
-  };
+
+      setIsLoadingOptions(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('jpcars-options', {
+          body: { make, model, fuel: fuelType },
+        });
+
+        if (error) throw error;
+
+        if (data?.success && data.options) {
+          setAvailableOptions(data.options);
+        }
+      } catch (err) {
+        console.error('Error loading JP Cars options:', err);
+        // Silent fail - options are optional
+      } finally {
+        setIsLoadingOptions(false);
+      }
+    };
+
+    loadOptions();
+  }, [make, fuelType, model]);
 
   const toggleOption = (optionId: string) => {
     setSelectedOptions(prev => 
@@ -127,7 +120,6 @@ export const SingleVehicleAnalysis = ({
     setBodyType('');
     setSelectedOptions([]);
     setAvailableOptions([]);
-    setOptionsLoaded(false);
   };
 
   const handleLookupLicensePlate = async () => {
@@ -162,21 +154,28 @@ export const SingleVehicleAnalysis = ({
   const isComplete = make && model && buildYear && fuelType && transmission && power;
 
   // Group options by category for display
-  const groupedOptions = availableOptions.reduce((acc, opt) => {
-    const cat = opt.category || 'overig';
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(opt);
-    return acc;
-  }, {} as Record<string, JPCarsOption[]>);
+  const groupedOptions = useMemo(() => {
+    return availableOptions.reduce((acc, opt) => {
+      const cat = opt.category || 'overig';
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(opt);
+      return acc;
+    }, {} as Record<string, JPCarsOption[]>);
+  }, [availableOptions]);
 
   const categoryLabels: Record<string, string> = {
     package: 'Pakketten',
-    roof: 'Dak',
-    interior: 'Interieur',
+    audio: 'Audio',
     technology: 'Technologie',
     lighting: 'Verlichting',
-    safety: 'Veiligheid',
-    exterior: 'Exterieur',
+    safety: 'Veiligheid & Assistentie',
+    suspension: 'Onderstel',
+    performance: 'Performance',
+    roof: 'Dak',
+    interior: 'Interieur',
+    camera: 'Camera & Sensoren',
+    config: 'Configuratie',
+    ev: 'Elektrisch',
     other: 'Overig',
     overig: 'Overig',
   };
@@ -281,7 +280,6 @@ export const SingleVehicleAnalysis = ({
                 <Select value={make} onValueChange={(v) => { 
                   setMake(v); 
                   setModel(''); 
-                  setOptionsLoaded(false);
                   setAvailableOptions([]);
                   setSelectedOptions([]);
                 }}>
@@ -302,8 +300,6 @@ export const SingleVehicleAnalysis = ({
                   <label className="text-sm font-medium">Model *</label>
                   <Select value={model} onValueChange={(v) => {
                     setModel(v);
-                    setOptionsLoaded(false);
-                    setAvailableOptions([]);
                     setSelectedOptions([]);
                   }}>
                     <SelectTrigger>
@@ -403,59 +399,38 @@ export const SingleVehicleAnalysis = ({
                 </div>
               )}
 
-              {/* JP Cars Options Section - NEW */}
-              {isComplete && (
+              {/* JP Cars Options Section - Auto-loaded based on make + fuel */}
+              {fuelType && availableOptions.length > 0 && (
                 <div className="border-t pt-4 mt-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      JP Cars Opties
-                    </label>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={loadJPCarsOptions}
-                      disabled={isLoadingOptions}
-                    >
-                      {isLoadingOptions ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : null}
-                      {optionsLoaded ? 'Opnieuw laden' : 'Opties ophalen'}
-                    </Button>
+                    <label className="text-sm font-medium">JP Cars Opties</label>
+                    {isLoadingOptions && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                   </div>
 
-                  {!optionsLoaded && !isLoadingOptions && (
-                    <p className="text-sm text-muted-foreground">
-                      Klik op "Opties ophalen" om beschikbare opties van JP Cars te laden
-                    </p>
-                  )}
-
-                  {optionsLoaded && availableOptions.length > 0 && (
-                    <div className="space-y-3 max-h-48 overflow-y-auto">
-                      {Object.entries(groupedOptions).map(([category, options]) => (
-                        <div key={category}>
-                          <p className="text-xs font-medium text-muted-foreground mb-1.5">
-                            {categoryLabels[category] || category}
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {options.map((opt) => (
-                              <Badge
-                                key={opt.id}
-                                variant={selectedOptions.includes(opt.id) ? 'default' : 'outline'}
-                                className="cursor-pointer transition-all hover:opacity-80"
-                                onClick={() => toggleOption(opt.id)}
-                              >
-                                {opt.label}
-                                {selectedOptions.includes(opt.id) && (
-                                  <X className="h-3 w-3 ml-1" />
-                                )}
-                              </Badge>
-                            ))}
-                          </div>
+                  <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
+                    {Object.entries(groupedOptions).map(([category, options]) => (
+                      <div key={category}>
+                        <p className="text-xs font-medium text-muted-foreground mb-1.5">
+                          {categoryLabels[category] || category}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {options.map((opt) => (
+                            <Badge
+                              key={opt.id}
+                              variant={selectedOptions.includes(opt.id) ? 'default' : 'outline'}
+                              className="cursor-pointer transition-all hover:opacity-80"
+                              onClick={() => toggleOption(opt.id)}
+                            >
+                              {opt.label}
+                              {selectedOptions.includes(opt.id) && (
+                                <X className="h-3 w-3 ml-1" />
+                              )}
+                            </Badge>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      </div>
+                    ))}
+                  </div>
 
                   {selectedOptions.length > 0 && (
                     <p className="text-xs text-muted-foreground">
