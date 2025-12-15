@@ -266,6 +266,29 @@ export const useDealerAnalysis = () => {
     return null;
   };
 
+  // Extract contact info for a dealer from their website
+  const extractDealerContact = async (listingUrl: string, dealerName: string): Promise<{ email: string | null; phone: string | null; website: string | null }> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('extract-dealer-contact', {
+        body: { listingUrl, dealerName },
+      });
+      
+      if (error) {
+        console.log(`Contact extraction failed for ${dealerName}:`, error.message);
+        return { email: null, phone: null, website: null };
+      }
+      
+      return {
+        email: data?.email || null,
+        phone: data?.phone || null,
+        website: data?.website || null,
+      };
+    } catch (err) {
+      console.log(`Contact extraction error for ${dealerName}:`, err);
+      return { email: null, phone: null, website: null };
+    }
+  };
+
   // Fetch JP Cars window data for a single vehicle
   const fetchDealerData = async (vehicle: VehicleInput): Promise<{ dealers: DealerListing[]; windowUrl: string | null }> => {
     const { data, error } = await supabase.functions.invoke('jpcars-lookup', {
@@ -320,6 +343,79 @@ export const useDealerAnalysis = () => {
       });
 
     return { dealers, windowUrl };
+  };
+
+  // Extract contact info for unique dealers (with rate limiting)
+  const extractContactsForDealers = async (dealers: DealerListing[]): Promise<DealerListing[]> => {
+    // Group dealers by website base URL to avoid duplicate extractions
+    const dealersByWebsite = new Map<string, DealerListing[]>();
+    
+    for (const dealer of dealers) {
+      if (!dealer.url) continue;
+      
+      try {
+        const baseUrl = new URL(dealer.url).origin;
+        if (!dealersByWebsite.has(baseUrl)) {
+          dealersByWebsite.set(baseUrl, []);
+        }
+        dealersByWebsite.get(baseUrl)!.push(dealer);
+      } catch {
+        // Invalid URL, skip
+      }
+    }
+    
+    console.log(`🔍 Extracting contacts for ${dealersByWebsite.size} unique dealer websites...`);
+    
+    // Extract contacts with rate limiting (max 3 concurrent)
+    const contactCache = new Map<string, { email: string | null; phone: string | null; website: string | null }>();
+    const websites = Array.from(dealersByWebsite.keys());
+    
+    const batchSize = 3;
+    for (let i = 0; i < websites.length; i += batchSize) {
+      const batch = websites.slice(i, i + batchSize);
+      
+      const results = await Promise.all(
+        batch.map(async (baseUrl) => {
+          const dealersForSite = dealersByWebsite.get(baseUrl)!;
+          const firstDealer = dealersForSite[0];
+          
+          const contact = await extractDealerContact(firstDealer.url, firstDealer.dealerName);
+          return { baseUrl, contact };
+        })
+      );
+      
+      for (const { baseUrl, contact } of results) {
+        contactCache.set(baseUrl, contact);
+      }
+      
+      // Small delay between batches
+      if (i + batchSize < websites.length) {
+        await delay(200);
+      }
+    }
+    
+    // Apply contact info to all dealers
+    return dealers.map(dealer => {
+      if (!dealer.url) return dealer;
+      
+      try {
+        const baseUrl = new URL(dealer.url).origin;
+        const contact = contactCache.get(baseUrl);
+        
+        if (contact) {
+          return {
+            ...dealer,
+            dealerEmail: contact.email || undefined,
+            dealerPhone: contact.phone || undefined,
+            dealerWebsite: contact.website || undefined,
+          };
+        }
+      } catch {
+        // Invalid URL
+      }
+      
+      return dealer;
+    });
   };
 
   // Calculate stats for a set of dealer listings
@@ -395,11 +491,21 @@ export const useDealerAnalysis = () => {
       console.log(`🔍 [${i + 1}/${vehicles.length}] Analyzing: ${vehicle.brand} ${vehicle.model}`);
 
       try {
-        const { dealers, windowUrl } = await withTimeout(
+        const { dealers: rawDealers, windowUrl } = await withTimeout(
           fetchDealerData(vehicle),
           30000,
           `${vehicle.brand} ${vehicle.model}`
         );
+
+        // Extract contact information for dealers
+        let dealers = rawDealers;
+        if (rawDealers.length > 0) {
+          console.log(`📧 Extracting contact info for ${rawDealers.length} dealers...`);
+          dealers = await extractContactsForDealers(rawDealers);
+          const withEmail = dealers.filter(d => d.dealerEmail).length;
+          const withPhone = dealers.filter(d => d.dealerPhone).length;
+          console.log(`✅ Contact info: ${withEmail} emails, ${withPhone} phones found`);
+        }
 
         const stats = calculateStats(dealers);
 
