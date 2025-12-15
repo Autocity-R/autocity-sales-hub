@@ -37,7 +37,7 @@ const FUELS = [...FUEL_TYPES];
 const GEARS = [...TRANSMISSION_TYPES];
 const BODIES = [...BODY_TYPES];
 const YEARS = Array.from({ length: 20 }, (_, i) => (new Date().getFullYear() - i).toString());
-const HP_OPTIONS_FALLBACK = ['75', '90', '100', '110', '120', '130', '140', '150', '163', '177', '190', '204', '220', '252', '286', '300', '340', '400', '450', '500'];
+const HP_OPTIONS_FALLBACK = ['75', '90', '100', '110', '120', '130', '140', '150', '163', '177', '190', '197', '204', '220', '231', '235', '245', '250', '252', '265', '272', '286', '300', '310', '320', '333', '340', '350', '360', '380', '390', '400', '408', '420', '450', '476', '500', '525', '550', '600'];
 
 export const JPCarsVehicleBuilder = ({ 
   onSubmit, 
@@ -74,10 +74,11 @@ export const JPCarsVehicleBuilder = ({
     }
   }, [state.make]);
 
-  // Load HP options from JP Cars API
+  // Load HP options from JP Cars API - Nu met body en build voor betere resultaten
   useEffect(() => {
     const loadHpOptions = async () => {
-      if (!state.make || !state.model || !state.fuel || !state.gear) {
+      // Wacht tot body en build ook geselecteerd zijn voor accurate HP opties
+      if (!state.make || !state.model || !state.fuel || !state.gear || !state.body || !state.build) {
         setHpOptions(HP_OPTIONS_FALLBACK);
         return;
       }
@@ -90,7 +91,9 @@ export const JPCarsVehicleBuilder = ({
             make: state.make, 
             model: state.model, 
             fuel: state.fuel,
-            gear: state.gear
+            gear: state.gear,
+            body: state.body,
+            build: parseInt(state.build)
           },
         });
 
@@ -112,7 +115,7 @@ export const JPCarsVehicleBuilder = ({
     };
 
     loadHpOptions();
-  }, [state.make, state.model, state.fuel, state.gear]);
+  }, [state.make, state.model, state.fuel, state.gear, state.body, state.build]);
 
   const handleSelect = (field: keyof BuilderState, value: string) => {
     const updates: Partial<BuilderState> = { [field]: value };
@@ -190,9 +193,9 @@ export const JPCarsVehicleBuilder = ({
   };
 
   const isComplete = state.make && state.model && state.fuel && state.gear && 
-                     state.hp && state.build && state.mileage > 0;
+                     state.body && state.build && state.hp && state.mileage > 0;
 
-  const completedSteps = [state.make, state.model, state.fuel, state.gear, state.hp, state.build, state.mileage > 0].filter(Boolean).length;
+  const completedSteps = [state.make, state.model, state.fuel, state.gear, state.body, state.build, state.hp, state.mileage > 0].filter(Boolean).length;
 
   return (
     <div className="space-y-4">
@@ -310,8 +313,42 @@ export const JPCarsVehicleBuilder = ({
           </div>
         )}
 
-        {/* HP - Dynamic from JP Cars */}
+        {/* Body - VOOR Vermogen (nodig voor JP Cars HP API) */}
         {state.gear && (
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Carrosserie *</label>
+            <Select value={state.body} onValueChange={(v) => handleSelect('body', v)} disabled={disabled}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecteer carrosserie" />
+              </SelectTrigger>
+              <SelectContent>
+                {BODIES.map((value) => (
+                  <SelectItem key={value} value={value}>{value}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Build year - VOOR Vermogen (nodig voor JP Cars HP API) */}
+        {state.body && (
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Bouwjaar *</label>
+            <Select value={state.build} onValueChange={(v) => handleSelect('build', v)} disabled={disabled}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecteer bouwjaar" />
+              </SelectTrigger>
+              <SelectContent>
+                {YEARS.map((value) => (
+                  <SelectItem key={value} value={value}>{value}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* HP - Dynamic from JP Cars (nu LAATSTE, na body en build) */}
+        {state.build && (
           <div className="space-y-1">
             <label className="text-sm font-medium flex items-center gap-2">
               Vermogen *
@@ -330,42 +367,8 @@ export const JPCarsVehicleBuilder = ({
           </div>
         )}
 
-        {/* Body */}
-        {state.hp && (
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Carrosserie</label>
-            <Select value={state.body} onValueChange={(v) => handleSelect('body', v)} disabled={disabled}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecteer carrosserie" />
-              </SelectTrigger>
-              <SelectContent>
-                {BODIES.map((value) => (
-                  <SelectItem key={value} value={value}>{value}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
-        {/* Build year */}
-        {state.hp && (
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Bouwjaar *</label>
-            <Select value={state.build} onValueChange={(v) => handleSelect('build', v)} disabled={disabled}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecteer bouwjaar" />
-              </SelectTrigger>
-              <SelectContent>
-                {YEARS.map((value) => (
-                  <SelectItem key={value} value={value}>{value}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
         {/* Mileage */}
-        {state.build && (
+        {state.hp && (
           <div className="space-y-1">
             <label className="text-sm font-medium">Kilometerstand *</label>
             <div className="flex items-center gap-2">
@@ -383,7 +386,7 @@ export const JPCarsVehicleBuilder = ({
         )}
 
         {/* Opties & Keywords - KRITIEK voor accurate taxatie */}
-        {state.build && state.mileage > 0 && (
+        {state.hp && state.mileage > 0 && (
           <div className="border-t pt-4 mt-4">
             <OptionsSelector
               selectedOptions={selectedOptions}

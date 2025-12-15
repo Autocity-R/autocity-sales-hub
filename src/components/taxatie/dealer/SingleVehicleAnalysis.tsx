@@ -13,7 +13,7 @@ import type { VehicleInput } from '@/types/dealerAnalysis';
 
 const MAKES = Object.keys(VEHICLE_BRANDS);
 const YEARS = Array.from({ length: 15 }, (_, i) => (new Date().getFullYear() - i).toString());
-const HP_OPTIONS_FALLBACK = ['75', '90', '100', '110', '120', '130', '140', '150', '163', '177', '190', '204', '220', '252', '286', '300', '340', '400', '450', '500'];
+const HP_OPTIONS_FALLBACK = ['75', '90', '100', '110', '120', '130', '140', '150', '163', '177', '190', '197', '204', '220', '231', '235', '245', '250', '252', '265', '272', '286', '300', '310', '320', '333', '340', '350', '360', '380', '390', '400', '408', '420', '450', '476', '500', '525', '550', '600'];
 
 interface JPCarsOption {
   id: string;
@@ -62,10 +62,11 @@ export const SingleVehicleAnalysis = ({
 
   const models = make ? VEHICLE_BRANDS[make] || [] : [];
 
-  // Auto-load HP options when make, model, fuel, and transmission are selected
+  // Auto-load HP options when make, model, fuel, transmission, body, AND buildYear are selected
   useEffect(() => {
     const loadHpOptions = async () => {
-      if (!make || !model || !fuelType || !transmission) {
+      // Wacht tot body en buildYear ook geselecteerd zijn voor accurate HP opties
+      if (!make || !model || !fuelType || !transmission || !bodyType || !buildYear) {
         setHpOptions(HP_OPTIONS_FALLBACK);
         return;
       }
@@ -79,7 +80,9 @@ export const SingleVehicleAnalysis = ({
             make, 
             model, 
             fuel: fuelType,
-            gear: transmission
+            gear: transmission,
+            body: bodyType,
+            build: parseInt(buildYear)
           },
         });
 
@@ -101,7 +104,7 @@ export const SingleVehicleAnalysis = ({
     };
 
     loadHpOptions();
-  }, [make, model, fuelType, transmission]);
+  }, [make, model, fuelType, transmission, bodyType, buildYear]);
 
   // Auto-load options from JP Cars API when all required fields are selected
   useEffect(() => {
@@ -211,7 +214,7 @@ export const SingleVehicleAnalysis = ({
     toast.success('Voertuig toegevoegd aan lijst');
   };
 
-  const isComplete = make && model && buildYear && fuelType && transmission && power;
+  const isComplete = make && model && fuelType && transmission && bodyType && buildYear && power;
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
@@ -381,8 +384,42 @@ export const SingleVehicleAnalysis = ({
                 </div>
               )}
 
-              {/* Power (PK) - Dynamic from JP Cars */}
+              {/* Body Type (Carrosserie) - VOOR Vermogen (nodig voor JP Cars HP API) */}
               {transmission && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Carrosserie *</label>
+                  <Select value={bodyType} onValueChange={setBodyType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecteer carrosserie" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BODY_TYPES.map((b) => (
+                        <SelectItem key={b} value={b}>{b}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Build Year - VOOR Vermogen (nodig voor JP Cars HP API) */}
+              {bodyType && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Bouwjaar *</label>
+                  <Select value={buildYear} onValueChange={setBuildYear}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecteer bouwjaar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {YEARS.map((y) => (
+                        <SelectItem key={y} value={y}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Power (PK) - Dynamic from JP Cars (nu LAATSTE, na body en build) */}
+              {buildYear && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-2">
                     Vermogen (PK) *
@@ -395,40 +432,6 @@ export const SingleVehicleAnalysis = ({
                     <SelectContent>
                       {hpOptions.map((hp) => (
                         <SelectItem key={hp} value={hp}>{hp} PK</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Body Type (Carrosserie) - NEW */}
-              {power && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Carrosserie</label>
-                  <Select value={bodyType} onValueChange={setBodyType}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecteer carrosserie (optioneel)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BODY_TYPES.map((b) => (
-                        <SelectItem key={b} value={b}>{b}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Build Year */}
-              {power && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Bouwjaar *</label>
-                  <Select value={buildYear} onValueChange={setBuildYear}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecteer bouwjaar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {YEARS.map((y) => (
-                        <SelectItem key={y} value={y}>{y}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
