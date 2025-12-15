@@ -76,8 +76,6 @@ LEVERING
 • Bezorging aan de deur bij uw vestiging mogelijk
 • Op Nederlands kenteken leverbaar (neem contact op voor condities)
 
-De keuze is aan jullie om hier gebruik van te maken.
-
 Wij zijn Autocity Automotive Group, gespecialiseerd in jong gebruikte voertuigen. Mocht dit voertuig niet direct passen, dan houden wij graag contact over ons volledige B2B aanbod.
 
 Met vriendelijke groet,
