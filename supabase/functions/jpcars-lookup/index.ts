@@ -453,15 +453,23 @@ serve(async (req) => {
 
 // Options mapping: Vereenvoudigde waarde-bepalende opties -> JP Cars keywords
 function mapOptionsToJPCars(options: string[]): string {
-  // Mapping voor de vereenvoudigde VALUE_OPTIONS
+  // Mapping voor Nederlandse opties naar JP Cars Engels
+  // Engelse opties (van dynamische API) worden als passthrough behandeld
   const valueOptionMap: Record<string, string> = {
-    // Waarde-bepalende opties (primair)
+    // Nederlandse waarde-bepalende opties (primair)
     'panoramadak': 'panorama roof',
     'luchtvering': 'air suspension',
     'premium_audio': 'premium audio',
     '7_zitter': '7 seater',
     'trekhaak': 'tow bar',
     'long_range': 'long range',
+    // Engelse passthrough (dynamische API opties)
+    'panorama roof': 'panorama roof',
+    'air suspension': 'air suspension',
+    'premium audio': 'premium audio',
+    '7 seater': '7 seater',
+    'tow bar': 'tow bar',
+    'long range': 'long range',
   };
   
   // Legacy mapping voor backwards compatibility
