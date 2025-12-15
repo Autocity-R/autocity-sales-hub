@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Settings, Tag, Check } from 'lucide-react';
-import { VALUE_OPTIONS, type ValueOption } from '@/data/vehicleData';
+import { Settings, Tag, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 interface OptionsSelectorProps {
   selectedOptions: string[];
@@ -12,7 +13,26 @@ interface OptionsSelectorProps {
   keywords: string[];
   onKeywordsChange: (keywords: string[]) => void;
   disabled?: boolean;
-  fuelType?: string; // Om EV-specifieke opties te tonen/verbergen
+  fuelType?: string;
+  // New props for dynamic options
+  make?: string;
+  model?: string;
+  transmission?: string;
+  buildYear?: number;
+}
+
+interface JPCarsOption {
+  id: string;
+  label: string;
+  jpcarsKey: string;
+}
+
+// Format option label for display
+function formatOptionLabel(option: string): string {
+  return option
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
 }
 
 export const OptionsSelector = ({
@@ -22,13 +42,60 @@ export const OptionsSelector = ({
   onKeywordsChange,
   disabled,
   fuelType,
+  make,
+  model,
+  transmission,
+  buildYear,
 }: OptionsSelectorProps) => {
   const [keywordInput, setKeywordInput] = useState('');
+  const [availableOptions, setAvailableOptions] = useState<JPCarsOption[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const isEV = fuelType?.toLowerCase().includes('elektr') || fuelType?.toLowerCase().includes('ev');
+  // Load options from JP Cars API when vehicle data changes
+  useEffect(() => {
+    const loadOptions = async () => {
+      if (!make || !fuelType) {
+        setAvailableOptions([]);
+        return;
+      }
 
-  // Filter opties: verberg EV-only opties voor niet-EV's
-  const visibleOptions = VALUE_OPTIONS.filter(opt => !opt.evOnly || isEV);
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('jpcars-values', {
+          body: { 
+            type: 'options',
+            make, 
+            model: model || undefined,
+            fuel: fuelType,
+            gear: transmission || undefined,
+            build: buildYear || undefined,
+          },
+        });
+
+        if (error) throw error;
+
+        if (data?.success && data.values?.length > 0) {
+          console.log('✅ JP Cars options loaded:', data.values.length, 'options');
+          const options: JPCarsOption[] = data.values.map((opt: string) => ({
+            id: opt.toLowerCase().replace(/\s+/g, '_'),
+            label: formatOptionLabel(opt),
+            jpcarsKey: opt,
+          }));
+          setAvailableOptions(options);
+        } else {
+          console.log('⚠️ No options from JP Cars');
+          setAvailableOptions([]);
+        }
+      } catch (err) {
+        console.error('Error loading JP Cars options:', err);
+        setAvailableOptions([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadOptions();
+  }, [make, model, fuelType, transmission, buildYear]);
 
   const handleKeywordAdd = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && keywordInput.trim()) {
@@ -44,20 +111,13 @@ export const OptionsSelector = ({
     onKeywordsChange(keywords.filter(k => k !== keyword));
   };
 
-  const getImpactColor = (impact: ValueOption['valueImpact']) => {
-    switch (impact) {
-      case 'hoog': return 'border-green-500 bg-green-500/10';
-      case 'medium': return 'border-yellow-500 bg-yellow-500/10';
-      case 'laag': return 'border-muted-foreground bg-muted/50';
-    }
+  const handleToggle = (option: JPCarsOption) => {
+    onToggleOption(option.jpcarsKey);
   };
 
-  const getImpactLabel = (impact: ValueOption['valueImpact']) => {
-    switch (impact) {
-      case 'hoog': return '+€€€';
-      case 'medium': return '+€€';
-      case 'laag': return '+€';
-    }
+  const isSelected = (option: JPCarsOption) => {
+    return selectedOptions.includes(option.jpcarsKey) || 
+           selectedOptions.includes(option.id);
   };
 
   return (
@@ -65,80 +125,59 @@ export const OptionsSelector = ({
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Settings className="h-5 w-5" />
-          Waarde-bepalende Opties
+          JP Cars Opties
+          {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Selecteer alleen de opties die significant effect hebben op de waarde
+          {availableOptions.length > 0 
+            ? `${availableOptions.length} opties beschikbaar voor ${make}${model ? ` ${model}` : ''}`
+            : make ? 'Opties worden geladen...' : 'Selecteer eerst een merk om opties te laden'
+          }
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Value-determining options as large clickable cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {visibleOptions.map((option) => {
-            const isSelected = selectedOptions.includes(option.id);
-            const isPanoramadak = option.id === 'panoramadak';
-            
-            return (
+        {/* Dynamic options from JP Cars - compact grid */}
+        {availableOptions.length > 0 && (
+          <div className="grid grid-cols-3 gap-1.5 max-h-48 overflow-y-auto p-1">
+            {availableOptions.map((option) => (
               <button
                 key={option.id}
                 type="button"
                 disabled={disabled}
-                onClick={() => onToggleOption(option.id)}
-                className={`
-                  relative p-4 rounded-lg border-2 transition-all text-left
-                  ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md cursor-pointer'}
-                  ${isSelected 
-                    ? 'border-primary bg-primary/10 ring-2 ring-primary/30' 
-                    : getImpactColor(option.valueImpact)
-                  }
-                  ${isPanoramadak && !isSelected ? 'ring-2 ring-orange-400/50' : ''}
-                `}
+                onClick={() => handleToggle(option)}
+                className={cn(
+                  "text-[11px] px-2 py-1.5 rounded border truncate transition-all text-left",
+                  disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted cursor-pointer',
+                  isSelected(option)
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background border-border hover:border-primary/50'
+                )}
+                title={option.label}
               >
-                {/* Selected checkmark */}
-                {isSelected && (
-                  <div className="absolute top-2 right-2">
-                    <Check className="h-5 w-5 text-primary" />
-                  </div>
-                )}
-                
-                {/* Panoramadak highlight badge */}
-                {isPanoramadak && (
-                  <Badge 
-                    variant="outline" 
-                    className="absolute top-2 right-2 text-xs bg-orange-100 text-orange-700 border-orange-300"
-                  >
-                    Belangrijk!
-                  </Badge>
-                )}
-                
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">{option.icon}</span>
-                  <div className="flex-1">
-                    <div className="font-medium text-sm">{option.label}</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Waarde-impact: <span className={
-                        option.valueImpact === 'hoog' ? 'text-green-600 font-medium' :
-                        option.valueImpact === 'medium' ? 'text-yellow-600 font-medium' :
-                        'text-muted-foreground'
-                      }>{getImpactLabel(option.valueImpact)}</span>
-                    </div>
-                  </div>
-                </div>
+                {option.label}
               </button>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
 
+        {/* No options message */}
+        {!isLoading && availableOptions.length === 0 && make && (
+          <div className="text-sm text-muted-foreground text-center py-4">
+            Geen opties beschikbaar voor dit voertuig
+          </div>
+        )}
+
+        {/* Selected options display */}
         {selectedOptions.length > 0 && (
-          <div className="flex flex-wrap gap-2 pt-2 border-t">
-            <span className="text-xs text-muted-foreground">Geselecteerd:</span>
-            {selectedOptions.map(optId => {
-              const opt = VALUE_OPTIONS.find(o => o.id === optId);
-              return opt ? (
-                <Badge key={optId} variant="default" className="text-xs">
-                  {opt.icon} {opt.label}
+          <div className="flex flex-wrap gap-1.5 pt-2 border-t">
+            <span className="text-xs text-muted-foreground w-full mb-1">Geselecteerd ({selectedOptions.length}):</span>
+            {selectedOptions.map(opt => {
+              const found = availableOptions.find(o => o.jpcarsKey === opt || o.id === opt);
+              return (
+                <Badge key={opt} variant="default" className="text-xs">
+                  {found?.label || formatOptionLabel(opt)}
                 </Badge>
-              ) : null;
+              );
             })}
           </div>
         )}

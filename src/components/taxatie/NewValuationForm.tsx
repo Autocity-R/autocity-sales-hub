@@ -108,6 +108,11 @@ export function NewValuationForm() {
                 keywords={keywords}
                 onKeywordsChange={setKeywords}
                 disabled={taxatieStarted}
+                fuelType={vehicleData?.fuelType}
+                make={vehicleData?.brand}
+                model={vehicleData?.model}
+                transmission={vehicleData?.transmission}
+                buildYear={vehicleData?.buildYear}
               />
             </>
           )}
