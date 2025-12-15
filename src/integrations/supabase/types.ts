@@ -824,6 +824,231 @@ export type Database = {
         }
         Relationships: []
       }
+      competitor_dealers: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          last_scrape_status: string | null
+          last_scrape_vehicles_count: number | null
+          last_scraped_at: string | null
+          name: string
+          notes: string | null
+          scrape_schedule: string
+          scrape_time: string
+          scrape_url: string
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_scrape_status?: string | null
+          last_scrape_vehicles_count?: number | null
+          last_scraped_at?: string | null
+          name: string
+          notes?: string | null
+          scrape_schedule?: string
+          scrape_time?: string
+          scrape_url: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_scrape_status?: string | null
+          last_scrape_vehicles_count?: number | null
+          last_scraped_at?: string | null
+          name?: string
+          notes?: string | null
+          scrape_schedule?: string
+          scrape_time?: string
+          scrape_url?: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
+      competitor_price_history: {
+        Row: {
+          id: string
+          new_price: number | null
+          old_price: number | null
+          price_change: number | null
+          recorded_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          id?: string
+          new_price?: number | null
+          old_price?: number | null
+          price_change?: number | null
+          recorded_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          id?: string
+          new_price?: number | null
+          old_price?: number | null
+          price_change?: number | null
+          recorded_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_price_history_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "competitor_vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitor_scrape_logs: {
+        Row: {
+          dealer_id: string
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          scraped_at: string
+          status: string
+          vehicles_found: number | null
+          vehicles_new: number | null
+          vehicles_reappeared: number | null
+          vehicles_sold: number | null
+        }
+        Insert: {
+          dealer_id: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          scraped_at?: string
+          status?: string
+          vehicles_found?: number | null
+          vehicles_new?: number | null
+          vehicles_reappeared?: number | null
+          vehicles_sold?: number | null
+        }
+        Update: {
+          dealer_id?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          scraped_at?: string
+          status?: string
+          vehicles_found?: number | null
+          vehicles_new?: number | null
+          vehicles_reappeared?: number | null
+          vehicles_sold?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_scrape_logs_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "competitor_dealers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitor_vehicles: {
+        Row: {
+          body_type: string | null
+          brand: string
+          build_year: number | null
+          color: string | null
+          consecutive_missing_scrapes: number
+          created_at: string
+          dealer_id: string
+          external_url: string | null
+          fingerprint: string
+          first_seen_at: string
+          fuel_type: string | null
+          id: string
+          image_url: string | null
+          last_seen_at: string
+          license_plate: string | null
+          mileage: number | null
+          mileage_bucket: number | null
+          model: string
+          price: number | null
+          reappeared_count: number
+          sold_at: string | null
+          status: string
+          total_stock_days: number
+          transmission: string | null
+          updated_at: string
+          variant: string | null
+        }
+        Insert: {
+          body_type?: string | null
+          brand: string
+          build_year?: number | null
+          color?: string | null
+          consecutive_missing_scrapes?: number
+          created_at?: string
+          dealer_id: string
+          external_url?: string | null
+          fingerprint: string
+          first_seen_at?: string
+          fuel_type?: string | null
+          id?: string
+          image_url?: string | null
+          last_seen_at?: string
+          license_plate?: string | null
+          mileage?: number | null
+          mileage_bucket?: number | null
+          model: string
+          price?: number | null
+          reappeared_count?: number
+          sold_at?: string | null
+          status?: string
+          total_stock_days?: number
+          transmission?: string | null
+          updated_at?: string
+          variant?: string | null
+        }
+        Update: {
+          body_type?: string | null
+          brand?: string
+          build_year?: number | null
+          color?: string | null
+          consecutive_missing_scrapes?: number
+          created_at?: string
+          dealer_id?: string
+          external_url?: string | null
+          fingerprint?: string
+          first_seen_at?: string
+          fuel_type?: string | null
+          id?: string
+          image_url?: string | null
+          last_seen_at?: string
+          license_plate?: string | null
+          mileage?: number | null
+          mileage_bucket?: number | null
+          model?: string
+          price?: number | null
+          reappeared_count?: number
+          sold_at?: string | null
+          status?: string
+          total_stock_days?: number
+          transmission?: string | null
+          updated_at?: string
+          variant?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_vehicles_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "competitor_dealers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           additional_emails: Json | null

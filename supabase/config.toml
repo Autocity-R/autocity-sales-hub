@@ -1,5 +1,8 @@
 project_id = "fnwagrmoyfyimdoaynkg"
 
+[functions.scrape-competitor-dealer]
+verify_jwt = false
+
 [functions.sheets-import-webhook]
 verify_jwt = false
 
