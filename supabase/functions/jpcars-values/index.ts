@@ -36,11 +36,32 @@ function mapGearToJPCars(gear: string): string {
   return 'AUTOMATIC_GEAR';
 }
 
-// Fallback HP options when API fails
+// Map body types to JP Cars format
+function mapBodyToJPCars(body: string): string {
+  const bodyMapping: Record<string, string> = {
+    'SUV': 'SUV',
+    'Sedan': 'SEDAN',
+    'Hatchback': 'SMALL_CAR',
+    'Station': 'STATION_WAGON',
+    'Stationwagen': 'STATION_WAGON',
+    'MPV': 'MPV',
+    'Cabrio': 'CONVERTIBLE',
+    'Cabriolet': 'CONVERTIBLE',
+    'Coupé': 'COUPE',
+    'Coupe': 'COUPE',
+    'Terreinwagen': 'SUV',
+    'Bus': 'BUS',
+    'Bestelwagen': 'VAN',
+  };
+  return bodyMapping[body] || body.toUpperCase();
+}
+
+// Fallback HP options when API fails - UITGEBREID met 350 en meer waarden
 const FALLBACK_HP_OPTIONS = [
   '75', '90', '100', '110', '120', '130', '140', '150', '163', '177', 
-  '190', '204', '220', '231', '245', '252', '265', '286', '300', '320', 
-  '340', '360', '380', '400', '450', '500'
+  '190', '197', '204', '220', '231', '235', '245', '250', '252', '265', 
+  '272', '286', '300', '310', '320', '333', '340', '350', '360', '380', 
+  '390', '400', '408', '420', '450', '476', '500', '525', '550', '600'
 ];
 
 // Fallback options when API fails
