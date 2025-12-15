@@ -346,72 +346,67 @@ export const useDealerAnalysis = () => {
   };
 
   // Extract contact info for unique dealers (with rate limiting)
+  // Groups dealers by dealerName (which contains actual website domain) instead of dealer.url (JP Cars redirect)
   const extractContactsForDealers = async (dealers: DealerListing[]): Promise<DealerListing[]> => {
-    // Group dealers by website base URL to avoid duplicate extractions
-    const dealersByWebsite = new Map<string, DealerListing[]>();
+    // Group dealers by dealerName to avoid duplicate extractions
+    // dealerName from JP Cars often contains the actual website domain (e.g., "henkscholten.nl", "bluekens.com")
+    const dealersByName = new Map<string, DealerListing[]>();
     
     for (const dealer of dealers) {
-      if (!dealer.url) continue;
+      if (!dealer.dealerName) continue;
       
-      try {
-        const baseUrl = new URL(dealer.url).origin;
-        if (!dealersByWebsite.has(baseUrl)) {
-          dealersByWebsite.set(baseUrl, []);
-        }
-        dealersByWebsite.get(baseUrl)!.push(dealer);
-      } catch {
-        // Invalid URL, skip
+      const key = dealer.dealerName.toLowerCase().trim();
+      if (!dealersByName.has(key)) {
+        dealersByName.set(key, []);
       }
+      dealersByName.get(key)!.push(dealer);
     }
     
-    console.log(`🔍 Extracting contacts for ${dealersByWebsite.size} unique dealer websites...`);
+    console.log(`🔍 Extracting contacts for ${dealersByName.size} unique dealers...`);
     
     // Extract contacts with rate limiting (max 3 concurrent)
     const contactCache = new Map<string, { email: string | null; phone: string | null; website: string | null }>();
-    const websites = Array.from(dealersByWebsite.keys());
+    const dealerNames = Array.from(dealersByName.keys());
     
     const batchSize = 3;
-    for (let i = 0; i < websites.length; i += batchSize) {
-      const batch = websites.slice(i, i + batchSize);
+    for (let i = 0; i < dealerNames.length; i += batchSize) {
+      const batch = dealerNames.slice(i, i + batchSize);
       
       const results = await Promise.all(
-        batch.map(async (baseUrl) => {
-          const dealersForSite = dealersByWebsite.get(baseUrl)!;
-          const firstDealer = dealersForSite[0];
+        batch.map(async (dealerNameKey) => {
+          const dealersForName = dealersByName.get(dealerNameKey)!;
+          const firstDealer = dealersForName[0];
           
+          // Pass dealerName to edge function - it will build the correct website URL from it
           const contact = await extractDealerContact(firstDealer.url, firstDealer.dealerName);
-          return { baseUrl, contact };
+          return { dealerNameKey, contact };
         })
       );
       
-      for (const { baseUrl, contact } of results) {
-        contactCache.set(baseUrl, contact);
+      for (const { dealerNameKey, contact } of results) {
+        contactCache.set(dealerNameKey, contact);
       }
       
-      // Small delay between batches
-      if (i + batchSize < websites.length) {
+      // Small delay between batches to avoid rate limiting
+      if (i + batchSize < dealerNames.length) {
         await delay(200);
       }
     }
     
-    // Apply contact info to all dealers
+    // Apply contact info to all dealers based on their dealerName
     return dealers.map(dealer => {
-      if (!dealer.url) return dealer;
+      if (!dealer.dealerName) return dealer;
       
-      try {
-        const baseUrl = new URL(dealer.url).origin;
-        const contact = contactCache.get(baseUrl);
-        
-        if (contact) {
-          return {
-            ...dealer,
-            dealerEmail: contact.email || undefined,
-            dealerPhone: contact.phone || undefined,
-            dealerWebsite: contact.website || undefined,
-          };
-        }
-      } catch {
-        // Invalid URL
+      const key = dealer.dealerName.toLowerCase().trim();
+      const contact = contactCache.get(key);
+      
+      if (contact) {
+        return {
+          ...dealer,
+          dealerEmail: contact.email || undefined,
+          dealerPhone: contact.phone || undefined,
+          dealerWebsite: contact.website || undefined,
+        };
       }
       
       return dealer;
