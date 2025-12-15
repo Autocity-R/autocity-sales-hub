@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Package, ShoppingCart, Clock, TrendingUp, BarChart3 } from 'lucide-react';
-import { useCompetitorStats, useCompetitorDealers, useCompetitorScrapeLogs } from '@/hooks/useCompetitorDealers';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Loader2, Package, ShoppingCart, Clock, TrendingUp, BarChart3, Eye } from 'lucide-react';
+import { useCompetitorStats, useCompetitorDealers, useCompetitorScrapeLogs, useTopVehicleGroups } from '@/hooks/useCompetitorDealers';
+import { VehicleGroupDetailDialog } from './VehicleGroupDetailDialog';
+import type { TopVehicleGroup } from '@/types/competitor';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 
@@ -14,9 +17,23 @@ export function CompetitorAnalytics({ dealerId }: CompetitorAnalyticsProps) {
   const { stats, isLoading: statsLoading } = useCompetitorStats(dealerId);
   const { dealers } = useCompetitorDealers();
   const { logs, isLoading: logsLoading } = useCompetitorScrapeLogs(dealerId);
+  const { groups, isLoading: groupsLoading } = useTopVehicleGroups(dealerId);
+  
+  const [selectedGroup, setSelectedGroup] = useState<TopVehicleGroup | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const getDealerName = (dId: string) => {
     return dealers.find(d => d.id === dId)?.name || 'Onbekend';
+  };
+
+  const formatPrice = (price: number) => {
+    if (!price) return '-';
+    return new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(price);
+  };
+
+  const handleRowClick = (group: TopVehicleGroup) => {
+    setSelectedGroup(group);
+    setDialogOpen(true);
   };
 
   if (statsLoading) {
@@ -105,27 +122,70 @@ export function CompetitorAnalytics({ dealerId }: CompetitorAnalyticsProps) {
         </Card>
       </div>
 
-      {/* Top Brands */}
+      {/* Top Models Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Top Merken in Voorraad</CardTitle>
-          <CardDescription>Meest voorkomende merken bij concurrenten</CardDescription>
+          <CardTitle>Top Modellen</CardTitle>
+          <CardDescription>
+            Meest voorkomende modellen gegroepeerd op merk, model, bouwjaar en kilometer-range (50.000km buckets)
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {stats?.topBrands && stats.topBrands.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {stats.topBrands.map((brand, index) => (
-                <Badge 
-                  key={brand.brand} 
-                  variant={index < 3 ? "default" : "secondary"}
-                  className="text-sm py-1 px-3"
-                >
-                  {brand.brand}: {brand.count}
-                </Badge>
-              ))}
+          {groupsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
+          ) : groups.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Merk</TableHead>
+                  <TableHead>Model</TableHead>
+                  <TableHead>Bouwjaar</TableHead>
+                  <TableHead>KM Range</TableHead>
+                  <TableHead>Prijs Range</TableHead>
+                  <TableHead className="text-center">Voorraad</TableHead>
+                  <TableHead className="text-center">Verkocht</TableHead>
+                  <TableHead className="text-center">Gem. Standtijd</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {groups.map((group, index) => (
+                  <TableRow 
+                    key={`${group.brand}-${group.model}-${group.buildYear}-${group.mileageBucket}`}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleRowClick(group)}
+                  >
+                    <TableCell className="font-medium">{group.brand}</TableCell>
+                    <TableCell>{group.model}</TableCell>
+                    <TableCell>{group.buildYear || '-'}</TableCell>
+                    <TableCell>{group.mileageRange}</TableCell>
+                    <TableCell className="text-sm">
+                      {formatPrice(group.minPrice)} - {formatPrice(group.maxPrice)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="default">{group.inStock}</Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="secondary">{group.sold}</Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className={group.avgStockDays < 30 ? 'text-green-600' : group.avgStockDays > 60 ? 'text-red-600' : ''}>
+                        {group.avgStockDays}d
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           ) : (
-            <p className="text-muted-foreground">Nog geen data beschikbaar</p>
+            <p className="text-muted-foreground text-center py-8">
+              Nog geen data beschikbaar (minimaal 2 voertuigen per groep nodig)
+            </p>
           )}
         </CardContent>
       </Card>
@@ -174,6 +234,13 @@ export function CompetitorAnalytics({ dealerId }: CompetitorAnalyticsProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Detail Dialog */}
+      <VehicleGroupDetailDialog 
+        group={selectedGroup} 
+        open={dialogOpen} 
+        onOpenChange={setDialogOpen} 
+      />
     </div>
   );
 }

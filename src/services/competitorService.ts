@@ -225,3 +225,108 @@ export async function triggerDealerScrape(dealerId: string): Promise<{ success: 
   
   return data || { success: true, message: 'Scrape completed' };
 }
+
+// Top Vehicle Groups (grouped by brand+model+year+km-bucket)
+interface TopGroupAccumulator {
+  brand: string;
+  model: string;
+  buildYear: number;
+  mileageRange: string;
+  mileageBucket: number;
+  minPrice: number;
+  maxPrice: number;
+  inStock: number;
+  sold: number;
+  vehicleIds: string[];
+  prices: number[];
+  stockDays: number[];
+}
+
+export async function fetchTopVehicleGroups(dealerId?: string) {
+  let query = supabase
+    .from('competitor_vehicles')
+    .select('id, brand, model, build_year, mileage, price, status, total_stock_days');
+    
+  if (dealerId) {
+    query = query.eq('dealer_id', dealerId);
+  }
+  
+  const { data, error } = await query;
+  if (error) throw error;
+  
+  const groups: Record<string, TopGroupAccumulator> = {};
+  
+  data?.forEach(v => {
+    const kmBucket = Math.floor((v.mileage || 0) / 50000);
+    const kmRange = `${kmBucket * 50}-${(kmBucket + 1) * 50}k`;
+    const key = `${v.brand?.toUpperCase()}|${v.model?.toUpperCase()}|${v.build_year || 0}|${kmBucket}`;
+    
+    if (!groups[key]) {
+      groups[key] = {
+        brand: v.brand?.toUpperCase() || '',
+        model: v.model?.toUpperCase() || '',
+        buildYear: v.build_year || 0,
+        mileageRange: kmRange,
+        mileageBucket: kmBucket,
+        minPrice: Infinity,
+        maxPrice: 0,
+        inStock: 0,
+        sold: 0,
+        vehicleIds: [],
+        prices: [],
+        stockDays: []
+      };
+    }
+    
+    if (v.price) {
+      groups[key].prices.push(v.price);
+      groups[key].minPrice = Math.min(groups[key].minPrice, v.price);
+      groups[key].maxPrice = Math.max(groups[key].maxPrice, v.price);
+    }
+    
+    if (v.total_stock_days) {
+      groups[key].stockDays.push(v.total_stock_days);
+    }
+    
+    if (v.status === 'in_stock') groups[key].inStock++;
+    else if (v.status === 'sold') groups[key].sold++;
+    
+    groups[key].vehicleIds.push(v.id);
+  });
+  
+  return Object.values(groups)
+    .map(g => ({
+      brand: g.brand,
+      model: g.model,
+      buildYear: g.buildYear,
+      mileageRange: g.mileageRange,
+      mileageBucket: g.mileageBucket,
+      minPrice: g.minPrice === Infinity ? 0 : g.minPrice,
+      maxPrice: g.maxPrice,
+      avgPrice: g.prices.length > 0 
+        ? Math.round(g.prices.reduce((a, b) => a + b, 0) / g.prices.length) 
+        : 0,
+      inStock: g.inStock,
+      sold: g.sold,
+      avgStockDays: g.stockDays.length > 0 
+        ? Math.round(g.stockDays.reduce((a, b) => a + b, 0) / g.stockDays.length) 
+        : 0,
+      vehicleIds: g.vehicleIds
+    }))
+    .filter(g => (g.inStock + g.sold) >= 2)
+    .sort((a, b) => (b.inStock + b.sold) - (a.inStock + a.sold))
+    .slice(0, 25);
+}
+
+export async function fetchVehiclesByIds(ids: string[]): Promise<CompetitorVehicle[]> {
+  if (ids.length === 0) return [];
+  
+  const { data, error } = await supabase
+    .from('competitor_vehicles')
+    .select('*, dealer:competitor_dealers(*)')
+    .in('id', ids)
+    .order('sold_at', { ascending: false, nullsFirst: false });
+    
+  if (error) throw error;
+  return (data || []) as CompetitorVehicle[];
+}
