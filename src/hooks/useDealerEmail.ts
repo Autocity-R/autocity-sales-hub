@@ -140,7 +140,8 @@ Tel: 010-2623980 | Email: verkoop@auto-city.nl`;
           <tr>
             <td style="padding: 18px 25px 12px 25px;">
               <p style="margin: 0; color: #444; font-size: 14px; line-height: 1.5;">
-                Geachte collega's, wij hebben een <strong>${brand} ${model}</strong> beschikbaar die interessant kan zijn voor uw voorraad:
+                Geachte Collega's,<br /><br />
+                Uit onze database is gebleken dat jullie recent een <strong>${brand} ${model} (${buildYear})</strong> hebben verkocht. Wij hebben een vergelijkbaar exemplaar beschikbaar dat wellicht interessant kan zijn voor uw voorraad:
               </p>
             </td>
           </tr>
