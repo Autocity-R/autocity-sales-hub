@@ -11,6 +11,18 @@ export interface SalesData {
   b2cCount: number;
   averageSalePrice: number;
   
+  // B2B specifiek
+  b2bRevenue: number;
+  b2bCost: number;
+  b2bProfit: number;
+  b2bProfitMargin: number;
+  
+  // B2C specifiek
+  b2cRevenue: number;
+  b2cCost: number;
+  b2cProfit: number;
+  b2cProfitMargin: number;
+  
   // Inruil tracking
   tradeInCount: number;
   normalPurchaseCount: number;
@@ -108,18 +120,39 @@ export const salesDataService = {
     const totalProfit = totalRevenue - totalCost;
     const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
 
-    // Count B2B vs B2C (including afgeleverd based on salesType)
-    const b2bCount = filteredVehicles?.filter((v) => {
+    // Filter B2B vs B2C vehicles (including afgeleverd based on salesType)
+    const b2bVehicles = filteredVehicles?.filter((v) => {
       const details = v.details as any;
       return v.status === "verkocht_b2b" || 
              (v.status === "afgeleverd" && details?.salesType === "b2b");
-    }).length || 0;
+    }) || [];
     
-    const b2cCount = filteredVehicles?.filter((v) => {
+    const b2cVehiclesAll = filteredVehicles?.filter((v) => {
       const details = v.details as any;
       return v.status === "verkocht_b2c" || 
              (v.status === "afgeleverd" && (!details?.salesType || details?.salesType === "b2c"));
-    }).length || 0;
+    }) || [];
+
+    const b2bCount = b2bVehicles.length;
+    const b2cCount = b2cVehiclesAll.length;
+
+    // B2B metrics
+    const b2bRevenue = b2bVehicles.reduce((sum, v) => sum + (v.selling_price || 0), 0);
+    const b2bCost = b2bVehicles.reduce((sum, v) => {
+      const details = v.details as any;
+      return sum + (details?.purchasePrice || 0);
+    }, 0);
+    const b2bProfit = b2bRevenue - b2bCost;
+    const b2bProfitMargin = b2bRevenue > 0 ? (b2bProfit / b2bRevenue) * 100 : 0;
+
+    // B2C metrics
+    const b2cRevenue = b2cVehiclesAll.reduce((sum, v) => sum + (v.selling_price || 0), 0);
+    const b2cCost = b2cVehiclesAll.reduce((sum, v) => {
+      const details = v.details as any;
+      return sum + (details?.purchasePrice || 0);
+    }, 0);
+    const b2cProfit = b2cRevenue - b2cCost;
+    const b2cProfitMargin = b2cRevenue > 0 ? (b2cProfit / b2cRevenue) * 100 : 0;
 
     const averageSalePrice = totalVehicles > 0 ? totalRevenue / totalVehicles : 0;
 
@@ -166,12 +199,8 @@ export const salesDataService = {
     const tradeInProfitMargin = tradeInRevenue > 0 ? (tradeInProfit / tradeInRevenue) * 100 : 0;
     const normalPurchaseProfitMargin = normalPurchaseRevenue > 0 ? (normalPurchaseProfit / normalPurchaseRevenue) * 100 : 0;
 
-    // Garantiepakket berekeningen (B2C only)
-    const b2cVehicles = filteredVehicles?.filter((v) => {
-      const details = v.details as any;
-      return v.status === "verkocht_b2c" || 
-             (v.status === "afgeleverd" && (!details?.salesType || details?.salesType === "b2c"));
-    }) || [];
+    // Garantiepakket berekeningen (B2C only) - hergebruik b2cVehiclesAll
+    const b2cVehicles = b2cVehiclesAll;
 
     const vehiclesWithWarrantyPackage = b2cVehicles.filter(v => {
       const details = v.details as any;
@@ -200,6 +229,14 @@ export const salesDataService = {
       b2bCount,
       b2cCount,
       averageSalePrice,
+      b2bRevenue,
+      b2bCost,
+      b2bProfit,
+      b2bProfitMargin,
+      b2cRevenue,
+      b2cCost,
+      b2cProfit,
+      b2cProfitMargin,
       tradeInCount,
       normalPurchaseCount,
       tradeInRevenue,
