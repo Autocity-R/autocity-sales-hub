@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Car, Calendar, Gauge, Fuel, Settings2, Zap, Palette, Box, Search, Pencil, Check, Tag } from 'lucide-react';
+import { Car, Calendar, Gauge, Fuel, Settings2, Zap, Palette, Box, Search, Pencil, Check } from 'lucide-react';
 import type { TaxatieVehicleData } from '@/types/taxatie';
 import { calculateMaxMileage, formatMileage } from '@/utils/taxatieHelpers';
 
@@ -184,22 +184,6 @@ export const VehicleDataDisplay = ({ vehicleData, onVehicleDataChange, onMileage
               {vehicleData.color}
             </DataRow>
           )}
-        </div>
-
-        {/* Trim/Uitvoering - ALTIJD bewerkbaar want RDW geeft dit niet */}
-        <div className="pt-3 border-t">
-          <div className="flex items-center gap-2 mb-2">
-            <Tag className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Uitvoering/Trim:</span>
-          </div>
-          <Input
-            value={vehicleData.trim || ''}
-            onChange={(e) => handleFieldChange('trim', e.target.value)}
-            placeholder="bijv. R-Line, M Sport, S-Line, GTI"
-            disabled={disabled}
-            className="text-sm"
-          />
-          <p className="text-xs text-muted-foreground mt-1">Vul in voor nauwkeurigere zoekresultaten</p>
         </div>
 
         {/* Editable mileage input */}
