@@ -443,8 +443,15 @@ export const fetchActiveWarranties = async (): Promise<ActiveWarrantyVehicle[]> 
     // Filter and map to active warranties
     const activeWarranties = (data || [])
       .filter((vehicle: any) => {
-        // Only B2C: exclude B2B sales to car dealers
-        if (vehicle.status === 'verkocht_b2b' && vehicle.customerContact?.is_car_dealer) {
+        const details = vehicle.details as any;
+        
+        // Exclude ALL B2B sales - they have no warranty
+        if (vehicle.status === 'verkocht_b2b') {
+          return false;
+        }
+        
+        // Exclude delivered vehicles that were originally B2B
+        if (vehicle.status === 'afgeleverd' && details?.salesType === 'b2b') {
           return false;
         }
         
