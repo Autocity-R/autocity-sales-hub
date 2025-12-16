@@ -102,7 +102,7 @@ Tel: 010-2623980 | Email: verkoop@auto-city.nl`;
     const extraOptions = extraOptionsMatch?.[1]?.trim() || '';
 
     const bannerHtml = includeBanner ? `
-      <img src="${BANNER_URL}" alt="Autocity Automotive Group" style="max-width: 200px; height: auto; margin-bottom: 10px;" />
+      <img src="${BANNER_URL}" alt="Autocity Automotive Group" style="max-width: 350px; height: auto; margin-bottom: 15px;" />
     ` : '';
 
     return `
@@ -116,95 +116,92 @@ Tel: 010-2623980 | Email: verkoop@auto-city.nl`;
 <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f4f8;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
     <tr>
-      <td style="padding: 20px;">
+      <td style="padding: 15px;">
         <table role="presentation" style="max-width: 650px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
           
-          <!-- HEADER BANNER - BAM EFFECT -->
+          <!-- HEADER BANNER - ZWART -->
           <tr>
-            <td style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); padding: 0;">
+            <td style="background: #1a1a1a; padding: 0;">
               <table role="presentation" style="width: 100%; border-collapse: collapse;">
                 <tr>
-                  <td style="padding: 25px 30px; text-align: center;">
-                    <div style="font-size: 12px; letter-spacing: 3px; color: #64b5f6; text-transform: uppercase; margin-bottom: 8px;">Exclusief B2B Aanbod</div>
-                    <div style="font-size: 28px; font-weight: bold; color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-                      🚗 ${brand} ${model}
+                  <td style="padding: 20px 25px; text-align: center;">
+                    <div style="font-size: 11px; letter-spacing: 3px; color: #888888; text-transform: uppercase; margin-bottom: 6px;">Exclusief B2B Aanbod</div>
+                    <div style="font-size: 26px; font-weight: bold; color: #ffffff;">
+                      ${brand} ${model}
                     </div>
-                    <div style="font-size: 18px; color: #90caf9; margin-top: 5px;">${buildYear}</div>
+                    <div style="font-size: 16px; color: #cccccc; margin-top: 4px;">${buildYear}</div>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
 
-          <!-- INTRO TEXT -->
+          <!-- INTRO TEXT - COMPACT -->
           <tr>
-            <td style="padding: 25px 30px 15px 30px;">
-              <p style="margin: 0; color: #444; font-size: 15px; line-height: 1.6;">
-                Geachte collega's,
-              </p>
-              <p style="margin: 15px 0 0 0; color: #444; font-size: 15px; line-height: 1.6;">
-                Uit onze database is gebleken dat jullie recent een <strong>${brand} ${model}</strong> hebben verkocht. Wij hebben een vergelijkbaar exemplaar beschikbaar dat interessant kan zijn voor uw voorraad:
+            <td style="padding: 18px 25px 12px 25px;">
+              <p style="margin: 0; color: #444; font-size: 14px; line-height: 1.5;">
+                Geachte collega's, wij hebben een <strong>${brand} ${model}</strong> beschikbaar die interessant kan zijn voor uw voorraad:
               </p>
             </td>
           </tr>
 
-          <!-- VEHICLE SPECS TABLE -->
+          <!-- VEHICLE SPECS TABLE - COMPACT -->
           <tr>
-            <td style="padding: 15px 30px;">
+            <td style="padding: 10px 25px;">
               <table role="presentation" style="width: 100%; border-collapse: collapse; background: #f8fafc; border-radius: 8px; overflow: hidden;">
                 <tr>
-                  <td colspan="2" style="background: #e3f2fd; padding: 12px 15px; border-bottom: 2px solid #1e3a5f;">
-                    <strong style="color: #1e3a5f; font-size: 14px; letter-spacing: 1px;">📋 VOERTUIGGEGEVENS</strong>
+                  <td colspan="2" style="background: #1a1a1a; padding: 10px 12px;">
+                    <strong style="color: #ffffff; font-size: 12px; letter-spacing: 1px;">VOERTUIGGEGEVENS</strong>
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding: 10px 15px; color: #666; font-size: 14px; width: 40%; border-bottom: 1px solid #e0e0e0;">Merk</td>
-                  <td style="padding: 10px 15px; color: #1e3a5f; font-size: 14px; font-weight: 600; border-bottom: 1px solid #e0e0e0;">${brand}</td>
+                  <td style="padding: 8px 12px; color: #666; font-size: 13px; width: 40%; border-bottom: 1px solid #e0e0e0;">Merk</td>
+                  <td style="padding: 8px 12px; color: #1a1a1a; font-size: 13px; font-weight: 600; border-bottom: 1px solid #e0e0e0;">${brand}</td>
                 </tr>
                 <tr style="background: #ffffff;">
-                  <td style="padding: 10px 15px; color: #666; font-size: 14px; border-bottom: 1px solid #e0e0e0;">Model</td>
-                  <td style="padding: 10px 15px; color: #1e3a5f; font-size: 14px; font-weight: 600; border-bottom: 1px solid #e0e0e0;">${model}</td>
+                  <td style="padding: 8px 12px; color: #666; font-size: 13px; border-bottom: 1px solid #e0e0e0;">Model</td>
+                  <td style="padding: 8px 12px; color: #1a1a1a; font-size: 13px; font-weight: 600; border-bottom: 1px solid #e0e0e0;">${model}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 10px 15px; color: #666; font-size: 14px; border-bottom: 1px solid #e0e0e0;">Brandstof</td>
-                  <td style="padding: 10px 15px; color: #1e3a5f; font-size: 14px; font-weight: 600; border-bottom: 1px solid #e0e0e0;">${fuelType}</td>
+                  <td style="padding: 8px 12px; color: #666; font-size: 13px; border-bottom: 1px solid #e0e0e0;">Brandstof</td>
+                  <td style="padding: 8px 12px; color: #1a1a1a; font-size: 13px; font-weight: 600; border-bottom: 1px solid #e0e0e0;">${fuelType}</td>
                 </tr>
                 <tr style="background: #ffffff;">
-                  <td style="padding: 10px 15px; color: #666; font-size: 14px; border-bottom: 1px solid #e0e0e0;">Transmissie</td>
-                  <td style="padding: 10px 15px; color: #1e3a5f; font-size: 14px; font-weight: 600; border-bottom: 1px solid #e0e0e0;">${transmission}</td>
+                  <td style="padding: 8px 12px; color: #666; font-size: 13px; border-bottom: 1px solid #e0e0e0;">Transmissie</td>
+                  <td style="padding: 8px 12px; color: #1a1a1a; font-size: 13px; font-weight: 600; border-bottom: 1px solid #e0e0e0;">${transmission}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 10px 15px; color: #666; font-size: 14px; border-bottom: 1px solid #e0e0e0;">Bouwjaar</td>
-                  <td style="padding: 10px 15px; color: #1e3a5f; font-size: 14px; font-weight: 600; border-bottom: 1px solid #e0e0e0;">${buildYear}</td>
+                  <td style="padding: 8px 12px; color: #666; font-size: 13px; border-bottom: 1px solid #e0e0e0;">Bouwjaar</td>
+                  <td style="padding: 8px 12px; color: #1a1a1a; font-size: 13px; font-weight: 600; border-bottom: 1px solid #e0e0e0;">${buildYear}</td>
                 </tr>
                 <tr style="background: #ffffff;">
-                  <td style="padding: 10px 15px; color: #666; font-size: 14px; border-bottom: 1px solid #e0e0e0;">KM-stand</td>
-                  <td style="padding: 10px 15px; color: #1e3a5f; font-size: 14px; font-weight: 600; border-bottom: 1px solid #e0e0e0;">${mileage} km</td>
+                  <td style="padding: 8px 12px; color: #666; font-size: 13px; border-bottom: 1px solid #e0e0e0;">KM-stand</td>
+                  <td style="padding: 8px 12px; color: #1a1a1a; font-size: 13px; font-weight: 600; border-bottom: 1px solid #e0e0e0;">${mileage} km</td>
                 </tr>
                 ${vin ? `
                 <tr>
-                  <td style="padding: 10px 15px; color: #666; font-size: 14px;">VIN</td>
-                  <td style="padding: 10px 15px; color: #1e3a5f; font-size: 14px; font-weight: 600; font-family: monospace;">${vin}</td>
+                  <td style="padding: 8px 12px; color: #666; font-size: 13px;">VIN</td>
+                  <td style="padding: 8px 12px; color: #1a1a1a; font-size: 13px; font-weight: 600; font-family: monospace;">${vin}</td>
                 </tr>
                 ` : ''}
               </table>
             </td>
           </tr>
 
-          <!-- PRICE SECTION - HIGHLIGHTED -->
+          <!-- PRICE SECTION - ZWART -->
           <tr>
-            <td style="padding: 15px 30px;">
-              <table role="presentation" style="width: 100%; border-collapse: collapse; background: linear-gradient(135deg, #0d5c1d 0%, #1a7a2e 100%); border-radius: 10px; overflow: hidden;">
+            <td style="padding: 10px 25px;">
+              <table role="presentation" style="width: 100%; border-collapse: collapse; background: #1a1a1a; border-radius: 10px; overflow: hidden;">
                 <tr>
-                  <td style="padding: 20px; text-align: center;">
-                    <div style="font-size: 12px; letter-spacing: 2px; color: #a5d6a7; text-transform: uppercase; margin-bottom: 10px;">💰 UW B2B PRIJS</div>
-                    <div style="background: rgba(255,255,255,0.15); border-radius: 8px; padding: 15px; margin-bottom: 12px;">
-                      <div style="font-size: 13px; color: #c8e6c9; margin-bottom: 5px;">Prijs incl. BTW ex BPM</div>
-                      <div style="font-size: 32px; font-weight: bold; color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">€${price}</div>
+                  <td style="padding: 18px; text-align: center;">
+                    <div style="font-size: 11px; letter-spacing: 2px; color: #888888; text-transform: uppercase; margin-bottom: 8px;">UW B2B PRIJS</div>
+                    <div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+                      <div style="font-size: 12px; color: #aaaaaa; margin-bottom: 4px;">Prijs incl. BTW ex BPM</div>
+                      <div style="font-size: 30px; font-weight: bold; color: #ffffff;">€${price}</div>
                     </div>
-                    <div style="background: rgba(255,193,7,0.2); border-radius: 6px; padding: 10px; border: 1px dashed #ffc107;">
-                      <div style="font-size: 12px; color: #fff59d; margin-bottom: 3px;">Max. schadebedrag</div>
-                      <div style="font-size: 20px; font-weight: bold; color: #ffeb3b;">€${damage}</div>
+                    <div style="background: rgba(255,255,255,0.05); border-radius: 6px; padding: 8px; border: 1px solid #333333;">
+                      <div style="font-size: 11px; color: #888888; margin-bottom: 2px;">Max. schadebedrag</div>
+                      <div style="font-size: 18px; font-weight: bold; color: #ffffff;">€${damage}</div>
                     </div>
                   </td>
                 </tr>
@@ -215,12 +212,12 @@ Tel: 010-2623980 | Email: verkoop@auto-city.nl`;
           ${extraOptions ? `
           <!-- EXTRA OPTIONS -->
           <tr>
-            <td style="padding: 15px 30px;">
+            <td style="padding: 10px 25px;">
               <table role="presentation" style="width: 100%; border-collapse: collapse; background: #fff8e1; border-radius: 8px; border-left: 4px solid #ff9800;">
                 <tr>
-                  <td style="padding: 15px;">
-                    <div style="font-size: 12px; letter-spacing: 1px; color: #f57c00; text-transform: uppercase; margin-bottom: 8px; font-weight: 600;">📝 Extra Opties / Opmerkingen</div>
-                    <div style="color: #5d4037; font-size: 14px; line-height: 1.5;">${extraOptions.replace(/\n/g, '<br />')}</div>
+                  <td style="padding: 12px;">
+                    <div style="font-size: 11px; letter-spacing: 1px; color: #f57c00; text-transform: uppercase; margin-bottom: 6px; font-weight: 600;">Extra Opties / Opmerkingen</div>
+                    <div style="color: #5d4037; font-size: 13px; line-height: 1.4;">${extraOptions.replace(/\n/g, '<br />')}</div>
                   </td>
                 </tr>
               </table>
@@ -228,46 +225,36 @@ Tel: 010-2623980 | Email: verkoop@auto-city.nl`;
           </tr>
           ` : ''}
 
-          <!-- DELIVERY INFO -->
+          <!-- DELIVERY INFO - COMPACT -->
           <tr>
-            <td style="padding: 15px 30px;">
-              <table role="presentation" style="width: 100%; border-collapse: collapse;">
-                <tr>
-                  <td style="padding: 12px 15px; background: #e8f5e9; border-radius: 6px; margin-bottom: 8px;">
-                    <span style="color: #2e7d32; font-size: 14px;">✅ Bezorging aan de deur mogelijk</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 12px 15px; background: #e8f5e9; border-radius: 6px; margin-top: 8px;">
-                    <span style="color: #2e7d32; font-size: 14px;">✅ Op Nederlands kenteken leverbaar</span>
-                  </td>
-                </tr>
-              </table>
+            <td style="padding: 10px 25px;">
+              <div style="padding: 10px 12px; background: #f5f5f5; border-radius: 6px; color: #555; font-size: 13px;">
+                • Bezorging aan de deur mogelijk &nbsp;&nbsp; • Op Nederlands kenteken leverbaar
+              </div>
             </td>
           </tr>
 
           <!-- CLOSING -->
           <tr>
-            <td style="padding: 20px 30px; border-top: 1px solid #e0e0e0; margin-top: 15px;">
-              <p style="margin: 0 0 15px 0; color: #555; font-size: 14px; line-height: 1.6;">
+            <td style="padding: 15px 25px 10px 25px;">
+              <p style="margin: 0 0 10px 0; color: #555; font-size: 13px; line-height: 1.5;">
                 Mocht dit voertuig niet direct passen, dan houden wij graag contact over ons volledige B2B aanbod.
               </p>
-              <p style="margin: 0; color: #555; font-size: 14px;">Met vriendelijke groet,</p>
+              <p style="margin: 0; color: #555; font-size: 13px;">Met vriendelijke groet,</p>
             </td>
           </tr>
 
-          <!-- SIGNATURE WITH BANNER -->
+          <!-- SIGNATURE WITH BANNER - GROOT -->
           <tr>
-            <td style="padding: 0 30px 30px 30px;">
+            <td style="padding: 0 25px 25px 25px;">
               <table role="presentation" style="width: 100%; border-collapse: collapse; background: #f5f5f5; border-radius: 8px; overflow: hidden;">
                 <tr>
-                  <td style="padding: 20px; text-align: center;">
+                  <td style="padding: 18px; text-align: center;">
                     ${bannerHtml}
-                    <div style="font-weight: bold; color: #1e3a5f; font-size: 16px; margin-bottom: 10px;">Autocity Automotive Group</div>
-                    <div style="color: #666; font-size: 13px; line-height: 1.6;">
-                      📍 Thurledeweg 61, 3044 ER Rotterdam<br />
-                      📞 010-2623980<br />
-                      ✉️ verkoop@auto-city.nl
+                    <div style="font-weight: bold; color: #1a1a1a; font-size: 15px; margin-bottom: 8px;">Autocity Automotive Group</div>
+                    <div style="color: #666; font-size: 12px; line-height: 1.5;">
+                      Thurledeweg 61, 3044 ER Rotterdam<br />
+                      Tel: 010-2623980 | verkoop@auto-city.nl
                     </div>
                   </td>
                 </tr>
