@@ -1,49 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
-import { ReportPeriod } from "@/types/reports";
+import { ReportPeriod, SupplierStats, SupplierAnalyticsData, ChannelStats } from "@/types/reports";
 
-export interface SupplierStats {
-  id: string;
-  name: string;
-  country?: string;
-  totalVehicles: number;
-  
-  // Verkocht statistieken
-  sold: number;
-  totalPurchaseValue: number;
-  totalSalesValue: number;
-  profit: number;
-  profitMargin: number;
-  
-  // Voorraad statistieken
-  inStock: number;
-  stockValue: number;
-  
-  // Tijd statistieken
-  avgDaysInStock: number;
-  avgDaysToSell: number;
-  fastestSale: number | null;
-  slowestSale: number | null;
-  
-  // Performance metrics
-  avgPurchasePrice: number;
-  avgSalesPrice: number;
-  roi: number;
-}
-
-export interface SupplierAnalyticsData {
-  totalSuppliers: number;
-  totalVehiclesPurchased: number;
-  totalInvestment: number;
-  totalRealized: number;
-  totalProfit: number;
-  avgMargin: number;
-  
-  suppliers: SupplierStats[];
-  
-  // Chart data
-  bySupplier: Array<{ name: string; value: number }>;
-  profitBySupplier: Array<{ name: string; profit: number; margin: number }>;
-  avgDaysBySupplier: Array<{ name: string; days: number }>;
+// Internal interface for building stats
+interface SupplierStatsBuilder extends Omit<SupplierStats, 'annualizedROI' | 'profitPerDay' | 'sellThroughRate' | 'inventoryTurnover' | 'gmroi' | 'capitalEfficiency' | 'performanceScore' | 'avgProfitPerVehicle' | 'preferredChannel' | 'channelEfficiencyGap'> {
+  totalDaysToSell: number;
+  b2bTotalDays: number;
+  b2cTotalDays: number;
+  b2bTotalPurchaseValue: number;
+  b2cTotalPurchaseValue: number;
 }
 
 class SupplierReportsService {
@@ -93,7 +57,7 @@ class SupplierReportsService {
                  ['voorraad', 'onderweg', 'transport'].includes(v.status);
         });
 
-    const supplierMap = new Map<string, SupplierStats>();
+    const supplierMap = new Map<string, SupplierStatsBuilder>();
     
     filteredVehicles?.forEach(vehicle => {
       const supplierId = vehicle.supplier_id || 'unknown';
@@ -108,19 +72,154 @@ class SupplierReportsService {
       this.updateSupplierStats(stats, vehicle);
     });
     
-    const suppliers = Array.from(supplierMap.values()).map(s => {
-      const avgDaysToSell = s.sold > 0 ? s.avgDaysToSell / s.sold : 0;
+    // Calculate final metrics for each supplier
+    const suppliers: SupplierStats[] = Array.from(supplierMap.values()).map(s => {
+      const avgDaysToSell = s.sold > 0 ? s.totalDaysToSell / s.sold : 0;
+      const avgPurchasePrice = s.totalVehicles > 0 ? s.totalPurchaseValue / s.totalVehicles : 0;
+      const avgSalesPrice = s.sold > 0 ? s.totalSalesValue / s.sold : 0;
+      const profitMargin = s.totalSalesValue > 0 ? (s.profit / s.totalSalesValue) * 100 : 0;
+      const roi = s.totalPurchaseValue > 0 ? (s.profit / s.totalPurchaseValue) * 100 : 0;
+      
+      // Automotive metrics
+      const annualizedROI = avgDaysToSell > 0 && s.totalPurchaseValue > 0 
+        ? (s.profit / s.totalPurchaseValue) * (365 / avgDaysToSell) * 100 
+        : 0;
+      const profitPerDay = avgDaysToSell > 0 && s.sold > 0 
+        ? s.profit / (s.sold * avgDaysToSell) 
+        : 0;
+      const sellThroughRate = s.totalVehicles > 0 ? (s.sold / s.totalVehicles) * 100 : 0;
+      const inventoryTurnover = avgDaysToSell > 0 ? 365 / avgDaysToSell : 0;
+      const gmroi = s.stockValue > 0 ? s.profit / s.stockValue : (s.profit > 0 ? 999 : 0);
+      const capitalEfficiency = s.totalPurchaseValue > 0 ? s.totalSalesValue / s.totalPurchaseValue : 0;
+      const avgProfitPerVehicle = s.sold > 0 ? s.profit / s.sold : 0;
+      
+      // Calculate B2B metrics
+      const b2bAvgDays = s.b2b.sold > 0 ? s.b2bTotalDays / s.b2b.sold : 0;
+      const b2bMargin = s.b2b.revenue > 0 ? (s.b2b.profit / s.b2b.revenue) * 100 : 0;
+      const b2bAnnualizedROI = b2bAvgDays > 0 && s.b2bTotalPurchaseValue > 0 
+        ? (s.b2b.profit / s.b2bTotalPurchaseValue) * (365 / b2bAvgDays) * 100 
+        : 0;
+      const b2bProfitPerDay = b2bAvgDays > 0 && s.b2b.sold > 0 
+        ? s.b2b.profit / (s.b2b.sold * b2bAvgDays) 
+        : 0;
+      
+      // Calculate B2C metrics
+      const b2cAvgDays = s.b2c.sold > 0 ? s.b2cTotalDays / s.b2c.sold : 0;
+      const b2cMargin = s.b2c.revenue > 0 ? (s.b2c.profit / s.b2c.revenue) * 100 : 0;
+      const b2cAnnualizedROI = b2cAvgDays > 0 && s.b2cTotalPurchaseValue > 0 
+        ? (s.b2c.profit / s.b2cTotalPurchaseValue) * (365 / b2cAvgDays) * 100 
+        : 0;
+      const b2cProfitPerDay = b2cAvgDays > 0 && s.b2c.sold > 0 
+        ? s.b2c.profit / (s.b2c.sold * b2cAvgDays) 
+        : 0;
+      
+      // Determine preferred channel
+      let preferredChannel: 'b2b' | 'b2c' | 'mixed' = 'mixed';
+      if (s.b2b.sold > 0 && s.b2c.sold === 0) preferredChannel = 'b2b';
+      else if (s.b2c.sold > 0 && s.b2b.sold === 0) preferredChannel = 'b2c';
+      else if (b2bAnnualizedROI > b2cAnnualizedROI * 1.2) preferredChannel = 'b2b';
+      else if (b2cAnnualizedROI > b2bAnnualizedROI * 1.2) preferredChannel = 'b2c';
+      
+      const channelEfficiencyGap = Math.abs(b2bAnnualizedROI - b2cAnnualizedROI);
+      
+      // Performance Score (0-100)
+      // 30% Annualized ROI (benchmark: 100%+)
+      // 25% Winst per Dag (benchmark: €50+)
+      // 20% Sell-Through Rate (benchmark: 80%+)
+      // 15% Marge % (benchmark: 12%+)
+      // 10% Consistentie (snelheid - lager is beter)
+      const roiScore = Math.min(annualizedROI / 100, 1) * 30;
+      const profitPerDayScore = Math.min(profitPerDay / 50, 1) * 25;
+      const sellThroughScore = Math.min(sellThroughRate / 80, 1) * 20;
+      const marginScore = Math.min(profitMargin / 12, 1) * 15;
+      const speedScore = avgDaysToSell > 0 ? Math.max(1 - (avgDaysToSell / 90), 0) * 10 : 0;
+      const performanceScore = Math.round(roiScore + profitPerDayScore + sellThroughScore + marginScore + speedScore);
+      
       return {
         ...s,
-        avgPurchasePrice: s.totalVehicles > 0 ? s.totalPurchaseValue / s.totalVehicles : 0,
-        avgSalesPrice: s.sold > 0 ? s.totalSalesValue / s.sold : 0,
-        profitMargin: s.totalSalesValue > 0 ? (s.profit / s.totalSalesValue) * 100 : 0,
+        avgPurchasePrice,
+        avgSalesPrice,
+        profitMargin,
         avgDaysToSell,
-        roi: s.totalPurchaseValue > 0 ? (s.profit / s.totalPurchaseValue) * 100 : 0
+        roi,
+        annualizedROI,
+        profitPerDay,
+        sellThroughRate,
+        inventoryTurnover,
+        gmroi,
+        capitalEfficiency,
+        performanceScore: Math.min(performanceScore, 100),
+        avgProfitPerVehicle,
+        b2b: {
+          ...s.b2b,
+          avgDaysToSell: b2bAvgDays,
+          margin: b2bMargin,
+          annualizedROI: b2bAnnualizedROI,
+          profitPerDay: b2bProfitPerDay,
+          avgPurchasePrice: s.b2b.sold > 0 ? s.b2bTotalPurchaseValue / s.b2b.sold : 0,
+          avgSalesPrice: s.b2b.sold > 0 ? s.b2b.revenue / s.b2b.sold : 0,
+          avgProfitPerVehicle: s.b2b.sold > 0 ? s.b2b.profit / s.b2b.sold : 0
+        },
+        b2c: {
+          ...s.b2c,
+          avgDaysToSell: b2cAvgDays,
+          margin: b2cMargin,
+          annualizedROI: b2cAnnualizedROI,
+          profitPerDay: b2cProfitPerDay,
+          avgPurchasePrice: s.b2c.sold > 0 ? s.b2cTotalPurchaseValue / s.b2c.sold : 0,
+          avgSalesPrice: s.b2c.sold > 0 ? s.b2c.revenue / s.b2c.sold : 0,
+          avgProfitPerVehicle: s.b2c.sold > 0 ? s.b2c.profit / s.b2c.sold : 0
+        },
+        preferredChannel,
+        channelEfficiencyGap
       };
     });
     
-    suppliers.sort((a, b) => b.totalVehicles - a.totalVehicles);
+    // Sort by performance score by default
+    suppliers.sort((a, b) => b.performanceScore - a.performanceScore);
+    
+    // Calculate summary metrics
+    const suppliersWithSales = suppliers.filter(s => s.sold > 0);
+    const bestPerformer = suppliersWithSales.length > 0 
+      ? { name: suppliersWithSales[0].name, score: suppliersWithSales[0].performanceScore }
+      : null;
+    
+    const fastestTurnoverSupplier = [...suppliersWithSales].sort((a, b) => a.avgDaysToSell - b.avgDaysToSell)[0];
+    const fastestTurnover = fastestTurnoverSupplier 
+      ? { name: fastestTurnoverSupplier.name, days: Math.round(fastestTurnoverSupplier.avgDaysToSell) }
+      : null;
+    
+    const bestROISupplier = [...suppliersWithSales].sort((a, b) => b.annualizedROI - a.annualizedROI)[0];
+    const bestAnnualizedROI = bestROISupplier 
+      ? { name: bestROISupplier.name, roi: bestROISupplier.annualizedROI }
+      : null;
+    
+    const bestProfitPerDaySupplier = [...suppliersWithSales].sort((a, b) => b.profitPerDay - a.profitPerDay)[0];
+    const highestProfitPerDay = bestProfitPerDaySupplier 
+      ? { name: bestProfitPerDaySupplier.name, profitPerDay: bestProfitPerDaySupplier.profitPerDay }
+      : null;
+    
+    const b2bSuppliers = suppliersWithSales.filter(s => s.b2b.sold > 0);
+    const bestB2BSupplier = [...b2bSuppliers].sort((a, b) => b.b2b.annualizedROI - a.b2b.annualizedROI)[0];
+    const bestB2B = bestB2BSupplier 
+      ? { name: bestB2BSupplier.name, roi: bestB2BSupplier.b2b.annualizedROI }
+      : null;
+    
+    const b2cSuppliers = suppliersWithSales.filter(s => s.b2c.sold > 0);
+    const bestB2CSupplier = [...b2cSuppliers].sort((a, b) => b.b2c.annualizedROI - a.b2c.annualizedROI)[0];
+    const bestB2C = bestB2CSupplier 
+      ? { name: bestB2CSupplier.name, roi: bestB2CSupplier.b2c.annualizedROI }
+      : null;
+    
+    // B2B/B2C totals
+    const totalB2BSold = suppliers.reduce((sum, s) => sum + s.b2b.sold, 0);
+    const totalB2CSold = suppliers.reduce((sum, s) => sum + s.b2c.sold, 0);
+    const totalB2BProfit = suppliers.reduce((sum, s) => sum + s.b2b.profit, 0);
+    const totalB2CProfit = suppliers.reduce((sum, s) => sum + s.b2c.profit, 0);
+    const totalB2BRevenue = suppliers.reduce((sum, s) => sum + s.b2b.revenue, 0);
+    const totalB2CRevenue = suppliers.reduce((sum, s) => sum + s.b2c.revenue, 0);
+    const avgB2BMargin = totalB2BRevenue > 0 ? (totalB2BProfit / totalB2BRevenue) * 100 : 0;
+    const avgB2CMargin = totalB2CRevenue > 0 ? (totalB2CProfit / totalB2CRevenue) * 100 : 0;
     
     return {
       totalSuppliers: suppliers.length,
@@ -139,7 +238,40 @@ class SupplierReportsService {
       avgDaysBySupplier: suppliers.slice(0, 10).map(s => ({ 
         name: s.name, 
         days: Math.round(s.avgDaysInStock) 
-      }))
+      })),
+      performanceRanking: suppliersWithSales.slice(0, 10).map(s => ({
+        name: s.name,
+        score: s.performanceScore,
+        annualizedROI: s.annualizedROI,
+        profitPerDay: s.profitPerDay
+      })),
+      b2bVsB2cComparison: suppliersWithSales
+        .filter(s => s.b2b.sold > 0 || s.b2c.sold > 0)
+        .slice(0, 10)
+        .map(s => ({
+          name: s.name,
+          b2bROI: s.b2b.annualizedROI,
+          b2cROI: s.b2c.annualizedROI,
+          b2bProfit: s.b2b.profit,
+          b2cProfit: s.b2c.profit
+        })),
+      profitPerDayChart: suppliersWithSales.slice(0, 10).map(s => ({
+        name: s.name,
+        profitPerDay: s.profitPerDay,
+        avgDays: Math.round(s.avgDaysToSell)
+      })),
+      bestPerformer,
+      fastestTurnover,
+      bestAnnualizedROI,
+      highestProfitPerDay,
+      bestB2BSupplier: bestB2B,
+      bestB2CSupplier: bestB2C,
+      totalB2BSold,
+      totalB2CSold,
+      totalB2BProfit,
+      totalB2CProfit,
+      avgB2BMargin,
+      avgB2CMargin
     };
   }
   
@@ -149,7 +281,20 @@ class SupplierReportsService {
     return `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Onbekend';
   }
   
-  private initSupplierStats(id: string, name: string): SupplierStats {
+  private initSupplierStats(id: string, name: string): SupplierStatsBuilder {
+    const emptyChannelStats: ChannelStats = {
+      sold: 0,
+      revenue: 0,
+      profit: 0,
+      margin: 0,
+      avgDaysToSell: 0,
+      annualizedROI: 0,
+      profitPerDay: 0,
+      avgPurchasePrice: 0,
+      avgSalesPrice: 0,
+      avgProfitPerVehicle: 0
+    };
+    
     return {
       id,
       name,
@@ -167,7 +312,14 @@ class SupplierReportsService {
       slowestSale: null,
       avgPurchasePrice: 0,
       avgSalesPrice: 0,
-      roi: 0
+      roi: 0,
+      totalDaysToSell: 0,
+      b2b: { ...emptyChannelStats },
+      b2c: { ...emptyChannelStats },
+      b2bTotalDays: 0,
+      b2cTotalDays: 0,
+      b2bTotalPurchaseValue: 0,
+      b2cTotalPurchaseValue: 0
     };
   }
   
@@ -177,26 +329,52 @@ class SupplierReportsService {
     return Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
   }
   
-  private updateSupplierStats(stats: SupplierStats, vehicle: any) {
-    const purchasePrice = vehicle.details?.purchasePrice || 0;
-    const isSold = ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(vehicle.status);
+  private updateSupplierStats(stats: SupplierStatsBuilder, vehicle: any) {
+    const details = vehicle.details as any;
+    const purchasePrice = details?.purchasePrice || 0;
+    const sellingPrice = vehicle.selling_price || 0;
     const daysInStock = this.calculateDaysInStock(vehicle);
+    
+    // Determine if sold and which channel
+    const isB2B = vehicle.status === 'verkocht_b2b' || 
+                  (vehicle.status === 'afgeleverd' && details?.salesType === 'b2b');
+    const isB2C = vehicle.status === 'verkocht_b2c' || 
+                  (vehicle.status === 'afgeleverd' && details?.salesType === 'b2c') ||
+                  (vehicle.status === 'afgeleverd' && !details?.salesType); // Default to B2C if no salesType
+    const isSold = isB2B || isB2C;
     
     stats.totalVehicles++;
     stats.totalPurchaseValue += purchasePrice;
     stats.avgDaysInStock = ((stats.avgDaysInStock * (stats.totalVehicles - 1)) + daysInStock) / stats.totalVehicles;
     
     if (isSold) {
+      const profit = sellingPrice - purchasePrice;
+      
       stats.sold++;
-      stats.totalSalesValue += vehicle.selling_price || 0;
-      stats.profit += (vehicle.selling_price || 0) - purchasePrice;
-      stats.avgDaysToSell += daysInStock;
+      stats.totalSalesValue += sellingPrice;
+      stats.profit += profit;
+      stats.totalDaysToSell += daysInStock;
       
       if (stats.fastestSale === null || daysInStock < stats.fastestSale) {
         stats.fastestSale = daysInStock;
       }
       if (stats.slowestSale === null || daysInStock > stats.slowestSale) {
         stats.slowestSale = daysInStock;
+      }
+      
+      // Update channel-specific stats
+      if (isB2B) {
+        stats.b2b.sold++;
+        stats.b2b.revenue += sellingPrice;
+        stats.b2b.profit += profit;
+        stats.b2bTotalDays += daysInStock;
+        stats.b2bTotalPurchaseValue += purchasePrice;
+      } else if (isB2C) {
+        stats.b2c.sold++;
+        stats.b2c.revenue += sellingPrice;
+        stats.b2c.profit += profit;
+        stats.b2cTotalDays += daysInStock;
+        stats.b2cTotalPurchaseValue += purchasePrice;
       }
     } else {
       stats.inStock++;
