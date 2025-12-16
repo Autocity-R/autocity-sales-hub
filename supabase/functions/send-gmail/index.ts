@@ -73,15 +73,23 @@ serve(async (req) => {
   }
 
   try {
+    const requestBody = await req.json();
+    
+    // Normalize 'to' to always be an array (handle both string and array inputs)
+    const toArray = Array.isArray(requestBody.to) 
+      ? requestBody.to 
+      : [requestBody.to];
+    
     const {
       senderEmail,
-      to,
       cc = [],
       subject,
       htmlBody,
       attachments = [],
       metadata = {}
-    }: EmailRequest = await req.json();
+    } = requestBody;
+    
+    const to = toArray as string[];
 
     console.log(`📧 Processing email request for "${to.join(', ')}" with subject "${subject}" and ${attachments.length} attachment(s) in request.`);
 
