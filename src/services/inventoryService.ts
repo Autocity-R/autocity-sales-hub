@@ -362,6 +362,7 @@ export const markVehicleAsDelivered = async (
       warrantyEndDate,
       deliveryDate: deliveryDate.toISOString(),
       originalSalesStatus: currentVehicle.status, // Bewaar originele status (verkocht_b2b of verkocht_b2c)
+      salesType: currentVehicle.status === 'verkocht_b2b' ? 'b2b' : 'b2c', // Voor rapportages
     };
 
       // Append delivery notes to existing notes if provided
