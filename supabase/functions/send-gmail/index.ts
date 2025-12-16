@@ -80,16 +80,24 @@ serve(async (req) => {
       ? requestBody.to 
       : [requestBody.to];
     
+    // Normalize sender email (handle both 'senderEmail' and 'from' field names)
+    const senderEmail = requestBody.senderEmail || requestBody.from;
+    
+    if (!senderEmail) {
+      throw new Error('Missing sender email: provide either "senderEmail" or "from" field');
+    }
+    
     const {
-      senderEmail,
       cc = [],
       subject,
       htmlBody,
+      body, // Fallback for plain text body
       attachments = [],
       metadata = {}
     } = requestBody;
     
     const to = toArray as string[];
+    const emailBody = htmlBody || body || '';
 
     console.log(`📧 Processing email request for "${to.join(', ')}" with subject "${subject}" and ${attachments.length} attachment(s) in request.`);
 
@@ -221,7 +229,7 @@ serve(async (req) => {
           `Content-Type: text/html; charset="UTF-8"`,
           'Content-Transfer-Encoding: 7bit', // FIX: Veranderd van quoted-printable naar 7bit
           '',
-          htmlBody,
+          emailBody,
         ].join('\r\n');
 
         const attachmentParts = validAttachments.map(att => [
@@ -250,7 +258,7 @@ serve(async (req) => {
           'Content-Type: text/html; charset="UTF-8"',
           'Content-Transfer-Encoding: 7bit',
           '',
-          htmlBody,
+          emailBody,
         ].join('\r\n');
       }
 
@@ -306,7 +314,7 @@ serve(async (req) => {
             sender: senderEmail,
             recipient: to[0],
             subject: subject,
-            body: htmlBody,
+            body: emailBody,
             received_at: new Date().toISOString(),
             is_from_customer: false, // This is an outgoing email from us
             portal_source: 'crm'
