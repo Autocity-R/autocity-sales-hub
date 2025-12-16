@@ -182,6 +182,38 @@ export const SalesAnalytics = () => {
           </CardContent>
         </Card>
 
+        {/* Winst B2B */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Winst B2B</CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${(salesData?.b2bProfit || 0) >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+              {formatCurrency(salesData?.b2bProfit || 0)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {salesData?.b2bCount || 0} verkopen • {salesData?.b2bProfitMargin?.toFixed(1) || 0}% marge
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Winst B2C */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Winst B2C</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${(salesData?.b2cProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(salesData?.b2cProfit || 0)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {salesData?.b2cCount || 0} verkopen • {salesData?.b2cProfitMargin?.toFixed(1) || 0}% marge
+            </p>
+          </CardContent>
+        </Card>
+
         {/* Garantie Omzet */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
