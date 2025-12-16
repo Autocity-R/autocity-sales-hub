@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Task, TaskStatus, TaskCategory } from "@/types/tasks";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { TaskMobileCard } from "./TaskMobileCard";
 
@@ -362,17 +363,18 @@ export const DraggableTaskList = memo<DraggableTaskListProps>(({
     [activeId, filteredTasks]
   );
 
-  // Only admins/managers can drag
-  const canDrag = isAdmin;
+  // Admins, managers and verkopers can drag
+  const { canAssignTasks } = useRoleAccess();
+  const canDrag = canAssignTasks();
 
   return (
     <div className="space-y-3 md:space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
           <h3 className="text-base md:text-lg font-medium">
-            {isAdmin ? "Werklijst (sleep om te herschikken)" : "Mijn Werklijst"}
+            {canDrag ? "Werklijst (sleep om te herschikken)" : "Mijn Werklijst"}
           </h3>
-          {!isAdmin && (
+          {!canDrag && (
             <p className="text-sm text-muted-foreground">Pak altijd de bovenste taak</p>
           )}
         </div>
