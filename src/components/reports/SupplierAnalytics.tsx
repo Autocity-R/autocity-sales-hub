@@ -174,26 +174,127 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
     setExpandedRows(newExpanded);
   };
 
+  // Helper function to get view-specific stats
+  const getViewStats = (supplier: typeof analytics.suppliers[0], view: ViewFilter) => {
+    if (view === 'b2b') {
+      return {
+        sold: supplier.b2b.sold,
+        profit: supplier.b2b.profit,
+        margin: supplier.b2b.margin,
+        revenue: supplier.b2b.revenue,
+        avgDaysToSell: supplier.b2b.avgDaysToSell,
+        annualizedROI: supplier.b2b.annualizedROI,
+        profitPerDay: supplier.b2b.profitPerDay,
+        avgProfitPerVehicle: supplier.b2b.avgProfitPerVehicle,
+        avgPurchasePrice: supplier.b2b.avgPurchasePrice,
+        avgSalesPrice: supplier.b2b.avgSalesPrice,
+        // Use total for these as they're not channel-specific
+        inStock: supplier.inStock,
+        performanceScore: supplier.performanceScore,
+        basePerformanceScore: supplier.basePerformanceScore,
+        volumeFactor: supplier.volumeFactor,
+        sellThroughRate: supplier.b2b.sold / (supplier.b2b.sold + supplier.inStock) * 100 || 0,
+        fastestSale: supplier.fastestSale,
+        slowestSale: supplier.slowestSale,
+        profitMargin: supplier.b2b.margin,
+        // Channel-specific reliability (min 3 for channel)
+        meetsMinimumThreshold: supplier.b2b.sold >= 3,
+      };
+    }
+    if (view === 'b2c') {
+      return {
+        sold: supplier.b2c.sold,
+        profit: supplier.b2c.profit,
+        margin: supplier.b2c.margin,
+        revenue: supplier.b2c.revenue,
+        avgDaysToSell: supplier.b2c.avgDaysToSell,
+        annualizedROI: supplier.b2c.annualizedROI,
+        profitPerDay: supplier.b2c.profitPerDay,
+        avgProfitPerVehicle: supplier.b2c.avgProfitPerVehicle,
+        avgPurchasePrice: supplier.b2c.avgPurchasePrice,
+        avgSalesPrice: supplier.b2c.avgSalesPrice,
+        inStock: supplier.inStock,
+        performanceScore: supplier.performanceScore,
+        basePerformanceScore: supplier.basePerformanceScore,
+        volumeFactor: supplier.volumeFactor,
+        sellThroughRate: supplier.b2c.sold / (supplier.b2c.sold + supplier.inStock) * 100 || 0,
+        fastestSale: supplier.fastestSale,
+        slowestSale: supplier.slowestSale,
+        profitMargin: supplier.b2c.margin,
+        meetsMinimumThreshold: supplier.b2c.sold >= 3,
+      };
+    }
+    // All view - return total stats (use totalSalesValue for revenue)
+    return {
+      sold: supplier.sold,
+      profit: supplier.profit,
+      margin: supplier.profitMargin,
+      revenue: supplier.totalSalesValue,
+      avgDaysToSell: supplier.avgDaysToSell,
+      annualizedROI: supplier.annualizedROI,
+      profitPerDay: supplier.profitPerDay,
+      avgProfitPerVehicle: supplier.avgProfitPerVehicle,
+      avgPurchasePrice: supplier.avgPurchasePrice,
+      avgSalesPrice: supplier.avgSalesPrice,
+      inStock: supplier.inStock,
+      performanceScore: supplier.performanceScore,
+      basePerformanceScore: supplier.basePerformanceScore,
+      volumeFactor: supplier.volumeFactor,
+      sellThroughRate: supplier.sellThroughRate,
+      fastestSale: supplier.fastestSale,
+      slowestSale: supplier.slowestSale,
+      profitMargin: supplier.profitMargin,
+      meetsMinimumThreshold: supplier.meetsMinimumThreshold,
+    };
+  };
+
+  // Get minimum threshold based on view (5 for all, 3 for channel-specific)
+  const getMinThreshold = (view: ViewFilter) => view === 'all' ? 5 : 3;
+
   // Filter suppliers based on view, search, and reliability
   const filteredSuppliers = analytics?.suppliers.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchesSearch) return false;
     
-    // Reliability filter
-    if (showOnlyReliable && !s.meetsMinimumThreshold) return false;
+    // Filter by channel first
+    if (viewFilter === 'b2b' && s.b2b.sold === 0) return false;
+    if (viewFilter === 'b2c' && s.b2c.sold === 0) return false;
     
-    if (viewFilter === 'b2b') return s.b2b.sold > 0;
-    if (viewFilter === 'b2c') return s.b2c.sold > 0;
+    // Reliability filter based on view-specific threshold
+    if (showOnlyReliable) {
+      const viewStats = getViewStats(s, viewFilter);
+      if (!viewStats.meetsMinimumThreshold) return false;
+    }
+    
     return true;
   }).sort((a, b) => {
-    // Handle nested properties for B2B/B2C specific sorting
-    if (sortBy === 'b2bROI') return b.b2b.annualizedROI - a.b2b.annualizedROI;
-    if (sortBy === 'b2cROI') return b.b2c.annualizedROI - a.b2c.annualizedROI;
-    if (sortBy === 'b2bProfit') return b.b2b.profit - a.b2b.profit;
-    if (sortBy === 'b2cProfit') return b.b2c.profit - a.b2c.profit;
+    const aStats = getViewStats(a, viewFilter);
+    const bStats = getViewStats(b, viewFilter);
     
-    const aValue = a[sortBy as keyof typeof a] as number;
-    const bValue = b[sortBy as keyof typeof b] as number;
+    // Map sortBy to the correct property
+    const sortMap: Record<string, keyof typeof aStats> = {
+      performanceScore: 'performanceScore',
+      annualizedROI: 'annualizedROI',
+      profitPerDay: 'profitPerDay',
+      profit: 'profit',
+      profitMargin: 'profitMargin',
+      sellThroughRate: 'sellThroughRate',
+      avgDaysToSell: 'avgDaysToSell',
+      inventoryTurnover: 'sold', // Use sold as proxy
+      totalVehicles: 'sold',
+      b2bROI: 'annualizedROI',
+      b2cROI: 'annualizedROI',
+    };
+    
+    const key = sortMap[sortBy] || 'performanceScore';
+    const aValue = aStats[key] as number;
+    const bValue = bStats[key] as number;
+    
+    // For avgDaysToSell, lower is better
+    if (sortBy === 'avgDaysToSell') {
+      return aValue - bValue;
+    }
+    
     return bValue - aValue;
   }) || [];
   
@@ -298,115 +399,224 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
         </div>
       </div>
 
-      {/* Performance KPI Cards - Top Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-l-green-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Best Performer</CardTitle>
-            <Trophy className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.bestPerformer?.name || '-'}</div>
-            <p className="text-xs text-muted-foreground">
-              Score: {analytics.bestPerformer?.score || 0}/100
-            </p>
-          </CardContent>
-        </Card>
+      {/* Dynamic KPI Cards based on view */}
+      {(() => {
+        // Calculate view-specific KPIs
+        const minThreshold = getMinThreshold(viewFilter);
+        const reliableSuppliers = analytics.suppliers.filter(s => {
+          const stats = getViewStats(s, viewFilter);
+          return stats.sold >= minThreshold;
+        });
+        
+        const viewBestPerformer = reliableSuppliers.sort((a, b) => {
+          const aStats = getViewStats(a, viewFilter);
+          const bStats = getViewStats(b, viewFilter);
+          return bStats.performanceScore - aStats.performanceScore;
+        })[0];
+        
+        const viewFastestTurnover = reliableSuppliers
+          .filter(s => getViewStats(s, viewFilter).avgDaysToSell > 0)
+          .sort((a, b) => {
+            const aStats = getViewStats(a, viewFilter);
+            const bStats = getViewStats(b, viewFilter);
+            return aStats.avgDaysToSell - bStats.avgDaysToSell;
+          })[0];
+        
+        const viewBestROI = reliableSuppliers.sort((a, b) => {
+          const aStats = getViewStats(a, viewFilter);
+          const bStats = getViewStats(b, viewFilter);
+          return bStats.annualizedROI - aStats.annualizedROI;
+        })[0];
+        
+        const viewHighestProfitPerDay = reliableSuppliers.sort((a, b) => {
+          const aStats = getViewStats(a, viewFilter);
+          const bStats = getViewStats(b, viewFilter);
+          return bStats.profitPerDay - aStats.profitPerDay;
+        })[0];
+        
+        const viewLabel = viewFilter === 'b2b' ? 'B2B' : viewFilter === 'b2c' ? 'B2C' : 'Totaal';
+        
+        // Calculate totals for current view
+        const viewTotalProfit = analytics.suppliers.reduce((sum, s) => {
+          const stats = getViewStats(s, viewFilter);
+          return sum + stats.profit;
+        }, 0);
+        
+        const viewTotalSold = analytics.suppliers.reduce((sum, s) => {
+          const stats = getViewStats(s, viewFilter);
+          return sum + stats.sold;
+        }, 0);
+        
+        const viewTotalRevenue = analytics.suppliers.reduce((sum, s) => {
+          const stats = getViewStats(s, viewFilter);
+          return sum + stats.revenue;
+        }, 0);
+        
+        const viewAvgMargin = viewTotalRevenue > 0 ? (viewTotalProfit / viewTotalRevenue) * 100 : 0;
 
-        <Card className="border-l-4 border-l-blue-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Snelste Omloop</CardTitle>
-            <Zap className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.fastestTurnover?.name || '-'}</div>
-            <p className="text-xs text-muted-foreground">
-              {analytics.fastestTurnover?.days || 0} dagen gemiddeld
-            </p>
-          </CardContent>
-        </Card>
+        return (
+          <>
+            {/* Performance KPI Cards - Top Row */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="border-l-4 border-l-green-500">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Best Performer {viewLabel}</CardTitle>
+                  <Trophy className="h-4 w-4 text-yellow-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{viewBestPerformer?.name || '-'}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Score: {viewBestPerformer ? getViewStats(viewBestPerformer, viewFilter).performanceScore : 0}/100
+                  </p>
+                </CardContent>
+              </Card>
 
-        <Card className="border-l-4 border-l-purple-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Beste ROI (Jaarlijks)</CardTitle>
-            <TrendingUp className="h-4 w-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.bestAnnualizedROI?.name || '-'}</div>
-            <p className="text-xs text-muted-foreground">
-              {formatPercentage(analytics.bestAnnualizedROI?.roi || 0)} per jaar
-            </p>
-          </CardContent>
-        </Card>
+              <Card className="border-l-4 border-l-blue-500">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Snelste Omloop {viewLabel}</CardTitle>
+                  <Zap className="h-4 w-4 text-blue-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{viewFastestTurnover?.name || '-'}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {viewFastestTurnover ? Math.round(getViewStats(viewFastestTurnover, viewFilter).avgDaysToSell) : 0} dagen gemiddeld
+                  </p>
+                </CardContent>
+              </Card>
 
-        <Card className="border-l-4 border-l-emerald-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Hoogste Winst/Dag</CardTitle>
-            <Euro className="h-4 w-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.highestProfitPerDay?.name || '-'}</div>
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(analytics.highestProfitPerDay?.profitPerDay || 0)}/dag
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+              <Card className="border-l-4 border-l-purple-500">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Beste ROI {viewLabel}</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-purple-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{viewBestROI?.name || '-'}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {formatPercentage(viewBestROI ? getViewStats(viewBestROI, viewFilter).annualizedROI : 0)} per jaar
+                  </p>
+                </CardContent>
+              </Card>
 
-      {/* B2B/B2C KPI Cards - Second Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Beste B2B Leverancier</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.bestB2BSupplier?.name || '-'}</div>
-            <p className="text-xs text-muted-foreground">
-              ROI: {formatPercentage(analytics.bestB2BSupplier?.roi || 0)}
-            </p>
-          </CardContent>
-        </Card>
+              <Card className="border-l-4 border-l-emerald-500">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Hoogste Winst/Dag {viewLabel}</CardTitle>
+                  <Euro className="h-4 w-4 text-emerald-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{viewHighestProfitPerDay?.name || '-'}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {formatCurrency(viewHighestProfitPerDay ? getViewStats(viewHighestProfitPerDay, viewFilter).profitPerDay : 0)}/dag
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Beste B2C Leverancier</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.bestB2CSupplier?.name || '-'}</div>
-            <p className="text-xs text-muted-foreground">
-              ROI: {formatPercentage(analytics.bestB2CSupplier?.roi || 0)}
-            </p>
-          </CardContent>
-        </Card>
+            {/* Totals KPI Cards - Second Row */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{viewLabel} Totaal Winst</CardTitle>
+                  <Euro className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{formatCurrency(viewTotalProfit)}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {viewTotalSold} verkocht • Marge: {formatPercentage(viewAvgMargin)}
+                  </p>
+                </CardContent>
+              </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">B2B Totaal</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(analytics.totalB2BProfit)}</div>
-            <p className="text-xs text-muted-foreground">
-              {analytics.totalB2BSold} verkocht • Marge: {formatPercentage(analytics.avgB2BMargin)}
-            </p>
-          </CardContent>
-        </Card>
+              {viewFilter === 'all' ? (
+                <>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">B2B Totaal</CardTitle>
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{formatCurrency(analytics.totalB2BProfit)}</div>
+                      <p className="text-xs text-muted-foreground">
+                        {analytics.totalB2BSold} verkocht • Marge: {formatPercentage(analytics.avgB2BMargin)}
+                      </p>
+                    </CardContent>
+                  </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">B2C Totaal</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(analytics.totalB2CProfit)}</div>
-            <p className="text-xs text-muted-foreground">
-              {analytics.totalB2CSold} verkocht • Marge: {formatPercentage(analytics.avgB2CMargin)}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">B2C Totaal</CardTitle>
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{formatCurrency(analytics.totalB2CProfit)}</div>
+                      <p className="text-xs text-muted-foreground">
+                        {analytics.totalB2CSold} verkocht • Marge: {formatPercentage(analytics.avgB2CMargin)}
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Gemiddelde Marge</CardTitle>
+                      <Percent className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{formatPercentage(analytics.avgMargin)}</div>
+                      <p className="text-xs text-muted-foreground">
+                        Over alle leveranciers
+                      </p>
+                    </CardContent>
+                  </Card>
+                </>
+              ) : (
+                <>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">{viewLabel} Gem. Winst/Auto</CardTitle>
+                      <Target className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {formatCurrency(viewTotalSold > 0 ? viewTotalProfit / viewTotalSold : 0)}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Per verkocht voertuig
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">{viewLabel} Omzet</CardTitle>
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{formatCurrency(viewTotalRevenue)}</div>
+                      <p className="text-xs text-muted-foreground">
+                        Totale {viewLabel.toLowerCase()} omzet
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">{viewLabel} Leveranciers</CardTitle>
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {analytics.suppliers.filter(s => getViewStats(s, viewFilter).sold > 0).length}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Actieve leveranciers
+                      </p>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+            </div>
+          </>
+        );
+      })()}
 
       {/* Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -577,12 +787,16 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSuppliers.map((supplier, index) => (
+              {filteredSuppliers.map((supplier, index) => {
+                const viewStats = getViewStats(supplier, viewFilter);
+                const viewLabel = viewFilter === 'b2b' ? 'B2B' : viewFilter === 'b2c' ? 'B2C' : '';
+                
+                return (
                 <React.Fragment key={supplier.id}>
                   <TableRow 
                     className={cn(
                       "cursor-pointer hover:bg-muted/50",
-                      !supplier.meetsMinimumThreshold && "opacity-60"
+                      !viewStats.meetsMinimumThreshold && "opacity-60"
                     )}
                     onClick={() => toggleRowExpansion(supplier.id)}
                   >
@@ -599,21 +813,26 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
                     <TableCell>
                       <div className="flex flex-col">
                         <span className="font-medium">{supplier.name}</span>
-                        <div className="flex gap-1 mt-1">
-                          {supplier.b2b.sold > 0 && (
-                            <Badge variant="outline" className="text-xs">B2B: {supplier.b2b.sold}</Badge>
-                          )}
-                          {supplier.b2c.sold > 0 && (
-                            <Badge variant="outline" className="text-xs">B2C: {supplier.b2c.sold}</Badge>
-                          )}
-                        </div>
+                        {viewFilter === 'all' && (
+                          <div className="flex gap-1 mt-1">
+                            {supplier.b2b.sold > 0 && (
+                              <Badge variant="outline" className="text-xs">B2B: {supplier.b2b.sold}</Badge>
+                            )}
+                            {supplier.b2c.sold > 0 && (
+                              <Badge variant="outline" className="text-xs">B2C: {supplier.b2c.sold}</Badge>
+                            )}
+                          </div>
+                        )}
+                        {viewFilter !== 'all' && (
+                          <Badge variant="secondary" className="text-xs w-fit mt-1">{viewLabel}</Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
                       <ReliabilityIndicator 
-                        tier={supplier.reliabilityTier} 
-                        stars={supplier.reliabilityStars} 
-                        sold={supplier.sold}
+                        tier={viewStats.sold >= 20 ? 'premium' : viewStats.sold >= 10 ? 'regular' : viewStats.sold >= 5 ? 'small' : 'new'} 
+                        stars={viewStats.sold >= 20 ? 3 : viewStats.sold >= 10 ? 2 : 1} 
+                        sold={viewStats.sold}
                       />
                     </TableCell>
                     <TableCell className="text-center">
@@ -621,73 +840,73 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger>
-                              <Badge variant={getScoreBadgeVariant(supplier.performanceScore)}>
-                                {supplier.performanceScore}
+                              <Badge variant={getScoreBadgeVariant(viewStats.performanceScore)}>
+                                {viewStats.performanceScore}
                               </Badge>
                             </TooltipTrigger>
                             <TooltipContent>
                               <p>Volume-gewogen score</p>
                               <p className="text-xs text-muted-foreground">
-                                Basis: {supplier.basePerformanceScore} × {(supplier.volumeFactor * 100).toFixed(0)}% volume factor
+                                Basis: {viewStats.basePerformanceScore} × {(viewStats.volumeFactor * 100).toFixed(0)}% volume factor
                               </p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                         <span className="text-xs text-muted-foreground">
-                          {getScoreLabel(supplier.performanceScore)}
+                          {getScoreLabel(viewStats.performanceScore)}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Badge variant="default">{supplier.sold}</Badge>
+                      <Badge variant="default">{viewStats.sold}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Badge variant="outline">{supplier.inStock}</Badge>
+                      <Badge variant="outline">{viewStats.inStock}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Clock className="h-3 w-3 text-muted-foreground" />
-                        <span>{Math.round(supplier.avgDaysToSell)}d</span>
+                        <span>{Math.round(viewStats.avgDaysToSell)}d</span>
                       </div>
-                      {supplier.fastestSale !== null && supplier.slowestSale !== null && (
+                      {viewStats.fastestSale !== null && viewStats.slowestSale !== null && (
                         <div className="text-xs text-muted-foreground">
-                          {supplier.fastestSale}d - {supplier.slowestSale}d
+                          {viewStats.fastestSale}d - {viewStats.slowestSale}d
                         </div>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <span className={supplier.profit > 0 ? 'text-green-600' : 'text-red-600'}>
-                        {formatCurrency(supplier.profit)}
+                      <span className={viewStats.profit > 0 ? 'text-green-600' : 'text-red-600'}>
+                        {formatCurrency(viewStats.profit)}
                       </span>
                       <div className="text-xs text-muted-foreground">
-                        {formatCurrency(supplier.avgProfitPerVehicle)}/auto
+                        {formatCurrency(viewStats.avgProfitPerVehicle)}/auto
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Badge variant={supplier.profitMargin > 15 ? 'default' : supplier.profitMargin > 10 ? 'secondary' : 'destructive'}>
-                        {formatPercentage(supplier.profitMargin)}
+                      <Badge variant={viewStats.profitMargin > 15 ? 'default' : viewStats.profitMargin > 10 ? 'secondary' : 'destructive'}>
+                        {formatPercentage(viewStats.profitMargin)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {supplier.annualizedROI > 100 ? (
+                        {viewStats.annualizedROI > 100 ? (
                           <ArrowUpRight className="h-3 w-3 text-green-500" />
                         ) : (
                           <ArrowDownRight className="h-3 w-3 text-red-500" />
                         )}
-                        <span className={supplier.annualizedROI > 100 ? 'text-green-600 font-medium' : ''}>
-                          {formatPercentage(supplier.annualizedROI)}
+                        <span className={viewStats.annualizedROI > 100 ? 'text-green-600 font-medium' : ''}>
+                          {formatPercentage(viewStats.annualizedROI)}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <span className={supplier.profitPerDay > 50 ? 'text-green-600 font-medium' : ''}>
-                        {formatCurrency(supplier.profitPerDay)}
+                      <span className={viewStats.profitPerDay > 50 ? 'text-green-600 font-medium' : ''}>
+                        {formatCurrency(viewStats.profitPerDay)}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Badge variant={supplier.sellThroughRate > 80 ? 'default' : supplier.sellThroughRate > 50 ? 'secondary' : 'outline'}>
-                        {formatPercentage(supplier.sellThroughRate)}
+                      <Badge variant={viewStats.sellThroughRate > 80 ? 'default' : viewStats.sellThroughRate > 50 ? 'secondary' : 'outline'}>
+                        {formatPercentage(viewStats.sellThroughRate)}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -820,7 +1039,8 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
                     </TableRow>
                   )}
                 </React.Fragment>
-              ))}
+              );
+              })}
             </TableBody>
           </Table>
         </CardContent>
