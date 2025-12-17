@@ -4,16 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { ReportPeriod } from "@/types/reports";
 import { supplierReportsService } from "@/services/supplierReportsService";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend, ScatterChart, Scatter, ZAxis, ComposedChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, Legend, ScatterChart, Scatter, ZAxis, ComposedChart, Line } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Package, Euro, Percent, Clock, Trophy, Zap, Target, ArrowUpRight, ArrowDownRight, ChevronDown, ChevronRight, Building2, Users } from "lucide-react";
+import { TrendingUp, Package, Euro, Percent, Clock, Trophy, Zap, Target, ArrowUpRight, ArrowDownRight, ChevronDown, ChevronRight, Building2, Users, Star, AlertTriangle, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ReliabilityTier } from "@/types/reports";
 
 interface SupplierAnalyticsProps {
   period: ReportPeriod;
@@ -44,12 +48,86 @@ const getScoreBadgeVariant = (score: number): 'default' | 'secondary' | 'outline
   return 'destructive';
 };
 
+const getReliabilityInfo = (tier: ReliabilityTier, sold: number): { 
+  label: string; 
+  color: string; 
+  icon: 'shield' | 'star' | 'warning';
+  description: string;
+} => {
+  switch (tier) {
+    case 'premium':
+      return { 
+        label: 'Zeer Betrouwbaar', 
+        color: 'text-green-500', 
+        icon: 'shield',
+        description: `${sold} verkopen - Statistisch zeer betrouwbaar`
+      };
+    case 'regular':
+      return { 
+        label: 'Betrouwbaar', 
+        color: 'text-blue-500', 
+        icon: 'star',
+        description: `${sold} verkopen - Betrouwbare data`
+      };
+    case 'small':
+      return { 
+        label: 'Indicatief', 
+        color: 'text-yellow-500', 
+        icon: 'star',
+        description: `${sold} verkopen - Data is indicatief`
+      };
+    case 'new':
+      return { 
+        label: 'Onbetrouwbaar', 
+        color: 'text-orange-500', 
+        icon: 'warning',
+        description: `${sold} verkopen - Te weinig data voor betrouwbare analyse`
+      };
+  }
+};
+
+const ReliabilityIndicator: React.FC<{ 
+  tier: ReliabilityTier; 
+  stars: 1 | 2 | 3; 
+  sold: number;
+}> = ({ tier, stars, sold }) => {
+  const info = getReliabilityInfo(tier, sold);
+  
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className={cn("flex items-center gap-0.5", info.color)}>
+            {info.icon === 'shield' && <ShieldCheck className="h-3 w-3" />}
+            {info.icon === 'warning' && <AlertTriangle className="h-3 w-3" />}
+            {info.icon === 'star' && (
+              <>
+                {[...Array(stars)].map((_, i) => (
+                  <Star key={i} className="h-3 w-3 fill-current" />
+                ))}
+                {[...Array(3 - stars)].map((_, i) => (
+                  <Star key={i} className="h-3 w-3 opacity-30" />
+                ))}
+              </>
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="font-medium">{info.label}</p>
+          <p className="text-xs text-muted-foreground">{info.description}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
 export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<string>("performanceScore");
   const [showAllTime, setShowAllTime] = useState(true);
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [showOnlyReliable, setShowOnlyReliable] = useState(true); // Default: only show reliable data
   const queryClient = useQueryClient();
 
   const { data: analytics, isLoading } = useQuery({
@@ -96,10 +174,13 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
     setExpandedRows(newExpanded);
   };
 
-  // Filter suppliers based on view and search
+  // Filter suppliers based on view, search, and reliability
   const filteredSuppliers = analytics?.suppliers.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchesSearch) return false;
+    
+    // Reliability filter
+    if (showOnlyReliable && !s.meetsMinimumThreshold) return false;
     
     if (viewFilter === 'b2b') return s.b2b.sold > 0;
     if (viewFilter === 'b2c') return s.b2c.sold > 0;
@@ -115,6 +196,9 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
     const bValue = b[sortBy as keyof typeof b] as number;
     return bValue - aValue;
   }) || [];
+  
+  // Count unreliable suppliers for info
+  const unreliableCount = analytics?.suppliers.filter(s => !s.meetsMinimumThreshold).length || 0;
 
   if (isLoading) {
     return (
@@ -158,30 +242,50 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
     <div className="space-y-6">
       {/* Controls */}
       <div className="flex flex-wrap justify-between gap-4">
-        <div className="inline-flex rounded-lg border p-1 bg-muted">
-          <Button 
-            variant={viewFilter === 'all' ? "default" : "ghost"} 
-            size="sm" 
-            onClick={() => setViewFilter('all')}
-          >
-            Alle Verkopen
-          </Button>
-          <Button 
-            variant={viewFilter === 'b2b' ? "default" : "ghost"} 
-            size="sm" 
-            onClick={() => setViewFilter('b2b')}
-            className="gap-1"
-          >
-            <Building2 className="h-3 w-3" /> B2B
-          </Button>
-          <Button 
-            variant={viewFilter === 'b2c' ? "default" : "ghost"} 
-            size="sm" 
-            onClick={() => setViewFilter('b2c')}
-            className="gap-1"
-          >
-            <Users className="h-3 w-3" /> B2C
-          </Button>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="inline-flex rounded-lg border p-1 bg-muted">
+            <Button 
+              variant={viewFilter === 'all' ? "default" : "ghost"} 
+              size="sm" 
+              onClick={() => setViewFilter('all')}
+            >
+              Alle Verkopen
+            </Button>
+            <Button 
+              variant={viewFilter === 'b2b' ? "default" : "ghost"} 
+              size="sm" 
+              onClick={() => setViewFilter('b2b')}
+              className="gap-1"
+            >
+              <Building2 className="h-3 w-3" /> B2B
+            </Button>
+            <Button 
+              variant={viewFilter === 'b2c' ? "default" : "ghost"} 
+              size="sm" 
+              onClick={() => setViewFilter('b2c')}
+              className="gap-1"
+            >
+              <Users className="h-3 w-3" /> B2C
+            </Button>
+          </div>
+          
+          {/* Reliability Filter */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-muted/50">
+            <Switch 
+              id="reliability-filter"
+              checked={showOnlyReliable} 
+              onCheckedChange={setShowOnlyReliable}
+            />
+            <Label htmlFor="reliability-filter" className="text-sm cursor-pointer">
+              Alleen betrouwbaar (5+)
+            </Label>
+            {unreliableCount > 0 && !showOnlyReliable && (
+              <Badge variant="outline" className="text-xs">
+                <AlertTriangle className="h-3 w-3 mr-1 text-orange-500" />
+                {unreliableCount} onbetrouwbaar
+              </Badge>
+            )}
+          </div>
         </div>
         
         <div className="inline-flex rounded-lg border p-1 bg-muted">
@@ -318,7 +422,7 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" domain={[0, 100]} />
                 <YAxis dataKey="name" type="category" width={100} />
-                <Tooltip 
+                <RechartsTooltip 
                   formatter={(value: number, name: string) => {
                     if (name === 'score') return [value, 'Score'];
                     return [value, name];
@@ -351,7 +455,7 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
                 <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} />
-                <Tooltip formatter={(value: number) => formatPercentage(value)} />
+                <RechartsTooltip formatter={(value: number) => formatPercentage(value)} />
                 <Legend />
                 <Bar dataKey="b2bROI" name="B2B ROI" fill="hsl(var(--chart-1))" />
                 <Bar dataKey="b2cROI" name="B2C ROI" fill="hsl(var(--chart-2))" />
@@ -373,7 +477,7 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
                 <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
                 <YAxis yAxisId="left" tickFormatter={(v) => `€${v}`} />
                 <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${v}d`} />
-                <Tooltip 
+                <RechartsTooltip 
                   formatter={(value: number, name: string) => {
                     if (name === 'profitPerDay') return [formatCurrency(value), 'Winst/Dag'];
                     if (name === 'avgDays') return [`${value} dagen`, 'Gem. Stadagen'];
@@ -400,7 +504,7 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
                 <YAxis tickFormatter={(v) => formatCurrency(v)} />
-                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <RechartsTooltip formatter={(value: number) => formatCurrency(value)} />
                 <Legend />
                 <Bar dataKey="b2bProfit" name="B2B Winst" fill="hsl(var(--chart-1))" />
                 <Bar dataKey="b2cProfit" name="B2C Winst" fill="hsl(var(--chart-2))" />
@@ -448,6 +552,19 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
               <TableRow>
                 <TableHead className="w-10">#</TableHead>
                 <TableHead>Leverancier</TableHead>
+                <TableHead className="text-center w-8">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Betrouwbaarheid</p>
+                        <p className="text-xs text-muted-foreground">Gebaseerd op aantal verkopen</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableHead>
                 <TableHead className="text-center">Score</TableHead>
                 <TableHead className="text-right">Verkocht</TableHead>
                 <TableHead className="text-right">Voorraad</TableHead>
@@ -463,7 +580,10 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
               {filteredSuppliers.map((supplier, index) => (
                 <React.Fragment key={supplier.id}>
                   <TableRow 
-                    className="cursor-pointer hover:bg-muted/50"
+                    className={cn(
+                      "cursor-pointer hover:bg-muted/50",
+                      !supplier.meetsMinimumThreshold && "opacity-60"
+                    )}
                     onClick={() => toggleRowExpansion(supplier.id)}
                   >
                     <TableCell>
@@ -490,10 +610,29 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
+                      <ReliabilityIndicator 
+                        tier={supplier.reliabilityTier} 
+                        stars={supplier.reliabilityStars} 
+                        sold={supplier.sold}
+                      />
+                    </TableCell>
+                    <TableCell className="text-center">
                       <div className="flex flex-col items-center gap-1">
-                        <Badge variant={getScoreBadgeVariant(supplier.performanceScore)}>
-                          {supplier.performanceScore}
-                        </Badge>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Badge variant={getScoreBadgeVariant(supplier.performanceScore)}>
+                                {supplier.performanceScore}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Volume-gewogen score</p>
+                              <p className="text-xs text-muted-foreground">
+                                Basis: {supplier.basePerformanceScore} × {(supplier.volumeFactor * 100).toFixed(0)}% volume factor
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                         <span className="text-xs text-muted-foreground">
                           {getScoreLabel(supplier.performanceScore)}
                         </span>
@@ -556,7 +695,7 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
                   {/* Expanded B2B/B2C Details */}
                   {expandedRows.has(supplier.id) && (
                     <TableRow className="bg-muted/30">
-                      <TableCell colSpan={11}>
+                      <TableCell colSpan={12}>
                         <div className="py-4 px-2">
                           <div className="grid grid-cols-2 gap-4">
                             {/* B2B Details */}
