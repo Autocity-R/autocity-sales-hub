@@ -109,17 +109,25 @@ export const getTransportAlerts = async (): Promise<CriticalAlert | null> => {
     const thresholdDate = new Date();
     thresholdDate.setDate(thresholdDate.getDate() - THRESHOLDS.TRANSPORT_DAYS);
 
+    // Get all vehicles and filter by transportStatus = 'onderweg'
     const { data: vehicles, error } = await supabase
       .from('vehicles')
-      .select('id, brand, model, license_number, location, created_at, purchase_date')
-      .eq('location', 'in_transport')
+      .select('id, brand, model, license_number, details, created_at, purchase_date')
       .lt('purchase_date', thresholdDate.toISOString())
       .order('purchase_date', { ascending: true });
 
     if (error) throw error;
-    if (!vehicles || vehicles.length === 0) return null;
+    if (!vehicles) return null;
 
-    const alertVehicles = vehicles.map(v => {
+    // Filter vehicles that are in transport (transportStatus = 'onderweg')
+    const transportVehicles = vehicles.filter(v => {
+      const details = v.details as any;
+      return details?.transportStatus === 'onderweg';
+    });
+
+    if (transportVehicles.length === 0) return null;
+
+    const alertVehicles = transportVehicles.map(v => {
       const daysSince = Math.floor(
         (new Date().getTime() - new Date(v.purchase_date || v.created_at).getTime()) / (1000 * 60 * 60 * 24)
       );
@@ -214,10 +222,17 @@ export const getVehiclesNotOnline = async (): Promise<CriticalAlert | null> => {
     if (error) throw error;
     if (!vehicles) return null;
 
-    // Filter: showroomOnline = false or not set
+    // Filter: 
+    // - transportStatus = 'aangekomen' (auto is binnen, niet meer onderweg)
+    // - showroomOnline !== true (niet online)
     const offlineVehicles = vehicles.filter(v => {
       const details = v.details as any;
-      return details?.showroomOnline !== true;
+      const transportStatus = details?.transportStatus;
+      const isArrived = transportStatus === 'aangekomen';
+      const isNotOnline = details?.showroomOnline !== true;
+      
+      // Alleen auto's die BINNEN zijn (aangekomen) maar nog niet online staan
+      return isArrived && isNotOnline;
     });
 
     if (offlineVehicles.length === 0) return null;
@@ -240,7 +255,7 @@ export const getVehiclesNotOnline = async (): Promise<CriticalAlert | null> => {
       severity: 'warning',
       count: alertVehicles.length,
       vehicles: alertVehicles,
-      message: `${alertVehicles.length} voertuig(en) op voorraad maar NIET online`,
+      message: `${alertVehicles.length} voertuig(en) binnen maar NIET online`,
     };
   } catch (error) {
     console.error('Error fetching not online alerts:', error);
@@ -475,11 +490,15 @@ export const getDailyStats = async () => {
       .in('status', ['verkocht_b2b', 'verkocht_b2c'])
       .gte('sold_date', today.toISOString());
 
-    // Vehicles in transit
-    const { data: inTransit } = await supabase
+    // Vehicles in transit - check transportStatus = 'onderweg'
+    const { data: allVehiclesForTransit } = await supabase
       .from('vehicles')
-      .select('id')
-      .eq('location', 'in_transport');
+      .select('id, details');
+
+    const inTransit = allVehiclesForTransit?.filter(v => {
+      const details = v.details as any;
+      return details?.transportStatus === 'onderweg';
+    }) || [];
 
     // Vehicles on stock
     const { data: onStock } = await supabase
@@ -487,10 +506,12 @@ export const getDailyStats = async () => {
       .select('id, details')
       .eq('status', 'voorraad');
 
-    // Vehicles not online
+    // Vehicles not online - only those that have arrived (transportStatus = 'aangekomen') but not online
     const notOnline = onStock?.filter(v => {
       const details = v.details as any;
-      return details?.showroomOnline !== true;
+      const isArrived = details?.transportStatus === 'aangekomen';
+      const isNotOnline = details?.showroomOnline !== true;
+      return isArrived && isNotOnline;
     }) || [];
 
     return {
