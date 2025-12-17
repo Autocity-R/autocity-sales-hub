@@ -24,6 +24,7 @@ import { SalesChart } from "@/components/reports/SalesChart";
 import { TopVehiclesChart } from "@/components/reports/TopVehiclesChart";
 import { ExactOnlineStatus } from "@/components/reports/ExactOnlineStatus";
 import { DataSourceIndicator } from "@/components/common/DataSourceIndicator";
+import { CEOChatPanel } from "@/components/reports/CEOChatPanel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -725,6 +726,9 @@ const Reports = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* CEO Chat Panel */}
+      <CEOChatPanel />
     </DashboardLayout>
   );
 };

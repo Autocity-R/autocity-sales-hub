@@ -1,0 +1,530 @@
+import { supabase } from "@/integrations/supabase/client";
+
+export interface CriticalAlert {
+  type: 'import_status' | 'transport' | 'papers' | 'not_online' | 'slow_mover' | 'workshop';
+  severity: 'critical' | 'warning' | 'info';
+  count: number;
+  vehicles: Array<{
+    id: string;
+    brand: string;
+    model: string;
+    license_number: string | null;
+    days: number;
+    status?: string;
+  }>;
+  message: string;
+}
+
+export interface TeamMemberPerformance {
+  name: string;
+  role: string;
+  b2b_sales: number;
+  b2c_sales: number;
+  total_sales: number;
+  total_revenue: number;
+  average_margin: number;
+}
+
+export interface LeaseSupplierStats {
+  supplier_id: string;
+  supplier_name: string;
+  company_name: string | null;
+  total_vehicles: number;
+  vehicles_delivered: number;
+  average_delivery_days: number;
+  papers_on_time_percentage: number;
+}
+
+export interface CEOBriefingData {
+  alerts: CriticalAlert[];
+  dailyStats: {
+    vehiclesSoldToday: number;
+    vehiclesInTransit: number;
+    vehiclesOnStock: number;
+    vehiclesNotOnline: number;
+  };
+  teamPerformance: TeamMemberPerformance[];
+  leaseSuppliers: LeaseSupplierStats[];
+}
+
+// Alert thresholds
+const THRESHOLDS = {
+  IMPORT_STATUS_DAYS: 9,
+  TRANSPORT_DAYS: 20,
+  PAPERS_DAYS: 14,
+  SLOW_MOVER_DAYS: 50,
+  WORKSHOP_DAYS: 14,
+};
+
+/**
+ * Get vehicles stuck in import status for more than 9 days
+ */
+export const getImportStatusAlerts = async (): Promise<CriticalAlert | null> => {
+  try {
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - THRESHOLDS.IMPORT_STATUS_DAYS);
+
+    const { data: vehicles, error } = await supabase
+      .from('vehicles')
+      .select('id, brand, model, license_number, import_status, import_updated_at, created_at')
+      .in('import_status', ['aangemeld', 'goedgekeurd', 'bpm_betaald'])
+      .lt('import_updated_at', thresholdDate.toISOString())
+      .order('import_updated_at', { ascending: true });
+
+    if (error) throw error;
+    if (!vehicles || vehicles.length === 0) return null;
+
+    const alertVehicles = vehicles.map(v => {
+      const daysSince = Math.floor(
+        (new Date().getTime() - new Date(v.import_updated_at || v.created_at).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      return {
+        id: v.id,
+        brand: v.brand,
+        model: v.model,
+        license_number: v.license_number,
+        days: daysSince,
+        status: v.import_status || undefined,
+      };
+    });
+
+    return {
+      type: 'import_status',
+      severity: 'critical',
+      count: alertVehicles.length,
+      vehicles: alertVehicles,
+      message: `${alertVehicles.length} voertuig(en) staan >9 dagen in dezelfde import status`,
+    };
+  } catch (error) {
+    console.error('Error fetching import status alerts:', error);
+    return null;
+  }
+};
+
+/**
+ * Get vehicles in transport for more than 20 days
+ */
+export const getTransportAlerts = async (): Promise<CriticalAlert | null> => {
+  try {
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - THRESHOLDS.TRANSPORT_DAYS);
+
+    const { data: vehicles, error } = await supabase
+      .from('vehicles')
+      .select('id, brand, model, license_number, location, created_at, purchase_date')
+      .eq('location', 'in_transport')
+      .lt('purchase_date', thresholdDate.toISOString())
+      .order('purchase_date', { ascending: true });
+
+    if (error) throw error;
+    if (!vehicles || vehicles.length === 0) return null;
+
+    const alertVehicles = vehicles.map(v => {
+      const daysSince = Math.floor(
+        (new Date().getTime() - new Date(v.purchase_date || v.created_at).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      return {
+        id: v.id,
+        brand: v.brand,
+        model: v.model,
+        license_number: v.license_number,
+        days: daysSince,
+      };
+    });
+
+    return {
+      type: 'transport',
+      severity: 'critical',
+      count: alertVehicles.length,
+      vehicles: alertVehicles,
+      message: `${alertVehicles.length} voertuig(en) zijn >20 dagen onderweg (doel <14 dagen)`,
+    };
+  } catch (error) {
+    console.error('Error fetching transport alerts:', error);
+    return null;
+  }
+};
+
+/**
+ * Get vehicles where papers are not received for more than 14 days
+ * Excludes: delivered vehicles and trade-in vehicles
+ */
+export const getPapersAlerts = async (): Promise<CriticalAlert | null> => {
+  try {
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - THRESHOLDS.PAPERS_DAYS);
+
+    const { data: vehicles, error } = await supabase
+      .from('vehicles')
+      .select('id, brand, model, license_number, status, details, created_at, location')
+      .in('status', ['voorraad', 'verkocht_b2b', 'verkocht_b2c'])
+      .eq('location', 'autocity')
+      .lt('created_at', thresholdDate.toISOString());
+
+    if (error) throw error;
+    if (!vehicles) return null;
+
+    // Filter: papers not received AND not a trade-in vehicle
+    const filteredVehicles = vehicles.filter(v => {
+      const details = v.details as any;
+      const papersReceived = details?.papersReceived === true;
+      const isTradeIn = details?.isTradeIn === true;
+      return !papersReceived && !isTradeIn;
+    });
+
+    if (filteredVehicles.length === 0) return null;
+
+    const alertVehicles = filteredVehicles.map(v => {
+      const daysSince = Math.floor(
+        (new Date().getTime() - new Date(v.created_at).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      return {
+        id: v.id,
+        brand: v.brand,
+        model: v.model,
+        license_number: v.license_number,
+        days: daysSince,
+        status: v.status,
+      };
+    });
+
+    return {
+      type: 'papers',
+      severity: 'warning',
+      count: alertVehicles.length,
+      vehicles: alertVehicles,
+      message: `${alertVehicles.length} voertuig(en) hebben >14 dagen geen papieren ontvangen`,
+    };
+  } catch (error) {
+    console.error('Error fetching papers alerts:', error);
+    return null;
+  }
+};
+
+/**
+ * Get vehicles on stock but not online
+ */
+export const getVehiclesNotOnline = async (): Promise<CriticalAlert | null> => {
+  try {
+    const { data: vehicles, error } = await supabase
+      .from('vehicles')
+      .select('id, brand, model, license_number, details, created_at')
+      .eq('status', 'voorraad');
+
+    if (error) throw error;
+    if (!vehicles) return null;
+
+    // Filter: showroomOnline = false or not set
+    const offlineVehicles = vehicles.filter(v => {
+      const details = v.details as any;
+      return details?.showroomOnline !== true;
+    });
+
+    if (offlineVehicles.length === 0) return null;
+
+    const alertVehicles = offlineVehicles.map(v => {
+      const daysSince = Math.floor(
+        (new Date().getTime() - new Date(v.created_at).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      return {
+        id: v.id,
+        brand: v.brand,
+        model: v.model,
+        license_number: v.license_number,
+        days: daysSince,
+      };
+    });
+
+    return {
+      type: 'not_online',
+      severity: 'warning',
+      count: alertVehicles.length,
+      vehicles: alertVehicles,
+      message: `${alertVehicles.length} voertuig(en) op voorraad maar NIET online`,
+    };
+  } catch (error) {
+    console.error('Error fetching not online alerts:', error);
+    return null;
+  }
+};
+
+/**
+ * Get slow movers - vehicles on stock for more than 50 days
+ */
+export const getSlowMovers = async (): Promise<CriticalAlert | null> => {
+  try {
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - THRESHOLDS.SLOW_MOVER_DAYS);
+
+    const { data: vehicles, error } = await supabase
+      .from('vehicles')
+      .select('id, brand, model, license_number, created_at, selling_price')
+      .eq('status', 'voorraad')
+      .lt('created_at', thresholdDate.toISOString())
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    if (!vehicles || vehicles.length === 0) return null;
+
+    const alertVehicles = vehicles.map(v => ({
+      id: v.id,
+      brand: v.brand,
+      model: v.model,
+      license_number: v.license_number,
+      days: Math.floor(
+        (new Date().getTime() - new Date(v.created_at).getTime()) / (1000 * 60 * 60 * 24)
+      ),
+    }));
+
+    return {
+      type: 'slow_mover',
+      severity: 'warning',
+      count: alertVehicles.length,
+      vehicles: alertVehicles,
+      message: `${alertVehicles.length} voertuig(en) staan >50 dagen op voorraad`,
+    };
+  } catch (error) {
+    console.error('Error fetching slow movers:', error);
+    return null;
+  }
+};
+
+/**
+ * Get vehicles stuck in workshop for more than 14 days
+ */
+export const getWorkshopBottlenecks = async (): Promise<CriticalAlert | null> => {
+  try {
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - THRESHOLDS.WORKSHOP_DAYS);
+
+    const { data: vehicles, error } = await supabase
+      .from('vehicles')
+      .select('id, brand, model, license_number, details, updated_at')
+      .in('location', ['werkplaats', 'workshop']);
+
+    if (error) throw error;
+    if (!vehicles) return null;
+
+    const workshopVehicles = vehicles.filter(v => {
+      const updatedAt = new Date(v.updated_at);
+      return updatedAt < thresholdDate;
+    });
+
+    if (workshopVehicles.length === 0) return null;
+
+    const alertVehicles = workshopVehicles.map(v => ({
+      id: v.id,
+      brand: v.brand,
+      model: v.model,
+      license_number: v.license_number,
+      days: Math.floor(
+        (new Date().getTime() - new Date(v.updated_at).getTime()) / (1000 * 60 * 60 * 24)
+      ),
+    }));
+
+    return {
+      type: 'workshop',
+      severity: 'warning',
+      count: alertVehicles.length,
+      vehicles: alertVehicles,
+      message: `${alertVehicles.length} voertuig(en) staan >14 dagen in werkplaats`,
+    };
+  } catch (error) {
+    console.error('Error fetching workshop bottlenecks:', error);
+    return null;
+  }
+};
+
+/**
+ * Get all critical alerts
+ */
+export const getAllCriticalAlerts = async (): Promise<CriticalAlert[]> => {
+  const [importAlerts, transportAlerts, papersAlerts, notOnlineAlerts, slowMovers, workshopAlerts] = 
+    await Promise.all([
+      getImportStatusAlerts(),
+      getTransportAlerts(),
+      getPapersAlerts(),
+      getVehiclesNotOnline(),
+      getSlowMovers(),
+      getWorkshopBottlenecks(),
+    ]);
+
+  return [
+    importAlerts,
+    transportAlerts,
+    papersAlerts,
+    notOnlineAlerts,
+    slowMovers,
+    workshopAlerts,
+  ].filter((alert): alert is CriticalAlert => alert !== null);
+};
+
+/**
+ * Get team performance data
+ */
+export const getTeamPerformance = async (): Promise<TeamMemberPerformance[]> => {
+  try {
+    // Get weekly sales data
+    const { data: weeklySales, error: salesError } = await supabase
+      .from('weekly_sales')
+      .select('*')
+      .order('week_start_date', { ascending: false })
+      .limit(20);
+
+    if (salesError) throw salesError;
+
+    // Aggregate by salesperson
+    const performanceMap = new Map<string, TeamMemberPerformance>();
+    
+    // Define team members
+    const teamMembers = [
+      { name: 'Daan', role: 'Verkoper B2B & B2C' },
+      { name: 'Martijn', role: 'Verkoper B2C' },
+      { name: 'Alex', role: 'Inkoper & B2B Verkoper' },
+      { name: 'Hendrik', role: 'Inkoper & Verkoper B2B/B2C' },
+    ];
+
+    teamMembers.forEach(member => {
+      const memberSales = weeklySales?.filter(s => 
+        s.salesperson_name?.toLowerCase().includes(member.name.toLowerCase())
+      ) || [];
+
+      const totalB2B = memberSales.reduce((sum, s) => sum + (s.b2b_sales || 0), 0);
+      const totalB2C = memberSales.reduce((sum, s) => sum + (s.b2c_sales || 0), 0);
+
+      performanceMap.set(member.name, {
+        name: member.name,
+        role: member.role,
+        b2b_sales: totalB2B,
+        b2c_sales: totalB2C,
+        total_sales: totalB2B + totalB2C,
+        total_revenue: 0, // Would need vehicle price data
+        average_margin: 0, // Would need margin data
+      });
+    });
+
+    return Array.from(performanceMap.values());
+  } catch (error) {
+    console.error('Error fetching team performance:', error);
+    return [];
+  }
+};
+
+/**
+ * Get lease supplier statistics
+ */
+export const getLeaseSupplierStats = async (): Promise<LeaseSupplierStats[]> => {
+  try {
+    const leaseCompanies = ['arval', 'ayvens', 'alphabet', 'athlon', 'leaseplan', 'terberg'];
+
+    const { data: suppliers, error: suppliersError } = await supabase
+      .from('contacts')
+      .select('id, first_name, last_name, company_name')
+      .eq('type', 'supplier');
+
+    if (suppliersError) throw suppliersError;
+
+    // Filter for lease companies
+    const leaseSuppliers = suppliers?.filter(s => {
+      const name = `${s.first_name} ${s.last_name} ${s.company_name || ''}`.toLowerCase();
+      return leaseCompanies.some(lc => name.includes(lc));
+    }) || [];
+
+    // Get vehicle stats for each supplier
+    const stats: LeaseSupplierStats[] = await Promise.all(
+      leaseSuppliers.map(async supplier => {
+        const { data: vehicles } = await supabase
+          .from('vehicles')
+          .select('id, status, created_at, details')
+          .eq('supplier_id', supplier.id);
+
+        const totalVehicles = vehicles?.length || 0;
+        const deliveredVehicles = vehicles?.filter(v => v.status === 'afgeleverd').length || 0;
+
+        return {
+          supplier_id: supplier.id,
+          supplier_name: `${supplier.first_name} ${supplier.last_name}`,
+          company_name: supplier.company_name,
+          total_vehicles: totalVehicles,
+          vehicles_delivered: deliveredVehicles,
+          average_delivery_days: 0,
+          papers_on_time_percentage: 0,
+        };
+      })
+    );
+
+    return stats;
+  } catch (error) {
+    console.error('Error fetching lease supplier stats:', error);
+    return [];
+  }
+};
+
+/**
+ * Get daily stats for CEO briefing
+ */
+export const getDailyStats = async () => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Vehicles sold today
+    const { data: soldToday } = await supabase
+      .from('vehicles')
+      .select('id')
+      .in('status', ['verkocht_b2b', 'verkocht_b2c'])
+      .gte('sold_date', today.toISOString());
+
+    // Vehicles in transit
+    const { data: inTransit } = await supabase
+      .from('vehicles')
+      .select('id')
+      .eq('location', 'in_transport');
+
+    // Vehicles on stock
+    const { data: onStock } = await supabase
+      .from('vehicles')
+      .select('id, details')
+      .eq('status', 'voorraad');
+
+    // Vehicles not online
+    const notOnline = onStock?.filter(v => {
+      const details = v.details as any;
+      return details?.showroomOnline !== true;
+    }) || [];
+
+    return {
+      vehiclesSoldToday: soldToday?.length || 0,
+      vehiclesInTransit: inTransit?.length || 0,
+      vehiclesOnStock: onStock?.length || 0,
+      vehiclesNotOnline: notOnline.length,
+    };
+  } catch (error) {
+    console.error('Error fetching daily stats:', error);
+    return {
+      vehiclesSoldToday: 0,
+      vehiclesInTransit: 0,
+      vehiclesOnStock: 0,
+      vehiclesNotOnline: 0,
+    };
+  }
+};
+
+/**
+ * Get complete CEO briefing data
+ */
+export const getCEOBriefingData = async (): Promise<CEOBriefingData> => {
+  const [alerts, dailyStats, teamPerformance, leaseSuppliers] = await Promise.all([
+    getAllCriticalAlerts(),
+    getDailyStats(),
+    getTeamPerformance(),
+    getLeaseSupplierStats(),
+  ]);
+
+  return {
+    alerts,
+    dailyStats,
+    teamPerformance,
+    leaseSuppliers,
+  };
+};
