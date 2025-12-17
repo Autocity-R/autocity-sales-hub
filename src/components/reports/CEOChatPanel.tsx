@@ -18,6 +18,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCEOBriefingData, CriticalAlert } from "@/services/ceoDataService";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface ChatMessage {
   id: string;
@@ -27,6 +28,12 @@ interface ChatMessage {
 }
 
 export const CEOChatPanel = () => {
+  const { hasCEOAccess } = useRoleAccess();
+  
+  // Only render for owner and admin roles
+  if (!hasCEOAccess()) {
+    return null;
+  }
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);

@@ -46,6 +46,10 @@ export const useRoleAccess = () => {
     return userRole === 'user' || userRole === 'operationeel';
   };
 
+  const hasCEOAccess = () => {
+    return isAdmin; // isAdmin includes both 'admin' and 'owner' roles
+  };
+
   return {
     hasReportsAccess,
     hasLeadsAccess,
@@ -57,6 +61,7 @@ export const useRoleAccess = () => {
     hasTaxatieAccess,
     canAssignTasks,
     isOperationalUser,
+    hasCEOAccess,
     userRole,
     isAdmin
   };
