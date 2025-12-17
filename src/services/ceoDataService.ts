@@ -164,20 +164,25 @@ export const getPapersAlerts = async (): Promise<CriticalAlert | null> => {
 
     const { data: vehicles, error } = await supabase
       .from('vehicles')
-      .select('id, brand, model, license_number, status, details, created_at, location')
+      .select('id, brand, model, license_number, status, details, created_at')
       .in('status', ['voorraad', 'verkocht_b2b', 'verkocht_b2c'])
-      .eq('location', 'autocity')
       .lt('created_at', thresholdDate.toISOString());
 
     if (error) throw error;
     if (!vehicles) return null;
 
-    // Filter: papers not received AND not a trade-in vehicle
+    // Filter: 
+    // - papers not received
+    // - not a trade-in vehicle
+    // - transportStatus = 'aangekomen' (auto moet binnen zijn, niet onderweg)
     const filteredVehicles = vehicles.filter(v => {
       const details = v.details as any;
       const papersReceived = details?.papersReceived === true;
       const isTradeIn = details?.isTradeIn === true;
-      return !papersReceived && !isTradeIn;
+      const transportStatus = details?.transportStatus;
+      const isArrived = transportStatus === 'aangekomen';
+      
+      return !papersReceived && !isTradeIn && isArrived;
     });
 
     if (filteredVehicles.length === 0) return null;
