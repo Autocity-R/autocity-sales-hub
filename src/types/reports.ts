@@ -111,6 +111,9 @@ export interface PurchaseAnalyticsData {
   byBuyer: Array<{ name: string; value: number }>;
 }
 
+// Reliability tier for statistical confidence
+export type ReliabilityTier = 'premium' | 'regular' | 'small' | 'new';
+
 // B2B/B2C Channel-specific metrics
 export interface ChannelStats {
   sold: number;
@@ -152,8 +155,16 @@ export interface SupplierStats {
   inventoryTurnover: number;    // 365 / gem. stadagen - Omloopsnelheid
   gmroi: number;                // Gross Margin ROI - Bruto marge rendement
   capitalEfficiency: number;    // Verkoopwaarde / Kapitaalbeslag
-  performanceScore: number;     // Gecombineerde score (0-100)
+  performanceScore: number;     // Gecombineerde score (0-100) - Volume gewogen
+  basePerformanceScore: number; // Ongecorrigeerde score (puur op metrics)
   avgProfitPerVehicle: number;  // Gemiddelde winst per voertuig
+  
+  // Reliability metrics for statistical confidence
+  reliabilityTier: ReliabilityTier;  // premium (20+), regular (10-19), small (5-9), new (<5)
+  reliabilityStars: 1 | 2 | 3;       // Visuele indicator
+  reliabilityScore: number;          // 0-100 score gebaseerd op volume
+  meetsMinimumThreshold: boolean;    // Voldoet aan minimum (standaard 5)
+  volumeFactor: number;              // Factor waarmee score wordt gewogen (0.5-1.0)
   
   // B2B/B2C Channel Stats
   b2b: ChannelStats;

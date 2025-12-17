@@ -2,7 +2,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { ReportPeriod, SupplierStats, SupplierAnalyticsData, ChannelStats } from "@/types/reports";
 
 // Internal interface for building stats
-interface SupplierStatsBuilder extends Omit<SupplierStats, 'annualizedROI' | 'profitPerDay' | 'sellThroughRate' | 'inventoryTurnover' | 'gmroi' | 'capitalEfficiency' | 'performanceScore' | 'avgProfitPerVehicle' | 'preferredChannel' | 'channelEfficiencyGap'> {
+interface SupplierStatsBuilder extends Omit<SupplierStats, 
+  'annualizedROI' | 'profitPerDay' | 'sellThroughRate' | 'inventoryTurnover' | 
+  'gmroi' | 'capitalEfficiency' | 'performanceScore' | 'basePerformanceScore' | 
+  'avgProfitPerVehicle' | 'preferredChannel' | 'channelEfficiencyGap' |
+  'reliabilityTier' | 'reliabilityStars' | 'reliabilityScore' | 'meetsMinimumThreshold' | 'volumeFactor'> {
   totalDaysToSell: number;
   b2bTotalDays: number;
   b2cTotalDays: number;
@@ -122,7 +126,21 @@ class SupplierReportsService {
       
       const channelEfficiencyGap = Math.abs(b2bAnnualizedROI - b2cAnnualizedROI);
       
-      // Performance Score (0-100)
+      // Reliability Tier Calculation
+      // Premium: 20+ verkopen, Regular: 10-19, Small: 5-9, New: <5
+      const reliabilityTier = s.sold >= 20 ? 'premium' as const : 
+                              s.sold >= 10 ? 'regular' as const : 
+                              s.sold >= 5 ? 'small' as const : 'new' as const;
+      const reliabilityStars = s.sold >= 20 ? 3 as const : s.sold >= 10 ? 2 as const : 1 as const;
+      const reliabilityScore = Math.min(s.sold * 5, 100); // Max 100 at 20 sales
+      const meetsMinimumThreshold = s.sold >= 5;
+      
+      // Volume Factor (0.5 - 1.0)
+      // Leveranciers met <10 verkopen krijgen een lagere weging
+      const volumeBenchmark = 10;
+      const volumeFactor = Math.max(0.5, Math.min(1, s.sold / volumeBenchmark));
+      
+      // Base Performance Score (0-100) - Puur op metrics
       // 30% Annualized ROI (benchmark: 100%+)
       // 25% Winst per Dag (benchmark: €50+)
       // 20% Sell-Through Rate (benchmark: 80%+)
@@ -133,7 +151,10 @@ class SupplierReportsService {
       const sellThroughScore = Math.min(sellThroughRate / 80, 1) * 20;
       const marginScore = Math.min(profitMargin / 12, 1) * 15;
       const speedScore = avgDaysToSell > 0 ? Math.max(1 - (avgDaysToSell / 90), 0) * 10 : 0;
-      const performanceScore = Math.round(roiScore + profitPerDayScore + sellThroughScore + marginScore + speedScore);
+      const basePerformanceScore = Math.round(roiScore + profitPerDayScore + sellThroughScore + marginScore + speedScore);
+      
+      // Volume-Gewogen Performance Score
+      const performanceScore = Math.round(basePerformanceScore * volumeFactor);
       
       return {
         ...s,
@@ -148,8 +169,14 @@ class SupplierReportsService {
         inventoryTurnover,
         gmroi,
         capitalEfficiency,
+        basePerformanceScore: Math.min(basePerformanceScore, 100),
         performanceScore: Math.min(performanceScore, 100),
         avgProfitPerVehicle,
+        reliabilityTier,
+        reliabilityStars,
+        reliabilityScore,
+        meetsMinimumThreshold,
+        volumeFactor,
         b2b: {
           ...s.b2b,
           avgDaysToSell: b2bAvgDays,
@@ -178,34 +205,42 @@ class SupplierReportsService {
     // Sort by performance score by default
     suppliers.sort((a, b) => b.performanceScore - a.performanceScore);
     
-    // Calculate summary metrics
+    // Calculate summary metrics - ONLY from reliable suppliers (5+ sales)
+    const reliableSuppliers = suppliers.filter(s => s.meetsMinimumThreshold);
     const suppliersWithSales = suppliers.filter(s => s.sold > 0);
-    const bestPerformer = suppliersWithSales.length > 0 
-      ? { name: suppliersWithSales[0].name, score: suppliersWithSales[0].performanceScore }
+    
+    // Best Performer - Only from reliable suppliers
+    const reliableSorted = [...reliableSuppliers].sort((a, b) => b.performanceScore - a.performanceScore);
+    const bestPerformer = reliableSorted.length > 0 
+      ? { name: reliableSorted[0].name, score: reliableSorted[0].performanceScore }
       : null;
     
-    const fastestTurnoverSupplier = [...suppliersWithSales].sort((a, b) => a.avgDaysToSell - b.avgDaysToSell)[0];
+    // Fastest Turnover - Only from reliable suppliers
+    const fastestTurnoverSupplier = [...reliableSuppliers].sort((a, b) => a.avgDaysToSell - b.avgDaysToSell)[0];
     const fastestTurnover = fastestTurnoverSupplier 
       ? { name: fastestTurnoverSupplier.name, days: Math.round(fastestTurnoverSupplier.avgDaysToSell) }
       : null;
     
-    const bestROISupplier = [...suppliersWithSales].sort((a, b) => b.annualizedROI - a.annualizedROI)[0];
+    // Best ROI - Only from reliable suppliers
+    const bestROISupplier = [...reliableSuppliers].sort((a, b) => b.annualizedROI - a.annualizedROI)[0];
     const bestAnnualizedROI = bestROISupplier 
       ? { name: bestROISupplier.name, roi: bestROISupplier.annualizedROI }
       : null;
     
-    const bestProfitPerDaySupplier = [...suppliersWithSales].sort((a, b) => b.profitPerDay - a.profitPerDay)[0];
+    // Best Profit per Day - Only from reliable suppliers
+    const bestProfitPerDaySupplier = [...reliableSuppliers].sort((a, b) => b.profitPerDay - a.profitPerDay)[0];
     const highestProfitPerDay = bestProfitPerDaySupplier 
       ? { name: bestProfitPerDaySupplier.name, profitPerDay: bestProfitPerDaySupplier.profitPerDay }
       : null;
     
-    const b2bSuppliers = suppliersWithSales.filter(s => s.b2b.sold > 0);
+    // B2B/B2C - Only from reliable suppliers with channel sales
+    const b2bSuppliers = reliableSuppliers.filter(s => s.b2b.sold >= 3); // At least 3 B2B sales
     const bestB2BSupplier = [...b2bSuppliers].sort((a, b) => b.b2b.annualizedROI - a.b2b.annualizedROI)[0];
     const bestB2B = bestB2BSupplier 
       ? { name: bestB2BSupplier.name, roi: bestB2BSupplier.b2b.annualizedROI }
       : null;
     
-    const b2cSuppliers = suppliersWithSales.filter(s => s.b2c.sold > 0);
+    const b2cSuppliers = reliableSuppliers.filter(s => s.b2c.sold >= 3); // At least 3 B2C sales
     const bestB2CSupplier = [...b2cSuppliers].sort((a, b) => b.b2c.annualizedROI - a.b2c.annualizedROI)[0];
     const bestB2C = bestB2CSupplier 
       ? { name: bestB2CSupplier.name, roi: bestB2CSupplier.b2c.annualizedROI }
@@ -239,13 +274,14 @@ class SupplierReportsService {
         name: s.name, 
         days: Math.round(s.avgDaysInStock) 
       })),
-      performanceRanking: suppliersWithSales.slice(0, 10).map(s => ({
+      // Charts use reliable suppliers only for meaningful comparisons
+      performanceRanking: reliableSuppliers.slice(0, 10).map(s => ({
         name: s.name,
         score: s.performanceScore,
         annualizedROI: s.annualizedROI,
         profitPerDay: s.profitPerDay
       })),
-      b2bVsB2cComparison: suppliersWithSales
+      b2bVsB2cComparison: reliableSuppliers
         .filter(s => s.b2b.sold > 0 || s.b2c.sold > 0)
         .slice(0, 10)
         .map(s => ({
@@ -255,7 +291,7 @@ class SupplierReportsService {
           b2bProfit: s.b2b.profit,
           b2cProfit: s.b2c.profit
         })),
-      profitPerDayChart: suppliersWithSales.slice(0, 10).map(s => ({
+      profitPerDayChart: reliableSuppliers.slice(0, 10).map(s => ({
         name: s.name,
         profitPerDay: s.profitPerDay,
         avgDays: Math.round(s.avgDaysToSell)
