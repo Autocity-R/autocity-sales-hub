@@ -370,29 +370,42 @@ async function getCompleteCEOData(supabase: any) {
     });
   }
 
-  // Slow movers (>50 days on stock)
+  // Slow movers (>50 days ONLINE - using online_since_date)
   const thresholdSlow = new Date();
   thresholdSlow.setDate(thresholdSlow.getDate() - THRESHOLDS.SLOW_MOVER_DAYS);
   
-  const slowMovers = vehicles.filter((v: any) => 
-    v.status === 'voorraad' &&
-    v.created_at &&
-    new Date(v.created_at) < thresholdSlow
-  );
+  // FIXED: Use online_since_date instead of created_at for accurate stadagen
+  const slowMovers = vehicles.filter((v: any) => {
+    const details = v.details || {};
+    const isOnStock = v.status === 'voorraad';
+    const isOnline = details.showroomOnline === true;
+    // Use online_since_date if available, fallback to created_at
+    const onlineSinceDate = v.online_since_date || v.created_at;
+    const isOldEnough = onlineSinceDate && new Date(onlineSinceDate) < thresholdSlow;
+    
+    return isOnStock && isOnline && isOldEnough;
+  });
 
   if (slowMovers.length > 0) {
     alerts.push({
       type: 'slow_mover',
       severity: 'warning',
       count: slowMovers.length,
-      vehicles: slowMovers.map((v: any) => ({
-        brand: v.brand,
-        model: v.model,
-        license: v.license_number,
-        days: Math.floor((Date.now() - new Date(v.created_at).getTime()) / (1000 * 60 * 60 * 24)),
-        price: v.selling_price
-      })),
-      message: `${slowMovers.length} voertuig(en) >50 dagen op voorraad`
+      vehicles: slowMovers.map((v: any) => {
+        // FIXED: Calculate stadagen from online_since_date
+        const onlineSinceDate = v.online_since_date || v.created_at;
+        const stadagen = onlineSinceDate 
+          ? Math.floor((Date.now() - new Date(onlineSinceDate).getTime()) / (1000 * 60 * 60 * 24))
+          : 0;
+        return {
+          brand: v.brand,
+          model: v.model,
+          license: v.license_number,
+          stadagen, // Renamed from 'days' to 'stadagen' for clarity
+          price: v.selling_price
+        };
+      }),
+      message: `${slowMovers.length} voertuig(en) >50 dagen ONLINE`
     });
   }
 
@@ -666,16 +679,19 @@ function calculateBrandPerformance(vehicles: any[]) {
   });
 
   // Add current stock count AND calculate stock aging per brand
+  // FIXED: Use online_since_date for accurate stadagen calculation
   vehicles.filter((v: any) => v.status === 'voorraad').forEach((v: any) => {
     if (!v.brand) return;
     
-    const daysOnStock = v.created_at 
-      ? Math.floor((Date.now() - new Date(v.created_at).getTime()) / (1000 * 60 * 60 * 24))
+    // Use online_since_date if available (accurate), fallback to created_at
+    const onlineSinceDate = v.online_since_date || v.created_at;
+    const stadagen = onlineSinceDate 
+      ? Math.floor((Date.now() - new Date(onlineSinceDate).getTime()) / (1000 * 60 * 60 * 24))
       : 0;
     
     if (brandMap.has(v.brand)) {
       brandMap.get(v.brand).onStock++;
-      brandMap.get(v.brand).stockDaysTotal += daysOnStock;
+      brandMap.get(v.brand).stockDaysTotal += stadagen;
     } else {
       brandMap.set(v.brand, {
         brand: v.brand,
@@ -683,7 +699,7 @@ function calculateBrandPerformance(vehicles: any[]) {
         totalMargin: 0,
         totalDays: 0,
         onStock: 1,
-        stockDaysTotal: daysOnStock,
+        stockDaysTotal: stadagen,
       });
     }
   });
