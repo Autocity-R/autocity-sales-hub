@@ -2515,6 +2515,7 @@ export type Database = {
           mileage: number | null
           model: string
           notes: string | null
+          online_since_date: string | null
           purchase_date: string | null
           purchase_price: number | null
           purchased_by_name: string | null
@@ -2546,6 +2547,7 @@ export type Database = {
           mileage?: number | null
           model: string
           notes?: string | null
+          online_since_date?: string | null
           purchase_date?: string | null
           purchase_price?: number | null
           purchased_by_name?: string | null
@@ -2577,6 +2579,7 @@ export type Database = {
           mileage?: number | null
           model?: string
           notes?: string | null
+          online_since_date?: string | null
           purchase_date?: string | null
           purchase_price?: number | null
           purchased_by_name?: string | null
