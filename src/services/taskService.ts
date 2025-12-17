@@ -125,6 +125,16 @@ export const createTask = async (task: Omit<Task, 'id' | 'createdAt' | 'updatedA
       throw new Error("User not authenticated");
     }
 
+    // Get the highest sort_order to place new task at the bottom
+    const { data: maxSortData } = await supabase
+      .from('tasks')
+      .select('sort_order')
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .single();
+    
+    const newSortOrder = (maxSortData?.sort_order ?? -1) + 1;
+
     const taskData: any = {
       title: task.title,
       description: task.description,
@@ -142,7 +152,8 @@ export const createTask = async (task: Omit<Task, 'id' | 'createdAt' | 'updatedA
       location: task.location || null,
       estimated_duration: task.estimatedDuration || null,
       notes: task.notes || null,
-      damage_parts: task.damageParts ? { parts: task.damageParts.parts } : null
+      damage_parts: task.damageParts ? { parts: task.damageParts.parts } : null,
+      sort_order: newSortOrder
     };
 
     const { data, error } = await supabase
