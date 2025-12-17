@@ -119,6 +119,19 @@ export const CEOChatPanel = () => {
     setIsLoading(false);
   };
 
+  // Save message to database for memory
+  const saveMessageToDb = async (messageType: 'user' | 'assistant', content: string) => {
+    try {
+      await supabase.from('ai_chat_messages').insert({
+        session_id: sessionId,
+        message_type: messageType,
+        content: content,
+      });
+    } catch (error) {
+      console.error('Error saving message to DB:', error);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -132,6 +145,9 @@ export const CEOChatPanel = () => {
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
+
+    // Save user message to database for memory
+    await saveMessageToDb('user', userMessage.content);
 
     try {
       // Get Hendrik CEO agent
@@ -160,14 +176,19 @@ export const CEOChatPanel = () => {
 
       if (error) throw error;
 
+      const assistantContent = data.message || 'Sorry, ik kon geen antwoord genereren.';
+      
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: data.message || 'Sorry, ik kon geen antwoord genereren.',
+        content: assistantContent,
         timestamp: new Date(),
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+      
+      // Save assistant message to database for memory
+      await saveMessageToDb('assistant', assistantContent);
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Fout bij verzenden bericht');
