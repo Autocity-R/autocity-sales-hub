@@ -244,9 +244,19 @@ async function getCompleteCEOData(supabase: any) {
   const weeklyFinancials = calculateWeeklyFinancials(vehicles);
 
   // -------------------------------------------------------------------------
-  // BRAND PERFORMANCE
+  // BRAND PERFORMANCE (including stock aging)
   // -------------------------------------------------------------------------
   const brandPerformance = calculateBrandPerformance(vehicles);
+
+  // -------------------------------------------------------------------------
+  // TRENDS & VOORSPELLINGEN
+  // -------------------------------------------------------------------------
+  const trendsAndPatterns = calculateTrendsAndPatterns(vehicles);
+
+  // -------------------------------------------------------------------------
+  // TEAM PERFORMANCE WITH MARGINS
+  // -------------------------------------------------------------------------
+  const teamPerformanceWithMargins = calculateTeamPerformanceWithMargins(vehicles, suppliers || []);
 
   // -------------------------------------------------------------------------
   // ALERTS
@@ -428,6 +438,8 @@ async function getCompleteCEOData(supabase: any) {
     supplierRanking,
     weeklyFinancials,
     brandPerformance,
+    trendsAndPatterns,
+    teamPerformanceWithMargins,
     allVehicles: vehicles,
     allPapersStatus,
     inTransportVehicles,
@@ -631,6 +643,7 @@ function calculateBrandPerformance(vehicles: any[]) {
         totalMargin: 0,
         totalDays: 0,
         onStock: 0,
+        stockDaysTotal: 0, // For calculating avg days on current stock
       });
     }
 
@@ -652,11 +665,17 @@ function calculateBrandPerformance(vehicles: any[]) {
     }
   });
 
-  // Add current stock count
+  // Add current stock count AND calculate stock aging per brand
   vehicles.filter((v: any) => v.status === 'voorraad').forEach((v: any) => {
     if (!v.brand) return;
+    
+    const daysOnStock = v.created_at 
+      ? Math.floor((Date.now() - new Date(v.created_at).getTime()) / (1000 * 60 * 60 * 24))
+      : 0;
+    
     if (brandMap.has(v.brand)) {
       brandMap.get(v.brand).onStock++;
+      brandMap.get(v.brand).stockDaysTotal += daysOnStock;
     } else {
       brandMap.set(v.brand, {
         brand: v.brand,
@@ -664,6 +683,7 @@ function calculateBrandPerformance(vehicles: any[]) {
         totalMargin: 0,
         totalDays: 0,
         onStock: 1,
+        stockDaysTotal: daysOnStock,
       });
     }
   });
@@ -673,8 +693,215 @@ function calculateBrandPerformance(vehicles: any[]) {
       ...b,
       avgMargin: b.totalSold > 0 ? Math.round(b.totalMargin / b.totalSold) : 0,
       avgDaysToSell: b.totalSold > 0 ? Math.round(b.totalDays / b.totalSold) : 0,
+      avgDaysOnStock: b.onStock > 0 ? Math.round(b.stockDaysTotal / b.onStock) : 0, // NEW: avg days on current stock
     }))
     .sort((a: any, b: any) => b.totalSold - a.totalSold);
+}
+
+// ============================================================================
+// TRENDS & VOORSPELLINGEN
+// ============================================================================
+
+function calculateTrendsAndPatterns(vehicles: any[]) {
+  const soldVehicles = vehicles.filter((v: any) => 
+    ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(v.status) && v.sold_date
+  );
+
+  // 1. SEASONAL PATTERNS - Sales by month (last 12 months)
+  const monthlyPatterns: Record<string, { month: string; sales: number; profit: number }> = {};
+  const now = new Date();
+  
+  for (let i = 0; i < 12; i++) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    monthlyPatterns[key] = { month: key, sales: 0, profit: 0 };
+  }
+
+  soldVehicles.forEach((v: any) => {
+    const soldDate = new Date(v.sold_date);
+    const key = `${soldDate.getFullYear()}-${String(soldDate.getMonth() + 1).padStart(2, '0')}`;
+    
+    if (monthlyPatterns[key]) {
+      monthlyPatterns[key].sales++;
+      const sellingPrice = v.selling_price || 0;
+      const purchasePrice = v.purchase_price || (v.details?.purchasePrice) || 0;
+      if (sellingPrice > 0 && purchasePrice > 0) {
+        monthlyPatterns[key].profit += (sellingPrice - purchasePrice);
+      }
+    }
+  });
+
+  // 2. PRICE RANGE ANALYSIS - Which price brackets sell best
+  const priceRanges = {
+    '0-10k': { min: 0, max: 10000, sales: 0, avgDays: 0, totalDays: 0 },
+    '10-15k': { min: 10000, max: 15000, sales: 0, avgDays: 0, totalDays: 0 },
+    '15-20k': { min: 15000, max: 20000, sales: 0, avgDays: 0, totalDays: 0 },
+    '20-25k': { min: 20000, max: 25000, sales: 0, avgDays: 0, totalDays: 0 },
+    '25-30k': { min: 25000, max: 30000, sales: 0, avgDays: 0, totalDays: 0 },
+    '30k+': { min: 30000, max: Infinity, sales: 0, avgDays: 0, totalDays: 0 },
+  };
+
+  soldVehicles.forEach((v: any) => {
+    const price = v.selling_price || 0;
+    for (const [range, data] of Object.entries(priceRanges)) {
+      if (price >= data.min && price < data.max) {
+        data.sales++;
+        if (v.created_at && v.sold_date) {
+          const days = Math.floor(
+            (new Date(v.sold_date).getTime() - new Date(v.created_at).getTime()) / (1000 * 60 * 60 * 24)
+          );
+          if (days >= 0) data.totalDays += days;
+        }
+        break;
+      }
+    }
+  });
+
+  // Calculate avg days for price ranges
+  Object.values(priceRanges).forEach(data => {
+    data.avgDays = data.sales > 0 ? Math.round(data.totalDays / data.sales) : 0;
+  });
+
+  // 3. POPULAR COLORS
+  const colorCounts: Record<string, number> = {};
+  soldVehicles.forEach((v: any) => {
+    const color = v.color || v.details?.color || 'Onbekend';
+    colorCounts[color] = (colorCounts[color] || 0) + 1;
+  });
+  
+  const popularColors = Object.entries(colorCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([color, count]) => ({ color, count }));
+
+  // 4. FUEL TYPE TRENDS
+  const fuelCounts: Record<string, number> = {};
+  soldVehicles.forEach((v: any) => {
+    const fuel = v.fuel_type || v.details?.fuelType || 'Onbekend';
+    fuelCounts[fuel] = (fuelCounts[fuel] || 0) + 1;
+  });
+  
+  const fuelTypeDistribution = Object.entries(fuelCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([fuel, count]) => ({ fuel, count, percentage: Math.round((count / soldVehicles.length) * 100) }));
+
+  // 5. WEEK-OVER-WEEK GROWTH
+  const thisWeekStart = new Date();
+  thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay() + 1);
+  thisWeekStart.setHours(0, 0, 0, 0);
+  
+  const lastWeekStart = new Date(thisWeekStart);
+  lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+  
+  const twoWeeksAgoStart = new Date(lastWeekStart);
+  twoWeeksAgoStart.setDate(twoWeeksAgoStart.getDate() - 7);
+
+  const thisWeekSales = soldVehicles.filter((v: any) => new Date(v.sold_date) >= thisWeekStart).length;
+  const lastWeekSales = soldVehicles.filter((v: any) => {
+    const d = new Date(v.sold_date);
+    return d >= lastWeekStart && d < thisWeekStart;
+  }).length;
+  const twoWeeksAgoSales = soldVehicles.filter((v: any) => {
+    const d = new Date(v.sold_date);
+    return d >= twoWeeksAgoStart && d < lastWeekStart;
+  }).length;
+
+  const weekOverWeekGrowth = lastWeekSales > 0 
+    ? Math.round(((thisWeekSales - lastWeekSales) / lastWeekSales) * 100)
+    : 0;
+
+  return {
+    monthlyPatterns: Object.values(monthlyPatterns).reverse(),
+    priceRanges: Object.entries(priceRanges).map(([range, data]) => ({
+      range,
+      sales: data.sales,
+      avgDays: data.avgDays,
+    })),
+    popularColors,
+    fuelTypeDistribution,
+    weekOverWeekGrowth: {
+      thisWeek: thisWeekSales,
+      lastWeek: lastWeekSales,
+      twoWeeksAgo: twoWeeksAgoSales,
+      growthPercentage: weekOverWeekGrowth,
+    },
+  };
+}
+
+// ============================================================================
+// TEAM PERFORMANCE WITH MARGINS
+// ============================================================================
+
+function calculateTeamPerformanceWithMargins(vehicles: any[], suppliers: any[]) {
+  // Get sold vehicles with salesperson info from details
+  const soldVehicles = vehicles.filter((v: any) => 
+    ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(v.status)
+  );
+
+  const teamMembers: Record<string, {
+    name: string;
+    b2bSales: number;
+    b2cSales: number;
+    totalSales: number;
+    totalMargin: number;
+    avgMargin: number;
+    totalRevenue: number;
+  }> = {};
+
+  // Initialize known team members
+  ['Daan', 'Martijn', 'Alex', 'Hendrik'].forEach(name => {
+    teamMembers[name.toLowerCase()] = {
+      name,
+      b2bSales: 0,
+      b2cSales: 0,
+      totalSales: 0,
+      totalMargin: 0,
+      avgMargin: 0,
+      totalRevenue: 0,
+    };
+  });
+
+  // Process sold vehicles - look for salesperson in details or assigned fields
+  soldVehicles.forEach((v: any) => {
+    const salesperson = v.details?.salesperson || v.details?.verkoper || v.salesperson || '';
+    const sellingPrice = v.selling_price || 0;
+    const purchasePrice = v.purchase_price || (v.details?.purchasePrice) || 0;
+    const margin = sellingPrice > 0 && purchasePrice > 0 ? sellingPrice - purchasePrice : 0;
+
+    // Try to match to known team members
+    for (const [key, member] of Object.entries(teamMembers)) {
+      if (salesperson.toLowerCase().includes(key)) {
+        member.totalSales++;
+        member.totalMargin += margin;
+        member.totalRevenue += sellingPrice;
+        
+        if (v.status === 'verkocht_b2b') {
+          member.b2bSales++;
+        } else if (v.status === 'verkocht_b2c' || v.status === 'afgeleverd') {
+          member.b2cSales++;
+        }
+        break;
+      }
+    }
+  });
+
+  // Calculate averages
+  Object.values(teamMembers).forEach(member => {
+    member.avgMargin = member.totalSales > 0 ? Math.round(member.totalMargin / member.totalSales) : 0;
+  });
+
+  // Sort by total margin (performance)
+  const ranking = Object.values(teamMembers)
+    .filter(m => m.totalSales > 0)
+    .sort((a, b) => b.totalMargin - a.totalMargin);
+
+  return {
+    teamMembers: Object.values(teamMembers),
+    ranking,
+    topPerformer: ranking[0] || null,
+    totalTeamMargin: Object.values(teamMembers).reduce((sum, m) => sum + m.totalMargin, 0),
+    totalTeamSales: Object.values(teamMembers).reduce((sum, m) => sum + m.totalSales, 0),
+  };
 }
 
 // ============================================================================
@@ -682,7 +909,19 @@ function calculateBrandPerformance(vehicles: any[]) {
 // ============================================================================
 
 function buildStrategicCEOPrompt(ceoData: any): string {
-  const { b2bMetrics, b2cMetrics, supplierRanking, weeklyFinancials, brandPerformance, dailyStats, alerts } = ceoData;
+  const { b2bMetrics, b2cMetrics, supplierRanking, weeklyFinancials, brandPerformance, dailyStats, alerts, trendsAndPatterns, teamPerformanceWithMargins } = ceoData;
+
+  // Get brands with longest stock aging
+  const stockAgingBrands = [...brandPerformance]
+    .filter((b: any) => b.onStock > 0)
+    .sort((a: any, b: any) => b.avgDaysOnStock - a.avgDaysOnStock)
+    .slice(0, 3);
+
+  // Best selling price ranges
+  const bestPriceRanges = trendsAndPatterns?.priceRanges
+    ?.filter((p: any) => p.sales > 0)
+    .sort((a: any, b: any) => b.sales - a.sales)
+    .slice(0, 3) || [];
 
   let prompt = `# HENDRIK - STRATEGISCHE CEO AI VAN AUTOCITY
 ## 20+ Jaar Automotive Ervaring | 10x Groei Expert
@@ -732,10 +971,13 @@ ${supplierRanking.filter((s: any) => s.avgMargin < 0).length > 0
   ? `\n⚠️ **WAARSCHUWING**: ${supplierRanking.filter((s: any) => s.avgMargin < 0).map((s: any) => `${s.name} (€${s.avgMargin.toLocaleString()} marge!)`).join(', ')} - NEGATIEVE MARGES!`
   : ''}
 
-### 🚗 Top 5 Merken (op verkoop)
+### 🚗 Top 5 Merken (op verkoop + voorraad aging)
 ${brandPerformance.slice(0, 5).map((b: any, i: number) => 
-  `${i + 1}. **${b.brand}**: ${b.totalSold} verkocht, €${b.avgMargin.toLocaleString()} gem. marge, ${b.avgDaysToSell} dagen`
+  `${i + 1}. **${b.brand}**: ${b.totalSold} verkocht, €${b.avgMargin.toLocaleString()} marge, ${b.avgDaysToSell}d doorlooptijd, ${b.onStock} op voorraad (gem. ${b.avgDaysOnStock}d)`
 ).join('\n')}
+
+${stockAgingBrands.length > 0 ? `
+⚠️ **Langst op Voorraad**: ${stockAgingBrands.map((b: any) => `${b.brand} (gem. ${b.avgDaysOnStock} dagen)`).join(', ')}` : ''}
 
 ### 📈 Wekelijkse Performance (Laatste 4 weken)
 ${weeklyFinancials.slice(0, 4).map((w: any, i: number) => 
@@ -747,6 +989,19 @@ ${weeklyFinancials.length >= 2 && weeklyFinancials[0].profit !== weeklyFinancial
       ? `+${Math.round(((weeklyFinancials[0].profit - weeklyFinancials[1].profit) / weeklyFinancials[1].profit) * 100)}% winst t.o.v. vorige week 📈`
       : `${Math.round(((weeklyFinancials[0].profit - weeklyFinancials[1].profit) / weeklyFinancials[1].profit) * 100)}% winst t.o.v. vorige week 📉`}`
   : ''}
+
+### 🎯 Trends & Patronen
+- **Week-over-Week**: ${trendsAndPatterns?.weekOverWeekGrowth?.growthPercentage > 0 ? '+' : ''}${trendsAndPatterns?.weekOverWeekGrowth?.growthPercentage || 0}% (${trendsAndPatterns?.weekOverWeekGrowth?.thisWeek || 0} vs ${trendsAndPatterns?.weekOverWeekGrowth?.lastWeek || 0} verkopen)
+- **Beste Prijsklassen**: ${bestPriceRanges.map((p: any) => `${p.range} (${p.sales}x, ${p.avgDays}d)`).join(', ') || 'N/A'}
+- **Populaire Kleuren**: ${trendsAndPatterns?.popularColors?.slice(0, 3).map((c: any) => `${c.color} (${c.count}x)`).join(', ') || 'N/A'}
+- **Brandstof Verdeling**: ${trendsAndPatterns?.fuelTypeDistribution?.slice(0, 3).map((f: any) => `${f.fuel} ${f.percentage}%`).join(', ') || 'N/A'}
+
+### 👥 Team Performance (met Marges)
+${teamPerformanceWithMargins?.ranking?.slice(0, 4).map((m: any, i: number) => 
+  `${i + 1}. **${m.name}**: ${m.totalSales} verkopen (${m.b2bSales}B2B/${m.b2cSales}B2C), €${m.totalMargin.toLocaleString()} totaal, €${m.avgMargin.toLocaleString()} gem. marge`
+).join('\n') || 'Geen team data beschikbaar'}
+
+${teamPerformanceWithMargins?.topPerformer ? `🏆 Top Performer: **${teamPerformanceWithMargins.topPerformer.name}** met €${teamPerformanceWithMargins.topPerformer.totalMargin.toLocaleString()} totale marge` : ''}
 
 ### 📍 Huidige Status
 - Verkocht vandaag: ${dailyStats.vehiclesSoldToday}
@@ -788,10 +1043,13 @@ Je kunt deze functies aanroepen voor gedetailleerde data:
 - get_b2b_b2c_analysis: Vergelijk B2B vs B2C performance
 - get_supplier_ranking: Leverancier performance ranking
 - get_financial_overview: Financieel overzicht met trends
-- get_brand_performance: Merk analyse
+- get_brand_performance: Merk analyse met voorraad aging
 - get_papers_status: Voertuigen die wachten op papieren
 - search_vehicles: Zoek voertuigen op criteria
 - get_growth_strategy: 10x groei aanbevelingen
+- compare_periods: Vergelijk twee periodes
+- get_trends_analysis: Trends, seizoenspatronen, prijsklassen
+- get_stock_aging: Voorraad aging per merk
 
 Gebruik deze functies om vragen volledig te beantwoorden met echte data.
 `;
@@ -915,6 +1173,38 @@ function getStrategicCEOFunctions() {
       parameters: {
         type: 'object',
         properties: {}
+      }
+    },
+    {
+      name: 'compare_periods',
+      description: 'Compare business performance between two time periods',
+      parameters: {
+        type: 'object',
+        properties: {
+          period1: { type: 'string', description: 'First period: this_week, last_week, this_month, last_month' },
+          period2: { type: 'string', description: 'Second period to compare against' }
+        },
+        required: ['period1', 'period2']
+      }
+    },
+    {
+      name: 'get_trends_analysis',
+      description: 'Get trends and patterns: seasonal sales, price ranges, popular colors, growth rates',
+      parameters: {
+        type: 'object',
+        properties: {
+          focus: { type: 'string', enum: ['seasonal', 'price_ranges', 'colors', 'fuel', 'all'], description: 'What to analyze' }
+        }
+      }
+    },
+    {
+      name: 'get_stock_aging',
+      description: 'Get stock aging analysis per brand - which brands sit longest on stock',
+      parameters: {
+        type: 'object',
+        properties: {
+          sort_by: { type: 'string', enum: ['days', 'count'], description: 'Sort by average days or count' }
+        }
       }
     }
   ];
@@ -1198,19 +1488,44 @@ ${inTransport.length === 0 ? '✅ Geen voertuigen onderweg' : ''}`
       }
 
       case 'get_team_performance': {
-        const teamMembers = ['Daan', 'Martijn', 'Alex', 'Hendrik'];
-        let report = '👥 **Team Performance (Recent)**\n\n';
+        const teamData = ceoData.teamPerformanceWithMargins;
         
-        teamMembers.forEach(member => {
-          const memberSales = ceoData.teamSales?.filter((s: any) => 
-            s.salesperson_name?.toLowerCase().includes(member.toLowerCase())
-          ) || [];
-          const b2b = memberSales.reduce((sum: number, s: any) => sum + (s.b2b_sales || 0), 0);
-          const b2c = memberSales.reduce((sum: number, s: any) => sum + (s.b2c_sales || 0), 0);
-          report += `**${member}**: ${b2b} B2B, ${b2c} B2C (totaal: ${b2b + b2c})\n`;
-        });
-        
-        return { success: true, message: report };
+        if (!teamData || !teamData.ranking || teamData.ranking.length === 0) {
+          // Fallback to old method
+          const teamMembers = ['Daan', 'Martijn', 'Alex', 'Hendrik'];
+          let report = '👥 **Team Performance (Recent)**\n\n';
+          
+          teamMembers.forEach(member => {
+            const memberSales = ceoData.teamSales?.filter((s: any) => 
+              s.salesperson_name?.toLowerCase().includes(member.toLowerCase())
+            ) || [];
+            const b2b = memberSales.reduce((sum: number, s: any) => sum + (s.b2b_sales || 0), 0);
+            const b2c = memberSales.reduce((sum: number, s: any) => sum + (s.b2c_sales || 0), 0);
+            report += `**${member}**: ${b2b} B2B, ${b2c} B2C (totaal: ${b2b + b2c})\n`;
+          });
+          
+          return { success: true, message: report };
+        }
+
+        return {
+          success: true,
+          data: teamData,
+          message: `👥 **Team Performance (met Marges)**
+
+${teamData.ranking.map((m: any, i: number) => 
+  `${i + 1}. **${m.name}**
+   • Verkopen: ${m.totalSales} (${m.b2bSales} B2B, ${m.b2cSales} B2C)
+   • Totale Marge: €${m.totalMargin.toLocaleString()}
+   • Gem. Marge: €${m.avgMargin.toLocaleString()}
+   • Omzet: €${m.totalRevenue.toLocaleString()}
+`).join('\n')}
+
+**📊 Team Totalen:**
+• Totale Team Marge: €${teamData.totalTeamMargin.toLocaleString()}
+• Totale Team Verkopen: ${teamData.totalTeamSales}
+
+${teamData.topPerformer ? `🏆 **Top Performer**: ${teamData.topPerformer.name} met €${teamData.topPerformer.totalMargin.toLocaleString()} marge` : ''}`
+        };
       }
 
       case 'get_slow_movers': {
@@ -1245,6 +1560,176 @@ ${notOnline.slice(0, 15).map((v: any) =>
 ).join('\n')}
 ${notOnline.length > 15 ? `\n... en ${notOnline.length - 15} meer` : ''}
 ${notOnline.length === 0 ? '✅ Alle binnenkomende voorraad is online' : ''}`
+        };
+      }
+
+      case 'compare_periods': {
+        const { period1, period2 } = parsedArgs;
+        const vehicles = ceoData.allVehicles;
+        
+        // Helper to get period dates
+        const getPeriodDates = (period: string) => {
+          const now = new Date();
+          const start = new Date();
+          const end = new Date();
+          
+          switch (period) {
+            case 'this_week':
+              start.setDate(now.getDate() - now.getDay() + 1);
+              start.setHours(0, 0, 0, 0);
+              end.setTime(now.getTime());
+              break;
+            case 'last_week':
+              start.setDate(now.getDate() - now.getDay() - 6);
+              start.setHours(0, 0, 0, 0);
+              end.setDate(now.getDate() - now.getDay());
+              end.setHours(23, 59, 59, 999);
+              break;
+            case 'this_month':
+              start.setDate(1);
+              start.setHours(0, 0, 0, 0);
+              end.setTime(now.getTime());
+              break;
+            case 'last_month':
+              start.setMonth(now.getMonth() - 1);
+              start.setDate(1);
+              start.setHours(0, 0, 0, 0);
+              end.setMonth(now.getMonth());
+              end.setDate(0);
+              end.setHours(23, 59, 59, 999);
+              break;
+            default:
+              start.setDate(now.getDate() - 7);
+              end.setTime(now.getTime());
+          }
+          return { start, end };
+        };
+
+        const p1Dates = getPeriodDates(period1);
+        const p2Dates = getPeriodDates(period2);
+
+        const getMetrics = (start: Date, end: Date) => {
+          const sold = vehicles.filter((v: any) => {
+            if (!['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(v.status)) return false;
+            if (!v.sold_date) return false;
+            const d = new Date(v.sold_date);
+            return d >= start && d <= end;
+          });
+
+          let revenue = 0, profit = 0, b2b = 0, b2c = 0;
+          sold.forEach((v: any) => {
+            const sellingPrice = v.selling_price || 0;
+            const purchasePrice = v.purchase_price || (v.details?.purchasePrice) || 0;
+            revenue += sellingPrice;
+            if (sellingPrice > 0 && purchasePrice > 0) profit += (sellingPrice - purchasePrice);
+            if (v.status === 'verkocht_b2b') b2b++;
+            else b2c++;
+          });
+
+          return {
+            sales: sold.length,
+            b2b,
+            b2c,
+            revenue,
+            profit,
+            avgMargin: sold.length > 0 ? Math.round(profit / sold.length) : 0,
+          };
+        };
+
+        const m1 = getMetrics(p1Dates.start, p1Dates.end);
+        const m2 = getMetrics(p2Dates.start, p2Dates.end);
+
+        const salesChange = m2.sales > 0 ? Math.round(((m1.sales - m2.sales) / m2.sales) * 100) : 0;
+        const profitChange = m2.profit > 0 ? Math.round(((m1.profit - m2.profit) / m2.profit) * 100) : 0;
+
+        return {
+          success: true,
+          data: { period1: m1, period2: m2 },
+          message: `📊 **Periode Vergelijking: ${period1} vs ${period2}**
+
+| Metric | ${period1} | ${period2} | Verschil |
+|--------|------------|------------|----------|
+| Verkopen | ${m1.sales} | ${m2.sales} | ${salesChange > 0 ? '+' : ''}${salesChange}% |
+| B2B | ${m1.b2b} | ${m2.b2b} | ${m1.b2b - m2.b2b} |
+| B2C | ${m1.b2c} | ${m2.b2c} | ${m1.b2c - m2.b2c} |
+| Winst | €${m1.profit.toLocaleString()} | €${m2.profit.toLocaleString()} | ${profitChange > 0 ? '+' : ''}${profitChange}% |
+| Gem. Marge | €${m1.avgMargin.toLocaleString()} | €${m2.avgMargin.toLocaleString()} | €${(m1.avgMargin - m2.avgMargin).toLocaleString()} |
+
+**💡 Conclusie**: ${profitChange >= 0 
+  ? `Goede groei! Winst ${profitChange > 0 ? `+${profitChange}%` : 'stabiel'} vergeleken met ${period2}.`
+  : `Let op: winst ${profitChange}% lager dan ${period2}. Analyseer de oorzaak.`}`
+        };
+      }
+
+      case 'get_trends_analysis': {
+        const trends = ceoData.trendsAndPatterns;
+        const focus = parsedArgs.focus || 'all';
+
+        let message = '📈 **Trends & Patronen Analyse**\n\n';
+
+        if (focus === 'all' || focus === 'seasonal') {
+          message += `**Seizoenspatronen (laatste 6 maanden)**\n${
+            trends.monthlyPatterns.slice(0, 6).map((m: any) => 
+              `• ${m.month}: ${m.sales} verkopen, €${m.profit.toLocaleString()} winst`
+            ).join('\n')
+          }\n\n`;
+        }
+
+        if (focus === 'all' || focus === 'price_ranges') {
+          message += `**Best Verkopende Prijsklassen**\n${
+            trends.priceRanges.filter((p: any) => p.sales > 0)
+              .sort((a: any, b: any) => b.sales - a.sales)
+              .map((p: any) => `• ${p.range}: ${p.sales} verkopen, gem. ${p.avgDays} dagen`)
+              .join('\n')
+          }\n\n`;
+        }
+
+        if (focus === 'all' || focus === 'colors') {
+          message += `**Populaire Kleuren**\n${
+            trends.popularColors.map((c: any) => `• ${c.color}: ${c.count}x verkocht`).join('\n')
+          }\n\n`;
+        }
+
+        if (focus === 'all' || focus === 'fuel') {
+          message += `**Brandstof Verdeling**\n${
+            trends.fuelTypeDistribution.map((f: any) => `• ${f.fuel}: ${f.percentage}% (${f.count}x)`).join('\n')
+          }\n\n`;
+        }
+
+        message += `**Week-over-Week Groei**: ${trends.weekOverWeekGrowth.growthPercentage > 0 ? '+' : ''}${trends.weekOverWeekGrowth.growthPercentage}% (${trends.weekOverWeekGrowth.thisWeek} vs ${trends.weekOverWeekGrowth.lastWeek})`;
+
+        return { success: true, data: trends, message };
+      }
+
+      case 'get_stock_aging': {
+        const sortBy = parsedArgs.sort_by || 'days';
+        
+        let stockBrands = ceoData.brandPerformance.filter((b: any) => b.onStock > 0);
+        
+        if (sortBy === 'days') {
+          stockBrands = stockBrands.sort((a: any, b: any) => b.avgDaysOnStock - a.avgDaysOnStock);
+        } else {
+          stockBrands = stockBrands.sort((a: any, b: any) => b.onStock - a.onStock);
+        }
+
+        const critical = stockBrands.filter((b: any) => b.avgDaysOnStock > 50);
+        const warning = stockBrands.filter((b: any) => b.avgDaysOnStock > 30 && b.avgDaysOnStock <= 50);
+
+        return {
+          success: true,
+          data: { stockBrands, critical, warning },
+          message: `📦 **Voorraad Aging per Merk** (gesorteerd op ${sortBy === 'days' ? 'dagen' : 'aantal'})
+
+${stockBrands.slice(0, 10).map((b: any, i: number) => 
+  `${i + 1}. **${b.brand}**: ${b.onStock} op voorraad, gem. ${b.avgDaysOnStock} dagen${b.avgDaysOnStock > 50 ? ' 🔴' : b.avgDaysOnStock > 30 ? ' 🟡' : ' 🟢'}`
+).join('\n')}
+
+${critical.length > 0 ? `\n🔴 **Kritiek (>50 dagen)**: ${critical.map((b: any) => b.brand).join(', ')}` : ''}
+${warning.length > 0 ? `\n🟡 **Waarschuwing (>30 dagen)**: ${warning.map((b: any) => b.brand).join(', ')}` : ''}
+
+**💡 Advies**: ${critical.length > 0 
+  ? `Focus prijsacties op ${critical[0].brand} - gemiddeld ${critical[0].avgDaysOnStock} dagen op voorraad.`
+  : 'Voorraad veroudering onder controle.'}`
         };
       }
 
