@@ -1146,9 +1146,16 @@ function calculateTeamPerformanceWithMargins(vehicles: any[], suppliers: any[]) 
           member.totalMargin += margin;
           member.totalRevenue += sellingPrice;
           
-          if (v.status === 'verkocht_b2b') {
+          // CORRECT B2B/B2C logic: check salesType for afgeleverd vehicles
+          const salesType = v.details?.salesType;
+          const isB2B = v.status === 'verkocht_b2b' || 
+                        (v.status === 'afgeleverd' && salesType === 'b2b');
+          const isB2C = v.status === 'verkocht_b2c' || 
+                        (v.status === 'afgeleverd' && (salesType === 'b2c' || !salesType));
+          
+          if (isB2B) {
             member.b2bSales++;
-          } else if (v.status === 'verkocht_b2c' || v.status === 'afgeleverd') {
+          } else if (isB2C) {
             member.b2cSales++;
           }
           matched = true;

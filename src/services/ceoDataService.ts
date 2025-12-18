@@ -380,50 +380,102 @@ export const getAllCriticalAlerts = async (): Promise<CriticalAlert[]> => {
 };
 
 /**
- * Get team performance data
+ * Get team performance data - queries vehicles directly with correct B2B/B2C logic
  */
 export const getTeamPerformance = async (): Promise<TeamMemberPerformance[]> => {
   try {
-    // Get weekly sales data
-    const { data: weeklySales, error: salesError } = await supabase
-      .from('weekly_sales')
-      .select('*')
-      .order('week_start_date', { ascending: false })
-      .limit(20);
+    // Query vehicles directly (not the empty weekly_sales table)
+    const { data: soldVehicles, error: vehiclesError } = await supabase
+      .from('vehicles')
+      .select('id, status, selling_price, purchase_price, details')
+      .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd']);
 
-    if (salesError) throw salesError;
+    if (vehiclesError) throw vehiclesError;
 
-    // Aggregate by salesperson
+    // Team member mappings with name variations for matching
+    const teamMemberMappings: Record<string, { variations: string[]; role: string }> = {
+      'Daan': { variations: ['daan', 'daan leyte', 'daan@auto-city.nl'], role: 'Verkoper B2B & B2C' },
+      'Martijn': { variations: ['martijn', 'martijn zuyderhoudt', 'martijn@auto-city.nl'], role: 'Verkoper B2C' },
+      'Alex': { variations: ['alex', 'alexander', 'alexander kool', 'alex@auto-city.nl'], role: 'Inkoper & B2B Verkoper' },
+      'Hendrik': { variations: ['hendrik', 'hendrik@auto-city.nl'], role: 'Inkoper & Verkoper B2B/B2C' },
+    };
+
+    // Initialize performance map
     const performanceMap = new Map<string, TeamMemberPerformance>();
-    
-    // Define team members
-    const teamMembers = [
-      { name: 'Daan', role: 'Verkoper B2B & B2C' },
-      { name: 'Martijn', role: 'Verkoper B2C' },
-      { name: 'Alex', role: 'Inkoper & B2B Verkoper' },
-      { name: 'Hendrik', role: 'Inkoper & Verkoper B2B/B2C' },
-    ];
-
-    teamMembers.forEach(member => {
-      const memberSales = weeklySales?.filter(s => 
-        s.salesperson_name?.toLowerCase().includes(member.name.toLowerCase())
-      ) || [];
-
-      const totalB2B = memberSales.reduce((sum, s) => sum + (s.b2b_sales || 0), 0);
-      const totalB2C = memberSales.reduce((sum, s) => sum + (s.b2c_sales || 0), 0);
-
-      performanceMap.set(member.name, {
-        name: member.name,
-        role: member.role,
-        b2b_sales: totalB2B,
-        b2c_sales: totalB2C,
-        total_sales: totalB2B + totalB2C,
-        total_revenue: 0, // Would need vehicle price data
-        average_margin: 0, // Would need margin data
+    Object.entries(teamMemberMappings).forEach(([name, config]) => {
+      performanceMap.set(name, {
+        name,
+        role: config.role,
+        b2b_sales: 0,
+        b2c_sales: 0,
+        total_sales: 0,
+        total_revenue: 0,
+        average_margin: 0,
       });
     });
 
-    return Array.from(performanceMap.values());
+    // Temporary margin tracking
+    const marginTracking = new Map<string, { totalMargin: number; count: number }>();
+    Object.keys(teamMemberMappings).forEach(name => {
+      marginTracking.set(name, { totalMargin: 0, count: 0 });
+    });
+
+    // Process each sold vehicle
+    soldVehicles?.forEach((vehicle: any) => {
+      const details = vehicle.details || {};
+      const salesperson = details.salespersonName || details.salesperson || details.verkoper || '';
+      const salespersonLower = salesperson.toLowerCase().trim();
+      
+      if (!salespersonLower) return;
+
+      // Find matching team member
+      let matchedMember: string | null = null;
+      for (const [name, config] of Object.entries(teamMemberMappings)) {
+        const isMatch = config.variations.some(variation => 
+          salespersonLower.includes(variation) || variation.includes(salespersonLower)
+        );
+        if (isMatch) {
+          matchedMember = name;
+          break;
+        }
+      }
+
+      if (!matchedMember) return;
+
+      const member = performanceMap.get(matchedMember)!;
+      const tracker = marginTracking.get(matchedMember)!;
+      
+      // Calculate margin
+      const sellingPrice = vehicle.selling_price || 0;
+      const purchasePrice = vehicle.purchase_price || details.purchasePrice || 0;
+      const margin = sellingPrice > 0 && purchasePrice > 0 ? sellingPrice - purchasePrice : 0;
+
+      // CORRECT B2B/B2C logic: check salesType for afgeleverd vehicles
+      const salesType = details.salesType;
+      const isB2B = vehicle.status === 'verkocht_b2b' || 
+                    (vehicle.status === 'afgeleverd' && salesType === 'b2b');
+      const isB2C = vehicle.status === 'verkocht_b2c' || 
+                    (vehicle.status === 'afgeleverd' && (salesType === 'b2c' || !salesType));
+
+      if (isB2B) {
+        member.b2b_sales++;
+      } else if (isB2C) {
+        member.b2c_sales++;
+      }
+
+      member.total_sales++;
+      member.total_revenue += sellingPrice;
+      tracker.totalMargin += margin;
+      tracker.count++;
+    });
+
+    // Calculate average margins
+    performanceMap.forEach((member, name) => {
+      const tracker = marginTracking.get(name)!;
+      member.average_margin = tracker.count > 0 ? Math.round(tracker.totalMargin / tracker.count) : 0;
+    });
+
+    return Array.from(performanceMap.values()).filter(m => m.total_sales > 0);
   } catch (error) {
     console.error('Error fetching team performance:', error);
     return [];
