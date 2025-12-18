@@ -19,7 +19,7 @@ export const useRoleAccess = () => {
   };
 
   const hasAIAgentsAccess = () => {
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper';
+    return isAdmin; // Alleen admin en owner hebben toegang
   };
 
   const hasSettingsAccess = () => {
