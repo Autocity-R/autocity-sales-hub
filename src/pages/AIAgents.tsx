@@ -1,4 +1,3 @@
-
 import React from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,6 +5,7 @@ import { ProductionAIAgentChat } from "@/components/ai-agents/ProductionAIAgentC
 import { WebhookConfiguration } from "@/components/ai-agents/WebhookConfiguration";
 import { AIAgentManagement } from "@/components/settings/AIAgentManagement";
 import { HendrikSalesDashboard } from "@/components/sales/HendrikSalesDashboard";
+import { HendrikBriefingDashboard } from "@/components/ai-agents/HendrikBriefingDashboard";
 import { SalesAgentChat } from "@/components/sales/SalesAgentChat";
 import { AgentOverviewDashboard } from "@/components/ai-agents/AgentOverviewDashboard";
 import { RobinCalendarDashboard } from "@/components/ai-agents/RobinCalendarDashboard";
@@ -17,7 +17,7 @@ import {
   MessageSquare, 
   BarChart3,
   Calendar,
-  Users
+  FileText
 } from "lucide-react";
 
 const AIAgents = () => {
@@ -32,26 +32,30 @@ const AIAgents = () => {
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Overzicht
             </TabsTrigger>
+            <TabsTrigger value="briefings" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Briefings
+            </TabsTrigger>
             <TabsTrigger value="robin-dashboard" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              Robin Calendar
+              Robin
             </TabsTrigger>
             <TabsTrigger value="hendrik-dashboard" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
-              Hendrik Sales
+              Hendrik
             </TabsTrigger>
             <TabsTrigger value="chat" className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
-              Agent Chat
+              Chat
             </TabsTrigger>
             <TabsTrigger value="all-agents" className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
-              Alle Agents
+              Agents
             </TabsTrigger>
             <TabsTrigger value="webhooks" className="flex items-center gap-2">
               <Webhook className="h-4 w-4" />
@@ -65,6 +69,10 @@ const AIAgents = () => {
 
           <TabsContent value="overview" className="space-y-4">
             <AgentOverviewDashboard />
+          </TabsContent>
+
+          <TabsContent value="briefings" className="space-y-4">
+            <HendrikBriefingDashboard />
           </TabsContent>
 
           <TabsContent value="robin-dashboard" className="space-y-4">
