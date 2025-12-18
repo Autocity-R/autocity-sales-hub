@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.hendrik-generate-briefing]
 verify_jwt = false
+
+[functions.hendrik-ai-chat]
+verify_jwt = false
