@@ -14,6 +14,9 @@ interface ChatRequest {
   userContext?: any;
 }
 
+// Hendrik's agent ID for memory isolation
+const HENDRIK_AGENT_ID = '43004cb6-26e9-4453-861d-75ff8dffb3fe';
+
 // Alert thresholds
 const THRESHOLDS = {
   IMPORT_STATUS_DAYS: 9,
@@ -22,6 +25,228 @@ const THRESHOLDS = {
   SLOW_MOVER_DAYS: 50,
   WORKSHOP_DAYS: 14,
 };
+
+// ============================================================================
+// MEMORY MANAGEMENT FUNCTIONS
+// ============================================================================
+
+interface MemoryRecord {
+  memory_type: string;
+  entity_name: string;
+  insight: string;
+  confidence: number;
+  updated_at: string;
+}
+
+/**
+ * Save or update a memory for Hendrik
+ * Uses UPSERT to prevent duplicates
+ */
+async function saveToMemory(
+  supabase: any,
+  memoryType: string,
+  entityName: string,
+  insight: string,
+  confidence: number = 0.7,
+  sourceData?: any,
+  expiresInDays?: number
+): Promise<boolean> {
+  try {
+    const expiresAt = expiresInDays 
+      ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString()
+      : null;
+
+    const { error } = await supabase
+      .from('ai_memory')
+      .upsert({
+        agent_id: HENDRIK_AGENT_ID,
+        memory_type: memoryType,
+        entity_name: entityName,
+        insight,
+        confidence: Math.max(0, Math.min(1, confidence)), // Clamp 0-1
+        source_data: sourceData || {},
+        expires_at: expiresAt,
+        updated_at: new Date().toISOString(),
+        is_active: true
+      }, {
+        onConflict: 'agent_id,memory_type,entity_name'
+      });
+
+    if (error) {
+      console.error('❌ Memory save error:', error);
+      return false;
+    }
+    
+    console.log(`💾 Memory saved: ${memoryType}/${entityName}`);
+    return true;
+  } catch (error) {
+    console.error('❌ Memory save exception:', error);
+    return false;
+  }
+}
+
+/**
+ * Recall memories for Hendrik
+ * Handles NULL expires_at correctly
+ */
+async function recallMemory(
+  supabase: any,
+  memoryType?: string,
+  minConfidence: number = 0.5
+): Promise<MemoryRecord[]> {
+  try {
+    let query = supabase
+      .from('ai_memory')
+      .select('memory_type, entity_name, insight, confidence, updated_at')
+      .eq('agent_id', HENDRIK_AGENT_ID)
+      .eq('is_active', true)
+      .gte('confidence', minConfidence)
+      .or('expires_at.is.null,expires_at.gt.now()')
+      .order('confidence', { ascending: false })
+      .order('updated_at', { ascending: false });
+
+    if (memoryType) {
+      query = query.eq('memory_type', memoryType);
+    }
+
+    const { data, error } = await query.limit(50);
+
+    if (error) {
+      console.error('❌ Memory recall error:', error);
+      return [];
+    }
+
+    console.log(`🧠 Recalled ${data?.length || 0} memories${memoryType ? ` (type: ${memoryType})` : ''}`);
+    return data || [];
+  } catch (error) {
+    console.error('❌ Memory recall exception:', error);
+    return [];
+  }
+}
+
+/**
+ * Build memory context string for system prompt
+ */
+function buildMemoryContext(memories: MemoryRecord[]): string {
+  if (!memories || memories.length === 0) {
+    return '';
+  }
+
+  const grouped: Record<string, MemoryRecord[]> = {};
+  memories.forEach(m => {
+    if (!grouped[m.memory_type]) {
+      grouped[m.memory_type] = [];
+    }
+    grouped[m.memory_type].push(m);
+  });
+
+  const typeLabels: Record<string, string> = {
+    'supplier': '🏭 Leveranciers',
+    'model': '🚗 Modellen',
+    'salesperson': '👥 Team',
+    'market': '📈 Markt',
+    'strategy': '🎯 Strategie'
+  };
+
+  let context = `\n---\n\n## 🧠 JOUW BEDRIJFSKENNIS (Geleerde Inzichten)\n\n`;
+
+  for (const [type, mems] of Object.entries(grouped)) {
+    const label = typeLabels[type] || type;
+    context += `### ${label}\n`;
+    mems.forEach(m => {
+      const confidenceIcon = m.confidence >= 0.8 ? '●' : m.confidence >= 0.6 ? '◐' : '○';
+      context += `${confidenceIcon} **${m.entity_name}**: ${m.insight}\n`;
+    });
+    context += '\n';
+  }
+
+  context += `_Gebruik deze kennis om consistente en verbeterde aanbevelingen te geven._\n`;
+
+  return context;
+}
+
+/**
+ * Learn from current analysis and save top insights
+ */
+async function learnFromAnalysis(supabase: any, ceoData: any): Promise<void> {
+  try {
+    // Learn from top 3 suppliers
+    const topSuppliers = ceoData.supplierRanking?.slice(0, 3) || [];
+    for (const supplier of topSuppliers) {
+      if (supplier.avgMargin > 1000 && supplier.totalSold >= 3) {
+        await saveToMemory(
+          supabase,
+          'supplier',
+          supplier.name,
+          `Top performer: €${supplier.avgMargin.toLocaleString()} gem. marge, ${supplier.avgDaysToSell} dagen doorlooptijd, ${supplier.totalSold} verkocht. Aanbeveling: volume verhogen.`,
+          0.85,
+          { margin: supplier.avgMargin, days: supplier.avgDaysToSell, sold: supplier.totalSold }
+        );
+      }
+    }
+
+    // Learn from underperforming suppliers
+    const bottomSuppliers = ceoData.supplierRanking?.filter((s: any) => s.avgMargin < 500 && s.totalSold >= 2) || [];
+    for (const supplier of bottomSuppliers.slice(0, 3)) {
+      await saveToMemory(
+        supabase,
+        'supplier',
+        supplier.name,
+        `Underperformer: €${supplier.avgMargin.toLocaleString()} gem. marge (laag). ${supplier.avgDaysToSell} dagen doorlooptijd. Aanbeveling: volume reduceren of heronderhandelen.`,
+        0.75,
+        { margin: supplier.avgMargin, days: supplier.avgDaysToSell, sold: supplier.totalSold }
+      );
+    }
+
+    // Learn from fast-selling brands
+    const fastBrands = ceoData.brandPerformance?.filter((b: any) => b.avgDaysToSell > 0 && b.avgDaysToSell < 25 && b.totalSold >= 3) || [];
+    for (const brand of fastBrands.slice(0, 3)) {
+      await saveToMemory(
+        supabase,
+        'model',
+        brand.brand,
+        `Fast seller: ${brand.avgDaysToSell} dagen gem. doorlooptijd, €${brand.avgMargin.toLocaleString()} marge, ${brand.totalSold} verkocht. Aanbeveling: meer inkopen.`,
+        0.8,
+        { days: brand.avgDaysToSell, margin: brand.avgMargin, sold: brand.totalSold }
+      );
+    }
+
+    // Learn from slow-moving brands on stock
+    const slowBrands = ceoData.brandPerformance?.filter((b: any) => b.avgDaysOnStock > 50 && b.onStock >= 2) || [];
+    for (const brand of slowBrands.slice(0, 3)) {
+      await saveToMemory(
+        supabase,
+        'model',
+        `${brand.brand} (voorraad)`,
+        `Slow mover op voorraad: gem. ${brand.avgDaysOnStock} dagen online, ${brand.onStock} stuks. Aanbeveling: prijsverlaging of B2B focus.`,
+        0.75,
+        { daysOnStock: brand.avgDaysOnStock, onStock: brand.onStock }
+      );
+    }
+
+    // Learn B2B vs B2C strategy
+    const { b2bMetrics, b2cMetrics } = ceoData;
+    if (b2bMetrics.totalSales > 5 || b2cMetrics.totalSales > 5) {
+      const betterChannel = b2bMetrics.roi > b2cMetrics.roi ? 'B2B' : 'B2C';
+      const insight = betterChannel === 'B2B'
+        ? `B2B heeft hogere ROI (${b2bMetrics.roi}% vs ${b2cMetrics.roi}%). Snellere omloop compenseert lagere marge. Focus: volume vergroten.`
+        : `B2C levert hogere ROI (${b2cMetrics.roi}% vs ${b2bMetrics.roi}%). Hogere marge compenseert langere doorlooptijd. Focus: kwaliteitsinkoop.`;
+      
+      await saveToMemory(
+        supabase,
+        'strategy',
+        'channel_focus',
+        insight,
+        0.8,
+        { b2bROI: b2bMetrics.roi, b2cROI: b2cMetrics.roi, b2bSales: b2bMetrics.totalSales, b2cSales: b2cMetrics.totalSales }
+      );
+    }
+
+    console.log('📚 Learning cycle completed');
+  } catch (error) {
+    console.error('❌ Learning error:', error);
+  }
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -38,6 +263,11 @@ serve(async (req) => {
     const { sessionId, message, agentId, userContext }: ChatRequest = await req.json();
     
     console.log('🧠 Hendrik CEO AI Chat:', { sessionId, agentId, message: message.substring(0, 100), mode: userContext?.mode });
+
+    // FASE 2: Recall Hendrik's memories
+    const memories = await recallMemory(supabaseClient);
+    const memoryContext = buildMemoryContext(memories);
+    console.log(`📚 Memory context: ${memories.length} insights loaded`);
 
     // Get comprehensive CEO data
     const ceoData = await getCompleteCEOData(supabaseClient);
@@ -56,8 +286,8 @@ serve(async (req) => {
       topSupplier: ceoData.supplierRanking[0]?.name || 'N/A',
     });
 
-    // Build strategic CEO context prompt
-    const contextPrompt = buildStrategicCEOPrompt(ceoData);
+    // Build strategic CEO context prompt WITH memory context
+    const contextPrompt = buildStrategicCEOPrompt(ceoData, memoryContext);
     
     // Build conversation messages
     const conversationMessages = buildConversationMessages(
@@ -156,10 +386,19 @@ serve(async (req) => {
           alerts_count: ceoData.alerts.length,
           b2b_sales: ceoData.b2bMetrics.totalSales,
           b2c_sales: ceoData.b2cMetrics.totalSales,
+          memories_used: memories.length,
         },
         ai_response: responseMessage,
         agent_name: 'hendrik_ceo',
       });
+
+    // FASE 2: Learn from this analysis (async, don't await to keep response fast)
+    // Only learn periodically (1 in 5 requests) to avoid excessive writes
+    if (Math.random() < 0.2) {
+      learnFromAnalysis(supabaseClient, ceoData).catch(err => 
+        console.error('Learning error (non-blocking):', err)
+      );
+    }
 
     console.log('✅ CEO response generated');
 
@@ -173,6 +412,7 @@ serve(async (req) => {
         b2b_metrics: ceoData.b2bMetrics,
         b2c_metrics: ceoData.b2cMetrics,
         top_suppliers: ceoData.supplierRanking.slice(0, 3).map((s: any) => s.name),
+        memories_used: memories.length,
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -924,7 +1164,7 @@ function calculateTeamPerformanceWithMargins(vehicles: any[], suppliers: any[]) 
 // STRATEGIC CEO PROMPT
 // ============================================================================
 
-function buildStrategicCEOPrompt(ceoData: any): string {
+function buildStrategicCEOPrompt(ceoData: any, memoryContext: string = ''): string {
   const { b2bMetrics, b2cMetrics, supplierRanking, weeklyFinancials, brandPerformance, dailyStats, alerts, trendsAndPatterns, teamPerformanceWithMargins } = ceoData;
 
   // Get brands with longest stock aging
@@ -1068,6 +1308,7 @@ Je kunt deze functies aanroepen voor gedetailleerde data:
 - get_stock_aging: Voorraad aging per merk
 
 Gebruik deze functies om vragen volledig te beantwoorden met echte data.
+${memoryContext}
 `;
 
   return prompt;

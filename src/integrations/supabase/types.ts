@@ -267,6 +267,62 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_briefings: {
+        Row: {
+          agent_id: string
+          alerts_included: number | null
+          briefing_date: string
+          briefing_type: string
+          content: string
+          created_at: string | null
+          data_snapshot: Json | null
+          id: string
+          is_read: boolean | null
+          memories_used: number | null
+          read_at: string | null
+          read_by: string | null
+          summary: string | null
+        }
+        Insert: {
+          agent_id: string
+          alerts_included?: number | null
+          briefing_date: string
+          briefing_type: string
+          content: string
+          created_at?: string | null
+          data_snapshot?: Json | null
+          id?: string
+          is_read?: boolean | null
+          memories_used?: number | null
+          read_at?: string | null
+          read_by?: string | null
+          summary?: string | null
+        }
+        Update: {
+          agent_id?: string
+          alerts_included?: number | null
+          briefing_date?: string
+          briefing_type?: string
+          content?: string
+          created_at?: string | null
+          data_snapshot?: Json | null
+          id?: string
+          is_read?: boolean | null
+          memories_used?: number | null
+          read_at?: string | null
+          read_by?: string | null
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_briefings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_chat_messages: {
         Row: {
           content: string
@@ -492,6 +548,56 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_memory: {
+        Row: {
+          agent_id: string
+          confidence: number | null
+          created_at: string | null
+          entity_name: string
+          expires_at: string | null
+          id: string
+          insight: string
+          is_active: boolean | null
+          memory_type: string
+          source_data: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          agent_id: string
+          confidence?: number | null
+          created_at?: string | null
+          entity_name: string
+          expires_at?: string | null
+          id?: string
+          insight: string
+          is_active?: boolean | null
+          memory_type: string
+          source_data?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          agent_id?: string
+          confidence?: number | null
+          created_at?: string | null
+          entity_name?: string
+          expires_at?: string | null
+          id?: string
+          insight?: string
+          is_active?: boolean | null
+          memory_type?: string
+          source_data?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_memory_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
             referencedColumns: ["id"]
           },
         ]
