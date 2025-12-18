@@ -262,7 +262,7 @@ serve(async (req) => {
 
     const { sessionId, message, agentId, userContext }: ChatRequest = await req.json();
     
-    console.log('🧠 Hendrik CEO AI Chat:', { sessionId, agentId, message: message.substring(0, 100), mode: userContext?.mode });
+    console.log('🧠 Jacob CEO AI Chat:', { sessionId, agentId, message: message.substring(0, 100), mode: userContext?.mode });
 
     // FASE 2: Recall Hendrik's memories
     const memories = await recallMemory(supabaseClient);

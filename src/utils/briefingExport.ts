@@ -28,7 +28,7 @@ const BriefingTypeLabels: Record<string, string> = {
 export const exportBriefingToExcel = async (briefing: Briefing): Promise<void> => {
   try {
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Hendrik AI';
+    workbook.creator = 'Jacob AI';
     workbook.created = new Date();
 
     const typeLabel = BriefingTypeLabels[briefing.briefing_type] || briefing.briefing_type;
@@ -123,7 +123,7 @@ export const exportBriefingToExcel = async (briefing: Briefing): Promise<void> =
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
     });
     
-    const fileName = `Hendrik_${briefing.briefing_type}_briefing_${format(parseISO(briefing.briefing_date), 'yyyy-MM-dd')}.xlsx`;
+    const fileName = `Jacob_${briefing.briefing_type}_briefing_${format(parseISO(briefing.briefing_date), 'yyyy-MM-dd')}.xlsx`;
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = fileName;
@@ -241,7 +241,7 @@ export const exportBriefingToPDF = async (briefing: Briefing): Promise<void> => 
         <body>
           <div class="header">
             <h1>🤖 ${typeLabel}</h1>
-            <div class="subtitle">${dateStr} • Hendrik AI CEO Assistant</div>
+            <div class="subtitle">${dateStr} • Jacob AI CEO Assistant</div>
           </div>
           
           <div class="meta">
@@ -267,7 +267,7 @@ export const exportBriefingToPDF = async (briefing: Briefing): Promise<void> => 
           </div>
           
           <div class="footer">
-            Gegenereerd door Hendrik AI • AutoCity CRM • ${format(new Date(), 'd MMMM yyyy HH:mm', { locale: nl })}
+            Gegenereerd door Jacob AI • AutoCity CRM • ${format(new Date(), 'd MMMM yyyy HH:mm', { locale: nl })}
           </div>
         </body>
       </html>
@@ -278,7 +278,7 @@ export const exportBriefingToPDF = async (briefing: Briefing): Promise<void> => 
     container.innerHTML = htmlContent;
     document.body.appendChild(container);
 
-    const fileName = `Hendrik_${briefing.briefing_type}_briefing_${format(parseISO(briefing.briefing_date), 'yyyy-MM-dd')}.pdf`;
+    const fileName = `Jacob_${briefing.briefing_type}_briefing_${format(parseISO(briefing.briefing_date), 'yyyy-MM-dd')}.pdf`;
 
     // Generate PDF
     await html2pdf()
@@ -307,7 +307,7 @@ export const exportBriefingToPDF = async (briefing: Briefing): Promise<void> => 
 export const exportBriefingsSummary = async (briefings: Briefing[]): Promise<void> => {
   try {
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Hendrik AI';
+    workbook.creator = 'Jacob AI';
     workbook.created = new Date();
 
     const sheet = workbook.addWorksheet('Briefings Overzicht');
@@ -349,7 +349,7 @@ export const exportBriefingsSummary = async (briefings: Briefing[]): Promise<voi
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
     });
     
-    const fileName = `Hendrik_Briefings_Overzicht_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+    const fileName = `Jacob_Briefings_Overzicht_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = fileName;

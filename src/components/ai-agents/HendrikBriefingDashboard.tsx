@@ -154,9 +154,9 @@ export const HendrikBriefingDashboard = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Hendrik's Briefings</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Jacob's Briefings</h2>
           <p className="text-muted-foreground">
-            Automatische CEO briefings van Hendrik
+            Automatische CEO briefings van Jacob
           </p>
         </div>
         <div className="flex items-center gap-2">
