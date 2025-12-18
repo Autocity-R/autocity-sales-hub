@@ -310,7 +310,7 @@ async function generateBriefingContent(
     monthly: 'MAANDELIJKSE DEEP DIVE'
   };
 
-  const systemPrompt = `# HENDRIK - CEO AI VAN AUTOCITY
+  const systemPrompt = `# JACOB - CEO AI VAN AUTOCITY
 ## 30+ Jaar Automotive Ervaring | 4-5x Groei Expert
 
 Je genereert een ${typeLabels[briefingType]} briefing in het Nederlands.

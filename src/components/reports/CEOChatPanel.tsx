@@ -112,7 +112,7 @@ export const CEOChatPanel = () => {
       setMessages([{
         id: `welcome-${Date.now()}`,
         role: 'assistant',
-        content: "Goedemorgen! Ik ben Hendrik, je virtuele CEO. Waar kan ik je vandaag mee helpen?",
+        content: "Goedemorgen! Ik ben Jacob, je virtuele CEO. Waar kan ik je vandaag mee helpen?",
         timestamp: new Date(),
       }]);
     }
@@ -150,12 +150,12 @@ export const CEOChatPanel = () => {
     await saveMessageToDb('user', userMessage.content);
 
     try {
-      // Get Hendrik CEO agent
+      // Get Jacob CEO agent
       const { data: agent } = await supabase
         .from('ai_agents')
         .select('id')
-        .ilike('name', '%hendrik%')
-        .single();
+        .eq('name', 'Jacob - CEO AI')
+        .maybeSingle();
 
       if (!agent) {
         throw new Error('CEO agent not found');
@@ -238,7 +238,7 @@ export const CEOChatPanel = () => {
       <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 border-b cursor-pointer" onClick={() => setIsMinimized(!isMinimized)}>
         <div className="flex items-center gap-2">
           <Bot className="h-5 w-5 text-primary" />
-          <CardTitle className="text-sm font-medium">Hendrik - CEO AI</CardTitle>
+          <CardTitle className="text-sm font-medium">Jacob - CEO AI</CardTitle>
           {alertCount > 0 && (
             <Badge variant="destructive" className="h-5 px-1.5 text-xs">
               {alertCount} alert{alertCount !== 1 ? 's' : ''}
