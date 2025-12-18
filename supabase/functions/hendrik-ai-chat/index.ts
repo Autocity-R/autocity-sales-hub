@@ -1104,10 +1104,19 @@ function calculateTeamPerformanceWithMargins(vehicles: any[], suppliers: any[]) 
     totalRevenue: number;
   }> = {};
 
-  // Initialize known team members
-  ['Daan', 'Martijn', 'Alex', 'Hendrik'].forEach(name => {
-    teamMembers[name.toLowerCase()] = {
-      name,
+  // Initialize known team members with name variations for matching
+  const teamMemberMappings: Record<string, string[]> = {
+    'daan': ['daan', 'daan leyte', 'daan@auto-city.nl'],
+    'martijn': ['martijn', 'martijn zuyderhoudt', 'martijn@auto-city.nl'],
+    'alex': ['alex', 'alexander', 'alexander kool', 'alex@auto-city.nl'],
+    'hendrik': ['hendrik', 'hendrik@auto-city.nl'],
+  };
+
+  // Initialize team members
+  Object.entries(teamMemberMappings).forEach(([key, _]) => {
+    const displayName = key.charAt(0).toUpperCase() + key.slice(1);
+    teamMembers[key] = {
+      name: displayName,
       b2bSales: 0,
       b2cSales: 0,
       totalSales: 0,
@@ -1117,27 +1126,36 @@ function calculateTeamPerformanceWithMargins(vehicles: any[], suppliers: any[]) 
     };
   });
 
-  // Process sold vehicles - look for salesperson in details or assigned fields
+  // Process sold vehicles - look for salesperson in details (salespersonName is the primary field)
   soldVehicles.forEach((v: any) => {
-    const salesperson = v.details?.salesperson || v.details?.verkoper || v.salesperson || '';
+    // Priority: salespersonName > salespersonId > salesperson > verkoper
+    const salesperson = v.details?.salespersonName || v.details?.salesperson || v.details?.verkoper || v.salesperson || '';
+    const salespersonLower = salesperson.toLowerCase().trim();
+    
     const sellingPrice = v.selling_price || 0;
     const purchasePrice = v.purchase_price || (v.details?.purchasePrice) || 0;
     const margin = sellingPrice > 0 && purchasePrice > 0 ? sellingPrice - purchasePrice : 0;
 
-    // Try to match to known team members
-    for (const [key, member] of Object.entries(teamMembers)) {
-      if (salesperson.toLowerCase().includes(key)) {
-        member.totalSales++;
-        member.totalMargin += margin;
-        member.totalRevenue += sellingPrice;
-        
-        if (v.status === 'verkocht_b2b') {
-          member.b2bSales++;
-        } else if (v.status === 'verkocht_b2c' || v.status === 'afgeleverd') {
-          member.b2cSales++;
+    // Try to match to known team members using all name variations
+    let matched = false;
+    for (const [key, variations] of Object.entries(teamMemberMappings)) {
+      for (const variation of variations) {
+        if (salespersonLower.includes(variation) || variation.includes(salespersonLower)) {
+          const member = teamMembers[key];
+          member.totalSales++;
+          member.totalMargin += margin;
+          member.totalRevenue += sellingPrice;
+          
+          if (v.status === 'verkocht_b2b') {
+            member.b2bSales++;
+          } else if (v.status === 'verkocht_b2c' || v.status === 'afgeleverd') {
+            member.b2cSales++;
+          }
+          matched = true;
+          break;
         }
-        break;
       }
+      if (matched) break;
     }
   });
 
