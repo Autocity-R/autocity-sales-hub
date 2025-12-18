@@ -7,8 +7,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Hendrik's agent ID for memory isolation
-const HENDRIK_AGENT_ID = '43004cb6-26e9-4453-861d-75ff8dffb3fe';
+// Jacob CEO AI's agent ID for memory isolation
+const CEO_AGENT_ID = '43004cb6-26e9-4453-861d-75ff8dffb3fe';
 
 // Alert thresholds
 const THRESHOLDS = {
@@ -31,7 +31,7 @@ interface MemoryRecord {
 }
 
 /**
- * Recall memories for Hendrik
+ * Recall memories for Jacob (CEO AI)
  */
 async function recallMemory(
   supabase: any,
@@ -42,7 +42,7 @@ async function recallMemory(
     let query = supabase
       .from('ai_memory')
       .select('memory_type, entity_name, insight, confidence, updated_at')
-      .eq('agent_id', HENDRIK_AGENT_ID)
+      .eq('agent_id', CEO_AGENT_ID)
       .eq('is_active', true)
       .gte('confidence', minConfidence)
       .or('expires_at.is.null,expires_at.gt.now()')
@@ -497,7 +497,7 @@ serve(async (req) => {
     const { data: briefing, error: insertError } = await supabaseClient
       .from('ai_briefings')
       .upsert({
-        agent_id: HENDRIK_AGENT_ID,
+        agent_id: CEO_AGENT_ID,
         briefing_type: briefingType,
         briefing_date: today,
         content,

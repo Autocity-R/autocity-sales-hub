@@ -14,8 +14,8 @@ interface ChatRequest {
   userContext?: any;
 }
 
-// Hendrik's agent ID for memory isolation
-const HENDRIK_AGENT_ID = '43004cb6-26e9-4453-861d-75ff8dffb3fe';
+// Jacob CEO AI's agent ID for memory isolation
+const CEO_AGENT_ID = '43004cb6-26e9-4453-861d-75ff8dffb3fe';
 
 // Alert thresholds
 const THRESHOLDS = {
@@ -39,7 +39,7 @@ interface MemoryRecord {
 }
 
 /**
- * Save or update a memory for Hendrik
+ * Save or update a memory for Jacob (CEO AI)
  * Uses UPSERT to prevent duplicates
  */
 async function saveToMemory(
@@ -59,7 +59,7 @@ async function saveToMemory(
     const { error } = await supabase
       .from('ai_memory')
       .upsert({
-        agent_id: HENDRIK_AGENT_ID,
+        agent_id: CEO_AGENT_ID,
         memory_type: memoryType,
         entity_name: entityName,
         insight,
@@ -86,7 +86,7 @@ async function saveToMemory(
 }
 
 /**
- * Recall memories for Hendrik
+ * Recall memories for Jacob (CEO AI)
  * Handles NULL expires_at correctly
  */
 async function recallMemory(
@@ -98,7 +98,7 @@ async function recallMemory(
     let query = supabase
       .from('ai_memory')
       .select('memory_type, entity_name, insight, confidence, updated_at')
-      .eq('agent_id', HENDRIK_AGENT_ID)
+      .eq('agent_id', CEO_AGENT_ID)
       .eq('is_active', true)
       .gte('confidence', minConfidence)
       .or('expires_at.is.null,expires_at.gt.now()')
@@ -264,7 +264,7 @@ serve(async (req) => {
     
     console.log('🧠 Jacob CEO AI Chat:', { sessionId, agentId, message: message.substring(0, 100), mode: userContext?.mode });
 
-    // FASE 2: Recall Hendrik's memories
+    // FASE 2: Recall Jacob's memories
     const memories = await recallMemory(supabaseClient);
     const memoryContext = buildMemoryContext(memories);
     console.log(`📚 Memory context: ${memories.length} insights loaded`);
@@ -389,7 +389,7 @@ serve(async (req) => {
           memories_used: memories.length,
         },
         ai_response: responseMessage,
-        agent_name: 'hendrik_ceo',
+        agent_name: 'jacob_ceo',
       });
 
     // FASE 2: Learn from this analysis (async, don't await to keep response fast)
@@ -1112,9 +1112,17 @@ function calculateTeamPerformanceWithMargins(vehicles: any[], suppliers: any[]) 
     'hendrik': ['hendrik', 'hendrik@auto-city.nl'],
   };
 
+  // Display name mapping for proper full names
+  const displayNameMap: Record<string, string> = {
+    'daan': 'Daan Leyte',
+    'martijn': 'Martijn Zuyderhoudt',
+    'alex': 'Alexander Kool',
+    'hendrik': 'Hendrik'
+  };
+
   // Initialize team members
   Object.entries(teamMemberMappings).forEach(([key, _]) => {
-    const displayName = key.charAt(0).toUpperCase() + key.slice(1);
+    const displayName = displayNameMap[key] || key.charAt(0).toUpperCase() + key.slice(1);
     teamMembers[key] = {
       name: displayName,
       b2bSales: 0,
@@ -1204,10 +1212,10 @@ function buildStrategicCEOPrompt(ceoData: any, memoryContext: string = ''): stri
     .sort((a: any, b: any) => b.sales - a.sales)
     .slice(0, 3) || [];
 
-  let prompt = `# HENDRIK - STRATEGISCHE CEO AI VAN AUTOCITY
+  let prompt = `# JACOB - STRATEGISCHE CEO AI VAN AUTOCITY
 ## 30+ Jaar Automotive Ervaring | 4-5x Groei Expert
 
-Je bent Hendrik, een CEO met 30+ jaar ervaring in de automotive sector. Je hebt meerdere autobedrijven van startups naar miljoenenbedrijven gebracht. Je bent NIET een simpele alert-robot - je bent een echte strategische adviseur die kan discussiëren, onderbouwen, vragen beantwoorden en strategisch nadenken.
+Je bent Jacob, de virtuele CEO van AutoCity met 30+ jaar gesimuleerde ervaring in de automotive sector. Je hebt meerdere autobedrijven van startups naar miljoenenbedrijven gebracht. Je bent NIET een simpele alert-robot - je bent een echte strategische adviseur die kan discussiëren, onderbouwen, vragen beantwoorden en strategisch nadenken.
 
 ---
 
@@ -1384,11 +1392,11 @@ ${alerts.map((a: any) => `- **${a.type.toUpperCase()}**: ${a.message}`).join('\n
 
 ---
 
-## JOUW TEAM
-- DAAN: Verkoper B2B & B2C
-- MARTIJN: Verkoper B2C
-- ALEX: Inkoper & B2B Verkoper
-- HENDRIK (jij): Inkoper & Verkoper B2B/B2C
+## JOUW TEAM (jij bent Jacob, de CEO AI die dit team aanstuurt)
+- DAAN LEYTE: Verkoper B2B & B2C
+- MARTIJN ZUYDERHOUDT: Verkoper B2C
+- ALEXANDER KOOL: Inkoper & B2B Verkoper
+- HENDRIK: Inkoper & Verkoper B2B/B2C
 
 ---
 
