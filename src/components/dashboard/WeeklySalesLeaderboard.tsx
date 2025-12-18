@@ -46,8 +46,7 @@ const WeeklySalesLeaderboard = () => {
         end: currentWeekEnd.toISOString()
       });
 
-      // CRITICAL: Only count verkocht_b2b and verkocht_b2c, NOT afgeleverd
-      // Afgeleverd is delivery date, not sales date
+      // Include afgeleverd to get complete picture - will categorize by salesType
       const { data: vehicles, error } = await supabase
         .from('vehicles')
         .select(`
@@ -57,7 +56,7 @@ const WeeklySalesLeaderboard = () => {
           sold_by_user_id,
           details
         `)
-        .in('status', ['verkocht_b2b', 'verkocht_b2c'])
+        .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
         .not('sold_date', 'is', null)
         .not('sold_by_user_id', 'is', null)
         .gte('sold_date', currentWeekStart.toISOString())
@@ -121,10 +120,17 @@ const WeeklySalesLeaderboard = () => {
         
         const salesperson = salespersonMap.get(sellerId)!;
         
-        // Tel het juiste type verkoop
-        if (vehicle.status === 'verkocht_b2b') {
+        // CORRECT B2B/B2C logic: check salesType for afgeleverd vehicles
+        const details = vehicle.details as any;
+        const salesType = details?.salesType;
+        const isB2B = vehicle.status === 'verkocht_b2b' || 
+                      (vehicle.status === 'afgeleverd' && salesType === 'b2b');
+        const isB2C = vehicle.status === 'verkocht_b2c' || 
+                      (vehicle.status === 'afgeleverd' && (salesType === 'b2c' || !salesType));
+        
+        if (isB2B) {
           salesperson.b2b_sales++;
-        } else if (vehicle.status === 'verkocht_b2c' || vehicle.status === 'afgeleverd') {
+        } else if (isB2C) {
           salesperson.b2c_sales++;
         }
         
