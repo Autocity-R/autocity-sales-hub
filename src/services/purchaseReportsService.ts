@@ -16,12 +16,10 @@ class PurchaseReportsService {
         selling_price,
         status,
         sold_date,
-        created_at
+        created_at,
+        details
       `)
-      // CRITICAL FIX: Include vehicles without purchase_date OR within period
-      // This ensures vehicles with newly assigned purchasers show up
       .or(`purchase_date.gte.${period.startDate},purchase_date.lte.${period.endDate},purchase_date.is.null`)
-      // Also include ALL vehicles with a purchaser assigned (critical for current data)
       .not('purchased_by_user_id', 'is', null);
 
     if (error) {
@@ -30,26 +28,68 @@ class PurchaseReportsService {
     }
 
     if (!vehicles || vehicles.length === 0) {
-      return {
-        totalPurchaseValue: 0,
-        totalRealizedProfit: 0,
-        averageMargin: 0,
-        totalInStock: 0,
-        purchasers: [],
-        byBuyer: []
-      };
+      return this.getEmptyAnalyticsData();
     }
 
     const purchaserStats = this.groupByPurchaser(vehicles);
+    const totals = this.calculateTotals(vehicles);
     
     return {
-      totalPurchaseValue: this.calculateTotalPurchaseValue(vehicles),
-      totalRealizedProfit: this.calculateRealizedProfit(vehicles),
-      averageMargin: this.calculateAverageMargin(vehicles),
-      totalInStock: this.calculateInStock(vehicles),
+      totalPurchaseValue: totals.totalPurchaseValue,
+      totalRealizedProfit: totals.totalRealizedProfit,
+      averageMargin: totals.averageMargin,
+      totalInStock: totals.totalInStock,
       purchasers: purchaserStats,
-      byBuyer: this.prepareBuyerChart(purchaserStats)
+      byBuyer: this.prepareBuyerChart(purchaserStats),
+      
+      // Reguliere inkoop totalen
+      regularTotalPurchased: totals.regularTotalPurchased,
+      regularTotalSold: totals.regularTotalSold,
+      regularTotalPurchaseValue: totals.regularTotalPurchaseValue,
+      regularTotalSalesValue: totals.regularTotalSalesValue,
+      regularTotalProfit: totals.regularTotalProfit,
+      regularAverageMargin: totals.regularAverageMargin,
+      regularInStock: totals.regularInStock,
+      
+      // Inruil totalen
+      tradeInTotalPurchased: totals.tradeInTotalPurchased,
+      tradeInTotalSold: totals.tradeInTotalSold,
+      tradeInTotalPurchaseValue: totals.tradeInTotalPurchaseValue,
+      tradeInTotalSalesValue: totals.tradeInTotalSalesValue,
+      tradeInTotalProfit: totals.tradeInTotalProfit,
+      tradeInAverageMargin: totals.tradeInAverageMargin,
+      tradeInInStock: totals.tradeInInStock
     };
+  }
+
+  private getEmptyAnalyticsData(): PurchaseAnalyticsData {
+    return {
+      totalPurchaseValue: 0,
+      totalRealizedProfit: 0,
+      averageMargin: 0,
+      totalInStock: 0,
+      purchasers: [],
+      byBuyer: [],
+      regularTotalPurchased: 0,
+      regularTotalSold: 0,
+      regularTotalPurchaseValue: 0,
+      regularTotalSalesValue: 0,
+      regularTotalProfit: 0,
+      regularAverageMargin: 0,
+      regularInStock: 0,
+      tradeInTotalPurchased: 0,
+      tradeInTotalSold: 0,
+      tradeInTotalPurchaseValue: 0,
+      tradeInTotalSalesValue: 0,
+      tradeInTotalProfit: 0,
+      tradeInAverageMargin: 0,
+      tradeInInStock: 0
+    };
+  }
+
+  private isTradeIn(vehicle: any): boolean {
+    const details = vehicle.details as Record<string, any> | null;
+    return details?.isTradeIn === true;
   }
 
   private groupByPurchaser(vehicles: any[]): PurchaserStats[] {
@@ -58,6 +98,7 @@ class PurchaseReportsService {
     vehicles.forEach(vehicle => {
       const buyerId = vehicle.purchased_by_user_id || 'unknown';
       const buyerName = vehicle.purchased_by_name || 'Onbekend';
+      const isTradeIn = this.isTradeIn(vehicle);
       
       if (!grouped.has(buyerId)) {
         grouped.set(buyerId, {
@@ -72,82 +113,198 @@ class PurchaseReportsService {
           inStock: 0,
           stockValue: 0,
           avgPurchasePrice: 0,
-          avgSalesPrice: 0
+          avgSalesPrice: 0,
+          // Regulier
+          regularPurchased: 0,
+          regularSold: 0,
+          regularPurchaseValue: 0,
+          regularSalesValue: 0,
+          regularProfit: 0,
+          regularMargin: 0,
+          regularInStock: 0,
+          regularStockValue: 0,
+          // Inruil
+          tradeInPurchased: 0,
+          tradeInSold: 0,
+          tradeInPurchaseValue: 0,
+          tradeInSalesValue: 0,
+          tradeInProfit: 0,
+          tradeInMargin: 0,
+          tradeInInStock: 0,
+          tradeInStockValue: 0
         });
       }
       
       const stats = grouped.get(buyerId)!;
-      // ✅ Use purchase_price column instead of details
       const purchasePrice = vehicle.purchase_price || 0;
+      const sellingPrice = vehicle.selling_price || 0;
       const isSold = ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(vehicle.status);
       
+      // Totalen bijwerken
       stats.totalPurchased++;
       stats.totalPurchaseValue += purchasePrice;
       
       if (isSold) {
         stats.sold++;
-        stats.totalSalesValue += vehicle.selling_price || 0;
-        stats.profit += (vehicle.selling_price || 0) - purchasePrice;
+        stats.totalSalesValue += sellingPrice;
+        stats.profit += sellingPrice - purchasePrice;
       } else {
         stats.inStock++;
         stats.stockValue += purchasePrice;
       }
+      
+      // Regulier vs Inruil splitsen
+      if (isTradeIn) {
+        stats.tradeInPurchased++;
+        stats.tradeInPurchaseValue += purchasePrice;
+        
+        if (isSold) {
+          stats.tradeInSold++;
+          stats.tradeInSalesValue += sellingPrice;
+          stats.tradeInProfit += sellingPrice - purchasePrice;
+        } else {
+          stats.tradeInInStock++;
+          stats.tradeInStockValue += purchasePrice;
+        }
+      } else {
+        stats.regularPurchased++;
+        stats.regularPurchaseValue += purchasePrice;
+        
+        if (isSold) {
+          stats.regularSold++;
+          stats.regularSalesValue += sellingPrice;
+          stats.regularProfit += sellingPrice - purchasePrice;
+        } else {
+          stats.regularInStock++;
+          stats.regularStockValue += purchasePrice;
+        }
+      }
     });
     
+    // Marges berekenen
     grouped.forEach(stats => {
       stats.avgPurchasePrice = stats.totalPurchased > 0 
         ? stats.totalPurchaseValue / stats.totalPurchased 
         : 0;
+      
       if (stats.sold > 0) {
         stats.avgSalesPrice = stats.totalSalesValue / stats.sold;
         stats.profitMargin = stats.totalSalesValue > 0 
           ? (stats.profit / stats.totalSalesValue) * 100 
           : 0;
       }
+      
+      // Regulier marge
+      if (stats.regularSold > 0 && stats.regularSalesValue > 0) {
+        stats.regularMargin = (stats.regularProfit / stats.regularSalesValue) * 100;
+      }
+      
+      // Inruil marge
+      if (stats.tradeInSold > 0 && stats.tradeInSalesValue > 0) {
+        stats.tradeInMargin = (stats.tradeInProfit / stats.tradeInSalesValue) * 100;
+      }
     });
     
     return Array.from(grouped.values()).sort((a, b) => b.totalPurchased - a.totalPurchased);
   }
 
-  private calculateTotalPurchaseValue(vehicles: any[]): number {
-    // ✅ Use purchase_price column instead of details
-    return vehicles.reduce((sum, v) => sum + (v.purchase_price || 0), 0);
-  }
+  private calculateTotals(vehicles: any[]) {
+    let totalPurchaseValue = 0;
+    let totalRealizedProfit = 0;
+    let totalSalesValue = 0;
+    let soldCount = 0;
+    let totalInStock = 0;
+    
+    // Regulier
+    let regularTotalPurchased = 0;
+    let regularTotalSold = 0;
+    let regularTotalPurchaseValue = 0;
+    let regularTotalSalesValue = 0;
+    let regularTotalProfit = 0;
+    let regularInStock = 0;
+    
+    // Inruil
+    let tradeInTotalPurchased = 0;
+    let tradeInTotalSold = 0;
+    let tradeInTotalPurchaseValue = 0;
+    let tradeInTotalSalesValue = 0;
+    let tradeInTotalProfit = 0;
+    let tradeInInStock = 0;
 
-  private calculateRealizedProfit(vehicles: any[]): number {
-    return vehicles
-      .filter(v => ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(v.status))
-      .reduce((sum, v) => {
-        // ✅ Use purchase_price column instead of details
-        const purchasePrice = v.purchase_price || 0;
-        const sellingPrice = v.selling_price || 0;
-        return sum + (sellingPrice - purchasePrice);
-      }, 0);
-  }
+    vehicles.forEach(vehicle => {
+      const purchasePrice = vehicle.purchase_price || 0;
+      const sellingPrice = vehicle.selling_price || 0;
+      const isSold = ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(vehicle.status);
+      const isTradeIn = this.isTradeIn(vehicle);
+      
+      totalPurchaseValue += purchasePrice;
+      
+      if (isSold) {
+        totalSalesValue += sellingPrice;
+        totalRealizedProfit += sellingPrice - purchasePrice;
+        soldCount++;
+      } else {
+        totalInStock++;
+      }
+      
+      if (isTradeIn) {
+        tradeInTotalPurchased++;
+        tradeInTotalPurchaseValue += purchasePrice;
+        
+        if (isSold) {
+          tradeInTotalSold++;
+          tradeInTotalSalesValue += sellingPrice;
+          tradeInTotalProfit += sellingPrice - purchasePrice;
+        } else {
+          tradeInInStock++;
+        }
+      } else {
+        regularTotalPurchased++;
+        regularTotalPurchaseValue += purchasePrice;
+        
+        if (isSold) {
+          regularTotalSold++;
+          regularTotalSalesValue += sellingPrice;
+          regularTotalProfit += sellingPrice - purchasePrice;
+        } else {
+          regularInStock++;
+        }
+      }
+    });
 
-  private calculateAverageMargin(vehicles: any[]): number {
-    const soldVehicles = vehicles.filter(v => 
-      ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(v.status) &&
-      v.selling_price > 0
-    );
+    // Marges berekenen
+    const averageMargin = totalSalesValue > 0 
+      ? (totalRealizedProfit / totalSalesValue) * 100 
+      : 0;
+    
+    const regularAverageMargin = regularTotalSalesValue > 0 
+      ? (regularTotalProfit / regularTotalSalesValue) * 100 
+      : 0;
+    
+    const tradeInAverageMargin = tradeInTotalSalesValue > 0 
+      ? (tradeInTotalProfit / tradeInTotalSalesValue) * 100 
+      : 0;
 
-    if (soldVehicles.length === 0) return 0;
-
-    const totalMargin = soldVehicles.reduce((sum, v) => {
-      // ✅ Use purchase_price column instead of details
-      const purchasePrice = v.purchase_price || 0;
-      const sellingPrice = v.selling_price || 0;
-      const margin = sellingPrice > 0 ? ((sellingPrice - purchasePrice) / sellingPrice) * 100 : 0;
-      return sum + margin;
-    }, 0);
-
-    return totalMargin / soldVehicles.length;
-  }
-
-  private calculateInStock(vehicles: any[]): number {
-    return vehicles.filter(v => 
-      !['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(v.status)
-    ).length;
+    return {
+      totalPurchaseValue,
+      totalRealizedProfit,
+      averageMargin,
+      totalInStock,
+      regularTotalPurchased,
+      regularTotalSold,
+      regularTotalPurchaseValue,
+      regularTotalSalesValue,
+      regularTotalProfit,
+      regularAverageMargin,
+      regularInStock,
+      tradeInTotalPurchased,
+      tradeInTotalSold,
+      tradeInTotalPurchaseValue,
+      tradeInTotalSalesValue,
+      tradeInTotalProfit,
+      tradeInAverageMargin,
+      tradeInInStock
+    };
   }
 
   private prepareBuyerChart(purchaserStats: PurchaserStats[]) {
