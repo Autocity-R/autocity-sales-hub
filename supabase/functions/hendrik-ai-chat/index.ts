@@ -1095,11 +1095,65 @@ function calculateTrendsAndPatterns(vehicles: any[]) {
 // TEAM PERFORMANCE WITH MARGINS
 // ============================================================================
 
-function calculateTeamPerformanceWithMargins(vehicles: any[], suppliers: any[]) {
-  // Get sold vehicles with salesperson info from details
-  const soldVehicles = vehicles.filter((v: any) => 
-    ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(v.status)
-  );
+function calculateTeamPerformanceWithMargins(
+  vehicles: any[], 
+  suppliers: any[], 
+  period: 'this_week' | 'last_week' | 'this_month' | 'all_time' = 'all_time'
+) {
+  // Calculate date range based on period
+  const now = new Date();
+  let periodStart: Date | null = null;
+  let periodEnd: Date | null = null;
+  let periodLabel = 'Totaal';
+
+  if (period !== 'all_time') {
+    // Fix zondag edge case: getDay()=0 op zondag → 6 dagen terug naar maandag
+    const dayOfWeek = now.getDay();
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+
+    switch (period) {
+      case 'this_week':
+        periodStart = new Date(now);
+        periodStart.setDate(now.getDate() - daysToMonday);
+        periodStart.setHours(0, 0, 0, 0);
+        periodEnd = new Date();
+        periodLabel = 'Deze Week';
+        break;
+      case 'last_week':
+        periodStart = new Date(now);
+        periodStart.setDate(now.getDate() - daysToMonday - 7);
+        periodStart.setHours(0, 0, 0, 0);
+        periodEnd = new Date(now);
+        periodEnd.setDate(now.getDate() - daysToMonday - 1);
+        periodEnd.setHours(23, 59, 59, 999);
+        periodLabel = 'Vorige Week';
+        break;
+      case 'this_month':
+        periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        periodEnd = new Date();
+        periodLabel = 'Deze Maand';
+        break;
+    }
+  }
+
+  // Get sold vehicles with salesperson info from details, filtered by period
+  const soldVehicles = vehicles.filter((v: any) => {
+    if (!['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(v.status)) {
+      return false;
+    }
+    
+    // Apply date filter if period is specified
+    if (periodStart && periodEnd) {
+      // Use sold_at or updated_at for delivery date
+      const saleDate = v.sold_at || v.details?.deliveryDate || v.updated_at;
+      if (!saleDate) return false;
+      
+      const saleDateObj = new Date(saleDate);
+      return saleDateObj >= periodStart && saleDateObj <= periodEnd;
+    }
+    
+    return true;
+  });
 
   const teamMembers: Record<string, {
     name: string;
@@ -1539,11 +1593,16 @@ function getStrategicCEOFunctions() {
     },
     {
       name: 'get_team_performance',
-      description: 'Get performance metrics for team members',
+      description: 'Get performance metrics for team members. IMPORTANT: Use period="this_week" when user asks about "deze week", "this week", or weekly performance. Use period="last_week" for last week, "this_month" for this month.',
       parameters: {
         type: 'object',
         properties: {
-          member: { type: 'string', description: 'Team member name or "all"' }
+          member: { type: 'string', description: 'Team member name or "all"' },
+          period: { 
+            type: 'string', 
+            enum: ['this_week', 'last_week', 'this_month', 'all_time'],
+            description: 'Time period for performance data. ALWAYS use "this_week" when user mentions "deze week", "weekly", etc.'
+          }
         }
       }
     },
@@ -1878,29 +1937,36 @@ ${inTransport.length === 0 ? '✅ Geen voertuigen onderweg' : ''}`
       }
 
       case 'get_team_performance': {
-        const teamData = ceoData.teamPerformanceWithMargins;
+        // Get period from args - IMPORTANT: use this for time-based queries
+        const period = parsedArgs.period || 'all_time';
+        
+        // Recalculate team performance with the specified period
+        const teamData = calculateTeamPerformanceWithMargins(
+          ceoData.allVehicles, 
+          ceoData.supplierRanking,
+          period as 'this_week' | 'last_week' | 'this_month' | 'all_time'
+        );
+        
+        // Create period label for display
+        const periodLabels: Record<string, string> = {
+          'this_week': 'Deze Week',
+          'last_week': 'Vorige Week', 
+          'this_month': 'Deze Maand',
+          'all_time': 'Totaal'
+        };
+        const periodLabel = periodLabels[period] || 'Totaal';
         
         if (!teamData || !teamData.ranking || teamData.ranking.length === 0) {
-          // Fallback to old method
-          const teamMembers = ['Daan', 'Martijn', 'Alex', 'Hendrik'];
-          let report = '👥 **Team Performance (Recent)**\n\n';
-          
-          teamMembers.forEach(member => {
-            const memberSales = ceoData.teamSales?.filter((s: any) => 
-              s.salesperson_name?.toLowerCase().includes(member.toLowerCase())
-            ) || [];
-            const b2b = memberSales.reduce((sum: number, s: any) => sum + (s.b2b_sales || 0), 0);
-            const b2c = memberSales.reduce((sum: number, s: any) => sum + (s.b2c_sales || 0), 0);
-            report += `**${member}**: ${b2b} B2B, ${b2c} B2C (totaal: ${b2b + b2c})\n`;
-          });
-          
-          return { success: true, message: report };
+          return { 
+            success: true, 
+            message: `👥 **Team Performance (${periodLabel})**\n\nGeen verkopen gevonden voor deze periode.` 
+          };
         }
 
         return {
           success: true,
           data: teamData,
-          message: `👥 **Team Performance (met Marges)**
+          message: `👥 **Team Performance (${periodLabel})**
 
 ${teamData.ranking.map((m: any, i: number) => 
   `${i + 1}. **${m.name}**
@@ -1910,11 +1976,11 @@ ${teamData.ranking.map((m: any, i: number) =>
    • Omzet: €${m.totalRevenue.toLocaleString()}
 `).join('\n')}
 
-**📊 Team Totalen:**
+**📊 Team Totalen (${periodLabel}):**
 • Totale Team Marge: €${teamData.totalTeamMargin.toLocaleString()}
 • Totale Team Verkopen: ${teamData.totalTeamSales}
 
-${teamData.topPerformer ? `🏆 **Top Performer**: ${teamData.topPerformer.name} met €${teamData.topPerformer.totalMargin.toLocaleString()} marge` : ''}`
+${teamData.topPerformer ? `🏆 **Top Performer ${periodLabel}**: ${teamData.topPerformer.name} met €${teamData.topPerformer.totalMargin.toLocaleString()} marge` : ''}`
         };
       }
 
