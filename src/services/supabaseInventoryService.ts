@@ -263,11 +263,24 @@ export class SupabaseInventoryService {
        console.log(`[UPDATE_VEHICLE] Setting sold_date for vehicle ${vehicle.id}`);
      }
      
-     // Set delivery_date ONLY when status changes to afgeleverd
-     if (salesStatus === 'afgeleverd' && existingVehicle.status !== 'afgeleverd' && !deliveryDate) {
-       deliveryDate = new Date().toISOString();
-       console.log(`[UPDATE_VEHICLE] Setting delivery_date for vehicle ${vehicle.id}`);
-     }
+      // Set delivery_date ONLY when status changes to afgeleverd
+      if (salesStatus === 'afgeleverd' && existingVehicle.status !== 'afgeleverd' && !deliveryDate) {
+        deliveryDate = new Date().toISOString();
+        console.log(`[UPDATE_VEHICLE] Setting delivery_date for vehicle ${vehicle.id}`);
+        
+        // CRITICAL: Also set salesType when delivering - prevents sales from "disappearing" in weekly leaderboard
+        if (!details.salesType) {
+          if (existingVehicle.status === 'verkocht_b2b') {
+            details.salesType = 'b2b';
+          } else if (existingVehicle.status === 'verkocht_b2c') {
+            details.salesType = 'b2c';
+          } else {
+            // Default to B2C if previous status is unclear (e.g., direct from voorraad)
+            details.salesType = 'b2c';
+          }
+          console.log(`[UPDATE_VEHICLE] Setting salesType to ${details.salesType} for vehicle ${vehicle.id}`);
+        }
+      }
 
      // Prepare email reminder settings
      const emailReminderSettings = (vehicle as any).emailReminderSettings || {};
