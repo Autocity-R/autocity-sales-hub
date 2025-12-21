@@ -202,6 +202,13 @@ export const updateTask = async (taskId: string, updates: Partial<Task>): Promis
   try {
     console.log('[taskService] updateTask called with id:', taskId, 'updates:', updates);
     
+    // Haal eerst de huidige taak op om te checken of status verandert naar voltooid
+    const { data: currentTask } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('id', taskId)
+      .single();
+    
     const updateData: any = {
       updated_at: new Date().toISOString()
     };
@@ -224,6 +231,11 @@ export const updateTask = async (taskId: string, updates: Partial<Task>): Promis
     if (updates.notes !== undefined) updateData.notes = updates.notes || null;
     if (updates.damageParts !== undefined) updateData.damage_parts = updates.damageParts ? { parts: updates.damageParts.parts } : null;
 
+    // Als status naar voltooid gaat, zet completed_at
+    if (updates.status === 'voltooid' && currentTask?.status !== 'voltooid') {
+      updateData.completed_at = new Date().toISOString();
+    }
+
     console.log('[taskService] Sending update to Supabase:', updateData);
 
     const { data, error } = await supabase
@@ -237,6 +249,10 @@ export const updateTask = async (taskId: string, updates: Partial<Task>): Promis
       console.error("Failed to update task:", error);
       throw error;
     }
+
+    // De database trigger handelt nu de damage_repair_records registratie af
+    // Dit is een vangnet dat altijd werkt, ongeacht hoe de status wordt gewijzigd
+    console.log('[taskService] Task updated successfully, database trigger handles damage repair registration');
 
     return {
       id: data.id,
