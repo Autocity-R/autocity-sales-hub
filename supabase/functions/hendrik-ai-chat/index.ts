@@ -834,7 +834,11 @@ function calculateWeeklyFinancials(vehicles: any[]) {
 
   for (let i = 0; i < 8; i++) {
     const weekStart = new Date(now);
-    weekStart.setDate(weekStart.getDate() - (i * 7) - weekStart.getDay() + 1);
+    // Fix zondag edge case: getDay()=0 op zondag, we willen dan 6 dagen terug naar maandag
+    // In plaats van 1 dag vooruit naar de volgende maandag
+    const dayOfWeek = weekStart.getDay();
+    const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    weekStart.setDate(weekStart.getDate() - (i * 7) - daysToSubtract);
     weekStart.setHours(0, 0, 0, 0);
 
     const weekEnd = new Date(weekStart);
@@ -1043,7 +1047,10 @@ function calculateTrendsAndPatterns(vehicles: any[]) {
 
   // 5. WEEK-OVER-WEEK GROWTH
   const thisWeekStart = new Date();
-  thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay() + 1);
+  // Fix zondag edge case: getDay()=0 op zondag → 6 dagen terug naar maandag
+  const dayOfWeekGrowth = thisWeekStart.getDay();
+  const daysToSubtractGrowth = dayOfWeekGrowth === 0 ? 6 : dayOfWeekGrowth - 1;
+  thisWeekStart.setDate(thisWeekStart.getDate() - daysToSubtractGrowth);
   thisWeekStart.setHours(0, 0, 0, 0);
   
   const lastWeekStart = new Date(thisWeekStart);
@@ -1956,16 +1963,20 @@ ${notOnline.length === 0 ? '✅ Alle binnenkomende voorraad is online' : ''}`
           const start = new Date();
           const end = new Date();
           
+          // Fix zondag edge case: getDay()=0 op zondag → 6 dagen terug naar maandag
+          const dayOfWeek = now.getDay();
+          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+          
           switch (period) {
             case 'this_week':
-              start.setDate(now.getDate() - now.getDay() + 1);
+              start.setDate(now.getDate() - daysToMonday);
               start.setHours(0, 0, 0, 0);
               end.setTime(now.getTime());
               break;
             case 'last_week':
-              start.setDate(now.getDate() - now.getDay() - 6);
+              start.setDate(now.getDate() - daysToMonday - 7);
               start.setHours(0, 0, 0, 0);
-              end.setDate(now.getDate() - now.getDay());
+              end.setDate(now.getDate() - daysToMonday - 1);
               end.setHours(23, 59, 59, 999);
               break;
             case 'this_month':
