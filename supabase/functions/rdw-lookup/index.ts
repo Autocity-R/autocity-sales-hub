@@ -14,7 +14,6 @@ interface RDWVehicleData {
   transmission: string;
   bodyType: string;
   power: number;
-  powerKw: number;
   trim: string;
   color: string;
   options: string[];
@@ -89,10 +88,6 @@ serve(async (req) => {
       console.warn('⚠️ Could not fetch fuel data:', e);
     }
 
-    // Combine vehicle and fuel data for power calculation
-    const combinedData = { ...vehicle, ...(fuelData[0] || {}) };
-    const { powerHp, powerKw } = calculatePower(combinedData);
-
     // Map RDW data to our format
     const mappedData: RDWVehicleData = {
       brand: mapBrand(vehicle.merk || ''),
@@ -102,8 +97,7 @@ serve(async (req) => {
       fuelType: mapFuelType(fuelData[0]?.brandstof_omschrijving || vehicle.brandstof_omschrijving || ''),
       transmission: 'Onbekend', // RDW doesn't provide transmission info
       bodyType: mapBodyType(vehicle.inrichting || vehicle.voertuigsoort || ''),
-      power: powerHp,
-      powerKw: powerKw,
+      power: calculatePower(fuelData[0] || vehicle),
       trim: '', // RDW doesn't provide trim info
       color: mapColor(vehicle.eerste_kleur || ''),
       options: [],
@@ -216,34 +210,15 @@ function mapBodyType(rdwInrichting: string): string {
   return bodyMap[lower] || rdwInrichting || 'Onbekend';
 }
 
-// Calculate power in HP and kW from RDW data
-// Checks multiple fields to support electric vehicles
-function calculatePower(vehicleData: Record<string, string>): { powerHp: number; powerKw: number } {
-  // Priority order of power fields to check
-  // Electric vehicles use different fields than combustion engines
-  const possibleFields = [
-    'nettomaximumvermogen',              // Standard combustion engines (kW)
-    'netto_max_vermogen_elektrisch',     // Electric vehicles main power (kW)
-    'nominaal_continu_maximumvermogen',  // EV continuous power (kW)
-    'max_vermogen_60_minuten',           // EV max power 60 min (kW)
-    'vermogen_massarijklaar',            // Fallback (sometimes inaccurate)
-  ];
-  
-  for (const field of possibleFields) {
-    const value = parseFloat(vehicleData[field] || '0');
-    // Ignore very small values (like 0.06 which is sometimes present)
-    if (value > 1) {
-      console.log(`🔋 Found power in field '${field}': ${value} kW`);
-      // Convert kW to HP (1 kW ≈ 1.36 HP)
-      return {
-        powerHp: Math.round(value * 1.36),
-        powerKw: Math.round(value)
-      };
-    }
+// Calculate power in HP from RDW data
+function calculatePower(vehicleData: Record<string, string>): number {
+  // RDW provides power in kW (nettomaximumvermogen)
+  const kw = parseInt(vehicleData.nettomaximumvermogen || vehicleData.vermogen_massarijklaar || '0', 10);
+  if (kw > 0) {
+    // Convert kW to HP (1 kW ≈ 1.36 HP)
+    return Math.round(kw * 1.36);
   }
-  
-  console.warn('⚠️ No valid power field found in RDW data');
-  return { powerHp: 0, powerKw: 0 };
+  return 0;
 }
 
 // Map RDW color codes to Dutch

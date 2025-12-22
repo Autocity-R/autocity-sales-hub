@@ -1,15 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReportPeriod } from "@/types/reports";
 import { purchaseReportsService } from "@/services/purchaseReportsService";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrendingUp, Package, DollarSign, Percent, ShoppingCart, RefreshCw } from "lucide-react";
+import { TrendingUp, Package, DollarSign, Percent } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 
 interface PurchaseAnalyticsProps {
   period: ReportPeriod;
@@ -19,13 +17,13 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accen
 
 export const PurchaseAnalytics = ({ period }: PurchaseAnalyticsProps) => {
   const queryClient = useQueryClient();
-  const [tableView, setTableView] = useState<'all' | 'regular' | 'tradein'>('all');
   
   const { data: purchaseData, isLoading } = useQuery({
     queryKey: ['purchase-analytics', period.startDate, period.endDate],
     queryFn: () => purchaseReportsService.getPurchaseAnalytics(period)
   });
 
+  // Real-time updates for vehicles
   useEffect(() => {
     const channel = supabase
       .channel('purchase-analytics-changes')
@@ -52,7 +50,7 @@ export const PurchaseAnalytics = ({ period }: PurchaseAnalyticsProps) => {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+          {[1, 2, 3, 4].map(i => (
             <Card key={i}>
               <CardHeader>
                 <Skeleton className="h-4 w-32" />
@@ -69,120 +67,9 @@ export const PurchaseAnalytics = ({ period }: PurchaseAnalyticsProps) => {
 
   if (!purchaseData) return null;
 
-  const formatCurrency = (value: number) => 
-    `€${value.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-
-  // Data for stacked bar chart
-  const stackedChartData = purchaseData.purchasers.map(p => ({
-    name: p.name,
-    regulier: p.regularPurchased,
-    inruil: p.tradeInPurchased
-  }));
-
-  // Data for pie chart comparing regular vs trade-in
-  const distributionData = [
-    { name: 'Regulier', value: purchaseData.regularTotalPurchased, color: 'hsl(var(--primary))' },
-    { name: 'Inruil', value: purchaseData.tradeInTotalPurchased, color: 'hsl(var(--secondary))' }
-  ];
-
   return (
     <div className="space-y-6">
-      {/* Split KPI Cards - Regulier vs Inruil */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Reguliere Inkoop */}
-        <Card className="border-l-4 border-l-primary">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <ShoppingCart className="h-5 w-5" />
-              Reguliere Inkoop
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Ingekocht</p>
-                <p className="text-2xl font-bold">{purchaseData.regularTotalPurchased}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Verkocht</p>
-                <p className="text-2xl font-bold">{purchaseData.regularTotalSold}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Winst</p>
-                <p className={`text-2xl font-bold ${purchaseData.regularTotalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(purchaseData.regularTotalProfit)}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Marge</p>
-                <p className="text-2xl font-bold">{purchaseData.regularAverageMargin.toFixed(1)}%</p>
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Inkoopwaarde: </span>
-                <span className="font-medium">{formatCurrency(purchaseData.regularTotalPurchaseValue)}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Verkoopwaarde: </span>
-                <span className="font-medium">{formatCurrency(purchaseData.regularTotalSalesValue)}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Op voorraad: </span>
-                <span className="font-medium">{purchaseData.regularInStock}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Inruil */}
-        <Card className="border-l-4 border-l-secondary">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <RefreshCw className="h-5 w-5" />
-              Inruil
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Ingeruild</p>
-                <p className="text-2xl font-bold">{purchaseData.tradeInTotalPurchased}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Verkocht</p>
-                <p className="text-2xl font-bold">{purchaseData.tradeInTotalSold}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Winst</p>
-                <p className={`text-2xl font-bold ${purchaseData.tradeInTotalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(purchaseData.tradeInTotalProfit)}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Marge</p>
-                <p className="text-2xl font-bold">{purchaseData.tradeInAverageMargin.toFixed(1)}%</p>
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Inruilwaarde: </span>
-                <span className="font-medium">{formatCurrency(purchaseData.tradeInTotalPurchaseValue)}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Verkoopwaarde: </span>
-                <span className="font-medium">{formatCurrency(purchaseData.tradeInTotalSalesValue)}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Op voorraad: </span>
-                <span className="font-medium">{purchaseData.tradeInInStock}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Gecombineerde totalen */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -190,23 +77,21 @@ export const PurchaseAnalytics = ({ period }: PurchaseAnalyticsProps) => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(purchaseData.totalPurchaseValue)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {purchaseData.regularTotalPurchased + purchaseData.tradeInTotalPurchased} voertuigen totaal
-            </p>
+            <div className="text-2xl font-bold">
+              €{purchaseData.totalPurchaseValue.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Totale Winst</CardTitle>
+            <CardTitle className="text-sm font-medium">Gerealiseerde Winst</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(purchaseData.totalRealizedProfit)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Regulier: {formatCurrency(purchaseData.regularTotalProfit)} | Inruil: {formatCurrency(purchaseData.tradeInTotalProfit)}
-            </p>
+            <div className="text-2xl font-bold">
+              €{purchaseData.totalRealizedProfit.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </div>
           </CardContent>
         </Card>
 
@@ -216,10 +101,9 @@ export const PurchaseAnalytics = ({ period }: PurchaseAnalyticsProps) => {
             <Percent className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{purchaseData.averageMargin.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Regulier: {purchaseData.regularAverageMargin.toFixed(1)}% | Inruil: {purchaseData.tradeInAverageMargin.toFixed(1)}%
-            </p>
+            <div className="text-2xl font-bold">
+              {purchaseData.averageMargin.toFixed(1)}%
+            </div>
           </CardContent>
         </Card>
 
@@ -229,10 +113,9 @@ export const PurchaseAnalytics = ({ period }: PurchaseAnalyticsProps) => {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{purchaseData.totalInStock}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Regulier: {purchaseData.regularInStock} | Inruil: {purchaseData.tradeInInStock}
-            </p>
+            <div className="text-2xl font-bold">
+              {purchaseData.totalInStock}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -241,18 +124,16 @@ export const PurchaseAnalytics = ({ period }: PurchaseAnalyticsProps) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle>Inkoop per Inkoper (Regulier vs Inruil)</CardTitle>
+            <CardTitle>Inkoop per Inkoper</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={stackedChartData}>
+              <BarChart data={purchaseData.byBuyer}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip />
-                <Legend />
-                <Bar dataKey="regulier" stackId="a" fill="hsl(var(--primary))" name="Regulier" />
-                <Bar dataKey="inruil" stackId="a" fill="hsl(var(--secondary))" name="Inruil" />
+                <Bar dataKey="value" fill="hsl(var(--primary))" name="Aantal Voertuigen" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -260,45 +141,35 @@ export const PurchaseAnalytics = ({ period }: PurchaseAnalyticsProps) => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Verdeling Regulier vs Inruil</CardTitle>
+            <CardTitle>Verdeling Inkoopwaarde</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={distributionData}
-                  dataKey="value"
+                  data={purchaseData.purchasers}
+                  dataKey="totalPurchaseValue"
                   nameKey="name"
                   cx="50%"
                   cy="50%"
                   outerRadius={100}
-                  label={(entry) => `${entry.name}: ${entry.value}`}
+                  label={(entry) => `${entry.name}: €${entry.totalPurchaseValue.toLocaleString('nl-NL', { minimumFractionDigits: 0 })}`}
                 >
-                  {distributionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  {purchaseData.purchasers.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
-                <Legend />
+                <Tooltip formatter={(value: number) => `€${value.toLocaleString('nl-NL')}`} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
 
-      {/* Detailed Table with View Toggle */}
+      {/* Detailed Table */}
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <CardTitle>Inkoper Details</CardTitle>
-            <Tabs value={tableView} onValueChange={(v) => setTableView(v as 'all' | 'regular' | 'tradein')}>
-              <TabsList>
-                <TabsTrigger value="all">Alle</TabsTrigger>
-                <TabsTrigger value="regular">Regulier</TabsTrigger>
-                <TabsTrigger value="tradein">Inruil</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+          <CardTitle>Inkoper Details</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -316,66 +187,31 @@ export const PurchaseAnalytics = ({ period }: PurchaseAnalyticsProps) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {purchaseData.purchasers.map((purchaser) => {
-                // Determine which values to show based on view
-                const purchased = tableView === 'regular' ? purchaser.regularPurchased 
-                  : tableView === 'tradein' ? purchaser.tradeInPurchased 
-                  : purchaser.totalPurchased;
-                const purchaseValue = tableView === 'regular' ? purchaser.regularPurchaseValue 
-                  : tableView === 'tradein' ? purchaser.tradeInPurchaseValue 
-                  : purchaser.totalPurchaseValue;
-                const sold = tableView === 'regular' ? purchaser.regularSold 
-                  : tableView === 'tradein' ? purchaser.tradeInSold 
-                  : purchaser.sold;
-                const salesValue = tableView === 'regular' ? purchaser.regularSalesValue 
-                  : tableView === 'tradein' ? purchaser.tradeInSalesValue 
-                  : purchaser.totalSalesValue;
-                const profit = tableView === 'regular' ? purchaser.regularProfit 
-                  : tableView === 'tradein' ? purchaser.tradeInProfit 
-                  : purchaser.profit;
-                const margin = tableView === 'regular' ? purchaser.regularMargin 
-                  : tableView === 'tradein' ? purchaser.tradeInMargin 
-                  : purchaser.profitMargin;
-                const inStock = tableView === 'regular' ? purchaser.regularInStock 
-                  : tableView === 'tradein' ? purchaser.tradeInInStock 
-                  : purchaser.inStock;
-                const stockValue = tableView === 'regular' ? purchaser.regularStockValue 
-                  : tableView === 'tradein' ? purchaser.tradeInStockValue 
-                  : purchaser.stockValue;
-
-                // Skip rows with no data in this view
-                if (purchased === 0 && tableView !== 'all') return null;
-
-                return (
-                  <TableRow key={purchaser.id}>
-                    <TableCell className="font-medium">
-                      {purchaser.name}
-                      {tableView === 'all' && (
-                        <div className="flex gap-1 mt-1">
-                          {purchaser.regularPurchased > 0 && (
-                            <Badge variant="outline" className="text-xs">R: {purchaser.regularPurchased}</Badge>
-                          )}
-                          {purchaser.tradeInPurchased > 0 && (
-                            <Badge variant="secondary" className="text-xs">I: {purchaser.tradeInPurchased}</Badge>
-                          )}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">{purchased}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(purchaseValue)}</TableCell>
-                    <TableCell className="text-right">{sold}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(salesValue)}</TableCell>
-                    <TableCell className="text-right">
-                      <span className={profit > 0 ? "text-green-600" : profit < 0 ? "text-red-600" : ""}>
-                        {formatCurrency(profit)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">{margin.toFixed(1)}%</TableCell>
-                    <TableCell className="text-right">{inStock}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(stockValue)}</TableCell>
-                  </TableRow>
-                );
-              })}
+              {purchaseData.purchasers.map((purchaser) => (
+                <TableRow key={purchaser.id}>
+                  <TableCell className="font-medium">{purchaser.name}</TableCell>
+                  <TableCell className="text-right">{purchaser.totalPurchased}</TableCell>
+                  <TableCell className="text-right">
+                    €{purchaser.totalPurchaseValue.toLocaleString('nl-NL', { minimumFractionDigits: 0 })}
+                  </TableCell>
+                  <TableCell className="text-right">{purchaser.sold}</TableCell>
+                  <TableCell className="text-right">
+                    €{purchaser.totalSalesValue.toLocaleString('nl-NL', { minimumFractionDigits: 0 })}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <span className={purchaser.profit > 0 ? "text-green-600" : purchaser.profit < 0 ? "text-red-600" : ""}>
+                      €{purchaser.profit.toLocaleString('nl-NL', { minimumFractionDigits: 0 })}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {purchaser.profitMargin.toFixed(1)}%
+                  </TableCell>
+                  <TableCell className="text-right">{purchaser.inStock}</TableCell>
+                  <TableCell className="text-right">
+                    €{purchaser.stockValue.toLocaleString('nl-NL', { minimumFractionDigits: 0 })}
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </CardContent>

@@ -100,26 +100,6 @@ export interface PurchaserStats {
   stockValue: number;
   avgPurchasePrice: number;
   avgSalesPrice: number;
-  
-  // Reguliere inkoop (niet-inruil)
-  regularPurchased: number;
-  regularSold: number;
-  regularPurchaseValue: number;
-  regularSalesValue: number;
-  regularProfit: number;
-  regularMargin: number;
-  regularInStock: number;
-  regularStockValue: number;
-  
-  // Inruil
-  tradeInPurchased: number;
-  tradeInSold: number;
-  tradeInPurchaseValue: number;
-  tradeInSalesValue: number;
-  tradeInProfit: number;
-  tradeInMargin: number;
-  tradeInInStock: number;
-  tradeInStockValue: number;
 }
 
 export interface PurchaseAnalyticsData {
@@ -129,24 +109,6 @@ export interface PurchaseAnalyticsData {
   totalInStock: number;
   purchasers: PurchaserStats[];
   byBuyer: Array<{ name: string; value: number }>;
-  
-  // Reguliere inkoop totalen
-  regularTotalPurchased: number;
-  regularTotalSold: number;
-  regularTotalPurchaseValue: number;
-  regularTotalSalesValue: number;
-  regularTotalProfit: number;
-  regularAverageMargin: number;
-  regularInStock: number;
-  
-  // Inruil totalen
-  tradeInTotalPurchased: number;
-  tradeInTotalSold: number;
-  tradeInTotalPurchaseValue: number;
-  tradeInTotalSalesValue: number;
-  tradeInTotalProfit: number;
-  tradeInAverageMargin: number;
-  tradeInInStock: number;
 }
 
 // Reliability tier for statistical confidence
