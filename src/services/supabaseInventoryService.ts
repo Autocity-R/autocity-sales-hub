@@ -167,7 +167,10 @@ export class SupabaseInventoryService {
          throw error;
        }
 
-       return data.map(this.mapSupabaseToVehicle);
+       const vehicles = data.map(this.mapSupabaseToVehicle);
+       // Load customer/supplier/transporter relationships for transport view
+       const vehiclesWithRelationships = await loadVehicleRelationships(vehicles);
+       return vehiclesWithRelationships;
      } catch (error) {
        console.error('Error fetching transport vehicles:', error);
        throw error;
