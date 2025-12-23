@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Vehicle, ImportStatus, Supplier, FileCategory } from "@/types/inventory";
-import { fetchVehicles, updateVehicle, sendEmail, bulkUpdateVehicles, uploadVehicleFile } from "@/services/inventoryService";
+import { fetchTransportVehicles, updateVehicle, sendEmail, bulkUpdateVehicles, uploadVehicleFile } from "@/services/inventoryService";
 import { addContact } from "@/services/customerService";
 import { Contact } from "@/types/customer";
 import { TransportVehicleTable } from "@/components/transport/TransportVehicleTable";
@@ -26,11 +26,10 @@ const Transport = () => {
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
   const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>([]);
 
-  // Fetch vehicles that have transport status "onderweg"
+  // Fetch vehicles that have transport status "onderweg" (already relationship-enriched)
   const { data: vehicles = [], isLoading, error } = useQuery({
-    queryKey: ["vehicles"],
-    queryFn: fetchVehicles,
-    select: (data) => data.filter(v => v.transportStatus === "onderweg")
+    queryKey: ["transportVehicles"],
+    queryFn: fetchTransportVehicles,
   });
 
   // Real-time subscription for transport changes
@@ -47,7 +46,7 @@ const Transport = () => {
         (payload) => {
           console.log('Vehicle updated (Transport):', payload);
           // Alleen invalideren als het een transport-relevant voertuig is
-          queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+          queryClient.invalidateQueries({ queryKey: ["transportVehicles"] });
         }
       )
       .subscribe();
@@ -61,7 +60,7 @@ const Transport = () => {
   const updateMutation = useMutation({
     mutationFn: updateVehicle,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["transportVehicles"] });
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       toast({
         title: "Voertuig bijgewerkt",
@@ -82,7 +81,7 @@ const Transport = () => {
   const bulkUpdateMutation = useMutation({
     mutationFn: (vehicles: Vehicle[]) => bulkUpdateVehicles(vehicles),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["transportVehicles"] });
       toast({
         title: "Voertuigen bijgewerkt",
         description: "De wijzigingen zijn succesvol opgeslagen voor alle geselecteerde voertuigen.",
@@ -125,7 +124,7 @@ const Transport = () => {
       }
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["transportVehicles"] });
       toast({
         title: "Pickup document verstuurd",
         description: "De pickup documenten zijn succesvol naar de transporteur verstuurd.",
