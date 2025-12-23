@@ -160,7 +160,7 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
             <TableHead className="min-w-28">Inkoopprijs</TableHead>
             <TableHead className="min-w-20">Betaald</TableHead>
             <TableHead className="min-w-28">Pickup status</TableHead>
-            <TableHead className="min-w-32">Transport status</TableHead>
+            <TableHead className="min-w-32">Klant</TableHead>
             <TableHead className="min-w-24 text-center">Acties</TableHead>
           </TableRow>
         </TableHeader>
@@ -209,7 +209,17 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
                   );
                 })()}
               </TableCell>
-              <TableCell className="align-middle">{formatImportStatus(vehicle.importStatus)}</TableCell>
+              <TableCell className="align-middle">
+                {vehicle.customerName || vehicle.customerContact?.name ? (
+                  <Badge className="bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-100 font-medium">
+                    {vehicle.customerName || vehicle.customerContact?.name}
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="bg-gray-100 text-gray-800 font-medium">
+                    AUTOCITY
+                  </Badge>
+                )}
+              </TableCell>
               <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
                 <div className="flex justify-center space-x-2">
                   <Button 
