@@ -422,11 +422,16 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                 </TableCell>
                 <TableCell>{renderImportStatusBadge(vehicle.importStatus)}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="capitalize">
-                    {vehicle.location === 'afgeleverd' && '🚚 '}
-                    {vehicle.location === 'onderweg' && '🚗 '}
-                    {vehicle.location.replace(/_/g, ' ')}
-                  </Badge>
+                  {vehicle.transportStatus === "onderweg" ? (
+                    <Badge variant="destructive" className="font-semibold">
+                      🚗 Onderweg
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="capitalize">
+                      {vehicle.location === 'afgeleverd' && '🚚 '}
+                      {vehicle.location.replace(/_/g, ' ')}
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell className="text-center">
                   {vehicle.papersReceived ? (
