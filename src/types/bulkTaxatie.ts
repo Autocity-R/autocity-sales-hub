@@ -31,6 +31,7 @@ export interface BulkTaxatieInput {
   bodyType?: string;
   originalDescription?: string;
   parseConfidence?: number;
+  options?: string[];  // Gedetecteerde opties van AI voor JP Cars
 }
 
 // Result per vehicle
