@@ -28,6 +28,7 @@ interface AIAnalyzedVehicle {
   color: string | null;
   confidence: number;
   originalData: string;
+  options?: string[];  // Gedetecteerde opties van AI
 }
 
 // Feedback context type for bulk processing
@@ -284,6 +285,7 @@ export const useBulkTaxatie = () => {
             bodyType: v.bodyType || undefined,
             originalDescription: v.originalData,
             parseConfidence: v.confidence,
+            options: v.options || [],  // Opties van AI meegeven
           }));
 
           allVehicles.push(...inputs);
@@ -328,7 +330,7 @@ export const useBulkTaxatie = () => {
       power: input.power || 0,
       trim: input.variant || '',
       color: input.color || '',
-      options: [],
+      options: input.options || [],  // Opties van AI Excel analyse doorgeven aan JP Cars
       keywords: [],
     };
 

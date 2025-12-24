@@ -25,6 +25,7 @@ interface AnalyzedVehicle {
   color: string | null;
   confidence: number;
   originalData: string;
+  options: string[];  // Gedetecteerde opties voor JP Cars
 }
 
 serve(async (req) => {
@@ -115,12 +116,75 @@ RETOURNEER VOOR ELK VOERTUIG:
   "askingPrice": prijs als getal of null,
   "color": kleur of null,
   "confidence": 0.0-1.0 betrouwbaarheidsscore,
-  "originalData": originele beschrijving/tekst waar je dit uit hebt gehaald
+  "originalData": originele beschrijving/tekst waar je dit uit hebt gehaald,
+  "options": ["optie1", "optie2"]
 }
+
+OPTIES DETECTIE (CRUCIAAL VOOR NAUWKEURIGE JP CARS TAXATIE):
+Zoek in ALLE kolommen en tekst naar waarde-bepalende opties:
+
+**Dak opties:**
+- "panoramadak", "panoramic roof", "schuifdak", "sunroof", "open dak", "glasdak" → "panorama roof"
+
+**Premium Audio:**
+- "harman kardon", "harman" → "harman kardon"
+- "bose" → "bose"  
+- "bang olufsen", "b&o", "bang & olufsen" → "bang olufsen"
+- "burmester" → "burmester"
+- "jbl" → "jbl"
+- "meridian" → "meridian"
+- "focal" → "focal"
+
+**Interieur:**
+- "leder", "leather", "leer", "lederen bekleding", "volleder" → "leather"
+- "alcantara" → "alcantara"
+- "stoelverwarming", "verwarmde stoelen", "heated seats" → "heated seats"
+- "stoelkoeling", "gekoelde stoelen", "ventilated seats" → "ventilated seats"
+- "massagestoelen", "massage" → "massage seats"
+
+**Sport/Uitvoeringspakketten (KIJK OOK IN MODEL/VARIANT NAAM!):**
+- "s-line", "s line", "sline" → "S-Line"
+- "m sport", "m pakket", "m-sport", "m-pakket" → "M sport"
+- "amg", "amg line", "amg pakket" → "AMG"
+- "r-line", "r line", "rline" → "R-Line"
+- "gt line", "gt-line", "gtline" → "GT Line"
+- "n line", "n-line" → "N Line"
+- "f sport", "f-sport" → "F Sport"
+- "rs line", "rs-line" → "RS Line"
+- "fr" (Seat) → "FR"
+- "gti", "gtd", "gte" → bewaar exact
+- "sport", "sportline" → "sport"
+
+**Technologie:**
+- "head-up display", "hud", "headup", "head up" → "head up display"
+- "360 camera", "camera 360", "rondomzicht camera" → "360 camera"
+- "adaptieve cruise", "acc", "adaptive cruise control" → "adaptive cruise control"
+- "lane assist", "rijstrookassistent" → "lane assist"
+- "dodehoek", "blind spot", "blis" → "blind spot monitor"
+- "matrix led", "matrix", "led matrix" → "matrix led"
+- "laser", "laserlight" → "laser lights"
+- "night vision", "nachtzicht" → "night vision"
+
+**Wielen:**
+- "19 inch", "19\"", "19-inch" → "19 inch wheels"
+- "20 inch", "20\"", "20-inch" → "20 inch wheels"
+- "21 inch", "21\"", "21-inch" → "21 inch wheels"
+
+**Overig:**
+- "trekhaak", "towbar", "tow bar" → "tow bar"
+- "luchtvering", "air suspension", "airmatic" → "air suspension"
+- "7 zitter", "7-zits", "7 seats", "7-persoons" → "7 seater"
+- "elektrische achterklep", "power tailgate" → "electric tailgate"
+- "keyless", "keyless entry", "comfort access" → "keyless entry"
+- "apple carplay", "carplay" → "apple carplay"
+- "android auto" → "android auto"
+
+RETOURNEER opties in het ENGELSE JP Cars formaat als array!
 
 BELANGRIJKE REGELS:
 - HERLEID HET MERK uit je automotive kennis als het niet expliciet is genoemd
 - PROBEER ALTIJD vermogen te bepalen - dit is cruciaal voor JP Cars taxatie
+- DETECTEER ALTIJD opties uit beschrijvingen EN variant namen (bijv. "A4 S-Line" → options: ["S-Line"])
 - Als je iets niet zeker weet, geef een lagere confidence score
 - Sla rijen over die geen auto's lijken te zijn (lege rijen, headers, etc.)
 - Geef ALLEEN een JSON array terug, geen andere tekst
