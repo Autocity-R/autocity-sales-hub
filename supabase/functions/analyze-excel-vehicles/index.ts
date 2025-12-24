@@ -120,66 +120,28 @@ RETOURNEER VOOR ELK VOERTUIG:
   "options": ["optie1", "optie2"]
 }
 
-OPTIES DETECTIE (CRUCIAAL VOOR NAUWKEURIGE JP CARS TAXATIE):
-Zoek in ALLE kolommen en tekst naar waarde-bepalende opties:
+OPTIES DETECTIE (CRUCIAAL - ALLEEN JP CARS WHITELIST):
+Je bent een automotive expert met kennis van auto-opties in ALLE talen (NL, EN, DE, FR, IT, ES, PL, etc.).
+Detecteer opties uit ALLE kolommen, maar retourneer ALLEEN waarden uit deze EXACTE JP Cars whitelist:
 
-**Dak opties:**
-- "panoramadak", "panoramic roof", "schuifdak", "sunroof", "open dak", "glasdak" → "panorama roof"
+**JP CARS TOEGESTANE OPTIES (gebruik EXACT deze schrijfwijze):**
+"panorama roof", "sunroof", "harman kardon", "bose", "bang olufsen", "burmester", "meridian", "jbl", "focal", "premium audio",
+"leather", "alcantara", "heated seats", "ventilated seats", "electric seats", "sport seats", "massage seats",
+"navigation", "head up display", "360 camera", "rear camera", "adaptive cruise control", "lane assist", "blind spot monitor",
+"LED", "matrix LED", "laser lights", "adaptive lights", "night vision",
+"S-Line", "M sport", "AMG", "R-Line", "GT Line", "RS Line", "N Line", "F Sport", "FR", "GTI", "GTD", "GTE",
+"alloy wheels", "19 inch wheels", "20 inch wheels", "21 inch wheels",
+"tow bar", "air suspension", "keyless entry", "electric tailgate", "privacy glass",
+"heated steering wheel", "wireless charging", "apple carplay", "android auto", "digital cockpit", "7 seater", "long range"
 
-**Premium Audio:**
-- "harman kardon", "harman" → "harman kardon"
-- "bose" → "bose"  
-- "bang olufsen", "b&o", "bang & olufsen" → "bang olufsen"
-- "burmester" → "burmester"
-- "jbl" → "jbl"
-- "meridian" → "meridian"
-- "focal" → "focal"
-
-**Interieur:**
-- "leder", "leather", "leer", "lederen bekleding", "volleder" → "leather"
-- "alcantara" → "alcantara"
-- "stoelverwarming", "verwarmde stoelen", "heated seats" → "heated seats"
-- "stoelkoeling", "gekoelde stoelen", "ventilated seats" → "ventilated seats"
-- "massagestoelen", "massage" → "massage seats"
-
-**Sport/Uitvoeringspakketten (KIJK OOK IN MODEL/VARIANT NAAM!):**
-- "s-line", "s line", "sline" → "S-Line"
-- "m sport", "m pakket", "m-sport", "m-pakket" → "M sport"
-- "amg", "amg line", "amg pakket" → "AMG"
-- "r-line", "r line", "rline" → "R-Line"
-- "gt line", "gt-line", "gtline" → "GT Line"
-- "n line", "n-line" → "N Line"
-- "f sport", "f-sport" → "F Sport"
-- "rs line", "rs-line" → "RS Line"
-- "fr" (Seat) → "FR"
-- "gti", "gtd", "gte" → bewaar exact
-- "sport", "sportline" → "sport"
-
-**Technologie:**
-- "head-up display", "hud", "headup", "head up" → "head up display"
-- "360 camera", "camera 360", "rondomzicht camera" → "360 camera"
-- "adaptieve cruise", "acc", "adaptive cruise control" → "adaptive cruise control"
-- "lane assist", "rijstrookassistent" → "lane assist"
-- "dodehoek", "blind spot", "blis" → "blind spot monitor"
-- "matrix led", "matrix", "led matrix" → "matrix led"
-- "laser", "laserlight" → "laser lights"
-- "night vision", "nachtzicht" → "night vision"
-
-**Wielen:**
-- "19 inch", "19\"", "19-inch" → "19 inch wheels"
-- "20 inch", "20\"", "20-inch" → "20 inch wheels"
-- "21 inch", "21\"", "21-inch" → "21 inch wheels"
-
-**Overig:**
-- "trekhaak", "towbar", "tow bar" → "tow bar"
-- "luchtvering", "air suspension", "airmatic" → "air suspension"
-- "7 zitter", "7-zits", "7 seats", "7-persoons" → "7 seater"
-- "elektrische achterklep", "power tailgate" → "electric tailgate"
-- "keyless", "keyless entry", "comfort access" → "keyless entry"
-- "apple carplay", "carplay" → "apple carplay"
-- "android auto" → "android auto"
-
-RETOURNEER opties in het ENGELSE JP Cars formaat als array!
+**MEERTALIGE DETECTIE REGELS:**
+- Detecteer in ELKE taal en vertaal naar bovenstaande Engelse whitelist
+- Voorbeelden: "Schiebedach"/"toit panoramique"/"panoramadak" → "panorama roof"
+- "Leder"/"cuir"/"leer" → "leather", "Sitzheizung"/"sièges chauffants"/"stoelverwarming" → "heated seats"
+- "Anhängerkupplung"/"attelage"/"trekhaak" → "tow bar"
+- Kijk OOK in model/variant namen (bijv. "A4 S-Line" → "S-Line", "320i M Sport" → "M sport")
+- RETOURNEER ALLEEN opties die EXACT in de whitelist staan - GEEN custom waarden!
+- Als een gedetecteerde optie NIET in de whitelist staat, NEGEER deze volledig
 
 BELANGRIJKE REGELS:
 - HERLEID HET MERK uit je automotive kennis als het niet expliciet is genoemd
