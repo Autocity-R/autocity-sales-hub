@@ -5,8 +5,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -17,7 +17,8 @@ import {
   Download,
   BarChart3,
   Database,
-  Settings
+  Settings,
+  ChevronDown
 } from "lucide-react";
 import { RevenueChart } from "@/components/reports/RevenueChart";
 import { SalesChart } from "@/components/reports/SalesChart";
@@ -37,6 +38,8 @@ import { WarrantyReports } from "@/components/reports/WarrantyReports";
 import { PurchaseAnalytics } from "@/components/reports/PurchaseAnalytics";
 import { SupplierAnalytics } from "@/components/reports/SupplierAnalytics";
 import { DamageRepairAnalytics } from "@/components/reports/DamageRepairAnalytics";
+import { PeriodSelector } from "@/components/reports/PeriodSelector";
+import { startOfMonth, endOfMonth } from "date-fns";
 
 interface MockPerformanceData extends PerformanceData {
   revenue: number;
@@ -58,61 +61,20 @@ interface MockPerformanceData extends PerformanceData {
 }
 
 const Reports = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState<string>("currentMonth");
+  const [periodSelectorOpen, setPeriodSelectorOpen] = useState(false);
+  const [reportPeriod, setReportPeriod] = useState<ReportPeriod>(() => {
+    const now = new Date();
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
+    return {
+      type: 'month',
+      startDate: monthStart.toISOString(),
+      endDate: monthEnd.toISOString(),
+      label: 'Deze maand'
+    };
+  });
   const [isUsingMockData, setIsUsingMockData] = useState(false);
   const queryClient = useQueryClient();
-  
-  // Generate report period based on selection
-  const reportPeriod: ReportPeriod = React.useMemo(() => {
-    const now = new Date();
-    
-    switch (selectedPeriod) {
-      case "currentWeek":
-        // Get Monday of current week (week starts on Monday)
-        const currentDay = now.getDay();
-        const diff = currentDay === 0 ? -6 : 1 - currentDay; // If Sunday (0), go back 6 days, otherwise go to Monday
-        const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() + diff);
-        weekStart.setHours(0, 0, 0, 0);
-        
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        weekEnd.setHours(23, 59, 59, 999);
-        
-        return {
-          startDate: weekStart.toISOString(),
-          endDate: weekEnd.toISOString(),
-          label: "Huidige week",
-          type: "week" as const
-        };
-      
-      case "currentYear":
-        const yearStart = new Date(now.getFullYear(), 0, 1);
-        yearStart.setHours(0, 0, 0, 0);
-        const yearEnd = new Date(now.getFullYear(), 11, 31);
-        yearEnd.setHours(23, 59, 59, 999);
-        
-        return {
-          startDate: yearStart.toISOString(),
-          endDate: yearEnd.toISOString(),
-          label: "Huidig jaar",
-          type: "year" as const
-        };
-      
-      default: // currentMonth
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        monthStart.setHours(0, 0, 0, 0);
-        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        monthEnd.setHours(23, 59, 59, 999);
-        
-        return {
-          startDate: monthStart.toISOString(),
-          endDate: monthEnd.toISOString(),
-          label: "Huidige maand",
-          type: "month" as const
-        };
-    }
-  }, [selectedPeriod]);
 
   // Mock data for fallback
   const mockReportsData: MockPerformanceData = {
@@ -379,23 +341,27 @@ const Reports = () => {
           title="Rapportages"
           description="Uitgebreide analyses en prestatie-indicatoren"
         >
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <Button variant="outline" onClick={handleExportData} className="gap-2">
               <Download className="h-4 w-4" />
               Export
             </Button>
-            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="currentWeek">Huidige week</SelectItem>
-                <SelectItem value="currentMonth">Huidige maand</SelectItem>
-                <SelectItem value="currentYear">Huidig jaar</SelectItem>
-              </SelectContent>
-            </Select>
+            <Button 
+              variant="outline" 
+              onClick={() => setPeriodSelectorOpen(!periodSelectorOpen)}
+              className="gap-2"
+            >
+              <Calendar className="h-4 w-4" />
+              {reportPeriod.label}
+              <ChevronDown className={`h-4 w-4 transition-transform ${periodSelectorOpen ? 'rotate-180' : ''}`} />
+            </Button>
           </div>
         </PageHeader>
+
+        {/* Collapsible Period Selector */}
+        {periodSelectorOpen && (
+          <PeriodSelector value={reportPeriod} onChange={setReportPeriod} />
+        )}
 
         {/* Exact Online Integration Status */}
         <ExactOnlineStatus />
