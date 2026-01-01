@@ -363,8 +363,8 @@ const Reports = () => {
           <PeriodSelector value={reportPeriod} onChange={setReportPeriod} />
         )}
 
-        {/* Exact Online Integration Status */}
-        <ExactOnlineStatus />
+        {/* Exact Online Integration Status - Temporarily hidden for future use */}
+        {/* <ExactOnlineStatus /> */}
 
         {/* Data Source Indicator */}
         <DataSourceIndicator 
