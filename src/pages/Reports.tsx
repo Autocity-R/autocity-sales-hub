@@ -518,11 +518,11 @@ const Reports = () => {
           </TabsContent>
 
           <TabsContent value="sales" className="space-y-6">
-            <SalesAnalytics />
+            <SalesAnalytics period={reportPeriod} />
           </TabsContent>
 
           <TabsContent value="performance" className="space-y-6">
-            <SalespersonPerformance />
+            <SalespersonPerformance period={reportPeriod} />
           </TabsContent>
           
           <TabsContent value="financial" className="space-y-6">
@@ -684,11 +684,11 @@ const Reports = () => {
           </TabsContent>
 
           <TabsContent value="warranty" className="space-y-6">
-            <WarrantyReports />
+            <WarrantyReports period={reportPeriod} />
           </TabsContent>
 
           <TabsContent value="schadeherstel" className="space-y-6">
-            <DamageRepairAnalytics />
+            <DamageRepairAnalytics period={reportPeriod} />
           </TabsContent>
         </Tabs>
       </div>

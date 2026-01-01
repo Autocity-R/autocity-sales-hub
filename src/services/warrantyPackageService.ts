@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { startOfYear, endOfYear, format } from "date-fns";
+import { ReportPeriod } from "@/types/reports";
 
 export interface WarrantyPackageStats {
   totalPackagesSold: number;
@@ -25,9 +25,9 @@ export interface WarrantyPackageStats {
 }
 
 export const warrantyPackageService = {
-  async getWarrantyPackageStats(year: number): Promise<WarrantyPackageStats> {
-    const startDate = startOfYear(new Date(year, 0, 1));
-    const endDate = endOfYear(new Date(year, 0, 1));
+  async getWarrantyPackageStats(period: ReportPeriod): Promise<WarrantyPackageStats> {
+    const startDate = new Date(period.startDate);
+    const endDate = new Date(period.endDate);
 
     // Fetch all B2C sold/delivered vehicles for the year
     const { data: vehicles, error } = await supabase

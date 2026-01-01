@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -6,51 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { Wrench, Car, DollarSign, TrendingUp, User } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { damageRepairReportsService } from "@/services/damageRepairReportsService";
-import { format, subDays } from "date-fns";
+import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ReportPeriod } from "@/types/reports";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
-export const DamageRepairAnalytics: React.FC = () => {
-  const [periodType, setPeriodType] = useState<"week" | "month" | "year">("month");
+interface DamageRepairAnalyticsProps {
+  period: ReportPeriod;
+}
 
-  const period = useMemo(() => {
-    const now = new Date();
-    let startDate: Date;
-    let label: string;
-
-    switch (periodType) {
-      case "week":
-        startDate = subDays(now, 7);
-        label = "Deze Week";
-        break;
-      case "month":
-        startDate = subDays(now, 30);
-        label = "Deze Maand";
-        break;
-      case "year":
-        startDate = subDays(now, 365);
-        label = "Dit Jaar";
-        break;
-    }
-
-    return { 
-      startDate: startDate.toISOString(), 
-      endDate: now.toISOString(), 
-      label,
-      type: periodType 
-    };
-  }, [periodType]);
-
+export const DamageRepairAnalytics: React.FC<DamageRepairAnalyticsProps> = ({ period }) => {
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['damage-repair-stats', periodType],
+    queryKey: ['damage-repair-stats', period.startDate, period.endDate],
     queryFn: () => damageRepairReportsService.getDamageRepairStats(period),
     refetchOnMount: true
   });
@@ -88,19 +56,10 @@ export const DamageRepairAnalytics: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header with Period Selector */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-bold">Schadeherstel Dashboard</h2>
-        <Select value={periodType} onValueChange={(v: "week" | "month" | "year") => setPeriodType(v)}>
-          <SelectTrigger className="w-[180px] bg-background">
-            <SelectValue placeholder="Selecteer periode" />
-          </SelectTrigger>
-          <SelectContent className="bg-background">
-            <SelectItem value="week">Deze Week</SelectItem>
-            <SelectItem value="month">Deze Maand</SelectItem>
-            <SelectItem value="year">Dit Jaar</SelectItem>
-          </SelectContent>
-        </Select>
+        <Badge variant="outline">{period.label}</Badge>
       </div>
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

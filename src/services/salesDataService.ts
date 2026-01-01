@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
+import { ReportPeriod } from "@/types/reports";
 
 export interface SalesData {
   totalVehicles: number;
@@ -53,38 +53,9 @@ export interface SalesData {
 }
 
 export const salesDataService = {
-  async getSalesData(
-    periodType: "week" | "month" | "year",
-    customStart?: Date,
-    customEnd?: Date
-  ): Promise<SalesData> {
-    let startDate: Date;
-    let endDate: Date;
-    const now = new Date();
-
-    // Determine date range based on period type
-    if (customStart && customEnd) {
-      startDate = customStart;
-      endDate = customEnd;
-    } else {
-      switch (periodType) {
-        case "week":
-          startDate = startOfWeek(now, { weekStartsOn: 1 }); // Monday
-          endDate = endOfWeek(now, { weekStartsOn: 1 });
-          break;
-        case "month":
-          startDate = startOfMonth(now);
-          endDate = endOfMonth(now);
-          break;
-        case "year":
-          startDate = startOfYear(now);
-          endDate = endOfYear(now);
-          break;
-        default:
-          startDate = startOfMonth(now);
-          endDate = endOfMonth(now);
-      }
-    }
+  async getSalesData(period: ReportPeriod): Promise<SalesData> {
+    const startDate = new Date(period.startDate);
+    const endDate = new Date(period.endDate);
 
     // Count all sold vehicles: verkocht_b2b, verkocht_b2c, and afgeleverd
     const { data: vehicles, error } = await supabase
@@ -254,7 +225,7 @@ export const salesDataService = {
     };
   },
 
-  async getMonthlySalesBreakdown(year: number): Promise<Array<{
+  async getMonthlySalesBreakdown(period: ReportPeriod): Promise<Array<{
     month: number;
     monthName: string;
     b2b: number;
@@ -262,8 +233,8 @@ export const salesDataService = {
     total: number;
     revenue: number;
   }>> {
-    const startDate = new Date(year, 0, 1);
-    const endDate = new Date(year, 11, 31);
+    const startDate = new Date(period.startDate);
+    const endDate = new Date(period.endDate);
 
     // Count all sold vehicles: verkocht_b2b, verkocht_b2c, and afgeleverd
     const { data: vehicles, error } = await supabase
@@ -273,8 +244,8 @@ export const salesDataService = {
 
     if (error) throw error;
 
-    // Filter by year - use sold_date if available, otherwise created_at
-    const yearVehicles = vehicles?.filter(v => {
+    // Filter by period - use sold_date if available, otherwise created_at
+    const periodVehicles = vehicles?.filter(v => {
       const dateToCheck = v.sold_date ? new Date(v.sold_date) : new Date(v.created_at || startDate);
       return dateToCheck >= startDate && dateToCheck <= endDate;
     }) || [];
@@ -293,7 +264,7 @@ export const salesDataService = {
       revenue: 0,
     }));
 
-    yearVehicles?.forEach((vehicle) => {
+    periodVehicles?.forEach((vehicle) => {
       const dateToCheck = vehicle.sold_date ? new Date(vehicle.sold_date) : new Date(vehicle.created_at || startDate);
       const month = dateToCheck.getMonth();
       
