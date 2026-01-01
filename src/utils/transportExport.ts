@@ -3,7 +3,7 @@ import { Vehicle } from "@/types/inventory";
 import { getExportWatermark } from "@/services/exportWatermarkService";
 
 // Helper function to determine payment status display
-const getPaymentStatusDisplay = (vehicle: Vehicle): string => {
+export const getPaymentStatusDisplay = (vehicle: Vehicle): string => {
   // Use details.purchase_payment_status (inkoop betaling)
   const purchasePaymentStatus = vehicle.details?.purchase_payment_status;
   
@@ -18,13 +18,13 @@ const getPaymentStatusDisplay = (vehicle: Vehicle): string => {
 };
 
 // Helper function to determine pickup status display
-const getPickupStatusDisplay = (vehicle: Vehicle): string => {
+export const getPickupStatusDisplay = (vehicle: Vehicle): string => {
   if (vehicle.details?.pickupDocumentSent) return 'Transport verstuurd';
   return 'Niet ready';
 };
 
 // Helper function to get customer name
-const getCustomerName = (vehicle: Vehicle): string => {
+export const getCustomerName = (vehicle: Vehicle): string => {
   // Use customerContact if available
   if (vehicle.customerContact) {
     const name = vehicle.customerContact.name || '';

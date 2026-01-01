@@ -21,6 +21,7 @@ interface TransportVehicleTableProps {
   onSendPickupDocument: (vehicleId: string) => void;
   isLoading: boolean;
   error: unknown;
+  selectedVehicleIds?: string[];
   onSelectMultiple?: (vehicleIds: string[]) => void;
 }
 
@@ -31,9 +32,9 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
   onSendPickupDocument,
   isLoading,
   error,
+  selectedVehicleIds = [],
   onSelectMultiple
 }) => {
-  const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
   
   if (isLoading) {
     return (
@@ -117,10 +118,8 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedVehicles(vehicles.map(v => v.id));
       onSelectMultiple?.(vehicles.map(v => v.id));
     } else {
-      setSelectedVehicles([]);
       onSelectMultiple?.([]);
     }
   };
@@ -129,12 +128,11 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
     let newSelection: string[];
     
     if (checked) {
-      newSelection = [...selectedVehicles, vehicleId];
+      newSelection = [...selectedVehicleIds, vehicleId];
     } else {
-      newSelection = selectedVehicles.filter(id => id !== vehicleId);
+      newSelection = selectedVehicleIds.filter(id => id !== vehicleId);
     }
     
-    setSelectedVehicles(newSelection);
     onSelectMultiple?.(newSelection);
   };
 
@@ -146,7 +144,7 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
             {onSelectMultiple && (
               <TableHead className="w-12">
                 <Checkbox 
-                  checked={selectedVehicles.length === vehicles.length && vehicles.length > 0}
+                  checked={selectedVehicleIds.length === vehicles.length && vehicles.length > 0}
                   onCheckedChange={handleSelectAll}
                   aria-label="Selecteer alle voertuigen"
                 />
@@ -174,7 +172,7 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
               {onSelectMultiple && (
                 <TableCell className="p-2" onClick={(e) => e.stopPropagation()}>
                   <Checkbox 
-                    checked={selectedVehicles.includes(vehicle.id)}
+                    checked={selectedVehicleIds.includes(vehicle.id)}
                     onCheckedChange={(checked) => handleSelectVehicle(vehicle.id, !!checked)}
                     aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
                   />

@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, Truck, Download } from "lucide-react";
+import { Search, Truck, Download, Eye, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Vehicle, ImportStatus, Supplier, FileCategory } from "@/types/inventory";
 import { fetchTransportVehicles, updateVehicle, sendEmail, bulkUpdateVehicles, uploadVehicleFile } from "@/services/inventoryService";
@@ -16,7 +19,7 @@ import { TransportDetails } from "@/components/transport/TransportDetails";
 import { TransportBulkActions } from "@/components/transport/TransportBulkActions";
 import { supabase } from "@/integrations/supabase/client";
 import { useTransportVehicleOperations } from "@/hooks/useTransportVehicleOperations";
-import { exportTransportToExcel } from "@/utils/transportExport";
+import { exportTransportToExcel, getPaymentStatusDisplay, getPickupStatusDisplay, getCustomerName } from "@/utils/transportExport";
 
 const Transport = () => {
   const { toast } = useToast();
@@ -26,6 +29,7 @@ const Transport = () => {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
   const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>([]);
+  const [isViewSelectionOpen, setIsViewSelectionOpen] = useState(false);
 
   // Fetch vehicles that have transport status "onderweg" (already relationship-enriched)
   const { data: vehicles = [], isLoading, error } = useQuery({
@@ -302,8 +306,11 @@ const Transport = () => {
     vehicle.vin.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Handle Excel export
-  const handleExportExcel = async () => {
+  // Get selected vehicles for export/view
+  const selectedVehicles = vehicles.filter(v => selectedVehicleIds.includes(v.id));
+
+  // Handle Excel export - all filtered vehicles
+  const handleExportAll = async () => {
     try {
       const result = await exportTransportToExcel(filteredVehicles);
       toast({
@@ -320,15 +327,63 @@ const Transport = () => {
     }
   };
 
+  // Handle Excel export - selected vehicles only
+  const handleExportSelected = async () => {
+    if (selectedVehicles.length === 0) {
+      toast({
+        title: "Geen selectie",
+        description: "Selecteer eerst voertuigen om te exporteren.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      const result = await exportTransportToExcel(selectedVehicles);
+      toast({
+        title: "Excel geëxporteerd",
+        description: `${result.count} geselecteerde voertuigen geëxporteerd naar ${result.filename}`,
+        variant: "default",
+      });
+    } catch (error) {
+      toast({
+        title: "Export mislukt",
+        description: "Er is iets misgegaan bij het exporteren.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Copy VINs to clipboard
+  const handleCopyVins = () => {
+    const vins = selectedVehicles.map(v => v.vin).join('\n');
+    navigator.clipboard.writeText(vins);
+    toast({
+      title: "VIN's gekopieerd",
+      description: `${selectedVehicles.length} VIN's naar klembord gekopieerd.`,
+    });
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold tracking-tight">Transport</h2>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleExportExcel}>
+            {selectedVehicleIds.length > 0 && (
+              <>
+                <Button variant="outline" onClick={() => setIsViewSelectionOpen(true)}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  Bekijk selectie ({selectedVehicleIds.length})
+                </Button>
+                <Button variant="outline" onClick={handleExportSelected}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export selectie ({selectedVehicleIds.length})
+                </Button>
+              </>
+            )}
+            <Button variant="outline" onClick={handleExportAll}>
               <Download className="mr-2 h-4 w-4" /> 
-              Excel Export
+              Export alles ({filteredVehicles.length})
             </Button>
             <Button onClick={() => setIsAddSupplierOpen(true)}>
               <Truck className="mr-2 h-4 w-4" /> 
@@ -364,6 +419,7 @@ const Transport = () => {
             onSendPickupDocument={handleSendPickupDocument}
             isLoading={isLoading}
             error={error}
+            selectedVehicleIds={selectedVehicleIds}
             onSelectMultiple={handleSelectMultiple}
           />
         </div>
@@ -380,6 +436,58 @@ const Transport = () => {
           />
         )}
         
+        {/* View Selection Dialog */}
+        <Dialog open={isViewSelectionOpen} onOpenChange={setIsViewSelectionOpen}>
+          <DialogContent className="sm:max-w-[900px] max-h-[80vh]">
+            <DialogHeader>
+              <DialogTitle>Geselecteerde voertuigen ({selectedVehicles.length})</DialogTitle>
+              <DialogDescription>
+                Overzicht van je geselecteerde voertuigen. Je kunt de VIN's kopiëren of exporteren.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-2 mb-4">
+              <Button variant="outline" size="sm" onClick={handleCopyVins}>
+                <Copy className="mr-2 h-4 w-4" />
+                Kopieer VIN's
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportSelected}>
+                <Download className="mr-2 h-4 w-4" />
+                Export Excel
+              </Button>
+            </div>
+            <ScrollArea className="h-[400px] rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Merk</TableHead>
+                    <TableHead>Model</TableHead>
+                    <TableHead>VIN</TableHead>
+                    <TableHead>Kenteken</TableHead>
+                    <TableHead>Betaalstatus</TableHead>
+                    <TableHead>Pickup Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedVehicles.map((vehicle) => (
+                    <TableRow key={vehicle.id}>
+                      <TableCell className="font-medium">{vehicle.brand}</TableCell>
+                      <TableCell>{vehicle.model}</TableCell>
+                      <TableCell className="font-mono text-sm">{vehicle.vin}</TableCell>
+                      <TableCell>{vehicle.licenseNumber || '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{getPaymentStatusDisplay(vehicle)}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{getPickupStatusDisplay(vehicle)}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+
         {/* Add Transporter Dialog */}
         <Dialog open={isAddSupplierOpen} onOpenChange={setIsAddSupplierOpen}>
           <DialogContent className="sm:max-w-[500px]">
