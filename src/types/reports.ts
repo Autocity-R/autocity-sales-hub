@@ -1,6 +1,6 @@
 
 export interface ReportPeriod {
-  type: 'week' | 'month' | 'year' | 'custom';
+  type: 'week' | 'month' | 'year' | 'custom' | 'all-time';
   startDate: string;
   endDate: string;
   label: string;
