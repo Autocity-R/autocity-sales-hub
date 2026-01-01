@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, Truck, FileText } from "lucide-react";
+import { Search, Truck, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { TransportDetails } from "@/components/transport/TransportDetails";
 import { TransportBulkActions } from "@/components/transport/TransportBulkActions";
 import { supabase } from "@/integrations/supabase/client";
 import { useTransportVehicleOperations } from "@/hooks/useTransportVehicleOperations";
+import { exportTransportToExcel } from "@/utils/transportExport";
 
 const Transport = () => {
   const { toast } = useToast();
@@ -301,15 +302,39 @@ const Transport = () => {
     vehicle.vin.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Handle Excel export
+  const handleExportExcel = async () => {
+    try {
+      const result = await exportTransportToExcel(filteredVehicles);
+      toast({
+        title: "Excel geëxporteerd",
+        description: `${result.count} voertuigen geëxporteerd naar ${result.filename}`,
+        variant: "default",
+      });
+    } catch (error) {
+      toast({
+        title: "Export mislukt",
+        description: "Er is iets misgegaan bij het exporteren.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold tracking-tight">Transport</h2>
-          <Button onClick={() => setIsAddSupplierOpen(true)}>
-            <Truck className="mr-2 h-4 w-4" /> 
-            Transporteur toevoegen
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleExportExcel}>
+              <Download className="mr-2 h-4 w-4" /> 
+              Excel Export
+            </Button>
+            <Button onClick={() => setIsAddSupplierOpen(true)}>
+              <Truck className="mr-2 h-4 w-4" /> 
+              Transporteur toevoegen
+            </Button>
+          </div>
         </div>
         
         <div className="flex items-center space-x-2">
