@@ -41,22 +41,25 @@ import {
   LineChart,
   Line,
 } from "recharts";
+import { ReportPeriod } from "@/types/reports";
 
-export const WarrantyReports = () => {
-  const currentYear = new Date().getFullYear();
+interface WarrantyReportsProps {
+  period: ReportPeriod;
+}
 
+export const WarrantyReports = ({ period }: WarrantyReportsProps) => {
   const { data: claims = [], isLoading: claimsLoading } = useQuery({
-    queryKey: ["warranty-claims"],
+    queryKey: ["warranty-claims", period.startDate, period.endDate],
     queryFn: fetchWarrantyClaims,
   });
 
   const { data: packageStats, isLoading: packageStatsLoading } = useQuery({
-    queryKey: ["warranty-package-stats", currentYear],
-    queryFn: () => warrantyPackageService.getWarrantyPackageStats(currentYear),
+    queryKey: ["warranty-package-stats", period.startDate, period.endDate],
+    queryFn: () => warrantyPackageService.getWarrantyPackageStats(period),
   });
 
   const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ["warranty-stats"],
+    queryKey: ["warranty-stats", period.startDate, period.endDate],
     queryFn: getWarrantyStats,
   });
 
@@ -172,7 +175,10 @@ export const WarrantyReports = () => {
     <div className="space-y-8">
       {/* Warranty Package Sales Section */}
       <div>
-        <h2 className="text-2xl font-bold mb-4">Garantie Pakketten Verkoop (B2C)</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold">Garantie Pakketten Verkoop (B2C)</h2>
+          <Badge variant="outline">{period.label}</Badge>
+        </div>
         
         {/* Package KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -184,7 +190,7 @@ export const WarrantyReports = () => {
             <CardContent>
               <div className="text-2xl font-bold">{packageStats?.totalPackagesSold || 0}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                dit jaar ({currentYear})
+                {period.label}
               </p>
             </CardContent>
           </Card>
@@ -280,7 +286,7 @@ export const WarrantyReports = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5" />
-                Maandelijkse Trend {currentYear}
+                Maandelijkse Trend
               </CardTitle>
             </CardHeader>
             <CardContent>

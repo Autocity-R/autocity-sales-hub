@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { salesDataService } from "@/services/salesDataService";
+import { ReportPeriod } from "@/types/reports";
 import { 
   TrendingUp, 
   DollarSign, 
@@ -30,23 +30,25 @@ import {
   Line
 } from "recharts";
 
-export const SalesAnalytics = () => {
-  const [periodType, setPeriodType] = useState<"week" | "month" | "year">("month");
-  const currentYear = new Date().getFullYear();
+interface SalesAnalyticsProps {
+  period: ReportPeriod;
+}
+
+export const SalesAnalytics = ({ period }: SalesAnalyticsProps) => {
   const queryClient = useQueryClient();
 
   // Fetch sales data for selected period
   const { data: salesData, isLoading } = useQuery({
-    queryKey: ["sales-data", periodType],
-    queryFn: () => salesDataService.getSalesData(periodType),
+    queryKey: ["sales-data", period.startDate, period.endDate],
+    queryFn: () => salesDataService.getSalesData(period),
     refetchInterval: 30000,
   });
 
   // Fetch monthly breakdown for year view
   const { data: monthlyBreakdown } = useQuery({
-    queryKey: ["monthly-sales-breakdown", currentYear],
-    queryFn: () => salesDataService.getMonthlySalesBreakdown(currentYear),
-    enabled: periodType === "year",
+    queryKey: ["monthly-sales-breakdown", period.startDate, period.endDate],
+    queryFn: () => salesDataService.getMonthlySalesBreakdown(period),
+    enabled: period.type === "year" || period.type === "all-time",
   });
 
   // Real-time updates for vehicles
@@ -97,19 +99,10 @@ export const SalesAnalytics = () => {
 
   return (
     <div className="space-y-6">
-      {/* Period Selector */}
+      {/* Header */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Sales Dashboard</h2>
-        <Select value={periodType} onValueChange={(value: any) => setPeriodType(value)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="week">Deze Week</SelectItem>
-            <SelectItem value="month">Deze Maand</SelectItem>
-            <SelectItem value="year">Dit Jaar</SelectItem>
-          </SelectContent>
-        </Select>
+        <Badge variant="outline">{period.label}</Badge>
       </div>
 
       {/* KPI Cards */}
@@ -313,12 +306,12 @@ export const SalesAnalytics = () => {
         </Card>
 
         {/* Monthly Trend (only for year view) */}
-        {periodType === "year" && monthlyBreakdown && (
+        {(period.type === "year" || period.type === "all-time") && monthlyBreakdown && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5" />
-                Maandelijkse Trend {currentYear}
+                Maandelijkse Trend
               </CardTitle>
             </CardHeader>
             <CardContent>

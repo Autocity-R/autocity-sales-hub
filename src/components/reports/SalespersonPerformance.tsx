@@ -21,6 +21,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { SalespersonDetailDialog } from "./SalespersonDetailDialog";
+import { ReportPeriod } from "@/types/reports";
 
 interface SalespersonData {
   id: string;
@@ -52,35 +53,24 @@ interface MonthlyPerformance {
   margin: number;
 }
 
-export const SalespersonPerformance: React.FC = () => {
+interface SalespersonPerformanceProps {
+  period: ReportPeriod;
+}
+
+export const SalespersonPerformance: React.FC<SalespersonPerformanceProps> = ({ period }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("totalRevenue");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [selectedPeriod, setSelectedPeriod] = useState("currentYear");
   const [selectedSalesperson, setSelectedSalesperson] = useState<SalespersonData | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   // Fetch salesperson performance data
   const { data: salespersonData, isLoading } = useQuery({
-    queryKey: ["salesperson-performance", selectedPeriod],
+    queryKey: ["salesperson-performance", period.startDate, period.endDate],
     queryFn: async (): Promise<SalespersonData[]> => {
-      // Get date range based on selected period
-      const now = new Date();
-      let startDate: Date;
-      
-      switch (selectedPeriod) {
-        case "currentMonth":
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-          break;
-        case "lastMonth":
-          startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-          break;
-        case "currentQuarter":
-          startDate = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-          break;
-        default: // currentYear
-          startDate = new Date(now.getFullYear(), 0, 1);
-      }
+      // Use period dates from prop
+      const startDate = new Date(period.startDate);
+      const endDate = new Date(period.endDate);
 
       // Fetch sold vehicles with their details
       const { data: vehicles } = await supabase
@@ -91,7 +81,8 @@ export const SalespersonPerformance: React.FC = () => {
         `)
         .not('sold_date', 'is', null)
         .not('sold_by_user_id', 'is', null)
-        .gte('sold_date', startDate.toISOString());
+        .gte('sold_date', startDate.toISOString())
+        .lte('sold_date', endDate.toISOString());
 
       if (!vehicles) return [];
 
@@ -240,18 +231,8 @@ export const SalespersonPerformance: React.FC = () => {
               </p>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-              <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="currentMonth">Deze maand</SelectItem>
-                  <SelectItem value="lastMonth">Vorige maand</SelectItem>
-                  <SelectItem value="currentQuarter">Dit kwartaal</SelectItem>
-                  <SelectItem value="currentYear">Dit jaar</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto items-center">
+              <Badge variant="outline">{period.label}</Badge>
               
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
