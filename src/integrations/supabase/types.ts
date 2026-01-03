@@ -2050,6 +2050,42 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_targets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          salesperson_id: string | null
+          target_period: string
+          target_type: string
+          target_value: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          salesperson_id?: string | null
+          target_period: string
+          target_type: string
+          target_value: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          salesperson_id?: string | null
+          target_period?: string
+          target_type?: string
+          target_value?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       task_history: {
         Row: {
           change_reason: string | null

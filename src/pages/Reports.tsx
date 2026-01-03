@@ -18,7 +18,8 @@ import {
   BarChart3,
   Database,
   Settings,
-  ChevronDown
+  ChevronDown,
+  Building
 } from "lucide-react";
 import { RevenueChart } from "@/components/reports/RevenueChart";
 import { SalesChart } from "@/components/reports/SalesChart";
@@ -38,7 +39,9 @@ import { WarrantyReports } from "@/components/reports/WarrantyReports";
 import { PurchaseAnalytics } from "@/components/reports/PurchaseAnalytics";
 import { SupplierAnalytics } from "@/components/reports/SupplierAnalytics";
 import { DamageRepairAnalytics } from "@/components/reports/DamageRepairAnalytics";
+import { BranchManagerDashboard } from "@/components/reports/branch-manager";
 import { PeriodSelector } from "@/components/reports/PeriodSelector";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { startOfMonth, endOfMonth } from "date-fns";
 
 interface MockPerformanceData extends PerformanceData {
@@ -75,6 +78,10 @@ const Reports = () => {
   });
   const [isUsingMockData, setIsUsingMockData] = useState(false);
   const queryClient = useQueryClient();
+  const { userRole } = useRoleAccess();
+  
+  // Check if user has access to branch manager dashboard
+  const hasBranchManagerAccess = userRole === 'owner' || userRole === 'admin' || userRole === 'manager';
 
   // Mock data for fallback
   const mockReportsData: MockPerformanceData = {
@@ -375,6 +382,12 @@ const Reports = () => {
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList className="flex-wrap">
             <TabsTrigger value="overview">Overzicht</TabsTrigger>
+            {hasBranchManagerAccess && (
+              <TabsTrigger value="vestiging" className="gap-2">
+                <Building className="h-4 w-4" />
+                Vestiging B2C
+              </TabsTrigger>
+            )}
             <TabsTrigger value="sales">Verkoop</TabsTrigger>
             <TabsTrigger value="purchase">Inkoop</TabsTrigger>
             <TabsTrigger value="suppliers">Leveranciers</TabsTrigger>
@@ -516,6 +529,12 @@ const Reports = () => {
               </Card>
             )}
           </TabsContent>
+
+          {hasBranchManagerAccess && (
+            <TabsContent value="vestiging" className="space-y-6">
+              <BranchManagerDashboard period={reportPeriod} />
+            </TabsContent>
+          )}
 
           <TabsContent value="sales" className="space-y-6">
             <SalesAnalytics period={reportPeriod} />
