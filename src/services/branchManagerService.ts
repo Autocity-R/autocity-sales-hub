@@ -128,17 +128,10 @@ class BranchManagerService {
     const startDate = new Date(period.startDate);
     const endDate = new Date(period.endDate);
 
-    // Get all B2C sales with salesperson info
+    // Get all B2C sales
     const { data: vehicles, error } = await supabase
       .from('vehicles')
-      .select(`
-        *,
-        profiles:sold_by_user_id (
-          id,
-          first_name,
-          last_name
-        )
-      `)
+      .select('*')
       .in('status', ['verkocht_b2c', 'afgeleverd'])
       .gte('sold_date', startDate.toISOString())
       .lte('sold_date', endDate.toISOString());
@@ -162,10 +155,7 @@ class BranchManagerService {
 
     b2cVehicles.forEach(vehicle => {
       const salespersonId = vehicle.sold_by_user_id || 'unknown';
-      const profile = vehicle.profiles as any;
-      const name = profile 
-        ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Onbekend'
-        : (vehicle.details as any)?.salespersonName || 'Onbekend';
+      const name = (vehicle.details as any)?.salespersonName || 'Onbekend';
 
       if (!salesByPerson.has(salespersonId)) {
         salesByPerson.set(salespersonId, { id: salespersonId, name, vehicles: [] });
@@ -318,17 +308,7 @@ class BranchManagerService {
   async getPendingDeliveries(): Promise<PendingDelivery[]> {
     const { data: vehicles, error } = await supabase
       .from('vehicles')
-      .select(`
-        *,
-        profiles:sold_by_user_id (
-          first_name,
-          last_name
-        ),
-        contacts:customer_id (
-          first_name,
-          last_name
-        )
-      `)
+      .select('*')
       .eq('status', 'verkocht_b2c')
       .order('sold_date', { ascending: true });
 
@@ -342,8 +322,6 @@ class BranchManagerService {
     return (vehicles || []).map(vehicle => {
       const soldDate = vehicle.sold_date ? parseISO(vehicle.sold_date) : now;
       const daysSinceSale = differenceInDays(now, soldDate);
-      const profile = vehicle.profiles as any;
-      const contact = vehicle.contacts as any;
 
       return {
         id: vehicle.id,
@@ -352,12 +330,8 @@ class BranchManagerService {
         licensePlate: vehicle.license_number,
         soldDate: vehicle.sold_date || '',
         daysSinceSale,
-        salesperson: profile 
-          ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || null
-          : (vehicle.details as any)?.salespersonName || null,
-        customerName: contact
-          ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || null
-          : (vehicle.details as any)?.customerName || null,
+        salesperson: (vehicle.details as any)?.salespersonName || null,
+        customerName: (vehicle.details as any)?.customerName || null,
         isLate: daysSinceSale > 21
       };
     });
@@ -370,14 +344,7 @@ class BranchManagerService {
     // Get trade-in vehicles
     const { data: vehicles, error } = await supabase
       .from('vehicles')
-      .select(`
-        *,
-        profiles:sold_by_user_id (
-          id,
-          first_name,
-          last_name
-        )
-      `)
+      .select('*')
       .eq('details->>isTradeIn', 'true')
       .gte('sold_date', startDate.toISOString())
       .lte('sold_date', endDate.toISOString());
@@ -412,10 +379,7 @@ class BranchManagerService {
       if (result < 0) negativeCount++;
 
       const salespersonId = vehicle.sold_by_user_id || 'unknown';
-      const profile = vehicle.profiles as any;
-      const name = profile 
-        ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Onbekend'
-        : 'Onbekend';
+      const name = (vehicle.details as any)?.salespersonName || 'Onbekend';
 
       if (!bySalesperson.has(salespersonId)) {
         bySalesperson.set(salespersonId, { id: salespersonId, name, results: [] });
