@@ -6,6 +6,7 @@ import {
   B2CSalespersonVehicle,
   StockAgeData,
   PendingDelivery,
+  PendingDeliveryVehicle,
   TradeInStats,
   BranchManagerAlert,
   SalesTarget,
@@ -368,6 +369,32 @@ class BranchManagerService {
         alertDismissedReason: details?.deliveryAlertDismissedReason || null
       };
     });
+  }
+
+  async getPendingDeliveryVehicles(): Promise<PendingDeliveryVehicle[]> {
+    const { data: vehicles, error } = await supabase
+      .from('vehicles')
+      .select('id, brand, model, license_number, vin, sold_date')
+      .eq('status', 'verkocht_b2c')
+      .not('sold_date', 'is', null)
+      .order('sold_date', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching pending delivery vehicles:', error);
+      return [];
+    }
+
+    const today = startOfDay(new Date());
+
+    return (vehicles || []).map(v => ({
+      id: v.id,
+      brand: v.brand,
+      model: v.model,
+      licenseNumber: v.license_number,
+      vin: v.vin,
+      soldDate: v.sold_date!,
+      daysWaiting: differenceInDays(today, startOfDay(parseISO(v.sold_date!)))
+    }));
   }
 
   async getTradeInStats(period: ReportPeriod): Promise<TradeInStats> {

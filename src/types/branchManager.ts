@@ -1,5 +1,15 @@
 import { ReportPeriod } from './reports';
 
+export interface PendingDeliveryVehicle {
+  id: string;
+  brand: string;
+  model: string;
+  licenseNumber: string | null;
+  vin: string | null;
+  soldDate: string;
+  daysWaiting: number;
+}
+
 export interface SalesTarget {
   id: string;
   target_type: 'b2c_units' | 'b2c_revenue' | 'b2c_margin_percent' | 'upsales_revenue';
@@ -88,6 +98,7 @@ export interface PendingDelivery {
   alertDismissed?: boolean;
   alertDismissedReason?: string;
 }
+
 
 export interface TradeInStats {
   totalTradeIns: number;
