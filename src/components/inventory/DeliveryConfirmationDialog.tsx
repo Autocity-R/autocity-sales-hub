@@ -20,6 +20,8 @@ export interface DeliveryData {
   warrantyPackage: string;
   warrantyPackageName: string;
   warrantyPackagePrice?: number;
+  warrantyPackageSource?: 'contract' | 'delivery' | 'manual';
+  warrantyPackageDate?: string;
   deliveryDate: Date;
   deliveryNotes?: string;
 }
@@ -74,6 +76,8 @@ export const DeliveryConfirmationDialog = ({
       warrantyPackage: isCarDealer ? "geen_garantie_b2b" : warrantyPackage,
       warrantyPackageName: isCarDealer ? "Geen garantie (B2B autobedrijf)" : (selectedPackage?.label || warrantyPackage),
       warrantyPackagePrice: price,
+      warrantyPackageSource: 'delivery',
+      warrantyPackageDate: new Date().toISOString(),
       deliveryDate: new Date(deliveryDate),
       deliveryNotes: deliveryNotes.trim() || undefined
     });
