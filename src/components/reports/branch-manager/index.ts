@@ -6,3 +6,4 @@ export { PendingDeliveriesB2C } from './PendingDeliveriesB2C';
 export { AlertsPanel } from './AlertsPanel';
 export { TargetsManager } from './TargetsManager';
 export { PendingDeliveryModal } from './PendingDeliveryModal';
+export { B2CPeriodSelector, getCurrentMonthPeriod } from './B2CPeriodSelector';
