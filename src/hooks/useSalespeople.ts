@@ -19,7 +19,7 @@ export const useSalespeople = () => {
       const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
         .select('user_id, role')
-        .in('role', ['verkoper', 'admin', 'owner']);
+        .in('role', ['verkoper', 'admin', 'owner', 'manager']);
 
       if (rolesError) {
         console.error("Error fetching user roles:", rolesError);
@@ -53,7 +53,7 @@ export const useSalespeople = () => {
 
       return profiles.map(profile => {
         const role = rolesMap.get(profile.id) as string;
-        const roleLabel = role === 'owner' ? 'Owner' : role === 'admin' ? 'Admin' : 'Verkoper';
+        const roleLabel = role === 'owner' ? 'Owner' : role === 'admin' ? 'Admin' : role === 'manager' ? 'Manager' : 'Verkoper';
         const firstName = profile.first_name || '';
         const lastName = profile.last_name || '';
         const fullName = `${firstName} ${lastName}`.trim();
