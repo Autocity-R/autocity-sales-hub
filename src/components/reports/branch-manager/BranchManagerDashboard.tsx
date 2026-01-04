@@ -20,9 +20,10 @@ import {
 
 interface BranchManagerDashboardProps {
   period?: ReportPeriod; // Optional - we now manage our own period
+  onViewVehicle?: (vehicleId: string, tab?: string) => void;
 }
 
-export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ period: externalPeriod }) => {
+export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ period: externalPeriod, onViewVehicle }) => {
   const [localPeriod, setLocalPeriod] = useState<ReportPeriod>(getCurrentMonthPeriod());
   const [showTargetsManager, setShowTargetsManager] = useState(false);
   const [showOnlyAlerts, setShowOnlyAlerts] = useState(false);
@@ -102,13 +103,14 @@ export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ 
       {showOnlyAlerts ? (
         // Focus view - only alerts and action items
         <div className="space-y-6">
-          <AlertsPanel alerts={data.alerts} />
+          <AlertsPanel alerts={data.alerts} onViewVehicle={onViewVehicle} />
           
           {data.pendingDeliveries.filter(d => d.isLate || d.alertDismissed).length > 0 && (
             <PendingDeliveriesB2C 
               deliveries={data.pendingDeliveries.filter(d => d.isLate || (d.alertDismissed && d.daysSinceSale > 21))} 
               title="Vertraagde Leveringen (>21 dagen)"
               onRefresh={refetch}
+              onViewVehicle={onViewVehicle}
             />
           )}
           
@@ -116,6 +118,7 @@ export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ 
             <StockAgeAnalysis 
               data={data.stockAge} 
               showOnlyLongStanding={true}
+              onViewVehicle={onViewVehicle}
             />
           )}
         </div>
@@ -123,11 +126,11 @@ export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ 
         // Full dashboard view
         <div className="space-y-6">
           {/* KPI Cards */}
-          <B2CKPICards kpis={data.kpis} tradeIns={data.tradeIns} />
+          <B2CKPICards kpis={data.kpis} tradeIns={data.tradeIns} onViewVehicle={onViewVehicle} />
 
           {/* Alerts Panel - if any critical alerts */}
           {criticalAlerts > 0 && (
-            <AlertsPanel alerts={data.alerts.filter(a => a.severity === 'critical')} />
+            <AlertsPanel alerts={data.alerts.filter(a => a.severity === 'critical')} onViewVehicle={onViewVehicle} />
           )}
 
           {/* Salesperson Performance */}
@@ -138,8 +141,8 @@ export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ 
 
           {/* Two columns: Stock Age & Pending Deliveries */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <StockAgeAnalysis data={data.stockAge} />
-            <PendingDeliveriesB2C deliveries={data.pendingDeliveries} onRefresh={refetch} />
+            <StockAgeAnalysis data={data.stockAge} onViewVehicle={onViewVehicle} />
+            <PendingDeliveriesB2C deliveries={data.pendingDeliveries} onRefresh={refetch} onViewVehicle={onViewVehicle} />
           </div>
 
           {/* All Alerts */}
@@ -147,6 +150,7 @@ export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ 
             <AlertsPanel 
               alerts={data.alerts} 
               title="Alle Meldingen"
+              onViewVehicle={onViewVehicle}
             />
           )}
         </div>

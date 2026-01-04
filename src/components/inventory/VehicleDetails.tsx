@@ -41,6 +41,7 @@ interface VehicleDetailsProps {
   onFileUpload?: (file: File, category: FileCategory) => void;
   onFileDelete?: (fileId: string, filePath: string) => void;
   files?: VehicleFile[];
+  defaultTab?: string;
 }
 
 export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
@@ -55,6 +56,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   onFileUpload,
   onFileDelete,
   files = [],
+  defaultTab = 'details',
 }) => {
   const [editedVehicle, setEditedVehicle] = useState<Vehicle>(vehicle);
   const initialVehicleRef = useRef<Vehicle>(vehicle);
@@ -182,7 +184,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
           
           {/* Scrollable content area */}
           <div className="flex-1 overflow-hidden">
-            <Tabs defaultValue="details" className="h-full flex flex-col">
+            <Tabs defaultValue={defaultTab} className="h-full flex flex-col">
               <div className="px-6 py-2 bg-background sticky top-0 z-[5]">
                 <TabsList className={cn(
                   "w-full grid",

@@ -11,24 +11,26 @@ import {
 } from 'lucide-react';
 import { StockAgeData } from '@/types/branchManager';
 import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
 import { exportStockAgeToExcel } from '@/services/stockAgeExport';
 import { toast } from 'sonner';
 
 interface StockAgeAnalysisProps {
   data: StockAgeData;
   showOnlyLongStanding?: boolean;
+  onViewVehicle?: (vehicleId: string, tab?: string) => void;
 }
 
 export const StockAgeAnalysis: React.FC<StockAgeAnalysisProps> = ({ 
   data,
-  showOnlyLongStanding = false
+  showOnlyLongStanding = false,
+  onViewVehicle
 }) => {
-  const navigate = useNavigate();
   const [isExporting, setIsExporting] = useState(false);
 
   const handleViewVehicle = (vehicleId: string) => {
-    navigate(`/vehicles/${vehicleId}`);
+    if (onViewVehicle) {
+      onViewVehicle(vehicleId, 'checklist');
+    }
   };
 
   const handleExportStockAge = async () => {
@@ -128,13 +130,15 @@ export const StockAgeAnalysis: React.FC<StockAgeAnalysisProps> = ({
                     >
                       {vehicle.daysOnline} dagen
                     </Badge>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleViewVehicle(vehicle.id)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                    {onViewVehicle && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleViewVehicle(vehicle.id)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}

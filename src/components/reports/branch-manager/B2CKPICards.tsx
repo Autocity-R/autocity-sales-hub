@@ -22,9 +22,10 @@ import { useQuery } from '@tanstack/react-query';
 interface B2CKPICardsProps {
   kpis: B2CKPIData;
   tradeIns?: TradeInStats;
+  onViewVehicle?: (vehicleId: string, tab?: string) => void;
 }
 
-export const B2CKPICards: React.FC<B2CKPICardsProps> = ({ kpis, tradeIns }) => {
+export const B2CKPICards: React.FC<B2CKPICardsProps> = ({ kpis, tradeIns, onViewVehicle }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: pendingVehicles = [], isLoading: isLoadingVehicles } = useQuery({
@@ -232,6 +233,7 @@ export const B2CKPICards: React.FC<B2CKPICardsProps> = ({ kpis, tradeIns }) => {
         onOpenChange={setIsModalOpen}
         vehicles={pendingVehicles}
         isLoading={isLoadingVehicles}
+        onViewVehicle={onViewVehicle}
       />
     </>
   );

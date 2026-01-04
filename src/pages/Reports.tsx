@@ -42,6 +42,8 @@ import { DamageRepairAnalytics } from "@/components/reports/DamageRepairAnalytic
 import { BranchManagerDashboard } from "@/components/reports/branch-manager";
 import { PeriodSelector } from "@/components/reports/PeriodSelector";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { useVehicleDetailDialog } from "@/hooks/useVehicleDetailDialog";
+import { VehicleDetails } from "@/components/inventory/VehicleDetails";
 import { startOfMonth, endOfMonth } from "date-fns";
 
 interface MockPerformanceData extends PerformanceData {
@@ -79,6 +81,9 @@ const Reports = () => {
   const [isUsingMockData, setIsUsingMockData] = useState(false);
   const queryClient = useQueryClient();
   const { userRole } = useRoleAccess();
+  
+  // Vehicle detail dialog for "Bekijk" buttons
+  const vehicleDialog = useVehicleDetailDialog();
   
   // Check if user has access to branch manager dashboard
   const hasBranchManagerAccess = userRole === 'owner' || userRole === 'admin' || userRole === 'manager';
@@ -539,7 +544,7 @@ const Reports = () => {
 
           {hasBranchManagerAccess && (
             <TabsContent value="vestiging" className="space-y-6">
-              <BranchManagerDashboard period={reportPeriod} />
+              <BranchManagerDashboard period={reportPeriod} onViewVehicle={vehicleDialog.openVehicle} />
             </TabsContent>
           )}
 
@@ -721,6 +726,22 @@ const Reports = () => {
 
       {/* CEO Chat Panel */}
       <CEOChatPanel />
+
+      {/* Vehicle Details Dialog */}
+      {vehicleDialog.isOpen && vehicleDialog.vehicle && (
+        <VehicleDetails
+          vehicle={vehicleDialog.vehicle}
+          defaultTab={vehicleDialog.defaultTab}
+          onClose={vehicleDialog.closeDialog}
+          onUpdate={() => {
+            vehicleDialog.closeDialog();
+          }}
+          onSendEmail={() => {}}
+          onPhotoUpload={() => {}}
+          onRemovePhoto={() => {}}
+          onSetMainPhoto={() => {}}
+        />
+      )}
     </DashboardLayout>
   );
 };
