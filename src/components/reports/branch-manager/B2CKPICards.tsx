@@ -7,16 +7,21 @@ import {
   Percent, 
   TrendingUp,
   Clock,
-  Package
+  Package,
+  RefreshCw,
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
-import { B2CKPIData } from '@/types/branchManager';
+import { B2CKPIData, TradeInStats } from '@/types/branchManager';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 interface B2CKPICardsProps {
   kpis: B2CKPIData;
+  tradeIns?: TradeInStats;
 }
 
-export const B2CKPICards: React.FC<B2CKPICardsProps> = ({ kpis }) => {
+export const B2CKPICards: React.FC<B2CKPICardsProps> = ({ kpis, tradeIns }) => {
   const getProgressColor = (current: number, target: number): string => {
     const percentage = (current / target) * 100;
     if (percentage >= 100) return 'bg-green-500';
@@ -159,6 +164,46 @@ export const B2CKPICards: React.FC<B2CKPICardsProps> = ({ kpis }) => {
             </p>
           </CardContent>
         </Card>
+
+        {/* Trade-In KPI Card */}
+        {tradeIns && (
+          <Card className={cn(
+            tradeIns.negativeCount > 0 && "border-destructive bg-destructive/5"
+          )}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Inruil Resultaat</CardTitle>
+              <RefreshCw className={cn(
+                "h-4 w-4",
+                tradeIns.negativeCount > 0 ? "text-destructive" : "text-muted-foreground"
+              )} />
+            </CardHeader>
+            <CardContent>
+              <div className={cn(
+                "text-2xl font-bold",
+                tradeIns.avgResult < 0 ? "text-destructive" : 
+                tradeIns.avgResult > 0 ? "text-green-600" : ""
+              )}>
+                €{tradeIns.avgResult >= 0 ? '' : ''}{Math.round(tradeIns.avgResult).toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {tradeIns.totalTradeIns} verkocht | Gem. per auto
+              </p>
+              <div className="mt-2">
+                {tradeIns.negativeCount > 0 ? (
+                  <Badge variant="destructive" className="gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    {tradeIns.negativeCount} met verlies
+                  </Badge>
+                ) : tradeIns.totalTradeIns > 0 ? (
+                  <Badge variant="outline" className="gap-1 text-green-600 border-green-600">
+                    <CheckCircle className="h-3 w-3" />
+                    Geen verliezen
+                  </Badge>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
