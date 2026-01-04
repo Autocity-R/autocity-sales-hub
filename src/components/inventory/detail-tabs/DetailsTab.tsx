@@ -3,7 +3,7 @@ import React from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { 
-  CalendarIcon, CircleCheck, MapPin, Euro, User, Wrench, Palette, Shield, CheckCircle2
+  CalendarIcon, CircleCheck, MapPin, Euro, User, Wrench, Palette, Shield, CheckCircle2, Pencil, Trash2, Save
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Vehicle, ImportStatus, TransportStatus, LocationStatus, DamageStatus, WorkshopStatus, PaintStatus } from "@/types/inventory";
@@ -46,6 +46,49 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
   showPrices = true
 }) => {
   const { data: salespeople, isLoading: salesLoading } = useSalespeople();
+  
+  // Local state for manual warranty price input (prevents auto-save on each keystroke)
+  const [manualWarrantyPrice, setManualWarrantyPrice] = React.useState<string>('');
+  const [isEditingWarranty, setIsEditingWarranty] = React.useState(false);
+  
+  // Sync local state when vehicle changes
+  React.useEffect(() => {
+    if (editedVehicle.details?.warrantyPackagePrice && !isEditingWarranty) {
+      setManualWarrantyPrice(editedVehicle.details.warrantyPackagePrice.toString());
+    }
+  }, [editedVehicle.id, editedVehicle.details?.warrantyPackagePrice]);
+  
+  const handleSaveWarrantyPackage = () => {
+    const price = parseFloat(manualWarrantyPrice) || 0;
+    if (price > 0) {
+      const newDetails = {
+        ...(editedVehicle.details || {}),
+        warrantyPackagePrice: price,
+        warrantyPackage: 'handmatig_pakket',
+        warrantyPackageName: 'Handmatig geregistreerd pakket',
+        warrantyPackageSource: 'manual' as const,
+        warrantyPackageDate: new Date().toISOString(),
+        manualWarrantyEnabled: false // Reset checkbox after save
+      };
+      handleChange('details', newDetails as any);
+      setIsEditingWarranty(false);
+    }
+  };
+  
+  const handleClearWarrantyPackage = () => {
+    const newDetails = {
+      ...(editedVehicle.details || {}),
+      warrantyPackagePrice: undefined,
+      warrantyPackage: undefined,
+      warrantyPackageName: undefined,
+      warrantyPackageSource: undefined,
+      warrantyPackageDate: undefined,
+      manualWarrantyEnabled: false
+    };
+    handleChange('details', newDetails as any);
+    setManualWarrantyPrice('');
+    setIsEditingWarranty(false);
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -353,10 +396,10 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
                   <Label className="font-medium text-blue-900">Garantiepakket</Label>
                 </div>
                 
-                {/* Show existing package if registered */}
-                {editedVehicle.details?.warrantyPackagePrice && editedVehicle.details.warrantyPackagePrice > 0 ? (
+                {/* Show existing package if registered AND not editing */}
+                {editedVehicle.details?.warrantyPackagePrice && editedVehicle.details.warrantyPackagePrice > 0 && !isEditingWarranty ? (
                   <div className="flex items-center gap-2 p-3 bg-green-100 border border-green-300 rounded-md">
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
                     <div className="flex-1">
                       <p className="font-medium text-green-800">
                         Pakket geregistreerd: €{editedVehicle.details.warrantyPackagePrice.toLocaleString('nl-NL')}
@@ -371,63 +414,108 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
                         }
                       </p>
                     </div>
+                    {!readOnly && (
+                      <div className="flex gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setManualWarrantyPrice(editedVehicle.details?.warrantyPackagePrice?.toString() || '');
+                            setIsEditingWarranty(true);
+                          }}
+                          className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleClearWarrantyPackage}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-100"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  /* Show manual registration form if no package registered */
+                  /* Show manual registration form if no package registered OR editing */
                   <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="addWarrantyManual"
-                        checked={Boolean(editedVehicle.details?.manualWarrantyEnabled)}
-                        onCheckedChange={(checked) => {
-                          const newDetails = {
-                            ...(editedVehicle.details || {}),
-                            manualWarrantyEnabled: checked,
-                            // Clear price if unchecked
-                            ...(checked ? {} : { 
-                              warrantyPackagePrice: undefined,
-                              warrantyPackage: undefined,
-                              warrantyPackageName: undefined,
-                              warrantyPackageSource: undefined,
-                              warrantyPackageDate: undefined
-                            })
-                          };
-                          handleChange('details', newDetails as any);
-                        }}
-                        disabled={readOnly}
-                      />
-                      <Label htmlFor="addWarrantyManual" className="text-sm cursor-pointer">
-                        Garantiepakket handmatig registreren
-                      </Label>
-                    </div>
-                    
-                    {editedVehicle.details?.manualWarrantyEnabled && (
-                      <div className="space-y-2 pl-6">
-                        <Label htmlFor="manualWarrantyPrice" className="text-sm">
-                          Prijs garantiepakket (€)
-                        </Label>
-                        <Input
-                          id="manualWarrantyPrice"
-                          type="number"
-                          placeholder="Bijv. 299"
-                          value={editedVehicle.details?.warrantyPackagePrice || ''}
-                          onChange={(e) => {
-                            const price = parseFloat(e.target.value) || 0;
-                            const newDetails = {
-                              ...(editedVehicle.details || {}),
-                              warrantyPackagePrice: price,
-                              warrantyPackage: 'handmatig_pakket',
-                              warrantyPackageName: 'Handmatig geregistreerd pakket',
-                              warrantyPackageSource: 'manual' as const,
-                              warrantyPackageDate: new Date().toISOString()
-                            };
-                            handleChange('details', newDetails as any);
+                    {!isEditingWarranty && (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="addWarrantyManual"
+                          checked={Boolean(editedVehicle.details?.manualWarrantyEnabled)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setManualWarrantyPrice('');
+                              const newDetails = {
+                                ...(editedVehicle.details || {}),
+                                manualWarrantyEnabled: true
+                              };
+                              handleChange('details', newDetails as any);
+                            } else {
+                              const newDetails = {
+                                ...(editedVehicle.details || {}),
+                                manualWarrantyEnabled: false
+                              };
+                              handleChange('details', newDetails as any);
+                              setManualWarrantyPrice('');
+                            }
                           }}
                           disabled={readOnly}
-                          className="max-w-[200px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
+                        <Label htmlFor="addWarrantyManual" className="text-sm cursor-pointer">
+                          Garantiepakket handmatig registreren
+                        </Label>
+                      </div>
+                    )}
+                    
+                    {(editedVehicle.details?.manualWarrantyEnabled || isEditingWarranty) && (
+                      <div className="space-y-3 pl-6">
+                        <div>
+                          <Label htmlFor="manualWarrantyPrice" className="text-sm">
+                            Prijs garantiepakket (€)
+                          </Label>
+                          <div className="flex gap-2 mt-1">
+                            <Input
+                              id="manualWarrantyPrice"
+                              type="number"
+                              placeholder="Bijv. 995"
+                              value={manualWarrantyPrice}
+                              onChange={(e) => setManualWarrantyPrice(e.target.value)}
+                              disabled={readOnly}
+                              className="max-w-[150px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={handleSaveWarrantyPackage}
+                              disabled={!manualWarrantyPrice || parseFloat(manualWarrantyPrice) <= 0}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <Save className="h-4 w-4 mr-1" />
+                              Opslaan
+                            </Button>
+                            {isEditingWarranty && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setIsEditingWarranty(false);
+                                  setManualWarrantyPrice(editedVehicle.details?.warrantyPackagePrice?.toString() || '');
+                                }}
+                              >
+                                Annuleren
+                              </Button>
+                            )}
+                          </div>
+                        </div>
                         <p className="text-xs text-muted-foreground">
-                          Dit registreert het pakket voor rapportages
+                          Typ de volledige prijs en klik op Opslaan
                         </p>
                       </div>
                     )}
