@@ -10,7 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 import { Contact } from "@/types/customer";
-import { FileText, Send, X, Eye, Mail, PenTool, Plus, Trash2, Car, AlertCircle } from "lucide-react";
+import { FileText, Send, X, Eye, Mail, PenTool, Plus, Trash2, Car, AlertCircle, Save } from "lucide-react";
+import { saveContractToVehicle } from "@/services/contractStorageService";
 import { generateContract } from "@/services/contractService";
 import { createSignatureSession, generateSignatureUrl } from "@/services/digitalSignatureService";
 import { useToast } from "@/hooks/use-toast";
@@ -282,11 +283,54 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
-    }
-  };
+    setLoading(false);
+  }
+};
 
-  // Update vehicle sale info for B2B sales (no warranty package)
+const handleSaveOnly = async () => {
+  setLoading(true);
+  try {
+    console.log('[CONTRACT_DIALOG] 💾 Starting save-only process...');
+    
+    // Save address to contact if requested
+    await saveAddressIfNeeded();
+    
+    // Save warranty package / sale info (same as when sending)
+    if (contractType === "b2c") {
+      await saveWarrantyPackageInfo();
+    } else {
+      await updateVehicleSaleInfo();
+    }
+    
+    // Generate and save contract as PDF
+    const savedFile = await saveContractToVehicle(
+      vehicleWithContact, 
+      contractType, 
+      options
+    );
+    
+    if (savedFile) {
+      toast({
+        title: "Contract opgeslagen",
+        description: `Contract is opgeslagen als PDF bij de documenten`,
+      });
+    }
+    
+    console.log('[CONTRACT_DIALOG] ✅ Contract saved successfully');
+    onClose();
+  } catch (error) {
+    console.error('[CONTRACT_DIALOG] ❌ Error during save process:', error);
+    toast({
+      title: "Fout bij opslaan",
+      description: error instanceof Error ? error.message : "Kon contract niet opslaan",
+      variant: "destructive"
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Update vehicle sale info for B2B sales (no warranty package)
   const updateVehicleSaleInfo = async () => {
     if (!user) {
       console.error("No authenticated user found");
@@ -479,7 +523,15 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
               <Button variant="outline" onClick={() => setShowPreview(false)}>
                 Bewerken
               </Button>
-              <Button onClick={deliveryMethod === "digital" ? handleSendDigital : handleSendEmail}>
+              <Button variant="secondary" onClick={handleSaveOnly} disabled={loading}>
+                {loading ? "Bezig..." : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Alleen Opslaan
+                  </>
+                )}
+              </Button>
+              <Button onClick={deliveryMethod === "digital" ? handleSendDigital : handleSendEmail} disabled={loading}>
                 {deliveryMethod === "digital" ? (
                   <>
                     <PenTool className="h-4 w-4 mr-2" />
@@ -1068,6 +1120,14 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
             <Button variant="outline" onClick={handlePreview} disabled={isActionDisabled}>
               <Eye className="h-4 w-4 mr-2" />
               Voorbeeld
+            </Button>
+            <Button variant="secondary" onClick={handleSaveOnly} disabled={isActionDisabled}>
+              {loading ? "Bezig..." : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Alleen Opslaan
+                </>
+              )}
             </Button>
             <Button onClick={deliveryMethod === "digital" ? handleSendDigital : handleSendEmail} disabled={isActionDisabled}>
               {loading ? "Bezig..." : (
