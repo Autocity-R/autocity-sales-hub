@@ -14,15 +14,17 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { PendingDeliveryVehicle } from '@/types/branchManager';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, Clock, CheckCircle } from 'lucide-react';
+import { AlertTriangle, Clock, CheckCircle, Eye } from 'lucide-react';
 
 interface PendingDeliveryModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   vehicles: PendingDeliveryVehicle[];
   isLoading?: boolean;
+  onViewVehicle?: (vehicleId: string, tab?: string) => void;
 }
 
 export const PendingDeliveryModal: React.FC<PendingDeliveryModalProps> = ({
@@ -30,6 +32,7 @@ export const PendingDeliveryModal: React.FC<PendingDeliveryModalProps> = ({
   onOpenChange,
   vehicles,
   isLoading = false,
+  onViewVehicle,
 }) => {
   const getStatusBadge = (daysWaiting: number) => {
     if (daysWaiting > 21) {
@@ -104,6 +107,7 @@ export const PendingDeliveryModal: React.FC<PendingDeliveryModalProps> = ({
                   <TableHead>Kenteken</TableHead>
                   <TableHead>VIN</TableHead>
                   <TableHead className="text-right">Wachttijd</TableHead>
+                  {onViewVehicle && <TableHead className="w-[80px]"></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -123,6 +127,17 @@ export const PendingDeliveryModal: React.FC<PendingDeliveryModalProps> = ({
                     <TableCell className="text-right">
                       {getStatusBadge(vehicle.daysWaiting)}
                     </TableCell>
+                    {onViewVehicle && (
+                      <TableCell>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => onViewVehicle(vehicle.id, 'checklist')}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

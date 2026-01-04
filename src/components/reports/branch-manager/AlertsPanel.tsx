@@ -14,19 +14,18 @@ import {
 } from 'lucide-react';
 import { BranchManagerAlert } from '@/types/branchManager';
 import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
 
 interface AlertsPanelProps {
   alerts: BranchManagerAlert[];
   title?: string;
+  onViewVehicle?: (vehicleId: string, tab?: string) => void;
 }
 
 export const AlertsPanel: React.FC<AlertsPanelProps> = ({ 
   alerts,
-  title = "Actie Nodig"
+  title = "Actie Nodig",
+  onViewVehicle
 }) => {
-  const navigate = useNavigate();
-
   const getAlertIcon = (type: BranchManagerAlert['type']) => {
     switch (type) {
       case 'margin':
@@ -45,8 +44,8 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({
   };
 
   const handleAlertClick = (alert: BranchManagerAlert) => {
-    if (alert.vehicleId) {
-      navigate(`/vehicles/${alert.vehicleId}`);
+    if (alert.vehicleId && onViewVehicle) {
+      onViewVehicle(alert.vehicleId, 'checklist');
     }
   };
 
@@ -129,7 +128,7 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({
                     </div>
                   </div>
                 </div>
-                {(alert.vehicleId || alert.actionUrl) && (
+                {alert.vehicleId && onViewVehicle && (
                   <Button 
                     variant="ghost" 
                     size="sm"

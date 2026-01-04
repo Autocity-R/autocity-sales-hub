@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { PendingDelivery } from '@/types/branchManager';
 import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,20 +28,23 @@ interface PendingDeliveriesB2CProps {
   deliveries: PendingDelivery[];
   title?: string;
   onRefresh?: () => void;
+  onViewVehicle?: (vehicleId: string, tab?: string) => void;
 }
 
 export const PendingDeliveriesB2C: React.FC<PendingDeliveriesB2CProps> = ({ 
   deliveries,
   title = "B2C Leveringen in Afwachting",
-  onRefresh
+  onRefresh,
+  onViewVehicle
 }) => {
-  const navigate = useNavigate();
   const [dismissReason, setDismissReason] = useState('');
   const [dismissingId, setDismissingId] = useState<string | null>(null);
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
 
   const handleViewVehicle = (vehicleId: string) => {
-    navigate(`/vehicles/${vehicleId}`);
+    if (onViewVehicle) {
+      onViewVehicle(vehicleId, 'checklist');
+    }
   };
 
   const handleDismissAlert = async (vehicleId: string) => {
@@ -274,13 +276,15 @@ export const PendingDeliveriesB2C: React.FC<PendingDeliveriesB2CProps> = ({
                     )
                   )}
                   
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => handleViewVehicle(delivery.id)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
+                  {onViewVehicle && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleViewVehicle(delivery.id)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
