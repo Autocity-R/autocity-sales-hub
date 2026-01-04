@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Users, TrendingUp, TrendingDown, Car, DollarSign } from 'lucide-react';
+import { Users, TrendingUp, TrendingDown, Car, DollarSign, Shield } from 'lucide-react';
 import { B2CSalespersonStats } from '@/types/branchManager';
 import { ReportPeriod } from '@/types/reports';
 import { cn } from '@/lib/utils';
@@ -108,6 +108,7 @@ export const B2CSalespersonTable: React.FC<B2CSalespersonTableProps> = ({
                 <TableHead className="text-center">Target %</TableHead>
                 <TableHead className="text-right">Totale Marge</TableHead>
                 <TableHead className="text-center">Marge %</TableHead>
+                <TableHead className="text-center">Pakketten</TableHead>
                 <TableHead className="text-center">Upsell %</TableHead>
               </TableRow>
             </TableHeader>
@@ -136,6 +137,12 @@ export const B2CSalespersonTable: React.FC<B2CSalespersonTableProps> = ({
                   </TableCell>
                   <TableCell className={cn("text-center font-medium", getMarginColor(sp.marginPercent))}>
                     {sp.marginPercent.toFixed(1)}%
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <Shield className="h-3 w-3 text-blue-500" />
+                      <span className="font-medium">{sp.upsellCount}</span>
+                    </div>
                   </TableCell>
                   <TableCell className="text-center">
                     <Badge variant="outline">
