@@ -118,7 +118,7 @@ export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ 
         // Full dashboard view
         <div className="space-y-6">
           {/* KPI Cards */}
-          <B2CKPICards kpis={data.kpis} />
+          <B2CKPICards kpis={data.kpis} tradeIns={data.tradeIns} />
 
           {/* Alerts Panel - if any critical alerts */}
           {criticalAlerts > 0 && (
