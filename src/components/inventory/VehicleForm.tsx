@@ -106,8 +106,28 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
   });
   
   const handleChange = (field: keyof Omit<Vehicle, "id" | "damage"> | "supplierId", value: any) => {
-    setFormData({ ...formData, [field]: value });
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  const handlePurchaserChange = (purchaserId: string) => {
+    const selected = salespeople?.find(s => s.id === purchaserId);
+    setFormData(prev => ({
+      ...prev,
+      purchasedById: purchaserId,
+      purchasedByName: selected?.name || ''
+    }));
+  };
+
+  // Set default purchaser when currentUser is loaded
+  React.useEffect(() => {
+    if (currentUser && !formData.purchasedById && !initialData) {
+      setFormData(prev => ({
+        ...prev,
+        purchasedById: currentUser.id,
+        purchasedByName: currentUser.name
+      }));
+    }
+  }, [currentUser, initialData]);
 
   const handleDamageChange = (field: keyof Vehicle["damage"], value: any) => {
     setFormData({
@@ -285,11 +305,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
             <Label>{formData.details?.isTradeIn ? 'Inruil door' : 'Inkoper'} *</Label>
             <Select
               value={formData.purchasedById || undefined}
-              onValueChange={(value) => {
-                const selected = salespeople?.find(s => s.id === value);
-                handleChange('purchasedById', value);
-                handleChange('purchasedByName', selected?.name || '');
-              }}
+              onValueChange={handlePurchaserChange}
               disabled={salesLoading || !salespeople || salespeople.length === 0}
             >
               <SelectTrigger className="bg-background">
