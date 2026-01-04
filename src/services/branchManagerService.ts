@@ -344,6 +344,8 @@ class BranchManagerService {
     return (vehicles || []).map(vehicle => {
       const soldDate = vehicle.sold_date ? parseISO(vehicle.sold_date) : now;
       const daysSinceSale = differenceInDays(now, soldDate);
+      const details = vehicle.details as any;
+      const alertDismissed = details?.deliveryAlertDismissed || false;
 
       return {
         id: vehicle.id,
@@ -352,9 +354,11 @@ class BranchManagerService {
         licensePlate: vehicle.license_number,
         soldDate: vehicle.sold_date || '',
         daysSinceSale,
-        salesperson: (vehicle.details as any)?.salespersonName || null,
-        customerName: (vehicle.details as any)?.customerName || null,
-        isLate: daysSinceSale > 21
+        salesperson: details?.salespersonName || null,
+        customerName: details?.customerName || null,
+        isLate: daysSinceSale > 21 && !alertDismissed,
+        alertDismissed,
+        alertDismissedReason: details?.deliveryAlertDismissedReason || null
       };
     });
   }

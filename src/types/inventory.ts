@@ -128,6 +128,12 @@ export interface VehicleDetails {
   // Pre-delivery checklist for B2C sales
   preDeliveryChecklist?: ChecklistItem[];
   
+  // Late delivery alert dismiss
+  deliveryAlertDismissed?: boolean;
+  deliveryAlertDismissedDate?: string;
+  deliveryAlertDismissedBy?: string;
+  deliveryAlertDismissedReason?: string;
+  
   // Other details
   [key: string]: any;
 }

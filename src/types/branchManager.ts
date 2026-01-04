@@ -84,7 +84,9 @@ export interface PendingDelivery {
   daysSinceSale: number;
   salesperson: string | null;
   customerName: string | null;
-  isLate: boolean; // >21 dagen
+  isLate: boolean; // >21 dagen EN niet dismissed
+  alertDismissed?: boolean;
+  alertDismissedReason?: string;
 }
 
 export interface TradeInStats {
