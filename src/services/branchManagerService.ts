@@ -66,8 +66,6 @@ class BranchManagerService {
     let totalMargin = 0;
     let upsalesRevenue = 0;
     let upsalesCount = 0;
-    let deliveredCount = 0;
-    let totalDeliveryDays = 0;
 
     b2cOnly.forEach(vehicle => {
       const sellingPrice = vehicle.selling_price || 0;
@@ -81,22 +79,25 @@ class BranchManagerService {
         upsalesRevenue += warrantyPrice;
         upsalesCount++;
       }
-
-      // Use details.deliveryDate (the actual delivery date users enter) instead of delivery_date column
-      // Compare calendar days only (ignore time component) to avoid issues where deliveryDate is at midnight
-      const detailsDeliveryDate = (vehicle.details as any)?.deliveryDate;
-      if (vehicle.status === 'afgeleverd' && detailsDeliveryDate && vehicle.sold_date) {
-        const deliveryDays = differenceInDays(
-          startOfDay(parseISO(detailsDeliveryDate)),
-          startOfDay(parseISO(vehicle.sold_date))
-        );
-        // Only count positive values (negative = data entry error)
-        if (deliveryDays >= 0) {
-          deliveredCount++;
-          totalDeliveryDays += deliveryDays;
-        }
-      }
     });
+
+    // Calculate average waiting time for vehicles pending delivery (status = verkocht_b2c)
+    // This shows how long vehicles have been waiting since sale date
+    const { data: pendingVehicles } = await supabase
+      .from('vehicles')
+      .select('sold_date')
+      .eq('status', 'verkocht_b2c')
+      .not('sold_date', 'is', null);
+
+    let avgDeliveryDays = 0;
+    if (pendingVehicles && pendingVehicles.length > 0) {
+      const today = startOfDay(new Date());
+      const totalWaitDays = pendingVehicles.reduce((sum, v) => {
+        const soldDate = startOfDay(parseISO(v.sold_date!));
+        return sum + differenceInDays(today, soldDate);
+      }, 0);
+      avgDeliveryDays = totalWaitDays / pendingVehicles.length;
+    }
 
     // Get pending deliveries count
     const { count: pendingCount } = await supabase
@@ -114,7 +115,6 @@ class BranchManagerService {
     const upsalesTarget = targets.find(t => t.target_type === 'upsales_revenue' && !t.salesperson_id)?.target_value || 5000;
 
     const marginPercent = totalRevenue > 0 ? (totalMargin / totalRevenue) * 100 : 0;
-    const avgDeliveryDays = deliveredCount > 0 ? totalDeliveryDays / deliveredCount : 0;
     const upsellRatio = b2cOnly.length > 0 ? (upsalesCount / b2cOnly.length) * 100 : 0;
 
     return {
