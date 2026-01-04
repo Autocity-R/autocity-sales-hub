@@ -29,6 +29,18 @@ export interface B2CKPIData {
   upsellRatio: number;
 }
 
+export interface B2CSalespersonVehicle {
+  id: string;
+  brand: string;
+  model: string;
+  licensePlate: string | null;
+  purchasePrice: number;
+  sellingPrice: number;
+  margin: number;
+  marginPercent: number;
+  soldDate: string;
+}
+
 export interface B2CSalespersonStats {
   id: string;
   name: string;
@@ -40,8 +52,7 @@ export interface B2CSalespersonStats {
   marginPercent: number;
   upsellCount: number;
   upsellRatio: number;
-  avgDeliveryDays: number;
-  lateDeliveries: number; // >21 dagen
+  vehicles: B2CSalespersonVehicle[];
 }
 
 export interface StockAgeData {
