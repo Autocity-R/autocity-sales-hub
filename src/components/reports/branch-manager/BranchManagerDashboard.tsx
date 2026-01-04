@@ -8,6 +8,7 @@ import { StockAgeAnalysis } from './StockAgeAnalysis';
 import { PendingDeliveriesB2C } from './PendingDeliveriesB2C';
 import { AlertsPanel } from './AlertsPanel';
 import { TargetsManager } from './TargetsManager';
+import { B2CPeriodSelector, getCurrentMonthPeriod } from './B2CPeriodSelector';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
@@ -16,20 +17,22 @@ import {
   Target,
   Loader2
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { nl } from 'date-fns/locale';
 
 interface BranchManagerDashboardProps {
-  period: ReportPeriod;
+  period?: ReportPeriod; // Optional - we now manage our own period
 }
 
-export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ period }) => {
+export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ period: externalPeriod }) => {
+  const [localPeriod, setLocalPeriod] = useState<ReportPeriod>(getCurrentMonthPeriod());
   const [showTargetsManager, setShowTargetsManager] = useState(false);
   const [showOnlyAlerts, setShowOnlyAlerts] = useState(false);
 
+  // Use local period for B2C dashboard
+  const activePeriod = localPeriod;
+
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['branch-manager-dashboard', period],
-    queryFn: () => branchManagerService.getDashboardData(period),
+    queryKey: ['branch-manager-dashboard', activePeriod],
+    queryFn: () => branchManagerService.getDashboardData(activePeriod),
     refetchOnMount: true,
     refetchOnWindowFocus: false
   });
@@ -59,15 +62,17 @@ export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ 
   if (!data) return null;
 
   const criticalAlerts = data.alerts.filter(a => a.severity === 'critical').length;
-  const periodLabel = format(new Date(period.startDate), 'MMMM yyyy', { locale: nl });
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           <h2 className="text-2xl font-bold">Vestiging B2C Dashboard</h2>
-          <p className="text-muted-foreground capitalize">{periodLabel}</p>
+          <B2CPeriodSelector 
+            selectedPeriod={activePeriod} 
+            onChange={setLocalPeriod} 
+          />
         </div>
         <div className="flex gap-2">
           <Button
@@ -128,7 +133,7 @@ export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ 
           {/* Salesperson Performance */}
           <B2CSalespersonTable 
             salespersons={data.salespersonStats} 
-            period={period}
+            period={activePeriod}
           />
 
           {/* Two columns: Stock Age & Pending Deliveries */}
@@ -150,7 +155,7 @@ export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ 
       {/* Targets Manager Modal */}
       {showTargetsManager && (
         <TargetsManager
-          period={period}
+          period={activePeriod}
           targets={data.targets}
           onClose={() => setShowTargetsManager(false)}
           onSave={() => {
