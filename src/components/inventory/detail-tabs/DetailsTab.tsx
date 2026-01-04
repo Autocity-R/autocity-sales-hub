@@ -3,7 +3,7 @@ import React from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { 
-  CalendarIcon, CircleCheck, MapPin, Euro, User, Wrench, Palette
+  CalendarIcon, CircleCheck, MapPin, Euro, User, Wrench, Palette, Shield, CheckCircle2
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Vehicle, ImportStatus, TransportStatus, LocationStatus, DamageStatus, WorkshopStatus, PaintStatus } from "@/types/inventory";
@@ -344,6 +344,97 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
                 className="border-green-200 focus:border-green-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
+
+            {/* Manual Warranty Package Registration - Only for B2C sold vehicles */}
+            {editedVehicle.salesStatus === "verkocht_b2c" && (
+              <div className="space-y-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-blue-600" />
+                  <Label className="font-medium text-blue-900">Garantiepakket</Label>
+                </div>
+                
+                {/* Show existing package if registered */}
+                {editedVehicle.details?.warrantyPackagePrice && editedVehicle.details.warrantyPackagePrice > 0 ? (
+                  <div className="flex items-center gap-2 p-3 bg-green-100 border border-green-300 rounded-md">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    <div className="flex-1">
+                      <p className="font-medium text-green-800">
+                        Pakket geregistreerd: €{editedVehicle.details.warrantyPackagePrice.toLocaleString('nl-NL')}
+                      </p>
+                      <p className="text-xs text-green-700">
+                        {editedVehicle.details.warrantyPackageName || 'Garantiepakket'} 
+                        {editedVehicle.details.warrantyPackageSource === 'manual' && ' (handmatig)'}
+                        {editedVehicle.details.warrantyPackageSource === 'contract' && ' (via contract)'}
+                        {editedVehicle.details.warrantyPackageSource === 'delivery' && ' (via aflevering)'}
+                        {editedVehicle.details.warrantyPackageDate && 
+                          ` - ${new Date(editedVehicle.details.warrantyPackageDate).toLocaleDateString('nl-NL')}`
+                        }
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  /* Show manual registration form if no package registered */
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="addWarrantyManual"
+                        checked={Boolean(editedVehicle.details?.manualWarrantyEnabled)}
+                        onCheckedChange={(checked) => {
+                          const newDetails = {
+                            ...(editedVehicle.details || {}),
+                            manualWarrantyEnabled: checked,
+                            // Clear price if unchecked
+                            ...(checked ? {} : { 
+                              warrantyPackagePrice: undefined,
+                              warrantyPackage: undefined,
+                              warrantyPackageName: undefined,
+                              warrantyPackageSource: undefined,
+                              warrantyPackageDate: undefined
+                            })
+                          };
+                          handleChange('details', newDetails as any);
+                        }}
+                        disabled={readOnly}
+                      />
+                      <Label htmlFor="addWarrantyManual" className="text-sm cursor-pointer">
+                        Garantiepakket handmatig registreren
+                      </Label>
+                    </div>
+                    
+                    {editedVehicle.details?.manualWarrantyEnabled && (
+                      <div className="space-y-2 pl-6">
+                        <Label htmlFor="manualWarrantyPrice" className="text-sm">
+                          Prijs garantiepakket (€)
+                        </Label>
+                        <Input
+                          id="manualWarrantyPrice"
+                          type="number"
+                          placeholder="Bijv. 299"
+                          value={editedVehicle.details?.warrantyPackagePrice || ''}
+                          onChange={(e) => {
+                            const price = parseFloat(e.target.value) || 0;
+                            const newDetails = {
+                              ...(editedVehicle.details || {}),
+                              warrantyPackagePrice: price,
+                              warrantyPackage: 'handmatig_pakket',
+                              warrantyPackageName: 'Handmatig geregistreerd pakket',
+                              warrantyPackageSource: 'manual' as const,
+                              warrantyPackageDate: new Date().toISOString()
+                            };
+                            handleChange('details', newDetails as any);
+                          }}
+                          disabled={readOnly}
+                          className="max-w-[200px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Dit registreert het pakket voor rapportages
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
         

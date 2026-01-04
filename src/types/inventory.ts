@@ -105,6 +105,8 @@ export interface VehicleDetails {
   warrantyPackage?: string;
   warrantyPackagePrice?: number;
   warrantyPackageName?: string;
+  warrantyPackageSource?: 'contract' | 'delivery' | 'manual';
+  warrantyPackageDate?: string;
   contractSentBy?: string;
   contractSentByName?: string;
   contractSentDate?: string;

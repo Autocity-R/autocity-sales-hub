@@ -371,12 +371,19 @@ export const ContractConfigDialog: React.FC<ContractConfigDialogProps> = ({
         ? `${profile.first_name} ${profile.last_name}`.trim()
         : user.email || 'Onbekend';
 
+      // Check if warranty package already exists (prevent overwriting)
+      const existingWarrantyPrice = vehicle.details?.warrantyPackagePrice || 0;
+      const hasExistingWarranty = existingWarrantyPrice > 0;
+
       // Update vehicle details with warranty package info AND contract/salesperson info
       const updatedDetails = {
         ...vehicle.details,
-        warrantyPackage: options.deliveryPackage || "garantie_wettelijk",
-        warrantyPackagePrice: options.warrantyPackagePrice || 0,
-        warrantyPackageName: warrantyPackageNames[options.deliveryPackage || "garantie_wettelijk"],
+        // Only update warranty if not already registered OR new price is provided
+        warrantyPackage: hasExistingWarranty ? vehicle.details?.warrantyPackage : (options.deliveryPackage || "garantie_wettelijk"),
+        warrantyPackagePrice: hasExistingWarranty && !options.warrantyPackagePrice ? existingWarrantyPrice : (options.warrantyPackagePrice || 0),
+        warrantyPackageName: hasExistingWarranty ? vehicle.details?.warrantyPackageName : warrantyPackageNames[options.deliveryPackage || "garantie_wettelijk"],
+        warrantyPackageSource: hasExistingWarranty ? vehicle.details?.warrantyPackageSource : ('contract' as const),
+        warrantyPackageDate: hasExistingWarranty ? vehicle.details?.warrantyPackageDate : new Date().toISOString(),
         contractSentBy: user.id,
         contractSentByName: sellerName,
         contractSentDate: new Date().toISOString(),
