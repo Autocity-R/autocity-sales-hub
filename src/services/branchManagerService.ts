@@ -11,7 +11,7 @@ import {
   SalesTarget,
   BranchManagerDashboardData
 } from "@/types/branchManager";
-import { format, differenceInDays, parseISO } from "date-fns";
+import { format, differenceInDays, parseISO, startOfDay } from "date-fns";
 
 class BranchManagerService {
   async getDashboardData(period: ReportPeriod): Promise<BranchManagerDashboardData> {
@@ -83,11 +83,12 @@ class BranchManagerService {
       }
 
       // Use details.deliveryDate (the actual delivery date users enter) instead of delivery_date column
+      // Compare calendar days only (ignore time component) to avoid issues where deliveryDate is at midnight
       const detailsDeliveryDate = (vehicle.details as any)?.deliveryDate;
       if (vehicle.status === 'afgeleverd' && detailsDeliveryDate && vehicle.sold_date) {
         const deliveryDays = differenceInDays(
-          parseISO(detailsDeliveryDate),
-          parseISO(vehicle.sold_date)
+          startOfDay(parseISO(detailsDeliveryDate)),
+          startOfDay(parseISO(vehicle.sold_date))
         );
         // Only count positive values (negative = data entry error)
         if (deliveryDays >= 0) {
