@@ -3,6 +3,7 @@ import { ReportPeriod } from "@/types/reports";
 import {
   B2CKPIData,
   B2CSalespersonStats,
+  B2CSalespersonVehicle,
   StockAgeData,
   PendingDelivery,
   TradeInStats,
@@ -147,6 +148,7 @@ class BranchManagerService {
       (v.status === 'afgeleverd' && (v.details as any)?.salesType !== 'b2b')
     );
 
+    // Group by normalized salesperson name (not user_id) to avoid duplicates
     const salesByPerson = new Map<string, {
       id: string;
       name: string;
@@ -154,13 +156,13 @@ class BranchManagerService {
     }>();
 
     b2cVehicles.forEach(vehicle => {
-      const salespersonId = vehicle.sold_by_user_id || 'unknown';
-      const name = (vehicle.details as any)?.salespersonName || 'Onbekend';
+      const salespersonName = ((vehicle.details as any)?.salespersonName || 'Onbekend').trim();
+      const normalizedName = salespersonName.toLowerCase();
 
-      if (!salesByPerson.has(salespersonId)) {
-        salesByPerson.set(salespersonId, { id: salespersonId, name, vehicles: [] });
+      if (!salesByPerson.has(normalizedName)) {
+        salesByPerson.set(normalizedName, { id: normalizedName, name: salespersonName, vehicles: [] });
       }
-      salesByPerson.get(salespersonId)!.vehicles.push(vehicle);
+      salesByPerson.get(normalizedName)!.vehicles.push(vehicle);
     });
 
     // Calculate stats per salesperson
@@ -170,36 +172,36 @@ class BranchManagerService {
       let totalRevenue = 0;
       let totalMargin = 0;
       let upsellCount = 0;
-      let deliveredCount = 0;
-      let totalDeliveryDays = 0;
-      let lateDeliveries = 0;
+
+      const vehicleDetails: B2CSalespersonStats['vehicles'] = [];
 
       data.vehicles.forEach(vehicle => {
         const sellingPrice = vehicle.selling_price || 0;
         const purchasePrice = vehicle.purchase_price || (vehicle.details as any)?.purchasePrice || 0;
         const warrantyPrice = (vehicle.details as any)?.warrantyPackagePrice || 0;
+        const margin = sellingPrice - purchasePrice;
 
         totalRevenue += sellingPrice;
-        totalMargin += (sellingPrice - purchasePrice);
+        totalMargin += margin;
 
         if (warrantyPrice > 0) upsellCount++;
 
-        if (vehicle.status === 'afgeleverd' && vehicle.delivery_date && vehicle.sold_date) {
-          deliveredCount++;
-          const days = differenceInDays(parseISO(vehicle.delivery_date), parseISO(vehicle.sold_date));
-          totalDeliveryDays += days;
-          if (days > 21) lateDeliveries++;
-        } else if (vehicle.status === 'verkocht_b2c' && vehicle.sold_date) {
-          // Check if pending delivery is late
-          const days = differenceInDays(new Date(), parseISO(vehicle.sold_date));
-          if (days > 21) lateDeliveries++;
-        }
+        vehicleDetails.push({
+          id: vehicle.id,
+          brand: vehicle.brand,
+          model: vehicle.model,
+          licensePlate: vehicle.license_number,
+          purchasePrice,
+          sellingPrice,
+          margin,
+          marginPercent: sellingPrice > 0 ? (margin / sellingPrice) * 100 : 0,
+          soldDate: vehicle.sold_date || ''
+        });
       });
 
       const target = 10; // Default per-person target, could be from database
       const marginPercent = totalRevenue > 0 ? (totalMargin / totalRevenue) * 100 : 0;
       const upsellRatio = data.vehicles.length > 0 ? (upsellCount / data.vehicles.length) * 100 : 0;
-      const avgDeliveryDays = deliveredCount > 0 ? totalDeliveryDays / deliveredCount : 0;
 
       stats.push({
         id,
@@ -212,8 +214,7 @@ class BranchManagerService {
         marginPercent,
         upsellCount,
         upsellRatio,
-        avgDeliveryDays,
-        lateDeliveries
+        vehicles: vehicleDetails
       });
     }
 

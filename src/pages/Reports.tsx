@@ -82,6 +82,9 @@ const Reports = () => {
   
   // Check if user has access to branch manager dashboard
   const hasBranchManagerAccess = userRole === 'owner' || userRole === 'admin' || userRole === 'manager';
+  
+  // Manager role only sees Vestiging B2C tab
+  const isManagerOnly = userRole === 'manager';
 
   // Mock data for fallback
   const mockReportsData: MockPerformanceData = {
@@ -379,23 +382,27 @@ const Reports = () => {
           onDataSourceChange={handleDataSourceChange}
         />
 
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs defaultValue={isManagerOnly ? "vestiging" : "overview"} className="space-y-6">
           <TabsList className="flex-wrap">
-            <TabsTrigger value="overview">Overzicht</TabsTrigger>
+            {!isManagerOnly && <TabsTrigger value="overview">Overzicht</TabsTrigger>}
             {hasBranchManagerAccess && (
               <TabsTrigger value="vestiging" className="gap-2">
                 <Building className="h-4 w-4" />
                 Vestiging B2C
               </TabsTrigger>
             )}
-            <TabsTrigger value="sales">Verkoop</TabsTrigger>
-            <TabsTrigger value="purchase">Inkoop</TabsTrigger>
-            <TabsTrigger value="suppliers">Leveranciers</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
-            <TabsTrigger value="financial">Financieel</TabsTrigger>
-            <TabsTrigger value="inventory">Voorraad</TabsTrigger>
-            <TabsTrigger value="warranty">Garantie</TabsTrigger>
-            <TabsTrigger value="schadeherstel">Schadeherstel</TabsTrigger>
+            {!isManagerOnly && (
+              <>
+                <TabsTrigger value="sales">Verkoop</TabsTrigger>
+                <TabsTrigger value="purchase">Inkoop</TabsTrigger>
+                <TabsTrigger value="suppliers">Leveranciers</TabsTrigger>
+                <TabsTrigger value="performance">Performance</TabsTrigger>
+                <TabsTrigger value="financial">Financieel</TabsTrigger>
+                <TabsTrigger value="inventory">Voorraad</TabsTrigger>
+                <TabsTrigger value="warranty">Garantie</TabsTrigger>
+                <TabsTrigger value="schadeherstel">Schadeherstel</TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
