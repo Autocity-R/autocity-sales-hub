@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,11 +6,14 @@ import {
   Clock, 
   AlertTriangle, 
   Eye,
-  TrendingDown
+  Download,
+  Loader2
 } from 'lucide-react';
 import { StockAgeData } from '@/types/branchManager';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { exportStockAgeToExcel } from '@/services/stockAgeExport';
+import { toast } from 'sonner';
 
 interface StockAgeAnalysisProps {
   data: StockAgeData;
@@ -22,9 +25,23 @@ export const StockAgeAnalysis: React.FC<StockAgeAnalysisProps> = ({
   showOnlyLongStanding = false
 }) => {
   const navigate = useNavigate();
+  const [isExporting, setIsExporting] = useState(false);
 
   const handleViewVehicle = (vehicleId: string) => {
     navigate(`/vehicles/${vehicleId}`);
+  };
+
+  const handleExportStockAge = async () => {
+    setIsExporting(true);
+    try {
+      const result = await exportStockAgeToExcel();
+      toast.success(`Voorraadlijst geëxporteerd (${result.count} voertuigen)`);
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error(error instanceof Error ? error.message : 'Export mislukt');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -131,13 +148,28 @@ export const StockAgeAnalysis: React.FC<StockAgeAnalysisProps> = ({
           </p>
         )}
 
-        {/* Summary */}
+        {/* Summary with Download Button */}
         {!showOnlyLongStanding && (
           <div className="flex items-center justify-between pt-4 border-t">
             <span className="text-sm text-muted-foreground">
               Totaal online voorraad
             </span>
-            <span className="font-medium">{data.totalOnline} voertuigen</span>
+            <div className="flex items-center gap-3">
+              <span className="font-medium">{data.totalOnline} voertuigen</span>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleExportStockAge}
+                disabled={isExporting}
+              >
+                {isExporting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Download Lijst
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>
