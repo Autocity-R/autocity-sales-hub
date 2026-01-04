@@ -11,6 +11,8 @@ interface StockAgeVehicle {
   purchase_price: number | null;
   details: Record<string, unknown> | null;
   online_since_date: string | null;
+  vin: string | null;
+  license_number: string | null;
   daysOnline: number;
 }
 
@@ -18,7 +20,7 @@ export const exportStockAgeToExcel = async (): Promise<{ success: boolean; filen
   // Fetch all online vehicles (same filter as StockAgeAnalysis)
   const { data: vehicles, error } = await supabase
     .from('vehicles')
-    .select('id, brand, model, year, mileage, purchase_price, details, online_since_date, created_at')
+    .select('id, brand, model, year, mileage, purchase_price, details, online_since_date, created_at, vin, license_number')
     .eq('status', 'voorraad')
     .contains('details', { showroomOnline: true });
 
@@ -43,7 +45,9 @@ export const exportStockAgeToExcel = async (): Promise<{ success: boolean; filen
       purchase_price: v.purchase_price,
       details: v.details as Record<string, unknown> | null,
       online_since_date: v.online_since_date,
-      daysOnline: v.online_since_date 
+      vin: v.vin,
+      license_number: v.license_number,
+      daysOnline: v.online_since_date
         ? differenceInDays(today, new Date(v.online_since_date))
         : v.created_at
           ? differenceInDays(today, new Date(v.created_at))
@@ -59,6 +63,8 @@ export const exportStockAgeToExcel = async (): Promise<{ success: boolean; filen
   worksheet.columns = [
     { header: 'Merk', key: 'brand', width: 15 },
     { header: 'Model', key: 'model', width: 20 },
+    { header: 'Kenteken', key: 'licenseNumber', width: 12 },
+    { header: 'Chassisnummer', key: 'vin', width: 20 },
     { header: 'Bouwjaar', key: 'year', width: 12 },
     { header: 'KM Stand', key: 'mileage', width: 14 },
     { header: 'Inkoopprijs', key: 'purchasePrice', width: 14 },
@@ -84,6 +90,8 @@ export const exportStockAgeToExcel = async (): Promise<{ success: boolean; filen
     const row = worksheet.addRow({
       brand: vehicle.brand || '-',
       model: vehicle.model || '-',
+      licenseNumber: vehicle.license_number || '-',
+      vin: vehicle.vin || '-',
       year: vehicle.year || '-',
       mileage: vehicle.mileage || 0,
       purchasePrice: purchasePrice,
