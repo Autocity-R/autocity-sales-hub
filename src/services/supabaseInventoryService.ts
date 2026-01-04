@@ -359,6 +359,35 @@ export class SupabaseInventoryService {
         : existingVehicle.sold_by_user_id
     };
 
+    // CRITICAL: Sync salespersonName in details when salespersonId changes
+    if (vehicle.salespersonId !== undefined && vehicle.salespersonId !== existingVehicle.sold_by_user_id) {
+      // Fetch the profile name for this salesperson
+      if (vehicle.salespersonId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, email')
+          .eq('id', vehicle.salespersonId)
+          .maybeSingle();
+        
+        if (profile) {
+          const profileName = [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim() || profile.email || 'Onbekend';
+          updateData.details = {
+            ...updateData.details,
+            salespersonId: vehicle.salespersonId,
+            salespersonName: profileName
+          };
+          console.log(`[UPDATE_VEHICLE] Synced salespersonName to "${profileName}" for vehicle ${vehicle.id}`);
+        }
+      } else {
+        // Salesperson was cleared
+        updateData.details = {
+          ...updateData.details,
+          salespersonId: null,
+          salespersonName: null
+        };
+      }
+    }
+
     // Only update customer_id, supplier_id, and transporter_id if they are explicitly provided (not undefined)
     if (vehicle.customerId !== undefined) {
       updateData.customer_id = vehicle.customerId;

@@ -142,13 +142,32 @@ class BranchManagerService {
       throw error;
     }
 
-    // Filter B2C only and group by salesperson
+    // Filter B2C only
     const b2cVehicles = (vehicles || []).filter(v => 
       v.status === 'verkocht_b2c' || 
       (v.status === 'afgeleverd' && (v.details as any)?.salesType !== 'b2b')
     );
 
-    // Group by normalized salesperson name (not user_id) to avoid duplicates
+    // Get unique salesperson IDs
+    const salespersonIds = [...new Set(b2cVehicles
+      .map(v => v.sold_by_user_id)
+      .filter(Boolean)
+    )];
+
+    // Fetch salesperson names from profiles
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name, email')
+      .in('id', salespersonIds);
+
+    // Create profile lookup map
+    const profileMap = new Map<string, string>();
+    (profiles || []).forEach(p => {
+      const name = [p.first_name, p.last_name].filter(Boolean).join(' ').trim() || p.email || 'Onbekend';
+      profileMap.set(p.id, name);
+    });
+
+    // Group by sold_by_user_id (primary source of truth)
     const salesByPerson = new Map<string, {
       id: string;
       name: string;
@@ -156,13 +175,15 @@ class BranchManagerService {
     }>();
 
     b2cVehicles.forEach(vehicle => {
-      const salespersonName = ((vehicle.details as any)?.salespersonName || 'Onbekend').trim();
-      const normalizedName = salespersonName.toLowerCase();
+      const salespersonId = vehicle.sold_by_user_id || 'unknown';
+      // Get name from profile map, fallback to details.salespersonName
+      const salespersonName = profileMap.get(salespersonId) || 
+        ((vehicle.details as any)?.salespersonName || 'Onbekend').trim();
 
-      if (!salesByPerson.has(normalizedName)) {
-        salesByPerson.set(normalizedName, { id: normalizedName, name: salespersonName, vehicles: [] });
+      if (!salesByPerson.has(salespersonId)) {
+        salesByPerson.set(salespersonId, { id: salespersonId, name: salespersonName, vehicles: [] });
       }
-      salesByPerson.get(normalizedName)!.vehicles.push(vehicle);
+      salesByPerson.get(salespersonId)!.vehicles.push(vehicle);
     });
 
     // Calculate stats per salesperson
@@ -199,7 +220,7 @@ class BranchManagerService {
         });
       });
 
-      const target = 10; // Default per-person target, could be from database
+      const target = 10; // Default per-person target
       const marginPercent = totalRevenue > 0 ? (totalMargin / totalRevenue) * 100 : 0;
       const upsellRatio = data.vehicles.length > 0 ? (upsellCount / data.vehicles.length) * 100 : 0;
 
