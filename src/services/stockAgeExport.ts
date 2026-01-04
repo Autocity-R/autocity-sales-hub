@@ -15,12 +15,12 @@ interface StockAgeVehicle {
 }
 
 export const exportStockAgeToExcel = async (): Promise<{ success: boolean; filename: string; count: number }> => {
-  // Fetch all online vehicles
+  // Fetch all online vehicles (same filter as StockAgeAnalysis)
   const { data: vehicles, error } = await supabase
     .from('vehicles')
-    .select('id, brand, model, year, mileage, purchase_price, details, online_since_date')
-    .eq('status', 'in_voorraad')
-    .not('online_since_date', 'is', null);
+    .select('id, brand, model, year, mileage, purchase_price, details, online_since_date, created_at')
+    .eq('status', 'voorraad')
+    .contains('details', { showroomOnline: true });
 
   if (error) {
     throw new Error(`Fout bij ophalen voorraad: ${error.message}`);
@@ -45,7 +45,9 @@ export const exportStockAgeToExcel = async (): Promise<{ success: boolean; filen
       online_since_date: v.online_since_date,
       daysOnline: v.online_since_date 
         ? differenceInDays(today, new Date(v.online_since_date))
-        : 0
+        : v.created_at
+          ? differenceInDays(today, new Date(v.created_at))
+          : 0
     }))
     .sort((a, b) => b.daysOnline - a.daysOnline);
 
