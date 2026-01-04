@@ -82,12 +82,18 @@ class BranchManagerService {
         upsalesCount++;
       }
 
-      if (vehicle.status === 'afgeleverd' && vehicle.delivery_date && vehicle.sold_date) {
-        deliveredCount++;
-        totalDeliveryDays += differenceInDays(
-          parseISO(vehicle.delivery_date),
+      // Use details.deliveryDate (the actual delivery date users enter) instead of delivery_date column
+      const detailsDeliveryDate = (vehicle.details as any)?.deliveryDate;
+      if (vehicle.status === 'afgeleverd' && detailsDeliveryDate && vehicle.sold_date) {
+        const deliveryDays = differenceInDays(
+          parseISO(detailsDeliveryDate),
           parseISO(vehicle.sold_date)
         );
+        // Only count positive values (negative = data entry error)
+        if (deliveryDays >= 0) {
+          deliveredCount++;
+          totalDeliveryDays += deliveryDays;
+        }
       }
     });
 
