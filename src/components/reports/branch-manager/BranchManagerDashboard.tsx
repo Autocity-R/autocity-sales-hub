@@ -99,10 +99,11 @@ export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ 
         <div className="space-y-6">
           <AlertsPanel alerts={data.alerts} />
           
-          {data.pendingDeliveries.filter(d => d.isLate).length > 0 && (
+          {data.pendingDeliveries.filter(d => d.isLate || d.alertDismissed).length > 0 && (
             <PendingDeliveriesB2C 
-              deliveries={data.pendingDeliveries.filter(d => d.isLate)} 
+              deliveries={data.pendingDeliveries.filter(d => d.isLate || (d.alertDismissed && d.daysSinceSale > 21))} 
               title="Vertraagde Leveringen (>21 dagen)"
+              onRefresh={refetch}
             />
           )}
           
@@ -133,7 +134,7 @@ export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ 
           {/* Two columns: Stock Age & Pending Deliveries */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <StockAgeAnalysis data={data.stockAge} />
-            <PendingDeliveriesB2C deliveries={data.pendingDeliveries} />
+            <PendingDeliveriesB2C deliveries={data.pendingDeliveries} onRefresh={refetch} />
           </div>
 
           {/* All Alerts */}
