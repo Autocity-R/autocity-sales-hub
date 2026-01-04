@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { 
@@ -12,9 +12,12 @@ import {
   CheckCircle,
   AlertTriangle
 } from 'lucide-react';
-import { B2CKPIData, TradeInStats } from '@/types/branchManager';
+import { B2CKPIData, TradeInStats, PendingDeliveryVehicle } from '@/types/branchManager';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { PendingDeliveryModal } from './PendingDeliveryModal';
+import { branchManagerService } from '@/services/branchManagerService';
+import { useQuery } from '@tanstack/react-query';
 
 interface B2CKPICardsProps {
   kpis: B2CKPIData;
@@ -22,6 +25,14 @@ interface B2CKPICardsProps {
 }
 
 export const B2CKPICards: React.FC<B2CKPICardsProps> = ({ kpis, tradeIns }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const { data: pendingVehicles = [], isLoading: isLoadingVehicles } = useQuery({
+    queryKey: ['pending-delivery-vehicles'],
+    queryFn: () => branchManagerService.getPendingDeliveryVehicles(),
+    enabled: isModalOpen,
+  });
+
   const getProgressColor = (current: number, target: number): string => {
     const percentage = (current / target) * 100;
     if (percentage >= 100) return 'bg-green-500';
@@ -69,142 +80,159 @@ export const B2CKPICards: React.FC<B2CKPICardsProps> = ({ kpis, tradeIns }) => {
   ];
 
   return (
-    <div className="space-y-4">
-      {/* Main KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {cards.map((card, index) => {
-          const Icon = card.icon;
-          const percentage = card.target ? getPercentage(card.current, card.target) : null;
-          const progressColor = card.target ? getProgressColor(card.current, card.target) : '';
+    <>
+      <div className="space-y-4">
+        {/* Main KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {cards.map((card, index) => {
+            const Icon = card.icon;
+            const percentage = card.target ? getPercentage(card.current, card.target) : null;
+            const progressColor = card.target ? getProgressColor(card.current, card.target) : '';
 
-          return (
-            <Card key={index}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {card.format(card.current)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {card.suffix}
-                </p>
-                {percentage !== null && (
-                  <div className="mt-3 space-y-1">
-                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className={cn("h-full rounded-full transition-all", progressColor)}
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                    <p className={cn(
-                      "text-xs font-medium",
-                      percentage >= 100 ? "text-green-600" :
-                      percentage >= 80 ? "text-yellow-600" : "text-red-600"
-                    )}>
-                      {percentage.toFixed(0)}% van target
-                    </p>
+            return (
+              <Card key={index}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {card.format(card.current)}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                  <p className="text-xs text-muted-foreground">
+                    {card.suffix}
+                  </p>
+                  {percentage !== null && (
+                    <div className="mt-3 space-y-1">
+                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className={cn("h-full rounded-full transition-all", progressColor)}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                      <p className={cn(
+                        "text-xs font-medium",
+                        percentage >= 100 ? "text-green-600" :
+                        percentage >= 80 ? "text-yellow-600" : "text-red-600"
+                      )}>
+                        {percentage.toFixed(0)}% van target
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
 
-      {/* Secondary KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gem. Levertijd</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {kpis.avgDeliveryDays.toFixed(1)} dagen
-            </div>
-            <p className={cn(
-              "text-xs",
-              kpis.avgDeliveryDays <= 14 ? "text-green-600" :
-              kpis.avgDeliveryDays <= 21 ? "text-yellow-600" : "text-red-600"
-            )}>
-              {kpis.avgDeliveryDays <= 14 ? "Goed" : 
-               kpis.avgDeliveryDays <= 21 ? "Acceptabel" : "Te traag"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Upsell Ratio</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {kpis.upsellRatio.toFixed(0)}%
-            </div>
-            <p className="text-xs text-muted-foreground">
-              verkopen met garantiepakket
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Upsales Omzet</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              €{kpis.upsalesRevenue.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              garantie & pakketten
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Trade-In KPI Card */}
-        {tradeIns && (
-          <Card className={cn(
-            tradeIns.negativeCount > 0 && "border-destructive bg-destructive/5"
-          )}>
+        {/* Secondary KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card 
+            className="cursor-pointer transition-colors hover:bg-accent/50"
+            onClick={() => setIsModalOpen(true)}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Inruil Resultaat</CardTitle>
-              <RefreshCw className={cn(
-                "h-4 w-4",
-                tradeIns.negativeCount > 0 ? "text-destructive" : "text-muted-foreground"
-              )} />
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                Gem. Levertijd
+                <Badge variant="outline" className="text-xs font-normal">
+                  klik voor details
+                </Badge>
+              </CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className={cn(
-                "text-2xl font-bold",
-                tradeIns.avgResult < 0 ? "text-destructive" : 
-                tradeIns.avgResult > 0 ? "text-green-600" : ""
+              <div className="text-2xl font-bold">
+                {kpis.avgDeliveryDays.toFixed(1)} dagen
+              </div>
+              <p className={cn(
+                "text-xs",
+                kpis.avgDeliveryDays <= 14 ? "text-green-600" :
+                kpis.avgDeliveryDays <= 21 ? "text-yellow-600" : "text-red-600"
               )}>
-                €{tradeIns.avgResult >= 0 ? '' : ''}{Math.round(tradeIns.avgResult).toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {tradeIns.totalTradeIns} verkocht | Gem. per auto
+                {kpis.avgDeliveryDays <= 14 ? "Goed" : 
+                 kpis.avgDeliveryDays <= 21 ? "Acceptabel" : "Te traag"}
               </p>
-              <div className="mt-2">
-                {tradeIns.negativeCount > 0 ? (
-                  <Badge variant="destructive" className="gap-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    {tradeIns.negativeCount} met verlies
-                  </Badge>
-                ) : tradeIns.totalTradeIns > 0 ? (
-                  <Badge variant="outline" className="gap-1 text-green-600 border-green-600">
-                    <CheckCircle className="h-3 w-3" />
-                    Geen verliezen
-                  </Badge>
-                ) : null}
-              </div>
             </CardContent>
           </Card>
-        )}
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Upsell Ratio</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {kpis.upsellRatio.toFixed(0)}%
+              </div>
+              <p className="text-xs text-muted-foreground">
+                verkopen met garantiepakket
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Upsales Omzet</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                €{kpis.upsalesRevenue.toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                garantie & pakketten
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Trade-In KPI Card */}
+          {tradeIns && (
+            <Card className={cn(
+              tradeIns.negativeCount > 0 && "border-destructive bg-destructive/5"
+            )}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Inruil Resultaat</CardTitle>
+                <RefreshCw className={cn(
+                  "h-4 w-4",
+                  tradeIns.negativeCount > 0 ? "text-destructive" : "text-muted-foreground"
+                )} />
+              </CardHeader>
+              <CardContent>
+                <div className={cn(
+                  "text-2xl font-bold",
+                  tradeIns.avgResult < 0 ? "text-destructive" : 
+                  tradeIns.avgResult > 0 ? "text-green-600" : ""
+                )}>
+                  €{tradeIns.avgResult >= 0 ? '' : ''}{Math.round(tradeIns.avgResult).toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {tradeIns.totalTradeIns} verkocht | Gem. per auto
+                </p>
+                <div className="mt-2">
+                  {tradeIns.negativeCount > 0 ? (
+                    <Badge variant="destructive" className="gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      {tradeIns.negativeCount} met verlies
+                    </Badge>
+                  ) : tradeIns.totalTradeIns > 0 ? (
+                    <Badge variant="outline" className="gap-1 text-green-600 border-green-600">
+                      <CheckCircle className="h-3 w-3" />
+                      Geen verliezen
+                    </Badge>
+                  ) : null}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
-    </div>
+
+      <PendingDeliveryModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        vehicles={pendingVehicles}
+        isLoading={isLoadingVehicles}
+      />
+    </>
   );
 };
