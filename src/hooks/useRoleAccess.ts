@@ -50,6 +50,12 @@ export const useRoleAccess = () => {
     return isAdmin; // isAdmin includes both 'admin' and 'owner' roles
   };
 
+  const canChecklistToggle = () => {
+    // Operationeel personeel mag wel items afvinken, maar niet toevoegen/verwijderen
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper' || 
+           userRole === 'user' || userRole === 'operationeel';
+  };
+
   return {
     hasReportsAccess,
     hasLeadsAccess,
@@ -62,6 +68,7 @@ export const useRoleAccess = () => {
     canAssignTasks,
     isOperationalUser,
     hasCEOAccess,
+    canChecklistToggle,
     userRole,
     isAdmin
   };

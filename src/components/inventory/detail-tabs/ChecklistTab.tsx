@@ -16,9 +16,10 @@ interface ChecklistTabProps {
   vehicle: Vehicle;
   onUpdate: (vehicle: Vehicle) => void;
   readOnly?: boolean;
+  canToggleOnly?: boolean; // Alleen afvinken toegestaan (geen toevoegen/verwijderen)
 }
 
-export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, readOnly }) => {
+export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, readOnly, canToggleOnly }) => {
   const [newItemDescription, setNewItemDescription] = useState("");
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const { user } = useAuth();
@@ -131,8 +132,8 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, r
         </CardContent>
       </Card>
 
-      {/* Add New Item */}
-      {!readOnly && (
+      {/* Add New Item - alleen tonen als niet readOnly EN niet canToggleOnly */}
+      {!readOnly && !canToggleOnly && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Nieuwe taak toevoegen</CardTitle>
@@ -220,8 +221,8 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, r
                     </div>
                   </div>
 
-                  {/* Delete Button */}
-                  {!readOnly && (
+                  {/* Delete Button - alleen tonen als niet readOnly EN niet canToggleOnly */}
+                  {!readOnly && !canToggleOnly && (
                     <Button
                       variant="ghost"
                       size="icon"
