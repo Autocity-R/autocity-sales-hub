@@ -63,8 +63,9 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   const hasUserChangesRef = useRef(false);
   
   // Role-based access
-  const { hasPriceAccess, isOperationalUser } = useRoleAccess();
+  const { hasPriceAccess, isOperationalUser, canChecklistToggle } = useRoleAccess();
   const isReadOnly = isOperationalUser();
+  const canOnlyToggleChecklist = isOperationalUser() && canChecklistToggle();
   
   // Always use the hook to fetch files for this vehicle
   const { vehicleFiles: hookVehicleFiles } = useVehicleFiles(vehicle);
@@ -252,7 +253,8 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                         hasUserChangesRef.current = true;
                         setEditedVehicle(updatedVehicle);
                       }}
-                      readOnly={isReadOnly}
+                      readOnly={isReadOnly && !canOnlyToggleChecklist}
+                      canToggleOnly={canOnlyToggleChecklist}
                     />
                   </TabsContent>
                 )}
