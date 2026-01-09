@@ -19,7 +19,7 @@ import { TransportDetails } from "@/components/transport/TransportDetails";
 import { TransportBulkActions } from "@/components/transport/TransportBulkActions";
 import { supabase } from "@/integrations/supabase/client";
 import { useTransportVehicleOperations } from "@/hooks/useTransportVehicleOperations";
-import { exportTransportToExcel, getPaymentStatusDisplay, getPickupStatusDisplay, getCustomerName } from "@/utils/transportExport";
+import { exportTransportToExcel, exportTransportPlanningToExcel, getPaymentStatusDisplay, getPickupStatusDisplay, getCustomerName } from "@/utils/transportExport";
 
 const Transport = () => {
   const { toast } = useToast();
@@ -353,6 +353,32 @@ const Transport = () => {
     }
   };
 
+  // Handle Transport Planning Excel export - with color-coded statuses
+  const handleExportTransportPlanning = async () => {
+    if (selectedVehicles.length === 0) {
+      toast({
+        title: "Geen selectie",
+        description: "Selecteer eerst voertuigen voor de transport planning.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      const result = await exportTransportPlanningToExcel(selectedVehicles);
+      toast({
+        title: "Transport planning geëxporteerd",
+        description: `${result.count} voertuigen geëxporteerd naar ${result.filename}`,
+        variant: "default",
+      });
+    } catch (error) {
+      toast({
+        title: "Export mislukt",
+        description: "Er is iets misgegaan bij het exporteren.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Copy VINs to clipboard
   const handleCopyVins = () => {
     const vins = selectedVehicles.map(v => v.vin).join('\n');
@@ -374,6 +400,10 @@ const Transport = () => {
                 <Button variant="outline" onClick={() => setIsViewSelectionOpen(true)}>
                   <Eye className="mr-2 h-4 w-4" />
                   Bekijk selectie ({selectedVehicleIds.length})
+                </Button>
+                <Button variant="default" onClick={handleExportTransportPlanning}>
+                  <Truck className="mr-2 h-4 w-4" />
+                  Transport Planning ({selectedVehicleIds.length})
                 </Button>
                 <Button variant="outline" onClick={handleExportSelected}>
                   <Download className="mr-2 h-4 w-4" />
