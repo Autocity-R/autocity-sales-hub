@@ -39,6 +39,20 @@ export const useB2CVehicles = ({
     .sort((a, b) => {
       if (!localSortField) return 0;
       
+      // Speciale sorteerlogica voor importStatus op workflow-volgorde
+      if (localSortField === "importStatus") {
+        const importStatusOrder: Record<string, number> = {
+          "niet_aangemeld": 1,
+          "aanvraag_ontvangen": 2,
+          "goedgekeurd": 3,
+          "bpm_betaald": 4,
+          "ingeschreven": 5
+        };
+        const aOrder = importStatusOrder[a.importStatus || ""] || 0;
+        const bOrder = importStatusOrder[b.importStatus || ""] || 0;
+        return localSortDirection === "asc" ? aOrder - bOrder : bOrder - aOrder;
+      }
+      
       let aValue: any = a;
       let bValue: any = b;
       
