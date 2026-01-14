@@ -34,7 +34,10 @@ const InventoryB2C = () => {
   const {
     vehicles,
     isLoading,
-    error
+    error,
+    sortField,
+    sortDirection,
+    onSort
   } = useB2CVehicles({
     searchTerm
   });
@@ -43,8 +46,6 @@ const InventoryB2C = () => {
   const {
     selectedVehicles,
     selectedVehicle,
-    sortField,
-    sortDirection,
     setSelectedVehicle,
     handleUploadPhoto,
     handleRemovePhoto,
@@ -55,7 +56,6 @@ const InventoryB2C = () => {
     handleUpdatePaymentStatus,
     handleUpdatePaintStatus,
     handleMarkAsDelivered,
-    handleSort,
     toggleSelectVehicle,
     toggleSelectAll,
     handleUploadFile,
@@ -300,7 +300,7 @@ const InventoryB2C = () => {
             onMoveBackToTransport={handleMoveBackToTransport}
             isLoading={isLoading}
             error={error}
-            onSort={handleSort}
+            onSort={onSort}
             sortField={sortField}
             sortDirection={sortDirection}
           />
