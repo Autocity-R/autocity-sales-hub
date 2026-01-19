@@ -41,6 +41,7 @@ import { PurchaseAnalytics } from "@/components/reports/PurchaseAnalytics";
 import { SupplierAnalytics } from "@/components/reports/SupplierAnalytics";
 import { DamageRepairAnalytics } from "@/components/reports/DamageRepairAnalytics";
 import { BranchManagerDashboard } from "@/components/reports/branch-manager";
+import { AftersalesDashboard } from "@/components/reports/AftersalesDashboard";
 import { PeriodSelector } from "@/components/reports/PeriodSelector";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useVehicleDetailDialog } from "@/hooks/useVehicleDetailDialog";
@@ -731,6 +732,10 @@ const Reports = () => {
 
           <TabsContent value="schadeherstel" className="space-y-6">
             <DamageRepairAnalytics period={reportPeriod} />
+          </TabsContent>
+
+          <TabsContent value="aftersales" className="space-y-6">
+            <AftersalesDashboard />
           </TabsContent>
         </Tabs>
       </div>
