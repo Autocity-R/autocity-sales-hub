@@ -37,9 +37,9 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 export function AppSidebar() {
   const location = useLocation();
-  const { hasReportsAccess, hasLeadsAccess, hasCustomersAccess, hasAIAgentsAccess, hasSettingsAccess, hasTaxatieAccess, userRole, isAdmin } = useRoleAccess();
+  const { hasReportsAccess, hasLeadsAccess, hasCustomersAccess, hasAIAgentsAccess, hasSettingsAccess, hasTaxatieAccess, hasGarantieAccess, userRole, isAdmin } = useRoleAccess();
 
-  // Debug logging for Taxatie menu visibility
+  // Debug logging for menu visibility
   console.log('[AppSidebar] userRole:', userRole, 'isAdmin:', isAdmin, 'hasTaxatieAccess():', hasTaxatieAccess());
 
   const isActive = (path: string) => {
@@ -125,23 +125,26 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/warranty")}>
-                  <Link to="/warranty" className="text-white hover:text-white hover:bg-gray-800">
-                    <ShieldIcon className="mr-2 h-4 w-4" />
-                    <span>Garantie</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              {/* TODO: Tijdelijk geen rol-check - later terugzetten met hasTaxatieAccess() */}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/taxatie")}>
-                  <Link to="/taxatie" className="text-white hover:text-white hover:bg-gray-800">
-                    <Calculator className="mr-2 h-4 w-4" />
-                    <span>Taxatie</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {hasGarantieAccess() && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/warranty")}>
+                    <Link to="/warranty" className="text-white hover:text-white hover:bg-gray-800">
+                      <ShieldIcon className="mr-2 h-4 w-4" />
+                      <span>Garantie</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {hasTaxatieAccess() && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/taxatie")}>
+                    <Link to="/taxatie" className="text-white hover:text-white hover:bg-gray-800">
+                      <Calculator className="mr-2 h-4 w-4" />
+                      <span>Taxatie</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
