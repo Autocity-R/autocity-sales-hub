@@ -19,7 +19,8 @@ import {
   Database,
   Settings,
   ChevronDown,
-  Building
+  Building,
+  Wrench
 } from "lucide-react";
 import { RevenueChart } from "@/components/reports/RevenueChart";
 import { SalesChart } from "@/components/reports/SalesChart";
@@ -80,7 +81,7 @@ const Reports = () => {
   });
   const [isUsingMockData, setIsUsingMockData] = useState(false);
   const queryClient = useQueryClient();
-  const { userRole } = useRoleAccess();
+  const { userRole, hasAftersalesOnlyReportsAccess } = useRoleAccess();
   
   // Vehicle detail dialog for "Bekijk" buttons
   const vehicleDialog = useVehicleDetailDialog();
@@ -90,6 +91,9 @@ const Reports = () => {
   
   // Manager role only sees Vestiging B2C tab
   const isManagerOnly = userRole === 'manager';
+  
+  // Aftersales manager only sees Aftersales tab
+  const isAftersalesOnly = hasAftersalesOnlyReportsAccess();
 
   // Mock data for fallback
   const mockReportsData: MockPerformanceData = {
@@ -387,16 +391,23 @@ const Reports = () => {
           onDataSourceChange={handleDataSourceChange}
         />
 
-        <Tabs defaultValue={isManagerOnly ? "vestiging" : "overview"} className="space-y-6">
+        <Tabs defaultValue={isAftersalesOnly ? "aftersales" : (isManagerOnly ? "vestiging" : "overview")} className="space-y-6">
           <TabsList className="flex-wrap">
-            {!isManagerOnly && <TabsTrigger value="overview">Overzicht</TabsTrigger>}
-            {hasBranchManagerAccess && (
+            {!isManagerOnly && !isAftersalesOnly && <TabsTrigger value="overview">Overzicht</TabsTrigger>}
+            {hasBranchManagerAccess && !isAftersalesOnly && (
               <TabsTrigger value="vestiging" className="gap-2">
                 <Building className="h-4 w-4" />
                 Vestiging B2C
               </TabsTrigger>
             )}
-            {!isManagerOnly && (
+            {/* Aftersales tab - zichtbaar voor aftersales_manager, admin, manager */}
+            {(isAftersalesOnly || hasBranchManagerAccess) && (
+              <TabsTrigger value="aftersales" className="gap-2">
+                <Wrench className="h-4 w-4" />
+                Aftersales
+              </TabsTrigger>
+            )}
+            {!isManagerOnly && !isAftersalesOnly && (
               <>
                 <TabsTrigger value="sales">Verkoop</TabsTrigger>
                 <TabsTrigger value="purchase">Inkoop</TabsTrigger>

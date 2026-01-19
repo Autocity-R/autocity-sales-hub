@@ -1,0 +1,484 @@
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  Truck, 
+  ShieldCheck, 
+  ClipboardList, 
+  Clock, 
+  AlertTriangle,
+  CheckCircle2,
+  Eye,
+  Car
+} from 'lucide-react';
+import { aftersalesService } from '@/services/aftersalesService';
+import { format } from 'date-fns';
+import { nl } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+import { useVehicleDetailDialog } from '@/hooks/useVehicleDetailDialog';
+import { VehicleDetails } from '@/components/inventory/VehicleDetails';
+import { supabase } from '@/integrations/supabase/client';
+
+interface AftersalesDashboardProps {
+  onViewVehicle?: (vehicleId: string, defaultTab?: string) => void;
+}
+
+export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onViewVehicle }) => {
+  const vehicleDialog = useVehicleDetailDialog();
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['aftersales-dashboard'],
+    queryFn: () => aftersalesService.getDashboardData(),
+    refetchInterval: 60000, // Elke minuut verversen
+  });
+
+  const handleViewVehicle = async (vehicleId: string, defaultTab?: string) => {
+    await vehicleDialog.openVehicle(vehicleId, defaultTab || 'checklist');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <Skeleton className="h-4 w-32" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-destructive">
+        <CardContent className="pt-6">
+          <p className="text-destructive">Fout bij laden van aftersales data: {error.message}</p>
+          <Button variant="outline" onClick={() => refetch()} className="mt-4">
+            Opnieuw proberen
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const { kpis, pendingDeliveries, openWarrantyClaims, resolvedWarrantyClaims, openTasks, completedTasks } = data!;
+
+  const getImportStatusBadge = (status: string | null) => {
+    const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+      'niet_aangemeld': { label: 'Niet aangemeld', variant: 'secondary' },
+      'aanvraag_ontvangen': { label: 'Aanvraag ontvangen', variant: 'default' },
+      'goedgekeurd': { label: 'Goedgekeurd', variant: 'default' },
+      'bpm_betaald': { label: 'BPM betaald', variant: 'default' },
+      'ingeschreven': { label: 'Ingeschreven', variant: 'outline' },
+    };
+
+    const config = statusConfig[status || ''] || { label: status || 'Onbekend', variant: 'secondary' as const };
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const getWaitingDaysBadge = (days: number, isLate: boolean, isWarning: boolean) => {
+    if (isLate) {
+      return <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" />{days} dagen</Badge>;
+    }
+    if (isWarning) {
+      return <Badge className="bg-orange-500 hover:bg-orange-600 gap-1"><Clock className="h-3 w-3" />{days} dagen</Badge>;
+    }
+    return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" />{days} dagen</Badge>;
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Openstaande Leveringen</CardTitle>
+            <Truck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{kpis.pendingDeliveries}</div>
+            <p className="text-xs text-muted-foreground mt-1">B2C voertuigen wachtend op aflevering</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Gemiddelde Wachttijd</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{kpis.averageWaitingDays} dagen</div>
+            <p className="text-xs text-muted-foreground mt-1">Sinds verkoopdatum</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Openstaande Garantie Claims</CardTitle>
+            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{kpis.openWarrantyClaims}</div>
+            <p className="text-xs text-muted-foreground mt-1">Actief + in behandeling</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Openstaande Taken</CardTitle>
+            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{kpis.openTasks}</div>
+            <p className="text-xs text-muted-foreground mt-1">Aftersales gerelateerd</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* B2C Leveringen in Afwachting */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Truck className="h-5 w-5" />
+            B2C Leveringen in Afwachting
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {pendingDeliveries.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">Geen openstaande leveringen</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b text-left">
+                    <th className="pb-3 font-medium">Voertuig</th>
+                    <th className="pb-3 font-medium">Klant</th>
+                    <th className="pb-3 font-medium">Wachttijd</th>
+                    <th className="pb-3 font-medium">Checklist</th>
+                    <th className="pb-3 font-medium">Import Status</th>
+                    <th className="pb-3 font-medium">Actie</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingDeliveries.map((delivery) => (
+                    <tr key={delivery.id} className={cn(
+                      "border-b last:border-0",
+                      delivery.isLate && "bg-red-50 dark:bg-red-950/20",
+                      delivery.isWarning && !delivery.isLate && "bg-orange-50 dark:bg-orange-950/20"
+                    )}>
+                      <td className="py-3">
+                        <div className="flex items-center gap-2">
+                          <Car className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <div className="font-medium">{delivery.brand} {delivery.model}</div>
+                            <div className="text-sm text-muted-foreground">{delivery.licensePlate || 'Geen kenteken'}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3">
+                        <div>{delivery.customerName}</div>
+                        {delivery.customerPhone && (
+                          <div className="text-sm text-muted-foreground">{delivery.customerPhone}</div>
+                        )}
+                      </td>
+                      <td className="py-3">
+                        {getWaitingDaysBadge(delivery.daysSinceSale, delivery.isLate, delivery.isWarning)}
+                      </td>
+                      <td className="py-3">
+                        <div className="flex items-center gap-2 min-w-[140px]">
+                          <Progress value={delivery.checklistProgress} className="h-2 flex-1" />
+                          <span className="text-sm text-muted-foreground whitespace-nowrap">
+                            {delivery.checklistCompleted}/{delivery.checklistTotal}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3">
+                        {getImportStatusBadge(delivery.importStatus)}
+                      </td>
+                      <td className="py-3">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleViewVehicle(delivery.id, 'checklist')}
+                          className="gap-1"
+                        >
+                          <Eye className="h-4 w-4" />
+                          Bekijk
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Garantie Claims */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5" />
+            Garantie Claims
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="open">
+            <TabsList>
+              <TabsTrigger value="open" className="gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                Openstaand ({openWarrantyClaims.length})
+              </TabsTrigger>
+              <TabsTrigger value="resolved" className="gap-2">
+                <CheckCircle2 className="h-4 w-4" />
+                Opgelost ({resolvedWarrantyClaims.length})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="open" className="mt-4">
+              {openWarrantyClaims.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">Geen openstaande garantie claims</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b text-left">
+                        <th className="pb-3 font-medium">Voertuig</th>
+                        <th className="pb-3 font-medium">Klant</th>
+                        <th className="pb-3 font-medium">Probleem</th>
+                        <th className="pb-3 font-medium">Dagen Open</th>
+                        <th className="pb-3 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {openWarrantyClaims.map((claim) => (
+                        <tr key={claim.id} className="border-b last:border-0">
+                          <td className="py-3">
+                            <div className="font-medium">{claim.vehicleBrand} {claim.vehicleModel}</div>
+                            <div className="text-sm text-muted-foreground">{claim.licensePlate || 'Geen kenteken'}</div>
+                          </td>
+                          <td className="py-3">{claim.customerName}</td>
+                          <td className="py-3 max-w-[200px] truncate">{claim.problemDescription}</td>
+                          <td className="py-3">
+                            <Badge variant={claim.daysOpen > 14 ? 'destructive' : 'outline'}>
+                              {claim.daysOpen} dagen
+                            </Badge>
+                          </td>
+                          <td className="py-3">
+                            <Badge variant={claim.status === 'actief' ? 'default' : 'secondary'}>
+                              {claim.status === 'actief' ? 'Actief' : 'In behandeling'}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="resolved" className="mt-4">
+              {resolvedWarrantyClaims.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">Geen opgeloste garantie claims</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b text-left">
+                        <th className="pb-3 font-medium">Voertuig</th>
+                        <th className="pb-3 font-medium">Klant</th>
+                        <th className="pb-3 font-medium">Probleem</th>
+                        <th className="pb-3 font-medium">Doorlooptijd</th>
+                        <th className="pb-3 font-medium">Kosten</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {resolvedWarrantyClaims.map((claim) => (
+                        <tr key={claim.id} className="border-b last:border-0">
+                          <td className="py-3">
+                            <div className="font-medium">{claim.vehicleBrand} {claim.vehicleModel}</div>
+                            <div className="text-sm text-muted-foreground">{claim.licensePlate || 'Geen kenteken'}</div>
+                          </td>
+                          <td className="py-3">{claim.customerName}</td>
+                          <td className="py-3 max-w-[200px] truncate">{claim.problemDescription}</td>
+                          <td className="py-3">
+                            <Badge variant="outline">{claim.resolutionDays} dagen</Badge>
+                          </td>
+                          <td className="py-3">
+                            {claim.claimAmount ? `€${claim.claimAmount.toLocaleString()}` : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Taken Overzicht */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5" />
+            Taken Overzicht
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="open">
+            <TabsList>
+              <TabsTrigger value="open" className="gap-2">
+                <Clock className="h-4 w-4" />
+                Openstaand ({openTasks.length})
+              </TabsTrigger>
+              <TabsTrigger value="completed" className="gap-2">
+                <CheckCircle2 className="h-4 w-4" />
+                Voltooid ({completedTasks.length})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="open" className="mt-4">
+              {openTasks.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">Geen openstaande taken</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b text-left">
+                        <th className="pb-3 font-medium">Taak</th>
+                        <th className="pb-3 font-medium">Voertuig</th>
+                        <th className="pb-3 font-medium">Toegewezen Aan</th>
+                        <th className="pb-3 font-medium">Deadline</th>
+                        <th className="pb-3 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {openTasks.map((task) => {
+                        const isOverdue = new Date(task.dueDate) < new Date();
+                        return (
+                          <tr key={task.id} className={cn(
+                            "border-b last:border-0",
+                            isOverdue && "bg-red-50 dark:bg-red-950/20"
+                          )}>
+                            <td className="py-3">
+                              <div className="font-medium">{task.title}</div>
+                              <div className="text-sm text-muted-foreground">{task.category}</div>
+                            </td>
+                            <td className="py-3">
+                              {task.vehicleBrand ? (
+                                <>
+                                  <div>{task.vehicleBrand} {task.vehicleModel}</div>
+                                  <div className="text-sm text-muted-foreground">{task.licensePlate || '-'}</div>
+                                </>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </td>
+                            <td className="py-3">{task.assignedToName}</td>
+                            <td className="py-3">
+                              <Badge variant={isOverdue ? 'destructive' : 'outline'}>
+                                {format(new Date(task.dueDate), 'd MMM yyyy', { locale: nl })}
+                              </Badge>
+                            </td>
+                            <td className="py-3">
+                              <Badge variant={task.status === 'in_uitvoering' ? 'default' : 'secondary'}>
+                                {task.status === 'in_uitvoering' ? 'In uitvoering' : 'Toegewezen'}
+                              </Badge>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="completed" className="mt-4">
+              {completedTasks.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">Geen voltooide taken (laatste 7 dagen)</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b text-left">
+                        <th className="pb-3 font-medium">Taak</th>
+                        <th className="pb-3 font-medium">Voertuig</th>
+                        <th className="pb-3 font-medium">Toegewezen Aan</th>
+                        <th className="pb-3 font-medium">Voltooid Op</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {completedTasks.map((task) => (
+                        <tr key={task.id} className="border-b last:border-0">
+                          <td className="py-3">
+                            <div className="font-medium">{task.title}</div>
+                            <div className="text-sm text-muted-foreground">{task.category}</div>
+                          </td>
+                          <td className="py-3">
+                            {task.vehicleBrand ? (
+                              <>
+                                <div>{task.vehicleBrand} {task.vehicleModel}</div>
+                                <div className="text-sm text-muted-foreground">{task.licensePlate || '-'}</div>
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </td>
+                          <td className="py-3">{task.assignedToName}</td>
+                          <td className="py-3">
+                            {task.completedAt && (
+                              <Badge variant="outline" className="gap-1">
+                                <CheckCircle2 className="h-3 w-3" />
+                                {format(new Date(task.completedAt), 'd MMM yyyy', { locale: nl })}
+                              </Badge>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Vehicle Details Dialog */}
+      {vehicleDialog.isOpen && vehicleDialog.vehicle && (
+        <VehicleDetails
+          vehicle={vehicleDialog.vehicle}
+          defaultTab={vehicleDialog.defaultTab}
+          onClose={vehicleDialog.closeDialog}
+          onUpdate={() => {
+            vehicleDialog.closeDialog();
+            refetch();
+          }}
+          onSendEmail={() => {}}
+          onPhotoUpload={() => {}}
+          onRemovePhoto={() => {}}
+          onSetMainPhoto={() => {}}
+        />
+      )}
+    </div>
+  );
+};
+
+export default AftersalesDashboard;
