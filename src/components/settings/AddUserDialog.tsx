@@ -40,7 +40,7 @@ const userSchema = z.object({
       message: "Wachtwoord moet minimaal 1 kleine letter, 1 hoofdletter en 1 cijfer bevatten"
     }),
   role: z.string().refine(
-    (value) => ["owner", "admin", "manager", "verkoper", "user"].includes(value),
+    (value) => ["owner", "admin", "manager", "aftersales_manager", "verkoper", "operationeel", "user"].includes(value),
     { message: "Selecteer een geldige rol" }
   )
 });
@@ -153,7 +153,9 @@ export const AddUserDialog: React.FC<AddUserDialogProps> = ({ open, onClose }) =
 
   const roleOptions = [
     { value: "user", label: "Gebruiker", description: "Basis toegang tot het systeem" },
+    { value: "operationeel", label: "Operationeel", description: "Operationele taken uitvoeren" },
     { value: "verkoper", label: "Verkoper", description: "Kan leads en verkopen beheren" },
+    { value: "aftersales_manager", label: "Aftersales Manager", description: "Beheert leveringen, garantie en taken" },
     { value: "manager", label: "Manager", description: "Kan teams en rapportages beheren" },
     { value: "admin", label: "Admin", description: "Volledige toegang tot alle functies" },
     { value: "owner", label: "Owner", description: "Eigenaar met alle rechten" }

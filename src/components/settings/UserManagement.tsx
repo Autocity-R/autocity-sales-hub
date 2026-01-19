@@ -138,7 +138,8 @@ export const UserManagement = () => {
                     {user.role === "admin" ? "Admin" : 
                      user.role === "owner" ? "Owner" :
                      user.role === "manager" ? "Manager" :
-                     user.role === "verkoper" ? "Verkoper" : "Gebruiker"}
+                     user.role === "verkoper" ? "Verkoper" :
+                     user.role === "aftersales_manager" ? "Aftersales Manager" : "Gebruiker"}
                   </Badge>
                   <Select
                     value={user.role}
@@ -150,10 +151,11 @@ export const UserManagement = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="owner">Owner</SelectItem>
-                              <SelectItem value="admin">Admin</SelectItem>
-                              <SelectItem value="manager">Manager</SelectItem>
-                              <SelectItem value="verkoper">Verkoper</SelectItem>
-                              <SelectItem value="operationeel">Operationeel Gebruiker</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="aftersales_manager">Aftersales Manager</SelectItem>
+                      <SelectItem value="verkoper">Verkoper</SelectItem>
+                      <SelectItem value="operationeel">Operationeel Gebruiker</SelectItem>
                     </SelectContent>
                   </Select>
                   
