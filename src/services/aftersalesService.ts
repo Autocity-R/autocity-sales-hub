@@ -31,7 +31,16 @@ class AftersalesService {
   private async getPendingB2CDeliveries(): Promise<PendingDeliveryExtended[]> {
     const { data: vehicles, error } = await supabase
       .from('vehicles')
-      .select('*')
+      .select(`
+        *,
+        customerContact:contacts!vehicles_customer_id_fkey(
+          first_name,
+          last_name,
+          company_name,
+          phone,
+          email
+        )
+      `)
       .eq('status', 'verkocht_b2c')
       .order('sold_date', { ascending: true });
 
@@ -60,7 +69,21 @@ class AftersalesService {
       // Ready for delivery: checklist 100% complete AND import status is 'ingeschreven'
       const isReadyForDelivery = checklistProgress === 100 && vehicle.import_status === 'ingeschreven';
 
-      const customerName = details.customerName || 'Onbekend';
+      // Get customer name from contact relationship, fallback to details JSONB
+      const customerContact = (vehicle as any).customerContact;
+      let customerName = 'Onbekend';
+      if (customerContact) {
+        if (customerContact.company_name) {
+          customerName = customerContact.company_name;
+        } else if (customerContact.first_name || customerContact.last_name) {
+          customerName = `${customerContact.first_name || ''} ${customerContact.last_name || ''}`.trim();
+        }
+      } else if (details.customerName) {
+        customerName = details.customerName;
+      }
+
+      const customerPhone = customerContact?.phone || details.customerPhone;
+      const customerEmail = customerContact?.email || details.customerEmail;
 
       return {
         id: vehicle.id,
@@ -68,8 +91,8 @@ class AftersalesService {
         model: vehicle.model,
         licensePlate: vehicle.license_number,
         customerName,
-        customerPhone: details.customerPhone,
-        customerEmail: details.customerEmail,
+        customerPhone,
+        customerEmail,
         soldDate,
         daysSinceSale,
         checklistProgress,
