@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,7 +14,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   Eye,
-  Car
+  Car,
+  Filter
 } from 'lucide-react';
 import { aftersalesService } from '@/services/aftersalesService';
 import { format } from 'date-fns';
@@ -30,6 +31,7 @@ interface AftersalesDashboardProps {
 
 export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onViewVehicle }) => {
   const vehicleDialog = useVehicleDetailDialog();
+  const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'in_progress' | 'ready'>('all');
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['aftersales-dashboard'],
@@ -76,6 +78,22 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
 
   const { kpis, pendingDeliveries, openWarrantyClaims, resolvedWarrantyClaims, openTasks, completedTasks } = data!;
 
+  // Filter deliveries based on selected filter
+  const filteredDeliveries = useMemo(() => {
+    if (!pendingDeliveries) return [];
+    
+    switch (deliveryFilter) {
+      case 'ready':
+        return pendingDeliveries.filter(d => d.isReadyForDelivery);
+      case 'in_progress':
+        return pendingDeliveries.filter(d => !d.isReadyForDelivery);
+      default:
+        return pendingDeliveries;
+    }
+  }, [pendingDeliveries, deliveryFilter]);
+
+  const inProgressCount = pendingDeliveries.filter(d => !d.isReadyForDelivery).length;
+  const readyCount = pendingDeliveries.filter(d => d.isReadyForDelivery).length;
   const getImportStatusBadge = (status: string | null) => {
     const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
       'niet_aangemeld': { label: 'Niet aangemeld', variant: 'secondary' },
@@ -148,17 +166,51 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
         </Card>
       </div>
 
-      {/* B2C Leveringen in Afwachting */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Truck className="h-5 w-5" />
-            B2C Leveringen in Afwachting
-          </CardTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5" />
+              B2C Leveringen in Afwachting
+            </CardTitle>
+            <div className="flex gap-2">
+              <Button 
+                variant={deliveryFilter === 'all' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setDeliveryFilter('all')}
+                className="gap-1"
+              >
+                <Filter className="h-3 w-3" />
+                Alle ({pendingDeliveries.length})
+              </Button>
+              <Button 
+                variant={deliveryFilter === 'in_progress' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setDeliveryFilter('in_progress')}
+              >
+                In Progress ({inProgressCount})
+              </Button>
+              <Button 
+                variant={deliveryFilter === 'ready' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setDeliveryFilter('ready')}
+                className="gap-1"
+              >
+                <CheckCircle2 className="h-3 w-3" />
+                Klaar voor Levering ({readyCount})
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          {pendingDeliveries.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">Geen openstaande leveringen</p>
+          {filteredDeliveries.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              {deliveryFilter === 'all' 
+                ? 'Geen openstaande leveringen' 
+                : deliveryFilter === 'ready' 
+                  ? 'Geen voertuigen klaar voor levering'
+                  : 'Geen voertuigen in progress'}
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -168,12 +220,12 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
                     <th className="pb-3 font-medium">Klant</th>
                     <th className="pb-3 font-medium">Wachttijd</th>
                     <th className="pb-3 font-medium">Checklist</th>
-                    <th className="pb-3 font-medium">Import Status</th>
-                    <th className="pb-3 font-medium">Actie</th>
+                      <th className="pb-3 font-medium">Status</th>
+                      <th className="pb-3 font-medium">Actie</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {pendingDeliveries.map((delivery) => (
+                  {filteredDeliveries.map((delivery) => (
                     <tr key={delivery.id} className={cn(
                       "border-b last:border-0",
                       delivery.isLate && "bg-red-50 dark:bg-red-950/20",
@@ -206,7 +258,19 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
                         </div>
                       </td>
                       <td className="py-3">
-                        {getImportStatusBadge(delivery.importStatus)}
+                        {delivery.isReadyForDelivery ? (
+                          <Badge className="bg-green-600 hover:bg-green-700 gap-1">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Klaar voor levering
+                          </Badge>
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            {getImportStatusBadge(delivery.importStatus)}
+                            {delivery.checklistProgress < 100 && (
+                              <span className="text-xs text-muted-foreground">Checklist: {delivery.checklistProgress}%</span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="py-3">
                         <Button 

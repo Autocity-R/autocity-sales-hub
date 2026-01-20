@@ -16,6 +16,7 @@ export interface PendingDeliveryExtended {
   importStatus: ImportStatus | string | null;
   isLate: boolean;
   isWarning: boolean;
+  isReadyForDelivery: boolean;
   location: string | null;
 }
 

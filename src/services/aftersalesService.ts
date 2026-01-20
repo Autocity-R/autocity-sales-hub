@@ -44,13 +44,21 @@ class AftersalesService {
       const soldDate = vehicle.sold_date || vehicle.created_at;
       const daysSinceSale = differenceInDays(new Date(), new Date(soldDate));
       
-      // Calculate checklist progress from details JSONB
+      // Calculate checklist progress from details JSONB - preDeliveryChecklist is an array of objects
       const details = (vehicle.details as any) || {};
-      const checklist = details.preDeliveryChecklist || {};
-      const checklistItems = Object.entries(checklist);
-      const checklistCompleted = checklistItems.filter(([_, value]) => value === true).length;
-      const checklistTotal = checklistItems.length || 1;
-      const checklistProgress = Math.round((checklistCompleted / checklistTotal) * 100);
+      const checklist = details.preDeliveryChecklist || [];
+      const checklistCompleted = Array.isArray(checklist) 
+        ? checklist.filter((item: any) => item.completed === true).length 
+        : 0;
+      const checklistTotal = Array.isArray(checklist) && checklist.length > 0 
+        ? checklist.length 
+        : 0;
+      const checklistProgress = checklistTotal > 0 
+        ? Math.round((checklistCompleted / checklistTotal) * 100) 
+        : 0;
+
+      // Ready for delivery: checklist 100% complete AND import status is 'ingeschreven'
+      const isReadyForDelivery = checklistProgress === 100 && vehicle.import_status === 'ingeschreven';
 
       const customerName = details.customerName || 'Onbekend';
 
@@ -70,6 +78,7 @@ class AftersalesService {
         importStatus: vehicle.import_status,
         isLate: daysSinceSale > 21,
         isWarning: daysSinceSale >= 14 && daysSinceSale <= 21,
+        isReadyForDelivery,
         location: vehicle.location
       };
     }).sort((a, b) => b.daysSinceSale - a.daysSinceSale);
@@ -119,12 +128,10 @@ class AftersalesService {
   }
 
   private async getAftersalesTasks(): Promise<{ open: TaskExtended[], completed: TaskExtended[] }> {
-    const relevantCategories = ['aflevering', 'schoonmaak', 'reparatie', 'schadeherstel', 'poetsen', 'apk'];
-
+    // Fetch all tasks without category filter
     const { data: tasks, error } = await supabase
       .from('tasks')
       .select(`*, assigned_to_profile:profiles!tasks_assigned_to_fkey (first_name, last_name)`)
-      .in('category', relevantCategories)
       .order('due_date', { ascending: true });
 
     if (error) {
@@ -156,12 +163,12 @@ class AftersalesService {
       };
     });
 
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     return {
       open: mappedTasks.filter(t => t.status !== 'voltooid' && t.status !== 'geannuleerd'),
-      completed: mappedTasks.filter(t => t.status === 'voltooid' && t.completedAt && new Date(t.completedAt) >= sevenDaysAgo).slice(0, 50)
+      completed: mappedTasks.filter(t => t.status === 'voltooid' && t.completedAt && new Date(t.completedAt) >= thirtyDaysAgo).slice(0, 100)
     };
   }
 
