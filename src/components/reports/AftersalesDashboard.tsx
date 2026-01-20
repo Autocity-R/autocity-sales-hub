@@ -39,6 +39,31 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
     refetchInterval: 60000, // Elke minuut verversen
   });
 
+  // All hooks must be called before any conditional returns
+  const pendingDeliveries = data?.pendingDeliveries || [];
+  const openWarrantyClaims = data?.openWarrantyClaims || [];
+  const resolvedWarrantyClaims = data?.resolvedWarrantyClaims || [];
+  const openTasks = data?.openTasks || [];
+  const completedTasks = data?.completedTasks || [];
+  const kpis = data?.kpis;
+
+  // Filter deliveries based on selected filter - must be before conditional returns
+  const filteredDeliveries = useMemo(() => {
+    if (!pendingDeliveries) return [];
+    
+    switch (deliveryFilter) {
+      case 'ready':
+        return pendingDeliveries.filter(d => d.isReadyForDelivery);
+      case 'in_progress':
+        return pendingDeliveries.filter(d => !d.isReadyForDelivery);
+      default:
+        return pendingDeliveries;
+    }
+  }, [pendingDeliveries, deliveryFilter]);
+
+  const inProgressCount = pendingDeliveries.filter(d => !d.isReadyForDelivery).length;
+  const readyCount = pendingDeliveries.filter(d => d.isReadyForDelivery).length;
+
   const handleViewVehicle = async (vehicleId: string, defaultTab?: string) => {
     await vehicleDialog.openVehicle(vehicleId, defaultTab || 'checklist');
   };
@@ -76,24 +101,9 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
     );
   }
 
-  const { kpis, pendingDeliveries, openWarrantyClaims, resolvedWarrantyClaims, openTasks, completedTasks } = data!;
-
-  // Filter deliveries based on selected filter
-  const filteredDeliveries = useMemo(() => {
-    if (!pendingDeliveries) return [];
-    
-    switch (deliveryFilter) {
-      case 'ready':
-        return pendingDeliveries.filter(d => d.isReadyForDelivery);
-      case 'in_progress':
-        return pendingDeliveries.filter(d => !d.isReadyForDelivery);
-      default:
-        return pendingDeliveries;
-    }
-  }, [pendingDeliveries, deliveryFilter]);
-
-  const inProgressCount = pendingDeliveries.filter(d => !d.isReadyForDelivery).length;
-  const readyCount = pendingDeliveries.filter(d => d.isReadyForDelivery).length;
+  if (!kpis) {
+    return null;
+  }
   const getImportStatusBadge = (status: string | null) => {
     const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
       'niet_aangemeld': { label: 'Niet aangemeld', variant: 'secondary' },
