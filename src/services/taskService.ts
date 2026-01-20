@@ -22,7 +22,7 @@ export const fetchTasks = async (filters?: any): Promise<Task[]> => {
         *,
         assigned_to_profile:profiles!tasks_assigned_to_fkey(id, first_name, last_name, email),
         assigned_by_profile:profiles!tasks_assigned_by_fkey(id, first_name, last_name, email),
-        vehicle:vehicles(id, brand, model, license_number, vin)
+        vehicle:vehicles!tasks_vehicle_id_fkey(id, brand, model, license_number, vin)
       `)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false });
