@@ -21,6 +21,9 @@ export interface Task {
   damageParts?: DamageDetails;
   createdAt: Date | string;
   updatedAt: Date | string;
+  // Linked checklist item fields
+  linkedChecklistItemId?: string;
+  linkedVehicleId?: string;
 }
 
 export type TaskStatus = 

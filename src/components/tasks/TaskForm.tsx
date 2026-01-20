@@ -21,20 +21,36 @@ import { toast } from "sonner";
 import { DamageSelectionDialog } from "./DamageSelectionDialog";
 import { Badge } from "@/components/ui/badge";
 
+interface PrefilledData {
+  title: string;
+  description: string;
+  vehicleId: string;
+  linkedChecklistItemId: string;
+  linkedVehicleId: string;
+}
+
 interface TaskFormProps {
   task?: Task | null;
   onClose: () => void;
   onTaskAdded: () => void;
+  prefilledData?: PrefilledData;
+  onTaskCreatedWithId?: (taskId: string) => void;
 }
 
-export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }) => {
+export const TaskForm: React.FC<TaskFormProps> = ({ 
+  task, 
+  onClose, 
+  onTaskAdded, 
+  prefilledData,
+  onTaskCreatedWithId 
+}) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
-    title: task?.title || "",
-    description: task?.description || "",
+    title: prefilledData?.title || task?.title || "",
+    description: prefilledData?.description || task?.description || "",
     assignedTo: task?.assignedTo || "",
-    vehicleId: task?.vehicleId || "",
+    vehicleId: prefilledData?.vehicleId || task?.vehicleId || "",
     dueDate: task?.dueDate ? new Date(task.dueDate) : new Date(),
     priority: (task?.priority || "normaal") as TaskPriority,
     category: (task?.category || "klaarmaken") as TaskCategory,
@@ -47,6 +63,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
     task?.damageParts?.parts || []
   );
   const [damageDialogOpen, setDamageDialogOpen] = useState(false);
+
+  // Flag to check if this is a prefilled task from checklist
+  const isFromChecklist = !!prefilledData?.linkedChecklistItemId;
 
   const { data: employees = [] } = useQuery({
     queryKey: ["employees"],
@@ -81,6 +100,11 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
       await queryClient.invalidateQueries({ queryKey: ["tasks"] });
       await queryClient.refetchQueries({ queryKey: ["tasks"], type: 'active' });
       console.log('[TaskForm] Queries refreshed, calling onTaskAdded');
+      
+      // If this task was created from a checklist, notify with the task ID
+      if (onTaskCreatedWithId && data.id) {
+        onTaskCreatedWithId(data.id);
+      }
       
       onTaskAdded();
     },
@@ -135,6 +159,12 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
       };
     }
 
+    // Add linked checklist fields if this is from a checklist
+    if (prefilledData?.linkedChecklistItemId) {
+      taskData.linkedChecklistItemId = prefilledData.linkedChecklistItemId;
+      taskData.linkedVehicleId = prefilledData.linkedVehicleId;
+    }
+
     console.log('[TaskForm] Final taskData to submit:', taskData);
 
     try {
@@ -169,7 +199,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{task ? "Taak Bewerken" : "Nieuwe Taak Toevoegen"}</DialogTitle>
+          <DialogTitle>
+            {task ? "Taak Bewerken" : isFromChecklist ? "Taak Toewijzen vanuit Checklist" : "Nieuwe Taak Toevoegen"}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -212,14 +244,33 @@ export const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, onTaskAdded }
             />
           </div>
 
-          <SearchableVehicleSelector
-            value={formData.vehicleId}
-            onValueChange={(vehicle) => setFormData({...formData, vehicleId: vehicle?.id || ""})}
-            vehicles={vehicles}
-            label="Voertuig (optioneel)"
-            placeholder="Zoek op merk, model, VIN, kenteken..."
-            loading={false}
-          />
+          {/* Vehicle selector - disabled when from checklist */}
+          {isFromChecklist ? (
+            <div className="space-y-2">
+              <Label>Voertuig (automatisch geselecteerd)</Label>
+              <div className="p-3 bg-muted rounded-md">
+                {vehicles.find(v => v.id === formData.vehicleId) ? (
+                  <p className="text-sm font-medium">
+                    {vehicles.find(v => v.id === formData.vehicleId)?.brand}{" "}
+                    {vehicles.find(v => v.id === formData.vehicleId)?.model} -{" "}
+                    {vehicles.find(v => v.id === formData.vehicleId)?.licenseNumber || 
+                     vehicles.find(v => v.id === formData.vehicleId)?.vin}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Voertuig wordt geladen...</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <SearchableVehicleSelector
+              value={formData.vehicleId}
+              onValueChange={(vehicle) => setFormData({...formData, vehicleId: vehicle?.id || ""})}
+              vehicles={vehicles}
+              label="Voertuig (optioneel)"
+              placeholder="Zoek op merk, model, VIN, kenteken..."
+              loading={false}
+            />
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

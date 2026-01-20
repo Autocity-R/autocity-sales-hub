@@ -153,7 +153,10 @@ export const createTask = async (task: Omit<Task, 'id' | 'createdAt' | 'updatedA
       estimated_duration: task.estimatedDuration || null,
       notes: task.notes || null,
       damage_parts: task.damageParts ? { parts: task.damageParts.parts } : null,
-      sort_order: newSortOrder
+      sort_order: newSortOrder,
+      // Linked checklist item fields
+      linked_checklist_item_id: (task as any).linkedChecklistItemId || null,
+      linked_vehicle_id: (task as any).linkedVehicleId || null
     };
 
     const { data, error } = await supabase
@@ -349,6 +352,15 @@ export const updateTaskStatus = async (taskId: string, status: TaskStatus): Prom
       await registerDamageRepair(taskId, taskData, completedAt);
     }
 
+    // Auto-complete linked checklist item when task is completed
+    if (status === 'voltooid' && taskData.linked_checklist_item_id && taskData.linked_vehicle_id) {
+      await autoCompleteChecklistItem(
+        taskData.linked_vehicle_id, 
+        taskData.linked_checklist_item_id, 
+        taskData.assigned_to_profile
+      );
+    }
+
     return {
       id: data.id,
       title: data.title,
@@ -431,6 +443,70 @@ const registerDamageRepair = async (taskId: string, taskData: any, completedAt: 
     }
   } catch (error) {
     console.error('[taskService] Error registering damage repair:', error);
+    // Don't throw - we don't want to fail the task status update
+  }
+};
+
+// Auto-complete linked checklist item when task is completed
+const autoCompleteChecklistItem = async (
+  vehicleId: string, 
+  checklistItemId: string, 
+  assignedProfile: { first_name?: string; last_name?: string; email?: string } | null
+): Promise<void> => {
+  try {
+    console.log('[taskService] Auto-completing checklist item:', checklistItemId, 'for vehicle:', vehicleId);
+    
+    // Fetch the vehicle details
+    const { data: vehicle, error: fetchError } = await supabase
+      .from('vehicles')
+      .select('details')
+      .eq('id', vehicleId)
+      .single();
+
+    if (fetchError || !vehicle) {
+      console.error('[taskService] Failed to fetch vehicle for checklist update:', fetchError);
+      return;
+    }
+
+    // Get the checklist from vehicle details
+    const details = vehicle.details as any || {};
+    const checklist = details.preDeliveryChecklist || [];
+
+    // Find and update the checklist item
+    const updatedChecklist = checklist.map((item: any) => {
+      if (item.id === checklistItemId) {
+        const completedByName = assignedProfile
+          ? `${assignedProfile.first_name || ''} ${assignedProfile.last_name || ''}`.trim() || assignedProfile.email || 'Taak voltooid'
+          : 'Automatisch voltooid via taak';
+        
+        return {
+          ...item,
+          completed: true,
+          completedAt: new Date().toISOString(),
+          completedByName: `${completedByName} (via taak)`
+        };
+      }
+      return item;
+    });
+
+    // Update the vehicle with the new checklist
+    const { error: updateError } = await supabase
+      .from('vehicles')
+      .update({
+        details: {
+          ...details,
+          preDeliveryChecklist: updatedChecklist
+        }
+      })
+      .eq('id', vehicleId);
+
+    if (updateError) {
+      console.error('[taskService] Failed to update checklist item:', updateError);
+    } else {
+      console.log('[taskService] Checklist item auto-completed successfully');
+    }
+  } catch (error) {
+    console.error('[taskService] Error auto-completing checklist item:', error);
     // Don't throw - we don't want to fail the task status update
   }
 };
