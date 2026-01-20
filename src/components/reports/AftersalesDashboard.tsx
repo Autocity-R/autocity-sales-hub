@@ -336,11 +336,12 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
                         <th className="pb-3 font-medium">Probleem</th>
                         <th className="pb-3 font-medium">Dagen Open</th>
                         <th className="pb-3 font-medium">Status</th>
+                        <th className="pb-3 font-medium">Actie</th>
                       </tr>
                     </thead>
                     <tbody>
                       {openWarrantyClaims.map((claim) => (
-                        <tr key={claim.id} className="border-b last:border-0">
+                        <tr key={claim.id} className="border-b last:border-0 hover:bg-muted/50 cursor-pointer">
                           <td className="py-3">
                             <div className="font-medium">{claim.vehicleBrand} {claim.vehicleModel}</div>
                             <div className="text-sm text-muted-foreground">{claim.licensePlate || 'Geen kenteken'}</div>
@@ -353,9 +354,20 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
                             </Badge>
                           </td>
                           <td className="py-3">
-                            <Badge variant={claim.status === 'actief' ? 'default' : 'secondary'}>
-                              {claim.status === 'actief' ? 'Actief' : 'In behandeling'}
+                            <Badge variant={claim.status === 'pending' ? 'default' : 'secondary'}>
+                              {claim.status === 'pending' ? 'In behandeling' : claim.status}
                             </Badge>
+                          </td>
+                          <td className="py-3">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => window.location.href = `/garantie?claimId=${claim.id}`}
+                              className="gap-1"
+                            >
+                              <Eye className="h-4 w-4" />
+                              Bekijk
+                            </Button>
                           </td>
                         </tr>
                       ))}
@@ -378,11 +390,12 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
                         <th className="pb-3 font-medium">Probleem</th>
                         <th className="pb-3 font-medium">Doorlooptijd</th>
                         <th className="pb-3 font-medium">Kosten</th>
+                        <th className="pb-3 font-medium">Actie</th>
                       </tr>
                     </thead>
                     <tbody>
                       {resolvedWarrantyClaims.map((claim) => (
-                        <tr key={claim.id} className="border-b last:border-0">
+                        <tr key={claim.id} className="border-b last:border-0 hover:bg-muted/50 cursor-pointer">
                           <td className="py-3">
                             <div className="font-medium">{claim.vehicleBrand} {claim.vehicleModel}</div>
                             <div className="text-sm text-muted-foreground">{claim.licensePlate || 'Geen kenteken'}</div>
@@ -390,10 +403,21 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
                           <td className="py-3">{claim.customerName}</td>
                           <td className="py-3 max-w-[200px] truncate">{claim.problemDescription}</td>
                           <td className="py-3">
-                            <Badge variant="outline">{claim.resolutionDays} dagen</Badge>
+                            <Badge variant="outline">{claim.resolutionDays || 0} dagen</Badge>
                           </td>
                           <td className="py-3">
                             {claim.claimAmount ? `€${claim.claimAmount.toLocaleString()}` : '-'}
+                          </td>
+                          <td className="py-3">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => window.location.href = `/garantie?claimId=${claim.id}`}
+                              className="gap-1"
+                            >
+                              <Eye className="h-4 w-4" />
+                              Bekijk
+                            </Button>
                           </td>
                         </tr>
                       ))}

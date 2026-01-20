@@ -122,8 +122,8 @@ class AftersalesService {
     });
 
     return {
-      open: mappedClaims.filter(c => c.status === 'actief' || c.status === 'in_behandeling' || c.status === 'open'),
-      resolved: mappedClaims.filter(c => c.status === 'opgelost' || c.status === 'afgerond').slice(0, 50)
+      open: mappedClaims.filter(c => c.status === 'pending' || c.status === 'actief' || c.status === 'in_behandeling' || c.status === 'open'),
+      resolved: mappedClaims.filter(c => c.status === 'resolved' || c.status === 'opgelost' || c.status === 'afgerond').slice(0, 50)
     };
   }
 
