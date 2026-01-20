@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ClipboardCheck, Circle, CheckCircle2, Trash2, Plus } from "lucide-react";
+import { ClipboardCheck, Circle, CheckCircle2, Trash2, Plus, UserPlus, ClipboardList } from "lucide-react";
 import { Vehicle, ChecklistItem } from "@/types/inventory";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
+import { TaskForm } from "@/components/tasks/TaskForm";
 
 interface ChecklistTabProps {
   vehicle: Vehicle;
@@ -22,6 +23,7 @@ interface ChecklistTabProps {
 export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, readOnly, canToggleOnly }) => {
   const [newItemDescription, setNewItemDescription] = useState("");
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [assignTaskItem, setAssignTaskItem] = useState<ChecklistItem | null>(null);
   const { user } = useAuth();
 
   const checklist = vehicle.details?.preDeliveryChecklist || [];
@@ -94,6 +96,29 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, r
     setItemToDelete(null);
   };
 
+  const handleTaskCreated = (checklistItemId: string, taskId: string) => {
+    // Update the checklist item with the linked task ID
+    const updatedChecklist = checklist.map(item => {
+      if (item.id === checklistItemId) {
+        return {
+          ...item,
+          linkedTaskId: taskId,
+        };
+      }
+      return item;
+    });
+
+    onUpdate({
+      ...vehicle,
+      details: {
+        ...vehicle.details,
+        preDeliveryChecklist: updatedChecklist,
+      },
+    });
+    
+    setAssignTaskItem(null);
+  };
+
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), "d MMM yyyy", { locale: nl });
@@ -108,6 +133,15 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, r
     const hoursDiff = (now.getTime() - itemDate.getTime()) / (1000 * 60 * 60);
     return hoursDiff < 24;
   };
+
+  // Generate prefilled data for task form
+  const getPrefilledTaskData = (item: ChecklistItem) => ({
+    title: `${vehicle.brand} ${vehicle.model} - ${vehicle.vin || vehicle.licenseNumber || 'Checklist'}`,
+    description: item.description,
+    vehicleId: vehicle.id,
+    linkedChecklistItemId: item.id,
+    linkedVehicleId: vehicle.id,
+  });
 
   return (
     <div className="space-y-6">
@@ -199,12 +233,18 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, r
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start gap-2 mb-1">
+                    <div className="flex items-start gap-2 mb-1 flex-wrap">
                       <p className={`font-medium ${item.completed ? 'text-green-700 dark:text-green-400' : ''}`}>
                         {item.description}
                       </p>
                       {isRecentlyAdded(item.createdAt) && !item.completed && (
                         <Badge variant="secondary" className="text-xs">Nieuw</Badge>
+                      )}
+                      {item.linkedTaskId && (
+                        <Badge variant="outline" className="text-xs">
+                          <ClipboardList className="h-3 w-3 mr-1" />
+                          Taak toegewezen
+                        </Badge>
                       )}
                     </div>
 
@@ -221,17 +261,33 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, r
                     </div>
                   </div>
 
-                  {/* Delete Button - alleen tonen als niet readOnly EN niet canToggleOnly */}
-                  {!readOnly && !canToggleOnly && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setItemToDelete(item.id)}
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-1">
+                    {/* Assign Task Button - alleen tonen voor niet-voltooide items zonder gekoppelde taak */}
+                    {!readOnly && !item.completed && !item.linkedTaskId && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setAssignTaskItem(item)}
+                        className="text-muted-foreground hover:text-primary"
+                        title="Taak toewijzen"
+                      >
+                        <UserPlus className="h-4 w-4" />
+                      </Button>
+                    )}
+
+                    {/* Delete Button - alleen tonen als niet readOnly EN niet canToggleOnly */}
+                    {!readOnly && !canToggleOnly && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setItemToDelete(item.id)}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -256,6 +312,19 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, r
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Task Form Dialog */}
+      {assignTaskItem && (
+        <TaskForm
+          onClose={() => setAssignTaskItem(null)}
+          onTaskAdded={() => {
+            // We'll handle linking via a callback from TaskForm
+            setAssignTaskItem(null);
+          }}
+          prefilledData={getPrefilledTaskData(assignTaskItem)}
+          onTaskCreatedWithId={(taskId: string) => handleTaskCreated(assignTaskItem.id, taskId)}
+        />
+      )}
     </div>
   );
 };

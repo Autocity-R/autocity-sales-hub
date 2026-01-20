@@ -83,6 +83,7 @@ export interface ChecklistItem {
   completedAt?: string;
   completedBy?: string;
   completedByName?: string;
+  linkedTaskId?: string; // Reference to task created from this checklist item
   [key: string]: any; // Make compatible with Json type
 }
 

@@ -2163,6 +2163,8 @@ export type Database = {
           due_date: string
           estimated_duration: number | null
           id: string
+          linked_checklist_item_id: string | null
+          linked_vehicle_id: string | null
           location: string | null
           notes: string | null
           priority: string
@@ -2187,6 +2189,8 @@ export type Database = {
           due_date: string
           estimated_duration?: number | null
           id?: string
+          linked_checklist_item_id?: string | null
+          linked_vehicle_id?: string | null
           location?: string | null
           notes?: string | null
           priority?: string
@@ -2211,6 +2215,8 @@ export type Database = {
           due_date?: string
           estimated_duration?: number | null
           id?: string
+          linked_checklist_item_id?: string | null
+          linked_vehicle_id?: string | null
           location?: string | null
           notes?: string | null
           priority?: string
@@ -2237,6 +2243,13 @@ export type Database = {
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_linked_vehicle_id_fkey"
+            columns: ["linked_vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
           {
