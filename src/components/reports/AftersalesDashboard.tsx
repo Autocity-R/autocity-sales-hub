@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +24,10 @@ import { cn } from '@/lib/utils';
 import { useVehicleDetailDialog } from '@/hooks/useVehicleDetailDialog';
 import { VehicleDetails } from '@/components/inventory/VehicleDetails';
 import { supabase } from '@/integrations/supabase/client';
+import { WarrantyClaimDetail } from '@/components/warranty/WarrantyClaimDetail';
+import { fetchWarrantyClaims, updateWarrantyClaim, resolveWarrantyClaim, deleteWarrantyClaim } from '@/services/warrantyService';
+import { WarrantyClaim } from '@/types/warranty';
+import { useToast } from '@/hooks/use-toast';
 
 interface AftersalesDashboardProps {
   onViewVehicle?: (vehicleId: string, defaultTab?: string) => void;
@@ -31,12 +35,21 @@ interface AftersalesDashboardProps {
 
 export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onViewVehicle }) => {
   const vehicleDialog = useVehicleDetailDialog();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'in_progress' | 'ready'>('all');
+  const [selectedClaim, setSelectedClaim] = useState<WarrantyClaim | null>(null);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['aftersales-dashboard'],
     queryFn: () => aftersalesService.getDashboardData(),
     refetchInterval: 60000, // Elke minuut verversen
+  });
+
+  // Fetch full warranty claims for detail modal
+  const { data: fullWarrantyClaims = [] } = useQuery({
+    queryKey: ['warranty-claims'],
+    queryFn: fetchWarrantyClaims,
   });
 
   // All hooks must be called before any conditional returns
@@ -66,6 +79,49 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
 
   const handleViewVehicle = async (vehicleId: string, defaultTab?: string) => {
     await vehicleDialog.openVehicle(vehicleId, defaultTab || 'checklist');
+  };
+
+  const handleViewClaim = (claimId: string) => {
+    const claim = fullWarrantyClaims.find(c => c.id === claimId);
+    if (claim) {
+      setSelectedClaim(claim);
+    }
+  };
+
+  const handleUpdateClaim = async (claimId: string, updates: Partial<WarrantyClaim>) => {
+    try {
+      await updateWarrantyClaim(claimId, updates);
+      queryClient.invalidateQueries({ queryKey: ['warranty-claims'] });
+      queryClient.invalidateQueries({ queryKey: ['aftersales-dashboard'] });
+      toast({ title: "Claim bijgewerkt", description: "De garantie claim is succesvol bijgewerkt." });
+      setSelectedClaim(null);
+    } catch (error) {
+      toast({ title: "Fout", description: "Kon claim niet bijwerken.", variant: "destructive" });
+    }
+  };
+
+  const handleResolveClaim = async (claimId: string, resolutionData: { resolutionDescription: string; actualCost: number; customerSatisfaction: number }) => {
+    try {
+      await resolveWarrantyClaim(claimId, resolutionData);
+      queryClient.invalidateQueries({ queryKey: ['warranty-claims'] });
+      queryClient.invalidateQueries({ queryKey: ['aftersales-dashboard'] });
+      toast({ title: "Claim opgelost", description: "De garantie claim is succesvol afgehandeld." });
+      setSelectedClaim(null);
+    } catch (error) {
+      toast({ title: "Fout", description: "Kon claim niet oplossen.", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteClaim = async (claimId: string) => {
+    try {
+      await deleteWarrantyClaim(claimId);
+      queryClient.invalidateQueries({ queryKey: ['warranty-claims'] });
+      queryClient.invalidateQueries({ queryKey: ['aftersales-dashboard'] });
+      toast({ title: "Claim verwijderd", description: "De garantie claim is verwijderd." });
+      setSelectedClaim(null);
+    } catch (error) {
+      toast({ title: "Fout", description: "Kon claim niet verwijderen.", variant: "destructive" });
+    }
   };
 
   if (isLoading) {
@@ -362,7 +418,7 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => window.location.href = `/garantie?claimId=${claim.id}`}
+                              onClick={() => handleViewClaim(claim.id)}
                               className="gap-1"
                             >
                               <Eye className="h-4 w-4" />
@@ -412,7 +468,7 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => window.location.href = `/garantie?claimId=${claim.id}`}
+                              onClick={() => handleViewClaim(claim.id)}
                               className="gap-1"
                             >
                               <Eye className="h-4 w-4" />
@@ -573,6 +629,18 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
           onPhotoUpload={() => {}}
           onRemovePhoto={() => {}}
           onSetMainPhoto={() => {}}
+        />
+      )}
+
+      {/* Warranty Claim Detail Dialog */}
+      {selectedClaim && (
+        <WarrantyClaimDetail
+          claim={selectedClaim}
+          isOpen={!!selectedClaim}
+          onClose={() => setSelectedClaim(null)}
+          onUpdate={handleUpdateClaim}
+          onResolve={handleResolveClaim}
+          onDelete={handleDeleteClaim}
         />
       )}
     </div>
