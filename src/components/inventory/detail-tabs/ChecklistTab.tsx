@@ -16,11 +16,12 @@ import { TaskForm } from "@/components/tasks/TaskForm";
 interface ChecklistTabProps {
   vehicle: Vehicle;
   onUpdate: (vehicle: Vehicle) => void;
+  onAutoSave?: (vehicle: Vehicle) => void; // Direct opslaan naar database (bijv. voor taak koppeling)
   readOnly?: boolean;
   canToggleOnly?: boolean; // Alleen afvinken toegestaan (geen toevoegen/verwijderen)
 }
 
-export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, readOnly, canToggleOnly }) => {
+export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, onAutoSave, readOnly, canToggleOnly }) => {
   const [newItemDescription, setNewItemDescription] = useState("");
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [assignTaskItem, setAssignTaskItem] = useState<ChecklistItem | null>(null);
@@ -108,13 +109,22 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, r
       return item;
     });
 
-    onUpdate({
+    const updatedVehicle = {
       ...vehicle,
       details: {
         ...vehicle.details,
         preDeliveryChecklist: updatedChecklist,
       },
-    });
+    };
+
+    // Update lokale state
+    onUpdate(updatedVehicle);
+    
+    // Direct opslaan naar database zodat de koppeling blijft behouden
+    if (onAutoSave) {
+      console.log('Auto-saving checklist task link for item:', checklistItemId, 'task:', taskId);
+      onAutoSave(updatedVehicle);
+    }
     
     setAssignTaskItem(null);
   };

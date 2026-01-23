@@ -253,6 +253,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                         hasUserChangesRef.current = true;
                         setEditedVehicle(updatedVehicle);
                       }}
+                      onAutoSave={onAutoSave}
                       readOnly={isReadOnly && !canOnlyToggleChecklist}
                       canToggleOnly={canOnlyToggleChecklist}
                     />
