@@ -255,6 +255,7 @@ const InventoryB2B = () => {
       <div className="space-y-4">
         <B2BInventoryHeader
           selectedVehicles={selectedVehicles}
+          vehicles={filteredVehicles}
           onBulkAction={handleBulkAction}
         />
 
