@@ -107,7 +107,16 @@ export const useVehicleDetailDialog = () => {
     });
     // Invalidate queries to refresh data
     queryClient.invalidateQueries({ queryKey: ['branch-manager-dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['aftersales-dashboard'] });
   }, [queryClient]);
+
+  // Update vehicle in local state after auto-save
+  const updateVehicle = useCallback((updatedVehicle: Vehicle) => {
+    setState(prev => ({
+      ...prev,
+      vehicle: updatedVehicle
+    }));
+  }, []);
 
   return {
     isOpen: state.isOpen,
@@ -116,6 +125,7 @@ export const useVehicleDetailDialog = () => {
     vehicle: state.vehicle,
     isLoading: state.isLoading,
     openVehicle,
-    closeDialog
+    closeDialog,
+    updateVehicle
   };
 };
