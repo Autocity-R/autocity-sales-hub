@@ -12,6 +12,7 @@ import { fetchTasks, updateTaskStatus, deleteTask, reorderTasks } from "@/servic
 import { TaskForm } from "@/components/tasks/TaskForm";
 import { DraggableTaskList } from "@/components/tasks/DraggableTaskList";
 import { TaskDetail } from "@/components/tasks/TaskDetail";
+import { TaskExportButton } from "@/components/tasks/TaskExportButton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTasksRealtime } from "@/hooks/useTasksRealtime";
 
@@ -233,6 +234,7 @@ const TaskManagement = () => {
               <RefreshCw className="h-4 w-4 mr-2" />
               Ververs
             </Button>
+            <TaskExportButton tasks={tasks} />
             <Button onClick={() => setShowTaskForm(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Nieuwe Taak
