@@ -1,140 +1,97 @@
 
-# Plan: Aftersales Dashboard Checklist Opslaan Fix
+# Plan: Compacte Excel Werklijst Export
 
-## Probleem Gevonden
+## Overzicht
 
-Het Aftersales Dashboard mist de cruciale `onAutoSave` functie bij het openen van voertuig details. Hierdoor worden alle wijzigingen aan de checklist (items afvinken, taken koppelen, etc.) **NIET opgeslagen** naar de database.
+Een simpele, print-vriendelijke Excel export voor operationele medewerkers. Compact formaat dat op A4 past.
 
-### Wat er mis gaat:
+## Kolommen (5 kolommen - past op A4)
 
-```
-Aftersales Dashboard → Bekijk (Kia e-Niro) → Checklist tab → Items wijzigen → [NIET OPGESLAGEN]
-```
+| Kolom | Breedte | Inhoud |
+|-------|---------|--------|
+| Merk | 10 | Toyota, Kia, VW |
+| Model | 12 | e-Niro, Taigo |
+| Kenteken | 10 | J-481-VK |
+| VIN | 8 | Laatste 8 tekens |
+| Taak | 35 | Omschrijving |
+| ✓ | 5 | Lege checkbox |
 
-De `onAutoSave` prop die verantwoordelijk is voor het direct opslaan van checklist wijzigingen wordt niet doorgegeven aan de `VehicleDetails` component.
+## Voorbeeld Print Layout
 
-## Oplossing
-
-### 1. Wijziging: `src/components/reports/AftersalesDashboard.tsx`
-
-Voeg een `handleAutoSave` functie toe die voertuig wijzigingen opslaat naar Supabase en geef deze door aan VehicleDetails:
-
-**Nieuwe functie toevoegen:**
-```typescript
-const handleAutoSaveVehicle = async (updatedVehicle: Vehicle) => {
-  try {
-    const { error } = await supabase
-      .from('vehicles')
-      .update({
-        details: updatedVehicle.details,
-        // Andere relevante velden
-      })
-      .eq('id', updatedVehicle.id);
-    
-    if (error) throw error;
-    
-    // Update lokale state
-    vehicleDialog.updateVehicle(updatedVehicle);
-    
-    toast({ title: "Wijzigingen opgeslagen" });
-  } catch (error) {
-    toast({ 
-      title: "Fout bij opslaan", 
-      description: "Checklist wijzigingen konden niet worden opgeslagen.",
-      variant: "destructive" 
-    });
-  }
-};
+```text
+╔══════════════════════════════════════════════════════════════════╗
+║  WERKLIJST SCHOONMAAK - 26 januari 2026                          ║
+╠═══════╤═════════╤══════════╤══════════╤══════════════════════╤═══╣
+║ Merk  │ Model   │ Kenteken │ VIN      │ Taak                 │ ✓ ║
+╠═══════╪═════════╪══════════╪══════════╪══════════════════════╪═══╣
+║ Kia   │ e-Niro  │ J-481-VK │ ...ABC12 │ Interieur reinigen   │ ○ ║
+║ VW    │ Taigo   │ K-123-XY │ ...DEF34 │ Velgen poetsen       │ ○ ║
+║ Toyota│ Yaris   │ L-789-ZZ │ ...GHI56 │ Stofzuigen + wassen  │ ○ ║
+╚═══════╧═════════╧══════════╧══════════╧══════════════════════╧═══╝
 ```
 
-**VehicleDetails aanroep wijzigen:**
+## Filter Opties
+
+Bij exporteren kan je kiezen:
+- **Categorie**: Klaarmaken / Onderdelen / Werkplaats / Schadeherstel / Schoonmaak / Transport / Alles
+- **Status**: Alleen open taken (geen voltooide)
+
+## Print Optimalisatie
+
+- Landscape oriëntatie (liggend)
+- Lettergrootte 11pt voor leesbaarheid
+- Dikke randen voor makkelijk schrijven
+- Grote checkbox kolom (○) om af te vinken
+- Titel met categorie en datum bovenaan
+
+## Technische Implementatie
+
+### 1. Nieuw bestand: `src/utils/taskExportExcel.ts`
+
+Export functie met ExcelJS:
+- Filtert taken op categorie
+- Sorteert op huidige volgorde (zoals in de app)
+- Genereert compact Excel bestand
+- Zet print instellingen (A4, landscape)
+
+### 2. Nieuw bestand: `src/components/tasks/TaskExportButton.tsx`
+
+Dropdown button met categoriekeuzes:
+- Download icoon
+- Lijst met categorieën om te exporteren
+- Directe download na klik
+
+### 3. Wijziging: `src/pages/TaskManagement.tsx`
+
+Toevoegen van export button naast "Nieuwe Taak":
+
 ```tsx
-<VehicleDetails
-  vehicle={vehicleDialog.vehicle}
-  defaultTab={vehicleDialog.defaultTab}
-  onClose={vehicleDialog.closeDialog}
-  onUpdate={handleSaveVehicle}       // ← Echte save functie
-  onAutoSave={handleAutoSaveVehicle} // ← NIEUWE: Auto-save voor checklist
-  onSendEmail={() => {}}
-  onPhotoUpload={() => {}}
-  onRemovePhoto={() => {}}
-  onSetMainPhoto={() => {}}
-/>
+<div className="flex gap-2">
+  <Button variant="outline" onClick={handleForceRefresh}>
+    <RefreshCw className="h-4 w-4 mr-2" />
+    Ververs
+  </Button>
+  <TaskExportButton tasks={tasks} />  {/* NIEUW */}
+  <Button onClick={() => setShowTaskForm(true)}>
+    <Plus className="h-4 w-4 mr-2" />
+    Nieuwe Taak
+  </Button>
+</div>
 ```
 
-### 2. Uitbreiding: `src/hooks/useVehicleDetailDialog.ts`
+## Bestandswijzigingen
 
-Voeg een `updateVehicle` functie toe om de lokale state bij te werken na een save:
-
-```typescript
-const updateVehicle = useCallback((updatedVehicle: Vehicle) => {
-  setState(prev => ({
-    ...prev,
-    vehicle: updatedVehicle
-  }));
-}, []);
-
-return {
-  // ... bestaande returns
-  updateVehicle,  // ← Nieuw
-};
-```
-
-### 3. Toast Feedback Toevoegen
-
-Import en gebruik toast voor feedback bij opslaan/falen:
-
-```typescript
-import { useToast } from '@/hooks/use-toast';
-// ...
-const { toast } = useToast(); // Al aanwezig
-```
-
-## Technische Details
-
-### Huidige Flow (KAPOT):
-```
-1. Open checklist in Aftersales Dashboard
-2. Wijzig item (toggle, delete, add)
-3. ChecklistTab roept onUpdate aan → editedVehicle wijzigt
-4. onAutoSave is undefined → NIETS wordt opgeslagen
-5. Dialog sluiten → Wijzigingen verloren
-```
-
-### Nieuwe Flow (GEREPAREERD):
-```
-1. Open checklist in Aftersales Dashboard
-2. Wijzig item (toggle, delete, add)
-3. ChecklistTab roept onUpdate aan → editedVehicle wijzigt
-4. onAutoSave is gedefinieerd → Supabase update wordt uitgevoerd
-5. Toast toont "Wijzigingen opgeslagen"
-6. Dialog sluiten → Wijzigingen behouden
-```
-
-## Bestanden te Wijzigen
-
-| Bestand | Wijziging |
-|---------|-----------|
-| `src/components/reports/AftersalesDashboard.tsx` | Toevoegen `handleAutoSaveVehicle` functie + doorgeven aan VehicleDetails |
-| `src/hooks/useVehicleDetailDialog.ts` | Toevoegen `updateVehicle` functie |
-
-## Kia e-Niro Taken Status
-
-Op basis van de database zie ik de volgende taken die nog gekoppeld zijn aan de Kia e-Niro (J-481-VK):
-
-| Taak Beschrijving | Status | Gecreëerd |
-|-------------------|--------|-----------|
-| Achterklep hapert met openen | toegewezen | 23 jan |
-| Indien iemand links achter zit, gaat midden piepen | toegewezen | 23 jan |
-| Pitje rechterachter scherm uitdeuken | toegewezen | 23 jan |
-| Plekjes bijwerken rondom GOED | toegewezen | 23 jan |
-
-En de checklist heeft 9 items waarvan 2 voltooid (12v accu vervangen + Onderhoudsbeurt bij Kia Breda).
+| Bestand | Actie |
+|---------|-------|
+| `src/utils/taskExportExcel.ts` | Nieuw - Excel generatie |
+| `src/components/tasks/TaskExportButton.tsx` | Nieuw - Export dropdown |
+| `src/pages/TaskManagement.tsx` | Wijzigen - Button toevoegen |
 
 ## Resultaat
 
-Na deze fix:
-- Alle checklist wijzigingen in Aftersales Dashboard worden direct opgeslagen
-- Gebruikers krijgen visuele feedback (toast) wanneer wijzigingen zijn opgeslagen
-- Taak-koppelingen blijven behouden
-- Geen data verlies meer bij het sluiten van de dialog
+Medewerker workflow:
+1. Open Taken Beheer
+2. Klik op "Excel" dropdown → Kies "Schoonmaak"
+3. Excel wordt gedownload: `Werklijst_Schoonmaak_26-01-2026.xlsx`
+4. Print en geef mee aan medewerker
+5. Medewerker vinkt af met pen ✓
