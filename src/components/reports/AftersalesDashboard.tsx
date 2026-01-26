@@ -81,6 +81,65 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
     await vehicleDialog.openVehicle(vehicleId, defaultTab || 'checklist');
   };
 
+  // Auto-save functie voor checklist wijzigingen
+  const handleAutoSaveVehicle = async (updatedVehicle: any) => {
+    try {
+      const { error } = await supabase
+        .from('vehicles')
+        .update({
+          details: updatedVehicle.details,
+          status: updatedVehicle.salesStatus,
+          location: updatedVehicle.location,
+        })
+        .eq('id', updatedVehicle.id);
+
+      if (error) throw error;
+
+      // Update lokale state in dialog
+      vehicleDialog.updateVehicle(updatedVehicle);
+      
+      toast({ 
+        title: "Wijzigingen opgeslagen", 
+        description: "Checklist is automatisch bijgewerkt." 
+      });
+    } catch (error) {
+      console.error('Auto-save error:', error);
+      toast({
+        title: "Fout bij opslaan",
+        description: "Checklist wijzigingen konden niet worden opgeslagen.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Expliciete save functie voor de Opslaan knop
+  const handleSaveVehicle = async (updatedVehicle: any) => {
+    try {
+      const { error } = await supabase
+        .from('vehicles')
+        .update({
+          details: updatedVehicle.details,
+          status: updatedVehicle.salesStatus,
+          location: updatedVehicle.location,
+          selling_price: updatedVehicle.sellingPrice,
+        })
+        .eq('id', updatedVehicle.id);
+
+      if (error) throw error;
+
+      toast({ title: "Voertuig opgeslagen" });
+      vehicleDialog.closeDialog();
+      refetch();
+    } catch (error) {
+      console.error('Save error:', error);
+      toast({
+        title: "Fout bij opslaan",
+        description: "Wijzigingen konden niet worden opgeslagen.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleViewClaim = (claimId: string) => {
     const claim = fullWarrantyClaims.find(c => c.id === claimId);
     if (claim) {
@@ -621,10 +680,8 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
           vehicle={vehicleDialog.vehicle}
           defaultTab={vehicleDialog.defaultTab}
           onClose={vehicleDialog.closeDialog}
-          onUpdate={() => {
-            vehicleDialog.closeDialog();
-            refetch();
-          }}
+          onUpdate={handleSaveVehicle}
+          onAutoSave={handleAutoSaveVehicle}
           onSendEmail={() => {}}
           onPhotoUpload={() => {}}
           onRemovePhoto={() => {}}
