@@ -103,7 +103,7 @@ export const exportTasksToExcel = async (
       task.vehicleModel || '-',
       task.vehicleLicenseNumber || '-',
       vinShort,
-      task.title || task.description,
+      task.description || task.title,
       '○'
     ]);
 
