@@ -1,48 +1,77 @@
 
+# Plan: RLS Policies Repareren voor Aftersales Manager en Verkopers
 
-# Plan: Taak Omschrijving in Excel Export
+## Probleem Geïdentificeerd
 
-## Het Probleem
+Na analyse van de database RLS policies en de code, heb ik de volgende problemen gevonden:
 
-Momenteel toont de Excel werklijst alleen de **titel** van de taak (bijv. "Kia e-Niro"). De **omschrijving** (wat er daadwerkelijk gedaan moet worden) wordt niet getoond.
+### 1. Contacts Tabel - Aftersales Manager Ontbreekt
 
-## De Oplossing
-
-De "Taak" kolom aanpassen zodat de **omschrijving (description)** wordt getoond in plaats van de titel.
-
-## Voorbeeld
-
-**Nu:**
-| Merk | Model | Kenteken | VIN | Taak | ✓ |
-|------|-------|----------|-----|------|---|
-| Kia | e-Niro | J-481-VK | ...ABC12 | Kia e-Niro | ○ |
-
-**Na aanpassing:**
-| Merk | Model | Kenteken | VIN | Taak | ✓ |
-|------|-------|----------|-----|------|---|
-| Kia | e-Niro | J-481-VK | ...ABC12 | Interieur reinigen en stofzuigen | ○ |
-
-## Technische Wijziging
-
-**Bestand:** `src/utils/taskExportExcel.ts`
-
-**Regel 106 wijzigen van:**
-```typescript
-task.title || task.description,
+**Huidige RLS policy voor SELECT:**
+```sql
+has_role(auth.uid(), 'admin'::app_role) OR 
+has_role(auth.uid(), 'owner'::app_role) OR 
+has_role(auth.uid(), 'manager'::app_role) OR 
+has_role(auth.uid(), 'verkoper'::app_role)
 ```
 
-**Naar:**
-```typescript
-task.description || task.title,
+De `aftersales_manager` rol ontbreekt! Dit betekent:
+- Lloyd (aftersales_manager) kan **geen klanten zien** die aan auto's gekoppeld zijn
+- Hierdoor ziet hij in het Aftersales dashboard geen klantnamen bij de B2C leveringen
+
+### 2. Voertuig Aflevering - Vehicles UPDATE Policy
+
+**Huidige RLS policy voor UPDATE:**
+```sql
+has_role(auth.uid(), 'admin'::app_role) OR 
+has_role(auth.uid(), 'owner'::app_role) OR 
+has_role(auth.uid(), 'manager'::app_role) OR 
+has_role(auth.uid(), 'verkoper'::app_role)
 ```
 
-Dit zorgt ervoor dat:
-- De omschrijving (description) wordt getoond als deze bestaat
-- Als er geen omschrijving is, valt het terug op de titel
+De `verkoper` rol staat erbij, dus verkopers zouden wel auto's moeten kunnen afleveren. Als dit niet werkt, is er mogelijk een sessie/authenticatie probleem.
+
+## Oplossing
+
+### Database Migratie
+
+We moeten de RLS policies op de `contacts` tabel updaten om de `aftersales_manager` rol toe te voegen voor SELECT rechten:
+
+```sql
+-- Drop oude policy
+DROP POLICY IF EXISTS "Authorized users can view contacts" ON contacts;
+
+-- Maak nieuwe policy met aftersales_manager
+CREATE POLICY "Authorized users can view contacts" 
+ON contacts FOR SELECT 
+TO authenticated
+USING (
+  has_role(auth.uid(), 'admin'::app_role) OR 
+  has_role(auth.uid(), 'owner'::app_role) OR 
+  has_role(auth.uid(), 'manager'::app_role) OR 
+  has_role(auth.uid(), 'verkoper'::app_role) OR
+  has_role(auth.uid(), 'aftersales_manager'::app_role)
+);
+```
+
+## Gebruikers Betrokken
+
+| Gebruiker | Email | Rol | Huidig Probleem |
+|-----------|-------|-----|-----------------|
+| Lloyd | lloyd@auto-city.nl | aftersales_manager | Kan geen klanten zien |
+| Alex | alex@auto-city.nl | verkoper | Zou moeten werken |
+| Martijn | martijn@auto-city.nl | verkoper | Zou moeten werken |
+| Mario | mario@auto-city.nl | verkoper | Zou moeten werken |
+
+## Extra Controle Nodig
+
+Als de verkopers nog steeds problemen hebben na het verifiëren dat de RLS correct is:
+1. Vraag hen uit te loggen en opnieuw in te loggen
+2. Check of hun sessie geldig is (geen "Invalid Refresh Token" errors)
+3. Controleer of de `has_role` functie correct werkt voor hun user_id
 
 ## Bestandswijzigingen
 
-| Bestand | Actie |
-|---------|-------|
-| `src/utils/taskExportExcel.ts` | Wijzigen - regel 106 aanpassen |
-
+| Type | Actie |
+|------|-------|
+| Database | RLS policy updaten op `contacts` tabel |
