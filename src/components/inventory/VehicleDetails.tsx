@@ -63,9 +63,17 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   const hasUserChangesRef = useRef(false);
   
   // Role-based access
-  const { hasPriceAccess, isOperationalUser, canChecklistToggle } = useRoleAccess();
-  const isReadOnly = isOperationalUser();
+  const { hasPriceAccess, isOperationalUser, canChecklistToggle, isAftersalesManager, canManageChecklists } = useRoleAccess();
+  
+  // Voor algemene voertuig editing (details tab, prijzen, etc.) - aftersales_manager krijgt read-only voor details
+  const isReadOnly = isOperationalUser() || isAftersalesManager();
+  
+  // Operationeel personeel mag alleen checklist items afvinken (niet toevoegen/verwijderen)
   const canOnlyToggleChecklist = isOperationalUser() && canChecklistToggle();
+  
+  // Aftersales manager krijgt volledige checklist toegang (toevoegen, afvinken, taken toewijzen)
+  const checklistReadOnly = !canManageChecklists();
+  const checklistCanToggleOnly = isOperationalUser() && canChecklistToggle();
   
   // Always use the hook to fetch files for this vehicle
   const { vehicleFiles: hookVehicleFiles } = useVehicleFiles(vehicle);
@@ -254,8 +262,8 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                         setEditedVehicle(updatedVehicle);
                       }}
                       onAutoSave={onAutoSave}
-                      readOnly={isReadOnly && !canOnlyToggleChecklist}
-                      canToggleOnly={canOnlyToggleChecklist}
+                      readOnly={checklistReadOnly}
+                      canToggleOnly={checklistCanToggleOnly}
                     />
                   </TabsContent>
                 )}
