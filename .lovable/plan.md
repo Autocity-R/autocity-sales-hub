@@ -1,90 +1,110 @@
 
-# Plan: Aftersales Manager Taakbeheer Rechten Repareren
+## Doel
+De foutmelding bij Lloyd (aftersales_manager) weghalen én ervoor zorgen dat hij:
+- checklist-items kan afvinken (en taken koppelen/toewijzen)
+- taken kan maken/toewijzen/afvinken (dit hebben we al in de taken-UI gedaan)
+Zonder dat hij “echte” voertuigdata (prijzen/status/klantkoppeling) kan bewerken.
 
-## Probleem Geïdentificeerd
+## Wat er nu misgaat (oorzaak)
+1) **De foutmelding komt door een voertuig-update die Lloyd niet mág doen (RLS)**
+- In de console staat `PGRST116 ... result contains 0 rows ... JSON object requested...` bij `updateVehicle`.
+- Dit gebeurt wanneer de app via `supabaseInventoryService.updateVehicle(...)` of een directe `vehicles.update(...)` probeert te schrijven.
+- Voor `aftersales_manager` staat RLS op `vehicles` UPDATE **uit** (bewust), dus de update faalt → toast “Fout bij het bijwerken van het voertuig”.
 
-De aftersales manager (Lloyd) kan op dit moment:
-- ❌ Geen taken afvinken van anderen
-- ❌ Geen taken bewerken/verwijderen van anderen  
-- ✅ Wel eigen taken aanmaken (werkt al via database)
+2) **De UI behandelt aftersales_manager per ongeluk als “niet read-only” in VehicleDetails**
+- `VehicleDetails.tsx` zet readOnly nu vooral op basis van `isOperationalUser()`.
+- Aftersales_manager is geen “operationeel” user, dus krijgt hij per ongeluk bewerk-flow/auto-save → die probeert voertuigen te updaten → RLS error.
 
-**Oorzaak:** De UI componenten controleren alleen `isAdmin`, maar `aftersales_manager` is geen admin.
+3) **Taak afronden kan ook checklist in vehicle.details willen updaten**
+- `taskService.ts` heeft `autoCompleteChecklistItem(...)` dat `vehicles.details.preDeliveryChecklist` bijwerkt via `.from('vehicles').update(...)`.
+- Ook dit faalt voor aftersales_manager met huidige RLS.
 
-## Huidige Code (Fout)
+## Oplossing (veilig én passend bij roldefinitie)
+We pakken dit in 2 lagen aan:
 
-In 4 bestanden staat deze logica:
+### A) Frontend: aftersales_manager “read-only vehicle”, maar wél checklist-toggle en taak-toewijzing
+We passen `VehicleDetails` + `ChecklistTab` permissies aan zodat:
+- Aftersales_manager kan **niet** opslaan/autosaven van het voertuig als geheel
+- Aftersales_manager kan **wel** checklist items afvinken
+- Aftersales_manager kan **wel** taken aan checklist-items koppelen/toewijzen (assign task knop zichtbaar)
+- Daardoor stopt de app met het triggeren van `updateVehicle(...)` voor Lloyd → foutmelding weg
 
-```typescript
-const { user, isAdmin } = useAuth();
-const canManageTask = isAdmin || task.assignedTo === user?.id || task.assignedBy === user?.id;
-const canEditDelete = isAdmin || task.assignedBy === user?.id;
-```
+Concreet:
+1. **`src/components/inventory/VehicleDetails.tsx`**
+   - `useRoleAccess()` uitbreiden in deze component met `canEditVehicles`, `canChecklistToggle`, `canAssignTasks`.
+   - Nieuwe permissie-logica:
+     - `const canEditThisVehicle = canEditVehicles();`
+     - `const canToggleChecklist = canChecklistToggle();`
+     - `const isReadOnly = !canEditThisVehicle;`
+     - `const canOnlyToggleChecklist = isReadOnly && canToggleChecklist;`
+   - Save-knop en autosave blokkeren als `isReadOnly === true`.
+   - ChecklistTab props:
+     - `readOnly={isReadOnly && !canOnlyToggleChecklist}` (zoals nu idee)
+     - `canToggleOnly={canOnlyToggleChecklist}`
+     - extra prop toevoegen (nieuw): `canAssignTasks={canAssignTasks()}` zodat “Taak toewijzen” knop ook in toggle-only modus zichtbaar kan zijn.
 
-De `aftersales_manager` wordt niet meegenomen, terwijl `useRoleAccess.ts` al de juiste functie heeft.
+2. **`src/components/inventory/detail-tabs/ChecklistTab.tsx`**
+   - Nieuwe prop `canAssignTasks?: boolean`.
+   - “Taak toewijzen” knop tonen op basis van:
+     - `(!readOnly || canAssignTasks)` in plaats van alleen `!readOnly`
+   - Toggle checkbox moet blijven werken wanneer `canToggleOnly` true is (nu werkt toggle al zolang `readOnly` false is). Dus we passen de checkbox rendering aan:
+     - Als `readOnly === true` maar `canToggleOnly === true`: toon checkbox (en laat toggle toe).
+     - Als `readOnly === true` en `canToggleOnly === false`: alleen icon (geen toggle).
 
-## Oplossing
+Resultaat: Lloyd kan checklist afvinken + taken toewijzen, maar alle voertuig “Opslaan/autosave” flows worden geblokkeerd.
 
-Voeg `useRoleAccess` toe aan de task componenten en gebruik `canAssignTasks()` voor management rechten.
+### B) Backend (Supabase): veilige “alleen checklist bijwerken” RPC voor auto-complete vanuit taken
+Omdat `taskService.autoCompleteChecklistItem()` ook de checklist in `vehicles.details` wil updaten, maken we dit veilig via een **security definer function** (RPC) die:
+- Alleen de checklist-item completion bijwerkt
+- Alleen toegankelijk is voor toegestane rollen (admin/owner/manager/verkoper/aftersales_manager)
+- Geen algemene vehicle update rechten hoeft te geven aan aftersales_manager
 
-### Nieuwe Code
+Concreet:
+1. **Nieuwe Supabase migration** (nieuwe SQL file in `supabase/migrations/`)
+   - Maak functie, bijv:
+     - `public.complete_pre_delivery_checklist_item(vehicle_id uuid, checklist_item_id text, completed_by_name text)`
+   - Implementatie:
+     - Haal huidige `details->preDeliveryChecklist` op
+     - Update alleen het juiste item (set completed/completedAt/completedByName)
+     - Schrijf terug naar `vehicles.details`
+   - Function:
+     - `SECURITY DEFINER`
+     - `set search_path = public`
+     - Autorisatie-check in SQL:
+       - `if not (has_role(auth.uid(),'admin') or ... or has_role(auth.uid(),'aftersales_manager')) then raise exception ...`
+2. **`src/services/taskService.ts`**
+   - Vervang het directe `supabase.from('vehicles').update(...)` in `autoCompleteChecklistItem` door:
+     - `supabase.rpc('complete_pre_delivery_checklist_item', { vehicle_id: ..., checklist_item_id: ..., completed_by_name: ... })`
+   - Foutafhandeling: nog steeds “niet throwen” (zodat taak voltooien nooit faalt door checklist-sync).
 
-```typescript
-const { user, isAdmin } = useAuth();
-const { canAssignTasks } = useRoleAccess();
-const hasManagementRights = isAdmin || canAssignTasks();
+Resultaat: Ook wanneer Lloyd taken voltooit die aan checklist-items gekoppeld zijn, kan de checklist automatisch geüpdatet worden zonder vehicle UPDATE permissie.
 
-const canManageTask = hasManagementRights || task.assignedTo === user?.id || task.assignedBy === user?.id;
-const canEditDelete = hasManagementRights || task.assignedBy === user?.id;
-```
+## Waarom dit de foutmelding oplost
+- De toast “Fout bij het bijwerken van het voertuig” kwam doordat de UI probeerde een vehicle update te doen die Lloyd niet mag.
+- Door aftersales_manager als read-only op voertuigen te behandelen, verdwijnen die update calls.
+- Waar we wél een write nodig hebben (checklist completion), doen we dat via een gecontroleerde RPC i.p.v. algemene UPDATE rechten.
 
-## Bestanden om aan te passen
+## Testplan (wat jij/ Lloyd moet testen)
+1) Inloggen als Lloyd → ga naar `/inventory/consumer` → open een B2C voertuig → Checklist tab:
+   - Checklist item afvinken: mag, geen fouttoast.
+   - Geen “Opslaan” button zichtbaar (of disabled), geen autosave-trigger.
+2) In Checklist: “Taak toewijzen” op een item:
+   - Taak aanmaken + toewijzen moet werken (en link badge “Taak toegewezen” zichtbaar).
+3) In Takenbeheer: voltooi een taak die gekoppeld is aan een checklist item:
+   - Taak status naar “voltooid” moet werken
+   - Checklist item wordt automatisch op completed gezet (via RPC)
+   - Geen “Fout bij het bijwerken van het voertuig” toast.
 
-| Bestand | Wijziging |
-|---------|-----------|
-| `src/components/tasks/TaskMobileCard.tsx` | Toevoegen `useRoleAccess` + aanpassen permissie logica |
-| `src/components/tasks/TaskListOptimized.tsx` | Toevoegen `useRoleAccess` + aanpassen permissie logica |
-| `src/components/tasks/DraggableTaskList.tsx` | Toevoegen `useRoleAccess` + aanpassen permissie logica |
-| `src/components/tasks/TaskDetail.tsx` | Toevoegen `useRoleAccess` + aanpassen permissie logica |
+## Bestanden die aangepast worden
+Frontend:
+- `src/components/inventory/VehicleDetails.tsx`
+- `src/components/inventory/detail-tabs/ChecklistTab.tsx`
+- (mogelijk) types voor props aanpassen waar ChecklistTab gebruikt wordt
 
-## Voorbeeld Wijziging (TaskMobileCard.tsx)
+Backend:
+- `supabase/migrations/<new>_checklist_rpc.sql` (nieuwe migration)
+- `src/services/taskService.ts` (RPC call)
 
-**Van:**
-```typescript
-import { useAuth } from "@/contexts/AuthContext";
-// ...
-const { user, isAdmin } = useAuth();
-const canManageTask = isAdmin || task.assignedTo === user?.id || task.assignedBy === user?.id;
-const canEditDelete = isAdmin || task.assignedBy === user?.id;
-```
-
-**Naar:**
-```typescript
-import { useAuth } from "@/contexts/AuthContext";
-import { useRoleAccess } from "@/hooks/useRoleAccess";
-// ...
-const { user, isAdmin } = useAuth();
-const { canAssignTasks } = useRoleAccess();
-const hasManagementRights = isAdmin || canAssignTasks();
-
-const canManageTask = hasManagementRights || task.assignedTo === user?.id || task.assignedBy === user?.id;
-const canEditDelete = hasManagementRights || task.assignedBy === user?.id;
-```
-
-## Resultaat na wijziging
-
-| Functie | Admin/Owner | Manager | Verkoper | Aftersales Manager | Operationeel |
-|---------|-------------|---------|----------|-------------------|--------------|
-| Taken bekijken | ✅ | ✅ | ✅ | ✅ | Alleen eigen |
-| Taken afvinken (allen) | ✅ | ✅ | ✅ | ✅ | Alleen eigen |
-| Taken aanmaken | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Taken bewerken (allen) | ✅ | ✅ | ✅ | ✅ | Alleen eigen |
-| Taken verwijderen | ✅ | ✅ | ✅ | ✅ | Alleen eigen |
-
-## Database Status
-
-De database RLS policies zijn al correct ingesteld:
-- ✅ `aftersales_manager` kan taken SELECT (bekijken)
-- ✅ `aftersales_manager` kan taken UPDATE (afvinken/bewerken)
-- ✅ `aftersales_manager` kan taken INSERT (aanmaken)
-
-Het probleem zit puur in de frontend UI permissies.
+## Risico’s / aandachtspunten
+- We moeten de checklist JSON-structuur consistent houden (id/description/completed/completedAt/completedByName). De RPC moet defensief omgaan met ontbrekende checklist arrays.
+- PGRST116 blijft een “symptoom-code” bij `.single()` zonder rows; door de UI flow te stoppen voor Lloyd, hoort die niet meer op te treden in dit scenario.
