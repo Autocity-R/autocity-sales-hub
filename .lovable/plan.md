@@ -1,77 +1,90 @@
 
-# Plan: RLS Policies Repareren voor Aftersales Manager en Verkopers
+# Plan: Aftersales Manager Taakbeheer Rechten Repareren
 
 ## Probleem Geïdentificeerd
 
-Na analyse van de database RLS policies en de code, heb ik de volgende problemen gevonden:
+De aftersales manager (Lloyd) kan op dit moment:
+- ❌ Geen taken afvinken van anderen
+- ❌ Geen taken bewerken/verwijderen van anderen  
+- ✅ Wel eigen taken aanmaken (werkt al via database)
 
-### 1. Contacts Tabel - Aftersales Manager Ontbreekt
+**Oorzaak:** De UI componenten controleren alleen `isAdmin`, maar `aftersales_manager` is geen admin.
 
-**Huidige RLS policy voor SELECT:**
-```sql
-has_role(auth.uid(), 'admin'::app_role) OR 
-has_role(auth.uid(), 'owner'::app_role) OR 
-has_role(auth.uid(), 'manager'::app_role) OR 
-has_role(auth.uid(), 'verkoper'::app_role)
+## Huidige Code (Fout)
+
+In 4 bestanden staat deze logica:
+
+```typescript
+const { user, isAdmin } = useAuth();
+const canManageTask = isAdmin || task.assignedTo === user?.id || task.assignedBy === user?.id;
+const canEditDelete = isAdmin || task.assignedBy === user?.id;
 ```
 
-De `aftersales_manager` rol ontbreekt! Dit betekent:
-- Lloyd (aftersales_manager) kan **geen klanten zien** die aan auto's gekoppeld zijn
-- Hierdoor ziet hij in het Aftersales dashboard geen klantnamen bij de B2C leveringen
-
-### 2. Voertuig Aflevering - Vehicles UPDATE Policy
-
-**Huidige RLS policy voor UPDATE:**
-```sql
-has_role(auth.uid(), 'admin'::app_role) OR 
-has_role(auth.uid(), 'owner'::app_role) OR 
-has_role(auth.uid(), 'manager'::app_role) OR 
-has_role(auth.uid(), 'verkoper'::app_role)
-```
-
-De `verkoper` rol staat erbij, dus verkopers zouden wel auto's moeten kunnen afleveren. Als dit niet werkt, is er mogelijk een sessie/authenticatie probleem.
+De `aftersales_manager` wordt niet meegenomen, terwijl `useRoleAccess.ts` al de juiste functie heeft.
 
 ## Oplossing
 
-### Database Migratie
+Voeg `useRoleAccess` toe aan de task componenten en gebruik `canAssignTasks()` voor management rechten.
 
-We moeten de RLS policies op de `contacts` tabel updaten om de `aftersales_manager` rol toe te voegen voor SELECT rechten:
+### Nieuwe Code
 
-```sql
--- Drop oude policy
-DROP POLICY IF EXISTS "Authorized users can view contacts" ON contacts;
+```typescript
+const { user, isAdmin } = useAuth();
+const { canAssignTasks } = useRoleAccess();
+const hasManagementRights = isAdmin || canAssignTasks();
 
--- Maak nieuwe policy met aftersales_manager
-CREATE POLICY "Authorized users can view contacts" 
-ON contacts FOR SELECT 
-TO authenticated
-USING (
-  has_role(auth.uid(), 'admin'::app_role) OR 
-  has_role(auth.uid(), 'owner'::app_role) OR 
-  has_role(auth.uid(), 'manager'::app_role) OR 
-  has_role(auth.uid(), 'verkoper'::app_role) OR
-  has_role(auth.uid(), 'aftersales_manager'::app_role)
-);
+const canManageTask = hasManagementRights || task.assignedTo === user?.id || task.assignedBy === user?.id;
+const canEditDelete = hasManagementRights || task.assignedBy === user?.id;
 ```
 
-## Gebruikers Betrokken
+## Bestanden om aan te passen
 
-| Gebruiker | Email | Rol | Huidig Probleem |
-|-----------|-------|-----|-----------------|
-| Lloyd | lloyd@auto-city.nl | aftersales_manager | Kan geen klanten zien |
-| Alex | alex@auto-city.nl | verkoper | Zou moeten werken |
-| Martijn | martijn@auto-city.nl | verkoper | Zou moeten werken |
-| Mario | mario@auto-city.nl | verkoper | Zou moeten werken |
+| Bestand | Wijziging |
+|---------|-----------|
+| `src/components/tasks/TaskMobileCard.tsx` | Toevoegen `useRoleAccess` + aanpassen permissie logica |
+| `src/components/tasks/TaskListOptimized.tsx` | Toevoegen `useRoleAccess` + aanpassen permissie logica |
+| `src/components/tasks/DraggableTaskList.tsx` | Toevoegen `useRoleAccess` + aanpassen permissie logica |
+| `src/components/tasks/TaskDetail.tsx` | Toevoegen `useRoleAccess` + aanpassen permissie logica |
 
-## Extra Controle Nodig
+## Voorbeeld Wijziging (TaskMobileCard.tsx)
 
-Als de verkopers nog steeds problemen hebben na het verifiëren dat de RLS correct is:
-1. Vraag hen uit te loggen en opnieuw in te loggen
-2. Check of hun sessie geldig is (geen "Invalid Refresh Token" errors)
-3. Controleer of de `has_role` functie correct werkt voor hun user_id
+**Van:**
+```typescript
+import { useAuth } from "@/contexts/AuthContext";
+// ...
+const { user, isAdmin } = useAuth();
+const canManageTask = isAdmin || task.assignedTo === user?.id || task.assignedBy === user?.id;
+const canEditDelete = isAdmin || task.assignedBy === user?.id;
+```
 
-## Bestandswijzigingen
+**Naar:**
+```typescript
+import { useAuth } from "@/contexts/AuthContext";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
+// ...
+const { user, isAdmin } = useAuth();
+const { canAssignTasks } = useRoleAccess();
+const hasManagementRights = isAdmin || canAssignTasks();
 
-| Type | Actie |
-|------|-------|
-| Database | RLS policy updaten op `contacts` tabel |
+const canManageTask = hasManagementRights || task.assignedTo === user?.id || task.assignedBy === user?.id;
+const canEditDelete = hasManagementRights || task.assignedBy === user?.id;
+```
+
+## Resultaat na wijziging
+
+| Functie | Admin/Owner | Manager | Verkoper | Aftersales Manager | Operationeel |
+|---------|-------------|---------|----------|-------------------|--------------|
+| Taken bekijken | ✅ | ✅ | ✅ | ✅ | Alleen eigen |
+| Taken afvinken (allen) | ✅ | ✅ | ✅ | ✅ | Alleen eigen |
+| Taken aanmaken | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Taken bewerken (allen) | ✅ | ✅ | ✅ | ✅ | Alleen eigen |
+| Taken verwijderen | ✅ | ✅ | ✅ | ✅ | Alleen eigen |
+
+## Database Status
+
+De database RLS policies zijn al correct ingesteld:
+- ✅ `aftersales_manager` kan taken SELECT (bekijken)
+- ✅ `aftersales_manager` kan taken UPDATE (afvinken/bewerken)
+- ✅ `aftersales_manager` kan taken INSERT (aanmaken)
+
+Het probleem zit puur in de frontend UI permissies.
