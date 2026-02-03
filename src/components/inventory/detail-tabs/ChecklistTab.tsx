@@ -19,10 +19,9 @@ interface ChecklistTabProps {
   onAutoSave?: (vehicle: Vehicle) => void; // Direct opslaan naar database (bijv. voor taak koppeling)
   readOnly?: boolean;
   canToggleOnly?: boolean; // Alleen afvinken toegestaan (geen toevoegen/verwijderen)
-  canAssignTasks?: boolean; // Mag taken toewijzen (ook in toggle-only modus)
 }
 
-export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, onAutoSave, readOnly, canToggleOnly, canAssignTasks = false }) => {
+export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, onAutoSave, readOnly, canToggleOnly }) => {
   const [newItemDescription, setNewItemDescription] = useState("");
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [assignTaskItem, setAssignTaskItem] = useState<ChecklistItem | null>(null);
@@ -225,9 +224,9 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
             <Card key={item.id} className={item.completed ? "border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20" : ""}>
               <CardContent className="py-4">
                 <div className="flex items-start gap-3">
-                  {/* Checkbox - ook tonen voor canToggleOnly modus */}
+                  {/* Checkbox */}
                   <div className="pt-0.5">
-                    {readOnly && !canToggleOnly ? (
+                    {readOnly ? (
                       item.completed ? (
                         <CheckCircle2 className="h-5 w-5 text-green-600" />
                       ) : (
@@ -274,8 +273,8 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-1">
-                    {/* Assign Task Button - ook tonen voor canAssignTasks (aftersales_manager) */}
-                    {(!readOnly || canAssignTasks) && !item.completed && !item.linkedTaskId && (
+                    {/* Assign Task Button - alleen tonen voor niet-voltooide items zonder gekoppelde taak */}
+                    {!readOnly && !item.completed && !item.linkedTaskId && (
                       <Button
                         variant="ghost"
                         size="icon"

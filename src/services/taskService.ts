@@ -448,31 +448,62 @@ const registerDamageRepair = async (taskId: string, taskData: any, completedAt: 
 };
 
 // Auto-complete linked checklist item when task is completed
-// Uses RPC function to bypass RLS restrictions for aftersales_manager
 const autoCompleteChecklistItem = async (
   vehicleId: string, 
   checklistItemId: string, 
   assignedProfile: { first_name?: string; last_name?: string; email?: string } | null
 ): Promise<void> => {
   try {
-    console.log('[taskService] Auto-completing checklist item via RPC:', checklistItemId, 'for vehicle:', vehicleId);
+    console.log('[taskService] Auto-completing checklist item:', checklistItemId, 'for vehicle:', vehicleId);
     
-    // Build the completed by name
-    const completedByName = assignedProfile
-      ? `${assignedProfile.first_name || ''} ${assignedProfile.last_name || ''}`.trim() || assignedProfile.email || 'Taak voltooid'
-      : 'Automatisch voltooid via taak';
+    // Fetch the vehicle details
+    const { data: vehicle, error: fetchError } = await supabase
+      .from('vehicles')
+      .select('details')
+      .eq('id', vehicleId)
+      .single();
 
-    // Use the RPC function which has SECURITY DEFINER and proper role checks
-    const { error: rpcError } = await supabase.rpc('complete_pre_delivery_checklist_item', {
-      p_vehicle_id: vehicleId,
-      p_checklist_item_id: checklistItemId,
-      p_completed_by_name: completedByName
+    if (fetchError || !vehicle) {
+      console.error('[taskService] Failed to fetch vehicle for checklist update:', fetchError);
+      return;
+    }
+
+    // Get the checklist from vehicle details
+    const details = vehicle.details as any || {};
+    const checklist = details.preDeliveryChecklist || [];
+
+    // Find and update the checklist item
+    const updatedChecklist = checklist.map((item: any) => {
+      if (item.id === checklistItemId) {
+        const completedByName = assignedProfile
+          ? `${assignedProfile.first_name || ''} ${assignedProfile.last_name || ''}`.trim() || assignedProfile.email || 'Taak voltooid'
+          : 'Automatisch voltooid via taak';
+        
+        return {
+          ...item,
+          completed: true,
+          completedAt: new Date().toISOString(),
+          completedByName: `${completedByName} (via taak)`
+        };
+      }
+      return item;
     });
 
-    if (rpcError) {
-      console.error('[taskService] Failed to complete checklist item via RPC:', rpcError);
+    // Update the vehicle with the new checklist
+    const { error: updateError } = await supabase
+      .from('vehicles')
+      .update({
+        details: {
+          ...details,
+          preDeliveryChecklist: updatedChecklist
+        }
+      })
+      .eq('id', vehicleId);
+
+    if (updateError) {
+      console.error('[taskService] Failed to update checklist item:', updateError);
     } else {
-      console.log('[taskService] Checklist item auto-completed successfully via RPC');
+      console.log('[taskService] Checklist item auto-completed successfully');
     }
   } catch (error) {
     console.error('[taskService] Error auto-completing checklist item:', error);

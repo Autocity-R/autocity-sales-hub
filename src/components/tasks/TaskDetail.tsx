@@ -25,7 +25,6 @@ import {
 } from "lucide-react";
 import { Task, TaskStatus } from "@/types/tasks";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface TaskDetailProps {
   task: Task | null;
@@ -47,13 +46,11 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   onDeleteTask,
 }) => {
   const { user, isAdmin } = useAuth();
-  const { canAssignTasks } = useRoleAccess();
-  const hasManagementRights = isAdmin || canAssignTasks();
 
   if (!task) return null;
 
-  const canManageTask = hasManagementRights || task.assignedTo === user?.id || task.assignedBy === user?.id;
-  const canEditDelete = hasManagementRights || task.assignedBy === user?.id;
+  const canManageTask = isAdmin || task.assignedTo === user?.id || task.assignedBy === user?.id;
+  const canEditDelete = isAdmin || task.assignedBy === user?.id;
 
   const getStatusColor = (status: TaskStatus) => {
     switch (status) {

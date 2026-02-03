@@ -2911,14 +2911,6 @@ export type Database = {
         Returns: boolean
       }
       clean_expired_exact_online_cache: { Args: never; Returns: number }
-      complete_pre_delivery_checklist_item: {
-        Args: {
-          p_checklist_item_id: string
-          p_completed_by_name: string
-          p_vehicle_id: string
-        }
-        Returns: boolean
-      }
       get_valid_exact_online_token: {
         Args: { user_uuid: string }
         Returns: {
