@@ -299,14 +299,17 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
           {/* Sticky footer */}
           <div className="sticky bottom-0 left-0 right-0 flex justify-end gap-2 p-4 border-t bg-background z-10">
             <Button type="button" variant="secondary" onClick={onClose}>
-              {isReadOnly ? 'Sluiten' : 'Annuleren'}
+              {isReadOnly && !canManageChecklists() ? 'Sluiten' : 'Annuleren'}
             </Button>
-            {!isReadOnly && (() => {
+            {/* Show save button for users who can edit vehicles OR manage checklists */}
+            {(!isReadOnly || canManageChecklists()) && (() => {
               const isSold = editedVehicle.salesStatus === 'verkocht_b2b' || editedVehicle.salesStatus === 'verkocht_b2c';
               const hasSellingPrice = editedVehicle.sellingPrice && editedVehicle.sellingPrice > 0;
               const hasPurchasePrice = (editedVehicle.purchasePrice && editedVehicle.purchasePrice > 0) || 
                                        (editedVehicle.details?.purchasePrice && editedVehicle.details.purchasePrice > 0);
-              const missingPrices = isSold && (!hasSellingPrice || !hasPurchasePrice);
+              // Aftersales manager hoeft geen prijzen te valideren - ze kunnen die niet aanpassen
+              const shouldValidatePrices = !isReadOnly;
+              const missingPrices = shouldValidatePrices && isSold && (!hasSellingPrice || !hasPurchasePrice);
               
               return (
                 <Button 
