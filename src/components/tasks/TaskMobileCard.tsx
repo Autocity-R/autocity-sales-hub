@@ -27,6 +27,7 @@ const categoryConfig: Record<TaskCategory, { label: string; color: string; bgCol
   overig: { label: "Overig", color: "text-slate-700 dark:text-slate-300", bgColor: "bg-slate-100 dark:bg-slate-900/30 border-slate-200 dark:border-slate-800", icon: Tag },
 };
 import { useAuth } from "@/contexts/AuthContext";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface TaskMobileCardProps {
   task: Task;
@@ -46,9 +47,11 @@ export const TaskMobileCard = memo<TaskMobileCardProps>(({
   onDeleteTask 
 }) => {
   const { user, isAdmin } = useAuth();
+  const { canAssignTasks } = useRoleAccess();
+  const hasManagementRights = isAdmin || canAssignTasks();
   
-  const canManageTask = isAdmin || task.assignedTo === user?.id || task.assignedBy === user?.id;
-  const canEditDelete = isAdmin || task.assignedBy === user?.id;
+  const canManageTask = hasManagementRights || task.assignedTo === user?.id || task.assignedBy === user?.id;
+  const canEditDelete = hasManagementRights || task.assignedBy === user?.id;
   
   const getStatusIcon = useCallback((status: TaskStatus) => {
     switch (status) {

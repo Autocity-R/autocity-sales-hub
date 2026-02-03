@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Task, TaskStatus, TaskCategory } from "@/types/tasks";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { TaskMobileCard } from "./TaskMobileCard";
 
@@ -48,12 +49,14 @@ const TaskCard = memo<{
   onDeleteTask: (taskId: string) => void;
 }>(({ task, onCompleteTask, onStartTask, onTaskSelect, onEditTask, onDeleteTask }) => {
   const { user, isAdmin } = useAuth();
+  const { canAssignTasks } = useRoleAccess();
+  const hasManagementRights = isAdmin || canAssignTasks();
   
   // Check if current user can manage this task
-  const canManageTask = isAdmin || task.assignedTo === user?.id || task.assignedBy === user?.id;
+  const canManageTask = hasManagementRights || task.assignedTo === user?.id || task.assignedBy === user?.id;
   
-  // Check if current user can edit/delete (only who assigned it or admin)
-  const canEditDelete = isAdmin || task.assignedBy === user?.id;
+  // Check if current user can edit/delete (managers or task creator)
+  const canEditDelete = hasManagementRights || task.assignedBy === user?.id;
   
   const getStatusIcon = useCallback((status: TaskStatus) => {
     switch (status) {
