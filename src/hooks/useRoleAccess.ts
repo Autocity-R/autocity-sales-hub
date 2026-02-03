@@ -82,6 +82,11 @@ export const useRoleAccess = () => {
     return isAdmin || userRole === 'manager' || userRole === 'verkoper' || userRole === 'aftersales_manager';
   };
 
+  // Aftersales manager MAG checklisten volledig bewerken (items toevoegen, afvinken, taken toewijzen)
+  const canManageChecklists = () => {
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper' || userRole === 'aftersales_manager';
+  };
+
   return {
     hasReportsAccess,
     hasAftersalesOnlyReportsAccess,
@@ -99,6 +104,7 @@ export const useRoleAccess = () => {
     canEditVehicles,
     hasGarantieAccess,
     isAftersalesManager,
+    canManageChecklists,
     userRole,
     isAdmin
   };
