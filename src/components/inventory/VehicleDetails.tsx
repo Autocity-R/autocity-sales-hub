@@ -63,9 +63,12 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   const hasUserChangesRef = useRef(false);
   
   // Role-based access
-  const { hasPriceAccess, isOperationalUser, canChecklistToggle } = useRoleAccess();
-  const isReadOnly = isOperationalUser();
-  const canOnlyToggleChecklist = isOperationalUser() && canChecklistToggle();
+  const { hasPriceAccess, isOperationalUser, canChecklistToggle, canEditVehicles, canAssignTasks, isAftersalesManager } = useRoleAccess();
+  
+  // Aftersales manager en operationeel zijn read-only voor voertuigen
+  const isReadOnly = isOperationalUser() || isAftersalesManager();
+  // Maar ze mogen wel checklist items afvinken
+  const canOnlyToggleChecklist = isReadOnly && canChecklistToggle();
   
   // Always use the hook to fetch files for this vehicle
   const { vehicleFiles: hookVehicleFiles } = useVehicleFiles(vehicle);
@@ -83,7 +86,13 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   }, [vehicle.id]); // Only reset when vehicle ID changes
   
   // Auto-save when user makes changes (debounced)
+  // BELANGRIJK: NIET auto-saven voor read-only users (aftersales_manager, operationeel)
   useEffect(() => {
+    // Skip auto-save entirely for read-only users
+    if (isReadOnly) {
+      return;
+    }
+    
     if (onAutoSave && hasUserChangesRef.current && debouncedVehicle.id === initialVehicleRef.current.id) {
       // Check if there are actual changes from initial state
       const hasChanges = JSON.stringify(debouncedVehicle) !== JSON.stringify(initialVehicleRef.current);
@@ -110,7 +119,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
         initialVehicleRef.current = debouncedVehicle;
       }
     }
-  }, [debouncedVehicle, onAutoSave]); // Removed 'vehicle' dependency to prevent infinite loops
+  }, [debouncedVehicle, onAutoSave, isReadOnly]); // Added isReadOnly dependency
   
   const handleChange = (field: keyof Vehicle, value: any) => {
     hasUserChangesRef.current = true; // Mark that user has made changes
@@ -253,9 +262,10 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                         hasUserChangesRef.current = true;
                         setEditedVehicle(updatedVehicle);
                       }}
-                      onAutoSave={onAutoSave}
+                      onAutoSave={isReadOnly ? undefined : onAutoSave}
                       readOnly={isReadOnly && !canOnlyToggleChecklist}
                       canToggleOnly={canOnlyToggleChecklist}
+                      canAssignTasks={canAssignTasks()}
                     />
                   </TabsContent>
                 )}
