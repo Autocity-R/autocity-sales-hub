@@ -94,6 +94,8 @@ const SortableTaskCard = memo<{
   position: number;
 }>(({ task, onCompleteTask, onStartTask, onTaskSelect, onEditTask, onDeleteTask, isDraggable, position }) => {
   const { user, isAdmin } = useAuth();
+  const { canAssignTasks } = useRoleAccess();
+  const hasManagementRights = isAdmin || canAssignTasks();
   
   const {
     attributes,
@@ -110,8 +112,8 @@ const SortableTaskCard = memo<{
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const canManageTask = isAdmin || task.assignedTo === user?.id || task.assignedBy === user?.id;
-  const canEditDelete = isAdmin || task.assignedBy === user?.id;
+  const canManageTask = hasManagementRights || task.assignedTo === user?.id || task.assignedBy === user?.id;
+  const canEditDelete = hasManagementRights || task.assignedBy === user?.id;
   
   const getStatusIcon = useCallback((status: TaskStatus) => {
     switch (status) {
