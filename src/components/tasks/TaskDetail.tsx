@@ -212,6 +212,19 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                 <p className="text-sm pl-6">{task.location}</p>
               </div>
             )}
+
+            {/* Voltooiingsdatum */}
+            {task.status === "voltooid" && task.completedAt && (
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span className="text-sm font-medium text-green-700 dark:text-green-400">Voltooid op</span>
+                </div>
+                <p className="text-sm pl-6 text-green-700 dark:text-green-400">
+                  {format(new Date(task.completedAt), "dd MMMM yyyy 'om' HH:mm", { locale: nl })}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Voertuig informatie */}
