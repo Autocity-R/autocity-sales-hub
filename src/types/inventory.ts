@@ -166,6 +166,8 @@ export interface Vehicle {
   paintStatus?: PaintStatus; // Added paint status for B2C vehicles
   cmrSent: boolean;
   cmrDate: Date | null;
+  bpmReportSent: boolean;           // BPM Rapport opgestuurd
+  bpmReportSentDate: Date | null;   // Datum waarop BPM rapport is verstuurd
   papersReceived: boolean;
   papersDate: Date | null;
   notes: string;

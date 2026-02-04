@@ -41,6 +41,8 @@ const ContractPreview = () => {
     paymentStatus: "niet_betaald",
     cmrSent: true,
     cmrDate: new Date("2023-02-20"),
+    bpmReportSent: true,
+    bpmReportSentDate: new Date("2023-02-18"),
     papersReceived: true,
     papersDate: new Date("2023-02-25"),
     notes: "Test voertuig voor contract preview.",

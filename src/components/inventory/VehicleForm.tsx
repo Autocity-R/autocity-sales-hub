@@ -92,6 +92,8 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
     paymentStatus: initialData?.paymentStatus || "niet_betaald",
     cmrSent: initialData?.cmrSent || false,
     cmrDate: initialData?.cmrDate || null,
+    bpmReportSent: initialData?.bpmReportSent || false,
+    bpmReportSentDate: initialData?.bpmReportSentDate || null,
     papersReceived: initialData?.papersReceived || false,
     papersDate: initialData?.papersDate || null,
     notes: initialData?.notes || "",
