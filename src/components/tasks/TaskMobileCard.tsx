@@ -1,5 +1,6 @@
 import React, { memo, useMemo, useCallback } from "react";
 import { format } from "date-fns";
+import { nl } from "date-fns/locale";
 import { CheckCircle, Clock, AlertCircle, Car, User, MoreVertical, Play, Edit, Trash2, Wrench, Truck, Sparkles, Shield, Package, ClipboardList, Tag, Cog } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -242,6 +243,15 @@ export const TaskMobileCard = memo<TaskMobileCardProps>(({
             <Clock className="h-3.5 w-3.5 flex-shrink-0" />
             <span className="font-medium text-foreground">{formattedDate}</span>
           </div>
+          
+          {task.status === "voltooid" && task.completedAt && (
+            <div className="flex items-center gap-1.5">
+              <CheckCircle className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+              <span className="text-green-700 dark:text-green-400 font-medium">
+                {format(new Date(task.completedAt), "dd MMM yyyy 'om' HH:mm", { locale: nl })}
+              </span>
+            </div>
+          )}
         </div>
 
         {task.category === "schadeherstel" && task.damageParts && task.damageParts.parts.length > 0 && (

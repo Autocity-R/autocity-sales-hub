@@ -1,5 +1,6 @@
 import React, { memo, useMemo, useCallback, useState } from "react";
 import { format } from "date-fns";
+import { nl } from "date-fns/locale";
 import {
   DndContext,
   closestCenter,
@@ -241,6 +242,15 @@ const SortableTaskCard = memo<{
               <Clock className="h-4 w-4 text-muted-foreground" />
               <span>Deadline: {formattedDate}</span>
             </div>
+            
+            {task.status === "voltooid" && task.completedAt && (
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span className="text-green-700 dark:text-green-400">
+                  Voltooid: {format(new Date(task.completedAt), "dd MMMM yyyy 'om' HH:mm", { locale: nl })}
+                </span>
+              </div>
+            )}
           </div>
 
           {task.category === "schadeherstel" && task.damageParts && task.damageParts.parts.length > 0 && (
