@@ -809,6 +809,55 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
           </div>
         </div>
         
+        {/* BPM Rapport Opgestuurd */}
+        <div className="space-y-2">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="bpmReportSent"
+              checked={editedVehicle.bpmReportSent || false}
+              onCheckedChange={(checked) => {
+                handleChange('bpmReportSent', Boolean(checked));
+                if (checked && !editedVehicle.bpmReportSentDate) {
+                  handleChange('bpmReportSentDate', new Date());
+                }
+              }}
+              disabled={readOnly}
+            />
+            <Label htmlFor="bpmReportSent" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              BPM Rapport opgestuurd
+            </Label>
+          </div>
+          
+          {editedVehicle.bpmReportSent && (
+            <div className="ml-6 mt-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !editedVehicle.bpmReportSentDate && "text-muted-foreground"
+                    )}
+                    disabled={readOnly}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {editedVehicle.bpmReportSentDate ? format(editedVehicle.bpmReportSentDate, "PPP", { locale: nl }) : <span>Selecteer datum</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={editedVehicle.bpmReportSentDate || undefined}
+                    onSelect={(date) => handleChange('bpmReportSentDate', date)}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+        </div>
+        
         {/* CMR */}
         <div className="space-y-2">
           <div className="flex items-center space-x-2">

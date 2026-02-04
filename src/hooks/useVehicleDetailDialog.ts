@@ -76,6 +76,8 @@ export const useVehicleDetailDialog = () => {
         paymentStatus: (details.paymentStatus || 'niet_betaald') as PaymentStatus,
         cmrSent: details.cmrSent || false,
         cmrDate: details.cmrDate ? new Date(details.cmrDate) : null,
+        bpmReportSent: details.bpmReportSent || false,
+        bpmReportSentDate: details.bpmReportSentDate ? new Date(details.bpmReportSentDate) : null,
         papersReceived: details.papersReceived || false,
         papersDate: details.papersDate ? new Date(details.papersDate) : null,
         supplierId: data.supplier_id || undefined,
