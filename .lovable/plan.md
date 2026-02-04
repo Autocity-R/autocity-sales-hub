@@ -1,139 +1,62 @@
 
-# Plan: Aftersales Manager Volledige Functionaliteit
 
-## Probleem Samenvatting
+# Plan: Voltooiingsdatum en -tijd Tonen bij Voltooide Taken
 
-De Aftersales Manager (Lloyd) kan momenteel niet:
-- Checklist items afvinken of toevoegen in voertuigen
-- Taken toewijzen vanuit de checklist
-- Taken voltooien in het takenschema
-- Voertuig updates opslaan (database blokkeert dit)
+## Probleem
 
-## Oorzaken
+Wanneer een taak wordt voltooid, wil je kunnen zien wanneer (datum en tijd) deze is afgerond. Dit helpt bij het monitoren van operationeel personeel en de aftersales manager.
 
-### 1. Database RLS Policy - `vehicles` tabel
-De UPDATE policy op de `vehicles` tabel mist de `aftersales_manager` rol:
+## Huidige Situatie
 
-```sql
--- Huidige policy (UPDATE):
-has_role('admin') OR has_role('owner') OR has_role('manager') OR has_role('verkoper')
-```
-
-**Gevolg**: Elke update naar de `vehicles` tabel (inclusief checklist wijzigingen in het `details` JSONB veld) faalt met een RLS policy error.
-
-### 2. Frontend logica - `VehicleDetails.tsx`
-De frontend determineert nu alleen `operationeel` als speciale rol, maar de aftersales_manager wordt niet correct afgehandeld voor checklist editing:
-
-```typescript
-// Huidige logica (lijn 67-68):
-const isReadOnly = isOperationalUser(); // FALSE voor aftersales_manager
-const canOnlyToggleChecklist = isOperationalUser() && canChecklistToggle(); // FALSE
-```
-
-De aftersales_manager krijgt dus volledige UI rechten, maar de database blokkeert alles.
+- De database slaat `completed_at` al correct op wanneer een taak naar "voltooid" gaat
+- Het `Task` type bevat al het `completedAt` veld
+- De data wordt al opgehaald van de database
+- **Probleem**: De voltooiingsdatum wordt nergens in de UI getoond
 
 ## Oplossing
 
-### Database Migratie
+De voltooiingsdatum en -tijd toevoegen aan drie componenten waar taken worden weergegeven:
 
-Update de `vehicles` tabel UPDATE policy om `aftersales_manager` toe te voegen:
+### 1. Desktop Taakkaart (SortableTaskCard)
 
-```sql
--- Drop oude policy
-DROP POLICY IF EXISTS "Authorized users can update vehicles" ON vehicles;
+Voeg een nieuwe regel toe onder de deadline die de voltooiingsdatum toont wanneer `status === "voltooid"`:
 
--- Maak nieuwe policy met aftersales_manager
-CREATE POLICY "Authorized users can update vehicles" 
-ON vehicles FOR UPDATE 
-TO authenticated
-USING (
-  has_role(auth.uid(), 'admin'::app_role) OR 
-  has_role(auth.uid(), 'owner'::app_role) OR 
-  has_role(auth.uid(), 'manager'::app_role) OR 
-  has_role(auth.uid(), 'verkoper'::app_role) OR
-  has_role(auth.uid(), 'aftersales_manager'::app_role)
-)
-WITH CHECK (
-  has_role(auth.uid(), 'admin'::app_role) OR 
-  has_role(auth.uid(), 'owner'::app_role) OR 
-  has_role(auth.uid(), 'manager'::app_role) OR 
-  has_role(auth.uid(), 'verkoper'::app_role) OR
-  has_role(auth.uid(), 'aftersales_manager'::app_role)
-);
+```
+Voltooid: 04 februari 2025 om 14:32
 ```
 
-### Frontend Aanpassingen
+### 2. Mobiele Taakkaart (TaskMobileCard)
 
-#### 1. `src/hooks/useRoleAccess.ts`
-Voeg een nieuwe functie toe voor checklist bewerking:
+Voeg dezelfde informatie toe onder de deadline informatie.
 
-```typescript
-// Aftersales manager MAG checklisten volledig bewerken (items toevoegen, afvinken, taken toewijzen)
-const canManageChecklists = () => {
-  return isAdmin || userRole === 'manager' || userRole === 'verkoper' || userRole === 'aftersales_manager';
-};
-```
+### 3. Taak Detail Dialog (TaskDetail)
 
-#### 2. `src/components/inventory/VehicleDetails.tsx`
-Update de role-based access logica:
+Voeg een nieuw veld toe in de details grid dat de voltooiingsdatum toont met een groen vinkje icoon.
 
-```typescript
-// Huidige code:
-const { hasPriceAccess, isOperationalUser, canChecklistToggle } = useRoleAccess();
-const isReadOnly = isOperationalUser();
-const canOnlyToggleChecklist = isOperationalUser() && canChecklistToggle();
+## Visuele Weergave
 
-// Nieuwe code:
-const { hasPriceAccess, isOperationalUser, canChecklistToggle, canEditVehicles, isAftersalesManager, canManageChecklists } = useRoleAccess();
-
-// Voor algemene voertuig editing (details tab, prijzen, etc.)
-const isReadOnly = isOperationalUser() || isAftersalesManager(); 
-
-// Aftersales manager mag checklist volledig beheren (niet alleen toggle)
-const canOnlyToggleChecklist = isOperationalUser() && canChecklistToggle();
-
-// Aftersales manager krijgt volledige checklist toegang
-const checklistReadOnly = !canManageChecklists();
-const checklistCanToggleOnly = isOperationalUser() && canChecklistToggle();
-```
-
-Update ChecklistTab props:
-
-```typescript
-<ChecklistTab 
-  vehicle={editedVehicle}
-  onUpdate={(updatedVehicle) => {
-    hasUserChangesRef.current = true;
-    setEditedVehicle(updatedVehicle);
-  }}
-  onAutoSave={onAutoSave}
-  readOnly={checklistReadOnly}
-  canToggleOnly={checklistCanToggleOnly}
-/>
-```
+De voltooiingsdatum wordt getoond met:
+- Groen CheckCircle icoon (consistent met de "voltooid" status)
+- Formaat: "dd MMMM yyyy om HH:mm" in het Nederlands
+- Alleen zichtbaar bij taken met status "voltooid"
 
 ## Bestandswijzigingen
 
-| Bestand/Type | Actie |
-|--------------|-------|
-| Database: `vehicles` tabel | UPDATE RLS policy aanpassen |
-| `src/hooks/useRoleAccess.ts` | Nieuwe `canManageChecklists()` functie toevoegen |
-| `src/components/inventory/VehicleDetails.tsx` | Role-based logica updaten voor Aftersales Manager |
+| Bestand | Wijziging |
+|---------|-----------|
+| `src/components/tasks/DraggableTaskList.tsx` | Voltooiingsdatum toevoegen aan SortableTaskCard component |
+| `src/components/tasks/TaskMobileCard.tsx` | Voltooiingsdatum toevoegen voor mobiele weergave |
+| `src/components/tasks/TaskDetail.tsx` | Voltooiingsdatum toevoegen aan detail dialog |
 
-## Verwacht Resultaat
+## Technische Details
 
-Na deze wijzigingen kan de Aftersales Manager:
+```typescript
+// Voorbeeld code voor weergave:
+{task.status === "voltooid" && task.completedAt && (
+  <div className="flex items-center space-x-2">
+    <CheckCircle className="h-4 w-4 text-green-500" />
+    <span>Voltooid: {format(new Date(task.completedAt), "dd MMMM yyyy 'om' HH:mm", { locale: nl })}</span>
+  </div>
+)}
+```
 
-| Functie | Was | Wordt |
-|---------|-----|-------|
-| Checklist items afvinken | Geblokkeerd (RLS) | Werkt |
-| Checklist items toevoegen | Geblokkeerd (RLS) | Werkt |
-| Taken toewijzen vanuit checklist | Geblokkeerd (RLS) | Werkt |
-| Taken voltooien | Al werkend | Blijft werken |
-| Voertuig details bewerken (prijzen, etc.) | Geblokkeerd | Blijft geblokkeerd (zoals gewenst) |
-
-## Belangrijke Notities
-
-- De aftersales_manager krijgt **GEEN** toegang tot prijzen of algemene voertuig details bewerken
-- Alleen checklist en taak-gerelateerde functies worden ontgrendeld
-- De RLS policy update is kritiek - zonder dit werkt niets
