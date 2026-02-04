@@ -1,62 +1,132 @@
 
 
-# Plan: Voltooiingsdatum en -tijd Tonen bij Voltooide Taken
+# Plan: BPM Rapport Opgestuurd Vinkje Toevoegen
 
-## Probleem
+## Overzicht
 
-Wanneer een taak wordt voltooid, wil je kunnen zien wanneer (datum en tijd) deze is afgerond. Dit helpt bij het monitoren van operationeel personeel en de aftersales manager.
+Een nieuw vinkje "BPM Rapport opgestuurd" toevoegen aan het voertuigen details menu, met datum tracking. Dit helpt voorkomen dat auto's blijven hangen in het import proces.
 
-## Huidige Situatie
+## Locatie in UI
 
-- De database slaat `completed_at` al correct op wanneer een taak naar "voltooid" gaat
-- Het `Task` type bevat al het `completedAt` veld
-- De data wordt al opgehaald van de database
-- **Probleem**: De voltooiingsdatum wordt nergens in de UI getoond
+Het vinkje komt tussen "Showroom online" en "CMR verstuurd" op de rechterkant van het voertuigen details scherm.
 
-## Oplossing
+**Huidige volgorde:**
+1. BPM Huys aangemeld
+2. Showroom online
+3. CMR verstuurd ← **NIEUW: BPM Rapport opgestuurd hier tussenvoegen**
+4. Papieren binnen
 
-De voltooiingsdatum en -tijd toevoegen aan drie componenten waar taken worden weergegeven:
+**Nieuwe volgorde:**
+1. BPM Huys aangemeld
+2. Showroom online
+3. **BPM Rapport opgestuurd** (NIEUW)
+4. CMR verstuurd
+5. Papieren binnen
 
-### 1. Desktop Taakkaart (SortableTaskCard)
+## Technische Implementatie
 
-Voeg een nieuwe regel toe onder de deadline die de voltooiingsdatum toont wanneer `status === "voltooid"`:
+### 1. TypeScript Type Uitbreiding
 
+**Bestand:** `src/types/inventory.ts`
+
+Nieuwe velden toevoegen aan het `Vehicle` interface:
+```typescript
+interface Vehicle {
+  // ... bestaande velden
+  bpmReportSent: boolean;      // Vinkje: BPM rapport opgestuurd
+  bpmReportSentDate: Date | null;  // Datum wanneer verstuurd
+}
 ```
-Voltooid: 04 februari 2025 om 14:32
+
+### 2. UI Component Update
+
+**Bestand:** `src/components/inventory/detail-tabs/DetailsTab.tsx`
+
+Een nieuwe sectie toevoegen na "Showroom online" en voor "CMR verstuurd":
+
+```typescript
+{/* BPM Rapport Opgestuurd - NIEUW */}
+<div className="space-y-2">
+  <div className="flex items-center space-x-2">
+    <Checkbox
+      id="bpmReportSent"
+      checked={editedVehicle.bpmReportSent}
+      onCheckedChange={(checked) => 
+        handleChange('bpmReportSent', Boolean(checked))
+      }
+      disabled={readOnly}
+    />
+    <Label htmlFor="bpmReportSent">BPM Rapport opgestuurd</Label>
+  </div>
+  
+  {editedVehicle.bpmReportSent && (
+    <div className="ml-6 mt-2">
+      {/* Datum picker - zelfde stijl als CMR */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline">
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {editedVehicle.bpmReportSentDate 
+              ? format(editedVehicle.bpmReportSentDate, "PPP", { locale: nl }) 
+              : "Selecteer datum"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent>
+          <Calendar
+            mode="single"
+            selected={editedVehicle.bpmReportSentDate}
+            onSelect={(date) => handleChange('bpmReportSentDate', date)}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  )}
+</div>
 ```
 
-### 2. Mobiele Taakkaart (TaskMobileCard)
+### 3. Service Layer Update
 
-Voeg dezelfde informatie toe onder de deadline informatie.
+**Bestand:** `src/services/supabaseInventoryService.ts`
 
-### 3. Taak Detail Dialog (TaskDetail)
+De nieuwe velden toevoegen aan de opslag/ophaal logica:
 
-Voeg een nieuw veld toe in de details grid dat de voltooiingsdatum toont met een groen vinkje icoon.
+```typescript
+// Bij opslaan naar database (details JSONB):
+bpmReportSent: vehicle.bpmReportSent ?? false,
+bpmReportSentDate: vehicle.bpmReportSentDate?.toISOString() ?? null,
 
-## Visuele Weergave
+// Bij ophalen uit database:
+bpmReportSent: details.bpmReportSent || false,
+bpmReportSentDate: details.bpmReportSentDate ? new Date(details.bpmReportSentDate) : null,
+```
 
-De voltooiingsdatum wordt getoond met:
-- Groen CheckCircle icoon (consistent met de "voltooid" status)
-- Formaat: "dd MMMM yyyy om HH:mm" in het Nederlands
-- Alleen zichtbaar bij taken met status "voltooid"
+### 4. Andere Services Updaten
+
+**Bestanden:**
+- `src/services/deliveredVehicleService.ts` - Mapping voor afgeleverde voertuigen
+- `src/hooks/useVehicleDetailDialog.ts` - Dialog hook mapping
+- `src/components/inventory/VehicleForm.tsx` - Formulier voor nieuwe voertuigen
 
 ## Bestandswijzigingen
 
 | Bestand | Wijziging |
 |---------|-----------|
-| `src/components/tasks/DraggableTaskList.tsx` | Voltooiingsdatum toevoegen aan SortableTaskCard component |
-| `src/components/tasks/TaskMobileCard.tsx` | Voltooiingsdatum toevoegen voor mobiele weergave |
-| `src/components/tasks/TaskDetail.tsx` | Voltooiingsdatum toevoegen aan detail dialog |
+| `src/types/inventory.ts` | Nieuwe velden: `bpmReportSent`, `bpmReportSentDate` |
+| `src/components/inventory/detail-tabs/DetailsTab.tsx` | UI checkbox met datum picker toevoegen |
+| `src/services/supabaseInventoryService.ts` | Mapping voor opslag/ophaal |
+| `src/services/deliveredVehicleService.ts` | Mapping voor afgeleverde voertuigen |
+| `src/hooks/useVehicleDetailDialog.ts` | Mapping in dialog hook |
+| `src/components/inventory/VehicleForm.tsx` | Initiële waarden voor nieuwe voertuigen |
 
-## Technische Details
+## Geen Database Migratie Nodig
 
-```typescript
-// Voorbeeld code voor weergave:
-{task.status === "voltooid" && task.completedAt && (
-  <div className="flex items-center space-x-2">
-    <CheckCircle className="h-4 w-4 text-green-500" />
-    <span>Voltooid: {format(new Date(task.completedAt), "dd MMMM yyyy 'om' HH:mm", { locale: nl })}</span>
-  </div>
-)}
-```
+De velden worden opgeslagen in het bestaande `details` JSONB veld, dus er is geen database schema wijziging nodig.
+
+## Verwacht Resultaat
+
+Na implementatie:
+- Nieuw vinkje "BPM Rapport opgestuurd" zichtbaar tussen Showroom online en CMR verstuurd
+- Bij aanvinken verschijnt een datum picker
+- Datum wordt automatisch opgeslagen
+- Overzicht welke auto's BPM rapport verstuurd hebben en wanneer
 
