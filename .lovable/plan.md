@@ -1,155 +1,113 @@
 
 
-# Plan: Excel Export voor Voertuig Checklist
+# Plan: Openstaande Toewijzingen Tonen in B2C Leveringen
 
 ## Samenvatting
 
-Een Excel export knop toevoegen aan de Checklist tab in het voertuigdetails menu. De export bevat voertuiginformatie bovenaan en alle checklist items overzichtelijk daaronder.
+Een nieuwe indicator toevoegen aan de B2C Leveringen tabel die toont hoeveel checklist items nog geen taak toegewezen hebben. Hiermee kan de aftersales manager direct zien waar nog actie nodig is in de planning.
 
-## Gewenste Output Structuur
+## Visueel Concept
 
 ```text
-┌────────────────────────────────────────────────────────────────┐
-│            CHECKLIST VOERTUIG - 7 februari 2025               │
-├────────────────────────────────────────────────────────────────┤
-│  Merk:      Volkswagen                                         │
-│  Model:     Golf                                               │
-│  Kenteken:  XX-123-YY                                          │
-│  VIN:       WVWZZZ3CZWE123456                                  │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│  CHECKLIST                                                     │
-├────────────────────────────────────────────────────────────────┤
-│  #   │ Taak                           │ Status    │ ✓         │
-├──────┼────────────────────────────────┼───────────┼───────────┤
-│  1   │ Autopapieren controleren       │ Voltooid  │ ✓         │
-│  2   │ Poetsen interieur              │ Open      │ ○         │
-│  3   │ Bandenspanning controleren     │ Open      │ ○         │
-└────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│  B2C Leveringen in Afwachting                                                             │
+├────────────────┬──────────┬───────────┬────────────┬──────────────────┬────────┬─────────┤
+│  Voertuig      │ Klant    │ Wachttijd │ Checklist  │ Toe te wijzen    │ Status │ Actie   │
+├────────────────┼──────────┼───────────┼────────────┼──────────────────┼────────┼─────────┤
+│  VW Golf       │ Jan      │ 12 dagen  │ ████░ 3/5  │ ⚠ 2 taken        │ Blauw  │ Bekijk  │
+│  Audi A3       │ Piet     │ 8 dagen   │ █████ 5/5  │ ✓ Alles gepland  │ Groen  │ Bekijk  │
+│  BMW 3-serie   │ Klaas    │ 5 dagen   │ ░░░░░ 0/4  │ ⚠ 4 taken        │ Rood   │ Bekijk  │
+└────────────────┴──────────┴───────────┴────────────┴──────────────────┴────────┴─────────┘
 ```
 
-## Bestanden
+## Logica voor "Toe te wijzen"
 
-### Nieuw bestand: `src/utils/checklistExportExcel.ts`
+Een checklist item telt als "nog toe te wijzen" als:
+1. Het item is **niet voltooid** (`completed !== true`)
+2. Het item heeft **geen gekoppelde taak** (`linkedTaskId` is undefined/null)
 
-Excel export functie die:
-1. Een workbook aanmaakt met ExcelJS (al geïnstalleerd)
-2. Voertuiginfo als header toevoegt (Merk, Model, Kenteken, VIN)
-3. Alle checklist items in een tabel plaatst
-4. Status kolom met "Voltooid" of "Open"
-5. Checkbox kolom (✓ of ○) voor printen
-6. A4 portrait formaat met goede marges
+Dit geeft een accurate weergave van wat er nog ingepland moet worden.
+
+## Technische Wijzigingen
+
+### 1. Type uitbreiden (`src/types/aftersales.ts`)
+
+Nieuw veld toevoegen aan `PendingDeliveryExtended`:
 
 ```typescript
-import ExcelJS from 'exceljs';
-import { Vehicle, ChecklistItem } from '@/types/inventory';
-import { format } from 'date-fns';
-import { nl } from 'date-fns/locale';
-
-export const exportChecklistToExcel = async (vehicle: Vehicle): Promise<void> => {
-  const checklist = vehicle.details?.preDeliveryChecklist || [];
+export interface PendingDeliveryExtended {
+  // ...bestaande velden...
   
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Checklist');
+  // NIEUW: Aantal checklist items zonder toegewezen taak (en niet voltooid)
+  unassignedTaskCount: number;
+}
+```
 
-  // Page setup A4 portrait
-  worksheet.pageSetup = {
-    paperSize: 9,
-    orientation: 'portrait',
-    fitToPage: true,
-    fitToWidth: 1,
-    fitToHeight: 0,
-    margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 }
-  };
+### 2. Service aanpassen (`src/services/aftersalesService.ts`)
 
-  // Title
-  const dateStr = format(new Date(), 'd MMMM yyyy', { locale: nl });
-  worksheet.addRow([`CHECKLIST VOERTUIG - ${dateStr}`]);
-  // Merge and style...
+In de `getPendingB2CDeliveries` methode het aantal ongekoppelde items berekenen:
 
-  // Vehicle info section
-  worksheet.addRow([]);
-  worksheet.addRow(['Merk:', vehicle.brand]);
-  worksheet.addRow(['Model:', vehicle.model]);
-  worksheet.addRow(['Kenteken:', vehicle.licenseNumber || '-']);
-  worksheet.addRow(['VIN:', vehicle.vin || '-']);
+```typescript
+// Bestaande logica...
+const checklist = details.preDeliveryChecklist || [];
 
-  // Checklist section
-  worksheet.addRow([]);
-  worksheet.addRow(['CHECKLIST']);
-  worksheet.addRow(['#', 'Taak', 'Status', '✓']);
+// NIEUW: Tel items die niet voltooid zijn EN geen taak gekoppeld hebben
+const unassignedTaskCount = Array.isArray(checklist)
+  ? checklist.filter((item: any) => 
+      item.completed !== true && !item.linkedTaskId
+    ).length
+  : 0;
 
-  checklist.forEach((item, index) => {
-    worksheet.addRow([
-      index + 1,
-      item.description,
-      item.completed ? 'Voltooid' : 'Open',
-      item.completed ? '✓' : '○'
-    ]);
-  });
-
-  // Footer
-  const completedCount = checklist.filter(i => i.completed).length;
-  worksheet.addRow([]);
-  worksheet.addRow([`${completedCount} van ${checklist.length} taken voltooid`]);
-
-  // Download
-  const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], { type: '...' });
-  // Download link logic...
+return {
+  // ...bestaande velden...
+  unassignedTaskCount, // NIEUW
 };
 ```
 
-### Wijziging: `src/components/inventory/detail-tabs/ChecklistTab.tsx`
+### 3. Dashboard UI aanpassen (`src/components/reports/AftersalesDashboard.tsx`)
 
-1. Import toevoegen voor de export functie en Download icon
-2. Export knop toevoegen in de header van de Progress Card
-3. onClick handler die de export functie aanroept met vehicle data
+Nieuwe kolom "Toe te wijzen" toevoegen aan de tabel:
 
 ```typescript
-// Nieuwe import
-import { Download } from 'lucide-react';
-import { exportChecklistToExcel } from '@/utils/checklistExportExcel';
+// In table header (regel 383-390):
+<th className="pb-3 font-medium">Toe te wijzen</th>
 
-// In de Progress Card header:
-<CardHeader>
-  <div className="flex items-center justify-between">
-    <div>
-      <CardTitle className="flex items-center gap-2">
-        <ClipboardCheck className="h-5 w-5 text-primary" />
-        Voortgang Checklist
-      </CardTitle>
-      <CardDescription>
-        {/* bestaande tekst */}
-      </CardDescription>
-    </div>
-    <Button 
-      variant="outline" 
-      size="sm"
-      onClick={() => exportChecklistToExcel(vehicle)}
-      disabled={totalCount === 0}
-    >
-      <Download className="h-4 w-4 mr-2" />
-      Excel
-    </Button>
-  </div>
-</CardHeader>
+// In table body (na checklist kolom):
+<td className="py-3">
+  {delivery.unassignedTaskCount === 0 ? (
+    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+      <CheckCircle2 className="h-3 w-3 mr-1" />
+      Gepland
+    </Badge>
+  ) : (
+    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">
+      <ClipboardList className="h-3 w-3 mr-1" />
+      {delivery.unassignedTaskCount} {delivery.unassignedTaskCount === 1 ? 'taak' : 'taken'}
+    </Badge>
+  )}
+</td>
 ```
+
+## Kleurcodering
+
+| Status | Kleur | Betekenis |
+|--------|-------|-----------|
+| `0 taken` | Groen | Alles is ingepland ✓ |
+| `1+ taken` | Oranje | Er moeten nog taken worden toegewezen ⚠ |
 
 ## Bestandswijzigingen
 
 | Bestand | Wijziging |
 |---------|-----------|
-| `src/utils/checklistExportExcel.ts` | **Nieuw bestand** - Excel export functie voor voertuig checklist |
-| `src/components/inventory/detail-tabs/ChecklistTab.tsx` | Export knop toevoegen in Progress Card header |
+| `src/types/aftersales.ts` | Nieuw veld `unassignedTaskCount` aan `PendingDeliveryExtended` |
+| `src/services/aftersalesService.ts` | Berekening toevoegen voor ongekoppelde checklist items |
+| `src/components/reports/AftersalesDashboard.tsx` | Nieuwe kolom "Toe te wijzen" in de B2C tabel |
 
 ## Verwacht Resultaat
 
-- Nieuwe "Excel" knop in de Checklist tab
-- Klikken genereert een Excel bestand met:
-  - Voertuiginfo (Merk, Model, Kenteken, VIN) bovenaan
-  - Alle checklist items onder elkaar
-  - Status kolom (Voltooid/Open)
-  - Checkbox kolom voor afvinken op papier
-- Bestandsnaam: `Checklist_Volkswagen_Golf_XX-123-YY_07-02-2025.xlsx`
+1. Elke rij in de B2C Leveringen tabel toont hoeveel taken nog toegewezen moeten worden
+2. Groen badge "Gepland" als alles is ingepland
+3. Oranje badge met aantal als er nog taken ontbreken
+4. Manager kan direct zien welke voertuigen aandacht nodig hebben
+5. Klikken op "Bekijk" opent de checklist waar taken direct toegewezen kunnen worden
 
