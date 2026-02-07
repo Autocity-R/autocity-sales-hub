@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { ClipboardCheck, Circle, CheckCircle2, Trash2, Plus, UserPlus, ClipboardList } from "lucide-react";
+import { ClipboardCheck, Circle, CheckCircle2, Trash2, Plus, UserPlus, ClipboardList, Download } from "lucide-react";
+import { exportChecklistToExcel } from "@/utils/checklistExportExcel";
 import { Vehicle, ChecklistItem } from "@/types/inventory";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -186,15 +187,28 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
       {/* Progress Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ClipboardCheck className="h-5 w-5 text-primary" />
-            Voortgang Checklist
-          </CardTitle>
-          <CardDescription>
-            {totalCount === 0 
-              ? "Nog geen taken toegevoegd" 
-              : `${completedCount} van ${totalCount} ${totalCount === 1 ? 'taak' : 'taken'} voltooid`}
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardCheck className="h-5 w-5 text-primary" />
+                Voortgang Checklist
+              </CardTitle>
+              <CardDescription>
+                {totalCount === 0 
+                  ? "Nog geen taken toegevoegd" 
+                  : `${completedCount} van ${totalCount} ${totalCount === 1 ? 'taak' : 'taken'} voltooid`}
+              </CardDescription>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => exportChecklistToExcel(vehicle)}
+              disabled={totalCount === 0}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Excel
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-2">
           <Progress value={progressPercentage} className="h-3" />
