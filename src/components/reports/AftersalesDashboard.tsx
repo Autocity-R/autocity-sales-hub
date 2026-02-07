@@ -259,16 +259,17 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
     return null;
   }
   const getImportStatusBadge = (status: string | null) => {
-    const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-      'niet_aangemeld': { label: 'Niet aangemeld', variant: 'secondary' },
-      'aanvraag_ontvangen': { label: 'Aanvraag ontvangen', variant: 'default' },
-      'goedgekeurd': { label: 'Goedgekeurd', variant: 'default' },
-      'bpm_betaald': { label: 'BPM betaald', variant: 'default' },
-      'ingeschreven': { label: 'Ingeschreven', variant: 'outline' },
+    const statusConfig: Record<string, { label: string; className: string }> = {
+      'niet_aangemeld': { label: 'Niet aangemeld', className: 'bg-red-500 hover:bg-red-600 text-white border-transparent' },
+      'aangekomen': { label: 'Aangekomen', className: 'bg-red-500 hover:bg-red-600 text-white border-transparent' },
+      'aanvraag_ontvangen': { label: 'Aanvraag ontvangen', className: 'bg-yellow-500 hover:bg-yellow-600 text-white border-transparent' },
+      'goedgekeurd': { label: 'Goedgekeurd', className: 'bg-blue-500 hover:bg-blue-600 text-white border-transparent' },
+      'bpm_betaald': { label: 'BPM betaald', className: 'bg-blue-500 hover:bg-blue-600 text-white border-transparent' },
+      'ingeschreven': { label: 'Ingeschreven', className: 'bg-green-500 hover:bg-green-600 text-white border-transparent' },
     };
 
-    const config = statusConfig[status || ''] || { label: status || 'Onbekend', variant: 'secondary' as const };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    const config = statusConfig[status || ''] || { label: status || 'Onbekend', className: 'bg-gray-500 hover:bg-gray-600 text-white border-transparent' };
+    return <Badge className={config.className}>{config.label}</Badge>;
   };
 
   const getWaitingDaysBadge = (days: number, isLate: boolean, isWarning: boolean) => {
