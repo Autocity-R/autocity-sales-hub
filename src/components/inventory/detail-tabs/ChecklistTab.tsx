@@ -12,6 +12,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { TaskForm } from "@/components/tasks/TaskForm";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ChecklistTabProps {
   vehicle: Vehicle;
@@ -31,6 +33,32 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
   const completedCount = checklist.filter(item => item.completed).length;
   const totalCount = checklist.length;
   const progressPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  // Get all linkedTaskIds from checklist items
+  const linkedTaskIds = checklist
+    .filter(item => item.linkedTaskId)
+    .map(item => item.linkedTaskId as string);
+
+  // Validate which linked tasks still exist in the database
+  const { data: existingTaskIds = [] } = useQuery({
+    queryKey: ['existing-tasks', linkedTaskIds],
+    queryFn: async () => {
+      if (linkedTaskIds.length === 0) return [];
+      const { data } = await supabase
+        .from('tasks')
+        .select('id')
+        .in('id', linkedTaskIds);
+      return (data || []).map(t => t.id);
+    },
+    enabled: linkedTaskIds.length > 0,
+    staleTime: 30000, // 30 seconds cache
+  });
+
+  // Helper function to check if a linked task actually exists
+  const taskExists = (taskId: string | undefined): boolean => {
+    if (!taskId) return false;
+    return existingTaskIds.includes(taskId);
+  };
 
   const handleAddItem = () => {
     if (!newItemDescription.trim() || !user) return;
@@ -250,7 +278,7 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
                       {isRecentlyAdded(item.createdAt) && !item.completed && (
                         <Badge variant="secondary" className="text-xs">Nieuw</Badge>
                       )}
-                      {item.linkedTaskId && (
+                      {item.linkedTaskId && taskExists(item.linkedTaskId) && (
                         <Badge variant="outline" className="text-xs">
                           <ClipboardList className="h-3 w-3 mr-1" />
                           Taak toegewezen
@@ -273,8 +301,8 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-1">
-                    {/* Assign Task Button - alleen tonen voor niet-voltooide items zonder gekoppelde taak */}
-                    {!readOnly && !item.completed && !item.linkedTaskId && (
+                    {/* Assign Task Button - alleen tonen voor niet-voltooide items zonder bestaande gekoppelde taak */}
+                    {!readOnly && !item.completed && !taskExists(item.linkedTaskId) && (
                       <Button
                         variant="ghost"
                         size="icon"

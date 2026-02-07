@@ -288,8 +288,63 @@ export const updateTask = async (taskId: string, updates: Partial<Task>): Promis
   }
 };
 
+// Helper function to remove linkedTaskId from checklist item when task is deleted
+const removeChecklistTaskLink = async (
+  vehicleId: string, 
+  checklistItemId: string
+): Promise<void> => {
+  try {
+    const { data: vehicle } = await supabase
+      .from('vehicles')
+      .select('details')
+      .eq('id', vehicleId)
+      .single();
+
+    if (!vehicle) return;
+
+    const details = vehicle.details as any || {};
+    const checklist = details.preDeliveryChecklist || [];
+
+    const updatedChecklist = checklist.map((item: any) => {
+      if (item.id === checklistItemId) {
+        const { linkedTaskId, ...rest } = item;
+        return rest; // Remove linkedTaskId
+      }
+      return item;
+    });
+
+    await supabase
+      .from('vehicles')
+      .update({ 
+        details: { ...details, preDeliveryChecklist: updatedChecklist } 
+      })
+      .eq('id', vehicleId);
+
+    console.log('[taskService] Removed checklist task link for item:', checklistItemId);
+  } catch (error) {
+    console.error('[taskService] Error removing checklist link:', error);
+    // Don't throw - we don't want to block task deletion
+  }
+};
+
 export const deleteTask = async (taskId: string): Promise<void> => {
   try {
+    // First fetch task data to check for linked checklist item
+    const { data: taskData } = await supabase
+      .from('tasks')
+      .select('linked_checklist_item_id, linked_vehicle_id')
+      .eq('id', taskId)
+      .single();
+
+    // Cleanup: remove linkedTaskId from checklist item if exists
+    if (taskData?.linked_checklist_item_id && taskData?.linked_vehicle_id) {
+      await removeChecklistTaskLink(
+        taskData.linked_vehicle_id, 
+        taskData.linked_checklist_item_id
+      );
+    }
+
+    // Then delete the task
     const { error } = await supabase
       .from('tasks')
       .delete()
