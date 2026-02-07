@@ -1,159 +1,177 @@
 
+# Plan: Dynamische Taak-Koppeling in Checklist
 
-# Plan: Aftersales Manager Volledige Taakbeheer
+## Probleem
 
-## Samenvatting
-
-De Aftersales Manager rol moet uitgebreide taakbeheer mogelijkheden krijgen:
-- Alle taken van alle gebruikers kunnen zien
-- Taken kunnen toewijzen aan andere medewerkers  
-- Taken van anderen kunnen starten/voltooien
-- Taken kunnen afvinken vanuit het Rapportages menu (Aftersales Dashboard)
-- Taken kunnen toewijzen vanuit de "Bekijk" knop bij B2C leveringen
-
-## Huidige Situatie
-
-### Wat nu wel werkt:
-- `aftersales_manager` heeft al SELECT/UPDATE rechten op de `tasks` tabel via RLS
-- `useRoleAccess.ts` heeft `canAssignTasks()` en `hasTaskManagementAccess()` die `aftersales_manager` toestaan
-- VehicleDetails > ChecklistTab laat `aftersales_manager` al taken toewijzen (`canManageChecklists()`)
-
-### Wat nu niet werkt:
-
-1. **Aftersales Dashboard mist taak acties**
-   - De taken tabel in `AftersalesDashboard.tsx` toont taken read-only
-   - Geen knoppen voor "Voltooid", "Start", of "Nieuwe Taak"
-   - Geen actie kolom in de taak tabel
-
-2. **RLS INSERT policy is te restrictief**
-   ```sql
-   -- Huidige policy
-   WITH CHECK: (assigned_by = auth.uid())
-   ```
-   Dit betekent dat taken altijd `assigned_by` = huidige gebruiker moeten hebben. Dit werkt voor nieuwe taken, maar de policy voegt geen management rollen toe.
+Wanneer een taak wordt verwijderd die gekoppeld is aan een checklist item, blijft de `linkedTaskId` in het checklist item staan. Hierdoor:
+- Toont het item nog steeds de "Taak toegewezen" badge
+- Kan er geen nieuwe taak worden toegewezen (de knop is verborgen)
+- De koppeling is "verweesd" - de taak bestaat niet meer
 
 ## Oplossing
 
-### Deel 1: Aftersales Dashboard Uitbreiden
+Een tweevoudige aanpak voor maximale betrouwbaarheid:
 
-**Bestand:** `src/components/reports/AftersalesDashboard.tsx`
+### Deel 1: Cleanup bij Taak Verwijdering
+
+Wanneer een taak wordt verwijderd, automatisch de `linkedTaskId` verwijderen uit het gekoppelde checklist item.
+
+**Bestand:** `src/services/taskService.ts`
+
+Wijziging in `deleteTask` functie:
+1. Ophalen van de taak voordat deze wordt verwijderd
+2. Controleren of er een `linked_checklist_item_id` en `linked_vehicle_id` is
+3. Zo ja: het voertuig ophalen en de `linkedTaskId` uit het checklist item verwijderen
+4. Daarna de taak verwijderen
+
+### Deel 2: Real-time Validatie (Fallback)
+
+Als extra veiligheid: bij het laden van de ChecklistTab, valideren of gekoppelde taken nog bestaan. Dit vangt situaties op waarin de cleanup mislukt of taken via andere wegen zijn verwijderd.
+
+**Bestand:** `src/components/inventory/detail-tabs/ChecklistTab.tsx`
 
 Wijzigingen:
-1. Import toevoegen: `TaskForm`, `updateTaskStatus` van taskService, `useMutation`
-2. State toevoegen: `showTaskForm`, `selectedTaskForAction`
-3. "Nieuwe Taak" knop toevoegen in de Taken Overzicht header
-4. Actie kolom toevoegen aan de taken tabel met:
-   - "Start" knop (voor status toegewezen -> in_uitvoering)
-   - "Voltooid" knop (voor alle niet-voltooide taken)
-5. Query invalidatie na status update
-
-**Nieuwe tabel structuur:**
-```text
-| Taak | Voertuig | Toegewezen Aan | Deadline | Status | Actie |
-|------|----------|----------------|----------|--------|-------|
-|      |          |                |          |        | [Start] [Voltooid] |
-```
-
-### Deel 2: RLS Policy Verbeteren (optioneel)
-
-De huidige INSERT policy `assigned_by = auth.uid()` werkt correct omdat `taskService.createTask()` altijd `assigned_by` zet naar de huidige gebruiker. Dit hoeft niet gewijzigd te worden.
-
-De UPDATE/SELECT policies bevatten al `aftersales_manager`, dus taken voltooien/updaten werkt al op database niveau.
+1. Query toevoegen om bestaande taak-IDs te valideren
+2. Badge alleen tonen als de taak daadwerkelijk bestaat
+3. "Taak toewijzen" knop tonen als de gekoppelde taak niet meer bestaat
 
 ## Technische Details
 
-### AftersalesDashboard.tsx Wijzigingen
+### taskService.ts Wijzigingen
+
+```typescript
+export const deleteTask = async (taskId: string): Promise<void> => {
+  try {
+    // Eerst taakgegevens ophalen voor cleanup
+    const { data: taskData } = await supabase
+      .from('tasks')
+      .select('linked_checklist_item_id, linked_vehicle_id')
+      .eq('id', taskId)
+      .single();
+
+    // Cleanup: verwijder linkedTaskId uit checklist item
+    if (taskData?.linked_checklist_item_id && taskData?.linked_vehicle_id) {
+      await removeChecklistTaskLink(
+        taskData.linked_vehicle_id, 
+        taskData.linked_checklist_item_id
+      );
+    }
+
+    // Daarna taak verwijderen
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', taskId);
+
+    if (error) throw error;
+  } catch (error: any) {
+    console.error("Failed to delete task:", error);
+    throw error;
+  }
+};
+
+// Nieuwe helper functie
+const removeChecklistTaskLink = async (
+  vehicleId: string, 
+  checklistItemId: string
+): Promise<void> => {
+  try {
+    const { data: vehicle } = await supabase
+      .from('vehicles')
+      .select('details')
+      .eq('id', vehicleId)
+      .single();
+
+    if (!vehicle) return;
+
+    const details = vehicle.details as any || {};
+    const checklist = details.preDeliveryChecklist || [];
+
+    const updatedChecklist = checklist.map((item: any) => {
+      if (item.id === checklistItemId) {
+        const { linkedTaskId, ...rest } = item;
+        return rest; // Verwijder linkedTaskId
+      }
+      return item;
+    });
+
+    await supabase
+      .from('vehicles')
+      .update({ 
+        details: { ...details, preDeliveryChecklist: updatedChecklist } 
+      })
+      .eq('id', vehicleId);
+
+    console.log('[taskService] Removed checklist task link');
+  } catch (error) {
+    console.error('[taskService] Error removing checklist link:', error);
+    // Niet gooien - we willen de taak verwijdering niet blokkeren
+  }
+};
+```
+
+### ChecklistTab.tsx Wijzigingen
 
 ```typescript
 // Nieuwe imports
-import { Plus, PlayCircle, CheckCircle } from 'lucide-react';
-import { TaskForm } from '@/components/tasks/TaskForm';
-import { updateTaskStatus } from '@/services/taskService';
-import { useMutation } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
-// Nieuwe state
-const [showTaskForm, setShowTaskForm] = useState(false);
+// In de component: query voor taak validatie
+const linkedTaskIds = checklist
+  .filter(item => item.linkedTaskId)
+  .map(item => item.linkedTaskId as string);
 
-// Mutation voor status updates
-const updateStatusMutation = useMutation({
-  mutationFn: ({ taskId, status }: { taskId: string; status: string }) =>
-    updateTaskStatus(taskId, status as any),
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ['aftersales-dashboard'] });
-    toast({ description: "Taakstatus bijgewerkt" });
+const { data: existingTaskIds = [] } = useQuery({
+  queryKey: ['existing-tasks', linkedTaskIds],
+  queryFn: async () => {
+    if (linkedTaskIds.length === 0) return [];
+    const { data } = await supabase
+      .from('tasks')
+      .select('id')
+      .in('id', linkedTaskIds);
+    return (data || []).map(t => t.id);
   },
-  onError: () => {
-    toast({ variant: "destructive", description: "Fout bij het bijwerken van de taakstatus" });
-  }
+  enabled: linkedTaskIds.length > 0,
+  staleTime: 30000, // 30 seconden cache
 });
 
-// Handlers
-const handleStartTask = (taskId: string) => {
-  updateStatusMutation.mutate({ taskId, status: 'in_uitvoering' });
+// Helper functie
+const taskExists = (taskId: string | undefined): boolean => {
+  if (!taskId) return false;
+  return existingTaskIds.includes(taskId);
 };
 
-const handleCompleteTask = (taskId: string) => {
-  updateStatusMutation.mutate({ taskId, status: 'voltooid' });
-};
-```
+// Badge conditie wijzigen (regel 253)
+// Van:
+{item.linkedTaskId && (
+  <Badge>Taak toegewezen</Badge>
+)}
 
-### UI Aanpassingen
+// Naar:
+{item.linkedTaskId && taskExists(item.linkedTaskId) && (
+  <Badge>Taak toegewezen</Badge>
+)}
 
-**Taken Overzicht Header:**
-```tsx
-<CardHeader>
-  <div className="flex items-center justify-between">
-    <CardTitle className="flex items-center gap-2">
-      <ClipboardList className="h-5 w-5" />
-      Taken Overzicht
-    </CardTitle>
-    <Button onClick={() => setShowTaskForm(true)} size="sm">
-      <Plus className="h-4 w-4 mr-2" />
-      Nieuwe Taak
-    </Button>
-  </div>
-</CardHeader>
-```
+// Knop conditie wijzigen (regel 277)
+// Van:
+{!readOnly && !item.completed && !item.linkedTaskId && (
 
-**Tabel met actie kolom:**
-```tsx
-<th className="pb-3 font-medium">Actie</th>
-// ...
-<td className="py-3">
-  <div className="flex gap-1">
-    {task.status === 'toegewezen' && (
-      <Button size="sm" variant="outline" onClick={() => handleStartTask(task.id)}>
-        <PlayCircle className="h-4 w-4 mr-1" />
-        Start
-      </Button>
-    )}
-    <Button size="sm" variant="default" onClick={() => handleCompleteTask(task.id)}>
-      <CheckCircle className="h-4 w-4 mr-1" />
-      Voltooid
-    </Button>
-  </div>
-</td>
+// Naar:
+{!readOnly && !item.completed && !taskExists(item.linkedTaskId) && (
 ```
 
 ## Bestandswijzigingen
 
 | Bestand | Wijziging |
 |---------|-----------|
-| `src/components/reports/AftersalesDashboard.tsx` | Taak acties toevoegen (Start, Voltooid, Nieuwe Taak) |
-
-## Geen Database Wijzigingen Nodig
-
-De huidige RLS policies ondersteunen al:
-- `aftersales_manager` kan alle taken zien (SELECT policy)
-- `aftersales_manager` kan alle taken updaten (UPDATE policy)
-- Nieuwe taken worden correct aangemaakt (INSERT met `assigned_by = auth.uid()`)
+| `src/services/taskService.ts` | `deleteTask` uitbreiden met cleanup logica + nieuwe `removeChecklistTaskLink` helper |
+| `src/components/inventory/detail-tabs/ChecklistTab.tsx` | Query voor taak validatie + dynamische badge/knop weergave |
 
 ## Verwacht Resultaat
 
-Na implementatie kan de Aftersales Manager vanuit het Rapportages menu:
-1. Alle taken van alle medewerkers zien
-2. Op "Nieuwe Taak" klikken om een taak aan te maken
-3. Op "Start" klikken om een taak te starten (status -> in_uitvoering)
-4. Op "Voltooid" klikken om een taak af te ronden (status -> voltooid)
-5. Via "Bekijk" bij B2C leveringen naar de voertuigdetails gaan en daar checklist items afvinken en taken toewijzen (dit werkt al)
-
+Na implementatie:
+1. Wanneer een taak wordt verwijderd, verdwijnt automatisch de "Taak toegewezen" badge
+2. De "Taak toewijzen" knop verschijnt weer zodat een nieuwe taak kan worden toegewezen
+3. Het werkt ook als taken via het TaskManagement scherm worden verwijderd
+4. Bestaande "verweesde" koppelingen worden automatisch opgelost bij het openen van de checklist
