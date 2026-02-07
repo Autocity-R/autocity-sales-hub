@@ -385,8 +385,9 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
                     <th className="pb-3 font-medium">Klant</th>
                     <th className="pb-3 font-medium">Wachttijd</th>
                     <th className="pb-3 font-medium">Checklist</th>
-                      <th className="pb-3 font-medium">Status</th>
-                      <th className="pb-3 font-medium">Actie</th>
+                    <th className="pb-3 font-medium">Toe te wijzen</th>
+                    <th className="pb-3 font-medium">Status</th>
+                    <th className="pb-3 font-medium">Actie</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -421,6 +422,19 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
                             {delivery.checklistCompleted}/{delivery.checklistTotal}
                           </span>
                         </div>
+                      </td>
+                      <td className="py-3">
+                        {delivery.unassignedTaskCount === 0 ? (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 gap-1 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Gepland
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300 gap-1 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800">
+                            <ClipboardList className="h-3 w-3" />
+                            {delivery.unassignedTaskCount} {delivery.unassignedTaskCount === 1 ? 'taak' : 'taken'}
+                          </Badge>
+                        )}
                       </td>
                       <td className="py-3">
                         {delivery.isReadyForDelivery ? (

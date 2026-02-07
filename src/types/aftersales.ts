@@ -18,6 +18,7 @@ export interface PendingDeliveryExtended {
   isWarning: boolean;
   isReadyForDelivery: boolean;
   location: string | null;
+  unassignedTaskCount: number;
 }
 
 export interface AftersalesKPIs {

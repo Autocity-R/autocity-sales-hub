@@ -69,6 +69,11 @@ class AftersalesService {
       // Ready for delivery: checklist 100% complete AND import status is 'ingeschreven'
       const isReadyForDelivery = checklistProgress === 100 && vehicle.import_status === 'ingeschreven';
 
+      // Count checklist items that are not completed AND have no linked task
+      const unassignedTaskCount = Array.isArray(checklist)
+        ? checklist.filter((item: any) => item.completed !== true && !item.linkedTaskId).length
+        : 0;
+
       // Get customer name from contact relationship, fallback to details JSONB
       const customerContact = (vehicle as any).customerContact;
       let customerName = 'Onbekend';
@@ -102,7 +107,8 @@ class AftersalesService {
         isLate: daysSinceSale > 21,
         isWarning: daysSinceSale >= 14 && daysSinceSale <= 21,
         isReadyForDelivery,
-        location: vehicle.location
+        location: vehicle.location,
+        unassignedTaskCount
       };
     }).sort((a, b) => b.daysSinceSale - a.daysSinceSale);
   }
