@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -15,8 +15,13 @@ import {
   CheckCircle2,
   Eye,
   Car,
-  Filter
+  Filter,
+  Plus,
+  PlayCircle
 } from 'lucide-react';
+import { TaskForm } from '@/components/tasks/TaskForm';
+import { updateTaskStatus } from '@/services/taskService';
+import { TaskStatus } from '@/types/tasks';
 import { aftersalesService } from '@/services/aftersalesService';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
@@ -39,6 +44,40 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
   const { toast } = useToast();
   const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'in_progress' | 'ready'>('all');
   const [selectedClaim, setSelectedClaim] = useState<WarrantyClaim | null>(null);
+  const [showTaskForm, setShowTaskForm] = useState(false);
+
+  // Mutation voor taak status updates
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ taskId, status }: { taskId: string; status: TaskStatus }) =>
+      updateTaskStatus(taskId, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['aftersales-dashboard'] });
+      toast({ 
+        title: "Taakstatus bijgewerkt",
+        description: "De taak is succesvol bijgewerkt." 
+      });
+    },
+    onError: () => {
+      toast({ 
+        variant: "destructive", 
+        title: "Fout",
+        description: "Fout bij het bijwerken van de taakstatus" 
+      });
+    }
+  });
+
+  const handleStartTask = (taskId: string) => {
+    updateStatusMutation.mutate({ taskId, status: 'in_uitvoering' });
+  };
+
+  const handleCompleteTask = (taskId: string) => {
+    updateStatusMutation.mutate({ taskId, status: 'voltooid' });
+  };
+
+  const handleTaskFormClose = () => {
+    setShowTaskForm(false);
+    queryClient.invalidateQueries({ queryKey: ['aftersales-dashboard'] });
+  };
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['aftersales-dashboard'],
@@ -548,10 +587,16 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
       {/* Taken Overzicht */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ClipboardList className="h-5 w-5" />
-            Taken Overzicht
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              Taken Overzicht
+            </CardTitle>
+            <Button onClick={() => setShowTaskForm(true)} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Nieuwe Taak
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="open">
@@ -579,6 +624,7 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
                         <th className="pb-3 font-medium">Toegewezen Aan</th>
                         <th className="pb-3 font-medium">Deadline</th>
                         <th className="pb-3 font-medium">Status</th>
+                        <th className="pb-3 font-medium">Actie</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -613,6 +659,30 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
                               <Badge variant={task.status === 'in_uitvoering' ? 'default' : 'secondary'}>
                                 {task.status === 'in_uitvoering' ? 'In uitvoering' : 'Toegewezen'}
                               </Badge>
+                            </td>
+                            <td className="py-3">
+                              <div className="flex gap-1">
+                                {task.status === 'toegewezen' && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => handleStartTask(task.id)}
+                                    disabled={updateStatusMutation.isPending}
+                                  >
+                                    <PlayCircle className="h-4 w-4 mr-1" />
+                                    Start
+                                  </Button>
+                                )}
+                                <Button 
+                                  size="sm" 
+                                  variant="default" 
+                                  onClick={() => handleCompleteTask(task.id)}
+                                  disabled={updateStatusMutation.isPending}
+                                >
+                                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                                  Voltooid
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -698,6 +768,14 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
           onUpdate={handleUpdateClaim}
           onResolve={handleResolveClaim}
           onDelete={handleDeleteClaim}
+        />
+      )}
+
+      {/* Task Form Dialog */}
+      {showTaskForm && (
+        <TaskForm
+          onClose={handleTaskFormClose}
+          onTaskAdded={handleTaskFormClose}
         />
       )}
     </div>
