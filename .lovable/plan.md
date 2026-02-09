@@ -1,43 +1,26 @@
 
 
-# Fix: Sticker draaien naar liggend (landscape)
+# QR Sticker groter en gecentreerd maken
 
 ## Probleem
 
-De sticker wordt staand (portrait) geprint waardoor de inhoud over 2 stickers verdeeld wordt. De 57x32mm sticker moet liggend (landscape) geprint worden zodat alles op 1 label past.
+De huidige sticker-inhoud is klein en staat linksboven in plaats van gecentreerd op het 57x32mm label.
 
-## Oplossing
+## Wijzigingen in `src/components/inventory/ChecklistQRDialog.tsx`
 
-Twee wijzigingen nodig:
+### Browser Print CSS aanpassen in `handleBrowserPrint`:
 
-### 1. Browser Print CSS (`ChecklistQRDialog.tsx`)
+- **Centreren**: `justify-content: center` en `align-items: center` toevoegen aan body
+- **QR code groter**: van 18mm naar 22mm
+- **Tekst groter**: brand van 7pt naar 8pt, plate van 8pt naar 10pt, color van 6pt naar 7pt, VIN van 5pt naar 6pt
+- **Padding**: van 2mm naar 1.5mm (meer ruimte voor content)
 
-In de `handleBrowserPrint` functie de `@page` richting omdraaien en landscape forceren:
+### Preview in dialog aanpassen:
 
-```css
-@page { size: 57mm 32mm landscape; margin: 0; }
-```
-
-Daarnaast een extra print-specifieke landscape hint toevoegen:
-
-```css
-@media print {
-  html { width: 57mm; height: 32mm; }
-}
-```
-
-### 2. DYMO XML Template (`dymoService.ts`)
-
-De `PaperOrientation` staat al op `Landscape`, maar voor de zekerheid controleren dat dit correct is en dat de width/height van het label in de XML kloppen voor landscape orientatie.
-
-## Bestanden
-
-| Bestand | Wijziging |
-|---------|-----------|
-| `src/components/inventory/ChecklistQRDialog.tsx` | `@page` size landscape toevoegen, body dimensies aanpassen |
-| `src/services/dymoService.ts` | Width/height waarden controleren voor landscape orientatie |
+- QR code `size` van 64 naar 76
+- Tekst iets groter in de preview
 
 ## Resultaat
 
-Sticker print liggend op 1 enkele DYMO 11354 label met QR links en tekst rechts.
+Label-inhoud vult het sticker-oppervlak beter en staat gecentreerd.
 
