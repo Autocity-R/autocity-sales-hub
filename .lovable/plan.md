@@ -1,113 +1,274 @@
 
 
-# Plan: Openstaande Toewijzingen Tonen in B2C Leveringen
+# Plan: QR Code Sticker met DYMO Label V.8 Integratie
 
 ## Samenvatting
 
-Een nieuwe indicator toevoegen aan de B2C Leveringen tabel die toont hoeveel checklist items nog geen taak toegewezen hebben. Hiermee kan de aftersales manager direct zien waar nog actie nodig is in de planning.
+Een simpele QR code sticker met DYMO LabelWriter integratie. De sticker bevat alleen: QR Code, Merk, Model, Kleur, Kenteken en VIN. Printen gaat direct naar de DYMO printer zonder print dialoog.
 
-## Visueel Concept
+## DYMO Label V.8 Integratie
+
+De DYMO Connect Framework JavaScript SDK werkt met DYMO Label v8 software:
 
 ```text
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│  B2C Leveringen in Afwachting                                                             │
-├────────────────┬──────────┬───────────┬────────────┬──────────────────┬────────┬─────────┤
-│  Voertuig      │ Klant    │ Wachttijd │ Checklist  │ Toe te wijzen    │ Status │ Actie   │
-├────────────────┼──────────┼───────────┼────────────┼──────────────────┼────────┼─────────┤
-│  VW Golf       │ Jan      │ 12 dagen  │ ████░ 3/5  │ ⚠ 2 taken        │ Blauw  │ Bekijk  │
-│  Audi A3       │ Piet     │ 8 dagen   │ █████ 5/5  │ ✓ Alles gepland  │ Groen  │ Bekijk  │
-│  BMW 3-serie   │ Klaas    │ 5 dagen   │ ░░░░░ 0/4  │ ⚠ 4 taken        │ Rood   │ Bekijk  │
-└────────────────┴──────────┴───────────┴────────────┴──────────────────┴────────┴─────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│   Browser (React App)                                       │
+│   └─> dymo.connect.framework.js                             │
+│       └─> Lokale Web Service (localhost:41951)              │
+│           └─> DYMO Label v8 Software                        │
+│               └─> DYMO LabelWriter Printer                  │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Logica voor "Toe te wijzen"
+**Vereisten op de werkplek:**
+- DYMO Label v8 software geinstalleerd en actief
+- DYMO LabelWriter printer aangesloten
+- DYMO Web Service draait automatisch op de achtergrond
 
-Een checklist item telt als "nog toe te wijzen" als:
-1. Het item is **niet voltooid** (`completed !== true`)
-2. Het item heeft **geen gekoppelde taak** (`linkedTaskId` is undefined/null)
+## Sticker Design (Definitief)
 
-Dit geeft een accurate weergave van wat er nog ingepland moet worden.
-
-## Technische Wijzigingen
-
-### 1. Type uitbreiden (`src/types/aftersales.ts`)
-
-Nieuw veld toevoegen aan `PendingDeliveryExtended`:
-
-```typescript
-export interface PendingDeliveryExtended {
-  // ...bestaande velden...
-  
-  // NIEUW: Aantal checklist items zonder toegewezen taak (en niet voltooid)
-  unassignedTaskCount: number;
-}
+```text
+┌─────────────────────────────┐
+│                             │
+│    ┌────────────────┐       │
+│    │  ░░░░░░░░░░░░  │       │
+│    │  ░░ QR CODE ░  │       │
+│    │  ░░░░░░░░░░░░  │       │
+│    └────────────────┘       │
+│                             │
+│    Volkswagen Golf          │
+│    Zwart                    │
+│                             │
+│    ┌─────────────────────┐  │
+│    │     XX-123-YY       │  │
+│    └─────────────────────┘  │
+│                             │
+│    VIN: WVWZZZ3CZWE123456   │
+│                             │
+└─────────────────────────────┘
 ```
 
-### 2. Service aanpassen (`src/services/aftersalesService.ts`)
+**Geschikt voor DYMO labels:**
+- 30323 Shipping Labels (54x101mm) - Aanbevolen
+- 30256 Large Shipping (59x102mm)
+- 30252 Address Labels (28x89mm) - Compact
 
-In de `getPendingB2CDeliveries` methode het aantal ongekoppelde items berekenen:
+## Technische Implementatie
+
+### DYMO Framework Integratie
+
+De DYMO Connect Framework wordt geladen via CDN en communiceert met de lokale DYMO Web Service:
 
 ```typescript
-// Bestaande logica...
-const checklist = details.preDeliveryChecklist || [];
+// Service: src/services/dymoService.ts
 
-// NIEUW: Tel items die niet voltooid zijn EN geen taak gekoppeld hebben
-const unassignedTaskCount = Array.isArray(checklist)
-  ? checklist.filter((item: any) => 
-      item.completed !== true && !item.linkedTaskId
-    ).length
-  : 0;
+// Initialize DYMO Framework
+export const initDymo = async (): Promise<boolean> => {
+  try {
+    await dymo.label.framework.init();
+    const env = await dymo.label.framework.checkEnvironment();
+    return env.isWebServicePresent && env.isFrameworkInstalled;
+  } catch {
+    return false;
+  }
+};
 
-return {
-  // ...bestaande velden...
-  unassignedTaskCount, // NIEUW
+// Get available DYMO printers
+export const getDymoPrinters = async (): Promise<string[]> => {
+  const printers = await dymo.label.framework.getPrinters();
+  return printers
+    .filter(p => p.printerType === 'LabelWriterPrinter')
+    .map(p => p.name);
+};
+
+// Print label directly to DYMO printer
+export const printLabel = async (
+  printerName: string, 
+  labelXml: string
+): Promise<void> => {
+  await dymo.label.framework.printLabel(printerName, '', labelXml, '');
 };
 ```
 
-### 3. Dashboard UI aanpassen (`src/components/reports/AftersalesDashboard.tsx`)
+### Label XML Template
 
-Nieuwe kolom "Toe te wijzen" toevoegen aan de tabel:
+DYMO labels worden gedefinieerd in XML formaat:
 
-```typescript
-// In table header (regel 383-390):
-<th className="pb-3 font-medium">Toe te wijzen</th>
-
-// In table body (na checklist kolom):
-<td className="py-3">
-  {delivery.unassignedTaskCount === 0 ? (
-    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
-      <CheckCircle2 className="h-3 w-3 mr-1" />
-      Gepland
-    </Badge>
-  ) : (
-    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">
-      <ClipboardList className="h-3 w-3 mr-1" />
-      {delivery.unassignedTaskCount} {delivery.unassignedTaskCount === 1 ? 'taak' : 'taken'}
-    </Badge>
-  )}
-</td>
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<DieCutLabel Version="8.0" Units="twips">
+  <PaperOrientation>Landscape</PaperOrientation>
+  <Id>Shipping</Id>
+  <PaperName>30323 Shipping</PaperName>
+  <DrawCommands>
+    <!-- QR Code -->
+    <BarcodeObject>
+      <Type>QRCode</Type>
+      <Text>{checklistUrl}</Text>
+    </BarcodeObject>
+    
+    <!-- Merk Model -->
+    <TextObject>
+      <Text>{brand} {model}</Text>
+    </TextObject>
+    
+    <!-- Kleur -->
+    <TextObject>
+      <Text>{color}</Text>
+    </TextObject>
+    
+    <!-- Kenteken (groot) -->
+    <TextObject>
+      <Text>{licensePlate}</Text>
+      <FontSize>24</FontSize>
+    </TextObject>
+    
+    <!-- VIN -->
+    <TextObject>
+      <Text>VIN: {vin}</Text>
+    </TextObject>
+  </DrawCommands>
+</DieCutLabel>
 ```
 
-## Kleurcodering
+### Nieuwe Database Tabel
 
-| Status | Kleur | Betekenis |
-|--------|-------|-----------|
-| `0 taken` | Groen | Alles is ingepland ✓ |
-| `1+ taken` | Oranje | Er moeten nog taken worden toegewezen ⚠ |
+```sql
+CREATE TABLE checklist_access_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  vehicle_id UUID NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  created_by UUID REFERENCES auth.users(id)
+);
 
-## Bestandswijzigingen
+-- Index voor snelle token lookups
+CREATE INDEX idx_checklist_tokens_token ON checklist_access_tokens(token);
+
+-- RLS policies
+ALTER TABLE checklist_access_tokens ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public can validate tokens"
+  ON checklist_access_tokens FOR SELECT USING (true);
+
+CREATE POLICY "Authenticated users can create tokens"
+  ON checklist_access_tokens FOR INSERT 
+  WITH CHECK (auth.uid() IS NOT NULL);
+```
+
+### Nieuwe Bestanden
+
+| Bestand | Beschrijving |
+|---------|--------------|
+| `src/pages/ChecklistView.tsx` | Publieke mobiele checklist pagina |
+| `src/services/checklistAccessService.ts` | Token generatie en validatie |
+| `src/services/dymoService.ts` | DYMO printer integratie |
+| `src/components/inventory/ChecklistQRDialog.tsx` | Print dialog met printer selectie |
+
+### Bestaande Bestanden Wijzigen
 
 | Bestand | Wijziging |
 |---------|-----------|
-| `src/types/aftersales.ts` | Nieuw veld `unassignedTaskCount` aan `PendingDeliveryExtended` |
-| `src/services/aftersalesService.ts` | Berekening toevoegen voor ongekoppelde checklist items |
-| `src/components/reports/AftersalesDashboard.tsx` | Nieuwe kolom "Toe te wijzen" in de B2C tabel |
+| `index.html` | DYMO Connect Framework script toevoegen |
+| `src/App.tsx` | Route `/checklist/view/:token` toevoegen |
+| `src/components/inventory/detail-tabs/ChecklistTab.tsx` | "Print QR Sticker" knop |
+
+## Print Dialog UI
+
+```text
+┌─────────────────────────────────────────────┐
+│  Print QR Sticker                       X   │
+├─────────────────────────────────────────────┤
+│                                             │
+│  DYMO Printer:  [▼ DYMO LabelWriter 450  ]  │
+│  Label Formaat: [▼ 30323 Shipping        ]  │
+│                                             │
+│  ┌─────────────────────────────────────┐    │
+│  │                                     │    │
+│  │        [QR CODE PREVIEW]            │    │
+│  │                                     │    │
+│  │        Volkswagen Golf              │    │
+│  │        Zwart                        │    │
+│  │                                     │    │
+│  │        ┌─────────────────────┐      │    │
+│  │        │     XX-123-YY       │      │    │
+│  │        └─────────────────────┘      │    │
+│  │                                     │    │
+│  │        VIN: WVWZZZ3CZWE123456       │    │
+│  │                                     │    │
+│  └─────────────────────────────────────┘    │
+│                                             │
+│  ⚠️ DYMO Label software moet actief zijn    │
+│                                             │
+│         [Annuleren]    [🖨️ Printen]         │
+│                                             │
+└─────────────────────────────────────────────┘
+```
+
+## Fallback: Browser Print
+
+Als DYMO niet beschikbaar is, bieden we een browser print fallback:
+
+```text
+┌─────────────────────────────────────────────┐
+│  Print QR Sticker                       X   │
+├─────────────────────────────────────────────┤
+│                                             │
+│  ⚠️ Geen DYMO printer gevonden              │
+│                                             │
+│  Zorg dat:                                  │
+│  • DYMO Label v8 software actief is         │
+│  • LabelWriter printer is aangesloten       │
+│                                             │
+│  [🔄 Opnieuw zoeken]                        │
+│                                             │
+│  ─────────── OF ───────────                 │
+│                                             │
+│  [🖨️ Print via browser (A4)]               │
+│                                             │
+└─────────────────────────────────────────────┘
+```
+
+## Automatische Verval
+
+De gescande link verloopt automatisch wanneer de auto niet meer status `verkocht_b2c` heeft:
+
+```typescript
+// In ChecklistView.tsx
+const vehicle = await fetchVehicleByToken(token);
+
+if (vehicle.status !== 'verkocht_b2c') {
+  return (
+    <ErrorScreen 
+      title="Link Verlopen"
+      message="Dit voertuig is inmiddels afgeleverd."
+    />
+  );
+}
+```
+
+## Bestandswijzigingen Overzicht
+
+| Actie | Bestand |
+|-------|---------|
+| **Database** | Nieuwe tabel `checklist_access_tokens` |
+| **Nieuw** | `src/pages/ChecklistView.tsx` |
+| **Nieuw** | `src/services/checklistAccessService.ts` |
+| **Nieuw** | `src/services/dymoService.ts` |
+| **Nieuw** | `src/components/inventory/ChecklistQRDialog.tsx` |
+| **Wijzig** | `index.html` (DYMO script) |
+| **Wijzig** | `src/App.tsx` (route) |
+| **Wijzig** | `src/components/inventory/detail-tabs/ChecklistTab.tsx` (knop) |
 
 ## Verwacht Resultaat
 
-1. Elke rij in de B2C Leveringen tabel toont hoeveel taken nog toegewezen moeten worden
-2. Groen badge "Gepland" als alles is ingepland
-3. Oranje badge met aantal als er nog taken ontbreken
-4. Manager kan direct zien welke voertuigen aandacht nodig hebben
-5. Klikken op "Bekijk" opent de checklist waar taken direct toegewezen kunnen worden
+1. "Print QR Sticker" knop in Checklist tab
+2. Dialog met DYMO printer selectie
+3. Direct printen naar DYMO LabelWriter (geen print dialoog)
+4. Sticker bevat alleen: QR, Merk/Model, Kleur, Kenteken, VIN
+5. Mobiele pagina na scannen met volledige info + realtime checklist
+6. Link verloopt automatisch bij status naar "afgeleverd"
+7. Fallback naar browser print als DYMO niet beschikbaar is
 
