@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ClipboardCheck, Circle, CheckCircle2, Trash2, Plus, UserPlus, ClipboardList, Download } from "lucide-react";
+import { ClipboardCheck, Circle, CheckCircle2, Trash2, Plus, UserPlus, ClipboardList, Download, QrCode } from "lucide-react";
 import { exportChecklistToExcel } from "@/utils/checklistExportExcel";
 import { Vehicle, ChecklistItem } from "@/types/inventory";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { TaskForm } from "@/components/tasks/TaskForm";
+import { ChecklistQRDialog } from "@/components/inventory/ChecklistQRDialog";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -28,6 +29,7 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
   const [newItemDescription, setNewItemDescription] = useState("");
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [assignTaskItem, setAssignTaskItem] = useState<ChecklistItem | null>(null);
+  const [showQRDialog, setShowQRDialog] = useState(false);
   const { user } = useAuth();
 
   const checklist = vehicle.details?.preDeliveryChecklist || [];
@@ -199,15 +201,25 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
                   : `${completedCount} van ${totalCount} ${totalCount === 1 ? 'taak' : 'taken'} voltooid`}
               </CardDescription>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => exportChecklistToExcel(vehicle)}
-              disabled={totalCount === 0}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Excel
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowQRDialog(true)}
+              >
+                <QrCode className="h-4 w-4 mr-2" />
+                QR Sticker
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => exportChecklistToExcel(vehicle)}
+                disabled={totalCount === 0}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Excel
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -377,6 +389,13 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
           onTaskCreatedWithId={(taskId: string) => handleTaskCreated(assignTaskItem.id, taskId)}
         />
       )}
+
+      {/* QR Sticker Dialog */}
+      <ChecklistQRDialog
+        vehicle={vehicle}
+        open={showQRDialog}
+        onOpenChange={setShowQRDialog}
+      />
     </div>
   );
 };

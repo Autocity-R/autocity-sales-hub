@@ -870,6 +870,38 @@ export type Database = {
           },
         ]
       }
+      checklist_access_tokens: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          token: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          token: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          token?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_access_tokens_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_calendar_settings: {
         Row: {
           auth_type: string | null
