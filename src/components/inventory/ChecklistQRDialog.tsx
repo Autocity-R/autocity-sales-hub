@@ -137,20 +137,23 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
       <head>
         <title>QR Sticker - ${lp}</title>
         <style>
-          @page { size: 101mm 54mm; margin: 0; }
+          @page { size: 57mm 32mm; margin: 0; }
+          * { box-sizing: border-box; }
           body { 
-            margin: 0; padding: 8mm; 
-            font-family: Arial, sans-serif;
-            display: flex; gap: 4mm;
-            align-items: flex-start;
+            margin: 0; padding: 2mm;
+            font-family: Arial, Helvetica, sans-serif;
+            display: flex; gap: 2mm;
+            align-items: center;
+            width: 57mm; height: 32mm;
+            overflow: hidden;
           }
           .qr { flex-shrink: 0; }
-          .qr img { width: 30mm; height: 30mm; }
-          .info { flex: 1; }
-          .brand { font-size: 11pt; font-weight: bold; margin-bottom: 1mm; }
-          .color { font-size: 9pt; color: #555; margin-bottom: 3mm; }
-          .plate { font-size: 18pt; font-weight: bold; margin-bottom: 2mm; border: 1px solid #000; padding: 1mm 3mm; display: inline-block; }
-          .vin { font-size: 7pt; color: #777; }
+          .qr img { width: 18mm; height: 18mm; }
+          .info { flex: 1; overflow: hidden; }
+          .brand { font-size: 7pt; font-weight: bold; margin-bottom: 0.5mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .color { font-size: 6pt; color: #555; margin-bottom: 1mm; }
+          .plate { font-size: 8pt; font-weight: bold; margin-bottom: 0.5mm; }
+          .vin { font-size: 5pt; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         </style>
       </head>
       <body>
@@ -192,21 +195,20 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Sticker Preview */}
-            <div className="border rounded-lg p-4 bg-white dark:bg-zinc-950">
-              <div className="flex gap-4 items-start">
-                <QRCodeSVG value={checklistUrl} size={120} level="M" />
-                <div className="flex-1 min-w-0 space-y-1">
-                  <p className="font-bold text-sm truncate">
+            {/* Sticker Preview - 57x32mm schaal */}
+            <div className="border rounded-lg p-3 bg-white dark:bg-zinc-950">
+              <p className="text-[10px] text-muted-foreground mb-2">Preview (DYMO 11354 — 57×32mm)</p>
+              <div className="flex gap-2 items-center" style={{ maxWidth: '220px' }}>
+                <QRCodeSVG value={checklistUrl} size={64} level="M" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-[11px] truncate">
                     {vehicle.brand} {vehicle.model}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[9px] text-muted-foreground">
                     {vehicle.color || "-"}
                   </p>
-                  <div className="inline-block border border-foreground rounded px-2 py-0.5 mt-1">
-                    <p className="font-bold text-lg leading-tight">{licensePlate}</p>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">
+                  <p className="font-bold text-xs">{licensePlate}</p>
+                  <p className="text-[8px] text-muted-foreground truncate">
                     VIN: {vehicle.vin || "-"}
                   </p>
                 </div>

@@ -47,6 +47,7 @@ export interface DymoEnvironment {
 }
 
 export const LABEL_FORMATS = [
+  { id: '11354', name: '11354 Multi-Purpose (57×32mm)', width: 3240, height: 1815 },
   { id: '30323', name: '30323 Shipping (54×101mm)', width: 5760, height: 2880 },
   { id: '30256', name: '30256 Large Shipping (59×102mm)', width: 5820, height: 3060 },
   { id: '30252', name: '30252 Address (28×89mm)', width: 5040, height: 1580 },
@@ -119,8 +120,9 @@ export const generateLabelXml = (
   vin: string,
   format: LabelFormat = LABEL_FORMATS[0]
 ): string => {
-  const isCompact = format.id === '30252';
-  const qrSize = isCompact ? 800 : 1200;
+  const isSmall = format.id === '11354';
+  const isCompact = format.id === '30252' || isSmall;
+  const qrSize = isSmall ? 1000 : isCompact ? 800 : 1200;
   
   return `<?xml version="1.0" encoding="utf-8"?>
 <DieCutLabel Version="8.0" Units="twips">
