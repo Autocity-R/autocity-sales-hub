@@ -140,10 +140,11 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
           @page { size: 57mm 32mm landscape; margin: 0; }
           * { box-sizing: border-box; }
           html, body { 
-            margin: 0; padding: 2mm;
+            margin: 0; padding: 1.5mm;
             font-family: Arial, Helvetica, sans-serif;
             display: flex; gap: 2mm;
             align-items: center;
+            justify-content: center;
             width: 57mm; height: 32mm;
             overflow: hidden;
           }
@@ -151,12 +152,12 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
             html { width: 57mm; height: 32mm; }
           }
           .qr { flex-shrink: 0; }
-          .qr img { width: 18mm; height: 18mm; }
+          .qr img { width: 22mm; height: 22mm; }
           .info { flex: 1; overflow: hidden; }
-          .brand { font-size: 7pt; font-weight: bold; margin-bottom: 0.5mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .color { font-size: 6pt; color: #555; margin-bottom: 1mm; }
-          .plate { font-size: 8pt; font-weight: bold; margin-bottom: 0.5mm; }
-          .vin { font-size: 5pt; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .brand { font-size: 8pt; font-weight: bold; margin-bottom: 0.5mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .color { font-size: 7pt; color: #555; margin-bottom: 1mm; }
+          .plate { font-size: 10pt; font-weight: bold; margin-bottom: 0.5mm; }
+          .vin { font-size: 6pt; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         </style>
       </head>
       <body>
@@ -201,17 +202,17 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
             {/* Sticker Preview - 57x32mm schaal */}
             <div className="border rounded-lg p-3 bg-white dark:bg-zinc-950">
               <p className="text-[10px] text-muted-foreground mb-2">Preview (DYMO 11354 — 57×32mm)</p>
-              <div className="flex gap-2 items-center" style={{ maxWidth: '220px' }}>
-                <QRCodeSVG value={checklistUrl} size={64} level="M" />
+              <div className="flex gap-3 items-center" style={{ maxWidth: '240px' }}>
+                <QRCodeSVG value={checklistUrl} size={76} level="M" />
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-[11px] truncate">
+                  <p className="font-bold text-xs truncate">
                     {vehicle.brand} {vehicle.model}
                   </p>
-                  <p className="text-[9px] text-muted-foreground">
+                  <p className="text-[10px] text-muted-foreground">
                     {vehicle.color || "-"}
                   </p>
-                  <p className="font-bold text-xs">{licensePlate}</p>
-                  <p className="text-[8px] text-muted-foreground truncate">
+                  <p className="font-bold text-sm">{licensePlate}</p>
+                  <p className="text-[9px] text-muted-foreground truncate">
                     VIN: {vehicle.vin || "-"}
                   </p>
                 </div>
