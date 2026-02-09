@@ -1,73 +1,43 @@
 
 
-# Plan: QR Sticker optimaliseren voor DYMO 11354 (57x32mm)
+# Fix: Sticker draaien naar liggend (landscape)
 
 ## Probleem
 
-De browser print gebruikt `@page { size: 101mm 54mm }` — meer dan 3x te groot voor jouw 11354 labels (57x32mm). Alle tekst en de QR code vallen buiten het printgebied.
+De sticker wordt staand (portrait) geprint waardoor de inhoud over 2 stickers verdeeld wordt. De 57x32mm sticker moet liggend (landscape) geprint worden zodat alles op 1 label past.
 
-## Nieuw sticker design (57x32mm)
+## Oplossing
 
-```text
-┌─────────────────────────────────────────┐
-│ ┌─────────┐  VW Golf                   │
-│ │ QR CODE │  Zwart                     │
-│ │ 18x18mm │  XX-123-YY                 │
-│ └─────────┘  VIN: WVWZZZ..456          │
-└─────────────────────────────────────────┘
-        57mm x 32mm
-```
+Twee wijzigingen nodig:
 
-Alles wordt veel compacter:
-- QR code: 18x18mm (nog steeds scanbaar)
-- Tekst: 6-8pt
-- Kenteken: 8pt bold (geen border/kader, past niet)
-- Minimale padding (2mm)
+### 1. Browser Print CSS (`ChecklistQRDialog.tsx`)
 
-## Wijzigingen
-
-### 1. Browser print CSS aanpassen (`ChecklistQRDialog.tsx`)
-
-De `handleBrowserPrint` functie krijgt een compleet nieuw CSS-blok:
+In de `handleBrowserPrint` functie de `@page` richting omdraaien en landscape forceren:
 
 ```css
-@page { size: 57mm 32mm; margin: 0; }
-body {
-  margin: 0; padding: 2mm;
-  font-family: Arial, sans-serif;
-  display: flex; gap: 2mm;
-  align-items: center;
-  width: 57mm; height: 32mm;
-  overflow: hidden;
-}
-.qr img { width: 18mm; height: 18mm; }
-.brand { font-size: 7pt; font-weight: bold; }
-.color { font-size: 6pt; color: #555; }
-.plate { font-size: 8pt; font-weight: bold; }
-.vin { font-size: 5pt; color: #777; }
+@page { size: 57mm 32mm landscape; margin: 0; }
 ```
 
-### 2. DYMO label formaten updaten (`dymoService.ts`)
+Daarnaast een extra print-specifieke landscape hint toevoegen:
 
-- Toevoegen: **11354 (57x32mm)** als standaard formaat
-- Dit formaat als default instellen
-- XML template aanpassen met juiste bounds voor dit kleine label
+```css
+@media print {
+  html { width: 57mm; height: 32mm; }
+}
+```
 
-### 3. Preview in dialog aanpassen (`ChecklistQRDialog.tsx`)
+### 2. DYMO XML Template (`dymoService.ts`)
 
-De sticker preview in de dialog wordt verkleind zodat het overeenkomt met hoe het er op de echte sticker uitziet — kleine QR, compacte tekst.
+De `PaperOrientation` staat al op `Landscape`, maar voor de zekerheid controleren dat dit correct is en dat de width/height van het label in de XML kloppen voor landscape orientatie.
 
-## Bestanden die wijzigen
+## Bestanden
 
-| Bestand | Wat |
-|---------|-----|
-| `src/components/inventory/ChecklistQRDialog.tsx` | Browser print CSS naar 57x32mm, preview compacter |
-| `src/services/dymoService.ts` | 11354 label formaat toevoegen als default |
+| Bestand | Wijziging |
+|---------|-----------|
+| `src/components/inventory/ChecklistQRDialog.tsx` | `@page` size landscape toevoegen, body dimensies aanpassen |
+| `src/services/dymoService.ts` | Width/height waarden controleren voor landscape orientatie |
 
 ## Resultaat
 
-- Sticker past perfect op 57x32mm DYMO 11354 labels
-- QR code is 18x18mm (scanbaar met telefoon)
-- Merk, model, kleur, kenteken en VIN staan er compact op
-- Werkt via de standaard browser print dialoog met DYMO geselecteerd
+Sticker print liggend op 1 enkele DYMO 11354 label met QR links en tekst rechts.
 
