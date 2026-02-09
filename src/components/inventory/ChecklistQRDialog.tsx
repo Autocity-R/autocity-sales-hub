@@ -137,15 +137,18 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
       <head>
         <title>QR Sticker - ${lp}</title>
         <style>
-          @page { size: 57mm 32mm; margin: 0; }
+          @page { size: 57mm 32mm landscape; margin: 0; }
           * { box-sizing: border-box; }
-          body { 
+          html, body { 
             margin: 0; padding: 2mm;
             font-family: Arial, Helvetica, sans-serif;
             display: flex; gap: 2mm;
             align-items: center;
             width: 57mm; height: 32mm;
             overflow: hidden;
+          }
+          @media print {
+            html { width: 57mm; height: 32mm; }
           }
           .qr { flex-shrink: 0; }
           .qr img { width: 18mm; height: 18mm; }
