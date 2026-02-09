@@ -1,274 +1,73 @@
 
 
-# Plan: QR Code Sticker met DYMO Label V.8 Integratie
+# Plan: QR Sticker optimaliseren voor DYMO 11354 (57x32mm)
 
-## Samenvatting
+## Probleem
 
-Een simpele QR code sticker met DYMO LabelWriter integratie. De sticker bevat alleen: QR Code, Merk, Model, Kleur, Kenteken en VIN. Printen gaat direct naar de DYMO printer zonder print dialoog.
+De browser print gebruikt `@page { size: 101mm 54mm }` — meer dan 3x te groot voor jouw 11354 labels (57x32mm). Alle tekst en de QR code vallen buiten het printgebied.
 
-## DYMO Label V.8 Integratie
-
-De DYMO Connect Framework JavaScript SDK werkt met DYMO Label v8 software:
+## Nieuw sticker design (57x32mm)
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│   Browser (React App)                                       │
-│   └─> dymo.connect.framework.js                             │
-│       └─> Lokale Web Service (localhost:41951)              │
-│           └─> DYMO Label v8 Software                        │
-│               └─> DYMO LabelWriter Printer                  │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│ ┌─────────┐  VW Golf                   │
+│ │ QR CODE │  Zwart                     │
+│ │ 18x18mm │  XX-123-YY                 │
+│ └─────────┘  VIN: WVWZZZ..456          │
+└─────────────────────────────────────────┘
+        57mm x 32mm
 ```
 
-**Vereisten op de werkplek:**
-- DYMO Label v8 software geinstalleerd en actief
-- DYMO LabelWriter printer aangesloten
-- DYMO Web Service draait automatisch op de achtergrond
+Alles wordt veel compacter:
+- QR code: 18x18mm (nog steeds scanbaar)
+- Tekst: 6-8pt
+- Kenteken: 8pt bold (geen border/kader, past niet)
+- Minimale padding (2mm)
 
-## Sticker Design (Definitief)
+## Wijzigingen
 
-```text
-┌─────────────────────────────┐
-│                             │
-│    ┌────────────────┐       │
-│    │  ░░░░░░░░░░░░  │       │
-│    │  ░░ QR CODE ░  │       │
-│    │  ░░░░░░░░░░░░  │       │
-│    └────────────────┘       │
-│                             │
-│    Volkswagen Golf          │
-│    Zwart                    │
-│                             │
-│    ┌─────────────────────┐  │
-│    │     XX-123-YY       │  │
-│    └─────────────────────┘  │
-│                             │
-│    VIN: WVWZZZ3CZWE123456   │
-│                             │
-└─────────────────────────────┘
-```
+### 1. Browser print CSS aanpassen (`ChecklistQRDialog.tsx`)
 
-**Geschikt voor DYMO labels:**
-- 30323 Shipping Labels (54x101mm) - Aanbevolen
-- 30256 Large Shipping (59x102mm)
-- 30252 Address Labels (28x89mm) - Compact
+De `handleBrowserPrint` functie krijgt een compleet nieuw CSS-blok:
 
-## Technische Implementatie
-
-### DYMO Framework Integratie
-
-De DYMO Connect Framework wordt geladen via CDN en communiceert met de lokale DYMO Web Service:
-
-```typescript
-// Service: src/services/dymoService.ts
-
-// Initialize DYMO Framework
-export const initDymo = async (): Promise<boolean> => {
-  try {
-    await dymo.label.framework.init();
-    const env = await dymo.label.framework.checkEnvironment();
-    return env.isWebServicePresent && env.isFrameworkInstalled;
-  } catch {
-    return false;
-  }
-};
-
-// Get available DYMO printers
-export const getDymoPrinters = async (): Promise<string[]> => {
-  const printers = await dymo.label.framework.getPrinters();
-  return printers
-    .filter(p => p.printerType === 'LabelWriterPrinter')
-    .map(p => p.name);
-};
-
-// Print label directly to DYMO printer
-export const printLabel = async (
-  printerName: string, 
-  labelXml: string
-): Promise<void> => {
-  await dymo.label.framework.printLabel(printerName, '', labelXml, '');
-};
-```
-
-### Label XML Template
-
-DYMO labels worden gedefinieerd in XML formaat:
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<DieCutLabel Version="8.0" Units="twips">
-  <PaperOrientation>Landscape</PaperOrientation>
-  <Id>Shipping</Id>
-  <PaperName>30323 Shipping</PaperName>
-  <DrawCommands>
-    <!-- QR Code -->
-    <BarcodeObject>
-      <Type>QRCode</Type>
-      <Text>{checklistUrl}</Text>
-    </BarcodeObject>
-    
-    <!-- Merk Model -->
-    <TextObject>
-      <Text>{brand} {model}</Text>
-    </TextObject>
-    
-    <!-- Kleur -->
-    <TextObject>
-      <Text>{color}</Text>
-    </TextObject>
-    
-    <!-- Kenteken (groot) -->
-    <TextObject>
-      <Text>{licensePlate}</Text>
-      <FontSize>24</FontSize>
-    </TextObject>
-    
-    <!-- VIN -->
-    <TextObject>
-      <Text>VIN: {vin}</Text>
-    </TextObject>
-  </DrawCommands>
-</DieCutLabel>
-```
-
-### Nieuwe Database Tabel
-
-```sql
-CREATE TABLE checklist_access_tokens (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  vehicle_id UUID NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
-  token TEXT NOT NULL UNIQUE,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  created_by UUID REFERENCES auth.users(id)
-);
-
--- Index voor snelle token lookups
-CREATE INDEX idx_checklist_tokens_token ON checklist_access_tokens(token);
-
--- RLS policies
-ALTER TABLE checklist_access_tokens ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Public can validate tokens"
-  ON checklist_access_tokens FOR SELECT USING (true);
-
-CREATE POLICY "Authenticated users can create tokens"
-  ON checklist_access_tokens FOR INSERT 
-  WITH CHECK (auth.uid() IS NOT NULL);
-```
-
-### Nieuwe Bestanden
-
-| Bestand | Beschrijving |
-|---------|--------------|
-| `src/pages/ChecklistView.tsx` | Publieke mobiele checklist pagina |
-| `src/services/checklistAccessService.ts` | Token generatie en validatie |
-| `src/services/dymoService.ts` | DYMO printer integratie |
-| `src/components/inventory/ChecklistQRDialog.tsx` | Print dialog met printer selectie |
-
-### Bestaande Bestanden Wijzigen
-
-| Bestand | Wijziging |
-|---------|-----------|
-| `index.html` | DYMO Connect Framework script toevoegen |
-| `src/App.tsx` | Route `/checklist/view/:token` toevoegen |
-| `src/components/inventory/detail-tabs/ChecklistTab.tsx` | "Print QR Sticker" knop |
-
-## Print Dialog UI
-
-```text
-┌─────────────────────────────────────────────┐
-│  Print QR Sticker                       X   │
-├─────────────────────────────────────────────┤
-│                                             │
-│  DYMO Printer:  [▼ DYMO LabelWriter 450  ]  │
-│  Label Formaat: [▼ 30323 Shipping        ]  │
-│                                             │
-│  ┌─────────────────────────────────────┐    │
-│  │                                     │    │
-│  │        [QR CODE PREVIEW]            │    │
-│  │                                     │    │
-│  │        Volkswagen Golf              │    │
-│  │        Zwart                        │    │
-│  │                                     │    │
-│  │        ┌─────────────────────┐      │    │
-│  │        │     XX-123-YY       │      │    │
-│  │        └─────────────────────┘      │    │
-│  │                                     │    │
-│  │        VIN: WVWZZZ3CZWE123456       │    │
-│  │                                     │    │
-│  └─────────────────────────────────────┘    │
-│                                             │
-│  ⚠️ DYMO Label software moet actief zijn    │
-│                                             │
-│         [Annuleren]    [🖨️ Printen]         │
-│                                             │
-└─────────────────────────────────────────────┘
-```
-
-## Fallback: Browser Print
-
-Als DYMO niet beschikbaar is, bieden we een browser print fallback:
-
-```text
-┌─────────────────────────────────────────────┐
-│  Print QR Sticker                       X   │
-├─────────────────────────────────────────────┤
-│                                             │
-│  ⚠️ Geen DYMO printer gevonden              │
-│                                             │
-│  Zorg dat:                                  │
-│  • DYMO Label v8 software actief is         │
-│  • LabelWriter printer is aangesloten       │
-│                                             │
-│  [🔄 Opnieuw zoeken]                        │
-│                                             │
-│  ─────────── OF ───────────                 │
-│                                             │
-│  [🖨️ Print via browser (A4)]               │
-│                                             │
-└─────────────────────────────────────────────┘
-```
-
-## Automatische Verval
-
-De gescande link verloopt automatisch wanneer de auto niet meer status `verkocht_b2c` heeft:
-
-```typescript
-// In ChecklistView.tsx
-const vehicle = await fetchVehicleByToken(token);
-
-if (vehicle.status !== 'verkocht_b2c') {
-  return (
-    <ErrorScreen 
-      title="Link Verlopen"
-      message="Dit voertuig is inmiddels afgeleverd."
-    />
-  );
+```css
+@page { size: 57mm 32mm; margin: 0; }
+body {
+  margin: 0; padding: 2mm;
+  font-family: Arial, sans-serif;
+  display: flex; gap: 2mm;
+  align-items: center;
+  width: 57mm; height: 32mm;
+  overflow: hidden;
 }
+.qr img { width: 18mm; height: 18mm; }
+.brand { font-size: 7pt; font-weight: bold; }
+.color { font-size: 6pt; color: #555; }
+.plate { font-size: 8pt; font-weight: bold; }
+.vin { font-size: 5pt; color: #777; }
 ```
 
-## Bestandswijzigingen Overzicht
+### 2. DYMO label formaten updaten (`dymoService.ts`)
 
-| Actie | Bestand |
-|-------|---------|
-| **Database** | Nieuwe tabel `checklist_access_tokens` |
-| **Nieuw** | `src/pages/ChecklistView.tsx` |
-| **Nieuw** | `src/services/checklistAccessService.ts` |
-| **Nieuw** | `src/services/dymoService.ts` |
-| **Nieuw** | `src/components/inventory/ChecklistQRDialog.tsx` |
-| **Wijzig** | `index.html` (DYMO script) |
-| **Wijzig** | `src/App.tsx` (route) |
-| **Wijzig** | `src/components/inventory/detail-tabs/ChecklistTab.tsx` (knop) |
+- Toevoegen: **11354 (57x32mm)** als standaard formaat
+- Dit formaat als default instellen
+- XML template aanpassen met juiste bounds voor dit kleine label
 
-## Verwacht Resultaat
+### 3. Preview in dialog aanpassen (`ChecklistQRDialog.tsx`)
 
-1. "Print QR Sticker" knop in Checklist tab
-2. Dialog met DYMO printer selectie
-3. Direct printen naar DYMO LabelWriter (geen print dialoog)
-4. Sticker bevat alleen: QR, Merk/Model, Kleur, Kenteken, VIN
-5. Mobiele pagina na scannen met volledige info + realtime checklist
-6. Link verloopt automatisch bij status naar "afgeleverd"
-7. Fallback naar browser print als DYMO niet beschikbaar is
+De sticker preview in de dialog wordt verkleind zodat het overeenkomt met hoe het er op de echte sticker uitziet — kleine QR, compacte tekst.
+
+## Bestanden die wijzigen
+
+| Bestand | Wat |
+|---------|-----|
+| `src/components/inventory/ChecklistQRDialog.tsx` | Browser print CSS naar 57x32mm, preview compacter |
+| `src/services/dymoService.ts` | 11354 label formaat toevoegen als default |
+
+## Resultaat
+
+- Sticker past perfect op 57x32mm DYMO 11354 labels
+- QR code is 18x18mm (scanbaar met telefoon)
+- Merk, model, kleur, kenteken en VIN staan er compact op
+- Werkt via de standaard browser print dialoog met DYMO geselecteerd
 
