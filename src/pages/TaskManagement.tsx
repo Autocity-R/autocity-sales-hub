@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, CheckCircle, Clock, AlertCircle, RefreshCw, Wrench, Shield, Truck, Sparkles, ClipboardList, Package, Cog } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -30,10 +30,16 @@ const TaskManagement = () => {
   // Enable real-time updates
   useTasksRealtime();
 
+  // Debug logging for iPad/Safari issues
+  useEffect(() => {
+    console.log('[TaskManagement] Render state - user:', user?.id ?? 'null', 'isAdmin:', isAdmin);
+  }, [user, isAdmin]);
+
   const {
     data: tasks = [],
     isLoading,
     error,
+    refetch,
   } = useQuery({
     queryKey: ["tasks", statusFilter, user?.id],
     queryFn: () => fetchTasks({ 
@@ -41,7 +47,9 @@ const TaskManagement = () => {
     }),
     enabled: !!user,
     staleTime: 0,
-    refetchOnMount: 'always'
+    refetchOnMount: 'always',
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
 
   const updateStatusMutation = useMutation({
@@ -194,8 +202,12 @@ const TaskManagement = () => {
   if (!user) {
     return (
       <DashboardLayout>
-        <div className="p-8 text-center">
+        <div className="p-8 text-center space-y-4">
           <p className="text-muted-foreground">Je moet ingelogd zijn om taken te bekijken.</p>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Pagina herladen
+          </Button>
         </div>
       </DashboardLayout>
     );
@@ -215,8 +227,13 @@ const TaskManagement = () => {
   if (error) {
     return (
       <DashboardLayout>
-        <div className="p-8 text-center text-destructive">
-          Er is een fout opgetreden bij het laden van de taken.
+        <div className="p-8 text-center space-y-4">
+          <p className="text-destructive">Er is een fout opgetreden bij het laden van de taken.</p>
+          <p className="text-sm text-muted-foreground">{(error as Error)?.message}</p>
+          <Button variant="outline" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Probeer opnieuw
+          </Button>
         </div>
       </DashboardLayout>
     );

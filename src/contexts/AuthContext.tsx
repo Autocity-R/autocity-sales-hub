@@ -51,9 +51,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Set up auth state listener
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('[Auth] State change:', event, session?.user?.id ?? 'no user');
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -69,13 +70,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Then check for existing session
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.warn('[Auth] getSession error:', error.message);
+      }
+      console.log('[Auth] Initial session:', session?.user?.id ?? 'no session');
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
         checkUserRole(session.user.id);
+      } else {
+        // Safari/iPad: try refreshing the session if none found
+        console.log('[Auth] No session found, attempting refresh...');
+        supabase.auth.refreshSession().then(({ data: refreshData, error: refreshError }) => {
+          if (refreshError) {
+            console.warn('[Auth] Session refresh failed:', refreshError.message);
+          } else if (refreshData?.session) {
+            console.log('[Auth] Session refreshed successfully:', refreshData.session.user.id);
+            setSession(refreshData.session);
+            setUser(refreshData.session.user);
+            checkUserRole(refreshData.session.user.id);
+          }
+        });
       }
       setLoading(false);
     });
