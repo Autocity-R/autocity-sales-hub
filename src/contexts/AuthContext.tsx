@@ -17,10 +17,23 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const defaultAuthContext: AuthContextType = {
+  user: null,
+  session: null,
+  loading: true,
+  signIn: async () => ({ error: new Error("AuthProvider not mounted") }),
+  signUp: async () => ({ error: new Error("AuthProvider not mounted") }),
+  signOut: async () => {},
+  resetPassword: async () => ({ error: new Error("AuthProvider not mounted") }),
+  isAdmin: false,
+  userRole: null,
+};
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    console.warn("[Auth] useAuth called outside AuthProvider — returning safe defaults");
+    return defaultAuthContext;
   }
   return context;
 };
