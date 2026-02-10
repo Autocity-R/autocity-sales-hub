@@ -1,26 +1,47 @@
 
 
-# QR Sticker groter en gecentreerd maken
+# Fix: Taken niet zichtbaar op iPad (Safari)
 
-## Probleem
+## Oorzaak
 
-De huidige sticker-inhoud is klein en staat linksboven in plaats van gecentreerd op het 57x32mm label.
+Het probleem is hoogstwaarschijnlijk een **Safari-specifiek auth sessie probleem**. Safari op iPad blokkeert third-party cookies via ITP (Intelligent Tracking Prevention), waardoor de Supabase auth sessie soms niet correct wordt hersteld. Als de `user` null blijft, wordt de taken-query niet uitgevoerd en ziet de gebruiker een lege pagina.
 
-## Wijzigingen in `src/components/inventory/ChecklistQRDialog.tsx`
+Extra probleem: wanneer de fetch mislukt, wordt de fout stil opgeslikt en een lege array geretourneerd, waardoor het lijkt alsof er gewoon geen taken zijn.
 
-### Browser Print CSS aanpassen in `handleBrowserPrint`:
+## Aanpak
 
-- **Centreren**: `justify-content: center` en `align-items: center` toevoegen aan body
-- **QR code groter**: van 18mm naar 22mm
-- **Tekst groter**: brand van 7pt naar 8pt, plate van 8pt naar 10pt, color van 6pt naar 7pt, VIN van 5pt naar 6pt
-- **Padding**: van 2mm naar 1.5mm (meer ruimte voor content)
+### 1. Debug logging toevoegen aan TaskManagement.tsx
 
-### Preview in dialog aanpassen:
+Voeg console.log statements toe zodat we bij het volgende probleem direct kunnen zien wat er mis gaat:
+- Log de `user` status, `loading` status, en het aantal taken
+- Log of de query daadwerkelijk wordt uitgevoerd
 
-- QR code `size` van 64 naar 76
-- Tekst iets groter in de preview
+### 2. Betere foutafhandeling in fetchTasks (taskService.ts)
 
-## Resultaat
+- Log een duidelijke waarschuwing als de Supabase sessie ontbreekt voordat de query wordt uitgevoerd
+- Controleer actief of er een sessie is via `supabase.auth.getSession()` en log het resultaat
 
-Label-inhoud vult het sticker-oppervlak beter en staat gecentreerd.
+### 3. Retry mechanisme toevoegen voor auth-sessie
+
+In TaskManagement.tsx:
+- Als `user` null is maar `loading` false, probeer de sessie handmatig te herstellen via `supabase.auth.getSession()`
+- Voeg een `retry` optie toe aan de React Query config zodat het bij een fout automatisch opnieuw probeert
+
+### 4. Visuele feedback bij lege taken
+
+In plaats van een stille lege lijst, toon een duidelijke melding met een "Probeer opnieuw" knop als er geen taken zichtbaar zijn, zodat de gebruiker zelf kan herladen.
+
+## Bestanden die wijzigen
+
+| Bestand | Wijziging |
+|---------|-----------|
+| `src/pages/TaskManagement.tsx` | Debug logging, retry logica, visuele feedback bij lege state |
+| `src/services/taskService.ts` | Sessie-check voor fetch, betere error logging |
+| `src/contexts/AuthContext.tsx` | Sessie-herstel mechanisme voor Safari/iOS |
+
+## Verwacht resultaat
+
+- Als de sessie verlopen is, wordt deze automatisch hersteld
+- Als er een probleem is, ziet de gebruiker een duidelijke melding met een "Probeer opnieuw" knop
+- Console logs helpen bij toekomstige debugging van vergelijkbare problemen
 
