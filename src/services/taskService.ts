@@ -16,6 +16,26 @@ const profileToEmployee = (profile: UserProfile): Employee => ({
 
 export const fetchTasks = async (filters?: any): Promise<Task[]> => {
   try {
+    // Session check for debugging iPad/Safari issues
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      console.warn('[fetchTasks] Session error:', sessionError.message);
+    }
+    if (!sessionData?.session) {
+      console.warn('[fetchTasks] No active session found - tasks query will likely return empty due to RLS');
+      // Attempt session refresh
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) {
+        console.error('[fetchTasks] Session refresh failed:', refreshError.message);
+        throw new Error('Sessie verlopen. Log opnieuw in.');
+      }
+      if (refreshData?.session) {
+        console.log('[fetchTasks] Session successfully refreshed');
+      }
+    } else {
+      console.log('[fetchTasks] Session active for user:', sessionData.session.user.id);
+    }
+
     let query = supabase
       .from('tasks')
       .select(`
@@ -38,9 +58,11 @@ export const fetchTasks = async (filters?: any): Promise<Task[]> => {
     const { data, error } = await query;
 
     if (error) {
-      console.error("Failed to fetch tasks:", error);
-      return [];
+      console.error("[fetchTasks] Failed to fetch tasks:", error);
+      throw new Error(error.message);
     }
+
+    console.log(`[fetchTasks] Fetched ${data?.length || 0} tasks`);
 
     // Transform database response to Task interface - pass through the profile data
     return (data || []).map((task: any) => ({
@@ -73,8 +95,8 @@ export const fetchTasks = async (filters?: any): Promise<Task[]> => {
       vehicle: task.vehicle
     }));
   } catch (error: any) {
-    console.error("Failed to fetch tasks:", error);
-    return [];
+    console.error("[fetchTasks] Failed to fetch tasks:", error);
+    throw error;
   }
 };
 
