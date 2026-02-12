@@ -47,13 +47,14 @@ const TaskCard = memo<{
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
 }>(({ task, onCompleteTask, onStartTask, onTaskSelect, onEditTask, onDeleteTask }) => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, userRole } = useAuth();
   
-  // Check if current user can manage this task
-  const canManageTask = isAdmin || task.assignedTo === user?.id || task.assignedBy === user?.id;
+  // Check if current user can manage this task (aftersales_manager can manage all tasks)
+  const isManagerRole = isAdmin || userRole === 'manager' || userRole === 'aftersales_manager' || userRole === 'verkoper';
+  const canManageTask = isManagerRole || task.assignedTo === user?.id || task.assignedBy === user?.id;
   
-  // Check if current user can edit/delete (only who assigned it or admin)
-  const canEditDelete = isAdmin || task.assignedBy === user?.id;
+  // Check if current user can edit/delete
+  const canEditDelete = isAdmin || userRole === 'aftersales_manager' || task.assignedBy === user?.id;
   
   const getStatusIcon = useCallback((status: TaskStatus) => {
     switch (status) {

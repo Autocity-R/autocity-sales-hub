@@ -46,10 +46,11 @@ export const TaskMobileCard = memo<TaskMobileCardProps>(({
   onEditTask, 
   onDeleteTask 
 }) => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, userRole } = useAuth();
   
-  const canManageTask = isAdmin || task.assignedTo === user?.id || task.assignedBy === user?.id;
-  const canEditDelete = isAdmin || task.assignedBy === user?.id;
+  const isManagerRole = isAdmin || userRole === 'manager' || userRole === 'aftersales_manager' || userRole === 'verkoper';
+  const canManageTask = isManagerRole || task.assignedTo === user?.id || task.assignedBy === user?.id;
+  const canEditDelete = isAdmin || userRole === 'aftersales_manager' || task.assignedBy === user?.id;
   
   const getStatusIcon = useCallback((status: TaskStatus) => {
     switch (status) {
