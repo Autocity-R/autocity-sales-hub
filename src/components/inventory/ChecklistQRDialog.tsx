@@ -149,27 +149,30 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
           html, body {
             width: 57mm; height: 32mm;
             margin: 0; padding: 0;
-            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
           .sticker {
             width: 57mm; height: 32mm;
             padding: 2mm;
+            margin: auto;
             display: flex;
             align-items: center;
             gap: 2mm;
             font-family: Arial, Helvetica, sans-serif;
           }
-          .qr { flex-shrink: 0; width: 20mm; height: 20mm; }
-          .qr svg { width: 20mm; height: 20mm; display: block; }
+          .qr { flex-shrink: 0; width: 26mm; height: 26mm; }
+          .qr svg { width: 26mm; height: 26mm; display: block; }
           .info { flex: 1; min-width: 0; overflow: hidden; }
-          .brand { font-size: 7pt; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .color { font-size: 6pt; color: #555; margin-top: 0.5mm; }
-          .plate { font-size: 9pt; font-weight: bold; margin-top: 1mm; }
-          .vin { font-size: 5pt; color: #777; margin-top: 0.5mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .brand { font-size: 9pt; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .color { font-size: 7pt; color: #555; margin-top: 0.5mm; }
+          .plate { font-size: 12pt; font-weight: bold; margin-top: 1mm; }
+          .vin { font-size: 6pt; color: #777; margin-top: 0.5mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           @media screen {
-            body { background: #f0f0f0; display: flex; justify-content: center; align-items: center; width: 100vw; height: 100vh; }
+            body { background: #f0f0f0; width: 100vw; height: 100vh; }
             .sticker { border: 1px dashed #ccc; background: #fff; }
           }
         </style>
