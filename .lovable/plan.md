@@ -1,47 +1,60 @@
 
 
-# Fix: Taken niet zichtbaar op iPad (Safari)
+# Fix: QR Sticker browser-print optimaliseren voor DYMO 11354
 
-## Oorzaak
+## Probleem
 
-Het probleem is hoogstwaarschijnlijk een **Safari-specifiek auth sessie probleem**. Safari op iPad blokkeert third-party cookies via ITP (Intelligent Tracking Prevention), waardoor de Supabase auth sessie soms niet correct wordt hersteld. Als de `user` null blijft, wordt de taken-query niet uitgevoerd en ziet de gebruiker een lege pagina.
+De "Print via browser" functie werkt niet goed omdat:
+1. `@page { size: 57mm 32mm }` wordt door veel browsers genegeerd of anders geinterpreteerd
+2. De browser voegt standaard marges toe die de layout verschuiven
+3. De QR-code wordt van een externe API geladen (`api.qrserver.com`) - dit kan te laat laden of geblokkeerd worden
+4. `overflow: hidden` knipt content onzichtbaar af in plaats van te schalen
 
-Extra probleem: wanneer de fetch mislukt, wordt de fout stil opgeslikt en een lege array geretourneerd, waardoor het lijkt alsof er gewoon geen taken zijn.
+## Oplossing
 
-## Aanpak
+De browser-print functie in `ChecklistQRDialog.tsx` volledig herschrijven met een betrouwbare aanpak:
 
-### 1. Debug logging toevoegen aan TaskManagement.tsx
+### 1. QR-code als inline SVG in plaats van externe afbeelding
+- De QRCodeSVG component genereert al een SVG in de preview - we serialiseren die SVG direct naar de print HTML
+- Geen externe API call meer, dus geen laadtijd of blokkade-risico
 
-Voeg console.log statements toe zodat we bij het volgende probleem direct kunnen zien wat er mis gaat:
-- Log de `user` status, `loading` status, en het aantal taken
-- Log of de query daadwerkelijk wordt uitgevoerd
+### 2. Robuustere print CSS
+- Gebruik `@page { margin: 0; }` zonder `size` (die wordt vaak genegeerd)
+- Instructie aan de gebruiker: selecteer "DYMO 11354" als papierformaat in het printdialoog
+- Gebruik mm-gebaseerde afmetingen op de sticker container zelf
+- Alle schaling binnen de container houden met `transform: scale()` als fallback
 
-### 2. Betere foutafhandeling in fetchTasks (taskService.ts)
+### 3. Compactere layout met veilige marges
+- QR-code: 20mm x 20mm (past ruim in 32mm hoogte met marge)
+- Tekst rechts naast QR met verkleinde fonts
+- 2mm padding rondom als veilige zone
+- `display: flex; align-items: center` voor verticale centrering
 
-- Log een duidelijke waarschuwing als de Supabase sessie ontbreekt voordat de query wordt uitgevoerd
-- Controleer actief of er een sessie is via `supabase.auth.getSession()` en log het resultaat
+### 4. Print-instructie in de UI
+- Kort bericht toevoegen: "Selecteer papierformaat 'DYMO 11354' en marges 'Geen' in het printvenster"
+- Dit helpt de gebruiker de juiste instellingen te kiezen
 
-### 3. Retry mechanisme toevoegen voor auth-sessie
-
-In TaskManagement.tsx:
-- Als `user` null is maar `loading` false, probeer de sessie handmatig te herstellen via `supabase.auth.getSession()`
-- Voeg een `retry` optie toe aan de React Query config zodat het bij een fout automatisch opnieuw probeert
-
-### 4. Visuele feedback bij lege taken
-
-In plaats van een stille lege lijst, toon een duidelijke melding met een "Probeer opnieuw" knop als er geen taken zichtbaar zijn, zodat de gebruiker zelf kan herladen.
-
-## Bestanden die wijzigen
+## Technische wijzigingen
 
 | Bestand | Wijziging |
 |---------|-----------|
-| `src/pages/TaskManagement.tsx` | Debug logging, retry logica, visuele feedback bij lege state |
-| `src/services/taskService.ts` | Sessie-check voor fetch, betere error logging |
-| `src/contexts/AuthContext.tsx` | Sessie-herstel mechanisme voor Safari/iOS |
+| `src/components/inventory/ChecklistQRDialog.tsx` | `handleBrowserPrint` herschrijven: SVG inline, betere CSS, print-tip in UI |
+
+## Nieuwe handleBrowserPrint logica (kern)
+
+```text
+1. Pak de QRCodeSVG uit de DOM via ref of genereer SVG string direct
+2. Bouw print HTML met:
+   - @page { margin: 0; }
+   - Container: width: 57mm, height: 32mm, display: flex, padding: 2mm
+   - QR SVG inline (geen externe img)
+   - Tekst met pt-gebaseerde fonts (7pt, 9pt, 5pt)
+3. Open print window, schrijf HTML, trigger print na korte delay
+```
 
 ## Verwacht resultaat
 
-- Als de sessie verlopen is, wordt deze automatisch hersteld
-- Als er een probleem is, ziet de gebruiker een duidelijke melding met een "Probeer opnieuw" knop
-- Console logs helpen bij toekomstige debugging van vergelijkbare problemen
+- Sticker print correct op DYMO 11354 labels via de browser
+- Geen afhankelijkheid meer van externe QR API
+- Gebruiker krijgt duidelijke instructie voor printinstellingen
 
