@@ -144,7 +144,7 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
       <head>
         <title>QR Sticker - ${lp}</title>
         <style>
-          @page { margin: 0; }
+          @page { size: 57mm 32mm; margin: 0; }
           * { box-sizing: border-box; margin: 0; padding: 0; }
           html, body {
             width: 57mm; height: 32mm;
@@ -215,7 +215,7 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
           <div className="space-y-4">
             {/* Sticker Preview - 57x32mm schaal */}
             <div className="border rounded-lg p-3 bg-white dark:bg-zinc-950">
-              <p className="text-[10px] text-muted-foreground mb-2">Preview (DYMO 11354 — 57×32mm)</p>
+              <p className="text-[10px] text-muted-foreground mb-2">Preview (57×32mm label)</p>
               <div className="flex gap-3 items-center" style={{ maxWidth: '240px' }}>
                 <div id="checklist-qr-svg">
                   <QRCodeSVG value={checklistUrl} size={76} level="M" />
@@ -237,7 +237,7 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
 
             {/* Print instructie */}
             <p className="text-[10px] text-muted-foreground px-1">
-              💡 Selecteer papierformaat <strong>"11354 Multi-Purpose"</strong> en marges <strong>"Geen"</strong> in het printvenster.
+              💡 Kies in het printvenster papierformaat <strong>"Aangepast"</strong> (of <strong>"Custom"</strong>), stel in op <strong>57 × 32 mm</strong> en zet marges op <strong>"Geen"</strong>.
             </p>
 
             {/* DYMO Printer Section */}
