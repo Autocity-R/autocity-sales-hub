@@ -55,37 +55,17 @@ export const LABEL_FORMATS = [
 
 export type LabelFormat = typeof LABEL_FORMATS[number];
 
-const DYMO_SCRIPT_URL = 'https://labelwriter.com/sdk/latest/dymo.connect.framework.js';
-let dymoScriptLoaded = false;
-let dymoScriptLoading: Promise<boolean> | null = null;
-
-const loadDymoScript = (): Promise<boolean> => {
-  if (dymoScriptLoaded && window.dymo) return Promise.resolve(true);
-  if (dymoScriptLoading) return dymoScriptLoading;
-
-  dymoScriptLoading = new Promise<boolean>((resolve) => {
-    const script = document.createElement('script');
-    script.src = DYMO_SCRIPT_URL;
-    script.async = true;
-    script.onload = () => { dymoScriptLoaded = true; resolve(true); };
-    script.onerror = () => { dymoScriptLoading = null; resolve(false); };
-    document.head.appendChild(script);
-  });
-  return dymoScriptLoading;
-};
-
 /**
  * Check if DYMO framework is available and running
  */
 export const checkDymoEnvironment = async (): Promise<DymoEnvironment> => {
   try {
-    const loaded = await loadDymoScript();
-    if (!loaded || !window.dymo) {
+    if (!window.dymo) {
       return {
         isAvailable: false,
         isFrameworkInstalled: false,
         isWebServicePresent: false,
-        errorDetails: 'DYMO Connect Framework kon niet geladen worden',
+        errorDetails: 'DYMO Connect Framework niet geladen',
       };
     }
 
