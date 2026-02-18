@@ -126,6 +126,13 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
   };
 
   const handleBrowserPrint = () => {
+    // Serialize the QR SVG from the DOM
+    const qrContainer = document.getElementById("checklist-qr-svg");
+    const svgEl = qrContainer?.querySelector("svg");
+    const qrSvgString = svgEl
+      ? new XMLSerializer().serializeToString(svgEl)
+      : "";
+
     const printWindow = window.open("", "_blank", "width=400,height=600");
     if (!printWindow) return;
 
@@ -137,45 +144,52 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
       <head>
         <title>QR Sticker - ${lp}</title>
         <style>
-          @page { size: 57mm 32mm landscape; margin: 0; }
-          * { box-sizing: border-box; }
-          html, body { 
-            margin: 0; padding: 1.5mm;
-            font-family: Arial, Helvetica, sans-serif;
-            display: flex; gap: 2mm;
-            align-items: center;
-            justify-content: center;
+          @page { margin: 0; }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          html, body {
             width: 57mm; height: 32mm;
+            margin: 0; padding: 0;
             overflow: hidden;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
-          @media print {
-            html { width: 57mm; height: 32mm; }
+          .sticker {
+            width: 57mm; height: 32mm;
+            padding: 2mm;
+            display: flex;
+            align-items: center;
+            gap: 2mm;
+            font-family: Arial, Helvetica, sans-serif;
           }
-          .qr { flex-shrink: 0; }
-          .qr img { width: 22mm; height: 22mm; }
-          .info { flex: 1; overflow: hidden; }
-          .brand { font-size: 8pt; font-weight: bold; margin-bottom: 0.5mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .color { font-size: 7pt; color: #555; margin-bottom: 1mm; }
-          .plate { font-size: 10pt; font-weight: bold; margin-bottom: 0.5mm; }
-          .vin { font-size: 6pt; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .qr { flex-shrink: 0; width: 20mm; height: 20mm; }
+          .qr svg { width: 20mm; height: 20mm; display: block; }
+          .info { flex: 1; min-width: 0; overflow: hidden; }
+          .brand { font-size: 7pt; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .color { font-size: 6pt; color: #555; margin-top: 0.5mm; }
+          .plate { font-size: 9pt; font-weight: bold; margin-top: 1mm; }
+          .vin { font-size: 5pt; color: #777; margin-top: 0.5mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          @media screen {
+            body { background: #f0f0f0; display: flex; justify-content: center; align-items: center; width: 100vw; height: 100vh; }
+            .sticker { border: 1px dashed #ccc; background: #fff; }
+          }
         </style>
       </head>
       <body>
-        <div class="qr">
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(checklistUrl)}" />
-        </div>
-        <div class="info">
-          <div class="brand">${vehicle.brand} ${vehicle.model}</div>
-          <div class="color">${vehicle.color || "-"}</div>
-          <div class="plate">${lp}</div>
-          <div class="vin">VIN: ${vehicle.vin || "-"}</div>
+        <div class="sticker">
+          <div class="qr">${qrSvgString}</div>
+          <div class="info">
+            <div class="brand">${vehicle.brand} ${vehicle.model}</div>
+            <div class="color">${vehicle.color || "-"}</div>
+            <div class="plate">${lp}</div>
+            <div class="vin">VIN: ${vehicle.vin || "-"}</div>
+          </div>
         </div>
       </body>
       </html>
     `);
     printWindow.document.close();
     printWindow.focus();
-    setTimeout(() => printWindow.print(), 500);
+    setTimeout(() => printWindow.print(), 300);
   };
 
   const licensePlate = vehicle.licenseNumber || "-";
@@ -203,7 +217,9 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
             <div className="border rounded-lg p-3 bg-white dark:bg-zinc-950">
               <p className="text-[10px] text-muted-foreground mb-2">Preview (DYMO 11354 — 57×32mm)</p>
               <div className="flex gap-3 items-center" style={{ maxWidth: '240px' }}>
-                <QRCodeSVG value={checklistUrl} size={76} level="M" />
+                <div id="checklist-qr-svg">
+                  <QRCodeSVG value={checklistUrl} size={76} level="M" />
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-xs truncate">
                     {vehicle.brand} {vehicle.model}
@@ -218,6 +234,11 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Print instructie */}
+            <p className="text-[10px] text-muted-foreground px-1">
+              💡 Selecteer papierformaat <strong>"11354 Multi-Purpose"</strong> en marges <strong>"Geen"</strong> in het printvenster.
+            </p>
 
             {/* DYMO Printer Section */}
             {dymoEnv?.isAvailable && printers.length > 0 ? (
