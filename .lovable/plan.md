@@ -1,37 +1,41 @@
 
 
-# Fix: Print-instructie aanpassen voor DYMO stickers
+# Fix: Wit scherm in preview oplossen
 
-## Probleem
+## Analyse
 
-Het papierformaat "11354 Multi-Purpose" bestaat niet als optie in het browser-printvenster. De browser kent geen DYMO-specifieke formaatnamen -- die zijn alleen beschikbaar in de DYMO Label Software zelf.
+Na het bekijken van de code, console logs en de applicatie-structuur is er **geen code-fout** gevonden die een wit scherm veroorzaakt. De applicatie laadt correct:
+- `AuthProvider` wropt de hele app in `main.tsx`
+- `ProtectedRoute` heeft een veilige fallback als auth nog niet geladen is
+- De DYMO script-fout (`ERR_TUNNEL_CONNECTION_FAILED`) is onschuldig -- het script laadt met `defer` en de dymoService vangt missende `window.dymo` netjes op
+
+## Waarschijnlijke oorzaak
+
+Het witte scherm wordt veroorzaakt door de **preview iframe** die vastloopt na meerdere snelle code-wijzigingen. Dit is een bekend gedrag in de Lovable preview.
 
 ## Oplossing
 
-De print-instructie en aanpak aanpassen zodat het werkt ongeacht welk papierformaat de browser aanbiedt:
-
-### 1. Print-instructie verduidelijken
-De huidige tekst verwijst naar een formaat dat niet bestaat in de browser. Vervangen door praktische instructies:
-- Kies papierformaat **"Custom"** of **"Aangepast"** (afhankelijk van de taal)
-- Stel afmetingen in op **57 x 32 mm** (of **2.24 x 1.26 inch**)
-- Zet marges op **Geen / None**
-- Of: kies het **kleinste beschikbare formaat** en marges op Geen
-
-### 2. Extra CSS-veiligheid toevoegen
-- `@page { size: 57mm 32mm; margin: 0; }` toevoegen als hint (werkt in Chrome, wordt genegeerd in Safari -- geen kwaad)
-- `body` exact op 57x32mm zetten zodat de content altijd binnen de grenzen blijft, ook als de browser een groter papierformaat gebruikt
-
-### 3. Preview-tekst updaten
-De preview-tekst boven de sticker ook aanpassen van "DYMO 11354" verwijzing naar meer generieke beschrijving.
+1. **Verplaats het DYMO script** uit `index.html` zodat het niet op elke pagina geladen wordt (het is alleen nodig in de QR dialog). Dit voorkomt een onnodige netwerk-fout op elke paginalading.
+2. **Laad het DYMO script dynamisch** in `dymoService.ts` -- alleen wanneer de gebruiker de QR-sticker dialog opent.
 
 ## Technische wijzigingen
 
 | Bestand | Wijziging |
 |---------|-----------|
-| `src/components/inventory/ChecklistQRDialog.tsx` | Print-instructie tekst aanpassen, `@page size` hint toevoegen aan print CSS |
+| `index.html` | Verwijder de DYMO `<script>` tag (regel 32) |
+| `src/services/dymoService.ts` | Voeg een dynamische script-loader toe die het DYMO framework laadt bij eerste gebruik |
 
-## Verwacht resultaat
+## Detail: dymoService.ts aanpassing
 
-- Gebruiker krijgt werkbare instructies die aansluiten bij wat de browser daadwerkelijk toont
-- Sticker past correct op het label ongeacht het gekozen papierformaat in de browser
+De `checkDymoEnvironment` functie krijgt een lazy-load stap:
+- Bij eerste aanroep: voeg dynamisch een `<script>` tag toe voor het DYMO framework
+- Wacht tot het script geladen is (of gefaald)
+- Ga dan verder met de bestaande environment-check
+- Bij falen: retourneer `isAvailable: false` zonder crash
+
+## Voordelen
+
+- Geen onnodige netwerk-fouten op elke pagina
+- Snellere initialisatie van de app (een externe script minder)
+- Het witte scherm probleem wordt vermeden doordat er geen blokkerende externe scripts meer zijn
 
