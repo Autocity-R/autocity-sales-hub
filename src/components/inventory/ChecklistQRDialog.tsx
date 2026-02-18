@@ -129,9 +129,17 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
     // Serialize the QR SVG from the DOM
     const qrContainer = document.getElementById("checklist-qr-svg");
     const svgEl = qrContainer?.querySelector("svg");
-    const qrSvgString = svgEl
+    let qrSvgString = svgEl
       ? new XMLSerializer().serializeToString(svgEl)
       : "";
+
+    // Force viewBox and preserveAspectRatio on SVG for reliable rendering
+    if (qrSvgString && !qrSvgString.includes("viewBox")) {
+      qrSvgString = qrSvgString.replace("<svg", '<svg viewBox="0 0 76 76"');
+    }
+    if (qrSvgString && !qrSvgString.includes("preserveAspectRatio")) {
+      qrSvgString = qrSvgString.replace("<svg", '<svg preserveAspectRatio="xMidYMid meet"');
+    }
 
     const printWindow = window.open("", "_blank", "width=400,height=600");
     if (!printWindow) return;
@@ -146,46 +154,37 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
         <style>
           @page { size: 57mm 32mm landscape; margin: 0; }
           * { box-sizing: border-box; margin: 0; padding: 0; }
-          html, body {
+          html { margin: 0; padding: 0; }
+          body {
             width: 57mm; height: 32mm;
-            margin: 0; padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          .sticker {
-            width: 57mm; height: 32mm;
-            padding: 2mm;
-            margin: auto;
+            margin: 0; padding: 2mm;
             display: flex;
             align-items: center;
             gap: 2mm;
             font-family: Arial, Helvetica, sans-serif;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
-          .qr { flex-shrink: 0; width: 26mm; height: 26mm; }
-          .qr svg { width: 26mm; height: 26mm; display: block; }
-          .info { flex: 1; min-width: 0; overflow: hidden; }
-          .brand { font-size: 9pt; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .qr { flex-shrink: 0; width: 22mm; height: 22mm; padding: 1mm; }
+          .qr svg { width: 100%; height: 100%; display: block; }
+          .info { flex: 1; min-width: 0; overflow: visible; }
+          .brand { font-size: 8pt; font-weight: bold; word-break: break-word; }
           .color { font-size: 7pt; color: #555; margin-top: 0.5mm; }
-          .plate { font-size: 12pt; font-weight: bold; margin-top: 1mm; }
-          .vin { font-size: 6pt; color: #777; margin-top: 0.5mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .plate { font-size: 10pt; font-weight: bold; margin-top: 1mm; }
+          .vin { font-size: 6pt; color: #777; margin-top: 0.5mm; word-break: break-all; }
           @media screen {
-            body { background: #f0f0f0; width: 100vw; height: 100vh; }
-            .sticker { border: 1px dashed #ccc; background: #fff; }
+            html { background: #f0f0f0; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+            body { border: 1px dashed #ccc; background: #fff; }
           }
         </style>
       </head>
       <body>
-        <div class="sticker">
-          <div class="qr">${qrSvgString}</div>
-          <div class="info">
-            <div class="brand">${vehicle.brand} ${vehicle.model}</div>
-            <div class="color">${vehicle.color || "-"}</div>
-            <div class="plate">${lp}</div>
-            <div class="vin">VIN: ${vehicle.vin || "-"}</div>
-          </div>
+        <div class="qr">${qrSvgString}</div>
+        <div class="info">
+          <div class="brand">${vehicle.brand} ${vehicle.model}</div>
+          <div class="color">${vehicle.color || "-"}</div>
+          <div class="plate">${lp}</div>
+          <div class="vin">VIN: ${vehicle.vin || "-"}</div>
         </div>
       </body>
       </html>
