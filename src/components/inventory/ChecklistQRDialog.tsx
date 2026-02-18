@@ -144,7 +144,7 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
       <head>
         <title>QR Sticker - ${lp}</title>
         <style>
-          @page { size: 57mm 32mm; margin: 0; }
+          @page { size: 57mm 32mm landscape; margin: 0; }
           * { box-sizing: border-box; margin: 0; padding: 0; }
           html, body {
             width: 57mm; height: 32mm;
