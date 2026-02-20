@@ -18,6 +18,14 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    dedupe: ["react", "react-dom", "react/jsx-runtime"],
+    dedupe: [
+      "react", "react-dom", "react/jsx-runtime",
+      "@radix-ui/react-dismissable-layer",
+      "@radix-ui/react-focus-scope",
+      "@radix-ui/react-portal",
+      "@radix-ui/react-presence",
+      "@radix-ui/react-primitive",
+      "@radix-ui/react-context",
+    ],
   },
 }));
