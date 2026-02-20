@@ -12,10 +12,9 @@ import { useToast } from "@/hooks/use-toast";
 interface ContactsTabProps {
   vehicle: Vehicle;
   onUpdate: (vehicle: Vehicle) => void;
-  onAutoSave?: (vehicle: Vehicle) => void;
 }
 
-export const ContactsTab: React.FC<ContactsTabProps> = ({ vehicle, onUpdate, onAutoSave }) => {
+export const ContactsTab: React.FC<ContactsTabProps> = ({ vehicle, onUpdate }) => {
   const [customerContact, setCustomerContact] = useState<Contact | null>(null);
   const [supplierContact, setSupplierContact] = useState<Contact | null>(null);
   const [loadingCustomer, setLoadingCustomer] = useState(false);
@@ -59,29 +58,21 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({ vehicle, onUpdate, onA
   }, [vehicle.supplierId]);
 
   const handleCustomerChange = (contactId: string, contact: Contact) => {
-    const updatedVehicle = {
+    onUpdate({
       ...vehicle,
       customerId: contactId,
       customerName: contact.companyName || `${contact.firstName} ${contact.lastName}`.trim()
-    };
-    onUpdate(updatedVehicle);
+    });
     setCustomerContact(contact);
-    if (onAutoSave) {
-      onAutoSave(updatedVehicle);
-    }
     toast({ description: "Klant succesvol gekoppeld aan voertuig" });
   };
 
   const handleSupplierChange = (contactId: string, contact: Contact) => {
-    const updatedVehicle = {
+    onUpdate({
       ...vehicle,
       supplierId: contactId
-    };
-    onUpdate(updatedVehicle);
+    });
     setSupplierContact(contact);
-    if (onAutoSave) {
-      onAutoSave(updatedVehicle);
-    }
     toast({ description: "Leverancier succesvol gekoppeld aan voertuig" });
   };
 
@@ -115,10 +106,8 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({ vehicle, onUpdate, onA
                   variant="outline" 
                   size="sm"
                   onClick={() => {
-                    const updatedVehicle = { ...vehicle, supplierId: null };
-                    onUpdate(updatedVehicle);
+                    onUpdate({ ...vehicle, supplierId: null });
                     setSupplierContact(null);
-                    if (onAutoSave) onAutoSave(updatedVehicle);
                   }}
                 >
                   <Edit className="h-4 w-4 mr-2" />
@@ -187,10 +176,8 @@ export const ContactsTab: React.FC<ContactsTabProps> = ({ vehicle, onUpdate, onA
                   variant="outline" 
                   size="sm"
                   onClick={() => {
-                    const updatedVehicle = { ...vehicle, customerId: null, customerName: null };
-                    onUpdate(updatedVehicle);
+                    onUpdate({ ...vehicle, customerId: null, customerName: null });
                     setCustomerContact(null);
-                    if (onAutoSave) onAutoSave(updatedVehicle);
                   }}
                 >
                   <Edit className="h-4 w-4 mr-2" />

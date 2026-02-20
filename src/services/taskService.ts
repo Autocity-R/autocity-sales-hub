@@ -424,8 +424,10 @@ export const updateTaskStatus = async (taskId: string, status: TaskStatus): Prom
       throw error;
     }
 
-    // Damage repair registration is handled by database trigger (auto_damage_repair_trigger)
-    // No manual registerDamageRepair call needed here to prevent duplicates
+    // Register damage repair when schadeherstel task is completed
+    if (status === 'voltooid' && taskData.category === 'schadeherstel') {
+      await registerDamageRepair(taskId, taskData, completedAt);
+    }
 
     // Auto-complete linked checklist item when task is completed
     if (status === 'voltooid' && taskData.linked_checklist_item_id && taskData.linked_vehicle_id) {

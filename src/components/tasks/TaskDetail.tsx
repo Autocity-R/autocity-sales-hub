@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { 
@@ -46,7 +46,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   onDeleteTask,
 }) => {
   const { user, isAdmin, userRole } = useAuth();
-  const [isCompleting, setIsCompleting] = useState(false);
 
   if (!task) return null;
 
@@ -115,8 +114,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   };
 
   const handleComplete = () => {
-    if (isCompleting) return;
-    setIsCompleting(true);
     onCompleteTask(task.id);
   };
 
@@ -329,9 +326,9 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
                 )}
                 
                 {(task.status === "in_uitvoering" || task.status === "toegewezen") && (
-                  <Button onClick={handleComplete} disabled={isCompleting}>
+                  <Button onClick={handleComplete}>
                     <CheckCircle className="h-4 w-4 mr-2" />
-                    {isCompleting ? "Bezig..." : "Markeer als voltooid"}
+                    Markeer als voltooid
                   </Button>
                 )}
               </>

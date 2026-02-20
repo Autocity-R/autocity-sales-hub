@@ -230,14 +230,6 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                   <ContactsTab 
                     vehicle={editedVehicle}
                     onUpdate={setEditedVehicle}
-                    onAutoSave={(updatedVehicle) => {
-                      setEditedVehicle(updatedVehicle);
-                      if (onAutoSave) {
-                        onAutoSave(updatedVehicle);
-                      } else {
-                        onUpdate(updatedVehicle);
-                      }
-                    }}
                   />
                 </TabsContent>
                 
