@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useCallback } from "react";
+import React, { memo, useMemo, useCallback, useState } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { CheckCircle, Clock, AlertCircle, Car, User, MoreVertical, Play, Edit, Trash2, Wrench, Truck, Sparkles, Shield, Package, ClipboardList, Tag, Cog } from "lucide-react";
@@ -47,7 +47,8 @@ export const TaskMobileCard = memo<TaskMobileCardProps>(({
   onDeleteTask 
 }) => {
   const { user, isAdmin, userRole } = useAuth();
-  
+  const [isCompleting, setIsCompleting] = useState(false);
+
   const isManagerRole = isAdmin || userRole === 'manager' || userRole === 'aftersales_manager' || userRole === 'verkoper';
   const canManageTask = isManagerRole || task.assignedTo === user?.id || task.assignedBy === user?.id;
   const canEditDelete = isAdmin || userRole === 'aftersales_manager' || task.assignedBy === user?.id;
@@ -95,8 +96,10 @@ export const TaskMobileCard = memo<TaskMobileCardProps>(({
 
   const handleCompleteClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isCompleting) return;
+    setIsCompleting(true);
     onCompleteTask(task.id);
-  }, [task.id, onCompleteTask]);
+  }, [task.id, onCompleteTask, isCompleting]);
 
   const handleStartClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -172,9 +175,9 @@ export const TaskMobileCard = memo<TaskMobileCardProps>(({
                       </DropdownMenuItem>
                     )}
                     {(task.status === "in_uitvoering" || task.status === "toegewezen") && (
-                      <DropdownMenuItem onClick={handleCompleteClick}>
+                      <DropdownMenuItem onClick={handleCompleteClick} disabled={isCompleting}>
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        Markeer als voltooid
+                        {isCompleting ? "Bezig..." : "Markeer als voltooid"}
                       </DropdownMenuItem>
                     )}
                     {canEditDelete && <DropdownMenuSeparator />}

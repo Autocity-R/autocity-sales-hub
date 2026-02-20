@@ -137,10 +137,14 @@ const SortableTaskCard = memo<{
     }
   }, []);
 
+  const [isCompleting, setIsCompleting] = useState(false);
+  
   const handleCompleteClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isCompleting) return;
+    setIsCompleting(true);
     onCompleteTask(task.id);
-  }, [task.id, onCompleteTask]);
+  }, [task.id, onCompleteTask, isCompleting]);
 
   const handleStartClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -295,9 +299,9 @@ const SortableTaskCard = memo<{
                 )}
                 
                 {(task.status === "in_uitvoering" || task.status === "toegewezen") && (
-                  <Button size="sm" onClick={handleCompleteClick}>
+                  <Button size="sm" onClick={handleCompleteClick} disabled={isCompleting}>
                     <CheckCircle className="h-4 w-4 mr-2" />
-                    Markeer als voltooid
+                    {isCompleting ? "Bezig..." : "Markeer als voltooid"}
                   </Button>
                 )}
               </div>

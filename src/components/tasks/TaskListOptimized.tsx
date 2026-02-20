@@ -1,5 +1,5 @@
 
-import React, { memo, useMemo, useCallback } from "react";
+import React, { memo, useMemo, useCallback, useState } from "react";
 import { format } from "date-fns";
 import { CheckCircle, Clock, AlertCircle, Car, User, Play, Edit, Trash2, Wrench, Truck, Sparkles, Shield, Package, ClipboardList, Tag, Cog } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -97,10 +97,14 @@ const TaskCard = memo<{
     }
   }, []);
 
+  const [isCompleting, setIsCompleting] = useState(false);
+  
   const handleCompleteClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isCompleting) return;
+    setIsCompleting(true);
     onCompleteTask(task.id);
-  }, [task.id, onCompleteTask]);
+  }, [task.id, onCompleteTask, isCompleting]);
 
   const handleStartClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -239,9 +243,10 @@ const TaskCard = memo<{
                 <Button 
                   size="sm" 
                   onClick={handleCompleteClick}
+                  disabled={isCompleting}
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
-                  Markeer als voltooid
+                  {isCompleting ? "Bezig..." : "Markeer als voltooid"}
                 </Button>
               )}
             </div>
