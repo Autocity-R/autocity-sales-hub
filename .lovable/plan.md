@@ -1,79 +1,53 @@
 
-# Fix: Dubbele schadeherstel registraties voorkomen
+
+# Fix: Klant koppelen aan voertuig wordt niet opgeslagen
 
 ## Probleem
 
-Yousry's taken worden meerdere keren geregistreerd in de rapportages. Uit database-analyse blijkt:
-- **50 records** in de database, maar slechts **32 unieke taken** -- **18 duplicaten**
-- Een taak heeft zelfs **7 dubbele entries** (binnen 10 seconden)
+Wanneer je een klant selecteert in de Contacten-tab van een voertuig, verschijnt de toast "Klant succesvol gekoppeld aan voertuig" -- maar de koppeling wordt **niet** naar de database gestuurd. Het wordt alleen in de lokale state opgeslagen. Als je het dialoog sluit zonder op "Opslaan" te klikken, is de koppeling weg.
 
-## Oorzaak (drie problemen tegelijk)
+## Oorzaak
 
-1. **Dubbele registratie**: Zowel de app-code (`registerDamageRepair` in taskService.ts) als een database-trigger (`auto_damage_repair_trigger`) proberen allebei een record aan te maken bij het voltooien van een taak
-2. **Geen uniek constraint**: De tabel `damage_repair_records` heeft geen UNIQUE constraint op `task_id`, waardoor de EXISTS-check bij gelijktijdige requests faalt
-3. **Geen dubbelklik-beveiliging**: De "Markeer als voltooid" knop kan meerdere keren snel achter elkaar worden ingedrukt
+In `VehicleDetails.tsx` wordt de `ContactsTab` aangeroepen met `onUpdate={setEditedVehicle}` -- dit update alleen de lokale React-state. Er is geen auto-save gekoppeld, in tegenstelling tot de ChecklistTab die wel `onAutoSave` gebruikt om direct naar de database te schrijven.
 
-## Oplossing (drie lagen)
+## Oplossing
 
-### 1. Database: UNIQUE constraint toevoegen + duplicaten opruimen
-- Verwijder alle bestaande duplicaten (behoud oudste record per task_id)
-- Voeg een `UNIQUE` constraint toe op `task_id` zodat de database dubbele inserts weigert
-- Pas de database-trigger aan met `ON CONFLICT DO NOTHING`
+De `ContactsTab` uitbreiden met een `onAutoSave` prop, zodat klant- en leverancier-koppelingen direct worden opgeslagen in de database (net als de Checklist-tab al doet).
 
-### 2. App-code: dubbele registratie verwijderen
-- Verwijder de `registerDamageRepair()` aanroep uit `updateTaskStatus()` in taskService.ts -- de database-trigger doet dit al
-- Dit elimineert de race condition tussen app en trigger
+### Wijzigingen
 
-### 3. Client-side: dubbelklik-beveiliging
-- Voeg een `disabled` state toe aan de "Markeer als voltooid" knoppen in alle vier de componenten:
-  - `DraggableTaskList.tsx`
-  - `TaskListOptimized.tsx`
-  - `TaskMobileCard.tsx`
-  - `TaskDetail.tsx`
-- Knop wordt direct disabled na eerste klik en toont een loading state
+**1. `src/components/inventory/detail-tabs/ContactsTab.tsx`**
+- Nieuwe prop `onAutoSave?: (vehicle: Vehicle) => void` toevoegen
+- Bij `handleCustomerChange`: na lokale state update, ook `onAutoSave` aanroepen zodat het direct naar de database gaat
+- Bij `handleSupplierChange`: idem
+- Bij "Wijzigen" knoppen (ontkoppelen): idem
+- Toast tekst alleen tonen na succesvolle save
 
-## Technische details
+**2. `src/components/inventory/VehicleDetails.tsx`**
+- `onAutoSave` doorgeven aan de `ContactsTab`, net zoals bij ChecklistTab:
+  ```
+  <ContactsTab 
+    vehicle={editedVehicle}
+    onUpdate={setEditedVehicle}
+    onAutoSave={(updatedVehicle) => {
+      setEditedVehicle(updatedVehicle);
+      onAutoSave?.(updatedVehicle) || onUpdate(updatedVehicle);
+    }}
+  />
+  ```
 
-### Stap 1: SQL migratie
+### Technisch detail
+
+De flow wordt:
 
 ```text
--- Verwijder duplicaten (behoud oudste per task_id)
-DELETE FROM damage_repair_records
-WHERE id NOT IN (
-  SELECT DISTINCT ON (task_id) id
-  FROM damage_repair_records
-  ORDER BY task_id, created_at ASC
-);
-
--- Voeg UNIQUE constraint toe
-ALTER TABLE damage_repair_records
-ADD CONSTRAINT damage_repair_records_task_id_unique UNIQUE (task_id);
-
--- Update trigger met ON CONFLICT
-CREATE OR REPLACE FUNCTION auto_register_damage_repair_on_completion()
-  ...
-  INSERT INTO damage_repair_records (...) VALUES (...)
-  ON CONFLICT (task_id) DO NOTHING;
+Gebruiker selecteert klant
+  -> handleCustomerChange()
+    -> onUpdate() = lokale state bijwerken (voor UI)
+    -> onAutoSave() = direct opslaan naar database
+      -> supabaseInventoryService.updateVehicle() 
+        -> UPDATE vehicles SET customer_id = '...' WHERE id = '...'
 ```
 
-### Stap 2: taskService.ts
-- Verwijder de `registerDamageRepair()` aanroep op regel 428-430 in `updateTaskStatus()`
-- De functie `registerDamageRepair` zelf kan blijven als fallback in `updateTask()`
+Dit is exact hetzelfde patroon als de ChecklistTab al gebruikt voor directe database-opslag.
 
-### Stap 3: UI componenten (4 bestanden)
-- Voeg `isCompleting` state toe
-- Disable de knop en toon spinner tijdens verwerking
-
-| Bestand | Wijziging |
-|---------|-----------|
-| SQL migratie (nieuw) | Duplicaten opruimen, UNIQUE constraint, trigger updaten |
-| `src/services/taskService.ts` | Dubbele registerDamageRepair call verwijderen |
-| `src/components/tasks/DraggableTaskList.tsx` | Dubbelklik-beveiliging |
-| `src/components/tasks/TaskListOptimized.tsx` | Dubbelklik-beveiliging |
-| `src/components/tasks/TaskMobileCard.tsx` | Dubbelklik-beveiliging |
-| `src/components/tasks/TaskDetail.tsx` | Dubbelklik-beveiliging |
-
-## Verwacht resultaat
-- 18 dubbele records worden verwijderd
-- Nieuwe duplicaten zijn onmogelijk (database UNIQUE constraint)
-- Rapportages tonen correcte aantallen voor Yousry en alle medewerkers
