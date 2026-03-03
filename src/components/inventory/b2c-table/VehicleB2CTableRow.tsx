@@ -185,14 +185,29 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
             return <span className="text-muted-foreground text-sm">—</span>;
           }
           return (
-            <div className="flex items-center gap-2 min-w-20">
-              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className={`h-full transition-all ${getProgressColor(percentage)}`}
-                  style={{ width: `${percentage}%` }}
-                />
+            <div className="flex flex-col gap-1 min-w-24">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all ${getProgressColor(percentage)}`}
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+                <span className="text-xs font-medium w-8 text-right">{percentage}%</span>
               </div>
-              <span className="text-xs font-medium w-8 text-right">{percentage}%</span>
+              {readyForDelivery && (
+                hasDeliveryAppointment ? (
+                  <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 w-fit">
+                    <CalendarCheck className="h-3 w-3 mr-1" />
+                    Afspraak gepland
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800 w-fit animate-pulse">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Klaar voor levering
+                  </Badge>
+                )
+              )}
             </div>
           );
         })()}
