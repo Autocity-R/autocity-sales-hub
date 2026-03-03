@@ -313,9 +313,9 @@ const InventoryB2C = () => {
         
         <div className="bg-white rounded-md shadow">
           <VehicleB2CTable 
-            vehicles={vehicles}
+            vehicles={displayVehicles}
             selectedVehicles={selectedVehicles}
-            toggleSelectAll={(checked) => toggleSelectAll(checked, vehicles)}
+            toggleSelectAll={(checked) => toggleSelectAll(checked, displayVehicles)}
             toggleSelectVehicle={toggleSelectVehicle}
             handleSelectVehicle={setSelectedVehicle}
             handleSendEmail={handleSendEmail}
