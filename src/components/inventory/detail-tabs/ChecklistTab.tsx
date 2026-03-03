@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ClipboardCheck, Circle, CheckCircle2, Trash2, Plus, UserPlus, ClipboardList, Download, QrCode, CalendarCheck } from "lucide-react";
+import { ClipboardCheck, Circle, CheckCircle2, Trash2, Plus, UserPlus, ClipboardList, Download, QrCode, CalendarCheck, XCircle } from "lucide-react";
 import { exportChecklistToExcel } from "@/utils/checklistExportExcel";
 import { Vehicle, ChecklistItem } from "@/types/inventory";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -271,7 +271,7 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
                   onClick={() => {
                     const updatedDetails = { ...vehicle.details };
                     delete updatedDetails.deliveryAppointmentId;
-                    onAutoSave({ details: updatedDetails });
+                    onAutoSave({ details: updatedDetails } as Partial<Vehicle>);
                   }}
                 >
                   <XCircle className="h-4 w-4 mr-1" />
