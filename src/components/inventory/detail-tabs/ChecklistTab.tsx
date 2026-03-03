@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ClipboardCheck, Circle, CheckCircle2, Trash2, Plus, UserPlus, ClipboardList, Download, QrCode } from "lucide-react";
+import { ClipboardCheck, Circle, CheckCircle2, Trash2, Plus, UserPlus, ClipboardList, Download, QrCode, CalendarCheck } from "lucide-react";
 import { exportChecklistToExcel } from "@/utils/checklistExportExcel";
 import { Vehicle, ChecklistItem } from "@/types/inventory";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
