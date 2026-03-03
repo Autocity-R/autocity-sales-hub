@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { TaskForm } from "@/components/tasks/TaskForm";
 import { ChecklistQRDialog } from "@/components/inventory/ChecklistQRDialog";
+import { DeliveryAppointmentCard } from "@/components/inventory/DeliveryAppointmentCard";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
