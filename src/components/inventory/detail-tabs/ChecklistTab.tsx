@@ -258,9 +258,26 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
       {isReadyForDelivery && hasDeliveryAppointment && (
         <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
           <CardContent className="py-4">
-            <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
-              <CalendarCheck className="h-5 w-5" />
-              <span className="font-medium">Afleverafspraak is ingepland</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                <CalendarCheck className="h-5 w-5" />
+                <span className="font-medium">Afleverafspraak is ingepland</span>
+              </div>
+              {!readOnly && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                  onClick={() => {
+                    const updatedDetails = { ...vehicle.details };
+                    delete updatedDetails.deliveryAppointmentId;
+                    onAutoSave({ details: updatedDetails });
+                  }}
+                >
+                  <XCircle className="h-4 w-4 mr-1" />
+                  Annuleren / Opnieuw plannen
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
