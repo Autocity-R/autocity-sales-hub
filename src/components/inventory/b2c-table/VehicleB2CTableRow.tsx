@@ -100,9 +100,12 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
     return new Intl.NumberFormat('nl-NL').format(mileage) + " km";
   };
 
+  const readyForDelivery = isReadyForDelivery(vehicle);
+  const hasDeliveryAppointment = !!vehicle.details?.deliveryAppointmentId;
+
   return (
     <TableRow 
-      className="hover:bg-muted/50 cursor-pointer"
+      className={`hover:bg-muted/50 cursor-pointer ${readyForDelivery ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-l-4 border-l-emerald-500' : ''}`}
       onClick={() => handleSelectVehicle(vehicle)}
     >
       <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
