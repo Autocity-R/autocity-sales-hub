@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { CustomCheckbox } from "@/components/ui/custom-checkbox";
 import { VehicleActionsDropdown } from "./VehicleActionsDropdown";
 import { Vehicle, ImportStatus, WorkshopStatus } from "@/types/inventory";
-import { Car } from "lucide-react";
+import { Car, CheckCircle2, CalendarCheck } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { PurchaserQuickEdit } from "../PurchaserQuickEdit";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
@@ -69,6 +69,11 @@ const getProgressColor = (percentage: number) => {
   if (percentage >= 50) return "bg-blue-500";
   if (percentage > 0) return "bg-orange-500";
   return "bg-muted";
+};
+
+const isReadyForDelivery = (vehicle: Vehicle) => {
+  const { percentage, hasItems } = getChecklistProgress(vehicle);
+  return hasItems && percentage === 100 && vehicle.importStatus === 'ingeschreven';
 };
 
 const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
