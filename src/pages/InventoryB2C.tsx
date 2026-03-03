@@ -64,6 +64,20 @@ const InventoryB2C = () => {
     handleChangeStatus
   } = useB2CVehicleHandlers();
 
+  // Extract unique salespeople from vehicles
+  const uniqueSalespeople = useMemo(() => {
+    const names = vehicles
+      .map(v => v.salespersonName)
+      .filter((name): name is string => Boolean(name));
+    return Array.from(new Set(names)).sort();
+  }, [vehicles]);
+
+  // Filter vehicles by salesperson
+  const displayVehicles = useMemo(() => {
+    if (!salespersonFilter) return vehicles;
+    return vehicles.filter(v => v.salespersonName === salespersonFilter);
+  }, [vehicles, salespersonFilter]);
+
   // Properly fetch files for selected vehicle using our hook
   const { vehicleFiles } = useVehicleFiles(selectedVehicle);
 

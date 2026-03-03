@@ -36,12 +36,24 @@ const InventoryB2B = () => {
   
   // Filter vehicles based on search term
   const filteredVehicles = useMemo(() => {
-    return vehicles.filter(vehicle =>
+    let result = vehicles.filter(vehicle =>
       `${vehicle.brand} ${vehicle.model} ${vehicle.licenseNumber} ${vehicle.vin}`
         .toLowerCase()
         .includes(searchTerm.toLowerCase())
     );
-  }, [vehicles, searchTerm]);
+    if (salespersonFilter) {
+      result = result.filter(v => v.salespersonName === salespersonFilter);
+    }
+    return result;
+  }, [vehicles, searchTerm, salespersonFilter]);
+
+  // Extract unique salespeople from vehicles
+  const uniqueSalespeople = useMemo(() => {
+    const names = vehicles
+      .map(v => v.salespersonName)
+      .filter((name): name is string => Boolean(name));
+    return Array.from(new Set(names)).sort();
+  }, [vehicles]);
   
   const { selectedVehicles, setSelectedVehicles, selectedVehicle, setSelectedVehicle, toggleSelectVehicle, toggleSelectAll } = useB2BVehicleSelection(filteredVehicles);
   const { handleUpdateVehicle, handleSendEmail, handleUpdateSellingPrice, handleUpdatePaymentStatus, handleMarkAsDelivered, handleChangeStatus, handleUpdateLocation, uploadFileMutation } = useB2BVehicleOperations();
