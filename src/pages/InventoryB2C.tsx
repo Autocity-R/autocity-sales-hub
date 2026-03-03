@@ -8,6 +8,7 @@ import { InvoiceRequestDialog } from "@/components/inventory/InvoiceRequestDialo
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/ui/page-header";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { useB2CVehicleHandlers } from "@/hooks/useB2CVehicleHandlers";
