@@ -128,6 +128,9 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
       <TableCell className="align-middle">
         {vehicle.model}
       </TableCell>
+      <TableCell className="align-middle">
+        {vehicle.licenseNumber || '-'}
+      </TableCell>
       <TableCell className="align-middle text-muted-foreground">
         {vehicle.year || '-'}
       </TableCell>
@@ -185,9 +188,6 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
             </div>
           );
         })()}
-      </TableCell>
-      <TableCell className="align-middle">
-        {renderWorkshopStatusBadge(vehicle.workshopStatus)}
       </TableCell>
       <TableCell className="align-middle">
         <Badge variant="outline" className="capitalize">
