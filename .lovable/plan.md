@@ -1,48 +1,47 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Plan: "Klaar voor levering" indicator + Afleverafspraak plannen vanuit Checklist
 
-## Probleem
+## Deel 1: Visuele indicator in B2C tabel
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+In de `VehicleB2CTableRow` wordt een opvallende badge/indicator getoond wanneer een voertuig voldoet aan beide voorwaarden:
+- Import status = `ingeschreven`
+- Checklist voortgang = 100%
 
-## Echte oorzaak (niet React deduplicatie)
+**Implementatie (`VehicleB2CTableRow.tsx`):**
+- Een helper functie `isReadyForDelivery(vehicle)` die beide voorwaarden checkt
+- De hele rij krijgt een subtiele groene achtergrond highlight wanneer klaar
+- Naast de checklist progressiebalk verschijnt een groene badge: **"Klaar voor levering"** met een check-icoon
+- Als de auto al een geplande afleverafspraak heeft (check via `deliveryDate` in details), toon dan "Afspraak gepland" badge in plaats daarvan
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+**Bestand:** `src/components/inventory/b2c-table/VehicleB2CTableRow.tsx`
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+## Deel 2: Afleverafspraak plannen vanuit ChecklistTab
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+In de `ChecklistTab` wordt een sectie toegevoegd die verschijnt zodra het voertuig klaar is voor levering (100% checklist + ingeschreven). De verkoper kan direct een afleverafspraak inplannen die automatisch synchroniseert met Google Calendar.
 
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+**Implementatie (`ChecklistTab.tsx`):**
+- Nieuwe Card bovenaan (onder de voortgangskaart) die verschijnt bij 100% + ingeschreven
+- Bevat datum/tijd picker en optioneel notitieveld
+- Klantgegevens worden automatisch ingevuld vanuit het voertuig (customerName, customer email)
+- Bij opslaan: maakt een `Appointment` aan via de bestaande `createAppointment()` uit `calendarService.ts` met type `"aflevering"`
+- De Google Calendar sync gebeurt automatisch via de bestaande `autoSyncToGoogle` flow
+- Na het plannen wordt de afspraakdatum opgeslagen in `vehicle.details.deliveryAppointmentId`
 
-## Oplossing
+**Bestand:** `src/components/inventory/detail-tabs/ChecklistTab.tsx`
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+### Technische details
 
-### Wijzigingen
+| Onderdeel | Aanpak |
+|-----------|--------|
+| Ready-check logica | `importStatus === 'ingeschreven' && checklistProgress === 100` |
+| Afspraak aanmaken | Hergebruik `createAppointment()` uit `calendarService.ts` met type `"aflevering"` |
+| Google Calendar sync | Automatisch via bestaande `autoSyncToGoogle()` — geen extra configuratie nodig |
+| Klantdata | Uit `vehicle.customerName`, `vehicle.details.customerEmail`, `vehicle.customerId` |
+| Voertuigdata | `vehicleId`, `vehicleBrand`, `vehicleModel`, `vehicleLicenseNumber` worden meegegeven |
 
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
-
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
-
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
-
-## Verwacht resultaat
-
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+**Bestanden die gewijzigd worden:**
+- `src/components/inventory/b2c-table/VehicleB2CTableRow.tsx` — groene indicator + badge
+- `src/components/inventory/detail-tabs/ChecklistTab.tsx` — afspraak plannen sectie
+- Geen database migraties nodig — alles gebruikt bestaande tabellen (`appointments`, `vehicles`)
 
