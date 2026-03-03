@@ -26,6 +26,7 @@ const InventoryB2B = () => {
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [invoiceVehicle, setInvoiceVehicle] = useState<Vehicle | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [salespersonFilter, setSalespersonFilter] = useState("");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
