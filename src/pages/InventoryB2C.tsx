@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { FileText, Mail, Plus, Search, Filter } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { FileText, Mail, Plus, Search, Filter, User } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { VehicleB2CTable } from "@/components/inventory/VehicleB2CTable";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
