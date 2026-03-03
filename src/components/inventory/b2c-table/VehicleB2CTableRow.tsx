@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { CustomCheckbox } from "@/components/ui/custom-checkbox";
 import { VehicleActionsDropdown } from "./VehicleActionsDropdown";
 import { Vehicle, ImportStatus, WorkshopStatus } from "@/types/inventory";
-import { Car } from "lucide-react";
+import { Car, CheckCircle2, CalendarCheck } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { PurchaserQuickEdit } from "../PurchaserQuickEdit";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
@@ -71,6 +71,11 @@ const getProgressColor = (percentage: number) => {
   return "bg-muted";
 };
 
+const isReadyForDelivery = (vehicle: Vehicle) => {
+  const { percentage, hasItems } = getChecklistProgress(vehicle);
+  return hasItems && percentage === 100 && vehicle.importStatus === 'ingeschreven';
+};
+
 const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
   vehicle,
   selectedVehicles,
@@ -95,9 +100,12 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
     return new Intl.NumberFormat('nl-NL').format(mileage) + " km";
   };
 
+  const readyForDelivery = isReadyForDelivery(vehicle);
+  const hasDeliveryAppointment = !!vehicle.details?.deliveryAppointmentId;
+
   return (
     <TableRow 
-      className="hover:bg-muted/50 cursor-pointer"
+      className={`hover:bg-muted/50 cursor-pointer ${readyForDelivery ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-l-4 border-l-emerald-500' : ''}`}
       onClick={() => handleSelectVehicle(vehicle)}
     >
       <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
@@ -177,14 +185,29 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
             return <span className="text-muted-foreground text-sm">—</span>;
           }
           return (
-            <div className="flex items-center gap-2 min-w-20">
-              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className={`h-full transition-all ${getProgressColor(percentage)}`}
-                  style={{ width: `${percentage}%` }}
-                />
+            <div className="flex flex-col gap-1 min-w-24">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all ${getProgressColor(percentage)}`}
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+                <span className="text-xs font-medium w-8 text-right">{percentage}%</span>
               </div>
-              <span className="text-xs font-medium w-8 text-right">{percentage}%</span>
+              {readyForDelivery && (
+                hasDeliveryAppointment ? (
+                  <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 w-fit">
+                    <CalendarCheck className="h-3 w-3 mr-1" />
+                    Afspraak gepland
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800 w-fit animate-pulse">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Klaar voor levering
+                  </Badge>
+                )
+              )}
             </div>
           );
         })()}
