@@ -39,7 +39,6 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
   const progressPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const isReadyForDelivery = progressPercentage === 100 && totalCount > 0 && vehicle.importStatus === 'ingeschreven';
   const hasDeliveryAppointment = !!vehicle.details?.deliveryAppointmentId;
-  const progressPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   // Get all linkedTaskIds from checklist items
   const linkedTaskIds = checklist
