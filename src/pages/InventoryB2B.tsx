@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, User } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { B2BInventoryHeader } from "@/components/inventory/B2BInventoryHeader";
 import { B2BInventoryContent } from "@/components/inventory/B2BInventoryContent";
 import { ContractConfigDialog } from "@/components/inventory/ContractConfigDialog";
@@ -25,6 +26,7 @@ const InventoryB2B = () => {
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [invoiceVehicle, setInvoiceVehicle] = useState<Vehicle | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [salespersonFilter, setSalespersonFilter] = useState("");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -34,12 +36,24 @@ const InventoryB2B = () => {
   
   // Filter vehicles based on search term
   const filteredVehicles = useMemo(() => {
-    return vehicles.filter(vehicle =>
+    let result = vehicles.filter(vehicle =>
       `${vehicle.brand} ${vehicle.model} ${vehicle.licenseNumber} ${vehicle.vin}`
         .toLowerCase()
         .includes(searchTerm.toLowerCase())
     );
-  }, [vehicles, searchTerm]);
+    if (salespersonFilter) {
+      result = result.filter(v => v.salespersonName === salespersonFilter);
+    }
+    return result;
+  }, [vehicles, searchTerm, salespersonFilter]);
+
+  // Extract unique salespeople from vehicles
+  const uniqueSalespeople = useMemo(() => {
+    const names = vehicles
+      .map(v => v.salespersonName)
+      .filter((name): name is string => Boolean(name));
+    return Array.from(new Set(names)).sort();
+  }, [vehicles]);
   
   const { selectedVehicles, setSelectedVehicles, selectedVehicle, setSelectedVehicle, toggleSelectVehicle, toggleSelectAll } = useB2BVehicleSelection(filteredVehicles);
   const { handleUpdateVehicle, handleSendEmail, handleUpdateSellingPrice, handleUpdatePaymentStatus, handleMarkAsDelivered, handleChangeStatus, handleUpdateLocation, uploadFileMutation } = useB2BVehicleOperations();
@@ -262,7 +276,7 @@ const InventoryB2B = () => {
         {/* Search and Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="Zoek voertuigen..."
               value={searchTerm}
@@ -270,6 +284,19 @@ const InventoryB2B = () => {
               className="pl-10"
             />
           </div>
+
+          <Select value={salespersonFilter} onValueChange={(val) => setSalespersonFilter(val === "all" ? "" : val)}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <User className="h-4 w-4 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Alle verkopers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle verkopers</SelectItem>
+              {uniqueSalespeople.map((name) => (
+                <SelectItem key={name} value={name}>{name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           
           <div className="flex gap-2">
             <Badge variant="outline" className="flex items-center gap-1">

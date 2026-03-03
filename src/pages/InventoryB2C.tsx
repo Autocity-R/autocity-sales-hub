@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { FileText, Mail, Plus, Search, Filter } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { FileText, Mail, Plus, Search, Filter, User } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { VehicleB2CTable } from "@/components/inventory/VehicleB2CTable";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
@@ -8,6 +8,7 @@ import { InvoiceRequestDialog } from "@/components/inventory/InvoiceRequestDialo
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/ui/page-header";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { useB2CVehicleHandlers } from "@/hooks/useB2CVehicleHandlers";
@@ -26,6 +27,7 @@ const InventoryB2C = () => {
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [invoiceVehicle, setInvoiceVehicle] = useState<Vehicle | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [salespersonFilter, setSalespersonFilter] = useState("");
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -61,6 +63,20 @@ const InventoryB2C = () => {
     handleUploadFile,
     handleChangeStatus
   } = useB2CVehicleHandlers();
+
+  // Extract unique salespeople from vehicles
+  const uniqueSalespeople = useMemo(() => {
+    const names = vehicles
+      .map(v => v.salespersonName)
+      .filter((name): name is string => Boolean(name));
+    return Array.from(new Set(names)).sort();
+  }, [vehicles]);
+
+  // Filter vehicles by salesperson
+  const displayVehicles = useMemo(() => {
+    if (!salespersonFilter) return vehicles;
+    return vehicles.filter(v => v.salespersonName === salespersonFilter);
+  }, [vehicles, salespersonFilter]);
 
   // Properly fetch files for selected vehicle using our hook
   const { vehicleFiles } = useVehicleFiles(selectedVehicle);
@@ -260,7 +276,7 @@ const InventoryB2C = () => {
         {/* Search and Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="Zoek voertuigen..."
               value={searchTerm}
@@ -268,11 +284,24 @@ const InventoryB2C = () => {
               className="pl-10"
             />
           </div>
+
+          <Select value={salespersonFilter} onValueChange={(val) => setSalespersonFilter(val === "all" ? "" : val)}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <User className="h-4 w-4 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Alle verkopers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle verkopers</SelectItem>
+              {uniqueSalespeople.map((name) => (
+                <SelectItem key={name} value={name}>{name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           
           <div className="flex gap-2">
             <Badge variant="outline" className="flex items-center gap-1">
               <Filter className="h-3 w-3" />
-              {vehicles.length} resultaten
+              {displayVehicles.length} resultaten
             </Badge>
             {selectedVehicles.length > 0 && (
               <Badge variant="secondary">
@@ -284,9 +313,9 @@ const InventoryB2C = () => {
         
         <div className="bg-white rounded-md shadow">
           <VehicleB2CTable 
-            vehicles={vehicles}
+            vehicles={displayVehicles}
             selectedVehicles={selectedVehicles}
-            toggleSelectAll={(checked) => toggleSelectAll(checked, vehicles)}
+            toggleSelectAll={(checked) => toggleSelectAll(checked, displayVehicles)}
             toggleSelectVehicle={toggleSelectVehicle}
             handleSelectVehicle={setSelectedVehicle}
             handleSendEmail={handleSendEmail}
