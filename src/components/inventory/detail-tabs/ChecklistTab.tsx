@@ -163,6 +163,20 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
     setAssignTaskItem(null);
   };
 
+  const handleDeliveryAppointmentCreated = (appointmentId: string) => {
+    const updatedVehicle = {
+      ...vehicle,
+      details: {
+        ...vehicle.details,
+        deliveryAppointmentId: appointmentId,
+      },
+    };
+    onUpdate(updatedVehicle);
+    if (onAutoSave) {
+      onAutoSave(updatedVehicle);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), "d MMM yyyy", { locale: nl });
@@ -232,6 +246,25 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
           </p>
         </CardContent>
       </Card>
+
+      {/* Delivery Appointment Card - shown when ready for delivery */}
+      {isReadyForDelivery && !hasDeliveryAppointment && !readOnly && (
+        <DeliveryAppointmentCard
+          vehicle={vehicle}
+          onAppointmentCreated={handleDeliveryAppointmentCreated}
+        />
+      )}
+
+      {isReadyForDelivery && hasDeliveryAppointment && (
+        <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+              <CalendarCheck className="h-5 w-5" />
+              <span className="font-medium">Afleverafspraak is ingepland</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Add New Item - alleen tonen als niet readOnly EN niet canToggleOnly */}
       {!readOnly && !canToggleOnly && (
