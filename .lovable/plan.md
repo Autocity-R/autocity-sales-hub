@@ -1,48 +1,43 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Plan: Hybride Studio met Vaste Referentie-Achtergrond
 
-## Probleem
+## Analyse
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+Het kernprobleem is dat de AI elke keer een andere showroom "verzint". De oplossing van ChatGPT (volledige code-compositing) is technisch ideaal, maar heeft een groot praktisch probleem: Gemini kan niet betrouwbaar transparante PNG's met achtergrondverwijdering genereren. Achtergrondverwijdering vereist gespecialiseerde segmentatie-modellen die we hier niet hebben.
 
-## Echte oorzaak (niet React deduplicatie)
+**Haalbare oplossing**: Gebruik jouw ChatGPT-referentiefoto als **visuele template** die we meesturen naar de AI. In plaats van de showroom te beschrijven in tekst, laten we het model de auto plaatsen in **exact dezelfde showroom als op de referentiefoto**. Dit geeft veel consistentere resultaten omdat het model een concreet visueel voorbeeld heeft.
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+## Wat er verandert
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+### 1. Referentie-afbeelding opslaan als vast asset
+- Kopieer de geuploadde ChatGPT showroom-foto naar `public/studio/autocity_studio_reference.png`
+- Dit wordt de vaste visuele referentie die bij elke verwerking wordt meegestuurd
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+### 2. Edge Function: `showroom-photo-studio/index.ts` — herschrijven
+- **Twee afbeeldingen** meesturen naar Gemini: de referentie-showroom + de te verwerken autofoto
+- Nieuwe prompt: "Plaats de auto uit foto 2 in exact dezelfde showroom als foto 1"
+- Expliciete instructies: zelfde kleuren (warm goud LED strip, donkere wanden), zelfde logo-stijl, zelfde vloerreflecties
+- **Geen perspectiefcorrectie** — hoek van de originele foto behouden
+- **Geen voertuigwijzigingen** — kleur, velgen, badges, kentekenhouders intact
+- De referentie-afbeelding wordt geladen vanuit een vaste URL of base64 in de function
 
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+### 3. Frontend: `FotoStudio.tsx` — referentie-afbeelding meesturen
+- Bij elke verwerking wordt de vaste studio-referentie mee geüpload naar de edge function
+- Geen andere frontend-wijzigingen nodig — de multi-upload en batch processing blijven hetzelfde
 
-## Oplossing
+## Waarom dit beter werkt
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+- Het model krijgt een **concreet visueel voorbeeld** in plaats van alleen tekst
+- Logo, kleuren, lichtstrip en vloerreflecties worden consistent gekopieerd van de referentie
+- De warme goud/crème tinten uit jouw voorbeeld worden correct overgenomen
+- Veel betere consistentie dan alleen een tekst-prompt
 
-### Wijzigingen
+## Bestanden
 
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
-
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
-
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
-
-## Verwacht resultaat
-
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+| Bestand | Actie |
+|---------|-------|
+| `public/studio/autocity_studio_reference.png` | Nieuw — vaste referentiefoto (jouw ChatGPT voorbeeld) |
+| `supabase/functions/showroom-photo-studio/index.ts` | Wijzigen — dual-image prompt met referentie |
+| `src/pages/FotoStudio.tsx` | Wijzigen — referentie-afbeelding meeladen |
 
