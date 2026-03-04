@@ -23,8 +23,7 @@ import { FilesTab } from "@/components/inventory/detail-tabs/FilesTab";
 import { ContactsTab } from "@/components/inventory/detail-tabs/ContactsTab";
 import { EmailHistoryTab } from "@/components/inventory/detail-tabs/EmailHistoryTab";
 import { ChecklistTab } from "@/components/inventory/detail-tabs/ChecklistTab";
-import { ShowroomStudioTab } from "@/components/inventory/detail-tabs/ShowroomStudioTab";
-import { ClipboardCheck, Sparkles } from "lucide-react";
+import { ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -198,16 +197,12 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
               <div className="px-6 py-2 bg-background sticky top-0 z-[5]">
                 <TabsList className={cn(
                   "w-full grid",
-                  vehicle.salesStatus === 'verkocht_b2c' ? "grid-cols-8" : "grid-cols-7"
+                  vehicle.salesStatus === 'verkocht_b2c' ? "grid-cols-7" : "grid-cols-6"
                 )}>
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="contacts">Contacten</TabsTrigger>
                   <TabsTrigger value="photos">Foto's</TabsTrigger>
                   <TabsTrigger value="files">Documenten</TabsTrigger>
-                  <TabsTrigger value="studio">
-                    <Sparkles className="h-4 w-4 mr-1" />
-                    Studio
-                  </TabsTrigger>
                   {vehicle.salesStatus === 'verkocht_b2c' && (
                     <TabsTrigger value="checklist">
                       <ClipboardCheck className="h-4 w-4 mr-1" />
@@ -258,12 +253,6 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                   />
                 </TabsContent>
                 
-                <TabsContent value="studio" className="h-full mt-0 p-0">
-                  <ShowroomStudioTab 
-                    vehicle={editedVehicle}
-                    onSaveAsPhoto={onPhotoUpload}
-                  />
-                </TabsContent>
                 
                 {vehicle.salesStatus === 'verkocht_b2c' && (
                   <TabsContent value="checklist" className="h-full mt-0 p-0">
