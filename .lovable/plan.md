@@ -1,48 +1,42 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Plan: Afleverafspraak annuleren — cache invalidatie en appointment status update
 
 ## Probleem
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
-
-## Echte oorzaak (niet React deduplicatie)
-
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
-
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
-
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
-
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+Wanneer je op "Annuleren / Opnieuw plannen" klikt in de ChecklistTab:
+1. De `deliveryAppointmentId` wordt verwijderd uit de vehicle details (goed)
+2. Maar de **afspraak zelf** wordt niet op "geannuleerd" gezet in de `appointments` tabel
+3. De React Query cache (`deliveryAppointments`) wordt niet ge-invalideerd, waardoor de badge en afleverdatum kolom **niet bijwerken**
 
 ## Oplossing
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+### `src/components/inventory/detail-tabs/ChecklistTab.tsx`
 
-### Wijzigingen
+In de "Annuleren / Opnieuw plannen" onClick handler (regel 271-277):
 
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+1. **Appointment status updaten** naar `geannuleerd` in de `appointments` tabel via Supabase
+2. **React Query cache invalideren** voor `deliveryAppointments` en `vehicles` zodat de B2C tabel direct bijwerkt
+3. Bestaande logica behouden (verwijderen `deliveryAppointmentId` + `onUpdate`/`onAutoSave`)
 
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+Wijzigingen:
+- Import `useQueryClient` van `@tanstack/react-query` (al geïmporteerd: `useQuery`)
+- Import `supabase` (al geïmporteerd)
+- Maak de onClick handler `async` en voeg toe:
+  ```typescript
+  // 1. Cancel appointment in DB
+  if (vehicle.details?.deliveryAppointmentId) {
+    await supabase
+      .from('appointments')
+      .update({ status: 'geannuleerd' })
+      .eq('id', vehicle.details.deliveryAppointmentId);
+  }
+  // 2. Invalidate cache
+  queryClient.invalidateQueries({ queryKey: ['deliveryAppointments'] });
+  queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+  ```
 
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
-
-## Verwacht resultaat
-
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+| Bestand | Wijziging |
+|---------|-----------|
+| `src/components/inventory/detail-tabs/ChecklistTab.tsx` | Appointment annuleren in DB + cache invalidatie bij klik op "Annuleren / Opnieuw plannen" |
 
