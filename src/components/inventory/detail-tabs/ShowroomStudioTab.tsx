@@ -1,0 +1,325 @@
+import React, { useState, useCallback } from "react";
+import { useDropzone } from "react-dropzone";
+import { Vehicle } from "@/types/inventory";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { 
+  Upload, Download, RefreshCw, Save, ImageIcon, 
+  Sparkles, Loader2, X, CheckCircle2, AlertCircle,
+  Images
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface ShowroomStudioTabProps {
+  vehicle: Vehicle;
+  onSaveAsPhoto?: (file: File, isMain: boolean) => void;
+}
+
+interface StudioImage {
+  id: string;
+  originalFile: File;
+  originalPreview: string;
+  resultImage: string | null;
+  status: 'queued' | 'processing' | 'done' | 'error';
+  error?: string;
+}
+
+export const ShowroomStudioTab: React.FC<ShowroomStudioTabProps> = ({ vehicle, onSaveAsPhoto }) => {
+  const [images, setImages] = useState<StudioImage[]>([]);
+  const [isProcessingAll, setIsProcessingAll] = useState(false);
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const newImages: StudioImage[] = acceptedFiles.map(file => ({
+      id: crypto.randomUUID(),
+      originalFile: file,
+      originalPreview: URL.createObjectURL(file),
+      resultImage: null,
+      status: 'queued' as const,
+    }));
+    setImages(prev => [...prev, ...newImages]);
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { 'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'], 'image/webp': ['.webp'] },
+    maxSize: 20 * 1024 * 1024,
+    multiple: true,
+  });
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const processImage = async (imageId: string) => {
+    const image = images.find(i => i.id === imageId);
+    if (!image) return;
+
+    setImages(prev => prev.map(i => i.id === imageId ? { ...i, status: 'processing' } : i));
+
+    try {
+      const base64 = await fileToBase64(image.originalFile);
+
+      const { data, error } = await supabase.functions.invoke('showroom-photo-studio', {
+        body: { imageBase64: base64, vehicleId: vehicle.id }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Verwerking mislukt');
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      setImages(prev => prev.map(i => 
+        i.id === imageId ? { ...i, status: 'done', resultImage: data.resultImage } : i
+      ));
+    } catch (err: any) {
+      console.error('Studio processing error:', err);
+      const errorMsg = err?.message || 'Onbekende fout';
+      setImages(prev => prev.map(i => 
+        i.id === imageId ? { ...i, status: 'error', error: errorMsg } : i
+      ));
+      toast.error(`Fout: ${errorMsg}`);
+    }
+  };
+
+  const processAll = async () => {
+    const queued = images.filter(i => i.status === 'queued' || i.status === 'error');
+    if (queued.length === 0) return;
+
+    setIsProcessingAll(true);
+
+    // Process 2 at a time to avoid rate limits
+    for (let i = 0; i < queued.length; i += 2) {
+      const batch = queued.slice(i, i + 2);
+      await Promise.all(batch.map(img => processImage(img.id)));
+    }
+
+    setIsProcessingAll(false);
+    toast.success('Alle foto\'s verwerkt!');
+  };
+
+  const downloadImage = (resultImage: string, index: number) => {
+    const link = document.createElement('a');
+    link.href = resultImage;
+    link.download = `${vehicle.brand}_${vehicle.model}_studio_${index + 1}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadAll = () => {
+    const completed = images.filter(i => i.status === 'done' && i.resultImage);
+    completed.forEach((img, i) => {
+      setTimeout(() => downloadImage(img.resultImage!, i), i * 300);
+    });
+  };
+
+  const saveAsVehiclePhoto = async (resultImage: string) => {
+    if (!onSaveAsPhoto) return;
+    try {
+      const res = await fetch(resultImage);
+      const blob = await res.blob();
+      const file = new File([blob], `studio_${Date.now()}.png`, { type: 'image/png' });
+      onSaveAsPhoto(file, false);
+      toast.success('Foto opgeslagen als voertuigfoto');
+    } catch {
+      toast.error('Kon foto niet opslaan');
+    }
+  };
+
+  const removeImage = (imageId: string) => {
+    setImages(prev => {
+      const img = prev.find(i => i.id === imageId);
+      if (img) URL.revokeObjectURL(img.originalPreview);
+      return prev.filter(i => i.id !== imageId);
+    });
+  };
+
+  const completedCount = images.filter(i => i.status === 'done').length;
+  const processingCount = images.filter(i => i.status === 'processing').length;
+  const progress = images.length > 0 ? ((completedCount / images.length) * 100) : 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            AutoCity Digital Studio
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Upload foto's en laat AI ze omzetten naar professionele showroom-beelden
+          </p>
+        </div>
+        {images.length > 0 && (
+          <div className="flex gap-2">
+            {completedCount > 0 && (
+              <Button variant="outline" size="sm" onClick={downloadAll}>
+                <Download className="h-4 w-4 mr-1" />
+                Alles downloaden ({completedCount})
+              </Button>
+            )}
+            <Button 
+              size="sm" 
+              onClick={processAll}
+              disabled={isProcessingAll || images.filter(i => i.status === 'queued' || i.status === 'error').length === 0}
+            >
+              {isProcessingAll ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-1" />
+              )}
+              {isProcessingAll ? 'Verwerken...' : 'Alles verwerken'}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Progress bar */}
+      {images.length > 0 && (processingCount > 0 || completedCount > 0) && (
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>{completedCount} van {images.length} foto's klaar</span>
+            {processingCount > 0 && <span>{processingCount} worden verwerkt...</span>}
+          </div>
+          <Progress value={progress} className="h-2" />
+        </div>
+      )}
+
+      {/* Upload zone */}
+      <div
+        {...getRootProps()}
+        className={cn(
+          "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all",
+          "hover:border-primary/50 hover:bg-muted/30",
+          isDragActive && "border-primary bg-primary/5",
+          "border-muted-foreground/25"
+        )}
+      >
+        <input {...getInputProps()} />
+        <div className="flex flex-col items-center gap-3">
+          <div className="rounded-full bg-muted p-4">
+            <Images className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <div>
+            <p className="font-medium">
+              {isDragActive ? "Laat foto's hier los..." : "Sleep foto's hierheen of klik om te uploaden"}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              JPG, PNG of WebP — max 20MB per foto — meerdere bestanden tegelijk
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Results grid */}
+      {images.length > 0 && (
+        <div className="grid grid-cols-1 gap-4">
+          {images.map((img, index) => (
+            <div 
+              key={img.id} 
+              className="border rounded-lg overflow-hidden bg-card"
+            >
+              <div className="grid grid-cols-2 gap-0">
+                {/* Original */}
+                <div className="relative bg-muted/50">
+                  <div className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm text-xs px-2 py-1 rounded-md font-medium">
+                    Origineel
+                  </div>
+                  <img 
+                    src={img.originalPreview} 
+                    alt={`Origineel ${index + 1}`}
+                    className="w-full h-48 object-contain"
+                  />
+                </div>
+
+                {/* Result */}
+                <div className="relative bg-[hsl(var(--muted))]">
+                  <div className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm text-xs px-2 py-1 rounded-md font-medium flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    Studio
+                  </div>
+                  {img.status === 'queued' && (
+                    <div className="w-full h-48 flex items-center justify-center">
+                      <div className="text-center text-muted-foreground">
+                        <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                        <p className="text-xs">Wacht op verwerking</p>
+                      </div>
+                    </div>
+                  )}
+                  {img.status === 'processing' && (
+                    <div className="w-full h-48 flex items-center justify-center">
+                      <div className="text-center">
+                        <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin text-primary" />
+                        <p className="text-xs text-muted-foreground">AI verwerkt foto...</p>
+                      </div>
+                    </div>
+                  )}
+                  {img.status === 'done' && img.resultImage && (
+                    <img 
+                      src={img.resultImage} 
+                      alt={`Studio ${index + 1}`}
+                      className="w-full h-48 object-contain"
+                    />
+                  )}
+                  {img.status === 'error' && (
+                    <div className="w-full h-48 flex items-center justify-center">
+                      <div className="text-center text-destructive">
+                        <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                        <p className="text-xs">{img.error || 'Fout'}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-between p-2 border-t bg-muted/20">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  {img.status === 'done' && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                  {img.status === 'processing' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span className="truncate max-w-[200px]">{img.originalFile.name}</span>
+                </div>
+                <div className="flex gap-1">
+                  {img.status === 'done' && img.resultImage && (
+                    <>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => downloadImage(img.resultImage!, index)}>
+                        <Download className="h-3.5 w-3.5 mr-1" />
+                        Download
+                      </Button>
+                      {onSaveAsPhoto && (
+                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => saveAsVehiclePhoto(img.resultImage!)}>
+                          <Save className="h-3.5 w-3.5 mr-1" />
+                          Opslaan
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  {(img.status === 'error' || img.status === 'done') && (
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => processImage(img.id)}>
+                      <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                      Opnieuw
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => removeImage(img.id)}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};

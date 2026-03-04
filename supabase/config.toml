@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.hendrik-ai-chat]
 verify_jwt = false
+
+[functions.showroom-photo-studio]
+verify_jwt = false
