@@ -32,6 +32,7 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
   const [assignTaskItem, setAssignTaskItem] = useState<ChecklistItem | null>(null);
   const [showQRDialog, setShowQRDialog] = useState(false);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const checklist = vehicle.details?.preDeliveryChecklist || [];
   const completedCount = checklist.filter(item => item.completed).length;
