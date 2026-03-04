@@ -1,48 +1,36 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Plan: Prompt verfijning voor realistische showroomfoto's
 
-## Probleem
+## Feedback samenvatting
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+1. **Lakreflecties**: Buitenlocatie is soms zichtbaar in de lak — AI moet omgevingsreflecties vervangen door showroom-consistente reflecties
+2. **Foto 1 = gouden standaard**: Strakke, schone lak zonder doorschijnen — dit is het doel
+3. **Foto 2 = te veel doorschijnen**: Omgeving te zichtbaar in de lak, niet clean genoeg
+4. **Herpositionering mag**: AI mag de auto iets verschuiven voor betere compositie, MAAR de kijkhoek mag niet veranderen (links-achter blijft links-achter)
+5. **Consistente showroom**: Altijd dezelfde AutoCity showroom, nooit een andere stijl
 
-## Echte oorzaak (niet React deduplicatie)
+## Wat verandert
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+Alleen de prompts in `supabase/functions/showroom-photo-studio/index.ts` worden aangescherpt:
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+### ENHANCE_PROMPT — nieuwe regels toevoegen
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+- **Reflectie-cleaning**: "Remove any environmental reflections visible in the paint (trees, buildings, sky, parking lots). Replace them with smooth, neutral studio-style reflections consistent with indoor showroom lighting."
+- **Geen doorschijnen**: "The paint surface must appear clean and flawless — like a freshly detailed car in a controlled photo booth environment. No outdoor environment should be detectable in the paint reflections."
 
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+### SHOWROOM_PROMPT — aanscherpingen
 
-## Oplossing
+- **Hoekbehoud (versterkt)**: "The camera viewing angle MUST remain IDENTICAL to Image 2. A left-rear photo stays left-rear. A right-side photo stays right-side. You may adjust the vehicle's horizontal position and scale for optimal composition, but NEVER rotate the vehicle or change the viewing perspective."
+- **Lakreflecties in showroom**: "The vehicle's paint must show ONLY showroom-consistent reflections — soft LED light strips, the dark walls, and subtle warm highlights. Remove ALL traces of outdoor environments (trees, buildings, clouds, fences) from paint reflections. The paint must look like a freshly polished car photographed in a controlled indoor studio."
+- **Showroom consistentie**: "You MUST replicate the EXACT showroom from Image 1. Do NOT invent a different studio. The walls, logo, floor, and lighting must match Image 1 precisely. No variations allowed."
+- **Geen doorschijnen**: "The final image must have the quality of a professional photo booth — clean, flawless paint surfaces with no environmental artifacts showing through."
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+## Bestanden
 
-### Wijzigingen
+| Bestand | Wijziging |
+|---------|-----------|
+| `supabase/functions/showroom-photo-studio/index.ts` | Beide prompts aanscherpen met bovenstaande regels |
 
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
-
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
-
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
-
-## Verwacht resultaat
-
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+Geen andere bestanden wijzigen. Alleen prompt-tekst updates + deploy.
 
