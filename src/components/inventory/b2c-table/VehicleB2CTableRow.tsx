@@ -154,11 +154,13 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
       <TableCell className="align-middle truncate max-w-32">
         {vehicle.vin}
       </TableCell>
-      <TableCell className="align-middle">
-        {hasPriceAccess() ? formatPrice(vehicle.purchasePrice) : (
-          <Badge variant="secondary" className="text-muted-foreground">Verborgen</Badge>
-        )}
-      </TableCell>
+      {!showDeliveryDate && (
+        <TableCell className="align-middle">
+          {hasPriceAccess() ? formatPrice(vehicle.purchasePrice) : (
+            <Badge variant="secondary" className="text-muted-foreground">Verborgen</Badge>
+          )}
+        </TableCell>
+      )}
       <TableCell className="align-middle">
         {hasPriceAccess() ? formatPrice(vehicle.sellingPrice) : (
           <Badge variant="secondary" className="text-muted-foreground">Verborgen</Badge>
