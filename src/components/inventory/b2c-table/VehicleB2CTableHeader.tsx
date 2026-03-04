@@ -76,9 +76,11 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
         <TableHead className="min-w-32">
           {renderSortableHeader("vin", "VIN")}
         </TableHead>
-        <TableHead className="min-w-28">
-          {renderSortableHeader("purchasePrice", "Inkoop prijs")}
-        </TableHead>
+        {!showDeliveryDate && (
+          <TableHead className="min-w-28">
+            {renderSortableHeader("purchasePrice", "Inkoop prijs")}
+          </TableHead>
+        )}
         <TableHead className="min-w-28">
           {renderSortableHeader("sellingPrice", "Verkoopprijs")}
         </TableHead>
