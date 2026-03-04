@@ -281,6 +281,7 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
                       ...(vehicle.details || {}),
                       deliveryAppointmentId: null,
                     };
+                    const updatedVehicle = { ...vehicle, details: updatedDetails };
                     onUpdate(updatedVehicle);
                     if (onAutoSave) onAutoSave(updatedVehicle);
                     // Invalidate cache so B2C table updates
