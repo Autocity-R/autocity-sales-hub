@@ -36,6 +36,8 @@ interface VehicleB2CTableProps {
   onSort: (field: string) => void;
   sortField: string | null;
   sortDirection: "asc" | "desc";
+  showDeliveryDate?: boolean;
+  deliveryDates?: Record<string, string>;
 }
 
 export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
@@ -54,7 +56,9 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
   error,
   onSort,
   sortField,
-  sortDirection
+  sortDirection,
+  showDeliveryDate = false,
+  deliveryDates = {}
 }) => {
   const isMobile = useIsMobile();
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
