@@ -218,6 +218,17 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
           );
         })()}
       </TableCell>
+      {showDeliveryDate && (
+        <TableCell className="align-middle">
+          {deliveryDate ? (
+            <span className="text-sm font-medium">
+              {format(new Date(deliveryDate), "EEE d MMM HH:mm", { locale: nl })}
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-sm">—</span>
+          )}
+        </TableCell>
+      )}
       <TableCell className="align-middle">
         <Badge variant="outline" className="capitalize">
           {vehicle.location}
