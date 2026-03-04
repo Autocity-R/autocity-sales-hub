@@ -107,7 +107,7 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
   };
 
   const readyForDelivery = isReadyForDelivery(vehicle);
-  const hasDeliveryAppointment = !!vehicle.details?.deliveryAppointmentId;
+  const hasActiveDeliveryAppointment = Boolean(deliveryDate);
 
   return (
     <TableRow 

@@ -277,9 +277,10 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
                         .update({ status: 'geannuleerd' })
                         .eq('id', vehicle.details.deliveryAppointmentId);
                     }
-                    const updatedDetails = { ...vehicle.details };
-                    delete updatedDetails.deliveryAppointmentId;
-                    const updatedVehicle = { ...vehicle, details: updatedDetails };
+                    const updatedDetails = {
+                      ...(vehicle.details || {}),
+                      deliveryAppointmentId: null,
+                    };
                     onUpdate(updatedVehicle);
                     if (onAutoSave) onAutoSave(updatedVehicle);
                     // Invalidate cache so B2C table updates
