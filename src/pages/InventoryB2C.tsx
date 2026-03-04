@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { FileText, Mail, Plus, Search, Filter, User } from "lucide-react";
+import { FileText, Mail, Plus, Search, Filter, User, Truck } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { VehicleB2CTable } from "@/components/inventory/VehicleB2CTable";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
@@ -15,7 +15,7 @@ import { useB2CVehicleHandlers } from "@/hooks/useB2CVehicleHandlers";
 import { useB2CVehicles } from "@/hooks/useB2CVehicles";
 import { InventoryBulkActions } from "@/components/inventory/InventoryBulkActions";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +28,7 @@ const InventoryB2C = () => {
   const [invoiceVehicle, setInvoiceVehicle] = useState<Vehicle | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [salespersonFilter, setSalespersonFilter] = useState("");
+  const [deliveryFilter, setDeliveryFilter] = useState<"all" | "ready" | "scheduled" | "not_ready">("all");
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
