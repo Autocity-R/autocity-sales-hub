@@ -12,10 +12,6 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import { Avatar } from "@/components/ui/avatar";
-import { PurchaserQuickEdit } from "../PurchaserQuickEdit";
-import { useRoleAccess } from "@/hooks/useRoleAccess";
-import { Progress } from "@/components/ui/progress";
 
 interface VehicleB2CTableRowProps {
   vehicle: Vehicle;
