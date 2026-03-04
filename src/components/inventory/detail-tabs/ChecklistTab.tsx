@@ -269,12 +269,22 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
                   variant="outline"
                   size="sm"
                   className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                  onClick={() => {
+                  onClick={async () => {
+                    // Cancel appointment in DB
+                    if (vehicle.details?.deliveryAppointmentId) {
+                      await supabase
+                        .from('appointments')
+                        .update({ status: 'geannuleerd' })
+                        .eq('id', vehicle.details.deliveryAppointmentId);
+                    }
                     const updatedDetails = { ...vehicle.details };
                     delete updatedDetails.deliveryAppointmentId;
                     const updatedVehicle = { ...vehicle, details: updatedDetails };
                     onUpdate(updatedVehicle);
                     if (onAutoSave) onAutoSave(updatedVehicle);
+                    // Invalidate cache so B2C table updates
+                    queryClient.invalidateQueries({ queryKey: ['deliveryAppointments'] });
+                    queryClient.invalidateQueries({ queryKey: ['vehicles'] });
                   }}
                 >
                   <XCircle className="h-4 w-4 mr-1" />
