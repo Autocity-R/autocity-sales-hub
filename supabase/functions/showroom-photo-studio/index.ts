@@ -15,6 +15,13 @@ WHAT TO DO:
 - Recover paint reflections while keeping vehicle color 100% accurate
 - Make colors more vibrant and true-to-life
 
+━━━ REFLECTION CLEANING (CRITICAL) ━━━
+- Remove any environmental reflections visible in the paint surface (trees, buildings, sky, parking lots, fences, other cars)
+- Replace them with smooth, neutral studio-style reflections consistent with indoor showroom lighting
+- The paint surface must appear clean and flawless — like a freshly detailed car in a controlled photo booth environment
+- No outdoor environment should be detectable in the paint reflections
+- Paint must look opaque and rich — zero shine-through of surroundings
+
 ABSOLUTE RULES — DO NOT VIOLATE:
 - Do NOT crop, zoom, reframe, or change the camera angle in ANY way
 - Do NOT change the vehicle's color, wheels, badges, trim, or any physical detail
@@ -23,7 +30,7 @@ ABSOLUTE RULES — DO NOT VIOLATE:
 - Do NOT alter the composition or framing whatsoever
 - The output image must have the EXACT same framing, angle, and composition as the input
 
-OUTPUT: The same photo with improved lighting, color accuracy, sharpness, and reduced noise. Nothing else changes.`;
+OUTPUT: The same photo with improved lighting, color accuracy, sharpness, reduced noise, and clean studio-quality paint reflections. Nothing else changes.`;
 
 const SHOWROOM_PROMPT = `You are given TWO images:
 
@@ -45,6 +52,13 @@ YOUR TASK: Place the vehicle from Image 2 into the EXACT same showroom environme
 - There must be visible space/margin between the vehicle edges and the image borders on ALL sides
 - Do NOT crop, cut, or hide ANY part of the vehicle
 
+━━━ CAMERA ANGLE PRESERVATION (CRITICAL) ━━━
+- The camera viewing angle MUST remain IDENTICAL to Image 2
+- A left-rear photo STAYS left-rear. A right-side photo STAYS right-side. A front-left photo STAYS front-left
+- You may adjust the vehicle's horizontal position and scale for optimal composition
+- But NEVER rotate the vehicle or change the viewing perspective
+- The viewer must see the EXACT same side(s) of the car as in Image 2
+
 ━━━ VEHICLE INTEGRITY (DO NOT MODIFY) ━━━
 The following must remain IDENTICAL to Image 2:
 - Body color and paint finish
@@ -55,14 +69,23 @@ The following must remain IDENTICAL to Image 2:
 - Body shape, proportions, and all body lines
 - Window tint level
 - Any existing damage or imperfections
-- Camera angle and perspective of the vehicle — keep the EXACT same viewing angle
 
-━━━ SHOWROOM ENVIRONMENT (match Image 1 exactly) ━━━
-- Dark charcoal/anthracite walls
+━━━ PAINT REFLECTIONS & SURFACE QUALITY (CRITICAL) ━━━
+- The vehicle's paint must show ONLY showroom-consistent reflections — soft LED light strips, the dark walls, and subtle warm highlights
+- Remove ALL traces of outdoor environments (trees, buildings, clouds, fences, sky) from paint reflections
+- The paint must look like a freshly polished car photographed in a controlled indoor studio
+- Zero shine-through: no environmental artifacts visible in the paint surface
+- The final image must have the quality of a professional photo booth — clean, flawless paint surfaces
+- Reference Image 1 for the correct reflection style: soft, controlled, studio lighting only
+
+━━━ SHOWROOM ENVIRONMENT (match Image 1 EXACTLY — NO VARIATIONS) ━━━
+- You MUST replicate the EXACT showroom from Image 1. Do NOT invent a different studio
+- Dark charcoal/anthracite walls — match Image 1 precisely
 - White LED "AUTOCITY" logo on the back wall — match the exact text, font, and illumination style from Image 1
 - White/warm LED light strips along ceiling edges — match position and glow from Image 1
 - Polished dark floor with subtle reflections
 - Overall warm, professional automotive showroom lighting
+- The walls, logo, floor, and lighting must match Image 1 precisely. No variations allowed
 
 ━━━ VEHICLE PLACEMENT ━━━
 - Center the vehicle horizontally in the frame
@@ -83,7 +106,7 @@ If Image 2 is an interior/cabin photo (dashboard, seats, steering wheel — not 
 - Replace any visible outside-window background with a subtle dark gradient
 - Return the enhanced interior photo
 
-OUTPUT: A single photorealistic 1920x1080 image that looks like the vehicle was professionally photographed inside this AutoCity showroom.`;
+OUTPUT: A single photorealistic 1920x1080 image that looks like the vehicle was professionally photographed inside this AutoCity showroom. Paint surfaces must be flawless with studio-only reflections.`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
