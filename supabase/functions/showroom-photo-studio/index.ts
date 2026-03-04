@@ -5,46 +5,49 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const SHOWROOM_PROMPT = `You are an expert automotive photography post-production specialist. Your task is to take the uploaded vehicle photo and produce a photorealistic dealership studio image.
+const SHOWROOM_PROMPT = `You are given TWO images:
 
-CRITICAL RULES — DO NOT MODIFY THE VEHICLE:
+IMAGE 1 (Reference Studio): This is the EXACT showroom environment you must replicate. Study every detail: the dark charcoal walls, the warm gold/cream LED light strips along the ceiling edges, the illuminated "AUTOCITY" logo on the back wall, the polished dark floor with reflections, and the overall lighting atmosphere.
+
+IMAGE 2 (Vehicle Photo): This is the vehicle you must place into the studio.
+
+YOUR TASK: Place the vehicle from Image 2 into the EXACT same showroom environment as Image 1.
+
+CRITICAL RULES — VEHICLE INTEGRITY:
 - Do NOT change the vehicle color, wheels, badges, trim, headlights, body shape, proportions, or license plate holders.
-- The vehicle must remain IDENTICAL to the uploaded photo in every detail.
+- The vehicle must remain IDENTICAL to Image 2 in every detail.
 - Any existing AutoCity license plate holders or branding on the car must be preserved exactly.
+- Do NOT apply any perspective correction or angle change. Keep the vehicle at the EXACT same camera angle as in Image 2.
+- Do NOT reframe, zoom, or crop the vehicle differently than it appears in Image 2.
 
-STEP 1 — IMAGE QUALITY ENHANCEMENT:
-- Correct white balance (remove green/yellow warehouse lighting cast).
+CRITICAL RULES — STUDIO CONSISTENCY:
+- The showroom must look EXACTLY like Image 1. Same wall color, same floor, same LED strips, same logo.
+- The "AUTOCITY" logo text and style must match Image 1 precisely. Do NOT redesign or reimagine the logo.
+- The warm gold/cream colored LED light strips must match Image 1 exactly.
+- The floor finish and reflectiveness must match Image 1.
+
+IMAGE QUALITY ENHANCEMENT (apply to the vehicle):
+- Correct white balance (remove any green/yellow warehouse lighting cast from the original photo).
 - Reduce noise and improve clarity.
 - Increase contrast slightly.
 - Sharpen subtly.
 - Recover paint reflections while keeping vehicle color accurate.
 
-STEP 2 — BACKGROUND REPLACEMENT & STUDIO COMPOSITING:
-Remove the original background entirely and place the vehicle inside a fixed AutoCity showroom studio with these EXACT specifications:
+SHADOWS & REFLECTIONS:
+- Add natural contact shadows under the tires matching the shadow style in Image 1.
+- Add a subtle floor reflection of the vehicle matching the reflection style in Image 1 (low opacity, blurred, faded).
 
-WALLS: Dark charcoal matte wall with subtle texture.
-LOGO: Centered on the back wall, an illuminated LED sign reading "AUTOCITY" in white/cream LED letters. Above the text is a minimal car silhouette line logo. The logo emits soft WHITE LED light.
-CEILING: A thin LED light strip runs along the upper wall edges. The strip emits neutral WHITE light (not yellow).
-FLOOR: Smooth polished dark concrete floor.
+VEHICLE PLACEMENT:
+- Place the vehicle naturally on the floor plane at a similar position and scale as the car in Image 1.
+- The vehicle should be centered and fill a similar proportion of the frame as in Image 1.
 
-STEP 3 — LIGHTING:
-- Apply realistic professional studio lighting: soft overhead light, balanced reflections on paint, natural highlights on body contours.
-- Add subtle rim lighting (opacity ~10%) to prevent dark vehicles from blending into the dark background.
+INTERIOR PHOTO HANDLING:
+If Image 2 is an interior/cabin photo (not an exterior shot):
+- Do NOT place it inside the studio.
+- Instead: enhance lighting and clarity, keep interior materials unchanged, replace any visible outside window background with a subtle dark gradient.
+- Return the enhanced interior photo.
 
-STEP 4 — SHADOWS & REFLECTIONS:
-- Add natural contact shadows under the tires (blur radius ~25px, opacity ~35%).
-- Add a subtle floor reflection of the vehicle (opacity ~10%, blur ~40px, vertically flipped and slightly faded).
-
-STEP 5 — VEHICLE SCALING & PERSPECTIVE:
-- Scale the vehicle so it sits naturally on the floor plane with consistent visual size.
-- If the camera angle is slightly off, apply minimal perspective correction to improve composition. Never distort vehicle proportions.
-
-STEP 6 — INTERIOR PHOTO HANDLING:
-If the uploaded image is an interior/cabin photo (not an exterior shot):
-- Do NOT place it inside the exterior studio.
-- Instead: enhance lighting and clarity, keep interior materials unchanged, replace any visible outside window background with a subtle dark AutoCity-branded gradient.
-
-OUTPUT: A single photorealistic dealership studio image that looks like it was photographed inside a real AutoCity showroom. Suitable for website listings, AutoScout, Marktplaats, and marketing materials.`;
+OUTPUT: A single photorealistic image that looks like the vehicle was photographed inside the AutoCity showroom shown in Image 1.`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -57,7 +60,7 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const { imageBase64, vehicleId } = await req.json();
+    const { imageBase64, referenceImageUrl, vehicleId } = await req.json();
     
     if (!imageBase64) {
       return new Response(
@@ -66,12 +69,19 @@ serve(async (req) => {
       );
     }
 
+    if (!referenceImageUrl) {
+      return new Response(
+        JSON.stringify({ error: 'referenceImageUrl is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log(`Processing showroom photo for vehicle: ${vehicleId}`);
 
     // Determine mime type from base64 header or default to jpeg
-    let imageUrl = imageBase64;
+    let vehicleImageUrl = imageBase64;
     if (!imageBase64.startsWith('data:')) {
-      imageUrl = `data:image/jpeg;base64,${imageBase64}`;
+      vehicleImageUrl = `data:image/jpeg;base64,${imageBase64}`;
     }
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -87,7 +97,8 @@ serve(async (req) => {
             role: 'user',
             content: [
               { type: 'text', text: SHOWROOM_PROMPT },
-              { type: 'image_url', image_url: { url: imageUrl } }
+              { type: 'image_url', image_url: { url: referenceImageUrl } },
+              { type: 'image_url', image_url: { url: vehicleImageUrl } }
             ]
           }
         ],
