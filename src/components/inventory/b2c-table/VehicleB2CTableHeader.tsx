@@ -11,6 +11,7 @@ interface VehicleB2CTableHeaderProps {
   onSort: (field: string) => void;
   sortField: string | null;
   sortDirection: "asc" | "desc";
+  showDeliveryDate?: boolean;
 }
 
 export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
@@ -19,7 +20,8 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
   toggleSelectAll,
   onSort,
   sortField,
-  sortDirection
+  sortDirection,
+  showDeliveryDate = false
 }) => {
   const renderSortIcon = (field: string) => {
     if (sortField !== field) return null;
@@ -92,6 +94,11 @@ export const VehicleB2CTableHeader: React.FC<VehicleB2CTableHeaderProps> = ({
         <TableHead className="min-w-24">
           {renderSortableHeader("checklistProgress", "Voortgang")}
         </TableHead>
+        {showDeliveryDate && (
+          <TableHead className="min-w-32">
+            {renderSortableHeader("deliveryDate", "Afleverdatum")}
+          </TableHead>
+        )}
         <TableHead className="min-w-24">
           {renderSortableHeader("location", "Locatie")}
         </TableHead>

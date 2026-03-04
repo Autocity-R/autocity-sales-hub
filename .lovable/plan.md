@@ -1,46 +1,48 @@
 
 
-# Plan: Afleverfilter + Afleverdatum kolom (alleen zichtbaar bij filter)
+# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
 
-## Wat wordt gebouwd
+## Probleem
 
-1. **Nieuw "Klaar voor levering" filter** in `InventoryB2C.tsx` — dropdown met opties: Alle / Klaar voor levering / Afspraak gepland / Nog niet klaar
-2. **"Afleverdatum" kolom** in de tabel die **alleen verschijnt** wanneer het filter op "Klaar voor levering" of "Afspraak gepland" staat
-3. **Standaard sortering op afleverdatum** (oplopend: eerste levering bovenaan) wanneer het filter actief is
-4. **Afleverdatum wordt opgehaald** uit de `appointments` tabel via de `deliveryAppointmentId` die gekoppeld is aan de checklist-planning en Google Calendar
+Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
 
-## Technische aanpak
+## Echte oorzaak (niet React deduplicatie)
 
-### 1. `InventoryB2C.tsx`
-- Nieuwe state: `deliveryFilter` (`"all"` | `"ready"` | `"scheduled"` | `"not_ready"`)
-- Dropdown met Truck-icoon naast het verkopersfilter
-- Filter logica in `displayVehicles`:
-  - `"ready"`: checklist 100% + ingeschreven + geen `deliveryAppointmentId`
-  - `"scheduled"`: heeft `deliveryAppointmentId`
-  - `"not_ready"`: niet klaar (rest)
-- Wanneer filter `"scheduled"` actief: sorteer op `deliveryAppointmentDate` oplopend (eerst komende levering bovenaan)
-- Pass `showDeliveryDate` boolean prop door naar `VehicleB2CTable` (true wanneer filter = `"ready"` of `"scheduled"`)
-- Ophalen van afleverdatums: een `useQuery` die voor alle voertuigen met `deliveryAppointmentId` de `starttime` ophaalt uit de `appointments` tabel en als map beschikbaar maakt
+Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
 
-### 2. `VehicleB2CTable.tsx`
-- Nieuwe prop: `showDeliveryDate: boolean` + `deliveryDates: Record<string, string>` (vehicleId -> datum)
-- Doorsturen naar header en row components
+- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
+- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
+- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
 
-### 3. `VehicleB2CTableHeader.tsx`
-- Nieuwe prop: `showDeliveryDate: boolean`
-- Conditionally tonen van sorteerbare kolom "Afleverdatum" (na Voortgang, voor Locatie)
+In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
 
-### 4. `VehicleB2CTableRow.tsx`
-- Nieuwe prop: `showDeliveryDate: boolean` + `deliveryDate?: string`
-- Conditionally tonen van cel met datum geformatteerd via `date-fns` in NL formaat (bijv. "di 12 mrt 14:00")
-- De datum komt uit de `appointments` tabel (bindend, gekoppeld aan Google Calendar)
+In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
 
-### Bestanden
+## Oplossing
 
-| Bestand | Wijziging |
-|---------|-----------|
-| `src/pages/InventoryB2C.tsx` | Filter dropdown + query appointments + sorteerlogica + props |
-| `src/components/inventory/VehicleB2CTable.tsx` | Props doorsturen + colSpan conditie |
-| `src/components/inventory/b2c-table/VehicleB2CTableHeader.tsx` | Conditionele "Afleverdatum" kolom |
-| `src/components/inventory/b2c-table/VehicleB2CTableRow.tsx` | Conditionele afleverdatum cel |
+Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
+- Gebruikt compatibele Radix versies (geen nested node_modules meer)
+- Verwijdert de `@babel/runtime` dependency
+- Lost het context-conflict op
+
+### Wijzigingen
+
+**Bestand: `package.json`**
+- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+
+**Bestand: `src/components/ui/command.tsx`**
+- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+
+**Bestand: `vite.config.ts`**
+- De bestaande `dedupe` configuratie blijft als extra veiligheid
+- Toevoegen van Radix interne pakketten aan dedupe als fallback:
+  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+
+## Verwacht resultaat
+
+Na upgrade en publicatie:
+- Klantenlijst is weer klikbaar en scrollbaar
+- Selecteren van klanten werkt correct
+- Data wordt opgeslagen
+- Werkt zowel in preview als op de gepubliceerde website
 

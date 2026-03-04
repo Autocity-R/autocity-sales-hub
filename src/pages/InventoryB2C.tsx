@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { FileText, Mail, Plus, Search, Filter, User } from "lucide-react";
+import { FileText, Mail, Plus, Search, Filter, User, Truck } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { VehicleB2CTable } from "@/components/inventory/VehicleB2CTable";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
@@ -15,7 +15,7 @@ import { useB2CVehicleHandlers } from "@/hooks/useB2CVehicleHandlers";
 import { useB2CVehicles } from "@/hooks/useB2CVehicles";
 import { InventoryBulkActions } from "@/components/inventory/InventoryBulkActions";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +28,7 @@ const InventoryB2C = () => {
   const [invoiceVehicle, setInvoiceVehicle] = useState<Vehicle | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [salespersonFilter, setSalespersonFilter] = useState("");
+  const [deliveryFilter, setDeliveryFilter] = useState<"all" | "ready" | "scheduled" | "not_ready">("all");
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -72,11 +73,77 @@ const InventoryB2C = () => {
     return Array.from(new Set(names)).sort();
   }, [vehicles]);
 
-  // Filter vehicles by salesperson
+  // Helper: check if vehicle checklist is 100%
+  const getChecklistProgress = (vehicle: Vehicle) => {
+    const checklist = vehicle.details?.preDeliveryChecklist || [];
+    if (checklist.length === 0) return 0;
+    const completed = checklist.filter((item: { completed?: boolean }) => item.completed).length;
+    return Math.round((completed / checklist.length) * 100);
+  };
+
+  // Fetch delivery dates from appointments table
+  const appointmentIds = useMemo(() => {
+    return vehicles
+      .map(v => v.details?.deliveryAppointmentId)
+      .filter((id): id is string => Boolean(id));
+  }, [vehicles]);
+
+  const { data: deliveryDatesMap = {} } = useQuery({
+    queryKey: ['deliveryAppointments', appointmentIds],
+    queryFn: async () => {
+      if (appointmentIds.length === 0) return {};
+      const { data } = await supabase
+        .from('appointments')
+        .select('id, starttime, vehicleid')
+        .in('id', appointmentIds);
+      
+      const map: Record<string, string> = {};
+      data?.forEach(apt => {
+        if (apt.vehicleid) {
+          map[apt.vehicleid] = apt.starttime;
+        }
+      });
+      return map;
+    },
+    enabled: appointmentIds.length > 0,
+  });
+
+  // Filter vehicles by salesperson + delivery status
   const displayVehicles = useMemo(() => {
-    if (!salespersonFilter) return vehicles;
-    return vehicles.filter(v => v.salespersonName === salespersonFilter);
-  }, [vehicles, salespersonFilter]);
+    let filtered = vehicles;
+    
+    if (salespersonFilter) {
+      filtered = filtered.filter(v => v.salespersonName === salespersonFilter);
+    }
+
+    if (deliveryFilter === "ready") {
+      filtered = filtered.filter(v => {
+        const progress = getChecklistProgress(v);
+        return progress === 100 && v.importStatus === 'ingeschreven';
+      });
+    } else if (deliveryFilter === "scheduled") {
+      filtered = filtered.filter(v => !!v.details?.deliveryAppointmentId);
+    } else if (deliveryFilter === "not_ready") {
+      filtered = filtered.filter(v => {
+        const progress = getChecklistProgress(v);
+        return !(progress === 100 && v.importStatus === 'ingeschreven');
+      });
+    }
+
+    // Sort by delivery date ascending when delivery filter active
+    if (deliveryFilter === "ready" || deliveryFilter === "scheduled") {
+      filtered = [...filtered].sort((a, b) => {
+        const dateA = deliveryDatesMap[a.id] || '';
+        const dateB = deliveryDatesMap[b.id] || '';
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return new Date(dateA).getTime() - new Date(dateB).getTime();
+      });
+    }
+
+    return filtered;
+  }, [vehicles, salespersonFilter, deliveryFilter, deliveryDatesMap]);
 
   // Properly fetch files for selected vehicle using our hook
   const { vehicleFiles } = useVehicleFiles(selectedVehicle);
@@ -297,6 +364,19 @@ const InventoryB2C = () => {
               ))}
             </SelectContent>
           </Select>
+
+          <Select value={deliveryFilter} onValueChange={(val) => setDeliveryFilter(val as any)}>
+            <SelectTrigger className="w-full sm:w-[220px]">
+              <Truck className="h-4 w-4 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Alle voertuigen" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle voertuigen</SelectItem>
+              <SelectItem value="ready">Klaar voor levering</SelectItem>
+              <SelectItem value="scheduled">Afspraak gepland</SelectItem>
+              <SelectItem value="not_ready">Nog niet klaar</SelectItem>
+            </SelectContent>
+          </Select>
           
           <div className="flex gap-2">
             <Badge variant="outline" className="flex items-center gap-1">
@@ -332,6 +412,8 @@ const InventoryB2C = () => {
             onSort={onSort}
             sortField={sortField}
             sortDirection={sortDirection}
+            showDeliveryDate={deliveryFilter === "ready" || deliveryFilter === "scheduled"}
+            deliveryDates={deliveryDatesMap}
           />
         </div>
       </div>
