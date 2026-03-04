@@ -19,7 +19,6 @@ import {
   Calculator,
   Camera
 } from "lucide-react";
-} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
