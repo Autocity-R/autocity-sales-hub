@@ -274,7 +274,7 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
                     const updatedVehicle = { ...vehicle, details: updatedDetails };
                     onUpdate(updatedVehicle);
                     if (onAutoSave) onAutoSave(updatedVehicle);
-                  }
+                  }}
                 >
                   <XCircle className="h-4 w-4 mr-1" />
                   Annuleren / Opnieuw plannen
