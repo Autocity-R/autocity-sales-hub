@@ -73,11 +73,77 @@ const InventoryB2C = () => {
     return Array.from(new Set(names)).sort();
   }, [vehicles]);
 
-  // Filter vehicles by salesperson
+  // Helper: check if vehicle checklist is 100%
+  const getChecklistProgress = (vehicle: Vehicle) => {
+    const checklist = vehicle.details?.preDeliveryChecklist || [];
+    if (checklist.length === 0) return 0;
+    const completed = checklist.filter((item: { completed?: boolean }) => item.completed).length;
+    return Math.round((completed / checklist.length) * 100);
+  };
+
+  // Fetch delivery dates from appointments table
+  const appointmentIds = useMemo(() => {
+    return vehicles
+      .map(v => v.details?.deliveryAppointmentId)
+      .filter((id): id is string => Boolean(id));
+  }, [vehicles]);
+
+  const { data: deliveryDatesMap = {} } = useQuery({
+    queryKey: ['deliveryAppointments', appointmentIds],
+    queryFn: async () => {
+      if (appointmentIds.length === 0) return {};
+      const { data } = await supabase
+        .from('appointments')
+        .select('id, starttime, vehicleid')
+        .in('id', appointmentIds);
+      
+      const map: Record<string, string> = {};
+      data?.forEach(apt => {
+        if (apt.vehicleid) {
+          map[apt.vehicleid] = apt.starttime;
+        }
+      });
+      return map;
+    },
+    enabled: appointmentIds.length > 0,
+  });
+
+  // Filter vehicles by salesperson + delivery status
   const displayVehicles = useMemo(() => {
-    if (!salespersonFilter) return vehicles;
-    return vehicles.filter(v => v.salespersonName === salespersonFilter);
-  }, [vehicles, salespersonFilter]);
+    let filtered = vehicles;
+    
+    if (salespersonFilter) {
+      filtered = filtered.filter(v => v.salespersonName === salespersonFilter);
+    }
+
+    if (deliveryFilter === "ready") {
+      filtered = filtered.filter(v => {
+        const progress = getChecklistProgress(v);
+        return progress === 100 && v.importStatus === 'ingeschreven';
+      });
+    } else if (deliveryFilter === "scheduled") {
+      filtered = filtered.filter(v => !!v.details?.deliveryAppointmentId);
+    } else if (deliveryFilter === "not_ready") {
+      filtered = filtered.filter(v => {
+        const progress = getChecklistProgress(v);
+        return !(progress === 100 && v.importStatus === 'ingeschreven');
+      });
+    }
+
+    // Sort by delivery date ascending when delivery filter active
+    if (deliveryFilter === "ready" || deliveryFilter === "scheduled") {
+      filtered = [...filtered].sort((a, b) => {
+        const dateA = deliveryDatesMap[a.id] || '';
+        const dateB = deliveryDatesMap[b.id] || '';
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return new Date(dateA).getTime() - new Date(dateB).getTime();
+      });
+    }
+
+    return filtered;
+  }, [vehicles, salespersonFilter, deliveryFilter, deliveryDatesMap]);
 
   // Properly fetch files for selected vehicle using our hook
   const { vehicleFiles } = useVehicleFiles(selectedVehicle);
