@@ -53,6 +53,17 @@ const FotoStudio = () => {
     });
   };
 
+  const getReferenceImageBase64 = async (): Promise<string> => {
+    const response = await fetch('/studio/autocity_studio_reference.png');
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
   const processImage = async (imageId: string) => {
     const image = images.find(i => i.id === imageId);
     if (!image) return;
@@ -60,10 +71,13 @@ const FotoStudio = () => {
     setImages(prev => prev.map(i => i.id === imageId ? { ...i, status: 'processing' } : i));
 
     try {
-      const base64 = await fileToBase64(image.originalFile);
+      const [base64, referenceImageUrl] = await Promise.all([
+        fileToBase64(image.originalFile),
+        getReferenceImageBase64(),
+      ]);
 
       const { data, error } = await supabase.functions.invoke('showroom-photo-studio', {
-        body: { imageBase64: base64 }
+        body: { imageBase64: base64, referenceImageUrl }
       });
 
       if (error) throw new Error(error.message || 'Verwerking mislukt');
