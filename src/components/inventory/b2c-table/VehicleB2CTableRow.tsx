@@ -207,7 +207,12 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
                 hasDeliveryAppointment ? (
                   <Badge className="text-xs bg-blue-500 text-white border-blue-600 hover:bg-blue-600 w-fit font-semibold">
                     <CalendarCheck className="h-3 w-3 mr-1" />
-                    {deliveryDate ? format(new Date(deliveryDate), "dd-MM-yyyy HH:mm", { locale: nl }) : "Afspraak gepland"}
+                    {deliveryDate ? (
+                      <span className="flex flex-col leading-tight">
+                        <span>{format(new Date(deliveryDate), "d MMMM", { locale: nl })}</span>
+                        <span>{format(new Date(deliveryDate), "HH:mm", { locale: nl })}</span>
+                      </span>
+                    ) : "Afspraak gepland"}
                   </Badge>
                 ) : (
                   <Badge className="text-xs bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600 w-fit font-semibold animate-pulse">
