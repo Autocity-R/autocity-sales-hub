@@ -265,6 +265,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                   />
                 </TabsContent>
                 
+                {vehicle.salesStatus === 'verkocht_b2c' && (
                   <TabsContent value="checklist" className="h-full mt-0 p-0">
                     <ChecklistTab 
                       vehicle={editedVehicle}
