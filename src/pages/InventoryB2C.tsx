@@ -94,8 +94,9 @@ const InventoryB2C = () => {
       if (appointmentIds.length === 0) return {};
       const { data } = await supabase
         .from('appointments')
-        .select('id, starttime, vehicleid')
-        .in('id', appointmentIds);
+        .select('id, starttime, vehicleid, status')
+        .in('id', appointmentIds)
+        .neq('status', 'geannuleerd');
       
       const map: Record<string, string> = {};
       data?.forEach(apt => {

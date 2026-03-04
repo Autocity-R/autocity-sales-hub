@@ -285,6 +285,7 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
                     // Invalidate cache so B2C table updates
                     queryClient.invalidateQueries({ queryKey: ['deliveryAppointments'] });
                     queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+                    queryClient.invalidateQueries({ queryKey: ['b2cVehicles'] });
                   }}
                 >
                   <XCircle className="h-4 w-4 mr-1" />
