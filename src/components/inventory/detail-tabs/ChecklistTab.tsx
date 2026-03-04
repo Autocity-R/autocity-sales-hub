@@ -15,7 +15,7 @@ import { nl } from "date-fns/locale";
 import { TaskForm } from "@/components/tasks/TaskForm";
 import { ChecklistQRDialog } from "@/components/inventory/ChecklistQRDialog";
 import { DeliveryAppointmentCard } from "@/components/inventory/DeliveryAppointmentCard";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ChecklistTabProps {
@@ -32,6 +32,7 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
   const [assignTaskItem, setAssignTaskItem] = useState<ChecklistItem | null>(null);
   const [showQRDialog, setShowQRDialog] = useState(false);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const checklist = vehicle.details?.preDeliveryChecklist || [];
   const completedCount = checklist.filter(item => item.completed).length;
@@ -268,12 +269,22 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
                   variant="outline"
                   size="sm"
                   className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                  onClick={() => {
+                  onClick={async () => {
+                    // Cancel appointment in DB
+                    if (vehicle.details?.deliveryAppointmentId) {
+                      await supabase
+                        .from('appointments')
+                        .update({ status: 'geannuleerd' })
+                        .eq('id', vehicle.details.deliveryAppointmentId);
+                    }
                     const updatedDetails = { ...vehicle.details };
                     delete updatedDetails.deliveryAppointmentId;
                     const updatedVehicle = { ...vehicle, details: updatedDetails };
                     onUpdate(updatedVehicle);
                     if (onAutoSave) onAutoSave(updatedVehicle);
+                    // Invalidate cache so B2C table updates
+                    queryClient.invalidateQueries({ queryKey: ['deliveryAppointments'] });
+                    queryClient.invalidateQueries({ queryKey: ['vehicles'] });
                   }}
                 >
                   <XCircle className="h-4 w-4 mr-1" />
