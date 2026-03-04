@@ -105,7 +105,7 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
 
   return (
     <TableRow 
-      className={`hover:bg-muted/50 cursor-pointer ${readyForDelivery ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-l-4 border-l-emerald-500' : ''}`}
+      className={`hover:bg-muted/50 cursor-pointer ${readyForDelivery ? 'bg-emerald-100 dark:bg-emerald-950/40 border-l-[5px] border-l-emerald-500 shadow-sm' : ''}`}
       onClick={() => handleSelectVehicle(vehicle)}
     >
       <TableCell className="align-middle" onClick={(e) => e.stopPropagation()}>
@@ -197,12 +197,12 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
               </div>
               {readyForDelivery && (
                 hasDeliveryAppointment ? (
-                  <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 w-fit">
+                  <Badge className="text-xs bg-blue-500 text-white border-blue-600 hover:bg-blue-600 w-fit font-semibold">
                     <CalendarCheck className="h-3 w-3 mr-1" />
                     Afspraak gepland
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800 w-fit animate-pulse">
+                  <Badge className="text-xs bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600 w-fit font-semibold animate-pulse">
                     <CheckCircle2 className="h-3 w-3 mr-1" />
                     Klaar voor levering
                   </Badge>

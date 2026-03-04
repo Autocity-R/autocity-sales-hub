@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ClipboardCheck, Circle, CheckCircle2, Trash2, Plus, UserPlus, ClipboardList, Download, QrCode, CalendarCheck } from "lucide-react";
+import { ClipboardCheck, Circle, CheckCircle2, Trash2, Plus, UserPlus, ClipboardList, Download, QrCode, CalendarCheck, XCircle } from "lucide-react";
 import { exportChecklistToExcel } from "@/utils/checklistExportExcel";
 import { Vehicle, ChecklistItem } from "@/types/inventory";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -258,9 +258,28 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
       {isReadyForDelivery && hasDeliveryAppointment && (
         <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
           <CardContent className="py-4">
-            <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
-              <CalendarCheck className="h-5 w-5" />
-              <span className="font-medium">Afleverafspraak is ingepland</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                <CalendarCheck className="h-5 w-5" />
+                <span className="font-medium">Afleverafspraak is ingepland</span>
+              </div>
+              {!readOnly && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                  onClick={() => {
+                    const updatedDetails = { ...vehicle.details };
+                    delete updatedDetails.deliveryAppointmentId;
+                    const updatedVehicle = { ...vehicle, details: updatedDetails };
+                    onUpdate(updatedVehicle);
+                    if (onAutoSave) onAutoSave(updatedVehicle);
+                  }}
+                >
+                  <XCircle className="h-4 w-4 mr-1" />
+                  Annuleren / Opnieuw plannen
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
