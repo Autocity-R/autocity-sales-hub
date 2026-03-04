@@ -271,7 +271,10 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
                   onClick={() => {
                     const updatedDetails = { ...vehicle.details };
                     delete updatedDetails.deliveryAppointmentId;
-                    onAutoSave({ details: updatedDetails } as Partial<Vehicle>);
+                    const updatedVehicle = { ...vehicle, details: updatedDetails };
+                    onUpdate(updatedVehicle);
+                    if (onAutoSave) onAutoSave(updatedVehicle);
+                  }
                   }}
                 >
                   <XCircle className="h-4 w-4 mr-1" />
