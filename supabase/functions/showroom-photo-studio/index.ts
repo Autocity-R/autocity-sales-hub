@@ -5,49 +5,85 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const ENHANCE_PROMPT = `You are a professional automotive photo editor. Your ONLY task is to enhance the image quality of this vehicle photo.
+
+WHAT TO DO:
+- Correct white balance: remove any yellow/green warehouse lighting cast
+- Reduce noise and grain
+- Increase clarity and sharpness subtly
+- Improve contrast slightly
+- Recover paint reflections while keeping vehicle color 100% accurate
+- Make colors more vibrant and true-to-life
+
+ABSOLUTE RULES — DO NOT VIOLATE:
+- Do NOT crop, zoom, reframe, or change the camera angle in ANY way
+- Do NOT change the vehicle's color, wheels, badges, trim, or any physical detail
+- Do NOT add or remove anything from the image
+- Do NOT change the background or surroundings
+- Do NOT alter the composition or framing whatsoever
+- The output image must have the EXACT same framing, angle, and composition as the input
+
+OUTPUT: The same photo with improved lighting, color accuracy, sharpness, and reduced noise. Nothing else changes.`;
+
 const SHOWROOM_PROMPT = `You are given TWO images:
 
-IMAGE 1 (Reference Studio): This is the EXACT showroom environment you must replicate. Study every detail: the dark charcoal walls, the warm gold/cream LED light strips along the ceiling edges, the illuminated "AUTOCITY" logo on the back wall, the polished dark floor with reflections, and the overall lighting atmosphere.
+IMAGE 1 (Reference Studio): This is the EXACT showroom environment you must replicate. Study every detail carefully.
 
 IMAGE 2 (Vehicle Photo): This is the vehicle you must place into the studio.
 
 YOUR TASK: Place the vehicle from Image 2 into the EXACT same showroom environment as Image 1.
 
-CRITICAL RULES — VEHICLE INTEGRITY:
-- Do NOT change the vehicle color, wheels, badges, trim, headlights, body shape, proportions, or license plate holders.
-- The vehicle must remain IDENTICAL to Image 2 in every detail.
-- Any existing AutoCity license plate holders or branding on the car must be preserved exactly.
-- Do NOT apply any perspective correction or angle change. Keep the vehicle at the EXACT same camera angle as in Image 2.
-- Do NOT reframe, zoom, or crop the vehicle differently than it appears in Image 2.
+━━━ OUTPUT REQUIREMENTS ━━━
+- Output MUST be exactly 1920x1080 pixels, landscape orientation
+- The image must look like a real photograph taken inside this showroom
 
-CRITICAL RULES — STUDIO CONSISTENCY:
-- The showroom must look EXACTLY like Image 1. Same wall color, same floor, same LED strips, same logo.
-- The "AUTOCITY" logo text and style must match Image 1 precisely. Do NOT redesign or reimagine the logo.
-- The warm gold/cream colored LED light strips must match Image 1 exactly.
-- The floor finish and reflectiveness must match Image 1.
+━━━ ZERO-CROP GUARANTEE (CRITICAL) ━━━
+- The COMPLETE vehicle must be visible in the final image
+- ALL 4 wheels must be fully visible — no wheel may be cut off even partially
+- BOTH side mirrors must be fully visible
+- The entire roof, all bumpers, and all body panels must be fully in frame
+- There must be visible space/margin between the vehicle edges and the image borders on ALL sides
+- Do NOT crop, cut, or hide ANY part of the vehicle
 
-IMAGE QUALITY ENHANCEMENT (apply to the vehicle):
-- Correct white balance (remove any green/yellow warehouse lighting cast from the original photo).
-- Reduce noise and improve clarity.
-- Increase contrast slightly.
-- Sharpen subtly.
-- Recover paint reflections while keeping vehicle color accurate.
+━━━ VEHICLE INTEGRITY (DO NOT MODIFY) ━━━
+The following must remain IDENTICAL to Image 2:
+- Body color and paint finish
+- Wheels/rims design and color
+- All badges, emblems, and model text
+- AutoCity license plate holders (if present)
+- Headlights and taillights design
+- Body shape, proportions, and all body lines
+- Window tint level
+- Any existing damage or imperfections
+- Camera angle and perspective of the vehicle — keep the EXACT same viewing angle
 
-SHADOWS & REFLECTIONS:
-- Add natural contact shadows under the tires matching the shadow style in Image 1.
-- Add a subtle floor reflection of the vehicle matching the reflection style in Image 1 (low opacity, blurred, faded).
+━━━ SHOWROOM ENVIRONMENT (match Image 1 exactly) ━━━
+- Dark charcoal/anthracite walls
+- White LED "AUTOCITY" logo on the back wall — match the exact text, font, and illumination style from Image 1
+- White/warm LED light strips along ceiling edges — match position and glow from Image 1
+- Polished dark floor with subtle reflections
+- Overall warm, professional automotive showroom lighting
 
-VEHICLE PLACEMENT:
-- Place the vehicle naturally on the floor plane at a similar position and scale as the car in Image 1.
-- The vehicle should be centered and fill a similar proportion of the frame as in Image 1.
+━━━ VEHICLE PLACEMENT ━━━
+- Center the vehicle horizontally in the frame
+- The vehicle should fill approximately 55-65% of the image width
+- All wheels must sit naturally on the floor plane
+- The vehicle should be at a similar scale and position as the car shown in Image 1
 
-INTERIOR PHOTO HANDLING:
-If Image 2 is an interior/cabin photo (not an exterior shot):
-- Do NOT place it inside the studio.
-- Instead: enhance lighting and clarity, keep interior materials unchanged, replace any visible outside window background with a subtle dark gradient.
-- Return the enhanced interior photo.
+━━━ SHADOWS & REFLECTIONS ━━━
+- Add natural contact shadows under all tires (approximately 35% opacity, soft edges)
+- Add a subtle floor reflection of the vehicle (approximately 10% opacity, blurred, fading away from the vehicle)
+- Shadows must match the lighting direction visible in Image 1
 
-OUTPUT: A single photorealistic image that looks like the vehicle was photographed inside the AutoCity showroom shown in Image 1.`;
+━━━ INTERIOR PHOTO HANDLING ━━━
+If Image 2 is an interior/cabin photo (dashboard, seats, steering wheel — not an exterior shot):
+- Do NOT place it inside the studio
+- Instead: enhance lighting and clarity of the interior
+- Keep all interior materials, colors, and textures unchanged
+- Replace any visible outside-window background with a subtle dark gradient
+- Return the enhanced interior photo
+
+OUTPUT: A single photorealistic 1920x1080 image that looks like the vehicle was professionally photographed inside this AutoCity showroom.`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -78,13 +114,15 @@ serve(async (req) => {
 
     console.log(`Processing showroom photo for vehicle: ${vehicleId}`);
 
-    // Determine mime type from base64 header or default to jpeg
+    // Ensure proper data URI format
     let vehicleImageUrl = imageBase64;
     if (!imageBase64.startsWith('data:')) {
       vehicleImageUrl = `data:image/jpeg;base64,${imageBase64}`;
     }
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // ━━━ STEP 1: Enhancement (Gemini Flash) ━━━
+    console.log('Step 1: Enhancing vehicle photo...');
+    const enhanceResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
@@ -96,8 +134,7 @@ serve(async (req) => {
           {
             role: 'user',
             content: [
-              { type: 'text', text: SHOWROOM_PROMPT },
-              { type: 'image_url', image_url: { url: referenceImageUrl } },
+              { type: 'text', text: ENHANCE_PROMPT },
               { type: 'image_url', image_url: { url: vehicleImageUrl } }
             ]
           }
@@ -106,46 +143,106 @@ serve(async (req) => {
       }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`AI Gateway error [${response.status}]:`, errorText);
-
-      if (response.status === 429) {
+    if (!enhanceResponse.ok) {
+      const errorText = await enhanceResponse.text();
+      console.error(`Enhancement AI error [${enhanceResponse.status}]:`, errorText);
+      
+      if (enhanceResponse.status === 429) {
         return new Response(
-          JSON.stringify({ error: 'Rate limit bereikt. Probeer het later opnieuw.' }),
+          JSON.stringify({ error: 'Rate limit bereikt. Probeer het later opnieuw.', step: 'enhance' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      if (response.status === 402) {
+      if (enhanceResponse.status === 402) {
         return new Response(
-          JSON.stringify({ error: 'AI credits zijn op. Voeg credits toe aan je workspace.' }),
+          JSON.stringify({ error: 'AI credits zijn op. Voeg credits toe aan je workspace.', step: 'enhance' }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       return new Response(
-        JSON.stringify({ error: `AI verwerking mislukt (${response.status})` }),
+        JSON.stringify({ error: `Foto verbetering mislukt (${enhanceResponse.status})`, step: 'enhance' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const data = await response.json();
-    const resultImage = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const enhanceData = await enhanceResponse.json();
+    const enhancedImage = enhanceData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+
+    if (!enhancedImage) {
+      console.error('No image from enhancement step:', JSON.stringify(enhanceData).substring(0, 500));
+      return new Response(
+        JSON.stringify({ error: 'Geen verbeterde afbeelding ontvangen. Probeer opnieuw.', step: 'enhance' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Step 1 complete: Photo enhanced successfully');
+
+    // ━━━ STEP 2: Showroom Compositing (Gemini Pro) ━━━
+    console.log('Step 2: Placing vehicle in showroom...');
+    const compositeResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-3-pro-image-preview',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: SHOWROOM_PROMPT },
+              { type: 'image_url', image_url: { url: referenceImageUrl } },
+              { type: 'image_url', image_url: { url: enhancedImage } }
+            ]
+          }
+        ],
+        modalities: ['image', 'text']
+      }),
+    });
+
+    if (!compositeResponse.ok) {
+      const errorText = await compositeResponse.text();
+      console.error(`Compositing AI error [${compositeResponse.status}]:`, errorText);
+
+      if (compositeResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit bereikt. Probeer het later opnieuw.', step: 'composite' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (compositeResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'AI credits zijn op. Voeg credits toe aan je workspace.', step: 'composite' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ error: `Showroom plaatsing mislukt (${compositeResponse.status})`, step: 'composite' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const compositeData = await compositeResponse.json();
+    const resultImage = compositeData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
     if (!resultImage) {
-      console.error('No image in AI response:', JSON.stringify(data).substring(0, 500));
+      console.error('No image from compositing step:', JSON.stringify(compositeData).substring(0, 500));
       return new Response(
-        JSON.stringify({ error: 'Geen afbeelding ontvangen van AI. Probeer opnieuw.' }),
+        JSON.stringify({ error: 'Geen showroom afbeelding ontvangen. Probeer opnieuw.', step: 'composite' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Successfully processed showroom photo');
+    console.log('Step 2 complete: Vehicle placed in showroom successfully');
 
     return new Response(
       JSON.stringify({ 
         resultImage,
-        message: 'Foto succesvol verwerkt' 
+        message: 'Foto succesvol verwerkt (verbeterd + showroom)' 
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
