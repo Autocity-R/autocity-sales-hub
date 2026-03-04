@@ -148,11 +148,12 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
             onSort={onSort}
             sortField={sortField}
             sortDirection={sortDirection}
+            showDeliveryDate={showDeliveryDate}
           />
           <TableBody>
             {vehicles.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={showDeliveryDate ? 17 : 16} className="text-center py-8 text-muted-foreground">
                   Geen voertuigen gevonden
                 </TableCell>
               </TableRow>
@@ -170,6 +171,8 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
                   onOpenContractConfig={onOpenContractConfig}
                   onInvoiceRequest={onInvoiceRequest}
                   onMoveBackToTransport={onMoveBackToTransport}
+                  showDeliveryDate={showDeliveryDate}
+                  deliveryDate={deliveryDates[vehicle.id]}
                 />
               ))
             )}

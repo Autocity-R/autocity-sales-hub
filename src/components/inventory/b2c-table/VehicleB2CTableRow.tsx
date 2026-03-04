@@ -10,6 +10,12 @@ import { Avatar } from "@/components/ui/avatar";
 import { PurchaserQuickEdit } from "../PurchaserQuickEdit";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { Progress } from "@/components/ui/progress";
+import { format } from "date-fns";
+import { nl } from "date-fns/locale";
+import { Avatar } from "@/components/ui/avatar";
+import { PurchaserQuickEdit } from "../PurchaserQuickEdit";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { Progress } from "@/components/ui/progress";
 
 interface VehicleB2CTableRowProps {
   vehicle: Vehicle;
@@ -22,6 +28,8 @@ interface VehicleB2CTableRowProps {
   onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c") => void;
   onInvoiceRequest?: (vehicle: Vehicle) => void;
   onMoveBackToTransport?: (vehicleId: string) => void;
+  showDeliveryDate?: boolean;
+  deliveryDate?: string;
 }
 
 const renderImportStatusBadge = (status: ImportStatus | undefined) => {
@@ -86,7 +94,9 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
   onDeliveryConfirm,
   onOpenContractConfig,
   onInvoiceRequest,
-  onMoveBackToTransport
+  onMoveBackToTransport,
+  showDeliveryDate = false,
+  deliveryDate
 }) => {
   const { hasPriceAccess } = useRoleAccess();
   
