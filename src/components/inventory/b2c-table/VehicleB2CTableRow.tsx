@@ -107,7 +107,7 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
   };
 
   const readyForDelivery = isReadyForDelivery(vehicle);
-  const hasDeliveryAppointment = !!vehicle.details?.deliveryAppointmentId;
+  const hasActiveDeliveryAppointment = Boolean(deliveryDate);
 
   return (
     <TableRow 
@@ -204,7 +204,7 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
                 <span className="text-xs font-medium w-8 text-right">{percentage}%</span>
               </div>
               {readyForDelivery && (
-                hasDeliveryAppointment ? (
+                hasActiveDeliveryAppointment ? (
                   <Badge className="text-xs bg-blue-500 text-white border-blue-600 hover:bg-blue-600 w-fit font-semibold">
                     <CalendarCheck className="h-3 w-3 mr-1" />
                     {deliveryDate ? (

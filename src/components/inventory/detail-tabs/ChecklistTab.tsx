@@ -277,8 +277,10 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
                         .update({ status: 'geannuleerd' })
                         .eq('id', vehicle.details.deliveryAppointmentId);
                     }
-                    const updatedDetails = { ...vehicle.details };
-                    delete updatedDetails.deliveryAppointmentId;
+                    const updatedDetails = {
+                      ...(vehicle.details || {}),
+                      deliveryAppointmentId: null,
+                    };
                     const updatedVehicle = { ...vehicle, details: updatedDetails };
                     onUpdate(updatedVehicle);
                     if (onAutoSave) onAutoSave(updatedVehicle);

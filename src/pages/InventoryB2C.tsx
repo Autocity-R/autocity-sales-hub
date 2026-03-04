@@ -123,8 +123,7 @@ const InventoryB2C = () => {
         return progress === 100 && v.importStatus === 'ingeschreven';
       });
     } else if (deliveryFilter === "scheduled") {
-      filtered = filtered.filter(v => !!v.details?.deliveryAppointmentId);
-    } else if (deliveryFilter === "not_ready") {
+      filtered = filtered.filter(v => !!deliveryDatesMap[v.id]);
       filtered = filtered.filter(v => {
         const progress = getChecklistProgress(v);
         return !(progress === 100 && v.importStatus === 'ingeschreven');
