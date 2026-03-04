@@ -19,6 +19,7 @@ interface StudioImage {
   originalPreview: string;
   resultImage: string | null;
   status: 'queued' | 'processing' | 'done' | 'error';
+  processingStep?: 'enhance' | 'composite';
   error?: string;
 }
 
@@ -68,7 +69,12 @@ const FotoStudio = () => {
     const image = images.find(i => i.id === imageId);
     if (!image) return;
 
-    setImages(prev => prev.map(i => i.id === imageId ? { ...i, status: 'processing' } : i));
+    setImages(prev => prev.map(i => i.id === imageId ? { ...i, status: 'processing', processingStep: 'enhance' } : i));
+
+    // Update to composite step after a delay (approximate timing)
+    const compositeTimer = setTimeout(() => {
+      setImages(prev => prev.map(i => i.id === imageId && i.status === 'processing' ? { ...i, processingStep: 'composite' } : i));
+    }, 15000);
 
     try {
       const [base64, referenceImageUrl] = await Promise.all([
@@ -83,10 +89,12 @@ const FotoStudio = () => {
       if (error) throw new Error(error.message || 'Verwerking mislukt');
       if (data?.error) throw new Error(data.error);
 
+      clearTimeout(compositeTimer);
       setImages(prev => prev.map(i => 
-        i.id === imageId ? { ...i, status: 'done', resultImage: data.resultImage } : i
+        i.id === imageId ? { ...i, status: 'done', resultImage: data.resultImage, processingStep: undefined } : i
       ));
     } catch (err: any) {
+      clearTimeout(compositeTimer);
       console.error('Studio processing error:', err);
       const errorMsg = err?.message || 'Onbekende fout';
       setImages(prev => prev.map(i => 
@@ -241,7 +249,7 @@ const FotoStudio = () => {
                     <img 
                       src={img.originalPreview} 
                       alt={`Origineel ${index + 1}`}
-                      className="w-full h-52 object-contain"
+                      className="w-full h-72 object-contain"
                     />
                   </div>
 
@@ -252,7 +260,7 @@ const FotoStudio = () => {
                       Studio
                     </div>
                     {img.status === 'queued' && (
-                      <div className="w-full h-52 flex items-center justify-center">
+                      <div className="w-full h-72 flex items-center justify-center">
                         <div className="text-center text-muted-foreground">
                           <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-40" />
                           <p className="text-xs">Wacht op verwerking</p>
@@ -260,10 +268,17 @@ const FotoStudio = () => {
                       </div>
                     )}
                     {img.status === 'processing' && (
-                      <div className="w-full h-52 flex items-center justify-center">
+                      <div className="w-full h-72 flex items-center justify-center">
                         <div className="text-center">
                           <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin text-primary" />
-                          <p className="text-xs text-muted-foreground">AI verwerkt foto...</p>
+                          <p className="text-xs text-muted-foreground font-medium">
+                            {img.processingStep === 'composite' ? 'AI plaatst in showroom...' : 'AI verbetert foto...'}
+                          </p>
+                          <div className="flex items-center gap-2 mt-2 text-[10px] text-muted-foreground">
+                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'enhance' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>1. Verbeteren</span>
+                            <span>→</span>
+                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'composite' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>2. Showroom</span>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -271,11 +286,11 @@ const FotoStudio = () => {
                       <img 
                         src={img.resultImage} 
                         alt={`Studio ${index + 1}`}
-                        className="w-full h-52 object-contain"
+                        className="w-full h-72 object-contain"
                       />
                     )}
                     {img.status === 'error' && (
-                      <div className="w-full h-52 flex items-center justify-center">
+                      <div className="w-full h-72 flex items-center justify-center">
                         <div className="text-center text-destructive">
                           <AlertCircle className="h-8 w-8 mx-auto mb-2" />
                           <p className="text-xs px-2">{img.error || 'Fout'}</p>
