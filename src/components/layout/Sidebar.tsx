@@ -21,7 +21,8 @@ import {
   CheckCircle,
   Flag,
   Bot,
-  ClipboardList
+  ClipboardList,
+  Camera
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -156,6 +157,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
               >
                 <Calculator className="mr-2 h-4 w-4" />
                 Taxatie
+              </Button>
+            </Link>
+            <Link to="/foto-studio">
+              <Button
+                variant={isActive("/foto-studio") ? "default" : "ghost"}
+                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+                size="sm"
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                Foto Studio
               </Button>
             </Link>
           </div>

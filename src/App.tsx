@@ -28,6 +28,7 @@ const CustomerDetail = lazy(() => import("@/pages/CustomerDetail"));
 const Reports = lazy(() => import("@/pages/Reports"));
 const Warranty = lazy(() => import("@/pages/Warranty"));
 const Taxatie = lazy(() => import("@/pages/Taxatie"));
+const FotoStudio = lazy(() => import("@/pages/FotoStudio"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const TestContract = lazy(() => import("@/pages/TestContract"));
@@ -162,6 +163,11 @@ function App() {
         <Route path="/taxatie" element={
           <ProtectedRoute>
             <Taxatie />
+          </ProtectedRoute>
+        } />
+        <Route path="/foto-studio" element={
+          <ProtectedRoute>
+            <FotoStudio />
           </ProtectedRoute>
         } />
         <Route path="/settings" element={
