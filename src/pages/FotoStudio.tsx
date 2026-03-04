@@ -249,7 +249,7 @@ const FotoStudio = () => {
                     <img 
                       src={img.originalPreview} 
                       alt={`Origineel ${index + 1}`}
-                      className="w-full h-52 object-contain"
+                      className="w-full h-72 object-contain"
                     />
                   </div>
 
@@ -260,7 +260,7 @@ const FotoStudio = () => {
                       Studio
                     </div>
                     {img.status === 'queued' && (
-                      <div className="w-full h-52 flex items-center justify-center">
+                      <div className="w-full h-72 flex items-center justify-center">
                         <div className="text-center text-muted-foreground">
                           <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-40" />
                           <p className="text-xs">Wacht op verwerking</p>
@@ -286,11 +286,11 @@ const FotoStudio = () => {
                       <img 
                         src={img.resultImage} 
                         alt={`Studio ${index + 1}`}
-                        className="w-full h-52 object-contain"
+                        className="w-full h-72 object-contain"
                       />
                     )}
                     {img.status === 'error' && (
-                      <div className="w-full h-52 flex items-center justify-center">
+                      <div className="w-full h-72 flex items-center justify-center">
                         <div className="text-center text-destructive">
                           <AlertCircle className="h-8 w-8 mx-auto mb-2" />
                           <p className="text-xs px-2">{img.error || 'Fout'}</p>
