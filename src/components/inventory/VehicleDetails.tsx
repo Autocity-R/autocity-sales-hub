@@ -258,7 +258,13 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                   />
                 </TabsContent>
                 
-                {vehicle.salesStatus === 'verkocht_b2c' && (
+                <TabsContent value="studio" className="h-full mt-0 p-0">
+                  <ShowroomStudioTab 
+                    vehicle={editedVehicle}
+                    onSaveAsPhoto={onPhotoUpload}
+                  />
+                </TabsContent>
+                
                   <TabsContent value="checklist" className="h-full mt-0 p-0">
                     <ChecklistTab 
                       vehicle={editedVehicle}
