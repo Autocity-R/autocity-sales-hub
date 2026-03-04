@@ -256,6 +256,8 @@ export const VehicleB2CTableRow = memo(VehicleB2CTableRowComponent, (prevProps, 
   return (
     prevProps.vehicle.id === nextProps.vehicle.id &&
     prevProps.selectedVehicles.length === nextProps.selectedVehicles.length &&
-    prevProps.selectedVehicles.includes(prevProps.vehicle.id) === nextProps.selectedVehicles.includes(nextProps.vehicle.id)
+    prevProps.selectedVehicles.includes(prevProps.vehicle.id) === nextProps.selectedVehicles.includes(nextProps.vehicle.id) &&
+    prevProps.deliveryDate === nextProps.deliveryDate &&
+    prevProps.showDeliveryDate === nextProps.showDeliveryDate
   );
 });
