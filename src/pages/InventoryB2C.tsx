@@ -364,6 +364,19 @@ const InventoryB2C = () => {
               ))}
             </SelectContent>
           </Select>
+
+          <Select value={deliveryFilter} onValueChange={(val) => setDeliveryFilter(val as any)}>
+            <SelectTrigger className="w-full sm:w-[220px]">
+              <Truck className="h-4 w-4 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Alle voertuigen" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle voertuigen</SelectItem>
+              <SelectItem value="ready">Klaar voor levering</SelectItem>
+              <SelectItem value="scheduled">Afspraak gepland</SelectItem>
+              <SelectItem value="not_ready">Nog niet klaar</SelectItem>
+            </SelectContent>
+          </Select>
           
           <div className="flex gap-2">
             <Badge variant="outline" className="flex items-center gap-1">
@@ -399,6 +412,8 @@ const InventoryB2C = () => {
             onSort={onSort}
             sortField={sortField}
             sortDirection={sortDirection}
+            showDeliveryDate={deliveryFilter === "ready" || deliveryFilter === "scheduled"}
+            deliveryDates={deliveryDatesMap}
           />
         </div>
       </div>
