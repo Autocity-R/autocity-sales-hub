@@ -6,17 +6,18 @@ const corsHeaders = {
 };
 
 // ━━━ STEP 1: COSMETIC RETOUCH (Identity-Locked) ━━━
-const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is to clean and enhance this vehicle photo while keeping every pixel of the car's GEOMETRY unchanged.
+const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is to clean and enhance this vehicle photo while keeping every pixel of the car's GEOMETRY unchanged. The vehicle may have been photographed OUTDOORS (on a street, parking lot, etc.) — your job is to make it look like it was photographed INDOORS in a professional showroom.
 
 ━━━ YOU MAY (cosmetic only) ━━━
 - Remove dirt, mud, water spots, dust, bird droppings from paint surfaces
 - Enhance paint gloss and recover highlights (make paint look freshly polished)
+- Make paint appear freshly waxed — smooth, even gloss across ALL panels, no dull patches or uneven spots
 - Correct white balance and color temperature (remove yellow/green warehouse cast)
 - Reduce noise and grain
 - Improve exposure and contrast subtly
 - Clean glass surfaces (remove haze, smudges, water marks)
 - Deepen tire black point slightly
-- Reduce harsh environmental reflections (soften them, make less distracting)
+- Replace outdoor environment reflections in paint and glass (trees, buildings, sky, clouds, fences, parked cars, people) with neutral, dark, diffuse reflections consistent with an indoor showroom (dark walls, soft overhead LED lighting). The car must look like it is photographed indoors.
 - Make chrome/piano-black trim less dull
 
 ━━━ YOU MUST NOT (identity features — GEOMETRY LOCKED) ━━━
@@ -28,14 +29,15 @@ const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is t
 - Do NOT change taillight shape, design, or light signature
 - Do NOT mirror or flip the vehicle orientation
 - Do NOT crop, zoom, reframe, or change the camera angle
-- Do NOT replace reflections with "studio reflections" — only SOFTEN existing ones
-- Do NOT add or remove anything from the image
-- Do NOT change the background or surroundings
+- You MUST replace outdoor environment reflections (trees, sky, buildings, fences) with neutral indoor reflections. But do NOT alter the SHAPE of reflective surfaces — only change WHAT is reflected in them.
+- Do NOT add or remove anything from the image (except replacing outdoor reflections with indoor ones)
+- Do NOT change the background or surroundings (that happens in step 2)
+- Do NOT remove or alter license plates or plate holders
 
 ━━━ CRITICAL TEST ━━━
-If you overlay input and output at 50% opacity, ONLY texture/lighting should differ — NEVER geometry, edges, or silhouette. The car's outline must be pixel-identical.
+If you overlay input and output at 50% opacity, ONLY texture/lighting/reflections should differ — NEVER geometry, edges, or silhouette. The car's outline must be pixel-identical.
 
-OUTPUT: The same photo with improved lighting, color accuracy, reduced noise, cleaned surfaces, and enhanced paint gloss. Nothing structural changes.`;
+OUTPUT: The same photo with improved lighting, color accuracy, reduced noise, cleaned surfaces, enhanced paint gloss, and indoor-appropriate reflections. Nothing structural changes.`;
 
 // ━━━ STEP 2: SHOWROOM COMPOSITING ━━━
 const SHOWROOM_PROMPT = `You are given THREE images:
