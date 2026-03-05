@@ -232,7 +232,7 @@ serve(async (req) => {
           {
             role: 'user',
             content: [
-              { type: 'text', text: SHOWROOM_PROMPT },
+              { type: 'text', text: SHOWROOM_PROMPT + vehicleIdentityShowroom },
               { type: 'image_url', image_url: { url: referenceImageUrl } },
               { type: 'image_url', image_url: { url: enhancedImage } }
             ]
