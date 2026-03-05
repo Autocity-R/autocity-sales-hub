@@ -43,111 +43,86 @@ If you overlay input and output at 50% opacity, ONLY texture/lighting/reflection
 
 OUTPUT: The same photo with improved lighting, color accuracy, reduced noise, cleaned surfaces, enhanced paint gloss, and softened reflections. Nothing structural changes. The paint color must be IDENTICAL to the input.`;
 
-// ━━━ STEP 2: SHOWROOM COMPOSITING ━━━
-const SHOWROOM_PROMPT = `You are given THREE images:
+// ━━━ STEP 2: SHOWROOM BACKGROUND REPLACEMENT (SIMPLIFIED — AI does LESS) ━━━
+const SHOWROOM_PROMPT = `You are given TWO images:
 
-IMAGE 1 (Reference Studio): The EXACT showroom environment you must replicate. Copy it EXACTLY — do NOT invent, redesign, or reinterpret.
-IMAGE 2 (Enhanced Vehicle): The retouched vehicle photo to place in the studio.
-IMAGE 3 (Original Vehicle — GROUND TRUTH): The UNEDITED original photograph. This is your ABSOLUTE REFERENCE for all vehicle details.
+IMAGE 1 (Enhanced Vehicle): The retouched vehicle photo to place in a showroom.
+IMAGE 2 (Original Vehicle — GROUND TRUTH): The UNEDITED original photograph. This is your ABSOLUTE REFERENCE for all vehicle details.
 
-YOUR TASK: COMPOSITE the vehicle from Image 2 into the showroom from Image 1.
+YOUR TASK: Replace the background around the vehicle with a dark, professional car dealership showroom environment.
 
-━━━ CRITICAL: YOU ARE COMPOSITING, NOT GENERATING ━━━
-You are placing an existing car into a studio background. You are NOT generating or redesigning the car.
-Every detail of the vehicle must come from Image 2/3 — do NOT invent, correct, or "improve" any vehicle feature.
+━━━ SHOWROOM ENVIRONMENT (SIMPLE — DO NOT OVER-DESIGN) ━━━
+- Dark charcoal/anthracite walls — smooth or subtly textured
+- Polished dark floor with subtle vehicle reflection
+- Soft, even overhead LED lighting — no harsh spots
+- Clean, minimal, professional atmosphere
+- Do NOT add any logos, text, branding, or specific architectural details
+- Do NOT add any people, props, or decorative elements
+- Keep it SIMPLE: dark walls, dark floor, soft light. Nothing else.
 
-━━━ GROUND TRUTH RULE (Image 3) ━━━
-Image 3 is the UNEDITED original photograph. Use it as your ABSOLUTE REFERENCE for:
-- Headlight shape and LED/DRL signature
-- Taillight shape and design
-- Front grille and bumper design
-- Wheel/rim spoke pattern and design
-- All badges, emblems, model text
-- Body lines, creases, and proportions
-- License plates and plate holders/frames
-- Body paint color (EXACT hue, saturation, brightness)
-If your output differs from Image 3 in ANY of these features, your output is WRONG.
+━━━ VEHICLE INTEGRITY (CRITICAL — DO NOT MODIFY THE CAR) ━━━
+The vehicle must remain PIXEL-IDENTICAL to Image 2 (original). Specifically:
+- Body color and paint finish — EXACT same hue, saturation, brightness. No color cast, no warming, no cooling.
+- Paint must look TRANSPARENT, vibrant, glossy with depth — like freshly waxed under studio lighting.
+- Headlight shape, LED signature, DRL pattern — IDENTICAL
+- Taillight shape and design — IDENTICAL
+- Front grille and bumper design — IDENTICAL
+- Wheel/rim spoke pattern and design — IDENTICAL
+- All badges, emblems, model text — IDENTICAL
+- License plates and plate holders — MUST remain exactly as in Image 2. Do NOT remove, alter, or regenerate plates.
+- Body lines, creases, proportions — IDENTICAL
+- Window tint level — IDENTICAL
+
+━━━ CAMERA ANGLE PRESERVATION (NO MIRRORING) ━━━
+- If the LEFT side is visible in Image 1 → LEFT side visible in output
+- If the RIGHT side is visible → RIGHT side in output
+- NEVER mirror, flip, or rotate the vehicle orientation
 
 ━━━ ZERO-CROP GUARANTEE ━━━
 - The COMPLETE vehicle must be visible — ALL 4 wheels, BOTH mirrors, entire roof, all bumpers
 - Visible margin between vehicle edges and image borders on ALL sides
 - Output MUST be 1920x1080 pixels, landscape orientation
 
-━━━ CAMERA ANGLE PRESERVATION (NO MIRRORING) ━━━
-Count the visible sides of the vehicle in Image 2:
-- If the LEFT side is visible → the LEFT side MUST be visible in output
-- If the RIGHT side is visible → the RIGHT side MUST be visible in output
-- If front-left corner → front-left corner in output
-- NEVER mirror, flip, or rotate the vehicle orientation
-- The viewer must see the EXACT same panels as in Image 2
-
-━━━ VEHICLE INTEGRITY (DO NOT MODIFY) ━━━
-ALL of these must remain IDENTICAL to Image 2/3:
-- Body color and paint finish — EXACT same color. Do NOT shift hue, saturation, or brightness. If the car is dark blue, it stays dark blue — not black, not light blue. The paint must look TRANSPARENT and vibrant — like freshly waxed and polished paint under professional studio lighting. Do NOT add any haze, matte effect, color cast, or dull appearance. The paint should have depth and clarity.
-- Wheels/rims design and color (EXACT spoke pattern)
-- All badges, emblems, and model text
-- Headlights and taillights design (EXACT shape)
-- Front grille and bumper design (EXACT pattern)
-- Body shape, proportions, and all body lines
-- Window tint level
-- LICENSE PLATES ARE MANDATORY. Read the text on the license plate in Image 3 carefully. The EXACT same plate text, plate color (e.g. yellow Dutch plates), and plate holder/frame (e.g. "AUTOCITY" branded frame) MUST appear on the vehicle in your output in the EXACT same position. If you cannot read the plate, preserve the visual appearance exactly. NEVER output a vehicle without its original plates.
-
-━━━ SHOWROOM ENVIRONMENT (COPY Image 1 EXACTLY — DO NOT INVENT) ━━━
-You MUST replicate the showroom from Image 1 with these specific elements:
-- Dark charcoal/anthracite TEXTURED walls (not smooth, not black, not grey — match Image 1 exactly)
-- The AUTOCITY logo consists of TWO elements: (1) a thin white car silhouette LINE drawing above, and (2) white 3D BLOCK LETTERS spelling "AUTOCITY" below. These are SOLID WHITE, NOT illuminated, NOT neon, NOT glowing, NOT backlit, NOT in a different font. They are mounted on the dark textured wall. COPY THE LOGO EXACTLY FROM IMAGE 1 — pixel for pixel if possible.
-- If your output shows any other style of AUTOCITY logo (neon, script font, illuminated, backlit, different layout, car silhouette as a filled shape), your output is WRONG and will be rejected.
-- Thin white LED light strips running along ceiling edges — match Image 1 exactly
-- Polished dark concrete floor with subtle reflections
-- Do NOT invent, redesign, or reinterpret the showroom. Copy it EXACTLY from Image 1.
-- Do NOT change the AUTOCITY logo style, shape, or design in any way.
-
 ━━━ VEHICLE PLACEMENT ━━━
 - Center horizontally, fill ~55-65% of image width
 - All wheels on floor plane naturally
-- Similar scale/position as car in Image 1
 
 ━━━ SHADOWS & REFLECTIONS ━━━
 - Natural contact shadows under tires (~35% opacity, soft)
 - Subtle floor reflection (~10% opacity, blurred, fading)
-- ALL reflections visible on vehicle paint MUST be consistent with this indoor showroom — dark walls, soft LED strips. No trees, sky, buildings, or outdoor elements may appear in paint reflections.
+- All reflections on vehicle paint must be consistent with indoor showroom — no trees, sky, buildings.
 
 ━━━ INTERIOR PHOTO HANDLING ━━━
-If Image 2 is an interior/cabin photo: enhance lighting/clarity, replace visible window backgrounds with dark gradient, do NOT place in studio.
+If Image 1 is an interior/cabin photo: enhance lighting/clarity, replace visible window backgrounds with dark gradient, do NOT place in studio.
 
-OUTPUT: A photorealistic 1920x1080 image of the vehicle in the AutoCity showroom, with every vehicle detail matching Image 3 exactly.`;
+OUTPUT: A photorealistic 1920x1080 image of the vehicle in a clean, dark showroom. Every vehicle detail must match Image 2 exactly.`;
 
-// ━━━ STEP 3: AI VERIFICATION ━━━
+// ━━━ STEP 3: AI VERIFICATION (SIMPLIFIED — fewer checks, less strict) ━━━
 const VERIFICATION_PROMPT = `You are a quality control inspector comparing a RESULT image against an ORIGINAL vehicle photograph.
 
 IMAGE 1 (Original): The unedited original vehicle photo — your GROUND TRUTH.
 IMAGE 2 (Result): The AI-processed showroom result to verify.
 
-Check these 8 identity features by comparing Image 2 against Image 1:
+Check these 5 critical identity features by comparing Image 2 against Image 1:
 
 1. HEADLIGHTS: Is the headlight shape, LED signature, and DRL pattern identical?
-2. TAILLIGHTS: Is the taillight shape and design identical? (if visible)
-3. GRILLE/BUMPER: Is the front grille pattern and bumper design identical? (if visible)
-4. WHEELS: Is the wheel/rim spoke pattern and design identical?
-5. VIEWING ANGLE: Is the same side of the car visible? (check for mirroring)
-6. SHOWROOM: Does the background match the reference studio? Dark textured walls, white AUTOCITY 3D block letters on the back wall, LED strips along ceiling? Or is it a different/invented studio with a different logo?
-7. LICENSE PLATES: Are original license plates and plate holders/frames preserved from the original? (if visible in Image 1) Check plate text, plate color (yellow Dutch plates), and frame branding.
-8. COLOR: Is the vehicle body color consistent with the original? Check specifically for yellow/warm color cast on the paint. If the vehicle appears yellower, warmer, hazier, or duller than the original, this is a COLOR failure. Any hue shift, saturation change, or added color cast = failure.
-
-For each feature, determine if it matches the original or has been altered.
+2. WHEELS: Is the wheel/rim spoke pattern and design identical?
+3. MIRRORING: Is the same side of the car visible? (check for left/right flip)
+4. COLOR: Is the vehicle body color consistent with the original? Check for yellow/warm color cast. Any hue shift = failure.
+5. OVERALL IDENTITY: Does the result still look like the same car? (same model, same features, same proportions)
 
 You MUST respond with ONLY a valid JSON object, no other text:
-{"pass": true/false, "severity": "none"/"low"/"medium"/"high", "mirrored": true/false, "showroom_match": true/false, "plates_preserved": true/false, "color_consistent": true/false, "changed_parts": ["list of changed parts"], "issues": ["description of each issue"]}
+{"pass": true/false, "severity": "none"/"low"/"medium"/"high", "mirrored": true/false, "color_consistent": true/false, "changed_parts": ["list of changed parts"], "issues": ["description of each issue"]}
 
 Rules:
-- "pass": true only if ALL 8 checks pass
-- "severity": "none" if pass, "low" for minor lighting differences only, "medium" for noticeable shape changes, "high" for wrong headlights/grille/mirroring/completely different studio/color cast/hue shift/missing plates
-- "mirrored": true if the vehicle appears flipped/mirrored compared to the original
-- "showroom_match": true if the background is the correct AUTOCITY showroom with correct logo style
-- "plates_preserved": true if license plates and plate holders match the original (or if no plates are visible)
-- "color_consistent": true if the vehicle body color matches the original without hue/saturation shift
-- "changed_parts": list from ["headlights", "taillights", "grille", "bumper", "wheels", "body_lines", "badges", "plates", "color", "showroom"]
-- "issues": human-readable description of each problem found`;
+- "pass": true if the car identity is preserved (minor background/lighting differences are OK)
+- "severity": "none" if pass, "low" for minor lighting differences, "medium" for noticeable feature changes, "high" ONLY for mirroring or completely wrong car
+- "mirrored": true if the vehicle appears flipped compared to the original
+- "color_consistent": true if body color matches without hue/saturation shift
+- "changed_parts": list from ["headlights", "taillights", "grille", "bumper", "wheels", "body_lines", "badges", "color"]
+- "issues": human-readable description of each problem found
+
+IMPORTANT: Be LENIENT on background/showroom details. Focus ONLY on the vehicle itself. Minor lighting or reflection differences are acceptable and should NOT cause failure.`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -158,14 +133,10 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
-    const { imageBase64, referenceImageUrl, vehicleInfo } = await req.json();
+    const { imageBase64, vehicleInfo } = await req.json();
     
     if (!imageBase64) {
       return new Response(JSON.stringify({ error: 'imageBase64 is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    if (!referenceImageUrl) {
-      return new Response(JSON.stringify({ error: 'referenceImageUrl is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -235,10 +206,10 @@ serve(async (req) => {
     }
     console.log('Step 1 complete: Cosmetic retouch done');
 
-    // ━━━ STEP 2: Showroom Compositing (Gemini Pro) — with original as ground truth ━━━
+    // ━━━ STEP 2: Background Replacement (Gemini Pro) — only 2 images now ━━━
     const doComposite = async (extraInstructions?: string) => {
       const promptText = SHOWROOM_PROMPT + vehicleIdentity + (extraInstructions || '');
-      console.log('Step 2: Showroom compositing...');
+      console.log('Step 2: Background replacement...');
       
       const compositeResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -249,9 +220,8 @@ serve(async (req) => {
             role: 'user',
             content: [
               { type: 'text', text: promptText },
-              { type: 'image_url', image_url: { url: referenceImageUrl } },   // Image 1: Reference studio
-              { type: 'image_url', image_url: { url: enhancedImage } },        // Image 2: Enhanced
-              { type: 'image_url', image_url: { url: vehicleImageUrl } }       // Image 3: Original (ground truth)
+              { type: 'image_url', image_url: { url: enhancedImage } },        // Image 1: Enhanced
+              { type: 'image_url', image_url: { url: vehicleImageUrl } }       // Image 2: Original (ground truth)
             ]
           }],
           modalities: ['image', 'text']
@@ -304,8 +274,6 @@ serve(async (req) => {
           pass: false,
           severity: 'medium',
           mirrored: false,
-          showroom_match: false,
-          plates_preserved: true,
           color_consistent: true,
           changed_parts: [],
           issues: ['Geen showroom afbeelding ontvangen; fallback gebruikt.']
@@ -313,11 +281,11 @@ serve(async (req) => {
         message: 'Verbeterde foto gebruikt (showroom stap tijdelijk niet beschikbaar)'
       }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-    console.log('Step 2 complete: Showroom compositing done');
+    console.log('Step 2 complete: Background replacement done');
 
-    // ━━━ STEP 3: AI Verification ━━━
+    // ━━━ STEP 3: AI Verification (simplified) ━━━
     console.log('Step 3: AI verification...');
-    let verification = { pass: true, severity: 'none', mirrored: false, showroom_match: true, plates_preserved: true, color_consistent: true, changed_parts: [] as string[], issues: [] as string[] };
+    let verification = { pass: true, severity: 'none', mirrored: false, color_consistent: true, changed_parts: [] as string[], issues: [] as string[] };
     let finalImage = compositeResult.image;
     let usedFallback = false;
 
@@ -344,7 +312,6 @@ serve(async (req) => {
         const verifyText = verifyData.choices?.[0]?.message?.content || '';
         console.log('Verification raw response:', verifyText);
 
-        // Extract JSON from response
         const jsonMatch = verifyText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           try {
@@ -358,11 +325,11 @@ serve(async (req) => {
         console.error('Verification call failed, proceeding with result');
       }
 
-      // Auto-retry if verification failed with medium/high severity
-      if (!verification.pass && (verification.severity === 'medium' || verification.severity === 'high')) {
-        console.log(`Verification FAILED (severity: ${verification.severity}). Retrying step 2 with corrections...`);
+      // Auto-retry ONLY for high severity (mirroring or completely wrong car)
+      if (!verification.pass && verification.severity === 'high') {
+        console.log(`Verification FAILED (severity: high). Retrying step 2...`);
         
-        const correctionInstructions = `\n\n━━━ CORRECTION REQUIRED (PREVIOUS ATTEMPT FAILED QUALITY CHECK) ━━━\nThe previous result had these problems:\n${verification.issues.map((i: string) => `- ${i}`).join('\n')}\n${verification.mirrored ? '- CRITICAL: The vehicle was MIRRORED. Do NOT flip the vehicle.\n' : ''}Changed parts: ${verification.changed_parts.join(', ')}\n\nYou MUST fix these issues. Compare your output against Image 3 (original) carefully.`;
+        const correctionInstructions = `\n\n━━━ CORRECTION REQUIRED ━━━\nThe previous result had critical problems:\n${verification.issues.map((i: string) => `- ${i}`).join('\n')}\n${verification.mirrored ? '- CRITICAL: The vehicle was MIRRORED. Do NOT flip the vehicle.\n' : ''}\nYou MUST fix these issues. Compare against Image 2 (original) carefully.`;
 
         const retryResult = await doComposite(correctionInstructions);
         
@@ -394,39 +361,42 @@ serve(async (req) => {
                 const retryVerification = JSON.parse(retryJsonMatch[0]);
                 console.log('Retry verification:', JSON.stringify(retryVerification));
                 
-                if (retryVerification.pass || retryVerification.severity === 'low' || retryVerification.severity === 'none') {
+                if (retryVerification.pass || retryVerification.severity !== 'high') {
                   finalImage = retryResult.image;
                   verification = retryVerification;
                   console.log('Retry PASSED verification');
                 } else {
-                  // Retry also failed — use SAFE FALLBACK
-                  console.log('Retry also FAILED. Using safe fallback (enhanced photo).');
+                  // Retry also failed with high severity — use SAFE FALLBACK
+                  console.log('Retry also FAILED with high severity. Using safe fallback.');
                   finalImage = enhancedImage;
                   usedFallback = true;
                 }
               } else {
-                finalImage = retryResult.image; // Can't verify, use retry result
+                finalImage = retryResult.image;
               }
             } else {
-              finalImage = retryResult.image; // Verification failed, use retry result
+              finalImage = retryResult.image;
             }
           } catch (e) {
             console.error('Retry verification error:', e);
             finalImage = retryResult.image;
           }
         } else {
-          // Retry compositing failed — safe fallback
-          console.log('Retry compositing failed. Using safe fallback (enhanced photo).');
+          console.log('Retry compositing failed. Using safe fallback.');
           finalImage = enhancedImage;
           usedFallback = true;
         }
       }
+      // Medium severity: accept the result with a warning (NO fallback)
+      else if (!verification.pass && verification.severity === 'medium') {
+        console.log('Verification medium severity — accepting result with warning.');
+        // Keep finalImage as-is, don't fallback
+      }
     } catch (verifyError) {
       console.error('Verification step error:', verifyError);
-      // Continue with original result if verification fails
     }
 
-    console.log(`Pipeline complete. Fallback: ${usedFallback}, Pass: ${verification.pass}`);
+    console.log(`Pipeline complete. Fallback: ${usedFallback}, Pass: ${verification.pass}, Severity: ${verification.severity}`);
 
     return new Response(
       JSON.stringify({ 
@@ -436,8 +406,6 @@ serve(async (req) => {
           pass: verification.pass,
           severity: verification.severity || 'none',
           mirrored: verification.mirrored || false,
-          showroom_match: verification.showroom_match !== false,
-          plates_preserved: verification.plates_preserved !== false,
           color_consistent: verification.color_consistent !== false,
           changed_parts: verification.changed_parts || [],
           issues: verification.issues || [],

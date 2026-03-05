@@ -1,88 +1,48 @@
 
 
-# Plan: Hybride Pipeline — AI doet minder, code doet meer
+# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
 
-## Diagnose (ChatGPT heeft gelijk)
+## Probleem
 
-Het huidige systeem vraagt AI om 5 dingen tegelijk in Stap 2:
-- achtergrond vervangen
-- logo exact kopiëren
-- kenteken behouden
-- kleur behouden
-- exacte showroom architectuur repliceren
+Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
 
-Generatieve AI kan dit niet consistent. Elke extra eis verlaagt de slagingskans exponentieel.
+## Echte oorzaak (niet React deduplicatie)
 
-## Nieuwe Pipeline
+Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
 
-```text
-STAP 1: Retouch (AI) .............. blijft exact hetzelfde
-STAP 2: Background Replace (AI) ... STERK VEREENVOUDIGD
-STAP 3: Verify (AI) ............... VERSOEPELD
-```
+- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
+- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
+- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
 
-### Wat verandert in Stap 2 (SHOWROOM_PROMPT)
+In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
 
-**Oud**: "Kopieer exact de showroom uit Image 1, inclusief logo, LED strips, muur textuur, en bewaar kenteken"
-**Nieuw**: "Plaats het voertuig in een donkere, professionele autodealer showroom. Simpel. Geen specifiek logo, geen exacte architectuur."
+In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
 
-Concrete wijzigingen:
-- Verwijder referentie-image (Image 1) als input — AI hoeft niets meer te "kopiëren"
-- Verwijder alle AUTOCITY logo instructies uit de prompt
-- Verwijder nummerplaat-reconstructie eis (AI mag platen niet verwijderen, maar hoeft ze niet te "reconstrueren")
-- Verwijder "match Image 1 exactly" — vervang door simpele showroom-beschrijving
-- Houd WEL: kleur-eis, geometry lock, mirroring verbod, zero-crop guarantee
-- Prompt wordt ~40 regels i.p.v. ~75
+## Oplossing
 
-Nieuw SHOWROOM_PROMPT (kern):
-```
-You are given TWO images:
-IMAGE 1 (Enhanced Vehicle): The retouched vehicle to place in a showroom.
-IMAGE 2 (Original Vehicle — GROUND TRUTH): Unedited reference for all details.
+Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
+- Gebruikt compatibele Radix versies (geen nested node_modules meer)
+- Verwijdert de `@babel/runtime` dependency
+- Lost het context-conflict op
 
-Place the vehicle in a dark, professional car dealership showroom:
-- Dark charcoal/anthracite walls
-- Polished dark floor with subtle reflection
-- Soft overhead LED lighting
-- Clean, minimal, professional atmosphere
+### Wijzigingen
 
-VEHICLE INTEGRITY: Keep EVERYTHING from Image 2 identical.
-Do NOT change color, plates, wheels, lights, badges.
-Do NOT mirror. Do NOT crop. Output 1920x1080.
-```
+**Bestand: `package.json`**
+- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
 
-Dit is ~60% korter en geeft AI maar 1 taak: background replacement.
+**Bestand: `src/components/ui/command.tsx`**
+- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
 
-### Wat verandert in Stap 3 (VERIFICATION_PROMPT)
-
-- Verwijder check 6 (showroom_match) — niet meer relevant
-- Verwijder check 7 (plates_preserved) — als AI ze niet verwijdert is het goed
-- Houd: headlights, wheels, angle, mirroring, color
-- **Versoepel severity**: alleen "high" bij mirroring of compleet verkeerde auto
-- Minder retries, minder fallbacks
-
-### Wat verandert in de pipeline logica
-
-- `doComposite()` stuurt nog maar 2 images mee (enhanced + original) i.p.v. 3
-- Referentie-image wordt niet meer opgehaald/meegestuurd
-- `getReferenceImageBase64()` call in frontend kan weg (of behouden voor toekomstig gebruik)
-- Verification response: `showroom_match` en `plates_preserved` velden verwijderen uit schema
-
-### Toekomstige stap (niet in deze implementatie)
-
-Logo overlay via code (canvas/PNG compositing) kan later toegevoegd worden als apart systeem. Nu eerst de AI-pipeline stabiliseren.
+**Bestand: `vite.config.ts`**
+- De bestaande `dedupe` configuratie blijft als extra veiligheid
+- Toevoegen van Radix interne pakketten aan dedupe als fallback:
+  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
 
 ## Verwacht resultaat
 
-- 80-90% minder fallbacks (AI heeft 1 simpele taak)
-- Geen logo-drift meer (logo zit niet in AI output)
-- Minder kleurproblemen (kortere prompt = betere opvolging)
-- Sneller (1 image minder naar API)
-
-## Bestanden die wijzigen
-
-| Bestand | Wijziging |
-|---------|-----------|
-| `supabase/functions/showroom-photo-studio/index.ts` | SHOWROOM_PROMPT herschrijven, VERIFICATION_PROMPT vereenvoudigen, doComposite() aanpassen (2 images i.p.v. 3) |
-| `src/pages/FotoStudio.tsx` | `getReferenceImageBase64()` call optioneel maken (reference wordt niet meer meegestuurd maar bewaren voor later) |
+Na upgrade en publicatie:
+- Klantenlijst is weer klikbaar en scrollbaar
+- Selecteren van klanten werkt correct
+- Data wordt opgeslagen
+- Werkt zowel in preview als op de gepubliceerde website
 
