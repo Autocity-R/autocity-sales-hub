@@ -237,7 +237,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
-    const { imageBase64, vehicleInfo } = await req.json();
+    const { imageBase64, vehicleInfo, studioReferenceBase64 } = await req.json();
     
     if (!imageBase64) {
       return new Response(JSON.stringify({ error: 'imageBase64 is required' }),
@@ -255,9 +255,15 @@ serve(async (req) => {
 
     // Ensure proper data URI
     let vehicleImageUrl = imageBase64;
+    let studioRefUrl = studioReferenceBase64 || null;
     if (!imageBase64.startsWith('data:')) {
       vehicleImageUrl = `data:image/jpeg;base64,${imageBase64}`;
     }
+    if (studioRefUrl && !studioRefUrl.startsWith('data:')) {
+      studioRefUrl = `data:image/jpeg;base64,${studioRefUrl}`;
+    }
+    
+    console.log(`Studio reference image: ${studioRefUrl ? 'provided' : 'NOT provided (will use text-only description)'}`);
 
     const aiHeaders = {
       'Authorization': `Bearer ${LOVABLE_API_KEY}`,
