@@ -1,48 +1,33 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Plan: Nieuwe showroom reference + auto groter in beeld + minder reflectie
 
-## Probleem
+## Wijzigingen
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+### 1. Studio reference image vervangen
+De geüploade showroom-foto (donkere kamer met LED-strip rectangle aan plafond, gepolijste betonvloer) wordt gekopieerd naar `public/autocity-studio-reference.jpg`, ter vervanging van de huidige reference.
 
-## Echte oorzaak (niet React deduplicatie)
+### 2. Auto groter in beeld — vehicle placement aanpassen
+In beide prompts (`SHOWROOM_PROMPT_NORMAL` regel 136-138 en `SHOWROOM_PROMPT_STRICT`) staat nu:
+```
+- Center horizontally, fill ~55-65% of image width
+```
+Dit wordt verhoogd naar **~65-80%** zodat de auto prominenter in beeld komt en het "te ver weg"-effect verdwijnt.
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+### 3. Vloerreflectie verminderen
+In beide prompts staat nu:
+```
+- Subtle floor reflection matching the style in Image 3 (~10% opacity, blurred, fading)
+```
+Dit wordt verlaagd naar **~5% opacity** met extra instructie: "Floor reflection must be BARELY visible — just a faint hint, not a mirror effect."
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+### Samenvatting
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
-
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
-
-## Oplossing
-
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
-
-### Wijzigingen
-
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
-
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
-
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
-
-## Verwacht resultaat
-
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+| Locatie | Wijziging |
+|---------|-----------|
+| `public/autocity-studio-reference.jpg` | Vervangen door geüploade showroom-foto |
+| `SHOWROOM_PROMPT_NORMAL` regel 136-138 | Vehicle fill 55-65% → 65-80% |
+| `SHOWROOM_PROMPT_NORMAL` regel 142 | Reflectie 10% → 5%, barely visible |
+| `SHOWROOM_PROMPT_STRICT` regel 201-203 | Zelfde reflectie-aanpassing |
+| `SHOWROOM_PROMPT_STRICT` (vehicle placement) | Zelfde fill-aanpassing toevoegen |
 
