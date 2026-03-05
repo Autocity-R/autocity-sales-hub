@@ -53,6 +53,18 @@ const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is t
 - The paint must remain TRANSPARENT, vibrant, and glossy with depth — as if freshly waxed and polished under controlled studio lighting. Do NOT flatten the paint or add color cast.
 - Make chrome/piano-black trim less dull
 
+━━━ CRITICAL: PER-PANEL VERIFICATION (SCAN BEFORE OUTPUT) ━━━
+Before outputting, scan EVERY reflective surface individually:
+• Hood — must show ceiling LED streak, NO sky gradient
+• Roof — must show ceiling LED streak, NO clouds or blue
+• Left door/fender — must show dark studio wall gradient, NO trees/poles/buildings
+• Right door/fender — same as left
+• Rear quarter panels — must show dark ambient, NO outdoor shapes
+• Front/rear bumpers — must show dark floor/wall reflections only
+• Chrome trim — must reflect studio ceiling LED, NOT outdoor light
+• Windows — must show neutral dark studio glass, NO outdoor scenery
+If ANY panel still shows recognizable outdoor elements, you MUST fix it before outputting.
+
 ━━━ YOU MUST NOT (identity features — GEOMETRY LOCKED) ━━━
 - Do NOT change headlight SHAPE, LED signature, or DRL pattern in any way
 - Do NOT alter bumper lines, grille pattern, air intake design, or front fascia
@@ -141,9 +153,11 @@ Look at the LICENSE PLATE position in Image 2.
 - Output MUST be 1920x1080 pixels, landscape orientation
 
 ━━━ VEHICLE PLACEMENT ━━━
-- Center horizontally, fill ~60-75% of image width
-- Leave at least 6-10% margin on left and right sides, and 8-12% above the roofline
+- Center horizontally, fill ~50-65% of image width
+- Leave at least 10-15% margin on left and right sides, and 10-15% above the roofline
 - All wheels on floor plane naturally
+- The vehicle must appear at a NATURAL viewing distance — as if photographed by a professional standing 6-8 meters away.
+- Do NOT place the car close to the camera. When in doubt, place FURTHER away rather than closer.
 - Do NOT crop any part of the vehicle — complete car must be visible with breathing room
 
 ━━━ SHADOWS & REFLECTIONS ━━━
@@ -166,6 +180,29 @@ Look at the LICENSE PLATE position in Image 2.
 - Windows: any remaining outdoor scenery must be replaced with neutral dark studio glass. Glass reflections must match the studio ceiling lights from Image 3.
 - The vehicle must visually belong to the SAME photographic exposure as the studio environment.
 - The transition between the vehicle's bottom edge and the floor must be SEAMLESS — no visible cut line, no halo, no edge artifacts.
+
+━━━ STUDIO LIGHTING BLUEPRINT (MANDATORY — SAME FOR ALL IMAGES) ━━━
+All output images must use the EXACT SAME studio lighting structure, regardless of input photo lighting:
+
+Lighting setup:
+• One large rectangular LED ceiling light directly above the vehicle (as seen in Image 3)
+• Soft side ambient reflections from dark studio walls
+• Dark ambient floor reflection
+
+Paint highlights must appear CONSISTENTLY on every image:
+• Bright LED streak along the roofline (most prominent highlight)
+• Secondary highlight across the upper shoulder line of the vehicle
+• Subtle highlight on the hood surface
+• Lower panels and wheel arches must remain DARKER (natural studio light falloff)
+
+This highlight structure must remain consistent across ALL angles of the vehicle.
+A viewer looking at 10 different photos in a row should see the SAME lighting feel on every car.
+
+━━━ EXPOSURE CONSISTENCY (CRITICAL) ━━━
+- The vehicle's exposure level must be CONSISTENT regardless of the input photo's original lighting.
+- Whether the input was shot in bright sunlight, overcast, or shade — the OUTPUT must look like it was shot in the SAME dark studio with the SAME controlled lighting.
+- Target exposure: the car should be moderately lit (not too bright, not too dark) with the LED ceiling as the dominant light source.
+- EVERY output photo must have the same overall brightness feel — a viewer looking at 10 photos in a row should not notice exposure differences.
 
 ━━━ IMAGE QUALITY (CRITICAL) ━━━
 - Output must be ULTRA HIGH QUALITY at 1920x1080 — maximum sharpness, zero noise.
@@ -224,9 +261,11 @@ Look at the LICENSE PLATE position in Image 2.
 - Output MUST be 1920x1080 pixels, landscape orientation
 
 ━━━ VEHICLE PLACEMENT ━━━
-- Center horizontally, fill ~60-75% of image width
-- Leave at least 6-10% margin on left and right sides, and 8-12% above the roofline
+- Center horizontally, fill ~50-65% of image width
+- Leave at least 10-15% margin on left and right sides, and 10-15% above the roofline
 - All wheels on floor plane naturally
+- The vehicle must appear at a NATURAL viewing distance — as if photographed by a professional standing 6-8 meters away.
+- Do NOT place the car close to the camera. When in doubt, place FURTHER away rather than closer.
 - Do NOT crop any part of the vehicle — complete car must be visible with breathing room
 
 ━━━ SHADOWS & REFLECTIONS ━━━
@@ -248,6 +287,29 @@ Look at the LICENSE PLATE position in Image 2.
 - Windows: any remaining outdoor scenery must be replaced with neutral dark studio glass. Glass reflections must match the studio ceiling lights from Image 3.
 - The vehicle must visually belong to the SAME photographic exposure as the studio environment.
 - The transition between the vehicle's bottom edge and the floor must be SEAMLESS — no visible cut line, no halo, no edge artifacts.
+
+━━━ STUDIO LIGHTING BLUEPRINT (MANDATORY — SAME FOR ALL IMAGES) ━━━
+All output images must use the EXACT SAME studio lighting structure, regardless of input photo lighting:
+
+Lighting setup:
+• One large rectangular LED ceiling light directly above the vehicle (as seen in Image 3)
+• Soft side ambient reflections from dark studio walls
+• Dark ambient floor reflection
+
+Paint highlights must appear CONSISTENTLY on every image:
+• Bright LED streak along the roofline (most prominent highlight)
+• Secondary highlight across the upper shoulder line of the vehicle
+• Subtle highlight on the hood surface
+• Lower panels and wheel arches must remain DARKER (natural studio light falloff)
+
+This highlight structure must remain consistent across ALL angles of the vehicle.
+A viewer looking at 10 different photos in a row should see the SAME lighting feel on every car.
+
+━━━ EXPOSURE CONSISTENCY (CRITICAL) ━━━
+- The vehicle's exposure level must be CONSISTENT regardless of the input photo's original lighting.
+- Whether the input was shot in bright sunlight, overcast, or shade — the OUTPUT must look like it was shot in the SAME dark studio with the SAME controlled lighting.
+- Target exposure: the car should be moderately lit (not too bright, not too dark) with the LED ceiling as the dominant light source.
+- EVERY output photo must have the same overall brightness feel — a viewer looking at 10 photos in a row should not notice exposure differences.
 
 ━━━ IMAGE QUALITY (CRITICAL) ━━━
 - Output must be ULTRA HIGH QUALITY at 1920x1080 — maximum sharpness, zero noise.
