@@ -134,12 +134,12 @@ Look at the LICENSE PLATE position in Image 2.
 - Output MUST be 1920x1080 pixels, landscape orientation
 
 ━━━ VEHICLE PLACEMENT ━━━
-- Center horizontally, fill ~55-65% of image width
+- Center horizontally, fill ~65-80% of image width — the vehicle must appear PROMINENT and close, not distant
 - All wheels on floor plane naturally
 
 ━━━ SHADOWS & REFLECTIONS ━━━
 - Natural contact shadows under tires (~35% opacity, soft)
-- Subtle floor reflection matching the style in Image 3 (~10% opacity, blurred, fading)
+- Floor reflection must be BARELY visible — just a faint hint, not a mirror effect (~5% opacity, heavily blurred, fading quickly)
 - All reflections on vehicle paint must be consistent with the indoor studio from Image 3 — no trees, sky, buildings.
 
 ━━━ IMAGE QUALITY (CRITICAL) ━━━
@@ -198,9 +198,13 @@ Look at the LICENSE PLATE position in Image 2.
 - The COMPLETE vehicle must be visible — ALL 4 wheels, BOTH mirrors, entire roof, all bumpers
 - Output MUST be 1920x1080 pixels, landscape orientation
 
+━━━ VEHICLE PLACEMENT ━━━
+- Center horizontally, fill ~65-80% of image width — the vehicle must appear PROMINENT and close, not distant
+- All wheels on floor plane naturally
+
 ━━━ SHADOWS & REFLECTIONS ━━━
 - Natural contact shadows under tires (~35% opacity, soft)
-- Subtle floor reflection matching Image 3 style (~10% opacity, blurred, fading)
+- Floor reflection must be BARELY visible — just a faint hint, not a mirror effect (~5% opacity, heavily blurred, fading quickly)
 
 ━━━ IMAGE QUALITY (CRITICAL) ━━━
 - Output must be ULTRA HIGH QUALITY at 1920x1080 — maximum sharpness, zero noise.
