@@ -7,12 +7,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Upload, Download, RefreshCw, Save, ImageIcon, 
   Sparkles, Loader2, X, CheckCircle2, AlertCircle,
-  Images, Camera, Car
+  Images, Camera, Car, ShieldCheck, ShieldAlert
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import OptimizedDashboardLayout from "@/components/layout/OptimizedDashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+
+interface VerificationResult {
+  pass: boolean;
+  severity: string;
+  mirrored: boolean;
+  changed_parts: string[];
+  issues: string[];
+}
 
 interface StudioImage {
   id: string;
@@ -20,8 +29,10 @@ interface StudioImage {
   originalPreview: string;
   resultImage: string | null;
   status: 'queued' | 'processing' | 'done' | 'error';
-  processingStep?: 'enhance' | 'composite';
+  processingStep?: 'retouch' | 'showroom' | 'verificatie';
   error?: string;
+  usedFallback?: boolean;
+  verification?: VerificationResult;
 }
 
 interface VehicleInfo {
@@ -36,6 +47,7 @@ const FotoStudio = () => {
   const [manualBrand, setManualBrand] = useState("");
   const [manualModel, setManualModel] = useState("");
   const [manualYear, setManualYear] = useState("");
+  const [manualColor, setManualColor] = useState("");
 
   const getVehicleInfo = (): VehicleInfo | null => {
     if (!manualBrand.trim() || !manualModel.trim()) return null;
@@ -43,7 +55,7 @@ const FotoStudio = () => {
       brand: manualBrand.trim(),
       model: manualModel.trim(),
       year: manualYear.trim() ? parseInt(manualYear.trim(), 10) || null : null,
-      color: null,
+      color: manualColor.trim() || null,
     };
   };
   const [isProcessingAll, setIsProcessingAll] = useState(false);
@@ -90,12 +102,16 @@ const FotoStudio = () => {
     const image = images.find(i => i.id === imageId);
     if (!image) return;
 
-    setImages(prev => prev.map(i => i.id === imageId ? { ...i, status: 'processing', processingStep: 'enhance' } : i));
+    setImages(prev => prev.map(i => i.id === imageId ? { ...i, status: 'processing', processingStep: 'retouch', usedFallback: false, verification: undefined } : i));
 
-    // Update to composite step after a delay (approximate timing)
-    const compositeTimer = setTimeout(() => {
-      setImages(prev => prev.map(i => i.id === imageId && i.status === 'processing' ? { ...i, processingStep: 'composite' } : i));
+    // Update processing steps based on timing
+    const showroomTimer = setTimeout(() => {
+      setImages(prev => prev.map(i => i.id === imageId && i.status === 'processing' ? { ...i, processingStep: 'showroom' } : i));
     }, 15000);
+
+    const verifyTimer = setTimeout(() => {
+      setImages(prev => prev.map(i => i.id === imageId && i.status === 'processing' ? { ...i, processingStep: 'verificatie' } : i));
+    }, 45000);
 
     try {
       const [base64, referenceImageUrl] = await Promise.all([
@@ -110,12 +126,26 @@ const FotoStudio = () => {
       if (error) throw new Error(error.message || 'Verwerking mislukt');
       if (data?.error) throw new Error(data.error);
 
-      clearTimeout(compositeTimer);
+      clearTimeout(showroomTimer);
+      clearTimeout(verifyTimer);
+      
       setImages(prev => prev.map(i => 
-        i.id === imageId ? { ...i, status: 'done', resultImage: data.resultImage, processingStep: undefined } : i
+        i.id === imageId ? { 
+          ...i, 
+          status: 'done', 
+          resultImage: data.resultImage, 
+          processingStep: undefined,
+          usedFallback: data.usedFallback || false,
+          verification: data.verification || undefined,
+        } : i
       ));
+
+      if (data.usedFallback) {
+        toast.warning('Identity check gefaald — verbeterde originele foto gebruikt als veilig alternatief.');
+      }
     } catch (err: any) {
-      clearTimeout(compositeTimer);
+      clearTimeout(showroomTimer);
+      clearTimeout(verifyTimer);
       console.error('Studio processing error:', err);
       const errorMsg = err?.message || 'Onbekende fout';
       setImages(prev => prev.map(i => 
@@ -128,15 +158,11 @@ const FotoStudio = () => {
   const processAll = async () => {
     const queued = images.filter(i => i.status === 'queued' || i.status === 'error');
     if (queued.length === 0) return;
-
     setIsProcessingAll(true);
-
-    // Process 2 at a time to avoid rate limits
     for (let i = 0; i < queued.length; i += 2) {
       const batch = queued.slice(i, i + 2);
       await Promise.all(batch.map(img => processImage(img.id)));
     }
-
     setIsProcessingAll(false);
     toast.success('Alle foto\'s verwerkt!');
   };
@@ -192,7 +218,7 @@ const FotoStudio = () => {
           </div>
 
           {/* Vehicle info - manual input */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <Input
               placeholder="Merk (bijv. BMW)"
               value={manualBrand}
@@ -214,10 +240,17 @@ const FotoStudio = () => {
               className="w-28"
               maxLength={4}
             />
+            <Input
+              placeholder="Kleur (bijv. Zwart)"
+              value={manualColor}
+              onChange={e => setManualColor(e.target.value)}
+              className="w-36"
+              maxLength={50}
+            />
             {manualBrand && manualModel && (
               <p className="text-xs text-muted-foreground whitespace-nowrap">
                 <Car className="h-3.5 w-3.5 inline mr-1" />
-                AI behoudt exact het {manualYear || ''} {manualBrand} {manualModel} model
+                AI behoudt exact het {manualYear || ''} {manualBrand} {manualModel} {manualColor ? `(${manualColor})` : ''} model
               </p>
             )}
           </div>
@@ -328,12 +361,14 @@ const FotoStudio = () => {
                         <div className="text-center">
                           <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin text-primary" />
                           <p className="text-xs text-muted-foreground font-medium">
-                            {img.processingStep === 'composite' ? 'AI plaatst in showroom...' : 'AI verbetert foto...'}
+                            {img.processingStep === 'verificatie' ? 'AI controleert resultaat...' : img.processingStep === 'showroom' ? 'AI plaatst in showroom...' : 'AI retoucheert foto...'}
                           </p>
-                          <div className="flex items-center gap-2 mt-2 text-[10px] text-muted-foreground">
-                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'enhance' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>1. Verbeteren</span>
+                          <div className="flex items-center gap-1.5 mt-2 text-[10px] text-muted-foreground">
+                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'retouch' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>1. Retouch</span>
                             <span>→</span>
-                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'composite' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>2. Showroom</span>
+                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'showroom' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>2. Showroom</span>
+                            <span>→</span>
+                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'verificatie' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>3. Controle</span>
                           </div>
                         </div>
                       </div>
@@ -356,12 +391,33 @@ const FotoStudio = () => {
                   </div>
                 </div>
 
-                {/* Actions */}
+                {/* Actions & Status */}
                 <div className="flex items-center justify-between p-2 border-t bg-muted/20">
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    {img.status === 'done' && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    {img.status === 'done' && !img.usedFallback && (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                    )}
+                    {img.status === 'done' && img.usedFallback && (
+                      <ShieldAlert className="h-3.5 w-3.5 text-orange-500" />
+                    )}
                     {img.status === 'processing' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                    <span className="truncate max-w-[180px]">{img.originalFile.name}</span>
+                    <span className="truncate max-w-[120px]">{img.originalFile.name}</span>
+                    {img.status === 'done' && img.usedFallback && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-orange-300 text-orange-600 bg-orange-50">
+                        Fallback
+                      </Badge>
+                    )}
+                    {img.status === 'done' && img.verification && !img.verification.pass && !img.usedFallback && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-yellow-300 text-yellow-700 bg-yellow-50">
+                        Mogelijke afwijking
+                      </Badge>
+                    )}
+                    {img.status === 'done' && img.verification?.pass && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-green-300 text-green-700 bg-green-50">
+                        <ShieldCheck className="h-2.5 w-2.5 mr-0.5" />
+                        Geverifieerd
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex gap-1">
                     {img.status === 'done' && img.resultImage && (
