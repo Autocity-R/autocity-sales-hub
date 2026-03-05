@@ -42,12 +42,36 @@ interface VehicleInfo {
   color: string | null;
 }
 
+const STUDIO_REFERENCE_URL = '/autocity-studio-reference.jpg';
+
+const fetchStudioReferenceBase64 = async (): Promise<string | null> => {
+  try {
+    const response = await fetch(STUDIO_REFERENCE_URL);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+};
+
 const FotoStudio = () => {
   const [images, setImages] = useState<StudioImage[]>([]);
   const [manualBrand, setManualBrand] = useState("");
   const [manualModel, setManualModel] = useState("");
   const [manualYear, setManualYear] = useState("");
   const [manualColor, setManualColor] = useState("");
+  const [studioRefBase64, setStudioRefBase64] = useState<string | null>(null);
+
+  // Preload studio reference image on mount
+  React.useEffect(() => {
+    fetchStudioReferenceBase64().then(setStudioRefBase64);
+  }, []);
 
   const getVehicleInfo = (): VehicleInfo | null => {
     if (!manualBrand.trim() || !manualModel.trim()) return null;
@@ -109,7 +133,7 @@ const FotoStudio = () => {
       const base64 = await fileToBase64(image.originalFile);
 
       const { data, error } = await supabase.functions.invoke('showroom-photo-studio', {
-        body: { imageBase64: base64, vehicleInfo: getVehicleInfo() }
+        body: { imageBase64: base64, vehicleInfo: getVehicleInfo(), studioReferenceBase64: studioRefBase64 }
       });
 
       if (error) throw new Error(error.message || 'Verwerking mislukt');

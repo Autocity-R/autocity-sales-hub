@@ -68,22 +68,22 @@ If you overlay input and output at 50% opacity, ONLY texture/lighting/reflection
 
 OUTPUT: The same photo with improved lighting, color accuracy, reduced noise, cleaned surfaces, enhanced paint gloss, and softened reflections. Nothing structural changes. The paint color must be IDENTICAL to the input.`;
 
-// ━━━ STEP 2A: SHOWROOM BACKGROUND — NORMAL (with angle lock) ━━━
-const SHOWROOM_PROMPT_NORMAL = `You are given TWO images:
+// ━━━ STEP 2A: SHOWROOM BACKGROUND — NORMAL (with angle lock + reference studio) ━━━
+const SHOWROOM_PROMPT_NORMAL = `You are given THREE images:
 
-IMAGE 1 (Enhanced Vehicle): The retouched vehicle photo to place in a showroom.
+IMAGE 1 (Enhanced Vehicle): The retouched vehicle photo to place in the showroom.
 IMAGE 2 (Original Vehicle — GROUND TRUTH): The UNEDITED original photograph. This is your ABSOLUTE REFERENCE for all vehicle details.
+IMAGE 3 (STUDIO REFERENCE — ENVIRONMENT TEMPLATE): This is the EXACT showroom environment you must use. Do NOT generate a new room. Place the vehicle INTO this studio.
 
-YOUR TASK: Replace the background around the vehicle with a dark, professional car dealership showroom environment.
+YOUR TASK: Place the vehicle from Image 1 into the EXACT studio environment shown in Image 3. The studio must remain IDENTICAL — same walls, same floor, same ceiling light, same reflections, same atmosphere.
 
-━━━ SHOWROOM ENVIRONMENT (SIMPLE — DO NOT OVER-DESIGN) ━━━
-- Dark charcoal/anthracite walls — smooth or subtly textured
-- Polished dark floor with subtle vehicle reflection
-- Soft, even overhead LED lighting — no harsh spots
-- Clean, minimal, professional atmosphere
-- Do NOT add any logos, text, branding, or specific architectural details
-- Do NOT add any people, props, or decorative elements
-- Keep it SIMPLE: dark walls, dark floor, soft light. Nothing else.
+━━━ STUDIO ENVIRONMENT (MATCH IMAGE 3 EXACTLY) ━━━
+- Use Image 3 as the EXACT environment template
+- The walls, floor, ceiling lighting, and overall atmosphere must be IDENTICAL to Image 3
+- Do NOT change the wall color, floor texture, or lighting configuration
+- Do NOT add any logos, text, branding, people, props, or decorative elements
+- Do NOT generate a new showroom — ONLY use the room from Image 3
+- The floor reflection style must match Image 3 (same intensity, same blur, same fade)
 
 ━━━ VEHICLE INTEGRITY (CRITICAL — DO NOT MODIFY THE CAR) ━━━
 The vehicle must remain PIXEL-IDENTICAL to Image 2 (original). Specifically:
@@ -108,7 +108,20 @@ You MUST preserve this EXACT angle category in the output.
 - A rear photo MUST remain rear. NOT rear-quarter.
 - Only micro-straightening (±2°) is allowed. Changing the angle category is NOT acceptable.
 - Do NOT rotate to improve composition.
-- NEVER mirror or flip the vehicle orientation.
+
+━━━ ANTI-MIRROR RULE (CRITICAL) ━━━
+Look at the LICENSE PLATE position in Image 2.
+- The plate must appear on the SAME SIDE of the output image.
+- If the plate is on the LEFT side of Image 2, it MUST be on the LEFT side of the output.
+- If the plate is on the RIGHT side of Image 2, it MUST be on the RIGHT side of the output.
+- If you can see the DRIVER SIDE (left in EU/NL), it must remain the DRIVER SIDE.
+- Reversing left↔right = CRITICAL FAILURE. NEVER mirror or flip the vehicle.
+
+━━━ CAMERA HEIGHT LOCK ━━━
+- The camera height and horizon line must match Image 1 exactly.
+- Do NOT raise or lower the camera viewpoint.
+- Do NOT tilt the camera up or down.
+- Do NOT change the horizon position.
 
 ━━━ ZERO-CROP GUARANTEE ━━━
 - The COMPLETE vehicle must be visible — ALL 4 wheels, BOTH mirrors, entire roof, all bumpers
@@ -121,26 +134,27 @@ You MUST preserve this EXACT angle category in the output.
 
 ━━━ SHADOWS & REFLECTIONS ━━━
 - Natural contact shadows under tires (~35% opacity, soft)
-- Subtle floor reflection (~10% opacity, blurred, fading)
-- All reflections on vehicle paint must be consistent with indoor showroom — no trees, sky, buildings.
+- Subtle floor reflection matching the style in Image 3 (~10% opacity, blurred, fading)
+- All reflections on vehicle paint must be consistent with the indoor studio from Image 3 — no trees, sky, buildings.
 
 ━━━ INTERIOR PHOTO HANDLING ━━━
 If Image 1 is an interior/cabin photo: enhance lighting/clarity, replace visible window backgrounds with dark gradient, do NOT place in studio.
 
-OUTPUT: A photorealistic 1920x1080 image of the vehicle in a clean, dark showroom. Every vehicle detail must match Image 2 exactly. The viewing angle MUST be {ANGLE}.`;
+OUTPUT: A photorealistic 1920x1080 image of the vehicle placed in the EXACT studio from Image 3. Every vehicle detail must match Image 2 exactly. The viewing angle MUST be {ANGLE}. The studio environment MUST match Image 3 exactly.`;
 
 // ━━━ STEP 2B: SHOWROOM BACKGROUND — STRICT (zero rotation, for retry & unknown) ━━━
-const SHOWROOM_PROMPT_STRICT = `You are given TWO images:
+const SHOWROOM_PROMPT_STRICT = `You are given THREE images:
 
-IMAGE 1 (Enhanced Vehicle): The retouched vehicle photo to place in a showroom.
+IMAGE 1 (Enhanced Vehicle): The retouched vehicle photo to place in the showroom.
 IMAGE 2 (Original Vehicle — GROUND TRUTH): The UNEDITED original photograph. This is your ABSOLUTE REFERENCE for all vehicle details.
+IMAGE 3 (STUDIO REFERENCE — ENVIRONMENT TEMPLATE): This is the EXACT showroom environment you must use. Do NOT generate a new room.
 
-YOUR TASK: Replace the background around the vehicle with a dark, professional car dealership showroom environment.
+YOUR TASK: Place the vehicle from Image 1 into the EXACT studio environment shown in Image 3.
 
-━━━ SHOWROOM ENVIRONMENT (SIMPLE) ━━━
-- Dark charcoal/anthracite walls — smooth or subtly textured
-- Polished dark floor with subtle vehicle reflection
-- Soft, even overhead LED lighting — no harsh spots
+━━━ STUDIO ENVIRONMENT (MATCH IMAGE 3 EXACTLY) ━━━
+- Use Image 3 as the EXACT environment template
+- The walls, floor, ceiling lighting must be IDENTICAL to Image 3
+- Do NOT generate a new showroom — ONLY use the room from Image 3
 - Do NOT add logos, text, branding, people, props, or decorative elements
 
 ━━━ VEHICLE INTEGRITY (DO NOT MODIFY THE CAR) ━━━
@@ -154,7 +168,17 @@ This is a STRICT MODE output. The following rules are ABSOLUTE and NON-NEGOTIABL
 - Do NOT "improve" composition, do NOT "correct" the angle, do NOT make it "more dramatic".
 - Keep the car position and size as close to the input as possible.
 - Only replace the background and adjust lighting. Nothing else.
-- NEVER mirror or flip the vehicle.
+
+━━━ ANTI-MIRROR RULE (CRITICAL) ━━━
+Look at the LICENSE PLATE position in Image 2.
+- The plate must appear on the SAME SIDE of the output image.
+- If the plate is on the LEFT side of Image 2, it MUST be on the LEFT side of the output.
+- Reversing left↔right = CRITICAL FAILURE. NEVER mirror or flip the vehicle.
+
+━━━ CAMERA HEIGHT LOCK ━━━
+- The camera height and horizon line must match Image 1 exactly.
+- Do NOT raise or lower the camera viewpoint.
+- Do NOT tilt. Do NOT change the horizon.
 
 ━━━ ZERO-CROP GUARANTEE ━━━
 - The COMPLETE vehicle must be visible — ALL 4 wheels, BOTH mirrors, entire roof, all bumpers
@@ -162,9 +186,9 @@ This is a STRICT MODE output. The following rules are ABSOLUTE and NON-NEGOTIABL
 
 ━━━ SHADOWS & REFLECTIONS ━━━
 - Natural contact shadows under tires (~35% opacity, soft)
-- Subtle floor reflection (~10% opacity, blurred, fading)
+- Subtle floor reflection matching Image 3 style (~10% opacity, blurred, fading)
 
-OUTPUT: A photorealistic 1920x1080 image of the vehicle in a clean, dark showroom. The viewing angle must be IDENTICAL to the input. ZERO rotation allowed.`;
+OUTPUT: A photorealistic 1920x1080 image of the vehicle placed in the EXACT studio from Image 3. The viewing angle must be IDENTICAL to the input. ZERO rotation allowed.`;
 
 // ━━━ STEP 3: AI VERIFICATION (with angle check) ━━━
 const VERIFICATION_PROMPT = `You are a quality control inspector comparing a RESULT image against an ORIGINAL vehicle photograph.
@@ -213,7 +237,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
-    const { imageBase64, vehicleInfo } = await req.json();
+    const { imageBase64, vehicleInfo, studioReferenceBase64 } = await req.json();
     
     if (!imageBase64) {
       return new Response(JSON.stringify({ error: 'imageBase64 is required' }),
@@ -231,9 +255,15 @@ serve(async (req) => {
 
     // Ensure proper data URI
     let vehicleImageUrl = imageBase64;
+    let studioRefUrl = studioReferenceBase64 || null;
     if (!imageBase64.startsWith('data:')) {
       vehicleImageUrl = `data:image/jpeg;base64,${imageBase64}`;
     }
+    if (studioRefUrl && !studioRefUrl.startsWith('data:')) {
+      studioRefUrl = `data:image/jpeg;base64,${studioRefUrl}`;
+    }
+    
+    console.log(`Studio reference image: ${studioRefUrl ? 'provided' : 'NOT provided (will use text-only description)'}`);
 
     const aiHeaders = {
       'Authorization': `Bearer ${LOVABLE_API_KEY}`,
@@ -378,7 +408,8 @@ serve(async (req) => {
             content: [
               { type: 'text', text: promptText },
               { type: 'image_url', image_url: { url: enhancedImage } },
-              { type: 'image_url', image_url: { url: vehicleImageUrl } }
+              { type: 'image_url', image_url: { url: vehicleImageUrl } },
+              ...(studioRefUrl ? [{ type: 'image_url', image_url: { url: studioRefUrl } }] : [])
             ]
           }],
           modalities: ['image', 'text']
