@@ -118,24 +118,30 @@ const VERIFICATION_PROMPT = `You are a quality control inspector comparing a RES
 IMAGE 1 (Original): The unedited original vehicle photo — your GROUND TRUTH.
 IMAGE 2 (Result): The AI-processed showroom result to verify.
 
-Check these 5 identity features by comparing Image 2 against Image 1:
+Check these 8 identity features by comparing Image 2 against Image 1:
 
 1. HEADLIGHTS: Is the headlight shape, LED signature, and DRL pattern identical?
 2. TAILLIGHTS: Is the taillight shape and design identical? (if visible)
 3. GRILLE/BUMPER: Is the front grille pattern and bumper design identical? (if visible)
 4. WHEELS: Is the wheel/rim spoke pattern and design identical?
 5. VIEWING ANGLE: Is the same side of the car visible? (check for mirroring)
+6. SHOWROOM: Does the background match the reference studio? Dark textured walls, white AUTOCITY 3D block letters on the back wall, LED strips along ceiling? Or is it a different/invented studio with a different logo?
+7. LICENSE PLATES: Are original license plates and plate holders/frames preserved from the original? (if visible in Image 1)
+8. COLOR: Is the vehicle body color consistent with the original? No hue shift, no saturation change, no brightness change?
 
 For each feature, determine if it matches the original or has been altered.
 
 You MUST respond with ONLY a valid JSON object, no other text:
-{"pass": true/false, "severity": "none"/"low"/"medium"/"high", "mirrored": true/false, "changed_parts": ["list of changed parts"], "issues": ["description of each issue"]}
+{"pass": true/false, "severity": "none"/"low"/"medium"/"high", "mirrored": true/false, "showroom_match": true/false, "plates_preserved": true/false, "color_consistent": true/false, "changed_parts": ["list of changed parts"], "issues": ["description of each issue"]}
 
 Rules:
-- "pass": true only if ALL 5 checks pass
-- "severity": "none" if pass, "low" for minor color/lighting differences, "medium" for noticeable shape changes, "high" for wrong headlights/grille/mirroring
+- "pass": true only if ALL 8 checks pass
+- "severity": "none" if pass, "low" for minor color/lighting differences, "medium" for noticeable shape changes or wrong showroom, "high" for wrong headlights/grille/mirroring/completely different studio
 - "mirrored": true if the vehicle appears flipped/mirrored compared to the original
-- "changed_parts": list from ["headlights", "taillights", "grille", "bumper", "wheels", "body_lines", "badges"]
+- "showroom_match": true if the background is the correct AUTOCITY showroom with correct logo style
+- "plates_preserved": true if license plates and plate holders match the original (or if no plates are visible)
+- "color_consistent": true if the vehicle body color matches the original without hue/saturation shift
+- "changed_parts": list from ["headlights", "taillights", "grille", "bumper", "wheels", "body_lines", "badges", "plates", "color", "showroom"]
 - "issues": human-readable description of each problem found`;
 
 serve(async (req) => {
