@@ -11,13 +11,14 @@ const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is t
 ━━━ YOU MAY (cosmetic only) ━━━
 - Remove dirt, mud, water spots, dust, bird droppings from paint surfaces
 - Enhance paint gloss and recover highlights (make paint look freshly polished)
-- Make paint appear freshly waxed — smooth, even gloss across ALL panels, no dull patches or uneven spots
+- Make paint appear freshly waxed — smooth, even gloss across ALL panels, no dull patches or uneven spots. The paint must look TRANSPARENT, vibrant, and glossy with depth and clarity — NOT hazy, matte, or dull.
 - Correct white balance and color temperature (remove yellow/green warehouse cast)
+- Do NOT introduce any yellow, orange, warm, or cool color cast. The paint must remain the EXACT same hue as the original.
 - Reduce noise and grain
 - Improve exposure and contrast subtly
 - Clean glass surfaces (remove haze, smudges, water marks)
 - Deepen tire black point slightly
-- Replace outdoor environment reflections in paint and glass (trees, buildings, sky, clouds, fences, parked cars, people) with neutral, dark, diffuse reflections consistent with an indoor showroom (dark walls, soft overhead LED lighting). The car must look like it is photographed indoors.
+- Subtly soften outdoor reflections (trees, buildings, sky, clouds, fences, parked cars, people) so they become indistinct blurred shapes — do NOT replace them with dark overlays or colored tints. The goal is that reflections look like soft ambient light from an indoor environment, NOT that the paint changes color. The paint must remain TRANSPARENT, vibrant, and glossy — as if freshly waxed and polished under studio lighting.
 - Make chrome/piano-black trim less dull
 
 ━━━ YOU MUST NOT (identity features — GEOMETRY LOCKED) ━━━
@@ -29,15 +30,18 @@ const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is t
 - Do NOT change taillight shape, design, or light signature
 - Do NOT mirror or flip the vehicle orientation
 - Do NOT crop, zoom, reframe, or change the camera angle
-- You MUST replace outdoor environment reflections (trees, sky, buildings, fences) with neutral indoor reflections. But do NOT alter the SHAPE of reflective surfaces — only change WHAT is reflected in them.
-- Do NOT add or remove anything from the image (except replacing outdoor reflections with indoor ones)
+- You MAY subtly soften outdoor environment reflections so they look like soft indoor ambient light. But do NOT alter the SHAPE of reflective surfaces — only soften what is reflected in them.
+- Do NOT add or remove anything from the image
 - Do NOT change the background or surroundings (that happens in step 2)
 - Do NOT remove or alter license plates or plate holders
+
+━━━ CRITICAL COLOR RULE ━━━
+Compare your output paint color against the input. If the hue has shifted in ANY direction (yellower, bluer, darker, lighter, warmer, cooler), your output is WRONG. The paint color must be pixel-identical to the original. Do NOT add any color cast, tint, or filter. The paint must remain vibrant and transparent with depth.
 
 ━━━ CRITICAL TEST ━━━
 If you overlay input and output at 50% opacity, ONLY texture/lighting/reflections should differ — NEVER geometry, edges, or silhouette. The car's outline must be pixel-identical.
 
-OUTPUT: The same photo with improved lighting, color accuracy, reduced noise, cleaned surfaces, enhanced paint gloss, and indoor-appropriate reflections. Nothing structural changes.`;
+OUTPUT: The same photo with improved lighting, color accuracy, reduced noise, cleaned surfaces, enhanced paint gloss, and softened reflections. Nothing structural changes. The paint color must be IDENTICAL to the input.`;
 
 // ━━━ STEP 2: SHOWROOM COMPOSITING ━━━
 const SHOWROOM_PROMPT = `You are given THREE images:
@@ -79,19 +83,20 @@ Count the visible sides of the vehicle in Image 2:
 
 ━━━ VEHICLE INTEGRITY (DO NOT MODIFY) ━━━
 ALL of these must remain IDENTICAL to Image 2/3:
-- Body color and paint finish — EXACT same color. Do NOT shift hue, saturation, or brightness. If the car is dark blue, it stays dark blue — not black, not light blue.
+- Body color and paint finish — EXACT same color. Do NOT shift hue, saturation, or brightness. If the car is dark blue, it stays dark blue — not black, not light blue. The paint must look TRANSPARENT and vibrant — like freshly waxed and polished paint under professional studio lighting. Do NOT add any haze, matte effect, color cast, or dull appearance. The paint should have depth and clarity.
 - Wheels/rims design and color (EXACT spoke pattern)
 - All badges, emblems, and model text
 - Headlights and taillights design (EXACT shape)
 - Front grille and bumper design (EXACT pattern)
 - Body shape, proportions, and all body lines
 - Window tint level
-- LICENSE PLATES & PLATE HOLDERS: If the original vehicle (Image 3) has license plates, dealer plate frames, or branded plate holders (e.g. "AUTOCITY"), these MUST be preserved EXACTLY as they appear. Do NOT remove, replace, blur, or alter any plates or plate frames.
+- LICENSE PLATES ARE MANDATORY. Read the text on the license plate in Image 3 carefully. The EXACT same plate text, plate color (e.g. yellow Dutch plates), and plate holder/frame (e.g. "AUTOCITY" branded frame) MUST appear on the vehicle in your output in the EXACT same position. If you cannot read the plate, preserve the visual appearance exactly. NEVER output a vehicle without its original plates.
 
 ━━━ SHOWROOM ENVIRONMENT (COPY Image 1 EXACTLY — DO NOT INVENT) ━━━
 You MUST replicate the showroom from Image 1 with these specific elements:
 - Dark charcoal/anthracite TEXTURED walls (not smooth, not black, not grey — match Image 1 exactly)
-- White 3D BLOCK LETTERS spelling "AUTOCITY" on the back wall — NOT a car silhouette logo, NOT illuminated neon, NOT a different font, NOT a different word. Plain white 3D block letters EXACTLY as in Image 1.
+- The AUTOCITY logo consists of TWO elements: (1) a thin white car silhouette LINE drawing above, and (2) white 3D BLOCK LETTERS spelling "AUTOCITY" below. These are SOLID WHITE, NOT illuminated, NOT neon, NOT glowing, NOT backlit, NOT in a different font. They are mounted on the dark textured wall. COPY THE LOGO EXACTLY FROM IMAGE 1 — pixel for pixel if possible.
+- If your output shows any other style of AUTOCITY logo (neon, script font, illuminated, backlit, different layout, car silhouette as a filled shape), your output is WRONG and will be rejected.
 - Thin white LED light strips running along ceiling edges — match Image 1 exactly
 - Polished dark concrete floor with subtle reflections
 - Do NOT invent, redesign, or reinterpret the showroom. Copy it EXACTLY from Image 1.
@@ -126,8 +131,8 @@ Check these 8 identity features by comparing Image 2 against Image 1:
 4. WHEELS: Is the wheel/rim spoke pattern and design identical?
 5. VIEWING ANGLE: Is the same side of the car visible? (check for mirroring)
 6. SHOWROOM: Does the background match the reference studio? Dark textured walls, white AUTOCITY 3D block letters on the back wall, LED strips along ceiling? Or is it a different/invented studio with a different logo?
-7. LICENSE PLATES: Are original license plates and plate holders/frames preserved from the original? (if visible in Image 1)
-8. COLOR: Is the vehicle body color consistent with the original? No hue shift, no saturation change, no brightness change?
+7. LICENSE PLATES: Are original license plates and plate holders/frames preserved from the original? (if visible in Image 1) Check plate text, plate color (yellow Dutch plates), and frame branding.
+8. COLOR: Is the vehicle body color consistent with the original? Check specifically for yellow/warm color cast on the paint. If the vehicle appears yellower, warmer, hazier, or duller than the original, this is a COLOR failure. Any hue shift, saturation change, or added color cast = failure.
 
 For each feature, determine if it matches the original or has been altered.
 
@@ -136,7 +141,7 @@ You MUST respond with ONLY a valid JSON object, no other text:
 
 Rules:
 - "pass": true only if ALL 8 checks pass
-- "severity": "none" if pass, "low" for minor color/lighting differences, "medium" for noticeable shape changes or wrong showroom, "high" for wrong headlights/grille/mirroring/completely different studio
+- "severity": "none" if pass, "low" for minor lighting differences only, "medium" for noticeable shape changes, "high" for wrong headlights/grille/mirroring/completely different studio/color cast/hue shift/missing plates
 - "mirrored": true if the vehicle appears flipped/mirrored compared to the original
 - "showroom_match": true if the background is the correct AUTOCITY showroom with correct logo style
 - "plates_preserved": true if license plates and plate holders match the original (or if no plates are visible)

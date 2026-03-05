@@ -1,50 +1,48 @@
 
 
-# Plan: Fix gele waas, logo-consistentie en nummerboordherkenning
+# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
 
-## Analyse van de problemen (uit logs + foto's)
+## Probleem
 
-1. **Gele waas op lak**: De retouch-stap vervangt reflecties te agressief, waardoor de lak gelig/wazig wordt. De instructie "neutral, dark, diffuse reflections" wordt te letterlijk genomen — de AI voegt een dominant warm/donker filter toe dat de originele kleur vervormt.
+Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
 
-2. **AUTOCITY logo verandert**: Logs tonen `showroom_match: false` met "AUTOCITY in neon script vs white AUTOCITY 3D block letters". De AI interpreteert het logo steeds anders ondanks de beschrijving.
+## Echte oorzaak (niet React deduplicatie)
 
-3. **Nummerboorden niet behouden**: Logs tonen `plates_preserved: false`. De AI negeert of vervangt kentekenplaten.
+Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
 
-## Oplossing — 3 promptwijzigingen in `supabase/functions/showroom-photo-studio/index.ts`
+- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
+- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
+- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
 
-### 1. RETOUCH_PROMPT: anti-gele-waas + transparante lak
+In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
 
-Kernprobleem: "Replace outdoor reflections with neutral, dark, diffuse reflections" wordt geinterpreteerd als "voeg een donkere overlay toe". Dit moet subtieler.
+In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
 
-Wijzigingen:
-- Regel 14-15: Toevoegen dat kleurcorrectie NOOIT een kleurcast mag toevoegen. Expliciet: "Do NOT introduce any yellow, orange, warm, or cool color cast. The paint must remain the EXACT same hue as the original."
-- Regel 20: Herformuleren van reflectie-instructie: "Subtly soften outdoor reflections (trees, buildings, sky) so they become indistinct blurred shapes — do NOT replace them with dark overlays or colored tints. The goal is that reflections look like soft ambient light from an indoor environment, NOT that the paint changes color. The paint must remain TRANSPARENT, vibrant, and glossy — as if freshly waxed and polished under studio lighting."
-- Toevoegen: "CRITICAL COLOR RULE: Compare your output paint color against the input. If the hue has shifted in ANY direction (yellower, bluer, darker, lighter), your output is WRONG. The paint color must be pixel-identical to the original."
+## Oplossing
 
-### 2. SHOWROOM_PROMPT: logo + nummerboorden versterken
+Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
+- Gebruikt compatibele Radix versies (geen nested node_modules meer)
+- Verwijdert de `@babel/runtime` dependency
+- Lost het context-conflict op
 
-Logo (regels 93-98):
-- Toevoegen van exactere beschrijving gebaseerd op de referentiefoto's: "The AUTOCITY logo consists of TWO elements: (1) a thin white car silhouette LINE drawing above, and (2) white 3D BLOCK LETTERS spelling 'AUTOCITY' below. These are SOLID WHITE, NOT illuminated, NOT neon, NOT glowing, NOT in a different font. They are mounted on the dark textured wall. COPY THE LOGO EXACTLY FROM IMAGE 1 — pixel for pixel if possible."
-- Expliciet verbieden: "If your output shows any other style of AUTOCITY logo (neon, script font, illuminated, backlit, different layout), your output is WRONG and will be rejected."
+### Wijzigingen
 
-Nummerboorden (regel 89):
-- Versterken: "LICENSE PLATES ARE MANDATORY. Read the text on the license plate in Image 3 carefully. The EXACT same plate text, plate color (e.g. yellow Dutch plates), and plate holder/frame (e.g. 'AUTOCITY' branded frame) MUST appear on the vehicle in your output in the EXACT same position. If you cannot read the plate, preserve the visual appearance exactly. NEVER output a vehicle without its original plates."
+**Bestand: `package.json`**
+- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
 
-Kleur (regel 82):
-- Toevoegen: "The paint must look TRANSPARENT and vibrant — like freshly waxed and polished paint under professional studio lighting. Do NOT add any haze, matte effect, color cast, or dull appearance. The paint should have depth and clarity."
+**Bestand: `src/components/ui/command.tsx`**
+- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
 
-### 3. VERIFICATION_PROMPT: kleurcast als high severity
+**Bestand: `vite.config.ts`**
+- De bestaande `dedupe` configuratie blijft als extra veiligheid
+- Toevoegen van Radix interne pakketten aan dedupe als fallback:
+  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
 
-- Bij check 8 (COLOR) toevoegen: "Check specifically for yellow/warm color cast on the paint. If the vehicle appears yellower, warmer, or hazier than the original, this is a COLOR failure."
-- Kleurproblemen upgraden naar "high" severity zodat retry wordt getriggerd.
+## Verwacht resultaat
 
-## Samenvatting wijzigingen
-
-| Bestand | Wat |
-|---------|-----|
-| `supabase/functions/showroom-photo-studio/index.ts` | RETOUCH_PROMPT: anti-kleurcast regel, transparante lak instructie, subtielere reflectie-vervanging |
-| | SHOWROOM_PROMPT: exacte logo-beschrijving met silhouet + blokletters, verplichte nummerboorden met tekst, transparante lak-eis |
-| | VERIFICATION_PROMPT: kleurcast = high severity |
-
-Geen structurele/logica-wijzigingen — alleen prompt-teksten worden aangescherpt.
+Na upgrade en publicatie:
+- Klantenlijst is weer klikbaar en scrollbaar
+- Selecteren van klanten werkt correct
+- Data wordt opgeslagen
+- Werkt zowel in preview als op de gepubliceerde website
 
