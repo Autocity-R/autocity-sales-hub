@@ -244,33 +244,54 @@ serve(async (req) => {
       if (!compositeResponse.ok) return { error: await handleAiError(compositeResponse, 'Showroom') };
 
       const compositeData = await compositeResponse.json();
-      
-      // Check for embedded errors (e.g. rate limit returned as 200 with error in choice)
-      const choiceError = compositeData.choices?.[0]?.error;
-      if (choiceError) {
-        const errorCode = choiceError.code || 500;
-        const errorType = choiceError.metadata?.error_type || 'unknown';
-        console.error(`Compositing embedded error [${errorCode}]: ${errorType} - ${choiceError.message}`);
-        if (errorCode === 429 || errorType === 'rate_limit_exceeded') {
-          return { error: new Response(JSON.stringify({ error: 'Rate limit bereikt bij showroom stap. Probeer het later opnieuw.', step: 'composite' }),
-            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }) };
+
+      // Handle embedded provider errors returned inside a 200 response
+      const embeddedError = compositeData?.error
+        || compositeData?.choices?.[0]?.error
+        || compositeData?.choices?.find?.((c: any) => c?.error)?.error;
+
+      if (embeddedError) {
+        const code = Number(embeddedError.code || 500);
+        const errorType = embeddedError?.metadata?.error_type || '';
+        console.error(`Compositing embedded error [${code}]: ${errorType} - ${embeddedError.message}`);
+
+        if (code === 429 || errorType === 'rate_limit_exceeded') {
+          return {
+            error: new Response(
+              JSON.stringify({ error: 'Rate limit bereikt bij showroom stap. Probeer het later opnieuw.', step: 'composite' }),
+              { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          };
         }
+
         return { error: null, image: null };
       }
-      
-      const resultImage = compositeData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+
+      const resultImage = compositeData?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
       if (!resultImage) {
-        console.error('No image from compositing:', JSON.stringify(compositeData).substring(0, 500));
+        console.error('No image from compositing:', JSON.stringify(compositeData).substring(0, 800));
         return { error: null, image: null };
       }
+
       return { error: null, image: resultImage };
     };
 
     const compositeResult = await doComposite();
     if (compositeResult.error) return compositeResult.error;
     if (!compositeResult.image) {
-      return new Response(JSON.stringify({ error: 'Geen showroom afbeelding ontvangen.', step: 'composite' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      console.warn('Composite returned no image. Using safe fallback (enhanced photo).');
+      return new Response(JSON.stringify({
+        resultImage: enhancedImage,
+        usedFallback: true,
+        verification: {
+          pass: false,
+          severity: 'medium',
+          mirrored: false,
+          changed_parts: [],
+          issues: ['Geen showroom afbeelding ontvangen; fallback gebruikt.']
+        },
+        message: 'Verbeterde foto gebruikt (showroom stap tijdelijk niet beschikbaar)'
+      }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     console.log('Step 2 complete: Showroom compositing done');
 
