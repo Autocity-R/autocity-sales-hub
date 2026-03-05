@@ -299,6 +299,9 @@ serve(async (req) => {
           pass: false,
           severity: 'medium',
           mirrored: false,
+          showroom_match: false,
+          plates_preserved: true,
+          color_consistent: true,
           changed_parts: [],
           issues: ['Geen showroom afbeelding ontvangen; fallback gebruikt.']
         },
@@ -309,7 +312,7 @@ serve(async (req) => {
 
     // ━━━ STEP 3: AI Verification ━━━
     console.log('Step 3: AI verification...');
-    let verification = { pass: true, severity: 'none', mirrored: false, changed_parts: [] as string[], issues: [] as string[] };
+    let verification = { pass: true, severity: 'none', mirrored: false, showroom_match: true, plates_preserved: true, color_consistent: true, changed_parts: [] as string[], issues: [] as string[] };
     let finalImage = compositeResult.image;
     let usedFallback = false;
 
@@ -428,6 +431,9 @@ serve(async (req) => {
           pass: verification.pass,
           severity: verification.severity || 'none',
           mirrored: verification.mirrored || false,
+          showroom_match: verification.showroom_match !== false,
+          plates_preserved: verification.plates_preserved !== false,
+          color_consistent: verification.color_consistent !== false,
           changed_parts: verification.changed_parts || [],
           issues: verification.issues || [],
         },
