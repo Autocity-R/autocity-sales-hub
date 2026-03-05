@@ -43,7 +43,14 @@ const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is t
 - Improve exposure and contrast subtly
 - Clean glass surfaces (remove haze, smudges, water marks)
 - Deepen tire black point slightly
-- Subtly soften outdoor reflections (trees, buildings, sky, clouds, fences, parked cars, people) so they become indistinct blurred shapes — do NOT replace them with dark overlays or colored tints. The goal is that reflections look like soft ambient light from an indoor environment, NOT that the paint changes color. The paint must remain TRANSPARENT, vibrant, and glossy — as if freshly waxed and polished under studio lighting.
+- Remove ALL recognizable outdoor shapes from paint reflections (trees, sky gradient, clouds, building lines, fences, parked cars, people, horizon lines). Do NOT just blur them — REPLACE them with smooth dark studio ambient gradients + 1–2 soft linear LED streak reflections on hood/roof panels (matching a rectangular ceiling LED light source).
+- Simulate a professional automotive studio lighting model on the paint:
+  • Main LED ceiling light reflection as a bright, clean streak on roof and hood
+  • Secondary soft reflections on upper side body panels
+  • Darker gradient toward lower panels and wheel arches (natural studio falloff)
+- Windows: remove ALL outside scenery visible through or reflected in glass. Windows must appear as neutral dark studio glass. No visible outdoor scenery, sky, trees or horizon lines. Glass reflections must show subtle studio ceiling light reflections, NOT outdoor environment.
+- The vehicle must visually belong to the same photographic exposure as a dark indoor studio environment — do NOT leave the car looking like it was shot outdoors.
+- The paint must remain TRANSPARENT, vibrant, and glossy with depth — as if freshly waxed and polished under controlled studio lighting. Do NOT flatten the paint or add color cast.
 - Make chrome/piano-black trim less dull
 
 ━━━ YOU MUST NOT (identity features — GEOMETRY LOCKED) ━━━
