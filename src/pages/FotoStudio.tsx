@@ -48,26 +48,35 @@ const FotoStudio = () => {
     const loadVehicles = async () => {
       const { data } = await supabase
         .from('vehicles')
-        .select('id, brand, model, build_year, color, body_type, license_number')
+        .select('id, brand, model, year, color, license_number, details')
         .order('created_at', { ascending: false })
         .limit(500);
       
       if (data) {
-        setVehicles(data.map(v => ({
-          id: v.id,
-          label: `${v.brand} ${v.model}${v.build_year ? ` (${v.build_year})` : ''} — ${v.color || '?'} — ${v.license_number || '?'}`,
-          info: {
-            brand: v.brand,
-            model: v.model,
-            year: v.build_year,
-            color: v.color,
-            bodyType: v.body_type,
-          }
-        })));
+        setVehicles(data.map(v => {
+          const details = v.details as Record<string, any> || {};
+          return {
+            id: v.id,
+            label: `${v.brand} ${v.model}${v.year ? ` (${v.year})` : ''} — ${v.color || '?'} — ${v.license_number || '?'}`,
+            info: {
+              brand: v.brand,
+              model: v.model,
+              year: v.year,
+              color: v.color,
+              bodyType: details?.bodyType || null,
+            }
+          };
+        }));
       }
     };
     loadVehicles();
   }, []);
+
+  const handleVehicleSelect = (vehicleId: string) => {
+    setSelectedVehicleId(vehicleId);
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    setSelectedVehicleInfo(vehicle?.info || null);
+  };
   const [isProcessingAll, setIsProcessingAll] = useState(false);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -126,7 +135,7 @@ const FotoStudio = () => {
       ]);
 
       const { data, error } = await supabase.functions.invoke('showroom-photo-studio', {
-        body: { imageBase64: base64, referenceImageUrl }
+        body: { imageBase64: base64, referenceImageUrl, vehicleInfo: selectedVehicleInfo }
       });
 
       if (error) throw new Error(error.message || 'Verwerking mislukt');
@@ -209,6 +218,26 @@ const FotoStudio = () => {
             <p className="text-sm text-muted-foreground mt-1">
               Upload voertuigfoto's en laat AI ze omzetten naar professionele AutoCity showroom-beelden
             </p>
+          </div>
+
+          {/* Vehicle selector */}
+          <div className="w-full max-w-md">
+            <Select value={selectedVehicleId} onValueChange={handleVehicleSelect}>
+              <SelectTrigger className="w-full">
+                <Car className="h-4 w-4 mr-2 shrink-0" />
+                <SelectValue placeholder="Selecteer voertuig (optioneel)" />
+              </SelectTrigger>
+              <SelectContent>
+                {vehicles.map(v => (
+                  <SelectItem key={v.id} value={v.id}>{v.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedVehicleInfo && (
+              <p className="text-xs text-muted-foreground mt-1">
+                AI behoudt exact het {selectedVehicleInfo.year || ''} {selectedVehicleInfo.brand} {selectedVehicleInfo.model} model
+              </p>
+            )}
           </div>
           {images.length > 0 && (
             <div className="flex gap-2">
