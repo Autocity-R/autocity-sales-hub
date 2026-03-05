@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import OptimizedDashboardLayout from "@/components/layout/OptimizedDashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 
 interface StudioImage {
   id: string;
@@ -29,53 +29,22 @@ interface VehicleInfo {
   model: string;
   year: number | null;
   color: string | null;
-  bodyType: string | null;
-}
-
-interface VehicleOption {
-  id: string;
-  label: string;
-  info: VehicleInfo;
 }
 
 const FotoStudio = () => {
   const [images, setImages] = useState<StudioImage[]>([]);
-  const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
-  const [selectedVehicleInfo, setSelectedVehicleInfo] = useState<VehicleInfo | null>(null);
+  const [manualBrand, setManualBrand] = useState("");
+  const [manualModel, setManualModel] = useState("");
+  const [manualYear, setManualYear] = useState("");
 
-  useEffect(() => {
-    const loadVehicles = async () => {
-      const { data } = await supabase
-        .from('vehicles')
-        .select('id, brand, model, year, color, license_number, details')
-        .order('created_at', { ascending: false })
-        .limit(500);
-      
-      if (data) {
-        setVehicles(data.map(v => {
-          const details = v.details as Record<string, any> || {};
-          return {
-            id: v.id,
-            label: `${v.brand} ${v.model}${v.year ? ` (${v.year})` : ''} — ${v.color || '?'} — ${v.license_number || '?'}`,
-            info: {
-              brand: v.brand,
-              model: v.model,
-              year: v.year,
-              color: v.color,
-              bodyType: details?.bodyType || null,
-            }
-          };
-        }));
-      }
+  const getVehicleInfo = (): VehicleInfo | null => {
+    if (!manualBrand.trim() || !manualModel.trim()) return null;
+    return {
+      brand: manualBrand.trim(),
+      model: manualModel.trim(),
+      year: manualYear.trim() ? parseInt(manualYear.trim(), 10) || null : null,
+      color: null,
     };
-    loadVehicles();
-  }, []);
-
-  const handleVehicleSelect = (vehicleId: string) => {
-    setSelectedVehicleId(vehicleId);
-    const vehicle = vehicles.find(v => v.id === vehicleId);
-    setSelectedVehicleInfo(vehicle?.info || null);
   };
   const [isProcessingAll, setIsProcessingAll] = useState(false);
 
@@ -135,7 +104,7 @@ const FotoStudio = () => {
       ]);
 
       const { data, error } = await supabase.functions.invoke('showroom-photo-studio', {
-        body: { imageBase64: base64, referenceImageUrl, vehicleInfo: selectedVehicleInfo }
+        body: { imageBase64: base64, referenceImageUrl, vehicleInfo: getVehicleInfo() }
       });
 
       if (error) throw new Error(error.message || 'Verwerking mislukt');
@@ -222,24 +191,33 @@ const FotoStudio = () => {
             </div>
           </div>
 
-          {/* Vehicle selector */}
+          {/* Vehicle info - manual input */}
           <div className="flex items-center gap-3">
-            <div className="w-full max-w-md">
-              <Select value={selectedVehicleId} onValueChange={handleVehicleSelect}>
-                <SelectTrigger className="w-full">
-                  <Car className="h-4 w-4 mr-2 shrink-0" />
-                  <SelectValue placeholder="Selecteer voertuig (optioneel)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vehicles.map(v => (
-                    <SelectItem key={v.id} value={v.id}>{v.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {selectedVehicleInfo && (
-              <p className="text-xs text-muted-foreground">
-                AI behoudt exact het {selectedVehicleInfo.year || ''} {selectedVehicleInfo.brand} {selectedVehicleInfo.model} model
+            <Input
+              placeholder="Merk (bijv. BMW)"
+              value={manualBrand}
+              onChange={e => setManualBrand(e.target.value)}
+              className="w-40"
+              maxLength={50}
+            />
+            <Input
+              placeholder="Model (bijv. X5)"
+              value={manualModel}
+              onChange={e => setManualModel(e.target.value)}
+              className="w-40"
+              maxLength={50}
+            />
+            <Input
+              placeholder="Bouwjaar"
+              value={manualYear}
+              onChange={e => setManualYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              className="w-28"
+              maxLength={4}
+            />
+            {manualBrand && manualModel && (
+              <p className="text-xs text-muted-foreground whitespace-nowrap">
+                <Car className="h-3.5 w-3.5 inline mr-1" />
+                AI behoudt exact het {manualYear || ''} {manualBrand} {manualModel} model
               </p>
             )}
           </div>
