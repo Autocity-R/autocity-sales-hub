@@ -30,274 +30,237 @@ const ANGLE_CLASSIFY_PROMPT = `You are a vehicle photography angle classifier. A
 Respond with ONLY the label, nothing else. No explanation, no quotes, no punctuation.
 Example valid responses: left-side, right-front, rear, interior, unknown`;
 
-// ━━━ STEP 1: CLEAN ONLY (cosmetic cleaning, NO relight, NO reflections) ━━━
-const CLEAN_PROMPT = `You are a photo cleaner. Your ONLY job is cosmetic surface cleaning. Do NOT change lighting, reflections, or the background.
+// ━━━ STEP 1: COSMETIC RETOUCH (Identity-Locked) ━━━
+const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is to clean and enhance this vehicle photo while keeping every pixel of the car's GEOMETRY unchanged. The vehicle may have been photographed OUTDOORS (on a street, parking lot, etc.) — your job is to make it look like it was photographed INDOORS in a professional showroom.
 
-━━━ YOU MAY (cosmetic surface cleaning ONLY) ━━━
+━━━ YOU MAY (cosmetic only) ━━━
 - Remove dirt, mud, water spots, dust, bird droppings from paint surfaces
-- Remove minor scratches and swirl marks from paint
-- Reduce image noise and grain
-- Correct white balance subtly (remove yellow/green cast)
-- Correct minor exposure (brighten underexposed, tone down overexposed — subtle only)
-- Clean glass surfaces (remove haze, smudges, water marks on glass)
-- Deepen tire black point slightly (make tires look fresh)
+- Enhance paint gloss and recover highlights (make paint look freshly polished)
+- Make paint appear freshly waxed — smooth, even gloss across ALL panels, no dull patches or uneven spots. The paint must look TRANSPARENT, vibrant, and glossy with depth and clarity — NOT hazy, matte, or dull.
+- Correct white balance and color temperature (remove yellow/green warehouse cast)
+- Do NOT introduce any yellow, orange, warm, or cool color cast. The paint must remain the EXACT same hue as the original.
+- Reduce noise and grain
+- Improve exposure and contrast subtly
+- Clean glass surfaces (remove haze, smudges, water marks)
+- Deepen tire black point slightly
+- Remove ALL recognizable outdoor shapes from paint reflections (trees, sky gradient, clouds, building lines, fences, parked cars, people, horizon lines). Do NOT just blur them — REPLACE them with smooth dark studio ambient gradients + 1–2 soft linear LED streak reflections on hood/roof panels (matching a rectangular ceiling LED light source).
+- Simulate a professional automotive studio lighting model on the paint:
+  • Main LED ceiling light reflection as a bright, clean streak on roof and hood
+  • Secondary soft reflections on upper side body panels
+  • Darker gradient toward lower panels and wheel arches (natural studio falloff)
+- Windows: remove ALL outside scenery visible through or reflected in glass. Windows must appear as neutral dark studio glass. No visible outdoor scenery, sky, trees or horizon lines. Glass reflections must show subtle studio ceiling light reflections, NOT outdoor environment.
+- The vehicle must visually belong to the same photographic exposure as a dark indoor studio environment — do NOT leave the car looking like it was shot outdoors.
+- The paint must remain TRANSPARENT, vibrant, and glossy with depth — as if freshly waxed and polished under controlled studio lighting. Do NOT flatten the paint or add color cast.
 - Make chrome/piano-black trim less dull
-- Make paint look freshly polished — smooth, even gloss
 
-━━━ YOU MUST NOT (STRICTLY FORBIDDEN) ━━━
-- Do NOT change, replace, or modify ANY reflections on paint (keep original reflections exactly as they are)
-- Do NOT add LED streaks, studio lighting, or any artificial light effects
-- Do NOT simulate studio lighting or indoor lighting
-- Do NOT change or darken windows — keep window content exactly as-is
-- Do NOT change the background in any way
-- Do NOT change the overall exposure dramatically
-- Do NOT change paint color or add any color cast
-- Do NOT change headlight shape, LED signature, or DRL pattern
-- Do NOT alter bumper lines, grille pattern, or front fascia
-- Do NOT modify wheel/rim spoke design
-- Do NOT add, remove, or change badges, emblems, or model text
-- Do NOT smooth or alter body character lines or creases
-- Do NOT mirror or flip the vehicle
+━━━ YOU MUST NOT (identity features — GEOMETRY LOCKED) ━━━
+- Do NOT change headlight SHAPE, LED signature, or DRL pattern in any way
+- Do NOT alter bumper lines, grille pattern, air intake design, or front fascia
+- Do NOT modify wheel/rim spoke design, pattern, or number of spokes
+- Do NOT add, remove, or change any badges, emblems, or model text
+- Do NOT smooth, alter, or "clean up" body character lines or creases
+- Do NOT change taillight shape, design, or light signature
+- Do NOT mirror or flip the vehicle orientation
 - Do NOT crop, zoom, reframe, or change the camera angle
-- Do NOT remove or alter license plates
+- You MAY subtly soften outdoor environment reflections so they look like soft indoor ambient light. But do NOT alter the SHAPE of reflective surfaces — only soften what is reflected in them.
+- Do NOT add or remove anything from the image
+- Do NOT change the background or surroundings (that happens in step 2)
+- Do NOT remove or alter license plates or plate holders
 
-━━━ CRITICAL RULE ━━━
-The reflections on the paint must remain EXACTLY as they are in the input. If there are trees, sky, or buildings reflected — LEAVE THEM. That is handled in a later step. Your job is ONLY surface cleaning.
+━━━ CRITICAL COLOR RULE ━━━
+Compare your output paint color against the input. If the hue has shifted in ANY direction (yellower, bluer, darker, lighter, warmer, cooler), your output is WRONG. The paint color must be pixel-identical to the original. Do NOT add any color cast, tint, or filter. The paint must remain vibrant and transparent with depth.
 
-━━━ OUTPUT ━━━
-The same photo with cleaner surfaces, corrected white balance, reduced noise. Nothing else changes. The image must be visually identical except for cleanliness.`;
+━━━ CRITICAL TEST ━━━
+If you overlay input and output at 50% opacity, ONLY texture/lighting/reflections should differ — NEVER geometry, edges, or silhouette. The car's outline must be pixel-identical.
 
-// ━━━ STEP 2: ISOLATE (background → neutral #404040 gray) ━━━
-const ISOLATE_PROMPT = `You are a background removal specialist. Replace the ENTIRE background with a solid uniform dark gray color (#404040).
+━━━ OUTPUT QUALITY ━━━
+- Maximum sharpness — no added noise, no grain, no compression artifacts.
+- All fine details (badge text, spoke edges, panel gaps, headlight internals) must remain tack-sharp.
+- Do NOT add film grain or any texture overlay.
 
-━━━ YOUR TASK ━━━
-- Replace ALL background (sky, buildings, trees, roads, parking lots, walls, other cars, people, objects) with SOLID UNIFORM #404040 dark gray
-- The gray must be completely flat and uniform — no gradients, no texture, no variation
-- Keep a subtle ground plane shadow directly under the tires for natural grounding
+OUTPUT: The same photo with improved lighting, color accuracy, reduced noise, cleaned surfaces, enhanced paint gloss, and softened reflections. Nothing structural changes. The paint color must be IDENTICAL to the input.`;
 
-━━━ VEHICLE PRESERVATION (ABSOLUTE — DO NOT TOUCH THE CAR) ━━━
-- Do NOT change the vehicle in ANY way
-- Do NOT change reflections on paint — even if they show outdoor scenes
-- Do NOT relight the vehicle
-- Do NOT alter paint color, gloss, or finish
-- Do NOT alter wheels, headlights, taillights, grille, or any design element
-- Do NOT change window content or tint
-- Do NOT change badges, emblems, or license plates
-- Preserve geometry EXACTLY — every edge, every line, every curve
-- The car must be PIXEL-IDENTICAL to the input, only the background changes
+// ━━━ STEP 2A: SHOWROOM BACKGROUND — NORMAL (with angle lock + reference studio) ━━━
+const SHOWROOM_PROMPT_NORMAL = `You are given THREE images:
 
-━━━ EDGE QUALITY ━━━
-- Clean, precise edges between vehicle and gray background
-- No halo, no fringing, no color bleed
-- Fine details like antennas, roof rails, mirror edges must be preserved
-- Wheels and wheel arches must have clean separation from ground
+IMAGE 1 (Enhanced Vehicle): The retouched vehicle photo to place in the showroom.
+IMAGE 2 (Original Vehicle — GROUND TRUTH): The UNEDITED original photograph. This is your ABSOLUTE REFERENCE for all vehicle details.
+IMAGE 3 (STUDIO REFERENCE — ENVIRONMENT TEMPLATE): This is the EXACT showroom environment you must use. Do NOT generate a new room. Place the vehicle INTO this studio.
 
-━━━ OUTPUT ━━━
-The exact same vehicle on a solid #404040 gray background. Nothing about the vehicle changes.`;
-
-// ━━━ STEP 3: COMPOSITE (place isolated car into studio) ━━━
-const COMPOSITE_PROMPT_NORMAL = `You are given THREE images:
-
-IMAGE 1 (Isolated Vehicle): The vehicle on a neutral gray background. Place this into the studio.
-IMAGE 2 (Original Vehicle — GROUND TRUTH): The UNEDITED original photograph. This is your ABSOLUTE REFERENCE for vehicle identity.
-IMAGE 3 (STUDIO REFERENCE — ENVIRONMENT TEMPLATE): This is the EXACT showroom environment. Place the vehicle INTO this studio.
-
-YOUR TASK: Place the vehicle from Image 1 into the EXACT studio environment shown in Image 3. Do NOT generate a new room. Do NOT relight the car yet — that happens in the next step.
+YOUR TASK: Place the vehicle from Image 1 into the EXACT studio environment shown in Image 3. The studio must remain IDENTICAL — same walls, same floor, same ceiling light, same reflections, same atmosphere.
 
 ━━━ STUDIO ENVIRONMENT (MATCH IMAGE 3 EXACTLY) ━━━
 - Use Image 3 as the EXACT environment template
-- The walls, floor, ceiling lighting must be IDENTICAL to Image 3
+- The walls, floor, ceiling lighting, and overall atmosphere must be IDENTICAL to Image 3
 - Do NOT change the wall color, floor texture, or lighting configuration
 - Do NOT add any logos, text, branding, people, props, or decorative elements
 - Do NOT generate a new showroom — ONLY use the room from Image 3
+- The floor reflection style must match Image 3 (same intensity, same blur, same fade)
 
-━━━ VEHICLE GEOMETRY LOCK (CRITICAL — NO MODIFICATIONS) ━━━
-The vehicle's GEOMETRY and DESIGN must remain IDENTICAL to Image 2:
+━━━ VEHICLE INTEGRITY (CRITICAL — DO NOT MODIFY THE CAR) ━━━
+The vehicle must remain PIXEL-IDENTICAL to Image 2 (original). Specifically:
+- Body color and paint finish — EXACT same hue, saturation, brightness. No color cast, no warming, no cooling.
+- Paint must look TRANSPARENT, vibrant, glossy with depth — like freshly waxed under studio lighting.
 - Headlight shape, LED signature, DRL pattern — IDENTICAL
 - Taillight shape and design — IDENTICAL
 - Front grille and bumper design — IDENTICAL
 - Wheel/rim spoke pattern and design — IDENTICAL
 - All badges, emblems, model text — IDENTICAL
-- License plates and plate holders — IDENTICAL
+- License plates and plate holders — MUST remain exactly as in Image 2. Do NOT remove, alter, or regenerate plates.
 - Body lines, creases, proportions — IDENTICAL
-- Paint COLOR — IDENTICAL (no color cast, no hue shift)
-
-PHOTOGRAPHIC ADJUSTMENTS ALLOWED (these are NOT geometry):
-- Paint reflections may change to match the studio environment
-- Overall exposure may adjust to match studio ambient light
-- These changes happen primarily in the next step (relight), but minor integration is OK here
+- Window tint level — IDENTICAL
 
 ━━━ CAMERA ANGLE PRESERVATION (CRITICAL) ━━━
 The input angle category is: {ANGLE}.
-- Do NOT rotate, reframe, or "improve" the viewing angle
-- {ANGLE} must remain {ANGLE} — no category changes
-- Only micro-straightening (±2°) allowed
+You MUST preserve this EXACT angle category in the output.
+- Do NOT rotate, reframe, or "improve" the viewing angle in ANY way.
+- Do NOT change the perspective — {ANGLE} must remain {ANGLE}.
+- A left-side photo MUST remain left-side. NOT left-front, NOT three-quarter.
+- A left-front photo MUST remain left-front. NOT front, NOT left-side.
+- A rear photo MUST remain rear. NOT rear-quarter.
+- Only micro-straightening (±2°) is allowed. Changing the angle category is NOT acceptable.
+- Do NOT rotate to improve composition.
 
 ━━━ ANTI-MIRROR RULE (CRITICAL) ━━━
-Check the LICENSE PLATE position in Image 2.
-- The plate must appear on the SAME SIDE in the output
-- Reversing left↔right = CRITICAL FAILURE
+Look at the LICENSE PLATE position in Image 2.
+- The plate must appear on the SAME SIDE of the output image.
+- If the plate is on the LEFT side of Image 2, it MUST be on the LEFT side of the output.
+- If the plate is on the RIGHT side of Image 2, it MUST be on the RIGHT side of the output.
+- If you can see the DRIVER SIDE (left in EU/NL), it must remain the DRIVER SIDE.
+- Reversing left↔right = CRITICAL FAILURE. NEVER mirror or flip the vehicle.
 
-━━━ VEHICLE PLACEMENT ━━━
-- Center horizontally, fill 55-60% of image width (NOT more)
-- Leave at least 15% margin on left and right sides
-- Leave at least 12% margin above the roofline
-- All wheels on floor plane naturally
-- Natural viewing distance — as if photographed 6-8 meters away
-- When in doubt, place FURTHER away rather than closer
-- Do NOT crop any part of the vehicle
-
-━━━ SHADOWS ━━━
-- Tight tire contact shadow directly under each tire (~50-60% opacity, sharp at tire, softening outward)
-- Soft ambient shadow under full chassis (~20% opacity, wide spread)
-- Shadow direction must match the studio lighting from Image 3
-
-━━━ FLOOR REFLECTION ━━━
-- BARELY visible — faint hint only (~5-8% opacity)
-- Heavily blurred, fading quickly downward
-- NOT a mirror effect — just subtle suggestion of reflection
-
-━━━ EDGE BLENDING ━━━
-- Vehicle edges feathered 1-2px and color-matched to studio floor/wall
-- NO halo, NO visible cut line, NO edge artifacts
-- Transition between vehicle bottom and floor must be SEAMLESS
+━━━ CAMERA HEIGHT LOCK ━━━
+- The camera height and horizon line must match Image 1 exactly.
+- Do NOT raise or lower the camera viewpoint.
+- Do NOT tilt the camera up or down.
+- Do NOT change the horizon position.
 
 ━━━ ZERO-CROP GUARANTEE ━━━
-- COMPLETE vehicle visible — ALL 4 wheels, BOTH mirrors, entire roof, all bumpers
+- The COMPLETE vehicle must be visible — ALL 4 wheels, BOTH mirrors, entire roof, all bumpers
+- Visible margin between vehicle edges and image borders on ALL sides
 - Output MUST be 1920x1080 pixels, landscape orientation
 
-━━━ IMAGE QUALITY ━━━
-- Ultra high quality at 1920x1080 — maximum sharpness, zero noise
-- Showroom environment must be PERFECTLY SMOOTH — no grain, no artifacts, no banding
-- Professional DSLR look — NOT an AI render
-
-OUTPUT: A photorealistic 1920x1080 image of the vehicle placed in the EXACT studio from Image 3. Angle MUST be {ANGLE}. Studio MUST match Image 3.`;
-
-const COMPOSITE_PROMPT_STRICT = `You are given THREE images:
-
-IMAGE 1 (Isolated Vehicle): The vehicle on a neutral gray background.
-IMAGE 2 (Original Vehicle — GROUND TRUTH): The UNEDITED original photograph.
-IMAGE 3 (STUDIO REFERENCE — ENVIRONMENT TEMPLATE): The EXACT showroom to use.
-
-YOUR TASK: Place the vehicle into the studio from Image 3.
-
-━━━ ZERO ROTATION / ZERO REFRAME (ABSOLUTE RULE) ━━━
-- ZERO rotation. Do NOT rotate the vehicle even 1 degree.
-- ZERO reframe. Do NOT change the camera angle.
-- ZERO perspective change.
-- Keep the car position and size as close to the input as possible.
-- Only replace the background. Do NOT "improve" composition.
-
-━━━ STUDIO ENVIRONMENT (MATCH IMAGE 3 EXACTLY) ━━━
-- Walls, floor, ceiling — IDENTICAL to Image 3
-- Do NOT generate a new showroom
-
-━━━ VEHICLE GEOMETRY LOCK ━━━
-All geometry — IDENTICAL to Image 2. No changes to headlights, wheels, grille, badges, plates, body lines, color.
-
-━━━ ANTI-MIRROR RULE ━━━
-License plate must remain on the SAME SIDE as in Image 2.
-
 ━━━ VEHICLE PLACEMENT ━━━
-- Fill 55-60%, margins 15% sides, 12% above roof
-- When in doubt, place FURTHER away
-- Do NOT crop any part of the vehicle
+- Center horizontally, fill ~60-75% of image width
+- Leave at least 6-10% margin on left and right sides, and 8-12% above the roofline
+- All wheels on floor plane naturally
+- Do NOT crop any part of the vehicle — complete car must be visible with breathing room
 
 ━━━ SHADOWS & REFLECTIONS ━━━
-- Contact shadows under tires (50-60% opacity)
-- Ambient chassis shadow (20% opacity)
-- Floor reflection barely visible (5-8% opacity)
-- NO halo, NO edge artifacts
+- Tight tire contact shadow directly under each tire (~50-60% opacity, sharp close to tire, softening outward)
+- Soft ambient shadow under the full chassis (~20-25% opacity, wide spread)
+- Shadow direction must match the studio lighting from Image 3
+- Floor reflection must be BARELY visible — just a faint hint, not a mirror effect (~5% opacity, heavily blurred, fading quickly)
+- Vehicle edges must be feathered 1-2px and color-matched to the studio floor/wall — NO halo, NO visible cut line, NO edge artifacts
+- All reflections on vehicle paint must be consistent with the indoor studio from Image 3 — no trees, sky, buildings
+
+━━━ LIGHTING INTEGRATION (CRITICAL FOR REALISM) ━━━
+- The vehicle MUST look like it is PHYSICALLY PRESENT in the studio from Image 3.
+- Study the ambient lighting in Image 3: it is a DARK room with controlled LED light sources.
+- The vehicle's paint reflections must show ONLY the studio environment — LED ceiling lights as bright streaks on the roof/hood/panels, dark ambient on lower body panels.
+- LED highlight streaks on paint must follow the SAME direction and geometry as the LED shape in Image 3.
+- Remove ALL remaining outdoor reflections from paint. Replace with what the studio walls/ceiling/floor would reflect.
+- The vehicle's overall brightness and contrast must match the studio's ambient light level — do NOT make the car brighter than the room.
+- Highlights on chrome, glass, and paint must come from the LED light source positions visible in Image 3.
+- The color temperature of light on the vehicle must match Image 3 exactly.
+- Windows: any remaining outdoor scenery must be replaced with neutral dark studio glass. Glass reflections must match the studio ceiling lights from Image 3.
+- The vehicle must visually belong to the SAME photographic exposure as the studio environment.
+- The transition between the vehicle's bottom edge and the floor must be SEAMLESS — no visible cut line, no halo, no edge artifacts.
+
+━━━ IMAGE QUALITY (CRITICAL) ━━━
+- Output must be ULTRA HIGH QUALITY at 1920x1080 — maximum sharpness, zero noise.
+- The showroom environment (walls, floor, ceiling) must be PERFECTLY SMOOTH — no grain, no noise, no compression artifacts, no color banding.
+- Floor reflection must be crisp and clean — no pixelation.
+- Lighting gradients must be smooth — no visible banding or stepping.
+- The vehicle must retain ALL fine detail: paint texture, badge text, spoke edges, panel gaps, headlight internals.
+- The image must look like a professional DSLR photograph — NOT like an AI render.
+- NO film grain. NO noise. NO soft focus on background. Tack-sharp everywhere.
+
+━━━ INTERIOR PHOTO HANDLING ━━━
+If Image 1 is an interior/cabin photo: enhance lighting/clarity, replace visible window backgrounds with dark gradient, do NOT place in studio.
+
+OUTPUT: A photorealistic 1920x1080 image of the vehicle placed in the EXACT studio from Image 3. Every vehicle detail must match Image 2 exactly. The viewing angle MUST be {ANGLE}. The studio environment MUST match Image 3 exactly.`;
+
+// ━━━ STEP 2B: SHOWROOM BACKGROUND — STRICT (zero rotation, for retry & unknown) ━━━
+const SHOWROOM_PROMPT_STRICT = `You are given THREE images:
+
+IMAGE 1 (Enhanced Vehicle): The retouched vehicle photo to place in the showroom.
+IMAGE 2 (Original Vehicle — GROUND TRUTH): The UNEDITED original photograph. This is your ABSOLUTE REFERENCE for all vehicle details.
+IMAGE 3 (STUDIO REFERENCE — ENVIRONMENT TEMPLATE): This is the EXACT showroom environment you must use. Do NOT generate a new room.
+
+YOUR TASK: Place the vehicle from Image 1 into the EXACT studio environment shown in Image 3.
+
+━━━ STUDIO ENVIRONMENT (MATCH IMAGE 3 EXACTLY) ━━━
+- Use Image 3 as the EXACT environment template
+- The walls, floor, ceiling lighting must be IDENTICAL to Image 3
+- Do NOT generate a new showroom — ONLY use the room from Image 3
+- Do NOT add logos, text, branding, people, props, or decorative elements
+
+━━━ VEHICLE INTEGRITY (DO NOT MODIFY THE CAR) ━━━
+The vehicle must remain PIXEL-IDENTICAL to Image 2 (original). All features — color, headlights, taillights, grille, wheels, badges, plates, body lines, proportions — IDENTICAL.
+
+━━━ ZERO ROTATION / ZERO REFRAME (ABSOLUTE RULE) ━━━
+This is a STRICT MODE output. The following rules are ABSOLUTE and NON-NEGOTIABLE:
+- ZERO rotation. Do NOT rotate the vehicle even 1 degree.
+- ZERO reframe. Do NOT change the camera angle, perspective, or viewpoint.
+- ZERO perspective change. The car must appear from the EXACT same angle as in Image 1.
+- Do NOT "improve" composition, do NOT "correct" the angle, do NOT make it "more dramatic".
+- Keep the car position and size as close to the input as possible.
+- Only replace the background and adjust lighting. Nothing else.
+
+━━━ ANTI-MIRROR RULE (CRITICAL) ━━━
+Look at the LICENSE PLATE position in Image 2.
+- The plate must appear on the SAME SIDE of the output image.
+- If the plate is on the LEFT side of Image 2, it MUST be on the LEFT side of the output.
+- Reversing left↔right = CRITICAL FAILURE. NEVER mirror or flip the vehicle.
+
+━━━ CAMERA HEIGHT LOCK ━━━
+- The camera height and horizon line must match Image 1 exactly.
+- Do NOT raise or lower the camera viewpoint.
+- Do NOT tilt. Do NOT change the horizon.
 
 ━━━ ZERO-CROP GUARANTEE ━━━
-- COMPLETE vehicle visible, 1920x1080 output
+- The COMPLETE vehicle must be visible — ALL 4 wheels, BOTH mirrors, entire roof, all bumpers
+- Output MUST be 1920x1080 pixels, landscape orientation
 
-OUTPUT: Photorealistic 1920x1080 image. ZERO rotation. Studio MUST match Image 3.`;
+━━━ VEHICLE PLACEMENT ━━━
+- Center horizontally, fill ~60-75% of image width
+- Leave at least 6-10% margin on left and right sides, and 8-12% above the roofline
+- All wheels on floor plane naturally
+- Do NOT crop any part of the vehicle — complete car must be visible with breathing room
 
-// ━━━ STEP 4: RELIGHT (pro photographer look — the magic step) ━━━
-const RELIGHT_PROMPT = `You are given TWO images:
+━━━ SHADOWS & REFLECTIONS ━━━
+- Tight tire contact shadow directly under each tire (~50-60% opacity, sharp close to tire, softening outward)
+- Soft ambient shadow under the full chassis (~20-25% opacity, wide spread)
+- Shadow direction must match the studio lighting from Image 3
+- Floor reflection must be BARELY visible — just a faint hint, not a mirror effect (~5% opacity, heavily blurred, fading quickly)
+- Vehicle edges must be feathered 1-2px and color-matched to the studio floor/wall — NO halo, NO visible cut line, NO edge artifacts
 
-IMAGE 1 (Composited Vehicle): The vehicle already placed in the studio. Your job is to make it look PHOTOGRAPHICALLY REAL — as if shot by a professional automotive photographer in this exact studio.
-IMAGE 2 (STUDIO REFERENCE): The studio environment for lighting reference.
+━━━ LIGHTING INTEGRATION (CRITICAL FOR REALISM) ━━━
+- The vehicle MUST look like it is PHYSICALLY PRESENT in the studio from Image 3.
+- Study the ambient lighting in Image 3: it is a DARK room with controlled LED light sources.
+- The vehicle's paint reflections must show ONLY the studio environment — LED ceiling lights as bright streaks on the roof/hood/panels, dark ambient on lower body panels.
+- LED highlight streaks on paint must follow the SAME direction and geometry as the LED shape in Image 3.
+- Remove ALL remaining outdoor reflections from paint. Replace with what the studio walls/ceiling/floor would reflect.
+- The vehicle's overall brightness and contrast must match the studio's ambient light level — do NOT make the car brighter than the room.
+- Highlights on chrome, glass, and paint must come from the LED light source positions visible in Image 3.
+- The color temperature of light on the vehicle must match Image 3 exactly.
+- Windows: any remaining outdoor scenery must be replaced with neutral dark studio glass. Glass reflections must match the studio ceiling lights from Image 3.
+- The vehicle must visually belong to the SAME photographic exposure as the studio environment.
+- The transition between the vehicle's bottom edge and the floor must be SEAMLESS — no visible cut line, no halo, no edge artifacts.
 
-YOUR TASK: Apply professional automotive studio lighting to the vehicle so it looks like it was PHYSICALLY PHOTOGRAPHED in this studio. This is where amateur → pro photographer quality happens.
+━━━ IMAGE QUALITY (CRITICAL) ━━━
+- Output must be ULTRA HIGH QUALITY at 1920x1080 — maximum sharpness, zero noise.
+- The showroom environment (walls, floor, ceiling) must be PERFECTLY SMOOTH — no grain, no noise, no compression artifacts, no color banding.
+- Floor reflection must be crisp and clean — no pixelation.
+- Lighting gradients must be smooth — no visible banding or stepping.
+- The vehicle must retain ALL fine detail: paint texture, badge text, spoke edges, panel gaps, headlight internals.
+- The image must look like a professional DSLR photograph — NOT like an AI render.
+- NO film grain. NO noise. NO soft focus on background. Tack-sharp everywhere.
 
-━━━ RULE A — GEOMETRY LOCK (ABSOLUTE — NEVER VIOLATE) ━━━
-You MUST NOT change ANY of the following:
-- Wheel/rim spoke design, pattern, or shape
-- Headlight shape, LED signature, DRL pattern
-- Taillight shape and design
-- Grille pattern and design
-- Bumper lines and air intake design
-- Body character lines and creases
-- Badges, emblems, model text
-- License plates and plate holders
-- Vehicle proportions and silhouette
-- Camera angle and perspective
+OUTPUT: A photorealistic 1920x1080 image of the vehicle placed in the EXACT studio from Image 3. The viewing angle must be IDENTICAL to the input. ZERO rotation allowed.`;
 
-"Do not redraw or invent missing details; preserve photographic texture."
-
-━━━ RULE B — PAINT & GLASS RENDERING (WHAT YOU MAY CHANGE) ━━━
-You MAY adjust these to achieve professional studio look:
-- Paint reflections: replace outdoor reflections (trees, sky, buildings) with studio-appropriate reflections
-- Paint gloss: enhance to look freshly waxed and polished under studio lighting — TRANSPARENT, vibrant, glossy with depth
-- Exposure: match the studio's ambient light level
-- Contrast: adjust to match controlled studio lighting
-- Windows: replace outdoor scenery with neutral dark studio glass
-- Chrome reflections: should reflect studio ceiling LED, not outdoor light
-- Glass reflections: should show subtle studio ceiling light
-
-━━━ RULE C — STUDIO REFLECTION MODEL (WHAT PAINT MUST SHOW) ━━━
-The paint must reflect the studio environment from Image 2:
-
-Paint reflections must show:
-• Soft dark gradients from studio walls (dark ambient on side panels)
-• Bright linear LED streak from ceiling light on roof and hood
-• Subtle secondary highlights on upper shoulder line
-• Lower panels and wheel arches DARKER (natural studio falloff)
-• NO outdoor shapes — no trees, sky, buildings, horizon lines, fences, people
-
-Per-panel checklist (verify each before output):
-• Hood — ceiling LED streak, NO sky gradient
-• Roof — ceiling LED streak, NO clouds or blue
-• Left door/fender — dark studio wall gradient, NO trees/poles/buildings
-• Right door/fender — same as left
-• Rear quarter panels — dark ambient, NO outdoor shapes
-• Front/rear bumpers — dark floor/wall reflections only
-• Chrome trim — studio ceiling LED reflection
-• Windows — neutral dark studio glass, NO outdoor scenery
-
-━━━ STUDIO LIGHTING BLUEPRINT (MANDATORY — SAME FOR ALL IMAGES) ━━━
-Lighting setup:
-• One large rectangular LED ceiling light directly above the vehicle (as in Image 2)
-• Soft side ambient reflections from dark studio walls
-• Dark ambient floor reflection
-
-Paint highlights CONSISTENTLY:
-• Bright LED streak along roofline (most prominent)
-• Secondary highlight across upper shoulder line
-• Subtle highlight on hood surface
-• Lower panels and wheel arches DARKER (natural falloff)
-
-Every output image must have this SAME lighting feel. 10 photos in a row should look identical in lighting.
-
-━━━ EXPOSURE CONSISTENCY (CRITICAL) ━━━
-- Whether input was bright sunlight, overcast, or shade — output must look like SAME dark studio with SAME controlled lighting
-- Target: moderately lit car with LED ceiling as dominant light source
-- Every photo must have same overall brightness feel
-
-━━━ CRITICAL COLOR RULE ━━━
-The paint COLOR (hue) must remain IDENTICAL to the input. Only REFLECTIONS change — not the underlying paint color. No color cast, no warming, no cooling. The paint must remain vibrant and transparent with depth.
-
-━━━ QUALITY ━━━
-- Maximum sharpness, zero noise, zero grain
-- All fine details tack-sharp (badge text, spoke edges, panel gaps, headlight internals)
-- Must look like professional DSLR photograph, NOT AI render
-- Output: 1920x1080
-
-OUTPUT: The same composited image with professional studio lighting applied. The car must look like it was PHYSICALLY PHOTOGRAPHED in this studio by a professional automotive photographer.`;
-
-// ━━━ STEP 5: VERIFICATION (upgraded with studio_consistent + cropped_vehicle) ━━━
+// ━━━ STEP 3: AI VERIFICATION (with angle check) ━━━
 const VERIFICATION_PROMPT = `You are a quality control inspector comparing a RESULT image against an ORIGINAL vehicle photograph.
 
 IMAGE 1 (Original): The unedited original vehicle photo — your GROUND TRUTH.
@@ -305,32 +268,35 @@ IMAGE 2 (Result): The AI-processed showroom result to verify.
 
 The input was classified as angle category: "{ANGLE}".
 
-Check these 8 critical points by comparing Image 2 against Image 1:
+Check these 6 critical identity features by comparing Image 2 against Image 1:
 
 1. HEADLIGHTS: Is the headlight shape, LED signature, and DRL pattern identical?
 2. WHEELS: Is the wheel/rim spoke pattern and design identical?
-3. CAMERA ANGLE: Is the viewing angle the same as the original? The input was "{ANGLE}".
+3. CAMERA ANGLE: Is the viewing angle the same as the original? The input was classified as "{ANGLE}".
    - A left-side photo must remain left-side, NOT left-front or three-quarter.
    - A rear photo must remain rear, NOT rear-quarter.
-   - If the angle CATEGORY changed → HIGH SEVERITY failure.
-   - Minor angle adjustment (±2°) within SAME category is acceptable.
+   - A front photo must remain front, NOT front-quarter.
+   - If the angle CATEGORY has changed (e.g. side became three-quarter, or rear became rear-quarter), this is a HIGH SEVERITY failure.
+   - Minor angle adjustment (±2°) within the SAME category is acceptable.
    - Mirroring (left↔right flip) = automatic high severity.
-4. COLOR: Is the vehicle body color consistent? Check for hue shift, color cast. Any hue shift = failure.
-5. OVERALL IDENTITY: Same car, same model, same features, same proportions?
-6. MIRRORING: Is the same side visible? (check for left/right flip)
-7. STUDIO CONSISTENCY: Does the showroom background look like a professional dark studio with LED ceiling light? No outdoor elements visible? Walls/floor look consistent?
-8. VEHICLE CROPPING: Is the COMPLETE vehicle visible? All 4 wheels, both mirrors, entire roof, all bumpers? Any part cut off?
+4. COLOR: Is the vehicle body color consistent with the original? Check for yellow/warm color cast. Any hue shift = failure.
+5. OVERALL IDENTITY: Does the result still look like the same car? (same model, same features, same proportions)
+6. MIRRORING: Is the same side of the car visible? (check for left/right flip)
 
-Respond with ONLY a valid JSON object:
-{"pass": true/false, "severity": "none"/"low"/"medium"/"high", "mirrored": true/false, "color_consistent": true/false, "angle_preserved": true/false, "detected_angle": "label", "studio_consistent": true/false, "cropped_vehicle": true/false, "changed_parts": ["list"], "issues": ["descriptions"]}
+You MUST respond with ONLY a valid JSON object, no other text:
+{"pass": true/false, "severity": "none"/"low"/"medium"/"high", "mirrored": true/false, "color_consistent": true/false, "angle_preserved": true/false, "detected_angle": "label", "changed_parts": ["list of changed parts"], "issues": ["description of each issue"]}
 
 Rules:
-- "pass": true if vehicle identity AND angle AND studio are preserved
-- "severity": "none" if pass, "low" for minor differences, "medium" for noticeable changes, "high" for mirroring/angle change/wrong car
-- "studio_consistent": true if showroom looks like a proper dark studio. false if outdoor elements visible or showroom looks completely different from expected.
-- "cropped_vehicle": true if ANY part of the vehicle is cut off or missing from the frame. false if the complete vehicle is visible.
+- "pass": true if the car identity AND angle are preserved (minor background/lighting differences are OK)
+- "severity": "none" if pass, "low" for minor lighting differences, "medium" for noticeable feature changes, "high" for mirroring, angle category change, or completely wrong car
+- "mirrored": true if the vehicle appears flipped compared to the original
+- "color_consistent": true if body color matches without hue/saturation shift
+- "angle_preserved": true if the viewing angle category matches "{ANGLE}". false if the category changed.
+- "detected_angle": the angle category you detect in the result image (use same labels: left-front, left-side, left-rear, rear, right-rear, right-side, right-front, front)
 - "changed_parts": list from ["headlights", "taillights", "grille", "bumper", "wheels", "body_lines", "badges", "color", "angle"]
-- Be LENIENT on lighting/reflection differences. Focus on vehicle identity, angle, and studio quality.`;
+- "issues": human-readable description of each problem found
+
+IMPORTANT: Be LENIENT on background/showroom details. Focus ONLY on the vehicle itself and its viewing angle. Minor lighting or reflection differences are acceptable and should NOT cause failure. But angle category changes MUST cause failure.`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -348,9 +314,11 @@ serve(async (req) => {
         return JSON.parse(text);
       } catch (e) {
         console.error(`${stepName}: JSON parse failed (${text.length} chars). Attempting recovery...`);
+        // Try to find last complete JSON object
         const lastBrace = text.lastIndexOf('}');
         if (lastBrace > 0) {
           try {
+            // Find matching opening brace
             const candidate = text.substring(0, lastBrace + 1);
             const firstBrace = candidate.indexOf('{');
             if (firstBrace >= 0) {
@@ -388,7 +356,7 @@ serve(async (req) => {
       studioRefUrl = `data:image/jpeg;base64,${studioRefUrl}`;
     }
     
-    console.log(`Studio reference image: ${studioRefUrl ? 'provided' : 'NOT provided'}`);
+    console.log(`Studio reference image: ${studioRefUrl ? 'provided' : 'NOT provided (will use text-only description)'}`);
 
     const aiHeaders = {
       'Authorization': `Bearer ${LOVABLE_API_KEY}`,
@@ -411,33 +379,9 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     };
 
-    // Helper to extract image from AI response
-    const extractImage = (data: any): string | null => {
-      return data?.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
-    };
-
-    // Helper to check for embedded rate limit errors
-    const checkEmbeddedError = (data: any, stepName: string): Response | null => {
-      const embeddedError = data?.error
-        || data?.choices?.[0]?.error
-        || data?.choices?.find?.((c: any) => c?.error)?.error;
-      if (embeddedError) {
-        const code = Number(embeddedError.code || 500);
-        const errorType = embeddedError?.metadata?.error_type || '';
-        console.error(`${stepName} embedded error [${code}]: ${errorType} - ${embeddedError.message}`);
-        if (code === 429 || errorType === 'rate_limit_exceeded') {
-          return new Response(
-            JSON.stringify({ error: `Rate limit bereikt bij ${stepName}. Probeer het later opnieuw.`, step: stepName }),
-            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      }
-      return null;
-    };
-
     const VALID_ANGLES = ['left-front', 'left-side', 'left-rear', 'rear', 'right-rear', 'right-side', 'right-front', 'front', 'interior', 'unknown'];
 
-    // ━━━ STEP 0: Angle Classification ━━━
+    // ━━━ STEP 0: Angle Classification (text-only, Flash Lite) ━━━
     console.log('Step 0: Classifying vehicle angle...');
     let angleLabel = 'unknown';
     try {
@@ -464,16 +408,19 @@ serve(async (req) => {
         } else {
           console.warn(`Classifier returned invalid label: "${rawLabel}", defaulting to unknown`);
         }
+      } else {
+        console.error('Angle classification failed, defaulting to unknown');
       }
     } catch (classifyError) {
       console.error('Angle classification error:', classifyError);
     }
-    console.log(`Step 0 complete: Angle = "${angleLabel}"`);
+    console.log(`Step 0 complete: Angle classified as "${angleLabel}"`);
 
-    // Interior photos: only clean, no studio pipeline
+    // Interior photos: skip showroom pipeline
     if (angleLabel === 'interior') {
-      console.log('Interior photo — clean only, no studio pipeline.');
-      const cleanResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      console.log('Interior photo detected — skipping showroom, doing retouch only.');
+      // Still do retouch for interior
+      const retouchResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: aiHeaders,
         body: JSON.stringify({
@@ -481,7 +428,7 @@ serve(async (req) => {
           messages: [{
             role: 'user',
             content: [
-              { type: 'text', text: CLEAN_PROMPT + vehicleIdentity },
+              { type: 'text', text: RETOUCH_PROMPT + vehicleIdentity },
               { type: 'image_url', image_url: { url: vehicleImageUrl } }
             ]
           }],
@@ -489,22 +436,25 @@ serve(async (req) => {
         }),
       });
 
-      if (!cleanResponse.ok) return await handleAiError(cleanResponse, 'Clean');
-      const cleanData = await safeParseJson(cleanResponse, 'Interior clean');
-      const cleanedImage = extractImage(cleanData);
+      if (!retouchResponse.ok) return await handleAiError(retouchResponse, 'Retouch');
+      const retouchData = await safeParseJson(retouchResponse, 'Interior retouch');
+      const enhancedImage = retouchData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
       return new Response(JSON.stringify({
-        resultImage: cleanedImage || vehicleImageUrl,
-        usedFallback: !cleanedImage,
+        resultImage: enhancedImage || vehicleImageUrl,
+        usedFallback: !enhancedImage,
         angleLabel: 'interior',
-        verification: { pass: true, severity: 'none', mirrored: false, color_consistent: true, angle_preserved: true, detected_angle: 'interior', studio_consistent: true, cropped_vehicle: false, changed_parts: [], issues: [] },
+        verification: { pass: true, severity: 'none', mirrored: false, color_consistent: true, angle_preserved: true, detected_angle: 'interior', changed_parts: [], issues: [] },
         message: 'Interieur foto verbeterd (geen showroom)'
       }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // ━━━ STEP 1: Clean Only ━━━
-    console.log('Step 1: Clean only (cosmetic)...');
-    const cleanResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // Determine which showroom prompt to use
+    const useStrictForInitial = angleLabel === 'unknown';
+
+    // ━━━ STEP 1: Cosmetic Retouch (Gemini Flash) ━━━
+    console.log('Step 1: Cosmetic retouch (identity-locked)...');
+    const retouchResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: aiHeaders,
       body: JSON.stringify({
@@ -512,7 +462,7 @@ serve(async (req) => {
         messages: [{
           role: 'user',
           content: [
-            { type: 'text', text: CLEAN_PROMPT + vehicleIdentity },
+            { type: 'text', text: RETOUCH_PROMPT + vehicleIdentity },
             { type: 'image_url', image_url: { url: vehicleImageUrl } }
           ]
         }],
@@ -520,60 +470,26 @@ serve(async (req) => {
       }),
     });
 
-    if (!cleanResponse.ok) return await handleAiError(cleanResponse, 'Clean');
-    const cleanData = await safeParseJson(cleanResponse, 'Clean');
-    const embeddedCleanError = checkEmbeddedError(cleanData, 'clean');
-    if (embeddedCleanError) return embeddedCleanError;
-    const cleanedImage = extractImage(cleanData);
+    if (!retouchResponse.ok) return await handleAiError(retouchResponse, 'Retouch');
 
-    if (!cleanedImage) {
-      console.error('No image from clean step');
-      return new Response(JSON.stringify({ error: 'Geen schoongemaakt beeld ontvangen.', step: 'clean' }),
+    const retouchData = await safeParseJson(retouchResponse, 'Retouch');
+    const enhancedImage = retouchData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+
+    if (!enhancedImage) {
+      console.error('No image from retouch:', JSON.stringify(retouchData).substring(0, 500));
+      return new Response(JSON.stringify({ error: 'Geen verbeterde afbeelding ontvangen.', step: 'retouch' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-    console.log('Step 1 complete: Clean done');
+    console.log('Step 1 complete: Cosmetic retouch done');
 
-    // ━━━ STEP 2: Isolate (background → #404040) ━━━
-    console.log('Step 2: Isolate (background removal)...');
-    const isolateResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: aiHeaders,
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image',
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'text', text: ISOLATE_PROMPT + vehicleIdentity },
-            { type: 'image_url', image_url: { url: cleanedImage } }
-          ]
-        }],
-        modalities: ['image', 'text']
-      }),
-    });
-
-    if (!isolateResponse.ok) return await handleAiError(isolateResponse, 'Isolate');
-    const isolateData = await safeParseJson(isolateResponse, 'Isolate');
-    const embeddedIsolateError = checkEmbeddedError(isolateData, 'isolate');
-    if (embeddedIsolateError) return embeddedIsolateError;
-    const isolatedImage = extractImage(isolateData);
-
-    if (!isolatedImage) {
-      console.warn('Isolate returned no image. Falling back to cleaned image for composite.');
-    }
-    console.log(`Step 2 complete: Isolate ${isolatedImage ? 'done' : 'failed (using cleaned image)'}`);
-
-    // Use isolated image for composite, fallback to cleaned
-    const imageForComposite = isolatedImage || cleanedImage;
-
-    // ━━━ STEP 3: Composite (place in studio) ━━━
-    const useStrictForInitial = angleLabel === 'unknown';
-
+    // ━━━ STEP 2: Background Replacement (Gemini Pro) ━━━
     const doComposite = async (useStrict: boolean, extraInstructions?: string) => {
-      const basePrompt = useStrict ? COMPOSITE_PROMPT_STRICT : COMPOSITE_PROMPT_NORMAL;
+      const basePrompt = useStrict ? SHOWROOM_PROMPT_STRICT : SHOWROOM_PROMPT_NORMAL;
+      // Inject angle label into prompt
       const promptWithAngle = basePrompt.replace(/\{ANGLE\}/g, angleLabel);
       const promptText = promptWithAngle + vehicleIdentity + (extraInstructions || '');
       
-      console.log(`Step 3: Composite (${useStrict ? 'STRICT' : 'NORMAL'}, angle: ${angleLabel})...`);
+      console.log(`Step 2: Background replacement (${useStrict ? 'STRICT' : 'NORMAL'} mode, angle: ${angleLabel})...`);
       
       const compositeResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -584,7 +500,7 @@ serve(async (req) => {
             role: 'user',
             content: [
               { type: 'text', text: promptText },
-              { type: 'image_url', image_url: { url: imageForComposite } },
+              { type: 'image_url', image_url: { url: enhancedImage } },
               { type: 'image_url', image_url: { url: vehicleImageUrl } },
               ...(studioRefUrl ? [{ type: 'image_url', image_url: { url: studioRefUrl } }] : [])
             ]
@@ -593,82 +509,58 @@ serve(async (req) => {
         }),
       });
 
-      if (!compositeResponse.ok) return { error: await handleAiError(compositeResponse, 'Composite') };
+      if (!compositeResponse.ok) return { error: await handleAiError(compositeResponse, 'Showroom') };
 
       const compositeData = await safeParseJson(compositeResponse, 'Composite');
-      const embeddedErr = checkEmbeddedError(compositeData, 'composite');
-      if (embeddedErr) return { error: embeddedErr };
 
-      const resultImage = extractImage(compositeData);
+      const embeddedError = compositeData?.error
+        || compositeData?.choices?.[0]?.error
+        || compositeData?.choices?.find?.((c: any) => c?.error)?.error;
+
+      if (embeddedError) {
+        const code = Number(embeddedError.code || 500);
+        const errorType = embeddedError?.metadata?.error_type || '';
+        console.error(`Compositing embedded error [${code}]: ${errorType} - ${embeddedError.message}`);
+
+        if (code === 429 || errorType === 'rate_limit_exceeded') {
+          return {
+            error: new Response(
+              JSON.stringify({ error: 'Rate limit bereikt bij showroom stap. Probeer het later opnieuw.', step: 'composite' }),
+              { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          };
+        }
+        return { error: null, image: null };
+      }
+
+      const resultImage = compositeData?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
       if (!resultImage) {
-        console.error('No image from composite');
+        console.error('No image from compositing:', JSON.stringify(compositeData).substring(0, 800));
         return { error: null, image: null };
       }
 
       return { error: null, image: resultImage };
     };
 
+    // Initial composite: STRICT if unknown, NORMAL otherwise
     const compositeResult = await doComposite(useStrictForInitial);
     if (compositeResult.error) return compositeResult.error;
     if (!compositeResult.image) {
-      console.warn('Composite returned no image. Using cleaned photo as fallback.');
+      console.warn('Composite returned no image. Using safe fallback (enhanced photo).');
       return new Response(JSON.stringify({
-        resultImage: cleanedImage,
+        resultImage: enhancedImage,
         usedFallback: true,
         angleLabel,
-        verification: { pass: false, severity: 'medium', mirrored: false, color_consistent: true, angle_preserved: false, detected_angle: 'unknown', studio_consistent: false, cropped_vehicle: false, changed_parts: [], issues: ['Geen showroom afbeelding ontvangen; fallback gebruikt.'] },
-        message: 'Schoongemaakt foto gebruikt (showroom stap niet beschikbaar)'
+        verification: { pass: false, severity: 'medium', mirrored: false, color_consistent: true, angle_preserved: false, detected_angle: 'unknown', changed_parts: [], issues: ['Geen showroom afbeelding ontvangen; fallback gebruikt.'] },
+        message: 'Verbeterde foto gebruikt (showroom stap tijdelijk niet beschikbaar)'
       }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-    console.log('Step 3 complete: Composite done');
+    console.log('Step 2 complete: Background replacement done');
 
-    // ━━━ STEP 4: Relight (pro photographer look) ━━━
-    console.log('Step 4: Relight (pro photographer lighting)...');
-    let relightedImage = compositeResult.image;
-    try {
-      const relightResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: aiHeaders,
-        body: JSON.stringify({
-          model: 'google/gemini-3-pro-image-preview',
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'text', text: RELIGHT_PROMPT + vehicleIdentity },
-              { type: 'image_url', image_url: { url: compositeResult.image } },
-              ...(studioRefUrl ? [{ type: 'image_url', image_url: { url: studioRefUrl } }] : [])
-            ]
-          }],
-          modalities: ['image', 'text']
-        }),
-      });
-
-      if (relightResponse.ok) {
-        const relightData = await safeParseJson(relightResponse, 'Relight');
-        const embeddedRelightError = checkEmbeddedError(relightData, 'relight');
-        if (!embeddedRelightError) {
-          const relightImage = extractImage(relightData);
-          if (relightImage) {
-            relightedImage = relightImage;
-            console.log('Step 4 complete: Relight done');
-          } else {
-            console.warn('Relight returned no image, using composite result');
-          }
-        } else {
-          console.warn('Relight embedded error, using composite result');
-        }
-      } else {
-        console.warn(`Relight failed (${relightResponse.status}), using composite result`);
-      }
-    } catch (relightError) {
-      console.error('Relight error:', relightError);
-      // Continue with composite result
-    }
-
-    // ━━━ STEP 5: Verification ━━━
-    console.log('Step 5: Verification...');
-    let verification = { pass: true, severity: 'none', mirrored: false, color_consistent: true, angle_preserved: true, detected_angle: angleLabel, studio_consistent: true, cropped_vehicle: false, changed_parts: [] as string[], issues: [] as string[] };
-    let finalImage = relightedImage;
+    // ━━━ STEP 3: AI Verification (with angle check) ━━━
+    console.log('Step 3: AI verification...');
+    let verification = { pass: true, severity: 'none', mirrored: false, color_consistent: true, angle_preserved: true, detected_angle: angleLabel, changed_parts: [] as string[], issues: [] as string[] };
+    let finalImage = compositeResult.image;
     let usedFallback = false;
 
     try {
@@ -698,135 +590,74 @@ serve(async (req) => {
 
         const verifyData = await safeParseJson(verifyResponse, 'Verification');
         const verifyText = verifyData.choices?.[0]?.message?.content || '';
-        console.log('Verification raw:', verifyText);
+        console.log('Verification raw response:', verifyText);
 
         const jsonMatch = verifyText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          try { return JSON.parse(jsonMatch[0]); } catch (_) {}
+          try {
+            return JSON.parse(jsonMatch[0]);
+          } catch (e) {
+            console.error('Failed to parse verification JSON:', e);
+          }
         }
         return null;
       };
 
-      const initialVerification = await doVerify(relightedImage);
+      const initialVerification = await doVerify(compositeResult.image);
       if (initialVerification) {
         verification = initialVerification;
         console.log('Verification result:', JSON.stringify(verification));
       }
 
-      // Retry logic based on verification results
+      // Check for failures requiring retry
       const needsRetry = !verification.pass && (
         verification.severity === 'high' || 
-        verification.angle_preserved === false ||
-        verification.studio_consistent === false ||
-        verification.cropped_vehicle === true
+        verification.angle_preserved === false
       );
 
       if (needsRetry) {
-        console.log(`Verification FAILED. Severity: ${verification.severity}, studio_consistent: ${verification.studio_consistent}, cropped: ${verification.cropped_vehicle}. Retrying...`);
+        console.log(`Verification FAILED (severity: ${verification.severity}, angle_preserved: ${verification.angle_preserved}). Retrying with STRICT prompt...`);
         
-        let correctionInstructions = `\n\n━━━ CORRECTION REQUIRED ━━━\nThe previous result had critical problems:\n${verification.issues?.map((i: string) => `- ${i}`).join('\n') || '- Unknown issues'}`;
-        if (verification.mirrored) correctionInstructions += '\n- CRITICAL: The vehicle was MIRRORED. Do NOT flip the vehicle.';
-        if (!verification.angle_preserved) correctionInstructions += `\n- CRITICAL: The viewing angle changed. It MUST be "${angleLabel}". Do NOT rotate.`;
-        if (verification.cropped_vehicle) correctionInstructions += '\n- CRITICAL: Part of the vehicle was CROPPED. Zoom OUT. Show the COMPLETE vehicle with margins on all sides.';
-        if (!verification.studio_consistent) correctionInstructions += '\n- CRITICAL: The studio does not match the reference. Use Image 3 as EXACT template.';
-        correctionInstructions += '\nFix these issues. ZERO rotation allowed.';
+        const correctionInstructions = `\n\n━━━ CORRECTION REQUIRED ━━━\nThe previous result had critical problems:\n${verification.issues?.map((i: string) => `- ${i}`).join('\n') || '- Unknown issues'}\n${verification.mirrored ? '- CRITICAL: The vehicle was MIRRORED. Do NOT flip the vehicle.\n' : ''}${!verification.angle_preserved ? `- CRITICAL: The viewing angle changed. It MUST be "${angleLabel}". Do NOT rotate.\n` : ''}\nFix these issues. ZERO rotation allowed.`;
 
-        // Determine which step to retry
-        const retryComposite = verification.studio_consistent === false || verification.cropped_vehicle === true || verification.mirrored || !verification.angle_preserved;
+        const retryResult = await doComposite(true, correctionInstructions);
         
-        if (retryComposite) {
-          // Retry composite with STRICT + relight
-          const retryResult = await doComposite(true, correctionInstructions);
+        if (!retryResult.error && retryResult.image) {
+          // Re-verify the retry
+          const retryVerification = await doVerify(retryResult.image);
           
-          if (!retryResult.error && retryResult.image) {
-            // Re-run relight on retry result
-            let retryRelighted = retryResult.image;
-            try {
-              const retryRelightResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-                method: 'POST',
-                headers: aiHeaders,
-                body: JSON.stringify({
-                  model: 'google/gemini-3-pro-image-preview',
-                  messages: [{
-                    role: 'user',
-                    content: [
-                      { type: 'text', text: RELIGHT_PROMPT + vehicleIdentity + '\n\nCRITICAL: Do NOT change vehicle geometry. ONLY adjust lighting and reflections.' },
-                      { type: 'image_url', image_url: { url: retryResult.image } },
-                      ...(studioRefUrl ? [{ type: 'image_url', image_url: { url: studioRefUrl } }] : [])
-                    ]
-                  }],
-                  modalities: ['image', 'text']
-                }),
-              });
-              if (retryRelightResp.ok) {
-                const retryRelightData = await safeParseJson(retryRelightResp, 'Retry Relight');
-                const retryRelightImg = extractImage(retryRelightData);
-                if (retryRelightImg) retryRelighted = retryRelightImg;
-              }
-            } catch (_) { /* use composite result */ }
-
-            // Re-verify
-            const retryVerification = await doVerify(retryRelighted);
-            if (retryVerification) {
-              console.log('Retry verification:', JSON.stringify(retryVerification));
-              if (retryVerification.pass || (retryVerification.severity !== 'high' && retryVerification.angle_preserved !== false)) {
-                finalImage = retryRelighted;
-                verification = retryVerification;
-                console.log('Retry PASSED');
-              } else {
-                console.log('Retry FAILED. Using cleaned photo fallback.');
-                finalImage = cleanedImage;
-                usedFallback = true;
-              }
+          if (retryVerification) {
+            console.log('Retry verification:', JSON.stringify(retryVerification));
+            
+            if (retryVerification.pass || (retryVerification.severity !== 'high' && retryVerification.angle_preserved !== false)) {
+              finalImage = retryResult.image;
+              verification = retryVerification;
+              console.log('Retry PASSED verification');
             } else {
-              finalImage = retryRelighted;
+              // Retry also failed — fallback to enhanced photo
+              console.log('Retry also FAILED. Using enhanced photo fallback.');
+              finalImage = enhancedImage;
+              usedFallback = true;
             }
           } else {
-            console.log('Retry composite failed. Fallback to cleaned photo.');
-            finalImage = cleanedImage;
-            usedFallback = true;
+            // Couldn't verify retry — use retry result anyway
+            finalImage = retryResult.image;
           }
         } else {
-          // Only relight needs retry (changed_parts has wheels/lights)
-          console.log('Retrying relight only with stricter geometry lock...');
-          try {
-            const strictRelightResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-              method: 'POST',
-              headers: aiHeaders,
-              body: JSON.stringify({
-                model: 'google/gemini-3-pro-image-preview',
-                messages: [{
-                  role: 'user',
-                  content: [
-                    { type: 'text', text: RELIGHT_PROMPT + vehicleIdentity + correctionInstructions + '\n\nABSOLUTE GEOMETRY LOCK: Do NOT change ANY vehicle geometry. ONLY lighting and reflections.' },
-                    { type: 'image_url', image_url: { url: compositeResult.image } },
-                    ...(studioRefUrl ? [{ type: 'image_url', image_url: { url: studioRefUrl } }] : [])
-                  ]
-                }],
-                modalities: ['image', 'text']
-              }),
-            });
-            if (strictRelightResp.ok) {
-              const strictRelightData = await safeParseJson(strictRelightResp, 'Strict Relight');
-              const strictRelightImg = extractImage(strictRelightData);
-              if (strictRelightImg) {
-                finalImage = strictRelightImg;
-                const retryVerification = await doVerify(strictRelightImg);
-                if (retryVerification) verification = retryVerification;
-              }
-            }
-          } catch (_) { /* keep current finalImage */ }
+          console.log('Retry compositing failed. Using enhanced photo fallback.');
+          finalImage = enhancedImage;
+          usedFallback = true;
         }
       }
-      // Medium severity: accept with warning
+      // Medium severity without angle issues: accept with warning
       else if (!verification.pass && verification.severity === 'medium') {
-        console.log('Verification medium severity — accepting with warning.');
+        console.log('Verification medium severity — accepting result with warning.');
       }
     } catch (verifyError) {
-      console.error('Verification error:', verifyError);
+      console.error('Verification step error:', verifyError);
     }
 
-    console.log(`Pipeline complete. Angle: ${angleLabel}, Fallback: ${usedFallback}, Pass: ${verification.pass}, Severity: ${verification.severity}`);
+    console.log(`Pipeline complete. Angle: ${angleLabel}, Fallback: ${usedFallback}, Pass: ${verification.pass}, Severity: ${verification.severity}, AnglePreserved: ${verification.angle_preserved}`);
 
     return new Response(
       JSON.stringify({ 
@@ -840,14 +671,12 @@ serve(async (req) => {
           color_consistent: verification.color_consistent !== false,
           angle_preserved: verification.angle_preserved !== false,
           detected_angle: verification.detected_angle || angleLabel,
-          studio_consistent: verification.studio_consistent !== false,
-          cropped_vehicle: verification.cropped_vehicle === true,
           changed_parts: verification.changed_parts || [],
           issues: verification.issues || [],
         },
         message: usedFallback 
-          ? 'Schoongemaakt foto gebruikt (identity/angle check gefaald)' 
-          : 'Foto verwerkt (classify → clean → isolate → composite → relight → verify)'
+          ? 'Verbeterde foto gebruikt (identity/angle check gefaald)' 
+          : 'Foto succesvol verwerkt (classificatie + retouch + showroom + verificatie)'
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
