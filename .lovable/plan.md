@@ -1,88 +1,48 @@
 
 
-# Gecombineerd Finale Plan: Consistentie + Lighting Blueprint
+# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
 
-ChatGPT's analyse is terecht. Het huidige plan mist een **fixed lighting blueprint** — de AI weet WEL dat het studio-licht moet matchen, maar niet exact HOE de highlights verdeeld moeten zijn. Dit veroorzaakt inconsistentie tussen foto's.
+## Probleem
 
-## Wijzigingen in `supabase/functions/showroom-photo-studio/index.ts`
+Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
 
-### 1. RETOUCH_PROMPT: Per-paneel scan toevoegen (na regel 53, voor regel 54)
+## Echte oorzaak (niet React deduplicatie)
 
-Nieuw blok dat de AI dwingt elk oppervlak individueel te controleren:
+Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
 
-```
-━━━ CRITICAL: PER-PANEL VERIFICATION (SCAN BEFORE OUTPUT) ━━━
-Before outputting, scan EVERY reflective surface individually:
-• Hood — must show ceiling LED streak, NO sky gradient
-• Roof — must show ceiling LED streak, NO clouds or blue
-• Left door/fender — must show dark studio wall gradient, NO trees/poles/buildings
-• Right door/fender — same as left
-• Rear quarter panels — must show dark ambient, NO outdoor shapes
-• Front/rear bumpers — must show dark floor/wall reflections only
-• Chrome trim — must reflect studio ceiling LED, NOT outdoor light
-• Windows — must show neutral dark studio glass, NO outdoor scenery
-If ANY panel still shows recognizable outdoor elements, you MUST fix it.
-```
+- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
+- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
+- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
 
-### 2. SHOWROOM_PROMPT_NORMAL: Vehicle fill + margins + viewing distance (regel 144-147)
+In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
 
-```
-━━━ VEHICLE PLACEMENT ━━━
-- Center horizontally, fill ~50-65% of image width
-- Leave at least 10-15% margin on left and right sides, and 10-15% above the roofline
-- All wheels on floor plane naturally
-- The vehicle must appear at a NATURAL viewing distance — as if photographed by a professional standing 6-8 meters away.
-- Do NOT place the car close to the camera. When in doubt, place FURTHER away.
-- Do NOT crop any part of the vehicle — complete car must be visible with breathing room
-```
+In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
 
-### 3. SHOWROOM_PROMPT_NORMAL: Studio Lighting Blueprint (nieuw blok, na LIGHTING INTEGRATION)
+## Oplossing
 
-Dit is de belangrijkste toevoeging van ChatGPT — een vast lichtmodel zodat ELKE foto dezelfde highlights krijgt:
+Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
+- Gebruikt compatibele Radix versies (geen nested node_modules meer)
+- Verwijdert de `@babel/runtime` dependency
+- Lost het context-conflict op
 
-```
-━━━ STUDIO LIGHTING BLUEPRINT (MANDATORY — SAME FOR ALL IMAGES) ━━━
-All output images must use the EXACT SAME studio lighting structure, regardless of input photo lighting:
+### Wijzigingen
 
-Lighting setup:
-• One large rectangular LED ceiling light directly above the vehicle (as seen in Image 3)
-• Soft side ambient reflections from dark studio walls
-• Dark ambient floor reflection
+**Bestand: `package.json`**
+- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
 
-Paint highlights must appear CONSISTENTLY on every image:
-• Bright LED streak along the roofline (most prominent highlight)
-• Secondary highlight across the upper shoulder line of the vehicle
-• Subtle highlight on the hood surface
-• Lower panels and wheel arches must remain DARKER (natural studio light falloff)
+**Bestand: `src/components/ui/command.tsx`**
+- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
 
-This highlight structure must remain consistent across ALL angles of the vehicle.
-A viewer looking at 10 different photos in a row should see the SAME lighting feel on every car.
-```
+**Bestand: `vite.config.ts`**
+- De bestaande `dedupe` configuratie blijft als extra veiligheid
+- Toevoegen van Radix interne pakketten aan dedupe als fallback:
+  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
 
-### 4. SHOWROOM_PROMPT_NORMAL: Exposure Consistency blok (na lighting blueprint)
+## Verwacht resultaat
 
-```
-━━━ EXPOSURE CONSISTENCY (CRITICAL) ━━━
-- The vehicle's exposure level must be CONSISTENT regardless of the input photo's original lighting.
-- Whether the input was shot in bright sunlight, overcast, or shade — the OUTPUT must look like it was shot in the SAME dark studio with the SAME controlled lighting.
-- Target exposure: the car should be moderately lit (not too bright, not too dark) with the LED ceiling as the dominant light source.
-- EVERY output photo must have the same overall brightness feel — a viewer looking at 10 photos in a row should not notice exposure differences.
-```
-
-### 5. SHOWROOM_PROMPT_STRICT: Zelfde aanpassingen
-
-- Fill 50-65% + margins 10-15% + viewing distance 6-8m (regel 227-230)
-- Studio Lighting Blueprint blok toevoegen (na LIGHTING INTEGRATION, regel 250)
-- Exposure Consistency blok toevoegen
-
-### Samenvatting
-
-| Locatie | Wijziging |
-|---------|-----------|
-| `RETOUCH_PROMPT` na r53 | Per-paneel reflectie scan checklist |
-| `SHOWROOM_PROMPT_NORMAL` r144-147 | Fill 50-65%, margins 10-15%, camera 6-8m |
-| `SHOWROOM_PROMPT_NORMAL` nieuw | Studio Lighting Blueprint (vast lichtmodel) |
-| `SHOWROOM_PROMPT_NORMAL` nieuw | Exposure Consistency blok |
-| `SHOWROOM_PROMPT_STRICT` r227-230 | Zelfde fill + margins + distance |
-| `SHOWROOM_PROMPT_STRICT` nieuw | Zelfde Lighting Blueprint + Exposure Consistency |
+Na upgrade en publicatie:
+- Klantenlijst is weer klikbaar en scrollbaar
+- Selecteren van klanten werkt correct
+- Data wordt opgeslagen
+- Werkt zowel in preview als op de gepubliceerde website
 
