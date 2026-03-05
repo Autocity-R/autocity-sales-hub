@@ -408,7 +408,8 @@ serve(async (req) => {
             content: [
               { type: 'text', text: promptText },
               { type: 'image_url', image_url: { url: enhancedImage } },
-              { type: 'image_url', image_url: { url: vehicleImageUrl } }
+              { type: 'image_url', image_url: { url: vehicleImageUrl } },
+              ...(studioRefUrl ? [{ type: 'image_url', image_url: { url: studioRefUrl } }] : [])
             ]
           }],
           modalities: ['image', 'text']
