@@ -1,66 +1,48 @@
 
 
-# Plan: Angle Classifier + Dual-Prompt Showroom Pipeline
+# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
 
-ChatGPT's 3 upgrades zijn allemaal goed en ik sluit me erbij aan. Ze vullen het bestaande plan aan op precies de zwakke plekken.
+## Probleem
 
-## Wat er verandert (samenvatting)
+Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
 
-### 1. Nieuwe stap: ANGLE_CLASSIFY_PROMPT (Stap 0)
-- Tekst-only call naar `gemini-2.5-flash-lite` (goedkoop, snel)
-- Retourneert exact 1 label uit 9 categorieën + `unknown`
-- Bevat duidelijke definitie per hoek (bijv. "side = both wheels visible, front bumper barely visible")
-- Bij `interior` → skip showroom, bij `unknown` → gebruik safe/strict prompt
+## Echte oorzaak (niet React deduplicatie)
 
-### 2. Twee showroom prompts (normal + strict)
+Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
 
-**SHOWROOM_PROMPT_NORMAL** (huidige prompt + angle lock):
-- Injectie van `{ANGLE}` label als hard constraint
-- "The input angle category is: {ANGLE}. Preserve this EXACT category."
-- "Do NOT rotate to improve composition."
+- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
+- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
+- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
 
-**SHOWROOM_PROMPT_STRICT** (voor retry en unknown):
-- ZERO rotation, ZERO reframe, ZERO perspective change
-- "Keep the car position/size exactly as input. Only replace background and adjust lighting."
-- Gebruikt bij: retry na angle fail, of bij `unknown` classificatie
+In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
 
-### 3. Verification uitbreiden met angle check
-- Check 3 wordt: "The input was classified as {ANGLE}. Does the result match?"
-- Toevoegen van `angle_preserved: boolean` aan JSON schema
-- `angle_preserved: false` → high severity
+In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
 
-### 4. Verbeterde fallback logica
-- **Oud**: retry faalt → fallback naar enhanced photo (geen showroom)
-- **Nieuw**: retry faalt → nog één poging met `SHOWROOM_PROMPT_STRICT` → als dat ook faalt, dán pas fallback naar enhanced photo
-- Dit behoudt de uniforme showroom-look zoveel mogelijk
+## Oplossing
 
-## Pipeline flow (nieuw)
+Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
+- Gebruikt compatibele Radix versies (geen nested node_modules meer)
+- Verwijdert de `@babel/runtime` dependency
+- Lost het context-conflict op
 
-```text
-STAP 0: Classify angle (text-only, Flash Lite) → label
-         ├─ interior → skip showroom
-         ├─ unknown  → use STRICT prompt
-         └─ known    → use NORMAL prompt with {ANGLE}
-STAP 1: Retouch (ongewijzigd)
-STAP 2: Showroom (NORMAL of STRICT, afhankelijk van stap 0)
-STAP 3: Verify (met angle_preserved check)
-         ├─ pass → done
-         ├─ high severity → retry met STRICT prompt
-         │    ├─ pass → done
-         │    └─ fail → fallback enhanced photo
-         └─ medium → accept met warning
-```
+### Wijzigingen
 
-## Concrete wijzigingen
+**Bestand: `package.json`**
+- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
 
-| Locatie | Wat |
-|---------|-----|
-| Regels 8-44 | Ongewijzigd (RETOUCH_PROMPT) |
-| Regels 46-98 | Vervangen door SHOWROOM_PROMPT_NORMAL + SHOWROOM_PROMPT_STRICT (twee constanten) |
-| Regels 100-125 | VERIFICATION_PROMPT uitbreiden met angle check + `angle_preserved` |
-| Na regel 156 | Nieuwe Stap 0: angle classify call + parsing |
-| Regels 209-264 | `doComposite` aanpassen: accepteert `useStrict` parameter, kiest juiste prompt |
-| Regels 328-394 | Retry logica: bij angle fail → retry met STRICT, bij dubbele fail → fallback |
+**Bestand: `src/components/ui/command.tsx`**
+- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
 
-Één bestand: `supabase/functions/showroom-photo-studio/index.ts`
+**Bestand: `vite.config.ts`**
+- De bestaande `dedupe` configuratie blijft als extra veiligheid
+- Toevoegen van Radix interne pakketten aan dedupe als fallback:
+  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+
+## Verwacht resultaat
+
+Na upgrade en publicatie:
+- Klantenlijst is weer klikbaar en scrollbaar
+- Selecteren van klanten werkt correct
+- Data wordt opgeslagen
+- Werkt zowel in preview als op de gepubliceerde website
 

@@ -5,6 +5,31 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+// ━━━ STEP 0: ANGLE CLASSIFIER (Text-only, cheap) ━━━
+const ANGLE_CLASSIFY_PROMPT = `You are a vehicle photography angle classifier. Analyze the input image and return EXACTLY ONE label describing the camera viewing angle of the vehicle.
+
+━━━ ANGLE DEFINITIONS ━━━
+- "left-front": Vehicle seen from front-left corner. Both the front AND left side are clearly visible. Typical 3/4 front view from left.
+- "left-side": Vehicle seen from the left side. Both left wheels visible, front bumper barely visible or not visible. The side panel dominates the frame.
+- "left-rear": Vehicle seen from rear-left corner. Both the rear AND left side are clearly visible. Typical 3/4 rear view from left.
+- "rear": Vehicle seen from directly behind. Both taillights equally visible, minimal side visibility.
+- "right-rear": Vehicle seen from rear-right corner. Both the rear AND right side are clearly visible.
+- "right-side": Vehicle seen from the right side. Both right wheels visible, front bumper barely visible or not visible. The side panel dominates the frame.
+- "right-front": Vehicle seen from front-right corner. Both the front AND right side are clearly visible. Typical 3/4 front view from right.
+- "front": Vehicle seen from directly in front. Both headlights equally visible, minimal side visibility.
+- "interior": Photo shows the cabin/interior of the vehicle (dashboard, seats, steering wheel, etc.)
+- "unknown": The angle is ambiguous, the vehicle is partially cropped, or you cannot confidently determine the viewing angle.
+
+━━━ CLASSIFICATION RULES ━━━
+- "side" means the SIDE PANEL dominates. If you can clearly see the front bumper shape or grille, it is NOT side — it is "front" or a three-quarter angle.
+- "front" or "rear" means DIRECT front/rear with minimal side visibility.
+- If the image is too close (detail shot), heavily cropped, or ambiguous → return "unknown".
+- If the image shows interior/cabin → return "interior".
+
+━━━ RESPONSE FORMAT ━━━
+Respond with ONLY the label, nothing else. No explanation, no quotes, no punctuation.
+Example valid responses: left-side, right-front, rear, interior, unknown`;
+
 // ━━━ STEP 1: COSMETIC RETOUCH (Identity-Locked) ━━━
 const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is to clean and enhance this vehicle photo while keeping every pixel of the car's GEOMETRY unchanged. The vehicle may have been photographed OUTDOORS (on a street, parking lot, etc.) — your job is to make it look like it was photographed INDOORS in a professional showroom.
 
@@ -43,8 +68,8 @@ If you overlay input and output at 50% opacity, ONLY texture/lighting/reflection
 
 OUTPUT: The same photo with improved lighting, color accuracy, reduced noise, cleaned surfaces, enhanced paint gloss, and softened reflections. Nothing structural changes. The paint color must be IDENTICAL to the input.`;
 
-// ━━━ STEP 2: SHOWROOM BACKGROUND REPLACEMENT (SIMPLIFIED — AI does LESS) ━━━
-const SHOWROOM_PROMPT = `You are given TWO images:
+// ━━━ STEP 2A: SHOWROOM BACKGROUND — NORMAL (with angle lock) ━━━
+const SHOWROOM_PROMPT_NORMAL = `You are given TWO images:
 
 IMAGE 1 (Enhanced Vehicle): The retouched vehicle photo to place in a showroom.
 IMAGE 2 (Original Vehicle — GROUND TRUTH): The UNEDITED original photograph. This is your ABSOLUTE REFERENCE for all vehicle details.
@@ -73,10 +98,17 @@ The vehicle must remain PIXEL-IDENTICAL to Image 2 (original). Specifically:
 - Body lines, creases, proportions — IDENTICAL
 - Window tint level — IDENTICAL
 
-━━━ CAMERA ANGLE PRESERVATION (NO MIRRORING) ━━━
-- If the LEFT side is visible in Image 1 → LEFT side visible in output
-- If the RIGHT side is visible → RIGHT side in output
-- NEVER mirror, flip, or rotate the vehicle orientation
+━━━ CAMERA ANGLE PRESERVATION (CRITICAL) ━━━
+The input angle category is: {ANGLE}.
+You MUST preserve this EXACT angle category in the output.
+- Do NOT rotate, reframe, or "improve" the viewing angle in ANY way.
+- Do NOT change the perspective — {ANGLE} must remain {ANGLE}.
+- A left-side photo MUST remain left-side. NOT left-front, NOT three-quarter.
+- A left-front photo MUST remain left-front. NOT front, NOT left-side.
+- A rear photo MUST remain rear. NOT rear-quarter.
+- Only micro-straightening (±2°) is allowed. Changing the angle category is NOT acceptable.
+- Do NOT rotate to improve composition.
+- NEVER mirror or flip the vehicle orientation.
 
 ━━━ ZERO-CROP GUARANTEE ━━━
 - The COMPLETE vehicle must be visible — ALL 4 wheels, BOTH mirrors, entire roof, all bumpers
@@ -95,34 +127,82 @@ The vehicle must remain PIXEL-IDENTICAL to Image 2 (original). Specifically:
 ━━━ INTERIOR PHOTO HANDLING ━━━
 If Image 1 is an interior/cabin photo: enhance lighting/clarity, replace visible window backgrounds with dark gradient, do NOT place in studio.
 
-OUTPUT: A photorealistic 1920x1080 image of the vehicle in a clean, dark showroom. Every vehicle detail must match Image 2 exactly.`;
+OUTPUT: A photorealistic 1920x1080 image of the vehicle in a clean, dark showroom. Every vehicle detail must match Image 2 exactly. The viewing angle MUST be {ANGLE}.`;
 
-// ━━━ STEP 3: AI VERIFICATION (SIMPLIFIED — fewer checks, less strict) ━━━
+// ━━━ STEP 2B: SHOWROOM BACKGROUND — STRICT (zero rotation, for retry & unknown) ━━━
+const SHOWROOM_PROMPT_STRICT = `You are given TWO images:
+
+IMAGE 1 (Enhanced Vehicle): The retouched vehicle photo to place in a showroom.
+IMAGE 2 (Original Vehicle — GROUND TRUTH): The UNEDITED original photograph. This is your ABSOLUTE REFERENCE for all vehicle details.
+
+YOUR TASK: Replace the background around the vehicle with a dark, professional car dealership showroom environment.
+
+━━━ SHOWROOM ENVIRONMENT (SIMPLE) ━━━
+- Dark charcoal/anthracite walls — smooth or subtly textured
+- Polished dark floor with subtle vehicle reflection
+- Soft, even overhead LED lighting — no harsh spots
+- Do NOT add logos, text, branding, people, props, or decorative elements
+
+━━━ VEHICLE INTEGRITY (DO NOT MODIFY THE CAR) ━━━
+The vehicle must remain PIXEL-IDENTICAL to Image 2 (original). All features — color, headlights, taillights, grille, wheels, badges, plates, body lines, proportions — IDENTICAL.
+
+━━━ ZERO ROTATION / ZERO REFRAME (ABSOLUTE RULE) ━━━
+This is a STRICT MODE output. The following rules are ABSOLUTE and NON-NEGOTIABLE:
+- ZERO rotation. Do NOT rotate the vehicle even 1 degree.
+- ZERO reframe. Do NOT change the camera angle, perspective, or viewpoint.
+- ZERO perspective change. The car must appear from the EXACT same angle as in Image 1.
+- Do NOT "improve" composition, do NOT "correct" the angle, do NOT make it "more dramatic".
+- Keep the car position and size as close to the input as possible.
+- Only replace the background and adjust lighting. Nothing else.
+- NEVER mirror or flip the vehicle.
+
+━━━ ZERO-CROP GUARANTEE ━━━
+- The COMPLETE vehicle must be visible — ALL 4 wheels, BOTH mirrors, entire roof, all bumpers
+- Output MUST be 1920x1080 pixels, landscape orientation
+
+━━━ SHADOWS & REFLECTIONS ━━━
+- Natural contact shadows under tires (~35% opacity, soft)
+- Subtle floor reflection (~10% opacity, blurred, fading)
+
+OUTPUT: A photorealistic 1920x1080 image of the vehicle in a clean, dark showroom. The viewing angle must be IDENTICAL to the input. ZERO rotation allowed.`;
+
+// ━━━ STEP 3: AI VERIFICATION (with angle check) ━━━
 const VERIFICATION_PROMPT = `You are a quality control inspector comparing a RESULT image against an ORIGINAL vehicle photograph.
 
 IMAGE 1 (Original): The unedited original vehicle photo — your GROUND TRUTH.
 IMAGE 2 (Result): The AI-processed showroom result to verify.
 
-Check these 5 critical identity features by comparing Image 2 against Image 1:
+The input was classified as angle category: "{ANGLE}".
+
+Check these 6 critical identity features by comparing Image 2 against Image 1:
 
 1. HEADLIGHTS: Is the headlight shape, LED signature, and DRL pattern identical?
 2. WHEELS: Is the wheel/rim spoke pattern and design identical?
-3. MIRRORING: Is the same side of the car visible? (check for left/right flip)
+3. CAMERA ANGLE: Is the viewing angle the same as the original? The input was classified as "{ANGLE}".
+   - A left-side photo must remain left-side, NOT left-front or three-quarter.
+   - A rear photo must remain rear, NOT rear-quarter.
+   - A front photo must remain front, NOT front-quarter.
+   - If the angle CATEGORY has changed (e.g. side became three-quarter, or rear became rear-quarter), this is a HIGH SEVERITY failure.
+   - Minor angle adjustment (±2°) within the SAME category is acceptable.
+   - Mirroring (left↔right flip) = automatic high severity.
 4. COLOR: Is the vehicle body color consistent with the original? Check for yellow/warm color cast. Any hue shift = failure.
 5. OVERALL IDENTITY: Does the result still look like the same car? (same model, same features, same proportions)
+6. MIRRORING: Is the same side of the car visible? (check for left/right flip)
 
 You MUST respond with ONLY a valid JSON object, no other text:
-{"pass": true/false, "severity": "none"/"low"/"medium"/"high", "mirrored": true/false, "color_consistent": true/false, "changed_parts": ["list of changed parts"], "issues": ["description of each issue"]}
+{"pass": true/false, "severity": "none"/"low"/"medium"/"high", "mirrored": true/false, "color_consistent": true/false, "angle_preserved": true/false, "detected_angle": "label", "changed_parts": ["list of changed parts"], "issues": ["description of each issue"]}
 
 Rules:
-- "pass": true if the car identity is preserved (minor background/lighting differences are OK)
-- "severity": "none" if pass, "low" for minor lighting differences, "medium" for noticeable feature changes, "high" ONLY for mirroring or completely wrong car
+- "pass": true if the car identity AND angle are preserved (minor background/lighting differences are OK)
+- "severity": "none" if pass, "low" for minor lighting differences, "medium" for noticeable feature changes, "high" for mirroring, angle category change, or completely wrong car
 - "mirrored": true if the vehicle appears flipped compared to the original
 - "color_consistent": true if body color matches without hue/saturation shift
-- "changed_parts": list from ["headlights", "taillights", "grille", "bumper", "wheels", "body_lines", "badges", "color"]
+- "angle_preserved": true if the viewing angle category matches "{ANGLE}". false if the category changed.
+- "detected_angle": the angle category you detect in the result image (use same labels: left-front, left-side, left-rear, rear, right-rear, right-side, right-front, front)
+- "changed_parts": list from ["headlights", "taillights", "grille", "bumper", "wheels", "body_lines", "badges", "color", "angle"]
 - "issues": human-readable description of each problem found
 
-IMPORTANT: Be LENIENT on background/showroom details. Focus ONLY on the vehicle itself. Minor lighting or reflection differences are acceptable and should NOT cause failure.`;
+IMPORTANT: Be LENIENT on background/showroom details. Focus ONLY on the vehicle itself and its viewing angle. Minor lighting or reflection differences are acceptable and should NOT cause failure. But angle category changes MUST cause failure.`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -176,6 +256,79 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     };
 
+    const VALID_ANGLES = ['left-front', 'left-side', 'left-rear', 'rear', 'right-rear', 'right-side', 'right-front', 'front', 'interior', 'unknown'];
+
+    // ━━━ STEP 0: Angle Classification (text-only, Flash Lite) ━━━
+    console.log('Step 0: Classifying vehicle angle...');
+    let angleLabel = 'unknown';
+    try {
+      const classifyResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: aiHeaders,
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash-lite',
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text: ANGLE_CLASSIFY_PROMPT },
+              { type: 'image_url', image_url: { url: vehicleImageUrl } }
+            ]
+          }],
+        }),
+      });
+
+      if (classifyResponse.ok) {
+        const classifyData = await classifyResponse.json();
+        const rawLabel = (classifyData.choices?.[0]?.message?.content || '').trim().toLowerCase().replace(/[^a-z-]/g, '');
+        if (VALID_ANGLES.includes(rawLabel)) {
+          angleLabel = rawLabel;
+        } else {
+          console.warn(`Classifier returned invalid label: "${rawLabel}", defaulting to unknown`);
+        }
+      } else {
+        console.error('Angle classification failed, defaulting to unknown');
+      }
+    } catch (classifyError) {
+      console.error('Angle classification error:', classifyError);
+    }
+    console.log(`Step 0 complete: Angle classified as "${angleLabel}"`);
+
+    // Interior photos: skip showroom pipeline
+    if (angleLabel === 'interior') {
+      console.log('Interior photo detected — skipping showroom, doing retouch only.');
+      // Still do retouch for interior
+      const retouchResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: aiHeaders,
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash-image',
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text: RETOUCH_PROMPT + vehicleIdentity },
+              { type: 'image_url', image_url: { url: vehicleImageUrl } }
+            ]
+          }],
+          modalities: ['image', 'text']
+        }),
+      });
+
+      if (!retouchResponse.ok) return await handleAiError(retouchResponse, 'Retouch');
+      const retouchData = await retouchResponse.json();
+      const enhancedImage = retouchData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+
+      return new Response(JSON.stringify({
+        resultImage: enhancedImage || vehicleImageUrl,
+        usedFallback: !enhancedImage,
+        angleLabel: 'interior',
+        verification: { pass: true, severity: 'none', mirrored: false, color_consistent: true, angle_preserved: true, detected_angle: 'interior', changed_parts: [], issues: [] },
+        message: 'Interieur foto verbeterd (geen showroom)'
+      }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Determine which showroom prompt to use
+    const useStrictForInitial = angleLabel === 'unknown';
+
     // ━━━ STEP 1: Cosmetic Retouch (Gemini Flash) ━━━
     console.log('Step 1: Cosmetic retouch (identity-locked)...');
     const retouchResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -206,10 +359,14 @@ serve(async (req) => {
     }
     console.log('Step 1 complete: Cosmetic retouch done');
 
-    // ━━━ STEP 2: Background Replacement (Gemini Pro) — only 2 images now ━━━
-    const doComposite = async (extraInstructions?: string) => {
-      const promptText = SHOWROOM_PROMPT + vehicleIdentity + (extraInstructions || '');
-      console.log('Step 2: Background replacement...');
+    // ━━━ STEP 2: Background Replacement (Gemini Pro) ━━━
+    const doComposite = async (useStrict: boolean, extraInstructions?: string) => {
+      const basePrompt = useStrict ? SHOWROOM_PROMPT_STRICT : SHOWROOM_PROMPT_NORMAL;
+      // Inject angle label into prompt
+      const promptWithAngle = basePrompt.replace(/\{ANGLE\}/g, angleLabel);
+      const promptText = promptWithAngle + vehicleIdentity + (extraInstructions || '');
+      
+      console.log(`Step 2: Background replacement (${useStrict ? 'STRICT' : 'NORMAL'} mode, angle: ${angleLabel})...`);
       
       const compositeResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -220,8 +377,8 @@ serve(async (req) => {
             role: 'user',
             content: [
               { type: 'text', text: promptText },
-              { type: 'image_url', image_url: { url: enhancedImage } },        // Image 1: Enhanced
-              { type: 'image_url', image_url: { url: vehicleImageUrl } }       // Image 2: Original (ground truth)
+              { type: 'image_url', image_url: { url: enhancedImage } },
+              { type: 'image_url', image_url: { url: vehicleImageUrl } }
             ]
           }],
           modalities: ['image', 'text']
@@ -232,7 +389,6 @@ serve(async (req) => {
 
       const compositeData = await compositeResponse.json();
 
-      // Handle embedded provider errors returned inside a 200 response
       const embeddedError = compositeData?.error
         || compositeData?.choices?.[0]?.error
         || compositeData?.choices?.find?.((c: any) => c?.error)?.error;
@@ -250,7 +406,6 @@ serve(async (req) => {
             )
           };
         }
-
         return { error: null, image: null };
       }
 
@@ -263,51 +418,52 @@ serve(async (req) => {
       return { error: null, image: resultImage };
     };
 
-    const compositeResult = await doComposite();
+    // Initial composite: STRICT if unknown, NORMAL otherwise
+    const compositeResult = await doComposite(useStrictForInitial);
     if (compositeResult.error) return compositeResult.error;
     if (!compositeResult.image) {
       console.warn('Composite returned no image. Using safe fallback (enhanced photo).');
       return new Response(JSON.stringify({
         resultImage: enhancedImage,
         usedFallback: true,
-        verification: {
-          pass: false,
-          severity: 'medium',
-          mirrored: false,
-          color_consistent: true,
-          changed_parts: [],
-          issues: ['Geen showroom afbeelding ontvangen; fallback gebruikt.']
-        },
+        angleLabel,
+        verification: { pass: false, severity: 'medium', mirrored: false, color_consistent: true, angle_preserved: false, detected_angle: 'unknown', changed_parts: [], issues: ['Geen showroom afbeelding ontvangen; fallback gebruikt.'] },
         message: 'Verbeterde foto gebruikt (showroom stap tijdelijk niet beschikbaar)'
       }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     console.log('Step 2 complete: Background replacement done');
 
-    // ━━━ STEP 3: AI Verification (simplified) ━━━
+    // ━━━ STEP 3: AI Verification (with angle check) ━━━
     console.log('Step 3: AI verification...');
-    let verification = { pass: true, severity: 'none', mirrored: false, color_consistent: true, changed_parts: [] as string[], issues: [] as string[] };
+    let verification = { pass: true, severity: 'none', mirrored: false, color_consistent: true, angle_preserved: true, detected_angle: angleLabel, changed_parts: [] as string[], issues: [] as string[] };
     let finalImage = compositeResult.image;
     let usedFallback = false;
 
     try {
-      const verifyPromptText = VERIFICATION_PROMPT + (vehicleIdentity || '');
-      const verifyResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: aiHeaders,
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'text', text: verifyPromptText },
-              { type: 'image_url', image_url: { url: vehicleImageUrl } },    // Original
-              { type: 'image_url', image_url: { url: compositeResult.image } } // Result
-            ]
-          }],
-        }),
-      });
+      const verifyPromptText = VERIFICATION_PROMPT.replace(/\{ANGLE\}/g, angleLabel) + (vehicleIdentity || '');
+      
+      const doVerify = async (imageToVerify: string) => {
+        const verifyResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: aiHeaders,
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash',
+            messages: [{
+              role: 'user',
+              content: [
+                { type: 'text', text: verifyPromptText },
+                { type: 'image_url', image_url: { url: vehicleImageUrl } },
+                { type: 'image_url', image_url: { url: imageToVerify } }
+              ]
+            }],
+          }),
+        });
 
-      if (verifyResponse.ok) {
+        if (!verifyResponse.ok) {
+          console.error('Verification call failed');
+          return null;
+        }
+
         const verifyData = await verifyResponse.json();
         const verifyText = verifyData.choices?.[0]?.message?.content || '';
         console.log('Verification raw response:', verifyText);
@@ -315,104 +471,88 @@ serve(async (req) => {
         const jsonMatch = verifyText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           try {
-            verification = JSON.parse(jsonMatch[0]);
-            console.log('Verification result:', JSON.stringify(verification));
+            return JSON.parse(jsonMatch[0]);
           } catch (e) {
             console.error('Failed to parse verification JSON:', e);
           }
         }
-      } else {
-        console.error('Verification call failed, proceeding with result');
+        return null;
+      };
+
+      const initialVerification = await doVerify(compositeResult.image);
+      if (initialVerification) {
+        verification = initialVerification;
+        console.log('Verification result:', JSON.stringify(verification));
       }
 
-      // Auto-retry ONLY for high severity (mirroring or completely wrong car)
-      if (!verification.pass && verification.severity === 'high') {
-        console.log(`Verification FAILED (severity: high). Retrying step 2...`);
-        
-        const correctionInstructions = `\n\n━━━ CORRECTION REQUIRED ━━━\nThe previous result had critical problems:\n${verification.issues.map((i: string) => `- ${i}`).join('\n')}\n${verification.mirrored ? '- CRITICAL: The vehicle was MIRRORED. Do NOT flip the vehicle.\n' : ''}\nYou MUST fix these issues. Compare against Image 2 (original) carefully.`;
+      // Check for failures requiring retry
+      const needsRetry = !verification.pass && (
+        verification.severity === 'high' || 
+        verification.angle_preserved === false
+      );
 
-        const retryResult = await doComposite(correctionInstructions);
+      if (needsRetry) {
+        console.log(`Verification FAILED (severity: ${verification.severity}, angle_preserved: ${verification.angle_preserved}). Retrying with STRICT prompt...`);
+        
+        const correctionInstructions = `\n\n━━━ CORRECTION REQUIRED ━━━\nThe previous result had critical problems:\n${verification.issues?.map((i: string) => `- ${i}`).join('\n') || '- Unknown issues'}\n${verification.mirrored ? '- CRITICAL: The vehicle was MIRRORED. Do NOT flip the vehicle.\n' : ''}${!verification.angle_preserved ? `- CRITICAL: The viewing angle changed. It MUST be "${angleLabel}". Do NOT rotate.\n` : ''}\nFix these issues. ZERO rotation allowed.`;
+
+        const retryResult = await doComposite(true, correctionInstructions);
         
         if (!retryResult.error && retryResult.image) {
           // Re-verify the retry
-          try {
-            const retryVerifyResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-              method: 'POST',
-              headers: aiHeaders,
-              body: JSON.stringify({
-                model: 'google/gemini-2.5-flash',
-                messages: [{
-                  role: 'user',
-                  content: [
-                    { type: 'text', text: verifyPromptText },
-                    { type: 'image_url', image_url: { url: vehicleImageUrl } },
-                    { type: 'image_url', image_url: { url: retryResult.image } }
-                  ]
-                }],
-              }),
-            });
-
-            if (retryVerifyResponse.ok) {
-              const retryVerifyData = await retryVerifyResponse.json();
-              const retryVerifyText = retryVerifyData.choices?.[0]?.message?.content || '';
-              const retryJsonMatch = retryVerifyText.match(/\{[\s\S]*\}/);
-              
-              if (retryJsonMatch) {
-                const retryVerification = JSON.parse(retryJsonMatch[0]);
-                console.log('Retry verification:', JSON.stringify(retryVerification));
-                
-                if (retryVerification.pass || retryVerification.severity !== 'high') {
-                  finalImage = retryResult.image;
-                  verification = retryVerification;
-                  console.log('Retry PASSED verification');
-                } else {
-                  // Retry also failed with high severity — use SAFE FALLBACK
-                  console.log('Retry also FAILED with high severity. Using safe fallback.');
-                  finalImage = enhancedImage;
-                  usedFallback = true;
-                }
-              } else {
-                finalImage = retryResult.image;
-              }
-            } else {
+          const retryVerification = await doVerify(retryResult.image);
+          
+          if (retryVerification) {
+            console.log('Retry verification:', JSON.stringify(retryVerification));
+            
+            if (retryVerification.pass || (retryVerification.severity !== 'high' && retryVerification.angle_preserved !== false)) {
               finalImage = retryResult.image;
+              verification = retryVerification;
+              console.log('Retry PASSED verification');
+            } else {
+              // Retry also failed — fallback to enhanced photo
+              console.log('Retry also FAILED. Using enhanced photo fallback.');
+              finalImage = enhancedImage;
+              usedFallback = true;
             }
-          } catch (e) {
-            console.error('Retry verification error:', e);
+          } else {
+            // Couldn't verify retry — use retry result anyway
             finalImage = retryResult.image;
           }
         } else {
-          console.log('Retry compositing failed. Using safe fallback.');
+          console.log('Retry compositing failed. Using enhanced photo fallback.');
           finalImage = enhancedImage;
           usedFallback = true;
         }
       }
-      // Medium severity: accept the result with a warning (NO fallback)
+      // Medium severity without angle issues: accept with warning
       else if (!verification.pass && verification.severity === 'medium') {
         console.log('Verification medium severity — accepting result with warning.');
-        // Keep finalImage as-is, don't fallback
       }
     } catch (verifyError) {
       console.error('Verification step error:', verifyError);
     }
 
-    console.log(`Pipeline complete. Fallback: ${usedFallback}, Pass: ${verification.pass}, Severity: ${verification.severity}`);
+    console.log(`Pipeline complete. Angle: ${angleLabel}, Fallback: ${usedFallback}, Pass: ${verification.pass}, Severity: ${verification.severity}, AnglePreserved: ${verification.angle_preserved}`);
 
     return new Response(
       JSON.stringify({ 
         resultImage: finalImage,
         usedFallback,
+        angleLabel,
         verification: {
           pass: verification.pass,
           severity: verification.severity || 'none',
           mirrored: verification.mirrored || false,
           color_consistent: verification.color_consistent !== false,
+          angle_preserved: verification.angle_preserved !== false,
+          detected_angle: verification.detected_angle || angleLabel,
           changed_parts: verification.changed_parts || [],
           issues: verification.issues || [],
         },
         message: usedFallback 
-          ? 'Verbeterde foto gebruikt (identity check gefaald)' 
-          : 'Foto succesvol verwerkt (retouch + showroom + verificatie)'
+          ? 'Verbeterde foto gebruikt (identity/angle check gefaald)' 
+          : 'Foto succesvol verwerkt (classificatie + retouch + showroom + verificatie)'
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
