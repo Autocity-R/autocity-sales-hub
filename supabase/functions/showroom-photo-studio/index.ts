@@ -264,6 +264,29 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
+    // Safe JSON parser that handles truncated responses
+    const safeParseJson = async (response: Response, stepName: string) => {
+      const text = await response.text();
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error(`${stepName}: JSON parse failed (${text.length} chars). Attempting recovery...`);
+        // Try to find last complete JSON object
+        const lastBrace = text.lastIndexOf('}');
+        if (lastBrace > 0) {
+          try {
+            // Find matching opening brace
+            const candidate = text.substring(0, lastBrace + 1);
+            const firstBrace = candidate.indexOf('{');
+            if (firstBrace >= 0) {
+              return JSON.parse(candidate.substring(firstBrace));
+            }
+          } catch (_) { /* fall through */ }
+        }
+        throw new Error(`${stepName}: Truncated AI response (${text.length} chars received). Try again.`);
+      }
+    };
+
     const { imageBase64, vehicleInfo, studioReferenceBase64 } = await req.json();
     
     if (!imageBase64) {
