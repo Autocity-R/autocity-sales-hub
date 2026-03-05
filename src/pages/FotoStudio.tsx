@@ -244,33 +244,34 @@ const FotoStudio = () => {
             )}
           </div>
         </div>
-          {images.length > 0 && (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={clearAll}>
-                <X className="h-4 w-4 mr-1" />
-                Wissen
+
+        {/* Action buttons */}
+        {images.length > 0 && (
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" size="sm" onClick={clearAll}>
+              <X className="h-4 w-4 mr-1" />
+              Wissen
+            </Button>
+            {completedCount > 0 && (
+              <Button variant="outline" size="sm" onClick={downloadAll}>
+                <Download className="h-4 w-4 mr-1" />
+                Alles downloaden ({completedCount})
               </Button>
-              {completedCount > 0 && (
-                <Button variant="outline" size="sm" onClick={downloadAll}>
-                  <Download className="h-4 w-4 mr-1" />
-                  Alles downloaden ({completedCount})
-                </Button>
+            )}
+            <Button 
+              size="sm" 
+              onClick={processAll}
+              disabled={isProcessingAll || images.filter(i => i.status === 'queued' || i.status === 'error').length === 0}
+            >
+              {isProcessingAll ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-1" />
               )}
-              <Button 
-                size="sm" 
-                onClick={processAll}
-                disabled={isProcessingAll || images.filter(i => i.status === 'queued' || i.status === 'error').length === 0}
-              >
-                {isProcessingAll ? (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4 mr-1" />
-                )}
-                {isProcessingAll ? 'Verwerken...' : 'Alles verwerken'}
-              </Button>
-            </div>
-          )}
-        </div>
+              {isProcessingAll ? 'Verwerken...' : 'Alles verwerken'}
+            </Button>
+          </div>
+        )}
 
         {/* Progress bar */}
         {images.length > 0 && (processingCount > 0 || completedCount > 0) && (
