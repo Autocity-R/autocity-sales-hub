@@ -42,7 +42,7 @@ OUTPUT: The same photo with improved lighting, color accuracy, reduced noise, cl
 // ━━━ STEP 2: SHOWROOM COMPOSITING ━━━
 const SHOWROOM_PROMPT = `You are given THREE images:
 
-IMAGE 1 (Reference Studio): The EXACT showroom environment you must replicate.
+IMAGE 1 (Reference Studio): The EXACT showroom environment you must replicate. Copy it EXACTLY — do NOT invent, redesign, or reinterpret.
 IMAGE 2 (Enhanced Vehicle): The retouched vehicle photo to place in the studio.
 IMAGE 3 (Original Vehicle — GROUND TRUTH): The UNEDITED original photograph. This is your ABSOLUTE REFERENCE for all vehicle details.
 
@@ -60,6 +60,8 @@ Image 3 is the UNEDITED original photograph. Use it as your ABSOLUTE REFERENCE f
 - Wheel/rim spoke pattern and design
 - All badges, emblems, model text
 - Body lines, creases, and proportions
+- License plates and plate holders/frames
+- Body paint color (EXACT hue, saturation, brightness)
 If your output differs from Image 3 in ANY of these features, your output is WRONG.
 
 ━━━ ZERO-CROP GUARANTEE ━━━
@@ -77,21 +79,23 @@ Count the visible sides of the vehicle in Image 2:
 
 ━━━ VEHICLE INTEGRITY (DO NOT MODIFY) ━━━
 ALL of these must remain IDENTICAL to Image 2/3:
-- Body color and paint finish
+- Body color and paint finish — EXACT same color. Do NOT shift hue, saturation, or brightness. If the car is dark blue, it stays dark blue — not black, not light blue.
 - Wheels/rims design and color (EXACT spoke pattern)
 - All badges, emblems, and model text
 - Headlights and taillights design (EXACT shape)
 - Front grille and bumper design (EXACT pattern)
 - Body shape, proportions, and all body lines
 - Window tint level
-- License plate holders (if present)
+- LICENSE PLATES & PLATE HOLDERS: If the original vehicle (Image 3) has license plates, dealer plate frames, or branded plate holders (e.g. "AUTOCITY"), these MUST be preserved EXACTLY as they appear. Do NOT remove, replace, blur, or alter any plates or plate frames.
 
-━━━ SHOWROOM ENVIRONMENT (match Image 1 EXACTLY) ━━━
-- Dark charcoal/anthracite walls — match Image 1
-- White LED "AUTOCITY" logo on back wall — match Image 1
-- White/warm LED light strips along ceiling edges — match Image 1
-- Polished dark floor with subtle reflections
-- Do NOT invent a different studio
+━━━ SHOWROOM ENVIRONMENT (COPY Image 1 EXACTLY — DO NOT INVENT) ━━━
+You MUST replicate the showroom from Image 1 with these specific elements:
+- Dark charcoal/anthracite TEXTURED walls (not smooth, not black, not grey — match Image 1 exactly)
+- White 3D BLOCK LETTERS spelling "AUTOCITY" on the back wall — NOT a car silhouette logo, NOT illuminated neon, NOT a different font, NOT a different word. Plain white 3D block letters EXACTLY as in Image 1.
+- Thin white LED light strips running along ceiling edges — match Image 1 exactly
+- Polished dark concrete floor with subtle reflections
+- Do NOT invent, redesign, or reinterpret the showroom. Copy it EXACTLY from Image 1.
+- Do NOT change the AUTOCITY logo style, shape, or design in any way.
 
 ━━━ VEHICLE PLACEMENT ━━━
 - Center horizontally, fill ~55-65% of image width
@@ -101,7 +105,7 @@ ALL of these must remain IDENTICAL to Image 2/3:
 ━━━ SHADOWS & REFLECTIONS ━━━
 - Natural contact shadows under tires (~35% opacity, soft)
 - Subtle floor reflection (~10% opacity, blurred, fading)
-- Paint reflections must show studio lighting only (soft LED strips, dark walls)
+- ALL reflections visible on vehicle paint MUST be consistent with this indoor showroom — dark walls, soft LED strips. No trees, sky, buildings, or outdoor elements may appear in paint reflections.
 
 ━━━ INTERIOR PHOTO HANDLING ━━━
 If Image 2 is an interior/cabin photo: enhance lighting/clarity, replace visible window backgrounds with dark gradient, do NOT place in studio.
