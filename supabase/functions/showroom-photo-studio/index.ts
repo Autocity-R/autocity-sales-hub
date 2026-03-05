@@ -119,13 +119,29 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const { imageBase64, referenceImageUrl, vehicleId } = await req.json();
+    const { imageBase64, referenceImageUrl, vehicleId, vehicleInfo } = await req.json();
     
     if (!imageBase64) {
       return new Response(
         JSON.stringify({ error: 'imageBase64 is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Build vehicle identity prompt block if metadata provided
+    let vehicleIdentityEnhance = '';
+    let vehicleIdentityShowroom = '';
+    
+    if (vehicleInfo?.brand && vehicleInfo?.model) {
+      const desc = `${vehicleInfo.year || ''} ${vehicleInfo.brand} ${vehicleInfo.model}`.trim();
+      const color = vehicleInfo.color || 'unknown color';
+      const bodyType = vehicleInfo.bodyType || 'vehicle';
+      
+      vehicleIdentityEnhance = `\n\n━━━ VEHICLE IDENTITY (DO NOT ALTER) ━━━\nThis vehicle is a ${desc} in ${color}.\nDo NOT change any model-year-specific features: headlights, taillights, grille design, bumper shape, wheels/rims, badges, body lines, or proportions.\nThe output must be recognizable as this EXACT model year — not an older or newer version.`;
+      
+      vehicleIdentityShowroom = `\n\n━━━ VEHICLE IDENTITY (CRITICAL — DO NOT ALTER) ━━━\nThis is a ${desc} in ${color} (${bodyType}).\nYou MUST preserve ALL model-year-specific design elements exactly as shown in Image 2:\n- Headlight and taillight design specific to this model year\n- Front grille and bumper design exactly as photographed\n- Wheel/rim design exactly as photographed\n- All badges, emblems, and model text\n- Body lines, proportions, and character lines unique to this generation\n- Interior details if visible through windows\nDo NOT substitute parts from older or newer model years.\nDo NOT "correct" the design to match what you think this model should look like — trust the photograph.`;
+      
+      console.log(`Vehicle identity: ${desc} in ${color} (${bodyType})`);
     }
 
     if (!referenceImageUrl) {

@@ -209,36 +209,41 @@ const FotoStudio = () => {
     <OptimizedDashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Camera className="h-6 w-6 text-primary" />
-              Foto Studio
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Upload voertuigfoto's en laat AI ze omzetten naar professionele AutoCity showroom-beelden
-            </p>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Camera className="h-6 w-6 text-primary" />
+                Foto Studio
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Upload voertuigfoto's en laat AI ze omzetten naar professionele AutoCity showroom-beelden
+              </p>
+            </div>
           </div>
 
           {/* Vehicle selector */}
-          <div className="w-full max-w-md">
-            <Select value={selectedVehicleId} onValueChange={handleVehicleSelect}>
-              <SelectTrigger className="w-full">
-                <Car className="h-4 w-4 mr-2 shrink-0" />
-                <SelectValue placeholder="Selecteer voertuig (optioneel)" />
-              </SelectTrigger>
-              <SelectContent>
-                {vehicles.map(v => (
-                  <SelectItem key={v.id} value={v.id}>{v.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-3">
+            <div className="w-full max-w-md">
+              <Select value={selectedVehicleId} onValueChange={handleVehicleSelect}>
+                <SelectTrigger className="w-full">
+                  <Car className="h-4 w-4 mr-2 shrink-0" />
+                  <SelectValue placeholder="Selecteer voertuig (optioneel)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vehicles.map(v => (
+                    <SelectItem key={v.id} value={v.id}>{v.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {selectedVehicleInfo && (
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground">
                 AI behoudt exact het {selectedVehicleInfo.year || ''} {selectedVehicleInfo.brand} {selectedVehicleInfo.model} model
               </p>
             )}
           </div>
+        </div>
           {images.length > 0 && (
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={clearAll}>
