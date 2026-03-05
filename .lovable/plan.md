@@ -1,48 +1,85 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Analyse: Hoekherkenning & Anti-Spiegeling
 
-## Probleem
+De huidige pipeline heeft al sterke anti-mirroring en angle preservation regels. Hier is wat er al werkt en wat nog verbeterd kan worden:
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+## Wat al goed is
 
-## Echte oorzaak (niet React deduplicatie)
+1. **Angle Classifier (Step 0)**: Classificeert 10 hoeken correct met duidelijke definities
+2. **Anti-Mirror Rule**: Gebruikt kenteken als visuele anker (links moet links blijven)
+3. **Angle Preservation in NORMAL prompt**: `{ANGLE} must remain {ANGLE}` met voorbeelden
+4. **Verification (Step 3)**: Controleert of hoek behouden is, mirroring = automatic high severity
+5. **Retry met STRICT prompt**: Bij angle failure → retry met zero rotation, en als dat ook faalt → fallback naar retouched origineel
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+## Wat nog ontbreekt / verbeterd moet worden
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+### 1. RETOUCH_PROMPT mist angle-awareness
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+De retouch stap (Step 1) krijgt GEEN angle label mee. Als de AI hier al de hoek subtiel verandert, heeft Step 2 een verkeerd startpunt. De retouch prompt zegt wel "Do NOT change the camera angle" maar kent de geclassificeerde hoek niet.
 
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+**Fix**: De angle label meegeven aan de retouch prompt zodat de AI weet welke hoek het IS en die moet behouden.
 
-## Oplossing
+### 2. Verification mist "front became side" detectie als concrete voorbeelden
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+De verification prompt noemt dit al generiek, maar het kan concreter met de meest voorkomende fouten:
+- Front → side (auto wordt gedraaid)
+- Left → right (spiegeling)
+- Side → three-quarter (perspectief verandert)
 
-### Wijzigingen
+**Fix**: Concrete "common failure examples" toevoegen aan verification prompt.
 
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+### 3. Showroom prompts missen expliciete "left = left, right = right" regel voor niet-kenteken scenario's
 
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+De anti-mirror rule leunt volledig op de kentekenplaat. Maar sommige hoeken (achterkant, bepaalde zijkanten) tonen geen kenteken duidelijk.
 
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+**Fix**: Secundaire ankers toevoegen naast kenteken: stuurwiel-zijde (links in NL/EU), tankdop-positie, uitlaatpositie.
 
-## Verwacht resultaat
+## Concrete wijzigingen
 
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+### Bestand: `supabase/functions/showroom-photo-studio/index.ts`
+
+**1. Retouch prompt angle-aware maken (regel 465)**
+
+Bij het aanroepen van retouch, de angle label injecteren:
+```
+RETOUCH_PROMPT + vehicleIdentity + `\n\nDETECTED ANGLE: "${angleLabel}". You MUST preserve this exact viewing angle. Do NOT rotate or reframe the vehicle.`
+```
+
+**2. Anti-Mirror Rule uitbreiden in SHOWROOM_PROMPT_NORMAL (regel 124-130)**
+
+Toevoegen na de kenteken-regels:
+```
+- SECONDARY ANCHORS (when plate is not clearly visible):
+  - In EU/NL vehicles, the DRIVER SIDE is LEFT. If the driver door is visible, it must remain on the same side.
+  - Exhaust pipe positions must remain on the same side as in Image 2.
+  - Fuel cap position must remain on the same side as in Image 2.
+- If the input shows a LEFT-side view, the output MUST show the LEFT side. NEVER substitute with the RIGHT side.
+- If the input shows RIGHT-front, the output MUST show RIGHT-front. NEVER substitute with LEFT-front.
+```
+
+**3. Zelfde uitbreiding in SHOWROOM_PROMPT_STRICT (regel 211-215)**
+
+**4. Verification prompt: concrete failure voorbeelden (regel 276-281)**
+
+Na de bestaande angle check regels, toevoegen:
+```
+   COMMON FAILURES TO WATCH FOR:
+   - Front photo turned into a three-quarter or side view (AI "improved" the composition)
+   - Left-side photo became right-side (mirroring)
+   - Rear photo became rear-quarter (AI added perspective)
+   - Side photo became three-quarter (AI rotated to show more of the front)
+   Any of these = HIGH severity failure, angle_preserved = false.
+```
+
+## Samenvatting
+
+| Locatie | Wijziging |
+|---------|-----------|
+| Retouch call (r465) | Angle label meegeven aan retouch prompt |
+| `SHOWROOM_PROMPT_NORMAL` r124-130 | Secundaire anti-mirror ankers (stuur, uitlaat, tankdop) |
+| `SHOWROOM_PROMPT_STRICT` r211-215 | Zelfde secundaire ankers |
+| `VERIFICATION_PROMPT` r276-281 | Concrete failure voorbeelden toevoegen |
+
+Dit zorgt ervoor dat de hoek door de HELE pipeline bewaakt wordt (retouch → composite → verificatie) en niet alleen leunt op het kenteken als anti-mirror anker.
 
