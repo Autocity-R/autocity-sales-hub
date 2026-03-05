@@ -1,59 +1,48 @@
 
 
-# Plan: Voertuiggegevens meegeven aan AI voor identiteitsbehoud
+# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
 
 ## Probleem
 
-De AI herkent het merk/model visueel en "corrigeert" het naar een versie die hij kent — waardoor een 2024 BMW X5 er opeens uitziet als een 2021 model, met andere koplampen, velgen of bumpers. De oplossing: we vertellen de AI precies welke auto het is.
+Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
 
-## Aanpak
+## Echte oorzaak (niet React deduplicatie)
 
-### 1. FotoStudio.tsx — Voertuigselector toevoegen
+Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
 
-- Voeg bovenaan de pagina een **voertuig-dropdown** toe (Select component) die alle voertuigen uit de database laadt
-- Toon: `brand model (year) — kleur — kenteken`
-- Zodra een voertuig geselecteerd is, worden de metadata (brand, model, year, color, body_type, details) opgeslagen in state
-- De metadata wordt meegegeven bij elke `processImage` call
-- Optioneel: handmatige invoer als fallback (tekstveld voor merk/model/kleur)
+- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
+- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
+- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
 
-### 2. Edge function — Metadata verwerken in prompts
+In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
 
-**`supabase/functions/showroom-photo-studio/index.ts`**:
+In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
 
-- Accepteer nieuwe parameter: `vehicleInfo: { brand, model, year, color, bodyType }`
-- Injecteer in **beide prompts** een voertuig-identiteitsblok:
+## Oplossing
 
-**ENHANCE_PROMPT** krijgt erbij:
-```
-VEHICLE IDENTITY (DO NOT ALTER):
-This vehicle is a [year] [brand] [model] in [color].
-Do NOT change any model-specific features: headlights, taillights, grille, bumpers, wheels, badges, body lines.
-```
+Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
+- Gebruikt compatibele Radix versies (geen nested node_modules meer)
+- Verwijdert de `@babel/runtime` dependency
+- Lost het context-conflict op
 
-**SHOWROOM_PROMPT** krijgt erbij:
-```
-VEHICLE IDENTITY (CRITICAL — DO NOT ALTER):
-This is a [year] [brand] [model] in [color] ([bodyType]).
-You MUST preserve ALL model-year-specific design elements exactly as shown in Image 2:
-- Headlight and taillight design specific to this model year
-- Front grille and bumper design
-- Wheel/rim design exactly as photographed
-- All badges, emblems, and model text
-- Body lines, proportions, and character lines
-- Interior if visible through windows
-Do NOT substitute parts from older or newer model years.
-```
+### Wijzigingen
 
-## Bestanden die wijzigen
+**Bestand: `package.json`**
+- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
 
-| Bestand | Wijziging |
-|---------|-----------|
-| `src/pages/FotoStudio.tsx` | Voertuig-dropdown toevoegen, metadata meesturen naar edge function |
-| `supabase/functions/showroom-photo-studio/index.ts` | `vehicleInfo` parameter accepteren, dynamisch injecteren in beide prompts |
+**Bestand: `src/components/ui/command.tsx`**
+- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
 
-## Wat NIET verandert
+**Bestand: `vite.config.ts`**
+- De bestaande `dedupe` configuratie blijft als extra veiligheid
+- Toevoegen van Radix interne pakketten aan dedupe als fallback:
+  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
 
-- De 2-staps pipeline (Flash + Pro) blijft identiek
-- Referentiefoto-logica blijft hetzelfde
-- Batch verwerking, download, progress indicators — alles blijft
+## Verwacht resultaat
+
+Na upgrade en publicatie:
+- Klantenlijst is weer klikbaar en scrollbaar
+- Selecteren van klanten werkt correct
+- Data wordt opgeslagen
+- Werkt zowel in preview als op de gepubliceerde website
 

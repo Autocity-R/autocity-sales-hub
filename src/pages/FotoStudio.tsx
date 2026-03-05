@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -7,11 +7,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Upload, Download, RefreshCw, Save, ImageIcon, 
   Sparkles, Loader2, X, CheckCircle2, AlertCircle,
-  Images, Camera
+  Images, Camera, Car
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import OptimizedDashboardLayout from "@/components/layout/OptimizedDashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface StudioImage {
   id: string;
@@ -23,8 +24,59 @@ interface StudioImage {
   error?: string;
 }
 
+interface VehicleInfo {
+  brand: string;
+  model: string;
+  year: number | null;
+  color: string | null;
+  bodyType: string | null;
+}
+
+interface VehicleOption {
+  id: string;
+  label: string;
+  info: VehicleInfo;
+}
+
 const FotoStudio = () => {
   const [images, setImages] = useState<StudioImage[]>([]);
+  const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
+  const [selectedVehicleInfo, setSelectedVehicleInfo] = useState<VehicleInfo | null>(null);
+
+  useEffect(() => {
+    const loadVehicles = async () => {
+      const { data } = await supabase
+        .from('vehicles')
+        .select('id, brand, model, year, color, license_number, details')
+        .order('created_at', { ascending: false })
+        .limit(500);
+      
+      if (data) {
+        setVehicles(data.map(v => {
+          const details = v.details as Record<string, any> || {};
+          return {
+            id: v.id,
+            label: `${v.brand} ${v.model}${v.year ? ` (${v.year})` : ''} — ${v.color || '?'} — ${v.license_number || '?'}`,
+            info: {
+              brand: v.brand,
+              model: v.model,
+              year: v.year,
+              color: v.color,
+              bodyType: details?.bodyType || null,
+            }
+          };
+        }));
+      }
+    };
+    loadVehicles();
+  }, []);
+
+  const handleVehicleSelect = (vehicleId: string) => {
+    setSelectedVehicleId(vehicleId);
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    setSelectedVehicleInfo(vehicle?.info || null);
+  };
   const [isProcessingAll, setIsProcessingAll] = useState(false);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -83,7 +135,7 @@ const FotoStudio = () => {
       ]);
 
       const { data, error } = await supabase.functions.invoke('showroom-photo-studio', {
-        body: { imageBase64: base64, referenceImageUrl }
+        body: { imageBase64: base64, referenceImageUrl, vehicleInfo: selectedVehicleInfo }
       });
 
       if (error) throw new Error(error.message || 'Verwerking mislukt');
@@ -157,43 +209,69 @@ const FotoStudio = () => {
     <OptimizedDashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Camera className="h-6 w-6 text-primary" />
-              Foto Studio
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Upload voertuigfoto's en laat AI ze omzetten naar professionele AutoCity showroom-beelden
-            </p>
-          </div>
-          {images.length > 0 && (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={clearAll}>
-                <X className="h-4 w-4 mr-1" />
-                Wissen
-              </Button>
-              {completedCount > 0 && (
-                <Button variant="outline" size="sm" onClick={downloadAll}>
-                  <Download className="h-4 w-4 mr-1" />
-                  Alles downloaden ({completedCount})
-                </Button>
-              )}
-              <Button 
-                size="sm" 
-                onClick={processAll}
-                disabled={isProcessingAll || images.filter(i => i.status === 'queued' || i.status === 'error').length === 0}
-              >
-                {isProcessingAll ? (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4 mr-1" />
-                )}
-                {isProcessingAll ? 'Verwerken...' : 'Alles verwerken'}
-              </Button>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Camera className="h-6 w-6 text-primary" />
+                Foto Studio
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Upload voertuigfoto's en laat AI ze omzetten naar professionele AutoCity showroom-beelden
+              </p>
             </div>
-          )}
+          </div>
+
+          {/* Vehicle selector */}
+          <div className="flex items-center gap-3">
+            <div className="w-full max-w-md">
+              <Select value={selectedVehicleId} onValueChange={handleVehicleSelect}>
+                <SelectTrigger className="w-full">
+                  <Car className="h-4 w-4 mr-2 shrink-0" />
+                  <SelectValue placeholder="Selecteer voertuig (optioneel)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vehicles.map(v => (
+                    <SelectItem key={v.id} value={v.id}>{v.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedVehicleInfo && (
+              <p className="text-xs text-muted-foreground">
+                AI behoudt exact het {selectedVehicleInfo.year || ''} {selectedVehicleInfo.brand} {selectedVehicleInfo.model} model
+              </p>
+            )}
+          </div>
         </div>
+
+        {/* Action buttons */}
+        {images.length > 0 && (
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" size="sm" onClick={clearAll}>
+              <X className="h-4 w-4 mr-1" />
+              Wissen
+            </Button>
+            {completedCount > 0 && (
+              <Button variant="outline" size="sm" onClick={downloadAll}>
+                <Download className="h-4 w-4 mr-1" />
+                Alles downloaden ({completedCount})
+              </Button>
+            )}
+            <Button 
+              size="sm" 
+              onClick={processAll}
+              disabled={isProcessingAll || images.filter(i => i.status === 'queued' || i.status === 'error').length === 0}
+            >
+              {isProcessingAll ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-1" />
+              )}
+              {isProcessingAll ? 'Verwerken...' : 'Alles verwerken'}
+            </Button>
+          </div>
+        )}
 
         {/* Progress bar */}
         {images.length > 0 && (processingCount > 0 || completedCount > 0) && (
