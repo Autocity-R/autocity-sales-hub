@@ -66,6 +66,11 @@ Compare your output paint color against the input. If the hue has shifted in ANY
 ━━━ CRITICAL TEST ━━━
 If you overlay input and output at 50% opacity, ONLY texture/lighting/reflections should differ — NEVER geometry, edges, or silhouette. The car's outline must be pixel-identical.
 
+━━━ OUTPUT QUALITY ━━━
+- Maximum sharpness — no added noise, no grain, no compression artifacts.
+- All fine details (badge text, spoke edges, panel gaps, headlight internals) must remain tack-sharp.
+- Do NOT add film grain or any texture overlay.
+
 OUTPUT: The same photo with improved lighting, color accuracy, reduced noise, cleaned surfaces, enhanced paint gloss, and softened reflections. Nothing structural changes. The paint color must be IDENTICAL to the input.`;
 
 // ━━━ STEP 2A: SHOWROOM BACKGROUND — NORMAL (with angle lock + reference studio) ━━━
@@ -137,6 +142,15 @@ Look at the LICENSE PLATE position in Image 2.
 - Subtle floor reflection matching the style in Image 3 (~10% opacity, blurred, fading)
 - All reflections on vehicle paint must be consistent with the indoor studio from Image 3 — no trees, sky, buildings.
 
+━━━ IMAGE QUALITY (CRITICAL) ━━━
+- Output must be ULTRA HIGH QUALITY at 1920x1080 — maximum sharpness, zero noise.
+- The showroom environment (walls, floor, ceiling) must be PERFECTLY SMOOTH — no grain, no noise, no compression artifacts, no color banding.
+- Floor reflection must be crisp and clean — no pixelation.
+- Lighting gradients must be smooth — no visible banding or stepping.
+- The vehicle must retain ALL fine detail: paint texture, badge text, spoke edges, panel gaps, headlight internals.
+- The image must look like a professional DSLR photograph — NOT like an AI render.
+- NO film grain. NO noise. NO soft focus on background. Tack-sharp everywhere.
+
 ━━━ INTERIOR PHOTO HANDLING ━━━
 If Image 1 is an interior/cabin photo: enhance lighting/clarity, replace visible window backgrounds with dark gradient, do NOT place in studio.
 
@@ -187,6 +201,15 @@ Look at the LICENSE PLATE position in Image 2.
 ━━━ SHADOWS & REFLECTIONS ━━━
 - Natural contact shadows under tires (~35% opacity, soft)
 - Subtle floor reflection matching Image 3 style (~10% opacity, blurred, fading)
+
+━━━ IMAGE QUALITY (CRITICAL) ━━━
+- Output must be ULTRA HIGH QUALITY at 1920x1080 — maximum sharpness, zero noise.
+- The showroom environment (walls, floor, ceiling) must be PERFECTLY SMOOTH — no grain, no noise, no compression artifacts, no color banding.
+- Floor reflection must be crisp and clean — no pixelation.
+- Lighting gradients must be smooth — no visible banding or stepping.
+- The vehicle must retain ALL fine detail: paint texture, badge text, spoke edges, panel gaps, headlight internals.
+- The image must look like a professional DSLR photograph — NOT like an AI render.
+- NO film grain. NO noise. NO soft focus on background. Tack-sharp everywhere.
 
 OUTPUT: A photorealistic 1920x1080 image of the vehicle placed in the EXACT studio from Image 3. The viewing angle must be IDENTICAL to the input. ZERO rotation allowed.`;
 
