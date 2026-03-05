@@ -29,7 +29,7 @@ interface StudioImage {
   originalPreview: string;
   resultImage: string | null;
   status: 'queued' | 'processing' | 'done' | 'error';
-  processingStep?: 'retouch' | 'showroom' | 'verificatie';
+  processingStep?: 'clean' | 'isolate' | 'composite' | 'relight' | 'verificatie';
   error?: string;
   usedFallback?: boolean;
   verification?: VerificationResult;
@@ -118,16 +118,24 @@ const FotoStudio = () => {
     const image = images.find(i => i.id === imageId);
     if (!image) return;
 
-    setImages(prev => prev.map(i => i.id === imageId ? { ...i, status: 'processing', processingStep: 'retouch', usedFallback: false, verification: undefined } : i));
+    setImages(prev => prev.map(i => i.id === imageId ? { ...i, status: 'processing', processingStep: 'clean', usedFallback: false, verification: undefined } : i));
 
-    // Update processing steps based on timing
-    const showroomTimer = setTimeout(() => {
-      setImages(prev => prev.map(i => i.id === imageId && i.status === 'processing' ? { ...i, processingStep: 'showroom' } : i));
-    }, 15000);
+    // Update processing steps based on timing (5 steps now)
+    const isolateTimer = setTimeout(() => {
+      setImages(prev => prev.map(i => i.id === imageId && i.status === 'processing' ? { ...i, processingStep: 'isolate' } : i));
+    }, 12000);
+
+    const compositeTimer = setTimeout(() => {
+      setImages(prev => prev.map(i => i.id === imageId && i.status === 'processing' ? { ...i, processingStep: 'composite' } : i));
+    }, 25000);
+
+    const relightTimer = setTimeout(() => {
+      setImages(prev => prev.map(i => i.id === imageId && i.status === 'processing' ? { ...i, processingStep: 'relight' } : i));
+    }, 45000);
 
     const verifyTimer = setTimeout(() => {
       setImages(prev => prev.map(i => i.id === imageId && i.status === 'processing' ? { ...i, processingStep: 'verificatie' } : i));
-    }, 45000);
+    }, 60000);
 
     try {
       const base64 = await fileToBase64(image.originalFile);
@@ -139,7 +147,9 @@ const FotoStudio = () => {
       if (error) throw new Error(error.message || 'Verwerking mislukt');
       if (data?.error) throw new Error(data.error);
 
-      clearTimeout(showroomTimer);
+      clearTimeout(isolateTimer);
+      clearTimeout(compositeTimer);
+      clearTimeout(relightTimer);
       clearTimeout(verifyTimer);
       
       setImages(prev => prev.map(i => 
@@ -157,7 +167,9 @@ const FotoStudio = () => {
         toast.warning('Identity check gefaald — verbeterde originele foto gebruikt als veilig alternatief.');
       }
     } catch (err: any) {
-      clearTimeout(showroomTimer);
+      clearTimeout(isolateTimer);
+      clearTimeout(compositeTimer);
+      clearTimeout(relightTimer);
       clearTimeout(verifyTimer);
       console.error('Studio processing error:', err);
       const errorMsg = err?.message || 'Onbekende fout';
