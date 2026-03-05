@@ -1,48 +1,49 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Finale Plan: Showroom Pipeline Optimalisatie
 
-## Probleem
+Alle 5 ChatGPT-suggesties zijn valide en passen binnen de bestaande architectuur. Hier de concrete wijzigingen:
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+## Bestand: `supabase/functions/showroom-photo-studio/index.ts`
 
-## Echte oorzaak (niet React deduplicatie)
+### 1. RETOUCH_PROMPT (regel 46) — Studio Relight Model
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+Huidige softening-instructie vervangen door een volledige studio-relight met concreet lichtmodel:
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+- Outdoor shapes (trees, sky, buildings, horizon) expliciet VERVANGEN door dark studio gradients + LED streaks
+- **Paint relight model**: main LED ceiling reflection op dak/motorkap, secondary soft reflections op zijpanelen, donkere gradient naar onderpanelen/wielkasten
+- **Windows**: outdoor scenery verwijderen, neutral dark studio glass, ruitreflecties moeten studio plafondlichten tonen
+- Toevoeging: *"The vehicle must visually belong to the same photographic exposure as the studio environment"*
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+### 2. SHOWROOM_PROMPT_NORMAL (na regel 143) — Lighting Integration blok
 
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+Nieuw `━━━ LIGHTING INTEGRATION ━━━` blok met:
+- LED streak alignment (highlights volgen exact LED geometry van Image 3)
+- Brightness/contrast match met studio ambient level
+- Kleurtemperatuur match met Image 3
+- Window cleanup: neutral dark studio glass, reflecties matchen plafondlichten
+- Exposureregel: *"same photographic exposure as the studio environment"*
 
-## Oplossing
+### 3. SHOWROOM_PROMPT_NORMAL (regel 136-142) — Placement + Shadows
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+**Vehicle Placement** (regel 136-138):
+- Fill `65-80%` → **`60-75%`**
+- Margins toevoegen: min 6-10% links/rechts, 8-12% boven daklijn
 
-### Wijzigingen
+**Shadows & Reflections** (regel 140-142):
+- Tight tire contact shadow **~50-60% opacity** (was 35%)
+- Soft ambient shadow under chassis **~20-25% opacity**
+- **Shadow direction must match studio lighting from Image 3**
+- Edge feather 1-2px, color-matched, geen halo
 
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+### 4. SHOWROOM_PROMPT_STRICT (regel 201-207) — Zelfde aanpassingen
 
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+- Fill 60-75% + margins
+- Contact shadow + ambient shadow + shadow direction
+- Lighting Integration blok toevoegen
+- Edge feathering
 
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+### 5. Pipeline check
 
-## Verwacht resultaat
-
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+De pipeline blijft correct sequentieel: Classify → Retouch → Composite → Verify. Geen wijzigingen nodig aan de flow.
 
