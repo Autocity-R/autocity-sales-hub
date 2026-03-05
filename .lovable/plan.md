@@ -1,48 +1,67 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Plan: Alle prompts aanscherpen — showroom-consistentie, reflecties, nummerboorden, kleur
 
-## Probleem
+Eén bestand wijzigt: `supabase/functions/showroom-photo-studio/index.ts` — alle drie de prompts worden herschreven.
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+---
 
-## Echte oorzaak (niet React deduplicatie)
+## RETOUCH_PROMPT (regels 9-38)
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+Huidige problemen: buitenreflecties blijven zichtbaar, lak niet glad genoeg, reflecties verraden buitenlocatie.
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+Aanpassingen:
+- **"YOU MAY" sectie**: toevoegen dat buitenreflecties (bomen, gebouwen, lucht) in lak en glas **vervangen** mogen worden door neutrale donkere indoor-reflecties (donkere muren, zacht LED-licht). De auto moet eruitzien alsof hij binnenstaat.
+- **Lak-finish**: toevoegen "Make paint appear freshly waxed — smooth, even gloss across all panels, no dull patches or uneven spots."
+- **Regel 19**: wijzigen van "Reduce harsh environmental reflections (soften them)" → "Replace outdoor environment reflections in paint and glass (trees, buildings, sky, clouds, fences) with neutral, dark, diffuse reflections consistent with an indoor showroom (dark walls, soft overhead LED lighting)."
+- **Regel 31**: wijzigen van "Do NOT replace reflections with studio reflections — only SOFTEN" → "You MUST replace outdoor environment reflections with neutral indoor reflections. But do NOT alter the SHAPE of reflective surfaces — only change WHAT is reflected in them."
+- Behoud geometrie-lock volledig intact.
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+## SHOWROOM_PROMPT (regels 41-107)
 
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+Huidige problemen: showroom verschilt per foto, logo wordt anders getekend, nummerboorden verdwijnen, kleur verschuift.
 
-## Oplossing
+Aanpassingen:
+- **Showroom beschrijving (regels 87-92)** veel specifieker maken:
+  - "Dark charcoal/anthracite TEXTURED walls (not smooth, not black, not grey — match Image 1 exactly)"
+  - "White 3D BLOCK LETTERS spelling 'AUTOCITY' on the back wall — NOT a car silhouette logo, NOT illuminated neon, NOT a different font. Plain white 3D block letters exactly as in Image 1."
+  - "Thin white LED light strips running along ceiling edges — match Image 1"
+  - "Polished dark concrete floor"
+  - "Do NOT invent, redesign, or reinterpret the showroom. Copy it EXACTLY from Image 1."
+- **Nummerboorden** toevoegen aan Vehicle Integrity sectie (regel 85):
+  - "LICENSE PLATES & PLATE HOLDERS: If the original vehicle (Image 3) has license plates, dealer plate frames, or branded plate holders (e.g. 'AUTOCITY'), these MUST be preserved exactly. Do NOT remove, replace, blur, or alter any plates or plate frames."
+- **Kleurconsistentie** toevoegen:
+  - "The vehicle body color must be EXACTLY the same as in Image 3. Do NOT shift hue, saturation, or brightness. If the car is dark blue, it stays dark blue — not black, not light blue."
+- **Reflecties in showroom** (regels 99-102):
+  - "ALL reflections visible on vehicle paint MUST be consistent with this indoor showroom — dark walls, soft LED strips. No trees, sky, buildings, or outdoor elements may appear in paint reflections."
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+## VERIFICATION_PROMPT (regels 110-133)
 
-### Wijzigingen
+Uitbreiden met 3 extra checks:
 
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+- Check 6: "SHOWROOM: Does the background match the reference studio? Dark textured walls, white AUTOCITY block letters, LED strips? Or is it a different/invented studio?"
+- Check 7: "LICENSE PLATES: Are original license plates and plate holders preserved from the original?"
+- Check 8: "COLOR: Is the vehicle body color consistent with the original? No hue/saturation shift?"
 
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+JSON schema uitbreiden:
+```json
+{
+  "pass": true/false,
+  "severity": "none/low/medium/high",
+  "mirrored": true/false,
+  "showroom_match": true/false,
+  "plates_preserved": true/false,
+  "color_consistent": true/false,
+  "changed_parts": ["..."],
+  "issues": ["..."]
+}
+```
 
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+`pass` is nu `true` alleen als alle 8 checks slagen.
 
-## Verwacht resultaat
+---
 
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+## Pipeline-logica
+
+Geen structurele wijzigingen aan de flow (stap 1→2→3, retry, fallback). Alleen de prompt-teksten en het verificatie-schema worden aangepast. Na deploy opnieuw testen.
 
