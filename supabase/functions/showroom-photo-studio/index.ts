@@ -128,6 +128,12 @@ Look at the LICENSE PLATE position in Image 2.
 - If the plate is on the RIGHT side of Image 2, it MUST be on the RIGHT side of the output.
 - If you can see the DRIVER SIDE (left in EU/NL), it must remain the DRIVER SIDE.
 - Reversing left↔right = CRITICAL FAILURE. NEVER mirror or flip the vehicle.
+- SECONDARY ANCHORS (when plate is not clearly visible):
+  - In EU/NL vehicles, the DRIVER SIDE is LEFT. If the driver door is visible, it must remain on the same side.
+  - Exhaust pipe positions must remain on the same side as in Image 2.
+  - Fuel cap position must remain on the same side as in Image 2.
+- If the input shows a LEFT-side view, the output MUST show the LEFT side. NEVER substitute with the RIGHT side.
+- If the input shows RIGHT-front, the output MUST show RIGHT-front. NEVER substitute with LEFT-front.
 
 ━━━ CAMERA HEIGHT LOCK ━━━
 - The camera height and horizon line must match Image 1 exactly.
@@ -213,6 +219,12 @@ Look at the LICENSE PLATE position in Image 2.
 - The plate must appear on the SAME SIDE of the output image.
 - If the plate is on the LEFT side of Image 2, it MUST be on the LEFT side of the output.
 - Reversing left↔right = CRITICAL FAILURE. NEVER mirror or flip the vehicle.
+- SECONDARY ANCHORS (when plate is not clearly visible):
+  - In EU/NL vehicles, the DRIVER SIDE is LEFT. If the driver door is visible, it must remain on the same side.
+  - Exhaust pipe positions must remain on the same side as in Image 2.
+  - Fuel cap position must remain on the same side as in Image 2.
+- If the input shows a LEFT-side view, the output MUST show the LEFT side. NEVER substitute with the RIGHT side.
+- If the input shows RIGHT-front, the output MUST show RIGHT-front. NEVER substitute with LEFT-front.
 
 ━━━ CAMERA HEIGHT LOCK ━━━
 - The camera height and horizon line must match Image 1 exactly.
@@ -279,6 +291,12 @@ Check these 6 critical identity features by comparing Image 2 against Image 1:
    - If the angle CATEGORY has changed (e.g. side became three-quarter, or rear became rear-quarter), this is a HIGH SEVERITY failure.
    - Minor angle adjustment (±2°) within the SAME category is acceptable.
    - Mirroring (left↔right flip) = automatic high severity.
+   COMMON FAILURES TO WATCH FOR:
+   - Front photo turned into a three-quarter or side view (AI "improved" the composition)
+   - Left-side photo became right-side (mirroring)
+   - Rear photo became rear-quarter (AI added perspective)
+   - Side photo became three-quarter (AI rotated to show more of the front)
+   Any of these = HIGH severity failure, angle_preserved = false.
 4. COLOR: Is the vehicle body color consistent with the original? Check for yellow/warm color cast. Any hue shift = failure.
 5. OVERALL IDENTITY: Does the result still look like the same car? (same model, same features, same proportions)
 6. MIRRORING: Is the same side of the car visible? (check for left/right flip)
@@ -462,7 +480,7 @@ serve(async (req) => {
         messages: [{
           role: 'user',
           content: [
-            { type: 'text', text: RETOUCH_PROMPT + vehicleIdentity },
+            { type: 'text', text: RETOUCH_PROMPT + vehicleIdentity + `\n\nDETECTED ANGLE: "${angleLabel}". You MUST preserve this exact viewing angle. Do NOT rotate or reframe the vehicle.` },
             { type: 'image_url', image_url: { url: vehicleImageUrl } }
           ]
         }],
