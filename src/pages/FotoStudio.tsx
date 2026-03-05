@@ -87,16 +87,8 @@ const FotoStudio = () => {
     });
   };
 
-  const getReferenceImageBase64 = async (): Promise<string> => {
-    const response = await fetch('/studio/autocity_studio_reference.png');
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  };
+  // Reference image no longer needed — AI now generates a generic showroom background
+  // Kept as comment for future logo overlay feature
 
   const processImage = async (imageId: string) => {
     const image = images.find(i => i.id === imageId);
@@ -114,13 +106,10 @@ const FotoStudio = () => {
     }, 45000);
 
     try {
-      const [base64, referenceImageUrl] = await Promise.all([
-        fileToBase64(image.originalFile),
-        getReferenceImageBase64(),
-      ]);
+      const base64 = await fileToBase64(image.originalFile);
 
       const { data, error } = await supabase.functions.invoke('showroom-photo-studio', {
-        body: { imageBase64: base64, referenceImageUrl, vehicleInfo: getVehicleInfo() }
+        body: { imageBase64: base64, vehicleInfo: getVehicleInfo() }
       });
 
       if (error) throw new Error(error.message || 'Verwerking mislukt');
