@@ -244,6 +244,20 @@ serve(async (req) => {
       if (!compositeResponse.ok) return { error: await handleAiError(compositeResponse, 'Showroom') };
 
       const compositeData = await compositeResponse.json();
+      
+      // Check for embedded errors (e.g. rate limit returned as 200 with error in choice)
+      const choiceError = compositeData.choices?.[0]?.error;
+      if (choiceError) {
+        const errorCode = choiceError.code || 500;
+        const errorType = choiceError.metadata?.error_type || 'unknown';
+        console.error(`Compositing embedded error [${errorCode}]: ${errorType} - ${choiceError.message}`);
+        if (errorCode === 429 || errorType === 'rate_limit_exceeded') {
+          return { error: new Response(JSON.stringify({ error: 'Rate limit bereikt bij showroom stap. Probeer het later opnieuw.', step: 'composite' }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }) };
+        }
+        return { error: null, image: null };
+      }
+      
       const resultImage = compositeData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
       if (!resultImage) {
         console.error('No image from compositing:', JSON.stringify(compositeData).substring(0, 500));
