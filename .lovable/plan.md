@@ -1,48 +1,66 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Analyse: ChatGPT feedback vs ons plan
 
-## Probleem
+## Waar ChatGPT gelijk heeft
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+ChatGPT maakt terechte punten. Ik ben het eens met het meeste:
 
-## Echte oorzaak (niet React deduplicatie)
+1. **"Pixel-lock via prompt is een illusie"** — Correct. Generatieve modellen kunnen altijd subtiel afwijken. Prompts helpen maar garanderen niets.
+2. **"Reflection replacement is gevaarlijk"** — Correct. Reflecties lopen over koplampen/grille, en "vervangen" leidt tot drift. Alleen verzachten is veiliger.
+3. **"Tekst-only verificatie is kwetsbaar"** — Deels correct. Maar met image input (niet alleen tekst) + gestructureerde JSON output wordt het veel sterker.
+4. **"Safe fallback nodig"** — 100% eens. Als verificatie faalt na retry, moet je de enhanced foto returnen ipv een verkeerde auto.
+5. **"Kentekenhouder niet door AI"** — Eens in principe, maar client-side overlay met perspective warp is complex en niet prioriteit nu.
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+## Waar ChatGPT te ver gaat / niet praktisch is
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+1. **Segmentatie/masking** — Niet haalbaar in Edge Functions. Client-side TFJS is te zwaar voor productie. Een aparte microservice is scope creep. Dit is een toekomst-optie.
+2. **"Safe vs Aggressive retouch" split** — Klinkt goed maar voegt complexiteit toe zonder bewezen meerwaarde. De retouch-prompt kan één prompt zijn die vuil verwijdert maar geometrie lockt.
+3. **2 retries ipv 1** — Elke retry is een extra Gemini Pro call (~30 sec + kosten). 1 retry + fallback is de betere balans.
+4. **Kentekenhouder overlay in code** — Vereist plaatdetectie + perspective warp. Niet triviaal, los feature.
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+## Mijn verbeterde plan: het beste van beide
 
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+### Stap 1 — Cosmetic Retouch (Gemini Flash Image)
+- **ChatGPT's filosofie adopteren**: "retoucher, niet renderer"
+- **Reflection replacement SCHRAPPEN** — alleen verzachten, niet vervangen (ChatGPT heeft gelijk)
+- Expliciete identity lock met merk/model/bouwjaar
+- Vuil/waas/glans mag, geometrie niet
 
-## Oplossing
+### Stap 2 — Showroom Compositing (Gemini Pro Image)
+- **3 afbeeldingen**: referentie + enhanced + origineel als GROUND TRUTH
+- "COMPOSITING, niet GENERATING" filosofie
+- Expliciete zijde-telling en mirror-verbod
+- Identity lock met merk/model/bouwjaar
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+### Stap 3 — AI Verificatie (Gemini Flash, image+tekst)
+- Stuur origineel + resultaat als **images** (niet alleen tekst)
+- Uitgebreide JSON: `{pass, severity, mirrored, changed_parts, issues}`
+- **1 retry** als severity != "none" → strengere prompt + issues
+- **Safe fallback** als retry ook faalt: return enhanced foto met lichte studio-grading (geen generatieve showroom)
 
-### Wijzigingen
+### Frontend (FotoStudio.tsx)
+- Kleurveld toevoegen
+- 3-staps indicator: "1. Retouch → 2. Showroom → 3. Controle"
+- Warning badge bij fallback: "Originele foto gebruikt (identity check gefaald)"
+- Fallback resultaat is nog steeds bruikbaar (enhanced foto)
 
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+## Bestanden die wijzigen
 
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+| Bestand | Wijziging |
+|---------|-----------|
+| `supabase/functions/showroom-photo-studio/index.ts` | Volledige prompt herschrijving (retouch-filosofie), reflectie-replacement schrappen, stap 3 verificatie + fallback, origineel als 3e image in stap 2 |
+| `src/pages/FotoStudio.tsx` | Kleurveld, 3-staps indicator, warning/fallback badge |
 
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+## Samenvatting verschil met ChatGPT
 
-## Verwacht resultaat
-
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+| Punt | ChatGPT | Mijn plan |
+|------|---------|-----------|
+| Segmentatie/mask | Wil intern hosten | Niet haalbaar nu, toekomst |
+| Safe/Aggressive split | 2 prompts | 1 prompt, slim genoeg |
+| Reflection replacement | Schrappen | **Eens, schrappen** |
+| Fallback mode | Ja | **Eens, implementeren** |
+| Verificatie | Severity + mirror + parts | **Eens, adopteren** |
+| 2 retries | Ja | 1 retry + fallback (kosten) |
+| Kentekenhouder overlay | In code | Apart feature, later |
 
