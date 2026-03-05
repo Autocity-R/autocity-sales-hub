@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -7,11 +7,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Upload, Download, RefreshCw, Save, ImageIcon, 
   Sparkles, Loader2, X, CheckCircle2, AlertCircle,
-  Images, Camera
+  Images, Camera, Car
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import OptimizedDashboardLayout from "@/components/layout/OptimizedDashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface StudioImage {
   id: string;
@@ -23,8 +24,50 @@ interface StudioImage {
   error?: string;
 }
 
+interface VehicleInfo {
+  brand: string;
+  model: string;
+  year: number | null;
+  color: string | null;
+  bodyType: string | null;
+}
+
+interface VehicleOption {
+  id: string;
+  label: string;
+  info: VehicleInfo;
+}
+
 const FotoStudio = () => {
   const [images, setImages] = useState<StudioImage[]>([]);
+  const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
+  const [selectedVehicleInfo, setSelectedVehicleInfo] = useState<VehicleInfo | null>(null);
+
+  useEffect(() => {
+    const loadVehicles = async () => {
+      const { data } = await supabase
+        .from('vehicles')
+        .select('id, brand, model, build_year, color, body_type, license_number')
+        .order('created_at', { ascending: false })
+        .limit(500);
+      
+      if (data) {
+        setVehicles(data.map(v => ({
+          id: v.id,
+          label: `${v.brand} ${v.model}${v.build_year ? ` (${v.build_year})` : ''} — ${v.color || '?'} — ${v.license_number || '?'}`,
+          info: {
+            brand: v.brand,
+            model: v.model,
+            year: v.build_year,
+            color: v.color,
+            bodyType: v.body_type,
+          }
+        })));
+      }
+    };
+    loadVehicles();
+  }, []);
   const [isProcessingAll, setIsProcessingAll] = useState(false);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
