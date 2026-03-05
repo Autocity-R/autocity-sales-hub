@@ -386,14 +386,18 @@ const FotoStudio = () => {
                         <div className="text-center">
                           <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin text-primary" />
                           <p className="text-xs text-muted-foreground font-medium">
-                            {img.processingStep === 'verificatie' ? 'AI controleert resultaat...' : img.processingStep === 'showroom' ? 'AI plaatst in showroom...' : 'AI retoucheert foto...'}
+                            {img.processingStep === 'verificatie' ? 'AI controleert resultaat...' : img.processingStep === 'relight' ? 'AI past belichting aan...' : img.processingStep === 'composite' ? 'AI plaatst in showroom...' : img.processingStep === 'isolate' ? 'AI isoleert voertuig...' : 'AI maakt foto schoon...'}
                           </p>
-                          <div className="flex items-center gap-1.5 mt-2 text-[10px] text-muted-foreground">
-                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'retouch' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>1. Retouch</span>
+                          <div className="flex items-center gap-1.5 mt-2 text-[10px] text-muted-foreground flex-wrap">
+                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'clean' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>1. Clean</span>
                             <span>→</span>
-                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'showroom' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>2. Showroom</span>
+                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'isolate' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>2. Isoleer</span>
                             <span>→</span>
-                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'verificatie' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>3. Controle</span>
+                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'composite' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>3. Studio</span>
+                            <span>→</span>
+                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'relight' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>4. Licht</span>
+                            <span>→</span>
+                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'verificatie' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>5. Check</span>
                           </div>
                         </div>
                       </div>
