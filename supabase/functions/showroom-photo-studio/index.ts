@@ -43,7 +43,14 @@ const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is t
 - Improve exposure and contrast subtly
 - Clean glass surfaces (remove haze, smudges, water marks)
 - Deepen tire black point slightly
-- Subtly soften outdoor reflections (trees, buildings, sky, clouds, fences, parked cars, people) so they become indistinct blurred shapes — do NOT replace them with dark overlays or colored tints. The goal is that reflections look like soft ambient light from an indoor environment, NOT that the paint changes color. The paint must remain TRANSPARENT, vibrant, and glossy — as if freshly waxed and polished under studio lighting.
+- Remove ALL recognizable outdoor shapes from paint reflections (trees, sky gradient, clouds, building lines, fences, parked cars, people, horizon lines). Do NOT just blur them — REPLACE them with smooth dark studio ambient gradients + 1–2 soft linear LED streak reflections on hood/roof panels (matching a rectangular ceiling LED light source).
+- Simulate a professional automotive studio lighting model on the paint:
+  • Main LED ceiling light reflection as a bright, clean streak on roof and hood
+  • Secondary soft reflections on upper side body panels
+  • Darker gradient toward lower panels and wheel arches (natural studio falloff)
+- Windows: remove ALL outside scenery visible through or reflected in glass. Windows must appear as neutral dark studio glass. No visible outdoor scenery, sky, trees or horizon lines. Glass reflections must show subtle studio ceiling light reflections, NOT outdoor environment.
+- The vehicle must visually belong to the same photographic exposure as a dark indoor studio environment — do NOT leave the car looking like it was shot outdoors.
+- The paint must remain TRANSPARENT, vibrant, and glossy with depth — as if freshly waxed and polished under controlled studio lighting. Do NOT flatten the paint or add color cast.
 - Make chrome/piano-black trim less dull
 
 ━━━ YOU MUST NOT (identity features — GEOMETRY LOCKED) ━━━
@@ -134,13 +141,31 @@ Look at the LICENSE PLATE position in Image 2.
 - Output MUST be 1920x1080 pixels, landscape orientation
 
 ━━━ VEHICLE PLACEMENT ━━━
-- Center horizontally, fill ~65-80% of image width — the vehicle must appear PROMINENT and close, not distant
+- Center horizontally, fill ~60-75% of image width
+- Leave at least 6-10% margin on left and right sides, and 8-12% above the roofline
 - All wheels on floor plane naturally
+- Do NOT crop any part of the vehicle — complete car must be visible with breathing room
 
 ━━━ SHADOWS & REFLECTIONS ━━━
-- Natural contact shadows under tires (~35% opacity, soft)
+- Tight tire contact shadow directly under each tire (~50-60% opacity, sharp close to tire, softening outward)
+- Soft ambient shadow under the full chassis (~20-25% opacity, wide spread)
+- Shadow direction must match the studio lighting from Image 3
 - Floor reflection must be BARELY visible — just a faint hint, not a mirror effect (~5% opacity, heavily blurred, fading quickly)
-- All reflections on vehicle paint must be consistent with the indoor studio from Image 3 — no trees, sky, buildings.
+- Vehicle edges must be feathered 1-2px and color-matched to the studio floor/wall — NO halo, NO visible cut line, NO edge artifacts
+- All reflections on vehicle paint must be consistent with the indoor studio from Image 3 — no trees, sky, buildings
+
+━━━ LIGHTING INTEGRATION (CRITICAL FOR REALISM) ━━━
+- The vehicle MUST look like it is PHYSICALLY PRESENT in the studio from Image 3.
+- Study the ambient lighting in Image 3: it is a DARK room with controlled LED light sources.
+- The vehicle's paint reflections must show ONLY the studio environment — LED ceiling lights as bright streaks on the roof/hood/panels, dark ambient on lower body panels.
+- LED highlight streaks on paint must follow the SAME direction and geometry as the LED shape in Image 3.
+- Remove ALL remaining outdoor reflections from paint. Replace with what the studio walls/ceiling/floor would reflect.
+- The vehicle's overall brightness and contrast must match the studio's ambient light level — do NOT make the car brighter than the room.
+- Highlights on chrome, glass, and paint must come from the LED light source positions visible in Image 3.
+- The color temperature of light on the vehicle must match Image 3 exactly.
+- Windows: any remaining outdoor scenery must be replaced with neutral dark studio glass. Glass reflections must match the studio ceiling lights from Image 3.
+- The vehicle must visually belong to the SAME photographic exposure as the studio environment.
+- The transition between the vehicle's bottom edge and the floor must be SEAMLESS — no visible cut line, no halo, no edge artifacts.
 
 ━━━ IMAGE QUALITY (CRITICAL) ━━━
 - Output must be ULTRA HIGH QUALITY at 1920x1080 — maximum sharpness, zero noise.
@@ -199,12 +224,30 @@ Look at the LICENSE PLATE position in Image 2.
 - Output MUST be 1920x1080 pixels, landscape orientation
 
 ━━━ VEHICLE PLACEMENT ━━━
-- Center horizontally, fill ~65-80% of image width — the vehicle must appear PROMINENT and close, not distant
+- Center horizontally, fill ~60-75% of image width
+- Leave at least 6-10% margin on left and right sides, and 8-12% above the roofline
 - All wheels on floor plane naturally
+- Do NOT crop any part of the vehicle — complete car must be visible with breathing room
 
 ━━━ SHADOWS & REFLECTIONS ━━━
-- Natural contact shadows under tires (~35% opacity, soft)
+- Tight tire contact shadow directly under each tire (~50-60% opacity, sharp close to tire, softening outward)
+- Soft ambient shadow under the full chassis (~20-25% opacity, wide spread)
+- Shadow direction must match the studio lighting from Image 3
 - Floor reflection must be BARELY visible — just a faint hint, not a mirror effect (~5% opacity, heavily blurred, fading quickly)
+- Vehicle edges must be feathered 1-2px and color-matched to the studio floor/wall — NO halo, NO visible cut line, NO edge artifacts
+
+━━━ LIGHTING INTEGRATION (CRITICAL FOR REALISM) ━━━
+- The vehicle MUST look like it is PHYSICALLY PRESENT in the studio from Image 3.
+- Study the ambient lighting in Image 3: it is a DARK room with controlled LED light sources.
+- The vehicle's paint reflections must show ONLY the studio environment — LED ceiling lights as bright streaks on the roof/hood/panels, dark ambient on lower body panels.
+- LED highlight streaks on paint must follow the SAME direction and geometry as the LED shape in Image 3.
+- Remove ALL remaining outdoor reflections from paint. Replace with what the studio walls/ceiling/floor would reflect.
+- The vehicle's overall brightness and contrast must match the studio's ambient light level — do NOT make the car brighter than the room.
+- Highlights on chrome, glass, and paint must come from the LED light source positions visible in Image 3.
+- The color temperature of light on the vehicle must match Image 3 exactly.
+- Windows: any remaining outdoor scenery must be replaced with neutral dark studio glass. Glass reflections must match the studio ceiling lights from Image 3.
+- The vehicle must visually belong to the SAME photographic exposure as the studio environment.
+- The transition between the vehicle's bottom edge and the floor must be SEAMLESS — no visible cut line, no halo, no edge artifacts.
 
 ━━━ IMAGE QUALITY (CRITICAL) ━━━
 - Output must be ULTRA HIGH QUALITY at 1920x1080 — maximum sharpness, zero noise.
