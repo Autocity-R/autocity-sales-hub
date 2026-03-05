@@ -30,15 +30,18 @@ const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is t
 - Do NOT change taillight shape, design, or light signature
 - Do NOT mirror or flip the vehicle orientation
 - Do NOT crop, zoom, reframe, or change the camera angle
-- You MUST replace outdoor environment reflections (trees, sky, buildings, fences) with neutral indoor reflections. But do NOT alter the SHAPE of reflective surfaces — only change WHAT is reflected in them.
-- Do NOT add or remove anything from the image (except replacing outdoor reflections with indoor ones)
+- You MAY subtly soften outdoor environment reflections so they look like soft indoor ambient light. But do NOT alter the SHAPE of reflective surfaces — only soften what is reflected in them.
+- Do NOT add or remove anything from the image
 - Do NOT change the background or surroundings (that happens in step 2)
 - Do NOT remove or alter license plates or plate holders
+
+━━━ CRITICAL COLOR RULE ━━━
+Compare your output paint color against the input. If the hue has shifted in ANY direction (yellower, bluer, darker, lighter, warmer, cooler), your output is WRONG. The paint color must be pixel-identical to the original. Do NOT add any color cast, tint, or filter. The paint must remain vibrant and transparent with depth.
 
 ━━━ CRITICAL TEST ━━━
 If you overlay input and output at 50% opacity, ONLY texture/lighting/reflections should differ — NEVER geometry, edges, or silhouette. The car's outline must be pixel-identical.
 
-OUTPUT: The same photo with improved lighting, color accuracy, reduced noise, cleaned surfaces, enhanced paint gloss, and indoor-appropriate reflections. Nothing structural changes.`;
+OUTPUT: The same photo with improved lighting, color accuracy, reduced noise, cleaned surfaces, enhanced paint gloss, and softened reflections. Nothing structural changes. The paint color must be IDENTICAL to the input.`;
 
 // ━━━ STEP 2: SHOWROOM COMPOSITING ━━━
 const SHOWROOM_PROMPT = `You are given THREE images:
