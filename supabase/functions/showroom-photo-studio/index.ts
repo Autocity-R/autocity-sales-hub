@@ -358,7 +358,7 @@ serve(async (req) => {
       });
 
       if (classifyResponse.ok) {
-        const classifyData = await classifyResponse.json();
+        const classifyData = await safeParseJson(classifyResponse, 'Angle classify');
         const rawLabel = (classifyData.choices?.[0]?.message?.content || '').trim().toLowerCase().replace(/[^a-z-]/g, '');
         if (VALID_ANGLES.includes(rawLabel)) {
           angleLabel = rawLabel;
@@ -394,7 +394,7 @@ serve(async (req) => {
       });
 
       if (!retouchResponse.ok) return await handleAiError(retouchResponse, 'Retouch');
-      const retouchData = await retouchResponse.json();
+      const retouchData = await safeParseJson(retouchResponse, 'Interior retouch');
       const enhancedImage = retouchData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
       return new Response(JSON.stringify({
@@ -429,7 +429,7 @@ serve(async (req) => {
 
     if (!retouchResponse.ok) return await handleAiError(retouchResponse, 'Retouch');
 
-    const retouchData = await retouchResponse.json();
+    const retouchData = await safeParseJson(retouchResponse, 'Retouch');
     const enhancedImage = retouchData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
     if (!enhancedImage) {
@@ -468,7 +468,7 @@ serve(async (req) => {
 
       if (!compositeResponse.ok) return { error: await handleAiError(compositeResponse, 'Showroom') };
 
-      const compositeData = await compositeResponse.json();
+      const compositeData = await safeParseJson(compositeResponse, 'Composite');
 
       const embeddedError = compositeData?.error
         || compositeData?.choices?.[0]?.error
@@ -545,7 +545,7 @@ serve(async (req) => {
           return null;
         }
 
-        const verifyData = await verifyResponse.json();
+        const verifyData = await safeParseJson(verifyResponse, 'Verification');
         const verifyText = verifyData.choices?.[0]?.message?.content || '';
         console.log('Verification raw response:', verifyText);
 
