@@ -173,7 +173,7 @@ serve(async (req) => {
           {
             role: 'user',
             content: [
-              { type: 'text', text: ENHANCE_PROMPT },
+              { type: 'text', text: ENHANCE_PROMPT + vehicleIdentityEnhance },
               { type: 'image_url', image_url: { url: vehicleImageUrl } }
             ]
           }
