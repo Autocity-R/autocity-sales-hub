@@ -6,17 +6,18 @@ const corsHeaders = {
 };
 
 // ━━━ STEP 1: COSMETIC RETOUCH (Identity-Locked) ━━━
-const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is to clean and enhance this vehicle photo while keeping every pixel of the car's GEOMETRY unchanged.
+const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is to clean and enhance this vehicle photo while keeping every pixel of the car's GEOMETRY unchanged. The vehicle may have been photographed OUTDOORS (on a street, parking lot, etc.) — your job is to make it look like it was photographed INDOORS in a professional showroom.
 
 ━━━ YOU MAY (cosmetic only) ━━━
 - Remove dirt, mud, water spots, dust, bird droppings from paint surfaces
 - Enhance paint gloss and recover highlights (make paint look freshly polished)
+- Make paint appear freshly waxed — smooth, even gloss across ALL panels, no dull patches or uneven spots
 - Correct white balance and color temperature (remove yellow/green warehouse cast)
 - Reduce noise and grain
 - Improve exposure and contrast subtly
 - Clean glass surfaces (remove haze, smudges, water marks)
 - Deepen tire black point slightly
-- Reduce harsh environmental reflections (soften them, make less distracting)
+- Replace outdoor environment reflections in paint and glass (trees, buildings, sky, clouds, fences, parked cars, people) with neutral, dark, diffuse reflections consistent with an indoor showroom (dark walls, soft overhead LED lighting). The car must look like it is photographed indoors.
 - Make chrome/piano-black trim less dull
 
 ━━━ YOU MUST NOT (identity features — GEOMETRY LOCKED) ━━━
@@ -28,19 +29,20 @@ const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is t
 - Do NOT change taillight shape, design, or light signature
 - Do NOT mirror or flip the vehicle orientation
 - Do NOT crop, zoom, reframe, or change the camera angle
-- Do NOT replace reflections with "studio reflections" — only SOFTEN existing ones
-- Do NOT add or remove anything from the image
-- Do NOT change the background or surroundings
+- You MUST replace outdoor environment reflections (trees, sky, buildings, fences) with neutral indoor reflections. But do NOT alter the SHAPE of reflective surfaces — only change WHAT is reflected in them.
+- Do NOT add or remove anything from the image (except replacing outdoor reflections with indoor ones)
+- Do NOT change the background or surroundings (that happens in step 2)
+- Do NOT remove or alter license plates or plate holders
 
 ━━━ CRITICAL TEST ━━━
-If you overlay input and output at 50% opacity, ONLY texture/lighting should differ — NEVER geometry, edges, or silhouette. The car's outline must be pixel-identical.
+If you overlay input and output at 50% opacity, ONLY texture/lighting/reflections should differ — NEVER geometry, edges, or silhouette. The car's outline must be pixel-identical.
 
-OUTPUT: The same photo with improved lighting, color accuracy, reduced noise, cleaned surfaces, and enhanced paint gloss. Nothing structural changes.`;
+OUTPUT: The same photo with improved lighting, color accuracy, reduced noise, cleaned surfaces, enhanced paint gloss, and indoor-appropriate reflections. Nothing structural changes.`;
 
 // ━━━ STEP 2: SHOWROOM COMPOSITING ━━━
 const SHOWROOM_PROMPT = `You are given THREE images:
 
-IMAGE 1 (Reference Studio): The EXACT showroom environment you must replicate.
+IMAGE 1 (Reference Studio): The EXACT showroom environment you must replicate. Copy it EXACTLY — do NOT invent, redesign, or reinterpret.
 IMAGE 2 (Enhanced Vehicle): The retouched vehicle photo to place in the studio.
 IMAGE 3 (Original Vehicle — GROUND TRUTH): The UNEDITED original photograph. This is your ABSOLUTE REFERENCE for all vehicle details.
 
@@ -58,6 +60,8 @@ Image 3 is the UNEDITED original photograph. Use it as your ABSOLUTE REFERENCE f
 - Wheel/rim spoke pattern and design
 - All badges, emblems, model text
 - Body lines, creases, and proportions
+- License plates and plate holders/frames
+- Body paint color (EXACT hue, saturation, brightness)
 If your output differs from Image 3 in ANY of these features, your output is WRONG.
 
 ━━━ ZERO-CROP GUARANTEE ━━━
@@ -75,21 +79,23 @@ Count the visible sides of the vehicle in Image 2:
 
 ━━━ VEHICLE INTEGRITY (DO NOT MODIFY) ━━━
 ALL of these must remain IDENTICAL to Image 2/3:
-- Body color and paint finish
+- Body color and paint finish — EXACT same color. Do NOT shift hue, saturation, or brightness. If the car is dark blue, it stays dark blue — not black, not light blue.
 - Wheels/rims design and color (EXACT spoke pattern)
 - All badges, emblems, and model text
 - Headlights and taillights design (EXACT shape)
 - Front grille and bumper design (EXACT pattern)
 - Body shape, proportions, and all body lines
 - Window tint level
-- License plate holders (if present)
+- LICENSE PLATES & PLATE HOLDERS: If the original vehicle (Image 3) has license plates, dealer plate frames, or branded plate holders (e.g. "AUTOCITY"), these MUST be preserved EXACTLY as they appear. Do NOT remove, replace, blur, or alter any plates or plate frames.
 
-━━━ SHOWROOM ENVIRONMENT (match Image 1 EXACTLY) ━━━
-- Dark charcoal/anthracite walls — match Image 1
-- White LED "AUTOCITY" logo on back wall — match Image 1
-- White/warm LED light strips along ceiling edges — match Image 1
-- Polished dark floor with subtle reflections
-- Do NOT invent a different studio
+━━━ SHOWROOM ENVIRONMENT (COPY Image 1 EXACTLY — DO NOT INVENT) ━━━
+You MUST replicate the showroom from Image 1 with these specific elements:
+- Dark charcoal/anthracite TEXTURED walls (not smooth, not black, not grey — match Image 1 exactly)
+- White 3D BLOCK LETTERS spelling "AUTOCITY" on the back wall — NOT a car silhouette logo, NOT illuminated neon, NOT a different font, NOT a different word. Plain white 3D block letters EXACTLY as in Image 1.
+- Thin white LED light strips running along ceiling edges — match Image 1 exactly
+- Polished dark concrete floor with subtle reflections
+- Do NOT invent, redesign, or reinterpret the showroom. Copy it EXACTLY from Image 1.
+- Do NOT change the AUTOCITY logo style, shape, or design in any way.
 
 ━━━ VEHICLE PLACEMENT ━━━
 - Center horizontally, fill ~55-65% of image width
@@ -99,7 +105,7 @@ ALL of these must remain IDENTICAL to Image 2/3:
 ━━━ SHADOWS & REFLECTIONS ━━━
 - Natural contact shadows under tires (~35% opacity, soft)
 - Subtle floor reflection (~10% opacity, blurred, fading)
-- Paint reflections must show studio lighting only (soft LED strips, dark walls)
+- ALL reflections visible on vehicle paint MUST be consistent with this indoor showroom — dark walls, soft LED strips. No trees, sky, buildings, or outdoor elements may appear in paint reflections.
 
 ━━━ INTERIOR PHOTO HANDLING ━━━
 If Image 2 is an interior/cabin photo: enhance lighting/clarity, replace visible window backgrounds with dark gradient, do NOT place in studio.
@@ -112,24 +118,30 @@ const VERIFICATION_PROMPT = `You are a quality control inspector comparing a RES
 IMAGE 1 (Original): The unedited original vehicle photo — your GROUND TRUTH.
 IMAGE 2 (Result): The AI-processed showroom result to verify.
 
-Check these 5 identity features by comparing Image 2 against Image 1:
+Check these 8 identity features by comparing Image 2 against Image 1:
 
 1. HEADLIGHTS: Is the headlight shape, LED signature, and DRL pattern identical?
 2. TAILLIGHTS: Is the taillight shape and design identical? (if visible)
 3. GRILLE/BUMPER: Is the front grille pattern and bumper design identical? (if visible)
 4. WHEELS: Is the wheel/rim spoke pattern and design identical?
 5. VIEWING ANGLE: Is the same side of the car visible? (check for mirroring)
+6. SHOWROOM: Does the background match the reference studio? Dark textured walls, white AUTOCITY 3D block letters on the back wall, LED strips along ceiling? Or is it a different/invented studio with a different logo?
+7. LICENSE PLATES: Are original license plates and plate holders/frames preserved from the original? (if visible in Image 1)
+8. COLOR: Is the vehicle body color consistent with the original? No hue shift, no saturation change, no brightness change?
 
 For each feature, determine if it matches the original or has been altered.
 
 You MUST respond with ONLY a valid JSON object, no other text:
-{"pass": true/false, "severity": "none"/"low"/"medium"/"high", "mirrored": true/false, "changed_parts": ["list of changed parts"], "issues": ["description of each issue"]}
+{"pass": true/false, "severity": "none"/"low"/"medium"/"high", "mirrored": true/false, "showroom_match": true/false, "plates_preserved": true/false, "color_consistent": true/false, "changed_parts": ["list of changed parts"], "issues": ["description of each issue"]}
 
 Rules:
-- "pass": true only if ALL 5 checks pass
-- "severity": "none" if pass, "low" for minor color/lighting differences, "medium" for noticeable shape changes, "high" for wrong headlights/grille/mirroring
+- "pass": true only if ALL 8 checks pass
+- "severity": "none" if pass, "low" for minor color/lighting differences, "medium" for noticeable shape changes or wrong showroom, "high" for wrong headlights/grille/mirroring/completely different studio
 - "mirrored": true if the vehicle appears flipped/mirrored compared to the original
-- "changed_parts": list from ["headlights", "taillights", "grille", "bumper", "wheels", "body_lines", "badges"]
+- "showroom_match": true if the background is the correct AUTOCITY showroom with correct logo style
+- "plates_preserved": true if license plates and plate holders match the original (or if no plates are visible)
+- "color_consistent": true if the vehicle body color matches the original without hue/saturation shift
+- "changed_parts": list from ["headlights", "taillights", "grille", "bumper", "wheels", "body_lines", "badges", "plates", "color", "showroom"]
 - "issues": human-readable description of each problem found`;
 
 serve(async (req) => {
@@ -287,6 +299,9 @@ serve(async (req) => {
           pass: false,
           severity: 'medium',
           mirrored: false,
+          showroom_match: false,
+          plates_preserved: true,
+          color_consistent: true,
           changed_parts: [],
           issues: ['Geen showroom afbeelding ontvangen; fallback gebruikt.']
         },
@@ -297,7 +312,7 @@ serve(async (req) => {
 
     // ━━━ STEP 3: AI Verification ━━━
     console.log('Step 3: AI verification...');
-    let verification = { pass: true, severity: 'none', mirrored: false, changed_parts: [] as string[], issues: [] as string[] };
+    let verification = { pass: true, severity: 'none', mirrored: false, showroom_match: true, plates_preserved: true, color_consistent: true, changed_parts: [] as string[], issues: [] as string[] };
     let finalImage = compositeResult.image;
     let usedFallback = false;
 
@@ -416,6 +431,9 @@ serve(async (req) => {
           pass: verification.pass,
           severity: verification.severity || 'none',
           mirrored: verification.mirrored || false,
+          showroom_match: verification.showroom_match !== false,
+          plates_preserved: verification.plates_preserved !== false,
+          color_consistent: verification.color_consistent !== false,
           changed_parts: verification.changed_parts || [],
           issues: verification.issues || [],
         },
