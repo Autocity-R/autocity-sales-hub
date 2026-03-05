@@ -264,6 +264,29 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
+    // Safe JSON parser that handles truncated responses
+    const safeParseJson = async (response: Response, stepName: string) => {
+      const text = await response.text();
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error(`${stepName}: JSON parse failed (${text.length} chars). Attempting recovery...`);
+        // Try to find last complete JSON object
+        const lastBrace = text.lastIndexOf('}');
+        if (lastBrace > 0) {
+          try {
+            // Find matching opening brace
+            const candidate = text.substring(0, lastBrace + 1);
+            const firstBrace = candidate.indexOf('{');
+            if (firstBrace >= 0) {
+              return JSON.parse(candidate.substring(firstBrace));
+            }
+          } catch (_) { /* fall through */ }
+        }
+        throw new Error(`${stepName}: Truncated AI response (${text.length} chars received). Try again.`);
+      }
+    };
+
     const { imageBase64, vehicleInfo, studioReferenceBase64 } = await req.json();
     
     if (!imageBase64) {
@@ -335,7 +358,7 @@ serve(async (req) => {
       });
 
       if (classifyResponse.ok) {
-        const classifyData = await classifyResponse.json();
+        const classifyData = await safeParseJson(classifyResponse, 'Angle classify');
         const rawLabel = (classifyData.choices?.[0]?.message?.content || '').trim().toLowerCase().replace(/[^a-z-]/g, '');
         if (VALID_ANGLES.includes(rawLabel)) {
           angleLabel = rawLabel;
@@ -371,7 +394,7 @@ serve(async (req) => {
       });
 
       if (!retouchResponse.ok) return await handleAiError(retouchResponse, 'Retouch');
-      const retouchData = await retouchResponse.json();
+      const retouchData = await safeParseJson(retouchResponse, 'Interior retouch');
       const enhancedImage = retouchData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
       return new Response(JSON.stringify({
@@ -406,7 +429,7 @@ serve(async (req) => {
 
     if (!retouchResponse.ok) return await handleAiError(retouchResponse, 'Retouch');
 
-    const retouchData = await retouchResponse.json();
+    const retouchData = await safeParseJson(retouchResponse, 'Retouch');
     const enhancedImage = retouchData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
     if (!enhancedImage) {
@@ -445,7 +468,7 @@ serve(async (req) => {
 
       if (!compositeResponse.ok) return { error: await handleAiError(compositeResponse, 'Showroom') };
 
-      const compositeData = await compositeResponse.json();
+      const compositeData = await safeParseJson(compositeResponse, 'Composite');
 
       const embeddedError = compositeData?.error
         || compositeData?.choices?.[0]?.error
@@ -522,7 +545,7 @@ serve(async (req) => {
           return null;
         }
 
-        const verifyData = await verifyResponse.json();
+        const verifyData = await safeParseJson(verifyResponse, 'Verification');
         const verifyText = verifyData.choices?.[0]?.message?.content || '';
         console.log('Verification raw response:', verifyText);
 
