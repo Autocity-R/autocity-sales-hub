@@ -150,32 +150,51 @@ Look at the LICENSE PLATE position in Image 2.
 - Visible margin between vehicle edges and image borders on ALL sides
 - Output MUST be 1920x1080 pixels, landscape orientation
 
-━━━ VEHICLE PLACEMENT ━━━
-- Center horizontally, fill ~60-75% of image width
-- Leave at least 6-10% margin on left and right sides, and 8-12% above the roofline
-- All wheels on floor plane naturally
+━━━ VEHICLE PLACEMENT & CONSISTENT SIZING (CRITICAL) ━━━
+- Center horizontally, fill ~55-65% of image width — EVERY car, regardless of angle, must fill approximately the SAME proportion of the frame
+- The vehicle must appear as if photographed from 6-8 meters away with an 85mm lens — natural perspective, NO wide-angle distortion
+- Leave at least 8-12% margin on left and right sides, and 10-15% above the roofline
+- All wheels on floor plane naturally — tires must TOUCH the floor with visible compression/contact
 - Do NOT crop any part of the vehicle — complete car must be visible with breathing room
+- The vehicle SIZE must be PROPORTIONALLY CORRECT relative to the studio room — it must look like a real car in a real room, not a miniature or oversized model
 
-━━━ SHADOWS & REFLECTIONS ━━━
-- Tight tire contact shadow directly under each tire (~50-60% opacity, sharp close to tire, softening outward)
-- Soft ambient shadow under the full chassis (~20-25% opacity, wide spread)
-- Shadow direction must match the studio lighting from Image 3
-- Floor reflection must be BARELY visible — just a faint hint, not a mirror effect (~5% opacity, heavily blurred, fading quickly)
-- Vehicle edges must be feathered 1-2px and color-matched to the studio floor/wall — NO halo, NO visible cut line, NO edge artifacts
-- All reflections on vehicle paint must be consistent with the indoor studio from Image 3 — no trees, sky, buildings
+━━━ SEAMLESS EDGE INTEGRATION (CRITICAL — NO "PASTED" LOOK) ━━━
+- The vehicle MUST look like it was PHYSICALLY PHOTOGRAPHED in this studio — NOT composited or "pasted in"
+- Vehicle edges must have a 2-3px SOFT FEATHER that color-matches the adjacent studio environment (wall or floor color)
+- There must be NO visible cut line, NO halo, NO bright edge, NO dark outline around the car silhouette
+- The bottom edge of the vehicle (rocker panels, lower bumpers) must BLEND into the floor shadow zone — NOT sit on top of the floor
+- Wheel arches must show the studio wall/floor color THROUGH the arch openings — NOT a different background color
+- The color temperature of the vehicle edge pixels must MATCH the adjacent studio surface — no warm car edge against cool studio wall
+- Between the tires and floor there must be a CONTINUOUS tonal transition — shadow → tire → floor with no seam
+- ANY visible edge artifact = the image looks fake. This is the #1 priority.
 
-━━━ LIGHTING INTEGRATION (CRITICAL FOR REALISM) ━━━
-- The vehicle MUST look like it is PHYSICALLY PRESENT in the studio from Image 3.
+━━━ SHADOWS & FLOOR GROUNDING (CRITICAL FOR REALISM) ━━━
+- CONTACT SHADOWS: Tight, dark shadow directly under each tire (~60-70% opacity). Must be SHARPEST at the tire-floor contact point and soften outward. This is what makes the car look HEAVY and GROUNDED.
+- AMBIENT SHADOW: Soft, wide shadow under the full chassis (~25-30% opacity, wide spread). This shadow connects the car to the floor.
+- FLOOR REFLECTION: Subtle mirror reflection of the car on the polished floor (~8-12% opacity). The reflection must show the CORRECT underside of the car and fade within 30-40% of the car's height. Must match the reflection style in Image 3.
+- Shadow direction must match the studio lighting from Image 3 — primarily from overhead LED, so shadows spread outward from center-bottom of vehicle
+- The floor directly around the car must show subtle color contamination from the car's paint — a dark car makes the nearby floor slightly darker, a light car makes it slightly lighter. This is how real studio floors behave.
+
+━━━ LIGHTING INTEGRATION & PAINT-ENVIRONMENT COUPLING (MOST CRITICAL) ━━━
+- The vehicle MUST look like it is PHYSICALLY PRESENT in the studio from Image 3 — same photographic exposure, same color temperature, same contrast level.
 - Study the ambient lighting in Image 3: it is a DARK room with controlled LED light sources.
-- The vehicle's paint reflections must show ONLY the studio environment — LED ceiling lights as bright streaks on the roof/hood/panels, dark ambient on lower body panels.
-- LED highlight streaks on paint must follow the SAME direction and geometry as the LED shape in Image 3.
-- Remove ALL remaining outdoor reflections from paint. Replace with what the studio walls/ceiling/floor would reflect.
+- PAINT REFLECTIONS: The vehicle's paint must reflect the STUDIO ENVIRONMENT — not generic highlights:
+  • The LED ceiling panel must appear as a bright, clean rectangular streak on the roof, hood, and trunk
+  • Side panels must show the dark studio walls as darker zones with subtle wall-edge highlights
+  • Lower body panels must be darker (natural studio light falloff from ceiling)
+  • The reflection pattern must be CONSISTENT across all panels — same light source, same angles
+- PAINT FINISH: The paint must look WET, DEEP, and TRANSPARENT — like a freshly detailed showroom car:
+  • Metallic paints must show sparkle/flake under the LED light
+  • Solid colors must show deep, glass-like reflection
+  • Dark colors must show rich, inky depth with clear highlight separation
+  • Light colors must show clean, bright reflections without washing out
+- Remove ALL remaining outdoor reflections from paint. Replace with what the studio walls/ceiling/floor would ACTUALLY reflect at that position on the car body.
 - The vehicle's overall brightness and contrast must match the studio's ambient light level — do NOT make the car brighter than the room.
 - Highlights on chrome, glass, and paint must come from the LED light source positions visible in Image 3.
 - The color temperature of light on the vehicle must match Image 3 exactly.
 - Windows: any remaining outdoor scenery must be replaced with neutral dark studio glass. Glass reflections must match the studio ceiling lights from Image 3.
 - The vehicle must visually belong to the SAME photographic exposure as the studio environment.
-- The transition between the vehicle's bottom edge and the floor must be SEAMLESS — no visible cut line, no halo, no edge artifacts.
+- COLOR CONTAMINATION: The studio floor and nearby walls must subtly reflect the car's color — a red car tints nearby surfaces slightly red, a blue car slightly blue. This environmental color interaction is what makes composites look REAL.
 
 ━━━ IMAGE QUALITY (CRITICAL) ━━━
 - Output must be ULTRA HIGH QUALITY at 1920x1080 — maximum sharpness, zero noise.
@@ -183,13 +202,14 @@ Look at the LICENSE PLATE position in Image 2.
 - Floor reflection must be crisp and clean — no pixelation.
 - Lighting gradients must be smooth — no visible banding or stepping.
 - The vehicle must retain ALL fine detail: paint texture, badge text, spoke edges, panel gaps, headlight internals.
-- The image must look like a professional DSLR photograph — NOT like an AI render.
+- The image must look like a professional DSLR photograph — NOT like an AI render or composite.
 - NO film grain. NO noise. NO soft focus on background. Tack-sharp everywhere.
+- The FINAL IMAGE must be indistinguishable from a real photograph taken in this studio.
 
 ━━━ INTERIOR PHOTO HANDLING ━━━
 If Image 1 is an interior/cabin photo: enhance lighting/clarity, replace visible window backgrounds with dark gradient, do NOT place in studio.
 
-OUTPUT: A photorealistic 1920x1080 image of the vehicle placed in the EXACT studio from Image 3. Every vehicle detail must match Image 2 exactly. The viewing angle MUST be {ANGLE}. The studio environment MUST match Image 3 exactly.`;
+OUTPUT: A photorealistic 1920x1080 image of the vehicle placed in the EXACT studio from Image 3. The car must look PHYSICALLY PRESENT — not composited. Every vehicle detail must match Image 2 exactly. The viewing angle MUST be {ANGLE}. The studio environment MUST match Image 3 exactly.`;
 
 // ━━━ STEP 2B: SHOWROOM BACKGROUND — STRICT (zero rotation, for retry & unknown) ━━━
 const SHOWROOM_PROMPT_STRICT = `You are given THREE images:
