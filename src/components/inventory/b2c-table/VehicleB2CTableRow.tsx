@@ -203,8 +203,7 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
                 </div>
                 <span className="text-xs font-medium w-8 text-right">{percentage}%</span>
               </div>
-              {readyForDelivery && (
-                hasActiveDeliveryAppointment ? (
+              {hasActiveDeliveryAppointment ? (
                   <Badge className="text-xs bg-blue-500 text-white border-blue-600 hover:bg-blue-600 w-fit font-semibold">
                     <CalendarCheck className="h-3 w-3 mr-1" />
                     {deliveryDate ? (
@@ -214,13 +213,12 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
                       </span>
                     ) : "Afspraak gepland"}
                   </Badge>
-                ) : (
+                ) : readyForDelivery ? (
                   <Badge className="text-xs bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600 w-fit font-semibold animate-pulse">
                     <CheckCircle2 className="h-3 w-3 mr-1" />
                     Klaar voor levering
                   </Badge>
-                )
-              )}
+                ) : null}
             </div>
           );
         })()}

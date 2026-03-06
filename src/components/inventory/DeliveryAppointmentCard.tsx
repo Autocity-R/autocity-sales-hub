@@ -17,11 +17,13 @@ import { cn } from "@/lib/utils";
 interface DeliveryAppointmentCardProps {
   vehicle: Vehicle;
   onAppointmentCreated: (appointmentId: string) => void;
+  isReady?: boolean;
 }
 
 export const DeliveryAppointmentCard: React.FC<DeliveryAppointmentCardProps> = ({
   vehicle,
   onAppointmentCreated,
+  isReady = true,
 }) => {
   const { user } = useAuth();
   const [date, setDate] = useState<Date | undefined>();
@@ -79,14 +81,24 @@ export const DeliveryAppointmentCard: React.FC<DeliveryAppointmentCardProps> = (
   };
 
   return (
-    <Card className="border-emerald-200 bg-emerald-50/50 dark:border-emerald-900 dark:bg-emerald-950/20">
+    <Card className={cn(
+      isReady 
+        ? "border-emerald-200 bg-emerald-50/50 dark:border-emerald-900 dark:bg-emerald-950/20"
+        : "border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/20"
+    )}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+        <CardTitle className={cn(
+          "flex items-center gap-2",
+          isReady ? "text-emerald-700 dark:text-emerald-400" : "text-orange-700 dark:text-orange-400"
+        )}>
           <Truck className="h-5 w-5" />
-          Klaar voor levering!
+          {isReady ? "Klaar voor levering!" : "Afleverafspraak inplannen"}
         </CardTitle>
         <CardDescription>
-          Alle checks zijn afgerond en het voertuig is ingeschreven. Plan direct een afleverafspraak in — deze wordt automatisch gesynchroniseerd met Google Calendar.
+          {isReady 
+            ? "Alle checks zijn afgerond en het voertuig is ingeschreven. Plan direct een afleverafspraak in — deze wordt automatisch gesynchroniseerd met Google Calendar."
+            : "Let op: dit voertuig is nog niet volledig klaar voor aflevering. Je kunt alvast een afleverafspraak inplannen — deze wordt automatisch gesynchroniseerd met Google Calendar."
+          }
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -156,7 +168,7 @@ export const DeliveryAppointmentCard: React.FC<DeliveryAppointmentCardProps> = (
         <Button
           onClick={handleSchedule}
           disabled={!date || isSubmitting}
-          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+          className={cn("w-full text-white", isReady ? "bg-emerald-600 hover:bg-emerald-700" : "bg-orange-600 hover:bg-orange-700")}
         >
           <CalendarCheck className="h-4 w-4 mr-2" />
           {isSubmitting ? "Bezig met plannen..." : "Afleverafspraak inplannen"}
