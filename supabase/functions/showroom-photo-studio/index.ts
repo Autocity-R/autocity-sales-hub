@@ -31,27 +31,31 @@ Respond with ONLY the label, nothing else. No explanation, no quotes, no punctua
 Example valid responses: left-side, right-front, rear, interior, unknown`;
 
 // ━━━ STEP 1: COSMETIC RETOUCH (Identity-Locked) ━━━
-const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is to clean and enhance this vehicle photo while keeping every pixel of the car's GEOMETRY unchanged. The vehicle may have been photographed OUTDOORS (on a street, parking lot, etc.) — your job is to make it look like it was photographed INDOORS in a professional showroom.
+const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is to clean and enhance this vehicle photo while keeping every pixel of the car's GEOMETRY unchanged. The vehicle may have been photographed OUTDOORS (on a street, parking lot, etc.) — your job is to make it look like it was photographed INDOORS in a professional showroom. The car must look SHOWROOM-NEW — as if it just rolled off the factory floor.
 
 ━━━ YOU MAY (cosmetic only) ━━━
-- Remove dirt, mud, water spots, dust, bird droppings from paint surfaces
-- Enhance paint gloss and recover highlights (make paint look freshly polished)
-- Make paint appear freshly waxed — smooth, even gloss across ALL panels, no dull patches or uneven spots. The paint must look TRANSPARENT, vibrant, and glossy with depth and clarity — NOT hazy, matte, or dull.
+- Remove dirt, mud, water spots, dust, bird droppings, scratches, swirl marks, and minor paint imperfections from all surfaces
+- Enhance paint gloss and recover highlights — make paint look freshly polished and SHOWROOM-NEW
+- Make paint appear freshly waxed — smooth, even gloss across ALL panels, no dull patches or uneven spots. The paint must look TRANSPARENT, vibrant, and glossy with DEEP METALLIC DEPTH and clarity — NOT hazy, matte, or dull.
+- POLISH the paint: remove all micro-scratches, swirl marks, oxidation, and dull spots. Every panel must have uniform, mirror-like gloss as if machine-polished by a professional detailer.
 - Correct white balance and color temperature (remove yellow/green warehouse cast)
 - Do NOT introduce any yellow, orange, warm, or cool color cast. The paint must remain the EXACT same hue as the original.
 - Reduce noise and grain
 - Improve exposure and contrast subtly
 - Clean glass surfaces (remove haze, smudges, water marks)
-- Deepen tire black point slightly
+- Deepen tire black point — tires must look freshly dressed, deep black with subtle sheen
+- Clean wheel faces — remove brake dust, dirt, and road grime from rims
 - Remove ALL recognizable outdoor shapes from paint reflections (trees, sky gradient, clouds, building lines, fences, parked cars, people, horizon lines). Do NOT just blur them — REPLACE them with smooth dark studio ambient gradients + 1–2 soft linear LED streak reflections on hood/roof panels (matching a rectangular ceiling LED light source).
 - Simulate a professional automotive studio lighting model on the paint:
   • Main LED ceiling light reflection as a bright, clean streak on roof and hood
   • Secondary soft reflections on upper side body panels
   • Darker gradient toward lower panels and wheel arches (natural studio falloff)
+  • The paint must show CONTINUOUS smooth reflective gradients — no patchy or inconsistent lighting
 - Windows: remove ALL outside scenery visible through or reflected in glass. Windows must appear as neutral dark studio glass. No visible outdoor scenery, sky, trees or horizon lines. Glass reflections must show subtle studio ceiling light reflections, NOT outdoor environment.
 - The vehicle must visually belong to the same photographic exposure as a dark indoor studio environment — do NOT leave the car looking like it was shot outdoors.
 - The paint must remain TRANSPARENT, vibrant, and glossy with depth — as if freshly waxed and polished under controlled studio lighting. Do NOT flatten the paint or add color cast.
-- Make chrome/piano-black trim less dull
+- Make chrome/piano-black trim pristine — remove oxidation, dullness, and fingerprints
+- Clean and restore all rubber seals, trim pieces, and plastic cladding to look new
 
 ━━━ YOU MUST NOT (identity features — GEOMETRY LOCKED) ━━━
 - Do NOT change headlight SHAPE, LED signature, or DRL pattern in any way
@@ -78,7 +82,7 @@ If you overlay input and output at 50% opacity, ONLY texture/lighting/reflection
 - All fine details (badge text, spoke edges, panel gaps, headlight internals) must remain tack-sharp.
 - Do NOT add film grain or any texture overlay.
 
-OUTPUT: The same photo with improved lighting, color accuracy, reduced noise, cleaned surfaces, enhanced paint gloss, and softened reflections. Nothing structural changes. The paint color must be IDENTICAL to the input.`;
+OUTPUT: The same photo with improved lighting, color accuracy, reduced noise, cleaned surfaces, SHOWROOM-NEW paint gloss, and studio-matched reflections. Nothing structural changes. The paint color must be IDENTICAL to the input. The car must look factory-fresh and professionally detailed.`;
 
 // ━━━ STEP 2A: SHOWROOM BACKGROUND — NORMAL (with angle lock + reference studio) ━━━
 const SHOWROOM_PROMPT_NORMAL = `You are given THREE images:
