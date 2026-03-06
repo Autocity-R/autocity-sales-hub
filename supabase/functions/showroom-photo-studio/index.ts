@@ -311,7 +311,7 @@ IMAGE 2 (Result): The AI-processed showroom result to verify.
 
 The input was classified as angle category: "{ANGLE}".
 
-Check these 6 critical identity features by comparing Image 2 against Image 1:
+Check these 8 critical features by comparing Image 2 against Image 1:
 
 1. HEADLIGHTS: Is the headlight shape, LED signature, and DRL pattern identical?
 2. WHEELS: Is the wheel/rim spoke pattern and design identical?
@@ -319,30 +319,40 @@ Check these 6 critical identity features by comparing Image 2 against Image 1:
    - A left-side photo must remain left-side, NOT left-front or three-quarter.
    - A rear photo must remain rear, NOT rear-quarter.
    - A front photo must remain front, NOT front-quarter.
-   - If the angle CATEGORY has changed (e.g. side became three-quarter, or rear became rear-quarter), this is a HIGH SEVERITY failure.
+   - If the angle CATEGORY has changed, this is a HIGH SEVERITY failure.
    - Minor angle adjustment (±2°) within the SAME category is acceptable.
    - Mirroring (left↔right flip) = automatic high severity.
    COMMON FAILURES TO WATCH FOR:
-   - Front photo turned into a three-quarter or side view (AI "improved" the composition)
+   - Front photo turned into a three-quarter or side view
    - Left-side photo became right-side (mirroring)
-   - Rear photo became rear-quarter (AI added perspective)
-   - Side photo became three-quarter (AI rotated to show more of the front)
+   - Rear photo became rear-quarter
+   - Side photo became three-quarter
    Any of these = HIGH severity failure, angle_preserved = false.
 4. COLOR: Is the vehicle body color consistent with the original? Check for yellow/warm color cast. Any hue shift = failure.
 5. OVERALL IDENTITY: Does the result still look like the same car? (same model, same features, same proportions)
 6. MIRRORING: Is the same side of the car visible? (check for left/right flip)
+7. INTEGRATION QUALITY: Does the car look PHYSICALLY PRESENT in the studio, or does it look "pasted" / composited?
+   - Check for visible edge halos or cut lines around the vehicle silhouette
+   - Check if the lighting on the car matches the studio environment
+   - Check if shadows and floor reflections look natural
+   - Check if the car's scale looks correct relative to the room
+   - A "pasted" look = MEDIUM severity failure
+8. PAINT QUALITY: Does the paint look showroom-new with proper studio reflections?
+   - Paint should show studio LED reflections, not outdoor environment
+   - Paint should look wet, glossy, and deep — not flat or matte
 
 You MUST respond with ONLY a valid JSON object, no other text:
-{"pass": true/false, "severity": "none"/"low"/"medium"/"high", "mirrored": true/false, "color_consistent": true/false, "angle_preserved": true/false, "detected_angle": "label", "changed_parts": ["list of changed parts"], "issues": ["description of each issue"]}
+{"pass": true/false, "severity": "none"/"low"/"medium"/"high", "mirrored": true/false, "color_consistent": true/false, "angle_preserved": true/false, "integration_natural": true/false, "detected_angle": "label", "changed_parts": ["list of changed parts"], "issues": ["description of each issue"]}
 
 Rules:
-- "pass": true if the car identity AND angle are preserved (minor background/lighting differences are OK)
-- "severity": "none" if pass, "low" for minor lighting differences, "medium" for noticeable feature changes, "high" for mirroring, angle category change, or completely wrong car
+- "pass": true if the car identity, angle, AND integration are preserved
+- "severity": "none" if pass, "low" for minor lighting differences, "medium" for noticeable feature changes or pasted look, "high" for mirroring, angle category change, or completely wrong car
 - "mirrored": true if the vehicle appears flipped compared to the original
 - "color_consistent": true if body color matches without hue/saturation shift
 - "angle_preserved": true if the viewing angle category matches "{ANGLE}". false if the category changed.
-- "detected_angle": the angle category you detect in the result image (use same labels: left-front, left-side, left-rear, rear, right-rear, right-side, right-front, front)
-- "changed_parts": list from ["headlights", "taillights", "grille", "bumper", "wheels", "body_lines", "badges", "color", "angle"]
+- "integration_natural": true if the car looks physically present in the studio, false if it looks composited/pasted
+- "detected_angle": the angle category you detect in the result image
+- "changed_parts": list from ["headlights", "taillights", "grille", "bumper", "wheels", "body_lines", "badges", "color", "angle", "integration"]
 - "issues": human-readable description of each problem found
 
 IMPORTANT: Be LENIENT on background/showroom details. Focus ONLY on the vehicle itself and its viewing angle. Minor lighting or reflection differences are acceptable and should NOT cause failure. But angle category changes MUST cause failure.`;
