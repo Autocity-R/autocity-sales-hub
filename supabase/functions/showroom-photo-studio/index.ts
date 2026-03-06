@@ -259,42 +259,49 @@ Look at the LICENSE PLATE position in Image 2.
 - The COMPLETE vehicle must be visible — ALL 4 wheels, BOTH mirrors, entire roof, all bumpers
 - Output MUST be 1920x1080 pixels, landscape orientation
 
-━━━ VEHICLE PLACEMENT ━━━
-- Center horizontally, fill ~60-75% of image width
-- Leave at least 6-10% margin on left and right sides, and 8-12% above the roofline
-- All wheels on floor plane naturally
+━━━ VEHICLE PLACEMENT & CONSISTENT SIZING ━━━
+- Center horizontally, fill ~55-65% of image width
+- The vehicle must appear as if photographed from 6-8 meters away — natural perspective
+- Leave at least 8-12% margin on left and right sides, and 10-15% above the roofline
+- All wheels on floor plane naturally — tires must TOUCH the floor with visible contact
 - Do NOT crop any part of the vehicle — complete car must be visible with breathing room
+- The vehicle SIZE must be PROPORTIONALLY CORRECT relative to the studio room
 
-━━━ SHADOWS & REFLECTIONS ━━━
-- Tight tire contact shadow directly under each tire (~50-60% opacity, sharp close to tire, softening outward)
-- Soft ambient shadow under the full chassis (~20-25% opacity, wide spread)
-- Shadow direction must match the studio lighting from Image 3
-- Floor reflection must be BARELY visible — just a faint hint, not a mirror effect (~5% opacity, heavily blurred, fading quickly)
-- Vehicle edges must be feathered 1-2px and color-matched to the studio floor/wall — NO halo, NO visible cut line, NO edge artifacts
+━━━ SEAMLESS EDGE INTEGRATION (NO "PASTED" LOOK) ━━━
+- The vehicle MUST look like it was PHYSICALLY PHOTOGRAPHED in this studio
+- Vehicle edges must have a 2-3px SOFT FEATHER color-matched to the adjacent studio surface
+- NO visible cut line, NO halo, NO bright edge, NO dark outline around the car
+- Bottom edge must BLEND into the floor shadow zone
+- Wheel arches must show studio wall/floor color THROUGH the openings
+- Between tires and floor: CONTINUOUS tonal transition — shadow → tire → floor with no seam
 
-━━━ LIGHTING INTEGRATION (CRITICAL FOR REALISM) ━━━
-- The vehicle MUST look like it is PHYSICALLY PRESENT in the studio from Image 3.
-- Study the ambient lighting in Image 3: it is a DARK room with controlled LED light sources.
-- The vehicle's paint reflections must show ONLY the studio environment — LED ceiling lights as bright streaks on the roof/hood/panels, dark ambient on lower body panels.
-- LED highlight streaks on paint must follow the SAME direction and geometry as the LED shape in Image 3.
-- Remove ALL remaining outdoor reflections from paint. Replace with what the studio walls/ceiling/floor would reflect.
-- The vehicle's overall brightness and contrast must match the studio's ambient light level — do NOT make the car brighter than the room.
-- Highlights on chrome, glass, and paint must come from the LED light source positions visible in Image 3.
-- The color temperature of light on the vehicle must match Image 3 exactly.
-- Windows: any remaining outdoor scenery must be replaced with neutral dark studio glass. Glass reflections must match the studio ceiling lights from Image 3.
-- The vehicle must visually belong to the SAME photographic exposure as the studio environment.
-- The transition between the vehicle's bottom edge and the floor must be SEAMLESS — no visible cut line, no halo, no edge artifacts.
+━━━ SHADOWS & FLOOR GROUNDING ━━━
+- CONTACT SHADOWS: Tight, dark shadow under each tire (~60-70% opacity), sharpest at contact point
+- AMBIENT SHADOW: Soft, wide shadow under chassis (~25-30% opacity)
+- FLOOR REFLECTION: Subtle mirror reflection (~8-12% opacity), fading within 30-40% of car height
+- Shadow direction must match Image 3 studio lighting
+- Floor around car must show subtle color contamination from car's paint color
+
+━━━ LIGHTING INTEGRATION & PAINT-ENVIRONMENT COUPLING ━━━
+- The vehicle MUST look PHYSICALLY PRESENT in the studio from Image 3
+- Study the ambient lighting in Image 3: DARK room with controlled LED light sources
+- Paint must reflect the STUDIO ENVIRONMENT: LED ceiling as bright streaks on roof/hood, dark walls on side panels
+- Paint must look WET, DEEP, and TRANSPARENT — showroom-new quality
+- Remove ALL outdoor reflections. Replace with studio wall/ceiling/floor reflections
+- Vehicle brightness and contrast must match the studio's ambient light level
+- Color temperature must match Image 3 exactly
+- Windows: neutral dark studio glass with studio ceiling light reflections
+- COLOR CONTAMINATION: Studio floor/walls must subtly reflect the car's color
+- The transition between vehicle bottom and floor must be SEAMLESS
 
 ━━━ IMAGE QUALITY (CRITICAL) ━━━
-- Output must be ULTRA HIGH QUALITY at 1920x1080 — maximum sharpness, zero noise.
-- The showroom environment (walls, floor, ceiling) must be PERFECTLY SMOOTH — no grain, no noise, no compression artifacts, no color banding.
-- Floor reflection must be crisp and clean — no pixelation.
-- Lighting gradients must be smooth — no visible banding or stepping.
-- The vehicle must retain ALL fine detail: paint texture, badge text, spoke edges, panel gaps, headlight internals.
-- The image must look like a professional DSLR photograph — NOT like an AI render.
-- NO film grain. NO noise. NO soft focus on background. Tack-sharp everywhere.
+- Output must be ULTRA HIGH QUALITY at 1920x1080 — maximum sharpness, zero noise
+- Environment must be PERFECTLY SMOOTH — no grain, no artifacts, no banding
+- The image must look like a professional DSLR photograph — NOT like a composite
+- NO film grain. NO noise. Tack-sharp everywhere.
+- The FINAL IMAGE must be indistinguishable from a real photograph taken in this studio.
 
-OUTPUT: A photorealistic 1920x1080 image of the vehicle placed in the EXACT studio from Image 3. The viewing angle must be IDENTICAL to the input. ZERO rotation allowed.`;
+OUTPUT: A photorealistic 1920x1080 image of the vehicle placed in the EXACT studio from Image 3. The car must look PHYSICALLY PRESENT. The viewing angle must be IDENTICAL to the input. ZERO rotation allowed.`;
 
 // ━━━ STEP 3: AI VERIFICATION (with angle check) ━━━
 const VERIFICATION_PROMPT = `You are a quality control inspector comparing a RESULT image against an ORIGINAL vehicle photograph.
