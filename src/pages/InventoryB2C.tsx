@@ -124,10 +124,6 @@ const InventoryB2C = () => {
       });
     } else if (deliveryFilter === "scheduled") {
       filtered = filtered.filter(v => !!deliveryDatesMap[v.id]);
-      filtered = filtered.filter(v => {
-        const progress = getChecklistProgress(v);
-        return !(progress === 100 && v.importStatus === 'ingeschreven');
-      });
     }
 
     // Sort by delivery date ascending when delivery filter active

@@ -248,15 +248,16 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
         </CardContent>
       </Card>
 
-      {/* Delivery Appointment Card - shown when ready for delivery */}
-      {isReadyForDelivery && !hasDeliveryAppointment && !readOnly && (
+      {/* Delivery Appointment Card - shown for any B2C sold vehicle */}
+      {!hasDeliveryAppointment && !readOnly && (
         <DeliveryAppointmentCard
           vehicle={vehicle}
           onAppointmentCreated={handleDeliveryAppointmentCreated}
+          isReady={isReadyForDelivery}
         />
       )}
 
-      {isReadyForDelivery && hasDeliveryAppointment && (
+      {hasDeliveryAppointment && (
         <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
