@@ -43,7 +43,14 @@ const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is t
 - Improve exposure and contrast subtly
 - Clean glass surfaces (remove haze, smudges, water marks)
 - Deepen tire black point slightly
-- Subtly soften outdoor reflections (trees, buildings, sky, clouds, fences, parked cars, people) so they become indistinct blurred shapes — do NOT replace them with dark overlays or colored tints. The goal is that reflections look like soft ambient light from an indoor environment, NOT that the paint changes color. The paint must remain TRANSPARENT, vibrant, and glossy — as if freshly waxed and polished under studio lighting.
+- Remove ALL recognizable outdoor shapes from paint reflections (trees, sky gradient, clouds, building lines, fences, parked cars, people, horizon lines). Do NOT just blur them — REPLACE them with smooth dark studio ambient gradients + 1–2 soft linear LED streak reflections on hood/roof panels (matching a rectangular ceiling LED light source).
+- Simulate a professional automotive studio lighting model on the paint:
+  • Main LED ceiling light reflection as a bright, clean streak on roof and hood
+  • Secondary soft reflections on upper side body panels
+  • Darker gradient toward lower panels and wheel arches (natural studio falloff)
+- Windows: remove ALL outside scenery visible through or reflected in glass. Windows must appear as neutral dark studio glass. No visible outdoor scenery, sky, trees or horizon lines. Glass reflections must show subtle studio ceiling light reflections, NOT outdoor environment.
+- The vehicle must visually belong to the same photographic exposure as a dark indoor studio environment — do NOT leave the car looking like it was shot outdoors.
+- The paint must remain TRANSPARENT, vibrant, and glossy with depth — as if freshly waxed and polished under controlled studio lighting. Do NOT flatten the paint or add color cast.
 - Make chrome/piano-black trim less dull
 
 ━━━ YOU MUST NOT (identity features — GEOMETRY LOCKED) ━━━
@@ -59,17 +66,6 @@ const RETOUCH_PROMPT = `You are a photo RETOUCHER, not a designer. Your job is t
 - Do NOT add or remove anything from the image
 - Do NOT change the background or surroundings (that happens in step 2)
 - Do NOT remove or alter license plates or plate holders
-
-━━━ LIGHTING INTEGRATION (PREPARE FOR STUDIO) ━━━
-The vehicle will be placed in a DARK indoor studio with a rectangular LED ceiling light. Prepare the paint lighting accordingly:
-- Shift the color temperature of highlights on the paint to NEUTRAL/COOL — remove any warm outdoor sunlight cast
-- Replace sharp outdoor reflections (trees, buildings, sky, clouds, fences) with soft, diffuse indoor ambient light gradients
-- Position the MAIN highlight on the roof and hood as if lit by a large rectangular overhead light source
-- Side panels should show soft, dark ambient reflections consistent with dark studio walls
-- The transition between light and shadow on body panels must be SMOOTH and gradual, as in studio lighting
-- Remove any hard shadow edges caused by direct sunlight — replace with soft studio gradients
-- IMPORTANT: Adjust ONLY the lighting, reflections, and color temperature. Do NOT change the car's SHAPE, GEOMETRY, SILHOUETTE, or STRUCTURE in any way.
-- IMPORTANT: Do NOT change the actual PAINT COLOR (hue). A red car stays red, a blue car stays blue. Only the LIGHTING QUALITY changes.
 
 ━━━ CRITICAL COLOR RULE ━━━
 Compare your output paint color against the input. If the hue has shifted in ANY direction (yellower, bluer, darker, lighter, warmer, cooler), your output is WRONG. The paint color must be pixel-identical to the original. Do NOT add any color cast, tint, or filter. The paint must remain vibrant and transparent with depth.
@@ -102,8 +98,6 @@ YOUR TASK: Place the vehicle from Image 1 into the EXACT studio environment show
 - The floor reflection style must match Image 3 (same intensity, same blur, same fade)
 
 ━━━ VEHICLE INTEGRITY (CRITICAL — DO NOT MODIFY THE CAR) ━━━
-PRIORITY ORDER: 1) Vehicle identity preservation, 2) Lighting integration, 3) Background quality. NEVER sacrifice #1 for #2.
-
 The vehicle must remain PIXEL-IDENTICAL to Image 2 (original). Specifically:
 - Body color and paint finish — EXACT same hue, saturation, brightness. No color cast, no warming, no cooling.
 - Paint must look TRANSPARENT, vibrant, glossy with depth — like freshly waxed under studio lighting.
@@ -115,9 +109,6 @@ The vehicle must remain PIXEL-IDENTICAL to Image 2 (original). Specifically:
 - License plates and plate holders — MUST remain exactly as in Image 2. Do NOT remove, alter, or regenerate plates.
 - Body lines, creases, proportions — IDENTICAL
 - Window tint level — IDENTICAL
-
-You MAY adjust the lighting, reflections, and color temperature on the vehicle paint to match the studio environment from Image 3. This means highlights, shadow direction, and ambient color should be consistent with Image 3.
-You MUST NOT change any STRUCTURAL feature: headlight shape, grille design, bumper form, wheel spoke pattern, body lines, badge positions. If you cannot match the lighting without changing the car's shape, KEEP the original shape and accept imperfect lighting.
 
 ━━━ CAMERA ANGLE PRESERVATION (CRITICAL) ━━━
 The input angle category is: {ANGLE}.
@@ -137,6 +128,12 @@ Look at the LICENSE PLATE position in Image 2.
 - If the plate is on the RIGHT side of Image 2, it MUST be on the RIGHT side of the output.
 - If you can see the DRIVER SIDE (left in EU/NL), it must remain the DRIVER SIDE.
 - Reversing left↔right = CRITICAL FAILURE. NEVER mirror or flip the vehicle.
+- SECONDARY ANCHORS (when plate is not clearly visible):
+  - In EU/NL vehicles, the DRIVER SIDE is LEFT. If the driver door is visible, it must remain on the same side.
+  - Exhaust pipe positions must remain on the same side as in Image 2.
+  - Fuel cap position must remain on the same side as in Image 2.
+- If the input shows a LEFT-side view, the output MUST show the LEFT side. NEVER substitute with the RIGHT side.
+- If the input shows RIGHT-front, the output MUST show RIGHT-front. NEVER substitute with LEFT-front.
 
 ━━━ CAMERA HEIGHT LOCK ━━━
 - The camera height and horizon line must match Image 1 exactly.
@@ -150,24 +147,31 @@ Look at the LICENSE PLATE position in Image 2.
 - Output MUST be 1920x1080 pixels, landscape orientation
 
 ━━━ VEHICLE PLACEMENT ━━━
-- Center horizontally, fill ~65-80% of image width — the vehicle must appear PROMINENT and close, not distant
+- Center horizontally, fill ~60-75% of image width
+- Leave at least 6-10% margin on left and right sides, and 8-12% above the roofline
 - All wheels on floor plane naturally
+- Do NOT crop any part of the vehicle — complete car must be visible with breathing room
 
 ━━━ SHADOWS & REFLECTIONS ━━━
-- Natural contact shadows under tires (~35% opacity, soft)
+- Tight tire contact shadow directly under each tire (~50-60% opacity, sharp close to tire, softening outward)
+- Soft ambient shadow under the full chassis (~20-25% opacity, wide spread)
+- Shadow direction must match the studio lighting from Image 3
 - Floor reflection must be BARELY visible — just a faint hint, not a mirror effect (~5% opacity, heavily blurred, fading quickly)
-- All reflections on vehicle paint must be consistent with the indoor studio from Image 3 — no trees, sky, buildings.
+- Vehicle edges must be feathered 1-2px and color-matched to the studio floor/wall — NO halo, NO visible cut line, NO edge artifacts
+- All reflections on vehicle paint must be consistent with the indoor studio from Image 3 — no trees, sky, buildings
 
 ━━━ LIGHTING INTEGRATION (CRITICAL FOR REALISM) ━━━
-The vehicle must look like it is ACTUALLY STANDING in the studio from Image 3 — not pasted on top.
-- Highlights on the roof and hood MUST reflect the rectangular LED ceiling light visible in Image 3 — a soft, elongated highlight strip
-- Side panels must show soft ambient reflections of the dark studio walls — no bright outdoor reflections
-- The color temperature of ALL light on the vehicle must match Image 3 (neutral/cool studio lighting)
-- Shadow direction on the vehicle must be consistent with the overhead light source in Image 3
-- Remove ALL outdoor artifacts from paint reflections: no trees, sky, buildings, clouds, fences, or parked cars
-- Replace outdoor reflections with soft, diffuse studio ambient light
-- The underside of the vehicle should show subtle dark ambient from the dark floor
-- CRITICAL: Adjust ONLY lighting, reflections, and color temperature on the paint. Do NOT change the car's SHAPE, GEOMETRY, FEATURES, or STRUCTURE in any way. If perfect lighting integration requires altering the car's shape, keep the original shape.
+- The vehicle MUST look like it is PHYSICALLY PRESENT in the studio from Image 3.
+- Study the ambient lighting in Image 3: it is a DARK room with controlled LED light sources.
+- The vehicle's paint reflections must show ONLY the studio environment — LED ceiling lights as bright streaks on the roof/hood/panels, dark ambient on lower body panels.
+- LED highlight streaks on paint must follow the SAME direction and geometry as the LED shape in Image 3.
+- Remove ALL remaining outdoor reflections from paint. Replace with what the studio walls/ceiling/floor would reflect.
+- The vehicle's overall brightness and contrast must match the studio's ambient light level — do NOT make the car brighter than the room.
+- Highlights on chrome, glass, and paint must come from the LED light source positions visible in Image 3.
+- The color temperature of light on the vehicle must match Image 3 exactly.
+- Windows: any remaining outdoor scenery must be replaced with neutral dark studio glass. Glass reflections must match the studio ceiling lights from Image 3.
+- The vehicle must visually belong to the SAME photographic exposure as the studio environment.
+- The transition between the vehicle's bottom edge and the floor must be SEAMLESS — no visible cut line, no halo, no edge artifacts.
 
 ━━━ IMAGE QUALITY (CRITICAL) ━━━
 - Output must be ULTRA HIGH QUALITY at 1920x1080 — maximum sharpness, zero noise.
@@ -199,12 +203,7 @@ YOUR TASK: Place the vehicle from Image 1 into the EXACT studio environment show
 - Do NOT add logos, text, branding, people, props, or decorative elements
 
 ━━━ VEHICLE INTEGRITY (DO NOT MODIFY THE CAR) ━━━
-PRIORITY ORDER: 1) Vehicle identity preservation, 2) Lighting integration, 3) Background quality. NEVER sacrifice #1 for #2.
-
 The vehicle must remain PIXEL-IDENTICAL to Image 2 (original). All features — color, headlights, taillights, grille, wheels, badges, plates, body lines, proportions — IDENTICAL.
-
-You MAY adjust the lighting, reflections, and color temperature on the vehicle paint to match the studio environment from Image 3. This means highlights, shadow direction, and ambient color should be consistent with Image 3.
-You MUST NOT change any STRUCTURAL feature: headlight shape, grille design, bumper form, wheel spoke pattern, body lines, badge positions. If you cannot match the lighting without changing the car's shape, KEEP the original shape and accept imperfect lighting.
 
 ━━━ ZERO ROTATION / ZERO REFRAME (ABSOLUTE RULE) ━━━
 This is a STRICT MODE output. The following rules are ABSOLUTE and NON-NEGOTIABLE:
@@ -220,6 +219,12 @@ Look at the LICENSE PLATE position in Image 2.
 - The plate must appear on the SAME SIDE of the output image.
 - If the plate is on the LEFT side of Image 2, it MUST be on the LEFT side of the output.
 - Reversing left↔right = CRITICAL FAILURE. NEVER mirror or flip the vehicle.
+- SECONDARY ANCHORS (when plate is not clearly visible):
+  - In EU/NL vehicles, the DRIVER SIDE is LEFT. If the driver door is visible, it must remain on the same side.
+  - Exhaust pipe positions must remain on the same side as in Image 2.
+  - Fuel cap position must remain on the same side as in Image 2.
+- If the input shows a LEFT-side view, the output MUST show the LEFT side. NEVER substitute with the RIGHT side.
+- If the input shows RIGHT-front, the output MUST show RIGHT-front. NEVER substitute with LEFT-front.
 
 ━━━ CAMERA HEIGHT LOCK ━━━
 - The camera height and horizon line must match Image 1 exactly.
@@ -231,22 +236,30 @@ Look at the LICENSE PLATE position in Image 2.
 - Output MUST be 1920x1080 pixels, landscape orientation
 
 ━━━ VEHICLE PLACEMENT ━━━
-- Center horizontally, fill ~65-80% of image width — the vehicle must appear PROMINENT and close, not distant
+- Center horizontally, fill ~60-75% of image width
+- Leave at least 6-10% margin on left and right sides, and 8-12% above the roofline
 - All wheels on floor plane naturally
+- Do NOT crop any part of the vehicle — complete car must be visible with breathing room
 
 ━━━ SHADOWS & REFLECTIONS ━━━
-- Natural contact shadows under tires (~35% opacity, soft)
+- Tight tire contact shadow directly under each tire (~50-60% opacity, sharp close to tire, softening outward)
+- Soft ambient shadow under the full chassis (~20-25% opacity, wide spread)
+- Shadow direction must match the studio lighting from Image 3
 - Floor reflection must be BARELY visible — just a faint hint, not a mirror effect (~5% opacity, heavily blurred, fading quickly)
+- Vehicle edges must be feathered 1-2px and color-matched to the studio floor/wall — NO halo, NO visible cut line, NO edge artifacts
 
 ━━━ LIGHTING INTEGRATION (CRITICAL FOR REALISM) ━━━
-The vehicle must look like it is ACTUALLY STANDING in the studio from Image 3 — not pasted on top.
-- Highlights on the roof and hood MUST reflect the rectangular LED ceiling light visible in Image 3
-- Side panels must show soft ambient reflections of the dark studio walls
-- The color temperature of ALL light on the vehicle must match Image 3 (neutral/cool studio lighting)
-- Shadow direction must be consistent with the overhead light source in Image 3
-- Remove ALL outdoor artifacts from paint reflections: no trees, sky, buildings, clouds
-- Replace outdoor reflections with soft, diffuse studio ambient light
-- CRITICAL: Adjust ONLY lighting, reflections, and color temperature. Do NOT change the car's SHAPE, GEOMETRY, FEATURES, or STRUCTURE.
+- The vehicle MUST look like it is PHYSICALLY PRESENT in the studio from Image 3.
+- Study the ambient lighting in Image 3: it is a DARK room with controlled LED light sources.
+- The vehicle's paint reflections must show ONLY the studio environment — LED ceiling lights as bright streaks on the roof/hood/panels, dark ambient on lower body panels.
+- LED highlight streaks on paint must follow the SAME direction and geometry as the LED shape in Image 3.
+- Remove ALL remaining outdoor reflections from paint. Replace with what the studio walls/ceiling/floor would reflect.
+- The vehicle's overall brightness and contrast must match the studio's ambient light level — do NOT make the car brighter than the room.
+- Highlights on chrome, glass, and paint must come from the LED light source positions visible in Image 3.
+- The color temperature of light on the vehicle must match Image 3 exactly.
+- Windows: any remaining outdoor scenery must be replaced with neutral dark studio glass. Glass reflections must match the studio ceiling lights from Image 3.
+- The vehicle must visually belong to the SAME photographic exposure as the studio environment.
+- The transition between the vehicle's bottom edge and the floor must be SEAMLESS — no visible cut line, no halo, no edge artifacts.
 
 ━━━ IMAGE QUALITY (CRITICAL) ━━━
 - Output must be ULTRA HIGH QUALITY at 1920x1080 — maximum sharpness, zero noise.
@@ -278,6 +291,12 @@ Check these 6 critical identity features by comparing Image 2 against Image 1:
    - If the angle CATEGORY has changed (e.g. side became three-quarter, or rear became rear-quarter), this is a HIGH SEVERITY failure.
    - Minor angle adjustment (±2°) within the SAME category is acceptable.
    - Mirroring (left↔right flip) = automatic high severity.
+   COMMON FAILURES TO WATCH FOR:
+   - Front photo turned into a three-quarter or side view (AI "improved" the composition)
+   - Left-side photo became right-side (mirroring)
+   - Rear photo became rear-quarter (AI added perspective)
+   - Side photo became three-quarter (AI rotated to show more of the front)
+   Any of these = HIGH severity failure, angle_preserved = false.
 4. COLOR: Is the vehicle body color consistent with the original? Check for yellow/warm color cast. Any hue shift = failure.
 5. OVERALL IDENTITY: Does the result still look like the same car? (same model, same features, same proportions)
 6. MIRRORING: Is the same side of the car visible? (check for left/right flip)
@@ -305,6 +324,29 @@ serve(async (req) => {
   try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
+
+    // Safe JSON parser that handles truncated responses
+    const safeParseJson = async (response: Response, stepName: string) => {
+      const text = await response.text();
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error(`${stepName}: JSON parse failed (${text.length} chars). Attempting recovery...`);
+        // Try to find last complete JSON object
+        const lastBrace = text.lastIndexOf('}');
+        if (lastBrace > 0) {
+          try {
+            // Find matching opening brace
+            const candidate = text.substring(0, lastBrace + 1);
+            const firstBrace = candidate.indexOf('{');
+            if (firstBrace >= 0) {
+              return JSON.parse(candidate.substring(firstBrace));
+            }
+          } catch (_) { /* fall through */ }
+        }
+        throw new Error(`${stepName}: Truncated AI response (${text.length} chars received). Try again.`);
+      }
+    };
 
     const { imageBase64, vehicleInfo, studioReferenceBase64 } = await req.json();
     
@@ -377,7 +419,7 @@ serve(async (req) => {
       });
 
       if (classifyResponse.ok) {
-        const classifyData = await classifyResponse.json();
+        const classifyData = await safeParseJson(classifyResponse, 'Angle classify');
         const rawLabel = (classifyData.choices?.[0]?.message?.content || '').trim().toLowerCase().replace(/[^a-z-]/g, '');
         if (VALID_ANGLES.includes(rawLabel)) {
           angleLabel = rawLabel;
@@ -413,7 +455,7 @@ serve(async (req) => {
       });
 
       if (!retouchResponse.ok) return await handleAiError(retouchResponse, 'Retouch');
-      const retouchData = await retouchResponse.json();
+      const retouchData = await safeParseJson(retouchResponse, 'Interior retouch');
       const enhancedImage = retouchData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
       return new Response(JSON.stringify({
@@ -438,7 +480,7 @@ serve(async (req) => {
         messages: [{
           role: 'user',
           content: [
-            { type: 'text', text: RETOUCH_PROMPT + vehicleIdentity },
+            { type: 'text', text: RETOUCH_PROMPT + vehicleIdentity + `\n\nDETECTED ANGLE: "${angleLabel}". You MUST preserve this exact viewing angle. Do NOT rotate or reframe the vehicle.` },
             { type: 'image_url', image_url: { url: vehicleImageUrl } }
           ]
         }],
@@ -448,7 +490,7 @@ serve(async (req) => {
 
     if (!retouchResponse.ok) return await handleAiError(retouchResponse, 'Retouch');
 
-    const retouchData = await retouchResponse.json();
+    const retouchData = await safeParseJson(retouchResponse, 'Retouch');
     const enhancedImage = retouchData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
     if (!enhancedImage) {
@@ -487,7 +529,7 @@ serve(async (req) => {
 
       if (!compositeResponse.ok) return { error: await handleAiError(compositeResponse, 'Showroom') };
 
-      const compositeData = await compositeResponse.json();
+      const compositeData = await safeParseJson(compositeResponse, 'Composite');
 
       const embeddedError = compositeData?.error
         || compositeData?.choices?.[0]?.error
@@ -564,7 +606,7 @@ serve(async (req) => {
           return null;
         }
 
-        const verifyData = await verifyResponse.json();
+        const verifyData = await safeParseJson(verifyResponse, 'Verification');
         const verifyText = verifyData.choices?.[0]?.message?.content || '';
         console.log('Verification raw response:', verifyText);
 
