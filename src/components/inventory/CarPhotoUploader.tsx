@@ -12,12 +12,13 @@ import { Progress } from "@/components/ui/progress";
 
 interface CarPhotoUploaderProps {
   vehicleId: string;
+  licensePlate?: string;
   onPhotoGenerated?: (url: string) => void;
 }
 
 type Status = "idle" | "uploading" | "studio" | "board" | "done" | "error";
 
-export function CarPhotoUploader({ vehicleId, onPhotoGenerated }: CarPhotoUploaderProps) {
+export function CarPhotoUploader({ vehicleId, licensePlate, onPhotoGenerated }: CarPhotoUploaderProps) {
   const [status, setStatus] = useState<Status>("idle");
   const [finalImageUrl, setFinalImageUrl] = useState<string | null>(null);
   const [studioImageUrl, setStudioImageUrl] = useState<string | null>(null);
@@ -52,7 +53,7 @@ export function CarPhotoUploader({ vehicleId, onPhotoGenerated }: CarPhotoUpload
       setProgress(15);
 
       const studioResponse = await supabase.functions.invoke("showroom-photo-studio", {
-        body: { imageBase64, step: "studio" },
+        body: { imageBase64, step: "studio", licensePlate },
       });
 
       if (studioResponse.error || !studioResponse.data?.success) {
