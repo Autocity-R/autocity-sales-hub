@@ -94,7 +94,11 @@ async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise
     },
     body: JSON.stringify({
       model: "gpt-image-1",
-      images: [imageBase64],
+      images: [{
+        type: "base64",
+        media_type: "image/png",
+        data: imageBase64,
+      }],
       prompt,
       n: 1,
       size: "1536x1024",
