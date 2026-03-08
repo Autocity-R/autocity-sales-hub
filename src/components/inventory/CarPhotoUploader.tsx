@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 
 interface CarPhotoUploaderProps {
   vehicleId: string;
+  licensePlate?: string;
   onPhotoGenerated?: (url: string) => void;
 }
 
