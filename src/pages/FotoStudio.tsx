@@ -1,27 +1,16 @@
 import React, { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  Upload, Download, RefreshCw, Save, ImageIcon, 
-  Sparkles, Loader2, X, CheckCircle2, AlertCircle,
-  Images, Camera, Car, ShieldCheck, ShieldAlert
+  Upload, Download, RefreshCw, X, ImageIcon, 
+  Sparkles, Loader2, CheckCircle2, AlertCircle,
+  Images, Camera
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import OptimizedDashboardLayout from "@/components/layout/OptimizedDashboardLayout";
-import { PageHeader } from "@/components/ui/page-header";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-
-interface VerificationResult {
-  pass: boolean;
-  severity: string;
-  mirrored: boolean;
-  changed_parts: string[];
-  issues: string[];
-}
 
 interface StudioImage {
   id: string;
@@ -29,59 +18,12 @@ interface StudioImage {
   originalPreview: string;
   resultImage: string | null;
   status: 'queued' | 'processing' | 'done' | 'error';
-  processingStep?: 'retouch' | 'showroom' | 'verificatie';
+  processingStep?: 'studio' | 'board';
   error?: string;
-  usedFallback?: boolean;
-  verification?: VerificationResult;
 }
-
-interface VehicleInfo {
-  brand: string;
-  model: string;
-  year: number | null;
-  color: string | null;
-}
-
-const STUDIO_REFERENCE_URL = '/autocity-studio-reference.jpg';
-
-const fetchStudioReferenceBase64 = async (): Promise<string | null> => {
-  try {
-    const response = await fetch(STUDIO_REFERENCE_URL);
-    if (!response.ok) return null;
-    const blob = await response.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
-};
 
 const FotoStudio = () => {
   const [images, setImages] = useState<StudioImage[]>([]);
-  const [manualBrand, setManualBrand] = useState("");
-  const [manualModel, setManualModel] = useState("");
-  const [manualYear, setManualYear] = useState("");
-  const [manualColor, setManualColor] = useState("");
-  const [studioRefBase64, setStudioRefBase64] = useState<string | null>(null);
-
-  // Preload studio reference image on mount
-  React.useEffect(() => {
-    fetchStudioReferenceBase64().then(setStudioRefBase64);
-  }, []);
-
-  const getVehicleInfo = (): VehicleInfo | null => {
-    if (!manualBrand.trim() || !manualModel.trim()) return null;
-    return {
-      brand: manualBrand.trim(),
-      model: manualModel.trim(),
-      year: manualYear.trim() ? parseInt(manualYear.trim(), 10) || null : null,
-      color: manualColor.trim() || null,
-    };
-  };
   const [isProcessingAll, setIsProcessingAll] = useState(false);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -111,54 +53,39 @@ const FotoStudio = () => {
     });
   };
 
-  // Reference image no longer needed — AI now generates a generic showroom background
-  // Kept as comment for future logo overlay feature
-
   const processImage = async (imageId: string) => {
     const image = images.find(i => i.id === imageId);
     if (!image) return;
 
-    setImages(prev => prev.map(i => i.id === imageId ? { ...i, status: 'processing', processingStep: 'retouch', usedFallback: false, verification: undefined } : i));
+    setImages(prev => prev.map(i => i.id === imageId ? { ...i, status: 'processing', processingStep: 'studio' } : i));
 
-    // Update processing steps based on timing
-    const showroomTimer = setTimeout(() => {
-      setImages(prev => prev.map(i => i.id === imageId && i.status === 'processing' ? { ...i, processingStep: 'showroom' } : i));
-    }, 15000);
-
-    const verifyTimer = setTimeout(() => {
-      setImages(prev => prev.map(i => i.id === imageId && i.status === 'processing' ? { ...i, processingStep: 'verificatie' } : i));
-    }, 45000);
+    // Switch to board step after ~30s
+    const boardTimer = setTimeout(() => {
+      setImages(prev => prev.map(i => i.id === imageId && i.status === 'processing' ? { ...i, processingStep: 'board' } : i));
+    }, 30000);
 
     try {
       const base64 = await fileToBase64(image.originalFile);
 
       const { data, error } = await supabase.functions.invoke('showroom-photo-studio', {
-        body: { imageBase64: base64, vehicleInfo: getVehicleInfo(), studioReferenceBase64: studioRefBase64 }
+        body: { imageBase64: base64 }
       });
 
       if (error) throw new Error(error.message || 'Verwerking mislukt');
-      if (data?.error) throw new Error(data.error);
+      if (!data?.success) throw new Error(data?.error || 'Verwerking mislukt');
 
-      clearTimeout(showroomTimer);
-      clearTimeout(verifyTimer);
+      clearTimeout(boardTimer);
       
       setImages(prev => prev.map(i => 
         i.id === imageId ? { 
           ...i, 
           status: 'done', 
-          resultImage: data.resultImage, 
+          resultImage: data.resultImage || data.finalUrl, 
           processingStep: undefined,
-          usedFallback: data.usedFallback || false,
-          verification: data.verification || undefined,
         } : i
       ));
-
-      if (data.usedFallback) {
-        toast.warning('Identity check gefaald — verbeterde originele foto gebruikt als veilig alternatief.');
-      }
     } catch (err: any) {
-      clearTimeout(showroomTimer);
-      clearTimeout(verifyTimer);
+      clearTimeout(boardTimer);
       console.error('Studio processing error:', err);
       const errorMsg = err?.message || 'Onbekende fout';
       setImages(prev => prev.map(i => 
@@ -218,54 +145,14 @@ const FotoStudio = () => {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <Camera className="h-6 w-6 text-primary" />
-                Foto Studio
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Upload voertuigfoto's en laat AI ze omzetten naar professionele AutoCity showroom-beelden
-              </p>
-            </div>
-          </div>
-
-          {/* Vehicle info - manual input */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <Input
-              placeholder="Merk (bijv. BMW)"
-              value={manualBrand}
-              onChange={e => setManualBrand(e.target.value)}
-              className="w-40"
-              maxLength={50}
-            />
-            <Input
-              placeholder="Model (bijv. X5)"
-              value={manualModel}
-              onChange={e => setManualModel(e.target.value)}
-              className="w-40"
-              maxLength={50}
-            />
-            <Input
-              placeholder="Bouwjaar"
-              value={manualYear}
-              onChange={e => setManualYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
-              className="w-28"
-              maxLength={4}
-            />
-            <Input
-              placeholder="Kleur (bijv. Zwart)"
-              value={manualColor}
-              onChange={e => setManualColor(e.target.value)}
-              className="w-36"
-              maxLength={50}
-            />
-            {manualBrand && manualModel && (
-              <p className="text-xs text-muted-foreground whitespace-nowrap">
-                <Car className="h-3.5 w-3.5 inline mr-1" />
-                AI behoudt exact het {manualYear || ''} {manualBrand} {manualModel} {manualColor ? `(${manualColor})` : ''} model
-              </p>
-            )}
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Camera className="h-6 w-6 text-primary" />
+              Foto Studio
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Upload voertuigfoto's en laat AI ze omzetten naar professionele AutoCity showroom-beelden
+            </p>
           </div>
         </div>
 
@@ -338,10 +225,7 @@ const FotoStudio = () => {
         {images.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {images.map((img, index) => (
-              <div 
-                key={img.id} 
-                className="border rounded-lg overflow-hidden bg-card"
-              >
+              <div key={img.id} className="border rounded-lg overflow-hidden bg-card">
                 <div className="grid grid-cols-2 gap-0">
                   {/* Original */}
                   <div className="relative bg-muted/50">
@@ -374,15 +258,14 @@ const FotoStudio = () => {
                         <div className="text-center">
                           <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin text-primary" />
                           <p className="text-xs text-muted-foreground font-medium">
-                            {img.processingStep === 'verificatie' ? 'AI controleert resultaat...' : img.processingStep === 'showroom' ? 'AI plaatst in showroom...' : 'AI retoucheert foto...'}
+                            {img.processingStep === 'board' ? 'AutoCity bord wordt geplaatst...' : 'Studio achtergrond wordt gegenereerd...'}
                           </p>
                           <div className="flex items-center gap-1.5 mt-2 text-[10px] text-muted-foreground">
-                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'retouch' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>1. Retouch</span>
+                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'studio' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>1. Studio</span>
                             <span>→</span>
-                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'showroom' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>2. Showroom</span>
-                            <span>→</span>
-                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'verificatie' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>3. Controle</span>
+                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'board' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>2. AutoCity Bord</span>
                           </div>
+                          <p className="text-[10px] text-muted-foreground mt-1.5">Dit kan 30-90 seconden duren</p>
                         </div>
                       </div>
                     )}
@@ -404,33 +287,12 @@ const FotoStudio = () => {
                   </div>
                 </div>
 
-                {/* Actions & Status */}
+                {/* Actions */}
                 <div className="flex items-center justify-between p-2 border-t bg-muted/20">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    {img.status === 'done' && !img.usedFallback && (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                    )}
-                    {img.status === 'done' && img.usedFallback && (
-                      <ShieldAlert className="h-3.5 w-3.5 text-orange-500" />
-                    )}
+                    {img.status === 'done' && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
                     {img.status === 'processing' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                     <span className="truncate max-w-[120px]">{img.originalFile.name}</span>
-                    {img.status === 'done' && img.usedFallback && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-orange-300 text-orange-600 bg-orange-50">
-                        Fallback
-                      </Badge>
-                    )}
-                    {img.status === 'done' && img.verification && !img.verification.pass && !img.usedFallback && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-yellow-300 text-yellow-700 bg-yellow-50">
-                        Mogelijke afwijking
-                      </Badge>
-                    )}
-                    {img.status === 'done' && img.verification?.pass && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-green-300 text-green-700 bg-green-50">
-                        <ShieldCheck className="h-2.5 w-2.5 mr-0.5" />
-                        Geverifieerd
-                      </Badge>
-                    )}
                   </div>
                   <div className="flex gap-1">
                     {img.status === 'done' && img.resultImage && (
