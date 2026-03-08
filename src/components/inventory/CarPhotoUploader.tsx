@@ -78,7 +78,7 @@ export function CarPhotoUploader({ vehicleId, onPhotoGenerated }: CarPhotoUpload
       setProgress(60);
 
       // Stap 2: AutoCity bord plaatsing
-      const boardResponse = await supabase.functions.invoke("transform-car-photo", {
+      const boardResponse = await supabase.functions.invoke("showroom-photo-studio", {
         body: { imageBase64: studioBase64, step: "board" },
       });
 
