@@ -18,7 +18,7 @@ interface CarPhotoUploaderProps {
 
 type Status = "idle" | "uploading" | "studio" | "board" | "done" | "error";
 
-export function CarPhotoUploader({ vehicleId, onPhotoGenerated }: CarPhotoUploaderProps) {
+export function CarPhotoUploader({ vehicleId, licensePlate, onPhotoGenerated }: CarPhotoUploaderProps) {
   const [status, setStatus] = useState<Status>("idle");
   const [finalImageUrl, setFinalImageUrl] = useState<string | null>(null);
   const [studioImageUrl, setStudioImageUrl] = useState<string | null>(null);
