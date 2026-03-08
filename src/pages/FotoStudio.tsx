@@ -34,7 +34,10 @@ interface StudioImage {
   status: 'queued' | 'processing' | 'done' | 'error';
   processingStep?: 'studio' | 'board';
   error?: string;
+  shotAngle?: string;
 }
+
+const STANDARD_ANGLES = ['front-left', 'side-left', 'rear-left', 'rear', 'rear-right', 'side-right', 'front-right', 'front'];
 
 const FotoStudio = () => {
   const [images, setImages] = useState<StudioImage[]>([]);
