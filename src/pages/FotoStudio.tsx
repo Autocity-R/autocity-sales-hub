@@ -323,12 +323,26 @@ const FotoStudio = () => {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center justify-between p-2 border-t bg-muted/20">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    {img.status === 'done' && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                    {img.status === 'processing' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                    <span className="truncate max-w-[120px]">{img.originalFile.name}</span>
+                <div className="flex items-center justify-between p-2 border-t bg-muted/20 gap-2">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
+                    {img.status === 'done' && <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />}
+                    {img.status === 'processing' && <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />}
+                    <span className="truncate max-w-[100px]">{img.originalFile.name}</span>
                   </div>
+                  <Select
+                    value={img.shotAngle || ""}
+                    onValueChange={(val) => setImages(prev => prev.map(i => i.id === img.id ? { ...i, shotAngle: val } : i))}
+                    disabled={img.status === 'processing'}
+                  >
+                    <SelectTrigger className="h-7 text-xs w-[130px] shrink-0">
+                      <SelectValue placeholder="Geen hoek" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SHOT_ANGLE_OPTIONS.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <div className="flex gap-1">
                     {img.status === 'done' && img.resultImage && (
                       <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => downloadImage(img.resultImage!, index)}>
