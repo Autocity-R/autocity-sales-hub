@@ -86,24 +86,24 @@ async function saveToStorage(base64: string, type: string): Promise<string> {
 }
 
 async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise<string> {
+  // Convert base64 to Blob for multipart/form-data
+  const byteArray = Uint8Array.from(atob(imageBase64), c => c.charCodeAt(0))
+  const imageBlob = new Blob([byteArray], { type: "image/png" })
+
+  const formData = new FormData()
+  formData.append("model", "gpt-image-1")
+  formData.append("image", imageBlob, "image.png")
+  formData.append("prompt", prompt)
+  formData.append("n", "1")
+  formData.append("size", "1536x1024")
+  formData.append("quality", "high")
+
   const response = await fetch("https://api.openai.com/v1/images/edits", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model: "gpt-image-1",
-      images: [{
-        type: "base64",
-        media_type: "image/png",
-        data: imageBase64,
-      }],
-      prompt,
-      n: 1,
-      size: "1536x1024",
-      quality: "high",
-    }),
+    body: formData,
   })
 
   const data = await response.json()
