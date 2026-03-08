@@ -45,12 +45,14 @@ const FotoStudio = () => {
   const [licensePlate, setLicensePlate] = useState("");
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    const newImages: StudioImage[] = acceptedFiles.map(file => ({
+    const autoAssign = acceptedFiles.length === 8;
+    const newImages: StudioImage[] = acceptedFiles.map((file, index) => ({
       id: crypto.randomUUID(),
       originalFile: file,
       originalPreview: URL.createObjectURL(file),
       resultImage: null,
       status: 'queued' as const,
+      ...(autoAssign ? { shotAngle: STANDARD_ANGLES[index] } : {}),
     }));
     setImages(prev => [...prev, ...newImages]);
   }, []);
