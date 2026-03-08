@@ -6,21 +6,31 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 
 // ━━━ STEP 1: STUDIO TRANSFORMATION ━━━
 const STUDIO_PROMPT = `Transform this car photo into a premium automotive showroom studio photo.
 
-ENVIRONMENT: Replace the outdoor background (parking lot, other cars, 
-buildings, sky, road, street) with a premium dark studio environment:
+ENVIRONMENT: Replace the entire outdoor background with a premium studio:
 - Dark charcoal/black walls on left, right and back
 - Large bright white rectangular LED softbox light panel on the ceiling
 - Thin horizontal LED strip lights on the left and right walls
 - Dark polished concrete floor with subtle car reflection underneath
-- The car sits naturally on the floor with realistic contact shadows 
-  and floor reflections
+- The car sits naturally on the floor with realistic contact shadows
+
+LIGHTING (CRITICAL — ensure the car is clearly visible):
+- Strong KEY LIGHT from upper-right creating bright specular highlights 
+  and reflections on the car body, hood, roof and fenders
+- FILL LIGHT from the left side to ensure shadow areas remain visible 
+  with full detail — no part of the car should disappear into darkness
+- RIM / EDGE LIGHTING from behind to clearly separate the car silhouette 
+  from the dark background — this is essential for dark-colored cars
+- Bright, crisp reflections on the windshield, windows and chrome/metal trim
+- The car must be the BRIGHTEST, most prominent element in the scene
+- Even if the car is black or very dark, it must have visible highlights, 
+  reflections and contour lighting so every body panel is distinguishable
 
 CAR: Keep the car completely unchanged:
 - Same paint color, finish and metallic properties
@@ -29,7 +39,6 @@ CAR: Keep the car completely unchanged:
 - Keep any license plate or advertising board exactly as-is
 - If a person/driver is visible inside the car, remove them — 
   the interior should appear empty and clean
-- Realistic studio lighting on the car body with specular highlights
 
 QUALITY: Photorealistic, high-end automotive photography, sharp details, 
 premium dealership quality.`
@@ -85,37 +94,40 @@ async function saveToStorage(base64: string, type: string): Promise<string> {
   return urlData.publicUrl
 }
 
-async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise<string> {
-  // Convert base64 to Blob for multipart/form-data
-  const byteArray = Uint8Array.from(atob(imageBase64), c => c.charCodeAt(0))
-  const imageBlob = new Blob([byteArray], { type: "image/png" })
-
-  const formData = new FormData()
-  formData.append("model", "gpt-image-1")
-  formData.append("image", imageBlob, "image.png")
-  formData.append("prompt", prompt)
-  formData.append("n", "1")
-  formData.append("size", "1536x1024")
-  formData.append("quality", "high")
-
-  const response = await fetch("https://api.openai.com/v1/images/edits", {
+async function callGeminiImageEdit(imageBase64: string, prompt: string): Promise<string> {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
     },
-    body: formData,
+    body: JSON.stringify({
+      model: "google/gemini-3-pro-image-preview",
+      messages: [{
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: `data:image/png;base64,${imageBase64}` } }
+        ]
+      }],
+      modalities: ["image", "text"]
+    })
   })
 
   const data = await response.json()
 
   if (!response.ok) {
-    console.error("OpenAI API error:", data)
-    throw new Error(`OpenAI API fout: ${data.error?.message || JSON.stringify(data)}`)
+    console.error("Gemini API error:", data)
+    if (response.status === 429) throw new Error("Rate limit bereikt. Probeer het over een minuut opnieuw.")
+    if (response.status === 402) throw new Error("AI credits op. Voeg credits toe in je Lovable workspace.")
+    throw new Error(`Gemini API fout: ${data.error?.message || JSON.stringify(data)}`)
   }
 
-  const b64 = data.data?.[0]?.b64_json
-  if (!b64) throw new Error("No image data received from OpenAI")
-  return b64
+  const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url
+  if (!imageUrl) throw new Error("No image data received from Gemini")
+
+  // Strip data:image/...;base64, prefix if present
+  return imageUrl.includes(",") ? imageUrl.split(",")[1] : imageUrl
 }
 
 async function fetchImageAsBase64(url: string): Promise<string> {
@@ -144,11 +156,9 @@ serve(async (req) => {
 
     if (!imageBase64) throw new Error("imageBase64 is required")
 
-    // Extract raw base64 (strip data URL prefix if present)
     const rawBase64 = imageBase64.includes(",") ? imageBase64.split(",")[1] : imageBase64
 
-    // Determine processing mode
-    const mode = step || "full" // "studio", "board", or "full" (default)
+    const mode = step || "full"
     console.log(`🚀 Processing mode: ${mode}`)
 
     let studioUrl: string | undefined
@@ -156,35 +166,29 @@ serve(async (req) => {
     let resultImage: string | undefined
 
     if (mode === "studio") {
-      // Step 1 only
-      console.log("🎨 Step 1: Studio transformation...")
-      const studioB64 = await callOpenAIImageEdit(rawBase64, STUDIO_PROMPT)
+      console.log("🎨 Step 1: Studio transformation (Gemini Pro)...")
+      const studioB64 = await callGeminiImageEdit(rawBase64, STUDIO_PROMPT)
       studioUrl = await saveToStorage(studioB64, "studio")
       console.log("✅ Studio done")
     } else if (mode === "board") {
-      // Step 2 only
-      console.log("🏷️ Step 2: AutoCity board placement...")
-      const boardB64 = await callOpenAIImageEdit(rawBase64, BOARD_PROMPT)
+      console.log("🏷️ Step 2: AutoCity board placement (Gemini Pro)...")
+      const boardB64 = await callGeminiImageEdit(rawBase64, BOARD_PROMPT)
       finalUrl = await saveToStorage(boardB64, "final")
       console.log("✅ Board done")
     } else {
-      // Full pipeline: studio → board
-      console.log("🎨 Step 1/2: Studio transformation...")
-      const studioB64 = await callOpenAIImageEdit(rawBase64, STUDIO_PROMPT)
+      console.log("🎨 Step 1/2: Studio transformation (Gemini Pro)...")
+      const studioB64 = await callGeminiImageEdit(rawBase64, STUDIO_PROMPT)
       studioUrl = await saveToStorage(studioB64, "studio")
       console.log("✅ Studio done, starting board placement...")
 
-      // Fetch studio result back as base64 for step 2
-      console.log("🏷️ Step 2/2: AutoCity board placement...")
+      console.log("🏷️ Step 2/2: AutoCity board placement (Gemini Pro)...")
       const studioImageB64 = await fetchImageAsBase64(studioUrl)
-      const boardB64 = await callOpenAIImageEdit(studioImageB64, BOARD_PROMPT)
+      const boardB64 = await callGeminiImageEdit(studioImageB64, BOARD_PROMPT)
       finalUrl = await saveToStorage(boardB64, "final")
       console.log("✅ Board done")
 
-      // Build data URL for frontend display
       resultImage = `data:image/png;base64,${boardB64}`
 
-      // Update vehicle record if vehicleId provided
       if (vehicleId) {
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
         await supabase
