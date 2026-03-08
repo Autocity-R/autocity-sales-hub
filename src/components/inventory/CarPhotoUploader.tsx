@@ -51,7 +51,7 @@ export function CarPhotoUploader({ vehicleId, onPhotoGenerated }: CarPhotoUpload
       setStatus("studio");
       setProgress(15);
 
-      const studioResponse = await supabase.functions.invoke("transform-car-photo", {
+      const studioResponse = await supabase.functions.invoke("showroom-photo-studio", {
         body: { imageBase64, step: "studio" },
       });
 
