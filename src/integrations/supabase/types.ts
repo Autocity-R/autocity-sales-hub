@@ -2708,6 +2708,8 @@ export type Database = {
           purchased_by_name: string | null
           purchased_by_user_id: string | null
           selling_price: number | null
+          showroom_photo_generated_at: string | null
+          showroom_photo_url: string | null
           sold_by_user_id: string | null
           sold_date: string | null
           status: string
@@ -2740,6 +2742,8 @@ export type Database = {
           purchased_by_name?: string | null
           purchased_by_user_id?: string | null
           selling_price?: number | null
+          showroom_photo_generated_at?: string | null
+          showroom_photo_url?: string | null
           sold_by_user_id?: string | null
           sold_date?: string | null
           status?: string
@@ -2772,6 +2776,8 @@ export type Database = {
           purchased_by_name?: string | null
           purchased_by_user_id?: string | null
           selling_price?: number | null
+          showroom_photo_generated_at?: string | null
+          showroom_photo_url?: string | null
           sold_by_user_id?: string | null
           sold_date?: string | null
           status?: string
