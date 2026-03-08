@@ -91,7 +91,7 @@ const FotoStudio = () => {
         body: { 
           imageBase64: base64,
           ...(licensePlate.trim() ? { licensePlate: licensePlate.trim() } : {}),
-          ...(shotAngle ? { shotAngle } : {}),
+          ...(image.shotAngle ? { shotAngle: image.shotAngle } : {}),
         }
       });
 
