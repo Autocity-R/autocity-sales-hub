@@ -1,48 +1,75 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Switch Foto Studio naar Google Gemini via Lovable AI Gateway
 
 ## Probleem
+De huidige OpenAI `gpt-image-1` levert te donkere resultaten — vooral bij zwarte/donkere auto's verdwijnt de auto in de achtergrond. Manus bevestigt dat Google Gemini aantoonbaar betere kwaliteit levert voor automotive fotografie.
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+## Aanpak
 
-## Echte oorzaak (niet React deduplicatie)
+**Eén bestand wijzigen:** `supabase/functions/showroom-photo-studio/index.ts`
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+### 1. Vervang OpenAI door Gemini Pro via Lovable AI Gateway
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+Er is al een `LOVABLE_API_KEY` secret geconfigureerd. Via de Lovable AI Gateway (`ai.gateway.lovable.dev`) is het Gemini Pro image model beschikbaar — geen extra API key nodig.
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+Vervang `callOpenAIImageEdit` door een nieuwe `callGeminiImageEdit` functie:
 
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+```typescript
+async function callGeminiImageEdit(imageBase64: string, prompt: string): Promise<string> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!
 
-## Oplossing
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-3-pro-image-preview",
+      messages: [{
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: `data:image/png;base64,${imageBase64}` } }
+        ]
+      }],
+      modalities: ["image", "text"]
+    })
+  })
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+  const data = await response.json()
+  if (!response.ok) throw new Error(`Gemini API fout: ${JSON.stringify(data)}`)
 
-### Wijzigingen
+  const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url
+  if (!imageUrl) throw new Error("No image data received from Gemini")
 
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+  // Strip data:image/png;base64, prefix
+  return imageUrl.includes(",") ? imageUrl.split(",")[1] : imageUrl
+}
+```
 
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+### 2. Verbeter de studio prompt voor betere belichting
 
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+Voeg expliciete lichtinstructies toe zodat ook donkere auto's goed zichtbaar zijn:
+- Strong key light van rechtsboven met heldere specular highlights op de carrosserie
+- Fill light van links zodat schaduwzijde detail behoudt
+- Rim/edge lighting om de auto-silhouet duidelijk te scheiden van de donkere achtergrond
+- "The car must be the brightest, most prominent element in the scene"
 
-## Verwacht resultaat
+### 3. Wat blijft ongewijzigd
+- BOARD_PROMPT (AutoCity bord) — ongewijzigd
+- Storage pipeline (`saveToStorage`, `fetchImageAsBase64`) — ongewijzigd
+- Response contract (`success`, `studioUrl`, `finalUrl`, `resultImage`) — ongewijzigd
+- Frontend (`CarPhotoUploader.tsx`) — geen wijzigingen nodig
+- `OPENAI_API_KEY` verwijzing wordt vervangen door `LOVABLE_API_KEY` (al geconfigureerd)
 
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+### Samenvatting
+| Wat | Van | Naar |
+|-----|-----|------|
+| Model | OpenAI gpt-image-1 | Google Gemini 3 Pro Image |
+| Gateway | api.openai.com | ai.gateway.lovable.dev |
+| API Key | OPENAI_API_KEY | LOVABLE_API_KEY (al aanwezig) |
+| Format | multipart/form-data | JSON (chat completions) |
+| Studio prompt | Basis belichting | + key/fill/rim light instructies |
 
