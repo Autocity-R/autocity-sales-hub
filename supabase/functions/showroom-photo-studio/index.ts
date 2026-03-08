@@ -544,61 +544,88 @@ serve(async (req) => {
     // ━━━ STEP 2: Background Replacement (Gemini Pro) ━━━
     const doComposite = async (useStrict: boolean, extraInstructions?: string) => {
       const basePrompt = useStrict ? SHOWROOM_PROMPT_STRICT : SHOWROOM_PROMPT_NORMAL;
-      // Inject angle label into prompt
       const promptWithAngle = basePrompt.replace(/\{ANGLE\}/g, angleLabel);
       const promptText = promptWithAngle + vehicleIdentity + (extraInstructions || '');
       
       console.log(`Step 2: Background replacement (${useStrict ? 'STRICT' : 'NORMAL'} mode, angle: ${angleLabel})...`);
       
-      const compositeResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: aiHeaders,
-        body: JSON.stringify({
-          model: 'google/gemini-3-pro-image-preview',
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'text', text: promptText },
-              { type: 'image_url', image_url: { url: enhancedImage } },
-              { type: 'image_url', image_url: { url: vehicleImageUrl } },
-              ...(studioRefUrl ? [{ type: 'image_url', image_url: { url: studioRefUrl } }] : [])
-            ]
-          }],
-          modalities: ['image', 'text']
-        }),
-      });
+      const MAX_COMPOSITE_RETRIES = 3;
+      for (let attempt = 1; attempt <= MAX_COMPOSITE_RETRIES; attempt++) {
+        try {
+          console.log(`Composite attempt ${attempt}/${MAX_COMPOSITE_RETRIES}...`);
+          const compositeResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            method: 'POST',
+            headers: aiHeaders,
+            body: JSON.stringify({
+              model: 'google/gemini-3-pro-image-preview',
+              messages: [{
+                role: 'user',
+                content: [
+                  { type: 'text', text: promptText },
+                  { type: 'image_url', image_url: { url: enhancedImage } },
+                  { type: 'image_url', image_url: { url: vehicleImageUrl } },
+                  ...(studioRefUrl ? [{ type: 'image_url', image_url: { url: studioRefUrl } }] : [])
+                ]
+              }],
+              modalities: ['image', 'text']
+            }),
+          });
 
-      if (!compositeResponse.ok) return { error: await handleAiError(compositeResponse, 'Showroom') };
+          if (!compositeResponse.ok) return { error: await handleAiError(compositeResponse, 'Showroom') };
 
-      const compositeData = await safeParseJson(compositeResponse, 'Composite');
+          const compositeData = await safeParseJson(compositeResponse, 'Composite');
 
-      const embeddedError = compositeData?.error
-        || compositeData?.choices?.[0]?.error
-        || compositeData?.choices?.find?.((c: any) => c?.error)?.error;
+          const embeddedError = compositeData?.error
+            || compositeData?.choices?.[0]?.error
+            || compositeData?.choices?.find?.((c: any) => c?.error)?.error;
 
-      if (embeddedError) {
-        const code = Number(embeddedError.code || 500);
-        const errorType = embeddedError?.metadata?.error_type || '';
-        console.error(`Compositing embedded error [${code}]: ${errorType} - ${embeddedError.message}`);
+          if (embeddedError) {
+            const code = Number(embeddedError.code || 500);
+            const errorType = embeddedError?.metadata?.error_type || '';
+            console.error(`Compositing embedded error [${code}]: ${errorType} - ${embeddedError.message}`);
 
-        if (code === 429 || errorType === 'rate_limit_exceeded') {
-          return {
-            error: new Response(
-              JSON.stringify({ error: 'Rate limit bereikt bij showroom stap. Probeer het later opnieuw.', step: 'composite' }),
-              { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-          };
+            if (code === 429 || errorType === 'rate_limit_exceeded') {
+              return {
+                error: new Response(
+                  JSON.stringify({ error: 'Rate limit bereikt bij showroom stap. Probeer het later opnieuw.', step: 'composite' }),
+                  { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                )
+              };
+            }
+            // Non-rate-limit embedded error — retry
+            if (attempt < MAX_COMPOSITE_RETRIES) {
+              console.log(`Embedded error on attempt ${attempt}, retrying...`);
+              continue;
+            }
+            return { error: null, image: null };
+          }
+
+          const resultImage = compositeData?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+          if (!resultImage) {
+            console.error('No image from compositing:', JSON.stringify(compositeData).substring(0, 800));
+            if (attempt < MAX_COMPOSITE_RETRIES) {
+              console.log(`No image on attempt ${attempt}, retrying...`);
+              continue;
+            }
+            return { error: null, image: null };
+          }
+
+          console.log(`Composite succeeded on attempt ${attempt}`);
+          return { error: null, image: resultImage };
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(`Composite attempt ${attempt} threw: ${msg}`);
+          if (msg.includes('Truncated') && attempt < MAX_COMPOSITE_RETRIES) {
+            console.log(`Truncated response on attempt ${attempt}, retrying...`);
+            continue;
+          }
+          if (attempt >= MAX_COMPOSITE_RETRIES) {
+            console.error('All composite attempts exhausted.');
+            return { error: null, image: null };
+          }
         }
-        return { error: null, image: null };
       }
-
-      const resultImage = compositeData?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-      if (!resultImage) {
-        console.error('No image from compositing:', JSON.stringify(compositeData).substring(0, 800));
-        return { error: null, image: null };
-      }
-
-      return { error: null, image: resultImage };
+      return { error: null, image: null };
     };
 
     // Initial composite: STRICT if unknown, NORMAL otherwise
