@@ -3,6 +3,9 @@ import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Upload, Download, RefreshCw, X, ImageIcon, 
   Sparkles, Loader2, CheckCircle2, AlertCircle,
@@ -11,6 +14,17 @@ import {
 import { cn } from "@/lib/utils";
 import OptimizedDashboardLayout from "@/components/layout/OptimizedDashboardLayout";
 import { Progress } from "@/components/ui/progress";
+
+const SHOT_ANGLE_OPTIONS = [
+  { value: "front-left", label: "3/4 voor links" },
+  { value: "side-left", label: "Linker zijkant" },
+  { value: "rear-left", label: "3/4 achter links" },
+  { value: "rear", label: "Achterzijde" },
+  { value: "rear-right", label: "3/4 achter rechts" },
+  { value: "side-right", label: "Rechter zijkant" },
+  { value: "front-right", label: "3/4 voor rechts" },
+  { value: "front", label: "Voorzijde" },
+] as const;
 
 interface StudioImage {
   id: string;
@@ -25,6 +39,8 @@ interface StudioImage {
 const FotoStudio = () => {
   const [images, setImages] = useState<StudioImage[]>([]);
   const [isProcessingAll, setIsProcessingAll] = useState(false);
+  const [licensePlate, setLicensePlate] = useState("");
+  const [shotAngle, setShotAngle] = useState<string>("");
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newImages: StudioImage[] = acceptedFiles.map(file => ({

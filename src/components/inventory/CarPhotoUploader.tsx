@@ -53,7 +53,7 @@ export function CarPhotoUploader({ vehicleId, licensePlate, onPhotoGenerated }: 
       setProgress(15);
 
       const studioResponse = await supabase.functions.invoke("showroom-photo-studio", {
-        body: { imageBase64, step: "studio" },
+        body: { imageBase64, step: "studio", licensePlate },
       });
 
       if (studioResponse.error || !studioResponse.data?.success) {
