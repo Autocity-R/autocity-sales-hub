@@ -215,6 +215,32 @@ const FotoStudio = () => {
           </div>
         )}
 
+        {/* Settings */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="licensePlate">Kenteken (optioneel)</Label>
+            <Input
+              id="licensePlate"
+              placeholder="bijv. HGD-08-K"
+              value={licensePlate}
+              onChange={e => setLicensePlate(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="shotAngle">Fotografeerhoek (optioneel)</Label>
+            <Select value={shotAngle} onValueChange={setShotAngle}>
+              <SelectTrigger id="shotAngle">
+                <SelectValue placeholder="Selecteer hoek..." />
+              </SelectTrigger>
+              <SelectContent>
+                {SHOT_ANGLE_OPTIONS.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         {/* Upload zone */}
         <div
           {...getRootProps()}
