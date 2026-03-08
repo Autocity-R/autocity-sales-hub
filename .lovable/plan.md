@@ -1,37 +1,48 @@
 
 
-# Plan: Per-foto hoek toewijzing bij bulk uploads
+# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
 
-## Concept
-Verplaats de `shotAngle` van een globale instelling naar een **per-foto eigenschap**. Na het uploaden van meerdere foto's kan de gebruiker per foto de hoek kiezen via een compact dropdown in de fotokaart. De standaard volgorde van 8 foto's komt overeen met de vaste fotografeervolgorde.
+## Probleem
 
-## Slimme standaard: Auto-assign bij bulk upload
-Als de gebruiker precies 8 foto's tegelijk uploadt, worden de hoeken automatisch toegewezen in de standaard volgorde:
-1. front-left, 2. side-left, 3. rear-left, 4. rear, 5. rear-right, 6. side-right, 7. front-right, 8. front
+Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
 
-Bij andere aantallen blijft de hoek leeg (optioneel handmatig in te vullen).
+## Echte oorzaak (niet React deduplicatie)
 
-## Wijzigingen
+Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
 
-### 1. `StudioImage` interface uitbreiden
-- Voeg `shotAngle?: string` toe aan het interface
+- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
+- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
+- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
 
-### 2. `onDrop` aanpassen
-- Als `acceptedFiles.length === 8`: wijs automatisch de 8 hoeken toe in volgorde
-- Anders: laat `shotAngle` leeg
+In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
 
-### 3. Per-foto angle selector in de grid
-- Voeg een compact `<Select>` dropdown toe in de actie-balk onderaan elke fotokaart (naast bestandsnaam)
-- Toont de huidige hoek of "Geen hoek" als placeholder
-- Alleen bewerkbaar als status `queued` of `error` is
+In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
 
-### 4. `processImage` aanpassen
-- Lees `image.shotAngle` in plaats van de globale `shotAngle` state
-- Stuur per foto de juiste hoek mee naar de Edge Function
+## Oplossing
 
-### 5. Globale shotAngle dropdown verwijderen
-- Verwijder de globale hoek-selector uit de instellingen sectie (kenteken blijft globaal, dat is logisch per auto)
+Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
+- Gebruikt compatibele Radix versies (geen nested node_modules meer)
+- Verwijdert de `@babel/runtime` dependency
+- Lost het context-conflict op
 
-### Bestanden
-- `src/pages/FotoStudio.tsx` — alle wijzigingen in dit ene bestand
+### Wijzigingen
+
+**Bestand: `package.json`**
+- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+
+**Bestand: `src/components/ui/command.tsx`**
+- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+
+**Bestand: `vite.config.ts`**
+- De bestaande `dedupe` configuratie blijft als extra veiligheid
+- Toevoegen van Radix interne pakketten aan dedupe als fallback:
+  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+
+## Verwacht resultaat
+
+Na upgrade en publicatie:
+- Klantenlijst is weer klikbaar en scrollbaar
+- Selecteren van klanten werkt correct
+- Data wordt opgeslagen
+- Werkt zowel in preview als op de gepubliceerde website
 

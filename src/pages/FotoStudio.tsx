@@ -34,21 +34,25 @@ interface StudioImage {
   status: 'queued' | 'processing' | 'done' | 'error';
   processingStep?: 'studio' | 'board';
   error?: string;
+  shotAngle?: string;
 }
+
+const STANDARD_ANGLES = ['front-left', 'side-left', 'rear-left', 'rear', 'rear-right', 'side-right', 'front-right', 'front'];
 
 const FotoStudio = () => {
   const [images, setImages] = useState<StudioImage[]>([]);
   const [isProcessingAll, setIsProcessingAll] = useState(false);
   const [licensePlate, setLicensePlate] = useState("");
-  const [shotAngle, setShotAngle] = useState<string>("");
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    const newImages: StudioImage[] = acceptedFiles.map(file => ({
+    const autoAssign = acceptedFiles.length === 8;
+    const newImages: StudioImage[] = acceptedFiles.map((file, index) => ({
       id: crypto.randomUUID(),
       originalFile: file,
       originalPreview: URL.createObjectURL(file),
       resultImage: null,
       status: 'queued' as const,
+      ...(autoAssign ? { shotAngle: STANDARD_ANGLES[index] } : {}),
     }));
     setImages(prev => [...prev, ...newImages]);
   }, []);
@@ -87,7 +91,7 @@ const FotoStudio = () => {
         body: { 
           imageBase64: base64,
           ...(licensePlate.trim() ? { licensePlate: licensePlate.trim() } : {}),
-          ...(shotAngle ? { shotAngle } : {}),
+          ...(image.shotAngle ? { shotAngle: image.shotAngle } : {}),
         }
       });
 
@@ -216,29 +220,14 @@ const FotoStudio = () => {
         )}
 
         {/* Settings */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="licensePlate">Kenteken (optioneel)</Label>
-            <Input
-              id="licensePlate"
-              placeholder="bijv. HGD-08-K"
-              value={licensePlate}
-              onChange={e => setLicensePlate(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="shotAngle">Fotografeerhoek (optioneel)</Label>
-            <Select value={shotAngle} onValueChange={setShotAngle}>
-              <SelectTrigger id="shotAngle">
-                <SelectValue placeholder="Selecteer hoek..." />
-              </SelectTrigger>
-              <SelectContent>
-                {SHOT_ANGLE_OPTIONS.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="max-w-sm space-y-1.5">
+          <Label htmlFor="licensePlate">Kenteken (optioneel)</Label>
+          <Input
+            id="licensePlate"
+            placeholder="bijv. HGD-08-K"
+            value={licensePlate}
+            onChange={e => setLicensePlate(e.target.value)}
+          />
         </div>
 
         {/* Upload zone */}
@@ -334,12 +323,26 @@ const FotoStudio = () => {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center justify-between p-2 border-t bg-muted/20">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    {img.status === 'done' && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                    {img.status === 'processing' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                    <span className="truncate max-w-[120px]">{img.originalFile.name}</span>
+                <div className="flex items-center justify-between p-2 border-t bg-muted/20 gap-2">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
+                    {img.status === 'done' && <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />}
+                    {img.status === 'processing' && <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />}
+                    <span className="truncate max-w-[100px]">{img.originalFile.name}</span>
                   </div>
+                  <Select
+                    value={img.shotAngle || ""}
+                    onValueChange={(val) => setImages(prev => prev.map(i => i.id === img.id ? { ...i, shotAngle: val } : i))}
+                    disabled={img.status === 'processing'}
+                  >
+                    <SelectTrigger className="h-7 text-xs w-[130px] shrink-0">
+                      <SelectValue placeholder="Geen hoek" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SHOT_ANGLE_OPTIONS.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <div className="flex gap-1">
                     {img.status === 'done' && img.resultImage && (
                       <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => downloadImage(img.resultImage!, index)}>
