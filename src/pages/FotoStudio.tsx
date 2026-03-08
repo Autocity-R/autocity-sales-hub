@@ -84,7 +84,11 @@ const FotoStudio = () => {
       const base64 = await fileToBase64(image.originalFile);
 
       const { data, error } = await supabase.functions.invoke('showroom-photo-studio', {
-        body: { imageBase64: base64 }
+        body: { 
+          imageBase64: base64,
+          ...(licensePlate.trim() ? { licensePlate: licensePlate.trim() } : {}),
+          ...(shotAngle ? { shotAngle } : {}),
+        }
       });
 
       if (error) throw new Error(error.message || 'Verwerking mislukt');
