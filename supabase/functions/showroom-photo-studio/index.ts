@@ -122,7 +122,14 @@ async function fetchImageAsBase64(url: string): Promise<string> {
   const resp = await fetch(url)
   if (!resp.ok) throw new Error(`Failed to fetch image: ${resp.status}`)
   const buf = await resp.arrayBuffer()
-  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+  const bytes = new Uint8Array(buf)
+  let binary = ""
+  const chunkSize = 8192
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize)
+    binary += String.fromCharCode(...chunk)
+  }
+  return btoa(binary)
 }
 
 // ━━━ MAIN HANDLER ━━━
