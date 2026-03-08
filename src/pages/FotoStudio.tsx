@@ -43,7 +43,6 @@ const FotoStudio = () => {
   const [images, setImages] = useState<StudioImage[]>([]);
   const [isProcessingAll, setIsProcessingAll] = useState(false);
   const [licensePlate, setLicensePlate] = useState("");
-  const [shotAngle, setShotAngle] = useState<string>("");
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newImages: StudioImage[] = acceptedFiles.map(file => ({
