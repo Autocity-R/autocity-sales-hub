@@ -357,11 +357,11 @@ const FotoStudio = () => {
                       <div className="w-full h-72 flex items-center justify-center">
                         <div className="text-center">
                           <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin text-primary" />
-                          <p className="text-xs text-muted-foreground font-medium">
-                            Showroom foto wordt gegenereerd...
+                           <p className="text-xs text-muted-foreground font-medium">
+                            {isInterior ? 'Interieur foto wordt opgeschoond...' : 'Showroom foto wordt gegenereerd...'}
                           </p>
                           <p className="text-[10px] text-muted-foreground mt-1.5">
-                            {index > 0 ? 'Met referentie van vorige foto' : 'Eerste foto — studio stijl wordt vastgelegd'}
+                            {index > 0 ? 'Met referentie van vorige foto' : isInterior ? 'Eerste foto — interieur stijl wordt vastgelegd' : 'Eerste foto — studio stijl wordt vastgelegd'}
                           </p>
                           <p className="text-[10px] text-muted-foreground mt-1">Dit kan 30-90 seconden duren</p>
                         </div>
