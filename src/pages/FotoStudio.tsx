@@ -31,8 +31,8 @@ interface StudioImage {
   originalFile: File;
   originalPreview: string;
   resultImage: string | null;
+  resultUrl: string | null;
   status: 'queued' | 'processing' | 'done' | 'error';
-  processingStep?: 'studio' | 'board';
   error?: string;
   shotAngle?: string;
 }
@@ -43,6 +43,7 @@ const FotoStudio = () => {
   const [images, setImages] = useState<StudioImage[]>([]);
   const [isProcessingAll, setIsProcessingAll] = useState(false);
   const [licensePlate, setLicensePlate] = useState("");
+  const [currentProcessingIndex, setCurrentProcessingIndex] = useState<number | null>(null);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const autoAssign = acceptedFiles.length === 8;
@@ -51,6 +52,7 @@ const FotoStudio = () => {
       originalFile: file,
       originalPreview: URL.createObjectURL(file),
       resultImage: null,
+      resultUrl: null,
       status: 'queued' as const,
       ...(autoAssign ? { shotAngle: STANDARD_ANGLES[index] } : {}),
     }));
@@ -73,16 +75,11 @@ const FotoStudio = () => {
     });
   };
 
-  const processImage = async (imageId: string) => {
+  const processImage = async (imageId: string, photoNumber: number, referenceImageBase64: string | null) => {
     const image = images.find(i => i.id === imageId);
-    if (!image) return;
+    if (!image) return null;
 
-    setImages(prev => prev.map(i => i.id === imageId ? { ...i, status: 'processing', processingStep: 'studio' } : i));
-
-    // Switch to board step after ~30s
-    const boardTimer = setTimeout(() => {
-      setImages(prev => prev.map(i => i.id === imageId && i.status === 'processing' ? { ...i, processingStep: 'board' } : i));
-    }, 30000);
+    setImages(prev => prev.map(i => i.id === imageId ? { ...i, status: 'processing' } : i));
 
     try {
       const base64 = await fileToBase64(image.originalFile);
@@ -90,45 +87,93 @@ const FotoStudio = () => {
       const { data, error } = await supabase.functions.invoke('showroom-photo-studio', {
         body: { 
           imageBase64: base64,
-          ...(licensePlate.trim() ? { licensePlate: licensePlate.trim() } : {}),
-          ...(image.shotAngle ? { shotAngle: image.shotAngle } : {}),
+          photoNumber,
+          shotAngle: image.shotAngle || 'front-right',
+          ...(referenceImageBase64 ? { referenceImageBase64 } : {}),
         }
       });
 
       if (error) throw new Error(error.message || 'Verwerking mislukt');
       if (!data?.success) throw new Error(data?.error || 'Verwerking mislukt');
 
-      clearTimeout(boardTimer);
+      const resultImage = data.resultImage;
+      const resultUrl = data.publicUrl;
       
       setImages(prev => prev.map(i => 
         i.id === imageId ? { 
           ...i, 
           status: 'done', 
-          resultImage: data.resultImage || data.finalUrl, 
-          processingStep: undefined,
+          resultImage,
+          resultUrl,
         } : i
       ));
+
+      return resultImage;
     } catch (err: any) {
-      clearTimeout(boardTimer);
       console.error('Studio processing error:', err);
       const errorMsg = err?.message || 'Onbekende fout';
       setImages(prev => prev.map(i => 
         i.id === imageId ? { ...i, status: 'error', error: errorMsg } : i
       ));
-      toast.error(`Fout: ${errorMsg}`);
+      toast.error(`Fout bij foto ${photoNumber}: ${errorMsg}`);
+      return null;
     }
   };
 
   const processAll = async () => {
-    const queued = images.filter(i => i.status === 'queued' || i.status === 'error');
-    if (queued.length === 0) return;
+    const toProcess = images.filter(i => i.status === 'queued' || i.status === 'error');
+    if (toProcess.length === 0) return;
     setIsProcessingAll(true);
-    for (let i = 0; i < queued.length; i += 2) {
-      const batch = queued.slice(i, i + 2);
-      await Promise.all(batch.map(img => processImage(img.id)));
+
+    let previousResultBase64: string | null = null;
+
+    // Find the last successfully processed image before the first queued one as initial reference
+    const firstQueuedIdx = images.findIndex(i => i.status === 'queued' || i.status === 'error');
+    if (firstQueuedIdx > 0) {
+      const prevDone = images.slice(0, firstQueuedIdx).reverse().find(i => i.status === 'done' && i.resultImage);
+      if (prevDone) previousResultBase64 = prevDone.resultImage;
     }
+
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+      if (img.status !== 'queued' && img.status !== 'error') {
+        // If this image is already done, use it as reference for the next
+        if (img.status === 'done' && img.resultImage) {
+          previousResultBase64 = img.resultImage;
+        }
+        continue;
+      }
+
+      setCurrentProcessingIndex(i);
+      const photoNumber = i + 1;
+      const result = await processImage(img.id, photoNumber, previousResultBase64);
+      
+      if (result) {
+        previousResultBase64 = result;
+      }
+      // If this photo failed, we still pass the previous successful result to the next
+    }
+
+    setCurrentProcessingIndex(null);
     setIsProcessingAll(false);
     toast.success('Alle foto\'s verwerkt!');
+  };
+
+  const regenerateImage = async (imageId: string) => {
+    const idx = images.findIndex(i => i.id === imageId);
+    if (idx === -1) return;
+
+    // Find previous done image as reference
+    let referenceBase64: string | null = null;
+    for (let i = idx - 1; i >= 0; i--) {
+      if (images[i].status === 'done' && images[i].resultImage) {
+        referenceBase64 = images[i].resultImage;
+        break;
+      }
+    }
+
+    const photoNumber = idx + 1;
+    await processImage(imageId, photoNumber, referenceBase64);
   };
 
   const downloadImage = (resultImage: string, index: number) => {
@@ -175,7 +220,8 @@ const FotoStudio = () => {
               Foto Studio
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Upload voertuigfoto's en laat AI ze omzetten naar professionele AutoCity showroom-beelden
+              Upload voertuigfoto's en laat AI ze omzetten naar professionele AutoCity showroom-beelden. 
+              Foto's worden sequentieel verwerkt voor maximale consistentie.
             </p>
           </div>
         </div>
@@ -183,7 +229,7 @@ const FotoStudio = () => {
         {/* Action buttons */}
         {images.length > 0 && (
           <div className="flex gap-2 justify-end">
-            <Button variant="outline" size="sm" onClick={clearAll}>
+            <Button variant="outline" size="sm" onClick={clearAll} disabled={isProcessingAll}>
               <X className="h-4 w-4 mr-1" />
               Wissen
             </Button>
@@ -203,7 +249,7 @@ const FotoStudio = () => {
               ) : (
                 <Sparkles className="h-4 w-4 mr-1" />
               )}
-              {isProcessingAll ? 'Verwerken...' : 'Alles verwerken'}
+              {isProcessingAll ? `Verwerken (${completedCount + 1}/${images.length})...` : 'Alles verwerken'}
             </Button>
           </div>
         )}
@@ -213,7 +259,9 @@ const FotoStudio = () => {
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>{completedCount} van {images.length} foto's klaar</span>
-              {processingCount > 0 && <span>{processingCount} worden verwerkt...</span>}
+              {processingCount > 0 && currentProcessingIndex !== null && (
+                <span>Foto {currentProcessingIndex + 1} wordt verwerkt (sequentieel)...</span>
+              )}
             </div>
             <Progress value={progress} className="h-2" />
           </div>
@@ -250,7 +298,7 @@ const FotoStudio = () => {
                 {isDragActive ? "Laat foto's hier los..." : "Sleep voertuigfoto's hierheen of klik om te uploaden"}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                JPG, PNG of WebP — max 20MB per foto — meerdere bestanden tegelijk
+                JPG, PNG of WebP — max 20MB per foto — upload 8 foto's voor automatische hoektoewijzing
               </p>
             </div>
           </div>
@@ -285,6 +333,7 @@ const FotoStudio = () => {
                         <div className="text-center text-muted-foreground">
                           <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-40" />
                           <p className="text-xs">Wacht op verwerking</p>
+                          <p className="text-[10px] mt-1 opacity-60">Foto {index + 1} van {images.length}</p>
                         </div>
                       </div>
                     )}
@@ -293,14 +342,12 @@ const FotoStudio = () => {
                         <div className="text-center">
                           <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin text-primary" />
                           <p className="text-xs text-muted-foreground font-medium">
-                            {img.processingStep === 'board' ? 'AutoCity bord wordt geplaatst...' : 'Studio achtergrond wordt gegenereerd...'}
+                            Showroom foto wordt gegenereerd...
                           </p>
-                          <div className="flex items-center gap-1.5 mt-2 text-[10px] text-muted-foreground">
-                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'studio' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>1. Studio</span>
-                            <span>→</span>
-                            <span className={cn("px-1.5 py-0.5 rounded", img.processingStep === 'board' ? "bg-primary/20 text-primary font-semibold" : "opacity-50")}>2. AutoCity Bord</span>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground mt-1.5">Dit kan 30-90 seconden duren</p>
+                          <p className="text-[10px] text-muted-foreground mt-1.5">
+                            {index > 0 ? 'Met referentie van vorige foto' : 'Eerste foto — studio stijl wordt vastgelegd'}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-1">Dit kan 30-90 seconden duren</p>
                         </div>
                       </div>
                     )}
@@ -350,13 +397,13 @@ const FotoStudio = () => {
                         Download
                       </Button>
                     )}
-                    {(img.status === 'error' || img.status === 'done') && (
-                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => processImage(img.id)}>
+                    {(img.status === 'error' || img.status === 'done') && !isProcessingAll && (
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => regenerateImage(img.id)}>
                         <RefreshCw className="h-3.5 w-3.5 mr-1" />
                         Opnieuw
                       </Button>
                     )}
-                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => removeImage(img.id)}>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => removeImage(img.id)} disabled={isProcessingAll}>
                       <X className="h-3.5 w-3.5" />
                     </Button>
                   </div>
