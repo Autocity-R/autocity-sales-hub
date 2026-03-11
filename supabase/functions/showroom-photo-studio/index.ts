@@ -575,9 +575,10 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders })
   }
   try {
-    const { imageBase64, referenceImageBase64, photoNumber, vehicleId, photoIndex } = await req.json()
+    const { imageBase64, referenceImageBase64, photoNumber, vehicleId, photoIndex, mode } = await req.json()
     if (!imageBase64) throw new Error("imageBase64 is required")
     
+    const studioMode = mode || 'exterieur'
     const rawBase64 = imageBase64.includes(",") ? imageBase64.split(",")[1] : imageBase64
     const num = photoNumber || 1
     const isFirstPhoto = num === 1 || !referenceImageBase64
@@ -585,13 +586,13 @@ serve(async (req) => {
     let resultB64: string
 
     if (isFirstPhoto) {
-      console.log(`Processing photo ${num} (first/standalone) — AI will detect angle automatically`)
-      const prompt = buildFirstPhotoPrompt()
+      console.log(`Processing ${studioMode} photo ${num} (first/standalone)`)
+      const prompt = studioMode === 'interieur' ? buildInteriorFirstPrompt() : buildFirstPhotoPrompt()
       resultB64 = await callGeminiSingleImage(rawBase64, prompt)
     } else {
-      console.log(`Processing photo ${num} (sequential with reference) — AI will detect angle automatically`)
+      console.log(`Processing ${studioMode} photo ${num} (sequential with reference)`)
       const refBase64 = referenceImageBase64.includes(",") ? referenceImageBase64.split(",")[1] : referenceImageBase64
-      const prompt = buildSequentialPrompt(num)
+      const prompt = studioMode === 'interieur' ? buildInteriorSequentialPrompt(num) : buildSequentialPrompt(num)
       resultB64 = await callGeminiWithReference(rawBase64, refBase64, prompt)
     }
 
