@@ -31,15 +31,13 @@ const FotoStudio = () => {
   const [currentProcessingIndex, setCurrentProcessingIndex] = useState<number | null>(null);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    const autoAssign = acceptedFiles.length === 8;
-    const newImages: StudioImage[] = acceptedFiles.map((file, index) => ({
+    const newImages: StudioImage[] = acceptedFiles.map((file) => ({
       id: crypto.randomUUID(),
       originalFile: file,
       originalPreview: URL.createObjectURL(file),
       resultImage: null,
       resultUrl: null,
       status: 'queued' as const,
-      ...(autoAssign ? { shotAngle: STANDARD_ANGLES[index] } : {}),
     }));
     setImages(prev => [...prev, ...newImages]);
   }, []);
