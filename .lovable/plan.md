@@ -1,48 +1,78 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Master Prompt V9 Implementation
 
-## Probleem
+## Overview
+Replace the current simple prompts with the validated Master Prompt V9 system. The key change: photos are processed **sequentially**, each using the previous result as a visual reference for consistency.
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+## Changes
 
-## Echte oorzaak (niet React deduplicatie)
+### 1. Edge Function — `supabase/functions/showroom-photo-studio/index.ts`
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+**Replace prompts entirely:**
+- Remove `buildStudioPrompt()` and `BOARD_PROMPT`
+- Add `buildFirstPhotoPrompt(shotAngle, hasBumper)` — the full Master Prompt V9 for photo 1 (no reference)
+- Add `buildSequentialPrompt(shotAngle, hasBumper, photoNumber)` — the Master Prompt V9 for photos 2-8 (with reference)
+- Both prompts include studio environment, vehicle preservation contract, and AutoCity board rules inline — no separate "board" step needed anymore (single-pass processing)
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+**Add two-image Gemini call:**
+- New function `callGeminiWithReference(inputBase64, referenceBase64, prompt)` that sends two images in the message content array (input photo first, reference photo second)
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+**New request parameters:**
+- `referenceImageBase64` (string | null) — the previous processed photo
+- `photoNumber` (number) — position in sequence (1-8)
+- `shotAngle` (string) — camera angle
 
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+**Simplified flow:**
+- No more two-step studio→board pipeline. Master Prompt V9 does studio + board in one pass
+- If `photoNumber === 1` or no `referenceImageBase64`: use first photo prompt with single image
+- If `photoNumber > 1` and `referenceImageBase64` provided: use sequential prompt with two images
 
-## Oplossing
+**Storage path:** `showroom/vehicle_{vehicleId}/photo_{photoIndex}_{timestamp}.png`
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+### 2. Frontend — `src/pages/FotoStudio.tsx`
 
-### Wijzigingen
+**Sequential processing (critical change):**
+- Replace current parallel batch processing (`processAll` processes 2 at a time) with strict sequential processing
+- Photo 1 → wait for result → Photo 2 (with photo 1 result as reference) → wait → Photo 3 (with photo 2 result) → etc.
+- Store the result base64/URL on each `StudioImage` so it can be passed to the next call
 
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+**Updated `processImage`:**
+- Accept optional `referenceImageBase64` parameter
+- Send `photoNumber` (index + 1), `shotAngle`, and `referenceImageBase64` to edge function
+- Remove the fake "board step" timer — single pass now, show "Verwerken..." status
 
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+**Updated `processAll`:**
+```
+for each image in order:
+  get previousResult from images[index - 1]
+  convert previousResult to base64 if available
+  await processImage(image.id, photoNumber, referenceBase64)
+```
 
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+**"Opnieuw genereren" button:**
+- When regenerating photo N, use photo N-1's result as reference (or no reference if N=1)
 
-## Verwacht resultaat
+**Remove two-step progress indicator** (Studio → Board) since it's now single-pass.
 
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+### 3. Database — New table `vehicle_showroom_photos` (optional, recommended)
+
+```sql
+CREATE TABLE vehicle_showroom_photos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  vehicle_id UUID NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+  photo_url TEXT NOT NULL,
+  shot_angle TEXT NOT NULL,
+  photo_index INTEGER NOT NULL,
+  generated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(vehicle_id, photo_index)
+);
+```
+
+With RLS for authenticated users (select, insert, update). This allows storing all 8 showroom photos per vehicle instead of just one `showroom_photo_url`.
+
+### Files Changed
+- `supabase/functions/showroom-photo-studio/index.ts` — new prompts, reference image support, single-pass flow
+- `src/pages/FotoStudio.tsx` — sequential processing, reference passing, simplified progress UI
+- Database migration — `vehicle_showroom_photos` table
 
