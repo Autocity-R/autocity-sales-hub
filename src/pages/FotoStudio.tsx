@@ -71,7 +71,6 @@ const FotoStudio = () => {
         body: { 
           imageBase64: base64,
           photoNumber,
-          shotAngle: image.shotAngle || 'front-right',
           ...(referenceImageBase64 ? { referenceImageBase64 } : {}),
         }
       });
