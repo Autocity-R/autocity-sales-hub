@@ -227,8 +227,8 @@ async function callGeminiSingleImage(imageBase64: string, prompt: string): Promi
       messages: [{
         role: "user",
         content: [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: `data:image/png;base64,${imageBase64}` } }
+          { type: "image_url", image_url: { url: `data:image/png;base64,${imageBase64}` } },
+          { type: "text", text: prompt }
         ]
       }],
       modalities: ["image", "text"]
