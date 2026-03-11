@@ -511,7 +511,7 @@ export const sendEmailWithTemplate = async (
           const updatedDetails = {
             ...currentDetails,
             cmrSent: true,
-            cmrSentDate: new Date().toISOString()
+            cmrDate: new Date().toISOString()
           };
           
           const { error: updateError } = await supabase
