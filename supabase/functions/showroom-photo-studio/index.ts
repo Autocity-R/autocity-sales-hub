@@ -17,111 +17,131 @@ function buildFirstPhotoPrompt(shotAngle: string): string {
 
   const boardSection = hasBumper
     ? `═══════════════════════════════════════════════════
-STEP 5 — AUTOCITY BOARD PLACEMENT
+STEP 4 — AUTOCITY DEALER BOARD (MANDATORY)
 ═══════════════════════════════════════════════════
+Every photo must carry an AutoCity dealer board. Specifications:
 • Shape: horizontal rectangle, 3:1 width-to-height ratio
-• Background: solid matte black
-• Text line 1: "AUTOCITY" — clean modern sans-serif font, white, bold, centered, large
-• Text line 2: small silver car silhouette icon directly below "AUTOCITY", centered
-• Border: thin silver/chrome border around entire board
-• Size: same width as a standard European license plate (approximately 520mm × 110mm)
-• Material appearance: matte black anodized aluminum with subtle studio light reflection
-• ONLY "AUTOCITY" text and logo — NO website, NO phone number, NO other text whatsoever
-• Position: mounted flush on the bumper at license plate height, replacing/overlapping the original license plate area
-• CRITICAL: The board must be readable and correctly proportioned — not distorted, not tilted, not partially hidden`
+• Background: solid matte black — no gradients, no texture
+• Text line 1: "AUTOCITY" — uppercase, centered, bold modern sans-serif font, pure white (#FFFFFF)
+• Text line 2: "AUTOCITY" — smaller, centered, same font, light grey (#AAAAAA)
+• Border: thin silver/chrome border, uniform on all four sides
+• Size: approximately equal to a standard European license plate (520mm × 110mm equivalent)
+• Finish: subtle studio light reflection visible on the board surface
+
+PLACEMENT RULES:
+• Front bumper visible → mount board on front bumper, centered, at license plate height, overlapping original license plate
+• Rear bumper visible → mount board on rear bumper, centered, at license plate height, overlapping original license plate
+• The board must look physically attached to the bumper, not floating`
     : `═══════════════════════════════════════════════════
-STEP 5 — SIDE VIEW: NO BOARD
+STEP 4 — SIDE VIEW: NO BOARD
 ═══════════════════════════════════════════════════
-This is a pure side view — NO bumper is visible.
-DO NOT place any board or sign anywhere on the vehicle.
-DO NOT place any board on the wheels, doors, or body panels.
-The vehicle must be completely clean with no added signage.`
+• Side view only (90° or 270°) → no board (side views have no bumper)
+• DO NOT place any board or sign anywhere on the vehicle.`
 
-  return `ROLE: You are a forensic automotive photo compositor with 20 years of experience producing legally binding advertisement imagery for car dealerships. Your output will be used in official sales listings on AutoScout24, AutoTrack, and Marktplaats. Errors in vehicle details are not permitted and will result in legal liability.
+  return `ROLE: You are a forensic automotive photo compositor with 20 years of experience producing legally binding advertisement imagery for car dealerships. Your output will be used in official sales listings on AutoScout24, Marktplaats and AutoTrack24. Errors are not permitted.
 
 ═══════════════════════════════════════════════════
-STEP 1 — IDENTIFY AND MEMORIZE THE VEHICLE
+STEP 1 — IDENTIFY AND LOCK THE VEHICLE
 ═══════════════════════════════════════════════════
-Before making ANY changes, study the input photo and permanently memorize:
-• MAKE: The exact manufacturer (e.g., Volvo, BMW, Mercedes, Audi — whatever is shown)
-• MODEL: The exact model name and generation (e.g., XC60, 3 Series, C-Class)
-• MODEL YEAR: Estimate from design details
-• TRIM LEVEL: Any visible trim badges, sport packages, or special editions
-• PAINT COLOR: The exact paint color including metallic/matte/pearl finish
-• WHEEL DESIGN: Count every spoke. Note the spoke pattern (straight, split, turbine, Y-shape, etc.), the spoke finish (polished, painted, machined), the center cap design, and the rim edge finish. This is CRITICAL.
-• TIRE SIZE: Estimate from proportions
-• ALL BADGES: Every logo, emblem, and badge on the vehicle
-• GRILLE DESIGN: The exact grille pattern, chrome elements, and brand logo placement
-• HEADLIGHT/TAILLIGHT DESIGN: The exact light signature
-• BODY DETAILS: Roof rails, running boards, spoilers, trim strips, mirror caps, door handles
-• SPECIAL EQUIPMENT: Anything unusual on or attached to the vehicle (roof boxes, bike racks, etc.) — these must be REMOVED in the output
-• LICENSE PLATE TEXT: Read and memorize the exact license plate number/letters
+Before doing anything else, study the input photo and memorize every detail:
+• Make, model, and generation (e.g. "Volvo XC40 T5 Plug-in Hybrid, 1st gen")
+• Exact paint color and finish (e.g. "Fjord Blue metallic, medium blue-grey with subtle metallic flake")
+• Wheel design: count every spoke precisely, note spoke geometry (straight/curved/split/Y-shape), spoke width relative to gap, center cap logo and design, rim edge finish (polished/matte/painted)
+• Front grille: exact mesh or bar pattern, surround shape, brand badge position and design
+• Rear design: exact tail light shape and pattern, diffuser, exhaust tips, spoiler, rear badge
+• All visible manufacturer badges, trim strips, roof rails, mirror caps, door handles
+• Body trim color (black cladding, chrome, body-color)
+• The exact camera viewing angle of this photo in degrees: front-right ≈ 45°, side-left = 90°, rear-left ≈ 135°, rear = 180°, rear-right ≈ 225°, side-right = 270°, front-left ≈ 315°, front = 0°
+
+This identification is your CONTRACT. You are legally bound to reproduce every item identically.
 
 ═══════════════════════════════════════════════════
-STEP 2 — PRESERVATION CONTRACT (ABSOLUTE LAW)
+STEP 2 — THE VEHICLE IS A NO-TOUCH ZONE
 ═══════════════════════════════════════════════════
-The vehicle body is SACRED and UNTOUCHABLE. You are FORBIDDEN from altering:
-✗ Wheel design, spoke pattern, spoke count, spoke finish, or rim color
-✗ Paint color or finish (metallic, matte, pearl effect)
-✗ Grille design, pattern, or chrome elements
-✗ Any badge, logo, or emblem
-✗ Body proportions, panel lines, or silhouette
-✗ Headlight or taillight design
-✗ Any trim strip, chrome accent, or body molding
-✗ Mirror design or color
-✗ Roof rails, running boards, or spoilers
-VIOLATIONS of this contract mean the output is REJECTED and must be regenerated.
+Draw a precise pixel-level boundary around the entire vehicle — every wheel arch, every mirror, every antenna tip, every door handle.
+NOTHING inside this boundary may be altered, redrawn, recolored, relit, or reinterpreted.
+
+ZERO TOLERANCE VIOLATIONS (any of these makes the image unusable and must be rejected):
+✗ Different spoke count or spoke shape than the original
+✗ Different paint shade — even 5% lighter or darker is rejected
+✗ Different grille mesh, surround, or badge design
+✗ Different manufacturer logo or trim detail (e.g. Volvo iron mark must remain identical)
+✗ Different camera angle — the output must show the car from the EXACT SAME ANGLE as the input
+✗ Car appears "pasted in" or floating — it must look physically present in the room
+✗ Car lighting does not match the showroom lighting direction
+
+CRITICAL — DO NOT apply "same lighting on the car" from the original photo. Instead:
+The car must receive NEW realistic lighting from the showroom spotlights above. The showroom has 3 warm spotlights pointing at the back wall. The car receives warm overhead light from these spots, creating natural highlights on the roof, hood and body panels, with soft shadows underneath the car on the floor. This makes the car look physically present in the room.
 
 ═══════════════════════════════════════════════════
-STEP 3 — REMOVE UNWANTED ELEMENTS
+STEP 3 — RECREATE THE AUTOCITY SHOWROOM EXACTLY
 ═══════════════════════════════════════════════════
-Remove from the scene (replace with studio background):
-• ALL other vehicles in the background
-• ALL buildings, roads, trees, sky, and outdoor elements
-• ANY objects attached to the vehicle that are not factory-standard (roof boxes, taxi signs, delivery equipment, etc.)
-• The original license plate (it will be replaced by the AutoCity board or left clean)
-• If a person/driver is visible inside the car, remove them — the interior should appear empty and clean
-DO NOT remove anything that is part of the vehicle's factory specification.
+Replace everything outside the vehicle boundary with this EXACT showroom environment. Every element below is mandatory. No creative interpretation is permitted.
 
-═══════════════════════════════════════════════════
-STEP 4 — CREATE PREMIUM STUDIO ENVIRONMENT
-═══════════════════════════════════════════════════
-Replace the entire background with a premium automotive dealership studio:
-• WALLS: Dark charcoal/anthracite (#2a2a2a) on all visible sides — no texture, no pattern
-• CEILING LIGHT: One large rectangular white LED softbox panel centered on the ceiling, bright white (#ffffff), creating the signature premium studio look
-• WALL ACCENT LIGHTS: Two thin horizontal LED strip lights at mid-height — one on the left wall, one on the right wall
-• FLOOR: Dark polished concrete (#1a1a1a to #2a2a2a gradient) with a subtle mirror reflection of the vehicle's underside
-• SHADOWS: Realistic soft contact shadows under all four tires, fading outward
-• LIGHTING ON VEHICLE: Three-point studio lighting — strong key light from upper-front, soft fill light from the opposite side, subtle rim light from behind. The vehicle's paint should show realistic reflections of the studio lights.
+CEILING:
+• Color: light grey / off-white (approximately #C8C8C8) — NOT black, NOT dark grey, NOT white
+• Texture: smooth plaster ceiling, no visible texture
+• A single straight black metal track rail runs horizontally across the full width of the ceiling, positioned approximately 20% from the top of the image
+• On this track rail: 4 to 5 black cylindrical track spotlight fixtures, evenly spaced, all pointing downward-forward toward the back wall
+• The track rail and fixtures are clearly visible against the light grey ceiling
+
+BACK WALL:
+• Color: medium-dark grey with micro-cement / tadelakt texture (approximately #6B6B6B to #787878)
+• NOT black, NOT charcoal, NOT light grey — medium dark grey
+• Texture: subtle micro-cement plaster texture, slightly uneven surface
+• Lighting on wall: EXACTLY 3 large soft warm white spotlight pools, evenly spaced horizontally across the full width of the wall
+• Each spotlight pool: soft-edged circular/oval warm white glow, approximately 40% of wall height in diameter
+• The pools are created by the ceiling spotlights shining down onto the wall
+• Between the pools: the wall returns to its medium-dark grey base color
+
+SIDE WALLS:
+• Same medium-dark grey micro-cement texture as the back wall
+• No additional lighting on side walls
+• Side walls are partially visible at the left and right edges of the image
+
+FLOOR:
+• Color: dark polished concrete, approximately #3A3A3A to #454545
+• Texture: smooth polished concrete with a subtle matte sheen
+• Reflection: a very subtle, low-opacity reflection of the car's underside is visible directly below the car — NOT a mirror reflection, NOT a glossy floor — just a faint matte sheen that suggests a polished surface
+• The floor extends naturally to the base of all walls
+
+ROOM GEOMETRY:
+• Wide rectangular room, approximately 3x the width of the car
+• The car is centered horizontally in the room
+• The car sits directly on the floor with natural contact — no floating, no gap between tires and floor
+• Natural contact shadow under each tire and along the underside of the car
 
 ${boardSection}
 
 ═══════════════════════════════════════════════════
-STEP 6 — OUTPUT REQUIREMENTS (NON-NEGOTIABLE)
+STEP 5 — CLEANUP TASKS
 ═══════════════════════════════════════════════════
-Deliver a single photorealistic image that meets ALL of the following:
+Before finalizing, perform these cleanup operations:
+• Remove all original background (outdoor environment, parking lots, buildings, trees, sky, other vehicles, people)
+• Remove any advertising stickers, decals, or text from the car body (e.g. dealer stickers, rental company logos)
+• Remove any roof boxes, bike racks, or accessories not part of the original vehicle specification
+• Remove original license plates (they will be covered by the AutoCity board)
+• Do NOT remove: manufacturer badges, trim strips, roof rails, mirror caps, or any factory-fitted equipment
 
-ANGLE & PERSPECTIVE:
-• Shows the vehicle from the EXACT SAME ANGLE as the input photo
-• The camera height, distance, and perspective must precisely match the input photo
-• The vehicle must be positioned at the same orientation as in the input photo
+═══════════════════════════════════════════════════
+STEP 6 — FINAL QUALITY CHECK
+═══════════════════════════════════════════════════
+Before delivering the output, verify:
+☐ Camera angle: identical to input photo (same degrees, same perspective)
+☐ Paint color: identical shade and metallic depth
+☐ Wheel spoke count: identical to input
+☐ Wheel spoke shape and finish: identical to input
+☐ All manufacturer badges and logos: identical and sharp
+☐ Ceiling: light grey with black track rail and 4-5 spotlight fixtures
+☐ Wall: medium-dark grey micro-cement with EXACTLY 3 warm spotlight pools
+☐ Floor: dark polished concrete with subtle matte reflection
+☐ Car appears physically present in the room (not pasted/floating)
+☐ Contact shadows under tires: present and natural
+☐ AutoCity board: present on bumper (if bumper visible), correct design
+☐ No stickers or advertising on car body
+☐ Image resolution: maximum quality, no compression artifacts
 
-QUALITY STANDARD:
-• Resolution: 1920×1280 pixels (3:2 landscape ratio)
-• Quality: equivalent to a professional DSLR camera shot at ISO 100, f/8, with studio strobes
-• The vehicle must be in perfect sharp focus — no motion blur, no depth-of-field softening
-• No blown-out highlights on the paint, no crushed blacks in wheel arches
-
-REALISM:
-• The image must be indistinguishable from a real photograph taken in a real premium dealership studio
-• The vehicle must occupy at least 70% of the frame width
-• Landscape orientation — wider than tall
-• Zero AI artifacts, zero distorted proportions, zero floating elements
-
-PLATFORM COMPLIANCE:
-• Suitable for direct upload to AutoScout24, AutoTrack, and Marktplaats
-• A customer viewing ALL photos side by side must see the EXACT SAME vehicle in every photo
-• Any difference in wheel design, paint color, grille, or board style between photos is a CRITICAL FAILURE`
+If any item above fails, the image is rejected. The output must pass all checks.`
 }
 
 function buildSequentialPrompt(shotAngle: string, photoNumber: number): string {
@@ -129,79 +149,145 @@ function buildSequentialPrompt(shotAngle: string, photoNumber: number): string {
 
   const boardSection = hasBumper
     ? `═══════════════════════════════════════════════════
-STEP 5 — AUTOCITY BOARD
+STEP 4 — AUTOCITY DEALER BOARD (MANDATORY)
 ═══════════════════════════════════════════════════
-• The board in the REFERENCE IMAGE shows the EXACT design to use — copy it PIXEL-PERFECTLY
-• Same shape, same proportions, same font size, same "AUTOCITY" text, same silver logo icon
-• Same border thickness and color
-• Position: mounted flush on the bumper at license plate height, appropriate for this viewing angle
-• The board must be IDENTICAL to the reference image board in every visual detail`
-    : `═══════════════════════════════════════════════════
-STEP 5 — SIDE VIEW: NO BOARD
-═══════════════════════════════════════════════════
-This is a pure side view — NO bumper is visible.
-DO NOT place any board or sign anywhere on the vehicle.`
+Copy the AutoCity dealer board PIXEL-PERFECTLY from the reference image. Specifications for reference:
+• Shape: horizontal rectangle, 3:1 width-to-height ratio
+• Background: solid matte black — no gradients, no texture
+• Text line 1: "AUTOCITY" — uppercase, centered, bold modern sans-serif font, pure white (#FFFFFF)
+• Text line 2: "AUTOCITY" — smaller, centered, same font, light grey (#AAAAAA)
+• Border: thin silver/chrome border, uniform on all four sides
+• Size: approximately equal to a standard European license plate (520mm × 110mm equivalent)
+• Finish: subtle studio light reflection visible on the board surface
 
-  return `ROLE: You are a forensic automotive photo compositor producing legally binding advertisement imagery. This is photo ${photoNumber} of a set. ALL photos in this set show THE EXACT SAME VEHICLE.
+PLACEMENT RULES:
+• Front bumper visible → mount board on front bumper, centered, at license plate height, overlapping original license plate
+• Rear bumper visible → mount board on rear bumper, centered, at license plate height, overlapping original license plate
+• The board must look physically attached to the bumper, not floating`
+    : `═══════════════════════════════════════════════════
+STEP 4 — SIDE VIEW: NO BOARD
+═══════════════════════════════════════════════════
+• Side view only (90° or 270°) → no board (side views have no bumper)
+• DO NOT place any board or sign anywhere on the vehicle.`
+
+  return `ROLE: You are a forensic automotive photo compositor with 20 years of experience producing legally binding advertisement imagery for car dealerships. Your output will be used in official sales listings on AutoScout24, Marktplaats and AutoTrack24. Errors are not permitted.
+
+This is photo ${photoNumber} of a set of 8. ALL photos show THE EXACT SAME VEHICLE.
 
 ═══════════════════════════════════════════════════
 CONSISTENCY REFERENCE — CRITICAL
 ═══════════════════════════════════════════════════
-The REFERENCE IMAGE (second image provided) shows the SAME vehicle already processed in studio style. You MUST match these details EXACTLY from the reference:
-• MAKE, MODEL, MODEL YEAR, and TRIM LEVEL — must be identical
-• WHEEL DESIGN: Copy the exact spoke pattern, spoke count, spoke finish, center cap, and rim color from the reference — do NOT invent a different wheel design
-• PAINT COLOR: Match the exact paint color and metallic finish from the reference
-• GRILLE DESIGN: Match exactly — same pattern, same chrome elements, same brand logo
-• AUTOCITY BOARD: Match the exact design, proportions, and typography from the reference
-• STUDIO STYLE: Match the exact same dark walls, LED ceiling panel, concrete floor, and lighting style
+The REFERENCE IMAGE (second image provided) shows the SAME vehicle already processed in the AutoCity showroom. You MUST match these details EXACTLY from the reference:
+• Make, model, paint color and metallic finish — must be pixel-identical
+• Wheel design: copy the exact spoke count, spoke geometry, spoke finish, center cap, and rim edge from the reference — do NOT invent a different wheel design
+• All manufacturer badges, grille design, trim strips, mirror caps — must match reference exactly
+• AutoCity dealer board: copy the exact design, proportions, and typography from the reference
+• Showroom environment: match the exact ceiling color, track rail, spotlight fixtures, wall color, spotlight pools, and floor from the reference
 
-A customer will view ALL photos side by side. Any difference in wheels, paint color, grille, or board between this photo and the reference is a CRITICAL FAILURE that makes the entire set unusable for advertisement.
-
-═══════════════════════════════════════════════════
-STEP 1 — IDENTIFY THIS PHOTO'S VEHICLE
-═══════════════════════════════════════════════════
-Study the INPUT IMAGE (first image) and confirm:
-• This is the SAME make, model, and color as the reference
-• Note the exact viewing angle of this photo
-• Note any special equipment to remove (roof boxes, taxi signs, etc.)
+A customer will view ALL 8 photos side by side. Any difference in wheels, paint, grille, board design, or showroom style between this photo and the reference is a CRITICAL FAILURE that makes the entire set unusable for advertisement.
 
 ═══════════════════════════════════════════════════
-STEP 2 — PRESERVATION CONTRACT (ABSOLUTE LAW)
+STEP 1 — IDENTIFY AND LOCK THE VEHICLE
 ═══════════════════════════════════════════════════
-You are FORBIDDEN from altering ANY of these on the vehicle:
-✗ Wheel design — must match reference EXACTLY
-✗ Paint color — must match reference EXACTLY
-✗ Grille design — must match reference EXACTLY
-✗ Any badge, logo, emblem, trim strip, or chrome accent
-✗ Body proportions or silhouette
+Before doing anything else, study the INPUT IMAGE (first image) and memorize every detail:
+• Make, model, and generation — confirm it matches the reference
+• Exact paint color and finish — confirm it matches the reference
+• Wheel design: count every spoke precisely, note spoke geometry (straight/curved/split/Y-shape), spoke width relative to gap, center cap logo and design, rim edge finish (polished/matte/painted)
+• Front grille: exact mesh or bar pattern, surround shape, brand badge position and design
+• Rear design: exact tail light shape and pattern, diffuser, exhaust tips, spoiler, rear badge
+• All visible manufacturer badges, trim strips, roof rails, mirror caps, door handles
+• Body trim color (black cladding, chrome, body-color)
+• The exact camera viewing angle of this photo in degrees: front-right ≈ 45°, side-left = 90°, rear-left ≈ 135°, rear = 180°, rear-right ≈ 225°, side-right = 270°, front-left ≈ 315°, front = 0°
+
+This identification is your CONTRACT. You are legally bound to reproduce every item identically.
 
 ═══════════════════════════════════════════════════
-STEP 3 — REMOVE UNWANTED ELEMENTS
+STEP 2 — THE VEHICLE IS A NO-TOUCH ZONE
 ═══════════════════════════════════════════════════
-• Remove ALL background (other vehicles, buildings, sky, road)
-• Remove ANY non-factory items attached to the vehicle (roof boxes, taxi equipment, etc.)
-• Remove the original license plate
-• If a person/driver is visible inside the car, remove them — the interior should appear empty and clean
+Draw a precise pixel-level boundary around the entire vehicle — every wheel arch, every mirror, every antenna tip, every door handle.
+NOTHING inside this boundary may be altered, redrawn, recolored, relit, or reinterpreted.
+
+ZERO TOLERANCE VIOLATIONS (any of these makes the image unusable and must be rejected):
+✗ Different spoke count or spoke shape than the original input or reference
+✗ Different paint shade — even 5% lighter or darker is rejected
+✗ Different grille mesh, surround, or badge design
+✗ Different manufacturer logo or trim detail (e.g. Volvo iron mark must remain identical)
+✗ Different camera angle — the output must show the car from the EXACT SAME ANGLE as the INPUT IMAGE (not the reference angle)
+✗ Car appears "pasted in" or floating — it must look physically present in the room
+✗ Car lighting does not match the showroom lighting direction
+
+CRITICAL — DO NOT apply "same lighting on the car" from the original photo. Instead:
+The car must receive NEW realistic lighting from the showroom spotlights above. The showroom has 3 warm spotlights pointing at the back wall. The car receives warm overhead light from these spots, creating natural highlights on the roof, hood and body panels, with soft shadows underneath the car on the floor. This makes the car look physically present in the room.
 
 ═══════════════════════════════════════════════════
-STEP 4 — STUDIO ENVIRONMENT (MATCH REFERENCE)
+STEP 3 — RECREATE THE AUTOCITY SHOWROOM EXACTLY
 ═══════════════════════════════════════════════════
-Create the EXACT SAME studio as in the reference image:
-• Dark charcoal walls, large white LED ceiling panel, thin wall strip lights
-• Dark polished concrete floor with vehicle reflection
-• Same three-point studio lighting style
+Replace everything outside the vehicle boundary with this EXACT showroom environment — identical to the reference image. Every element below is mandatory. No creative interpretation is permitted.
+
+CEILING:
+• Color: light grey / off-white (approximately #C8C8C8) — NOT black, NOT dark grey, NOT white
+• Texture: smooth plaster ceiling, no visible texture
+• A single straight black metal track rail runs horizontally across the full width of the ceiling, positioned approximately 20% from the top of the image
+• On this track rail: 4 to 5 black cylindrical track spotlight fixtures, evenly spaced, all pointing downward-forward toward the back wall
+• The track rail and fixtures are clearly visible against the light grey ceiling
+
+BACK WALL:
+• Color: medium-dark grey with micro-cement / tadelakt texture (approximately #6B6B6B to #787878)
+• NOT black, NOT charcoal, NOT light grey — medium dark grey
+• Texture: subtle micro-cement plaster texture, slightly uneven surface
+• Lighting on wall: EXACTLY 3 large soft warm white spotlight pools, evenly spaced horizontally across the full width of the wall
+• Each spotlight pool: soft-edged circular/oval warm white glow, approximately 40% of wall height in diameter
+• The pools are created by the ceiling spotlights shining down onto the wall
+• Between the pools: the wall returns to its medium-dark grey base color
+
+SIDE WALLS:
+• Same medium-dark grey micro-cement texture as the back wall
+• No additional lighting on side walls
+• Side walls are partially visible at the left and right edges of the image
+
+FLOOR:
+• Color: dark polished concrete, approximately #3A3A3A to #454545
+• Texture: smooth polished concrete with a subtle matte sheen
+• Reflection: a very subtle, low-opacity reflection of the car's underside is visible directly below the car — NOT a mirror reflection, NOT a glossy floor — just a faint matte sheen that suggests a polished surface
+• The floor extends naturally to the base of all walls
+
+ROOM GEOMETRY:
+• Wide rectangular room, approximately 3x the width of the car
+• The car is centered horizontally in the room
+• The car sits directly on the floor with natural contact — no floating, no gap between tires and floor
+• Natural contact shadow under each tire and along the underside of the car
 
 ${boardSection}
 
 ═══════════════════════════════════════════════════
-STEP 6 — OUTPUT REQUIREMENTS
+STEP 5 — CLEANUP TASKS
 ═══════════════════════════════════════════════════
-• Resolution: 1920×1280 pixels (3:2 landscape)
-• ANGLE: Show the vehicle from the EXACT SAME ANGLE as the INPUT IMAGE — NOT the reference angle
-• Do NOT copy the angle from the reference — the reference is only for vehicle details and studio style
-• The vehicle must occupy at least 70% of the frame width
-• Photorealistic quality, indistinguishable from a real studio photograph
-• Zero AI artifacts, zero distorted proportions`
+Before finalizing, perform these cleanup operations:
+• Remove all original background (outdoor environment, parking lots, buildings, trees, sky, other vehicles, people)
+• Remove any advertising stickers, decals, or text from the car body (e.g. dealer stickers, rental company logos)
+• Remove any roof boxes, bike racks, or accessories not part of the original vehicle specification
+• Remove original license plates (they will be covered by the AutoCity board)
+• Do NOT remove: manufacturer badges, trim strips, roof rails, mirror caps, or any factory-fitted equipment
+
+═══════════════════════════════════════════════════
+STEP 6 — FINAL QUALITY CHECK
+═══════════════════════════════════════════════════
+Before delivering the output, verify:
+☐ Camera angle: identical to INPUT IMAGE angle (NOT the reference angle)
+☐ Paint color: identical shade and metallic depth — matches reference
+☐ Wheel spoke count: identical to input and reference
+☐ Wheel spoke shape and finish: identical to input and reference
+☐ All manufacturer badges and logos: identical and sharp — matches reference
+☐ Ceiling: light grey with black track rail and 4-5 spotlight fixtures — matches reference
+☐ Wall: medium-dark grey micro-cement with EXACTLY 3 warm spotlight pools — matches reference
+☐ Floor: dark polished concrete with subtle matte reflection — matches reference
+☐ Car appears physically present in the room (not pasted/floating)
+☐ Contact shadows under tires: present and natural
+☐ AutoCity board: present on bumper (if bumper visible), PIXEL-PERFECT copy from reference
+☐ No stickers or advertising on car body
+☐ Image resolution: maximum quality, no compression artifacts
+
+If any item above fails, the image is rejected. The output must pass all checks.`
 }
 
 async function saveToStorage(base64: string, path: string): Promise<string> {
