@@ -37,7 +37,7 @@ interface StudioImage {
   shotAngle?: string;
 }
 
-const STANDARD_ANGLES = ['front-left', 'side-left', 'rear-left', 'rear', 'rear-right', 'side-right', 'front-right', 'front'];
+const STANDARD_ANGLES = ['front-right', 'side-left', 'rear-left', 'rear', 'rear-right', 'side-right', 'front-left', 'front'];
 
 const FotoStudio = () => {
   const [images, setImages] = useState<StudioImage[]>([]);
