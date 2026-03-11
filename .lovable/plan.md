@@ -1,80 +1,48 @@
 
 
-# Interieur/Exterieur Switch + Interieur Prompt
+# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
 
-## Aanpak
+## Probleem
 
-Twee volledig gescheiden paden: de bestaande exterieur code blijft 100% onaangeroerd. Er komt een `mode` parameter die bepaalt welk prompt-pad wordt gebruikt.
+Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
 
-## 1. Frontend: `src/pages/FotoStudio.tsx`
+## Echte oorzaak (niet React deduplicatie)
 
-- Voeg `studioMode` state toe: `'exterieur' | 'interieur'`
-- Voeg een `Tabs` component toe direct onder de header (voor de action buttons): twee tabs "Exterieur" en "Interieur"
-- Bij tab-wissel: als er foto's staan, `clearAll()` aanroepen (voorkomt verwarring)
-- Stuur `mode: studioMode` mee in de `supabase.functions.invoke` body
-- Pas teksten aan per mode:
-  - Upload zone: "voertuigfoto's" vs "interieur foto's"
-  - Processing tekst: "Showroom foto" vs "Interieur foto"
-  - Subtitle: korte uitleg per mode
+Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
 
-## 2. Backend: `supabase/functions/showroom-photo-studio/index.ts`
+- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
+- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
+- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
 
-Bestaande functies `buildFirstPhotoPrompt()` en `buildSequentialPrompt()` blijven VOLLEDIG ONAANGEROERD.
+In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
 
-Toevoegen:
-- `buildInteriorFirstPrompt()` — nieuw, apart prompt
-- `buildInteriorSequentialPrompt(photoNumber)` — nieuw, apart prompt
-- In de `serve` handler: lees `mode` uit request body (default `'exterieur'`). Als `mode === 'interieur'`, gebruik de interieur prompt functies. Anders de bestaande exterieur functies (ongewijzigd).
+In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
 
-### Interieur Prompt Inhoud
+## Oplossing
 
-Het interieur prompt volgt een vergelijkbare strakke structuur als het exterieur prompt maar met compleet andere regels:
+Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
+- Gebruikt compatibele Radix versies (geen nested node_modules meer)
+- Verwijdert de `@babel/runtime` dependency
+- Lost het context-conflict op
 
-**STEP 1 — IDENTIFY AND LOCK THE INTERIOR**
-- Analyseer elk detail: stoelmateriaal/kleur/patroon, dashboard layout, stuurwiel, displays, knoppen, ventilatieroosters, middenconsole, versnellingspook, bekleding textuur
-- Noteer alle teksten op knoppen, displays, badges — deze zijn heilig
+### Wijzigingen
 
-**STEP 2 — ABSOLUTE NO-TOUCH ZONE (strenger dan exterieur)**
-- ALLES binnen het interieur is een no-touch zone
-- Zero tolerance: displays mogen niet veranderen (tekst, iconen, kleur), stiksel patronen moeten identiek blijven, leder/stof textuur mag niet veranderen, knopteksten/symbolen ongewijzigd, kleuren van materialen ongewijzigd, houtdecor/aluminium/carbon patronen exact behouden
-- Geen details toevoegen die er niet zijn, geen details verwijderen die er wel zijn
+**Bestand: `package.json`**
+- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
 
-**STEP 3 — PROFESSIONELE BELICHTING**
-- Warme, gelijkmatige studio-belichting toepassen alsof een professionele automotive fotograaf met de beste camera en softbox verlichting werkt
-- Schaduwen in voetruimte en onder dashboard zachter maken maar niet elimineren (natuurlijk)
-- Kleuren verrijken zonder oversaturatie — faithful color reproduction
-- Scherptediepte en bokeh zoals een professionele automotive fotograaf zou gebruiken
+**Bestand: `src/components/ui/command.tsx`**
+- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
 
-**STEP 4 — RAMEN: SHOWROOM ACHTERGROND**
-- Alles zichtbaar door ALLE ramen vervangen door de AutoCity showroom-omgeving:
-  - Zijramen: medium-dark grey micro-cement muur (#6B6B6B tot #787878) met warme spotlight pools (consistent met exterieur showroom)
-  - Voorruit/achterruit: showroom muur en/of plafond met track rail en spots, afhankelijk van kijkhoek
-  - Als de grond zichtbaar is door een raam: dark polished concrete floor (#3A3A3A tot #454545)
-- De showroom achtergrond moet er natuurlijk en scherp uitzien, niet wazig
-- Reflecties van de showroom op het glas zijn gewenst (subtiel)
+**Bestand: `vite.config.ts`**
+- De bestaande `dedupe` configuratie blijft als extra veiligheid
+- Toevoegen van Radix interne pakketten aan dedupe als fallback:
+  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
 
-**STEP 5 — OPSCHONEN**
-- Persoonlijke spullen verwijderen: telefoons, flessen, tassen, papieren, sleutels, kabels
-- Vuiligheid/vlekken op stoelen en vloermatten opschonen
-- Geen dealer-stickers of aftermarket accessoires
-- NIET verwijderen: originele accessoires, badges, OEM matten
+## Verwacht resultaat
 
-**STEP 6 — FINAL QUALITY CHECK**
-- Alle display teksten identiek aan input
-- Alle knop-symbolen identiek aan input
-- Stiksel patronen identiek
-- Materiaal texturen identiek
-- Kleuren identiek
-- Showroom zichtbaar door alle ramen
-- Professionele belichting aanwezig
-- Geen artefacten, geen hallucinaties
-
-De sequential prompt voegt dezelfde consistency-reference sectie toe als exterieur: match belichting en kleurtemperatuur van de referentiefoto.
-
-## Samenvatting wijzigingen
-
-| Bestand | Wat | Exterieur impact |
-|---------|-----|-----------------|
-| `FotoStudio.tsx` | Tabs toevoegen, mode state, mode in API call, teksten per mode | Geen — zelfde flow |
-| `index.ts` | 2 nieuwe functies + mode check in serve handler | Geen — bestaande functies ongewijzigd |
+Na upgrade en publicatie:
+- Klantenlijst is weer klikbaar en scrollbaar
+- Selecteren van klanten werkt correct
+- Data wordt opgeslagen
+- Werkt zowel in preview als op de gepubliceerde website
 

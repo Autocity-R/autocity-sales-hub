@@ -8,11 +8,14 @@ import { Label } from "@/components/ui/label";
 import { 
   Upload, Download, RefreshCw, X, ImageIcon, 
   Sparkles, Loader2, CheckCircle2, AlertCircle,
-  Images, Camera
+  Images, Camera, Armchair
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import OptimizedDashboardLayout from "@/components/layout/OptimizedDashboardLayout";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+type StudioMode = 'exterieur' | 'interieur';
 
 interface StudioImage {
   id: string;
@@ -29,6 +32,17 @@ const FotoStudio = () => {
   const [isProcessingAll, setIsProcessingAll] = useState(false);
   const [licensePlate, setLicensePlate] = useState("");
   const [currentProcessingIndex, setCurrentProcessingIndex] = useState<number | null>(null);
+  const [studioMode, setStudioMode] = useState<StudioMode>('exterieur');
+
+  const handleModeChange = (mode: string) => {
+    if (mode === studioMode) return;
+    if (images.length > 0) {
+      clearAll();
+    }
+    setStudioMode(mode as StudioMode);
+  };
+
+  const isInterior = studioMode === 'interieur';
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newImages: StudioImage[] = acceptedFiles.map((file) => ({
@@ -71,6 +85,7 @@ const FotoStudio = () => {
         body: { 
           imageBase64: base64,
           photoNumber,
+          mode: studioMode,
           ...(referenceImageBase64 ? { referenceImageBase64 } : {}),
         }
       });
@@ -202,10 +217,26 @@ const FotoStudio = () => {
               Foto Studio
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Upload voertuigfoto's en laat AI ze omzetten naar professionele AutoCity showroom-beelden. 
-              Foto's worden sequentieel verwerkt voor maximale consistentie.
+              {isInterior
+                ? 'Upload interieur foto\'s en laat AI ze professioneel opschonen met showroom-achtergrond door de ramen.'
+                : 'Upload voertuigfoto\'s en laat AI ze omzetten naar professionele AutoCity showroom-beelden. Foto\'s worden sequentieel verwerkt voor maximale consistentie.'
+              }
             </p>
           </div>
+
+          {/* Mode Toggle */}
+          <Tabs value={studioMode} onValueChange={handleModeChange} className="w-fit">
+            <TabsList>
+              <TabsTrigger value="exterieur" className="gap-1.5">
+                <Camera className="h-4 w-4" />
+                Exterieur
+              </TabsTrigger>
+              <TabsTrigger value="interieur" className="gap-1.5">
+                <Armchair className="h-4 w-4" />
+                Interieur
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         {/* Action buttons */}
@@ -277,10 +308,13 @@ const FotoStudio = () => {
             </div>
             <div>
               <p className="text-lg font-medium">
-                {isDragActive ? "Laat foto's hier los..." : "Sleep voertuigfoto's hierheen of klik om te uploaden"}
+                {isDragActive ? "Laat foto's hier los..." : isInterior ? "Sleep interieur foto's hierheen of klik om te uploaden" : "Sleep voertuigfoto's hierheen of klik om te uploaden"}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                JPG, PNG of WebP — max 20MB per foto — upload 8 foto's voor automatische hoektoewijzing
+                {isInterior
+                  ? 'JPG, PNG of WebP — max 20MB per foto — interieur wordt professioneel opgeschoond'
+                  : 'JPG, PNG of WebP — max 20MB per foto — upload 8 foto\'s voor automatische hoektoewijzing'
+                }
               </p>
             </div>
           </div>
@@ -323,11 +357,11 @@ const FotoStudio = () => {
                       <div className="w-full h-72 flex items-center justify-center">
                         <div className="text-center">
                           <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin text-primary" />
-                          <p className="text-xs text-muted-foreground font-medium">
-                            Showroom foto wordt gegenereerd...
+                           <p className="text-xs text-muted-foreground font-medium">
+                            {isInterior ? 'Interieur foto wordt opgeschoond...' : 'Showroom foto wordt gegenereerd...'}
                           </p>
                           <p className="text-[10px] text-muted-foreground mt-1.5">
-                            {index > 0 ? 'Met referentie van vorige foto' : 'Eerste foto — studio stijl wordt vastgelegd'}
+                            {index > 0 ? 'Met referentie van vorige foto' : isInterior ? 'Eerste foto — interieur stijl wordt vastgelegd' : 'Eerste foto — studio stijl wordt vastgelegd'}
                           </p>
                           <p className="text-[10px] text-muted-foreground mt-1">Dit kan 30-90 seconden duren</p>
                         </div>
