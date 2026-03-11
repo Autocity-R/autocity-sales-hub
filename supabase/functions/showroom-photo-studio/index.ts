@@ -259,6 +259,229 @@ Before delivering the output, verify:
 If any item above fails, the image is rejected. The output must pass all checks.`
 }
 
+// ═══════════════════════════════════════════════════
+// INTERIOR PROMPTS — Completely separate from exterior
+// ═══════════════════════════════════════════════════
+
+function buildInteriorFirstPrompt(): string {
+  return `ROLE: You are a forensic automotive interior photo specialist with 20 years of experience producing legally binding advertisement imagery for premium car dealerships. Your output will be used in official sales listings on AutoScout24, Marktplaats and AutoTrack24. Errors are not permitted. You work as a professional automotive photographer using the best camera equipment and studio lighting setups.
+
+═══════════════════════════════════════════════════
+STEP 1 — IDENTIFY AND LOCK THE INTERIOR
+═══════════════════════════════════════════════════
+Before doing anything else, study the input photo and memorize every single detail:
+• Seat material, color, texture, and stitching pattern (leather grain direction, perforations, contrast stitching color and spacing)
+• Dashboard layout: every button, knob, vent, trim piece, and their exact positions
+• Steering wheel: exact shape, button layout, logo, material, stitching
+• All displays/screens: exact content shown (text, icons, colors, brightness, graphics) — these are SACRED and must be pixel-identical in output
+• All button labels, symbols, and text anywhere in the cabin — SACRED
+• Center console: gear lever/selector design, cupholder layout, armrest, storage compartments
+• Ventilation grilles: exact slat angle, surround shape, chrome/matte finish
+• Trim materials: wood grain pattern and color, brushed aluminum direction, carbon fiber weave pattern, piano black surfaces
+• Floor mats: OEM pattern, color, branded logos
+• Headliner material and color
+• Door panel design: handle shape, speaker grilles, window controls, pocket layout
+• All badges, logos, model designations visible anywhere in the cabin
+
+This identification is your CONTRACT. You are legally bound to reproduce every item PIXEL-IDENTICALLY.
+
+═══════════════════════════════════════════════════
+STEP 2 — ABSOLUTE NO-TOUCH ZONE (EVERYTHING INSIDE THE CABIN)
+═══════════════════════════════════════════════════
+The ENTIRE interior of the vehicle is a no-touch zone. This is STRICTER than exterior processing.
+
+ZERO TOLERANCE — ANY of these makes the image unusable and MUST be rejected:
+✗ Display content changed in ANY way (text, icons, colors, graphics, brightness) — even slightly different font rendering is REJECTED
+✗ Button symbols or labels altered, moved, or redrawn
+✗ Stitching pattern changed (spacing, color, angle, double vs single stitch)
+✗ Leather/fabric texture altered (grain direction, perforation pattern, surface finish)
+✗ Wood/aluminum/carbon trim pattern changed (grain direction, color, finish)
+✗ Any knob, lever, or control moved from its exact position
+✗ Seat shape or contour altered
+✗ Color of ANY material changed — even 5% shift is REJECTED
+✗ Details ADDED that don't exist in the original (hallucination)
+✗ Details REMOVED that exist in the original (except items listed in STEP 5)
+✗ Piano black surfaces gaining or losing reflections that change their apparent shape
+✗ Chrome/metal trim changing finish (matte becoming glossy or vice versa)
+
+CRITICAL: When in doubt, preserve the original pixel. Never "improve" or "enhance" interior details.
+
+═══════════════════════════════════════════════════
+STEP 3 — PROFESSIONAL AUTOMOTIVE PHOTOGRAPHY LIGHTING
+═══════════════════════════════════════════════════
+Apply professional studio lighting as if shot by an expert automotive photographer with:
+• Soft diffused overhead lighting from multiple softboxes, creating even illumination
+• Warm color temperature (approximately 4500-5000K) — professional automotive studio standard
+• Shadows in footwell area: soften but do NOT eliminate — keep them natural and directional
+• Shadows under dashboard: soften but maintain natural depth
+• Enrich colors faithfully — increase vibrancy slightly without oversaturation
+• Faithful color reproduction: the seat color, trim color, and material colors must remain EXACTLY as in the original, just better lit
+• Leather and metal surfaces should show natural specular highlights from the studio lighting
+• No harsh reflections or blown-out highlights on screens or glossy surfaces
+• The overall look should be: "This was photographed in a professional studio with perfect lighting" — NOT "This was processed by AI"
+
+═══════════════════════════════════════════════════
+STEP 4 — WINDOWS: AUTOCITY SHOWROOM BACKGROUND
+═══════════════════════════════════════════════════
+Replace EVERYTHING visible through ALL windows with the AutoCity showroom environment. The goal is to make it look like this car is parked inside the AutoCity showroom.
+
+SIDE WINDOWS:
+• Show the medium-dark grey micro-cement wall (approximately #6B6B6B to #787878)
+• Include warm white spotlight pools on the wall (consistent with the AutoCity showroom aesthetic)
+• The wall should appear at the correct distance and perspective for a showroom interior
+
+WINDSHIELD (front):
+• Show the showroom ceiling with light grey color (#C8C8C8) in the upper portion
+• Show the black metal track rail with spotlight fixtures
+• Show the back wall with spotlight pools in the lower portion
+• Perspective must be correct for looking forward through a windshield in an indoor space
+
+REAR WINDOW:
+• Same showroom environment, adjusted for rear perspective
+• Wall with spotlight pools and/or ceiling elements as appropriate for the viewing angle
+
+IF GROUND IS VISIBLE through any window (e.g. looking down through side window, or low angle shot):
+• Show the dark polished concrete floor (#3A3A3A to #454545)
+• The floor should match the AutoCity showroom floor specification
+
+CRITICAL WINDOW RENDERING RULES:
+• The showroom background through windows must be SHARP and in focus — NOT blurred or bokeh
+• The showroom must look natural, as if the car is genuinely parked inside this room
+• Add subtle reflections of the showroom environment ON the glass surfaces — this is desired and adds realism
+• Window tint, if present on the original, must be preserved (the showroom is visible through the tint)
+• The transition between window frame and showroom background must be clean and precise
+• Do NOT add any elements not specified (no other cars, no people, no furniture)
+
+═══════════════════════════════════════════════════
+STEP 5 — CLEANUP
+═══════════════════════════════════════════════════
+Remove the following items ONLY:
+• Personal belongings: phones, water bottles, bags, papers, keys, cables, chargers, sunglasses, coins
+• Trash or debris on seats, floor mats, or in cupholders
+• Visible dirt, stains, or marks on seats and floor mats (make them look clean)
+• Aftermarket accessories: phone holders, dashboard cameras, air fresheners, non-OEM floor mats
+• Dealer stickers or aftermarket badges
+
+DO NOT REMOVE:
+• Any OEM/factory equipment, badges, or accessories
+• Original floor mats with manufacturer branding
+• Factory-installed accessories (e.g. OEM phone cradle, factory dash cam)
+• Any controls, buttons, or functional elements
+
+═══════════════════════════════════════════════════
+STEP 6 — FINAL QUALITY CHECK
+═══════════════════════════════════════════════════
+Before delivering the output, verify every single item:
+☐ ALL display text: pixel-identical to input (check EVERY character)
+☐ ALL button symbols and labels: pixel-identical to input
+☐ Stitching patterns on steering wheel, seats, dashboard: identical spacing, color, angle
+☐ Leather/fabric texture and grain: identical to input
+☐ Wood/aluminum/carbon trim patterns: identical to input
+☐ ALL material colors: identical to input (not shifted, not "enhanced")
+☐ Seat shape and contours: identical to input
+☐ Every knob, lever, vent position: identical to input
+☐ Showroom environment visible through ALL windows: present and sharp
+☐ Professional studio lighting: warm, even, natural
+☐ Personal items removed
+☐ Surfaces clean (no stains or dirt)
+☐ No AI artifacts, hallucinations, or invented details
+☐ No blurring of text or fine details
+☐ Image resolution: maximum quality, no compression artifacts
+
+If ANY item fails, the image is REJECTED. Start over. The output must pass ALL checks.`
+}
+
+function buildInteriorSequentialPrompt(photoNumber: number): string {
+  return `ROLE: You are a forensic automotive interior photo specialist with 20 years of experience producing legally binding advertisement imagery for premium car dealerships. Your output will be used in official sales listings on AutoScout24, Marktplaats and AutoTrack24. Errors are not permitted.
+
+This is interior photo ${photoNumber} of a set. ALL photos show THE EXACT SAME VEHICLE interior.
+
+═══════════════════════════════════════════════════
+CONSISTENCY REFERENCE — CRITICAL
+═══════════════════════════════════════════════════
+The REFERENCE IMAGE (second image provided) shows the SAME vehicle interior already processed. You MUST match these aspects EXACTLY from the reference:
+• Lighting color temperature and intensity — must be identical warm studio lighting
+• Showroom environment through windows — must show the identical AutoCity showroom (same wall color, spotlight pools, floor)
+• Overall color grading and mood — must be consistent across all interior photos
+• Cleanup level — same standard of cleanliness applied
+
+A customer will view ALL interior photos side by side. Any difference in lighting warmth, showroom background style, or color grading between this photo and the reference is a CRITICAL FAILURE.
+
+═══════════════════════════════════════════════════
+STEP 1 — IDENTIFY AND LOCK THE INTERIOR
+═══════════════════════════════════════════════════
+Before doing anything else, study the INPUT IMAGE (first image) and memorize every single detail:
+• Seat material, color, texture, and stitching pattern (leather grain direction, perforations, contrast stitching color and spacing)
+• Dashboard layout: every button, knob, vent, trim piece, and their exact positions
+• Steering wheel: exact shape, button layout, logo, material, stitching
+• All displays/screens: exact content shown (text, icons, colors, brightness, graphics) — these are SACRED
+• All button labels, symbols, and text anywhere in the cabin — SACRED
+• Center console, trim materials, floor mats, headliner, door panels
+• All badges, logos, model designations
+
+This identification is your CONTRACT. You are legally bound to reproduce every item PIXEL-IDENTICALLY.
+
+═══════════════════════════════════════════════════
+STEP 2 — ABSOLUTE NO-TOUCH ZONE (EVERYTHING INSIDE THE CABIN)
+═══════════════════════════════════════════════════
+The ENTIRE interior is a no-touch zone. STRICTER than exterior processing.
+
+ZERO TOLERANCE — ANY of these makes the image REJECTED:
+✗ Display content changed in ANY way
+✗ Button symbols or labels altered
+✗ Stitching pattern changed
+✗ Material texture altered
+✗ Trim pattern changed
+✗ Controls moved from exact position
+✗ Color of ANY material changed — even 5% shift
+✗ Details ADDED that don't exist (hallucination)
+✗ Details REMOVED that exist (except STEP 5 items)
+
+═══════════════════════════════════════════════════
+STEP 3 — PROFESSIONAL LIGHTING (MATCH REFERENCE)
+═══════════════════════════════════════════════════
+Apply the SAME professional studio lighting as the reference image:
+• Match the exact color temperature from the reference
+• Match the shadow softness and direction from the reference
+• Match the specular highlight intensity on leather and metal surfaces
+• The lighting must be indistinguishable from the reference in warmth and quality
+
+═══════════════════════════════════════════════════
+STEP 4 — WINDOWS: AUTOCITY SHOWROOM (MATCH REFERENCE)
+═══════════════════════════════════════════════════
+Replace everything visible through ALL windows with the AutoCity showroom — matching the reference exactly:
+
+SIDE WINDOWS: medium-dark grey micro-cement wall (#6B6B6B to #787878) with warm spotlight pools
+WINDSHIELD: showroom ceiling (#C8C8C8), track rail with spots, back wall
+REAR WINDOW: showroom environment adjusted for rear perspective
+GROUND VISIBLE: dark polished concrete floor (#3A3A3A to #454545)
+
+• Showroom background must be SHARP — not blurred
+• Subtle glass reflections of the showroom are desired
+• Match the exact showroom rendering style from the reference image
+
+═══════════════════════════════════════════════════
+STEP 5 — CLEANUP
+═══════════════════════════════════════════════════
+Remove: personal belongings, trash, dirt/stains, aftermarket accessories, dealer stickers
+Keep: all OEM equipment, factory mats, factory accessories
+
+═══════════════════════════════════════════════════
+STEP 6 — FINAL QUALITY CHECK
+═══════════════════════════════════════════════════
+☐ ALL display text: pixel-identical to INPUT
+☐ ALL button symbols: pixel-identical to INPUT
+☐ All material textures and colors: identical to INPUT
+☐ Lighting: matches REFERENCE color temperature and quality
+☐ Showroom through windows: matches REFERENCE style exactly
+☐ Personal items removed, surfaces clean
+☐ No AI artifacts or hallucinations
+☐ No blurred text or fine details
+☐ Maximum image quality
+
+If ANY item fails, REJECT and start over.`
+}
+
 async function saveToStorage(base64: string, path: string): Promise<string> {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
   const buffer = Uint8Array.from(atob(base64), c => c.charCodeAt(0))
