@@ -32,6 +32,17 @@ const FotoStudio = () => {
   const [isProcessingAll, setIsProcessingAll] = useState(false);
   const [licensePlate, setLicensePlate] = useState("");
   const [currentProcessingIndex, setCurrentProcessingIndex] = useState<number | null>(null);
+  const [studioMode, setStudioMode] = useState<StudioMode>('exterieur');
+
+  const handleModeChange = (mode: string) => {
+    if (mode === studioMode) return;
+    if (images.length > 0) {
+      clearAll();
+    }
+    setStudioMode(mode as StudioMode);
+  };
+
+  const isInterior = studioMode === 'interieur';
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newImages: StudioImage[] = acceptedFiles.map((file) => ({
