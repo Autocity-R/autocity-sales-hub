@@ -217,19 +217,27 @@ const FotoStudio = () => {
               Foto Studio
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Upload voertuigfoto's en laat AI ze omzetten naar professionele AutoCity showroom-beelden. 
-              Foto's worden sequentieel verwerkt voor maximale consistentie.
+              {isInterior
+                ? 'Upload interieur foto\'s en laat AI ze professioneel opschonen met showroom-achtergrond door de ramen.'
+                : 'Upload voertuigfoto\'s en laat AI ze omzetten naar professionele AutoCity showroom-beelden. Foto\'s worden sequentieel verwerkt voor maximale consistentie.'
+              }
             </p>
           </div>
-        </div>
 
-        {/* Action buttons */}
-        {images.length > 0 && (
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" size="sm" onClick={clearAll} disabled={isProcessingAll}>
-              <X className="h-4 w-4 mr-1" />
-              Wissen
-            </Button>
+          {/* Mode Toggle */}
+          <Tabs value={studioMode} onValueChange={handleModeChange} className="w-fit">
+            <TabsList>
+              <TabsTrigger value="exterieur" className="gap-1.5">
+                <Camera className="h-4 w-4" />
+                Exterieur
+              </TabsTrigger>
+              <TabsTrigger value="interieur" className="gap-1.5">
+                <Armchair className="h-4 w-4" />
+                Interieur
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
             {completedCount > 0 && (
               <Button variant="outline" size="sm" onClick={downloadAll}>
                 <Download className="h-4 w-4 mr-1" />
