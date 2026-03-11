@@ -2640,6 +2640,41 @@ export type Database = {
           },
         ]
       }
+      vehicle_showroom_photos: {
+        Row: {
+          generated_at: string | null
+          id: string
+          photo_index: number
+          photo_url: string
+          shot_angle: string
+          vehicle_id: string
+        }
+        Insert: {
+          generated_at?: string | null
+          id?: string
+          photo_index: number
+          photo_url: string
+          shot_angle: string
+          vehicle_id: string
+        }
+        Update: {
+          generated_at?: string | null
+          id?: string
+          photo_index?: number
+          photo_url?: string
+          shot_angle?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_showroom_photos_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_status_audit_log: {
         Row: {
           change_metadata: Json | null
