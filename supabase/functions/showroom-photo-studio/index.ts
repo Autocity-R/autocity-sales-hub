@@ -10,16 +10,13 @@ const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 
-const SIDE_VIEWS = ["side-left", "side-right"]
-
-function buildFirstPhotoPrompt(shotAngle: string): string {
-  const hasBumper = !SIDE_VIEWS.includes(shotAngle)
-
-  const boardSection = hasBumper
-    ? `═══════════════════════════════════════════════════
-STEP 4 — AUTOCITY DEALER BOARD (MANDATORY)
+const BOARD_SECTION = `═══════════════════════════════════════════════════
+STEP 4 — AUTOCITY DEALER BOARD (CONDITIONAL)
 ═══════════════════════════════════════════════════
-Every photo must carry an AutoCity dealer board. Specifications:
+Determine the camera angle from the input photo. Then apply these rules:
+
+IF front or rear bumper is visible (any angle where a license plate area is visible):
+• Place an AutoCity dealer board on the bumper
 • Shape: horizontal rectangle, 3:1 width-to-height ratio
 • Background: solid matte black — no gradients, no texture
 • Text line 1: "AUTOCITY" — uppercase, centered, bold modern sans-serif font, pure white (#FFFFFF)
@@ -27,17 +24,14 @@ Every photo must carry an AutoCity dealer board. Specifications:
 • Border: thin silver/chrome border, uniform on all four sides
 • Size: approximately equal to a standard European license plate (520mm × 110mm equivalent)
 • Finish: subtle studio light reflection visible on the board surface
-
-PLACEMENT RULES:
 • Front bumper visible → mount board on front bumper, centered, at license plate height, overlapping original license plate
 • Rear bumper visible → mount board on rear bumper, centered, at license plate height, overlapping original license plate
-• The board must look physically attached to the bumper, not floating`
-    : `═══════════════════════════════════════════════════
-STEP 4 — SIDE VIEW: NO BOARD
-═══════════════════════════════════════════════════
-• Side view only (90° or 270°) → no board (side views have no bumper)
-• DO NOT place any board or sign anywhere on the vehicle.`
+• The board must look physically attached to the bumper, not floating
 
+IF side view only (90° or 270° — no bumper visible):
+• DO NOT place any board or sign anywhere on the vehicle`
+
+function buildFirstPhotoPrompt(): string {
   return `ROLE: You are a forensic automotive photo compositor with 20 years of experience producing legally binding advertisement imagery for car dealerships. Your output will be used in official sales listings on AutoScout24, Marktplaats and AutoTrack24. Errors are not permitted.
 
 ═══════════════════════════════════════════════════
@@ -111,7 +105,7 @@ ROOM GEOMETRY:
 • The car sits directly on the floor with natural contact — no floating, no gap between tires and floor
 • Natural contact shadow under each tire and along the underside of the car
 
-${boardSection}
+${BOARD_SECTION}
 
 ═══════════════════════════════════════════════════
 STEP 5 — CLEANUP TASKS
@@ -144,32 +138,7 @@ Before delivering the output, verify:
 If any item above fails, the image is rejected. The output must pass all checks.`
 }
 
-function buildSequentialPrompt(shotAngle: string, photoNumber: number): string {
-  const hasBumper = !SIDE_VIEWS.includes(shotAngle)
-
-  const boardSection = hasBumper
-    ? `═══════════════════════════════════════════════════
-STEP 4 — AUTOCITY DEALER BOARD (MANDATORY)
-═══════════════════════════════════════════════════
-Copy the AutoCity dealer board PIXEL-PERFECTLY from the reference image. Specifications for reference:
-• Shape: horizontal rectangle, 3:1 width-to-height ratio
-• Background: solid matte black — no gradients, no texture
-• Text line 1: "AUTOCITY" — uppercase, centered, bold modern sans-serif font, pure white (#FFFFFF)
-• Text line 2: "AUTOCITY" — smaller, centered, same font, light grey (#AAAAAA)
-• Border: thin silver/chrome border, uniform on all four sides
-• Size: approximately equal to a standard European license plate (520mm × 110mm equivalent)
-• Finish: subtle studio light reflection visible on the board surface
-
-PLACEMENT RULES:
-• Front bumper visible → mount board on front bumper, centered, at license plate height, overlapping original license plate
-• Rear bumper visible → mount board on rear bumper, centered, at license plate height, overlapping original license plate
-• The board must look physically attached to the bumper, not floating`
-    : `═══════════════════════════════════════════════════
-STEP 4 — SIDE VIEW: NO BOARD
-═══════════════════════════════════════════════════
-• Side view only (90° or 270°) → no board (side views have no bumper)
-• DO NOT place any board or sign anywhere on the vehicle.`
-
+function buildSequentialPrompt(photoNumber: number): string {
   return `ROLE: You are a forensic automotive photo compositor with 20 years of experience producing legally binding advertisement imagery for car dealerships. Your output will be used in official sales listings on AutoScout24, Marktplaats and AutoTrack24. Errors are not permitted.
 
 This is photo ${photoNumber} of a set of 8. ALL photos show THE EXACT SAME VEHICLE.
@@ -257,7 +226,7 @@ ROOM GEOMETRY:
 • The car sits directly on the floor with natural contact — no floating, no gap between tires and floor
 • Natural contact shadow under each tire and along the underside of the car
 
-${boardSection}
+${BOARD_SECTION}
 
 ═══════════════════════════════════════════════════
 STEP 5 — CLEANUP TASKS
@@ -383,24 +352,23 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders })
   }
   try {
-    const { imageBase64, referenceImageBase64, photoNumber, shotAngle, vehicleId, photoIndex } = await req.json()
+    const { imageBase64, referenceImageBase64, photoNumber, vehicleId, photoIndex } = await req.json()
     if (!imageBase64) throw new Error("imageBase64 is required")
     
     const rawBase64 = imageBase64.includes(",") ? imageBase64.split(",")[1] : imageBase64
-    const angle = shotAngle || "front-right"
     const num = photoNumber || 1
     const isFirstPhoto = num === 1 || !referenceImageBase64
 
     let resultB64: string
 
     if (isFirstPhoto) {
-      console.log(`Processing photo ${num} (first/standalone) at angle: ${angle}`)
-      const prompt = buildFirstPhotoPrompt(angle)
+      console.log(`Processing photo ${num} (first/standalone) — AI will detect angle automatically`)
+      const prompt = buildFirstPhotoPrompt()
       resultB64 = await callGeminiSingleImage(rawBase64, prompt)
     } else {
-      console.log(`Processing photo ${num} (sequential with reference) at angle: ${angle}`)
+      console.log(`Processing photo ${num} (sequential with reference) — AI will detect angle automatically`)
       const refBase64 = referenceImageBase64.includes(",") ? referenceImageBase64.split(",")[1] : referenceImageBase64
-      const prompt = buildSequentialPrompt(angle, num)
+      const prompt = buildSequentialPrompt(num)
       resultB64 = await callGeminiWithReference(rawBase64, refBase64, prompt)
     }
 
@@ -427,7 +395,6 @@ serve(async (req) => {
       await supabase.from("vehicle_showroom_photos").upsert({
         vehicle_id: vehicleId,
         photo_url: publicUrl,
-        shot_angle: angle,
         photo_index: idx,
         generated_at: new Date().toISOString()
       }, { onConflict: 'vehicle_id,photo_index' })

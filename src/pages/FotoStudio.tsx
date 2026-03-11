@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Upload, Download, RefreshCw, X, ImageIcon, 
   Sparkles, Loader2, CheckCircle2, AlertCircle,
@@ -15,17 +14,6 @@ import { cn } from "@/lib/utils";
 import OptimizedDashboardLayout from "@/components/layout/OptimizedDashboardLayout";
 import { Progress } from "@/components/ui/progress";
 
-const SHOT_ANGLE_OPTIONS = [
-  { value: "front-left", label: "3/4 voor links" },
-  { value: "side-left", label: "Linker zijkant" },
-  { value: "rear-left", label: "3/4 achter links" },
-  { value: "rear", label: "Achterzijde" },
-  { value: "rear-right", label: "3/4 achter rechts" },
-  { value: "side-right", label: "Rechter zijkant" },
-  { value: "front-right", label: "3/4 voor rechts" },
-  { value: "front", label: "Voorzijde" },
-] as const;
-
 interface StudioImage {
   id: string;
   originalFile: File;
@@ -34,10 +22,7 @@ interface StudioImage {
   resultUrl: string | null;
   status: 'queued' | 'processing' | 'done' | 'error';
   error?: string;
-  shotAngle?: string;
 }
-
-const STANDARD_ANGLES = ['front-right', 'side-left', 'rear-left', 'rear', 'rear-right', 'side-right', 'front-left', 'front'];
 
 const FotoStudio = () => {
   const [images, setImages] = useState<StudioImage[]>([]);
@@ -46,15 +31,13 @@ const FotoStudio = () => {
   const [currentProcessingIndex, setCurrentProcessingIndex] = useState<number | null>(null);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    const autoAssign = acceptedFiles.length === 8;
-    const newImages: StudioImage[] = acceptedFiles.map((file, index) => ({
+    const newImages: StudioImage[] = acceptedFiles.map((file) => ({
       id: crypto.randomUUID(),
       originalFile: file,
       originalPreview: URL.createObjectURL(file),
       resultImage: null,
       resultUrl: null,
       status: 'queued' as const,
-      ...(autoAssign ? { shotAngle: STANDARD_ANGLES[index] } : {}),
     }));
     setImages(prev => [...prev, ...newImages]);
   }, []);
@@ -88,7 +71,6 @@ const FotoStudio = () => {
         body: { 
           imageBase64: base64,
           photoNumber,
-          shotAngle: image.shotAngle || 'front-right',
           ...(referenceImageBase64 ? { referenceImageBase64 } : {}),
         }
       });
@@ -376,20 +358,6 @@ const FotoStudio = () => {
                     {img.status === 'processing' && <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />}
                     <span className="truncate max-w-[100px]">{img.originalFile.name}</span>
                   </div>
-                  <Select
-                    value={img.shotAngle || ""}
-                    onValueChange={(val) => setImages(prev => prev.map(i => i.id === img.id ? { ...i, shotAngle: val } : i))}
-                    disabled={img.status === 'processing'}
-                  >
-                    <SelectTrigger className="h-7 text-xs w-[130px] shrink-0">
-                      <SelectValue placeholder="Geen hoek" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SHOT_ANGLE_OPTIONS.map(opt => (
-                        <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                   <div className="flex gap-1">
                     {img.status === 'done' && img.resultImage && (
                       <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => downloadImage(img.resultImage!, index)}>

@@ -1,32 +1,48 @@
 
 
-# Hoekselectie Verwijderen — AI Herkent Automatisch
+# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
 
 ## Probleem
-De UI toont een handmatige hoek-selector per foto, maar het master prompt instrueert de AI al om de camerahoek zelf te herkennen. Dit was bij Manus ook niet nodig.
 
-## Huidige situatie
-- **Frontend**: `Select` dropdown per foto voor shotAngle, plus auto-assignment van 8 standaardhoeken
-- **Backend**: `shotAngle` wordt alleen gebruikt voor de `hasBumper` check (board tonen of niet bij zijkant)
-- **Master prompt**: Bevat al regels voor "Side view only (90° or 270°) → no board" IN dezelfde sectie als de board placement rules
+Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
 
-## Plan
+## Echte oorzaak (niet React deduplicatie)
 
-### 1. Backend: Prompt vereenvoudigen (`showroom-photo-studio/index.ts`)
-- Verwijder de `shotAngle` parameter uit beide prompt-functies
-- Voeg ALLE placement rules samen in één STEP 4 sectie (zoals het originele master prompt):
-  - Board specs + placement rules voor front/rear
-  - "Side view only (90° or 270°) → no board"
-- De AI bepaalt zelf of er een bumper zichtbaar is en plaatst het board wel/niet
-- `shotAngle` wordt niet meer uit de request body gelezen
+Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
 
-### 2. Frontend: Selector verwijderen (`FotoStudio.tsx`)
-- Verwijder de `SHOT_ANGLE_OPTIONS` constante
-- Verwijder `STANDARD_ANGLES` en de auto-assign logica bij 8 foto upload
-- Verwijder `shotAngle` uit de `StudioImage` interface
-- Verwijder de `Select` component uit elke foto-kaart
-- Verwijder `shotAngle` uit de request body naar de edge function
+- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
+- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
+- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
 
-### Resultaat
-De gebruiker uploadt foto's, de AI herkent automatisch de hoek en beslist zelf of het board geplaatst wordt. Geen handmatige input nodig.
+In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+
+In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+
+## Oplossing
+
+Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
+- Gebruikt compatibele Radix versies (geen nested node_modules meer)
+- Verwijdert de `@babel/runtime` dependency
+- Lost het context-conflict op
+
+### Wijzigingen
+
+**Bestand: `package.json`**
+- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+
+**Bestand: `src/components/ui/command.tsx`**
+- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+
+**Bestand: `vite.config.ts`**
+- De bestaande `dedupe` configuratie blijft als extra veiligheid
+- Toevoegen van Radix interne pakketten aan dedupe als fallback:
+  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+
+## Verwacht resultaat
+
+Na upgrade en publicatie:
+- Klantenlijst is weer klikbaar en scrollbaar
+- Selecteren van klanten werkt correct
+- Data wordt opgeslagen
+- Werkt zowel in preview als op de gepubliceerde website
 
