@@ -108,7 +108,26 @@ ROOM GEOMETRY:
 • The car sits directly on the floor with natural contact — no floating, no gap between tires and floor
 • Natural contact shadow under each tire and along the underside of the car
 
-${boardSection}
+═══════════════════════════════════════════════════
+STEP 4 — AUTOCITY DEALER BOARD (CONDITIONAL)
+═══════════════════════════════════════════════════
+Determine the camera angle from the input photo. Then apply these rules:
+
+IF front or rear bumper is visible (any angle where a license plate area is visible):
+• Place an AutoCity dealer board on the bumper
+• Shape: horizontal rectangle, 3:1 width-to-height ratio
+• Background: solid matte black — no gradients, no texture
+• Text line 1: "AUTOCITY" — uppercase, centered, bold modern sans-serif font, pure white (#FFFFFF)
+• Text line 2: "AUTOCITY" — smaller, centered, same font, light grey (#AAAAAA)
+• Border: thin silver/chrome border, uniform on all four sides
+• Size: approximately equal to a standard European license plate (520mm × 110mm equivalent)
+• Finish: subtle studio light reflection visible on the board surface
+• Front bumper visible → mount board on front bumper, centered, at license plate height, overlapping original license plate
+• Rear bumper visible → mount board on rear bumper, centered, at license plate height, overlapping original license plate
+• The board must look physically attached to the bumper, not floating
+
+IF side view only (90° or 270° — no bumper visible):
+• DO NOT place any board or sign anywhere on the vehicle
 
 ═══════════════════════════════════════════════════
 STEP 5 — CLEANUP TASKS
