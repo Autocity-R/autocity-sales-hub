@@ -308,10 +308,13 @@ const FotoStudio = () => {
             </div>
             <div>
               <p className="text-lg font-medium">
-                {isDragActive ? "Laat foto's hier los..." : "Sleep voertuigfoto's hierheen of klik om te uploaden"}
+                {isDragActive ? "Laat foto's hier los..." : isInterior ? "Sleep interieur foto's hierheen of klik om te uploaden" : "Sleep voertuigfoto's hierheen of klik om te uploaden"}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                JPG, PNG of WebP — max 20MB per foto — upload 8 foto's voor automatische hoektoewijzing
+                {isInterior
+                  ? 'JPG, PNG of WebP — max 20MB per foto — interieur wordt professioneel opgeschoond'
+                  : 'JPG, PNG of WebP — max 20MB per foto — upload 8 foto\'s voor automatische hoektoewijzing'
+                }
               </p>
             </div>
           </div>
