@@ -8,11 +8,14 @@ import { Label } from "@/components/ui/label";
 import { 
   Upload, Download, RefreshCw, X, ImageIcon, 
   Sparkles, Loader2, CheckCircle2, AlertCircle,
-  Images, Camera
+  Images, Camera, Armchair
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import OptimizedDashboardLayout from "@/components/layout/OptimizedDashboardLayout";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+type StudioMode = 'exterieur' | 'interieur';
 
 interface StudioImage {
   id: string;
