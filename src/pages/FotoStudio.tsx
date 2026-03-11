@@ -238,6 +238,14 @@ const FotoStudio = () => {
             </TabsList>
           </Tabs>
         </div>
+
+        {/* Action buttons */}
+        {images.length > 0 && (
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" size="sm" onClick={clearAll} disabled={isProcessingAll}>
+              <X className="h-4 w-4 mr-1" />
+              Wissen
+            </Button>
             {completedCount > 0 && (
               <Button variant="outline" size="sm" onClick={downloadAll}>
                 <Download className="h-4 w-4 mr-1" />
