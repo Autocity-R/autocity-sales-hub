@@ -85,6 +85,7 @@ const FotoStudio = () => {
         body: { 
           imageBase64: base64,
           photoNumber,
+          mode: studioMode,
           ...(referenceImageBase64 ? { referenceImageBase64 } : {}),
         }
       });
