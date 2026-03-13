@@ -220,6 +220,8 @@ const Inventory = () => {
     mutationFn: ({ type, vehicleId }: { type: string; vehicleId: string }) => 
       sendEmail(type, [vehicleId]),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['transportVehicles'] });
       toast({
         title: "Email verzonden",
         description: "De email is succesvol verzonden",
