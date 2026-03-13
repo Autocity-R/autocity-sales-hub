@@ -401,7 +401,7 @@ const FotoStudio = () => {
                   </div>
                   <div className="flex gap-1">
                     {img.status === 'done' && img.resultImage && (
-                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => downloadImage(img.resultImage!, index)}>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => downloadImage(img.resultImage!, img.originalFile.name)}>
                         <Download className="h-3.5 w-3.5 mr-1" />
                         Download
                       </Button>

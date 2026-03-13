@@ -607,8 +607,8 @@ serve(async (req) => {
     // Save to storage
     const idx = photoIndex ?? (num - 1)
     const storagePath = vehicleId 
-      ? `showroom/vehicle_${vehicleId}/photo_${idx}_${Date.now()}.png`
-      : `showroom/standalone/photo_${idx}_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.png`
+      ? `showroom/vehicle_${vehicleId}/${ccBaseName ? `${ccBaseName} CC` : `photo_${idx}_${Date.now()}`}.png`
+      : `showroom/standalone/${ccBaseName ? `${ccBaseName} CC_${Date.now()}` : `photo_${idx}_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`}.png`
     
     const publicUrl = await saveToStorage(resultB64, storagePath)
 
