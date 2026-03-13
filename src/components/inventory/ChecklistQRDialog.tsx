@@ -239,7 +239,7 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
 
             {/* Print instructie */}
             <p className="text-[10px] text-muted-foreground px-1">
-              💡 Kies in het printvenster papierformaat <strong>"Aangepast"</strong> (of <strong>"Custom"</strong>), stel in op <strong>57 × 32 mm</strong> en zet marges op <strong>"Geen"</strong>.
+              💡 Kies in het printvenster papierformaat <strong>"62mm"</strong> (of <strong>"Custom 62mm"</strong>) en zet marges op <strong>"Geen"</strong>.
             </p>
 
             {/* DYMO Printer Section */}
