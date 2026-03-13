@@ -135,7 +135,7 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
 
     // Force viewBox and preserveAspectRatio on SVG for reliable rendering
     if (qrSvgString && !qrSvgString.includes("viewBox")) {
-      qrSvgString = qrSvgString.replace("<svg", '<svg viewBox="0 0 76 76"');
+      qrSvgString = qrSvgString.replace("<svg", '<svg viewBox="0 0 100 100"');
     }
     if (qrSvgString && !qrSvgString.includes("preserveAspectRatio")) {
       qrSvgString = qrSvgString.replace("<svg", '<svg preserveAspectRatio="xMidYMid meet"');
