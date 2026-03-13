@@ -135,7 +135,7 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
 
     // Force viewBox and preserveAspectRatio on SVG for reliable rendering
     if (qrSvgString && !qrSvgString.includes("viewBox")) {
-      qrSvgString = qrSvgString.replace("<svg", '<svg viewBox="0 0 76 76"');
+      qrSvgString = qrSvgString.replace("<svg", '<svg viewBox="0 0 100 100"');
     }
     if (qrSvgString && !qrSvgString.includes("preserveAspectRatio")) {
       qrSvgString = qrSvgString.replace("<svg", '<svg preserveAspectRatio="xMidYMid meet"');
@@ -152,26 +152,26 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
       <head>
         <title>QR Sticker - ${lp}</title>
         <style>
-          @page { size: 57mm 32mm landscape; margin: 0; }
+          @page { size: 62mm 40mm; margin: 0; }
           * { box-sizing: border-box; margin: 0; padding: 0; }
           html { margin: 0; padding: 0; }
           body {
-            width: 57mm; height: 32mm;
-            margin: 0; padding: 2mm;
+            width: 62mm; height: 40mm;
+            margin: 0; padding: 3mm;
             display: flex;
             align-items: center;
-            gap: 2mm;
+            gap: 3mm;
             font-family: Arial, Helvetica, sans-serif;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
-          .qr { flex-shrink: 0; width: 22mm; height: 22mm; padding: 1mm; }
+          .qr { flex-shrink: 0; width: 30mm; height: 30mm; padding: 1mm; }
           .qr svg { width: 100%; height: 100%; display: block; }
           .info { flex: 1; min-width: 0; overflow: visible; }
-          .brand { font-size: 8pt; font-weight: bold; word-break: break-word; }
-          .color { font-size: 7pt; color: #555; margin-top: 0.5mm; }
-          .plate { font-size: 10pt; font-weight: bold; margin-top: 1mm; }
-          .vin { font-size: 6pt; color: #777; margin-top: 0.5mm; word-break: break-all; }
+          .brand { font-size: 10pt; font-weight: bold; word-break: break-word; }
+          .color { font-size: 8pt; color: #555; margin-top: 0.5mm; }
+          .plate { font-size: 14pt; font-weight: bold; margin-top: 1mm; }
+          .vin { font-size: 7pt; color: #777; margin-top: 0.5mm; word-break: break-all; }
           @media screen {
             html { background: #f0f0f0; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
             body { border: 1px dashed #ccc; background: #fff; }
@@ -217,10 +217,10 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
           <div className="space-y-4">
             {/* Sticker Preview - 57x32mm schaal */}
             <div className="border rounded-lg p-3 bg-white dark:bg-zinc-950">
-              <p className="text-[10px] text-muted-foreground mb-2">Preview (57×32mm label)</p>
-              <div className="flex gap-3 items-center" style={{ maxWidth: '240px' }}>
+      <p className="text-[10px] text-muted-foreground mb-2">Preview (62×40mm label)</p>
+              <div className="flex gap-3 items-center" style={{ maxWidth: '280px' }}>
                 <div id="checklist-qr-svg">
-                  <QRCodeSVG value={checklistUrl} size={76} level="M" />
+                  <QRCodeSVG value={checklistUrl} size={100} level="M" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-xs truncate">
@@ -239,7 +239,7 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
 
             {/* Print instructie */}
             <p className="text-[10px] text-muted-foreground px-1">
-              💡 Kies in het printvenster papierformaat <strong>"Aangepast"</strong> (of <strong>"Custom"</strong>), stel in op <strong>57 × 32 mm</strong> en zet marges op <strong>"Geen"</strong>.
+              💡 Kies in het printvenster papierformaat <strong>"62mm"</strong> (of <strong>"Custom 62mm"</strong>) en zet marges op <strong>"Geen"</strong>.
             </p>
 
             {/* DYMO Printer Section */}
@@ -304,24 +304,10 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-xs text-amber-800 dark:text-amber-200">
-                    <p className="font-medium">Geen DYMO printer gevonden</p>
-                    <p className="mt-1">Zorg dat DYMO Label v8 actief is en de printer is aangesloten.</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={refreshDymo}>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Opnieuw zoeken
-                  </Button>
-                  <Button onClick={handleBrowserPrint} className="flex-1">
-                    <Monitor className="h-4 w-4 mr-2" />
-                    Print via browser
-                  </Button>
-                </div>
+                <Button onClick={handleBrowserPrint} className="w-full">
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print sticker (62mm label)
+                </Button>
               </div>
             )}
 
