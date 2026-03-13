@@ -174,10 +174,16 @@ const FotoStudio = () => {
     await processImage(imageId, photoNumber, referenceBase64);
   };
 
-  const downloadImage = (resultImage: string, index: number) => {
+  const getOutputFileName = (originalName: string) => {
+    const lastDot = originalName.lastIndexOf('.');
+    const baseName = lastDot > 0 ? originalName.substring(0, lastDot) : originalName;
+    return `${baseName} CC.png`;
+  };
+
+  const downloadImage = (resultImage: string, originalFileName: string) => {
     const link = document.createElement('a');
     link.href = resultImage;
-    link.download = `autocity_studio_${index + 1}.png`;
+    link.download = getOutputFileName(originalFileName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -186,7 +192,7 @@ const FotoStudio = () => {
   const downloadAll = () => {
     const completed = images.filter(i => i.status === 'done' && i.resultImage);
     completed.forEach((img, i) => {
-      setTimeout(() => downloadImage(img.resultImage!, i), i * 300);
+      setTimeout(() => downloadImage(img.resultImage!, img.originalFile.name), i * 300);
     });
   };
 
