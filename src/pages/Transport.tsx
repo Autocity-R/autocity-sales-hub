@@ -130,6 +130,7 @@ const Transport = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["transportVehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
       toast({
         title: "Pickup document verstuurd",
         description: "De pickup documenten zijn succesvol naar de transporteur verstuurd.",
