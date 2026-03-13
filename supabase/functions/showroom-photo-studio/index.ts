@@ -575,10 +575,18 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders })
   }
   try {
-    const { imageBase64, referenceImageBase64, photoNumber, vehicleId, photoIndex, mode } = await req.json()
+    const { imageBase64, referenceImageBase64, photoNumber, vehicleId, photoIndex, mode, originalFileName } = await req.json()
     if (!imageBase64) throw new Error("imageBase64 is required")
     
     const studioMode = mode || 'exterieur'
+    
+    // Build CC filename from original
+    const getBaseFileName = (name?: string) => {
+      if (!name) return null
+      const lastDot = name.lastIndexOf('.')
+      return lastDot > 0 ? name.substring(0, lastDot) : name
+    }
+    const ccBaseName = getBaseFileName(originalFileName)
     const rawBase64 = imageBase64.includes(",") ? imageBase64.split(",")[1] : imageBase64
     const num = photoNumber || 1
     const isFirstPhoto = num === 1 || !referenceImageBase64
@@ -599,8 +607,8 @@ serve(async (req) => {
     // Save to storage
     const idx = photoIndex ?? (num - 1)
     const storagePath = vehicleId 
-      ? `showroom/vehicle_${vehicleId}/photo_${idx}_${Date.now()}.png`
-      : `showroom/standalone/photo_${idx}_${Date.now()}_${crypto.randomUUID().slice(0, 8)}.png`
+      ? `showroom/vehicle_${vehicleId}/${ccBaseName ? `${ccBaseName} CC` : `photo_${idx}_${Date.now()}`}.png`
+      : `showroom/standalone/${ccBaseName ? `${ccBaseName} CC_${Date.now()}` : `photo_${idx}_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`}.png`
     
     const publicUrl = await saveToStorage(resultB64, storagePath)
 
