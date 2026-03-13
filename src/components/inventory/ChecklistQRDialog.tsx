@@ -152,26 +152,26 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
       <head>
         <title>QR Sticker - ${lp}</title>
         <style>
-          @page { size: 57mm 32mm landscape; margin: 0; }
+          @page { size: 62mm 40mm; margin: 0; }
           * { box-sizing: border-box; margin: 0; padding: 0; }
           html { margin: 0; padding: 0; }
           body {
-            width: 57mm; height: 32mm;
-            margin: 0; padding: 2mm;
+            width: 62mm; height: 40mm;
+            margin: 0; padding: 3mm;
             display: flex;
             align-items: center;
-            gap: 2mm;
+            gap: 3mm;
             font-family: Arial, Helvetica, sans-serif;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
-          .qr { flex-shrink: 0; width: 22mm; height: 22mm; padding: 1mm; }
+          .qr { flex-shrink: 0; width: 30mm; height: 30mm; padding: 1mm; }
           .qr svg { width: 100%; height: 100%; display: block; }
           .info { flex: 1; min-width: 0; overflow: visible; }
-          .brand { font-size: 8pt; font-weight: bold; word-break: break-word; }
-          .color { font-size: 7pt; color: #555; margin-top: 0.5mm; }
-          .plate { font-size: 10pt; font-weight: bold; margin-top: 1mm; }
-          .vin { font-size: 6pt; color: #777; margin-top: 0.5mm; word-break: break-all; }
+          .brand { font-size: 10pt; font-weight: bold; word-break: break-word; }
+          .color { font-size: 8pt; color: #555; margin-top: 0.5mm; }
+          .plate { font-size: 14pt; font-weight: bold; margin-top: 1mm; }
+          .vin { font-size: 7pt; color: #777; margin-top: 0.5mm; word-break: break-all; }
           @media screen {
             html { background: #f0f0f0; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
             body { border: 1px dashed #ccc; background: #fff; }
