@@ -217,10 +217,10 @@ export const ChecklistQRDialog: React.FC<ChecklistQRDialogProps> = ({
           <div className="space-y-4">
             {/* Sticker Preview - 57x32mm schaal */}
             <div className="border rounded-lg p-3 bg-white dark:bg-zinc-950">
-              <p className="text-[10px] text-muted-foreground mb-2">Preview (57×32mm label)</p>
-              <div className="flex gap-3 items-center" style={{ maxWidth: '240px' }}>
+      <p className="text-[10px] text-muted-foreground mb-2">Preview (62×40mm label)</p>
+              <div className="flex gap-3 items-center" style={{ maxWidth: '280px' }}>
                 <div id="checklist-qr-svg">
-                  <QRCodeSVG value={checklistUrl} size={76} level="M" />
+                  <QRCodeSVG value={checklistUrl} size={100} level="M" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-xs truncate">
