@@ -577,7 +577,7 @@ serve(async (req) => {
 
     if (isFirstPhoto) {
       console.log(`Processing ${studioMode} photo ${num} (first/standalone)`)
-      const prompt = studioMode === 'interieur' ? buildInteriorFirstPrompt() : buildFirstPhotoPrompt()
+      const prompt = studioMode === 'interieur' ? buildInteriorPrompt(num) : buildFirstPhotoPrompt()
       resultB64 = await callGeminiSingleImage(rawBase64, prompt)
     } else {
       console.log(`Processing ${studioMode} photo ${num} (sequential with reference)`)
