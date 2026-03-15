@@ -1,48 +1,81 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Interieur Prompt Herschrijven: Anti-Hallucination + Camera Logic
 
-## Probleem
+## Kernprobleem
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+De huidige `buildInteriorPrompt()` is te vaag. Gemini interpreteert "edit" als "maak iets soortgelijks" in plaats van "pas exact deze pixels aan." Het resultaat: verkeerde hoek, verzonnen knoppen, nep-logo's, verkeerde scherminhoud.
 
-## Echte oorzaak (niet React deduplicatie)
+## Aanpak
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+Volledige herschrijving van `buildInteriorPrompt()` in `supabase/functions/showroom-photo-studio/index.ts` (regels 335-397) met drie pijlers:
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+### 1. Pixel-perfectie afdwingen
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+De prompt opent met een expliciete instructie dat dit een **inpainting/retouche opdracht** is, geen generatie. Kernzinnen:
 
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+```
+You are performing PIXEL-LEVEL RETOUCHING on an existing photograph.
+Do NOT generate a new image. Do NOT reimagine the interior.
+The output must be the EXACT SAME photograph with targeted edits applied.
+SAME camera angle. SAME crop. SAME framing. SAME perspective distortion.
+Every button, every stitch, every logo, every icon must be IDENTICAL to the input.
+```
 
-## Oplossing
+### 2. Camera-scherm logica (alleen bij actieve achteruit/360 feed)
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+```
+CAMERA FEEDS (backup camera, 360° view, parking sensors):
+- If the infotainment screen shows an ACTIVE camera feed: 
+  replace ONLY the camera's view area with the showroom environment 
+  as if the camera is seeing the showroom. 
+  Preserve ALL UI elements around the feed: buttons, icons, text, overlays, guidelines.
+- If the screen shows navigation, media, settings, or any non-camera UI: 
+  preserve the ENTIRE screen content exactly as-is. Change NOTHING.
+```
 
-### Wijzigingen
+### 3. Kwaliteitscontrole — direct afkeuren
 
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+Toevoegen van een strenge verificatie-instructie aan het einde van de prompt:
 
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+```
+QUALITY GATE — MANDATORY SELF-CHECK:
+Before outputting, compare your result against the input pixel-by-pixel:
+☐ Camera angle: IDENTICAL (same lens distortion, same vanishing points)
+☐ Every logo/badge: IDENTICAL shape, font, position
+☐ Every button/knob: IDENTICAL shape, icon, label text
+☐ Steering wheel: IDENTICAL brand logo, button layout, spoke design
+☐ Seat stitching pattern: IDENTICAL
+☐ Screen content (non-camera): IDENTICAL text, icons, layout
+If ANY check fails: your output is REJECTED. Start over.
+```
 
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+### 4. Showroom enkel door glas
 
-## Verwacht resultaat
+Vereenvoudigd en aangescherpt:
 
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+```
+SHOWROOM VISIBILITY RULES:
+The showroom environment is ONLY visible through:
+- Side windows, windshield, rear window
+- Interior rear-view mirror reflection
+- Exterior side mirror reflections  
+- Active camera feed areas (backup/360 ONLY)
+
+NOWHERE ELSE. Not on dashboard plastic, not on piano black trim, 
+not on leather, not on any non-glass surface.
+```
+
+### 5. Response validatie in edge function
+
+Na de Gemini call, geen extra AI-validatie (te duur/traag). Maar bij fout-resultaat: de gebruiker ziet "Opnieuw" knop. Dit is al geimplementeerd.
+
+## Samenvatting wijzigingen
+
+| Bestand | Wijziging |
+|---------|-----------|
+| `supabase/functions/showroom-photo-studio/index.ts` regels 335-397 | Volledige herschrijving `buildInteriorPrompt()` |
+| Redeploy edge function | Automatisch |
+
+Geen frontend wijzigingen nodig. De "Opnieuw" knop + foutmelding flow is al aanwezig.
 
