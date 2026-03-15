@@ -358,6 +358,14 @@ FORBIDDEN: Zooming in or out
 FORBIDDEN: Reframing or recomposing the shot
 FORBIDDEN: "Improving" the composition — preserve it exactly as shot
 
+CRITICAL — CLOSE-UP AND DETAIL PHOTOS:
+- If the photo is a close-up of a specific interior element (steering wheel, gear shifter, seat detail, badge, controls), the output MUST remain a close-up with the EXACT same framing
+- Do NOT zoom out to reveal more of the interior
+- Do NOT add or hallucinate interior elements (door panels, windows, seats, pillars) that are NOT visible in the original photo
+- If only a small sliver of window or blurred background is visible behind the subject, replace ONLY that small visible area — do NOT expand it
+- The edges and boundaries of the output image must contain the SAME content as the edges of the input image — never generate new content at the borders
+- If no window is clearly visible in the photo: do NOT add any showroom environment — only apply retouching (Rule #5) and lighting correction (Rule #4)
+
 ══════════════════════════════════════════════════════════
 RULE #1 — VEHICLE INTERIOR 100% UNCHANGED
 ══════════════════════════════════════════════════════════
