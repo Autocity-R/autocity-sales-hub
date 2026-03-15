@@ -1,48 +1,64 @@
 
+## Diepe diagnose (wat is er echt fout)
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+Je hebt gelijk: dit is **niet** je prompttekst en ook **niet** een missende OpenAI key.
 
-## Probleem
+Ik heb gecontroleerd:
+- `OPENAI_API_KEY` secret bestaat.
+- Edge logs geven consequent:  
+  **`Unknown parameter: 'image'. For application/json on /v1/images/edits, use 'images' (array).`**
+- In `supabase/functions/showroom-photo-studio/index.ts` gebruikt `callOpenAIImageEdit()` nu:
+  - JSON body met `image: [...]` (fout veldnaam)
+  - endpoint `/v1/images/edits`
+- Daardoor faalt elke interieur call met 500 → frontend toont “Edge Function returned a non-2xx”.
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+Kort: bij de recente wijziging is het requestformaat verkeerd gezet.  
+**Voor JSON edits met GPT image models moet het veld `images` zijn, niet `image`.**
 
-## Echte oorzaak (niet React deduplicatie)
+## Implementatieplan
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+1. **Fix request body in `callOpenAIImageEdit()`**
+   - Vervang:
+   - `image: [{ type: "base64", data: imageBase64 }]`
+   - met:
+   - `images: [{ image_url: dataUrl }]`
+   - waar `dataUrl = data:image/png;base64,...`
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+2. **Response expliciet op base64 zetten**
+   - Voeg toe in body: `response_format: "b64_json"`
+   - Dan blijft bestaande parsing (`data.data?.[0]?.b64_json`) consistent.
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+3. **Gerichte foutlogging aanscherpen**
+   - Log bij fout: HTTP status + OpenAI error JSON + gebruikte top-level body keys (`model, images, prompt, size, response_format`)
+   - Niet de volledige base64 loggen.
 
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+4. **Redeploy edge function `showroom-photo-studio`**
 
-## Oplossing
+5. **Verificatie in 2 lagen**
+   - **Technische smoke test**: één kleine testafbeelding via function call → moet géén `Unknown parameter: 'image'` meer geven.
+   - **E2E UI test in Foto Studio (Interieur)**: upload 1-2 interieurfoto’s en bevestig:
+     - geen non-2xx error in console
+     - output wordt gerenderd en opgeslagen
+     - HARDE EIS #0 gedrag blijft (auto-identiteit behouden).
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+## Technische details (compact)
 
-### Wijzigingen
+Doelvorm van OpenAI call:
+```ts
+POST /v1/images/edits
+Content-Type: application/json
 
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+{
+  "model": "gpt-image-1",
+  "images": [
+    { "image_url": "data:image/png;base64,..." }
+  ],
+  "prompt": "...",
+  "size": "1024x1024",
+  "response_format": "b64_json"
+}
+```
 
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+## Waarom het “vroeger nog werkte”
 
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
-
-## Verwacht resultaat
-
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
-
+Voor de prompt-implementatie draaide deze route anders; in de recente iteraties is de interieurpad naar OpenAI JSON-edit omgezet, maar met **verkeerde veldnaam**. Dat is de concrete regressie die de hele interieurflow breekt.
