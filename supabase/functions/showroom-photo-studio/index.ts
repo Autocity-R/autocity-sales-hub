@@ -513,6 +513,7 @@ serve(async (req) => {
     if (studioMode === 'interieur') {
       console.log(`Processing interieur photo ${num} via OpenAI gpt-4.1 Responses API`)
       const prompt = buildInteriorPrompt()
+      console.log("INTERIOR PROMPT (first 600 chars):", prompt.substring(0, 600))
       resultB64 = await callOpenAIImageEdit(rawBase64, prompt)
     } else if (isFirstPhoto) {
       console.log(`Processing exterieur photo ${num} (first/standalone)`)
