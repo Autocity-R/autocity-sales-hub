@@ -457,6 +457,7 @@ async function callOpenAIImageEdit(rawBase64: string, prompt: string): Promise<s
   formData.append("prompt", prompt)
   formData.append("model", "gpt-image-1")
   formData.append("n", "1")
+  formData.append("response_format", "b64_json")
   // No size parameter — preserves original dimensions
   
   const response = await fetch("https://api.openai.com/v1/images/edits", {
