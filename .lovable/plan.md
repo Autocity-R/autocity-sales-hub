@@ -1,48 +1,22 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Interieur Master Prompt Vervangen
 
-## Probleem
+## Wijziging
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+**Bestand:** `supabase/functions/showroom-photo-studio/index.ts`, regels 335-450
 
-## Echte oorzaak (niet React deduplicatie)
+Vervang de volledige `buildInteriorPrompt()` functie-body met het exact door jou aangeleverde prompt. Het nieuwe prompt bevat:
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+- **Professionele identiteit** — "professional automotive photo retouching AI" voor advertisement gebruik
+- **RULE #0** — Absolute identity preservation (badges, steering wheel, dashboard, seats, alle elementen)
+- **RULE #1** — Composition & framing ongewijzigd
+- **RULE #2** — Showroom environment alleen door glas, met gedetailleerde showroom dimensies (12×10×4.5m) en exacte beschrijvingen per raamtype
+- **RULE #3** — Infotainment & display screens met speciale camera feed logica (360°/achteruitrij)
+- **RULE #4** — Lighting correction (3000K studio lighting)
+- **RULE #5** — Retouching & detailing (0km showroom kwaliteit)
+- **RULE #6** — Geen branding of tekst toevoegingen
+- **Final output requirements** — Max resolutie, exact zelfde compositie, fotorealistisch
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
-
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
-
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
-
-## Oplossing
-
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
-
-### Wijzigingen
-
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
-
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
-
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
-
-## Verwacht resultaat
-
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+De rest van de edge function (API call logica, exterior prompt, upload/opslag) blijft ongewijzigd. Na wijziging wordt de edge function automatisch gedeployed.
 
