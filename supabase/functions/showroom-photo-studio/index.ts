@@ -492,7 +492,7 @@ serve(async (req) => {
     } else {
       console.log(`Processing ${studioMode} photo ${num} (sequential with reference)`)
       const refBase64 = referenceImageBase64.includes(",") ? referenceImageBase64.split(",")[1] : referenceImageBase64
-      const prompt = studioMode === 'interieur' ? buildInteriorPrompt(num) : buildSequentialPrompt(num)
+      const prompt = studioMode === 'interieur' ? buildInteriorPrompt() : buildSequentialPrompt(num)
       resultB64 = await callGeminiWithReference(rawBase64, refBase64, prompt)
     }
 
