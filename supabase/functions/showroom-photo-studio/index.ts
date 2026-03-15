@@ -261,6 +261,51 @@ If any item above fails, the image is rejected. The output must pass all checks.
 }
 
 // ═══════════════════════════════════════════════════
+// OpenAI gpt-image-1 Image Edit API (for interior photos)
+// ═══════════════════════════════════════════════════
+
+async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise<string> {
+  // Convert base64 to binary blob — process in chunks to avoid stack overflow
+  const binaryStr = atob(imageBase64)
+  const bytes = new Uint8Array(binaryStr.length)
+  const CHUNK = 8192
+  for (let i = 0; i < binaryStr.length; i += CHUNK) {
+    const end = Math.min(i + CHUNK, binaryStr.length)
+    for (let j = i; j < end; j++) {
+      bytes[j] = binaryStr.charCodeAt(j)
+    }
+  }
+  const imageBlob = new Blob([bytes], { type: "image/png" })
+
+  const formData = new FormData()
+  formData.append("model", "gpt-image-1")
+  formData.append("image[]", imageBlob, "photo.png")
+  formData.append("prompt", prompt)
+  formData.append("size", "auto")
+  formData.append("quality", "high")
+
+  console.log("Calling OpenAI gpt-image-1 image edit API...")
+  const response = await fetch("https://api.openai.com/v1/images/edits", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+    },
+    body: formData,
+  })
+
+  const data = await response.json()
+  if (!response.ok) {
+    console.error("OpenAI Image Edit error:", JSON.stringify(data))
+    throw new Error(`OpenAI fout: ${data.error?.message || JSON.stringify(data)}`)
+  }
+
+  const b64 = data.data?.[0]?.b64_json
+  if (!b64) throw new Error("No image data received from OpenAI")
+  console.log("OpenAI gpt-image-1 edit completed successfully")
+  return b64
+}
+
+// ═══════════════════════════════════════════════════
 // INTERIOR PROMPTS — Completely separate from exterior
 // ═══════════════════════════════════════════════════
 
