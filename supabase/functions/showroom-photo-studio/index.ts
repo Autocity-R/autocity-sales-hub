@@ -265,67 +265,66 @@ If any item above fails, the image is rejected. The output must pass all checks.
 // ═══════════════════════════════════════════════════
 
 async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise<string> {
-  const dataUrl = `data:image/png;base64,${imageBase64}`;
+  // Detect actual MIME type from base64 magic bytes
+  let mimeType = "image/png";
+  let ext = "png";
+  if (imageBase64.startsWith("UklGR")) { mimeType = "image/webp"; ext = "webp"; }
+  else if (imageBase64.startsWith("/9j/")) { mimeType = "image/jpeg"; ext = "jpg"; }
+  else if (imageBase64.startsWith("R0lGOD")) { mimeType = "image/gif"; ext = "gif"; }
 
-  const body = {
-    model: "gpt-image-1",
-    images: [{ image_url: dataUrl }],
-    prompt,
-    size: "1024x1024",
-  };
+  console.log(`callOpenAIImageEdit: detected ${mimeType}, base64 length: ${imageBase64.length}`);
 
-  console.log(`Calling OpenAI gpt-image-1 image EDIT API (JSON body, keys: ${Object.keys(body).join(",")}, image size: ${imageBase64.length} chars)`);
+  // base64 → binary bytes
+  const binaryStr = atob(imageBase64);
+  const bytes = new Uint8Array(binaryStr.length);
+  for (let i = 0; i < binaryStr.length; i++) {
+    bytes[i] = binaryStr.charCodeAt(i);
+  }
+
+  // FormData with binary blob — NOT JSON, NOT image_url
+  const formData = new FormData();
+  formData.append("model", "gpt-image-1");
+  formData.append("image[]", new Blob([bytes], { type: mimeType }), `photo.${ext}`);
+  formData.append("prompt", prompt);
+  formData.append("n", "1");
+  // NO size parameter — preserves original aspect ratio
+  // NO response_format — not supported on /images/edits
+  // NO Content-Type header — FormData sets boundary automatically
 
   const response = await fetch("https://api.openai.com/v1/images/edits", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
+      "Authorization": `Bearer ${OPENAI_API_KEY}`,
     },
-    body: JSON.stringify(body),
+    body: formData,
   });
 
-  const responseText = await response.text();
-  let data: any = null;
-
-  try {
-    data = responseText ? JSON.parse(responseText) : null;
-  } catch {
-    data = { raw: responseText };
-  }
-
   if (!response.ok) {
-    console.error("OpenAI Image Edit error:", JSON.stringify({
-      status: response.status,
-      statusText: response.statusText,
-      requestBodyKeys: Object.keys(body),
-      error: data,
-    }));
-    throw new Error(`OpenAI fout (${response.status}): ${data?.error?.message || response.statusText || "Onbekende fout"}`);
+    const errorBody = await response.json().catch(() => ({}));
+    const errorCode = errorBody?.error?.code;
+    const errorMsg = errorBody?.error?.message ?? "unknown";
+    console.error(`OpenAI /images/edits error ${response.status}:`, JSON.stringify(errorBody));
+    if (errorCode === "moderation_blocked") {
+      throw new Error(`MODERATION_BLOCKED: ${errorMsg}`);
+    }
+    throw new Error(`OpenAI error (${response.status}): ${errorMsg}`);
   }
 
-  const firstResult = data?.data?.[0] ?? data?.output?.[0];
-  let b64: string | undefined =
-    firstResult?.b64_json ??
-    firstResult?.image_base64 ??
-    (typeof firstResult?.url === "string" && firstResult.url.startsWith("data:image/")
-      ? firstResult.url.split(",")[1]
-      : undefined);
+  const result = await response.json();
+  const item = result.data?.[0];
+  if (!item) throw new Error("No image data in response");
 
-  if (!b64 && typeof firstResult?.url === "string" && firstResult.url.startsWith("http")) {
-    b64 = await fetchImageAsBase64(firstResult.url);
+  if (item.b64_json) {
+    console.log("OpenAI gpt-image-1 edit completed successfully (b64_json)");
+    return item.b64_json;
   }
 
-  if (!b64) {
-    console.error("OpenAI Image Edit success response without image payload:", JSON.stringify({
-      responseKeys: data ? Object.keys(data) : [],
-      firstResultKeys: firstResult ? Object.keys(firstResult) : [],
-    }));
-    throw new Error("No image data received from OpenAI");
+  if (item.url) {
+    console.log("OpenAI gpt-image-1 edit completed successfully (url), downloading...");
+    return await fetchImageAsBase64(item.url);
   }
 
-  console.log("OpenAI gpt-image-1 edit completed successfully");
-  return b64;
+  throw new Error("No b64_json or url in response");
 }
 
 // ═══════════════════════════════════════════════════
