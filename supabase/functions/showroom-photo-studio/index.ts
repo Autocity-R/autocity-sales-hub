@@ -270,12 +270,11 @@ async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise
   const body = {
     model: "gpt-image-1",
     images: [{ image_url: dataUrl }],
-    prompt: prompt,
+    prompt,
     size: "1024x1024",
-    response_format: "b64_json",
   };
 
-  console.log(`Calling OpenAI gpt-image-1 image EDIT API (JSON body, image size: ${imageBase64.length} chars)`);
+  console.log(`Calling OpenAI gpt-image-1 image EDIT API (JSON body, keys: ${Object.keys(body).join(",")}, image size: ${imageBase64.length} chars)`);
 
   const response = await fetch("https://api.openai.com/v1/images/edits", {
     method: "POST",
@@ -286,14 +285,45 @@ async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise
     body: JSON.stringify(body),
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    console.error("OpenAI Image Edit error:", JSON.stringify(data));
-    throw new Error(`OpenAI fout: ${data.error?.message || JSON.stringify(data)}`);
+  const responseText = await response.text();
+  let data: any = null;
+
+  try {
+    data = responseText ? JSON.parse(responseText) : null;
+  } catch {
+    data = { raw: responseText };
   }
 
-  const b64 = data.data?.[0]?.b64_json;
-  if (!b64) throw new Error("No image data received from OpenAI");
+  if (!response.ok) {
+    console.error("OpenAI Image Edit error:", JSON.stringify({
+      status: response.status,
+      statusText: response.statusText,
+      requestBodyKeys: Object.keys(body),
+      error: data,
+    }));
+    throw new Error(`OpenAI fout (${response.status}): ${data?.error?.message || response.statusText || "Onbekende fout"}`);
+  }
+
+  const firstResult = data?.data?.[0] ?? data?.output?.[0];
+  let b64: string | undefined =
+    firstResult?.b64_json ??
+    firstResult?.image_base64 ??
+    (typeof firstResult?.url === "string" && firstResult.url.startsWith("data:image/")
+      ? firstResult.url.split(",")[1]
+      : undefined);
+
+  if (!b64 && typeof firstResult?.url === "string" && firstResult.url.startsWith("http")) {
+    b64 = await fetchImageAsBase64(firstResult.url);
+  }
+
+  if (!b64) {
+    console.error("OpenAI Image Edit success response without image payload:", JSON.stringify({
+      responseKeys: data ? Object.keys(data) : [],
+      firstResultKeys: firstResult ? Object.keys(firstResult) : [],
+    }));
+    throw new Error("No image data received from OpenAI");
+  }
+
   console.log("OpenAI gpt-image-1 edit completed successfully");
   return b64;
 }

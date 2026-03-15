@@ -72,9 +72,29 @@ const FotoStudio = () => {
     });
   };
 
-  const processImage = async (imageId: string, photoNumber: number, referenceImageBase64: string | null) => {
+  const isFatalConfigurationError = (message: string) => {
+    const normalized = message.toLowerCase();
+    return [
+      'unknown parameter',
+      'invalid_request_error',
+      'response_format',
+      'openai fout',
+      'api key',
+      'model_not_found',
+      'authentication',
+      'insufficient_quota',
+    ].some(token => normalized.includes(token));
+  };
+
+  const processImage = async (
+    imageId: string,
+    photoNumber: number,
+    referenceImageBase64: string | null,
+  ): Promise<{ resultImage: string | null; fatalConfigurationError: boolean; errorMessage?: string }> => {
     const image = images.find(i => i.id === imageId);
-    if (!image) return null;
+    if (!image) {
+      return { resultImage: null, fatalConfigurationError: false, errorMessage: 'Afbeelding niet gevonden' };
+    }
 
     setImages(prev => prev.map(i => i.id === imageId ? { ...i, status: 'processing' } : i));
 
@@ -82,7 +102,7 @@ const FotoStudio = () => {
       const base64 = await fileToBase64(image.originalFile);
 
       const { data, error } = await supabase.functions.invoke('showroom-photo-studio', {
-        body: { 
+        body: {
           imageBase64: base64,
           photoNumber,
           mode: studioMode,
@@ -91,30 +111,53 @@ const FotoStudio = () => {
         }
       });
 
-      if (error) throw new Error(error.message || 'Verwerking mislukt');
+      if (error) {
+        let detailedError = error.message || 'Verwerking mislukt';
+        const context = (error as any)?.context;
+
+        if (context instanceof Response) {
+          const contextText = await context.text().catch(() => '');
+          if (contextText) {
+            try {
+              const parsed = JSON.parse(contextText);
+              if (parsed?.error) {
+                detailedError = `${detailedError} - ${parsed.error}`;
+              }
+            } catch {
+              detailedError = `${detailedError} - ${contextText}`;
+            }
+          }
+        }
+
+        throw new Error(detailedError);
+      }
+
       if (!data?.success) throw new Error(data?.error || 'Verwerking mislukt');
 
       const resultImage = data.resultImage;
       const resultUrl = data.publicUrl;
-      
-      setImages(prev => prev.map(i => 
-        i.id === imageId ? { 
-          ...i, 
-          status: 'done', 
+
+      setImages(prev => prev.map(i =>
+        i.id === imageId ? {
+          ...i,
+          status: 'done',
           resultImage,
           resultUrl,
         } : i
       ));
 
-      return resultImage;
+      return { resultImage, fatalConfigurationError: false };
     } catch (err: any) {
       console.error('Studio processing error:', err);
       const errorMsg = err?.message || 'Onbekende fout';
-      setImages(prev => prev.map(i => 
+      const fatalConfigurationError = isFatalConfigurationError(errorMsg);
+
+      setImages(prev => prev.map(i =>
         i.id === imageId ? { ...i, status: 'error', error: errorMsg } : i
       ));
+
       toast.error(`Fout bij foto ${photoNumber}: ${errorMsg}`);
-      return null;
+      return { resultImage: null, fatalConfigurationError, errorMessage: errorMsg };
     }
   };
 
@@ -124,6 +167,7 @@ const FotoStudio = () => {
     setIsProcessingAll(true);
 
     let previousResultBase64: string | null = null;
+    let stoppedByFatalConfigError = false;
 
     // Find the last successfully processed image before the first queued one as initial reference
     const firstQueuedIdx = images.findIndex(i => i.status === 'queued' || i.status === 'error');
@@ -144,16 +188,27 @@ const FotoStudio = () => {
 
       setCurrentProcessingIndex(i);
       const photoNumber = i + 1;
-      const result = await processImage(img.id, photoNumber, previousResultBase64);
-      
-      if (result) {
-        previousResultBase64 = result;
+      const { resultImage, fatalConfigurationError, errorMessage } = await processImage(img.id, photoNumber, previousResultBase64);
+
+      if (resultImage) {
+        previousResultBase64 = resultImage;
+      }
+
+      if (!resultImage && fatalConfigurationError) {
+        stoppedByFatalConfigError = true;
+        toast.error(`Batch gestopt bij foto ${photoNumber} door configuratiefout: ${errorMessage || 'Onbekende fout'}`);
+        break;
       }
       // If this photo failed, we still pass the previous successful result to the next
     }
 
     setCurrentProcessingIndex(null);
     setIsProcessingAll(false);
+
+    if (stoppedByFatalConfigError) {
+      return;
+    }
+
     toast.success('Alle foto\'s verwerkt!');
   };
 
