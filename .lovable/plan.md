@@ -1,48 +1,34 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Fix interieur: HARDE EIS #0 + belichting correctie
 
-## Probleem
+## Wat je zei
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+Je wilt dat de auto-identiteit 100% behouden blijft (HARDE EIS #0), maar de belichting mag wél aangepast worden — als het origineel overbelicht is, mag het donkerder. De AI moet professionele studio-belichting toepassen, niet per se de originele belichting kopiëren.
 
-## Echte oorzaak (niet React deduplicatie)
+## Wijzigingen
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+**Bestand: `supabase/functions/showroom-photo-studio/index.ts`** — `buildInteriorPrompt()` (regel 312-403)
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+Voeg **HARDE EIS #0** toe als eerste eis (vóór HARDE EIS #1), met deze tekst:
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+```
+HARDE EIS #0 — VOERTUIG IDENTITEIT 100% ONGEWIJZIGD:
+You are EDITING an existing photo. You are NOT generating a new image.
+The vehicle in the output MUST be EXACTLY the same vehicle as in the input.
+✅ PRESERVE EXACTLY: make, model, brand, every badge, every logo, every emblem
+✅ PRESERVE EXACTLY: steering wheel shape, logo, buttons
+✅ PRESERVE EXACTLY: dashboard layout, gauge cluster, infotainment screen
+✅ PRESERVE EXACTLY: seat design, headrest shape, stitching, material texture
+✅ PRESERVE EXACTLY: door panel, center console, gear shifter
+❌ ABSOLUTELY FORBIDDEN: changing the car into a different brand or model
+❌ ABSOLUTELY FORBIDDEN: altering the shape of ANY interior component
+❌ ABSOLUTELY FORBIDDEN: inventing, adding, or removing ANY physical element
+```
 
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+Geen belichting-preservatie eis — de bestaande retouche-sectie (regel 387-392) zegt al correct "vervang door zachte warme 3000K studio verlichting". Dat is precies wat je wilt: professionele belichting, niet per se het origineel kopiëren.
 
-## Oplossing
+**API call** (`callOpenAIImageEdit`, regel 267-306): voeg `response_format: "b64_json"` toe voor expliciete base64 response + extra debug logging (blob size, endpoint bevestiging).
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
-
-### Wijzigingen
-
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
-
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
-
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
-
-## Verwacht resultaat
-
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+Daarna herdeploy van de edge function.
 
