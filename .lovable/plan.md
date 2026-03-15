@@ -1,48 +1,54 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Windshield Visibility Rule toevoegen
 
 ## Probleem
+Het model ziet een klein stukje voorruit en maakt er alsnog een volledig raam van met showroom-elementen. De bestaande "proportional rule" is te abstract — het model heeft concrete percentage-drempels nodig.
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+## Wijziging
 
-## Echte oorzaak (niet React deduplicatie)
+**Bestand:** `supabase/functions/showroom-photo-studio/index.ts`
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+**Locatie:** Regel 447-463 — de bestaande "WINDOW EDITING — PROPORTIONAL RULE" sectie wordt vervangen door een uitgebreide versie met de percentage-gebaseerde windshield visibility rule.
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+Nieuwe tekst:
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+```
+WINDOW EDITING — PROPORTIONAL RULE:
+- ONLY edit the exact window area that is visible in the original photo
+- If only 10% of a window is visible in the frame, edit ONLY that 10% — do NOT reveal or generate the other 90%
+- If a window is partially cropped by the edge of the photo, keep it cropped at the exact same position
+- The showroom environment fills WHATEVER portion of the window is visible — no more, no less
+- A small sliver of visible window gets a small sliver of showroom wall — NOT a full panoramic view
+- Do NOT expand, extend, or complete any partially visible window
+- Do NOT generate window frames, pillars, or door panels to "complete" a window that is cut off
 
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+WINDSHIELD VISIBILITY RULE — CRITICAL:
+Before editing, estimate what percentage of the windshield is visible in the original photo.
 
-## Oplossing
+- If 0-20% of the windshield is visible (only a thin strip at the top of the dashboard):
+  → Replace ONLY that thin strip with a sliver of grey showroom wall (#6B6B6B)
+  → NO ceiling track visible, NO spotlight pools — just the grey wall color filling that thin strip
+  → Do NOT generate a full windshield view. Do NOT pull back to show more windshield.
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+- If 20-50% of the windshield is visible:
+  → Replace that portion with grey showroom wall, optionally one partial spotlight pool
+  → Still NO full windshield generation — only what was already visible
 
-### Wijzigingen
+- If 50-100% of the windshield is visible:
+  → Replace with full showroom wall + ceiling strip + 1-2 spotlight pools as per the showroom spec
 
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+The same percentage rule applies to SIDE WINDOWS and REAR WINDOW.
 
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+FORBIDDEN: Generating more windshield or window area than is visible in the original photo.
+FORBIDDEN: Zooming out to make more window area visible so the showroom fits better.
+FORBIDDEN: "Completing" a partially visible windshield by pulling the camera back.
 
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+The showroom adapts to the photo — the photo does NOT adapt to the showroom.
 
-## Verwacht resultaat
+INTERIOR MIRROR: if visible, reflects the rear showroom wall with subtle warm spotlight
+EXTERIOR SIDE MIRRORS (if visible from inside): reflect the side showroom wall
+```
 
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+Daarna edge function redeployen.
 
