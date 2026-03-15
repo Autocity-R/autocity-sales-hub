@@ -1,87 +1,48 @@
 
 
-# Interieur Prompt V3 — Close-up Bescherming & Camera Proportions
+# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
 
-## Analyse van de resultaten
+## Probleem
 
-Drie problemen uit de vergelijkingen:
+Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
 
-1. **Stuur close-up (IMG_7843)**: De AI ziet de wazige achtergrond achter het stuur (door de voorruit) en probeert daar een volledige showroom te projecteren. Hierdoor zoemt hij uit en hallucineert hij deurpanelen, zijramen en showroom die er niet zijn. Bij close-ups met minimaal zichtbaar glas moet de AI ALLEEN het kleine stukje zichtbaar raam vervangen en verder niets doen.
+## Echte oorzaak (niet React deduplicatie)
 
-2. **Camera view (IMG_7845)**: De showroom op het scherm ziet er beter uit maar de verhoudingen kloppen niet — het lijkt een veel grotere ruimte dan 10x8x4.5m. De spotlights zijn te veel en te klein.
+Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
 
-3. **Dashboard (IMG_7841)**: Goed maar iets uitgezoomd waardoor deurpanelen gehalluceerd worden aan de randen.
+- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
+- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
+- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
 
-## Wijzigingen aan `buildInteriorPrompt()` in `supabase/functions/showroom-photo-studio/index.ts`
+In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
 
-### 1. Rule #0 — Toevoegen: Close-up / detail foto bescherming
+In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
 
-Na de bestaande FORBIDDEN lijst, toevoegen:
+## Oplossing
 
-```
-CRITICAL — CLOSE-UP AND DETAIL PHOTOS:
-- If the photo is a close-up of a specific interior element (steering wheel, 
-  gear shifter, seat detail, badge, controls), the output MUST remain a 
-  close-up with the EXACT same framing
-- Do NOT zoom out to reveal more of the interior
-- Do NOT add or hallucinate interior elements (door panels, windows, seats, 
-  pillars) that are NOT visible in the original photo
-- If only a small sliver of window or blurred background is visible behind 
-  the subject, replace ONLY that small visible area — do NOT expand it
-- The edges and boundaries of the output image must contain the SAME content 
-  as the edges of the input image — never generate new content at the borders
-- If no window is clearly visible in the photo: do NOT add any showroom 
-  environment — only apply retouching (Rule #5) and lighting correction (Rule #4)
-```
+Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
+- Gebruikt compatibele Radix versies (geen nested node_modules meer)
+- Verwijdert de `@babel/runtime` dependency
+- Lost het context-conflict op
 
-### 2. Rule #2 — Toevoegen: Scope beperking
+### Wijzigingen
 
-Na "The interior of the car itself is NEVER part of the showroom.", toevoegen:
+**Bestand: `package.json`**
+- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
 
-```
-CRITICAL SCOPE LIMITATION:
-- The showroom environment is ONLY placed in areas where you can clearly see 
-  OUTDOOR scenery (sky, buildings, parking lot, trees, roads) through actual 
-  glass windows in the original photo
-- Blurred backgrounds, out-of-focus areas behind interior elements, or dark 
-  areas are NOT windows — do NOT project showroom environment into them
-- If the photo shows mostly interior with very little or no visible window 
-  area: apply ONLY retouching and lighting — do NOT force a showroom into 
-  the image
-- NEVER expand the visible window area beyond what is shown in the original
-- NEVER hallucinate additional windows, door panels, or pillars to create 
-  more surface area for the showroom
-```
+**Bestand: `src/components/ui/command.tsx`**
+- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
 
-### 3. Rule #3 — Camera feed proportie-correctie
+**Bestand: `vite.config.ts`**
+- De bestaande `dedupe` configuratie blijft als extra veiligheid
+- Toevoegen van Radix interne pakketten aan dedupe als fallback:
+  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
 
-Vervang de huidige camera feed beschrijving met meer realistische proportie-instructies:
+## Verwacht resultaat
 
-```
-REPLACE ONLY the background environment in the camera feed:
-- Replace outdoor/parking scenery with the EMPTY showroom floor and walls
-- The showroom in the camera feed must respect the REAL dimensions: 
-  10m wide × 8m deep × 4.5m high
-- REVERSE CAMERA view: the camera is at the rear of the car looking back
-  — show approximately 4 meters of dark concrete floor before hitting the 
-  rear wall, wall fills upper 40-50% of the camera feed, 1-2 large warm 
-  spotlight pools on the wall, ceiling NOT visible (camera angle too low)
-- BIRD'S-EYE / 360° TOP-DOWN view: show the car silhouette from above on 
-  dark concrete floor, walls visible at all 4 edges approximately 3-4 
-  meters from the car, 2-3 spotlight pools on each visible wall
-- Side camera views: show the side wall approximately 3 meters away, 
-  1-2 warm spotlight pools
-- The showroom must look SMALL and INTIMATE — not like a warehouse or 
-  aircraft hangar
-```
-
-### 4. Geen andere wijzigingen
-
-Rules #1, #4, #5, #6 en Output Specification blijven exact hetzelfde.
-
-| Probleem | Oorzaak | Oplossing |
-|----------|---------|-----------|
-| Close-up uitzomen + hallucinatie | AI ziet wazige achtergrond als "raam" | Expliciete close-up bescherming + scope beperking |
-| Deurpanelen gehalluceerd | AI zoemt iets uit bij dashboard shot | "Never generate new content at borders" regel |
-| Camera feed proporties onrealistisch | Geen concrete afstandsinstructies | Exacte afstanden per camerahoek (4m tot muur, etc.) |
+Na upgrade en publicatie:
+- Klantenlijst is weer klikbaar en scrollbaar
+- Selecteren van klanten werkt correct
+- Data wordt opgeslagen
+- Werkt zowel in preview als op de gepubliceerde website
 

@@ -358,6 +358,14 @@ FORBIDDEN: Zooming in or out
 FORBIDDEN: Reframing or recomposing the shot
 FORBIDDEN: "Improving" the composition — preserve it exactly as shot
 
+CRITICAL — CLOSE-UP AND DETAIL PHOTOS:
+- If the photo is a close-up of a specific interior element (steering wheel, gear shifter, seat detail, badge, controls), the output MUST remain a close-up with the EXACT same framing
+- Do NOT zoom out to reveal more of the interior
+- Do NOT add or hallucinate interior elements (door panels, windows, seats, pillars) that are NOT visible in the original photo
+- If only a small sliver of window or blurred background is visible behind the subject, replace ONLY that small visible area — do NOT expand it
+- The edges and boundaries of the output image must contain the SAME content as the edges of the input image — never generate new content at the borders
+- If no window is clearly visible in the photo: do NOT add any showroom environment — only apply retouching (Rule #5) and lighting correction (Rule #4)
+
 ══════════════════════════════════════════════════════════
 RULE #1 — VEHICLE INTERIOR 100% UNCHANGED
 ══════════════════════════════════════════════════════════
@@ -393,6 +401,13 @@ RULE #2 — VIRTUAL SHOWROOM THROUGH WINDOWS ONLY
 
 The virtual photo booth environment appears ONLY through the car's glass surfaces.
 The interior of the car itself is NEVER part of the showroom.
+
+CRITICAL SCOPE LIMITATION:
+- The showroom environment is ONLY placed in areas where you can clearly see OUTDOOR scenery (sky, buildings, parking lot, trees, roads) through actual glass windows in the original photo
+- Blurred backgrounds, out-of-focus areas behind interior elements, or dark areas are NOT windows — do NOT project showroom environment into them
+- If the photo shows mostly interior with very little or no visible window area: apply ONLY retouching and lighting — do NOT force a showroom into the image
+- NEVER expand the visible window area beyond what is shown in the original
+- NEVER hallucinate additional windows, door panels, or pillars to create more surface area for the showroom
 
 SHOWROOM SPECIFICATION (identical to exterior showroom):
 - Space: 10 meters wide × 8 meters deep × 4.5 meters high
@@ -443,8 +458,11 @@ PRESERVE ALL screen UI elements:
 
 REPLACE ONLY the background environment in the camera feed:
 - Replace outdoor/parking scenery with the EMPTY showroom floor and walls
-- Camera feed shows ONLY: dark polished concrete floor (#3A3A3A) and grey micro-cement walls (#6B6B6B to #787878) with warm spotlight pools
-- For bird's-eye / 360° top-down view: show the car silhouette from above on the dark concrete floor, same as original but floor and surrounding walls replaced with showroom
+- The showroom in the camera feed must respect the REAL dimensions: 10m wide × 8m deep × 4.5m high
+- REVERSE CAMERA view: the camera is at the rear of the car looking back — show approximately 4 meters of dark concrete floor before hitting the rear wall, wall fills upper 40-50% of the camera feed, 1-2 large warm spotlight pools on the wall, ceiling NOT visible (camera angle too low)
+- BIRD'S-EYE / 360° TOP-DOWN view: show the car silhouette from above on dark concrete floor, walls visible at all 4 edges approximately 3-4 meters from the car, 2-3 spotlight pools on each visible wall
+- Side camera views: show the side wall approximately 3 meters away, 1-2 warm spotlight pools
+- The showroom must look SMALL and INTIMATE — not like a warehouse or aircraft hangar
 
 ABSOLUTELY FORBIDDEN:
 - Rendering a separate or different car in the camera feed
