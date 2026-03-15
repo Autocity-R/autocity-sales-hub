@@ -263,26 +263,10 @@ If any item above fails, the image is rejected. The output must pass all checks.
 // INTERIOR PROMPTS — Completely separate from exterior
 // ═══════════════════════════════════════════════════
 
-function buildInteriorPrompt(photoNumber: number = 1): string {
-  const consistencyBlock = photoNumber > 1 ? `
-═══════════════════════════════════════════════════
-CONSISTENCY REFERENCE — CRITICAL
-═══════════════════════════════════════════════════
-This is interior photo ${photoNumber} of a set. The REFERENCE IMAGE (second image provided) shows the SAME vehicle interior already processed. You MUST match these aspects EXACTLY from the reference:
-• Lighting color temperature and intensity — must be identical warm 3000K studio lighting
-• Showroom environment through windows — must show the identical AutoCity photo booth (same wall color, spotlight pools, floor)
-• Overall color grading and mood — must be consistent across all interior photos
-• Cleanup level — same standard of cleanliness applied
-
-A customer will view ALL interior photos side by side. Any difference in lighting warmth, showroom background style, or color grading between this photo and the reference is a CRITICAL FAILURE.
-
----
-
-` : '';
-
+function buildInteriorPrompt(): string {
   return `You are the world's best automotive photo editor and retoucher with 20 years of experience. You have worked for the most prestigious car brands, dealerships and automotive magazines worldwide — including Top Gear, AutoWeek and official manufacturer campaigns. You have an obsessive eye for detail, perfect lighting, and you know exactly how a premium car interior must look in a professional advertisement.
 
-${consistencyBlock}Your expertise combines two skills: the eye of a top automotive photographer (you know exactly what the perfect shot looks like) and the precision of a master retoucher (you can transform any raw photo into that perfect result). You never invent, fabricate or change what is already in the image — you only enhance, clean and place it in the right environment.
+Your expertise combines two skills: the eye of a top automotive photographer (you know exactly what the perfect shot looks like) and the precision of a master retoucher (you can transform any raw photo into that perfect result). You never invent, fabricate or change what is already in the image — you only enhance, clean and place it in the right environment.
 
 Your mission: Take this raw interior photo and transform it into a flawless, showroom-ready advertisement image for AutoCity — a premium car dealership. The car must look like it just rolled off the production line, photographed in AutoCity's professional photo booth. Every detail must be preserved with surgical precision. The result must be indistinguishable from a photo taken by a professional automotive photographer in a controlled studio environment.
 
@@ -487,12 +471,12 @@ serve(async (req) => {
 
     if (isFirstPhoto) {
       console.log(`Processing ${studioMode} photo ${num} (first/standalone)`)
-      const prompt = studioMode === 'interieur' ? buildInteriorPrompt(num) : buildFirstPhotoPrompt()
+      const prompt = studioMode === 'interieur' ? buildInteriorPrompt() : buildFirstPhotoPrompt()
       resultB64 = await callGeminiSingleImage(rawBase64, prompt)
     } else {
       console.log(`Processing ${studioMode} photo ${num} (sequential with reference)`)
       const refBase64 = referenceImageBase64.includes(",") ? referenceImageBase64.split(",")[1] : referenceImageBase64
-      const prompt = studioMode === 'interieur' ? buildInteriorPrompt(num) : buildSequentialPrompt(num)
+      const prompt = studioMode === 'interieur' ? buildInteriorPrompt() : buildSequentialPrompt(num)
       resultB64 = await callGeminiWithReference(rawBase64, refBase64, prompt)
     }
 
