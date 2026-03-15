@@ -269,9 +269,10 @@ async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise
 
   const body = {
     model: "gpt-image-1",
-    image: [{ type: "base64", data: imageBase64 }],
+    images: [{ image_url: dataUrl }],
     prompt: prompt,
     size: "1024x1024",
+    response_format: "b64_json",
   };
 
   console.log(`Calling OpenAI gpt-image-1 image EDIT API (JSON body, image size: ${imageBase64.length} chars)`);
