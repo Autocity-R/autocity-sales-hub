@@ -261,7 +261,7 @@ If any item above fails, the image is rejected. The output must pass all checks.
 }
 
 // ═══════════════════════════════════════════════════
-// OpenAI gpt-image-1 Image Edit API (for interior photos)
+// OpenAI gpt-4.1 Responses API (for interior photos)
 // ═══════════════════════════════════════════════════
 
 async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise<string> {
@@ -279,7 +279,7 @@ async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-image-1",
+      model: "gpt-4.1",
       input: [{
         role: "user",
         content: [
@@ -493,7 +493,7 @@ serve(async (req) => {
     let resultB64: string
 
     if (studioMode === 'interieur') {
-      console.log(`Processing interieur photo ${num} via OpenAI gpt-image-1 (image edit)`)
+      console.log(`Processing interieur photo ${num} via OpenAI gpt-4.1 Responses API`)
       const prompt = buildInteriorPrompt()
       resultB64 = await callOpenAIImageEdit(rawBase64, prompt)
     } else if (isFirstPhoto) {
