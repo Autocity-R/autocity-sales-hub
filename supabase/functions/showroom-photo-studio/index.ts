@@ -469,14 +469,19 @@ serve(async (req) => {
 
     let resultB64: string
 
-    if (isFirstPhoto) {
-      console.log(`Processing ${studioMode} photo ${num} (first/standalone)`)
-      const prompt = studioMode === 'interieur' ? buildInteriorPrompt() : buildFirstPhotoPrompt()
+    if (studioMode === 'interieur') {
+      // Interior: always single image, no reference needed
+      console.log(`Processing interieur photo ${num} (single image, no reference)`)
+      const prompt = buildInteriorPrompt()
+      resultB64 = await callGeminiSingleImage(rawBase64, prompt)
+    } else if (isFirstPhoto) {
+      console.log(`Processing exterieur photo ${num} (first/standalone)`)
+      const prompt = buildFirstPhotoPrompt()
       resultB64 = await callGeminiSingleImage(rawBase64, prompt)
     } else {
-      console.log(`Processing ${studioMode} photo ${num} (sequential with reference)`)
+      console.log(`Processing exterieur photo ${num} (sequential with reference)`)
       const refBase64 = referenceImageBase64.includes(",") ? referenceImageBase64.split(",")[1] : referenceImageBase64
-      const prompt = studioMode === 'interieur' ? buildInteriorPrompt() : buildSequentialPrompt(num)
+      const prompt = buildSequentialPrompt(num)
       resultB64 = await callGeminiWithReference(rawBase64, refBase64, prompt)
     }
 
