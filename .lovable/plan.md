@@ -1,46 +1,48 @@
 
 
-# Interieur overschakelen naar Gemini
+# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
 
-## Waarom
+## Probleem
 
-| | OpenAI (huidig) | Gemini (voorstel) |
-|---|---|---|
-| Status | 403 errors, parsing problemen | Werkt al voor exterieur |
-| API key | OPENAI_API_KEY (aparte kosten) | LOVABLE_API_KEY (al beschikbaar) |
-| Hallucinations | Regelmatig | Beter in "edit mode" met sterke prompt |
-| Image edit | Responses API complex | Eenvoudige chat completions + image input |
+Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
 
-## Wijzigingen
+## Echte oorzaak (niet React deduplicatie)
 
-**Bestand:** `supabase/functions/showroom-photo-studio/index.ts`
+Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
 
-### 1. Interieur routing wijzigen (regels 513-517)
+- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
+- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
+- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
 
-Vervang de OpenAI `callOpenAIImageEdit` call door `callGeminiSingleImage`:
+In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
 
-```typescript
-if (studioMode === 'interieur') {
-  console.log(`Processing interieur photo ${num} via Gemini Pro Image`)
-  const prompt = buildInteriorPrompt()
-  console.log("INTERIOR PROMPT (first 600 chars):", prompt.substring(0, 600))
-  resultB64 = await callGeminiSingleImage(rawBase64, prompt)
-}
-```
+In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
 
-Dit gebruikt exact dezelfde `callGeminiSingleImage` functie die al werkt voor exterieur, maar met de interieur prompt (met alle HARDE EISEN voor identiteitsbehoud, camera schermen, etc.).
+## Oplossing
 
-### 2. Optioneel: `callOpenAIImageEdit` functie behouden
+Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
+- Gebruikt compatibele Radix versies (geen nested node_modules meer)
+- Verwijdert de `@babel/runtime` dependency
+- Lost het context-conflict op
 
-De functie kan blijven staan als fallback, maar wordt niet meer aangeroepen voor interieur. Kan later verwijderd worden als Gemini goed werkt.
+### Wijzigingen
 
-### 3. Redeploy
+**Bestand: `package.json`**
+- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
 
-Edge function wordt automatisch opnieuw gedeployed.
+**Bestand: `src/components/ui/command.tsx`**
+- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
 
-## Voordelen
-- Eén pipeline voor alles (Gemini)
-- Geen OpenAI 403/parsing issues meer
-- Lagere kosten (Lovable AI credits vs OpenAI apart)
-- Zelfde bewezen image edit flow als exterieur
+**Bestand: `vite.config.ts`**
+- De bestaande `dedupe` configuratie blijft als extra veiligheid
+- Toevoegen van Radix interne pakketten aan dedupe als fallback:
+  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+
+## Verwacht resultaat
+
+Na upgrade en publicatie:
+- Klantenlijst is weer klikbaar en scrollbaar
+- Selecteren van klanten werkt correct
+- Data wordt opgeslagen
+- Werkt zowel in preview als op de gepubliceerde website
 

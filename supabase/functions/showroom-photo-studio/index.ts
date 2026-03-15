@@ -511,10 +511,10 @@ serve(async (req) => {
     let resultB64: string
 
     if (studioMode === 'interieur') {
-      console.log(`Processing interieur photo ${num} via OpenAI gpt-4.1 Responses API`)
+      console.log(`Processing interieur photo ${num} via Gemini Pro Image`)
       const prompt = buildInteriorPrompt()
       console.log("INTERIOR PROMPT (first 600 chars):", prompt.substring(0, 600))
-      resultB64 = await callOpenAIImageEdit(rawBase64, prompt)
+      resultB64 = await callGeminiSingleImage(rawBase64, prompt)
     } else if (isFirstPhoto) {
       console.log(`Processing exterieur photo ${num} (first/standalone)`)
       const prompt = buildFirstPhotoPrompt()
