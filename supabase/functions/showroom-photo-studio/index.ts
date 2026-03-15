@@ -333,67 +333,121 @@ async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise
 // ═══════════════════════════════════════════════════
 
 function buildInteriorPrompt(): string {
-  return `You are EDITING an existing photo. You are NOT generating a new image. The vehicle must remain 100% identical.
+  return `You are performing PIXEL-LEVEL RETOUCHING on an existing photograph.
+Do NOT generate a new image. Do NOT reimagine the interior. Do NOT recreate any element.
+The output must be the EXACT SAME photograph with targeted edits applied.
+SAME camera angle. SAME crop. SAME framing. SAME perspective distortion. SAME lens barrel distortion.
+Every button, every stitch, every logo, every icon, every knob must be IDENTICAL to the input.
+If a single detail differs from the input, the result is REJECTED.
 
-HARDE EIS #0 — VOERTUIG IDENTITEIT 100% ONGEWIJZIGD:
-You are EDITING an existing photo. You are NOT generating a new image.
-The vehicle in the output MUST be EXACTLY the same vehicle as in the input.
-PRESERVE EXACTLY: make, model, brand, every badge, every logo, every emblem
-PRESERVE EXACTLY: steering wheel shape, logo, buttons
-PRESERVE EXACTLY: dashboard layout, gauge cluster, infotainment screen
-PRESERVE EXACTLY: seat design, headrest shape, stitching, material texture
-PRESERVE EXACTLY: door panel, center console, gear shifter
-ABSOLUTELY FORBIDDEN: changing the car into a different brand or model
-ABSOLUTELY FORBIDDEN: altering the shape of ANY interior component
-ABSOLUTELY FORBIDDEN: inventing, adding, or removing ANY physical element
-If the input shows a Lynk & Co, the output MUST show a Lynk & Co. NEVER substitute with BMW, Audi, Mercedes, or any other brand.
+═══════════════════════════════════════════════════════
+RULE 1 — VEHICLE IDENTITY: 100% UNCHANGED
+═══════════════════════════════════════════════════════
+You are editing pixels, not creating content.
+PRESERVE PIXEL-FOR-PIXEL:
+- Brand logos, badges, emblems (exact shape, exact font, exact position)
+- Steering wheel: logo, every button, every icon, every spoke, every thumb grip
+- Dashboard layout: every gauge, every vent, every trim piece, every seam
+- Infotainment screen: exact bezel shape, exact button positions around it
+- Seats: exact stitching pattern, exact headrest shape, exact material grain
+- Center console: gear shifter, cup holders, armrest, every switch
+- Door panels: handle shape, speaker grille pattern, window controls
+ABSOLUTELY FORBIDDEN: changing ANY brand identity. If input is Lynk & Co, output is Lynk & Co. Never substitute with any other brand.
+ABSOLUTELY FORBIDDEN: inventing, adding, removing, or repositioning ANY physical element.
+ABSOLUTELY FORBIDDEN: altering the shape, size, or proportions of ANY component.
 
-HARDE EIS #1 — COMPOSITIE ONVERANDERD:
-Output MUST have EXACTLY the same crop, zoom, framing, and composition as the input image.
-NEVER zoom out. NEVER zoom in. NEVER reframe. NEVER add borders or padding.
-The output dimensions and aspect ratio must match the input exactly.
+═══════════════════════════════════════════════════════
+RULE 2 — COMPOSITION: ZERO TOLERANCE FOR CHANGE
+═══════════════════════════════════════════════════════
+Output MUST have EXACTLY the same:
+- Crop, zoom level, framing, field of view
+- Camera angle, pitch, yaw, roll
+- Perspective vanishing points, lens distortion characteristics
+- Image dimensions and aspect ratio
+NEVER zoom in. NEVER zoom out. NEVER reframe. NEVER shift perspective.
 
-HARDE EIS #2 — BOOTH ALLEEN DOOR RAMEN/SPIEGELS:
-The photo booth environment MUST ONLY appear through clearly visible car SIDE WINDOWS, WINDSHIELD, REAR WINDOW, INTERIOR REAR-VIEW MIRROR, or EXTERIOR SIDE MIRRORS.
-ABSOLUTELY FORBIDDEN: booth in reflections on plastic trim, dashboard surfaces, piano black panels, door panels, center console, seat leather/fabric.
-ABSOLUTELY FORBIDDEN: booth in close-up shots where NO windows or mirrors are visible in the frame.
+═══════════════════════════════════════════════════════
+RULE 3 — SHOWROOM VISIBILITY: ONLY THROUGH GLASS
+═══════════════════════════════════════════════════════
+The showroom environment is ONLY visible through:
+- Side windows (left and right)
+- Windshield
+- Rear window
+- Interior rear-view mirror reflection
+- Exterior side mirror reflections
+- Active camera feed areas (Rule 4 below)
 
-HARDE EIS #3 — REFLECTIES IN SCHERMGLAS:
-ANY touchscreen, infotainment display, instrument cluster, or screen glass surface:
-Reflections in screen glass MUST be neutral dark (#1A1A1A to #2A2A2A).
-ABSOLUTELY FORBIDDEN: showing any environment in screen glass reflections.
+NOWHERE ELSE. Not on dashboard plastic. Not on piano black trim.
+Not on leather. Not on fabric. Not on any non-glass surface.
+Not on screen glass reflections (screens show neutral dark #1A1A1A to #2A2A2A reflections only).
 
-HARDE EIS #4 — CAMERA SCHERMEN ONGEWIJZIGD:
-If the infotainment screen shows a BACKUP CAMERA view, 360-DEGREE CAMERA view, parking sensors visualization, or ANY camera feed: preserve it EXACTLY as-is.
-Do NOT replace camera feeds with a black/dark screen.
-Do NOT alter the content shown on ANY active display.
-If a screen shows navigation, media, or settings UI: preserve ALL text, icons, and layout exactly.
+If NO windows or mirrors are visible in the frame: do NOT show any showroom environment at all. Only clean the interior.
 
-HARDE EIS #5 — GEEN BRANDING/TEKST TOEVOEGEN:
-ABSOLUTELY FORBIDDEN: adding any dealership name, logo, or branding text anywhere.
-ABSOLUTELY FORBIDDEN: adding any text on floors, walls, screens, or any surface.
+═══════════════════════════════════════════════════════
+RULE 4 — CAMERA SCREENS: CONDITIONAL LOGIC
+═══════════════════════════════════════════════════════
+CASE A — ACTIVE CAMERA FEED (backup camera, 360° surround view, parking camera):
+  If the infotainment screen shows a LIVE camera feed:
+  → Replace ONLY the camera's viewport area with the showroom environment
+    (as if the camera is physically seeing the showroom around the car)
+  → PRESERVE ALL UI elements around the feed: parking guidelines, distance indicators,
+    buttons, icons, text overlays, status bars — pixel-for-pixel identical
+  → The camera UI frame/chrome stays exactly as-is
 
-PHOTO BOOTH OMGEVING (10m x 8m x 4m hoog):
-VLOER: Donker gepolijst beton (#3A3A3A), lichte spiegelglans, subtiele spotlight-reflecties
-MUREN: Vlak mat micro-cement (#6B6B6B tot #787878), geen textuur, geen decoratie, geen tekst
-PLAFOND: Lichtgrijs (#C8C8C8), zwarte track-rail systeem met 4-6 warm-witte LED spots
-VERLICHTING: Warm 3000K spotlights, zachte gouden pools op vloer en muren
-SFEER: Professionele auto-fotobooth, volledig leeg, schoon, premium
+CASE B — ANY OTHER SCREEN CONTENT (navigation, media, settings, phone, climate, off/black):
+  → Preserve the ENTIRE screen content exactly as-is
+  → Change NOTHING on the screen
+  → Every icon, every text character, every pixel of the UI stays identical
 
-BOOTH DOOR RAMEN — PERSPECTIEF:
-Door ZIJRAAM: Vlakke micro-cement muur (#6B6B6B) vult MEESTE van het raam. Muur loopt PERFECT PARALLEL aan de auto. 1-2 warme spotlight pools op muur.
-Door VOORRUIT: Vlakke grijze muur vult meeste van de ruit. Dunne strook lichtgrijs plafond aan het absolute boveneinde.
-BOOTH IS VOLLEDIG LEEG: absoluut geen andere auto's, geen mensen, geen meubels, geen logo, geen tekst.
+═══════════════════════════════════════════════════════
+RULE 5 — NO BRANDING OR TEXT ADDED
+═══════════════════════════════════════════════════════
+ABSOLUTELY FORBIDDEN: adding any dealership name, logo, watermark, or text anywhere.
+ABSOLUTELY FORBIDDEN: adding text on floors, walls, screens, or any surface.
+The showroom environment is completely clean and unbranded.
 
-RETOUCHE — OPSCHONEN, NIET OPNIEUW GENEREREN:
-You are a RETOUCHER, not a CREATOR. Every pixel of the vehicle interior must come from the input photo.
-- Remove dust, dirt, fingerprints from all surfaces
-- Clean leather/fabric: remove stains, refresh texture, sharpen stitching
-- Dashboard/trim: remove fingerprints, condition to matte finish
-- Replace harsh outdoor lighting with soft warm 3000K studio lighting
-- Result: 0 km showroom quality, but the SAME vehicle, not a similar one
+═══════════════════════════════════════════════════════
+RULE 6 — SHOWROOM ENVIRONMENT SPEC (through glass only)
+═══════════════════════════════════════════════════════
+FLOOR: Dark polished concrete (#3A3A3A to #454545), subtle matte sheen, faint spotlight reflections
+WALLS: Flat matte micro-cement (#6B6B6B to #787878), no texture, no decoration, no text, no logos
+CEILING: Light grey (#C8C8C8), black metal track-rail with 4-5 warm white LED spots
+LIGHTING: Warm 3000K spotlights creating soft golden pools on walls and floor
 
-OUTPUT: Maximum resolution. Same composition as input.`
+Through SIDE WINDOWS: flat micro-cement wall fills most of window, wall runs perfectly parallel to car, 1-2 warm spotlight pools visible on wall
+Through WINDSHIELD: flat grey wall fills most of glass, thin strip of light grey ceiling at very top
+BOOTH IS COMPLETELY EMPTY: no other cars, no people, no furniture, no equipment
+
+═══════════════════════════════════════════════════════
+RULE 7 — RETOUCHING OPERATIONS (the ONLY changes allowed)
+═══════════════════════════════════════════════════════
+These are the ONLY modifications you may make:
+1. Remove dust, dirt, fingerprints, smudges from all surfaces
+2. Remove stains from leather/fabric, refresh texture subtly, sharpen stitching visibility
+3. Remove fingerprints from dashboard, trim, and plastic surfaces
+4. Replace harsh outdoor/parking lighting with soft warm 3000K studio lighting
+5. Through glass surfaces: replace exterior background with showroom environment (Rule 6)
+6. Camera feeds: apply Rule 4 logic
+7. Screen glass reflections: darken to neutral (#1A1A1A to #2A2A2A)
+
+NOTHING ELSE. No other modifications are permitted.
+Result: 0 km showroom quality, but the SAME vehicle, not a similar one.
+
+═══════════════════════════════════════════════════════
+QUALITY GATE — MANDATORY SELF-CHECK BEFORE OUTPUT
+═══════════════════════════════════════════════════════
+Before outputting, verify against the input:
+☐ Camera angle: IDENTICAL (same lens distortion, same vanishing points)
+☐ Every logo/badge: IDENTICAL shape, font, position, color
+☐ Every button/knob/switch: IDENTICAL shape, icon, label text
+☐ Steering wheel: IDENTICAL brand logo, button layout, spoke design
+☐ Seat stitching pattern: IDENTICAL thread lines, spacing, color
+☐ Screen content (non-camera): IDENTICAL text, icons, layout, colors
+☐ Dashboard vents: IDENTICAL slat angle, position, size
+☐ No added text, watermarks, or branding anywhere
+If ANY check fails: output is REJECTED. You must start over.
+
+OUTPUT: Maximum resolution. Exact same composition as input. The viewer must not be able to tell any interior detail was changed — only that the car is now in a clean showroom and professionally lit.`
 }
 
 
