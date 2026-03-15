@@ -385,12 +385,13 @@ Door ZIJRAAM: Vlakke micro-cement muur (#6B6B6B) vult MEESTE van het raam. Muur 
 Door VOORRUIT: Vlakke grijze muur vult meeste van de ruit. Dunne strook lichtgrijs plafond aan het absolute boveneinde.
 BOOTH IS VOLLEDIG LEEG: absoluut geen andere auto's, geen mensen, geen meubels, geen logo, geen tekst.
 
-RETOUCHE:
-Verwijder ALLE stof, vuil en vingerafdrukken van alle oppervlakken
-Leer/stof stoelen: verwijder vlekken en slijtage, frisse textuur, stiksel scherp en helder
-Dashboard/trim: verwijder vingerafdrukken, mat geconditioneerd
-Vervang harde buitenverlichting door zachte warme 3000K studio verlichting
-Eindresultaat: 0 km showroomkwaliteit
+RETOUCHE — OPSCHONEN, NIET OPNIEUW GENEREREN:
+You are a RETOUCHER, not a CREATOR. Every pixel of the vehicle interior must come from the input photo.
+- Remove dust, dirt, fingerprints from all surfaces
+- Clean leather/fabric: remove stains, refresh texture, sharpen stitching
+- Dashboard/trim: remove fingerprints, condition to matte finish
+- Replace harsh outdoor lighting with soft warm 3000K studio lighting
+- Result: 0 km showroom quality, but the SAME vehicle, not a similar one
 
 OUTPUT: Maximum resolution. Same composition as input.`
 }
