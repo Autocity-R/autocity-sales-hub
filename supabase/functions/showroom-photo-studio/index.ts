@@ -261,7 +261,7 @@ If any item above fails, the image is rejected. The output must pass all checks.
 }
 
 // ═══════════════════════════════════════════════════
-// OpenAI gpt-image-1 Image Edit API (for interior photos)
+// OpenAI gpt-4.1 Responses API (for interior photos)
 // ═══════════════════════════════════════════════════
 
 async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise<string> {
