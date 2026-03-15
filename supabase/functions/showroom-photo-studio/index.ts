@@ -354,7 +354,7 @@ NEVER zoom out. NEVER zoom in. NEVER reframe. NEVER add borders or padding.
 The output dimensions and aspect ratio must match the input exactly.
 
 HARDE EIS #2 — BOOTH ALLEEN DOOR RAMEN/SPIEGELS:
-The AutoCity photo booth environment MUST ONLY appear through clearly visible car SIDE WINDOWS, WINDSHIELD, REAR WINDOW, INTERIOR REAR-VIEW MIRROR, or EXTERIOR SIDE MIRRORS.
+The photo booth environment MUST ONLY appear through clearly visible car SIDE WINDOWS, WINDSHIELD, REAR WINDOW, INTERIOR REAR-VIEW MIRROR, or EXTERIOR SIDE MIRRORS.
 ABSOLUTELY FORBIDDEN: booth in reflections on plastic trim, dashboard surfaces, piano black panels, door panels, center console, seat leather/fabric.
 ABSOLUTELY FORBIDDEN: booth in close-up shots where NO windows or mirrors are visible in the frame.
 
