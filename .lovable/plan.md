@@ -1,36 +1,48 @@
 
 
-# Interior Prompt — Canvas Lock & Edge Matching toevoegen
+# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
 
-## Wijziging
+## Probleem
 
-Eén toevoeging aan de **OUTPUT SPECIFICATION** sectie in `supabase/functions/showroom-photo-studio/index.ts` (regel 555-558). De bestaande regels blijven, de Canvas Lock + Edge Matching wordt ertussen gevoegd.
+Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
 
-### Bestand: `supabase/functions/showroom-photo-studio/index.ts`
+## Echte oorzaak (niet React deduplicatie)
 
-**Regel 555-558** wordt uitgebreid tot:
+Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
 
-```
-- Maximum resolution, identical to input dimensions and aspect ratio
-- Exact same composition, crop, and framing as input — pixel-locked
-- Photorealistic result — indistinguishable from a real professional photograph
-- Suitable for use in automotive advertisement listings
+- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
+- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
+- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
 
-CANVAS LOCK — ABSOLUTE:
-Treat the input image as a FIXED CANVAS. You may only CHANGE pixels within this existing canvas.
-You may NOT reveal, generate, or imply anything beyond the original edges.
+In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
 
-EDGE MATCHING — MANDATORY:
-The content at every edge of the output must match the content at the same edge of the input:
-- TOP EDGE: If the input top edge shows dashboard trim or plastic → output top edge shows the same dashboard trim or plastic. NOT ceiling, NOT windshield, NOT sky.
-- BOTTOM EDGE: If the input bottom edge shows center console or seat → output bottom edge shows the same. NOT floor, NOT extra space.
-- LEFT EDGE: If the input left edge shows a door panel or seat side → output left edge shows the same. NOT a wider view of the door.
-- RIGHT EDGE: Same rule applies.
+In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
 
-If the original photo cuts off the windshield at the top: the output cuts off at the same point.
-If the original photo cuts off the side window at the edge: the output cuts off at the same point.
-FORBIDDEN: Completing, extending, or revealing any element that was cropped out of the original frame.
-```
+## Oplossing
 
-Daarna edge function redeployen.
+Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
+- Gebruikt compatibele Radix versies (geen nested node_modules meer)
+- Verwijdert de `@babel/runtime` dependency
+- Lost het context-conflict op
+
+### Wijzigingen
+
+**Bestand: `package.json`**
+- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+
+**Bestand: `src/components/ui/command.tsx`**
+- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+
+**Bestand: `vite.config.ts`**
+- De bestaande `dedupe` configuratie blijft als extra veiligheid
+- Toevoegen van Radix interne pakketten aan dedupe als fallback:
+  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+
+## Verwacht resultaat
+
+Na upgrade en publicatie:
+- Klantenlijst is weer klikbaar en scrollbaar
+- Selecteren van klanten werkt correct
+- Data wordt opgeslagen
+- Werkt zowel in preview als op de gepubliceerde website
 
