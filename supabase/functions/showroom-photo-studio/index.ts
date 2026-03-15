@@ -279,7 +279,7 @@ async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-image-1",
+      model: "gpt-4.1",
       input: [{
         role: "user",
         content: [
