@@ -433,58 +433,6 @@ async function callGeminiWithReference(inputBase64: string, referenceBase64: str
   return imageUrl.includes(",") ? imageUrl.split(",")[1] : imageUrl
 }
 
-async function callOpenAIImageEdit(rawBase64: string, prompt: string): Promise<string> {
-  console.log("Calling OpenAI gpt-image-1 /images/edits for interior processing...")
-  
-  // Decode base64 to Uint8Array in chunks to avoid stack overflow
-  const binaryString = atob(rawBase64)
-  const len = binaryString.length
-  const bytes = new Uint8Array(len)
-  const chunkSize = 8192
-  for (let i = 0; i < len; i += chunkSize) {
-    const end = Math.min(i + chunkSize, len)
-    for (let j = i; j < end; j++) {
-      bytes[j] = binaryString.charCodeAt(j)
-    }
-  }
-  
-  // Create PNG blob (always PNG for the API)
-  const imageBlob = new Blob([bytes], { type: "image/png" })
-  
-  // Build multipart form data
-  const formData = new FormData()
-  formData.append("image", imageBlob, "image.png")
-  formData.append("prompt", prompt)
-  formData.append("model", "gpt-image-1")
-  formData.append("n", "1")
-  formData.append("response_format", "b64_json")
-  // No size parameter — preserves original dimensions
-  
-  const response = await fetch("https://api.openai.com/v1/images/edits", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${OPENAI_API_KEY}`,
-    },
-    body: formData,
-  })
-  
-  const data = await response.json()
-  
-  if (!response.ok) {
-    console.error("OpenAI Image Edit API error:", JSON.stringify(data))
-    if (response.status === 429) throw new Error("Rate limit bereikt. Probeer het over een minuut opnieuw.")
-    throw new Error(`OpenAI API fout: ${data.error?.message || JSON.stringify(data)}`)
-  }
-  
-  const b64Result = data.data?.[0]?.b64_json
-  if (!b64Result) {
-    console.error("Unexpected OpenAI response structure:", JSON.stringify(data).substring(0, 500))
-    throw new Error("Geen afbeeldingsdata ontvangen van OpenAI")
-  }
-  
-  console.log("OpenAI gpt-image-1 interior edit completed successfully")
-  return b64Result
-}
 
 async function fetchImageAsBase64(url: string): Promise<string> {
   const resp = await fetch(url)
