@@ -1,48 +1,93 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Fix: `callOpenAIImageEdit` → FormData + juiste MIME type
 
-## Probleem
+## Diagnose WebP→PNG conversie
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+**Er is GEEN conversie aanwezig.** De volledige flow:
 
-## Echte oorzaak (niet React deduplicatie)
+1. Frontend `fileToBase64()` → `readAsDataURL(file)` → produceert `data:image/webp;base64,...` (voor WebP uploads)
+2. Edge function line 551: strip prefix → raw base64 bytes (nog steeds WebP)
+3. `callOpenAIImageEdit` line 268: plakt `data:image/png;base64,...` erop → **FOUT: WebP bytes met PNG label**
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+OpenAI's `/v1/images/edits` accepteert PNG, JPEG, GIF en WebP. Dus conversie is niet nodig — we moeten alleen het **juiste MIME type** meesturen.
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+## Implementatie
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+**Bestand:** `supabase/functions/showroom-photo-studio/index.ts`
 
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+### 1. MIME type detectie toevoegen
+Detecteer het werkelijke bestandstype uit de base64 magic bytes (PNG = `iVBOR`, WebP = `UklGR`, JPEG = `/9j/`).
 
-## Oplossing
+### 2. `callOpenAIImageEdit` volledig vervangen (regels 267-329)
+Van JSON body → **FormData met binary blob**:
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+```typescript
+async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise<string> {
+  // Detecteer MIME type uit magic bytes
+  let mimeType = "image/png";
+  let ext = "png";
+  if (imageBase64.startsWith("UklGR")) { mimeType = "image/webp"; ext = "webp"; }
+  else if (imageBase64.startsWith("/9j/")) { mimeType = "image/jpeg"; ext = "jpg"; }
 
-### Wijzigingen
+  // base64 → binary (chunked om stack overflow te voorkomen)
+  const binaryStr = atob(imageBase64);
+  const bytes = new Uint8Array(binaryStr.length);
+  for (let i = 0; i < binaryStr.length; i++) {
+    bytes[i] = binaryStr.charCodeAt(i);
+  }
 
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+  // FormData — GEEN JSON, GEEN image_url
+  const formData = new FormData();
+  formData.append("model", "gpt-image-1");
+  formData.append("image[]", new Blob([bytes], { type: mimeType }), `photo.${ext}`);
+  formData.append("prompt", prompt);
+  formData.append("n", "1");
+  // GEEN size, GEEN response_format, GEEN Content-Type header
 
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+  const response = await fetch("https://api.openai.com/v1/images/edits", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${OPENAI_API_KEY}` },
+    body: formData,
+  });
 
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    const errorCode = errorBody?.error?.code;
+    const errorMsg = errorBody?.error?.message ?? "unknown";
+    console.error(`OpenAI /images/edits error ${response.status}:`, JSON.stringify(errorBody));
+    if (errorCode === "moderation_blocked") {
+      throw new Error(`MODERATION_BLOCKED: ${errorMsg}`);
+    }
+    throw new Error(`OpenAI error (${response.status}): ${errorMsg}`);
+  }
 
-## Verwacht resultaat
+  const result = await response.json();
+  const item = result.data?.[0];
+  if (!item) throw new Error("No image data in response");
 
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+  if (item.b64_json) return item.b64_json;
+
+  if (item.url) {
+    return await fetchImageAsBase64(item.url);
+  }
+
+  throw new Error("No b64_json or url in response");
+}
+```
+
+### Kernwijzigingen samengevat
+
+| Was | Wordt |
+|-----|-------|
+| JSON body + `Content-Type: application/json` | FormData + automatische boundary |
+| `images: [{ image_url: dataUrl }]` | `image[]` binary blob |
+| `size: "1024x1024"` (forceert vierkant) | Geen size → behoudt aspect ratio |
+| MIME altijd `image/png` (ook voor WebP bytes) | Detectie uit magic bytes |
+| `response_format: "b64_json"` | Weggelaten (niet ondersteund) |
+
+### 3. Frontend (`FotoStudio.tsx`) — geen wijzigingen nodig
+De frontend stuurt al correct `readAsDataURL` output. De edge function strip al het prefix op line 551. Geen conversie nodig.
+
+### 4. Redeploy edge function
 
