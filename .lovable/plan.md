@@ -1,48 +1,33 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Interieur Prompt Vervangen — Manus V2
 
-## Probleem
+## Samenvatting
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+Ja, dit nieuwe prompt van Manus is een duidelijke verbetering. De drie belangrijkste fixes zitten erin:
 
-## Echte oorzaak (niet React deduplicatie)
+1. **Pixel-lock framing** (Rule #0 is nu de hoogste prioriteit, met expliciete "transparent overlay" instructie)
+2. **Camera feeds vereenvoudigd** (Rule #3: alleen lege showroom vloer/muren, geen auto renderen)
+3. **Showroom consistent met exterieur** (10×8×4.5m, zelfde kleuren en materialen)
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+Verder zijn de regels beter gestructureerd en beknopter.
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+## Wijziging
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+**Bestand:** `supabase/functions/showroom-photo-studio/index.ts`
 
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+**Regels 335-512** — Vervang de volledige body van `buildInteriorPrompt()` met het exact aangeleverde prompt van Manus.
 
-## Oplossing
+Belangrijkste verschillen met het huidige prompt:
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+| Aspect | Huidig | Nieuw (Manus) |
+|--------|--------|---------------|
+| Rule #0 | Identity preservation | **Pixel-lock composition** (framing eerst) |
+| Rule #1 | Composition unchanged (kort) | **Vehicle interior 100% unchanged** (uitgebreid) |
+| Showroom maten | 12×10×4.5m | **10×8×4.5m** (gelijk aan exterieur) |
+| Camera feeds | "Render car in showroom" | **Alleen lege showroom vloer/muren** |
+| Temperatuur | 3000K | **3200K** |
+| Structuur | Minder expliciet over forbids | **Elke regel heeft eigen FORBIDDEN lijst** |
 
-### Wijzigingen
-
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
-
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
-
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
-
-## Verwacht resultaat
-
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+Geen andere bestanden worden gewijzigd. Edge function wordt automatisch gedeployed.
 
