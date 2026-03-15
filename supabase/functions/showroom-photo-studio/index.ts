@@ -284,7 +284,9 @@ async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise
   formData.append("size", "auto")
   formData.append("quality", "high")
 
-  console.log("Calling OpenAI gpt-image-1 image edit API...")
+  formData.append("response_format", "b64_json")
+
+  console.log(`Calling OpenAI gpt-image-1 image EDIT API (endpoint: /v1/images/edits, blob size: ${imageBlob.size} bytes, response_format: b64_json)`)
   const response = await fetch("https://api.openai.com/v1/images/edits", {
     method: "POST",
     headers: {
@@ -310,7 +312,9 @@ async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise
 // ═══════════════════════════════════════════════════
 
 function buildInteriorPrompt(): string {
-  return `You are the world's best automotive photo editor and retoucher with 20 years of experience. You have worked for the most prestigious car brands, dealerships and automotive magazines worldwide — including Top Gear, AutoWeek and official manufacturer campaigns. You have an obsessive eye for detail, perfect lighting, and you know exactly how a premium car interior must look in a professional advertisement.
+  return `You are EDITING an existing photo. You are NOT generating a new image. The vehicle must remain 100% identical.
+
+You are the world's best automotive photo editor and retoucher with 20 years of experience. You have worked for the most prestigious car brands, dealerships and automotive magazines worldwide — including Top Gear, AutoWeek and official manufacturer campaigns. You have an obsessive eye for detail, perfect lighting, and you know exactly how a premium car interior must look in a professional advertisement.
 
 Your expertise combines two skills: the eye of a top automotive photographer (you know exactly what the perfect shot looks like) and the precision of a master retoucher (you can transform any raw photo into that perfect result). You never invent, fabricate or change what is already in the image — you only enhance, clean and place it in the right environment.
 
@@ -322,6 +326,19 @@ You achieve this by applying three things simultaneously:
 3. Preserve every interior detail pixel-perfect — nothing may be invented, changed or removed
 
 ---
+
+HARDE EIS #0 — VOERTUIG IDENTITEIT 100% ONGEWIJZIGD:
+You are EDITING an existing photo. You are NOT generating a new image.
+The vehicle in the output MUST be EXACTLY the same vehicle as in the input.
+✅ PRESERVE EXACTLY: make, model, brand, every badge, every logo, every emblem
+✅ PRESERVE EXACTLY: steering wheel shape, logo, buttons
+✅ PRESERVE EXACTLY: dashboard layout, gauge cluster, infotainment screen
+✅ PRESERVE EXACTLY: seat design, headrest shape, stitching, material texture
+✅ PRESERVE EXACTLY: door panel, center console, gear shifter
+❌ ABSOLUTELY FORBIDDEN: changing the car into a different brand or model
+❌ ABSOLUTELY FORBIDDEN: altering the shape of ANY interior component
+❌ ABSOLUTELY FORBIDDEN: inventing, adding, or removing ANY physical element
+If the input shows a Lynk & Co, the output MUST show a Lynk & Co. If it shows a Dacia, output MUST be a Dacia. NEVER substitute with BMW, Audi, Mercedes, or any other brand.
 
 HARDE EIS #1 — COMPOSITIE ONVERANDERD:
 Output MUST have EXACTLY the same crop, zoom, framing, and composition as the input image.
