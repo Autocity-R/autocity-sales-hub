@@ -453,28 +453,6 @@ WINDOW EDITING — PROPORTIONAL RULE:
 - Do NOT expand, extend, or complete any partially visible window
 - Do NOT generate window frames, pillars, or door panels to "complete" a window that is cut off
 
-WINDSHIELD VISIBILITY RULE — CRITICAL:
-Before editing, estimate what percentage of the windshield is visible in the original photo.
-
-- If 0-20% of the windshield is visible (only a thin strip at the top of the dashboard):
-  → Replace ONLY that thin strip with a sliver of grey showroom wall (#6B6B6B)
-  → NO ceiling track visible, NO spotlight pools — just the grey wall color filling that thin strip
-  → Do NOT generate a full windshield view. Do NOT pull back to show more windshield.
-
-- If 20-50% of the windshield is visible:
-  → Replace that portion with grey showroom wall, optionally one partial spotlight pool
-  → Still NO full windshield generation — only what was already visible
-
-- If 50-100% of the windshield is visible:
-  → Replace with full showroom wall + ceiling strip + 1-2 spotlight pools as per the showroom spec
-
-The same percentage rule applies to SIDE WINDOWS and REAR WINDOW.
-
-FORBIDDEN: Generating more windshield or window area than is visible in the original photo.
-FORBIDDEN: Zooming out to make more window area visible so the showroom fits better.
-FORBIDDEN: "Completing" a partially visible windshield by pulling the camera back.
-
-The showroom adapts to the photo — the photo does NOT adapt to the showroom.
 
 INTERIOR MIRROR: if visible, reflects the rear showroom wall with subtle warm spotlight
 EXTERIOR SIDE MIRRORS (if visible from inside): reflect the side showroom wall
@@ -572,22 +550,7 @@ OUTPUT SPECIFICATION
 - Maximum resolution, identical to input dimensions and aspect ratio
 - Exact same composition, crop, and framing as input — pixel-locked
 - Photorealistic result — indistinguishable from a real professional photograph
-- Suitable for use in automotive advertisement listings
-
-CANVAS LOCK — ABSOLUTE:
-Treat the input image as a FIXED CANVAS. You may only CHANGE pixels within this existing canvas.
-You may NOT reveal, generate, or imply anything beyond the original edges.
-
-EDGE MATCHING — MANDATORY:
-The content at every edge of the output must match the content at the same edge of the input:
-- TOP EDGE: If the input top edge shows dashboard trim or plastic → output top edge shows the same dashboard trim or plastic. NOT ceiling, NOT windshield, NOT sky.
-- BOTTOM EDGE: If the input bottom edge shows center console or seat → output bottom edge shows the same. NOT floor, NOT extra space.
-- LEFT EDGE: If the input left edge shows a door panel or seat side → output left edge shows the same. NOT a wider view of the door.
-- RIGHT EDGE: Same rule applies.
-
-If the original photo cuts off the windshield at the top: the output cuts off at the same point.
-If the original photo cuts off the side window at the edge: the output cuts off at the same point.
-FORBIDDEN: Completing, extending, or revealing any element that was cropped out of the original frame.`
+- Suitable for use in automotive advertisement listings`
 }
 
 
