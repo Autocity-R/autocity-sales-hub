@@ -1,48 +1,56 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Fix: OpenAI Image Edit API — JSON format voor gpt-image-1
 
 ## Probleem
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+De logs tonen duidelijk: **`Invalid value: 'gpt-image-1'. Value must be 'dall-e-2'.`**
 
-## Echte oorzaak (niet React deduplicatie)
+De huidige code stuurt een **multipart/form-data** request met `image[]` field. Dit is het **oude** formaat dat alleen `dall-e-2` ondersteunt.
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
-
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
-
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
-
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+OpenAI heeft voor `gpt-image-1` het edit endpoint vernieuwd: het accepteert nu een **JSON body** met een `images` array die base64 data-URLs bevat. De OPENAI_API_KEY staat gewoon in de secrets — die is niet weg.
 
 ## Oplossing
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+**Bestand:** `supabase/functions/showroom-photo-studio/index.ts` — `callOpenAIImageEdit()` (regels 267-306)
 
-### Wijzigingen
+Vervang de hele functie: van multipart/form-data naar JSON body:
 
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+```typescript
+async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise<string> {
+  const dataUrl = `data:image/png;base64,${imageBase64}`;
 
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+  const body = {
+    model: "gpt-image-1",
+    images: [{ image_url: dataUrl }],
+    prompt: prompt,
+    size: "1024x1024",
+    response_format: "b64_json",
+  };
 
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+  console.log(`Calling OpenAI gpt-image-1 image EDIT API (JSON body, image size: ${imageBase64.length} chars)`);
 
-## Verwacht resultaat
+  const response = await fetch("https://api.openai.com/v1/images/edits", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
 
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+  const data = await response.json();
+  if (!response.ok) {
+    console.error("OpenAI Image Edit error:", JSON.stringify(data));
+    throw new Error(`OpenAI fout: ${data.error?.message || JSON.stringify(data)}`);
+  }
+
+  const b64 = data.data?.[0]?.b64_json;
+  if (!b64) throw new Error("No image data received from OpenAI");
+  console.log("OpenAI gpt-image-1 edit completed successfully");
+  return b64;
+}
+```
+
+Daarna herdeploy edge function.
 
