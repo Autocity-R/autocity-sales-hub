@@ -402,6 +402,13 @@ RULE #2 — VIRTUAL SHOWROOM THROUGH WINDOWS ONLY
 The virtual photo booth environment appears ONLY through the car's glass surfaces.
 The interior of the car itself is NEVER part of the showroom.
 
+CRITICAL SCOPE LIMITATION:
+- The showroom environment is ONLY placed in areas where you can clearly see OUTDOOR scenery (sky, buildings, parking lot, trees, roads) through actual glass windows in the original photo
+- Blurred backgrounds, out-of-focus areas behind interior elements, or dark areas are NOT windows — do NOT project showroom environment into them
+- If the photo shows mostly interior with very little or no visible window area: apply ONLY retouching and lighting — do NOT force a showroom into the image
+- NEVER expand the visible window area beyond what is shown in the original
+- NEVER hallucinate additional windows, door panels, or pillars to create more surface area for the showroom
+
 SHOWROOM SPECIFICATION (identical to exterior showroom):
 - Space: 10 meters wide × 8 meters deep × 4.5 meters high
 - Car positioned in the center, approximately 3 meters from each side wall
