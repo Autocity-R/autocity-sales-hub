@@ -444,12 +444,22 @@ SHOWROOM IS COMPLETELY EMPTY:
 - No logos, no text, no signs, no branding of any kind
 - No outdoor environment, no sky, no buildings visible
 
-WINDOW VIEWS — PERSPECTIVE RULES:
-Through SIDE WINDOWS: flat showroom wall fills most of the window, wall runs parallel to the car, 1 to 2 warm spotlight pools visible
-Through WINDSHIELD: flat showroom wall fills the majority, thin strip of light grey ceiling at the absolute top edge only
-Through REAR WINDOW: flat showroom rear wall fills the majority
+WINDOW EDITING — PROPORTIONAL RULE:
+- ONLY edit the exact window area that is visible in the original photo
+- If only 10% of a window is visible in the frame, edit ONLY that 10% — do NOT reveal or generate the other 90%
+- If a window is partially cropped by the edge of the photo, keep it cropped at the exact same position
+- The showroom environment fills WHATEVER portion of the window is visible — no more, no less
+- A small sliver of visible window gets a small sliver of showroom wall — NOT a full panoramic view
+- Do NOT expand, extend, or complete any partially visible window
+- Do NOT generate window frames, pillars, or door panels to "complete" a window that is cut off
 
-INTERIOR MIRROR: reflects the rear showroom wall with subtle warm spotlight
+What to show in the visible window area:
+- Grey micro-cement wall (#6B6B6B to #787878) as the dominant element
+- 0-1 warm spotlight pool IF the visible window area is large enough to warrant it
+- Thin strip of light grey ceiling (#C8C8C8) ONLY if the very top of the windshield is visible
+- Dark floor (#3A3A3A) ONLY if the very bottom edge of a side window is visible
+
+INTERIOR MIRROR: if visible, reflects the rear showroom wall with subtle warm spotlight
 EXTERIOR SIDE MIRRORS (if visible from inside): reflect the side showroom wall
 
 ══════════════════════════════════════════════════════════
