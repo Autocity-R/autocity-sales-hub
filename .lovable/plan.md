@@ -1,48 +1,34 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Windshield Visibility Rule verwijderen + alternatieve aanpak
 
-## Probleem
+## Analyse
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+De prompt-gebaseerde aanpak werkt niet voor dit probleem. Het model negeert de instructies consequent — meer tekst toevoegen verspilt alleen tokens (~200 extra tokens per request) zonder resultaat. Het model "completeert" de scene ongeacht hoeveel FORBIDDEN-regels we toevoegen, en verandert zelfs display-content (wat een Rule #1 schending is).
 
-## Echte oorzaak (niet React deduplicatie)
+## Plan
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+### Stap 1: Verwijder de niet-werkende toevoegingen
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+Uit `supabase/functions/showroom-photo-studio/index.ts`:
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+- **Verwijder** de "WINDSHIELD VISIBILITY RULE" sectie (regels 456-477) — de percentage-gebaseerde regels
+- **Verwijder** de "CANVAS LOCK" en "EDGE MATCHING" sectie (regels 577-590) — ook niet effectief
 
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+De originele "WINDOW EDITING — PROPORTIONAL RULE" (regels 447-454) blijft behouden als basis.
 
-## Oplossing
+### Stap 2: Alternatieve aanpak overwegen
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+De prompt-weg is uitgeput. Mogelijke alternatieven:
 
-### Wijzigingen
+1. **Dashboard-shots accepteren zoals ze zijn** — voor strakke dashboard-crops gewoon geen showroom-bewerking toepassen (detecteren op basis van weinig/geen zichtbaar glas)
+2. **Minimale bewerking voor dashboard-shots** — alleen kleurcorrectie en opschoning, geen showroom-projectie
+3. **Aparte "dashboard mode"** in de UI waar de gebruiker aangeeft dat het een close-up is, met een veel simpeler prompt dat alleen opschoont zonder showroom
 
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+Elke optie vermijdt het kernprobleem: het model dwingen om NIET te doen wat het "wil" doen.
 
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
-
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
-
-## Verwacht resultaat
-
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+### Impact
+- ~200 tokens minder per interieur-request
+- Geen functionele verandering (de regels werkten toch niet)
+- Edge function herdeployment nodig
 
