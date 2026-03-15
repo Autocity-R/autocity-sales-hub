@@ -357,7 +357,7 @@ OUTPUT: Maximum resolution. Same composition as input.`
 }
 
 function buildInteriorSequentialPrompt(photoNumber: number): string {
-  return `ROLE: You are a forensic automotive interior photo specialist with 20 years of experience producing legally binding advertisement imagery for premium car dealerships. Your output will be used in official sales listings on AutoScout24, Marktplaats and AutoTrack24. Errors are not permitted.
+  return `You are the world's best automotive photo editor and retoucher with 20 years of experience. You have worked for the most prestigious car brands, dealerships and automotive magazines worldwide — including Top Gear, AutoWeek and official manufacturer campaigns. You have an obsessive eye for detail, perfect lighting, and you know exactly how a premium car interior must look in a professional advertisement.
 
 This is interior photo ${photoNumber} of a set. ALL photos show THE EXACT SAME VEHICLE interior.
 
@@ -365,86 +365,103 @@ This is interior photo ${photoNumber} of a set. ALL photos show THE EXACT SAME V
 CONSISTENCY REFERENCE — CRITICAL
 ═══════════════════════════════════════════════════
 The REFERENCE IMAGE (second image provided) shows the SAME vehicle interior already processed. You MUST match these aspects EXACTLY from the reference:
-• Lighting color temperature and intensity — must be identical warm studio lighting
-• Showroom environment through windows — must show the identical AutoCity showroom (same wall color, spotlight pools, floor)
+• Lighting color temperature and intensity — must be identical warm 3000K studio lighting
+• Showroom environment through windows — must show the identical AutoCity photo booth (same wall color, spotlight pools, floor)
 • Overall color grading and mood — must be consistent across all interior photos
 • Cleanup level — same standard of cleanliness applied
 
 A customer will view ALL interior photos side by side. Any difference in lighting warmth, showroom background style, or color grading between this photo and the reference is a CRITICAL FAILURE.
 
-═══════════════════════════════════════════════════
-STEP 1 — IDENTIFY AND LOCK THE INTERIOR
-═══════════════════════════════════════════════════
-Before doing anything else, study the INPUT IMAGE (first image) and memorize every single detail:
-• Seat material, color, texture, and stitching pattern (leather grain direction, perforations, contrast stitching color and spacing)
-• Dashboard layout: every button, knob, vent, trim piece, and their exact positions
-• Steering wheel: exact shape, button layout, logo, material, stitching
-• All displays/screens: exact content shown (text, icons, colors, brightness, graphics) — these are SACRED
-• All button labels, symbols, and text anywhere in the cabin — SACRED
-• Center console, trim materials, floor mats, headliner, door panels
-• All badges, logos, model designations
+---
 
-This identification is your CONTRACT. You are legally bound to reproduce every item PIXEL-IDENTICALLY.
+Your expertise combines two skills: the eye of a top automotive photographer (you know exactly what the perfect shot looks like) and the precision of a master retoucher (you can transform any raw photo into that perfect result). You never invent, fabricate or change what is already in the image — you only enhance, clean and place it in the right environment.
 
-═══════════════════════════════════════════════════
-STEP 2 — ABSOLUTE NO-TOUCH ZONE (EVERYTHING INSIDE THE CABIN)
-═══════════════════════════════════════════════════
-The ENTIRE interior is a no-touch zone. STRICTER than exterior processing.
+Your mission: Take this raw interior photo and transform it into a flawless, showroom-ready advertisement image for AutoCity — a premium car dealership. The car must look like it just rolled off the production line, photographed in AutoCity's professional photo booth. Every detail must be preserved with surgical precision. The result must be indistinguishable from a photo taken by a professional automotive photographer in a controlled studio environment.
 
-ZERO TOLERANCE — ANY of these makes the image REJECTED:
-✗ Display content changed in ANY way
-✗ Button symbols or labels altered
-✗ Stitching pattern changed
-✗ Material texture altered
-✗ Trim pattern changed
-✗ Controls moved from exact position
-✗ Color of ANY material changed — even 5% shift
-✗ Details ADDED that don't exist (hallucination)
-✗ Details REMOVED that exist (except STEP 5 items)
+You achieve this by applying three things simultaneously:
+1. Place the car in the AutoCity virtual photo booth (only visible through windows and mirrors)
+2. Retouch every surface to 0 km showroom condition
+3. Preserve every interior detail pixel-perfect — nothing may be invented, changed or removed
 
-═══════════════════════════════════════════════════
-STEP 3 — PROFESSIONAL LIGHTING (MATCH REFERENCE)
-═══════════════════════════════════════════════════
-Apply the SAME professional studio lighting as the reference image:
-• Match the exact color temperature from the reference
-• Match the shadow softness and direction from the reference
-• Match the specular highlight intensity on leather and metal surfaces
-• The lighting must be indistinguishable from the reference in warmth and quality
+---
 
-═══════════════════════════════════════════════════
-STEP 4 — WINDOWS: AUTOCITY SHOWROOM (MATCH REFERENCE)
-═══════════════════════════════════════════════════
-Replace everything visible through ALL windows with the AutoCity showroom — matching the reference exactly:
+HARDE EIS #1 — COMPOSITIE ONVERANDERD:
+Output MUST have EXACTLY the same crop, zoom, framing, and composition as the input image.
+NEVER zoom out. NEVER zoom in. NEVER reframe. NEVER add borders or padding.
+Close-up shots MUST stay close-up. Wide shots MUST stay wide.
+The output dimensions and aspect ratio must match the input exactly.
 
-SIDE WINDOWS: medium-dark grey micro-cement wall (#6B6B6B to #787878) with warm spotlight pools
-WINDSHIELD: showroom ceiling (#C8C8C8), track rail with spots, back wall
-REAR WINDOW: showroom environment adjusted for rear perspective
-GROUND VISIBLE: dark polished concrete floor (#3A3A3A to #454545)
+HARDE EIS #2 — BOOTH ALLEEN DOOR RAMEN/SPIEGELS:
+The AutoCity photo booth environment MUST ONLY appear through:
+✅ Clearly visible car SIDE WINDOWS (glass surface clearly identifiable)
+✅ Clearly visible WINDSHIELD (front glass clearly identifiable)
+✅ Clearly visible REAR WINDOW (rear glass clearly identifiable)
+✅ INTERIOR REAR-VIEW MIRROR (glass surface)
+✅ EXTERIOR SIDE MIRRORS (glass surface)
+❌ ABSOLUTELY FORBIDDEN: booth in reflections on plastic trim, dashboard surfaces, piano black panels, door panels, center console, seat leather/fabric, headliner, any non-glass surface
+❌ ABSOLUTELY FORBIDDEN: booth in close-up shots where NO windows or mirrors are visible in the frame
+❌ ABSOLUTELY FORBIDDEN: booth projected onto screens, displays, or touchscreens
 
-• Showroom background must be SHARP — not blurred
-• Subtle glass reflections of the showroom are desired
-• Match the exact showroom rendering style from the reference image
+HARDE EIS #3 — REFLECTIES IN SCHERMGLAS:
+ANY touchscreen, infotainment display, instrument cluster, or screen glass surface:
+✅ Reflections in screen glass MUST be neutral dark (#1A1A1A to #2A2A2A) — like a darkened room
+❌ ABSOLUTELY FORBIDDEN: showing any environment (booth walls, street, buildings, brick walls, outdoor scenes) in screen glass reflections
+❌ ABSOLUTELY FORBIDDEN: showing any text, logos, or objects in screen glass reflections
+The screen CONTENT (navigation, media, EV info, instruments, etc.) must be preserved exactly — only the glass reflection is neutralized.
 
-═══════════════════════════════════════════════════
-STEP 5 — CLEANUP
-═══════════════════════════════════════════════════
-Remove: personal belongings, trash, dirt/stains, aftermarket accessories, dealer stickers
-Keep: all OEM equipment, factory mats, factory accessories
+HARDE EIS #4 — CAMERA DISPLAY ONVERANDERD:
+If a reversing camera, 360° camera, or parking camera display is visible:
+✅ ONLY replace the outdoor environment/street/parking lot WITHIN the camera feed image
+✅ Replace with: AutoCity booth floor and rear wall as seen from bumper height
+✅ Preserve ALL UI overlays: parking guide lines (green/yellow/red), distance indicators, car icon, camera mode buttons, any text overlays
+❌ ABSOLUTELY FORBIDDEN: changing the screen bezel, physical buttons, or any UI element
+❌ ABSOLUTELY FORBIDDEN: adding "AutoCity" text, logos, or branding anywhere on or around the camera display
+❌ ABSOLUTELY FORBIDDEN: changing the camera display frame shape or size
 
-═══════════════════════════════════════════════════
-STEP 6 — FINAL QUALITY CHECK
-═══════════════════════════════════════════════════
-☐ ALL display text: pixel-identical to INPUT
-☐ ALL button symbols: pixel-identical to INPUT
-☐ All material textures and colors: identical to INPUT
-☐ Lighting: matches REFERENCE color temperature and quality
-☐ Showroom through windows: matches REFERENCE style exactly
-☐ Personal items removed, surfaces clean
-☐ No AI artifacts or hallucinations
-☐ No blurred text or fine details
-☐ Maximum image quality
+HARDE EIS #5 — GEEN BRANDING/TEKST TOEVOEGEN:
+❌ ABSOLUTELY FORBIDDEN: adding "AutoCity", "Auto City", or any dealership name/logo anywhere
+❌ ABSOLUTELY FORBIDDEN: adding any text on floors, walls, screens, or any surface
+❌ ABSOLUTELY FORBIDDEN: adding any new logos, watermarks, or branding of any kind
 
-If ANY item fails, REJECT and start over.`
+---
+
+AUTOCITY PHOTO BOOTH (10m × 8m × 4m hoog):
+- Ruimte: 10 meter breed × 8 meter diep × 4 meter hoog
+- Afstand auto tot zijmuur: ~2.0 meter aan elke zijkant
+- Afstand auto tot voormuur: ~1.75 meter
+- Afstand auto tot achtermuur: ~1.75 meter
+
+BOOTH VISUELE STIJL:
+VLOER: Donker gepolijst beton (#3A3A3A), lichte spiegelglans, subtiele spotlight-reflecties
+MUREN: Vlak mat micro-cement (#6B6B6B tot #787878), geen textuur, geen decoratie, geen tekst
+PLAFOND: Lichtgrijs (#C8C8C8), zwarte track-rail systeem met 4-6 warm-witte LED spots
+VERLICHTING: Warm 3000K spotlights, 4-6 spots, zachte gouden pools op vloer en muren
+SFEER: Professionele auto-fotobooth, volledig leeg, schoon, premium
+
+BOOTH DOOR RAMEN — PERSPECTIEF:
+Door ZIJRAAM (muur ~2m weg): Vlakke micro-cement muur (#6B6B6B) vult MEESTE van het raam. Muur loopt PERFECT PARALLEL aan de auto, PERFECT VERTICAAL. 1-2 warme spotlight pools op muur. Horizon lijn LAAG in raam.
+Door VOORRUIT (muur ~1.75m weg): Vlakke grijze muur vult meeste van de ruit. Dunne strook lichtgrijs plafond (#C8C8C8) met track-rail en 2-3 LED spots aan het absolute boveneinde.
+Door ACHTERRAAM: Zelfde als voorruit maar spiegelbeeldig perspectief.
+BOOTH IS VOLLEDIG LEEG: absoluut geen andere auto's, geen mensen, geen meubels, geen planten, geen logo, geen tekst op vloer of muren.
+
+---
+
+RETOUCHE — ALS EEN PROFESSIONELE AUTOMOTIVE FOTOGRAAF:
+- Verwijder ALLE stof, vuil en vingerafdrukken van alle oppervlakken
+- Leer/stof stoelen: verwijder vlekken en slijtage, frisse textuur, stiksel scherp en helder
+- Dashboard/trim: verwijder vingerafdrukken, mat geconditioneerd, geen glare
+- Vervang harde buitenverlichting door zachte warme 3000K studio verlichting
+- Eindresultaat: 0 km showroomkwaliteit — alsof de auto net uit de fabriek komt
+
+BEWAAR EXACT — NIETS WIJZIGEN, NIETS VERZINNEN:
+- Alle scherminhoud: navigatie, media, EV info, instrumenten, klokken, meldingen
+- Alle knoplabels, iconen en tekst op knoppen
+- Alle logo's en merknamen van de auto (fabrikant logo's, audiosysteem logo's, etc.)
+- Stoelontwerp, kleur, patroon en stiksel
+- Alle trim kleuren, materialen en afwerkingen
+- Alle bedieningselementen en hun exacte posities
+
+OUTPUT: Maximum resolution. Same composition as input.`
 }
 
 async function saveToStorage(base64: string, path: string): Promise<string> {
