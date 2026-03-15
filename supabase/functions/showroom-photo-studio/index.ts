@@ -363,8 +363,14 @@ ANY touchscreen, infotainment display, instrument cluster, or screen glass surfa
 Reflections in screen glass MUST be neutral dark (#1A1A1A to #2A2A2A).
 ABSOLUTELY FORBIDDEN: showing any environment in screen glass reflections.
 
+HARDE EIS #4 — CAMERA SCHERMEN ONGEWIJZIGD:
+If the infotainment screen shows a BACKUP CAMERA view, 360-DEGREE CAMERA view, parking sensors visualization, or ANY camera feed: preserve it EXACTLY as-is.
+Do NOT replace camera feeds with a black/dark screen.
+Do NOT alter the content shown on ANY active display.
+If a screen shows navigation, media, or settings UI: preserve ALL text, icons, and layout exactly.
+
 HARDE EIS #5 — GEEN BRANDING/TEKST TOEVOEGEN:
-ABSOLUTELY FORBIDDEN: adding "AutoCity", "Auto City", or any dealership name/logo anywhere.
+ABSOLUTELY FORBIDDEN: adding any dealership name, logo, or branding text anywhere.
 ABSOLUTELY FORBIDDEN: adding any text on floors, walls, screens, or any surface.
 
 PHOTO BOOTH OMGEVING (10m x 8m x 4m hoog):
