@@ -365,6 +365,8 @@ CRITICAL — CLOSE-UP AND DETAIL PHOTOS:
 - If only a small sliver of window or blurred background is visible behind the subject, replace ONLY that small visible area — do NOT expand it
 - The edges and boundaries of the output image must contain the SAME content as the edges of the input image — never generate new content at the borders
 - If no window is clearly visible in the photo: do NOT add any showroom environment — only apply retouching (Rule #5) and lighting correction (Rule #4)
+- Seeing a PARTIAL window in a close-up does NOT mean you should zoom out to show the FULL window — edit only the visible portion and keep everything else exactly as-is
+- The amount of visible showroom must be PROPORTIONAL to the amount of visible window in the original — a tiny window sliver means a tiny showroom sliver
 
 ══════════════════════════════════════════════════════════
 RULE #1 — VEHICLE INTERIOR 100% UNCHANGED
@@ -385,7 +387,13 @@ STEERING WHEEL:
 DASHBOARD AND INFOTAINMENT:
 - Dashboard layout, gauge cluster design, and all physical controls — identical
 - Infotainment screen: preserve the exact screen UI, icons, and layout visible in the input
+- ALL buttons, knobs, dials, switches, touch controls, and physical controls MUST remain pixel-identical
+- ALL information displays, gauge readings, warning lights, and indicator icons MUST show the exact same content as the input
+- Climate control settings, temperature readings, fan speed indicators — all identical
+- Steering wheel buttons, scroll wheels, and paddle shifters — all identical
 - FORBIDDEN: Changing the dashboard shape or layout
+- FORBIDDEN: Changing any button label, icon, or display reading
+- FORBIDDEN: Altering the content shown on any screen or display
 
 SEATS AND UPHOLSTERY:
 - Seat shape, headrest design, stitching pattern, material texture, and color — all identical
@@ -436,12 +444,22 @@ SHOWROOM IS COMPLETELY EMPTY:
 - No logos, no text, no signs, no branding of any kind
 - No outdoor environment, no sky, no buildings visible
 
-WINDOW VIEWS — PERSPECTIVE RULES:
-Through SIDE WINDOWS: flat showroom wall fills most of the window, wall runs parallel to the car, 1 to 2 warm spotlight pools visible
-Through WINDSHIELD: flat showroom wall fills the majority, thin strip of light grey ceiling at the absolute top edge only
-Through REAR WINDOW: flat showroom rear wall fills the majority
+WINDOW EDITING — PROPORTIONAL RULE:
+- ONLY edit the exact window area that is visible in the original photo
+- If only 10% of a window is visible in the frame, edit ONLY that 10% — do NOT reveal or generate the other 90%
+- If a window is partially cropped by the edge of the photo, keep it cropped at the exact same position
+- The showroom environment fills WHATEVER portion of the window is visible — no more, no less
+- A small sliver of visible window gets a small sliver of showroom wall — NOT a full panoramic view
+- Do NOT expand, extend, or complete any partially visible window
+- Do NOT generate window frames, pillars, or door panels to "complete" a window that is cut off
 
-INTERIOR MIRROR: reflects the rear showroom wall with subtle warm spotlight
+What to show in the visible window area:
+- Grey micro-cement wall (#6B6B6B to #787878) as the dominant element
+- 0-1 warm spotlight pool IF the visible window area is large enough to warrant it
+- Thin strip of light grey ceiling (#C8C8C8) ONLY if the very top of the windshield is visible
+- Dark floor (#3A3A3A) ONLY if the very bottom edge of a side window is visible
+
+INTERIOR MIRROR: if visible, reflects the rear showroom wall with subtle warm spotlight
 EXTERIOR SIDE MIRRORS (if visible from inside): reflect the side showroom wall
 
 ══════════════════════════════════════════════════════════
