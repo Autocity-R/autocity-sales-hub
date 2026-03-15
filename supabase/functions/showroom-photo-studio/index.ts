@@ -458,8 +458,11 @@ PRESERVE ALL screen UI elements:
 
 REPLACE ONLY the background environment in the camera feed:
 - Replace outdoor/parking scenery with the EMPTY showroom floor and walls
-- Camera feed shows ONLY: dark polished concrete floor (#3A3A3A) and grey micro-cement walls (#6B6B6B to #787878) with warm spotlight pools
-- For bird's-eye / 360° top-down view: show the car silhouette from above on the dark concrete floor, same as original but floor and surrounding walls replaced with showroom
+- The showroom in the camera feed must respect the REAL dimensions: 10m wide × 8m deep × 4.5m high
+- REVERSE CAMERA view: the camera is at the rear of the car looking back — show approximately 4 meters of dark concrete floor before hitting the rear wall, wall fills upper 40-50% of the camera feed, 1-2 large warm spotlight pools on the wall, ceiling NOT visible (camera angle too low)
+- BIRD'S-EYE / 360° TOP-DOWN view: show the car silhouette from above on dark concrete floor, walls visible at all 4 edges approximately 3-4 meters from the car, 2-3 spotlight pools on each visible wall
+- Side camera views: show the side wall approximately 3 meters away, 1-2 warm spotlight pools
+- The showroom must look SMALL and INTIMATE — not like a warehouse or aircraft hangar
 
 ABSOLUTELY FORBIDDEN:
 - Rendering a separate or different car in the camera feed
