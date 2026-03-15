@@ -282,8 +282,6 @@ async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise
   formData.append("image[]", imageBlob, "photo.png")
   formData.append("prompt", prompt)
   formData.append("size", "auto")
-  formData.append("quality", "high")
-
   formData.append("response_format", "b64_json")
 
   console.log(`Calling OpenAI gpt-image-1 image EDIT API (endpoint: /v1/images/edits, blob size: ${imageBlob.size} bytes, response_format: b64_json)`)
