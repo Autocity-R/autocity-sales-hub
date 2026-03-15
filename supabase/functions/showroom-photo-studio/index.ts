@@ -365,6 +365,8 @@ CRITICAL — CLOSE-UP AND DETAIL PHOTOS:
 - If only a small sliver of window or blurred background is visible behind the subject, replace ONLY that small visible area — do NOT expand it
 - The edges and boundaries of the output image must contain the SAME content as the edges of the input image — never generate new content at the borders
 - If no window is clearly visible in the photo: do NOT add any showroom environment — only apply retouching (Rule #5) and lighting correction (Rule #4)
+- Seeing a PARTIAL window in a close-up does NOT mean you should zoom out to show the FULL window — edit only the visible portion and keep everything else exactly as-is
+- The amount of visible showroom must be PROPORTIONAL to the amount of visible window in the original — a tiny window sliver means a tiny showroom sliver
 
 ══════════════════════════════════════════════════════════
 RULE #1 — VEHICLE INTERIOR 100% UNCHANGED
