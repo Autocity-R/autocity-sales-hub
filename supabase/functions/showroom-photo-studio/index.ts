@@ -367,7 +367,7 @@ HARDE EIS #5 — GEEN BRANDING/TEKST TOEVOEGEN:
 ABSOLUTELY FORBIDDEN: adding "AutoCity", "Auto City", or any dealership name/logo anywhere.
 ABSOLUTELY FORBIDDEN: adding any text on floors, walls, screens, or any surface.
 
-AUTOCITY PHOTO BOOTH (10m x 8m x 4m hoog):
+PHOTO BOOTH OMGEVING (10m x 8m x 4m hoog):
 VLOER: Donker gepolijst beton (#3A3A3A), lichte spiegelglans, subtiele spotlight-reflecties
 MUREN: Vlak mat micro-cement (#6B6B6B tot #787878), geen textuur, geen decoratie, geen tekst
 PLAFOND: Lichtgrijs (#C8C8C8), zwarte track-rail systeem met 4-6 warm-witte LED spots
