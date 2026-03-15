@@ -387,7 +387,13 @@ STEERING WHEEL:
 DASHBOARD AND INFOTAINMENT:
 - Dashboard layout, gauge cluster design, and all physical controls — identical
 - Infotainment screen: preserve the exact screen UI, icons, and layout visible in the input
+- ALL buttons, knobs, dials, switches, touch controls, and physical controls MUST remain pixel-identical
+- ALL information displays, gauge readings, warning lights, and indicator icons MUST show the exact same content as the input
+- Climate control settings, temperature readings, fan speed indicators — all identical
+- Steering wheel buttons, scroll wheels, and paddle shifters — all identical
 - FORBIDDEN: Changing the dashboard shape or layout
+- FORBIDDEN: Changing any button label, icon, or display reading
+- FORBIDDEN: Altering the content shown on any screen or display
 
 SEATS AND UPHOLSTERY:
 - Seat shape, headrest design, stitching pattern, material texture, and color — all identical
