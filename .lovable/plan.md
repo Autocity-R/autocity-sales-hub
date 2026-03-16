@@ -1,42 +1,48 @@
 
 
-# Professionele fotografiekwaliteit toevoegen aan exterieur prompts
+# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
 
 ## Probleem
-De huidige exterieur prompts missen instructies over belichting, contrast, kleurdiepte en scherpte. Resultaat: overbelichte, wazige foto's zonder professionele punch (zoals te zien in de geüploade voorbeelden).
 
-## Wijziging
+Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
 
-**Bestand:** `supabase/functions/showroom-photo-studio/index.ts`
+## Echte oorzaak (niet React deduplicatie)
 
-### 1. Nieuw STEP 5B invoegen in `buildFirstPhotoPrompt()` (na regel 119, voor STEP 6)
+Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
 
-Tussen STEP 5 (Cleanup) en STEP 6 (Final Quality Check) een nieuw blok:
+- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
+- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
+- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
 
-```
-STEP 5B — PROFESSIONAL AUTOMOTIVE PHOTOGRAPHY GRADE
-```
+In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
 
-Met expliciete instructies voor:
-- **Exposure**: diepe zwarten (#0A0A0A–#151515), geen uitgeblazen highlights (max #F0F0F0), liever iets onder- dan overbelicht
-- **Contrast**: sterke micro-contrast op carrosserie, diepe schaduwen onder auto en wielkasten, S-curve tonaal profiel
-- **Kleur**: rijke verzadigde lakkleuren, warme kleurtemperatuur (3200K–3500K), geen kleurzweem op carrosserie
-- **Scherpte**: messcherpe randen, leesbare badges, geen waas/blur/ruis, lichte achtergrond-softness voor diepte
-- **Reflecties**: zichtbare spotlight-reflecties op lak, scherpe speculaire highlights op chroom, geen glans op matte materialen
+In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
 
-### 2. Identiek STEP 5B invoegen in `buildSequentialPrompt()` (na regel 240, voor STEP 6)
+## Oplossing
 
-Exact dezelfde tekst, zodat alle foto's in de set dezelfde kwaliteitsstandaard hebben.
+Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
+- Gebruikt compatibele Radix versies (geen nested node_modules meer)
+- Verwijdert de `@babel/runtime` dependency
+- Lost het context-conflict op
 
-### 3. STEP 6 uitbreiden in beide functies
+### Wijzigingen
 
-5 extra checkpunten toevoegen aan de Final Quality Check:
-- Geen overbelichte/uitgeblazen gebieden
-- Sterke micro-contrast op bodypanelen
-- Rijke, verzadigde lakkleuren
-- Messcherpe randen en badges
-- Zichtbare spotlight-reflecties op carrosserie
+**Bestand: `package.json`**
+- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
 
-### Deployment
-Edge function wordt automatisch opnieuw gedeployed na de wijziging.
+**Bestand: `src/components/ui/command.tsx`**
+- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+
+**Bestand: `vite.config.ts`**
+- De bestaande `dedupe` configuratie blijft als extra veiligheid
+- Toevoegen van Radix interne pakketten aan dedupe als fallback:
+  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+
+## Verwacht resultaat
+
+Na upgrade en publicatie:
+- Klantenlijst is weer klikbaar en scrollbaar
+- Selecteren van klanten werkt correct
+- Data wordt opgeslagen
+- Werkt zowel in preview als op de gepubliceerde website
 

@@ -119,6 +119,42 @@ Before finalizing, perform these cleanup operations:
 • Do NOT remove: manufacturer badges, trim strips, roof rails, mirror caps, or any factory-fitted equipment
 
 ═══════════════════════════════════════════════════
+STEP 5B — PROFESSIONAL AUTOMOTIVE PHOTOGRAPHY GRADE
+═══════════════════════════════════════════════════
+The final image must look like it was shot by a professional automotive photographer with a full-frame camera and processed in Capture One / Lightroom. Apply these standards:
+
+EXPOSURE & TONE:
+• Rich, deep blacks — black point at #0A0A0A to #151515, never washed-out grey
+• No blown-out highlights anywhere — the brightest white must not exceed #F0F0F0
+• Overall exposure: slightly underexpose rather than overexpose — dark and moody is better than bright and flat
+• The histogram should show a full tonal range with emphasis on the darker half
+
+CONTRAST & DEPTH:
+• Strong micro-contrast on the car body — every panel line, body crease, and surface detail must pop
+• Deep shadows under the car, in wheel arches, and between body panels
+• The car must have 3D depth and volume — NOT a flat, evenly-lit cutout
+• Apply an S-curve tone: lift shadow detail slightly, compress mid-tones, roll off highlights smoothly
+
+COLOR & SATURATION:
+• Paint color must be rich and saturated — metallic flake must sparkle, solid colors must be vivid
+• Color temperature: warm (3200K–3500K) — the showroom light is warm, not clinical white
+• No color cast on the car body — the paint must read as its true color under warm light
+• Floor and walls maintain their neutral grey — only the spotlight pools have warm tint
+
+SHARPNESS & DETAIL:
+• Every edge of the car must be razor-sharp — no softness, no blur, no haze
+• You must be able to read badge text clearly at full zoom
+• Wheel spokes, grille mesh, and headlight internals must be tack-sharp
+• The background (walls, floor) can be very slightly softer than the car to create natural depth-of-field separation
+• No noise, no grain, no compression artifacts
+
+REFLECTIONS & GLOSS:
+• Metallic and gloss paint must show clear, defined reflections of the ceiling spotlights
+• The spotlight reflections on the car body are key to making it look physically present
+• Chrome and polished metal trim must have bright, sharp specular highlights
+• Matte/satin surfaces (plastic trim, rubber) must NOT have glossy reflections
+
+═══════════════════════════════════════════════════
 STEP 6 — FINAL QUALITY CHECK
 ═══════════════════════════════════════════════════
 Before delivering the output, verify:
@@ -135,6 +171,11 @@ Before delivering the output, verify:
 ☐ AutoCity board: present on bumper (if bumper visible), correct design
 ☐ No stickers or advertising on car body
 ☐ Image resolution: maximum quality, no compression artifacts
+☐ Exposure: no overexposed or blown-out areas — deep blacks, controlled highlights
+☐ Contrast: strong micro-contrast on body panels, visible panel lines and creases
+☐ Color: paint color is rich and saturated, not washed out or faded
+☐ Sharpness: all car edges razor-sharp, badges legible, no blur or haze
+☐ Reflections: ceiling spotlight reflections visible on car body panels
 
 If any item above fails, the image is rejected. The output must pass all checks.`
 }
@@ -240,6 +281,42 @@ Before finalizing, perform these cleanup operations:
 • Do NOT remove: manufacturer badges, trim strips, roof rails, mirror caps, or any factory-fitted equipment
 
 ═══════════════════════════════════════════════════
+STEP 5B — PROFESSIONAL AUTOMOTIVE PHOTOGRAPHY GRADE
+═══════════════════════════════════════════════════
+The final image must look like it was shot by a professional automotive photographer with a full-frame camera and processed in Capture One / Lightroom. Apply these standards:
+
+EXPOSURE & TONE:
+• Rich, deep blacks — black point at #0A0A0A to #151515, never washed-out grey
+• No blown-out highlights anywhere — the brightest white must not exceed #F0F0F0
+• Overall exposure: slightly underexpose rather than overexpose — dark and moody is better than bright and flat
+• The histogram should show a full tonal range with emphasis on the darker half
+
+CONTRAST & DEPTH:
+• Strong micro-contrast on the car body — every panel line, body crease, and surface detail must pop
+• Deep shadows under the car, in wheel arches, and between body panels
+• The car must have 3D depth and volume — NOT a flat, evenly-lit cutout
+• Apply an S-curve tone: lift shadow detail slightly, compress mid-tones, roll off highlights smoothly
+
+COLOR & SATURATION:
+• Paint color must be rich and saturated — metallic flake must sparkle, solid colors must be vivid
+• Color temperature: warm (3200K–3500K) — the showroom light is warm, not clinical white
+• No color cast on the car body — the paint must read as its true color under warm light
+• Floor and walls maintain their neutral grey — only the spotlight pools have warm tint
+
+SHARPNESS & DETAIL:
+• Every edge of the car must be razor-sharp — no softness, no blur, no haze
+• You must be able to read badge text clearly at full zoom
+• Wheel spokes, grille mesh, and headlight internals must be tack-sharp
+• The background (walls, floor) can be very slightly softer than the car to create natural depth-of-field separation
+• No noise, no grain, no compression artifacts
+
+REFLECTIONS & GLOSS:
+• Metallic and gloss paint must show clear, defined reflections of the ceiling spotlights
+• The spotlight reflections on the car body are key to making it look physically present
+• Chrome and polished metal trim must have bright, sharp specular highlights
+• Matte/satin surfaces (plastic trim, rubber) must NOT have glossy reflections
+
+═══════════════════════════════════════════════════
 STEP 6 — FINAL QUALITY CHECK
 ═══════════════════════════════════════════════════
 Before delivering the output, verify:
@@ -256,6 +333,11 @@ Before delivering the output, verify:
 ☐ AutoCity board: present on bumper (if bumper visible), PIXEL-PERFECT copy from reference
 ☐ No stickers or advertising on car body
 ☐ Image resolution: maximum quality, no compression artifacts
+☐ Exposure: no overexposed or blown-out areas — deep blacks, controlled highlights
+☐ Contrast: strong micro-contrast on body panels, visible panel lines and creases
+☐ Color: paint color is rich and saturated, not washed out or faded
+☐ Sharpness: all car edges razor-sharp, badges legible, no blur or haze
+☐ Reflections: ceiling spotlight reflections visible on car body panels
 
 If any item above fails, the image is rejected. The output must pass all checks.`
 }
