@@ -333,133 +333,109 @@ async function callOpenAIImageEdit(imageBase64: string, prompt: string): Promise
 // ═══════════════════════════════════════════════════
 
 function buildInteriorPrompt(): string {
-  return `You are EDITING an existing car interior photo. You are NOT generating a new image.
+  return `You are a photo retouching specialist. Your ONLY task is to retouch the pixels already present in this photo. You are NOT a photographer. You do NOT have a camera. You CANNOT move, zoom, or reframe.
 
-This is a PHOTO EDITING task, not a generation task.
-
-══════════════════════════════════════════════════════════
-RULE #0 — ABSOLUTE PRIORITY: PIXEL-LOCK COMPOSITION
-══════════════════════════════════════════════════════════
-
-Think of this as a transparent overlay: the entire car interior stays pixel-locked.
-Only the environment visible THROUGH the windows changes.
-
-The EXACT pixel position of every interior object must remain unchanged:
-- If the steering wheel is at position X,Y in the input, it must be at X,Y in the output
-- If the dashboard fills the lower 60% of the frame, it must fill the lower 60% in the output
-- Do NOT correct lens distortion, do NOT straighten lines, do NOT "improve" composition
-- If the photo is slightly tilted: KEEP IT TILTED
-- If one side has more space than the other: KEEP IT THAT WAY
-- Do NOT zoom in or out even 1%
-- Do NOT shift the camera angle even 1 degree
-
-FORBIDDEN: Changing the shooting angle in any way
-FORBIDDEN: Zooming in or out
-FORBIDDEN: Reframing or recomposing the shot
-FORBIDDEN: "Improving" the composition — preserve it exactly as shot
-
-CRITICAL — CLOSE-UP AND DETAIL PHOTOS:
-- If the photo is a close-up of a specific interior element (steering wheel, gear shifter, seat detail, badge, controls), the output MUST remain a close-up with the EXACT same framing
-- Do NOT zoom out to reveal more of the interior
-- Do NOT add or hallucinate interior elements (door panels, windows, seats, pillars) that are NOT visible in the original photo
-- If only a small sliver of window or blurred background is visible behind the subject, replace ONLY that small visible area — do NOT expand it
-- The edges and boundaries of the output image must contain the SAME content as the edges of the input image — never generate new content at the borders
-- If no window is clearly visible in the photo: do NOT add any showroom environment — only apply retouching (Rule #5) and lighting correction (Rule #4)
-- Seeing a PARTIAL window in a close-up does NOT mean you should zoom out to show the FULL window — edit only the visible portion and keep everything else exactly as-is
-- The amount of visible showroom must be PROPORTIONAL to the amount of visible window in the original — a tiny window sliver means a tiny showroom sliver
+CORE PRINCIPLE — READ THIS FIRST:
+Imagine the input photo is printed on paper and placed in front of you. You have retouching tools (brushes, color correction, background replacement within existing areas). You CANNOT add paper around the edges. You CANNOT show what is behind the camera. You work ONLY within the existing paper boundaries.
 
 ══════════════════════════════════════════════════════════
-RULE #1 — VEHICLE INTERIOR 100% UNCHANGED
+RULE #0 — FIXED CANVAS: THE ONLY ABSOLUTE RULE
 ══════════════════════════════════════════════════════════
 
-Every single element inside the car MUST be preserved exactly:
+The input image is a FIXED CANVAS. Every pixel in the output corresponds to the EXACT same pixel position in the input.
 
-BADGES AND LOGOS (CRITICAL):
+EDGE ANCHORING — MANDATORY:
+- TOP EDGE of output = TOP EDGE of input. If input top edge shows dashboard trim: output top edge shows dashboard trim. NOT windshield. NOT ceiling. NOT sky.
+- BOTTOM EDGE of output = BOTTOM EDGE of input. If input bottom edge shows center console: output shows center console. NOT floor. NOT extra space.
+- LEFT EDGE of output = LEFT EDGE of input. Same content, same crop.
+- RIGHT EDGE of output = RIGHT EDGE of input. Same content, same crop.
+
+If the windshield is NOT visible in the input: the windshield is NOT visible in the output.
+If the car ceiling is NOT visible in the input: the car ceiling is NOT visible in the output.
+If door panels are NOT visible in the input: door panels are NOT visible in the output.
+If side windows are NOT visible in the input: side windows are NOT visible in the output.
+
+FORBIDDEN: Revealing any element that was outside the original frame.
+FORBIDDEN: Zooming out even 1 pixel.
+FORBIDDEN: Reframing, recomposing, or "completing" the scene.
+FORBIDDEN: Correcting lens distortion or straightening lines.
+
+══════════════════════════════════════════════════════════
+RULE #1 — VEHICLE INTERIOR: PRESERVE EVERYTHING
+══════════════════════════════════════════════════════════
+
+Every physical element inside the car is FROZEN. You may only clean and relight it — never change its shape, color, or content.
+
+BADGES AND LOGOS (HIGHEST PRIORITY):
 - Every badge, emblem, and logo on seats, headrests, steering wheel, dashboard, and door panels MUST remain exactly as in the input
 - The exact letter shapes, spacing, and chrome finish MUST be preserved pixel-perfect
-- FORBIDDEN: Changing any badge text (e.g. LYNK&CO must remain LYNK&CO — not LYMK&CO, not LINAGCO, not any variation)
+- A badge reading "LYNK&CO" must output "LYNK&CO" — not LYMK&CO, not LINAGCO, not any variation
 - FORBIDDEN: Inventing new text or logos anywhere
 
-STEERING WHEEL:
+STEERING WHEEL — FROZEN:
 - Shape, logo, button layout, stitching color and pattern — all identical
 - FORBIDDEN: Changing the steering wheel design in any way
 
-DASHBOARD AND INFOTAINMENT:
+DASHBOARD AND ALL CONTROLS — FROZEN:
 - Dashboard layout, gauge cluster design, and all physical controls — identical
-- Infotainment screen: preserve the exact screen UI, icons, and layout visible in the input
-- ALL buttons, knobs, dials, switches, touch controls, and physical controls MUST remain pixel-identical
-- ALL information displays, gauge readings, warning lights, and indicator icons MUST show the exact same content as the input
+- Every button, knob, dial, switch, touch control — shape, color, position, and label all preserved
+- Infotainment screen: preserve the exact screen UI, map view, navigation route, menu state, icons — pixel-identical
+- Instrument cluster: preserve exact gauges, needles, warning lights, digital displays exactly as shown
 - Climate control settings, temperature readings, fan speed indicators — all identical
-- Steering wheel buttons, scroll wheels, and paddle shifters — all identical
-- FORBIDDEN: Changing the dashboard shape or layout
-- FORBIDDEN: Changing any button label, icon, or display reading
-- FORBIDDEN: Altering the content shown on any screen or display
+- FORBIDDEN: Changing the dashboard shape, layout, or any individual control
+- FORBIDDEN: Changing what is displayed on any screen or instrument cluster
 
-SEATS AND UPHOLSTERY:
+SEATS AND UPHOLSTERY — FROZEN:
 - Seat shape, headrest design, stitching pattern, material texture, and color — all identical
 - FORBIDDEN: Changing seat color, material, or stitching
 
-INTERIOR DETAILS:
+ALL OTHER INTERIOR ELEMENTS — FROZEN:
 - Center console, gear shifter shape, door panels, ambient lighting strips — all identical
 - FORBIDDEN: Adding, removing, or altering any physical component inside the car
 
 ══════════════════════════════════════════════════════════
-RULE #2 — VIRTUAL SHOWROOM THROUGH WINDOWS ONLY
+RULE #2 — WINDOW REPLACEMENT: ONLY WHAT IS ALREADY VISIBLE
 ══════════════════════════════════════════════════════════
 
-The virtual photo booth environment appears ONLY through the car's glass surfaces.
-The interior of the car itself is NEVER part of the showroom.
+The showroom environment appears ONLY in pixels where outdoor scenery (sky, buildings, parking lot, trees) is currently visible through actual glass windows in the input photo.
 
-CRITICAL SCOPE LIMITATION:
-- The showroom environment is ONLY placed in areas where you can clearly see OUTDOOR scenery (sky, buildings, parking lot, trees, roads) through actual glass windows in the original photo
-- Blurred backgrounds, out-of-focus areas behind interior elements, or dark areas are NOT windows — do NOT project showroom environment into them
-- If the photo shows mostly interior with very little or no visible window area: apply ONLY retouching and lighting — do NOT force a showroom into the image
-- NEVER expand the visible window area beyond what is shown in the original
-- NEVER hallucinate additional windows, door panels, or pillars to create more surface area for the showroom
+SCOPE — WHAT COUNTS AS A WINDOW AREA:
+- ONLY pixels where you can clearly see outdoor scenery through actual glass
+- Blurred backgrounds, out-of-focus areas, and dark areas are NOT windows
+- A partially visible window edge is still a window — but ONLY the visible portion
 
-SHOWROOM SPECIFICATION (identical to exterior showroom):
+SCOPE — WHAT DOES NOT COUNT:
+- Any area inside the car (seats, dashboard, headliner, pillars, door panels)
+- Any area that is cropped out of the frame
+- Any area that is blurred or dark but not clearly showing outdoor scenery
+
+PROPORTIONAL REPLACEMENT:
+- If 5% of the frame shows window: replace ONLY that 5% with showroom wall
+- If 50% of the frame shows window: replace ONLY that 50%
+- A small sliver of window gets a small sliver of grey wall — NOT a full panoramic showroom view
+- FORBIDDEN: Expanding the window area to show more showroom
+- FORBIDDEN: Generating window frames or pillars to "complete" a partially visible window
+
+SHOWROOM SPECIFICATION:
 - Space: 10 meters wide × 8 meters deep × 4.5 meters high
 - Car positioned in the center, approximately 3 meters from each side wall
 
 WALLS (visible through side windows and rear window):
-- Color: medium-dark grey micro-cement / tadelakt texture (#6B6B6B to #787878)
-- NOT black, NOT charcoal, NOT light grey — medium dark grey
-- Subtle micro-cement plaster texture, slightly uneven surface
-- 2 to 3 large soft warm white spotlight pools visible on the wall
-- Each spotlight pool: soft-edged circular/oval warm white glow (3200K)
+- Color: medium-dark grey micro-cement (#6B6B6B to #787878), matte finish
+- 2 to 3 soft warm white spotlight pools (3200K, soft-edged oval glow)
 - Between pools: wall returns to medium-dark grey base color
 
-CEILING (visible through windshield top edge and sunroof if present):
-- Color: light grey / off-white (#C8C8C8) — NOT black, NOT dark grey
-- A single straight black metal track rail with 4 to 5 black cylindrical spotlights
-- Track rail and fixtures clearly visible against light grey ceiling
+CEILING (ONLY if the very top of the windshield is visible in the input):
+- Color: light grey / off-white (#C8C8C8)
+- A single black metal track rail with 4 to 5 black cylindrical spotlights
 
-FLOOR (visible at bottom edge of side windows):
-- Dark polished concrete (#3A3A3A to #454545)
-- Smooth polished concrete with subtle matte sheen
-- Completely empty — no objects, no reflections of other cars
+FLOOR (ONLY if the very bottom edge of a side window is visible in the input):
+- Dark polished concrete (#3A3A3A to #454545), smooth with subtle matte sheen
 
 SHOWROOM IS COMPLETELY EMPTY:
-- No other cars, no people, no furniture, no equipment
-- No logos, no text, no signs, no branding of any kind
-- No outdoor environment, no sky, no buildings visible
+- No other cars, no people, no furniture, no equipment, no logos, no text, no signs
 
-WINDOW EDITING — PROPORTIONAL RULE:
-- ONLY edit the exact window area that is visible in the original photo
-- If only 10% of a window is visible in the frame, edit ONLY that 10% — do NOT reveal or generate the other 90%
-- If a window is partially cropped by the edge of the photo, keep it cropped at the exact same position
-- The showroom environment fills WHATEVER portion of the window is visible — no more, no less
-- A small sliver of visible window gets a small sliver of showroom wall — NOT a full panoramic view
-- Do NOT expand, extend, or complete any partially visible window
-- Do NOT generate window frames, pillars, or door panels to "complete" a window that is cut off
-
-What to show in the visible window area:
-- Grey micro-cement wall (#6B6B6B to #787878) as the dominant element
-- 0-1 warm spotlight pool IF the visible window area is large enough to warrant it
-- Thin strip of light grey ceiling (#C8C8C8) ONLY if the very top of the windshield is visible
-- Dark floor (#3A3A3A) ONLY if the very bottom edge of a side window is visible
-
-INTERIOR MIRROR: if visible, reflects the rear showroom wall with subtle warm spotlight
+INTERIOR MIRROR: if visible in input, reflects the rear showroom wall with subtle warm spotlight
 EXTERIOR SIDE MIRRORS (if visible from inside): reflect the side showroom wall
 
 ══════════════════════════════════════════════════════════
@@ -468,36 +444,34 @@ RULE #3 — CAMERA AND DISPLAY SCREENS
 
 If the infotainment screen shows a REVERSE CAMERA, 360° SURROUND VIEW, or any other camera feed:
 
-PRESERVE ALL screen UI elements:
+PRESERVE ALL screen UI elements exactly:
 - Overlay graphics, guidelines, distance markers, text labels (e.g. "ACHTERZIJDE")
 - Status bar, time display, icons, screen frame, and all UI elements
-- The yellow parking guidelines and distance markers MUST remain exactly as in the input
+- Yellow parking guidelines and distance markers MUST remain exactly as in the input
 - Keep the camera's lens distortion, fisheye effect, and perspective IDENTICAL
 
 REPLACE ONLY the background environment in the camera feed:
-- Replace outdoor/parking scenery with the EMPTY showroom floor and walls
-- The showroom in the camera feed must respect the REAL dimensions: 10m wide × 8m deep × 4.5m high
-- REVERSE CAMERA view: the camera is at the rear of the car looking back — show approximately 4 meters of dark concrete floor before hitting the rear wall, wall fills upper 40-50% of the camera feed, 1-2 large warm spotlight pools on the wall, ceiling NOT visible (camera angle too low)
-- BIRD'S-EYE / 360° TOP-DOWN view: show the car silhouette from above on dark concrete floor, walls visible at all 4 edges approximately 3-4 meters from the car, 2-3 spotlight pools on each visible wall
-- Side camera views: show the side wall approximately 3 meters away, 1-2 warm spotlight pools
-- The showroom must look SMALL and INTIMATE — not like a warehouse or aircraft hangar
+- Replace outdoor/parking scenery with the EMPTY showroom floor and walls only
+- REVERSE CAMERA: dark concrete floor filling lower 50-60%, grey wall filling upper 40-50%, 1-2 warm spotlight pools on wall
+- BIRD'S-EYE / 360° TOP-DOWN: dark concrete floor, walls visible at edges 3-4 meters from car, 2-3 spotlight pools per wall
+- Side camera views: grey side wall approximately 3 meters away, 1-2 warm spotlight pools
 
 ABSOLUTELY FORBIDDEN:
-- Rendering a separate or different car in the camera feed
-- Showing outdoor scenery, parking lots, brick walls, or any non-showroom environment in the camera feed
+- Rendering any car (including the same car) in the camera feed
+- Showing outdoor scenery, parking lots, or any non-showroom environment in the camera feed
 - Changing the screen UI, icons, frame, or overlay graphics
 
 ══════════════════════════════════════════════════════════
 RULE #4 — LIGHTING AND EXPOSURE
 ══════════════════════════════════════════════════════════
 
-REPLACE all outdoor, parking lot, or harsh lighting with soft professional studio lighting:
+Replace all outdoor, parking lot, or harsh lighting with soft professional studio lighting:
 - Color temperature: 3200K warm white
 - No overexposed (blown-out white) areas anywhere in the image
 - No harsh direct sunlight or bright outdoor glare
 - Soft, even illumination across all interior surfaces
 - Subtle shadow depth preserved — do NOT flatten all shadows to grey
-- The showroom light pools visible through windows create a warm glow that softly illuminates the interior surfaces near the windows
+- Warm glow from showroom light pools softly illuminates interior surfaces near windows
 
 FORBIDDEN: Overblown white sky or outdoor light visible through windows
 FORBIDDEN: Harsh shadows from direct sunlight inside the car
@@ -509,31 +483,28 @@ RULE #5 — PROFESSIONAL RETOUCHING
 Apply professional automotive photography retouching to ALL interior surfaces:
 
 SEATS AND UPHOLSTERY:
-- Remove all dust, lint, and debris from seat surfaces
-- Remove all stains, scuff marks, and wear patterns
+- Remove all dust, lint, debris, stains, scuff marks, and wear patterns
 - Restore fabric and leather to fresh, new-condition texture
 - Stitching must appear sharp, clean, and evenly spaced
 
 DASHBOARD AND HARD SURFACES:
 - Remove all fingerprints, smudges, and dust
-- Restore matte surfaces to their original matte finish
-- Restore gloss surfaces to their original gloss finish
+- Restore matte surfaces to original matte finish, gloss surfaces to original gloss finish
 - No visible scratches or wear marks
 
 GLASS SURFACES (windows, mirrors, screens):
 - Remove all smudges, fingerprints, and water spots from glass
-- Screen glass: neutral dark reflection (#1A1A1A to #2A2A2A), no showroom visible in screen glass reflection
+- Screen glass reflection: neutral dark (#1A1A1A to #2A2A2A), no showroom visible in screen glass
 
 FLOOR AND CARPETS:
 - Remove all dirt, scuff marks, and debris
 - Restore carpet pile to fresh, uniform texture
 
 CEILING AND PILLARS:
-- Remove any stains or marks
-- Restore to original clean finish
+- Remove any stains or marks, restore to original clean finish
 
 FINAL QUALITY STANDARD:
-The result must look like this car was delivered to its first owner today, photographed by a professional automotive photographer in a premium showroom. Zero-kilometer showroom quality.
+This car was delivered to its first owner today, photographed by a professional automotive photographer in a premium showroom. Zero-kilometer showroom quality.
 
 ══════════════════════════════════════════════════════════
 RULE #6 — ABSOLUTE PROHIBITIONS
@@ -552,25 +523,10 @@ FORBIDDEN: Making the image look like a rendering or illustration — it must re
 OUTPUT SPECIFICATION
 ══════════════════════════════════════════════════════════
 
-- Maximum resolution, identical to input dimensions and aspect ratio
-- Exact same composition, crop, and framing as input — pixel-locked
+- Output dimensions: IDENTICAL to input — same width, same height, same aspect ratio
+- Composition: FIXED CANVAS — same crop, same framing, same edges as input
 - Photorealistic result — indistinguishable from a real professional photograph
-- Suitable for use in automotive advertisement listings
-
-CANVAS LOCK — ABSOLUTE:
-Treat the input image as a FIXED CANVAS. You may only CHANGE pixels within this existing canvas.
-You may NOT reveal, generate, or imply anything beyond the original edges.
-
-EDGE MATCHING — MANDATORY:
-The content at every edge of the output must match the content at the same edge of the input:
-- TOP EDGE: If the input top edge shows dashboard trim or plastic → output top edge shows the same dashboard trim or plastic. NOT ceiling, NOT windshield, NOT sky.
-- BOTTOM EDGE: If the input bottom edge shows center console or seat → output bottom edge shows the same. NOT floor, NOT extra space.
-- LEFT EDGE: If the input left edge shows a door panel or seat side → output left edge shows the same. NOT a wider view of the door.
-- RIGHT EDGE: Same rule applies.
-
-If the original photo cuts off the windshield at the top: the output cuts off at the same point.
-If the original photo cuts off the side window at the edge: the output cuts off at the same point.
-FORBIDDEN: Completing, extending, or revealing any element that was cropped out of the original frame.`
+- Suitable for use in automotive advertisement listings`
 }
 
 
