@@ -1,23 +1,48 @@
 
 
-# Interieur prompt terugzetten naar vorige werkende versie
+# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
 
-## Wat
+## Probleem
 
-Het huidige "Manus" prompt in `buildInteriorPrompt()` (regels 335-529) vervangen door het eerder werkende prompt dat je hebt geplakt. Dit is grotendeels dezelfde structuur maar met de originele persona ("EDITING an existing car interior photo") en de belangrijke CLOSE-UP sectie in Rule #0 die in de Manus-versie ontbrak.
+Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
 
-## Wijziging
+## Echte oorzaak (niet React deduplicatie)
 
-**Bestand:** `supabase/functions/showroom-photo-studio/index.ts`
+Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
 
-**Regels 335-529** — volledige `buildInteriorPrompt()` functie body vervangen met het door jou aangeleverde prompt. Belangrijkste verschillen met de huidige Manus-versie:
+- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
+- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
+- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
 
-1. **Persona**: terug naar "You are EDITING an existing car interior photo" i.p.v. "photo retouching specialist with printed paper metaphor"
-2. **Rule #0**: terug naar "PIXEL-LOCK COMPOSITION" met de cruciale **CLOSE-UP AND DETAIL PHOTOS** sectie (ontbreekt in Manus-versie) — dit voorkomt dat het model uitzoomt bij dashboard-shots
-3. **Rule #1**: terug naar "100% UNCHANGED" formulering i.p.v. "FROZEN" terminologie
-4. **Rule #2**: terug naar "VIRTUAL SHOWROOM THROUGH WINDOWS ONLY" met de uitgebreide showroom specs inclusief micro-cement/tadelakt texture beschrijving en de WINDOW EDITING PROPORTIONAL RULE
-5. **Rule #3**: terug naar de uitgebreidere camera feed instructies met dimensie-specificaties (4 meter floor before rear wall, etc.)
-6. **Rule #4-6 + Output**: vrijwel identiek maar met originele formulering
+In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
 
-Na de wijziging wordt de edge function automatisch gedeployed.
+In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+
+## Oplossing
+
+Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
+- Gebruikt compatibele Radix versies (geen nested node_modules meer)
+- Verwijdert de `@babel/runtime` dependency
+- Lost het context-conflict op
+
+### Wijzigingen
+
+**Bestand: `package.json`**
+- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+
+**Bestand: `src/components/ui/command.tsx`**
+- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+
+**Bestand: `vite.config.ts`**
+- De bestaande `dedupe` configuratie blijft als extra veiligheid
+- Toevoegen van Radix interne pakketten aan dedupe als fallback:
+  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+
+## Verwacht resultaat
+
+Na upgrade en publicatie:
+- Klantenlijst is weer klikbaar en scrollbaar
+- Selecteren van klanten werkt correct
+- Data wordt opgeslagen
+- Werkt zowel in preview als op de gepubliceerde website
 
