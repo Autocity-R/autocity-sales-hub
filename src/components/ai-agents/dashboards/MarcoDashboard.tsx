@@ -151,13 +151,13 @@ export const MarcoDashboard: React.FC = () => {
 
   const contactMap = useMemo(() => {
     const m: Record<string, any> = {};
-    (contacts || []).filter(c => c.type === 'leverancier').forEach(c => { m[c.id] = c; });
+    (contacts || []).filter(c => c.type === 'supplier').forEach(c => { m[c.id] = c; });
     return m;
   }, [contacts]);
 
   const customerMap = useMemo(() => {
     const m: Record<string, any> = {};
-    (contacts || []).filter(c => c.type === 'klant').forEach(c => { m[c.id] = c; });
+    (contacts || []).filter(c => ['b2b', 'b2c'].includes(c.type)).forEach(c => { m[c.id] = c; });
     return m;
   }, [contacts]);
 
