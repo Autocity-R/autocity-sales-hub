@@ -323,9 +323,11 @@ export const MarcoDashboard: React.FC = () => {
             <CardTitle className="text-sm">
               {PIPELINE_STEPS.find(s => s.key === selectedStep)?.label} — {activeVehicles.length} auto's
             </CardTitle>
-            <Button variant="outline" size="sm" onClick={() => downloadCSV(activeVehicles, `marco-${selectedStep}`)}>
-              <Download className="h-3 w-3 mr-1" /> CSV
-            </Button>
+            {selectedStep !== 'ingeschreven' && (
+              <Button variant="outline" size="sm" onClick={() => handleExcelExport(selectedStep)}>
+                <FileSpreadsheet className="h-3 w-3 mr-1" /> Excel
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {activeVehicles.length === 0 ? (
