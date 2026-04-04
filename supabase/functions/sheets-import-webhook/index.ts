@@ -18,17 +18,29 @@ interface SheetUpdateRequest {
 // Status mapping from Google Sheets to database
 const statusMapping: Record<string, string> = {
   'Niet gestart': 'niet_gestart',
+  'Niet aangemeld': 'niet_aangemeld',
   'Aangemeld': 'aangemeld',
   'Aanvraag ontvangen': 'aanvraag_ontvangen',
+  'Aangekomen': 'aangekomen',
   'Goedgekeurd': 'goedgekeurd',
   'Transport geregeld': 'transport_geregeld',
   'Onderweg': 'onderweg',
-  'Aangekomen': 'aangekomen',
   'Afgemeld': 'afgemeld',
   'BPM betaald': 'bpm_betaald',
   'BPM Betaald': 'bpm_betaald',
   'Herkeuring': 'herkeuring',
   'Ingeschreven': 'ingeschreven'
+};
+
+// Status hiërarchie: hogere index = verder in het proces
+const statusHierarchy: Record<string, number> = {
+  'niet_gestart': 0,
+  'niet_aangemeld': 1,
+  'aanvraag_ontvangen': 2,
+  'aangekomen': 3,
+  'goedgekeurd': 4,
+  'bpm_betaald': 5,
+  'ingeschreven': 6,
 };
 
 serve(async (req) => {
@@ -107,6 +119,67 @@ serve(async (req) => {
 
     const vehicle = vehicles[0];
     const oldStatus = vehicle.import_status;
+    const details = vehicle.details || {};
+
+    // === BESCHERMING 1: Inruil/leenauto skip ===
+    if (details.isTradeIn === true || vehicle.status === 'leenauto') {
+      console.log(`⏭️ Skipping trade-in/loan car: vehicle ${vehicle.id} (isTradeIn=${details.isTradeIn}, status=${vehicle.status})`);
+      return new Response(JSON.stringify({
+        success: true,
+        skipped: true,
+        reason: 'Vehicle is trade-in or loan car — import sync skipped',
+        vehicle_id: vehicle.id,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // === BESCHERMING 2: RDW protected ===
+    if (vehicle.rdw_protected === true) {
+      console.log(`🔒 RDW protected: vehicle ${vehicle.id} — status not overwritten`);
+      return new Response(JSON.stringify({
+        success: true,
+        skipped: true,
+        reason: 'Vehicle is RDW protected — import status locked',
+        vehicle_id: vehicle.id,
+        current_status: oldStatus,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // === BESCHERMING 3: Transport check ===
+    if (details.transportStatus === 'onderweg' && mappedStatus !== 'niet_aangemeld') {
+      console.log(`🚛 Transport check: vehicle ${vehicle.id} is onderweg — only niet_aangemeld allowed, got ${mappedStatus}`);
+      return new Response(JSON.stringify({
+        success: true,
+        skipped: true,
+        reason: 'Vehicle is in transport — only niet_aangemeld status allowed',
+        vehicle_id: vehicle.id,
+        current_status: oldStatus,
+        attempted_status: mappedStatus,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // === BESCHERMING 4: Status hiërarchie check ===
+    const currentIndex = statusHierarchy[oldStatus] ?? -1;
+    const newIndex = statusHierarchy[mappedStatus] ?? -1;
+
+    if (newIndex >= 0 && currentIndex >= 0 && newIndex <= currentIndex) {
+      console.log(`📊 Hierarchy check: vehicle ${vehicle.id} — cannot go from ${oldStatus}(${currentIndex}) to ${mappedStatus}(${newIndex})`);
+      return new Response(JSON.stringify({
+        success: true,
+        skipped: true,
+        reason: `Status downgrade not allowed: ${oldStatus} → ${mappedStatus}`,
+        vehicle_id: vehicle.id,
+        current_status: oldStatus,
+        attempted_status: mappedStatus,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Update vehicle import status
     const { error: updateError } = await supabase
@@ -139,10 +212,9 @@ serve(async (req) => {
 
     if (logError) {
       console.error('Error logging status change:', logError);
-      // Don't fail the request if logging fails
     }
 
-    console.log(`Successfully updated vehicle ${vehicle.id} from ${oldStatus} to ${mappedStatus}`);
+    console.log(`✅ Successfully updated vehicle ${vehicle.id} from ${oldStatus} to ${mappedStatus}`);
 
     return new Response(JSON.stringify({ 
       success: true, 

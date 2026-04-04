@@ -2721,6 +2721,7 @@ export type Database = {
       }
       vehicles: {
         Row: {
+          aangekomen_at: string | null
           aanvraag_ontvangen_at: string | null
           bpm_betaald_at: string | null
           brand: string
@@ -2760,6 +2761,7 @@ export type Database = {
           year: number | null
         }
         Insert: {
+          aangekomen_at?: string | null
           aanvraag_ontvangen_at?: string | null
           bpm_betaald_at?: string | null
           brand: string
@@ -2799,6 +2801,7 @@ export type Database = {
           year?: number | null
         }
         Update: {
+          aangekomen_at?: string | null
           aanvraag_ontvangen_at?: string | null
           bpm_betaald_at?: string | null
           brand?: string
@@ -2867,6 +2870,7 @@ export type Database = {
           claim_amount: number | null
           claim_status: string
           created_at: string
+          customer_id: string | null
           description: string | null
           estimated_amount: number | null
           id: string
@@ -2887,6 +2891,7 @@ export type Database = {
           claim_amount?: number | null
           claim_status?: string
           created_at?: string
+          customer_id?: string | null
           description?: string | null
           estimated_amount?: number | null
           id?: string
@@ -2907,6 +2912,7 @@ export type Database = {
           claim_amount?: number | null
           claim_status?: string
           created_at?: string
+          customer_id?: string | null
           description?: string | null
           estimated_amount?: number | null
           id?: string
@@ -2928,6 +2934,13 @@ export type Database = {
             columns: ["appointment_id"]
             isOneToOne: false
             referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranty_claims_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
           {

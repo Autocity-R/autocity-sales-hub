@@ -182,6 +182,10 @@ export interface Vehicle {
   purchasedByName?: string; // Added purchaser name for display
   purchaseDate?: Date | null; // Added purchase date
   
+  // Import timestamp tracking
+  aangekomenAt?: string | Date;
+  rdwProtected?: boolean;
+  
   // Contract information
   contractId?: string;      // Reference to the generated contract
   contractUrl?: string;     // Link to the stored contract document
