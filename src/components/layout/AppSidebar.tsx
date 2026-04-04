@@ -221,7 +221,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild isActive={isActive("/ai-agents")}>
                     <Link to="/ai-agents" className="text-white hover:text-white hover:bg-gray-800">
                       <Bot className="mr-2 h-4 w-4" />
-                      <span>AI Agents</span>
+                      <span>AI Team</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

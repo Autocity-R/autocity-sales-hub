@@ -245,7 +245,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                   size="sm"
                 >
                   <Bot className="mr-2 h-4 w-4" />
-                  AI Agents
+                  AI Team
                 </Button>
               </Link>
             )}
