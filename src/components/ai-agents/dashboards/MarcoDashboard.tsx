@@ -163,21 +163,33 @@ export const MarcoDashboard: React.FC = () => {
       pipeline[k].sort((a, b) => urgencyScore(b, k) - urgencyScore(a, k));
     });
 
-    // Alert counts
+    // Alert counts — decoupled from pipeline classification
     const now = Date.now();
     const alerts = {
-      nietBetaald: pipeline.nieuw.length,
-      cmrKritiek: pipeline.aangekomen.length,
+      nietBetaald: filtered.filter(v => {
+        const d = v.details || {};
+        const pay = d.purchase_payment_status || d.paymentStatus;
+        return pay !== 'volledig_betaald';
+      }).length,
+      betaaldGeenPickup: filtered.filter(v => {
+        const d = v.details || {};
+        const pay = d.purchase_payment_status || d.paymentStatus;
+        return pay === 'volledig_betaald' && !isTruthy(d.pickupDocumentSent);
+      }).length,
+      pickupGereed: filtered.filter(v => {
+        const d = v.details || {};
+        const pay = d.purchase_payment_status || d.paymentStatus;
+        return pay === 'volledig_betaald' && isTruthy(d.pickupDocumentSent) && d.transportStatus !== 'onderweg' && d.transportStatus !== 'aangekomen';
+      }).length,
+      cmrKritiek: filtered.filter(v => {
+        const d = v.details || {};
+        return d.transportStatus === 'aangekomen' && !isTruthy(d.cmrSent) && !isTruthy(d.papersReceived);
+      }).length,
       bpmTeLaat: filtered.filter(v => {
         return v.import_status === 'goedgekeurd' && v.goedgekeurd_at && (now - new Date(v.goedgekeurd_at).getTime()) / DAY > 7;
       }).length,
       inschrijvingTeLaat: filtered.filter(v => {
         return v.import_status === 'bpm_betaald' && v.bpm_betaald_at && (now - new Date(v.bpm_betaald_at).getTime()) / DAY > 5;
-      }).length,
-      pickupGereed: filtered.filter(v => {
-        const d = v.details || {};
-        const paid = (d.purchase_payment_status || d.paymentStatus) === 'volledig_betaald';
-        return paid && isTruthy(d.pickupDocumentSent) && d.transportStatus !== 'onderweg' && d.transportStatus !== 'aangekomen';
       }).length,
     };
 
@@ -219,10 +231,11 @@ export const MarcoDashboard: React.FC = () => {
 
   const alertTiles = [
     { count: processed.alerts.nietBetaald, label: 'Nog te betalen aan leverancier', color: 'bg-red-500', icon: DollarSign },
+    { count: processed.alerts.betaaldGeenPickup, label: 'Betaald, pickup niet verstuurd', color: 'bg-orange-500', icon: Truck },
+    { count: processed.alerts.pickupGereed, label: 'Klaar voor ophalen', color: 'bg-blue-500', icon: Package },
     { count: processed.alerts.cmrKritiek, label: 'CMR kritiek — geen papieren zonder CMR', color: 'bg-red-500', icon: FileText },
     { count: processed.alerts.bpmTeLaat, label: 'BPM te laat — loopt achter', color: 'bg-amber-500', icon: Clock },
     { count: processed.alerts.inschrijvingTeLaat, label: 'Inschrijving te laat', color: 'bg-amber-500', icon: CreditCard },
-    { count: processed.alerts.pickupGereed, label: 'Klaar voor ophalen', color: 'bg-blue-500', icon: Package },
   ];
 
   const stepColors: Record<PipelineStep, string> = {
@@ -248,7 +261,7 @@ export const MarcoDashboard: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* Alert tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {alertTiles.map((tile, i) => (
           <Card key={i} className={cn("border-l-4", tile.count > 0 ? `border-l-${tile.color.replace('bg-', '')}` : 'border-l-muted')}>
             <CardContent className="p-3 flex items-center gap-3">
