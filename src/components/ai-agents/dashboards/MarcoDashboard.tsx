@@ -261,7 +261,7 @@ export const MarcoDashboard: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* Alert tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {alertTiles.map((tile, i) => (
           <Card key={i} className={cn("border-l-4", tile.count > 0 ? `border-l-${tile.color.replace('bg-', '')}` : 'border-l-muted')}>
             <CardContent className="p-3 flex items-center gap-3">
