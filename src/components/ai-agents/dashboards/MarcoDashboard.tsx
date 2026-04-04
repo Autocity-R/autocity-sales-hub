@@ -176,30 +176,27 @@ export const MarcoDashboard: React.FC = () => {
 
     const now = Date.now();
 
-    // Helper: auto is nog niet aangekomen/in import → transport-fase
-    const isTransportPhase = (v: VehicleRow) => {
+    // Helper: auto is nog niet fysiek binnen (alleen 'aangekomen' uitsluiten)
+    const isNotYetArrived = (v: VehicleRow) => {
       const d = v.details || {};
-      const ts = d.transportStatus;
-      const is = v.import_status || 'niet_gestart';
-      // Auto is nog in transport als het NIET al aangekomen/onderweg/in import is
-      return ts !== 'aangekomen' && ts !== 'onderweg' && !['aanvraag_ontvangen', 'goedgekeurd', 'bpm_betaald', 'ingeschreven'].includes(is);
+      return d.transportStatus !== 'aangekomen';
     };
 
     const alerts = {
-      // Nog te betalen: alleen auto's die nog in transport-fase zijn (niet al onderweg/aangekomen/import)
+      // Nog te betalen: auto's die nog niet aangekomen zijn EN niet betaald
       nietBetaald: filtered.filter(v => {
         const d = v.details || {};
-        return isTransportPhase(v) && getPurchasePaymentStatus(d) !== 'volledig_betaald';
+        return isNotYetArrived(v) && getPurchasePaymentStatus(d) !== 'volledig_betaald';
       }).length,
-      // Betaald maar pickup niet verstuurd: ook alleen transport-fase
+      // Betaald maar pickup niet verstuurd: niet aangekomen, betaald, geen pickup
       betaaldGeenPickup: filtered.filter(v => {
         const d = v.details || {};
-        return isTransportPhase(v) && getPurchasePaymentStatus(d) === 'volledig_betaald' && !isPickupSent(d);
+        return isNotYetArrived(v) && getPurchasePaymentStatus(d) === 'volledig_betaald' && !isPickupSent(d);
       }).length,
-      // Klaar voor ophalen: betaald + pickup verstuurd, nog niet onderweg/aangekomen
+      // Klaar voor ophalen/onderweg: niet aangekomen, betaald + pickup verstuurd (inclusief onderweg)
       pickupGereed: filtered.filter(v => {
         const d = v.details || {};
-        return getPurchasePaymentStatus(d) === 'volledig_betaald' && isPickupSent(d) && d.transportStatus !== 'onderweg' && d.transportStatus !== 'aangekomen';
+        return isNotYetArrived(v) && getPurchasePaymentStatus(d) === 'volledig_betaald' && isPickupSent(d);
       }).length,
       cmrKritiek: filtered.filter(v => {
         const d = v.details || {};
