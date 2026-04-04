@@ -143,8 +143,7 @@ export const MarcoDashboard: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('contacts')
-        .select('id, company_name, first_name, last_name, email, phone')
-        .eq('type', 'leverancier');
+        .select('id, company_name, first_name, last_name, email, phone, type');
       if (error) throw error;
       return data || [];
     },
@@ -152,7 +151,13 @@ export const MarcoDashboard: React.FC = () => {
 
   const contactMap = useMemo(() => {
     const m: Record<string, any> = {};
-    (contacts || []).forEach(c => { m[c.id] = c; });
+    (contacts || []).filter(c => c.type === 'leverancier').forEach(c => { m[c.id] = c; });
+    return m;
+  }, [contacts]);
+
+  const customerMap = useMemo(() => {
+    const m: Record<string, any> = {};
+    (contacts || []).filter(c => c.type === 'klant').forEach(c => { m[c.id] = c; });
     return m;
   }, [contacts]);
 
