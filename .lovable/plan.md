@@ -1,48 +1,71 @@
 
 
-# Fix: Klanten niet klikbaar op productie - Radix version conflict door cmdk
+# Plan: Import bescherming, timestamps trigger & warranty fix
 
-## Probleem
+## Database staat (bevestigd)
 
-Op de gepubliceerde website kun je de klantenlijst zien maar nergens op klikken, selecteren of scrollen. In de Lovable preview werkt het wel.
+| Kolom | Bestaat al? |
+|-------|------------|
+| `rdw_protected` | Ja |
+| `aanvraag_ontvangen_at` | Ja |
+| `goedgekeurd_at` | Ja |
+| `bpm_betaald_at` | Ja |
+| `ingeschreven_at` | Ja |
+| `aangekomen_at` | **Nee — moet aangemaakt** |
+| `warranty_claims.customer_id` | **Nee — moet aangemaakt** |
 
-## Echte oorzaak (niet React deduplicatie)
+De trigger `update_vehicle_import_timestamp` bestaat al maar vult alleen `import_updated_at` — de losse timestamp-velden worden niet gevuld.
 
-Het probleem is **niet** dubbele React-instanties -- er is slechts 1 React versie geinstalleerd. Het probleem is dat het `cmdk` pakket (v1.0.0) zijn **eigen oude versies** van Radix UI pakketten meebrengt:
+---
 
-- De app gebruikt `@radix-ui/react-dialog` v1.1.2 (nieuw)
-- `cmdk` bundelt `@radix-ui/react-dialog` v1.0.5 (oud)
-- Plus 12+ andere oude Radix pakketten in `cmdk/node_modules/`
+## Stap 1: Database migratie
 
-In de klantselector (`SearchableCustomerSelector`) worden `Popover` (nieuwe Radix) en `Command/CommandItem` (cmdk's oude Radix) gecombineerd. In productie creëert dit twee aparte sets van Radix contexts (dismissable layers, focus guards, portals) die elkaar blokkeren. Daardoor worden klik-events op CommandItems niet doorgegeven.
+Eén migratie met `IF NOT EXISTS` / `CREATE OR REPLACE`:
 
-In development omzeilt Vite's dev-server dit probleem, maar de productie-bundler (Rollup) creëert twee aparte codepaden.
+- `ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS aangekomen_at timestamptz;`
+- `ALTER TABLE warranty_claims ADD COLUMN IF NOT EXISTS customer_id uuid REFERENCES contacts(id);`
+- `CREATE OR REPLACE FUNCTION update_vehicle_import_timestamp()` — nieuwe body die bij elke `import_status` wijziging het juiste losse veld vult:
+  - `aanvraag_ontvangen` → `aanvraag_ontvangen_at = now()`
+  - `aangekomen` → `aangekomen_at = now()`
+  - `goedgekeurd` → `goedgekeurd_at = now()`
+  - `bpm_betaald` → `bpm_betaald_at = now()`
+  - `ingeschreven` → `ingeschreven_at = now()`
+  - Behoudt bestaande logica: `import_updated_at = now()` en `updated_at = now()`
 
-## Oplossing
+## Stap 2: Webhook bescherming
 
-Upgrade `cmdk` van v1.0.0 naar v1.1.1 (of nieuwer). De nieuwere versie:
-- Gebruikt compatibele Radix versies (geen nested node_modules meer)
-- Verwijdert de `@babel/runtime` dependency
-- Lost het context-conflict op
+`supabase/functions/sheets-import-webhook/index.ts` volledig aanpassen:
 
-### Wijzigingen
+**Status hiërarchie** (met aangekomen op positie 3):
+```text
+niet_gestart(0) → niet_aangemeld(1) → aanvraag_ontvangen(2) → aangekomen(3) → goedgekeurd(4) → bpm_betaald(5) → ingeschreven(6)
+```
 
-**Bestand: `package.json`**
-- `"cmdk": "^1.0.0"` wijzigen naar `"cmdk": "^1.1.1"`
+**Vier beschermingen toevoegen vóór de update:**
+1. **Inruil/leenauto skip** — als `details.isTradeIn = true` of `status = 'leenauto'` → skip met 200 + log
+2. **RDW protected** — als `rdw_protected = true` → skip met 200 + log
+3. **Transport check** — als `details.transportStatus = 'onderweg'` → alleen `niet_aangemeld` toestaan
+4. **Hiërarchie check** — nieuwe status moet hogere index hebben dan huidige, anders skip
 
-**Bestand: `src/components/ui/command.tsx`**
-- Mogelijk kleine API-aanpassingen nodig na upgrade (wordt gecontroleerd)
+## Stap 3: Inruilauto's data-fix
 
-**Bestand: `vite.config.ts`**
-- De bestaande `dedupe` configuratie blijft als extra veiligheid
-- Toevoegen van Radix interne pakketten aan dedupe als fallback:
-  `@radix-ui/react-dismissable-layer`, `@radix-ui/react-focus-scope`, `@radix-ui/react-portal`, `@radix-ui/react-presence`, `@radix-ui/react-primitive`, `@radix-ui/react-context`
+Via insert/update tool (geen migratie):
+```sql
+UPDATE vehicles 
+SET import_status = 'niet_gestart'
+WHERE details->>'isTradeIn' = 'true' 
+  AND status IN ('voorraad','verkocht_b2b','verkocht_b2c')
+  AND import_status != 'niet_gestart';
+```
+Afgeleverde inruilauto's worden **niet** aangepast.
 
-## Verwacht resultaat
+## Stap 4: TypeScript types
 
-Na upgrade en publicatie:
-- Klantenlijst is weer klikbaar en scrollbaar
-- Selecteren van klanten werkt correct
-- Data wordt opgeslagen
-- Werkt zowel in preview als op de gepubliceerde website
+`src/types/inventory.ts` — `aangekomenAt` en `rdwProtected` toevoegen aan Vehicle interface.
+
+## Bestanden die wijzigen
+
+1. **Database migratie** — `aangekomen_at` kolom + `customer_id` FK + trigger replace
+2. **`supabase/functions/sheets-import-webhook/index.ts`** — volledige beschermingslogica
+3. **`src/types/inventory.ts`** — nieuwe velden
 
