@@ -76,29 +76,26 @@ function classifyVehicle(v: VehicleRow): PipelineStep | null {
   const pickupSent = isPickupSent(d);
   const cmrSent = isTruthy(d.cmrSent);
   const papersReceived = isTruthy(d.papersReceived);
-
-  // Auto's die al aangekomen of verder zijn → NIET in betaling/pickup stappen
-  // Deze auto's zijn fysiek binnen, ongeacht betaalstatus leverancier
-  const alreadyArrived = transportStatus === 'aangekomen' || ['aanvraag_ontvangen', 'goedgekeurd', 'bpm_betaald', 'ingeschreven'].includes(importStatus);
+  const arrived = transportStatus === 'aangekomen';
 
   // B2B papieren verwacht
-  if (v.status === 'verkocht_b2b' && !papersReceived && transportStatus === 'aangekomen') return 'b2b_papieren';
+  if (v.status === 'verkocht_b2b' && !papersReceived && arrived) return 'b2b_papieren';
 
   // Ingeschreven
   if (importStatus === 'ingeschreven') return 'ingeschreven';
 
-  // Import in behandeling
-  if (['aanvraag_ontvangen', 'goedgekeurd', 'bpm_betaald'].includes(importStatus)) return 'import';
+  // Import in behandeling (inclusief 'aangekomen' import_status)
+  if (['aanvraag_ontvangen', 'aangekomen', 'goedgekeurd', 'bpm_betaald'].includes(importStatus)) return 'import';
 
   // Aangekomen - CMR versturen
-  if (transportStatus === 'aangekomen' && !cmrSent && !papersReceived) return 'aangekomen';
-  if (transportStatus === 'aangekomen') return 'import';
+  if (arrived && !cmrSent && !papersReceived) return 'aangekomen';
+  if (arrived) return 'import';
 
-  // Onderweg
-  if (transportStatus === 'onderweg') return 'pickup';
+  // --- Auto is nog niet fysiek binnen (niet aangekomen) ---
+  // Betaal- en pickupstatus bepalen de stap
 
-  // --- Vanaf hier: auto's die nog NIET onderweg/aangekomen zijn ---
-  // Dit zijn transport-fase auto's: betaling + pickup logica geldt hier
+  // Onderweg + betaald + pickup = pickup stap
+  if (transportStatus === 'onderweg' && paid && pickupSent) return 'pickup';
 
   // Betaald + pickup verstuurd = klaar voor ophalen
   if (paid && pickupSent) return 'pickup';
@@ -106,7 +103,7 @@ function classifyVehicle(v: VehicleRow): PipelineStep | null {
   // Betaald maar pickup nog niet verstuurd
   if (paid && !pickupSent) return 'betaald';
 
-  // Niet betaald aan leverancier (alleen als auto nog niet onderweg/aangekomen is)
+  // Niet betaald aan leverancier
   if (!paid) return 'nieuw';
 
   return null;
