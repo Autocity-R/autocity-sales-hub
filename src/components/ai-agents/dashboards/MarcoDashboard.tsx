@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, CheckCircle, Clock, Truck, FileText, ShieldCheck, CreditCard, Package, Download, DollarSign, ChevronRight } from "lucide-react";
+import { AlertTriangle, CheckCircle, Clock, Truck, FileText, ShieldCheck, CreditCard, Package, Download, DollarSign, ChevronRight, FileSpreadsheet } from "lucide-react";
+import { exportMarcoExcel } from "@/utils/marcoExport";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ interface VehicleRow {
   license_number: string | null;
   vin: string | null;
   supplier_id: string | null;
+  customer_id: string | null;
 }
 
 type PipelineStep = 'nieuw' | 'betaald' | 'pickup' | 'aangekomen' | 'import' | 'ingeschreven' | 'b2b_papieren';
@@ -128,7 +130,7 @@ export const MarcoDashboard: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('vehicles')
-        .select('id, import_status, status, details, created_at, goedgekeurd_at, bpm_betaald_at, aangekomen_at, aanvraag_ontvangen_at, ingeschreven_at, brand, model, license_number, vin, supplier_id')
+        .select('id, import_status, status, details, created_at, goedgekeurd_at, bpm_betaald_at, aangekomen_at, aanvraag_ontvangen_at, ingeschreven_at, brand, model, license_number, vin, supplier_id, customer_id')
         .neq('status', 'afgeleverd');
       if (error) throw error;
       return (data || []) as VehicleRow[];
@@ -141,8 +143,7 @@ export const MarcoDashboard: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('contacts')
-        .select('id, company_name, first_name, last_name, email, phone')
-        .eq('type', 'leverancier');
+        .select('id, company_name, first_name, last_name, email, phone, type');
       if (error) throw error;
       return data || [];
     },
@@ -150,7 +151,13 @@ export const MarcoDashboard: React.FC = () => {
 
   const contactMap = useMemo(() => {
     const m: Record<string, any> = {};
-    (contacts || []).forEach(c => { m[c.id] = c; });
+    (contacts || []).filter(c => c.type === 'leverancier').forEach(c => { m[c.id] = c; });
+    return m;
+  }, [contacts]);
+
+  const customerMap = useMemo(() => {
+    const m: Record<string, any> = {};
+    (contacts || []).filter(c => c.type === 'klant').forEach(c => { m[c.id] = c; });
     return m;
   }, [contacts]);
 
@@ -220,29 +227,10 @@ export const MarcoDashboard: React.FC = () => {
     return processed.pipeline[selectedStep] || [];
   }, [processed, selectedStep]);
 
-  const downloadCSV = (rows: VehicleRow[], filename: string) => {
-    const headers = ['Merk', 'Model', 'Kenteken', 'VIN', 'Leverancier', 'Email leverancier', 'Dagen sinds inkoop', 'Import status', 'Betaald', 'CMR verstuurd', 'Papieren ontvangen'];
-    const csvRows = rows.map(v => {
-      const d = v.details || {};
-      const supplier = v.supplier_id ? contactMap[v.supplier_id] : null;
-      const paymentStatus = getPurchasePaymentStatus(d);
-      return [
-        v.brand || '', v.model || '', v.license_number || '', v.vin || '',
-        supplier?.company_name || supplier?.first_name || '',
-        supplier?.email || '',
-        daysSince(v.created_at),
-        v.import_status || '',
-        paymentStatus === 'volledig_betaald' ? 'Ja' : 'Nee',
-        isTruthy(d.cmrSent) ? 'Ja' : 'Nee',
-        isTruthy(d.papersReceived) ? 'Ja' : 'Nee',
-      ].join(';');
-    });
-    const csv = [headers.join(';'), ...csvRows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `${filename}.csv`; a.click();
-    URL.revokeObjectURL(url);
+  const handleExcelExport = (step: PipelineStep) => {
+    const rows = processed?.pipeline[step] || [];
+    if (rows.length === 0) return;
+    exportMarcoExcel(step, rows as any, contactMap, customerMap);
   };
 
   if (isLoading) return <div className="grid grid-cols-5 gap-3">{Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>;
@@ -335,9 +323,11 @@ export const MarcoDashboard: React.FC = () => {
             <CardTitle className="text-sm">
               {PIPELINE_STEPS.find(s => s.key === selectedStep)?.label} — {activeVehicles.length} auto's
             </CardTitle>
-            <Button variant="outline" size="sm" onClick={() => downloadCSV(activeVehicles, `marco-${selectedStep}`)}>
-              <Download className="h-3 w-3 mr-1" /> CSV
-            </Button>
+            {selectedStep !== 'ingeschreven' && (
+              <Button variant="outline" size="sm" onClick={() => handleExcelExport(selectedStep)}>
+                <FileSpreadsheet className="h-3 w-3 mr-1" /> Excel
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {activeVehicles.length === 0 ? (
