@@ -202,8 +202,8 @@ export const MarcoDashboard: React.FC = () => {
         daysSince(v.created_at),
         v.import_status || '',
         paymentStatus === 'volledig_betaald' ? 'Ja' : 'Nee',
-        d.cmrSent ? 'Ja' : 'Nee',
-        d.papersReceived ? 'Ja' : 'Nee',
+        isTruthy(d.cmrSent) ? 'Ja' : 'Nee',
+        isTruthy(d.papersReceived) ? 'Ja' : 'Nee',
       ].join(';');
     });
     const csv = [headers.join(';'), ...csvRows].join('\n');
