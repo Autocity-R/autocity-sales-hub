@@ -77,9 +77,9 @@ function classifyVehicle(v: VehicleRow): PipelineStep | null {
   const cmrSent = isTruthy(d.cmrSent);
   const papersReceived = isTruthy(d.papersReceived);
 
-  // Workflow Marco: eerst betaling, daarna pickup, daarna transport/import
-  if (!paid) return 'nieuw';
-  if (!pickupSent) return 'betaald';
+  // Auto's die al aangekomen of verder zijn → NIET in betaling/pickup stappen
+  // Deze auto's zijn fysiek binnen, ongeacht betaalstatus leverancier
+  const alreadyArrived = transportStatus === 'aangekomen' || ['aanvraag_ontvangen', 'goedgekeurd', 'bpm_betaald', 'ingeschreven'].includes(importStatus);
 
   // B2B papieren verwacht
   if (v.status === 'verkocht_b2b' && !papersReceived && transportStatus === 'aangekomen') return 'b2b_papieren';
@@ -87,16 +87,27 @@ function classifyVehicle(v: VehicleRow): PipelineStep | null {
   // Ingeschreven
   if (importStatus === 'ingeschreven') return 'ingeschreven';
 
-  // Aangekomen - CMR versturen
-  if (transportStatus === 'aangekomen' && !cmrSent && !papersReceived) return 'aangekomen';
-
   // Import in behandeling
   if (['aanvraag_ontvangen', 'goedgekeurd', 'bpm_betaald'].includes(importStatus)) return 'import';
+
+  // Aangekomen - CMR versturen
+  if (transportStatus === 'aangekomen' && !cmrSent && !papersReceived) return 'aangekomen';
   if (transportStatus === 'aangekomen') return 'import';
 
-  // Pickup gereed / onderweg
+  // Onderweg
   if (transportStatus === 'onderweg') return 'pickup';
-  if (pickupSent) return 'pickup';
+
+  // --- Vanaf hier: auto's die nog NIET onderweg/aangekomen zijn ---
+  // Dit zijn transport-fase auto's: betaling + pickup logica geldt hier
+
+  // Betaald + pickup verstuurd = klaar voor ophalen
+  if (paid && pickupSent) return 'pickup';
+
+  // Betaald maar pickup nog niet verstuurd
+  if (paid && !pickupSent) return 'betaald';
+
+  // Niet betaald aan leverancier (alleen als auto nog niet onderweg/aangekomen is)
+  if (!paid) return 'nieuw';
 
   return null;
 }
