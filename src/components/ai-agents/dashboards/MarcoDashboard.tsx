@@ -130,7 +130,7 @@ export const MarcoDashboard: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('vehicles')
-        .select('id, import_status, status, details, created_at, goedgekeurd_at, bpm_betaald_at, aangekomen_at, aanvraag_ontvangen_at, ingeschreven_at, brand, model, license_number, vin, supplier_id')
+        .select('id, import_status, status, details, created_at, goedgekeurd_at, bpm_betaald_at, aangekomen_at, aanvraag_ontvangen_at, ingeschreven_at, brand, model, license_number, vin, supplier_id, customer_id')
         .neq('status', 'afgeleverd');
       if (error) throw error;
       return (data || []) as VehicleRow[];
