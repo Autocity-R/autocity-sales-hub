@@ -42,7 +42,7 @@ export const AlexDashboard: React.FC = () => {
       const { count: openClaims } = await supabase
         .from('warranty_claims')
         .select('*', { count: 'exact', head: true })
-        .in('status', ['open', 'in_behandeling', 'pending']);
+        .or('status.eq.open,status.eq.in_behandeling,status.eq.pending');
 
       // Verkocht vandaag - rough count
       const { count: verkocht } = await supabase
