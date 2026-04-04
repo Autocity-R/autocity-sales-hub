@@ -2721,6 +2721,8 @@ export type Database = {
       }
       vehicles: {
         Row: {
+          aanvraag_ontvangen_at: string | null
+          bpm_betaald_at: string | null
           brand: string
           color: string | null
           created_at: string
@@ -2729,9 +2731,11 @@ export type Database = {
           details: Json
           email_reminder_settings: Json
           external_sheet_reference: string | null
+          goedgekeurd_at: string | null
           id: string
           import_status: string | null
           import_updated_at: string | null
+          ingeschreven_at: string | null
           license_number: string | null
           location: string | null
           mileage: number | null
@@ -2742,6 +2746,7 @@ export type Database = {
           purchase_price: number | null
           purchased_by_name: string | null
           purchased_by_user_id: string | null
+          rdw_protected: boolean | null
           selling_price: number | null
           showroom_photo_generated_at: string | null
           showroom_photo_url: string | null
@@ -2755,6 +2760,8 @@ export type Database = {
           year: number | null
         }
         Insert: {
+          aanvraag_ontvangen_at?: string | null
+          bpm_betaald_at?: string | null
           brand: string
           color?: string | null
           created_at?: string
@@ -2763,9 +2770,11 @@ export type Database = {
           details?: Json
           email_reminder_settings?: Json
           external_sheet_reference?: string | null
+          goedgekeurd_at?: string | null
           id?: string
           import_status?: string | null
           import_updated_at?: string | null
+          ingeschreven_at?: string | null
           license_number?: string | null
           location?: string | null
           mileage?: number | null
@@ -2776,6 +2785,7 @@ export type Database = {
           purchase_price?: number | null
           purchased_by_name?: string | null
           purchased_by_user_id?: string | null
+          rdw_protected?: boolean | null
           selling_price?: number | null
           showroom_photo_generated_at?: string | null
           showroom_photo_url?: string | null
@@ -2789,6 +2799,8 @@ export type Database = {
           year?: number | null
         }
         Update: {
+          aanvraag_ontvangen_at?: string | null
+          bpm_betaald_at?: string | null
           brand?: string
           color?: string | null
           created_at?: string
@@ -2797,9 +2809,11 @@ export type Database = {
           details?: Json
           email_reminder_settings?: Json
           external_sheet_reference?: string | null
+          goedgekeurd_at?: string | null
           id?: string
           import_status?: string | null
           import_updated_at?: string | null
+          ingeschreven_at?: string | null
           license_number?: string | null
           location?: string | null
           mileage?: number | null
@@ -2810,6 +2824,7 @@ export type Database = {
           purchase_price?: number | null
           purchased_by_name?: string | null
           purchased_by_user_id?: string | null
+          rdw_protected?: boolean | null
           selling_price?: number | null
           showroom_photo_generated_at?: string | null
           showroom_photo_url?: string | null
