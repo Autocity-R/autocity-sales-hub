@@ -231,10 +231,11 @@ export const MarcoDashboard: React.FC = () => {
 
   const alertTiles = [
     { count: processed.alerts.nietBetaald, label: 'Nog te betalen aan leverancier', color: 'bg-red-500', icon: DollarSign },
+    { count: processed.alerts.betaaldGeenPickup, label: 'Betaald, pickup niet verstuurd', color: 'bg-orange-500', icon: Truck },
+    { count: processed.alerts.pickupGereed, label: 'Klaar voor ophalen', color: 'bg-blue-500', icon: Package },
     { count: processed.alerts.cmrKritiek, label: 'CMR kritiek — geen papieren zonder CMR', color: 'bg-red-500', icon: FileText },
     { count: processed.alerts.bpmTeLaat, label: 'BPM te laat — loopt achter', color: 'bg-amber-500', icon: Clock },
     { count: processed.alerts.inschrijvingTeLaat, label: 'Inschrijving te laat', color: 'bg-amber-500', icon: CreditCard },
-    { count: processed.alerts.pickupGereed, label: 'Klaar voor ophalen', color: 'bg-blue-500', icon: Package },
   ];
 
   const stepColors: Record<PipelineStep, string> = {
