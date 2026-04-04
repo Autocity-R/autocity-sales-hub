@@ -178,15 +178,28 @@ export const MarcoDashboard: React.FC = () => {
     });
 
     const now = Date.now();
+
+    // Helper: auto is nog niet aangekomen/in import → transport-fase
+    const isTransportPhase = (v: VehicleRow) => {
+      const d = v.details || {};
+      const ts = d.transportStatus;
+      const is = v.import_status || 'niet_gestart';
+      // Auto is nog in transport als het NIET al aangekomen/onderweg/in import is
+      return ts !== 'aangekomen' && ts !== 'onderweg' && !['aanvraag_ontvangen', 'goedgekeurd', 'bpm_betaald', 'ingeschreven'].includes(is);
+    };
+
     const alerts = {
+      // Nog te betalen: alleen auto's die nog in transport-fase zijn (niet al onderweg/aangekomen/import)
       nietBetaald: filtered.filter(v => {
         const d = v.details || {};
-        return getPurchasePaymentStatus(d) !== 'volledig_betaald';
+        return isTransportPhase(v) && getPurchasePaymentStatus(d) !== 'volledig_betaald';
       }).length,
+      // Betaald maar pickup niet verstuurd: ook alleen transport-fase
       betaaldGeenPickup: filtered.filter(v => {
         const d = v.details || {};
-        return getPurchasePaymentStatus(d) === 'volledig_betaald' && !isPickupSent(d);
+        return isTransportPhase(v) && getPurchasePaymentStatus(d) === 'volledig_betaald' && !isPickupSent(d);
       }).length,
+      // Klaar voor ophalen: betaald + pickup verstuurd, nog niet onderweg/aangekomen
       pickupGereed: filtered.filter(v => {
         const d = v.details || {};
         return getPurchasePaymentStatus(d) === 'volledig_betaald' && isPickupSent(d) && d.transportStatus !== 'onderweg' && d.transportStatus !== 'aangekomen';
