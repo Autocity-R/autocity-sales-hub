@@ -1,54 +1,37 @@
 
 
-# Fix Marco Dashboard — Correcte filters voor alle tegels
+# Fix Marco Dashboard — Alert tegels los van pipeline berekenen
 
 ## Probleem
 
-De `classifyVehicle` functie in `MarcoDashboard.tsx` heeft twee bugs:
+De alert tegels ("Nog te betalen", "Klaar voor ophalen", "CMR kritiek") gebruiken `pipeline.nieuw.length` en `pipeline.aangekomen.length` als bron. Maar `classifyVehicle` plaatst een onbetaalde auto die al onderweg is in de "pickup" stap — niet in "nieuw". Daardoor toont "Nog te betalen" 0 terwijl er 35 onbetaalde auto's zijn.
 
-1. **Boolean string vergelijking**: JSONB slaat waarden op als strings (`"true"`, `"false"`). De code doet `!d.cmrSent` maar string `"false"` is truthy in JavaScript, dus `!d.cmrSent` evalueert naar `false` terwijl het `true` zou moeten zijn.
+Jouw correcte businessregels:
+- **Nog te betalen**: alle auto's zonder `purchase_payment_status = 'volledig_betaald'`
+- **Betaald, pickup niet verstuurd**: betaald maar `pickupDocumentSent` is niet true
+- **Klaar voor ophalen**: betaald EN pickup verstuurd (maar nog niet onderweg/aangekomen)
+- **CMR kritiek**: `transportStatus = 'aangekomen'` zonder cmrSent en papersReceived
 
-2. **Tegel 2 (Betaald) mist pickupDocumentSent check**: De code controleert alleen `pickupStatus !== 'gereed'` maar moet ook checken of `pickupDocumentSent` niet verstuurd is.
+## Wijziging
 
-## Verwachte resultaten na fix
+### `MarcoDashboard.tsx` — alerts blok herschrijven (regels 166-182)
 
-| Tegel | Huidig | Verwacht |
-|-------|--------|----------|
-| 1 — Nieuw wacht betaling | 0 | 35 |
-| 2 — Betaald, pickup niet verstuurd | 0 | 37 |
-| 3 — Klaar voor ophalen | 0 | 0 (correct) |
-| 4 — CMR kritiek | 0 | 11 |
-| 5 — BPM te laat | 0 | 0 (correct) |
-| 6 — Inschrijving te laat | 0 | 0 (correct) |
+De alert counts worden los berekend over alle gefilterde voertuigen, niet meer gekoppeld aan pipeline stappen:
 
-## Wijzigingen
-
-### `MarcoDashboard.tsx` — `classifyVehicle` functie herschrijven
-
-Voeg een helper toe die JSONB boolean strings correct evalueert:
-
-```typescript
-function isTruthy(val: any): boolean {
-  return val === true || val === 'true';
-}
+```
+alerts.nietBetaald = filtered waar paymentStatus !== 'volledig_betaald'
+alerts.betaaldGeenPickup = filtered waar betaald EN pickupDocumentSent niet true
+alerts.pickupGereed = filtered waar betaald EN pickupDocumentSent true EN niet onderweg/aangekomen
+alerts.cmrKritiek = filtered waar transportStatus='aangekomen' EN cmrSent niet true EN papersReceived niet true
+alerts.bpmTeLaat = ongewijzigd
+alerts.inschrijvingTeLaat = ongewijzigd
 ```
 
-Pas de `classifyVehicle` logica aan:
+### Alert tiles array uitbreiden van 5 naar 6
 
-- **Nieuw (wacht betaling)**: `purchase_payment_status !== 'volledig_betaald'` (inclusief NULL/undefined)
-- **Betaald (pickup niet verstuurd)**: `purchase_payment_status === 'volledig_betaald'` AND `pickupDocumentSent` is niet true AND niet al onderweg/aangekomen
-- **Pickup gereed / onderweg**: betaald AND pickupDocumentSent is true AND transportStatus niet onderweg/aangekomen, OF transportStatus = onderweg
-- **Aangekomen — CMR**: transportStatus = aangekomen AND cmrSent niet true AND papersReceived niet true
-- **Import**: import_status in behandeling, of aangekomen met CMR/papieren al gedaan
-- **Ingeschreven**: ongewijzigd
-- **B2B papieren**: ongewijzigd, maar ook met `isTruthy` fix
+Voeg "Betaald, pickup niet verstuurd" toe als aparte tegel (oranje). Grid aanpassen naar 6 kolommen.
 
-Dezelfde `isTruthy` fix toepassen op:
-- Alert tegel `pickupGereed`
-- CSV export kolommen
-- Tabel weergave (checkmarks)
+### Geen andere bestanden, geen database wijzigingen
 
-### Geen database wijzigingen nodig
-
-Alle data staat correct in de database. Alleen de JavaScript filters lezen de waarden verkeerd.
+Alleen het alerts blok en de alertTiles array in `MarcoDashboard.tsx` worden aangepast.
 
