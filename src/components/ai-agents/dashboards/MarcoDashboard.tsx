@@ -227,29 +227,10 @@ export const MarcoDashboard: React.FC = () => {
     return processed.pipeline[selectedStep] || [];
   }, [processed, selectedStep]);
 
-  const downloadCSV = (rows: VehicleRow[], filename: string) => {
-    const headers = ['Merk', 'Model', 'Kenteken', 'VIN', 'Leverancier', 'Email leverancier', 'Dagen sinds inkoop', 'Import status', 'Betaald', 'CMR verstuurd', 'Papieren ontvangen'];
-    const csvRows = rows.map(v => {
-      const d = v.details || {};
-      const supplier = v.supplier_id ? contactMap[v.supplier_id] : null;
-      const paymentStatus = getPurchasePaymentStatus(d);
-      return [
-        v.brand || '', v.model || '', v.license_number || '', v.vin || '',
-        supplier?.company_name || supplier?.first_name || '',
-        supplier?.email || '',
-        daysSince(v.created_at),
-        v.import_status || '',
-        paymentStatus === 'volledig_betaald' ? 'Ja' : 'Nee',
-        isTruthy(d.cmrSent) ? 'Ja' : 'Nee',
-        isTruthy(d.papersReceived) ? 'Ja' : 'Nee',
-      ].join(';');
-    });
-    const csv = [headers.join(';'), ...csvRows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `${filename}.csv`; a.click();
-    URL.revokeObjectURL(url);
+  const handleExcelExport = (step: PipelineStep) => {
+    const rows = processed?.pipeline[step] || [];
+    if (rows.length === 0) return;
+    exportMarcoExcel(step, rows as any, contactMap, customerMap);
   };
 
   if (isLoading) return <div className="grid grid-cols-5 gap-3">{Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>;
