@@ -49,6 +49,14 @@ function isTruthy(val: any): boolean {
   return val === true || val === 'true';
 }
 
+function getPurchasePaymentStatus(details: any): string {
+  return details?.purchase_payment_status || 'niet_betaald';
+}
+
+function isPickupSent(details: any): boolean {
+  return isTruthy(details?.pickupDocumentSent);
+}
+
 function vehicleLabel(v: VehicleRow): string {
   const parts = [v.brand, v.model].filter(Boolean).join(' ');
   return parts ? `${parts} ${v.license_number || v.vin || ''}`.trim() : v.id.slice(0, 8);
@@ -57,42 +65,38 @@ function vehicleLabel(v: VehicleRow): string {
 function classifyVehicle(v: VehicleRow): PipelineStep | null {
   const d = v.details || {};
   const importStatus = v.import_status || 'niet_gestart';
+  const transportStatus = d.transportStatus;
   const isTradeIn = isTruthy(d.isTradeIn);
   const isLoanCar = isTruthy(d.isLoanCar);
   const isDelivered = v.status === 'afgeleverd';
 
   if (isTradeIn || isLoanCar || isDelivered) return null;
 
-  const purchasePayment = d.purchase_payment_status || d.paymentStatus;
-  const paid = purchasePayment === 'volledig_betaald';
-  const pickupSent = isTruthy(d.pickupDocumentSent);
+  const paid = getPurchasePaymentStatus(d) === 'volledig_betaald';
+  const pickupSent = isPickupSent(d);
   const cmrSent = isTruthy(d.cmrSent);
   const papersReceived = isTruthy(d.papersReceived);
 
-  // B2B papieren
-  if (v.status === 'verkocht_b2b' && !papersReceived && d.transportStatus === 'aangekomen') return 'b2b_papieren';
+  // Workflow Marco: eerst betaling, daarna pickup, daarna transport/import
+  if (!paid) return 'nieuw';
+  if (!pickupSent) return 'betaald';
+
+  // B2B papieren verwacht
+  if (v.status === 'verkocht_b2b' && !papersReceived && transportStatus === 'aangekomen') return 'b2b_papieren';
 
   // Ingeschreven
   if (importStatus === 'ingeschreven') return 'ingeschreven';
 
+  // Aangekomen - CMR versturen
+  if (transportStatus === 'aangekomen' && !cmrSent && !papersReceived) return 'aangekomen';
+
   // Import in behandeling
   if (['aanvraag_ontvangen', 'goedgekeurd', 'bpm_betaald'].includes(importStatus)) return 'import';
+  if (transportStatus === 'aangekomen') return 'import';
 
-  // Aangekomen - CMR versturen
-  if (d.transportStatus === 'aangekomen' && !cmrSent && !papersReceived) return 'aangekomen';
-  if (d.transportStatus === 'aangekomen') return 'import'; // aangekomen but CMR done
-
-  // Onderweg
-  if (d.transportStatus === 'onderweg') return 'pickup';
-
-  // Pickup gereed — betaald + pickup doc verstuurd maar nog niet onderweg/aangekomen
-  if (paid && pickupSent && d.transportStatus !== 'onderweg' && d.transportStatus !== 'aangekomen') return 'pickup';
-
-  // Betaald - pickup document nog niet verstuurd
-  if (paid && !pickupSent && d.transportStatus !== 'onderweg' && d.transportStatus !== 'aangekomen') return 'betaald';
-
-  // Nieuw - wacht betaling (inclusief NULL/undefined)
-  if (!paid) return 'nieuw';
+  // Pickup gereed / onderweg
+  if (transportStatus === 'onderweg') return 'pickup';
+  if (pickupSent) return 'pickup';
 
   return null;
 }
@@ -157,29 +161,24 @@ export const MarcoDashboard: React.FC = () => {
       if (step) pipeline[step].push(v);
     });
 
-    // Sort each by urgency
     Object.keys(pipeline).forEach(key => {
       const k = key as PipelineStep;
       pipeline[k].sort((a, b) => urgencyScore(b, k) - urgencyScore(a, k));
     });
 
-    // Alert counts — decoupled from pipeline classification
     const now = Date.now();
     const alerts = {
       nietBetaald: filtered.filter(v => {
         const d = v.details || {};
-        const pay = d.purchase_payment_status || d.paymentStatus;
-        return pay !== 'volledig_betaald';
+        return getPurchasePaymentStatus(d) !== 'volledig_betaald';
       }).length,
       betaaldGeenPickup: filtered.filter(v => {
         const d = v.details || {};
-        const pay = d.purchase_payment_status || d.paymentStatus;
-        return pay === 'volledig_betaald' && !isTruthy(d.pickupDocumentSent);
+        return getPurchasePaymentStatus(d) === 'volledig_betaald' && !isPickupSent(d);
       }).length,
       pickupGereed: filtered.filter(v => {
         const d = v.details || {};
-        const pay = d.purchase_payment_status || d.paymentStatus;
-        return pay === 'volledig_betaald' && isTruthy(d.pickupDocumentSent) && d.transportStatus !== 'onderweg' && d.transportStatus !== 'aangekomen';
+        return getPurchasePaymentStatus(d) === 'volledig_betaald' && isPickupSent(d) && d.transportStatus !== 'onderweg' && d.transportStatus !== 'aangekomen';
       }).length,
       cmrKritiek: filtered.filter(v => {
         const d = v.details || {};
@@ -206,7 +205,7 @@ export const MarcoDashboard: React.FC = () => {
     const csvRows = rows.map(v => {
       const d = v.details || {};
       const supplier = v.supplier_id ? contactMap[v.supplier_id] : null;
-      const paymentStatus = d.purchase_payment_status || d.paymentStatus;
+      const paymentStatus = getPurchasePaymentStatus(d);
       return [
         v.brand || '', v.model || '', v.license_number || '', v.vin || '',
         supplier?.company_name || supplier?.first_name || '',
@@ -260,7 +259,6 @@ export const MarcoDashboard: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Alert tiles */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {alertTiles.map((tile, i) => (
           <Card key={i} className={cn("border-l-4", tile.count > 0 ? `border-l-${tile.color.replace('bg-', '')}` : 'border-l-muted')}>
@@ -277,7 +275,6 @@ export const MarcoDashboard: React.FC = () => {
         ))}
       </div>
 
-      {/* Pipeline */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -312,7 +309,6 @@ export const MarcoDashboard: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Action list */}
       {selectedStep && (
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -345,7 +341,7 @@ export const MarcoDashboard: React.FC = () => {
                     {activeVehicles.map(v => {
                       const d = v.details || {};
                       const supplier = v.supplier_id ? contactMap[v.supplier_id] : null;
-                      const paymentStatus = d.purchase_payment_status || d.paymentStatus;
+                      const paymentStatus = getPurchasePaymentStatus(d);
                       const paid = paymentStatus === 'volledig_betaald';
                       const days = daysSince(v.created_at);
                       const urg = urgencyScore(v, selectedStep);
