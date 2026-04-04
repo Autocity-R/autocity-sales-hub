@@ -176,7 +176,8 @@ export const MarcoDashboard: React.FC = () => {
       }).length,
       pickupGereed: filtered.filter(v => {
         const d = v.details || {};
-        return d.pickupStatus === 'gereed' && d.transportStatus !== 'onderweg' && d.transportStatus !== 'aangekomen';
+        const paid = (d.purchase_payment_status || d.paymentStatus) === 'volledig_betaald';
+        return paid && isTruthy(d.pickupDocumentSent) && d.transportStatus !== 'onderweg' && d.transportStatus !== 'aangekomen';
       }).length,
     };
 
