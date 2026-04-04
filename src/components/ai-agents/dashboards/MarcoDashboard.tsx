@@ -45,6 +45,10 @@ function daysSince(dateStr: string | null | undefined): number {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / DAY);
 }
 
+function isTruthy(val: any): boolean {
+  return val === true || val === 'true';
+}
+
 function vehicleLabel(v: VehicleRow): string {
   const parts = [v.brand, v.model].filter(Boolean).join(' ');
   return parts ? `${parts} ${v.license_number || v.vin || ''}`.trim() : v.id.slice(0, 8);
@@ -53,14 +57,20 @@ function vehicleLabel(v: VehicleRow): string {
 function classifyVehicle(v: VehicleRow): PipelineStep | null {
   const d = v.details || {};
   const importStatus = v.import_status || 'niet_gestart';
-  const isTradeIn = d.isTradeIn === true || d.isTradeIn === 'true';
-  const isLoanCar = !!d.isLoanCar;
+  const isTradeIn = isTruthy(d.isTradeIn);
+  const isLoanCar = isTruthy(d.isLoanCar);
   const isDelivered = v.status === 'afgeleverd';
 
   if (isTradeIn || isLoanCar || isDelivered) return null;
 
+  const purchasePayment = d.purchase_payment_status || d.paymentStatus;
+  const paid = purchasePayment === 'volledig_betaald';
+  const pickupSent = isTruthy(d.pickupDocumentSent);
+  const cmrSent = isTruthy(d.cmrSent);
+  const papersReceived = isTruthy(d.papersReceived);
+
   // B2B papieren
-  if (v.status === 'verkocht_b2b' && d.papersReceived !== true && d.transportStatus === 'aangekomen') return 'b2b_papieren';
+  if (v.status === 'verkocht_b2b' && !papersReceived && d.transportStatus === 'aangekomen') return 'b2b_papieren';
 
   // Ingeschreven
   if (importStatus === 'ingeschreven') return 'ingeschreven';
@@ -69,18 +79,20 @@ function classifyVehicle(v: VehicleRow): PipelineStep | null {
   if (['aanvraag_ontvangen', 'goedgekeurd', 'bpm_betaald'].includes(importStatus)) return 'import';
 
   // Aangekomen - CMR versturen
-  if (d.transportStatus === 'aangekomen' && !d.cmrSent && !d.papersReceived) return 'aangekomen';
+  if (d.transportStatus === 'aangekomen' && !cmrSent && !papersReceived) return 'aangekomen';
   if (d.transportStatus === 'aangekomen') return 'import'; // aangekomen but CMR done
 
-  // Pickup gereed / onderweg
-  if (d.pickupStatus === 'gereed' || d.transportStatus === 'onderweg') return 'pickup';
+  // Onderweg
+  if (d.transportStatus === 'onderweg') return 'pickup';
 
-  // Betaald - pickup gereed maken
-  const purchasePayment = d.purchase_payment_status || d.paymentStatus;
-  if (purchasePayment === 'volledig_betaald' && d.pickupStatus !== 'gereed' && d.transportStatus !== 'onderweg' && d.transportStatus !== 'aangekomen') return 'betaald';
+  // Pickup gereed — betaald + pickup doc verstuurd maar nog niet onderweg/aangekomen
+  if (paid && pickupSent && d.transportStatus !== 'onderweg' && d.transportStatus !== 'aangekomen') return 'pickup';
 
-  // Nieuw - wacht betaling
-  if (purchasePayment !== 'volledig_betaald') return 'nieuw';
+  // Betaald - pickup document nog niet verstuurd
+  if (paid && !pickupSent && d.transportStatus !== 'onderweg' && d.transportStatus !== 'aangekomen') return 'betaald';
+
+  // Nieuw - wacht betaling (inclusief NULL/undefined)
+  if (!paid) return 'nieuw';
 
   return null;
 }
@@ -164,7 +176,8 @@ export const MarcoDashboard: React.FC = () => {
       }).length,
       pickupGereed: filtered.filter(v => {
         const d = v.details || {};
-        return d.pickupStatus === 'gereed' && d.transportStatus !== 'onderweg' && d.transportStatus !== 'aangekomen';
+        const paid = (d.purchase_payment_status || d.paymentStatus) === 'volledig_betaald';
+        return paid && isTruthy(d.pickupDocumentSent) && d.transportStatus !== 'onderweg' && d.transportStatus !== 'aangekomen';
       }).length,
     };
 
@@ -189,8 +202,8 @@ export const MarcoDashboard: React.FC = () => {
         daysSince(v.created_at),
         v.import_status || '',
         paymentStatus === 'volledig_betaald' ? 'Ja' : 'Nee',
-        d.cmrSent ? 'Ja' : 'Nee',
-        d.papersReceived ? 'Ja' : 'Nee',
+        isTruthy(d.cmrSent) ? 'Ja' : 'Nee',
+        isTruthy(d.papersReceived) ? 'Ja' : 'Nee',
       ].join(';');
     });
     const csv = [headers.join(';'), ...csvRows].join('\n');
@@ -341,10 +354,10 @@ export const MarcoDashboard: React.FC = () => {
                             {paid ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : <span className="text-red-500 text-xs font-medium">Nee</span>}
                           </td>
                           <td className="py-2 pr-3 text-center">
-                            {d.cmrSent ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : <span className="text-muted-foreground text-xs">—</span>}
+                            {isTruthy(d.cmrSent) ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : <span className="text-muted-foreground text-xs">—</span>}
                           </td>
                           <td className="py-2 pr-3 text-center">
-                            {d.papersReceived ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : <span className="text-muted-foreground text-xs">—</span>}
+                            {isTruthy(d.papersReceived) ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : <span className="text-muted-foreground text-xs">—</span>}
                           </td>
                           <td className="py-2 text-center">
                             <Badge className={cn("text-[10px]", urg > 60 ? 'bg-red-500' : urg > 30 ? 'bg-amber-500' : 'bg-blue-500')} variant="default">{urg}</Badge>
