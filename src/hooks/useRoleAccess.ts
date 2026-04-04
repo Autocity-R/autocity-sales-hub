@@ -31,7 +31,7 @@ export const useRoleAccess = () => {
   };
 
   const hasAIAgentsAccess = () => {
-    return isAdmin; // Alleen admin en owner hebben toegang
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper' || userRole === 'operationeel' || userRole === 'aftersales_manager';
   };
 
   const hasSettingsAccess = () => {
