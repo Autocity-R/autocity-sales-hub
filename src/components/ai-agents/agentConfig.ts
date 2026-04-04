@@ -22,10 +22,12 @@ export const AGENTS: AgentConfig[] = [
     role: 'Import Monitor',
     color: { bg: 'bg-blue-500', border: 'border-blue-500', text: 'text-blue-500', gradient: 'from-blue-500 to-blue-600' },
     quickQuestions: [
-      'Welke auto\'s wachten op RDW goedkeuring?',
-      'Zijn er vertragingen bij BPM betalingen?',
-      'Hoeveel auto\'s zijn onderweg?',
-      'Welke imports hebben prioriteit?',
+      'Welke auto\'s hebben vandaag actie nodig?',
+      'Wat zijn de kritiekste bottlenecks?',
+      'CMR status overzicht',
+      'Welke auto\'s lopen het langst vast?',
+      'B2B papieren status',
+      'Wat is de impact op onze omloopsnelheid?',
     ],
   },
   {

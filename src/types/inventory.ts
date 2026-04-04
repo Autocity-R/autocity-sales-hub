@@ -135,6 +135,9 @@ export interface VehicleDetails {
   deliveryAlertDismissedBy?: string;
   deliveryAlertDismissedReason?: string;
   
+  // Pickup status for import process
+  pickupStatus?: 'niet_gereed' | 'gereed' | 'opgepikt';
+  
   // Other details
   [key: string]: any;
 }
