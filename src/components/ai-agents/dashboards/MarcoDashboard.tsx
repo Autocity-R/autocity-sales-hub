@@ -354,10 +354,10 @@ export const MarcoDashboard: React.FC = () => {
                             {paid ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : <span className="text-red-500 text-xs font-medium">Nee</span>}
                           </td>
                           <td className="py-2 pr-3 text-center">
-                            {d.cmrSent ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : <span className="text-muted-foreground text-xs">—</span>}
+                            {isTruthy(d.cmrSent) ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : <span className="text-muted-foreground text-xs">—</span>}
                           </td>
                           <td className="py-2 pr-3 text-center">
-                            {d.papersReceived ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : <span className="text-muted-foreground text-xs">—</span>}
+                            {isTruthy(d.papersReceived) ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : <span className="text-muted-foreground text-xs">—</span>}
                           </td>
                           <td className="py-2 text-center">
                             <Badge className={cn("text-[10px]", urg > 60 ? 'bg-red-500' : urg > 30 ? 'bg-amber-500' : 'bg-blue-500')} variant="default">{urg}</Badge>
