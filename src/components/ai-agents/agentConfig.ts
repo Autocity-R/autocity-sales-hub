@@ -2,7 +2,6 @@ export const AGENT_IDS = {
   Marco: 'b1000000-0000-0000-0000-000000000001',
   Lisa: 'b2000000-0000-0000-0000-000000000002',
   Daan: 'b3000000-0000-0000-0000-000000000003',
-  Tom: 'b4000000-0000-0000-0000-000000000004',
   Sara: 'b5000000-0000-0000-0000-000000000005',
   Alex: 'b6000000-0000-0000-0000-000000000006',
 } as const;
@@ -19,7 +18,7 @@ export const AGENTS: AgentConfig[] = [
   {
     id: AGENT_IDS.Marco,
     name: 'Marco',
-    role: 'Import Monitor',
+    role: 'Import & Transport Manager',
     color: { bg: 'bg-blue-500', border: 'border-blue-500', text: 'text-blue-500', gradient: 'from-blue-500 to-blue-600' },
     quickQuestions: [
       'Welke auto\'s hebben vandaag actie nodig?',
@@ -27,6 +26,7 @@ export const AGENTS: AgentConfig[] = [
       'CMR status overzicht',
       'Welke auto\'s lopen het langst vast?',
       'B2B papieren status',
+      'Welke auto\'s zijn onderweg?',
       'Wat is de impact op onze omloopsnelheid?',
     ],
   },
@@ -52,18 +52,6 @@ export const AGENTS: AgentConfig[] = [
       'Wat is de totale voorraadwaarde?',
       'Welke auto\'s moeten geprijsd worden?',
       'Geef een voorraad samenvatting',
-    ],
-  },
-  {
-    id: AGENT_IDS.Tom,
-    name: 'Tom',
-    role: 'Transport Manager',
-    color: { bg: 'bg-red-400', border: 'border-red-400', text: 'text-red-400', gradient: 'from-red-400 to-red-500' },
-    quickQuestions: [
-      'Welke auto\'s zijn onderweg?',
-      'Zijn er ontbrekende transportdocumenten?',
-      'Welke B2B papieren worden verwacht?',
-      'Wat is de status van lopende transporten?',
     ],
   },
   {
@@ -93,11 +81,11 @@ export const AGENTS: AgentConfig[] = [
 ];
 
 export const ROLE_AGENT_ACCESS: Record<string, string[]> = {
-  admin: ['Marco', 'Lisa', 'Daan', 'Tom', 'Sara', 'Alex'],
-  owner: ['Marco', 'Lisa', 'Daan', 'Tom', 'Sara', 'Alex'],
-  manager: ['Marco', 'Lisa', 'Daan', 'Tom', 'Sara', 'Alex'],
+  admin: ['Marco', 'Lisa', 'Daan', 'Sara', 'Alex'],
+  owner: ['Marco', 'Lisa', 'Daan', 'Sara', 'Alex'],
+  manager: ['Marco', 'Lisa', 'Daan', 'Sara', 'Alex'],
   verkoper: ['Daan'],
-  operationeel: ['Marco', 'Tom', 'Lisa'],
+  operationeel: ['Marco', 'Lisa'],
   aftersales_manager: ['Lisa', 'Sara'],
 };
 

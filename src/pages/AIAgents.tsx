@@ -8,7 +8,6 @@ import { AgentConfig, getAccessibleAgents } from "@/components/ai-agents/agentCo
 import { MarcoDashboard } from "@/components/ai-agents/dashboards/MarcoDashboard";
 import { LisaDashboard } from "@/components/ai-agents/dashboards/LisaDashboard";
 import { DaanDashboard } from "@/components/ai-agents/dashboards/DaanDashboard";
-import { TomDashboard } from "@/components/ai-agents/dashboards/TomDashboard";
 import { SaraDashboard } from "@/components/ai-agents/dashboards/SaraDashboard";
 import { AlexDashboard } from "@/components/ai-agents/dashboards/AlexDashboard";
 import { LayoutDashboard, MessageSquare } from "lucide-react";
@@ -17,7 +16,6 @@ const DASHBOARD_MAP: Record<string, React.FC> = {
   Marco: MarcoDashboard,
   Lisa: LisaDashboard,
   Daan: DaanDashboard,
-  Tom: TomDashboard,
   Sara: SaraDashboard,
   Alex: AlexDashboard,
 };
