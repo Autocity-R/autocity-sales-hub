@@ -13,7 +13,7 @@ export const SaraDashboard: React.FC = () => {
       const { data: claims, error } = await supabase
         .from('warranty_claims')
         .select('*')
-        .in('status', ['open', 'in_behandeling', 'pending']);
+        .or('status.eq.open,status.eq.in_behandeling,status.eq.pending');
 
       if (error) throw error;
       const items = claims || [];
