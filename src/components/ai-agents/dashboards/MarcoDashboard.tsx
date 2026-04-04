@@ -76,29 +76,26 @@ function classifyVehicle(v: VehicleRow): PipelineStep | null {
   const pickupSent = isPickupSent(d);
   const cmrSent = isTruthy(d.cmrSent);
   const papersReceived = isTruthy(d.papersReceived);
-
-  // Auto's die al aangekomen of verder zijn → NIET in betaling/pickup stappen
-  // Deze auto's zijn fysiek binnen, ongeacht betaalstatus leverancier
-  const alreadyArrived = transportStatus === 'aangekomen' || ['aanvraag_ontvangen', 'goedgekeurd', 'bpm_betaald', 'ingeschreven'].includes(importStatus);
+  const arrived = transportStatus === 'aangekomen';
 
   // B2B papieren verwacht
-  if (v.status === 'verkocht_b2b' && !papersReceived && transportStatus === 'aangekomen') return 'b2b_papieren';
+  if (v.status === 'verkocht_b2b' && !papersReceived && arrived) return 'b2b_papieren';
 
   // Ingeschreven
   if (importStatus === 'ingeschreven') return 'ingeschreven';
 
-  // Import in behandeling
-  if (['aanvraag_ontvangen', 'goedgekeurd', 'bpm_betaald'].includes(importStatus)) return 'import';
+  // Import in behandeling (inclusief 'aangekomen' import_status)
+  if (['aanvraag_ontvangen', 'aangekomen', 'goedgekeurd', 'bpm_betaald'].includes(importStatus)) return 'import';
 
   // Aangekomen - CMR versturen
-  if (transportStatus === 'aangekomen' && !cmrSent && !papersReceived) return 'aangekomen';
-  if (transportStatus === 'aangekomen') return 'import';
+  if (arrived && !cmrSent && !papersReceived) return 'aangekomen';
+  if (arrived) return 'import';
 
-  // Onderweg
-  if (transportStatus === 'onderweg') return 'pickup';
+  // --- Auto is nog niet fysiek binnen (niet aangekomen) ---
+  // Betaal- en pickupstatus bepalen de stap
 
-  // --- Vanaf hier: auto's die nog NIET onderweg/aangekomen zijn ---
-  // Dit zijn transport-fase auto's: betaling + pickup logica geldt hier
+  // Onderweg + betaald + pickup = pickup stap
+  if (transportStatus === 'onderweg' && paid && pickupSent) return 'pickup';
 
   // Betaald + pickup verstuurd = klaar voor ophalen
   if (paid && pickupSent) return 'pickup';
@@ -106,7 +103,7 @@ function classifyVehicle(v: VehicleRow): PipelineStep | null {
   // Betaald maar pickup nog niet verstuurd
   if (paid && !pickupSent) return 'betaald';
 
-  // Niet betaald aan leverancier (alleen als auto nog niet onderweg/aangekomen is)
+  // Niet betaald aan leverancier
   if (!paid) return 'nieuw';
 
   return null;
@@ -179,30 +176,27 @@ export const MarcoDashboard: React.FC = () => {
 
     const now = Date.now();
 
-    // Helper: auto is nog niet aangekomen/in import → transport-fase
-    const isTransportPhase = (v: VehicleRow) => {
+    // Helper: auto is nog niet fysiek binnen (alleen 'aangekomen' uitsluiten)
+    const isNotYetArrived = (v: VehicleRow) => {
       const d = v.details || {};
-      const ts = d.transportStatus;
-      const is = v.import_status || 'niet_gestart';
-      // Auto is nog in transport als het NIET al aangekomen/onderweg/in import is
-      return ts !== 'aangekomen' && ts !== 'onderweg' && !['aanvraag_ontvangen', 'goedgekeurd', 'bpm_betaald', 'ingeschreven'].includes(is);
+      return d.transportStatus !== 'aangekomen';
     };
 
     const alerts = {
-      // Nog te betalen: alleen auto's die nog in transport-fase zijn (niet al onderweg/aangekomen/import)
+      // Nog te betalen: auto's die nog niet aangekomen zijn EN niet betaald
       nietBetaald: filtered.filter(v => {
         const d = v.details || {};
-        return isTransportPhase(v) && getPurchasePaymentStatus(d) !== 'volledig_betaald';
+        return isNotYetArrived(v) && getPurchasePaymentStatus(d) !== 'volledig_betaald';
       }).length,
-      // Betaald maar pickup niet verstuurd: ook alleen transport-fase
+      // Betaald maar pickup niet verstuurd: niet aangekomen, betaald, geen pickup
       betaaldGeenPickup: filtered.filter(v => {
         const d = v.details || {};
-        return isTransportPhase(v) && getPurchasePaymentStatus(d) === 'volledig_betaald' && !isPickupSent(d);
+        return isNotYetArrived(v) && getPurchasePaymentStatus(d) === 'volledig_betaald' && !isPickupSent(d);
       }).length,
-      // Klaar voor ophalen: betaald + pickup verstuurd, nog niet onderweg/aangekomen
+      // Klaar voor ophalen/onderweg: niet aangekomen, betaald + pickup verstuurd (inclusief onderweg)
       pickupGereed: filtered.filter(v => {
         const d = v.details || {};
-        return getPurchasePaymentStatus(d) === 'volledig_betaald' && isPickupSent(d) && d.transportStatus !== 'onderweg' && d.transportStatus !== 'aangekomen';
+        return isNotYetArrived(v) && getPurchasePaymentStatus(d) === 'volledig_betaald' && isPickupSent(d);
       }).length,
       cmrKritiek: filtered.filter(v => {
         const d = v.details || {};
