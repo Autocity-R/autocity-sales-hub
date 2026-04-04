@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, CheckCircle, Clock, Truck, FileText, ShieldCheck, CreditCard, Package, Download, DollarSign, ChevronRight } from "lucide-react";
+import { AlertTriangle, CheckCircle, Clock, Truck, FileText, ShieldCheck, CreditCard, Package, Download, DollarSign, ChevronRight, FileSpreadsheet } from "lucide-react";
+import { exportMarcoExcel } from "@/utils/marcoExport";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
