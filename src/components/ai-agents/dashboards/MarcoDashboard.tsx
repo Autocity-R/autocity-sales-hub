@@ -25,6 +25,7 @@ interface VehicleRow {
   license_number: string | null;
   vin: string | null;
   supplier_id: string | null;
+  customer_id: string | null;
 }
 
 type PipelineStep = 'nieuw' | 'betaald' | 'pickup' | 'aangekomen' | 'import' | 'ingeschreven' | 'b2b_papieren';
