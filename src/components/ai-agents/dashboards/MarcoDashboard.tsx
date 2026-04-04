@@ -339,6 +339,9 @@ export const MarcoDashboard: React.FC = () => {
                     <tr className="border-b text-left text-muted-foreground">
                       <th className="pb-2 pr-3 font-medium">Auto</th>
                       <th className="pb-2 pr-3 font-medium">Leverancier</th>
+                      {['pickup', 'import', 'b2b_papieren'].includes(selectedStep) && (
+                        <th className="pb-2 pr-3 font-medium">Klant</th>
+                      )}
                       <th className="pb-2 pr-3 font-medium text-center">Dagen</th>
                       <th className="pb-2 pr-3 font-medium">Status</th>
                       <th className="pb-2 pr-3 font-medium text-center">Betaald</th>
@@ -351,6 +354,8 @@ export const MarcoDashboard: React.FC = () => {
                     {activeVehicles.map(v => {
                       const d = v.details || {};
                       const supplier = v.supplier_id ? contactMap[v.supplier_id] : null;
+                      const customer = (v as any).customer_id ? customerMap[(v as any).customer_id] : null;
+                      const customerName = customer ? (customer.company_name || `${customer.first_name || ''} ${customer.last_name || ''}`.trim()) : (d.customerName || '—');
                       const paymentStatus = getPurchasePaymentStatus(d);
                       const paid = paymentStatus === 'volledig_betaald';
                       const days = daysSince(v.created_at);
@@ -363,6 +368,9 @@ export const MarcoDashboard: React.FC = () => {
                             <p className="text-xs text-muted-foreground">{v.license_number || v.vin || '—'}</p>
                           </td>
                           <td className="py-2 pr-3 text-xs">{supplier?.company_name || supplier?.first_name || '—'}</td>
+                          {['pickup', 'import', 'b2b_papieren'].includes(selectedStep) && (
+                            <td className="py-2 pr-3 text-xs">{customerName}</td>
+                          )}
                           <td className="py-2 pr-3 text-center">
                             <span className={cn("font-medium", days > 30 ? 'text-red-500' : days > 14 ? 'text-amber-500' : '')}>{days}d</span>
                           </td>
