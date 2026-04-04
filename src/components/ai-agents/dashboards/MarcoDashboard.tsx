@@ -78,7 +78,10 @@ function classifyVehicle(v: VehicleRow): PipelineStep | null {
   const papersReceived = isTruthy(d.papersReceived);
   const arrived = transportStatus === 'aangekomen';
 
-  // B2B papieren verwacht
+  // Aangekomen maar CMR nog niet verstuurd — geldt voor ALLE auto's (ook verkocht b2b/b2c)
+  if (arrived && !cmrSent && !papersReceived) return 'aangekomen';
+
+  // B2B papieren verwacht (aangekomen, CMR al verstuurd, maar papieren nog niet ontvangen)
   if (v.status === 'verkocht_b2b' && !papersReceived && arrived) return 'b2b_papieren';
 
   // Ingeschreven
@@ -87,8 +90,7 @@ function classifyVehicle(v: VehicleRow): PipelineStep | null {
   // Import in behandeling (inclusief 'aangekomen' import_status)
   if (['aanvraag_ontvangen', 'aangekomen', 'goedgekeurd', 'bpm_betaald'].includes(importStatus)) return 'import';
 
-  // Aangekomen - CMR versturen
-  if (arrived && !cmrSent && !papersReceived) return 'aangekomen';
+  // Aangekomen met CMR verstuurd → import
   if (arrived) return 'import';
 
   // --- Auto is nog niet fysiek binnen (niet aangekomen) ---
