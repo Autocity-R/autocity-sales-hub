@@ -1682,11 +1682,12 @@ function getStrategicCEOFunctions() {
 // ============================================================================
 
 function buildConversationMessages(systemPrompt: string, history: any[], currentMessage: string) {
+  // First element is system prompt (handled separately by Claude API)
   const messages: any[] = [
     { role: 'system', content: systemPrompt }
   ];
 
-  // Add history (last 20 messages)
+  // Add history (last 20 messages) - only user/assistant for Claude
   history.slice(-20).forEach(msg => {
     messages.push({
       role: msg.message_type === 'user' ? 'user' : 'assistant',
