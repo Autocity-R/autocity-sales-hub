@@ -1887,12 +1887,16 @@ export type Database = {
       jpcars_voorraad_monitor: {
         Row: {
           apr: number | null
+          apr_breakdown: Json | null
           body: string | null
           build: number | null
           clicks: number | null
           color: string | null
+          competitive_set_size: number | null
           created_at: string | null
           days_hidden: number | null
+          days_since_proposal: number | null
+          days_to_show: number | null
           fuel: string | null
           gear: string | null
           hp: number | null
@@ -1902,6 +1906,8 @@ export type Database = {
           make: string | null
           model: string | null
           model_year: number | null
+          options: Json | null
+          price_catalog: number | null
           price_history_amount_1: number | null
           price_history_amount_2: number | null
           price_history_amount_3: number | null
@@ -1909,6 +1915,7 @@ export type Database = {
           price_history_date_2: string | null
           price_history_date_3: string | null
           price_local: number | null
+          price_purchase: number | null
           price_sensitivity: number | null
           price_warning: number | null
           rank_current: number | null
@@ -1920,11 +1927,14 @@ export type Database = {
           stat_leads: number | null
           stat_sold_count: number | null
           stat_stock_count: number | null
+          stat_turnover_ext: number | null
+          stat_turnover_int: number | null
           stock_days: number | null
           stock_days_average: number | null
           stock_days_average_in_stock: number | null
           supply_type: string | null
           synced_at: string | null
+          tdc: number | null
           thumbs_down_days: number | null
           value: number | null
           value_sold: number | null
@@ -1936,15 +1946,20 @@ export type Database = {
           vvp_75: number | null
           vvp_95: number | null
           window_size: number | null
+          window_size_own: number | null
         }
         Insert: {
           apr?: number | null
+          apr_breakdown?: Json | null
           body?: string | null
           build?: number | null
           clicks?: number | null
           color?: string | null
+          competitive_set_size?: number | null
           created_at?: string | null
           days_hidden?: number | null
+          days_since_proposal?: number | null
+          days_to_show?: number | null
           fuel?: string | null
           gear?: string | null
           hp?: number | null
@@ -1954,6 +1969,8 @@ export type Database = {
           make?: string | null
           model?: string | null
           model_year?: number | null
+          options?: Json | null
+          price_catalog?: number | null
           price_history_amount_1?: number | null
           price_history_amount_2?: number | null
           price_history_amount_3?: number | null
@@ -1961,6 +1978,7 @@ export type Database = {
           price_history_date_2?: string | null
           price_history_date_3?: string | null
           price_local?: number | null
+          price_purchase?: number | null
           price_sensitivity?: number | null
           price_warning?: number | null
           rank_current?: number | null
@@ -1972,11 +1990,14 @@ export type Database = {
           stat_leads?: number | null
           stat_sold_count?: number | null
           stat_stock_count?: number | null
+          stat_turnover_ext?: number | null
+          stat_turnover_int?: number | null
           stock_days?: number | null
           stock_days_average?: number | null
           stock_days_average_in_stock?: number | null
           supply_type?: string | null
           synced_at?: string | null
+          tdc?: number | null
           thumbs_down_days?: number | null
           value?: number | null
           value_sold?: number | null
@@ -1988,15 +2009,20 @@ export type Database = {
           vvp_75?: number | null
           vvp_95?: number | null
           window_size?: number | null
+          window_size_own?: number | null
         }
         Update: {
           apr?: number | null
+          apr_breakdown?: Json | null
           body?: string | null
           build?: number | null
           clicks?: number | null
           color?: string | null
+          competitive_set_size?: number | null
           created_at?: string | null
           days_hidden?: number | null
+          days_since_proposal?: number | null
+          days_to_show?: number | null
           fuel?: string | null
           gear?: string | null
           hp?: number | null
@@ -2006,6 +2032,8 @@ export type Database = {
           make?: string | null
           model?: string | null
           model_year?: number | null
+          options?: Json | null
+          price_catalog?: number | null
           price_history_amount_1?: number | null
           price_history_amount_2?: number | null
           price_history_amount_3?: number | null
@@ -2013,6 +2041,7 @@ export type Database = {
           price_history_date_2?: string | null
           price_history_date_3?: string | null
           price_local?: number | null
+          price_purchase?: number | null
           price_sensitivity?: number | null
           price_warning?: number | null
           rank_current?: number | null
@@ -2024,11 +2053,14 @@ export type Database = {
           stat_leads?: number | null
           stat_sold_count?: number | null
           stat_stock_count?: number | null
+          stat_turnover_ext?: number | null
+          stat_turnover_int?: number | null
           stock_days?: number | null
           stock_days_average?: number | null
           stock_days_average_in_stock?: number | null
           supply_type?: string | null
           synced_at?: string | null
+          tdc?: number | null
           thumbs_down_days?: number | null
           value?: number | null
           value_sold?: number | null
@@ -2040,6 +2072,7 @@ export type Database = {
           vvp_75?: number | null
           vvp_95?: number | null
           window_size?: number | null
+          window_size_own?: number | null
         }
         Relationships: []
       }
