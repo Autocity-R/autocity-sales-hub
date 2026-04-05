@@ -296,71 +296,89 @@ serve(async (req) => {
       message
     );
 
-    // Call OpenAI with extended CEO functions
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Build Claude tools from strategic functions
+    const claudeTools = getStrategicCEOFunctions().map(fn => ({
+      name: fn.name,
+      description: fn.description,
+      input_schema: fn.parameters
+    }));
+
+    // Split system prompt from messages for Claude API
+    const systemPrompt = conversationMessages[0]?.content || '';
+    const claudeMessages = conversationMessages.slice(1); // Remove system message
+
+    // Call Claude API
+    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-        'Content-Type': 'application/json',
+        'x-api-key': Deno.env.get('ANTHROPIC_API_KEY') || '',
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: conversationMessages,
-        temperature: 0.7,
+        model: 'claude-sonnet-4-6',
+        system: systemPrompt,
+        messages: claudeMessages,
         max_tokens: 2000,
-        functions: getStrategicCEOFunctions(),
-        function_call: 'auto'
+        tools: claudeTools,
+        tool_choice: { type: 'auto' },
       }),
     });
 
-    if (!openAIResponse.ok) {
-      const errorText = await openAIResponse.text();
-      console.error('OpenAI API error:', errorText);
-      throw new Error(`OpenAI API error: ${openAIResponse.status}`);
+    if (!claudeResponse.ok) {
+      const errorText = await claudeResponse.text();
+      console.error('Claude API error:', errorText);
+      throw new Error(`Claude API error: ${claudeResponse.status}`);
     }
 
-    const openAIData = await openAIResponse.json();
-    const choice = openAIData.choices[0];
+    const claudeData = await claudeResponse.json();
     
-    // FIX 2: Handle NULL response - default to empty string
-    let responseMessage = choice.message.content || '';
+    // Parse Claude response: content[] array with text and tool_use blocks
+    const textBlocks = claudeData.content?.filter((b: any) => b.type === 'text') || [];
+    const toolBlocks = claudeData.content?.filter((b: any) => b.type === 'tool_use') || [];
+    
+    let responseMessage = textBlocks.map((b: any) => b.text).join('\n');
     let functionResult = null;
 
-    // Handle function calls
-    if (choice.message.function_call) {
-      console.log('🔧 CEO Function call:', choice.message.function_call.name);
+    // Handle tool calls
+    if (toolBlocks.length > 0) {
+      const toolCall = toolBlocks[0];
+      console.log('🔧 CEO Function call:', toolCall.name);
+      
       functionResult = await handleStrategicCEOFunctionCall(
         supabaseClient,
-        choice.message.function_call,
+        { name: toolCall.name, arguments: JSON.stringify(toolCall.input) },
         ceoData
       );
       
       if (functionResult.success) {
-        // If we had a function call but no text response, make a follow-up call
         if (!responseMessage) {
+          // Follow-up call with tool result
           const followUpMessages = [
-            ...conversationMessages,
-            { role: 'assistant', content: null, function_call: choice.message.function_call },
-            { role: 'function', name: choice.message.function_call.name, content: JSON.stringify(functionResult) }
+            ...claudeMessages,
+            { role: 'assistant', content: claudeData.content },
+            { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolCall.id, content: JSON.stringify(functionResult) }] }
           ];
 
-          const followUpResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          const followUpResponse = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-              'Content-Type': 'application/json',
+              'x-api-key': Deno.env.get('ANTHROPIC_API_KEY') || '',
+              'anthropic-version': '2023-06-01',
+              'content-type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'gpt-4o',
+              model: 'claude-sonnet-4-6',
+              system: systemPrompt,
               messages: followUpMessages,
-              temperature: 0.7,
               max_tokens: 1500,
             }),
           });
 
           if (followUpResponse.ok) {
             const followUpData = await followUpResponse.json();
-            responseMessage = followUpData.choices[0].message.content || functionResult.message;
+            const followUpText = followUpData.content?.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n') || '';
+            responseMessage = followUpText || functionResult.message;
           } else {
             responseMessage = functionResult.message;
           }
