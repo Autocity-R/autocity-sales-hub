@@ -112,6 +112,31 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Insert into jpcars_market_history for trend tracking
+    if (rows.length > 0 && !insertError) {
+      const historyRows = allVehicles.map(v => ({
+        license_plate: v.license_plate ?? '',
+        rank_current: v.rank_current,
+        price_local: v.price_local,
+        stock_days: v.stock_days,
+        clicks: v.clicks,
+        apr: v.apr,
+        value: v.value,
+        stat_leads: v.stat_leads,
+        stat_sold_count: v.stat_sold_count,
+      }));
+
+      for (let i = 0; i < historyRows.length; i += 50) {
+        const batch = historyRows.slice(i, i + 50);
+        const { error: histErr } = await supabase.from('jpcars_market_history').insert(batch);
+        if (histErr) {
+          console.error(`History insert error at batch ${i}:`, histErr.message);
+          break;
+        }
+      }
+      console.log(`Inserted ${historyRows.length} history records`);
+    }
+
     return new Response(JSON.stringify({
       success: !insertError,
       synced: allVehicles.length,

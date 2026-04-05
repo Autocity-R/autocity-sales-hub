@@ -87,8 +87,12 @@ export const AgentChat: React.FC<AgentChatProps> = ({ agent }) => {
         });
       }
 
-      // Call the AI chat edge function
-      const { data, error } = await supabase.functions.invoke('hendrik-ai-chat', {
+      // Route Kevin to dedicated edge function, others to hendrik-ai-chat
+      const edgeFunction = agent.id === 'b4000000-0000-0000-0000-000000000004' 
+        ? 'kevin-ai-chat' 
+        : 'hendrik-ai-chat';
+
+      const { data, error } = await supabase.functions.invoke(edgeFunction, {
         body: {
           message: userMsg,
           agentId: agent.id,
