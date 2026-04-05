@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
 
     // Insert into jpcars_market_history for trend tracking
     if (rows.length > 0 && !insertError) {
-      const historyRows = allVehicles.map(v => ({
+      const historyRows = uniqueVehicles.map(v => ({
         license_plate: v.license_plate ?? '',
         rank_current: v.rank_current,
         price_local: v.price_local,
