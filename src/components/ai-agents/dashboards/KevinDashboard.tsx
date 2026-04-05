@@ -264,7 +264,8 @@ export const KevinDashboard: React.FC = () => {
                 <TableHead className="text-right">Online prijs</TableHead>
                 <TableHead className="text-right">Marktwaarde</TableHead>
                 <TableHead className="text-right">Rang</TableHead>
-                <TableHead className="text-right">Leads</TableHead>
+                <TableHead className="text-right">APR</TableHead>
+                <TableHead className="text-right">ETR</TableHead>
                 <TableHead className="text-right">Vgl. verkocht</TableHead>
                 <TableHead>Brandstof</TableHead>
               </TableRow>
