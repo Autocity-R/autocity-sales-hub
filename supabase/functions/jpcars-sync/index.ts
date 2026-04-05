@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     console.log(`Deduplicated to ${uniqueVehicles.length} unique vehicles`)
 
     // Map to database structure
-    const rows = allVehicles.map(v => ({
+    const rows = uniqueVehicles.map(v => ({
       license_plate: v.license_plate ?? '',
       reference_code: v.reference_code,
       vin: v.vin,
