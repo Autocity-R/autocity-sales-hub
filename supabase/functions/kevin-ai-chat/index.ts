@@ -43,14 +43,29 @@ Deno.serve(async (req) => {
 
     const crm = crmVehicles || [];
 
-    // 4. Get supplier contacts for supplier coordination
-    const supplierIds = [...new Set(crm.map((v: any) => v.supplier_id).filter(Boolean))];
+    // 3b. Get sold vehicles for B2C/B2B supplier performance analysis
+    const { data: soldVehiclesData } = await supabase
+      .from('vehicles')
+      .select('id, brand, model, license_number, status, purchase_price, selling_price, created_at, sold_date, supplier_id, details, customer_id')
+      .in('status', ['verkocht_b2c', 'verkocht_b2b', 'afgeleverd'])
+      .not('selling_price', 'is', null)
+      .order('sold_date', { ascending: false })
+      .limit(500);
+
+    const soldVehicles = soldVehiclesData || [];
+    console.log(`📊 Loaded ${soldVehicles.length} sold vehicles for supplier analysis`);
+
+    // 4. Get supplier contacts for supplier coordination (from both CRM and sold vehicles)
+    const allSupplierIds = [...new Set([
+      ...crm.map((v: any) => v.supplier_id),
+      ...soldVehicles.map((v: any) => v.supplier_id),
+    ].filter(Boolean))];
     let suppliers: any[] = [];
-    if (supplierIds.length > 0) {
+    if (allSupplierIds.length > 0) {
       const { data: supplierData } = await supabase
         .from('contacts')
         .select('id, first_name, last_name, company_name, email, phone, is_car_dealer')
-        .in('id', supplierIds);
+        .in('id', allSupplierIds);
       suppliers = supplierData || [];
     }
 
