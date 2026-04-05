@@ -2,9 +2,10 @@ import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { AlertTriangle, Clock, CheckCircle, ChevronDown, ChevronRight } from "lucide-react";
+import { AlertTriangle, Clock, CheckCircle, ChevronDown, ChevronRight, Download } from "lucide-react";
 import { KevinVehicleCard } from "./KevinVehicleCard";
 import { getReasons } from "./types";
+import { exportTieredExcel } from "./kevinExcelExport";
 import type { JoinedVehicle } from "./types";
 
 interface KevinActionListProps {
@@ -22,7 +23,9 @@ const TierSection: React.FC<{
   defaultOpen: boolean;
   borderColor: string;
   bgColor: string;
-}> = ({ title, vehicles, icon, defaultOpen, borderColor, bgColor }) => {
+  tier: 'red' | 'yellow' | 'green';
+  onExport: () => void;
+}> = ({ title, vehicles, icon, defaultOpen, borderColor, bgColor, onExport }) => {
   const [open, setOpen] = useState(defaultOpen);
   const [showAll, setShowAll] = useState(false);
   const visible = showAll ? vehicles : vehicles.slice(0, INITIAL_SHOW);
@@ -35,7 +38,17 @@ const TierSection: React.FC<{
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               {icon}
-              {title} — {vehicles.length} voertuigen
+              <span className="flex-1">{title} — {vehicles.length} voertuigen</span>
+              {vehicles.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="ml-auto h-7 text-xs"
+                  onClick={(e) => { e.stopPropagation(); onExport(); }}
+                >
+                  <Download className="h-3 w-3 mr-1" /> Excel
+                </Button>
+              )}
             </CardTitle>
           </CardHeader>
         </CollapsibleTrigger>
@@ -67,6 +80,17 @@ const TierSection: React.FC<{
 export const KevinActionList: React.FC<KevinActionListProps> = ({ redVehicles, yellowVehicles, greenVehicles }) => {
   return (
     <div className="space-y-4">
+      {/* Export all button */}
+      <div className="flex justify-end">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => exportTieredExcel(redVehicles, yellowVehicles, greenVehicles, 'all')}
+        >
+          <Download className="h-3.5 w-3.5 mr-1.5" /> Totale Voorraad Excel
+        </Button>
+      </div>
+
       <TierSection
         title="🔴 ACTIE VEREIST — Vandaag doen"
         vehicles={redVehicles}
@@ -74,6 +98,8 @@ export const KevinActionList: React.FC<KevinActionListProps> = ({ redVehicles, y
         defaultOpen={true}
         borderColor="border-red-200"
         bgColor="bg-red-50/30 dark:bg-red-950/10"
+        tier="red"
+        onExport={() => exportTieredExcel(redVehicles, yellowVehicles, greenVehicles, 'red')}
       />
       <TierSection
         title="🟡 LET OP — Deze week"
@@ -82,6 +108,8 @@ export const KevinActionList: React.FC<KevinActionListProps> = ({ redVehicles, y
         defaultOpen={false}
         borderColor="border-yellow-200"
         bgColor="bg-yellow-50/30 dark:bg-yellow-950/10"
+        tier="yellow"
+        onExport={() => exportTieredExcel(redVehicles, yellowVehicles, greenVehicles, 'yellow')}
       />
       <TierSection
         title="🟢 GOED — Geen actie nodig"
@@ -90,6 +118,8 @@ export const KevinActionList: React.FC<KevinActionListProps> = ({ redVehicles, y
         defaultOpen={false}
         borderColor="border-green-200"
         bgColor="bg-green-50/30 dark:bg-green-950/10"
+        tier="green"
+        onExport={() => exportTieredExcel(redVehicles, yellowVehicles, greenVehicles, 'green')}
       />
     </div>
   );
