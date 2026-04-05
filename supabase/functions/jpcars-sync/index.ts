@@ -40,7 +40,18 @@ Deno.serve(async (req) => {
       page++
     }
 
-    console.log(`Fetched ${allVehicles.length} vehicles from JP Cars API`)
+    console.log(`Fetched ${allVehicles.length} vehicles from JP Cars API (raw)`)
+
+    // Deduplicate: API returns overlapping pages
+    const seen = new Map<string, any>()
+    for (const v of allVehicles) {
+      const key = v.reference_code
+        ? String(v.reference_code)
+        : `${v.license_plate}|${v.make}|${v.model}`
+      seen.set(key, v) // last occurrence wins (most complete)
+    }
+    const uniqueVehicles = Array.from(seen.values())
+    console.log(`Deduplicated to ${uniqueVehicles.length} unique vehicles`)
 
     // Map to database structure
     const rows = allVehicles.map(v => ({

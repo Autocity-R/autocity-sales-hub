@@ -116,40 +116,56 @@ export const KevinDashboard: React.FC = () => {
     }
   });
 
+  // Deduplicate JP Cars data (API may return duplicates)
+  const uniqueJpData = useMemo(() => {
+    if (!jpData) return [];
+    const seen = new Map<string, typeof jpData[0]>();
+    for (const j of jpData) {
+      const key = j.reference_code
+        ? String(j.reference_code)
+        : `${j.license_plate}|${j.make}|${j.model}`;
+      const existing = seen.get(key);
+      if (!existing || (j.synced_at && (!existing.synced_at || j.synced_at > existing.synced_at))) {
+        seen.set(key, j);
+      }
+    }
+    return Array.from(seen.values());
+  }, [jpData]);
+
+  // JP Cars Monitor: direct from JP Cars data (no CRM join)
   const joined: JoinedVehicle[] = useMemo(() => {
-    if (!vehicles || !jpData) return [];
-    const jpMap = new Map(jpData.map(j => [normalize(j.license_plate), j]));
+    if (!uniqueJpData.length) return [];
     
-    return vehicles.map(v => {
-      const jp = jpMap.get(normalize(v.license_number));
-      const ownDays = v.online_since_date 
-        ? Math.round((Date.now() - new Date(v.online_since_date).getTime()) / 86400000)
-        : null;
+    return uniqueJpData.map(jp => {
+      const displayPlate = jp.license_plate === 'NB' || !jp.license_plate
+        ? jp.reference_code ?? '-'
+        : jp.license_plate;
       const cat = categorize(
-        jp?.rank_current ?? null,
-        jp?.stock_days ?? null,
-        jp?.stock_days_average ?? null,
-        jp?.price_local ?? null,
-        jp?.price_warning ?? null
+        jp.rank_current,
+        jp.stock_days,
+        jp.stock_days_average,
+        jp.price_local,
+        jp.price_warning
       );
       return {
-        id: v.id, brand: v.brand, model: v.model, license_number: v.license_number,
-        online_since_date: v.online_since_date, isTradeIn: !!(v.details as any)?.isTradeIn,
-        price_local: jp?.price_local ?? null, value: jp?.value ?? null,
-        stock_days: jp?.stock_days ?? null, stock_days_average: jp?.stock_days_average ?? null,
-        rank_current: jp?.rank_current ?? null, rank_target: jp?.rank_target ?? null,
-        window_size: jp?.window_size ?? null, apr: jp?.apr ?? null,
-        etr: (jp?.raw_data as any)?.apr_breakdown?.etr?.bound ?? null, stat_leads: jp?.stat_leads ?? null,
-        stat_sold_count: jp?.stat_sold_count ?? null, stat_stock_count: jp?.stat_stock_count ?? null,
-        price_warning: jp?.price_warning ?? null,
-        price_history_amount_1: jp?.price_history_amount_1 ?? null,
-        price_history_date_1: jp?.price_history_date_1 ?? null,
-        fuel: jp?.fuel ?? null, synced_at: jp?.synced_at ?? null,
-        category: cat, own_stock_days: ownDays,
-        price_vs_value: (jp?.price_local != null && jp?.value != null) ? jp.price_local - jp.value : null,
+        id: jp.id, brand: jp.make ?? '', model: jp.model ?? '', license_number: displayPlate,
+        online_since_date: null, isTradeIn: false,
+        price_local: jp.price_local, value: jp.value,
+        stock_days: jp.stock_days, stock_days_average: jp.stock_days_average,
+        rank_current: jp.rank_current, rank_target: jp.rank_target,
+        window_size: jp.window_size, apr: jp.apr,
+        etr: (jp.raw_data as any)?.apr_breakdown?.etr?.bound ?? null,
+        stat_leads: jp.stat_leads,
+        stat_sold_count: jp.stat_sold_count, stat_stock_count: jp.stat_stock_count,
+        price_warning: jp.price_warning,
+        price_history_amount_1: jp.price_history_amount_1,
+        price_history_date_1: jp.price_history_date_1,
+        fuel: jp.fuel, synced_at: jp.synced_at,
+        category: cat, own_stock_days: jp.stock_days,
+        price_vs_value: (jp.price_local != null && jp.value != null) ? jp.price_local - jp.value : null,
       };
     }).sort((a, b) => (b.stock_days ?? 0) - (a.stock_days ?? 0));
-  }, [vehicles, jpData]);
+  }, [uniqueJpData]);
 
   const redCount = joined.filter(v => v.category === 'red').length;
   const yellowCount = joined.filter(v => v.category === 'yellow').length;
