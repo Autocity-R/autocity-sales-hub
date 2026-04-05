@@ -33,16 +33,22 @@ interface JoinedVehicle {
   price_vs_market: number | null;
 }
 
-function categorize(rank: number | null, stockDays: number | null, stockAvg: number | null, priceWarning: number | null): 'red' | 'yellow' | 'green' {
-  // rank: hogere rang = beter gepositioneerd
-  if (rank !== null && rank < 20) return 'red';
+function categorize(rank: number | null, windowSize: number | null, stockDays: number | null, stockAvg: number | null, priceWarning: number | null): 'red' | 'yellow' | 'green' {
+  // Rang 1 = goedkoopst (goed), hoge rang = duurste positie (slecht)
+  // Gebruik rang als percentage van window_size
+  const rankPct = (rank !== null && windowSize !== null && windowSize > 0) ? rank / windowSize : null;
+
+  // Rood: duurste segment, hoge price_warning, of lang op voorraad
+  if (rankPct !== null && rankPct > 0.8) return 'red';
+  if (priceWarning !== null && priceWarning > 2000) return 'red';
   if (stockDays !== null && stockAvg !== null && stockAvg > 0 && stockDays > stockAvg * 1.3) return 'red';
-  if (priceWarning !== null && priceWarning > 1000) return 'red';
 
-  if (rank !== null && rank >= 20 && rank <= 50) return 'yellow';
-  if (stockDays !== null && stockAvg !== null && stockAvg > 0 && stockDays > stockAvg) return 'yellow';
+  // Geel: onderste helft maar niet kritiek
+  if (rankPct !== null && rankPct > 0.5) return 'yellow';
   if (priceWarning !== null && priceWarning > 500) return 'yellow';
+  if (stockDays !== null && stockAvg !== null && stockAvg > 0 && stockDays > stockAvg) return 'yellow';
 
+  // Groen: goed gepositioneerd of price_warning negatief (kan omhoog)
   return 'green';
 }
 
@@ -84,7 +90,7 @@ export const KevinDashboard: React.FC = () => {
       const displayPlate = jp.license_plate === 'NB' || !jp.license_plate
         ? jp.reference_code ?? '-'
         : jp.license_plate;
-      const cat = categorize(jp.rank_current, jp.stock_days, jp.stock_days_average, jp.price_warning);
+      const cat = categorize(jp.rank_current, jp.window_size, jp.stock_days, jp.stock_days_average, jp.price_warning);
       const priceVsMarket = (jp.price_local != null && jp.vvp_50 != null) ? jp.price_local - jp.vvp_50 : null;
 
       return {
@@ -290,7 +296,12 @@ export const KevinDashboard: React.FC = () => {
                     <TableCell className="text-right text-muted-foreground">{v.stock_days_average ?? '-'}</TableCell>
                     <TableCell className="text-right">
                       {formatPrice(v.price_local)}
-                      {v.price_warning != null && v.price_warning > 0 && (
+                      {v.price_warning != null && v.price_warning < -50 && (
+                        <div className="text-xs text-green-600">
+                          Verhoog {formatPrice(Math.abs(v.price_warning))}
+                        </div>
+                      )}
+                      {v.price_warning != null && v.price_warning > 50 && (
                         <div className="text-xs text-orange-600">
                           Zak {formatPrice(v.price_warning)}
                         </div>
@@ -311,12 +322,16 @@ export const KevinDashboard: React.FC = () => {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {v.rank_current != null ? (
-                        <span className={v.rank_current < 20 ? 'text-red-600 font-medium' : v.rank_current <= 50 ? 'text-yellow-600' : 'text-green-600'}>
-                          {v.rank_current}
+                      {v.rank_current != null && v.window_size != null && v.window_size > 0 ? (
+                        <span className={
+                          v.rank_current / v.window_size > 0.8 ? 'text-red-600 font-medium' :
+                          v.rank_current / v.window_size > 0.5 ? 'text-yellow-600' : 'text-green-600'
+                        }>
+                          {v.rank_current}/{v.window_size}
                         </span>
+                      ) : v.rank_current != null ? (
+                        <span>{v.rank_current}</span>
                       ) : '-'}
-                      {v.window_size != null && <span className="text-xs text-muted-foreground">/{v.window_size}</span>}
                     </TableCell>
                     <TableCell className="text-right">
                       {v.apr != null ? (
