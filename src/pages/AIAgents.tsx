@@ -11,7 +11,8 @@ import { DaanDashboard } from "@/components/ai-agents/dashboards/DaanDashboard";
 import { SaraDashboard } from "@/components/ai-agents/dashboards/SaraDashboard";
 import { AlexDashboard } from "@/components/ai-agents/dashboards/AlexDashboard";
 import { KevinDashboard } from "@/components/ai-agents/dashboards/KevinDashboard";
-import { LayoutDashboard, MessageSquare } from "lucide-react";
+import { KevinFastMovers } from "@/components/ai-agents/dashboards/kevin/KevinFastMovers";
+import { LayoutDashboard, MessageSquare, Zap } from "lucide-react";
 
 const DASHBOARD_MAP: Record<string, React.FC> = {
   Marco: MarcoDashboard,
@@ -30,6 +31,7 @@ const AIAgents = () => {
   );
 
   const DashboardComponent = selectedAgent ? DASHBOARD_MAP[selectedAgent.name] : null;
+  const isKevin = selectedAgent?.name === 'Kevin';
 
   return (
     <DashboardLayout>
@@ -60,6 +62,12 @@ const AIAgents = () => {
                     <LayoutDashboard className="h-4 w-4" />
                     Dashboard
                   </TabsTrigger>
+                  {isKevin && (
+                    <TabsTrigger value="fast-movers" className="flex items-center gap-2">
+                      <Zap className="h-4 w-4" />
+                      Fast Movers
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger value="chat" className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4" />
                     Chat
@@ -69,6 +77,12 @@ const AIAgents = () => {
                 <TabsContent value="dashboard" className="mt-4">
                   {DashboardComponent && <DashboardComponent />}
                 </TabsContent>
+
+                {isKevin && (
+                  <TabsContent value="fast-movers" className="mt-4">
+                    <KevinFastMovers />
+                  </TabsContent>
+                )}
 
                 <TabsContent value="chat" className="mt-4">
                   <AgentChat agent={selectedAgent} />
