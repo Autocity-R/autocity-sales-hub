@@ -572,7 +572,7 @@ function buildPositioningAlerts(vehicles: any[]): string {
 }
 
 
-function handleKevinToolCall(name: string, input: any, vehicles: any[], crm: any[], history: any[], suppliers: any[], taxaties: any[]): any {
+function handleKevinToolCall(name: string, input: any, vehicles: any[], crm: any[], history: any[], suppliers: any[], taxaties: any[], soldVehicles: any[] = []): any {
   switch (name) {
     case 'get_vehicle_detail': {
       let vehicle = null;
