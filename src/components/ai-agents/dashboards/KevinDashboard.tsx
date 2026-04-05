@@ -326,7 +326,20 @@ export const KevinDashboard: React.FC = () => {
                       ) : '-'}
                       {v.window_size != null && <span className="text-xs text-muted-foreground">/{v.window_size}</span>}
                     </TableCell>
-                    <TableCell className="text-right">{v.stat_leads ?? '-'}</TableCell>
+                    <TableCell className="text-right">
+                      {v.apr != null ? (
+                        <span className={v.apr < 50 ? 'text-red-600 font-medium' : v.apr >= 70 ? 'text-green-600' : 'text-yellow-600'}>
+                          {v.apr}
+                        </span>
+                      ) : '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {v.etr != null ? (
+                        <span className={v.etr < 50 ? 'text-red-600 font-medium' : v.etr >= 70 ? 'text-green-600' : 'text-yellow-600'}>
+                          {v.etr}
+                        </span>
+                      ) : '-'}
+                    </TableCell>
                     <TableCell className="text-right">{v.stat_sold_count ?? '-'}</TableCell>
                     <TableCell className="text-muted-foreground">{v.fuel ?? '-'}</TableCell>
                   </TableRow>
