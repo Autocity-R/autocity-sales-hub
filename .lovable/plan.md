@@ -1,25 +1,38 @@
 
 
-## Plan: Inruil auto's automatisch markeren als "Ingeschreven"
+## Plan: Kevin — JP Cars Voorraadmonitor (Head of Purchases)
 
-### Probleem
-Inruil voertuigen zijn vrijwel altijd Nederlands geregistreerd en hoeven geen importproces te doorlopen. Momenteel krijgen ze `import_status = niet_gestart` of `niet_aangemeld`, waardoor ze onnodig in import-gerelateerde workflows verschijnen.
+Kevin bestaat al in de database (ID: `b4000000-0000-0000-0000-000000000004`). De `jpcars_voorraad_monitor` tabel en `JPCARS_API_TOKEN` secret zijn al aanwezig. Er moet geen migratie gedaan worden.
 
-### Aanpak
-Op **3 plekken** waar de isTradeIn-toggle wordt gezet of een inruil voertuig wordt aangemaakt, ook `import_status` automatisch op `ingeschreven` zetten:
+### Stap 1: Edge Function `jpcars-sync`
+Nieuwe edge function die alle voertuigen ophaalt via de JP Cars API (`/api/cars/list` met paginering), mapt naar de `jpcars_voorraad_monitor` tabel structuur, en een volledige refresh doet (delete + insert). Inclusief CORS headers en kentekenformaat normalisatie. Registratie in `config.toml` met `verify_jwt = false`.
 
-1. **VehicleForm.tsx** (nieuw voertuig aanmaken)
-   - Bij toggle `isTradeIn = true`: zet `importStatus: "ingeschreven"` naast de bestaande `transportStatus: "aangekomen"`
-   - Bij toggle uit: reset naar `"niet_aangemeld"`
+### Stap 2: Agent Config bijwerken
+- Kevin toevoegen aan `AGENT_IDS` en `AGENTS` array in `agentConfig.ts` met ID `b4000000-0000-0000-0000-000000000004`, rol "Head of Purchases", teal kleurschema, en quick questions gericht op voorraadpositie, prijssignalen, en marktanalyse
+- Kevin toevoegen aan `ROLE_AGENT_ACCESS` voor admin, owner, en manager rollen
 
-2. **DetailsTab.tsx** (bestaand voertuig bewerken)
-   - Bij toggle `isTradeIn = true`: ook `importStatus` op `"ingeschreven"` zetten via `handleChange`
+### Stap 3: Kevin Dashboard
+Nieuw bestand `KevinDashboard.tsx` met:
+- **Samenvatting cards**: Totaal online, actie vereist (rood), let op (geel), goed gepositioneerd (groen), laatste sync tijd
+- **Voertuigtabel** via JOIN van `vehicles` + `jpcars_voorraad_monitor` op genormaliseerd kenteken:
+  - Merk/Model/Kenteken, eigen stagedagen, JP stagedagen vs marktgemiddelde, online prijs, marktwaarde, rang/concurrenten, leads, vergelijkbaar verkocht, prijsgrens alert, vorige prijs+datum, brandstof
+  - Kleurcodering per categorie (rood/geel/groen) op basis van rank_current, stock_days, en price_warning
+- **"Sync nu" knop** die de edge function aanroept + refetch
+- **CSV download** van de volledige lijst
 
-3. **supabaseInventoryService.ts** (create vehicle)
-   - Als `details.isTradeIn === true` en geen expliciete importStatus: default naar `"ingeschreven"` i.p.v. `"niet_gestart"`
+### Stap 4: AIAgents.tsx bijwerken
+- Import `KevinDashboard` en toevoegen aan `DASHBOARD_MAP`
 
-4. **MarcoDashboard.tsx** - Geen wijziging nodig, inruil auto's worden al uitgefilterd (`if (isTradeIn) return null`)
+### Stap 5: Cron job voor automatische sync
+- SQL insert via Supabase voor `cron.schedule` die `jpcars-sync` elk uur aanroept
 
-### Resultaat
-Inruil auto's worden direct als "Ingeschreven" gemarkeerd, waardoor ze correct worden behandeld als Nederlandse voertuigen die geen import nodig hebben.
+### Bestanden
+
+| Actie | Bestand |
+|-------|---------|
+| Nieuw | `supabase/functions/jpcars-sync/index.ts` |
+| Nieuw | `src/components/ai-agents/dashboards/KevinDashboard.tsx` |
+| Edit | `src/components/ai-agents/agentConfig.ts` |
+| Edit | `src/pages/AIAgents.tsx` |
+| Edit | `supabase/config.toml` |
 
