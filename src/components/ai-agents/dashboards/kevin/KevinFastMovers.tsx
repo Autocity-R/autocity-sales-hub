@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Zap, TrendingUp, Filter } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Zap, TrendingUp, Filter, RotateCcw, Search } from "lucide-react";
 
 interface FastMoverModel {
   make: string;
@@ -27,8 +29,12 @@ interface FastMoverModel {
 }
 
 export const KevinFastMovers: React.FC = () => {
+  const [brandFilter, setBrandFilter] = useState<string>('all');
+  const [modelSearch, setModelSearch] = useState<string>('');
   const [fuelFilter, setFuelFilter] = useState<string>('all');
   const [bodyFilter, setBodyFilter] = useState<string>('all');
+  const [buildYearFrom, setBuildYearFrom] = useState<string>('all');
+  const [buildYearTo, setBuildYearTo] = useState<string>('all');
   const [priceFilter, setPriceFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('etr');
 
@@ -52,7 +58,7 @@ export const KevinFastMovers: React.FC = () => {
     const modelMap = new Map<string, {
       totalDays: number; totalEtr: number; totalApr: number; count: number;
       totalPrice: number; minPrice: number; maxPrice: number;
-      totalMileage: number; totalBuildYear: number;
+      totalMileage: number; totalBuildYear: number; buildYears: number[];
       soldCount: number; inStockCount: number;
       make: string; model: string; fuel: string; transmission: string; bodyType: string;
     }>();
@@ -72,18 +78,15 @@ export const KevinFastMovers: React.FC = () => {
       const buildYear = vd?.buildYear ?? jp.window?.[0]?.build ?? 0;
       const mileage = vd?.mileage ?? jp.window?.[0]?.mileage ?? 0;
 
-      // Calculate avg days from window
       const windowEntries = jp.window ?? [];
       const daysEntries = windowEntries.filter((w: any) => w.days_in_stock != null);
       const avgDays = daysEntries.length > 0
         ? daysEntries.reduce((s: number, w: any) => s + w.days_in_stock, 0) / daysEntries.length
         : 0;
 
-      // Count sold vs in stock
       const sold = windowEntries.filter((w: any) => w.sold_since > 0).length;
       const inStock = windowEntries.filter((w: any) => w.sold_since === 0).length;
 
-      // Price range
       const prices = windowEntries.map((w: any) => w.price_local).filter(Boolean);
       const minP = prices.length > 0 ? Math.min(...prices) : 0;
       const maxP = prices.length > 0 ? Math.max(...prices) : 0;
@@ -100,6 +103,7 @@ export const KevinFastMovers: React.FC = () => {
         existing.maxPrice = Math.max(existing.maxPrice, maxP);
         existing.totalMileage += mileage;
         existing.totalBuildYear += buildYear;
+        if (buildYear > 2000) existing.buildYears.push(buildYear);
         existing.soldCount += sold;
         existing.inStockCount += inStock;
       } else {
@@ -107,6 +111,7 @@ export const KevinFastMovers: React.FC = () => {
           totalDays: avgDays, totalEtr: jp.etr, totalApr: jp.apr ?? 0, count: 1,
           totalPrice: avgP, minPrice: minP || 999999, maxPrice: maxP,
           totalMileage: mileage, totalBuildYear: buildYear,
+          buildYears: buildYear > 2000 ? [buildYear] : [],
           soldCount: sold, inStockCount: inStock,
           make, model, fuel, transmission, bodyType,
         });
@@ -136,14 +141,32 @@ export const KevinFastMovers: React.FC = () => {
   }, [rawData]);
 
   // Extract unique filter options
+  const brands = useMemo(() => [...new Set(models.map(m => m.make.toUpperCase()).filter(b => b && b !== 'ONBEKEND'))].sort(), [models]);
   const fuels = useMemo(() => [...new Set(models.map(m => m.fuel).filter(f => f && f !== '-' && f.trim() !== ''))].sort(), [models]);
   const bodyTypes = useMemo(() => [...new Set(models.map(m => m.bodyType).filter(b => b && b !== '-' && b.trim() !== ''))].sort(), [models]);
+  const buildYears = useMemo(() => {
+    const years = [...new Set(models.map(m => m.avgBuildYear).filter(y => y > 2000))].sort((a, b) => b - a);
+    return years;
+  }, [models]);
 
   // Apply filters
   const filtered = useMemo(() => {
     let list = [...models];
+    if (brandFilter !== 'all') list = list.filter(m => m.make.toUpperCase() === brandFilter);
+    if (modelSearch.trim()) {
+      const s = modelSearch.toLowerCase();
+      list = list.filter(m => m.model.toLowerCase().includes(s) || m.make.toLowerCase().includes(s));
+    }
     if (fuelFilter !== 'all') list = list.filter(m => m.fuel === fuelFilter);
     if (bodyFilter !== 'all') list = list.filter(m => m.bodyType === bodyFilter);
+    if (buildYearFrom !== 'all') {
+      const fromYear = Number(buildYearFrom);
+      list = list.filter(m => m.avgBuildYear >= fromYear);
+    }
+    if (buildYearTo !== 'all') {
+      const toYear = Number(buildYearTo);
+      list = list.filter(m => m.avgBuildYear <= toYear);
+    }
     if (priceFilter !== 'all') {
       const [min, max] = priceFilter.split('-').map(Number);
       list = list.filter(m => m.avgPrice >= min && (max ? m.avgPrice <= max : true));
@@ -154,10 +177,24 @@ export const KevinFastMovers: React.FC = () => {
       if (sortBy === 'days') return a.avgDays - b.avgDays;
       if (sortBy === 'price') return a.avgPrice - b.avgPrice;
       if (sortBy === 'count') return b.count - a.count;
+      if (sortBy === 'buildyear') return b.avgBuildYear - a.avgBuildYear;
       return 0;
     });
     return list;
-  }, [models, fuelFilter, bodyFilter, priceFilter, sortBy]);
+  }, [models, brandFilter, modelSearch, fuelFilter, bodyFilter, buildYearFrom, buildYearTo, priceFilter, sortBy]);
+
+  const hasActiveFilters = brandFilter !== 'all' || modelSearch.trim() !== '' || fuelFilter !== 'all' || bodyFilter !== 'all' || buildYearFrom !== 'all' || buildYearTo !== 'all' || priceFilter !== 'all';
+
+  const resetFilters = () => {
+    setBrandFilter('all');
+    setModelSearch('');
+    setFuelFilter('all');
+    setBodyFilter('all');
+    setBuildYearFrom('all');
+    setBuildYearTo('all');
+    setPriceFilter('all');
+    setSortBy('etr');
+  };
 
   const formatPrice = (n: number) => n > 0 ? `€${n.toLocaleString('nl-NL')}` : '-';
 
@@ -177,7 +214,7 @@ export const KevinFastMovers: React.FC = () => {
           Fast Movers — Snelst Verkopende Modellen
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Modellen met hoge ETR (omloopsnelheid) uit JP Cars marktdata. Hogere ETR = sneller verkocht.
+          Modellen met hoge ETR (omloopsnelheid) uit JP Cars marktdata. Hogere ETR = sneller verkocht. Filter op merk, model, bouwjaar en brandstof om gericht courante modellen te zoeken.
         </p>
       </div>
 
@@ -189,7 +226,7 @@ export const KevinFastMovers: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{filtered.length}</div>
-            <p className="text-xs text-muted-foreground">met ETR ≥ 2</p>
+            <p className="text-xs text-muted-foreground">met ETR ≥ 2{hasActiveFilters ? ' (gefilterd)' : ''}</p>
           </CardContent>
         </Card>
         <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/20">
@@ -232,14 +269,44 @@ export const KevinFastMovers: React.FC = () => {
       {/* Filters */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Filter className="h-4 w-4" /> Filters
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Filter className="h-4 w-4" /> Filters
+            </CardTitle>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={resetFilters} className="text-xs h-7 gap-1">
+                <RotateCcw className="h-3 w-3" /> Reset
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {/* Brand filter */}
+            <Select value={brandFilter} onValueChange={(v) => { setBrandFilter(v); setModelSearch(''); }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Merk" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle merken</SelectItem>
+                {brands.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            {/* Model search */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Zoek model..."
+                value={modelSearch}
+                onChange={(e) => setModelSearch(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+
+            {/* Fuel filter */}
             <Select value={fuelFilter} onValueChange={setFuelFilter}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger>
                 <SelectValue placeholder="Brandstof" />
               </SelectTrigger>
               <SelectContent>
@@ -247,8 +314,10 @@ export const KevinFastMovers: React.FC = () => {
                 {fuels.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
               </SelectContent>
             </Select>
+
+            {/* Body type filter */}
             <Select value={bodyFilter} onValueChange={setBodyFilter}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger>
                 <SelectValue placeholder="Carrosserie" />
               </SelectTrigger>
               <SelectContent>
@@ -256,8 +325,32 @@ export const KevinFastMovers: React.FC = () => {
                 {bodyTypes.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
               </SelectContent>
             </Select>
+
+            {/* Build year from */}
+            <Select value={buildYearFrom} onValueChange={setBuildYearFrom}>
+              <SelectTrigger>
+                <SelectValue placeholder="Bouwjaar vanaf" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Bouwjaar vanaf</SelectItem>
+                {buildYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            {/* Build year to */}
+            <Select value={buildYearTo} onValueChange={setBuildYearTo}>
+              <SelectTrigger>
+                <SelectValue placeholder="Bouwjaar t/m" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Bouwjaar t/m</SelectItem>
+                {buildYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            {/* Price filter */}
             <Select value={priceFilter} onValueChange={setPriceFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger>
                 <SelectValue placeholder="Prijsklasse" />
               </SelectTrigger>
               <SelectContent>
@@ -269,8 +362,10 @@ export const KevinFastMovers: React.FC = () => {
                 <SelectItem value="50000-0">€50.000+</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Sort */}
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger>
                 <SelectValue placeholder="Sorteren" />
               </SelectTrigger>
               <SelectContent>
@@ -278,6 +373,7 @@ export const KevinFastMovers: React.FC = () => {
                 <SelectItem value="days">Snelste verkoop</SelectItem>
                 <SelectItem value="price">Laagste prijs</SelectItem>
                 <SelectItem value="count">Meeste data</SelectItem>
+                <SelectItem value="buildyear">Nieuwste bouwjaar</SelectItem>
               </SelectContent>
             </Select>
           </div>
