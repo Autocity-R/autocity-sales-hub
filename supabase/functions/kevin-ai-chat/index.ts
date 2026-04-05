@@ -263,11 +263,11 @@ ${vehicles.map((v: any) => {
       },
       {
         name: 'get_supplier_analysis',
-        description: 'Get supplier performance analysis - which suppliers deliver fast-moving vs slow-moving vehicles',
+        description: 'Get supplier performance analysis with B2C/B2B sales data, margins, turnover speed, and ROI per supplier. Use this for questions about which suppliers perform best, where to focus purchasing, supplier comparison, margin analysis, and purchase strategy.',
         input_schema: {
           type: 'object',
           properties: {
-            supplier_id: { type: 'string', description: 'Specific supplier ID to analyze (optional)' },
+            supplier_id: { type: 'string', description: 'Specific supplier name to filter on (optional, partial match)' },
           },
         },
       },
