@@ -846,6 +846,34 @@ ${supplierInfo ? `- Leverancier: ${supplierInfo.company_name || `${supplierInfo.
       };
     }
 
+    case 'get_positioning_alerts': {
+      const allAlerts = getPositioningIssues(vehicles);
+      const filtered = input.severity === 'critical'
+        ? allAlerts.filter(a => a.severity === 'critical')
+        : allAlerts;
+
+      if (filtered.length === 0) {
+        return { success: true, message: 'Alle voertuigen zijn goed gepositioneerd. Geen alerts. ✅' };
+      }
+
+      return {
+        success: true,
+        data: filtered,
+        message: `**⚠️ POSITIONERING ALERTS** (${filtered.length} voertuigen)\n\n` +
+          filtered.map((a, i) => {
+            const pct = a.priceVsMedian != null ? ` (${a.priceVsMedian > 0 ? '+' : ''}${a.priceVsMedian}% vs mediaan)` : '';
+            const advicePrice = a.vvp50 && a.vvp75 ? `€${a.vvp50.toLocaleString()}-€${a.vvp75.toLocaleString()}` : 'N/A';
+            return `${i + 1}. ${a.severity === 'critical' ? '🔴' : '🟡'} **${a.make} ${a.model}** (${a.plate}) — ${a.severity === 'critical' ? 'ACTIE VEREIST' : 'AANDACHT'}
+   Prijs: €${a.priceLocal?.toLocaleString()}${pct} | Mediaan: €${a.vvp50?.toLocaleString() ?? '-'}
+   Rang: ${a.rankCurrent ?? '-'} (target: ${a.rankTarget ?? '-'}) | ${a.stockDays ?? '-'} dagen (gem: ${a.stockDaysAvg ?? '-'})
+   ${a.options ? `Opties: ${a.options}` : ''}
+   Concurrentie: ${a.competitiveSet ?? '-'} vergelijkbare online
+   Issues: ${a.issues.join(' | ')}
+   → Advies: ${a.priceVsMedian != null && a.priceVsMedian > 5 ? `Verlaag naar ${advicePrice} (VVP50-VVP75 range)` : a.stockDays > (a.stockDaysAvg || 999) * 1.5 ? 'Overweeg B2B afstoten of actieprijs' : 'Monitoren, kleine correctie overwegen'}`;
+          }).join('\n\n'),
+      };
+    }
+
     default:
       return { success: false, message: `Onbekende functie: ${name}` };
   }
