@@ -1,38 +1,47 @@
 
 
-## Plan: Kevin — JP Cars Voorraadmonitor (Head of Purchases)
+## Plan: Kevin Dashboard — Drempels aanpassen + CRM Voorraad tab
 
-Kevin bestaat al in de database (ID: `b4000000-0000-0000-0000-000000000004`). De `jpcars_voorraad_monitor` tabel en `JPCARS_API_TOKEN` secret zijn al aanwezig. Er moet geen migratie gedaan worden.
+### Drie wijzigingen in `KevinDashboard.tsx`
 
-### Stap 1: Edge Function `jpcars-sync`
-Nieuwe edge function die alle voertuigen ophaalt via de JP Cars API (`/api/cars/list` met paginering), mapt naar de `jpcars_voorraad_monitor` tabel structuur, en een volledige refresh doet (delete + insert). Inclusief CORS headers en kentekenformaat normalisatie. Registratie in `config.toml` met `verify_jwt = false`.
+**1. Drempelwaarden aanpassen (categorize functie)**
 
-### Stap 2: Agent Config bijwerken
-- Kevin toevoegen aan `AGENT_IDS` en `AGENTS` array in `agentConfig.ts` met ID `b4000000-0000-0000-0000-000000000004`, rol "Head of Purchases", teal kleurschema, en quick questions gericht op voorraadpositie, prijssignalen, en marktanalyse
-- Kevin toevoegen aan `ROLE_AGENT_ACCESS` voor admin, owner, en manager rollen
+Huidige drempels zijn te hoog voor de werkelijke data (gem. rang ~22). Nieuwe drempels:
+- **Rood**: `rank_current < 15` OF `stock_days > stock_days_average * 1.3` OF `price_local > price_warning`
+- **Geel**: `rank_current 15-30` OF `stock_days` tussen gemiddelde en +30%
+- **Groen**: `rank_current > 30`
 
-### Stap 3: Kevin Dashboard
-Nieuw bestand `KevinDashboard.tsx` met:
-- **Samenvatting cards**: Totaal online, actie vereist (rood), let op (geel), goed gepositioneerd (groen), laatste sync tijd
-- **Voertuigtabel** via JOIN van `vehicles` + `jpcars_voorraad_monitor` op genormaliseerd kenteken:
-  - Merk/Model/Kenteken, eigen stagedagen, JP stagedagen vs marktgemiddelde, online prijs, marktwaarde, rang/concurrenten, leads, vergelijkbaar verkocht, prijsgrens alert, vorige prijs+datum, brandstof
-  - Kleurcodering per categorie (rood/geel/groen) op basis van rank_current, stock_days, en price_warning
-- **"Sync nu" knop** die de edge function aanroept + refetch
-- **CSV download** van de volledige lijst
+Rang-kleuring in de tabel ook aanpassen naar dezelfde drempels (15/30 i.p.v. 40/55).
 
-### Stap 4: AIAgents.tsx bijwerken
-- Import `KevinDashboard` en toevoegen aan `DASHBOARD_MAP`
+**2. Gemiddelde rang card toevoegen**
 
-### Stap 5: Cron job voor automatische sync
-- SQL insert via Supabase voor `cron.schedule` die `jpcars-sync` elk uur aanroept
+Nieuwe summary card bovenin naast de bestaande cards die de gemiddelde rang van alle online voertuigen toont (bijv. "Gem. Rang: 21.9"). Geeft het team direct context over de totale marktpositie.
 
-### Bestanden
+**3. Tweede tab: CRM Voorraad**
 
-| Actie | Bestand |
-|-------|---------|
-| Nieuw | `supabase/functions/jpcars-sync/index.ts` |
-| Nieuw | `src/components/ai-agents/dashboards/KevinDashboard.tsx` |
-| Edit | `src/components/ai-agents/agentConfig.ts` |
-| Edit | `src/pages/AIAgents.tsx` |
-| Edit | `supabase/config.toml` |
+Dashboard opsplitsen in twee tabs via `Tabs` component:
+- **Tab 1: "JP Cars Monitor"** — de huidige view (ongewijzigd qua inhoud)
+- **Tab 2: "CRM Voorraad"** — eigen voorraadmonitor
+
+CRM Voorraad tab toont alle voertuigen met `status = 'voorraad'` die nog niet verkocht zijn, ongeacht of ze online staan:
+
+| Kolom | Bron |
+|-------|------|
+| Merk + Model | vehicles |
+| Kenteken | vehicles |
+| Type (Inkoop/Inruil) | vehicles.details.isTradeIn |
+| Inkoopprijs | vehicles.purchase_price |
+| Verkoopprijs | vehicles.selling_price |
+| Stagedagen | berekend vanaf vehicles.created_at |
+| Import status | vehicles.import_status |
+| Online | vehicles.details.showroomOnline |
+
+Gesorteerd op stagedagen (langst eerst). Aparte query voor deze tab die alle voorraad voertuigen ophaalt (niet alleen online).
+
+### Technische details
+
+- Eén bestand wordt gewijzigd: `src/components/ai-agents/dashboards/KevinDashboard.tsx`
+- Import `Tabs, TabsList, TabsTrigger, TabsContent` uit bestaande UI components
+- Nieuwe query `kevin-crm-vehicles` voor alle voorraad voertuigen
+- Gemiddelde rang berekend als `joined.reduce(...) / count` over voertuigen met rank_current !== null
 
