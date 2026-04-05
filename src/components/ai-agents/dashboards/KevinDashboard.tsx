@@ -157,12 +157,12 @@ export const KevinDashboard: React.FC = () => {
 
   const handleCSVExport = () => {
     if (!joined.length) return;
-    const headers = ['Merk', 'Model', 'Kenteken', 'Type', 'Eigen Dagen', 'JP Dagen', 'Markt Gem.', 'Online Prijs', 'Marktwaarde', 'Rang', 'Concurrenten', 'Leads', 'Verkocht', 'Brandstof', 'Categorie'];
+    const headers = ['Merk', 'Model', 'Kenteken', 'Type', 'Eigen Dagen', 'JP Dagen', 'Markt Gem.', 'Online Prijs', 'Marktwaarde', 'Rang', 'Concurrenten', 'APR', 'ETR', 'Verkocht', 'Brandstof', 'Categorie'];
     const rows = joined.map(v => [
       v.brand, v.model, v.license_number ?? '', v.isTradeIn ? 'Inruil' : 'Inkoop',
       v.own_stock_days ?? '', v.stock_days ?? '', v.stock_days_average ?? '',
       v.price_local ?? '', v.value ?? '', v.rank_current ?? '', v.window_size ?? '',
-      v.stat_leads ?? '', v.stat_sold_count ?? '', v.fuel ?? '', v.category
+      v.apr ?? '', v.etr ?? '', v.stat_sold_count ?? '', v.fuel ?? '', v.category
     ]);
     const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
