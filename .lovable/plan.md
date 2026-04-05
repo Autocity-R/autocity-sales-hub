@@ -1,57 +1,69 @@
 
 
-## Plan: Kevin Voorraad Monitor Rol Verduidelijken + Ontbrekende Tools
+## Plan: Prijspositie-Alert Tool voor Kevin
 
 ### Wat je wilt
 
-De voorraad monitor (`jpcars_voorraad_monitor`) heeft een dubbele rol:
-1. **Voorraad bewaking** -- Is onze voorraad nog actueel? Hoe courant is het? Waar moeten we op letten? Marktverschuivingen detecteren om omloopsnelheid hoog te houden.
-2. **Leerinstrument** -- Welke modellen verkopen goed aan klant X of B2B? Wat werkt, wat niet?
-
-Kevin moet NIET alleen naar buiten kijken (markt), maar de voorraad monitor gebruiken als spiegel: "dit hebben we, zo presteert het, dit leren we ervan."
+Kevin moet proactief waarschuwen wanneer een auto niet meer correct gepositioneerd staat in de markt. Dit werkt zoals jullie taxatieproces: een auto (bijv. bouwjaar 2022, 85.000 km) wordt vergeleken met vergelijkbaar materiaal (tot ~100.000 km, met vergelijkbare opties als M Sport, panoramadak). Kevin moet dagelijks/bij elke chat laten zien waar de positionering verschoven is.
 
 ### Wat er wijzigt
 
 **1 bestand:** `supabase/functions/kevin-ai-chat/index.ts`
 
-#### Stap 1: Nieuwe tool `get_scale_opportunities`
-Filtert de eigen voorraad op de "Ideale Inkoopcombinatie" criteria:
-- Matcht `jpcars_voorraad_monitor` voertuigen met ETR/courantheid data uit `taxatie_valuations`
-- Identificeert modellen waar eigen stagedagen < 25, markt avgDays < 45, ETR >= 4
-- Geeft Kevin direct antwoord op: "Welke modellen moeten we opschalen?"
+### Wijzigingen
 
-#### Stap 2: Nieuwe tool `get_market_fast_movers`
-Queryt de `taxatie_valuations` tabel (16.466 records) om de bredere markt te lezen:
-- Groepeert op merk/model
-- Filtert op ETR >= 4, courantheid "hoog"
-- Berekent gemiddelde marktdagen, frequentie, marge
-- Kevin kan hiermee adviseren over modellen die jullie nog NIET hebben
+#### 1. Nieuwe tool: `get_positioning_alerts`
 
-#### Stap 3: Dynamische marktdata in context
-Vervangt de hardcoded "MARKTTRENDS" sectie (regel 3-32 van de system prompt) door een dynamische query op `taxatie_valuations` die bij elke chat-sessie de actuele top modellen berekent per categorie (EV, PHEV, benzine).
+Een 9e tool die automatisch alle misgepositioneerde voertuigen identificeert:
 
-#### Stap 4: Voorraad monitor rol verduidelijken in context
-Voegt een korte instructie toe aan de dynamische context die Kevin injecteert:
+- **Prijspositie check:** Vergelijkt `price_local` met `vvp_50` (marktmediaan) en `price_warning`. Vlaggen als prijs > mediaan + 10% of prijs > `price_warning`.
+- **Rang vs. target:** Vergelijkt `rank_current` met `rank_target`. Vlaggen als huidige rang ver onder target (bijv. rank 14 bij target 4).
+- **Stagedagen vs. marktgemiddelde:** Vlaggen als `stock_days` > `stock_days_average * 1.2`.
+- **Concurrentie context:** Toont `competitive_set_size` / `window_size` (hoeveel vergelijkbare auto's staan er) plus de `options` die de auto heeft — zodat Kevin kan uitleggen "deze auto met M Sport en panoramadak staat qua prijs X% boven mediaan bij Y concurrenten".
+- **Adviesprijs:** Geeft VVP-range (vvp_25, vvp_50, vvp_75) als referentie voor correcte positionering.
+- **Actie suggestie:** Per auto een concrete suggestie (prijs verlagen naar €X, of "goed gepositioneerd, monitoren").
 
-> "De Voorraad Monitor toont onze huidige online etalage. Gebruik deze data om:
-> (1) Te bewaken of onze voorraad courant is en waar actie nodig is
-> (2) Marktverschuivingen te detecteren die onze omloopsnelheid bedreigen
-> (3) Te leren welke modellen goed verkopen (B2C vs B2B) en bij welke leveranciers
-> Voor nieuwe inkoopadviezen over modellen die we nog niet hebben, gebruik `get_market_fast_movers`."
+Output voorbeeld:
+```
+⚠️ POSITIONERING ALERTS (5 voertuigen)
+
+1. HYUNDAI IONIQ 5 (NB) — ACTIE VEREIST
+   Prijs: €31.750 | Mediaan: €29.937 (+6,1%)
+   Rang: 18 (target: 6) | 84 dagen (gem: 37)
+   Opties: Panoramadak, Leder, Adaptive Cruise, Heat Pump
+   Concurrentie: 21 vergelijkbare online
+   → Advies: Verlaag naar €29.500-€30.000 (VVP50-VVP75 range)
+
+2. POLESTAR 2 (P-322-NL) — ACTIE VEREIST
+   Prijs: €21.950 | Mediaan: €20.829 (+5,4%)
+   Rang: 14 (target: 4) | 66 dagen (gem: 22)
+   Opties: 4x4, Long Range, Panoramadak, Premium Audio
+   Concurrentie: 14 vergelijkbare online
+   → Advies: Verlaag naar €20.500 of B2B afstoten
+```
+
+#### 2. Proactieve alert in context
+
+Voeg aan de bestaande `marketContext` (regel 134-170) een sectie toe die **automatisch** bij elke chat de misgepositioneerde auto's samenvat. Kevin ziet dit direct zonder dat de tool handmatig aangeroepen hoeft te worden:
+
+```
+### ⚠️ POSITIONERING ALERTS
+X voertuigen staan niet correct gepositioneerd:
+- [auto 1]: prijs +X% boven mediaan, rang X (target Y)
+- [auto 2]: ...
+```
+
+Dit zorgt ervoor dat Kevin bij elke vraag — ook als de gebruiker niet specifiek vraagt — kan waarschuwen: "Even tussendoor, ik zie dat de Ioniq 5 al 84 dagen staat en 6% boven mediaan geprijsd is."
+
+#### 3. Voertuig-context verrijken met opties
+
+De huidige "Alle Online Voertuigen" regel (169) toont geen opties. Voeg `options` toe zodat Kevin bij elke auto weet welke uitvoering het betreft — essentieel voor het vergelijken van "vergelijkbaar materiaal" zoals jullie dat doen bij taxaties.
 
 ### Geen database migratie nodig
-Alle queries zijn read-only op bestaande tabellen (`taxatie_valuations`, `jpcars_voorraad_monitor`, `vehicles`).
+
+Alle benodigde data (`price_warning`, `vvp_50`, `rank_target`, `options`, `competitive_set_size`) zit al in `jpcars_voorraad_monitor`.
 
 ### Resultaat
-Kevin krijgt 8 tools (was 6):
-1. `get_vehicle_detail` -- detail per voertuig
-2. `get_slow_movers` -- langzame voorraad
-3. `get_price_recommendation` -- prijsadvies
-4. `get_market_summary` -- marktoverzicht
-5. `get_market_trends` -- historische trends
-6. `get_supplier_analysis` -- leverancier prestaties
-7. **`get_scale_opportunities`** -- welke modellen opschalen (eigen data + taxaties)
-8. **`get_market_fast_movers`** -- courante modellen in de brede markt (taxaties)
 
-Plus dynamische markttrends in plaats van hardcoded data in de prompt.
+Kevin krijgt 9 tools (was 8) en ziet bij elke chat automatisch welke auto's niet correct gepositioneerd staan, inclusief vergelijkbare marktcontext en concrete prijsadviezen.
 
