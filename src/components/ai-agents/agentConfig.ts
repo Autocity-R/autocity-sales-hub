@@ -96,9 +96,9 @@ export const AGENTS: AgentConfig[] = [
 ];
 
 export const ROLE_AGENT_ACCESS: Record<string, string[]> = {
-  admin: ['Marco', 'Lisa', 'Daan', 'Sara', 'Alex'],
-  owner: ['Marco', 'Lisa', 'Daan', 'Sara', 'Alex'],
-  manager: ['Marco', 'Lisa', 'Daan', 'Sara', 'Alex'],
+  admin: ['Marco', 'Lisa', 'Daan', 'Kevin', 'Sara', 'Alex'],
+  owner: ['Marco', 'Lisa', 'Daan', 'Kevin', 'Sara', 'Alex'],
+  manager: ['Marco', 'Lisa', 'Daan', 'Kevin', 'Sara', 'Alex'],
   verkoper: ['Daan'],
   operationeel: ['Marco', 'Lisa'],
   aftersales_manager: ['Lisa', 'Sara'],

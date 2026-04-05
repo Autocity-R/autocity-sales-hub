@@ -10,12 +10,14 @@ import { LisaDashboard } from "@/components/ai-agents/dashboards/LisaDashboard";
 import { DaanDashboard } from "@/components/ai-agents/dashboards/DaanDashboard";
 import { SaraDashboard } from "@/components/ai-agents/dashboards/SaraDashboard";
 import { AlexDashboard } from "@/components/ai-agents/dashboards/AlexDashboard";
+import { KevinDashboard } from "@/components/ai-agents/dashboards/KevinDashboard";
 import { LayoutDashboard, MessageSquare } from "lucide-react";
 
 const DASHBOARD_MAP: Record<string, React.FC> = {
   Marco: MarcoDashboard,
   Lisa: LisaDashboard,
   Daan: DaanDashboard,
+  Kevin: KevinDashboard,
   Sara: SaraDashboard,
   Alex: AlexDashboard,
 };
