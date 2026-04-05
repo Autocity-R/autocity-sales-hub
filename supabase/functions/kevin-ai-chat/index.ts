@@ -63,7 +63,20 @@ Deno.serve(async (req) => {
 
     const history = historyData || [];
 
-    // 6. Calculate summary metrics
+    // 6. Get taxatie_valuations for dynamic market intelligence
+    const { data: taxatieData } = await supabase
+      .from('taxatie_valuations')
+      .select('vehicle_data, jpcars_data, created_at')
+      .not('jpcars_data', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    const taxaties = taxatieData || [];
+
+    // 7. Build dynamic market trends from taxatie data
+    const dynamicTrends = buildDynamicMarketTrends(taxaties);
+
+    // 8. Calculate summary metrics
     const withRank = vehicles.filter((v: any) => v.rank_current != null);
     const avgRank = withRank.length > 0 ? Math.round((withRank.reduce((s: number, v: any) => s + v.rank_current, 0) / withRank.length) * 10) / 10 : 0;
     const avgStockDays = vehicles.length > 0 ? Math.round(vehicles.reduce((s: number, v: any) => s + (v.stock_days || 0), 0) / vehicles.length) : 0;
@@ -105,7 +118,7 @@ Deno.serve(async (req) => {
       suppliers_count: suppliers.length,
     };
 
-    // 7. Build context for Claude
+    // 9. Build context for Claude
     const supplierContext = suppliers.length > 0 ? `\n### Leveranciers
 ${suppliers.map((s: any) => `- ${s.company_name || `${s.first_name} ${s.last_name}`} (${s.id}) | ${s.is_car_dealer ? 'Autodealer' : 'Particulier'} | ${s.email || '-'}`).join('\n')}
 
@@ -119,7 +132,20 @@ ${crm.filter((v: any) => v.supplier_id).map((v: any) => {
 ${history.length} datapunten beschikbaar voor trendanalyse. Gebruik de get_market_trends tool voor specifieke voertuigtrends.` : '\n### Historische Data\nNog geen historische data beschikbaar. Data wordt opgebouwd bij elke sync.';
 
     const marketContext = `
-## REAL-TIME MARKTDATA (JP Cars API)
+## ROL VAN DE VOORRAAD MONITOR
+
+De Voorraad Monitor toont onze huidige online etalage. Gebruik deze data om:
+1. **Te bewaken** of onze voorraad courant is en waar actie nodig is (stagedagen, rang, prijspositie)
+2. **Marktverschuivingen te detecteren** die onze omloopsnelheid bedreigen (dalende rang, stijgende stagedagen)
+3. **Te leren** welke modellen goed verkopen (B2C vs B2B) en bij welke leveranciers — analyseer patronen in de data
+4. Voor **nieuwe inkoopadviezen** over modellen die we nog NIET hebben, gebruik de \`get_market_fast_movers\` tool
+5. Voor het identificeren van **opschaalbare modellen** in onze voorraad, gebruik de \`get_scale_opportunities\` tool
+
+## DYNAMISCHE MARKTTRENDS (uit taxatie-database)
+
+${dynamicTrends}
+
+## REAL-TIME VOORRAAD DATA (JP Cars Voorraadmonitor)
 
 ### Samenvatting
 - Totaal online: ${summary.totaal_online} voertuigen
@@ -143,7 +169,7 @@ ${trendContext}
 ${vehicles.map((v: any) => `${v.make} ${v.model}|${v.license_plate}|rang:${v.rank_current ?? '-'}|${v.stock_days ?? 0}d|€${v.price_local ?? 0}|waarde:€${v.value ?? 0}|leads:${v.stat_leads ?? 0}|clicks:${v.clicks ?? 0}|concurrentie:${v.competitive_set_size ?? v.window_size ?? '-'}`).join('\n')}
 `;
 
-    // 8. Get conversation history
+    // 10. Get conversation history
     const { data: historyMsgs } = await supabase
       .from('ai_chat_messages')
       .select('content, message_type')
@@ -160,7 +186,7 @@ ${vehicles.map((v: any) => `${v.make} ${v.model}|${v.license_plate}|rang:${v.ran
     });
     claudeMessages.push({ role: 'user', content: message });
 
-    // 9. Define Kevin-specific tools
+    // 11. Define Kevin-specific tools (8 tools)
     const kevinTools = [
       {
         name: 'get_vehicle_detail',
@@ -223,9 +249,32 @@ ${vehicles.map((v: any) => `${v.make} ${v.model}|${v.license_plate}|rang:${v.ran
           },
         },
       },
+      {
+        name: 'get_scale_opportunities',
+        description: 'Identify models in our current stock that meet the Ideal Purchase Combination (ETR >= 4, market avgDays < 45, internal stock days < 25) and should be scaled up for purchasing. Cross-references voorraad monitor with taxatie market data.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            min_etr: { type: 'number', description: 'Minimum ETR score (default 4)' },
+            max_stock_days: { type: 'number', description: 'Maximum internal stock days (default 25)' },
+          },
+        },
+      },
+      {
+        name: 'get_market_fast_movers',
+        description: 'Get the most popular/fast-moving models across the entire Dutch market from taxatie database (16.000+ records). Groups by brand/model, filters on ETR and courantheid. Use this for purchase advice on models we do NOT yet have in stock.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            min_etr: { type: 'number', description: 'Minimum ETR score (default 4)' },
+            fuel_type: { type: 'string', description: 'Filter by fuel type: benzine, diesel, elektrisch, hybride, etc.' },
+            brand: { type: 'string', description: 'Filter by specific brand (e.g. KIA, VOLKSWAGEN)' },
+          },
+        },
+      },
     ];
 
-    // 10. Call Claude API
+    // 12. Call Claude API
     const fullSystemPrompt = `${systemPrompt}\n\n${marketContext}`;
 
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
@@ -262,7 +311,7 @@ ${vehicles.map((v: any) => `${v.make} ${v.model}|${v.license_plate}|rang:${v.ran
       const toolCall = toolBlocks[0];
       console.log('🔧 Kevin tool call:', toolCall.name);
 
-      const toolResult = handleKevinToolCall(toolCall.name, toolCall.input, vehicles, crm, history, suppliers);
+      const toolResult = handleKevinToolCall(toolCall.name, toolCall.input, vehicles, crm, history, suppliers, taxaties);
 
       if (!responseMessage) {
         const followUpMessages = [
@@ -322,10 +371,65 @@ ${vehicles.map((v: any) => `${v.make} ${v.model}|${v.license_plate}|rang:${v.ran
 });
 
 // ============================================================================
+// DYNAMIC MARKET TRENDS BUILDER
+// ============================================================================
+
+function buildDynamicMarketTrends(taxaties: any[]): string {
+  if (taxaties.length === 0) return 'Geen taxatie-data beschikbaar voor markttrends.';
+
+  // Group by brand/model with ETR and courantheid
+  const modelStats: Record<string, { count: number; etrSum: number; etrCount: number; courantheid: Record<string, number>; fuelTypes: Set<string> }> = {};
+
+  for (const t of taxaties) {
+    const brand = t.vehicle_data?.brand || t.vehicle_data?.make;
+    const model = t.vehicle_data?.model;
+    const etr = t.jpcars_data?.etr;
+    const cour = t.jpcars_data?.courantheid;
+    const fuel = t.vehicle_data?.fuelType;
+
+    if (!brand || !model) continue;
+    const key = `${brand} ${model}`.toUpperCase();
+
+    if (!modelStats[key]) {
+      modelStats[key] = { count: 0, etrSum: 0, etrCount: 0, courantheid: {}, fuelTypes: new Set() };
+    }
+    modelStats[key].count++;
+    if (etr != null) { modelStats[key].etrSum += Number(etr); modelStats[key].etrCount++; }
+    if (cour) { modelStats[key].courantheid[cour] = (modelStats[key].courantheid[cour] || 0) + 1; }
+    if (fuel) modelStats[key].fuelTypes.add(fuel);
+  }
+
+  // Find top models by ETR
+  const ranked = Object.entries(modelStats)
+    .filter(([_, s]) => s.etrCount >= 2)
+    .map(([name, s]) => ({
+      name,
+      avgEtr: Math.round((s.etrSum / s.etrCount) * 10) / 10,
+      count: s.count,
+      topCourantheid: Object.entries(s.courantheid).sort((a, b) => b[1] - a[1])[0]?.[0] || '-',
+      fuels: [...s.fuelTypes].join(', '),
+    }))
+    .sort((a, b) => b.avgEtr - a.avgEtr);
+
+  const topModels = ranked.slice(0, 10);
+  const bottomModels = ranked.filter(m => m.avgEtr <= 2).slice(0, 5);
+
+  let result = `### Top 10 Courante Modellen (hoogste ETR, dynamisch berekend uit ${taxaties.length} taxaties)\n`;
+  result += topModels.map((m, i) => `${i + 1}. **${m.name}** — ETR: ${m.avgEtr} | Courantheid: ${m.topCourantheid} | ${m.count}x getaxeerd | ${m.fuels}`).join('\n');
+
+  if (bottomModels.length > 0) {
+    result += `\n\n### Modellen met Lage ETR (vermijd bij inkoop)\n`;
+    result += bottomModels.map(m => `- ${m.name} — ETR: ${m.avgEtr} | Courantheid: ${m.topCourantheid} | ${m.count}x`).join('\n');
+  }
+
+  return result;
+}
+
+// ============================================================================
 // KEVIN TOOL HANDLERS
 // ============================================================================
 
-function handleKevinToolCall(name: string, input: any, vehicles: any[], crm: any[], history: any[], suppliers: any[]): any {
+function handleKevinToolCall(name: string, input: any, vehicles: any[], crm: any[], history: any[], suppliers: any[], taxaties: any[]): any {
   switch (name) {
     case 'get_vehicle_detail': {
       let vehicle = null;
@@ -337,7 +441,6 @@ function handleKevinToolCall(name: string, input: any, vehicles: any[], crm: any
       }
       if (!vehicle) return { success: false, message: 'Voertuig niet gevonden in JP Cars data.' };
 
-      // Find CRM match
       const crmMatch = crm.find((c: any) => c.license_number?.replace(/[-\s]/g, '').toLowerCase() === vehicle.license_plate?.replace(/[-\s]/g, '').toLowerCase());
       const supplierInfo = crmMatch?.supplier_id ? suppliers.find((s: any) => s.id === crmMatch.supplier_id) : null;
 
@@ -402,7 +505,6 @@ ${supplierInfo ? `- Leverancier: ${supplierInfo.company_name || `${supplierInfo.
       const geel = vehicles.filter((v: any) => v.rank_current != null && v.rank_current >= 15 && v.rank_current <= 30).length;
       const groen = vehicles.filter((v: any) => v.rank_current != null && v.rank_current > 30).length;
 
-      // Fuel type distribution
       const fuelDist: Record<string, number> = {};
       vehicles.forEach((v: any) => { if (v.fuel) fuelDist[v.fuel] = (fuelDist[v.fuel] || 0) + 1; });
 
@@ -511,6 +613,133 @@ ${supplierInfo ? `- Leverancier: ${supplierInfo.company_name || `${supplierInfo.
         data: supplierStats,
         message: `**Leverancier Analyse** (${supplierStats.length} leveranciers)\n` +
           supplierStats.map((s: any) => `- ${s.name}: ${s.total} auto's (${s.online} online), gem. rang ${s.avgRank ?? '-'}, gem. ${s.avgStockDays ?? '-'} stagedagen`).join('\n'),
+      };
+    }
+
+    case 'get_scale_opportunities': {
+      const minEtr = input.min_etr || 4;
+      const maxStockDays = input.max_stock_days || 25;
+
+      // Cross-reference voorraad with taxatie data
+      const opportunities: any[] = [];
+
+      for (const v of vehicles) {
+        if (v.stock_days == null || v.stock_days > maxStockDays) continue;
+        if (v.stock_days_average != null && v.stock_days_average > 45) continue;
+
+        // Find matching taxatie for this model
+        const matchingTaxaties = taxaties.filter((t: any) => {
+          const tModel = (t.vehicle_data?.model || '').toUpperCase();
+          const tBrand = (t.vehicle_data?.brand || t.vehicle_data?.make || '').toUpperCase();
+          const vModel = (v.model || '').toUpperCase();
+          const vMake = (v.make || '').toUpperCase();
+          return tModel === vModel && tBrand === vMake;
+        });
+
+        const etrValues = matchingTaxaties
+          .map((t: any) => Number(t.jpcars_data?.etr))
+          .filter((e: number) => !isNaN(e) && e > 0);
+
+        const avgEtr = etrValues.length > 0 ? etrValues.reduce((a: number, b: number) => a + b, 0) / etrValues.length : null;
+
+        if (avgEtr != null && avgEtr >= minEtr) {
+          const courValues = matchingTaxaties.map((t: any) => t.jpcars_data?.courantheid).filter(Boolean);
+          const topCour = courValues.length > 0
+            ? Object.entries(courValues.reduce((acc: any, c: string) => { acc[c] = (acc[c] || 0) + 1; return acc; }, {})).sort((a: any, b: any) => b[1] - a[1])[0]?.[0]
+            : '-';
+
+          opportunities.push({
+            make: v.make,
+            model: v.model,
+            plate: v.license_plate,
+            stockDays: v.stock_days,
+            marketAvgDays: v.stock_days_average,
+            rank: v.rank_current,
+            avgEtr: Math.round(avgEtr * 10) / 10,
+            courantheid: topCour,
+            taxatieCount: matchingTaxaties.length,
+            price: v.price_local,
+          });
+        }
+      }
+
+      opportunities.sort((a, b) => b.avgEtr - a.avgEtr);
+
+      if (opportunities.length === 0) {
+        return {
+          success: true,
+          message: `Geen voertuigen gevonden die voldoen aan de Ideale Inkoopcombinatie (ETR >= ${minEtr}, stagedagen < ${maxStockDays}, markt avgDays < 45). Overweeg de criteria te verruimen.`,
+        };
+      }
+
+      return {
+        success: true,
+        data: opportunities,
+        message: `**Opschaal Kansen** (${opportunities.length} modellen voldoen aan Ideale Inkoopcombinatie)\n\nCriteria: ETR >= ${minEtr} | Stagedagen < ${maxStockDays} | Markt avgDays < 45\n\n` +
+          opportunities.map((o, i) => `${i + 1}. **${o.make} ${o.model}** (${o.plate}) — ETR: ${o.avgEtr} | Courantheid: ${o.courantheid} | ${o.stockDays}d (markt gem: ${o.marketAvgDays ?? '-'}d) | Rang: ${o.rank ?? '-'} | €${o.price?.toLocaleString() ?? '-'} | ${o.taxatieCount}x getaxeerd`).join('\n'),
+      };
+    }
+
+    case 'get_market_fast_movers': {
+      const minEtr = input.min_etr || 4;
+
+      // Group taxaties by brand/model
+      const modelMap: Record<string, { count: number; etrSum: number; etrCount: number; courantheid: Record<string, number>; fuels: Set<string>; avgDaysSum: number; avgDaysCount: number; priceSum: number; priceCount: number }> = {};
+
+      for (const t of taxaties) {
+        const brand = (t.vehicle_data?.brand || t.vehicle_data?.make || '').toUpperCase();
+        const model = (t.vehicle_data?.model || '').toUpperCase();
+        const fuel = t.vehicle_data?.fuelType;
+        const etr = Number(t.jpcars_data?.etr);
+        const cour = t.jpcars_data?.courantheid;
+        const stockAvgDays = t.jpcars_data?.stockStats?.avgDays;
+        const baseValue = t.jpcars_data?.baseValue || t.jpcars_data?.totalValue;
+
+        if (!brand || !model) continue;
+
+        // Apply filters
+        if (input.brand && brand !== input.brand.toUpperCase()) continue;
+        if (input.fuel_type && fuel && !fuel.toLowerCase().includes(input.fuel_type.toLowerCase())) continue;
+
+        const key = `${brand} ${model}`;
+
+        if (!modelMap[key]) {
+          modelMap[key] = { count: 0, etrSum: 0, etrCount: 0, courantheid: {}, fuels: new Set(), avgDaysSum: 0, avgDaysCount: 0, priceSum: 0, priceCount: 0 };
+        }
+
+        modelMap[key].count++;
+        if (!isNaN(etr) && etr > 0) { modelMap[key].etrSum += etr; modelMap[key].etrCount++; }
+        if (cour) { modelMap[key].courantheid[cour] = (modelMap[key].courantheid[cour] || 0) + 1; }
+        if (fuel) modelMap[key].fuels.add(fuel);
+        if (stockAvgDays != null) { modelMap[key].avgDaysSum += Number(stockAvgDays); modelMap[key].avgDaysCount++; }
+        if (baseValue != null) { modelMap[key].priceSum += Number(baseValue); modelMap[key].priceCount++; }
+      }
+
+      // Filter and rank
+      const fastMovers = Object.entries(modelMap)
+        .filter(([_, s]) => s.etrCount >= 2 && (s.etrSum / s.etrCount) >= minEtr)
+        .map(([name, s]) => ({
+          name,
+          avgEtr: Math.round((s.etrSum / s.etrCount) * 10) / 10,
+          count: s.count,
+          topCourantheid: Object.entries(s.courantheid).sort((a, b) => b[1] - a[1])[0]?.[0] || '-',
+          fuels: [...s.fuels].join(', '),
+          avgMarketDays: s.avgDaysCount > 0 ? Math.round(s.avgDaysSum / s.avgDaysCount) : null,
+          avgPrice: s.priceCount > 0 ? Math.round(s.priceSum / s.priceCount) : null,
+          inOurStock: vehicles.some((v: any) => `${v.make} ${v.model}`.toUpperCase() === name),
+        }))
+        .sort((a, b) => b.avgEtr - a.avgEtr)
+        .slice(0, 20);
+
+      if (fastMovers.length === 0) {
+        return { success: true, message: `Geen modellen gevonden met ETR >= ${minEtr}${input.brand ? ` voor ${input.brand}` : ''}${input.fuel_type ? ` (${input.fuel_type})` : ''}.` };
+      }
+
+      return {
+        success: true,
+        data: fastMovers,
+        message: `**Fast Movers Marktanalyse** (ETR >= ${minEtr}${input.brand ? `, ${input.brand}` : ''}${input.fuel_type ? `, ${input.fuel_type}` : ''})\n\n` +
+          fastMovers.map((m, i) => `${i + 1}. **${m.name}** — ETR: ${m.avgEtr} | Courantheid: ${m.topCourantheid} | ${m.count}x getaxeerd | ${m.fuels} | Gem. marktdagen: ${m.avgMarketDays ?? '-'} | Gem. waarde: €${m.avgPrice?.toLocaleString() ?? '-'} | ${m.inOurStock ? '✅ In voorraad' : '🆕 Niet in voorraad'}`).join('\n'),
       };
     }
 
