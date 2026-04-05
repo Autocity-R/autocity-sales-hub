@@ -28,6 +28,7 @@ interface JoinedVehicle {
   rank_target: number | null;
   window_size: number | null;
   apr: number | null;
+  etr: number | null;
   stat_leads: number | null;
   stat_sold_count: number | null;
   stat_stock_count: number | null;
