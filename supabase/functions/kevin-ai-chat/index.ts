@@ -192,7 +192,7 @@ ${vehicles.map((v: any) => {
     });
     claudeMessages.push({ role: 'user', content: message });
 
-    // 11. Define Kevin-specific tools (8 tools)
+    // 11. Define Kevin-specific tools (9 tools)
     const kevinTools = [
       {
         name: 'get_vehicle_detail',
