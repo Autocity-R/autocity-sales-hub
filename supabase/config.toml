@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.jpcars-sync]
 verify_jwt = false
+
+[functions.kevin-ai-chat]
+verify_jwt = false
