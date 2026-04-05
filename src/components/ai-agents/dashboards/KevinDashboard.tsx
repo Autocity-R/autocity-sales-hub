@@ -90,7 +90,7 @@ export const KevinDashboard: React.FC = () => {
       const displayPlate = jp.license_plate === 'NB' || !jp.license_plate
         ? jp.reference_code ?? '-'
         : jp.license_plate;
-      const cat = categorize(jp.rank_current, jp.stock_days, jp.stock_days_average, jp.price_warning);
+      const cat = categorize(jp.rank_current, jp.window_size, jp.stock_days, jp.stock_days_average, jp.price_warning);
       const priceVsMarket = (jp.price_local != null && jp.vvp_50 != null) ? jp.price_local - jp.vvp_50 : null;
 
       return {
