@@ -28,6 +28,7 @@ interface JoinedVehicle {
   rank_target: number | null;
   window_size: number | null;
   apr: number | null;
+  etr: number | null;
   stat_leads: number | null;
   stat_sold_count: number | null;
   stat_stock_count: number | null;
@@ -111,6 +112,7 @@ export const KevinDashboard: React.FC = () => {
         rank_target: jp?.rank_target ?? null,
         window_size: jp?.window_size ?? null,
         apr: jp?.apr ?? null,
+        etr: (jp?.raw_data as any)?.etr ?? null,
         stat_leads: jp?.stat_leads ?? null,
         stat_sold_count: jp?.stat_sold_count ?? null,
         stat_stock_count: jp?.stat_stock_count ?? null,
@@ -155,12 +157,12 @@ export const KevinDashboard: React.FC = () => {
 
   const handleCSVExport = () => {
     if (!joined.length) return;
-    const headers = ['Merk', 'Model', 'Kenteken', 'Type', 'Eigen Dagen', 'JP Dagen', 'Markt Gem.', 'Online Prijs', 'Marktwaarde', 'Rang', 'Concurrenten', 'Leads', 'Verkocht', 'Brandstof', 'Categorie'];
+    const headers = ['Merk', 'Model', 'Kenteken', 'Type', 'Eigen Dagen', 'JP Dagen', 'Markt Gem.', 'Online Prijs', 'Marktwaarde', 'Rang', 'Concurrenten', 'APR', 'ETR', 'Verkocht', 'Brandstof', 'Categorie'];
     const rows = joined.map(v => [
       v.brand, v.model, v.license_number ?? '', v.isTradeIn ? 'Inruil' : 'Inkoop',
       v.own_stock_days ?? '', v.stock_days ?? '', v.stock_days_average ?? '',
       v.price_local ?? '', v.value ?? '', v.rank_current ?? '', v.window_size ?? '',
-      v.stat_leads ?? '', v.stat_sold_count ?? '', v.fuel ?? '', v.category
+      v.apr ?? '', v.etr ?? '', v.stat_sold_count ?? '', v.fuel ?? '', v.category
     ]);
     const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -264,7 +266,8 @@ export const KevinDashboard: React.FC = () => {
                 <TableHead className="text-right">Online prijs</TableHead>
                 <TableHead className="text-right">Marktwaarde</TableHead>
                 <TableHead className="text-right">Rang</TableHead>
-                <TableHead className="text-right">Leads</TableHead>
+                <TableHead className="text-right">APR</TableHead>
+                <TableHead className="text-right">ETR</TableHead>
                 <TableHead className="text-right">Vgl. verkocht</TableHead>
                 <TableHead>Brandstof</TableHead>
               </TableRow>
@@ -325,7 +328,20 @@ export const KevinDashboard: React.FC = () => {
                       ) : '-'}
                       {v.window_size != null && <span className="text-xs text-muted-foreground">/{v.window_size}</span>}
                     </TableCell>
-                    <TableCell className="text-right">{v.stat_leads ?? '-'}</TableCell>
+                    <TableCell className="text-right">
+                      {v.apr != null ? (
+                        <span className={v.apr < 50 ? 'text-red-600 font-medium' : v.apr >= 70 ? 'text-green-600' : 'text-yellow-600'}>
+                          {v.apr}
+                        </span>
+                      ) : '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {v.etr != null ? (
+                        <span className={v.etr < 50 ? 'text-red-600 font-medium' : v.etr >= 70 ? 'text-green-600' : 'text-yellow-600'}>
+                          {v.etr}
+                        </span>
+                      ) : '-'}
+                    </TableCell>
                     <TableCell className="text-right">{v.stat_sold_count ?? '-'}</TableCell>
                     <TableCell className="text-muted-foreground">{v.fuel ?? '-'}</TableCell>
                   </TableRow>
