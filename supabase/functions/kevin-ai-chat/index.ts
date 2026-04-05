@@ -165,8 +165,14 @@ ${top5Best.map((v: any) => `- ${v.make} ${v.model} (${v.license_plate}): rang ${
 ${supplierContext}
 ${trendContext}
 
+### ⚠️ POSITIONERING ALERTS
+${buildPositioningAlerts(vehicles)}
+
 ### Alle Online Voertuigen (beknopt)
-${vehicles.map((v: any) => `${v.make} ${v.model}|${v.license_plate}|rang:${v.rank_current ?? '-'}|${v.stock_days ?? 0}d|€${v.price_local ?? 0}|waarde:€${v.value ?? 0}|leads:${v.stat_leads ?? 0}|clicks:${v.clicks ?? 0}|concurrentie:${v.competitive_set_size ?? v.window_size ?? '-'}`).join('\n')}
+${vehicles.map((v: any) => {
+  const optStr = v.options ? (Array.isArray(v.options) ? v.options.slice(0, 5).join(', ') : typeof v.options === 'object' ? Object.keys(v.options).slice(0, 5).join(', ') : '') : '';
+  return `${v.make} ${v.model}|${v.license_plate}|rang:${v.rank_current ?? '-'}|${v.stock_days ?? 0}d|€${v.price_local ?? 0}|waarde:€${v.value ?? 0}|mediaan:€${v.vvp_50 ?? '-'}|leads:${v.stat_leads ?? 0}|clicks:${v.clicks ?? 0}|concurrentie:${v.competitive_set_size ?? v.window_size ?? '-'}${optStr ? `|opties:${optStr}` : ''}`;
+}).join('\n')}
 `;
 
     // 10. Get conversation history
