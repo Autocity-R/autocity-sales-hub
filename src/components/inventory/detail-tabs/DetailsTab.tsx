@@ -111,6 +111,8 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
                 handleChange('details', newDetails as any);
                 if (checked) {
                   handleChange('supplierId', null);
+                  handleChange('importStatus', 'ingeschreven');
+                  handleChange('transportStatus', 'aangekomen');
                 }
               }}
               disabled={readOnly}

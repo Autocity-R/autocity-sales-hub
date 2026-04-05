@@ -586,7 +586,7 @@ export class SupabaseInventoryService {
           location: vehicleData.location || 'showroom',
            customer_id: vehicleData.customerId,
            supplier_id: vehicleData.supplierId,
-           import_status: vehicleData.importStatus || 'niet_gestart',
+           import_status: vehicleData.details?.isTradeIn ? 'ingeschreven' : (vehicleData.importStatus || 'niet_gestart'),
           notes: vehicleData.notes,
           details: details as any,
           
