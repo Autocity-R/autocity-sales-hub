@@ -333,47 +333,71 @@ ${vehicles.map((v: any) => {
     }
 
     const claudeData = await claudeResponse.json();
-    const textBlocks = claudeData.content?.filter((b: any) => b.type === 'text') || [];
-    const toolBlocks = claudeData.content?.filter((b: any) => b.type === 'tool_use') || [];
+    
+    // Tool loop: process tool calls iteratively (max 3 rounds)
+    let currentContent = claudeData.content;
+    let currentMessages = [...claudeMessages];
+    let responseMessage = '';
 
-    let responseMessage = textBlocks.map((b: any) => b.text).join('\n');
+    for (let toolRound = 0; toolRound < 3; toolRound++) {
+      const toolBlocks = currentContent?.filter((b: any) => b.type === 'tool_use') || [];
+      const textBlocks = currentContent?.filter((b: any) => b.type === 'text') || [];
 
-    // Handle tool calls
-    if (toolBlocks.length > 0) {
-      const toolCall = toolBlocks[0];
-      console.log('🔧 Kevin tool call:', toolCall.name);
-
-      const toolResult = handleKevinToolCall(toolCall.name, toolCall.input, vehicles, crm, history, suppliers, taxaties);
-
-      if (!responseMessage) {
-        const followUpMessages = [
-          ...claudeMessages,
-          { role: 'assistant', content: claudeData.content },
-          { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolCall.id, content: JSON.stringify(toolResult) }] },
-        ];
-
-        const followUpResponse = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'x-api-key': Deno.env.get('ANTHROPIC_API_KEY') || '',
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-6',
-            system: fullSystemPrompt,
-            messages: followUpMessages,
-            max_tokens: 1500,
-          }),
-        });
-
-        if (followUpResponse.ok) {
-          const followUpData = await followUpResponse.json();
-          responseMessage = followUpData.content?.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n') || toolResult.message;
-        } else {
-          responseMessage = toolResult.message;
-        }
+      // No tools called — extract final text and break
+      if (toolBlocks.length === 0) {
+        responseMessage = textBlocks.map((b: any) => b.text).join('\n');
+        break;
       }
+
+      // Tools called — execute ALL tools, ignore any interim text
+      console.log(`🔧 Kevin tool round ${toolRound + 1}: ${toolBlocks.map((t: any) => t.name).join(', ')}`);
+
+      const toolResults: any[] = [];
+      for (const toolCall of toolBlocks) {
+        const toolResult = handleKevinToolCall(toolCall.name, toolCall.input, vehicles, crm, history, suppliers, taxaties, soldVehicles);
+        toolResults.push({
+          type: 'tool_result',
+          tool_use_id: toolCall.id,
+          content: JSON.stringify(toolResult),
+        });
+      }
+
+      // Build follow-up messages with tool results
+      currentMessages = [
+        ...currentMessages,
+        { role: 'assistant', content: currentContent },
+        { role: 'user', content: toolResults },
+      ];
+
+      const followUpResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': Deno.env.get('ANTHROPIC_API_KEY') || '',
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          system: fullSystemPrompt,
+          messages: currentMessages,
+          max_tokens: 2000,
+          tools: kevinTools,
+          tool_choice: { type: 'auto' },
+        }),
+      });
+
+      if (!followUpResponse.ok) {
+        console.error('❌ Follow-up Claude error:', await followUpResponse.text());
+        // Fallback: use first tool result message
+        responseMessage = toolResults.length > 0 
+          ? JSON.parse(toolResults[0].content)?.message || 'Er ging iets mis bij de analyse.'
+          : 'Er ging iets mis bij de analyse.';
+        break;
+      }
+
+      const followUpData = await followUpResponse.json();
+      currentContent = followUpData.content;
+      // Loop continues to check if Claude called more tools
     }
 
     if (!responseMessage) {
