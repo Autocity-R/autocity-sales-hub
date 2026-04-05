@@ -40,10 +40,21 @@ Deno.serve(async (req) => {
       page++
     }
 
-    console.log(`Fetched ${allVehicles.length} vehicles from JP Cars API`)
+    console.log(`Fetched ${allVehicles.length} vehicles from JP Cars API (raw)`)
+
+    // Deduplicate: API returns overlapping pages
+    const seen = new Map<string, any>()
+    for (const v of allVehicles) {
+      const key = v.reference_code
+        ? String(v.reference_code)
+        : `${v.license_plate}|${v.make}|${v.model}`
+      seen.set(key, v) // last occurrence wins (most complete)
+    }
+    const uniqueVehicles = Array.from(seen.values())
+    console.log(`Deduplicated to ${uniqueVehicles.length} unique vehicles`)
 
     // Map to database structure
-    const rows = allVehicles.map(v => ({
+    const rows = uniqueVehicles.map(v => ({
       license_plate: v.license_plate ?? '',
       reference_code: v.reference_code,
       vin: v.vin,
@@ -126,7 +137,7 @@ Deno.serve(async (req) => {
 
     // Insert into jpcars_market_history for trend tracking
     if (rows.length > 0 && !insertError) {
-      const historyRows = allVehicles.map(v => ({
+      const historyRows = uniqueVehicles.map(v => ({
         license_plate: v.license_plate ?? '',
         rank_current: v.rank_current,
         price_local: v.price_local,
@@ -151,7 +162,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: !insertError,
-      synced: allVehicles.length,
+      synced: uniqueVehicles.length,
       error: insertError?.message ?? null,
       timestamp: new Date().toISOString()
     }), {
