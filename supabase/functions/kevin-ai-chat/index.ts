@@ -129,6 +129,7 @@ Deno.serve(async (req) => {
       let_op: letOp.length,
       goed: goed.length,
       crm_voorraad: crm.length,
+      verkocht_geladen: soldVehicles.length,
       history_records: history.length,
       suppliers_count: suppliers.length,
     };
