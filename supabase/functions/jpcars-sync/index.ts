@@ -162,7 +162,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: !insertError,
-      synced: allVehicles.length,
+      synced: uniqueVehicles.length,
       error: insertError?.message ?? null,
       timestamp: new Date().toISOString()
     }), {
