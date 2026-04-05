@@ -1,55 +1,57 @@
 
 
-## Beoordeling: Manus Plan vs. Huidige Implementatie
+## Plan: Kevin Voorraad Monitor Rol Verduidelijken + Ontbrekende Tools
 
-### Wat is WEL geimplementeerd
+### Wat je wilt
 
-1. **Data sync (`jpcars-sync`)** -- Volledig werkend. Haalt alle voertuigen op van JP Cars API met paginatie, slaat 45+ velden op in `jpcars_voorraad_monitor`. Uurlijkse sync via cron.
+De voorraad monitor (`jpcars_voorraad_monitor`) heeft een dubbele rol:
+1. **Voorraad bewaking** -- Is onze voorraad nog actueel? Hoe courant is het? Waar moeten we op letten? Marktverschuivingen detecteren om omloopsnelheid hoog te houden.
+2. **Leerinstrument** -- Welke modellen verkopen goed aan klant X of B2B? Wat werkt, wat niet?
 
-2. **Database tabellen** -- `jpcars_voorraad_monitor` (48 kolommen) en `jpcars_market_history` (11 kolommen) bestaan. 126 voertuigen staan momenteel in de monitor.
+Kevin moet NIET alleen naar buiten kijken (markt), maar de voorraad monitor gebruiken als spiegel: "dit hebben we, zo presteert het, dit leren we ervan."
 
-3. **Kevin edge function (`kevin-ai-chat`)** -- Draait op Claude (`claude-sonnet-4-6`). Laadt alle JP Cars data + CRM voorraad in context. Berekent samenvattingen (actie vereist / let op / goed). Heeft 4 tools: `get_vehicle_detail`, `get_slow_movers`, `get_price_recommendation`, `get_market_summary`.
+### Wat er wijzigt
 
-4. **Kevin Dashboard** -- Live dashboard met voertuigoverzicht, categorisering, en marktdata.
+**1 bestand:** `supabase/functions/kevin-ai-chat/index.ts`
 
-5. **Routing** -- Kevin correct gerouteerd naar dedicated `kevin-ai-chat` functie.
+#### Stap 1: Nieuwe tool `get_scale_opportunities`
+Filtert de eigen voorraad op de "Ideale Inkoopcombinatie" criteria:
+- Matcht `jpcars_voorraad_monitor` voertuigen met ETR/courantheid data uit `taxatie_valuations`
+- Identificeert modellen waar eigen stagedagen < 25, markt avgDays < 45, ETR >= 4
+- Geeft Kevin direct antwoord op: "Welke modellen moeten we opschalen?"
 
-### Wat NIET of ONVOLLEDIG is geimplementeerd
+#### Stap 2: Nieuwe tool `get_market_fast_movers`
+Queryt de `taxatie_valuations` tabel (16.466 records) om de bredere markt te lezen:
+- Groepeert op merk/model
+- Filtert op ETR >= 4, courantheid "hoog"
+- Berekent gemiddelde marktdagen, frequentie, marge
+- Kevin kan hiermee adviseren over modellen die jullie nog NIET hebben
 
-1. **Market history is leeg** -- De `jpcars_market_history` tabel bevat 0 records. De sync code schrijft er wel naartoe, maar er zijn nog geen historische datapunten opgebouwd. Dit betekent dat **trenddetectie** (Layer 2 uit het plan) nog niet werkt.
+#### Stap 3: Dynamische marktdata in context
+Vervangt de hardcoded "MARKTTRENDS" sectie (regel 3-32 van de system prompt) door een dynamische query op `taxatie_valuations` die bij elke chat-sessie de actuele top modellen berekent per categorie (EV, PHEV, benzine).
 
-2. **Trend-analyse tools ontbreken** -- Kevin heeft geen tool om historische trends op te vragen. Het plan beschrijft "Is there a market shift?" vragen, maar er is geen `get_market_trends` tool die `jpcars_market_history` bevraagt.
+#### Stap 4: Voorraad monitor rol verduidelijken in context
+Voegt een korte instructie toe aan de dynamische context die Kevin injecteert:
 
-3. **Ontbrekende JP Cars velden** -- Het plan noemt 60+ velden. De sync mist enkele velden die het plan specifiek noemt:
-   - `price_purchase` (inkoopprijs vanuit JP Cars)
-   - `price_catalog` (catalogusprijs)
-   - `competitive_set_size` / `window_size_own`
-   - `stat_turnover_int` / `stat_turnover_ext`
-   - `TDC`, `days_to_show`, `days_since_proposal`
-   - `apr_breakdown`
-   - `options` (uitrustingslijst)
+> "De Voorraad Monitor toont onze huidige online etalage. Gebruik deze data om:
+> (1) Te bewaken of onze voorraad courant is en waar actie nodig is
+> (2) Marktverschuivingen te detecteren die onze omloopsnelheid bedreigen
+> (3) Te leren welke modellen goed verkopen (B2C vs B2B) en bij welke leveranciers
+> Voor nieuwe inkoopadviezen over modellen die we nog niet hebben, gebruik `get_market_fast_movers`."
 
-4. **On-demand single vehicle API call** -- Het plan beschrijft Endpoint 2 (`GET /api/car`) voor diepere detail per voertuig. Kevin werkt nu alleen met de gecachte lijst-data.
+### Geen database migratie nodig
+Alle queries zijn read-only op bestaande tabellen (`taxatie_valuations`, `jpcars_voorraad_monitor`, `vehicles`).
 
-5. **Valuatie endpoint** -- Het plan beschrijft Endpoint 3 (`POST /api/valuate`) voor real-time taxaties. Niet geimplementeerd in Kevin's tools.
+### Resultaat
+Kevin krijgt 8 tools (was 6):
+1. `get_vehicle_detail` -- detail per voertuig
+2. `get_slow_movers` -- langzame voorraad
+3. `get_price_recommendation` -- prijsadvies
+4. `get_market_summary` -- marktoverzicht
+5. `get_market_trends` -- historische trends
+6. `get_supplier_analysis` -- leverancier prestaties
+7. **`get_scale_opportunities`** -- welke modellen opschalen (eigen data + taxaties)
+8. **`get_market_fast_movers`** -- courante modellen in de brede markt (taxaties)
 
-6. **Supplier coordinatie** -- Kevin's tools matchen niet aan CRM supplier data. De CRM vehicles worden geladen maar niet gekoppeld aan supplier performance.
-
-### Aanbevolen vervolgstappen (prioriteit)
-
-| # | Actie | Impact |
-|---|-------|--------|
-| 1 | **History opbouwen** -- Controleer dat de sync-cron draait zodat `jpcars_market_history` data verzamelt | Hoog -- basis voor trends |
-| 2 | **Trend-tool toevoegen** -- Nieuwe `get_market_trends` tool die history-data per kenteken opvraagt en week-over-week vergelijkt | Hoog -- beantwoordt "markt shift?" vragen |
-| 3 | **Extra velden synchen** -- `price_purchase`, `competitive_set_size`, `stat_turnover_int/ext` toevoegen aan sync en tabel | Medium |
-| 4 | **Supplier koppeling** -- Kevin's context verrijken met supplier-naam per voertuig uit CRM | Medium |
-| 5 | **Valuatie-tool** -- `POST /api/valuate` endpoint integreren als Kevin-tool voor ad-hoc taxaties | Laag -- overlap met taxatie-agents |
-
-### Conclusie
-
-De kernfunctionaliteit uit het plan (Layer 1: Inventory Health, Layer 4: Price Optimization) is **grotendeels geimplementeerd**. Kevin heeft real-time toegang tot marktdata en kan prijsanalyses, slow movers en marktsamenvatting geven.
-
-Wat ontbreekt is vooral **Layer 2 (Trend Detection)** omdat de history-tabel nog leeg is, en **Layer 3 (Supplier Coordination)** omdat supplier-data niet gekoppeld is. De basis-architectuur staat er echter goed voor om dit stapsgewijs toe te voegen.
-
-Wil je dat ik een of meer van deze vervolgstappen implementeer?
+Plus dynamische markttrends in plaats van hardcoded data in de prompt.
 
