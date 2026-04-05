@@ -423,7 +423,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       message: responseMessage,
-      function_called: choice.message.function_call?.name,
+      function_called: toolBlocks[0]?.name || null,
       function_result: functionResult,
       context_used: {
         alerts: ceoData.alerts.length,
