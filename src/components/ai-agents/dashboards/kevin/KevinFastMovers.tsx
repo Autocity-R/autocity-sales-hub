@@ -136,8 +136,8 @@ export const KevinFastMovers: React.FC = () => {
   }, [rawData]);
 
   // Extract unique filter options
-  const fuels = useMemo(() => [...new Set(models.map(m => m.fuel).filter(f => f !== '-'))].sort(), [models]);
-  const bodyTypes = useMemo(() => [...new Set(models.map(m => m.bodyType).filter(b => b !== '-'))].sort(), [models]);
+  const fuels = useMemo(() => [...new Set(models.map(m => m.fuel).filter(f => f && f !== '-' && f.trim() !== ''))].sort(), [models]);
+  const bodyTypes = useMemo(() => [...new Set(models.map(m => m.bodyType).filter(b => b && b !== '-' && b.trim() !== ''))].sort(), [models]);
 
   // Apply filters
   const filtered = useMemo(() => {

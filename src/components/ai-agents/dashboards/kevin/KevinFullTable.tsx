@@ -29,7 +29,7 @@ export const KevinFullTable: React.FC<KevinFullTableProps> = ({ vehicles }) => {
   const [sortBy, setSortBy] = useState<SortKey>('stock_days');
 
   const fuels = useMemo(() => {
-    const set = new Set(vehicles.map(v => v.fuel).filter(Boolean));
+    const set = new Set(vehicles.map(v => v.fuel).filter(f => f && f.trim() !== ''));
     return Array.from(set).sort();
   }, [vehicles]);
 
