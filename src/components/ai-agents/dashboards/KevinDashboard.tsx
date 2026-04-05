@@ -296,7 +296,12 @@ export const KevinDashboard: React.FC = () => {
                     <TableCell className="text-right text-muted-foreground">{v.stock_days_average ?? '-'}</TableCell>
                     <TableCell className="text-right">
                       {formatPrice(v.price_local)}
-                      {v.price_warning != null && v.price_warning > 0 && (
+                      {v.price_warning != null && v.price_warning < -50 && (
+                        <div className="text-xs text-green-600">
+                          Verhoog {formatPrice(Math.abs(v.price_warning))}
+                        </div>
+                      )}
+                      {v.price_warning != null && v.price_warning > 50 && (
                         <div className="text-xs text-orange-600">
                           Zak {formatPrice(v.price_warning)}
                         </div>
