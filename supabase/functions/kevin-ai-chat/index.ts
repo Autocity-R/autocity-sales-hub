@@ -977,3 +977,11 @@ ${supplierInfo ? `- Leverancier: ${supplierInfo.company_name || `${supplierInfo.
       return { success: false, message: `Onbekende functie: ${name}` };
   }
 }
+
+function formatSupplierDetail(s: any): string {
+  return `**Leverancier: ${s.name}**
+- In voorraad: ${s.inStock} | Online: ${s.online} | Gem. rang: ${s.avgRank ?? '-'}
+- **B2C verkopen**: ${s.b2c.count}x | Gem. marge: ${s.b2c.avgMarginPct ?? '-'}% (€${s.b2c.avgMargin?.toLocaleString() ?? '-'}) | Gem. omloop: ${s.b2c.avgDays ?? '-'} dagen | Winst: €${s.b2c.totalProfit?.toLocaleString() ?? '0'}
+- **B2B verkopen**: ${s.b2b.count}x | Gem. marge: ${s.b2b.avgMarginPct ?? '-'}% (€${s.b2b.avgMargin?.toLocaleString() ?? '-'}) | Gem. omloop: ${s.b2b.avgDays ?? '-'} dagen
+- **Totaal**: ${s.totaalVerkocht} verkocht | Totale winst: €${s.totalProfit.toLocaleString()} | B2C score: ${s.b2cScore}`;
+}
