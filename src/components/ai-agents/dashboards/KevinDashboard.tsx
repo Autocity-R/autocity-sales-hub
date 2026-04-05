@@ -139,7 +139,7 @@ export const KevinDashboard: React.FC = () => {
         stock_days: jp?.stock_days ?? null, stock_days_average: jp?.stock_days_average ?? null,
         rank_current: jp?.rank_current ?? null, rank_target: jp?.rank_target ?? null,
         window_size: jp?.window_size ?? null, apr: jp?.apr ?? null,
-        etr: (jp?.raw_data as any)?.etr ?? null, stat_leads: jp?.stat_leads ?? null,
+        etr: (jp?.raw_data as any)?.apr_breakdown?.etr?.bound ?? null, stat_leads: jp?.stat_leads ?? null,
         stat_sold_count: jp?.stat_sold_count ?? null, stat_stock_count: jp?.stat_stock_count ?? null,
         price_warning: jp?.price_warning ?? null,
         price_history_amount_1: jp?.price_history_amount_1 ?? null,
