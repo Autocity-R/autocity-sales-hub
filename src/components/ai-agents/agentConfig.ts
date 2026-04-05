@@ -56,6 +56,20 @@ export const AGENTS: AgentConfig[] = [
     ],
   },
   {
+    id: AGENT_IDS.Kevin,
+    name: 'Kevin',
+    role: 'Head of Purchases',
+    color: { bg: 'bg-teal-500', border: 'border-teal-500', text: 'text-teal-500', gradient: 'from-teal-500 to-teal-600' },
+    quickQuestions: [
+      'Welke auto\'s vereisen actie qua prijs?',
+      'Hoe staat onze voorraad t.o.v. de markt?',
+      'Welke auto\'s staan het langst online?',
+      'Geef een overzicht van de marktsignalen',
+      'Welke auto\'s zijn onder marktwaarde geprijsd?',
+      'Hoeveel leads genereren onze auto\'s?',
+    ],
+  },
+  {
     id: AGENT_IDS.Sara,
     name: 'Sara',
     role: 'Garantie Tracker',
