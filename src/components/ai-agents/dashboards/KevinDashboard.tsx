@@ -71,6 +71,9 @@ export const KevinDashboard: React.FC = () => {
         synced_at: jp.synced_at,
         category: cat,
         price_vs_market: priceVsMarket,
+        mileage: (jp.raw_data as any)?.mileage ?? null,
+        build_year: (jp.raw_data as any)?.build ?? jp.build ?? null,
+        jpcars_url: (jp.raw_data as any)?.url ?? null,
       };
     }).sort((a, b) => (b.stock_days ?? 0) - (a.stock_days ?? 0));
   }, [uniqueJpData]);

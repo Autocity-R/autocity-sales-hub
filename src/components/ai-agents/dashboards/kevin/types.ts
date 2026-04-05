@@ -19,6 +19,9 @@ export interface JoinedVehicle {
   synced_at: string | null;
   category: 'red' | 'yellow' | 'green';
   price_vs_market: number | null;
+  mileage: number | null;
+  build_year: number | null;
+  jpcars_url: string | null;
 }
 
 export function categorize(rank: number | null, windowSize: number | null, stockDays: number | null, stockAvg: number | null, priceWarning: number | null): 'red' | 'yellow' | 'green' {
