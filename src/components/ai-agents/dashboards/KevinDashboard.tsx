@@ -33,16 +33,22 @@ interface JoinedVehicle {
   price_vs_market: number | null;
 }
 
-function categorize(rank: number | null, stockDays: number | null, stockAvg: number | null, priceWarning: number | null): 'red' | 'yellow' | 'green' {
-  // rank: hogere rang = beter gepositioneerd
-  if (rank !== null && rank < 20) return 'red';
+function categorize(rank: number | null, windowSize: number | null, stockDays: number | null, stockAvg: number | null, priceWarning: number | null): 'red' | 'yellow' | 'green' {
+  // Rang 1 = goedkoopst (goed), hoge rang = duurste positie (slecht)
+  // Gebruik rang als percentage van window_size
+  const rankPct = (rank !== null && windowSize !== null && windowSize > 0) ? rank / windowSize : null;
+
+  // Rood: duurste segment, hoge price_warning, of lang op voorraad
+  if (rankPct !== null && rankPct > 0.8) return 'red';
+  if (priceWarning !== null && priceWarning > 2000) return 'red';
   if (stockDays !== null && stockAvg !== null && stockAvg > 0 && stockDays > stockAvg * 1.3) return 'red';
-  if (priceWarning !== null && priceWarning > 1000) return 'red';
 
-  if (rank !== null && rank >= 20 && rank <= 50) return 'yellow';
-  if (stockDays !== null && stockAvg !== null && stockAvg > 0 && stockDays > stockAvg) return 'yellow';
+  // Geel: onderste helft maar niet kritiek
+  if (rankPct !== null && rankPct > 0.5) return 'yellow';
   if (priceWarning !== null && priceWarning > 500) return 'yellow';
+  if (stockDays !== null && stockAvg !== null && stockAvg > 0 && stockDays > stockAvg) return 'yellow';
 
+  // Groen: goed gepositioneerd of price_warning negatief (kan omhoog)
   return 'green';
 }
 
