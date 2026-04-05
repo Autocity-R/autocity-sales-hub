@@ -278,6 +278,16 @@ ${vehicles.map((v: any) => {
           },
         },
       },
+      {
+        name: 'get_positioning_alerts',
+        description: 'Get all vehicles that are mispositioned in the market. Checks price vs median (VVP50), rank vs target, stock days vs average. Returns detailed alerts with VVP price range, options, competitive set size, and concrete pricing advice per vehicle.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            severity: { type: 'string', description: 'Filter by severity: "critical" (>10% above median OR rank <50% of target) or "all" (default)' },
+          },
+        },
+      },
     ];
 
     // 12. Call Claude API
