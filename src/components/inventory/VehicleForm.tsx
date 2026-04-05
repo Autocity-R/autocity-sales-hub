@@ -169,6 +169,7 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
                     },
                     supplierId: checked ? undefined : formData.supplierId,
                     transportStatus: checked ? "aangekomen" : "onderweg",
+                    importStatus: checked ? "ingeschreven" : "niet_aangemeld",
                     location: checked ? "showroom" : formData.location
                   });
                 }}
