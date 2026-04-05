@@ -112,6 +112,7 @@ export const KevinDashboard: React.FC = () => {
         rank_target: jp?.rank_target ?? null,
         window_size: jp?.window_size ?? null,
         apr: jp?.apr ?? null,
+        etr: (jp?.raw_data as any)?.etr ?? null,
         stat_leads: jp?.stat_leads ?? null,
         stat_sold_count: jp?.stat_sold_count ?? null,
         stat_stock_count: jp?.stat_stock_count ?? null,
