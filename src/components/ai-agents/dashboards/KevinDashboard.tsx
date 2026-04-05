@@ -145,10 +145,7 @@ export const KevinDashboard: React.FC = () => {
         greenVehicles={greenVehicles}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <KevinMarketShifts currentVehicles={joined} />
-        <KevinTopModels />
-      </div>
+      <KevinMarketShifts currentVehicles={joined} />
 
       <KevinFullTable vehicles={joined} />
     </div>
