@@ -322,12 +322,16 @@ export const KevinDashboard: React.FC = () => {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {v.rank_current != null ? (
-                        <span className={v.rank_current < 20 ? 'text-red-600 font-medium' : v.rank_current <= 50 ? 'text-yellow-600' : 'text-green-600'}>
-                          {v.rank_current}
+                      {v.rank_current != null && v.window_size != null && v.window_size > 0 ? (
+                        <span className={
+                          v.rank_current / v.window_size > 0.8 ? 'text-red-600 font-medium' :
+                          v.rank_current / v.window_size > 0.5 ? 'text-yellow-600' : 'text-green-600'
+                        }>
+                          {v.rank_current}/{v.window_size}
                         </span>
+                      ) : v.rank_current != null ? (
+                        <span>{v.rank_current}</span>
                       ) : '-'}
-                      {v.window_size != null && <span className="text-xs text-muted-foreground">/{v.window_size}</span>}
                     </TableCell>
                     <TableCell className="text-right">
                       {v.apr != null ? (
