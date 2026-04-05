@@ -8,7 +8,7 @@ import type { JoinedVehicle } from "./kevin/types";
 import { KevinKPIStrip } from "./kevin/KevinKPIStrip";
 import { KevinActionList } from "./kevin/KevinActionList";
 import { KevinMarketShifts } from "./kevin/KevinMarketShifts";
-import { KevinTopModels } from "./kevin/KevinTopModels";
+
 import { KevinFullTable } from "./kevin/KevinFullTable";
 
 export const KevinDashboard: React.FC = () => {
@@ -145,10 +145,7 @@ export const KevinDashboard: React.FC = () => {
         greenVehicles={greenVehicles}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <KevinMarketShifts currentVehicles={joined} />
-        <KevinTopModels />
-      </div>
+      <KevinMarketShifts currentVehicles={joined} />
 
       <KevinFullTable vehicles={joined} />
     </div>
