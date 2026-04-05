@@ -43,14 +43,29 @@ Deno.serve(async (req) => {
 
     const crm = crmVehicles || [];
 
-    // 4. Get supplier contacts for supplier coordination
-    const supplierIds = [...new Set(crm.map((v: any) => v.supplier_id).filter(Boolean))];
+    // 3b. Get sold vehicles for B2C/B2B supplier performance analysis
+    const { data: soldVehiclesData } = await supabase
+      .from('vehicles')
+      .select('id, brand, model, license_number, status, purchase_price, selling_price, created_at, sold_date, supplier_id, details, customer_id')
+      .in('status', ['verkocht_b2c', 'verkocht_b2b', 'afgeleverd'])
+      .not('selling_price', 'is', null)
+      .order('sold_date', { ascending: false })
+      .limit(500);
+
+    const soldVehicles = soldVehiclesData || [];
+    console.log(`📊 Loaded ${soldVehicles.length} sold vehicles for supplier analysis`);
+
+    // 4. Get supplier contacts for supplier coordination (from both CRM and sold vehicles)
+    const allSupplierIds = [...new Set([
+      ...crm.map((v: any) => v.supplier_id),
+      ...soldVehicles.map((v: any) => v.supplier_id),
+    ].filter(Boolean))];
     let suppliers: any[] = [];
-    if (supplierIds.length > 0) {
+    if (allSupplierIds.length > 0) {
       const { data: supplierData } = await supabase
         .from('contacts')
         .select('id, first_name, last_name, company_name, email, phone, is_car_dealer')
-        .in('id', supplierIds);
+        .in('id', allSupplierIds);
       suppliers = supplierData || [];
     }
 
@@ -114,6 +129,7 @@ Deno.serve(async (req) => {
       let_op: letOp.length,
       goed: goed.length,
       crm_voorraad: crm.length,
+      verkocht_geladen: soldVehicles.length,
       history_records: history.length,
       suppliers_count: suppliers.length,
     };
@@ -247,11 +263,11 @@ ${vehicles.map((v: any) => {
       },
       {
         name: 'get_supplier_analysis',
-        description: 'Get supplier performance analysis - which suppliers deliver fast-moving vs slow-moving vehicles',
+        description: 'Get supplier performance analysis with B2C/B2B sales data, margins, turnover speed, and ROI per supplier. Use this for questions about which suppliers perform best, where to focus purchasing, supplier comparison, margin analysis, and purchase strategy.',
         input_schema: {
           type: 'object',
           properties: {
-            supplier_id: { type: 'string', description: 'Specific supplier ID to analyze (optional)' },
+            supplier_id: { type: 'string', description: 'Specific supplier name to filter on (optional, partial match)' },
           },
         },
       },
@@ -317,47 +333,71 @@ ${vehicles.map((v: any) => {
     }
 
     const claudeData = await claudeResponse.json();
-    const textBlocks = claudeData.content?.filter((b: any) => b.type === 'text') || [];
-    const toolBlocks = claudeData.content?.filter((b: any) => b.type === 'tool_use') || [];
+    
+    // Tool loop: process tool calls iteratively (max 3 rounds)
+    let currentContent = claudeData.content;
+    let currentMessages = [...claudeMessages];
+    let responseMessage = '';
 
-    let responseMessage = textBlocks.map((b: any) => b.text).join('\n');
+    for (let toolRound = 0; toolRound < 3; toolRound++) {
+      const toolBlocks = currentContent?.filter((b: any) => b.type === 'tool_use') || [];
+      const textBlocks = currentContent?.filter((b: any) => b.type === 'text') || [];
 
-    // Handle tool calls
-    if (toolBlocks.length > 0) {
-      const toolCall = toolBlocks[0];
-      console.log('🔧 Kevin tool call:', toolCall.name);
-
-      const toolResult = handleKevinToolCall(toolCall.name, toolCall.input, vehicles, crm, history, suppliers, taxaties);
-
-      if (!responseMessage) {
-        const followUpMessages = [
-          ...claudeMessages,
-          { role: 'assistant', content: claudeData.content },
-          { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolCall.id, content: JSON.stringify(toolResult) }] },
-        ];
-
-        const followUpResponse = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'x-api-key': Deno.env.get('ANTHROPIC_API_KEY') || '',
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-6',
-            system: fullSystemPrompt,
-            messages: followUpMessages,
-            max_tokens: 1500,
-          }),
-        });
-
-        if (followUpResponse.ok) {
-          const followUpData = await followUpResponse.json();
-          responseMessage = followUpData.content?.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n') || toolResult.message;
-        } else {
-          responseMessage = toolResult.message;
-        }
+      // No tools called — extract final text and break
+      if (toolBlocks.length === 0) {
+        responseMessage = textBlocks.map((b: any) => b.text).join('\n');
+        break;
       }
+
+      // Tools called — execute ALL tools, ignore any interim text
+      console.log(`🔧 Kevin tool round ${toolRound + 1}: ${toolBlocks.map((t: any) => t.name).join(', ')}`);
+
+      const toolResults: any[] = [];
+      for (const toolCall of toolBlocks) {
+        const toolResult = handleKevinToolCall(toolCall.name, toolCall.input, vehicles, crm, history, suppliers, taxaties, soldVehicles);
+        toolResults.push({
+          type: 'tool_result',
+          tool_use_id: toolCall.id,
+          content: JSON.stringify(toolResult),
+        });
+      }
+
+      // Build follow-up messages with tool results
+      currentMessages = [
+        ...currentMessages,
+        { role: 'assistant', content: currentContent },
+        { role: 'user', content: toolResults },
+      ];
+
+      const followUpResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': Deno.env.get('ANTHROPIC_API_KEY') || '',
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          system: fullSystemPrompt,
+          messages: currentMessages,
+          max_tokens: 2000,
+          tools: kevinTools,
+          tool_choice: { type: 'auto' },
+        }),
+      });
+
+      if (!followUpResponse.ok) {
+        console.error('❌ Follow-up Claude error:', await followUpResponse.text());
+        // Fallback: use first tool result message
+        responseMessage = toolResults.length > 0 
+          ? JSON.parse(toolResults[0].content)?.message || 'Er ging iets mis bij de analyse.'
+          : 'Er ging iets mis bij de analyse.';
+        break;
+      }
+
+      const followUpData = await followUpResponse.json();
+      currentContent = followUpData.content;
+      // Loop continues to check if Claude called more tools
     }
 
     if (!responseMessage) {
@@ -532,7 +572,7 @@ function buildPositioningAlerts(vehicles: any[]): string {
 }
 
 
-function handleKevinToolCall(name: string, input: any, vehicles: any[], crm: any[], history: any[], suppliers: any[], taxaties: any[]): any {
+function handleKevinToolCall(name: string, input: any, vehicles: any[], crm: any[], history: any[], suppliers: any[], taxaties: any[], soldVehicles: any[] = []): any {
   switch (name) {
     case 'get_vehicle_detail': {
       let vehicle = null;
@@ -681,41 +721,100 @@ ${supplierInfo ? `- Leverancier: ${supplierInfo.company_name || `${supplierInfo.
       }
 
       const supplierStats = suppliers.map((sup: any) => {
+        const supName = sup.company_name || `${sup.first_name} ${sup.last_name}`;
+        
+        // Current stock (CRM voorraad)
         const supVehicles = crm.filter((v: any) => v.supplier_id === sup.id);
         const supPlates = supVehicles.map((v: any) => v.license_number?.replace(/[-\s]/g, '').toLowerCase()).filter(Boolean);
-        
         const matchedMarket = vehicles.filter((v: any) => 
           supPlates.includes(v.license_plate?.replace(/[-\s]/g, '').toLowerCase())
         );
-
         const avgRank = matchedMarket.length > 0 
           ? Math.round(matchedMarket.reduce((s: number, v: any) => s + (v.rank_current ?? 0), 0) / matchedMarket.length)
           : null;
-        const avgStockDays = matchedMarket.length > 0
+        const avgMarketStockDays = matchedMarket.length > 0
           ? Math.round(matchedMarket.reduce((s: number, v: any) => s + (v.stock_days ?? 0), 0) / matchedMarket.length)
           : null;
 
+        // Sold vehicles analysis (B2C + B2B)
+        const supSold = soldVehicles.filter((v: any) => v.supplier_id === sup.id);
+        const b2cSold = supSold.filter((v: any) => v.status === 'verkocht_b2c' || (v.status === 'afgeleverd' && v.details?.salesChannel !== 'b2b'));
+        const b2bSold = supSold.filter((v: any) => v.status === 'verkocht_b2b' || (v.status === 'afgeleverd' && v.details?.salesChannel === 'b2b'));
+
+        // Calculate margins
+        const calcMargin = (vList: any[]) => {
+          const withPrices = vList.filter((v: any) => v.selling_price && v.purchase_price && v.purchase_price > 0);
+          if (withPrices.length === 0) return { avgMargin: null, avgMarginPct: null, totalProfit: 0, count: 0 };
+          const margins = withPrices.map((v: any) => v.selling_price - v.purchase_price);
+          const marginPcts = withPrices.map((v: any) => ((v.selling_price - v.purchase_price) / v.purchase_price) * 100);
+          return {
+            avgMargin: Math.round(margins.reduce((a: number, b: number) => a + b, 0) / margins.length),
+            avgMarginPct: Math.round(marginPcts.reduce((a: number, b: number) => a + b, 0) / marginPcts.length * 10) / 10,
+            totalProfit: Math.round(margins.reduce((a: number, b: number) => a + b, 0)),
+            count: withPrices.length,
+          };
+        };
+
+        // Calculate avg turnover days (created_at to sold_date)
+        const calcTurnover = (vList: any[]) => {
+          const withDates = vList.filter((v: any) => v.sold_date && v.created_at);
+          if (withDates.length === 0) return null;
+          const days = withDates.map((v: any) => {
+            const diff = new Date(v.sold_date).getTime() - new Date(v.created_at).getTime();
+            return Math.max(1, Math.round(diff / (1000 * 60 * 60 * 24)));
+          });
+          return Math.round(days.reduce((a: number, b: number) => a + b, 0) / days.length);
+        };
+
+        const b2cMargin = calcMargin(b2cSold);
+        const b2bMargin = calcMargin(b2bSold);
+        const b2cTurnover = calcTurnover(b2cSold);
+        const b2bTurnover = calcTurnover(b2bSold);
+        const allMargin = calcMargin(supSold);
+        const allTurnover = calcTurnover(supSold);
+
+        // B2C performance score (higher margin + faster turnover = better)
+        const b2cScore = b2cMargin.count > 0 && b2cTurnover
+          ? Math.round((b2cMargin.avgMarginPct! / Math.max(b2cTurnover, 1)) * 100) / 100
+          : 0;
+
         return {
-          name: sup.company_name || `${sup.first_name} ${sup.last_name}`,
-          total: supVehicles.length,
+          name: supName,
+          inStock: supVehicles.length,
           online: matchedMarket.length,
           avgRank,
-          avgStockDays,
+          avgMarketStockDays,
+          b2c: { count: b2cSold.length, ...b2cMargin, avgDays: b2cTurnover },
+          b2b: { count: b2bSold.length, ...b2bMargin, avgDays: b2bTurnover },
+          totaalVerkocht: supSold.length,
+          totalProfit: allMargin.totalProfit,
+          avgMarginPct: allMargin.avgMarginPct,
+          avgTurnoverDays: allTurnover,
+          b2cScore,
         };
-      }).filter((s: any) => s.total > 0).sort((a: any, b: any) => b.total - a.total);
+      }).filter((s: any) => s.inStock > 0 || s.totaalVerkocht > 0)
+        .sort((a: any, b: any) => b.b2cScore - a.b2cScore || b.totaalVerkocht - a.totaalVerkocht);
 
       if (input.supplier_id) {
-        const specific = supplierStats.find((s: any) => s.name === input.supplier_id);
+        const specific = supplierStats.find((s: any) => s.name.toLowerCase().includes(input.supplier_id.toLowerCase()));
         if (specific) {
-          return { success: true, data: specific, message: `**Leverancier: ${specific.name}**\n- Totaal voertuigen: ${specific.total}\n- Online: ${specific.online}\n- Gem. rang: ${specific.avgRank ?? '-'}\n- Gem. stagedagen: ${specific.avgStockDays ?? '-'}` };
+          return { success: true, data: specific, message: formatSupplierDetail(specific) };
         }
       }
+
+      const topB2C = supplierStats.filter((s: any) => s.b2c.count > 0).slice(0, 10);
+      const noSales = supplierStats.filter((s: any) => s.totaalVerkocht === 0 && s.inStock > 0);
 
       return {
         success: true,
         data: supplierStats,
-        message: `**Leverancier Analyse** (${supplierStats.length} leveranciers)\n` +
-          supplierStats.map((s: any) => `- ${s.name}: ${s.total} auto's (${s.online} online), gem. rang ${s.avgRank ?? '-'}, gem. ${s.avgStockDays ?? '-'} stagedagen`).join('\n'),
+        message: `**Leverancier B2C Performance Analyse** (${supplierStats.length} leveranciers, ${soldVehicles.length} verkochte voertuigen geanalyseerd)\n\n` +
+          `### Top Leveranciers op B2C Performance\n` +
+          topB2C.map((s: any, i: number) => {
+            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+            return `${medal} **${s.name}** — B2C: ${s.b2c.count}x verkocht, ${s.b2c.avgMarginPct ?? '-'}% marge (gem. €${s.b2c.avgMargin?.toLocaleString() ?? '-'}), ${s.b2c.avgDays ?? '-'} dagen omloop | B2B: ${s.b2b.count}x | Voorraad: ${s.inStock} | Totale winst: €${s.totalProfit.toLocaleString()}`;
+          }).join('\n') +
+          (noSales.length > 0 ? `\n\n### Leveranciers zonder verkopen (alleen voorraad)\n${noSales.map((s: any) => `- ${s.name}: ${s.inStock} in voorraad, gem. rang ${s.avgRank ?? '-'}`).join('\n')}` : ''),
       };
     }
 
@@ -877,4 +976,12 @@ ${supplierInfo ? `- Leverancier: ${supplierInfo.company_name || `${supplierInfo.
     default:
       return { success: false, message: `Onbekende functie: ${name}` };
   }
+}
+
+function formatSupplierDetail(s: any): string {
+  return `**Leverancier: ${s.name}**
+- In voorraad: ${s.inStock} | Online: ${s.online} | Gem. rang: ${s.avgRank ?? '-'}
+- **B2C verkopen**: ${s.b2c.count}x | Gem. marge: ${s.b2c.avgMarginPct ?? '-'}% (€${s.b2c.avgMargin?.toLocaleString() ?? '-'}) | Gem. omloop: ${s.b2c.avgDays ?? '-'} dagen | Winst: €${s.b2c.totalProfit?.toLocaleString() ?? '0'}
+- **B2B verkopen**: ${s.b2b.count}x | Gem. marge: ${s.b2b.avgMarginPct ?? '-'}% (€${s.b2b.avgMargin?.toLocaleString() ?? '-'}) | Gem. omloop: ${s.b2b.avgDays ?? '-'} dagen
+- **Totaal**: ${s.totaalVerkocht} verkocht | Totale winst: €${s.totalProfit.toLocaleString()} | B2C score: ${s.b2cScore}`;
 }
