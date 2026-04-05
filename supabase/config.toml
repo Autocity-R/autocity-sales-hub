@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.showroom-photo-studio]
 verify_jwt = false
+
+[functions.jpcars-sync]
+verify_jwt = false

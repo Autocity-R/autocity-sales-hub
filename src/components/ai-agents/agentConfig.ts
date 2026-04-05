@@ -2,6 +2,7 @@ export const AGENT_IDS = {
   Marco: 'b1000000-0000-0000-0000-000000000001',
   Lisa: 'b2000000-0000-0000-0000-000000000002',
   Daan: 'b3000000-0000-0000-0000-000000000003',
+  Kevin: 'b4000000-0000-0000-0000-000000000004',
   Sara: 'b5000000-0000-0000-0000-000000000005',
   Alex: 'b6000000-0000-0000-0000-000000000006',
 } as const;
@@ -55,6 +56,20 @@ export const AGENTS: AgentConfig[] = [
     ],
   },
   {
+    id: AGENT_IDS.Kevin,
+    name: 'Kevin',
+    role: 'Head of Purchases',
+    color: { bg: 'bg-teal-500', border: 'border-teal-500', text: 'text-teal-500', gradient: 'from-teal-500 to-teal-600' },
+    quickQuestions: [
+      'Welke auto\'s vereisen actie qua prijs?',
+      'Hoe staat onze voorraad t.o.v. de markt?',
+      'Welke auto\'s staan het langst online?',
+      'Geef een overzicht van de marktsignalen',
+      'Welke auto\'s zijn onder marktwaarde geprijsd?',
+      'Hoeveel leads genereren onze auto\'s?',
+    ],
+  },
+  {
     id: AGENT_IDS.Sara,
     name: 'Sara',
     role: 'Garantie Tracker',
@@ -81,9 +96,9 @@ export const AGENTS: AgentConfig[] = [
 ];
 
 export const ROLE_AGENT_ACCESS: Record<string, string[]> = {
-  admin: ['Marco', 'Lisa', 'Daan', 'Sara', 'Alex'],
-  owner: ['Marco', 'Lisa', 'Daan', 'Sara', 'Alex'],
-  manager: ['Marco', 'Lisa', 'Daan', 'Sara', 'Alex'],
+  admin: ['Marco', 'Lisa', 'Daan', 'Kevin', 'Sara', 'Alex'],
+  owner: ['Marco', 'Lisa', 'Daan', 'Kevin', 'Sara', 'Alex'],
+  manager: ['Marco', 'Lisa', 'Daan', 'Kevin', 'Sara', 'Alex'],
   verkoper: ['Daan'],
   operationeel: ['Marco', 'Lisa'],
   aftersales_manager: ['Lisa', 'Sara'],
