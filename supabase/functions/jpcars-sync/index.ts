@@ -90,6 +90,18 @@ Deno.serve(async (req) => {
       location_name: v.location_name,
       thumbs_down_days: v.thumbs_down_days,
       days_hidden: v.days_hidden,
+      // New fields from Manus plan
+      price_purchase: v.price_purchase,
+      price_catalog: v.price_catalog,
+      competitive_set_size: v.competitive_set_size ?? v.window_size,
+      window_size_own: v.window_size_own,
+      stat_turnover_int: v.stat_turnover_int,
+      stat_turnover_ext: v.stat_turnover_ext,
+      tdc: v.tdc,
+      days_to_show: v.days_to_show,
+      days_since_proposal: v.days_since_proposal,
+      apr_breakdown: v.apr_breakdown ?? null,
+      options: v.options ?? null,
       raw_data: v,
       synced_at: new Date().toISOString()
     }))
