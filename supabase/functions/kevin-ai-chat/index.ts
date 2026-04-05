@@ -721,41 +721,100 @@ ${supplierInfo ? `- Leverancier: ${supplierInfo.company_name || `${supplierInfo.
       }
 
       const supplierStats = suppliers.map((sup: any) => {
+        const supName = sup.company_name || `${sup.first_name} ${sup.last_name}`;
+        
+        // Current stock (CRM voorraad)
         const supVehicles = crm.filter((v: any) => v.supplier_id === sup.id);
         const supPlates = supVehicles.map((v: any) => v.license_number?.replace(/[-\s]/g, '').toLowerCase()).filter(Boolean);
-        
         const matchedMarket = vehicles.filter((v: any) => 
           supPlates.includes(v.license_plate?.replace(/[-\s]/g, '').toLowerCase())
         );
-
         const avgRank = matchedMarket.length > 0 
           ? Math.round(matchedMarket.reduce((s: number, v: any) => s + (v.rank_current ?? 0), 0) / matchedMarket.length)
           : null;
-        const avgStockDays = matchedMarket.length > 0
+        const avgMarketStockDays = matchedMarket.length > 0
           ? Math.round(matchedMarket.reduce((s: number, v: any) => s + (v.stock_days ?? 0), 0) / matchedMarket.length)
           : null;
 
+        // Sold vehicles analysis (B2C + B2B)
+        const supSold = soldVehicles.filter((v: any) => v.supplier_id === sup.id);
+        const b2cSold = supSold.filter((v: any) => v.status === 'verkocht_b2c' || (v.status === 'afgeleverd' && v.details?.salesChannel !== 'b2b'));
+        const b2bSold = supSold.filter((v: any) => v.status === 'verkocht_b2b' || (v.status === 'afgeleverd' && v.details?.salesChannel === 'b2b'));
+
+        // Calculate margins
+        const calcMargin = (vList: any[]) => {
+          const withPrices = vList.filter((v: any) => v.selling_price && v.purchase_price && v.purchase_price > 0);
+          if (withPrices.length === 0) return { avgMargin: null, avgMarginPct: null, totalProfit: 0, count: 0 };
+          const margins = withPrices.map((v: any) => v.selling_price - v.purchase_price);
+          const marginPcts = withPrices.map((v: any) => ((v.selling_price - v.purchase_price) / v.purchase_price) * 100);
+          return {
+            avgMargin: Math.round(margins.reduce((a: number, b: number) => a + b, 0) / margins.length),
+            avgMarginPct: Math.round(marginPcts.reduce((a: number, b: number) => a + b, 0) / marginPcts.length * 10) / 10,
+            totalProfit: Math.round(margins.reduce((a: number, b: number) => a + b, 0)),
+            count: withPrices.length,
+          };
+        };
+
+        // Calculate avg turnover days (created_at to sold_date)
+        const calcTurnover = (vList: any[]) => {
+          const withDates = vList.filter((v: any) => v.sold_date && v.created_at);
+          if (withDates.length === 0) return null;
+          const days = withDates.map((v: any) => {
+            const diff = new Date(v.sold_date).getTime() - new Date(v.created_at).getTime();
+            return Math.max(1, Math.round(diff / (1000 * 60 * 60 * 24)));
+          });
+          return Math.round(days.reduce((a: number, b: number) => a + b, 0) / days.length);
+        };
+
+        const b2cMargin = calcMargin(b2cSold);
+        const b2bMargin = calcMargin(b2bSold);
+        const b2cTurnover = calcTurnover(b2cSold);
+        const b2bTurnover = calcTurnover(b2bSold);
+        const allMargin = calcMargin(supSold);
+        const allTurnover = calcTurnover(supSold);
+
+        // B2C performance score (higher margin + faster turnover = better)
+        const b2cScore = b2cMargin.count > 0 && b2cTurnover
+          ? Math.round((b2cMargin.avgMarginPct! / Math.max(b2cTurnover, 1)) * 100) / 100
+          : 0;
+
         return {
-          name: sup.company_name || `${sup.first_name} ${sup.last_name}`,
-          total: supVehicles.length,
+          name: supName,
+          inStock: supVehicles.length,
           online: matchedMarket.length,
           avgRank,
-          avgStockDays,
+          avgMarketStockDays,
+          b2c: { count: b2cSold.length, ...b2cMargin, avgDays: b2cTurnover },
+          b2b: { count: b2bSold.length, ...b2bMargin, avgDays: b2bTurnover },
+          totaalVerkocht: supSold.length,
+          totalProfit: allMargin.totalProfit,
+          avgMarginPct: allMargin.avgMarginPct,
+          avgTurnoverDays: allTurnover,
+          b2cScore,
         };
-      }).filter((s: any) => s.total > 0).sort((a: any, b: any) => b.total - a.total);
+      }).filter((s: any) => s.inStock > 0 || s.totaalVerkocht > 0)
+        .sort((a: any, b: any) => b.b2cScore - a.b2cScore || b.totaalVerkocht - a.totaalVerkocht);
 
       if (input.supplier_id) {
-        const specific = supplierStats.find((s: any) => s.name === input.supplier_id);
+        const specific = supplierStats.find((s: any) => s.name.toLowerCase().includes(input.supplier_id.toLowerCase()));
         if (specific) {
-          return { success: true, data: specific, message: `**Leverancier: ${specific.name}**\n- Totaal voertuigen: ${specific.total}\n- Online: ${specific.online}\n- Gem. rang: ${specific.avgRank ?? '-'}\n- Gem. stagedagen: ${specific.avgStockDays ?? '-'}` };
+          return { success: true, data: specific, message: formatSupplierDetail(specific) };
         }
       }
+
+      const topB2C = supplierStats.filter((s: any) => s.b2c.count > 0).slice(0, 10);
+      const noSales = supplierStats.filter((s: any) => s.totaalVerkocht === 0 && s.inStock > 0);
 
       return {
         success: true,
         data: supplierStats,
-        message: `**Leverancier Analyse** (${supplierStats.length} leveranciers)\n` +
-          supplierStats.map((s: any) => `- ${s.name}: ${s.total} auto's (${s.online} online), gem. rang ${s.avgRank ?? '-'}, gem. ${s.avgStockDays ?? '-'} stagedagen`).join('\n'),
+        message: `**Leverancier B2C Performance Analyse** (${supplierStats.length} leveranciers, ${soldVehicles.length} verkochte voertuigen geanalyseerd)\n\n` +
+          `### Top Leveranciers op B2C Performance\n` +
+          topB2C.map((s: any, i: number) => {
+            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+            return `${medal} **${s.name}** — B2C: ${s.b2c.count}x verkocht, ${s.b2c.avgMarginPct ?? '-'}% marge (gem. €${s.b2c.avgMargin?.toLocaleString() ?? '-'}), ${s.b2c.avgDays ?? '-'} dagen omloop | B2B: ${s.b2b.count}x | Voorraad: ${s.inStock} | Totale winst: €${s.totalProfit.toLocaleString()}`;
+          }).join('\n') +
+          (noSales.length > 0 ? `\n\n### Leveranciers zonder verkopen (alleen voorraad)\n${noSales.map((s: any) => `- ${s.name}: ${s.inStock} in voorraad, gem. rang ${s.avgRank ?? '-'}`).join('\n')}` : ''),
       };
     }
 
