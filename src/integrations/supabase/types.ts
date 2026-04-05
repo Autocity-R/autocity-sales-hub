@@ -1842,6 +1842,165 @@ export type Database = {
         }
         Relationships: []
       }
+      jpcars_voorraad_monitor: {
+        Row: {
+          apr: number | null
+          body: string | null
+          build: number | null
+          clicks: number | null
+          color: string | null
+          created_at: string | null
+          days_hidden: number | null
+          fuel: string | null
+          gear: string | null
+          hp: number | null
+          id: string
+          license_plate: string
+          location_name: string | null
+          make: string | null
+          model: string | null
+          model_year: number | null
+          price_history_amount_1: number | null
+          price_history_amount_2: number | null
+          price_history_amount_3: number | null
+          price_history_date_1: string | null
+          price_history_date_2: string | null
+          price_history_date_3: string | null
+          price_local: number | null
+          price_sensitivity: number | null
+          price_warning: number | null
+          rank_current: number | null
+          rank_target: number | null
+          rank_target_perc: number | null
+          raw_data: Json | null
+          reference_code: string | null
+          stat_discounts: number | null
+          stat_leads: number | null
+          stat_sold_count: number | null
+          stat_stock_count: number | null
+          stock_days: number | null
+          stock_days_average: number | null
+          stock_days_average_in_stock: number | null
+          supply_type: string | null
+          synced_at: string | null
+          thumbs_down_days: number | null
+          value: number | null
+          value_sold: number | null
+          value_stock: number | null
+          vin: string | null
+          vvp_25: number | null
+          vvp_5: number | null
+          vvp_50: number | null
+          vvp_75: number | null
+          vvp_95: number | null
+          window_size: number | null
+        }
+        Insert: {
+          apr?: number | null
+          body?: string | null
+          build?: number | null
+          clicks?: number | null
+          color?: string | null
+          created_at?: string | null
+          days_hidden?: number | null
+          fuel?: string | null
+          gear?: string | null
+          hp?: number | null
+          id?: string
+          license_plate: string
+          location_name?: string | null
+          make?: string | null
+          model?: string | null
+          model_year?: number | null
+          price_history_amount_1?: number | null
+          price_history_amount_2?: number | null
+          price_history_amount_3?: number | null
+          price_history_date_1?: string | null
+          price_history_date_2?: string | null
+          price_history_date_3?: string | null
+          price_local?: number | null
+          price_sensitivity?: number | null
+          price_warning?: number | null
+          rank_current?: number | null
+          rank_target?: number | null
+          rank_target_perc?: number | null
+          raw_data?: Json | null
+          reference_code?: string | null
+          stat_discounts?: number | null
+          stat_leads?: number | null
+          stat_sold_count?: number | null
+          stat_stock_count?: number | null
+          stock_days?: number | null
+          stock_days_average?: number | null
+          stock_days_average_in_stock?: number | null
+          supply_type?: string | null
+          synced_at?: string | null
+          thumbs_down_days?: number | null
+          value?: number | null
+          value_sold?: number | null
+          value_stock?: number | null
+          vin?: string | null
+          vvp_25?: number | null
+          vvp_5?: number | null
+          vvp_50?: number | null
+          vvp_75?: number | null
+          vvp_95?: number | null
+          window_size?: number | null
+        }
+        Update: {
+          apr?: number | null
+          body?: string | null
+          build?: number | null
+          clicks?: number | null
+          color?: string | null
+          created_at?: string | null
+          days_hidden?: number | null
+          fuel?: string | null
+          gear?: string | null
+          hp?: number | null
+          id?: string
+          license_plate?: string
+          location_name?: string | null
+          make?: string | null
+          model?: string | null
+          model_year?: number | null
+          price_history_amount_1?: number | null
+          price_history_amount_2?: number | null
+          price_history_amount_3?: number | null
+          price_history_date_1?: string | null
+          price_history_date_2?: string | null
+          price_history_date_3?: string | null
+          price_local?: number | null
+          price_sensitivity?: number | null
+          price_warning?: number | null
+          rank_current?: number | null
+          rank_target?: number | null
+          rank_target_perc?: number | null
+          raw_data?: Json | null
+          reference_code?: string | null
+          stat_discounts?: number | null
+          stat_leads?: number | null
+          stat_sold_count?: number | null
+          stat_stock_count?: number | null
+          stock_days?: number | null
+          stock_days_average?: number | null
+          stock_days_average_in_stock?: number | null
+          supply_type?: string | null
+          synced_at?: string | null
+          thumbs_down_days?: number | null
+          value?: number | null
+          value_sold?: number | null
+          value_stock?: number | null
+          vin?: string | null
+          vvp_25?: number | null
+          vvp_5?: number | null
+          vvp_50?: number | null
+          vvp_75?: number | null
+          vvp_95?: number | null
+          window_size?: number | null
+        }
+        Relationships: []
+      }
       lead_scoring_history: {
         Row: {
           engagement_score: number | null
