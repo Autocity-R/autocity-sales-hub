@@ -1842,6 +1842,48 @@ export type Database = {
         }
         Relationships: []
       }
+      jpcars_market_history: {
+        Row: {
+          apr: number | null
+          clicks: number | null
+          id: string
+          license_plate: string
+          price_local: number | null
+          rank_current: number | null
+          recorded_at: string | null
+          stat_leads: number | null
+          stat_sold_count: number | null
+          stock_days: number | null
+          value: number | null
+        }
+        Insert: {
+          apr?: number | null
+          clicks?: number | null
+          id?: string
+          license_plate: string
+          price_local?: number | null
+          rank_current?: number | null
+          recorded_at?: string | null
+          stat_leads?: number | null
+          stat_sold_count?: number | null
+          stock_days?: number | null
+          value?: number | null
+        }
+        Update: {
+          apr?: number | null
+          clicks?: number | null
+          id?: string
+          license_plate?: string
+          price_local?: number | null
+          rank_current?: number | null
+          recorded_at?: string | null
+          stat_leads?: number | null
+          stat_sold_count?: number | null
+          stock_days?: number | null
+          value?: number | null
+        }
+        Relationships: []
+      }
       jpcars_voorraad_monitor: {
         Row: {
           apr: number | null
