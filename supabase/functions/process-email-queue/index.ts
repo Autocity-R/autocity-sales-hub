@@ -207,9 +207,7 @@ serve(async (req) => {
 
     const serviceAccount: ServiceAccount = JSON.parse(serviceAccountKey);
 
-    // Get access token
-    console.log('🔑 Getting Gmail API access token...');
-    const accessToken = await getAccessToken(serviceAccount);
+    console.log('🔑 Gmail API ready — tokens will be fetched per sender...');
 
     // Fetch pending or retry-ready emails from queue
     const { data: tasks, error: fetchError } = await supabase
