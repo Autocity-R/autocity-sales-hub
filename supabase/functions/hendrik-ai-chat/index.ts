@@ -2319,6 +2319,29 @@ function buildLiveDataContext(ceoData: any): string {
     return d.isTradeIn !== true && d.isTradeIn !== 'true' && !d.isLoanCar && d.papersReceived !== true;
   });
 
+  // Lisa-specific: delivery pipeline summary
+  const verkocht = allVehicles?.filter((v: any) => v.status === 'verkocht_b2c') || [];
+  const now = new Date();
+  const DAY_MS = 86400000;
+  
+  let redZoneCount = 0;
+  let quickWinsCount = 0;
+  let forgottenCount = 0;
+  
+  verkocht.forEach((v: any) => {
+    const details = v.details || {};
+    const checklist: any[] = details.preDeliveryChecklist || [];
+    const done = checklist.filter((i: any) => i.completed === true).length;
+    const total = checklist.length;
+    const isRegistered = v.import_status === 'ingeschreven';
+    const isComplete = total === 0 || done === total;
+    const daysWaiting = v.sold_date ? Math.floor((now.getTime() - new Date(v.sold_date).getTime()) / DAY_MS) : 0;
+    
+    if (daysWaiting > 14) redZoneCount++;
+    if (isRegistered && total > 0 && (total - done) <= 3 && (total - done) > 0 && daysWaiting <= 14) quickWinsCount++;
+    if (isComplete && isRegistered && !details.deliveryAppointmentId) forgottenCount++;
+  });
+
   return `
 ---
 
@@ -2330,6 +2353,12 @@ function buildLiveDataContext(ceoData: any): string {
 - Aangekomen: ${arrived.length} voertuigen
 - CMR nog versturen: ${cmrPending.length} voertuigen
 - Papieren ontbreken: ${papersMissing.length} voertuigen
+
+### Aflevering Pipeline (Lisa)
+- Verkocht B2C wachtend: ${verkocht.length} voertuigen
+- Rode zone (>14 dagen): ${redZoneCount}
+- Quick wins (snel klaar): ${quickWinsCount}
+- Vergeten klanten (klaar, geen afspraak): ${forgottenCount}
 
 ### Alerts (${alerts.length} actief)
 ${alerts.slice(0, 5).map((a: any) => `- ${a.severity === 'critical' ? '🔴' : '🟡'} ${a.message}`).join('\n')}
