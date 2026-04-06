@@ -1,142 +1,106 @@
 
 
-## Lisa Afleverplanner — Dashboard + Chat Tools
+## Lisa Automatische Dagplanning — Edge Function + Excel Export + Cron
 
 ### Wat er gebouwd wordt
 
-**2 bestanden:**
-1. `src/components/ai-agents/dashboards/LisaDashboard.tsx` — volledig herschrijven
-2. `supabase/functions/hendrik-ai-chat/index.ts` — Lisa tools + handler toevoegen
+1. **Nieuwe Edge Function** `supabase/functions/lisa-dagplanning/index.ts`
+2. **Nieuwe Storage bucket** `lisa-planningen`
+3. **Cron job** ma-vr 08:00
+4. **Dashboard download knop** in `LisaDashboard.tsx`
+5. **config.toml** update
+6. **Checklist tekst-parsing fix** in dashboard + edge function (het "1 punt = meerdere taken" probleem)
 
 ---
 
-### 1. Lisa Dashboard (herschrijven)
+### 1. Edge Function `lisa-dagplanning/index.ts`
 
-Het huidige dashboard toont 3 simpele KPI-kaartjes. Wordt vervangen door een operationeel planningsdashboard met de prioriteitenmatrix.
+Haalt alle `verkocht_b2c` voertuigen op met details, parsed checklist beschrijvingen, en genereert een Excel met 4 tabs via `npm:xlsx`.
 
-**Data query:** Alle `verkocht_b2c` voertuigen + appointments type `aflevering` + profiles voor verkopersnamen.
+**Checklist tekst-parsing** (fix voor het Range Rover probleem):
+Elke `description` wordt gesplitst op `, ` / ` + ` / ` incl. ` om werkelijke taken te tellen. Elk onderdeel wordt apart beoordeeld op complexiteit (SIMPLE vs COMPLEX regex). Dit bepaalt de "Werklast" kolom (Snel / Normaal / Zwaar).
 
-**Checklist parsing:** Per voertuig wordt `details->preDeliveryChecklist` uitgelezen. Elke item heeft een `description` (bijv. "Onderhoudsbeurt", "APK keuren", "Deukje herstellen") en `completed` boolean. Lisa's dashboard toont de concrete beschrijvingen, niet alleen aantallen.
+**Tab 1 "Werkplaats"** — Mechanisch werk + carrosserie, gesorteerd op urgentie:
+- Rode zone auto's eerst (>14 dagen), dan rest
+- Kolommen: Auto, Kenteken, Dagen wacht, Werklast, Open werk (concrete taken), Import status, Verkoper
 
-**Layout:**
+**Tab 2 "Verkopers Bellen"** — Checklist 100% + ingeschreven + geen afspraak:
+- Per verkoper gegroepeerd
+- Kolommen: Auto, Kenteken, Dagen wacht, Verkoper, Status
 
-```text
-┌──────────────┬──────────────┬──────────────┬──────────────┐
-│ 🔴 Rode Zone │ 🟢 Quick Win │ 🟡 Bel Klant │ 📅 Aflevering│
-│ >14d wacht   │ Snel klaar   │ Klaar, geen  │ Vandaag: X   │
-│ X auto's     │ X auto's     │ afspraak: X  │ Week: X      │
-└──────────────┴──────────────┴──────────────┴──────────────┘
+**Tab 3 "Werk in Uitvoering"** — Wacht op kenteken, checklist alvast starten:
+- Kolommen: Auto, Kenteken, Dagen wacht, Open werk, Import status, Blokkade
 
-Per sectie uitklapbaar:
-🔴 BMW X3 (6458) — 2 dagen — 0/5 checklist — aangekomen
-   Te doen: Onderhoudsbeurt, APK keuren, Deukje herstellen,
-            Afdekkapje achter ruitenwisser, Kapje handgreep
-   → Veel werk, niet snel klaar
-
-🟢 BMW X1 (KFJ-83-G) — 10 dagen — 0/1 checklist — ingeschreven
-   Te doen: klaar
-   → Quick win, morgen afleverbaar
-
-🟡 Nissan Qashqai (JXL-39-T) — 16 dagen — 4/4 ✅ — ingeschreven
-   Verkoper: Mario → Bellen voor afspraak
-```
-
-**Categorisatie-logica:**
-- Rode Zone: `sold_date` > 14 dagen geleden
-- Quick Wins: `import_status = 'ingeschreven'` + checklist max 3 open items met eenvoudig werk (beurt/APK/schoonmaken/opladen)
-- Vergeten Klanten: checklist 100% afgevinkt + ingeschreven + geen afleverafspraak
-- Werk in Uitvoering: overige verkocht_b2c
-
-Elke auto toont de concrete checklist beschrijvingen zodat je ziet wat er moet gebeuren en hoe complex het is.
-
----
-
-### 2. Lisa Chat Tools (hendrik-ai-chat)
-
-Toevoegen aan `index.ts` (zelfde patroon als Marco):
-
-**Detectie:**
-```typescript
-const isLisaAgent = agentName.toLowerCase().includes('lisa') ||
-                    agentCapabilities.includes('delivery-planning');
-```
-
-**`getLisaTools()` — 6 tools:**
-
-| Tool | Beschrijving | Wat het retourneert |
-|------|-------------|---------------------|
-| `get_daily_planning` | "Dagplanning voor werkplaats/aftersales. Bij 'planning vandaag', 'wat doen we vandaag'." | Alle verkocht_b2c per prioriteit, met per auto de concrete checklist items (beschrijvingen) |
-| `get_red_zone` | "Auto's waar klant >14 dagen wacht." | Gesorteerd op dagen, met checklist beschrijvingen |
-| `get_quick_wins` | "Auto's die snel klaar kunnen: ingeschreven + korte/eenvoudige checklist." | Met per item wat er precies moet |
-| `get_forgotten_customers` | "Klaar maar geen afleverafspraak." | Met verkoper naam |
-| `get_delivery_appointments` | "Afleverafspraken vandaag/week." | Uit appointments tabel |
-| `get_vehicle_delivery_status` | "Status van een specifiek voertuig." | Checklist items + status per item + wie het heeft afgevinkt |
-
-**Cruciaal — checklist context per tool:**
-
-Elk tool retourneert per voertuig niet alleen "3/5 checklist" maar de concrete beschrijvingen:
-
-```json
-{
-  "brand": "BMW",
-  "model": "X3 xDrive 30e M Sport",
-  "license": "6458",
-  "days_waiting": 2,
-  "import_status": "aangekomen",
-  "salesperson": "Mario",
-  "checklist_total": 5,
-  "checklist_done": 0,
-  "checklist_open_items": [
-    "Onderhoudsbeurt uitvoeren",
-    "APK keuren",
-    "Afdenkkapje handgreep links voor plaatsen",
-    "Restyle deukje linker achter scherm herstellen",
-    "Afdekkapje achter ruitenwisser plaatsen"
-  ],
-  "checklist_done_items": [],
-  "complexity": "hoog",
-  "can_deliver": false,
-  "blocker": "niet ingeschreven + 5 open items"
-}
-```
-
-**Complexity redenering** — Lisa begrijpt wat elk punt inhoudt:
-- "Beurt", "APK", "Opladen", "Volle tank", "Schoonmaken" → snel/eenvoudig
-- "Uitdeuken", "Spotrepair", "Herstellen", "Onderdelen bestellen" → kost meer tijd
-- "SOH check", "Draadloos laden checken" → technisch maar kort
-
-De tool classificeert per auto:
-- `laag` = alleen eenvoudige items (beurt, APK, tank, schoonmaken)
-- `middel` = mix van eenvoudig en complex
-- `hoog` = meerdere complexe items (uitdeuken, spuitwerk, onderdelen)
-
-Dit geeft Lisa de context om te zeggen: "De Kia EV6 heeft 1 checklist punt maar dat punt bevat 6 taken waaronder uitdeuken en spotrepair — dat is niet snel klaar."
-
----
-
-### 3. Live data context voor Lisa
-
-In `buildLiveDataContext()` een Lisa-sectie toevoegen met compacte afleversamenvatting:
+**Tab 4 "Overzicht"** — Tellingen:
+- Totaal verkocht B2C wachtend
 - Rode zone count
 - Quick wins count
-- Vergeten klanten count
+- Verkopers bellen count
 - Afleveringen vandaag/week
+
+Na generatie:
+- Upload naar Storage bucket `lisa-planningen` met filename `dagplanning-YYYY-MM-DD.xlsx`
+- Genereer signed URL (24 uur geldig)
+- Return URL in response
+
+**On-demand modus**: Wanneer aangeroepen vanuit dashboard (POST met `{ "mode": "download" }`), return de signed URL direct. Wanneer via cron (geen body), genereer en sla op.
 
 ---
 
-### Technisch overzicht
+### 2. Storage bucket
 
-| Wijziging | Bestand | Impact |
-|-----------|---------|--------|
-| Dashboard herschrijven | `LisaDashboard.tsx` | Prioriteitenmatrix met checklist beschrijvingen |
-| Lisa detectie + tools | `hendrik-ai-chat/index.ts` | `isLisaAgent`, `getLisaTools()`, `handleLisaToolCall()` |
-| Tool handler | `hendrik-ai-chat/index.ts` | 6 tools met checklist context en complexity scoring |
-| Live data context | `hendrik-ai-chat/index.ts` | Lisa-specifieke samenvatting in buildLiveDataContext |
+Naam: `lisa-planningen`, private, via migration of handmatig aanmaken.
 
-### Resultaat
-- Dashboard toont direct wat er per auto moet gebeuren (concrete taken, niet alleen aantallen)
-- Lisa in chat begrijpt "1 checklist punt met 6 taken" vs "3 simpele punten"
-- "Maak een planning voor vandaag" → gestructureerde werklijst met concrete taken per auto
-- "Welke auto kan snel weg?" → quick wins met uitleg waarom ze snel klaar zijn
-- "Wie moet gebeld worden?" → vergeten klanten met verkoper naam
+---
+
+### 3. Cron job
+
+```sql
+SELECT cron.schedule(
+  'lisa-dagplanning-08u',
+  '0 6 * * 1-5',  -- 06:00 UTC = 08:00 CET, ma-vr
+  $$
+  SELECT net.http_post(
+    url := 'https://fnwagrmoyfyimdoaynkg.supabase.co/functions/v1/lisa-dagplanning',
+    headers := '{"Content-Type": "application/json", "Authorization": "Bearer ANON_KEY"}'::jsonb,
+    body := '{}'::jsonb
+  );
+  $$
+);
+```
+
+---
+
+### 4. Dashboard download knop (`LisaDashboard.tsx`)
+
+Bovenaan het dashboard, naast de KPI-kaarten:
+- Knop "Download Dagplanning" die `supabase.functions.invoke('lisa-dagplanning', { body: { mode: 'download' } })` aanroept
+- Na response: open signed URL in nieuw tabblad
+- Loading state tijdens generatie
+
+**Checklist parsing fix** ook in het dashboard: `classifyComplexity` wordt aangepast om descriptions te splitsen op delimiters voordat complexiteit wordt bepaald. De Range Rover Velar met "Onderhoudsbeurt incl. APK, Beschadigingen achterbumper bijwerken + bij slot achterklep binnenzijde, Mattenset, Beide laadkabels leveren" wordt dan correct als "hoog" geclassificeerd i.p.v. "laag".
+
+---
+
+### 5. config.toml
+
+```toml
+[functions.lisa-dagplanning]
+verify_jwt = false
+```
+
+---
+
+### Bestanden
+
+| Bestand | Actie |
+|---------|-------|
+| `supabase/functions/lisa-dagplanning/index.ts` | Nieuw — Excel generatie + Storage upload |
+| `supabase/config.toml` | Edit — lisa-dagplanning registreren |
+| `src/components/ai-agents/dashboards/LisaDashboard.tsx` | Edit — download knop + checklist parsing fix |
+| Storage bucket `lisa-planningen` | Nieuw |
+| Cron job `lisa-dagplanning-08u` | Nieuw (via SQL insert) |
+
+### Geen email in eerste versie
+Claude's plan noemt email via de bestaande `email_queue` tabel. Dit kan als vervolgstap, maar de prioriteit is eerst de Excel generatie + download + cron correct werkend krijgen. Email bijlage-ondersteuning toevoegen is een logische volgende stap.
 
