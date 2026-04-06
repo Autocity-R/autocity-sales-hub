@@ -256,17 +256,25 @@ export class SupabaseInventoryService {
        salesStatus = 'voorraad';
      }
 
-     // CRITICAL: Set sold_date ONLY when status changes to verkocht_b2b or verkocht_b2c
-     let soldDate = existingVehicle.sold_date;
-     let deliveryDate = existingVehicle.delivery_date;
-     
-     // Set sold_date when status changes to sold (but NOT afgeleverd)
-     if (['verkocht_b2b', 'verkocht_b2c'].includes(salesStatus) && 
-         !['verkocht_b2b', 'verkocht_b2c'].includes(existingVehicle.status) && 
-         !soldDate) {
-       soldDate = new Date().toISOString();
-       console.log(`[UPDATE_VEHICLE] Setting sold_date for vehicle ${vehicle.id}`);
-     }
+      // CRITICAL: Set sold_date ONLY when status changes to verkocht_b2b or verkocht_b2c
+      let soldDate = existingVehicle.sold_date;
+      let deliveryDate = existingVehicle.delivery_date;
+      
+      // Set sold_date when status changes to sold (but NOT afgeleverd)
+      if (['verkocht_b2b', 'verkocht_b2c'].includes(salesStatus) && 
+          !['verkocht_b2b', 'verkocht_b2c'].includes(existingVehicle.status) && 
+          !soldDate) {
+        soldDate = new Date().toISOString();
+        console.log(`[UPDATE_VEHICLE] Setting sold_date for vehicle ${vehicle.id}`);
+      }
+
+      // CRITICAL: Clear sold_date when status reverts from sold back to voorraad
+      const soldStatuses = ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'];
+      if (!soldStatuses.includes(salesStatus) && soldStatuses.includes(existingVehicle.status)) {
+        soldDate = null;
+        deliveryDate = null;
+        console.log(`[UPDATE_VEHICLE] Clearing sold_date — sale cancelled for vehicle ${vehicle.id}`);
+      }
      
       // Set delivery_date ONLY when status changes to afgeleverd
       if (salesStatus === 'afgeleverd' && existingVehicle.status !== 'afgeleverd' && !deliveryDate) {
@@ -456,6 +464,14 @@ export class SupabaseInventoryService {
       if (['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(status) && !currentVehicle?.sold_date) {
         updateData.sold_date = new Date().toISOString();
         console.log(`Setting sold_date for vehicle ${vehicleId} to ${updateData.sold_date}`);
+      }
+
+      // CRITICAL: Clear sold_date when status reverts to non-sold (e.g. voorraad)
+      if (!['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(status) && currentVehicle?.sold_date) {
+        updateData.sold_date = null;
+        updateData.delivery_date = null;
+        updateData.sold_by_user_id = null;
+        console.log(`Clearing sold_date for vehicle ${vehicleId} — sale cancelled`);
       }
 
       // Automatically disable showroom online when vehicle is sold
