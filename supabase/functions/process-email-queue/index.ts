@@ -68,8 +68,15 @@ async function getAccessToken(serviceAccount: ServiceAccount, senderEmail: strin
   }
 
   const data = await response.json();
-  console.log('✅ Gmail authentication successful');
+  console.log(`✅ Gmail authentication successful for ${senderEmail}`);
   return data.access_token;
+}
+
+async function getAccessTokenForSender(serviceAccount: ServiceAccount, senderEmail: string): Promise<string> {
+  if (tokenCache[senderEmail]) return tokenCache[senderEmail];
+  const token = await getAccessToken(serviceAccount, senderEmail);
+  tokenCache[senderEmail] = token;
+  return token;
 }
 
 async function sendEmailViaGmail(payload: EmailPayload, accessToken: string): Promise<void> {
