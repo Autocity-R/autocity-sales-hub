@@ -397,10 +397,13 @@ serve(async (req) => {
     let lastFunctionCalled: string | null = null;
     let lastFunctionResult: any = null;
 
-    // Tool handler that works for both Marco and CEO tools
+    // Tool handler that works for Marco, Lisa, and CEO tools
     const handleToolCall = async (toolName: string, toolInput: any) => {
       if (isMarcoAgent) {
         return await handleMarcoToolCall(supabaseClient, toolName, toolInput, ceoData);
+      }
+      if (isLisaAgent) {
+        return await handleLisaToolCall(supabaseClient, toolName, toolInput, ceoData);
       }
       return await handleStrategicCEOFunctionCall(
         supabaseClient,
