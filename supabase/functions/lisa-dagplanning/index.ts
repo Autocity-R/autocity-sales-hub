@@ -252,6 +252,7 @@ Deno.serve(async (req) => {
     const appointments = appointmentsRes.data || [];
     const tomorrowAppts = tomorrowApptsRes.data || [];
     const profiles = profilesRes.data || [];
+    const contacts = contactsRes.data || [];
 
     // Build profiles map from database
     const profilesMap: Record<string, { name: string; email: string }> = {};
@@ -259,6 +260,16 @@ Deno.serve(async (req) => {
       profilesMap[p.id] = {
         name: `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Onbekend",
         email: p.email || "",
+      };
+    }
+
+    // Build contacts map for customer info
+    const contactsMap: Record<string, { name: string; phone: string; email: string }> = {};
+    for (const c of contacts) {
+      contactsMap[c.id] = {
+        name: `${c.first_name || ""} ${c.last_name || ""}`.trim() || "Onbekend",
+        phone: c.phone || "—",
+        email: c.email || "",
       };
     }
 
