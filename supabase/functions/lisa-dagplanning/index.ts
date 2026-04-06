@@ -536,18 +536,22 @@ Deno.serve(async (req) => {
       afleveringenWeek: appointments.length,
     };
 
-    // ===== EMAIL 1: Lloyd dagplanning =====
+    // ===== EMAIL 1: Lloyd dagplanning (Excel als bijlage) =====
     try {
       await supabase.from("email_queue").insert({
         payload: {
           senderEmail: "aftersales@auto-city.nl",
           to: ["lloyd@auto-city.nl"],
           subject: `Dagplanning Aftersales — ${datumDisplay}`,
-          htmlBody: buildLloydEmailHtml(summary, downloadUrl, datumDisplay),
+          htmlBody: buildLloydEmailHtml(summary, datumDisplay),
+          attachments: [{
+            filename: `Dagplanning_${todayStr}.xlsx`,
+            url: downloadUrl,
+          }],
         },
         status: "pending",
       });
-      console.log("✅ Lloyd dagplanning email queued");
+      console.log("✅ Lloyd dagplanning email queued (met Excel bijlage)");
     } catch (emailErr) {
       console.error("❌ Failed to queue Lloyd email:", emailErr);
     }
