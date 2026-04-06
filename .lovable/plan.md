@@ -1,106 +1,73 @@
 
 
-## Lisa Automatische Dagplanning — Edge Function + Excel Export + Cron
+## Lisa Dagplanning — Professionele Excel Layout Implementatie
 
-### Wat er gebouwd wordt
+### Probleem
+De huidige `lisa-dagplanning/index.ts` genereert een kale Excel zonder styling (geen kleuren, geen secties, geen badges). Claude heeft een exacte layout specificatie gemaakt met kleuren, sectie-headers, werklast badges en afwisselende rij-achtergronden.
 
-1. **Nieuwe Edge Function** `supabase/functions/lisa-dagplanning/index.ts`
-2. **Nieuwe Storage bucket** `lisa-planningen`
-3. **Cron job** ma-vr 08:00
-4. **Dashboard download knop** in `LisaDashboard.tsx`
-5. **config.toml** update
-6. **Checklist tekst-parsing fix** in dashboard + edge function (het "1 punt = meerdere taken" probleem)
+### Technische uitdaging
+`npm:xlsx` (SheetJS community) ondersteunt geen cell styling. We moeten overstappen naar `xlsx-js-style` (een fork met volledige style support) die beschikbaar is via `npm:xlsx-js-style` in Deno.
 
----
+### Wat er verandert
 
-### 1. Edge Function `lisa-dagplanning/index.ts`
+**1 bestand:** `supabase/functions/lisa-dagplanning/index.ts` — volledig herschrijven
 
-Haalt alle `verkocht_b2c` voertuigen op met details, parsed checklist beschrijvingen, en genereert een Excel met 4 tabs via `npm:xlsx`.
+### Aanpak
 
-**Checklist tekst-parsing** (fix voor het Range Rover probleem):
-Elke `description` wordt gesplitst op `, ` / ` + ` / ` incl. ` om werkelijke taken te tellen. Elk onderdeel wordt apart beoordeeld op complexiteit (SIMPLE vs COMPLEX regex). Dit bepaalt de "Werklast" kolom (Snel / Normaal / Zwaar).
-
-**Tab 1 "Werkplaats"** — Mechanisch werk + carrosserie, gesorteerd op urgentie:
-- Rode zone auto's eerst (>14 dagen), dan rest
-- Kolommen: Auto, Kenteken, Dagen wacht, Werklast, Open werk (concrete taken), Import status, Verkoper
-
-**Tab 2 "Verkopers Bellen"** — Checklist 100% + ingeschreven + geen afspraak:
-- Per verkoper gegroepeerd
-- Kolommen: Auto, Kenteken, Dagen wacht, Verkoper, Status
-
-**Tab 3 "Werk in Uitvoering"** — Wacht op kenteken, checklist alvast starten:
-- Kolommen: Auto, Kenteken, Dagen wacht, Open werk, Import status, Blokkade
-
-**Tab 4 "Overzicht"** — Tellingen:
-- Totaal verkocht B2C wachtend
-- Rode zone count
-- Quick wins count
-- Verkopers bellen count
-- Afleveringen vandaag/week
-
-Na generatie:
-- Upload naar Storage bucket `lisa-planningen` met filename `dagplanning-YYYY-MM-DD.xlsx`
-- Genereer signed URL (24 uur geldig)
-- Return URL in response
-
-**On-demand modus**: Wanneer aangeroepen vanuit dashboard (POST met `{ "mode": "download" }`), return de signed URL direct. Wanneer via cron (geen body), genereer en sla op.
-
----
-
-### 2. Storage bucket
-
-Naam: `lisa-planningen`, private, via migration of handmatig aanmaken.
-
----
-
-### 3. Cron job
-
-```sql
-SELECT cron.schedule(
-  'lisa-dagplanning-08u',
-  '0 6 * * 1-5',  -- 06:00 UTC = 08:00 CET, ma-vr
-  $$
-  SELECT net.http_post(
-    url := 'https://fnwagrmoyfyimdoaynkg.supabase.co/functions/v1/lisa-dagplanning',
-    headers := '{"Content-Type": "application/json", "Authorization": "Bearer ANON_KEY"}'::jsonb,
-    body := '{}'::jsonb
-  );
-  $$
-);
+**Import wijziging:**
+```typescript
+import XLSX from "npm:xlsx-js-style";
 ```
 
----
+**Styling systeem:** Alle kleuren exact zoals gespecificeerd (DARK_NAVY `1F3864`, ROOD_H `C00000`, etc.). Helper functies voor:
+- `makeTitle(text)` — rij 1, merged, 14pt bold wit op navy
+- `makeSubtitle(text)` — rij 2, italic 9pt grijs
+- `makeSpacer()` — 6px hoog, lichtgrijs
+- `makeSectionHeader(text, color)` — merged, 11pt bold wit op sectie-kleur
+- `makeColumnHeaders(cols, color)` — 9pt bold wit, gecentreerd
+- `makeDataRow(data, bgColor, altColor, index)` — afwisselend gekleurd
 
-### 4. Dashboard download knop (`LisaDashboard.tsx`)
+**Tab 1 "🔧 Werkplaats" (7 kolommen):**
+- Sectie 1: Afleveringen morgen (groen) — appointments voor morgen
+- Sectie 2: Rode zone (rood) — >14 dagen, gesorteerd op dagen DESC
+- Sectie 3: Kenteken OK + checklist open (groen)
+- Werklast badge met emoji + tijdsinschatting
+- Open werk als bullet list (`• taak1\n• taak2`)
+- Dagen wacht kleurcodering (rood >14d, oranje 7-14d)
 
-Bovenaan het dashboard, naast de KPI-kaarten:
-- Knop "Download Dagplanning" die `supabase.functions.invoke('lisa-dagplanning', { body: { mode: 'download' } })` aanroept
-- Na response: open signed URL in nieuw tabblad
-- Loading state tijdens generatie
+**Tab 2 "📞 Verkopers Bellen" (6 kolommen):**
+- Oranje styling
+- Urgentie-logica: >14 dagen = "URGENT — bel vandaag nog!" in rood bold
 
-**Checklist parsing fix** ook in het dashboard: `classifyComplexity` wordt aangepast om descriptions te splitsen op delimiters voordat complexiteit wordt bepaald. De Range Rover Velar met "Onderhoudsbeurt incl. APK, Beschadigingen achterbumper bijwerken + bij slot achterklep binnenzijde, Mattenset, Beide laadkabels leveren" wordt dan correct als "hoog" geclassificeerd i.p.v. "laag".
+**Tab 3 "🔵 Werk in Uitvoering" (6 kolommen):**
+- Blauwe styling
+- Import status labels (bijv. "Aangekomen (Marco)")
 
----
+**Tab 4 "📊 Overzicht" (4 kolommen):**
+- Per categorie een rij met eigen achtergrondkleur
+- Totaalrij onderaan in grijs
 
-### 5. config.toml
+**Werklast classificatie verbeterd:**
+```
+Zwaar keywords: spuit, inlak, lakschade, beschadig, uitdeuk, spotrepair, restyle, distributieriem
+→ "🔴 Zwaar\n~halve dag+"
 
-```toml
-[functions.lisa-dagplanning]
-verify_jwt = false
+Normaal keywords: apk, beurt, banden, camera, trekhaak
+→ "🟡 Normaal\n~X uur"
+
+Rest → "⚡ Snel\n~30 min"
 ```
 
----
+**Excel opmaak details:**
+- Font: Calibri overal
+- Borders: thin #BFBFBF op alle cellen
+- Freeze panes: rij 1-3 vast (A4)
+- Gridlines: uit
+- Wrap text aan op alle data cellen
+- Row heights: titel 36px, data 52-65px
 
-### Bestanden
+**Data logica blijft hetzelfde** — alleen de presentatie wordt professioneel. Dezelfde queries, dezelfde categorisatie, dezelfde storage upload + signed URL.
 
-| Bestand | Actie |
-|---------|-------|
-| `supabase/functions/lisa-dagplanning/index.ts` | Nieuw — Excel generatie + Storage upload |
-| `supabase/config.toml` | Edit — lisa-dagplanning registreren |
-| `src/components/ai-agents/dashboards/LisaDashboard.tsx` | Edit — download knop + checklist parsing fix |
-| Storage bucket `lisa-planningen` | Nieuw |
-| Cron job `lisa-dagplanning-08u` | Nieuw (via SQL insert) |
-
-### Geen email in eerste versie
-Claude's plan noemt email via de bestaande `email_queue` tabel. Dit kan als vervolgstap, maar de prioriteit is eerst de Excel generatie + download + cron correct werkend krijgen. Email bijlage-ondersteuning toevoegen is een logische volgende stap.
+### Resultaat
+Elke dag om 08:00 een professionele, kleurgecodeerde Excel die je kunt uitprinten en op het whiteboard hangen in de werkplaats.
 
