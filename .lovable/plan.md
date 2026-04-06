@@ -1,73 +1,114 @@
 
 
-## Lisa Dagplanning — Professionele Excel Layout Implementatie
+## Lisa Dagplanning — Checklist Fix + Email Notificaties + Dynamische Sender
 
-### Probleem
-De huidige `lisa-dagplanning/index.ts` genereert een kale Excel zonder styling (geen kleuren, geen secties, geen badges). Claude heeft een exacte layout specificatie gemaakt met kleuren, sectie-headers, werklast badges en afwisselende rij-achtergronden.
+### Samenvatting
+Drie bestanden bouwen/aanpassen. Checklist-logica fixen (auto's zonder checklist niet als "klaar" tellen), email notificaties toevoegen, en process-email-queue dynamisch maken qua sender.
 
-### Technische uitdaging
-`npm:xlsx` (SheetJS community) ondersteunt geen cell styling. We moeten overstappen naar `xlsx-js-style` (een fork met volledige style support) die beschikbaar is via `npm:xlsx-js-style` in Deno.
+---
 
-### Wat er verandert
+### 1. `supabase/functions/lisa-dagplanning/index.ts` — Edit
 
-**1 bestand:** `supabase/functions/lisa-dagplanning/index.ts` — volledig herschrijven
+**Checklist fix (regel 208):**
+```
+// Huidig (fout):
+isChecklistComplete = checklist.length === 0 || openItems.length === 0
+// Nieuw (correct):
+hasChecklist = checklist.length > 0
+isChecklistComplete = hasChecklist && openItems.length === 0
+```
 
-### Aanpak
+Auto's zonder checklist (`checklist.length === 0`) worden een aparte categorie: `checklistOntbreekt`. Deze komen NIET in `verkopersBellen`.
 
-**Import wijziging:**
+**Verkopers Bellen filter wordt:**
+```
+isRegistered && hasChecklist && isChecklistComplete && !hasAppointment
+```
+
+**Overzicht tab:** extra rij "⚠️ Checklist ontbreekt" met telling.
+
+**Profiles ophalen uit database** i.p.v. hardcoded `PROFILES_MAP`:
 ```typescript
-import XLSX from "npm:xlsx-js-style";
+const { data: profiles } = await supabase.from('profiles').select('id, email, first_name, last_name');
+```
+Dit geeft verkoper emails voor de email flows.
+
+**Email 1: Lloyd dagplanning (na Excel upload):**
+Insert in `email_queue` met:
+- `senderEmail: "aftersales@auto-city.nl"`
+- `to: ["lloyd@auto-city.nl"]`
+- `subject: "Dagplanning Aftersales — [datum]"`
+- `htmlBody`: korte HTML samenvatting met aantallen + download link (signed URL)
+
+**Email 2: Verkoper notificaties — klaar voor aflevering:**
+Per verkoper die auto's heeft in `verkopersBellen`, insert in `email_queue`:
+- `senderEmail: "aftersales@auto-city.nl"`
+- `to: [verkoper.email]` (uit profiles tabel)
+- `subject: "Aftersales: [N] auto('s) klaar voor aflevering"`
+- `htmlBody`: HTML lijst met auto's die klaar zijn, verzoek om klant te bellen
+
+---
+
+### 2. `supabase/functions/lisa-email-checklist-reminder/index.ts` — Nieuw
+
+Wordt aangeroepen door bestaande cron `lisa-checklist-reminder-10u` (ma-vr 08:00 UTC = 10:00 CET).
+
+Logica:
+1. Haal `verkocht_b2c` voertuigen op waar `preDeliveryChecklist` leeg is of niet bestaat
+2. Groepeer per verkoper (`sold_by_user_id`)
+3. Haal verkoper emails uit `profiles` tabel
+4. Per verkoper: insert in `email_queue` met:
+   - `senderEmail: "aftersales@auto-city.nl"`
+   - `to: [verkoper.email]`
+   - `subject: "Aftersales: checklist ontbreekt voor [N] auto('s)"`
+   - `htmlBody`: HTML lijst auto's zonder checklist, verzoek om in te vullen
+
+Toevoegen aan `supabase/config.toml`:
+```toml
+[functions.lisa-email-checklist-reminder]
+verify_jwt = false
 ```
 
-**Styling systeem:** Alle kleuren exact zoals gespecificeerd (DARK_NAVY `1F3864`, ROOD_H `C00000`, etc.). Helper functies voor:
-- `makeTitle(text)` — rij 1, merged, 14pt bold wit op navy
-- `makeSubtitle(text)` — rij 2, italic 9pt grijs
-- `makeSpacer()` — 6px hoog, lichtgrijs
-- `makeSectionHeader(text, color)` — merged, 11pt bold wit op sectie-kleur
-- `makeColumnHeaders(cols, color)` — 9pt bold wit, gecentreerd
-- `makeDataRow(data, bgColor, altColor, index)` — afwisselend gekleurd
+---
 
-**Tab 1 "🔧 Werkplaats" (7 kolommen):**
-- Sectie 1: Afleveringen morgen (groen) — appointments voor morgen
-- Sectie 2: Rode zone (rood) — >14 dagen, gesorteerd op dagen DESC
-- Sectie 3: Kenteken OK + checklist open (groen)
-- Werklast badge met emoji + tijdsinschatting
-- Open werk als bullet list (`• taak1\n• taak2`)
-- Dagen wacht kleurcodering (rood >14d, oranje 7-14d)
+### 3. `supabase/functions/process-email-queue/index.ts` — Edit
 
-**Tab 2 "📞 Verkopers Bellen" (6 kolommen):**
-- Oranje styling
-- Urgentie-logica: >14 dagen = "URGENT — bel vandaag nog!" in rood bold
+**Dynamische sender impersonation:**
 
-**Tab 3 "🔵 Werk in Uitvoering" (6 kolommen):**
-- Blauwe styling
-- Import status labels (bijv. "Aangekomen (Marco)")
-
-**Tab 4 "📊 Overzicht" (4 kolommen):**
-- Per categorie een rij met eigen achtergrondkleur
-- Totaalrij onderaan in grijs
-
-**Werklast classificatie verbeterd:**
-```
-Zwaar keywords: spuit, inlak, lakschade, beschadig, uitdeuk, spotrepair, restyle, distributieriem
-→ "🔴 Zwaar\n~halve dag+"
-
-Normaal keywords: apk, beurt, banden, camera, trekhaak
-→ "🟡 Normaal\n~X uur"
-
-Rest → "⚡ Snel\n~30 min"
+Huidige code (regel 29):
+```typescript
+const userToImpersonate = 'inkoop@auto-city.nl';
 ```
 
-**Excel opmaak details:**
-- Font: Calibri overal
-- Borders: thin #BFBFBF op alle cellen
-- Freeze panes: rij 1-3 vast (A4)
-- Gridlines: uit
-- Wrap text aan op alle data cellen
-- Row heights: titel 36px, data 52-65px
+Wordt aangepast: `createJWTAssertion` en `getAccessToken` accepteren een `senderEmail` parameter. Per email in de queue wordt de juiste sender gebruikt.
 
-**Data logica blijft hetzelfde** — alleen de presentatie wordt professioneel. Dezelfde queries, dezelfde categorisatie, dezelfde storage upload + signed URL.
+Omdat verschillende senders verschillende OAuth tokens nodig hebben, wordt een token cache per sender bijgehouden:
+```typescript
+const tokenCache: Record<string, string> = {};
 
-### Resultaat
-Elke dag om 08:00 een professionele, kleurgecodeerde Excel die je kunt uitprinten en op het whiteboard hangen in de werkplaats.
+async function getAccessTokenForSender(serviceAccount, senderEmail): Promise<string> {
+  if (tokenCache[senderEmail]) return tokenCache[senderEmail];
+  const token = await getAccessToken(serviceAccount, senderEmail);
+  tokenCache[senderEmail] = token;
+  return token;
+}
+```
+
+Fallback: `payload.senderEmail ?? 'inkoop@auto-city.nl'`
+
+---
+
+### Bestanden
+
+| Bestand | Actie |
+|---------|-------|
+| `supabase/functions/lisa-dagplanning/index.ts` | Edit — checklist fix + Lloyd email + verkoper emails |
+| `supabase/functions/lisa-email-checklist-reminder/index.ts` | Nieuw — checklist reminder emails |
+| `supabase/functions/process-email-queue/index.ts` | Edit — dynamische senderEmail |
+| `supabase/config.toml` | Edit — lisa-email-checklist-reminder registreren |
+
+### Niet nodig (al klaar in Supabase)
+- Storage bucket `lisa-planningen` ✅
+- Cron `lisa-dagplanning-08u` ✅
+- Cron `lisa-checklist-reminder-10u` ✅
 
