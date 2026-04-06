@@ -515,7 +515,7 @@ Deno.serve(async (req) => {
 
     const { data: signedData, error: signedError } = await supabase.storage
       .from("lisa-planningen")
-      .createSignedUrl(filename, 86400);
+      .createSignedUrl(filename, 604800);
 
     if (signedError) {
       return new Response(JSON.stringify({ error: "Signed URL failed" }), {
