@@ -192,13 +192,14 @@ function buildVerkoperEmailHtml(verkoperNaam: string, autos: any[], datumDisplay
     `<tr>
       <td style="padding: 8px; border-bottom: 1px solid #ddd;">${v.auto}</td>
       <td style="padding: 8px; text-align: center; border-bottom: 1px solid #ddd;">${v.kenteken}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>${v.klantNaam}</strong><br/><a href="tel:${v.klantTelefoon}" style="color: #1F3864;">${v.klantTelefoon}</a></td>
       <td style="padding: 8px; text-align: center; border-bottom: 1px solid #ddd;">${v.dagenWacht} dgn</td>
       <td style="padding: 8px; text-align: center; border-bottom: 1px solid #ddd; color: ${v.dagenWacht > 14 ? '#C00000' : '#375623'}; font-weight: bold;">${v.dagenWacht > 14 ? 'URGENT' : 'Bel klant'}</td>
     </tr>`
   ).join("");
 
   return `
-    <div style="font-family: Calibri, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="font-family: Calibri, Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px;">
       <div style="background: #BF5800; color: white; padding: 16px 20px; border-radius: 8px 8px 0 0;">
         <h1 style="margin: 0; font-size: 18px;">📞 ${autos.length} auto('s) klaar voor aflevering</h1>
       </div>
@@ -209,6 +210,7 @@ function buildVerkoperEmailHtml(verkoperNaam: string, autos: any[], datumDisplay
           <tr style="background: #BF5800; color: white;">
             <th style="padding: 8px; text-align: left;">Auto</th>
             <th style="padding: 8px; text-align: center;">Kenteken</th>
+            <th style="padding: 8px; text-align: left;">Klant</th>
             <th style="padding: 8px; text-align: center;">Wachtdagen</th>
             <th style="padding: 8px; text-align: center;">Actie</th>
           </tr>
