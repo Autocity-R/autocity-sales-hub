@@ -328,8 +328,14 @@ serve(async (req) => {
       contextPrompt = buildStrategicCEOPrompt(ceoData, memoryContext);
     }
 
+    // Determine if this is Lisa (delivery planner)
+    const isLisaAgent = agentName.toLowerCase().includes('lisa') ||
+                        agentCapabilities.includes('delivery-planning');
+
     if (isMarcoAgent) {
       agentTools = getMarcoTools();
+    } else if (isLisaAgent) {
+      agentTools = getLisaTools();
     } else if (isCEOAgent) {
       agentTools = getStrategicCEOFunctions();
     } else {
