@@ -291,6 +291,7 @@ Deno.serve(async (req) => {
       const hasAppointment = !!details.deliveryAppointmentId;
       const profile = profilesMap[v.sold_by_user_id];
       const salesperson = profile?.name || "Onbekend";
+      const customer = v.customer_id ? contactsMap[v.customer_id] : null;
 
       return {
         id: v.id,
@@ -311,6 +312,8 @@ Deno.serve(async (req) => {
         verkoperUserId: v.sold_by_user_id,
         checklistDone: doneItems.length,
         checklistTotal: checklist.length,
+        klantNaam: customer?.name || "Onbekend",
+        klantTelefoon: customer?.phone || "—",
       };
     });
     processed.sort((a: any, b: any) => b.dagenWacht - a.dagenWacht);
