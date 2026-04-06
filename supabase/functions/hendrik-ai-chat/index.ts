@@ -381,104 +381,125 @@ serve(async (req) => {
 
     const claudeData = await claudeResponse.json();
     
-    // Parse Claude response: content[] array with text and tool_use blocks
-    const textBlocks = claudeData.content?.filter((b: any) => b.type === 'text') || [];
-    const toolBlocks = claudeData.content?.filter((b: any) => b.type === 'tool_use') || [];
-    
-    let responseMessage = textBlocks.map((b: any) => b.text).join('\n');
-    let functionResult = null;
+    // ============================================================
+    // STAP 2: Tool loop fix (Kevin-pattern)
+    // Always follow-up after tool_use, suppress interim text
+    // ============================================================
+    let currentContent = claudeData.content;
+    let currentMessages = [...claudeMessages];
+    let responseMessage = '';
+    let lastFunctionCalled: string | null = null;
+    let lastFunctionResult: any = null;
 
-    // Handle tool calls
-    if (toolBlocks.length > 0) {
-      const toolCall = toolBlocks[0];
-      console.log('🔧 CEO Function call:', toolCall.name);
-      
-      functionResult = await handleStrategicCEOFunctionCall(
+    // Tool handler that works for both Marco and CEO tools
+    const handleToolCall = async (toolName: string, toolInput: any) => {
+      if (isMarcoAgent) {
+        return await handleMarcoToolCall(supabaseClient, toolName, toolInput, ceoData);
+      }
+      return await handleStrategicCEOFunctionCall(
         supabaseClient,
-        { name: toolCall.name, arguments: JSON.stringify(toolCall.input) },
+        { name: toolName, arguments: JSON.stringify(toolInput) },
         ceoData
       );
-      
-      if (functionResult.success) {
-        if (!responseMessage) {
-          // Follow-up call with tool result
-          const followUpMessages = [
-            ...claudeMessages,
-            { role: 'assistant', content: claudeData.content },
-            { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolCall.id, content: JSON.stringify(functionResult) }] }
-          ];
+    };
 
-          const followUpResponse = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'x-api-key': Deno.env.get('ANTHROPIC_API_KEY') || '',
-              'anthropic-version': '2023-06-01',
-              'content-type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'claude-sonnet-4-6',
-              system: systemPrompt,
-              messages: followUpMessages,
-              max_tokens: 1500,
-            }),
-          });
+    for (let toolRound = 0; toolRound < 3; toolRound++) {
+      const toolBlocks = currentContent?.filter((b: any) => b.type === 'tool_use') || [];
+      const textBlocks = currentContent?.filter((b: any) => b.type === 'text') || [];
 
-          if (followUpResponse.ok) {
-            const followUpData = await followUpResponse.json();
-            const followUpText = followUpData.content?.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n') || '';
-            responseMessage = followUpText || functionResult.message;
-          } else {
-            responseMessage = functionResult.message;
-          }
-        } else {
-          responseMessage += `\n\n${functionResult.message}`;
-        }
+      if (toolBlocks.length === 0) {
+        // No tools called — use text as final response
+        responseMessage = textBlocks.map((b: any) => b.text).join('\n');
+        break;
       }
+
+      // Tools called — execute ALL, ignore interim text
+      console.log(`🔧 ${agentName} Tool round ${toolRound + 1}:`, toolBlocks.map((t: any) => t.name));
+      
+      const toolResults: any[] = [];
+      for (const toolCall of toolBlocks) {
+        lastFunctionCalled = toolCall.name;
+        const result = await handleToolCall(toolCall.name, toolCall.input);
+        lastFunctionResult = result;
+        toolResults.push({
+          type: 'tool_result',
+          tool_use_id: toolCall.id,
+          content: JSON.stringify(result),
+        });
+      }
+
+      // Build follow-up messages with tool results
+      currentMessages = [
+        ...currentMessages,
+        { role: 'assistant', content: currentContent },
+        { role: 'user', content: toolResults },
+      ];
+
+      // Follow-up call — Claude analyzes tool results
+      const followUpResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': Deno.env.get('ANTHROPIC_API_KEY') || '',
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          system: systemPrompt,
+          messages: currentMessages,
+          max_tokens: 2000,
+          tools: claudeTools,
+          tool_choice: { type: 'auto' },
+        }),
+      });
+
+      if (!followUpResponse.ok) {
+        console.error(`Follow-up API error round ${toolRound + 1}`);
+        responseMessage = lastFunctionResult?.message || 'Er ging iets mis bij het verwerken.';
+        break;
+      }
+
+      const followUpData = await followUpResponse.json();
+      currentContent = followUpData.content;
+      // Loop continues — check if Claude calls another tool
     }
 
     // Fallback if still no response
     if (!responseMessage) {
-      responseMessage = "Ik heb je vraag geanalyseerd, maar kon geen specifiek antwoord genereren. Stel je vraag anders of vraag om specifieke data (bijv. 'Hoe doen we B2B vs B2C?' of 'Welke leverancier is het beste?')";
+      responseMessage = lastFunctionResult?.message || "Ik heb je vraag geanalyseerd, maar kon geen specifiek antwoord genereren. Stel je vraag anders.";
     }
 
-    // Log interaction
+    // Log interaction with dynamic agent name
     await supabaseClient
       .from('ai_sales_interactions')
       .insert({
-        interaction_type: 'ceo_chat',
+        interaction_type: `${agentName.toLowerCase().replace(/\s+/g, '_')}_chat`,
         input_data: { 
           message, 
-          mode: userContext?.mode,
+          agent_name: agentName,
           alerts_count: ceoData.alerts.length,
-          b2b_sales: ceoData.b2bMetrics.totalSales,
-          b2c_sales: ceoData.b2cMetrics.totalSales,
-          memories_used: memories.length,
         },
         ai_response: responseMessage,
-        agent_name: 'jacob_ceo',
+        agent_name: agentName.toLowerCase().replace(/\s+/g, '_'),
       });
 
-    // FASE 2: Learn from this analysis (async, don't await to keep response fast)
-    // Only learn periodically (1 in 5 requests) to avoid excessive writes
-    if (Math.random() < 0.2) {
+    // CEO learning (only for Jacob/Alex)
+    if (isCEOAgent && Math.random() < 0.2) {
       learnFromAnalysis(supabaseClient, ceoData).catch(err => 
         console.error('Learning error (non-blocking):', err)
       );
     }
 
-    console.log('✅ CEO response generated');
+    console.log(`✅ ${agentName} response generated`);
 
     return new Response(JSON.stringify({
       success: true,
       message: responseMessage,
-      function_called: toolBlocks[0]?.name || null,
-      function_result: functionResult,
+      function_called: lastFunctionCalled,
+      function_result: lastFunctionResult,
       context_used: {
+        agent_name: agentName,
         alerts: ceoData.alerts.length,
-        b2b_metrics: ceoData.b2bMetrics,
-        b2c_metrics: ceoData.b2cMetrics,
-        top_suppliers: ceoData.supplierRanking.slice(0, 3).map((s: any) => s.name),
-        memories_used: memories.length,
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
