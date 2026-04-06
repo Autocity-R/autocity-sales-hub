@@ -262,14 +262,39 @@ serve(async (req) => {
 
     const { sessionId, message, agentId, userContext }: ChatRequest = await req.json();
     
-    console.log('🧠 Jacob CEO AI Chat:', { sessionId, agentId, message: message.substring(0, 100), mode: userContext?.mode });
+    // ============================================================
+    // STAP 1: Load agent-specific identity from database
+    // ============================================================
+    const { data: agentData } = await supabaseClient
+      .from('ai_agents')
+      .select('name, system_prompt, capabilities')
+      .eq('id', agentId)
+      .single();
 
-    // FASE 2: Recall Jacob's memories
-    const memories = await recallMemory(supabaseClient);
-    const memoryContext = buildMemoryContext(memories);
-    console.log(`📚 Memory context: ${memories.length} insights loaded`);
+    const agentName = agentData?.name || 'AI Agent';
+    const agentSystemPrompt = agentData?.system_prompt || '';
+    const agentCapabilities = agentData?.capabilities || [];
+    
+    // Determine if this is the CEO/Jacob agent (for memory + CEO data)
+    const isCEOAgent = agentId === CEO_AGENT_ID || 
+                       agentName.toLowerCase().includes('alex') || 
+                       agentName.toLowerCase().includes('jacob');
+    
+    // Determine if this is Marco (import/transport manager)
+    const isMarcoAgent = agentName.toLowerCase().includes('marco') ||
+                         agentCapabilities.includes('import-monitoring');
 
-    // Get comprehensive CEO data
+    console.log(`🧠 ${agentName} AI Chat:`, { sessionId, agentId, agentName, message: message.substring(0, 100), isCEOAgent, isMarcoAgent });
+
+    // Only load memories for CEO agent
+    let memoryContext = '';
+    if (isCEOAgent) {
+      const memories = await recallMemory(supabaseClient);
+      memoryContext = buildMemoryContext(memories);
+      console.log(`📚 Memory context: ${memories.length} insights loaded`);
+    }
+
+    // Get comprehensive CEO data (used by all agents for context)
     const ceoData = await getCompleteCEOData(supabaseClient);
     
     // Get conversation history
@@ -279,15 +304,38 @@ serve(async (req) => {
       .eq('session_id', sessionId)
       .order('created_at', { ascending: true });
 
-    console.log('📊 CEO Data loaded:', {
+    console.log(`📊 Data loaded for ${agentName}:`, {
       alerts: ceoData.alerts.length,
-      b2bSales: ceoData.b2bMetrics.totalSales,
-      b2cSales: ceoData.b2cMetrics.totalSales,
-      topSupplier: ceoData.supplierRanking[0]?.name || 'N/A',
+      vehicles: ceoData.allVehicles?.length || 0,
     });
 
-    // Build strategic CEO context prompt WITH memory context
-    const contextPrompt = buildStrategicCEOPrompt(ceoData, memoryContext);
+    // ============================================================
+    // Build agent-specific prompt and tools
+    // ============================================================
+    let contextPrompt: string;
+    let agentTools: any[];
+
+    if (agentSystemPrompt) {
+      // Use database system_prompt as base, inject live data as context
+      const liveDataContext = buildLiveDataContext(ceoData);
+      contextPrompt = `${agentSystemPrompt}\n\n${liveDataContext}`;
+      
+      if (isCEOAgent && memoryContext) {
+        contextPrompt += memoryContext;
+      }
+    } else {
+      // Fallback to hardcoded CEO prompt for backward compatibility
+      contextPrompt = buildStrategicCEOPrompt(ceoData, memoryContext);
+    }
+
+    if (isMarcoAgent) {
+      agentTools = getMarcoTools();
+    } else if (isCEOAgent) {
+      agentTools = getStrategicCEOFunctions();
+    } else {
+      // Other agents: give them a subset of general tools
+      agentTools = getStrategicCEOFunctions();
+    }
     
     // Build conversation messages
     const conversationMessages = buildConversationMessages(
@@ -296,8 +344,8 @@ serve(async (req) => {
       message
     );
 
-    // Build Claude tools from strategic functions
-    const claudeTools = getStrategicCEOFunctions().map(fn => ({
+    // Build Claude tools
+    const claudeTools = agentTools.map(fn => ({
       name: fn.name,
       description: fn.description,
       input_schema: fn.parameters
@@ -333,104 +381,125 @@ serve(async (req) => {
 
     const claudeData = await claudeResponse.json();
     
-    // Parse Claude response: content[] array with text and tool_use blocks
-    const textBlocks = claudeData.content?.filter((b: any) => b.type === 'text') || [];
-    const toolBlocks = claudeData.content?.filter((b: any) => b.type === 'tool_use') || [];
-    
-    let responseMessage = textBlocks.map((b: any) => b.text).join('\n');
-    let functionResult = null;
+    // ============================================================
+    // STAP 2: Tool loop fix (Kevin-pattern)
+    // Always follow-up after tool_use, suppress interim text
+    // ============================================================
+    let currentContent = claudeData.content;
+    let currentMessages = [...claudeMessages];
+    let responseMessage = '';
+    let lastFunctionCalled: string | null = null;
+    let lastFunctionResult: any = null;
 
-    // Handle tool calls
-    if (toolBlocks.length > 0) {
-      const toolCall = toolBlocks[0];
-      console.log('🔧 CEO Function call:', toolCall.name);
-      
-      functionResult = await handleStrategicCEOFunctionCall(
+    // Tool handler that works for both Marco and CEO tools
+    const handleToolCall = async (toolName: string, toolInput: any) => {
+      if (isMarcoAgent) {
+        return await handleMarcoToolCall(supabaseClient, toolName, toolInput, ceoData);
+      }
+      return await handleStrategicCEOFunctionCall(
         supabaseClient,
-        { name: toolCall.name, arguments: JSON.stringify(toolCall.input) },
+        { name: toolName, arguments: JSON.stringify(toolInput) },
         ceoData
       );
-      
-      if (functionResult.success) {
-        if (!responseMessage) {
-          // Follow-up call with tool result
-          const followUpMessages = [
-            ...claudeMessages,
-            { role: 'assistant', content: claudeData.content },
-            { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolCall.id, content: JSON.stringify(functionResult) }] }
-          ];
+    };
 
-          const followUpResponse = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'x-api-key': Deno.env.get('ANTHROPIC_API_KEY') || '',
-              'anthropic-version': '2023-06-01',
-              'content-type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'claude-sonnet-4-6',
-              system: systemPrompt,
-              messages: followUpMessages,
-              max_tokens: 1500,
-            }),
-          });
+    for (let toolRound = 0; toolRound < 3; toolRound++) {
+      const toolBlocks = currentContent?.filter((b: any) => b.type === 'tool_use') || [];
+      const textBlocks = currentContent?.filter((b: any) => b.type === 'text') || [];
 
-          if (followUpResponse.ok) {
-            const followUpData = await followUpResponse.json();
-            const followUpText = followUpData.content?.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n') || '';
-            responseMessage = followUpText || functionResult.message;
-          } else {
-            responseMessage = functionResult.message;
-          }
-        } else {
-          responseMessage += `\n\n${functionResult.message}`;
-        }
+      if (toolBlocks.length === 0) {
+        // No tools called — use text as final response
+        responseMessage = textBlocks.map((b: any) => b.text).join('\n');
+        break;
       }
+
+      // Tools called — execute ALL, ignore interim text
+      console.log(`🔧 ${agentName} Tool round ${toolRound + 1}:`, toolBlocks.map((t: any) => t.name));
+      
+      const toolResults: any[] = [];
+      for (const toolCall of toolBlocks) {
+        lastFunctionCalled = toolCall.name;
+        const result = await handleToolCall(toolCall.name, toolCall.input);
+        lastFunctionResult = result;
+        toolResults.push({
+          type: 'tool_result',
+          tool_use_id: toolCall.id,
+          content: JSON.stringify(result),
+        });
+      }
+
+      // Build follow-up messages with tool results
+      currentMessages = [
+        ...currentMessages,
+        { role: 'assistant', content: currentContent },
+        { role: 'user', content: toolResults },
+      ];
+
+      // Follow-up call — Claude analyzes tool results
+      const followUpResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': Deno.env.get('ANTHROPIC_API_KEY') || '',
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          system: systemPrompt,
+          messages: currentMessages,
+          max_tokens: 2000,
+          tools: claudeTools,
+          tool_choice: { type: 'auto' },
+        }),
+      });
+
+      if (!followUpResponse.ok) {
+        console.error(`Follow-up API error round ${toolRound + 1}`);
+        responseMessage = lastFunctionResult?.message || 'Er ging iets mis bij het verwerken.';
+        break;
+      }
+
+      const followUpData = await followUpResponse.json();
+      currentContent = followUpData.content;
+      // Loop continues — check if Claude calls another tool
     }
 
     // Fallback if still no response
     if (!responseMessage) {
-      responseMessage = "Ik heb je vraag geanalyseerd, maar kon geen specifiek antwoord genereren. Stel je vraag anders of vraag om specifieke data (bijv. 'Hoe doen we B2B vs B2C?' of 'Welke leverancier is het beste?')";
+      responseMessage = lastFunctionResult?.message || "Ik heb je vraag geanalyseerd, maar kon geen specifiek antwoord genereren. Stel je vraag anders.";
     }
 
-    // Log interaction
+    // Log interaction with dynamic agent name
     await supabaseClient
       .from('ai_sales_interactions')
       .insert({
-        interaction_type: 'ceo_chat',
+        interaction_type: `${agentName.toLowerCase().replace(/\s+/g, '_')}_chat`,
         input_data: { 
           message, 
-          mode: userContext?.mode,
+          agent_name: agentName,
           alerts_count: ceoData.alerts.length,
-          b2b_sales: ceoData.b2bMetrics.totalSales,
-          b2c_sales: ceoData.b2cMetrics.totalSales,
-          memories_used: memories.length,
         },
         ai_response: responseMessage,
-        agent_name: 'jacob_ceo',
+        agent_name: agentName.toLowerCase().replace(/\s+/g, '_'),
       });
 
-    // FASE 2: Learn from this analysis (async, don't await to keep response fast)
-    // Only learn periodically (1 in 5 requests) to avoid excessive writes
-    if (Math.random() < 0.2) {
+    // CEO learning (only for Jacob/Alex)
+    if (isCEOAgent && Math.random() < 0.2) {
       learnFromAnalysis(supabaseClient, ceoData).catch(err => 
         console.error('Learning error (non-blocking):', err)
       );
     }
 
-    console.log('✅ CEO response generated');
+    console.log(`✅ ${agentName} response generated`);
 
     return new Response(JSON.stringify({
       success: true,
       message: responseMessage,
-      function_called: toolBlocks[0]?.name || null,
-      function_result: functionResult,
+      function_called: lastFunctionCalled,
+      function_result: lastFunctionResult,
       context_used: {
+        agent_name: agentName,
         alerts: ceoData.alerts.length,
-        b2b_metrics: ceoData.b2bMetrics,
-        b2c_metrics: ceoData.b2cMetrics,
-        top_suppliers: ceoData.supplierRanking.slice(0, 3).map((s: any) => s.name),
-        memories_used: memories.length,
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -2217,6 +2286,286 @@ ${warning.length > 0 ? `\n🟡 **Waarschuwing (>30 dagen)**: ${warning.map((b: a
     }
   } catch (error) {
     console.error(`CEO function error (${name}):`, error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// ============================================================================
+// LIVE DATA CONTEXT BUILDER (for non-CEO agents)
+// ============================================================================
+
+function buildLiveDataContext(ceoData: any): string {
+  const { dailyStats, alerts, allVehicles } = ceoData;
+  
+  // Build a compact data summary for any agent
+  const onStock = allVehicles?.filter((v: any) => v.status === 'voorraad') || [];
+  const inTransport = allVehicles?.filter((v: any) => v.details?.transportStatus === 'onderweg') || [];
+  const arrived = allVehicles?.filter((v: any) => v.details?.transportStatus === 'aangekomen') || [];
+  const cmrPending = arrived.filter((v: any) => {
+    const d = v.details || {};
+    return d.isTradeIn !== true && d.isTradeIn !== 'true' && !d.isLoanCar && d.cmrSent !== true;
+  });
+  const papersMissing = arrived.filter((v: any) => {
+    const d = v.details || {};
+    return d.isTradeIn !== true && d.isTradeIn !== 'true' && !d.isLoanCar && d.papersReceived !== true;
+  });
+
+  return `
+---
+
+## LIVE BEDRIJFSDATA (${new Date().toLocaleDateString('nl-NL')})
+
+### Overzicht
+- Voorraad: ${onStock.length} voertuigen
+- Onderweg: ${inTransport.length} voertuigen
+- Aangekomen: ${arrived.length} voertuigen
+- CMR nog versturen: ${cmrPending.length} voertuigen
+- Papieren ontbreken: ${papersMissing.length} voertuigen
+
+### Alerts (${alerts.length} actief)
+${alerts.slice(0, 5).map((a: any) => `- ${a.severity === 'critical' ? '🔴' : '🟡'} ${a.message}`).join('\n')}
+
+Gebruik je tools om gedetailleerde data op te halen wanneer een gebruiker specifieke vragen stelt.
+`;
+}
+
+// ============================================================================
+// MARCO-SPECIFIC TOOLS
+// ============================================================================
+
+function getMarcoTools() {
+  return [
+    {
+      name: 'get_cmr_pending',
+      description: 'Aangekomen voertuigen waarvoor de CMR nog NIET is verstuurd. Gebruik bij vragen over "CMR versturen", "CMR status", "welke auto\'s moeten we nog CMR sturen". NIET gebruiken voor transport/onderweg vragen.',
+      parameters: {
+        type: 'object',
+        properties: {}
+      }
+    },
+    {
+      name: 'get_missing_papers',
+      description: 'Aangekomen voertuigen waarvan de papieren nog ontbreken (papersReceived=false). Gebruik bij vragen over "papieren missen", "ontbrekende papieren", "welke auto\'s missen nog papieren", "documenten status". NIET gebruiken voor transport/onderweg vragen.',
+      parameters: {
+        type: 'object',
+        properties: {}
+      }
+    },
+    {
+      name: 'get_transport_details',
+      description: 'Voertuigen die nog ONDERWEG zijn (transportStatus=onderweg). ALLEEN voor transport/logistiek vragen zoals "welke auto\'s zijn onderweg", "transport overzicht", "ETA". NIET gebruiken voor CMR of papieren vragen.',
+      parameters: {
+        type: 'object',
+        properties: {
+          filter: { type: 'string', enum: ['all', 'delayed', 'critical'] }
+        }
+      }
+    },
+    {
+      name: 'get_import_overview',
+      description: 'Volledig import overzicht met alle fases: betaling, ophalen, transport, documenten (CMR+papieren), RDW aanmelding, BPM betaling, inschrijving. Gebruik voor breed overzicht of "hoe staat het met import" vragen.',
+      parameters: {
+        type: 'object',
+        properties: {}
+      }
+    },
+    {
+      name: 'get_papers_status',
+      description: 'Voertuigen die wachten op papieren/documenten met details over hoe lang ze al wachten.',
+      parameters: {
+        type: 'object',
+        properties: {
+          min_days: { type: 'number', description: 'Minimum dagen wachtend' }
+        }
+      }
+    },
+    {
+      name: 'search_vehicles',
+      description: 'Zoek voertuigen op merk, model, status, kenteken etc.',
+      parameters: {
+        type: 'object',
+        properties: {
+          brand: { type: 'string', description: 'Filter op merk' },
+          status: { type: 'string', description: 'Filter op status' },
+          has_papers: { type: 'boolean', description: 'Filter op papieren ontvangen' },
+        }
+      }
+    },
+  ];
+}
+
+// ============================================================================
+// MARCO TOOL HANDLER
+// ============================================================================
+
+async function handleMarcoToolCall(supabase: any, toolName: string, toolInput: any, ceoData: any) {
+  const allVehicles = ceoData.allVehicles || [];
+  const DAY_MS = 86400000;
+  
+  // Helper: exclude trade-ins and loan cars
+  const isImportVehicle = (v: any) => {
+    const d = v.details || {};
+    return d.isTradeIn !== true && d.isTradeIn !== 'true' && !d.isLoanCar && v.status !== 'afgeleverd';
+  };
+
+  // Helper: get supplier name
+  const getSupplierName = async (supplierId: string) => {
+    if (!supplierId) return '—';
+    const { data } = await supabase
+      .from('contacts')
+      .select('company_name, first_name, last_name')
+      .eq('id', supplierId)
+      .single();
+    return data?.company_name || `${data?.first_name || ''} ${data?.last_name || ''}`.trim() || '—';
+  };
+
+  try {
+    switch (toolName) {
+      case 'get_cmr_pending': {
+        const cmrPending = allVehicles.filter((v: any) => {
+          const d = v.details || {};
+          return isImportVehicle(v) &&
+                 d.transportStatus === 'aangekomen' &&
+                 d.cmrSent !== true &&
+                 d.cmrSent !== 'true';
+        });
+
+        // Sort by days since arrival (longest first)
+        const sorted = cmrPending.map((v: any) => ({
+          brand: v.brand,
+          model: v.model,
+          license: v.license_number || v.vin || '—',
+          status: v.status,
+          supplier_id: v.supplier_id,
+          days_since_arrival: v.aangekomen_at 
+            ? Math.floor((Date.now() - new Date(v.aangekomen_at).getTime()) / DAY_MS)
+            : Math.floor((Date.now() - new Date(v.created_at).getTime()) / DAY_MS),
+          papersReceived: v.details?.papersReceived === true,
+        })).sort((a: any, b: any) => b.days_since_arrival - a.days_since_arrival);
+
+        // Enrich with supplier names
+        for (const item of sorted) {
+          item.supplier = await getSupplierName(item.supplier_id);
+        }
+
+        return {
+          success: true,
+          data: { vehicles: sorted, count: sorted.length },
+          message: `📋 CMR nog te versturen: ${sorted.length} voertuigen\n\n${sorted.map((v: any) => 
+            `• ${v.brand} ${v.model} (${v.license}) — ${v.days_since_arrival} dagen — Leverancier: ${v.supplier} — Status: ${v.status}`
+          ).join('\n')}`
+        };
+      }
+
+      case 'get_missing_papers': {
+        const missingPapers = allVehicles.filter((v: any) => {
+          const d = v.details || {};
+          return isImportVehicle(v) &&
+                 d.transportStatus === 'aangekomen' &&
+                 d.papersReceived !== true &&
+                 d.papersReceived !== 'true';
+        });
+
+        const sorted = missingPapers.map((v: any) => ({
+          brand: v.brand,
+          model: v.model,
+          license: v.license_number || v.vin || '—',
+          status: v.status,
+          supplier_id: v.supplier_id,
+          days_since_arrival: v.aangekomen_at
+            ? Math.floor((Date.now() - new Date(v.aangekomen_at).getTime()) / DAY_MS)
+            : Math.floor((Date.now() - new Date(v.created_at).getTime()) / DAY_MS),
+          cmrSent: v.details?.cmrSent === true,
+          import_status: v.import_status,
+        })).sort((a: any, b: any) => b.days_since_arrival - a.days_since_arrival);
+
+        for (const item of sorted) {
+          item.supplier = await getSupplierName(item.supplier_id);
+        }
+
+        return {
+          success: true,
+          data: { vehicles: sorted, count: sorted.length },
+          message: `📋 Papieren ontbreken: ${sorted.length} voertuigen\n\n${sorted.map((v: any) => 
+            `• ${v.brand} ${v.model} (${v.license}) — ${v.days_since_arrival} dagen — CMR: ${v.cmrSent ? '✅' : '❌'} — Leverancier: ${v.supplier}`
+          ).join('\n')}`
+        };
+      }
+
+      case 'get_transport_details': {
+        // Delegate to CEO handler for transport
+        return await handleStrategicCEOFunctionCall(
+          supabase,
+          { name: 'get_transport_details', arguments: JSON.stringify(toolInput) },
+          ceoData
+        );
+      }
+
+      case 'get_import_overview': {
+        // Build comprehensive import pipeline overview (mirrors MarcoDashboard logic)
+        const importVehicles = allVehicles.filter(isImportVehicle);
+        
+        const pipeline = {
+          nieuw_niet_betaald: importVehicles.filter((v: any) => {
+            const d = v.details || {};
+            return d.transportStatus !== 'aangekomen' && 
+                   (d.purchase_payment_status || 'niet_betaald') !== 'volledig_betaald';
+          }).length,
+          betaald_geen_pickup: importVehicles.filter((v: any) => {
+            const d = v.details || {};
+            return d.transportStatus !== 'aangekomen' &&
+                   d.purchase_payment_status === 'volledig_betaald' &&
+                   d.pickupDocumentSent !== true && d.pickupDocumentSent !== 'true';
+          }).length,
+          pickup_onderweg: importVehicles.filter((v: any) => {
+            const d = v.details || {};
+            return d.transportStatus !== 'aangekomen' &&
+                   d.purchase_payment_status === 'volledig_betaald' &&
+                   (d.pickupDocumentSent === true || d.pickupDocumentSent === 'true');
+          }).length,
+          cmr_versturen: importVehicles.filter((v: any) => {
+            const d = v.details || {};
+            return d.transportStatus === 'aangekomen' && d.cmrSent !== true && d.cmrSent !== 'true';
+          }).length,
+          papieren_ontbreken: importVehicles.filter((v: any) => {
+            const d = v.details || {};
+            return d.transportStatus === 'aangekomen' && d.papersReceived !== true && d.papersReceived !== 'true';
+          }).length,
+          import_behandeling: importVehicles.filter((v: any) => 
+            ['aanvraag_ontvangen', 'aangekomen', 'goedgekeurd', 'bpm_betaald'].includes(v.import_status || '')
+          ).length,
+          ingeschreven: importVehicles.filter((v: any) => v.import_status === 'ingeschreven').length,
+        };
+
+        return {
+          success: true,
+          data: pipeline,
+          message: `📊 Import Pipeline Overzicht (${importVehicles.length} actieve voertuigen)
+
+1️⃣ Nog te betalen aan leverancier: ${pipeline.nieuw_niet_betaald}
+2️⃣ Betaald, pickup niet verstuurd: ${pipeline.betaald_geen_pickup}
+3️⃣ Pickup gereed / onderweg: ${pipeline.pickup_onderweg}
+4️⃣ CMR nog versturen: ${pipeline.cmr_versturen}
+5️⃣ Papieren ontbreken: ${pipeline.papieren_ontbreken}
+6️⃣ Import in behandeling: ${pipeline.import_behandeling}
+7️⃣ Ingeschreven ✓: ${pipeline.ingeschreven}`
+        };
+      }
+
+      // Fallback to CEO handler for shared tools
+      case 'get_papers_status':
+      case 'search_vehicles':
+        return await handleStrategicCEOFunctionCall(
+          supabase,
+          { name: toolName, arguments: JSON.stringify(toolInput) },
+          ceoData
+        );
+
+      default:
+        return { success: false, error: `Unknown Marco tool: ${toolName}` };
+    }
+  } catch (error) {
+    console.error(`Marco tool error (${toolName}):`, error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
