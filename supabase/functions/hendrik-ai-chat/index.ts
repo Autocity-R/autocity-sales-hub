@@ -2289,3 +2289,283 @@ ${warning.length > 0 ? `\n🟡 **Waarschuwing (>30 dagen)**: ${warning.map((b: a
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
+
+// ============================================================================
+// LIVE DATA CONTEXT BUILDER (for non-CEO agents)
+// ============================================================================
+
+function buildLiveDataContext(ceoData: any): string {
+  const { dailyStats, alerts, allVehicles } = ceoData;
+  
+  // Build a compact data summary for any agent
+  const onStock = allVehicles?.filter((v: any) => v.status === 'voorraad') || [];
+  const inTransport = allVehicles?.filter((v: any) => v.details?.transportStatus === 'onderweg') || [];
+  const arrived = allVehicles?.filter((v: any) => v.details?.transportStatus === 'aangekomen') || [];
+  const cmrPending = arrived.filter((v: any) => {
+    const d = v.details || {};
+    return d.isTradeIn !== true && d.isTradeIn !== 'true' && !d.isLoanCar && d.cmrSent !== true;
+  });
+  const papersMissing = arrived.filter((v: any) => {
+    const d = v.details || {};
+    return d.isTradeIn !== true && d.isTradeIn !== 'true' && !d.isLoanCar && d.papersReceived !== true;
+  });
+
+  return `
+---
+
+## LIVE BEDRIJFSDATA (${new Date().toLocaleDateString('nl-NL')})
+
+### Overzicht
+- Voorraad: ${onStock.length} voertuigen
+- Onderweg: ${inTransport.length} voertuigen
+- Aangekomen: ${arrived.length} voertuigen
+- CMR nog versturen: ${cmrPending.length} voertuigen
+- Papieren ontbreken: ${papersMissing.length} voertuigen
+
+### Alerts (${alerts.length} actief)
+${alerts.slice(0, 5).map((a: any) => `- ${a.severity === 'critical' ? '🔴' : '🟡'} ${a.message}`).join('\n')}
+
+Gebruik je tools om gedetailleerde data op te halen wanneer een gebruiker specifieke vragen stelt.
+`;
+}
+
+// ============================================================================
+// MARCO-SPECIFIC TOOLS
+// ============================================================================
+
+function getMarcoTools() {
+  return [
+    {
+      name: 'get_cmr_pending',
+      description: 'Aangekomen voertuigen waarvoor de CMR nog NIET is verstuurd. Gebruik bij vragen over "CMR versturen", "CMR status", "welke auto\'s moeten we nog CMR sturen". NIET gebruiken voor transport/onderweg vragen.',
+      parameters: {
+        type: 'object',
+        properties: {}
+      }
+    },
+    {
+      name: 'get_missing_papers',
+      description: 'Aangekomen voertuigen waarvan de papieren nog ontbreken (papersReceived=false). Gebruik bij vragen over "papieren missen", "ontbrekende papieren", "welke auto\'s missen nog papieren", "documenten status". NIET gebruiken voor transport/onderweg vragen.',
+      parameters: {
+        type: 'object',
+        properties: {}
+      }
+    },
+    {
+      name: 'get_transport_details',
+      description: 'Voertuigen die nog ONDERWEG zijn (transportStatus=onderweg). ALLEEN voor transport/logistiek vragen zoals "welke auto\'s zijn onderweg", "transport overzicht", "ETA". NIET gebruiken voor CMR of papieren vragen.',
+      parameters: {
+        type: 'object',
+        properties: {
+          filter: { type: 'string', enum: ['all', 'delayed', 'critical'] }
+        }
+      }
+    },
+    {
+      name: 'get_import_overview',
+      description: 'Volledig import overzicht met alle fases: betaling, ophalen, transport, documenten (CMR+papieren), RDW aanmelding, BPM betaling, inschrijving. Gebruik voor breed overzicht of "hoe staat het met import" vragen.',
+      parameters: {
+        type: 'object',
+        properties: {}
+      }
+    },
+    {
+      name: 'get_papers_status',
+      description: 'Voertuigen die wachten op papieren/documenten met details over hoe lang ze al wachten.',
+      parameters: {
+        type: 'object',
+        properties: {
+          min_days: { type: 'number', description: 'Minimum dagen wachtend' }
+        }
+      }
+    },
+    {
+      name: 'search_vehicles',
+      description: 'Zoek voertuigen op merk, model, status, kenteken etc.',
+      parameters: {
+        type: 'object',
+        properties: {
+          brand: { type: 'string', description: 'Filter op merk' },
+          status: { type: 'string', description: 'Filter op status' },
+          has_papers: { type: 'boolean', description: 'Filter op papieren ontvangen' },
+        }
+      }
+    },
+  ];
+}
+
+// ============================================================================
+// MARCO TOOL HANDLER
+// ============================================================================
+
+async function handleMarcoToolCall(supabase: any, toolName: string, toolInput: any, ceoData: any) {
+  const allVehicles = ceoData.allVehicles || [];
+  const DAY_MS = 86400000;
+  
+  // Helper: exclude trade-ins and loan cars
+  const isImportVehicle = (v: any) => {
+    const d = v.details || {};
+    return d.isTradeIn !== true && d.isTradeIn !== 'true' && !d.isLoanCar && v.status !== 'afgeleverd';
+  };
+
+  // Helper: get supplier name
+  const getSupplierName = async (supplierId: string) => {
+    if (!supplierId) return '—';
+    const { data } = await supabase
+      .from('contacts')
+      .select('company_name, first_name, last_name')
+      .eq('id', supplierId)
+      .single();
+    return data?.company_name || `${data?.first_name || ''} ${data?.last_name || ''}`.trim() || '—';
+  };
+
+  try {
+    switch (toolName) {
+      case 'get_cmr_pending': {
+        const cmrPending = allVehicles.filter((v: any) => {
+          const d = v.details || {};
+          return isImportVehicle(v) &&
+                 d.transportStatus === 'aangekomen' &&
+                 d.cmrSent !== true &&
+                 d.cmrSent !== 'true';
+        });
+
+        // Sort by days since arrival (longest first)
+        const sorted = cmrPending.map((v: any) => ({
+          brand: v.brand,
+          model: v.model,
+          license: v.license_number || v.vin || '—',
+          status: v.status,
+          supplier_id: v.supplier_id,
+          days_since_arrival: v.aangekomen_at 
+            ? Math.floor((Date.now() - new Date(v.aangekomen_at).getTime()) / DAY_MS)
+            : Math.floor((Date.now() - new Date(v.created_at).getTime()) / DAY_MS),
+          papersReceived: v.details?.papersReceived === true,
+        })).sort((a: any, b: any) => b.days_since_arrival - a.days_since_arrival);
+
+        // Enrich with supplier names
+        for (const item of sorted) {
+          item.supplier = await getSupplierName(item.supplier_id);
+        }
+
+        return {
+          success: true,
+          data: { vehicles: sorted, count: sorted.length },
+          message: `📋 CMR nog te versturen: ${sorted.length} voertuigen\n\n${sorted.map((v: any) => 
+            `• ${v.brand} ${v.model} (${v.license}) — ${v.days_since_arrival} dagen — Leverancier: ${v.supplier} — Status: ${v.status}`
+          ).join('\n')}`
+        };
+      }
+
+      case 'get_missing_papers': {
+        const missingPapers = allVehicles.filter((v: any) => {
+          const d = v.details || {};
+          return isImportVehicle(v) &&
+                 d.transportStatus === 'aangekomen' &&
+                 d.papersReceived !== true &&
+                 d.papersReceived !== 'true';
+        });
+
+        const sorted = missingPapers.map((v: any) => ({
+          brand: v.brand,
+          model: v.model,
+          license: v.license_number || v.vin || '—',
+          status: v.status,
+          supplier_id: v.supplier_id,
+          days_since_arrival: v.aangekomen_at
+            ? Math.floor((Date.now() - new Date(v.aangekomen_at).getTime()) / DAY_MS)
+            : Math.floor((Date.now() - new Date(v.created_at).getTime()) / DAY_MS),
+          cmrSent: v.details?.cmrSent === true,
+          import_status: v.import_status,
+        })).sort((a: any, b: any) => b.days_since_arrival - a.days_since_arrival);
+
+        for (const item of sorted) {
+          item.supplier = await getSupplierName(item.supplier_id);
+        }
+
+        return {
+          success: true,
+          data: { vehicles: sorted, count: sorted.length },
+          message: `📋 Papieren ontbreken: ${sorted.length} voertuigen\n\n${sorted.map((v: any) => 
+            `• ${v.brand} ${v.model} (${v.license}) — ${v.days_since_arrival} dagen — CMR: ${v.cmrSent ? '✅' : '❌'} — Leverancier: ${v.supplier}`
+          ).join('\n')}`
+        };
+      }
+
+      case 'get_transport_details': {
+        // Delegate to CEO handler for transport
+        return await handleStrategicCEOFunctionCall(
+          supabase,
+          { name: 'get_transport_details', arguments: JSON.stringify(toolInput) },
+          ceoData
+        );
+      }
+
+      case 'get_import_overview': {
+        // Build comprehensive import pipeline overview (mirrors MarcoDashboard logic)
+        const importVehicles = allVehicles.filter(isImportVehicle);
+        
+        const pipeline = {
+          nieuw_niet_betaald: importVehicles.filter((v: any) => {
+            const d = v.details || {};
+            return d.transportStatus !== 'aangekomen' && 
+                   (d.purchase_payment_status || 'niet_betaald') !== 'volledig_betaald';
+          }).length,
+          betaald_geen_pickup: importVehicles.filter((v: any) => {
+            const d = v.details || {};
+            return d.transportStatus !== 'aangekomen' &&
+                   d.purchase_payment_status === 'volledig_betaald' &&
+                   d.pickupDocumentSent !== true && d.pickupDocumentSent !== 'true';
+          }).length,
+          pickup_onderweg: importVehicles.filter((v: any) => {
+            const d = v.details || {};
+            return d.transportStatus !== 'aangekomen' &&
+                   d.purchase_payment_status === 'volledig_betaald' &&
+                   (d.pickupDocumentSent === true || d.pickupDocumentSent === 'true');
+          }).length,
+          cmr_versturen: importVehicles.filter((v: any) => {
+            const d = v.details || {};
+            return d.transportStatus === 'aangekomen' && d.cmrSent !== true && d.cmrSent !== 'true';
+          }).length,
+          papieren_ontbreken: importVehicles.filter((v: any) => {
+            const d = v.details || {};
+            return d.transportStatus === 'aangekomen' && d.papersReceived !== true && d.papersReceived !== 'true';
+          }).length,
+          import_behandeling: importVehicles.filter((v: any) => 
+            ['aanvraag_ontvangen', 'aangekomen', 'goedgekeurd', 'bpm_betaald'].includes(v.import_status || '')
+          ).length,
+          ingeschreven: importVehicles.filter((v: any) => v.import_status === 'ingeschreven').length,
+        };
+
+        return {
+          success: true,
+          data: pipeline,
+          message: `📊 Import Pipeline Overzicht (${importVehicles.length} actieve voertuigen)
+
+1️⃣ Nog te betalen aan leverancier: ${pipeline.nieuw_niet_betaald}
+2️⃣ Betaald, pickup niet verstuurd: ${pipeline.betaald_geen_pickup}
+3️⃣ Pickup gereed / onderweg: ${pipeline.pickup_onderweg}
+4️⃣ CMR nog versturen: ${pipeline.cmr_versturen}
+5️⃣ Papieren ontbreken: ${pipeline.papieren_ontbreken}
+6️⃣ Import in behandeling: ${pipeline.import_behandeling}
+7️⃣ Ingeschreven ✓: ${pipeline.ingeschreven}`
+        };
+      }
+
+      // Fallback to CEO handler for shared tools
+      case 'get_papers_status':
+      case 'search_vehicles':
+        return await handleStrategicCEOFunctionCall(
+          supabase,
+          { name: toolName, arguments: JSON.stringify(toolInput) },
+          ceoData
+        );
+
+      default:
+        return { success: false, error: `Unknown Marco tool: ${toolName}` };
+    }
+  } catch (error) {
+    console.error(`Marco tool error (${toolName}):`, error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
