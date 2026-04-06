@@ -25,8 +25,11 @@ interface ServiceAccount {
 }
 
 // JWT and Access Token functions using jose library
-async function createJWTAssertion(serviceAccount: ServiceAccount): Promise<string> {
-  const userToImpersonate = 'inkoop@auto-city.nl';
+// Token cache per sender email for the duration of this invocation
+const tokenCache: Record<string, string> = {};
+
+async function createJWTAssertion(serviceAccount: ServiceAccount, senderEmail: string): Promise<string> {
+  const userToImpersonate = senderEmail;
   const scopes = 'https://www.googleapis.com/auth/gmail.send';
 
   // jose library handles PEM->DER conversion automatically
@@ -47,8 +50,8 @@ async function createJWTAssertion(serviceAccount: ServiceAccount): Promise<strin
   return jwt;
 }
 
-async function getAccessToken(serviceAccount: ServiceAccount): Promise<string> {
-  const jwt = await createJWTAssertion(serviceAccount);
+async function getAccessToken(serviceAccount: ServiceAccount, senderEmail: string): Promise<string> {
+  const jwt = await createJWTAssertion(serviceAccount, senderEmail);
 
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
