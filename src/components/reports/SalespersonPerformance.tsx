@@ -79,6 +79,7 @@ export const SalespersonPerformance: React.FC<SalespersonPerformanceProps> = ({ 
           id, brand, model, selling_price, sold_date, sold_by_user_id,
           details
         `)
+        .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
         .not('sold_date', 'is', null)
         .not('sold_by_user_id', 'is', null)
         .gte('sold_date', startDate.toISOString())

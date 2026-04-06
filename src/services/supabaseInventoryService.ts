@@ -466,6 +466,14 @@ export class SupabaseInventoryService {
         console.log(`Setting sold_date for vehicle ${vehicleId} to ${updateData.sold_date}`);
       }
 
+      // CRITICAL: Clear sold_date when status reverts to non-sold (e.g. voorraad)
+      if (!['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(status) && currentVehicle?.sold_date) {
+        updateData.sold_date = null;
+        updateData.delivery_date = null;
+        updateData.sold_by_user_id = null;
+        console.log(`Clearing sold_date for vehicle ${vehicleId} — sale cancelled`);
+      }
+
       // Automatically disable showroom online when vehicle is sold
       if (['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'].includes(status)) {
         const currentDetails = (currentVehicle?.details || {}) as Record<string, any>;
