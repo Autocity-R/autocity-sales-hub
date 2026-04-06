@@ -160,7 +160,7 @@ function setSheetProps(ws: any, colWidths: number[], maxRow: number, maxCol: num
 }
 
 // ===== EMAIL HTML HELPERS =====
-function buildLloydEmailHtml(summary: any, downloadUrl: string, datumDisplay: string): string {
+function buildLloydEmailHtml(summary: any, datumDisplay: string): string {
   return `
     <div style="font-family: Calibri, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: #1F3864; color: white; padding: 16px 20px; border-radius: 8px 8px 0 0;">
@@ -176,8 +176,8 @@ function buildLloydEmailHtml(summary: any, downloadUrl: string, datumDisplay: st
           <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">⚠️ Checklist ontbreekt</td><td style="padding: 8px; text-align: right; font-weight: bold; color: #BF5800;">${summary.checklistOntbreekt}</td></tr>
           <tr style="background: #e8e8e8;"><td style="padding: 8px; font-weight: bold;">Totaal actief</td><td style="padding: 8px; text-align: right; font-weight: bold;">${summary.totaal}</td></tr>
         </table>
-        <div style="margin-top: 20px; text-align: center;">
-          <a href="${downloadUrl}" style="display: inline-block; background: #1F3864; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">📥 Download Excel Planning</a>
+        <div style="margin-top: 16px; text-align: center; font-size: 13px; color: #666;">
+          📎 Excel planning zit als bijlage bij deze email
         </div>
       </div>
       <div style="padding: 12px 20px; font-size: 11px; color: #999; text-align: center;">
