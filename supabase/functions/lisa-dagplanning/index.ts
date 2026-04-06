@@ -192,13 +192,14 @@ function buildVerkoperEmailHtml(verkoperNaam: string, autos: any[], datumDisplay
     `<tr>
       <td style="padding: 8px; border-bottom: 1px solid #ddd;">${v.auto}</td>
       <td style="padding: 8px; text-align: center; border-bottom: 1px solid #ddd;">${v.kenteken}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>${v.klantNaam}</strong><br/><a href="tel:${v.klantTelefoon}" style="color: #1F3864;">${v.klantTelefoon}</a></td>
       <td style="padding: 8px; text-align: center; border-bottom: 1px solid #ddd;">${v.dagenWacht} dgn</td>
       <td style="padding: 8px; text-align: center; border-bottom: 1px solid #ddd; color: ${v.dagenWacht > 14 ? '#C00000' : '#375623'}; font-weight: bold;">${v.dagenWacht > 14 ? 'URGENT' : 'Bel klant'}</td>
     </tr>`
   ).join("");
 
   return `
-    <div style="font-family: Calibri, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="font-family: Calibri, Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px;">
       <div style="background: #BF5800; color: white; padding: 16px 20px; border-radius: 8px 8px 0 0;">
         <h1 style="margin: 0; font-size: 18px;">📞 ${autos.length} auto('s) klaar voor aflevering</h1>
       </div>
@@ -209,6 +210,7 @@ function buildVerkoperEmailHtml(verkoperNaam: string, autos: any[], datumDisplay
           <tr style="background: #BF5800; color: white;">
             <th style="padding: 8px; text-align: left;">Auto</th>
             <th style="padding: 8px; text-align: center;">Kenteken</th>
+            <th style="padding: 8px; text-align: left;">Klant</th>
             <th style="padding: 8px; text-align: center;">Wachtdagen</th>
             <th style="padding: 8px; text-align: center;">Actie</th>
           </tr>
@@ -236,21 +238,23 @@ Deno.serve(async (req) => {
     const tomorrowStr = tomorrow.toISOString().slice(0, 10);
     const weekFromNow = new Date(now.getTime() + 7 * 86400000);
 
-    // Fetch vehicles, appointments, and profiles in parallel
-    const [vehiclesRes, appointmentsRes, tomorrowApptsRes, profilesRes] = await Promise.all([
-      supabase.from("vehicles").select("id, brand, model, license_number, import_status, sold_date, sold_by_user_id, status, details")
+    // Fetch vehicles, appointments, profiles, and contacts in parallel
+    const [vehiclesRes, appointmentsRes, tomorrowApptsRes, profilesRes, contactsRes] = await Promise.all([
+      supabase.from("vehicles").select("id, brand, model, license_number, import_status, sold_date, sold_by_user_id, status, details, customer_id")
         .eq("status", "verkocht_b2c"),
       supabase.from("appointments").select("*").eq("type", "aflevering").neq("status", "geannuleerd")
         .gte("starttime", `${todayStr}T00:00:00`).lte("starttime", weekFromNow.toISOString()).order("starttime"),
       supabase.from("appointments").select("*").eq("type", "aflevering").neq("status", "geannuleerd")
         .gte("starttime", `${tomorrowStr}T00:00:00`).lt("starttime", `${tomorrowStr}T23:59:59`).order("starttime"),
       supabase.from("profiles").select("id, email, first_name, last_name"),
+      supabase.from("contacts").select("id, first_name, last_name, phone, email"),
     ]);
 
     const vehicles = vehiclesRes.data || [];
     const appointments = appointmentsRes.data || [];
     const tomorrowAppts = tomorrowApptsRes.data || [];
     const profiles = profilesRes.data || [];
+    const contacts = contactsRes.data || [];
 
     // Build profiles map from database
     const profilesMap: Record<string, { name: string; email: string }> = {};
@@ -258,6 +262,16 @@ Deno.serve(async (req) => {
       profilesMap[p.id] = {
         name: `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Onbekend",
         email: p.email || "",
+      };
+    }
+
+    // Build contacts map for customer info
+    const contactsMap: Record<string, { name: string; phone: string; email: string }> = {};
+    for (const c of contacts) {
+      contactsMap[c.id] = {
+        name: `${c.first_name || ""} ${c.last_name || ""}`.trim() || "Onbekend",
+        phone: c.phone || "—",
+        email: c.email || "",
       };
     }
 
@@ -279,6 +293,7 @@ Deno.serve(async (req) => {
       const hasAppointment = !!details.deliveryAppointmentId;
       const profile = profilesMap[v.sold_by_user_id];
       const salesperson = profile?.name || "Onbekend";
+      const customer = v.customer_id ? contactsMap[v.customer_id] : null;
 
       return {
         id: v.id,
@@ -299,6 +314,8 @@ Deno.serve(async (req) => {
         verkoperUserId: v.sold_by_user_id,
         checklistDone: doneItems.length,
         checklistTotal: checklist.length,
+        klantNaam: customer?.name || "Onbekend",
+        klantTelefoon: customer?.phone || "—",
       };
     });
     processed.sort((a: any, b: any) => b.dagenWacht - a.dagenWacht);
