@@ -1,0 +1,1 @@
+UPDATE vehicles SET sold_date = NULL, delivery_date = NULL, sold_by_user_id = NULL WHERE status = 'voorraad' AND sold_date IS NOT NULL;
