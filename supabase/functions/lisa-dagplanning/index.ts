@@ -6,15 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const PROFILES_MAP: Record<string, string> = {
-  "9f42b4f5-6e01-43e4-87d3-f372e1b4c909": "Daan Leyte",
-  "3be626db-ad93-4236-9e9f-e0ab14690f42": "Alexander Kool",
-  "6d62becf-fa32-4eb6-9fb2-936ecfe4313f": "Hendrik",
-  "fe095518-9c0a-4435-b097-5b91ca8be586": "Martijn Zuyderhoudt",
-  "ddcad8f3-5522-477a-a613-7d35094306a5": "Mario Kroon",
-  "37eb30a7-e034-4315-8d1b-c2f61d2535a3": "Lloyd Mahabier",
-};
-
 // Colors
 const C = {
   DARK_NAVY: "1F3864", MID_BLUE: "2F5496",
@@ -168,6 +159,69 @@ function setSheetProps(ws: any, colWidths: number[], maxRow: number, maxCol: num
   ws["!sheetViews"][0].showGridLines = false;
 }
 
+// ===== EMAIL HTML HELPERS =====
+function buildLloydEmailHtml(summary: any, downloadUrl: string, datumDisplay: string): string {
+  return `
+    <div style="font-family: Calibri, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: #1F3864; color: white; padding: 16px 20px; border-radius: 8px 8px 0 0;">
+        <h1 style="margin: 0; font-size: 18px;">📋 Dagplanning Aftersales — ${datumDisplay}</h1>
+      </div>
+      <div style="background: #f8f8f8; padding: 20px; border: 1px solid #e0e0e0;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">📅 Afleveringen morgen</td><td style="padding: 8px; text-align: right; font-weight: bold;">${summary.afleveringenMorgen}</td></tr>
+          <tr style="background: #FFD7D7;"><td style="padding: 8px; border-bottom: 1px solid #ddd;">🔴 Rode zone (>14 dgn)</td><td style="padding: 8px; text-align: right; font-weight: bold;">${summary.rodeZone}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">🟢 Kenteken OK + checklist open</td><td style="padding: 8px; text-align: right; font-weight: bold;">${summary.werkplaats}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">🟡 Klaar maar geen afspraak</td><td style="padding: 8px; text-align: right; font-weight: bold;">${summary.verkopersBellen}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">🔵 Werk in uitvoering</td><td style="padding: 8px; text-align: right; font-weight: bold;">${summary.werkInUitvoering}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">⚠️ Checklist ontbreekt</td><td style="padding: 8px; text-align: right; font-weight: bold; color: #BF5800;">${summary.checklistOntbreekt}</td></tr>
+          <tr style="background: #e8e8e8;"><td style="padding: 8px; font-weight: bold;">Totaal actief</td><td style="padding: 8px; text-align: right; font-weight: bold;">${summary.totaal}</td></tr>
+        </table>
+        <div style="margin-top: 20px; text-align: center;">
+          <a href="${downloadUrl}" style="display: inline-block; background: #1F3864; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">📥 Download Excel Planning</a>
+        </div>
+      </div>
+      <div style="padding: 12px 20px; font-size: 11px; color: #999; text-align: center;">
+        Automatisch gegenereerd door Lisa · Auto City CRM
+      </div>
+    </div>
+  `;
+}
+
+function buildVerkoperEmailHtml(verkoperNaam: string, autos: any[], datumDisplay: string): string {
+  const autoRows = autos.map(v =>
+    `<tr>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">${v.auto}</td>
+      <td style="padding: 8px; text-align: center; border-bottom: 1px solid #ddd;">${v.kenteken}</td>
+      <td style="padding: 8px; text-align: center; border-bottom: 1px solid #ddd;">${v.dagenWacht} dgn</td>
+      <td style="padding: 8px; text-align: center; border-bottom: 1px solid #ddd; color: ${v.dagenWacht > 14 ? '#C00000' : '#375623'}; font-weight: bold;">${v.dagenWacht > 14 ? 'URGENT' : 'Bel klant'}</td>
+    </tr>`
+  ).join("");
+
+  return `
+    <div style="font-family: Calibri, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: #BF5800; color: white; padding: 16px 20px; border-radius: 8px 8px 0 0;">
+        <h1 style="margin: 0; font-size: 18px;">📞 ${autos.length} auto('s) klaar voor aflevering</h1>
+      </div>
+      <div style="background: #f8f8f8; padding: 20px; border: 1px solid #e0e0e0;">
+        <p style="font-size: 14px; margin: 0 0 16px;">Hoi ${verkoperNaam},</p>
+        <p style="font-size: 14px; margin: 0 0 16px;">De volgende auto's zijn klaar (ingeschreven + checklist afgerond) maar hebben nog <strong>geen afleverafspraak</strong>. Bel de klant om een afleverdatum te plannen.</p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <tr style="background: #BF5800; color: white;">
+            <th style="padding: 8px; text-align: left;">Auto</th>
+            <th style="padding: 8px; text-align: center;">Kenteken</th>
+            <th style="padding: 8px; text-align: center;">Wachtdagen</th>
+            <th style="padding: 8px; text-align: center;">Actie</th>
+          </tr>
+          ${autoRows}
+        </table>
+      </div>
+      <div style="padding: 12px 20px; font-size: 11px; color: #999; text-align: center;">
+        Automatisch verstuurd door Aftersales · ${datumDisplay}
+      </div>
+    </div>
+  `;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -182,18 +236,30 @@ Deno.serve(async (req) => {
     const tomorrowStr = tomorrow.toISOString().slice(0, 10);
     const weekFromNow = new Date(now.getTime() + 7 * 86400000);
 
-    const [vehiclesRes, appointmentsRes, tomorrowApptsRes] = await Promise.all([
+    // Fetch vehicles, appointments, and profiles in parallel
+    const [vehiclesRes, appointmentsRes, tomorrowApptsRes, profilesRes] = await Promise.all([
       supabase.from("vehicles").select("id, brand, model, license_number, import_status, sold_date, sold_by_user_id, status, details")
         .eq("status", "verkocht_b2c"),
       supabase.from("appointments").select("*").eq("type", "aflevering").neq("status", "geannuleerd")
         .gte("starttime", `${todayStr}T00:00:00`).lte("starttime", weekFromNow.toISOString()).order("starttime"),
       supabase.from("appointments").select("*").eq("type", "aflevering").neq("status", "geannuleerd")
         .gte("starttime", `${tomorrowStr}T00:00:00`).lt("starttime", `${tomorrowStr}T23:59:59`).order("starttime"),
+      supabase.from("profiles").select("id, email, first_name, last_name"),
     ]);
 
     const vehicles = vehiclesRes.data || [];
     const appointments = appointmentsRes.data || [];
     const tomorrowAppts = tomorrowApptsRes.data || [];
+    const profiles = profilesRes.data || [];
+
+    // Build profiles map from database
+    const profilesMap: Record<string, { name: string; email: string }> = {};
+    for (const p of profiles) {
+      profilesMap[p.id] = {
+        name: `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Onbekend",
+        email: p.email || "",
+      };
+    }
 
     // Process vehicles
     const processed = vehicles.map((v: any) => {
@@ -205,9 +271,14 @@ Deno.serve(async (req) => {
       const allOpenTasks = openDescriptions.flatMap(parseTaken);
       const daysWaiting = v.sold_date ? Math.floor((now.getTime() - new Date(v.sold_date).getTime()) / 86400000) : 0;
       const isRegistered = v.import_status === "ingeschreven";
-      const isChecklistComplete = checklist.length === 0 || openItems.length === 0;
+      
+      // FIX: checklist must exist AND be complete — empty checklist = NOT complete
+      const hasChecklist = checklist.length > 0;
+      const isChecklistComplete = hasChecklist && openItems.length === 0;
+      
       const hasAppointment = !!details.deliveryAppointmentId;
-      const salesperson = PROFILES_MAP[v.sold_by_user_id] || "Onbekend";
+      const profile = profilesMap[v.sold_by_user_id];
+      const salesperson = profile?.name || "Onbekend";
 
       return {
         id: v.id,
@@ -220,19 +291,24 @@ Deno.serve(async (req) => {
         importStatus: v.import_status || "onbekend",
         importLabel: IMPORT_LABELS[v.import_status] || v.import_status || "Onbekend",
         isRegistered,
+        hasChecklist,
         isChecklistComplete,
         hasAppointment,
         verkoper: salesperson,
+        verkoperEmail: profile?.email || "",
+        verkoperUserId: v.sold_by_user_id,
         checklistDone: doneItems.length,
         checklistTotal: checklist.length,
       };
     });
     processed.sort((a: any, b: any) => b.dagenWacht - a.dagenWacht);
 
-    // Categories
-    const rodeZone = processed.filter((v: any) => v.dagenWacht > 14 && !v.isChecklistComplete);
-    const werkplaats = processed.filter((v: any) => !v.isChecklistComplete && v.isRegistered && v.dagenWacht <= 14);
-    const verkopersBellen = processed.filter((v: any) => v.isRegistered && v.isChecklistComplete && !v.hasAppointment);
+    // Categories — FIX: checklist ontbreekt is now separate
+    const checklistOntbreekt = processed.filter((v: any) => !v.hasChecklist);
+    const rodeZone = processed.filter((v: any) => v.dagenWacht > 14 && !v.isChecklistComplete && v.hasChecklist);
+    const werkplaats = processed.filter((v: any) => !v.isChecklistComplete && v.hasChecklist && v.isRegistered && v.dagenWacht <= 14);
+    // FIX: verkopersBellen requires hasChecklist && isChecklistComplete
+    const verkopersBellen = processed.filter((v: any) => v.isRegistered && v.hasChecklist && v.isChecklistComplete && !v.hasAppointment);
     const werkInUitvoering = processed.filter((v: any) => !v.isRegistered && !v.isChecklistComplete);
     const todayAppts = appointments.filter((a: any) => a.starttime?.startsWith(todayStr));
 
@@ -287,6 +363,17 @@ Deno.serve(async (req) => {
       addMergedRow(ws1, r++, ws1Cols, spacerCell());
     }
 
+    // Section: Checklist ontbreekt (NIEUW)
+    if (checklistOntbreekt.length > 0) {
+      addMergedRow(ws1, r++, ws1Cols, sectionHeaderCell(`⚠️ CHECKLIST ONTBREEKT — VERKOPER ACTIE VEREIST (${checklistOntbreekt.length} auto's)`, C.ORANJE_H));
+      addColHeaders(ws1, r++, ["Auto", "Kenteken", "Dagen wacht", "Verkoper", "Import status", "—", "Actie"], C.ORANJE_H);
+      checklistOntbreekt.forEach((v: any, i: number) => {
+        addDataRow(ws1, r++, [v.auto, v.kenteken, v.dagenWacht, v.verkoper, v.importLabel, "—", "Verkoper: checklist invullen!"],
+          { bg: C.ORANJE_BG, alt: C.ORANJE_ALT, idx: i, colAligns: ws1ColAligns, dagenIdx: 2 });
+      });
+      addMergedRow(ws1, r++, ws1Cols, spacerCell());
+    }
+
     // Section: Kenteken OK
     if (werkplaats.length > 0) {
       addMergedRow(ws1, r++, ws1Cols, sectionHeaderCell(`🟢 KENTEKEN OK — CHECKLIST OPEN (${werkplaats.length} auto's)`, C.GROEN_H));
@@ -307,7 +394,7 @@ Deno.serve(async (req) => {
     r = 0;
 
     addMergedRow(ws2, r++, ws2Cols, titleCell(`📞 VERKOPERS BELLEN · ${datumDisplay}`));
-    addMergedRow(ws2, r++, ws2Cols, subtitleCell("Klaar + ingeschreven, maar nog geen afleverafspraak"));
+    addMergedRow(ws2, r++, ws2Cols, subtitleCell("Klaar + ingeschreven + checklist af, maar nog geen afleverafspraak"));
     addMergedRow(ws2, r++, ws2Cols, spacerCell());
 
     const grouped: Record<string, any[]> = {};
@@ -383,6 +470,7 @@ Deno.serve(async (req) => {
       { cat: "🔴 Rode zone (>14 dgn)", n: rodeZone.length, wie: "Werkplaats", actie: "Absolute prioriteit", bg: C.ROOD_BG, alt: C.ROOD_ALT },
       { cat: "🟢 Kenteken OK + checklist open", n: werkplaats.length, wie: "Werkplaats", actie: "Inplannen", bg: C.GROEN_BG, alt: C.GROEN_ALT },
       { cat: "🟡 Klaar maar geen afspraak", n: verkopersBellen.length, wie: "Verkopers", actie: "Vandaag bellen", bg: C.ORANJE_BG, alt: C.ORANJE_ALT },
+      { cat: "⚠️ Checklist ontbreekt", n: checklistOntbreekt.length, wie: "Verkopers", actie: "Checklist invullen in CRM", bg: C.ORANJE_BG, alt: C.ORANJE_ALT },
       { cat: "🔵 Werk in uitvoering", n: werkInUitvoering.length, wie: "Werkplaats", actie: "Checklist alvast starten", bg: C.BLAUW_BG, alt: C.BLAUW_ALT },
       { cat: "📅 Afleveringen deze week", n: appointments.length, wie: "Lloyd", actie: "Zie agenda", bg: C.GROEN_BG, alt: C.GROEN_ALT },
     ];
@@ -435,20 +523,67 @@ Deno.serve(async (req) => {
       });
     }
 
+    const downloadUrl = signedData.signedUrl;
+    const summary = {
+      totaal: processed.length,
+      rodeZone: rodeZone.length,
+      werkplaats: werkplaats.length,
+      verkopersBellen: verkopersBellen.length,
+      werkInUitvoering: werkInUitvoering.length,
+      checklistOntbreekt: checklistOntbreekt.length,
+      afleveringenMorgen: tomorrowDeliveries.length,
+      afleveringenVandaag: todayAppts.length,
+      afleveringenWeek: appointments.length,
+    };
+
+    // ===== EMAIL 1: Lloyd dagplanning =====
+    try {
+      await supabase.from("email_queue").insert({
+        payload: {
+          senderEmail: "aftersales@auto-city.nl",
+          to: ["lloyd@auto-city.nl"],
+          subject: `Dagplanning Aftersales — ${datumDisplay}`,
+          htmlBody: buildLloydEmailHtml(summary, downloadUrl, datumDisplay),
+        },
+        status: "pending",
+      });
+      console.log("✅ Lloyd dagplanning email queued");
+    } catch (emailErr) {
+      console.error("❌ Failed to queue Lloyd email:", emailErr);
+    }
+
+    // ===== EMAIL 2: Verkoper notificaties — klaar voor aflevering =====
+    const verkoperGroups: Record<string, { name: string; email: string; autos: any[] }> = {};
+    for (const v of verkopersBellen) {
+      if (!v.verkoperEmail) continue;
+      if (!verkoperGroups[v.verkoperUserId]) {
+        verkoperGroups[v.verkoperUserId] = { name: v.verkoper, email: v.verkoperEmail, autos: [] };
+      }
+      verkoperGroups[v.verkoperUserId].autos.push(v);
+    }
+
+    for (const [, group] of Object.entries(verkoperGroups)) {
+      try {
+        await supabase.from("email_queue").insert({
+          payload: {
+            senderEmail: "aftersales@auto-city.nl",
+            to: [group.email],
+            subject: `Aftersales: ${group.autos.length} auto('s) klaar voor aflevering — actie vereist`,
+            htmlBody: buildVerkoperEmailHtml(group.name, group.autos, datumDisplay),
+          },
+          status: "pending",
+        });
+        console.log(`✅ Verkoper email queued for ${group.name} (${group.email})`);
+      } catch (emailErr) {
+        console.error(`❌ Failed to queue verkoper email for ${group.name}:`, emailErr);
+      }
+    }
+
     return new Response(JSON.stringify({
       success: true,
-      url: signedData.signedUrl,
+      url: downloadUrl,
       filename,
-      summary: {
-        totaal: processed.length,
-        rodeZone: rodeZone.length,
-        werkplaats: werkplaats.length,
-        verkopersBellen: verkopersBellen.length,
-        werkInUitvoering: werkInUitvoering.length,
-        afleveringenMorgen: tomorrowDeliveries.length,
-        afleveringenVandaag: todayAppts.length,
-        afleveringenWeek: appointments.length,
-      },
+      summary,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("Lisa dagplanning error:", err);

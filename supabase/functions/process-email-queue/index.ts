@@ -243,6 +243,10 @@ serve(async (req) => {
           })
           .eq('id', task.id);
 
+        // Get access token for the sender (dynamic impersonation with fallback)
+        const senderEmail = task.payload.senderEmail ?? 'inkoop@auto-city.nl';
+        const accessToken = await getAccessTokenForSender(serviceAccount, senderEmail);
+
         // Send email
         await sendEmailViaGmail(task.payload, accessToken);
 
