@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.kevin-ai-chat]
 verify_jwt = false
+
+[functions.lisa-dagplanning]
+verify_jwt = false
