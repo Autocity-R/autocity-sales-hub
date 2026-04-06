@@ -1,72 +1,38 @@
 
+## Fix: Geannuleerde verkopen tellen mee in rapportages
 
-## Fix Kevin Tool Loop + B2C Supplier Data
+### Het probleem
+Wanneer een auto van `verkocht_b2c` terug naar `voorraad` wordt gezet (geannuleerde verkoop), wordt de `sold_date` NIET gewist. Er zijn momenteel **13+ voertuigen** in de database met `sold_date` ingevuld maar status `voorraad` — dit zijn geannuleerde verkopen.
 
-### Drie wijzigingen in `supabase/functions/kevin-ai-chat/index.ts`
+De **Verkoper Performance** (SalespersonPerformance.tsx) filtert op `sold_date IS NOT NULL` in plaats van op status, waardoor geannuleerde verkopen zoals de Kia Niro van Daan (1 april) nog meetellen in omzet, marge en rankings.
 
----
+### De fix — twee lagen
 
-### 1. Tool loop fix (regels 326-361)
+**1. Oorzaak oplossen: `sold_date` wissen bij status-terugzetting**
 
-**Probleem**: `if (!responseMessage)` op regel 332 zorgt ervoor dat de follow-up call wordt overgeslagen als Claude tekst meestuurt naast de tool_use block. Kevin zegt "ik ga het ophalen" maar levert nooit data.
+In `src/services/supabaseInventoryService.ts`, bij beide functies die status wijzigen (`updateVehicle` en `updateVehicleStatus`):
+- Wanneer status verandert naar `voorraad` (of een niet-verkocht status) EN de huidige status WAS `verkocht_b2b`/`verkocht_b2c`/`afgeleverd` → zet `sold_date` op `null`
+- Wis ook gerelateerde verkoopdata: `selling_price` behouden (kan opnieuw verkocht worden), maar `sold_by_user_id` en verkoop-gerelateerde details wissen
 
-**Fix**: 
-- Verwijder de `if (!responseMessage)` guard
-- Altijd follow-up call doen als `toolBlocks.length > 0`
-- Wrap in een loop (max 3 iteraties) voor het geval Claude meerdere opeenvolgende tools aanroept
-- De finale response na het tool_result vervangt altijd de tussentekst
+**2. Query fixen: SalespersonPerformance ook op status filteren**
 
-```
-// Pseudo-flow:
-let currentMessages = claudeMessages
-let currentContent = claudeData.content
-let finalMessage = ''
+In `src/components/reports/SalespersonPerformance.tsx` (regel 76-85):
+- Voeg `.in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])` toe aan de query
+- Dit is een directe fix zodat zelfs als `sold_date` niet gewist is, geannuleerde verkopen niet meetellen
 
-for (let i = 0; i < 3; i++) {
-  toolBlocks = currentContent.filter(tool_use)
-  if (toolBlocks.length === 0) {
-    finalMessage = textBlocks
-    break
-  }
-  // Execute ALL tools, build tool_results array
-  // Send follow-up to Claude with tool_results
-  // Update currentContent with new response
-}
-```
+**3. Bestaande data opschonen**
 
-### 2. Verkochte voertuigen laden (na regel 44)
+- SQL update om `sold_date` te wissen voor alle voertuigen met status `voorraad` die nog een `sold_date` hebben (13 records)
 
-**Probleem**: De edge function laadt alleen `status IN ('voorraad', 'onderweg')`. Daardoor heeft `get_supplier_analysis` geen data over verkochte auto's — geen marge, geen omloopsnelheid, geen B2C/B2B verdeling.
+### Bestanden
 
-**Fix**: Extra query toevoegen:
-```sql
-SELECT id, brand, model, license_number, status, purchase_price, 
-       selling_price, created_at, sold_date, supplier_id, details
-FROM vehicles 
-WHERE status IN ('verkocht_b2c', 'verkocht_b2b', 'afgeleverd')
-```
+| Bestand | Wijziging |
+|---------|-----------|
+| `src/services/supabaseInventoryService.ts` | `sold_date = null` bij terugzetting naar voorraad (in `updateVehicle` ~regel 260 en `updateVehicleStatus` ~regel 450) |
+| `src/components/reports/SalespersonPerformance.tsx` | Status filter toevoegen aan query (regel 82) |
+| Database migration | `UPDATE vehicles SET sold_date = NULL WHERE status = 'voorraad' AND sold_date IS NOT NULL` |
 
-- Supplier IDs uit zowel CRM voorraad als verkochte voertuigen verzamelen voor de contacts query
-- Verkochte voertuigen als extra parameter meegeven aan `handleKevinToolCall`
-
-### 3. `get_supplier_analysis` uitbreiden (regels 678-719)
-
-**Probleem**: Berekent alleen voorraad-metrics (hoeveel auto's, gem. rang). Geen marge, geen omloopsnelheid, geen B2C/B2B split.
-
-**Fix**: Tool uitbreiden met verkochte voertuigen data:
-- Per leverancier berekenen:
-  - B2C verkopen (count + marge + gem. stagedagen)
-  - B2B verkopen (count + marge + gem. stagedagen)
-  - Totale winst en ROI
-  - Gemiddelde omloopsnelheid (sold_date - created_at)
-- Sorteer op B2C performance (marge × snelheid)
-- Geef top leveranciers met aanbeveling terug
-
-### Technisch overzicht
-
-| Wijziging | Regels | Impact |
-|-----------|--------|--------|
-| Tool loop fix | 326-361 | Kevin levert altijd een inhoudelijk antwoord na tool call |
-| Sold vehicles query | Na 44 | B2C/B2B data beschikbaar voor analyse |
-| Supplier analysis | 678-719 | Marge, omloopsnelheid, kanaal-verdeling per leverancier |
-
+### Resultaat
+- Daan's Kia Niro verdwijnt direct uit performance rapportages
+- Toekomstige geannuleerde verkopen worden automatisch gecorrigeerd
+- Alle rapportages (Sales, Performance, Supplier) tonen alleen echte verkopen
