@@ -262,14 +262,39 @@ serve(async (req) => {
 
     const { sessionId, message, agentId, userContext }: ChatRequest = await req.json();
     
-    console.log('🧠 Jacob CEO AI Chat:', { sessionId, agentId, message: message.substring(0, 100), mode: userContext?.mode });
+    // ============================================================
+    // STAP 1: Load agent-specific identity from database
+    // ============================================================
+    const { data: agentData } = await supabaseClient
+      .from('ai_agents')
+      .select('name, system_prompt, capabilities')
+      .eq('id', agentId)
+      .single();
 
-    // FASE 2: Recall Jacob's memories
-    const memories = await recallMemory(supabaseClient);
-    const memoryContext = buildMemoryContext(memories);
-    console.log(`📚 Memory context: ${memories.length} insights loaded`);
+    const agentName = agentData?.name || 'AI Agent';
+    const agentSystemPrompt = agentData?.system_prompt || '';
+    const agentCapabilities = agentData?.capabilities || [];
+    
+    // Determine if this is the CEO/Jacob agent (for memory + CEO data)
+    const isCEOAgent = agentId === CEO_AGENT_ID || 
+                       agentName.toLowerCase().includes('alex') || 
+                       agentName.toLowerCase().includes('jacob');
+    
+    // Determine if this is Marco (import/transport manager)
+    const isMarcoAgent = agentName.toLowerCase().includes('marco') ||
+                         agentCapabilities.includes('import-monitoring');
 
-    // Get comprehensive CEO data
+    console.log(`🧠 ${agentName} AI Chat:`, { sessionId, agentId, agentName, message: message.substring(0, 100), isCEOAgent, isMarcoAgent });
+
+    // Only load memories for CEO agent
+    let memoryContext = '';
+    if (isCEOAgent) {
+      const memories = await recallMemory(supabaseClient);
+      memoryContext = buildMemoryContext(memories);
+      console.log(`📚 Memory context: ${memories.length} insights loaded`);
+    }
+
+    // Get comprehensive CEO data (used by all agents for context)
     const ceoData = await getCompleteCEOData(supabaseClient);
     
     // Get conversation history
@@ -279,15 +304,38 @@ serve(async (req) => {
       .eq('session_id', sessionId)
       .order('created_at', { ascending: true });
 
-    console.log('📊 CEO Data loaded:', {
+    console.log(`📊 Data loaded for ${agentName}:`, {
       alerts: ceoData.alerts.length,
-      b2bSales: ceoData.b2bMetrics.totalSales,
-      b2cSales: ceoData.b2cMetrics.totalSales,
-      topSupplier: ceoData.supplierRanking[0]?.name || 'N/A',
+      vehicles: ceoData.allVehicles?.length || 0,
     });
 
-    // Build strategic CEO context prompt WITH memory context
-    const contextPrompt = buildStrategicCEOPrompt(ceoData, memoryContext);
+    // ============================================================
+    // Build agent-specific prompt and tools
+    // ============================================================
+    let contextPrompt: string;
+    let agentTools: any[];
+
+    if (agentSystemPrompt) {
+      // Use database system_prompt as base, inject live data as context
+      const liveDataContext = buildLiveDataContext(ceoData);
+      contextPrompt = `${agentSystemPrompt}\n\n${liveDataContext}`;
+      
+      if (isCEOAgent && memoryContext) {
+        contextPrompt += memoryContext;
+      }
+    } else {
+      // Fallback to hardcoded CEO prompt for backward compatibility
+      contextPrompt = buildStrategicCEOPrompt(ceoData, memoryContext);
+    }
+
+    if (isMarcoAgent) {
+      agentTools = getMarcoTools();
+    } else if (isCEOAgent) {
+      agentTools = getStrategicCEOFunctions();
+    } else {
+      // Other agents: give them a subset of general tools
+      agentTools = getStrategicCEOFunctions();
+    }
     
     // Build conversation messages
     const conversationMessages = buildConversationMessages(
@@ -296,8 +344,8 @@ serve(async (req) => {
       message
     );
 
-    // Build Claude tools from strategic functions
-    const claudeTools = getStrategicCEOFunctions().map(fn => ({
+    // Build Claude tools
+    const claudeTools = agentTools.map(fn => ({
       name: fn.name,
       description: fn.description,
       input_schema: fn.parameters
