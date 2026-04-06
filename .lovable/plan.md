@@ -1,100 +1,40 @@
 
 
-## Lisa Dagplanning — Checklist Fix + Email Notificaties + Dynamische Sender
+## Fix: Excel als Bijlage + Data Verificatie
 
-### Samenvatting
-Drie bestanden bouwen/aanpassen. Checklist-logica fixen (auto's zonder checklist niet als "klaar" tellen), email notificaties toevoegen, en process-email-queue dynamisch maken qua sender.
+### Probleem 1: Download Excel knop werkt niet
+De Lloyd email bevat een signed URL naar Supabase Storage. Gmail blokkeert/wrappt deze link, waardoor de knop niet werkt — zelfs na 1 seconde.
 
----
+**Oplossing**: Excel als bijlage meesturen in de email. De `process-email-queue` ondersteunt al attachments (URL-based). De dagplanning hoeft alleen de signed URL als attachment mee te geven in de payload.
 
-### 1. `supabase/functions/lisa-dagplanning/index.ts` — Edit
-
-**Checklist fix (regel 208):**
-```
-// Huidig (fout):
-isChecklistComplete = checklist.length === 0 || openItems.length === 0
-// Nieuw (correct):
-hasChecklist = checklist.length > 0
-isChecklistComplete = hasChecklist && openItems.length === 0
-```
-
-Auto's zonder checklist (`checklist.length === 0`) worden een aparte categorie: `checklistOntbreekt`. Deze komen NIET in `verkopersBellen`.
-
-**Verkopers Bellen filter wordt:**
-```
-isRegistered && hasChecklist && isChecklistComplete && !hasAppointment
-```
-
-**Overzicht tab:** extra rij "⚠️ Checklist ontbreekt" met telling.
-
-**Profiles ophalen uit database** i.p.v. hardcoded `PROFILES_MAP`:
-```typescript
-const { data: profiles } = await supabase.from('profiles').select('id, email, first_name, last_name');
-```
-Dit geeft verkoper emails voor de email flows.
-
-**Email 1: Lloyd dagplanning (na Excel upload):**
-Insert in `email_queue` met:
-- `senderEmail: "aftersales@auto-city.nl"`
-- `to: ["lloyd@auto-city.nl"]`
-- `subject: "Dagplanning Aftersales — [datum]"`
-- `htmlBody`: korte HTML samenvatting met aantallen + download link (signed URL)
-
-**Email 2: Verkoper notificaties — klaar voor aflevering:**
-Per verkoper die auto's heeft in `verkopersBellen`, insert in `email_queue`:
-- `senderEmail: "aftersales@auto-city.nl"`
-- `to: [verkoper.email]` (uit profiles tabel)
-- `subject: "Aftersales: [N] auto('s) klaar voor aflevering"`
-- `htmlBody`: HTML lijst met auto's die klaar zijn, verzoek om klant te bellen
+### Probleem 2: Verkeerde data in checklist email
+De Peugeot 2008 GT en VW T-Roc staan NIET op `verkocht_b2c` in de database (ze staan op `voorraad` en `afgeleverd`). De code filtert correct op `status = 'verkocht_b2c'`. De eerdere test-email bevatte waarschijnlijk stale data van een eerder moment. De huidige 6 auto's zonder checklist zijn echte B2C-verkochte auto's (Audi Q4, BMW X3, Skoda Enyaq, VW ID.4, etc.).
 
 ---
 
-### 2. `supabase/functions/lisa-email-checklist-reminder/index.ts` — Nieuw
+### Wat er verandert
 
-Wordt aangeroepen door bestaande cron `lisa-checklist-reminder-10u` (ma-vr 08:00 UTC = 10:00 CET).
+**Bestand: `supabase/functions/lisa-dagplanning/index.ts`**
 
-Logica:
-1. Haal `verkocht_b2c` voertuigen op waar `preDeliveryChecklist` leeg is of niet bestaat
-2. Groepeer per verkoper (`sold_by_user_id`)
-3. Haal verkoper emails uit `profiles` tabel
-4. Per verkoper: insert in `email_queue` met:
-   - `senderEmail: "aftersales@auto-city.nl"`
-   - `to: [verkoper.email]`
-   - `subject: "Aftersales: checklist ontbreekt voor [N] auto('s)"`
-   - `htmlBody`: HTML lijst auto's zonder checklist, verzoek om in te vullen
+1. Na het uploaden van de Excel naar storage, de signed URL als attachment toevoegen aan de Lloyd email payload:
 
-Toevoegen aan `supabase/config.toml`:
-```toml
-[functions.lisa-email-checklist-reminder]
-verify_jwt = false
-```
-
----
-
-### 3. `supabase/functions/process-email-queue/index.ts` — Edit
-
-**Dynamische sender impersonation:**
-
-Huidige code (regel 29):
 ```typescript
-const userToImpersonate = 'inkoop@auto-city.nl';
-```
-
-Wordt aangepast: `createJWTAssertion` en `getAccessToken` accepteren een `senderEmail` parameter. Per email in de queue wordt de juiste sender gebruikt.
-
-Omdat verschillende senders verschillende OAuth tokens nodig hebben, wordt een token cache per sender bijgehouden:
-```typescript
-const tokenCache: Record<string, string> = {};
-
-async function getAccessTokenForSender(serviceAccount, senderEmail): Promise<string> {
-  if (tokenCache[senderEmail]) return tokenCache[senderEmail];
-  const token = await getAccessToken(serviceAccount, senderEmail);
-  tokenCache[senderEmail] = token;
-  return token;
+// In de Lloyd email insert:
+payload: {
+  senderEmail: "aftersales@auto-city.nl",
+  to: ["lloyd@auto-city.nl"],
+  subject: `Dagplanning Aftersales — ${datumDisplay}`,
+  htmlBody: buildLloydEmailHtml(summary, datumDisplay), // geen downloadUrl meer nodig
+  attachments: [{
+    filename: `Dagplanning_${todayStr}.xlsx`,
+    url: downloadUrl  // process-email-queue fetcht dit en stuurt als bijlage
+  }]
 }
 ```
 
-Fallback: `payload.senderEmail ?? 'inkoop@auto-city.nl'`
+2. `buildLloydEmailHtml` aanpassen: download knop verwijderen, vervangen door tekst "Excel in bijlage".
+
+3. Signed URL expiry verhogen naar 604800 (7 dagen) als fallback voor de storage download.
 
 ---
 
@@ -102,13 +42,13 @@ Fallback: `payload.senderEmail ?? 'inkoop@auto-city.nl'`
 
 | Bestand | Actie |
 |---------|-------|
-| `supabase/functions/lisa-dagplanning/index.ts` | Edit — checklist fix + Lloyd email + verkoper emails |
-| `supabase/functions/lisa-email-checklist-reminder/index.ts` | Nieuw — checklist reminder emails |
-| `supabase/functions/process-email-queue/index.ts` | Edit — dynamische senderEmail |
-| `supabase/config.toml` | Edit — lisa-email-checklist-reminder registreren |
+| `supabase/functions/lisa-dagplanning/index.ts` | Edit — Excel als attachment in Lloyd email + download knop verwijderen uit HTML |
 
-### Niet nodig (al klaar in Supabase)
-- Storage bucket `lisa-planningen` ✅
-- Cron `lisa-dagplanning-08u` ✅
-- Cron `lisa-checklist-reminder-10u` ✅
+### Geen wijziging nodig
+- `process-email-queue/index.ts` — ondersteunt al attachments via URL fetch (regels 86-104)
+- `lisa-email-checklist-reminder/index.ts` — data logica is correct, queries `verkocht_b2c`
+- Geen cron wijzigingen
+
+### Resultaat
+Lloyd ontvangt elke dag de dagplanning Excel direct als bijlage in zijn inbox. Geen kapotte downloadlinks meer.
 
