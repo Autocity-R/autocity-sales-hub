@@ -1,54 +1,39 @@
 
 
-## Fix: Excel als Bijlage + Data Verificatie
+## Test Emails met Echte Data naar hendrik@auto-city.nl
 
-### Probleem 1: Download Excel knop werkt niet
-De Lloyd email bevat een signed URL naar Supabase Storage. Gmail blokkeert/wrappt deze link, waardoor de knop niet werkt — zelfs na 1 seconde.
+### Wat er moet gebeuren
+Beide edge functions (`lisa-dagplanning` en `lisa-email-checklist-reminder`) triggeren met de echte database data, maar **alle emails tijdelijk naar hendrik@auto-city.nl** sturen in plaats van naar Lloyd en de verkopers. Na de test de code terugzetten.
 
-**Oplossing**: Excel als bijlage meesturen in de email. De `process-email-queue` ondersteunt al attachments (URL-based). De dagplanning hoeft alleen de signed URL als attachment mee te geven in de payload.
+### Huidige echte data (uit database)
+- **20+ verkocht_b2c voertuigen** met echte kentekens, merken, verkopers
+- **6 auto's zonder checklist** (BYD Seal U, Audi Q4, Hyundai Ioniq 5, Skoda Enyaq, VW ID.4 77kWh Pro, VW ID.4 77kWh Business) — allen van Daan Leyte
+- **Verkopers**: Daan Leyte, Martijn Zuyderhoudt, Mario Kroon, Hendrik (jij)
 
-### Probleem 2: Verkeerde data in checklist email
-De Peugeot 2008 GT en VW T-Roc staan NIET op `verkocht_b2c` in de database (ze staan op `voorraad` en `afgeleverd`). De code filtert correct op `status = 'verkocht_b2c'`. De eerdere test-email bevatte waarschijnlijk stale data van een eerder moment. De huidige 6 auto's zonder checklist zijn echte B2C-verkochte auto's (Audi Q4, BMW X3, Skoda Enyaq, VW ID.4, etc.).
+### Stappen
 
----
+**Stap 1: Tijdelijke test-override in `lisa-dagplanning/index.ts`**
+- Regel 544: `to: ["lloyd@auto-city.nl"]` → `to: ["hendrik@auto-city.nl"]`
+- Regel 574: `to: [group.email]` → `to: ["hendrik@auto-city.nl"]`
+- Deploy
 
-### Wat er verandert
+**Stap 2: Tijdelijke test-override in `lisa-email-checklist-reminder/index.ts`**
+- `to: [group.email]` → `to: ["hendrik@auto-city.nl"]`
+- Deploy
 
-**Bestand: `supabase/functions/lisa-dagplanning/index.ts`**
+**Stap 3: Trigger beide functies**
+- `curl lisa-dagplanning` → genereert Excel + queued Lloyd email + verkoper emails
+- `curl lisa-email-checklist-reminder` → queued checklist reminder emails
+- `curl process-email-queue` → verstuurt alles
 
-1. Na het uploaden van de Excel naar storage, de signed URL als attachment toevoegen aan de Lloyd email payload:
+**Stap 4: Revert code**
+- Zet alle `to:` velden terug naar de originele ontvangers
+- Deploy
 
-```typescript
-// In de Lloyd email insert:
-payload: {
-  senderEmail: "aftersales@auto-city.nl",
-  to: ["lloyd@auto-city.nl"],
-  subject: `Dagplanning Aftersales — ${datumDisplay}`,
-  htmlBody: buildLloydEmailHtml(summary, datumDisplay), // geen downloadUrl meer nodig
-  attachments: [{
-    filename: `Dagplanning_${todayStr}.xlsx`,
-    url: downloadUrl  // process-email-queue fetcht dit en stuurt als bijlage
-  }]
-}
-```
+### Resultaat: 3 emails in jouw inbox
+1. **Dagplanning Lloyd** — samenvatting + Excel bijlage
+2. **Verkoper klaar voor aflevering** — auto's die afleverklaar zijn (als er auto's in die categorie vallen)
+3. **Checklist ontbreekt reminder** — 6 auto's zonder checklist
 
-2. `buildLloydEmailHtml` aanpassen: download knop verwijderen, vervangen door tekst "Excel in bijlage".
-
-3. Signed URL expiry verhogen naar 604800 (7 dagen) als fallback voor de storage download.
-
----
-
-### Bestanden
-
-| Bestand | Actie |
-|---------|-------|
-| `supabase/functions/lisa-dagplanning/index.ts` | Edit — Excel als attachment in Lloyd email + download knop verwijderen uit HTML |
-
-### Geen wijziging nodig
-- `process-email-queue/index.ts` — ondersteunt al attachments via URL fetch (regels 86-104)
-- `lisa-email-checklist-reminder/index.ts` — data logica is correct, queries `verkocht_b2c`
-- Geen cron wijzigingen
-
-### Resultaat
-Lloyd ontvangt elke dag de dagplanning Excel direct als bijlage in zijn inbox. Geen kapotte downloadlinks meer.
+Alle emails met echte data, echte layouts, geen mockdata.
 
