@@ -2607,3 +2607,319 @@ async function handleMarcoToolCall(supabase: any, toolName: string, toolInput: a
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
+
+// ============================================================================
+// LISA-SPECIFIC TOOLS (Delivery Planner)
+// ============================================================================
+
+function getLisaTools() {
+  return [
+    {
+      name: 'get_daily_planning',
+      description: 'Maak een dagplanning voor de werkplaats/aftersales. Gebruik bij "planning vandaag", "wat doen we vandaag", "dagplanning", "wat staat er op de planning". Retourneert alle verkochte auto\'s per prioriteit met concrete checklist items.',
+      parameters: { type: 'object', properties: {} }
+    },
+    {
+      name: 'get_red_zone',
+      description: 'Auto\'s waar de klant >14 dagen wacht op aflevering. Gebruik bij "rode zone", "wie wacht lang", "urgente afleveringen", "kritieke gevallen". Gesorteerd op wachtdagen.',
+      parameters: { type: 'object', properties: {} }
+    },
+    {
+      name: 'get_quick_wins',
+      description: 'Auto\'s die snel afleverklaar kunnen zijn: ingeschreven + korte/eenvoudige checklist (1-3 items). Gebruik bij "quick wins", "wat kan snel weg", "welke auto kan morgen weg", "laaghangend fruit".',
+      parameters: { type: 'object', properties: {} }
+    },
+    {
+      name: 'get_forgotten_customers',
+      description: 'Auto\'s die 100% klaar zijn (checklist af + ingeschreven) maar GEEN afleverafspraak hebben. Verkoper moet bellen. Gebruik bij "vergeten klanten", "wie moet gebeld worden", "verkopers bellen", "klaar maar geen afspraak".',
+      parameters: { type: 'object', properties: {} }
+    },
+    {
+      name: 'get_delivery_appointments',
+      description: 'Geplande afleverafspraken voor vandaag en komende week. Gebruik bij "afleveringen vandaag", "afspraken deze week", "wanneer wordt er afgeleverd".',
+      parameters: { type: 'object', properties: {} }
+    },
+    {
+      name: 'get_vehicle_delivery_status',
+      description: 'Volledige aflever-status van een specifiek voertuig. Gebruik als iemand vraagt naar een specifieke auto. Zoekt op merk, model of kenteken.',
+      parameters: {
+        type: 'object',
+        properties: {
+          search: { type: 'string', description: 'Merk, model of kenteken om te zoeken' }
+        },
+        required: ['search']
+      }
+    },
+  ];
+}
+
+// ============================================================================
+// LISA TOOL HANDLER
+// ============================================================================
+
+async function handleLisaToolCall(supabase: any, toolName: string, toolInput: any, ceoData: any) {
+  const allVehicles = ceoData.allVehicles || [];
+  const DAY_MS = 86400000;
+  const now = Date.now();
+
+  // Salesperson name lookup
+  const PROFILES: Record<string, string> = {
+    '9f42b4f5-6e01-43e4-87d3-f372e1b4c909': 'Daan Leyte',
+    '3be626db-ad93-4236-9e9f-e0ab14690f42': 'Alexander Kool',
+    '6d62becf-fa32-4eb6-9fb2-936ecfe4313f': 'Hendrik',
+    'fe095518-9c0a-4435-b097-5b91ca8be586': 'Martijn Zuyderhoudt',
+    'ddcad8f3-5522-477a-a613-7d35094306a5': 'Mario Kroon',
+    '37eb30a7-e034-4315-8d1b-c2f61d2535a3': 'Lloyd Mahabier',
+  };
+
+  // Complexity classification
+  const SIMPLE = /beurt|apk|opladen|volle tank|schoonmaken|wassen|tanken|sleutel|klaar|check/i;
+  const COMPLEX = /uitdeuk|spotrepair|herstel|spuit|onderdeel|bestellen|plaatsen|restyle|deuk|lak/i;
+
+  function classifyComplexity(items: any[]): string {
+    const open = items.filter((i: any) => !i.completed);
+    if (open.length === 0) return 'laag';
+    const hasComplex = open.some((i: any) => COMPLEX.test(i.description || ''));
+    const allSimple = open.every((i: any) => SIMPLE.test(i.description || ''));
+    if (allSimple && open.length <= 3) return 'laag';
+    if (hasComplex && open.length > 2) return 'hoog';
+    if (hasComplex) return 'middel';
+    return open.length <= 3 ? 'laag' : 'middel';
+  }
+
+  // Build enriched vehicle data for all verkocht_b2c
+  function buildDeliveryVehicles() {
+    return allVehicles
+      .filter((v: any) => v.status === 'verkocht_b2c')
+      .map((v: any) => {
+        const details = v.details || {};
+        const checklist: any[] = details.preDeliveryChecklist || [];
+        const done = checklist.filter((i: any) => i.completed === true);
+        const open = checklist.filter((i: any) => !i.completed);
+        const isRegistered = v.import_status === 'ingeschreven';
+        const isComplete = checklist.length === 0 || done.length === checklist.length;
+        const canDeliver = isRegistered && isComplete;
+        const daysWaiting = v.sold_date ? Math.floor((now - new Date(v.sold_date).getTime()) / DAY_MS) : 0;
+
+        let blocker: string | null = null;
+        if (!isRegistered && !isComplete) blocker = `Niet ingeschreven + ${open.length} open items`;
+        else if (!isRegistered) blocker = 'Wacht op kenteken';
+        else if (!isComplete) blocker = `${open.length} checklist items open`;
+
+        return {
+          brand: v.brand || '',
+          model: v.model || '',
+          license: v.license_number || '—',
+          days_waiting: daysWaiting,
+          import_status: v.import_status || 'onbekend',
+          salesperson: PROFILES[v.sold_by_user_id] || 'Onbekend',
+          checklist_total: checklist.length,
+          checklist_done: done.length,
+          checklist_open_items: open.map((i: any) => i.description || ''),
+          checklist_done_items: done.map((i: any) => i.description || ''),
+          complexity: classifyComplexity(checklist),
+          can_deliver: canDeliver,
+          blocker,
+          has_delivery_appointment: !!details.deliveryAppointmentId,
+        };
+      })
+      .sort((a: any, b: any) => b.days_waiting - a.days_waiting);
+  }
+
+  try {
+    switch (toolName) {
+      case 'get_daily_planning': {
+        const vehicles = buildDeliveryVehicles();
+        const redZone = vehicles.filter((v: any) => v.days_waiting > 14);
+        const quickWins = vehicles.filter((v: any) => 
+          v.days_waiting <= 14 &&
+          v.import_status === 'ingeschreven' &&
+          v.checklist_total > 0 &&
+          (v.checklist_total - v.checklist_done) <= 3 &&
+          (v.checklist_total - v.checklist_done) > 0 &&
+          v.complexity !== 'hoog'
+        );
+        const forgotten = vehicles.filter((v: any) => v.can_deliver && !v.has_delivery_appointment);
+        const workInProgress = vehicles.filter((v: any) => 
+          !redZone.includes(v) && !quickWins.includes(v) && !v.can_deliver
+        );
+
+        // Get today's appointments
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const { data: todayAppts } = await supabase
+          .from('appointments')
+          .select('customername, vehiclebrand, vehiclemodel, vehiclelicensenumber, starttime')
+          .eq('type', 'aflevering')
+          .neq('status', 'geannuleerd')
+          .gte('starttime', today.toISOString())
+          .lt('starttime', tomorrow.toISOString())
+          .order('starttime');
+
+        const formatVehicleList = (list: any[], maxItems = 15) => {
+          return list.slice(0, maxItems).map((v: any) => {
+            const items = v.checklist_open_items.length > 0 
+              ? `\n   Te doen: ${v.checklist_open_items.join(', ')}`
+              : '';
+            return `• ${v.brand} ${v.model} (${v.license}) — ${v.days_waiting}d wacht — ${v.checklist_done}/${v.checklist_total} checklist — ${v.import_status} — Verkoper: ${v.salesperson} [${v.complexity}]${items}`;
+          }).join('\n');
+        };
+
+        return {
+          success: true,
+          data: { redZone: redZone.length, quickWins: quickWins.length, forgotten: forgotten.length, workInProgress: workInProgress.length },
+          message: `📋 DAGPLANNING AFTERSALES — ${new Date().toLocaleDateString('nl-NL')}
+
+${(todayAppts || []).length > 0 ? `📅 AFLEVERAFSPRAKEN VANDAAG:
+${(todayAppts || []).map((a: any) => `• ${a.vehiclebrand || ''} ${a.vehiclemodel || ''} (${a.vehiclelicensenumber || ''}) — ${a.customername || 'Onbekend'} — ${new Date(a.starttime).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}`).join('\n')}
+` : ''}
+🔴 RODE ZONE — klant wacht te lang (${redZone.length}):
+${redZone.length > 0 ? formatVehicleList(redZone) : 'Geen auto\'s in rode zone'}
+
+🟢 QUICK WINS — snel klaar (${quickWins.length}):
+${quickWins.length > 0 ? formatVehicleList(quickWins) : 'Geen quick wins'}
+
+🟡 VERKOPERS BELLEN — klaar maar geen afspraak (${forgotten.length}):
+${forgotten.length > 0 ? forgotten.slice(0, 10).map((v: any) => `• ${v.brand} ${v.model} (${v.license}) — ${v.days_waiting}d — Verkoper: ${v.salesperson} → bellen!`).join('\n') : 'Geen vergeten klanten'}
+
+🔵 WERK IN UITVOERING (${workInProgress.length}):
+${workInProgress.length > 0 ? formatVehicleList(workInProgress, 10) : 'Geen overige'}
+${workInProgress.length > 10 ? `\n... en ${workInProgress.length - 10} meer` : ''}`
+        };
+      }
+
+      case 'get_red_zone': {
+        const vehicles = buildDeliveryVehicles().filter((v: any) => v.days_waiting > 14);
+        return {
+          success: true,
+          data: { vehicles, count: vehicles.length },
+          message: `🔴 Rode Zone — klant wacht >14 dagen (${vehicles.length} auto's)
+
+${vehicles.map((v: any) => {
+  const items = v.checklist_open_items.length > 0 
+    ? `\n   Te doen: ${v.checklist_open_items.join(', ')}`
+    : '\n   Checklist: compleet ✅';
+  return `• ${v.brand} ${v.model} (${v.license}) — ${v.days_waiting} dagen${v.days_waiting > 21 ? ' ⚠️ KRITIEK' : ''} — ${v.checklist_done}/${v.checklist_total} — ${v.import_status} — Verkoper: ${v.salesperson} [${v.complexity}]${items}${v.blocker ? `\n   Blokkade: ${v.blocker}` : ''}`;
+}).join('\n\n')}
+${vehicles.length === 0 ? 'Geen auto\'s in de rode zone — goed bezig!' : ''}`
+        };
+      }
+
+      case 'get_quick_wins': {
+        const all = buildDeliveryVehicles();
+        const quickWins = all.filter((v: any) => 
+          v.import_status === 'ingeschreven' &&
+          v.checklist_total > 0 &&
+          (v.checklist_total - v.checklist_done) <= 3 &&
+          (v.checklist_total - v.checklist_done) > 0 &&
+          v.complexity !== 'hoog'
+        );
+        return {
+          success: true,
+          data: { vehicles: quickWins, count: quickWins.length },
+          message: `🟢 Quick Wins — ingeschreven + korte checklist (${quickWins.length} auto's)
+
+${quickWins.map((v: any) => 
+  `• ${v.brand} ${v.model} (${v.license}) — ${v.days_waiting}d — Te doen: ${v.checklist_open_items.join(', ')} — Verkoper: ${v.salesperson} [${v.complexity}]`
+).join('\n')}
+${quickWins.length === 0 ? 'Geen quick wins op dit moment.' : ''}`
+        };
+      }
+
+      case 'get_forgotten_customers': {
+        const all = buildDeliveryVehicles();
+        const forgotten = all.filter((v: any) => v.can_deliver && !v.has_delivery_appointment);
+        return {
+          success: true,
+          data: { vehicles: forgotten, count: forgotten.length },
+          message: `🟡 Vergeten Klanten — klaar maar geen afspraak (${forgotten.length} auto's)
+
+${forgotten.map((v: any) => 
+  `• ${v.brand} ${v.model} (${v.license}) — ${v.days_waiting}d wacht — Verkoper: ${v.salesperson} → BELLEN!`
+).join('\n')}
+${forgotten.length === 0 ? 'Alle klaar-staande auto\'s hebben een afspraak!' : ''}`
+        };
+      }
+
+      case 'get_delivery_appointments': {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(today);
+        weekEnd.setDate(weekEnd.getDate() + 7);
+        weekEnd.setHours(23, 59, 59, 999);
+
+        const { data: appts } = await supabase
+          .from('appointments')
+          .select('customername, vehiclebrand, vehiclemodel, vehiclelicensenumber, starttime, status')
+          .eq('type', 'aflevering')
+          .neq('status', 'geannuleerd')
+          .gte('starttime', today.toISOString())
+          .lte('starttime', weekEnd.toISOString())
+          .order('starttime');
+
+        const appointments = appts || [];
+        const todayEnd = new Date(today);
+        todayEnd.setHours(23, 59, 59, 999);
+        const todayAppts = appointments.filter((a: any) => new Date(a.starttime) <= todayEnd);
+
+        return {
+          success: true,
+          data: { today: todayAppts.length, week: appointments.length },
+          message: `📅 Afleverafspraken
+
+Vandaag (${todayAppts.length}):
+${todayAppts.length > 0 ? todayAppts.map((a: any) => 
+  `• ${new Date(a.starttime).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} — ${a.vehiclebrand || ''} ${a.vehiclemodel || ''} (${a.vehiclelicensenumber || ''}) — ${a.customername || 'Onbekend'}`
+).join('\n') : 'Geen afleveringen vandaag'}
+
+Komende 7 dagen (${appointments.length}):
+${appointments.map((a: any) => 
+  `• ${new Date(a.starttime).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })} ${new Date(a.starttime).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} — ${a.vehiclebrand || ''} ${a.vehiclemodel || ''} (${a.vehiclelicensenumber || ''}) — ${a.customername || 'Onbekend'}`
+).join('\n')}
+${appointments.length === 0 ? 'Geen afspraken deze week' : ''}`
+        };
+      }
+
+      case 'get_vehicle_delivery_status': {
+        const search = (toolInput.search || '').toLowerCase();
+        const all = buildDeliveryVehicles();
+        const found = all.filter((v: any) => 
+          v.brand.toLowerCase().includes(search) ||
+          v.model.toLowerCase().includes(search) ||
+          v.license.toLowerCase().includes(search)
+        );
+
+        if (found.length === 0) {
+          return { success: true, message: `Geen verkochte B2C auto gevonden voor "${toolInput.search}".` };
+        }
+
+        return {
+          success: true,
+          data: { vehicles: found },
+          message: found.map((v: any) => 
+`📋 ${v.brand} ${v.model} (${v.license})
+- Wachtdagen: ${v.days_waiting}
+- Import status: ${v.import_status}
+- Checklist: ${v.checklist_done}/${v.checklist_total}
+${v.checklist_open_items.length > 0 ? `- Open items: ${v.checklist_open_items.join(', ')}` : '- Checklist: compleet ✅'}
+${v.checklist_done_items.length > 0 ? `- Afgevinkt: ${v.checklist_done_items.join(', ')}` : ''}
+- Complexiteit: ${v.complexity}
+- Kan afgeleverd: ${v.can_deliver ? 'Ja ✅' : 'Nee ❌'}
+${v.blocker ? `- Blokkade: ${v.blocker}` : ''}
+- Verkoper: ${v.salesperson}
+- Afspraak gepland: ${v.has_delivery_appointment ? 'Ja' : 'Nee'}`
+          ).join('\n\n')
+        };
+      }
+
+      default:
+        return { success: false, error: `Unknown Lisa tool: ${toolName}` };
+    }
+  } catch (error) {
+    console.error(`Lisa tool error (${toolName}):`, error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
