@@ -1,38 +1,127 @@
 
-## Fix: Geannuleerde verkopen tellen mee in rapportages
 
-### Het probleem
-Wanneer een auto van `verkocht_b2c` terug naar `voorraad` wordt gezet (geannuleerde verkoop), wordt de `sold_date` NIET gewist. Er zijn momenteel **13+ voertuigen** in de database met `sold_date` ingevuld maar status `voorraad` — dit zijn geannuleerde verkopen.
+## Fix hendrik-ai-chat: Agent-specifieke prompts + Tool loop + Marco tools
 
-De **Verkoper Performance** (SalespersonPerformance.tsx) filtert op `sold_date IS NOT NULL` in plaats van op status, waardoor geannuleerde verkopen zoals de Kia Niro van Daan (1 april) nog meetellen in omzet, marge en rankings.
+### Probleem
+`hendrik-ai-chat/index.ts` is hardcoded als "Jacob CEO AI". Alle agents die via deze function draaien (Marco, Lisa, Daan, Sara, Alex) krijgen dezelfde CEO-prompt en CEO-tools. Marco's 4.954 karakter system_prompt in de database wordt volledig genegeerd. Daarnaast heeft de tool loop dezelfde bug als kevin-ai-chat had: tussentekst wordt teruggestuurd.
 
-### De fix — twee lagen
+### Plan (1 bestand: `supabase/functions/hendrik-ai-chat/index.ts`)
 
-**1. Oorzaak oplossen: `sold_date` wissen bij status-terugzetting**
+---
 
-In `src/services/supabaseInventoryService.ts`, bij beide functies die status wijzigen (`updateVehicle` en `updateVehicleStatus`):
-- Wanneer status verandert naar `voorraad` (of een niet-verkocht status) EN de huidige status WAS `verkocht_b2b`/`verkocht_b2c`/`afgeleverd` → zet `sold_date` op `null`
-- Wis ook gerelateerde verkoopdata: `selling_price` behouden (kan opnieuw verkocht worden), maar `sold_by_user_id` en verkoop-gerelateerde details wissen
+**Stap 1 — Agent prompt laden uit database**
 
-**2. Query fixen: SalespersonPerformance ook op status filteren**
+Rond regel 263, na het parsen van de request body, de agent ophalen:
 
-In `src/components/reports/SalespersonPerformance.tsx` (regel 76-85):
-- Voeg `.in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])` toe aan de query
-- Dit is een directe fix zodat zelfs als `sold_date` niet gewist is, geannuleerde verkopen niet meetellen
+```typescript
+const { data: agentData } = await supabaseClient
+  .from('ai_agents')
+  .select('name, system_prompt, capabilities')
+  .eq('id', agentId)
+  .single();
 
-**3. Bestaande data opschonen**
+const agentName = agentData?.name || 'AI Agent';
+const agentSystemPrompt = agentData?.system_prompt || '';
+```
 
-- SQL update om `sold_date` te wissen voor alle voertuigen met status `voorraad` die nog een `sold_date` hebben (13 records)
+Dan in de prompt-opbouw (rond regel 290):
+- Als `agentSystemPrompt` aanwezig is, gebruik die als basis in plaats van `buildStrategicCEOPrompt()`
+- Injecteer de live data (ceoData) als context-blok achter de agent-specifieke prompt
+- Memory context alleen laden voor Alex/Jacob (CEO agent), niet voor Marco/Lisa/etc.
 
-### Bestanden
+De tools worden ook agent-specifiek:
+- Alex/Jacob → bestaande `getStrategicCEOFunctions()` 
+- Marco → `getMarcoTools()` (nieuw, zie stap 3)
+- Overige agents → subset van bestaande tools relevant voor hun rol
 
-| Bestand | Wijziging |
-|---------|-----------|
-| `src/services/supabaseInventoryService.ts` | `sold_date = null` bij terugzetting naar voorraad (in `updateVehicle` ~regel 260 en `updateVehicleStatus` ~regel 450) |
-| `src/components/reports/SalespersonPerformance.tsx` | Status filter toevoegen aan query (regel 82) |
-| Database migration | `UPDATE vehicles SET sold_date = NULL WHERE status = 'voorraad' AND sold_date IS NOT NULL` |
+---
 
-### Resultaat
-- Daan's Kia Niro verdwijnt direct uit performance rapportages
-- Toekomstige geannuleerde verkopen worden automatisch gecorrigeerd
-- Alle rapportages (Sales, Performance, Supplier) tonen alleen echte verkopen
+**Stap 2 — Tool loop fix (regels 340-389)**
+
+Vervang de huidige `if (toolBlocks.length > 0)` + `if (!responseMessage)` logica door de Kevin-patroon loop:
+
+```typescript
+let currentContent = claudeData.content;
+let currentMessages = [...claudeMessages];
+let responseMessage = '';
+
+for (let toolRound = 0; toolRound < 3; toolRound++) {
+  const toolBlocks = currentContent?.filter(b => b.type === 'tool_use') || [];
+  const textBlocks = currentContent?.filter(b => b.type === 'text') || [];
+
+  if (toolBlocks.length === 0) {
+    responseMessage = textBlocks.map(b => b.text).join('\n');
+    break;
+  }
+
+  // Tools called — execute ALL, ignore interim text
+  const toolResults = [];
+  for (const toolCall of toolBlocks) {
+    const result = await handleStrategicCEOFunctionCall(supabaseClient, 
+      { name: toolCall.name, arguments: JSON.stringify(toolCall.input) }, ceoData);
+    toolResults.push({
+      type: 'tool_result',
+      tool_use_id: toolCall.id,
+      content: JSON.stringify(result),
+    });
+  }
+
+  currentMessages = [
+    ...currentMessages,
+    { role: 'assistant', content: currentContent },
+    { role: 'user', content: toolResults },
+  ];
+
+  // Follow-up call with tools enabled (Claude may call another tool)
+  const followUp = await fetch(claudeEndpoint, { ... });
+  currentContent = followUpData.content;
+}
+```
+
+Dit garandeert:
+- Tussentekst ("Laat me even de data ophalen") wordt nooit teruggestuurd
+- Follow-up call gebeurt ALTIJD na een tool_use
+- Meerdere opeenvolgende tool calls worden ondersteund (max 3 rondes)
+
+---
+
+**Stap 3 — Marco-specifieke tools toevoegen**
+
+Nieuwe functie `getMarcoTools()` met 4 tools:
+
+| Tool | Description | Filter |
+|------|-------------|--------|
+| `get_cmr_pending` | "Aangekomen voertuigen waarvoor de CMR nog niet is verstuurd. Gebruik bij vragen over CMR versturen." | `transportStatus === 'aangekomen'` AND `cmrSent !== true` AND niet trade-in |
+| `get_missing_papers` | "Aangekomen voertuigen waarvan papieren nog ontbreken. Gebruik bij vragen over ontbrekende papieren/documenten." | `transportStatus === 'aangekomen'` AND `papersReceived !== true` AND niet trade-in |
+| `get_transport_details` | "Voertuigen die nog onderweg zijn. ALLEEN voor transport/logistiek vragen, NIET voor CMR of papieren." | `transportStatus === 'onderweg'` |
+| `get_import_overview` | "Volledig import overzicht: betaling, ophalen, transport, documenten, RDW, BPM status." | Alle import-fases |
+
+Handler functie `handleMarcoToolCall()` die dezelfde businesslogica gebruikt als `MarcoDashboard.tsx`:
+- CMR pending: aangekomen + `cmrSent !== true` + niet trade-in/loan car
+- Missing papers: aangekomen + `papersReceived !== true` + niet trade-in
+- Resultaat gesorteerd op dagen (langst wachtend bovenaan)
+- Per voertuig: merk, model, kenteken, leverancier, dagen sinds aankomst
+
+---
+
+**Stap 4 — Logging aanpassen**
+
+- `console.log` en `ai_sales_interactions.agent_name` dynamisch maken op basis van `agentData.name`
+- Niet meer hardcoded 'jacob_ceo'
+
+### Technisch overzicht
+
+| Wijziging | Regels | Impact |
+|-----------|--------|--------|
+| Agent prompt laden | 263-298 | Alle agents gebruiken hun eigen system_prompt |
+| Tool loop fix | 340-389 | Geen tussentekst meer, altijd finale analyse |
+| Marco tools | Nieuw blok | CMR en papieren correct beantwoord |
+| Agent-specifieke tool selectie | 300-304 | Marco krijgt Marco-tools, Alex krijgt CEO-tools |
+| Logging fix | 265, 410 | Correcte agent naam in logs |
+
+### Verwacht resultaat
+- "Welke auto's moeten we nog CMR versturen?" → Marco noemt specifieke auto's met leverancier en dagen
+- "Welke auto's missen nog papieren?" → Concrete lijst gesorteerd op urgentie  
+- "Welke auto's zijn nog onderweg?" → Transport overzicht (andere tool)
+- Alle agents (Marco, Lisa, Daan, Sara, Alex) praten in hun eigen stijl
+
