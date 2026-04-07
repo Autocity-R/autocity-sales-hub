@@ -89,7 +89,7 @@ export const SalespersonDetailDialog: React.FC<SalespersonDetailDialogProps> = (
         </DialogHeader>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4 border-y">
+        <div className={`grid grid-cols-2 ${showMargins ? 'md:grid-cols-4' : 'md:grid-cols-2'} gap-4 py-4 border-y`}>
           <div className="text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <Car className="h-4 w-4 text-muted-foreground" />
@@ -106,21 +106,25 @@ export const SalespersonDetailDialog: React.FC<SalespersonDetailDialogProps> = (
             <div className="text-2xl font-bold">{formatCurrency(salesperson.totalRevenue)}</div>
           </div>
           
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Totale Winst</span>
+          {showMargins && (
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Totale Winst</span>
+              </div>
+              <div className="text-2xl font-bold">{formatCurrency(salesperson.totalMargin)}</div>
             </div>
-            <div className="text-2xl font-bold">{formatCurrency(salesperson.totalMargin)}</div>
-          </div>
+          )}
           
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Gem. Marge</span>
+          {showMargins && (
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Gem. Marge</span>
+              </div>
+              <div className="text-2xl font-bold">{salesperson.averageMargin.toFixed(1)}%</div>
             </div>
-            <div className="text-2xl font-bold">{salesperson.averageMargin.toFixed(1)}%</div>
-          </div>
+          )}
         </div>
 
         {/* Sales Table */}
