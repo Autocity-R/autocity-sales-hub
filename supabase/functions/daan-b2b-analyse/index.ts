@@ -65,12 +65,10 @@ interface ParsedVehicle {
   bouwjaar: number | null;
   kilometerstand: number;
   inkoopprijs: number;
-  kenteken: string;
 }
 
 interface B2BKans {
   auto: string;
-  kenteken: string;
   inkoopprijs: number;
   b2bAanbodprijs: number;
   dealerNaam: string;
@@ -181,108 +179,130 @@ BELANGRIJK: Geef UITSLUITEND de ruwe JSON array terug. Geen inleiding, geen conc
   return result;
 }
 
-async function queryJPCars(
-  parsed: { brand: string; model: string; brandstof?: string | null; bouwjaar?: number | null; kilometerstand?: number },
+// === FUEL / GEAR MAPPING (zelfde als jpcars-lookup) ===
+
+function mapFuel(brandstof: string | null | undefined): string | undefined {
+  if (!brandstof) return undefined;
+  const map: Record<string, string> = {
+    "Benzine": "Petrol",
+    "Diesel": "Diesel",
+    "Hybride": "Hybrid",
+    "Elektrisch": "Electric",
+    "PHEV": "Hybrid",
+    "Plug-in Hybride": "Hybrid",
+  };
+  return map[brandstof] || undefined;
+}
+
+function mapGear(transmissie: string | null | undefined): string | undefined {
+  if (!transmissie) return undefined;
+  const map: Record<string, string> = {
+    "Automaat": "Automatic",
+    "Handgeschakeld": "Manual",
+    "Manual": "Manual",
+    "Automatic": "Automatic",
+  };
+  return map[transmissie] || undefined;
+}
+
+// === JP CARS TAXATIE via /api/valuate/extended (CORRECT endpoint) ===
+
+async function queryJPCarsValuation(
+  parsed: { brand: string; model: string; brandstof?: string | null; transmissie?: string | null; bouwjaar?: number | null; kilometerstand?: number },
   apiToken: string
 ): Promise<any[]> {
-  const params = new URLSearchParams({
-    make: parsed.brand,
-    model: parsed.model.split(" ")[0],
-    include_sold: "true",
-    page_size: "100",
-    page_index: "0",
-  });
+  const body: Record<string, any> = {
+    make: parsed.brand.toUpperCase(),
+    model: parsed.model.split(" ")[0].toUpperCase(),
+    mileage: parsed.kilometerstand || 0,
+  };
 
-  if (parsed.brandstof) {
-    const fuelMap: Record<string, string> = {
-      Benzine: "Benzine", Diesel: "Diesel", Hybride: "Hybride", Elektrisch: "Elektrisch",
-    };
-    if (fuelMap[parsed.brandstof]) params.append("fuel", fuelMap[parsed.brandstof]);
-  }
+  if (parsed.bouwjaar) body.build = parsed.bouwjaar;
 
-  if (parsed.bouwjaar) {
-    params.append("build_year_min", String(parsed.bouwjaar - 1));
-    params.append("build_year_max", String(parsed.bouwjaar + 1));
-  }
+  const fuel = mapFuel(parsed.brandstof);
+  if (fuel) body.fuel = fuel;
 
-  // Mileage filter: ±20.000 km (skip voor nieuwe auto's < 1000 km)
-  if (parsed.kilometerstand && parsed.kilometerstand > 1000) {
-    params.append("mileage_min", String(Math.max(0, parsed.kilometerstand - 20000)));
-    params.append("mileage_max", String(parsed.kilometerstand + 20000));
-  }
+  const gear = mapGear(parsed.transmissie);
+  if (gear) body.gear = gear;
 
-  const url = `https://api.nl.jp.cars/api/cars/list?${params.toString()}`;
+  const url = `https://api.nl.jp.cars/api/valuate/extended?enable_portal_urls=false&enable_top_dealers=true`;
+
   try {
+    console.log(`🔎 JP Cars Valuate: ${JSON.stringify(body)}`);
+
     const resp = await fetch(url, {
-      headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
     });
+
     if (!resp.ok) {
-      console.error(`❌ JP Cars API Error: ${resp.status} ${resp.statusText} for ${parsed.brand} ${parsed.model}`);
+      const errText = await resp.text();
+      console.error(`❌ JP Cars Valuate Error: ${resp.status} for ${parsed.brand} ${parsed.model}: ${errText.substring(0, 300)}`);
       return [];
     }
+
     const data = await resp.json();
+    const window = data.window || [];
 
-    let listings: any[];
-    if (Array.isArray(data)) {
-      listings = data;
-    } else if (data && Array.isArray(data.results)) {
-      listings = data.results;
-    } else if (data && Array.isArray(data.data)) {
-      listings = data.data;
-    } else if (data && Array.isArray(data.items)) {
-      listings = data.items;
-    } else {
-      console.warn(`⚠️ Onverwacht JP Cars response formaat voor ${parsed.brand} ${parsed.model}:`, JSON.stringify(data).substring(0, 200));
-      listings = [];
+    console.log(`🚗 JP Cars Valuate: ${parsed.brand} ${parsed.model} bj:${parsed.bouwjaar || '?'} km:${parsed.kilometerstand || '?'} ${parsed.brandstof || ''} → ${window.length} listings in window`);
+
+    if (window.length > 0) {
+      const sample = window[0];
+      console.log(`   📋 Sample: dealer=${sample.dealer_name}, price=${sample.price_local}, sold_since=${sample.sold_since}, stock_days=${sample.stock_days}`);
     }
 
-    // Debug logging
-    console.log(`🚗 JP Cars: ${parsed.brand} ${parsed.model} bj:${parsed.bouwjaar || '?'} km:${parsed.kilometerstand || '?'} ${parsed.brandstof || ''} -> ${listings.length} resultaten`);
-    if (listings.length > 0) {
-      const sample = listings[0];
-      console.log(`   📋 Sample keys: ${Object.keys(sample).join(', ')}`);
-      console.log(`   📋 Sample RAW: ${JSON.stringify(sample).substring(0, 500)}`);
-    }
-
-    return listings;
+    return window;
   } catch (e) {
-    console.error(`❌ Fetch error JP Cars ${parsed.brand} ${parsed.model}:`, e);
+    console.error(`❌ Fetch error JP Cars Valuate ${parsed.brand} ${parsed.model}:`, e);
     return [];
   }
 }
 
-function calculateB2BKansen(vehicle: ParsedVehicle, listings: any[], ownPlates: Set<string>): B2BKans[] {
+// === B2B KANSEN BEREKENING ===
+
+function calculateB2BKansen(vehicle: ParsedVehicle, listings: any[]): B2BKans[] {
   const kansen: B2BKans[] = [];
   const autoNaam = `${vehicle.brand} ${vehicle.model}`;
 
-  let skipOwn = 0, skipNoSold = 0, skipSoldOld = 0, skipStockHigh = 0, skipNoPrice = 0, skipLowMarge = 0, passed = 0;
+  let skipNoSold = 0, skipSoldOld = 0, skipStockHigh = 0, skipNoPrice = 0, skipLowMarge = 0, passed = 0;
 
   for (const listing of listings) {
-    // Skip eigen voorraad op basis van kenteken
-    const plate = (listing.license_plate || "").replace(/[-\s]/g, "").toUpperCase();
-    if (ownPlates.has(plate)) { skipOwn++; continue; }
-
+    // sold_since: number (dagen sinds verkoop), null = nog te koop
     const soldSince = listing.sold_since;
-    const daysInStock = listing.stock_days ?? 0;
-    const dealerPrice = listing.price_local ?? 0;
-    const dealerName = listing.location_name || "Onbekend";
+    // stagedagen: probeer beide veldnamen
+    const daysInStock = listing.days_in_stock ?? listing.stock_days ?? 0;
+    // prijs
+    const dealerPrice = listing.price_local ?? listing.price ?? 0;
+    // dealer naam (valuate endpoint geeft echte dealer_name)
+    const dealerName = listing.dealer_name || listing.location_name || "Onbekend";
 
+    // Alleen verkochte auto's
     if (soldSince === null || soldSince === undefined) { skipNoSold++; continue; }
+    // Recent verkocht (max 40 dagen geleden)
     if (soldSince > 40) { skipSoldOld++; continue; }
+    // Niet te lang in voorraad gestaan
     if (daysInStock > 50) { skipStockHigh++; continue; }
+    // Moet een prijs hebben
     if (dealerPrice <= 0) { skipNoPrice++; continue; }
 
-    const maxOnzeprijs = dealerPrice - 3000;
-    const onzeMarge = maxOnzeprijs - vehicle.inkoopprijs;
+    // B2B marge berekening:
+    // Dealer verkoopprijs - 3000 = ons B2B aanbod
+    // Ons B2B aanbod - onze inkoop = onze marge
+    const b2bAanbod = dealerPrice - 3000;
+    const onzeMarge = b2bAanbod - vehicle.inkoopprijs;
 
+    // Minimaal €3000 marge voor ons
     if (onzeMarge < 3000) { skipLowMarge++; continue; }
     passed++;
 
     kansen.push({
       auto: autoNaam,
-      kenteken: vehicle.kenteken,
       inkoopprijs: vehicle.inkoopprijs,
-      b2bAanbodprijs: maxOnzeprijs,
+      b2bAanbodprijs: b2bAanbod,
       dealerNaam: dealerName,
       dealerVerkoopprijs: dealerPrice,
       dealerStagedagen: daysInStock,
@@ -294,16 +314,18 @@ function calculateB2BKansen(vehicle: ParsedVehicle, listings: any[], ownPlates: 
   }
 
   if (listings.length > 0) {
-    console.log(`   🔍 ${autoNaam} (${vehicle.kenteken}): ${listings.length} listings → eigen:${skipOwn} noSold:${skipNoSold} soldOud:${skipSoldOld} stockHoog:${skipStockHigh} geenPrijs:${skipNoPrice} lageMarge:${skipLowMarge} ✅:${passed}`);
+    console.log(`   🔍 ${autoNaam}: ${listings.length} listings → noSold:${skipNoSold} soldOud:${skipSoldOld} stockHoog:${skipStockHigh} geenPrijs:${skipNoPrice} lageMarge:${skipLowMarge} ✅:${passed}`);
   }
 
   return kansen;
 }
 
+// === EXCEL OUTPUT ===
+
 function buildExcel(sterkeKansen: B2BKans[], mogelijkeKansen: B2BKans[], datum: string): Uint8Array {
   const wb = XLSX.utils.book_new();
-  const COLS = ["Onze Auto", "Kenteken", "Onze Inkoop", "B2B Aanbod", "Dealer Naam", "Dealer Verkoopprijs", "Dealer Stagedagen", "Verkocht dgn geleden", "Onze Marge", "Dealer Margeruimte"];
-  const COL_WIDTHS = [22, 12, 12, 12, 22, 14, 14, 14, 12, 14];
+  const COLS = ["Onze Auto", "Onze Inkoop", "B2B Aanbod", "Dealer Naam", "Dealer Verkoopprijs", "Stagedagen", "Verkocht dgn geleden", "Onze Marge", "Dealer Margeruimte"];
+  const COL_WIDTHS = [24, 12, 12, 24, 14, 12, 14, 12, 14];
 
   function addSheet(name: string, kansen: B2BKans[], fillBg: string, fillAlt: string, hdrFill: string) {
     const rows: any[][] = [];
@@ -314,7 +336,6 @@ function buildExcel(sterkeKansen: B2BKans[], mogelijkeKansen: B2BKans[], datum: 
       const bg = i % 2 === 0 ? fillBg : fillAlt;
       rows.push([
         makeCell(k.auto, { fill: bg }),
-        makeCell(k.kenteken, { fill: bg, align: "center" }),
         makeCell(k.inkoopprijs, { fill: bg, align: "right" }),
         makeCell(k.b2bAanbodprijs, { fill: bg, align: "right", font: { bold: true } }),
         makeCell(k.dealerNaam, { fill: bg }),
@@ -359,6 +380,8 @@ function buildExcel(sterkeKansen: B2BKans[], mogelijkeKansen: B2BKans[], datum: 
   return new Uint8Array(buf);
 }
 
+// === MAIN HANDLER ===
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -392,7 +415,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // BUG 1 FIX: Haal year, mileage, notes op uit DB
+    // STAP 1: Haal transportlijst op (auto's die onderweg zijn)
     const { data: vehicles, error: vErr } = await supabase
       .from("vehicles")
       .select("id, brand, model, year, mileage, license_number, purchase_price, notes, details, created_at")
@@ -401,28 +424,27 @@ Deno.serve(async (req) => {
 
     if (vErr) throw new Error(`Vehicle query failed: ${vErr.message}`);
 
-    // BUG 1 FIX: Verwijder de transportStatus === "onderweg" exclusie
-    // Alle offline + niet-inruil auto's zijn B2B kandidaten
-    const offlineVehicles = (vehicles || []).filter((v: any) => {
+    // Filter: alleen transportlijst auto's (onderweg, niet inruil)
+    const transportVehicles = (vehicles || []).filter((v: any) => {
       const d = v.details || {};
-      if (d.showroomOnline === true) return false;
+      // Alleen auto's die onderweg zijn (transportlijst)
+      if (d.transportStatus !== "onderweg") return false;
+      // Geen inruil auto's
       if (d.isTradeIn === true) return false;
-      // VERWIJDERD: if (d.transportStatus === "onderweg") return false;
-      // Auto's onderweg zijn JUIST de B2B kansen
       return true;
     });
 
-    console.log(`📊 START B2B Analyse: ${offlineVehicles.length} offline voertuigen gevonden (incl. onderweg)`);
+    console.log(`📊 START B2B Analyse: ${transportVehicles.length} transport auto's (onderweg) van ${(vehicles || []).length} totaal voorraad`);
 
-    if (offlineVehicles.length === 0) {
-      const result = { sterkeKansen: [], mogelijkeKansen: [], totaalOffline: 0 };
+    if (transportVehicles.length === 0) {
+      const result = { sterkeKansen: [], mogelijkeKansen: [], totaalTransport: 0 };
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // BUG 2 FIX: Stuur notes + mileage mee naar Claude
-    const vehicleInputs = offlineVehicles.map((v: any) => ({
+    // STAP 2: Claude specificeert elke auto (brandstof, transmissie, etc.)
+    const vehicleInputs = transportVehicles.map((v: any) => ({
       id: v.id,
       brand: v.brand || "",
       model: v.model || "",
@@ -433,7 +455,7 @@ Deno.serve(async (req) => {
 
     const claudeResults = await claudeBatchParse(vehicleInputs, anthropicKey);
 
-    const parsedVehicles: ParsedVehicle[] = offlineVehicles.map((v: any) => {
+    const parsedVehicles: ParsedVehicle[] = transportVehicles.map((v: any) => {
       const claude = claudeResults[v.id] || {};
       return {
         id: v.id,
@@ -445,65 +467,60 @@ Deno.serve(async (req) => {
         bouwjaar: claude.bouwjaar || v.year || v.details?.buildYear || v.details?.year || null,
         kilometerstand: v.mileage || 0,
         inkoopprijs: Number(v.purchase_price) || Number(v.details?.purchasePrice) || 0,
-        kenteken: v.license_number || "",
       };
     });
 
-    // BUG 3 FIX: Per-voertuig JP Cars query met slimme cache
-    // Cache key: brand|model[0]|brandstof|bouwjaar|mileage_bucket(per 20k)
+    // STAP 3: JP Cars taxatie per auto via /api/valuate/extended
+    // Cache op specs om dubbele calls te voorkomen
     const jpCarsCache = new Map<string, any[]>();
+
     for (const pv of parsedVehicles) {
       const mileageBucket = Math.round(pv.kilometerstand / 20000) * 20000;
-      const key = `${pv.brand}|${pv.model.split(" ")[0]}|${pv.brandstof || ""}|${pv.bouwjaar || ""}|${mileageBucket}`;
+      const cacheKey = `${pv.brand}|${pv.model.split(" ")[0]}|${pv.brandstof || ""}|${pv.transmissie || ""}|${pv.bouwjaar || ""}|${mileageBucket}`;
 
-      if (!jpCarsCache.has(key)) {
-        const listings = await queryJPCars({
+      if (!jpCarsCache.has(cacheKey)) {
+        const listings = await queryJPCarsValuation({
           brand: pv.brand,
           model: pv.model,
           brandstof: pv.brandstof,
+          transmissie: pv.transmissie,
           bouwjaar: pv.bouwjaar,
           kilometerstand: pv.kilometerstand,
         }, jpCarsToken);
-        jpCarsCache.set(key, listings);
-        await new Promise(r => setTimeout(r, 200));
+        jpCarsCache.set(cacheKey, listings);
+        await new Promise(r => setTimeout(r, 200)); // rate limiting
       }
     }
 
-    // Bouw set van eigen kentekens om eigen voorraad uit te sluiten
-    const ownPlates = new Set<string>();
-    for (const v of offlineVehicles) {
-      const plate = ((v as any).license_number || "").replace(/[-\s]/g, "").toUpperCase();
-      if (plate) ownPlates.add(plate);
-    }
+    // STAP 4: B2B kansen berekenen per auto
+    // Bewaar top 3 kansen per auto (vehicle ID als key, niet kenteken)
+    const kansenPerAuto = new Map<string, B2BKans[]>();
 
-    const allKansen: B2BKans[] = [];
     for (const pv of parsedVehicles) {
       const mileageBucket = Math.round(pv.kilometerstand / 20000) * 20000;
-      const key = `${pv.brand}|${pv.model.split(" ")[0]}|${pv.brandstof || ""}|${pv.bouwjaar || ""}|${mileageBucket}`;
-      const listings = jpCarsCache.get(key) || [];
-      const kansen = calculateB2BKansen(pv, listings, ownPlates);
-      allKansen.push(...kansen);
-    }
+      const cacheKey = `${pv.brand}|${pv.model.split(" ")[0]}|${pv.brandstof || ""}|${pv.transmissie || ""}|${pv.bouwjaar || ""}|${mileageBucket}`;
+      const listings = jpCarsCache.get(cacheKey) || [];
+      const kansen = calculateB2BKansen(pv, listings);
 
-    const bestPerVehicle = new Map<string, B2BKans>();
-    for (const k of allKansen) {
-      const existing = bestPerVehicle.get(k.kenteken);
-      if (!existing || k.onzeMarge > existing.onzeMarge) {
-        bestPerVehicle.set(k.kenteken, k);
+      if (kansen.length > 0) {
+        // Sorteer op marge en bewaar top 3
+        kansen.sort((a, b) => b.onzeMarge - a.onzeMarge);
+        kansenPerAuto.set(pv.id, kansen.slice(0, 3));
       }
     }
-    const dedupedKansen = Array.from(bestPerVehicle.values());
 
-    const sterkeKansen = dedupedKansen.filter(k => k.score === "STERK").sort((a, b) => b.onzeMarge - a.onzeMarge);
-    const mogelijkeKansen = dedupedKansen.filter(k => k.score === "MOGELIJK").sort((a, b) => b.onzeMarge - a.onzeMarge);
+    // Flatten alle kansen
+    const allKansen = Array.from(kansenPerAuto.values()).flat();
+    const sterkeKansen = allKansen.filter(k => k.score === "STERK").sort((a, b) => b.onzeMarge - a.onzeMarge);
+    const mogelijkeKansen = allKansen.filter(k => k.score === "MOGELIJK").sort((a, b) => b.onzeMarge - a.onzeMarge);
 
-    console.log(`✅ Analyse voltooid: ${sterkeKansen.length} Sterke kansen, ${mogelijkeKansen.length} Mogelijke kansen uit ${offlineVehicles.length} auto's`);
+    console.log(`✅ Analyse voltooid: ${sterkeKansen.length} Sterke kansen, ${mogelijkeKansen.length} Mogelijke kansen uit ${transportVehicles.length} transport auto's`);
 
     if (isDownloadMode) {
       return new Response(JSON.stringify({
         sterkeKansen,
         mogelijkeKansen,
-        totaalOffline: offlineVehicles.length,
+        totaalTransport: transportVehicles.length,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -525,7 +542,7 @@ Deno.serve(async (req) => {
       .createSignedUrl(filename, 60 * 60 * 24 * 7);
 
     const totalKansen = sterkeKansen.length + mogelijkeKansen.length;
-    const totalMarge = dedupedKansen.reduce((s, k) => s + k.onzeMarge, 0);
+    const totalMarge = allKansen.reduce((s, k) => s + k.onzeMarge, 0);
 
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px;">
@@ -568,7 +585,7 @@ Deno.serve(async (req) => {
           </a>
         </p>` : ""}
         <p style="color: #999; font-size: 11px; margin-top: 24px;">
-          Geanalyseerd: ${offlineVehicles.length} offline auto's | ${datum} | Daan AI Agent
+          Geanalyseerd: ${transportVehicles.length} transport auto's | ${datum} | Daan AI Agent
         </p>
       </div>
     `;
@@ -587,7 +604,7 @@ Deno.serve(async (req) => {
       success: true,
       sterkeKansen: sterkeKansen.length,
       mogelijkeKansen: mogelijkeKansen.length,
-      totaalOffline: offlineVehicles.length,
+      totaalTransport: transportVehicles.length,
       excelUrl: signedUrl?.signedUrl || null,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
