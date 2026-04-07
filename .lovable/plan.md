@@ -1,39 +1,48 @@
 
 
-## Test Emails met Echte Data naar hendrik@auto-city.nl
+## Fix: Dubbele Cron Job Verwijderen + Idempotency Guard
 
-### Wat er moet gebeuren
-Beide edge functions (`lisa-dagplanning` en `lisa-email-checklist-reminder`) triggeren met de echte database data, maar **alle emails tijdelijk naar hendrik@auto-city.nl** sturen in plaats van naar Lloyd en de verkopers. Na de test de code terugzetten.
+### Oorzaak
+Er staan **twee cron jobs** met dezelfde naam `lisa-dagplanning-08u` in `cron.job`:
+- **Job 9**: met `service_role` key (correct)
+- **Job 10**: met `anon` key (duplicaat)
 
-### Huidige echte data (uit database)
-- **20+ verkocht_b2c voertuigen** met echte kentekens, merken, verkopers
-- **6 auto's zonder checklist** (BYD Seal U, Audi Q4, Hyundai Ioniq 5, Skoda Enyaq, VW ID.4 77kWh Pro, VW ID.4 77kWh Business) — allen van Daan Leyte
-- **Verkopers**: Daan Leyte, Martijn Zuyderhoudt, Mario Kroon, Hendrik (jij)
+Beide draaien op `0 6 * * 1-5`, dus de `lisa-dagplanning` functie wordt **2x per trigger** aangeroepen → alle emails worden dubbel verstuurd.
 
-### Stappen
+### Oplossing
 
-**Stap 1: Tijdelijke test-override in `lisa-dagplanning/index.ts`**
-- Regel 544: `to: ["lloyd@auto-city.nl"]` → `to: ["hendrik@auto-city.nl"]`
-- Regel 574: `to: [group.email]` → `to: ["hendrik@auto-city.nl"]`
-- Deploy
+**Stap 1: Verwijder de dubbele cron job (SQL migratie)**
+```sql
+SELECT cron.unschedule(10);
+```
+Dit verwijdert job 10 (de duplicaat met anon key). Job 9 blijft actief.
 
-**Stap 2: Tijdelijke test-override in `lisa-email-checklist-reminder/index.ts`**
-- `to: [group.email]` → `to: ["hendrik@auto-city.nl"]`
-- Deploy
+**Stap 2: Idempotency guard in `lisa-dagplanning/index.ts`**
+Als extra beveiliging tegen dubbele triggers: aan het begin van de functie checken of er vandaag al emails in de queue staan voor dezelfde dag. Als dat zo is, direct stoppen zonder nieuwe emails aan te maken.
 
-**Stap 3: Trigger beide functies**
-- `curl lisa-dagplanning` → genereert Excel + queued Lloyd email + verkoper emails
-- `curl lisa-email-checklist-reminder` → queued checklist reminder emails
-- `curl process-email-queue` → verstuurt alles
+```typescript
+// Check of dagplanning vandaag al is gedraaid
+const todayStart = new Date(); todayStart.setUTCHours(0,0,0,0);
+const { data: existing } = await supabase
+  .from('email_queue')
+  .select('id')
+  .gte('created_at', todayStart.toISOString())
+  .ilike('payload->>subject', '%Dagplanning Aftersales%')
+  .limit(1);
 
-**Stap 4: Revert code**
-- Zet alle `to:` velden terug naar de originele ontvangers
-- Deploy
+if (existing && existing.length > 0) {
+  return new Response(JSON.stringify({ skipped: true, reason: 'Already ran today' }), ...);
+}
+```
 
-### Resultaat: 3 emails in jouw inbox
-1. **Dagplanning Lloyd** — samenvatting + Excel bijlage
-2. **Verkoper klaar voor aflevering** — auto's die afleverklaar zijn (als er auto's in die categorie vallen)
-3. **Checklist ontbreekt reminder** — 6 auto's zonder checklist
+### Bestanden
 
-Alle emails met echte data, echte layouts, geen mockdata.
+| Bestand | Actie |
+|---------|-------|
+| SQL migratie | `SELECT cron.unschedule(10)` — verwijder dubbele cron job |
+| `supabase/functions/lisa-dagplanning/index.ts` | Idempotency guard toevoegen bovenin de functie |
+
+### Resultaat
+- Verkopers ontvangen voortaan **1x** per dag hun email om 08:00 CET
+- Zelfs als de cron ooit weer per ongeluk dubbel triggert, voorkomt de idempotency guard dubbele emails
 
