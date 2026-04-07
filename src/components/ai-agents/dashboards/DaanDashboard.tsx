@@ -103,6 +103,7 @@ export const DaanDashboard: React.FC = () => {
         Martijn: ["martijn", "martijn zuyderhoudt", "martijn@auto-city.nl"],
         Alex: ["alex", "alexander", "alexander kool", "alex@auto-city.nl"],
         Hendrik: ["hendrik", "hendrik@auto-city.nl"],
+        Mario: ["mario", "mario kroon", "mario@auto-city.nl"],
       };
 
       const stats: Record<string, { b2c: number; b2b: number; total: number; revenue: number; totalMargin: number }> = {};
