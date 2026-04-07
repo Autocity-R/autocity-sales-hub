@@ -293,6 +293,10 @@ function calculateB2BKansen(vehicle: ParsedVehicle, listings: any[]): B2BKans[] 
     });
   }
 
+  if (listings.length > 0) {
+    console.log(`   🔍 ${autoNaam} (${vehicle.kenteken}): ${listings.length} listings → eigen:${skipOwn} noSold:${skipNoSold} soldOud:${skipSoldOld} stockHoog:${skipStockHigh} geenPrijs:${skipNoPrice} lageMarge:${skipLowMarge} ✅:${passed}`);
+  }
+
   return kansen;
 }
 
