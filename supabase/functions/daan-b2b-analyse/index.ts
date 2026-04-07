@@ -469,12 +469,19 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Bouw set van eigen kentekens om eigen voorraad uit te sluiten
+    const ownPlates = new Set<string>();
+    for (const v of offlineVehicles) {
+      const plate = ((v as any).license_number || "").replace(/[-\s]/g, "").toUpperCase();
+      if (plate) ownPlates.add(plate);
+    }
+
     const allKansen: B2BKans[] = [];
     for (const pv of parsedVehicles) {
       const mileageBucket = Math.round(pv.kilometerstand / 20000) * 20000;
       const key = `${pv.brand}|${pv.model.split(" ")[0]}|${pv.brandstof || ""}|${pv.bouwjaar || ""}|${mileageBucket}`;
       const listings = jpCarsCache.get(key) || [];
-      const kansen = calculateB2BKansen(pv, listings);
+      const kansen = calculateB2BKansen(pv, listings, ownPlates);
       allKansen.push(...kansen);
     }
 
