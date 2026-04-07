@@ -133,10 +133,18 @@ export const DaanDashboard: React.FC = () => {
         if (isB2B) s.b2b++;
         if (isB2C) s.b2c++;
         s.total++;
-        s.revenue += Number(v.selling_price) || 0;
-        const purchase = Number(v.purchase_price) || Number(details.purchasePrice) || 0;
         const selling = Number(v.selling_price) || 0;
-        if (selling > 0 && purchase > 0) s.totalMargin += selling - purchase;
+        const purchase = Number(v.purchase_price) || Number(details.purchasePrice) || 0;
+        s.revenue += selling;
+        s.vehicles.push({
+          id: v.id,
+          brand: details.brand || details.merk || "",
+          model: details.model || "",
+          selling_price: selling,
+          purchase_price: purchase,
+          margin: selling - purchase,
+          sold_date: v.sold_date || "",
+        });
       }
 
       return Object.entries(stats)
