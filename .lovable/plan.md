@@ -1,48 +1,73 @@
 
 
-## Fix: Dubbele Cron Job Verwijderen + Idempotency Guard
+## Daan B2B Analyse — Geüpdatet Implementatieplan
 
-### Oorzaak
-Er staan **twee cron jobs** met dezelfde naam `lisa-dagplanning-08u` in `cron.job`:
-- **Job 9**: met `service_role` key (correct)
-- **Job 10**: met `anon` key (duplicaat)
+### Twee correcties van Manus verwerkt
 
-Beide draaien op `0 6 * * 1-5`, dus de `lisa-dagplanning` functie wordt **2x per trigger** aangeroepen → alle emails worden dubbel verstuurd.
+**Correctie 1**: Claude Auto-Intelligentie parser toevoegen als pre-processor voor JP Cars queries. De `vehicles` tabel bevat al rijke model-beschrijvingen (bijv. "Q5 Sportback 55 TFSI S Line", "Seal U DM-i 1.5 phev Boost") — Claude parseert deze naar gestructureerde velden (brandstof, transmissie, uitvoering) zodat JP Cars appels met appels vergelijkt.
 
-### Oplossing
+**Correctie 2**: Email naar hendrik@auto-city.nl (niet daan@auto-city.nl).
 
-**Stap 1: Verwijder de dubbele cron job (SQL migratie)**
-```sql
-SELECT cron.unschedule(10);
+### Bestaande infrastructuur (niet bouwen)
+- Storage bucket `daan-analyses` (actief)
+- Cron job `daan-b2b-analyse-08u` (ma-vr 06:00 UTC)
+- `JPCARS_API_TOKEN`, `ANTHROPIC_API_KEY` als secrets
+
+### Te bouwen: 3 bestanden
+
+---
+
+### 1. Edge Function: `supabase/functions/daan-b2b-analyse/index.ts` (nieuw)
+
+**Flow in volgorde:**
+
+1. **Idempotency guard** — check `email_queue` voor vandaag's "B2B Analyse"
+2. **Offline voorraad ophalen** — ~53 auto's met `showroomOnline = false/null`, `isTradeIn = false/null`, `purchase_price > 0`
+3. **Claude batch parse (NIEUW)** — stuur alle `brand + " " + model` beschrijvingen in 1 batch naar Anthropic API (ANTHROPIC_API_KEY, model `claude-sonnet-4-6`). Output: gestructureerde JSON met merk, model, uitvoering, brandstof, transmissie per auto. Temperature 0.1.
+4. **JP Cars API per uniek merk+model** — gebruik Claude's output om specifiekere queries te bouwen: `make`, `model`, `fuel`, `transmission`, `build_year_min/max`, `keyword` (uitvoering). Rate limiting 200ms delay. Hergebruik `api.nl.jp.cars/api/cars/list` met `include_sold=true`.
+5. **B2B kans berekening** — per gevonden dealer listing:
+   - Skip als `sold_since = null` (niet verkocht)
+   - Skip als `sold_since > 40` dagen
+   - Skip als `days_in_stock > 50` dagen  
+   - `maxOnzeprijs = dealerVerkoopprijs - 3000`
+   - `onzeMarge = maxOnzeprijs - inkoopprijs`
+   - Skip als `onzeMarge < 3000`
+   - Score: STERK (marge ≥ 4000) of MOGELIJK
+6. **Excel genereren** via `xlsx-js-style` — 3 tabs (Sterke kansen, Mogelijke kansen, Overzicht), zelfde branding als Lisa
+7. **Upload naar `daan-analyses` bucket**
+8. **Email naar hendrik@auto-city.nl** via `email_queue` met Excel als attachment
+
+Support `{ mode: 'download' }` body voor dashboard gebruik (alleen JSON response, geen email).
+
+---
+
+### 2. Dashboard: `src/components/ai-agents/dashboards/DaanDashboard.tsx` (vervangen)
+
+Vier secties:
+
+- **KPI Strip**: Sterke kansen (groen), Mogelijke kansen (oranje), Offline auto's (rood), Verkopen deze maand (blauw)
+- **B2B Kansen tabel**: Invoke edge function met `mode: download`, tabel met dealer links, Download Excel knop, tabs Sterk/Mogelijk
+- **Offline voorraad**: Query vehicles met `showroomOnline = false/null`, gesorteerd op dagen in bezit
+- **Team Performance**: Query `weekly_sales` voor deze maand, per verkoper B2C vs norm (10)
+
+---
+
+### 3. Config: `supabase/config.toml` (edit)
+
+```toml
+[functions.daan-b2b-analyse]
+verify_jwt = false
 ```
-Dit verwijdert job 10 (de duplicaat met anon key). Job 9 blijft actief.
 
-**Stap 2: Idempotency guard in `lisa-dagplanning/index.ts`**
-Als extra beveiliging tegen dubbele triggers: aan het begin van de functie checken of er vandaag al emails in de queue staan voor dezelfde dag. Als dat zo is, direct stoppen zonder nieuwe emails aan te maken.
+---
 
-```typescript
-// Check of dagplanning vandaag al is gedraaid
-const todayStart = new Date(); todayStart.setUTCHours(0,0,0,0);
-const { data: existing } = await supabase
-  .from('email_queue')
-  .select('id')
-  .gte('created_at', todayStart.toISOString())
-  .ilike('payload->>subject', '%Dagplanning Aftersales%')
-  .limit(1);
-
-if (existing && existing.length > 0) {
-  return new Response(JSON.stringify({ skipped: true, reason: 'Already ran today' }), ...);
-}
-```
-
-### Bestanden
+### Technisch overzicht
 
 | Bestand | Actie |
 |---------|-------|
-| SQL migratie | `SELECT cron.unschedule(10)` — verwijder dubbele cron job |
-| `supabase/functions/lisa-dagplanning/index.ts` | Idempotency guard toevoegen bovenin de functie |
+| `supabase/functions/daan-b2b-analyse/index.ts` | Nieuw — edge function met Claude parser + JP Cars + Excel + email |
+| `src/components/ai-agents/dashboards/DaanDashboard.tsx` | Vervangen — 4 secties dashboard |
+| `supabase/config.toml` | Edit — functie registreren |
 
-### Resultaat
-- Verkopers ontvangen voortaan **1x** per dag hun email om 08:00 CET
-- Zelfs als de cron ooit weer per ongeluk dubbel triggert, voorkomt de idempotency guard dubbele emails
+Geen database migraties nodig. Claude gebruikt bestaande `ANTHROPIC_API_KEY`. JP Cars gebruikt bestaande `JPCARS_API_TOKEN`.
 
