@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { SalespersonDetailDialog } from "@/components/reports/SalespersonDetailDialog";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface B2BKans {
   auto: string;
@@ -33,6 +34,7 @@ export const DaanDashboard: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedSalesperson, setSelectedSalesperson] = useState<any>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const { isAdmin } = useRoleAccess();
 
   // B2B kansen data
   const { data: b2bData, isLoading: b2bLoading, refetch: refetchB2B } = useQuery({
@@ -374,6 +376,7 @@ export const DaanDashboard: React.FC = () => {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         salesperson={selectedSalesperson}
+        showMargins={isAdmin}
       />
     </div>
   );

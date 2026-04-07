@@ -22,6 +22,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { SalespersonDetailDialog } from "./SalespersonDetailDialog";
 import { ReportPeriod } from "@/types/reports";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface SalespersonData {
   id: string;
@@ -63,6 +64,7 @@ export const SalespersonPerformance: React.FC<SalespersonPerformanceProps> = ({ 
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedSalesperson, setSelectedSalesperson] = useState<SalespersonData | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const { isAdmin } = useRoleAccess();
 
   // Fetch salesperson performance data
   const { data: salespersonData, isLoading } = useQuery({
@@ -215,6 +217,7 @@ export const SalespersonPerformance: React.FC<SalespersonPerformanceProps> = ({ 
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         salesperson={selectedSalesperson}
+        showMargins={isAdmin}
       />
       
       <div className="space-y-6">

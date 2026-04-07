@@ -36,6 +36,7 @@ interface Vehicle {
 interface SalespersonDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  showMargins?: boolean;
   salesperson: {
     name: string;
     email: string;
@@ -50,6 +51,7 @@ interface SalespersonDetailDialogProps {
 export const SalespersonDetailDialog: React.FC<SalespersonDetailDialogProps> = ({
   open,
   onOpenChange,
+  showMargins = false,
   salesperson,
 }) => {
   if (!salesperson) return null;
@@ -87,7 +89,7 @@ export const SalespersonDetailDialog: React.FC<SalespersonDetailDialogProps> = (
         </DialogHeader>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4 border-y">
+        <div className={`grid grid-cols-2 ${showMargins ? 'md:grid-cols-4' : 'md:grid-cols-2'} gap-4 py-4 border-y`}>
           <div className="text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <Car className="h-4 w-4 text-muted-foreground" />
@@ -104,21 +106,25 @@ export const SalespersonDetailDialog: React.FC<SalespersonDetailDialogProps> = (
             <div className="text-2xl font-bold">{formatCurrency(salesperson.totalRevenue)}</div>
           </div>
           
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Totale Winst</span>
+          {showMargins && (
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Totale Winst</span>
+              </div>
+              <div className="text-2xl font-bold">{formatCurrency(salesperson.totalMargin)}</div>
             </div>
-            <div className="text-2xl font-bold">{formatCurrency(salesperson.totalMargin)}</div>
-          </div>
+          )}
           
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Gem. Marge</span>
+          {showMargins && (
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Gem. Marge</span>
+              </div>
+              <div className="text-2xl font-bold">{salesperson.averageMargin.toFixed(1)}%</div>
             </div>
-            <div className="text-2xl font-bold">{salesperson.averageMargin.toFixed(1)}%</div>
-          </div>
+          )}
         </div>
 
         {/* Sales Table */}
@@ -128,10 +134,10 @@ export const SalespersonDetailDialog: React.FC<SalespersonDetailDialogProps> = (
               <TableRow>
                 <TableHead>Datum</TableHead>
                 <TableHead>Voertuig</TableHead>
-                <TableHead className="text-right">Inkoopprijs</TableHead>
+                {showMargins && <TableHead className="text-right">Inkoopprijs</TableHead>}
                 <TableHead className="text-right">Verkoopprijs</TableHead>
-                <TableHead className="text-right">Marge €</TableHead>
-                <TableHead className="text-right">Marge %</TableHead>
+                {showMargins && <TableHead className="text-right">Marge €</TableHead>}
+                {showMargins && <TableHead className="text-right">Marge %</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -154,20 +160,26 @@ export const SalespersonDetailDialog: React.FC<SalespersonDetailDialogProps> = (
                       <div className="font-medium">{vehicle.brand}</div>
                       <div className="text-sm text-muted-foreground">{vehicle.model}</div>
                     </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {formatCurrency(vehicle.purchase_price)}
-                    </TableCell>
+                    {showMargins && (
+                      <TableCell className="text-right text-muted-foreground">
+                        {formatCurrency(vehicle.purchase_price)}
+                      </TableCell>
+                    )}
                     <TableCell className="text-right font-medium">
                       {formatCurrency(vehicle.selling_price)}
                     </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(vehicle.margin)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className={`font-bold ${getMarginColor(marginPercentage)}`}>
-                        {marginPercentage.toFixed(1)}%
-                      </span>
-                    </TableCell>
+                    {showMargins && (
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(vehicle.margin)}
+                      </TableCell>
+                    )}
+                    {showMargins && (
+                      <TableCell className="text-right">
+                        <span className={`font-bold ${getMarginColor(marginPercentage)}`}>
+                          {marginPercentage.toFixed(1)}%
+                        </span>
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })}
