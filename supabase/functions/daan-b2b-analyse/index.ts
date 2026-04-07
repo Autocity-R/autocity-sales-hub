@@ -63,6 +63,7 @@ interface ParsedVehicle {
   brandstof: string | null;
   transmissie: string | null;
   bouwjaar: number | null;
+  kilometerstand: number;
   inkoopprijs: number;
   kenteken: string;
 }
@@ -108,10 +109,12 @@ function parseClaudeResponse(text: string): any[] {
 }
 
 async function claudeBatchParse(
-  vehicles: { id: string; brand: string; model: string; bouwjaar?: number }[],
+  vehicles: { id: string; brand: string; model: string; bouwjaar?: number; kilometerstand?: number; omschrijving?: string }[],
   apiKey: string
 ): Promise<Record<string, { uitvoering: string | null; brandstof: string | null; transmissie: string | null; bouwjaar: number | null }>> {
-  const descriptions = vehicles.map((v, i) => `[${i}] ${v.brand} ${v.model} ${v.bouwjaar || ""}`).join("\n");
+  const descriptions = vehicles.map((v, i) =>
+    `[${i}] ${v.brand} ${v.model} ${v.bouwjaar || ""} km:${v.kilometerstand || ""} ${v.omschrijving || ""}`
+  ).join("\n");
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -179,7 +182,7 @@ BELANGRIJK: Geef UITSLUITEND de ruwe JSON array terug. Geen inleiding, geen conc
 }
 
 async function queryJPCars(
-  parsed: { brand: string; model: string; uitvoering?: string | null; brandstof?: string | null; transmissie?: string | null; bouwjaar?: number | null },
+  parsed: { brand: string; model: string; brandstof?: string | null; bouwjaar?: number | null; kilometerstand?: number },
   apiToken: string
 ): Promise<any[]> {
   const params = new URLSearchParams({
@@ -200,6 +203,12 @@ async function queryJPCars(
   if (parsed.bouwjaar) {
     params.append("build_year_min", String(parsed.bouwjaar - 1));
     params.append("build_year_max", String(parsed.bouwjaar + 1));
+  }
+
+  // Mileage filter: ±20.000 km (skip voor nieuwe auto's < 1000 km)
+  if (parsed.kilometerstand && parsed.kilometerstand > 1000) {
+    params.append("mileage_min", String(Math.max(0, parsed.kilometerstand - 20000)));
+    params.append("mileage_max", String(parsed.kilometerstand + 20000));
   }
 
   const url = `https://api.nl.jp.cars/api/cars/list?${params.toString()}`;
@@ -227,7 +236,13 @@ async function queryJPCars(
       listings = [];
     }
 
-    console.log(`🚗 JP Cars: ${parsed.brand} ${parsed.model} ${parsed.brandstof || ''} ${parsed.bouwjaar || ''} -> ${listings.length} resultaten`);
+    // Debug logging
+    console.log(`🚗 JP Cars: ${parsed.brand} ${parsed.model} bj:${parsed.bouwjaar || '?'} km:${parsed.kilometerstand || '?'} ${parsed.brandstof || ''} -> ${listings.length} resultaten`);
+    if (listings.length > 0) {
+      const sample = listings[0];
+      console.log(`   📋 Sample: prijs=${sample.price_local ?? sample.price} dealer=${sample.dealer_name ?? 'onbekend'} sold_since=${sample.sold_since} stock_days=${sample.days_in_stock ?? sample.stock_days}`);
+    }
+
     return listings;
   } catch (e) {
     console.error(`❌ Fetch error JP Cars ${parsed.brand} ${parsed.model}:`, e);
@@ -241,9 +256,9 @@ function calculateB2BKansen(vehicle: ParsedVehicle, listings: any[]): B2BKans[] 
 
   for (const listing of listings) {
     const soldSince = listing.sold_since;
-    const daysInStock = listing.stock_days || 0;
-    const dealerPrice = listing.price_local || 0;
-    const dealerName = listing.dealer_name || "Onbekend";
+    const daysInStock = listing.days_in_stock ?? listing.stock_days ?? 0;
+    const dealerPrice = listing.price_local ?? listing.price ?? 0;
+    const dealerName = listing.dealer_name ?? "Onbekend";
 
     if (soldSince === null || soldSince === undefined) continue;
     if (soldSince > 40) continue;
@@ -365,25 +380,27 @@ Deno.serve(async (req) => {
       }
     }
 
+    // BUG 1 FIX: Haal year, mileage, notes op uit DB
     const { data: vehicles, error: vErr } = await supabase
       .from("vehicles")
-      .select("id, brand, model, license_number, purchase_price, details, created_at")
+      .select("id, brand, model, year, mileage, license_number, purchase_price, notes, details, created_at")
       .eq("status", "voorraad")
       .gt("purchase_price", 0);
 
     if (vErr) throw new Error(`Vehicle query failed: ${vErr.message}`);
 
+    // BUG 1 FIX: Verwijder de transportStatus === "onderweg" exclusie
+    // Alle offline + niet-inruil auto's zijn B2B kandidaten
     const offlineVehicles = (vehicles || []).filter((v: any) => {
       const d = v.details || {};
       if (d.showroomOnline === true) return false;
       if (d.isTradeIn === true) return false;
-      // Auto's die nog onderweg zijn (transport) kunnen niet online staan
-      // en zijn dus geen B2B kansen — exclude ze
-      if (d.transportStatus === "onderweg") return false;
+      // VERWIJDERD: if (d.transportStatus === "onderweg") return false;
+      // Auto's onderweg zijn JUIST de B2B kansen
       return true;
     });
 
-    console.log(`📊 START B2B Analyse: ${offlineVehicles.length} offline voertuigen gevonden`);
+    console.log(`📊 START B2B Analyse: ${offlineVehicles.length} offline voertuigen gevonden (incl. onderweg)`);
 
     if (offlineVehicles.length === 0) {
       const result = { sterkeKansen: [], mogelijkeKansen: [], totaalOffline: 0 };
@@ -392,11 +409,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // BUG 2 FIX: Stuur notes + mileage mee naar Claude
     const vehicleInputs = offlineVehicles.map((v: any) => ({
       id: v.id,
       brand: v.brand || "",
       model: v.model || "",
-      bouwjaar: v.details?.buildYear || v.details?.year || null,
+      bouwjaar: v.year || v.details?.buildYear || v.details?.year || null,
+      kilometerstand: v.mileage || 0,
+      omschrijving: v.notes || "",
     }));
 
     const claudeResults = await claudeBatchParse(vehicleInputs, anthropicKey);
@@ -410,28 +430,37 @@ Deno.serve(async (req) => {
         uitvoering: claude.uitvoering || null,
         brandstof: claude.brandstof || null,
         transmissie: claude.transmissie || null,
-        bouwjaar: claude.bouwjaar || v.details?.buildYear || v.details?.year || null,
+        bouwjaar: claude.bouwjaar || v.year || v.details?.buildYear || v.details?.year || null,
+        kilometerstand: v.mileage || 0,
         inkoopprijs: Number(v.purchase_price) || Number(v.details?.purchasePrice) || 0,
         kenteken: v.license_number || "",
       };
     });
 
-    const uniqueCombos = new Map<string, ParsedVehicle>();
-    for (const pv of parsedVehicles) {
-      const key = `${pv.brand}|${pv.model.split(" ")[0]}|${pv.brandstof || ""}`;
-      if (!uniqueCombos.has(key)) uniqueCombos.set(key, pv);
-    }
-
+    // BUG 3 FIX: Per-voertuig JP Cars query met slimme cache
+    // Cache key: brand|model[0]|brandstof|bouwjaar|mileage_bucket(per 20k)
     const jpCarsCache = new Map<string, any[]>();
-    for (const [key, pv] of uniqueCombos) {
-      const listings = await queryJPCars(pv, jpCarsToken);
-      jpCarsCache.set(key, listings);
-      await new Promise(r => setTimeout(r, 200));
+    for (const pv of parsedVehicles) {
+      const mileageBucket = Math.round(pv.kilometerstand / 20000) * 20000;
+      const key = `${pv.brand}|${pv.model.split(" ")[0]}|${pv.brandstof || ""}|${pv.bouwjaar || ""}|${mileageBucket}`;
+
+      if (!jpCarsCache.has(key)) {
+        const listings = await queryJPCars({
+          brand: pv.brand,
+          model: pv.model,
+          brandstof: pv.brandstof,
+          bouwjaar: pv.bouwjaar,
+          kilometerstand: pv.kilometerstand,
+        }, jpCarsToken);
+        jpCarsCache.set(key, listings);
+        await new Promise(r => setTimeout(r, 200));
+      }
     }
 
     const allKansen: B2BKans[] = [];
     for (const pv of parsedVehicles) {
-      const key = `${pv.brand}|${pv.model.split(" ")[0]}|${pv.brandstof || ""}`;
+      const mileageBucket = Math.round(pv.kilometerstand / 20000) * 20000;
+      const key = `${pv.brand}|${pv.model.split(" ")[0]}|${pv.brandstof || ""}|${pv.bouwjaar || ""}|${mileageBucket}`;
       const listings = jpCarsCache.get(key) || [];
       const kansen = calculateB2BKansen(pv, listings);
       allKansen.push(...kansen);
@@ -449,7 +478,7 @@ Deno.serve(async (req) => {
     const sterkeKansen = dedupedKansen.filter(k => k.score === "STERK").sort((a, b) => b.onzeMarge - a.onzeMarge);
     const mogelijkeKansen = dedupedKansen.filter(k => k.score === "MOGELIJK").sort((a, b) => b.onzeMarge - a.onzeMarge);
 
-    console.log(`✅ Analyse voltooid: ${sterkeKansen.length} Sterke kansen, ${mogelijkeKansen.length} Mogelijke kansen`);
+    console.log(`✅ Analyse voltooid: ${sterkeKansen.length} Sterke kansen, ${mogelijkeKansen.length} Mogelijke kansen uit ${offlineVehicles.length} auto's`);
 
     if (isDownloadMode) {
       return new Response(JSON.stringify({
