@@ -370,6 +370,11 @@ export const DaanDashboard: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      <SalespersonDetailDialog
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        salesperson={selectedSalesperson}
+      />
     </div>
   );
 };
