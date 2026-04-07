@@ -11,6 +11,7 @@ import {
   ExternalLink, Star, CircleDot,
 } from "lucide-react";
 import { toast } from "sonner";
+import { SalespersonDetailDialog } from "@/components/reports/SalespersonDetailDialog";
 
 interface B2BKans {
   auto: string;
