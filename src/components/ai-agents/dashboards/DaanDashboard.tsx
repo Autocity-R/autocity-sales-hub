@@ -31,6 +31,8 @@ const fmt = (n: number) => `€${n.toLocaleString("nl-NL")}`;
 
 export const DaanDashboard: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [selectedSalesperson, setSelectedSalesperson] = useState<any>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   // B2B kansen data
   const { data: b2bData, isLoading: b2bLoading, refetch: refetchB2B } = useQuery({
