@@ -331,17 +331,31 @@ export const DaanDashboard: React.FC = () => {
           ) : (
             <div className="space-y-2">
               {teamData?.map((t) => (
-                <div key={t.name} className="flex items-center justify-between text-sm py-1.5 px-2 rounded hover:bg-muted/50">
-                  <span className="font-medium w-20">{t.name}</span>
+                <div
+                  key={t.name}
+                  className="flex items-center justify-between text-sm py-1.5 px-2 rounded hover:bg-muted/50 cursor-pointer"
+                  onClick={() => {
+                    const totalMargin = t.vehicles.reduce((sum: number, v: any) => sum + v.margin, 0);
+                    const avgMargin = t.total > 0 && t.revenue > 0 ? (totalMargin / t.revenue) * 100 : 0;
+                    setSelectedSalesperson({
+                      name: t.name,
+                      email: "",
+                      totalSales: t.total,
+                      totalRevenue: t.revenue,
+                      totalMargin,
+                      averageMargin: avgMargin,
+                      vehiclesSold: t.vehicles,
+                    });
+                    setDetailOpen(true);
+                  }}
+                >
+                  <span className="font-medium w-20 text-primary underline-offset-2 hover:underline">{t.name}</span>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-muted-foreground">
                       B2C: {t.b2c} | B2B: {t.b2b}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       Omzet: {fmt(t.revenue)}
-                    </span>
-                    <span className="text-xs text-green-600">
-                      Ø marge: {fmt(t.avgMargin)}
                     </span>
                     <Badge variant={t.opNorm ? "default" : "destructive"}>
                       {t.b2c}/{t.norm}
