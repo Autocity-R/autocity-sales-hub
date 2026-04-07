@@ -251,16 +251,16 @@ async function queryJPCars(
   }
 }
 
-function calculateB2BKansen(vehicle: ParsedVehicle, listings: any[]): B2BKans[] {
+function calculateB2BKansen(vehicle: ParsedVehicle, listings: any[], ownPlates: Set<string>): B2BKans[] {
   const kansen: B2BKans[] = [];
   const autoNaam = `${vehicle.brand} ${vehicle.model}`;
 
   let skipOwn = 0, skipNoSold = 0, skipSoldOld = 0, skipStockHigh = 0, skipNoPrice = 0, skipLowMarge = 0, passed = 0;
 
   for (const listing of listings) {
-    // Skip eigen voorraad (Auto City)
-    const listingUrl = listing.url_japie || listing.url || "";
-    if (listingUrl.includes("auto-city")) { skipOwn++; continue; }
+    // Skip eigen voorraad op basis van kenteken
+    const plate = (listing.license_plate || "").replace(/[-\s]/g, "").toUpperCase();
+    if (ownPlates.has(plate)) { skipOwn++; continue; }
 
     const soldSince = listing.sold_since;
     const daysInStock = listing.stock_days ?? 0;
