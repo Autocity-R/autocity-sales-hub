@@ -11,6 +11,7 @@ import {
   ExternalLink, Star, CircleDot,
 } from "lucide-react";
 import { toast } from "sonner";
+import { SalespersonDetailDialog } from "@/components/reports/SalespersonDetailDialog";
 
 interface B2BKans {
   auto: string;
@@ -30,6 +31,8 @@ const fmt = (n: number) => `€${n.toLocaleString("nl-NL")}`;
 
 export const DaanDashboard: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [selectedSalesperson, setSelectedSalesperson] = useState<any>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   // B2B kansen data
   const { data: b2bData, isLoading: b2bLoading, refetch: refetchB2B } = useQuery({
@@ -89,7 +92,7 @@ export const DaanDashboard: React.FC = () => {
 
       const { data: soldVehicles, error } = await supabase
         .from("vehicles")
-        .select("id, status, selling_price, purchase_price, details, sold_date")
+        .select("id, brand, model, status, selling_price, purchase_price, details, sold_date")
         .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"])
         .gte("sold_date", monthStart);
 
@@ -100,11 +103,12 @@ export const DaanDashboard: React.FC = () => {
         Martijn: ["martijn", "martijn zuyderhoudt", "martijn@auto-city.nl"],
         Alex: ["alex", "alexander", "alexander kool", "alex@auto-city.nl"],
         Hendrik: ["hendrik", "hendrik@auto-city.nl"],
+        Mario: ["mario", "mario kroon", "mario@auto-city.nl"],
       };
 
-      const stats: Record<string, { b2c: number; b2b: number; total: number; revenue: number; totalMargin: number }> = {};
+      const stats: Record<string, { b2c: number; b2b: number; total: number; revenue: number; vehicles: any[] }> = {};
       Object.keys(teamMappings).forEach((n) => {
-        stats[n] = { b2c: 0, b2b: 0, total: 0, revenue: 0, totalMargin: 0 };
+        stats[n] = { b2c: 0, b2b: 0, total: 0, revenue: 0, vehicles: [] };
       });
 
       for (const v of soldVehicles || []) {
@@ -129,10 +133,18 @@ export const DaanDashboard: React.FC = () => {
         if (isB2B) s.b2b++;
         if (isB2C) s.b2c++;
         s.total++;
-        s.revenue += Number(v.selling_price) || 0;
-        const purchase = Number(v.purchase_price) || Number(details.purchasePrice) || 0;
         const selling = Number(v.selling_price) || 0;
-        if (selling > 0 && purchase > 0) s.totalMargin += selling - purchase;
+        const purchase = Number(v.purchase_price) || Number(details.purchasePrice) || 0;
+        s.revenue += selling;
+        s.vehicles.push({
+          id: v.id,
+          brand: v.brand || details.brand || details.merk || "",
+          model: v.model || details.model || "",
+          selling_price: selling,
+          purchase_price: purchase,
+          margin: selling - purchase,
+          sold_date: v.sold_date || "",
+        });
       }
 
       return Object.entries(stats)
@@ -140,7 +152,6 @@ export const DaanDashboard: React.FC = () => {
         .map(([name, s]) => ({
           name,
           ...s,
-          avgMargin: s.total > 0 ? Math.round(s.totalMargin / s.total) : 0,
           norm: 10,
           opNorm: s.b2c >= 10,
         }));
@@ -320,17 +331,31 @@ export const DaanDashboard: React.FC = () => {
           ) : (
             <div className="space-y-2">
               {teamData?.map((t) => (
-                <div key={t.name} className="flex items-center justify-between text-sm py-1.5 px-2 rounded hover:bg-muted/50">
-                  <span className="font-medium w-20">{t.name}</span>
+                <div
+                  key={t.name}
+                  className="flex items-center justify-between text-sm py-1.5 px-2 rounded hover:bg-muted/50 cursor-pointer"
+                  onClick={() => {
+                    const totalMargin = t.vehicles.reduce((sum: number, v: any) => sum + v.margin, 0);
+                    const avgMargin = t.total > 0 && t.revenue > 0 ? (totalMargin / t.revenue) * 100 : 0;
+                    setSelectedSalesperson({
+                      name: t.name,
+                      email: "",
+                      totalSales: t.total,
+                      totalRevenue: t.revenue,
+                      totalMargin,
+                      averageMargin: avgMargin,
+                      vehiclesSold: t.vehicles,
+                    });
+                    setDetailOpen(true);
+                  }}
+                >
+                  <span className="font-medium w-20 text-primary underline-offset-2 hover:underline">{t.name}</span>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-muted-foreground">
                       B2C: {t.b2c} | B2B: {t.b2b}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       Omzet: {fmt(t.revenue)}
-                    </span>
-                    <span className="text-xs text-green-600">
-                      Ø marge: {fmt(t.avgMargin)}
                     </span>
                     <Badge variant={t.opNorm ? "default" : "destructive"}>
                       {t.b2c}/{t.norm}
@@ -345,6 +370,11 @@ export const DaanDashboard: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      <SalespersonDetailDialog
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        salesperson={selectedSalesperson}
+      />
     </div>
   );
 };
