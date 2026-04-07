@@ -1,114 +1,349 @@
-import React from "react";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Package, TrendingUp, Clock, DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  TrendingUp, Package, AlertTriangle, Users, Download, RefreshCw,
+  ExternalLink, Star, CircleDot,
+} from "lucide-react";
+import { toast } from "sonner";
+
+interface B2BKans {
+  auto: string;
+  kenteken: string;
+  inkoopprijs: number;
+  b2bAanbodprijs: number;
+  dealerNaam: string;
+  dealerVerkoopprijs: number;
+  dealerStagedagen: number;
+  verkochtDagenGeleden: number;
+  onzeMarge: number;
+  dealerMargeruimte: number;
+  score: "STERK" | "MOGELIJK";
+}
+
+const fmt = (n: number) => `€${n.toLocaleString("nl-NL")}`;
 
 export const DaanDashboard: React.FC = () => {
-  const { data, isLoading } = useQuery({
-    queryKey: ['daan-dashboard'],
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // B2B kansen data
+  const { data: b2bData, isLoading: b2bLoading, refetch: refetchB2B } = useQuery({
+    queryKey: ["daan-b2b-kansen"],
     queryFn: async () => {
-      const { data: vehicles, error } = await supabase
-        .from('vehicles')
-        .select('id, status, details, created_at')
-        .eq('status', 'voorraad');
+      const { data, error } = await supabase.functions.invoke("daan-b2b-analyse", {
+        body: { mode: "download" },
+      });
+      if (error) throw error;
+      return data as {
+        sterkeKansen: B2BKans[];
+        mogelijkeKansen: B2BKans[];
+        totaalOffline: number;
+      };
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  // Offline voorraad
+  const { data: offlineData, isLoading: offlineLoading } = useQuery({
+    queryKey: ["daan-offline-voorraad"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vehicles")
+        .select("id, brand, model, license_number, purchase_price, details, created_at")
+        .eq("status", "voorraad")
+        .gt("purchase_price", 0);
 
       if (error) throw error;
-      const items = vehicles || [];
       const now = Date.now();
       const DAY = 86400000;
 
-      let totalValue = 0;
-      let over70 = 0;
-      let between50and70 = 0;
-      let noOnlineDate = 0;
-      const longStanding: { name: string; days: number; price: number }[] = [];
-
-      items.forEach(v => {
-        const d = v.details as any;
-        const price = d?.sellingPrice || d?.price || 0;
-        totalValue += Number(price);
-
-        const onlineDate = d?.online_since_date;
-        if (!onlineDate) {
-          noOnlineDate++;
-        } else {
-          const days = Math.floor((now - new Date(onlineDate).getTime()) / DAY);
-          if (days > 70) {
-            over70++;
-            longStanding.push({ name: `${d?.brand || ''} ${d?.model || ''}`.trim() || v.id, days, price: Number(price) });
-          } else if (days >= 50) {
-            between50and70++;
-          }
-        }
-      });
-
-      longStanding.sort((a, b) => b.days - a.days);
-
-      return { total: items.length, totalValue, over70, between50and70, noOnlineDate, longStanding: longStanding.slice(0, 15) };
+      return (data || [])
+        .filter((v: any) => {
+          const d = v.details || {};
+          return d.showroomOnline !== true && d.isTradeIn !== true;
+        })
+        .map((v: any) => ({
+          id: v.id,
+          naam: `${v.brand || ""} ${v.model || ""}`.trim(),
+          kenteken: v.license_number || "",
+          inkoopprijs: Number(v.purchase_price) || Number(v.details?.purchasePrice) || 0,
+          dagenInBezit: Math.floor((now - new Date(v.created_at).getTime()) / DAY),
+        }))
+        .sort((a: any, b: any) => b.dagenInBezit - a.dagenInBezit);
     },
-    refetchInterval: 60000,
   });
 
-  if (isLoading) return <div className="grid grid-cols-4 gap-3">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>;
+  // Team performance
+  const { data: teamData, isLoading: teamLoading } = useQuery({
+    queryKey: ["daan-team-performance"],
+    queryFn: async () => {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const { data, error } = await supabase
+        .from("weekly_sales")
+        .select("salesperson_name, b2c_sales, b2b_sales, total_sales")
+        .gte("week_start_date", monthStart.split("T")[0]);
+
+      if (error) throw error;
+
+      const grouped: Record<string, { b2c: number; b2b: number; total: number }> = {};
+      for (const row of data || []) {
+        const name = row.salesperson_name || "Onbekend";
+        if (!grouped[name]) grouped[name] = { b2c: 0, b2b: 0, total: 0 };
+        grouped[name].b2c += row.b2c_sales || 0;
+        grouped[name].b2b += row.b2b_sales || 0;
+        grouped[name].total += row.total_sales || 0;
+      }
+
+      return Object.entries(grouped).map(([name, stats]) => ({
+        name,
+        ...stats,
+        norm: 10,
+        opNorm: stats.b2c >= 10,
+      }));
+    },
+  });
+
+  const handleRunAnalysis = async () => {
+    setIsAnalyzing(true);
+    toast.info("B2B analyse wordt uitgevoerd...");
+    try {
+      const { data, error } = await supabase.functions.invoke("daan-b2b-analyse", {
+        body: { mode: "download" },
+      });
+      if (error) throw error;
+      await refetchB2B();
+      toast.success(`Analyse compleet: ${(data?.sterkeKansen?.length || 0) + (data?.mogelijkeKansen?.length || 0)} kansen gevonden`);
+    } catch (e: any) {
+      toast.error("Analyse mislukt: " + (e.message || "Onbekende fout"));
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const sterke = b2bData?.sterkeKansen || [];
+  const mogelijke = b2bData?.mogelijkeKansen || [];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* KPI Strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-orange-500/10"><Package className="h-5 w-5 text-orange-500" /></div>
-            <div><p className="text-2xl font-bold">{data?.total || 0}</p><p className="text-xs text-muted-foreground">Totaal voorraad</p></div>
+            <div className="p-2 rounded-lg bg-green-500/10">
+              <Star className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-green-600">
+                {b2bLoading ? <Skeleton className="h-7 w-8" /> : sterke.length}
+              </p>
+              <p className="text-xs text-muted-foreground">Sterke B2B kansen</p>
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-orange-500/10"><DollarSign className="h-5 w-5 text-orange-500" /></div>
-            <div><p className="text-2xl font-bold">€{((data?.totalValue || 0) / 1000).toFixed(0)}k</p><p className="text-xs text-muted-foreground">Voorraadwaarde</p></div>
+            <div className="p-2 rounded-lg bg-orange-500/10">
+              <CircleDot className="h-5 w-5 text-orange-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-orange-500">
+                {b2bLoading ? <Skeleton className="h-7 w-8" /> : mogelijke.length}
+              </p>
+              <p className="text-xs text-muted-foreground">Mogelijke kansen</p>
+            </div>
           </CardContent>
         </Card>
-        <Card className={data?.over70 ? "border-destructive" : ""}>
+        <Card className={offlineData && offlineData.length > 20 ? "border-destructive" : ""}>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-red-500/10"><AlertTriangle className="h-5 w-5 text-red-500" /></div>
-            <div><p className="text-2xl font-bold">{data?.over70 || 0}</p><p className="text-xs text-muted-foreground">&gt;70 dagen online</p></div>
+            <div className="p-2 rounded-lg bg-red-500/10">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">
+                {offlineLoading ? <Skeleton className="h-7 w-8" /> : offlineData?.length || 0}
+              </p>
+              <p className="text-xs text-muted-foreground">Offline auto's</p>
+            </div>
           </CardContent>
         </Card>
-        <Card className={data?.between50and70 ? "border-orange-500" : ""}>
+        <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-orange-500/10"><Clock className="h-5 w-5 text-orange-500" /></div>
-            <div><p className="text-2xl font-bold">{data?.between50and70 || 0}</p><p className="text-xs text-muted-foreground">50-70 dagen</p></div>
+            <div className="p-2 rounded-lg bg-blue-500/10">
+              <Users className="h-5 w-5 text-blue-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">
+                {teamLoading ? <Skeleton className="h-7 w-8" /> : teamData?.reduce((s, t) => s + t.total, 0) || 0}
+              </p>
+              <p className="text-xs text-muted-foreground">Verkopen deze maand</p>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {data?.noOnlineDate ? (
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground"><span className="font-semibold text-foreground">{data.noOnlineDate}</span> auto's zonder online_since_date</p>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {data?.longStanding && data.longStanding.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Langst staande auto's</CardTitle></CardHeader>
-          <CardContent>
+      {/* B2B Kansen Section */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            B2B Kansen
+          </CardTitle>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleRunAnalysis}
+              disabled={isAnalyzing}
+            >
+              <RefreshCw className={`h-3 w-3 mr-1 ${isAnalyzing ? "animate-spin" : ""}`} />
+              {isAnalyzing ? "Bezig..." : "Analyse"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {b2bLoading ? (
             <div className="space-y-2">
-              {data.longStanding.map((v, i) => (
-                <div key={i} className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{v.name}</span>
+              {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+            </div>
+          ) : (
+            <Tabs defaultValue="sterk" className="w-full">
+              <TabsList className="mb-3">
+                <TabsTrigger value="sterk">🟢 Sterk ({sterke.length})</TabsTrigger>
+                <TabsTrigger value="mogelijk">🟡 Mogelijk ({mogelijke.length})</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="sterk">
+                <KansenTabel kansen={sterke} />
+              </TabsContent>
+              <TabsContent value="mogelijk">
+                <KansenTabel kansen={mogelijke} />
+              </TabsContent>
+            </Tabs>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Offline Voorraad */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            Offline Voorraad
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {offlineLoading ? (
+            <div className="space-y-2">
+              {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
+            </div>
+          ) : (
+            <div className="space-y-1 max-h-[300px] overflow-y-auto">
+              {offlineData?.slice(0, 20).map((v: any) => (
+                <div key={v.id} className="flex items-center justify-between text-sm py-1.5 px-2 hover:bg-muted/50 rounded">
                   <div className="flex items-center gap-2">
-                    <Badge variant="destructive">{v.days}d</Badge>
-                    <span className="text-muted-foreground">€{v.price.toLocaleString()}</span>
+                    <span className="font-medium">{v.naam}</span>
+                    <span className="text-muted-foreground text-xs">{v.kenteken}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-muted-foreground text-xs">{fmt(v.inkoopprijs)}</span>
+                    <Badge variant={v.dagenInBezit > 60 ? "destructive" : v.dagenInBezit > 30 ? "secondary" : "outline"}>
+                      {v.dagenInBezit}d
+                    </Badge>
                   </div>
                 </div>
               ))}
+              {(!offlineData || offlineData.length === 0) && (
+                <p className="text-sm text-muted-foreground text-center py-4">Alle auto's zijn online</p>
+              )}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Team Performance */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Team Performance (deze maand)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {teamLoading ? (
+            <div className="space-y-2">
+              {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {teamData?.map((t) => (
+                <div key={t.name} className="flex items-center justify-between text-sm py-1.5 px-2 rounded hover:bg-muted/50">
+                  <span className="font-medium">{t.name}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground">
+                      B2C: {t.b2c} | B2B: {t.b2b}
+                    </span>
+                    <Badge variant={t.opNorm ? "default" : "destructive"}>
+                      {t.b2c}/{t.norm}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+              {(!teamData || teamData.length === 0) && (
+                <p className="text-sm text-muted-foreground text-center py-4">Geen verkoopdata deze maand</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
+
+// Sub-component for B2B kansen table
+function KansenTabel({ kansen }: { kansen: B2BKans[] }) {
+  if (kansen.length === 0) {
+    return <p className="text-sm text-muted-foreground text-center py-6">Geen kansen gevonden</p>;
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b text-muted-foreground text-xs">
+            <th className="text-left py-2 px-1">Auto</th>
+            <th className="text-left py-2 px-1">Kenteken</th>
+            <th className="text-right py-2 px-1">Inkoop</th>
+            <th className="text-right py-2 px-1 font-bold">B2B Aanbod</th>
+            <th className="text-left py-2 px-1">Dealer</th>
+            <th className="text-right py-2 px-1">Dealer Prijs</th>
+            <th className="text-center py-2 px-1">Stagedn</th>
+            <th className="text-center py-2 px-1">Verk. dgn</th>
+            <th className="text-right py-2 px-1 font-bold text-green-600">Marge</th>
+          </tr>
+        </thead>
+        <tbody>
+          {kansen.map((k, i) => (
+            <tr key={`${k.kenteken}-${i}`} className="border-b last:border-0 hover:bg-muted/30">
+              <td className="py-2 px-1 font-medium">{k.auto}</td>
+              <td className="py-2 px-1 text-muted-foreground">{k.kenteken}</td>
+              <td className="py-2 px-1 text-right">{fmt(k.inkoopprijs)}</td>
+              <td className="py-2 px-1 text-right font-bold">{fmt(k.b2bAanbodprijs)}</td>
+              <td className="py-2 px-1">{k.dealerNaam}</td>
+              <td className="py-2 px-1 text-right">{fmt(k.dealerVerkoopprijs)}</td>
+              <td className="py-2 px-1 text-center">{k.dealerStagedagen}</td>
+              <td className="py-2 px-1 text-center">{k.verkochtDagenGeleden}</td>
+              <td className="py-2 px-1 text-right font-bold text-green-600">{fmt(k.onzeMarge)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
