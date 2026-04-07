@@ -66,7 +66,8 @@ export const DaanDashboard: React.FC = () => {
       return (data || [])
         .filter((v: any) => {
           const d = v.details || {};
-          return d.showroomOnline !== true && d.isTradeIn !== true;
+          // Exclude online, inruil, en onderweg (nog in transport)
+          return d.showroomOnline !== true && d.isTradeIn !== true && d.transportStatus !== "onderweg";
         })
         .map((v: any) => ({
           id: v.id,
