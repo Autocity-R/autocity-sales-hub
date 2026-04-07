@@ -22,6 +22,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { SalespersonDetailDialog } from "./SalespersonDetailDialog";
 import { ReportPeriod } from "@/types/reports";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface SalespersonData {
   id: string;

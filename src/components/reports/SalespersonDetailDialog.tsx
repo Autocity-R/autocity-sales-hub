@@ -160,20 +160,26 @@ export const SalespersonDetailDialog: React.FC<SalespersonDetailDialogProps> = (
                       <div className="font-medium">{vehicle.brand}</div>
                       <div className="text-sm text-muted-foreground">{vehicle.model}</div>
                     </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {formatCurrency(vehicle.purchase_price)}
-                    </TableCell>
+                    {showMargins && (
+                      <TableCell className="text-right text-muted-foreground">
+                        {formatCurrency(vehicle.purchase_price)}
+                      </TableCell>
+                    )}
                     <TableCell className="text-right font-medium">
                       {formatCurrency(vehicle.selling_price)}
                     </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(vehicle.margin)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className={`font-bold ${getMarginColor(marginPercentage)}`}>
-                        {marginPercentage.toFixed(1)}%
-                      </span>
-                    </TableCell>
+                    {showMargins && (
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(vehicle.margin)}
+                      </TableCell>
+                    )}
+                    {showMargins && (
+                      <TableCell className="text-right">
+                        <span className={`font-bold ${getMarginColor(marginPercentage)}`}>
+                          {marginPercentage.toFixed(1)}%
+                        </span>
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })}
