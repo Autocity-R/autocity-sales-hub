@@ -208,13 +208,27 @@ async function queryJPCars(
       headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
     });
     if (!resp.ok) {
-      console.error(`JP Cars error ${resp.status} for ${parsed.brand} ${parsed.model}`);
+      console.error(`❌ JP Cars API Error: ${resp.status} ${resp.statusText} for ${parsed.brand} ${parsed.model}`);
       return [];
     }
     const data = await resp.json();
-    return Array.isArray(data) ? data : [];
+
+    let listings: any[];
+    if (Array.isArray(data)) {
+      listings = data;
+    } else if (data && Array.isArray(data.data)) {
+      listings = data.data;
+    } else if (data && Array.isArray(data.items)) {
+      listings = data.items;
+    } else {
+      console.warn(`⚠️ Onverwacht JP Cars response formaat voor ${parsed.brand} ${parsed.model}:`, JSON.stringify(data).substring(0, 200));
+      listings = [];
+    }
+
+    console.log(`🚗 JP Cars: ${parsed.brand} ${parsed.model} ${parsed.brandstof || ''} ${parsed.bouwjaar || ''} -> ${listings.length} resultaten`);
+    return listings;
   } catch (e) {
-    console.error(`JP Cars fetch error for ${parsed.brand} ${parsed.model}:`, e);
+    console.error(`❌ Fetch error JP Cars ${parsed.brand} ${parsed.model}:`, e);
     return [];
   }
 }
