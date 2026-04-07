@@ -152,7 +152,6 @@ export const DaanDashboard: React.FC = () => {
         .map(([name, s]) => ({
           name,
           ...s,
-          avgMargin: s.total > 0 ? Math.round(s.totalMargin / s.total) : 0,
           norm: 10,
           opNorm: s.b2c >= 10,
         }));
