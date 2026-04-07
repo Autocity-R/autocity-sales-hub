@@ -255,25 +255,28 @@ function calculateB2BKansen(vehicle: ParsedVehicle, listings: any[]): B2BKans[] 
   const kansen: B2BKans[] = [];
   const autoNaam = `${vehicle.brand} ${vehicle.model}`;
 
+  let skipOwn = 0, skipNoSold = 0, skipSoldOld = 0, skipStockHigh = 0, skipNoPrice = 0, skipLowMarge = 0, passed = 0;
+
   for (const listing of listings) {
     // Skip eigen voorraad (Auto City)
     const listingUrl = listing.url_japie || listing.url || "";
-    if (listingUrl.includes("auto-city")) continue;
+    if (listingUrl.includes("auto-city")) { skipOwn++; continue; }
 
     const soldSince = listing.sold_since;
     const daysInStock = listing.stock_days ?? 0;
     const dealerPrice = listing.price_local ?? 0;
     const dealerName = listing.location_name || "Onbekend";
 
-    if (soldSince === null || soldSince === undefined) continue;
-    if (soldSince > 40) continue;
-    if (daysInStock > 50) continue;
-    if (dealerPrice <= 0) continue;
+    if (soldSince === null || soldSince === undefined) { skipNoSold++; continue; }
+    if (soldSince > 40) { skipSoldOld++; continue; }
+    if (daysInStock > 50) { skipStockHigh++; continue; }
+    if (dealerPrice <= 0) { skipNoPrice++; continue; }
 
     const maxOnzeprijs = dealerPrice - 3000;
     const onzeMarge = maxOnzeprijs - vehicle.inkoopprijs;
 
-    if (onzeMarge < 3000) continue;
+    if (onzeMarge < 3000) { skipLowMarge++; continue; }
+    passed++;
 
     kansen.push({
       auto: autoNaam,
