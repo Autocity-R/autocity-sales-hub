@@ -138,8 +138,8 @@ export const DaanDashboard: React.FC = () => {
         s.revenue += selling;
         s.vehicles.push({
           id: v.id,
-          brand: details.brand || details.merk || "",
-          model: details.model || "",
+          brand: v.brand || details.brand || details.merk || "",
+          model: v.model || details.model || "",
           selling_price: selling,
           purchase_price: purchase,
           margin: selling - purchase,
