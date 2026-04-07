@@ -80,34 +80,70 @@ export const DaanDashboard: React.FC = () => {
     },
   });
 
-  // Team performance
+  // Team performance — live data uit vehicles tabel
   const { data: teamData, isLoading: teamLoading } = useQuery({
     queryKey: ["daan-team-performance"],
     queryFn: async () => {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const { data, error } = await supabase
-        .from("weekly_sales")
-        .select("salesperson_name, b2c_sales, b2b_sales, total_sales")
-        .gte("week_start_date", monthStart.split("T")[0]);
+
+      const { data: soldVehicles, error } = await supabase
+        .from("vehicles")
+        .select("id, status, selling_price, purchase_price, details, sold_date")
+        .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"])
+        .gte("sold_date", monthStart);
 
       if (error) throw error;
 
-      const grouped: Record<string, { b2c: number; b2b: number; total: number }> = {};
-      for (const row of data || []) {
-        const name = row.salesperson_name || "Onbekend";
-        if (!grouped[name]) grouped[name] = { b2c: 0, b2b: 0, total: 0 };
-        grouped[name].b2c += row.b2c_sales || 0;
-        grouped[name].b2b += row.b2b_sales || 0;
-        grouped[name].total += row.total_sales || 0;
+      const teamMappings: Record<string, string[]> = {
+        Daan: ["daan", "daan leyte", "daan@auto-city.nl"],
+        Martijn: ["martijn", "martijn zuyderhoudt", "martijn@auto-city.nl"],
+        Alex: ["alex", "alexander", "alexander kool", "alex@auto-city.nl"],
+        Hendrik: ["hendrik", "hendrik@auto-city.nl"],
+      };
+
+      const stats: Record<string, { b2c: number; b2b: number; total: number; revenue: number; totalMargin: number }> = {};
+      Object.keys(teamMappings).forEach((n) => {
+        stats[n] = { b2c: 0, b2b: 0, total: 0, revenue: 0, totalMargin: 0 };
+      });
+
+      for (const v of soldVehicles || []) {
+        const details = (v.details || {}) as any;
+        const sp = (details.salespersonName || details.salesperson || details.verkoper || "").toLowerCase().trim();
+        if (!sp) continue;
+
+        let matched: string | null = null;
+        for (const [name, variations] of Object.entries(teamMappings)) {
+          if (variations.some((var_) => sp.includes(var_) || var_.includes(sp))) {
+            matched = name;
+            break;
+          }
+        }
+        if (!matched) continue;
+
+        const s = stats[matched];
+        const salesType = details.salesType;
+        const isB2B = v.status === "verkocht_b2b" || (v.status === "afgeleverd" && salesType === "b2b");
+        const isB2C = v.status === "verkocht_b2c" || (v.status === "afgeleverd" && (salesType === "b2c" || !salesType));
+
+        if (isB2B) s.b2b++;
+        if (isB2C) s.b2c++;
+        s.total++;
+        s.revenue += Number(v.selling_price) || 0;
+        const purchase = Number(v.purchase_price) || Number(details.purchasePrice) || 0;
+        const selling = Number(v.selling_price) || 0;
+        if (selling > 0 && purchase > 0) s.totalMargin += selling - purchase;
       }
 
-      return Object.entries(grouped).map(([name, stats]) => ({
-        name,
-        ...stats,
-        norm: 10,
-        opNorm: stats.b2c >= 10,
-      }));
+      return Object.entries(stats)
+        .filter(([, s]) => s.total > 0)
+        .map(([name, s]) => ({
+          name,
+          ...s,
+          avgMargin: s.total > 0 ? Math.round(s.totalMargin / s.total) : 0,
+          norm: 10,
+          opNorm: s.b2c >= 10,
+        }));
     },
   });
 
