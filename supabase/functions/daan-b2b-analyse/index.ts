@@ -216,6 +216,8 @@ async function queryJPCars(
     let listings: any[];
     if (Array.isArray(data)) {
       listings = data;
+    } else if (data && Array.isArray(data.results)) {
+      listings = data.results;
     } else if (data && Array.isArray(data.data)) {
       listings = data.data;
     } else if (data && Array.isArray(data.items)) {
