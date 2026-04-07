@@ -1,102 +1,95 @@
 
 
-## Fix: Daan B2B Analyse — 4 bugs in `daan-b2b-analyse/index.ts`
+## Fix: Daan B2B Analyse — Verkeerd API endpoint
 
-### Samenvatting
-De B2B analyse werkt niet correct door 4 bugs: verkeerde vehicle filter, ontbrekende data voor Claude, te brede JP Cars queries, en verkeerde veldnamen.
+### Het probleem (100% bewezen uit logs)
 
-### Database feiten (bewezen)
-| Groep | Aantal |
-|-------|--------|
-| `voorraad` + offline + niet-inruil + **onderweg** | **47** ← dit zijn je B2B kansen |
-| `voorraad` + offline + niet-inruil + aangekomen | 6 |
-| `voorraad` + online + niet-inruil | 88 |
-| `voorraad` + inruil | 40 |
+De functie gebruikt `GET /api/cars/list` — dit is het **eigen voorraad window** van Auto City. Daarom retourneert ELKE query dezelfde eerste listing: `G-217-NH` uit Schiedam (Auto City zelf). Het maakt niet uit of je zoekt op Audi, Ford of Kia — je krijgt altijd je eigen auto's terug.
 
-De huidige code sluit de 47 onderweg-auto's **uit** (regel 382: `if (d.transportStatus === "onderweg") return false`). Dit is precies omgekeerd — die auto's zijn juist de kansen.
+Dit endpoint is **niet** bedoeld om de markt te doorzoeken. Het toont alleen wat JP Cars over jouw eigen voorraad weet. Daarom:
+- Dealer naam = alleen `location_name` (stadsnaam), geen echte dealer naam
+- Geen `sold_since` data (het zijn jouw eigen auto's, niet verkochte auto's van anderen)
+- Alle resultaten identiek ongeacht merk/model
 
-### Bug 1: Filter is omgekeerd (KRITIEK)
-**Nu:** Regel 382 sluit `transportStatus === "onderweg"` uit → 6 auto's over.
-**Fix:** Verwijder die exclusie. Alle offline + niet-inruil auto's zijn B2B kandidaten (53 stuks: 47 onderweg + 6 aangekomen maar offline).
+### De oplossing
 
-### Bug 2: Claude krijgt geen notes/omschrijving
-**Nu:** Regel 114 stuurt alleen `brand model bouwjaar` naar Claude.
-De `model` velden bevatten vaak al brandstof/vermogen info (bijv. "Q5 Sportback 55 TFSI S Line", "Seal U DM-i 1.5 phev Boost", "Focus 155pk ST Line"). Maar `notes` wordt niet meegestuurd en `year`/`mileage` worden niet uit de DB gehaald.
+Gebruik `POST /api/valuate/extended` — hetzelfde endpoint dat jullie taxatie-systeem (`jpcars-lookup`) en dealer-lookup (`jpcars-dealer-lookup`) al succesvol gebruiken. Dit endpoint:
+- Retourneert een `window[]` array met vergelijkbare auto's van ANDERE dealers
+- Bevat `dealer_name` (echte dealer naam, bijv. "frankoomenautos.nl")
+- Bevat `sold_since` (dagen sinds verkoop, null = nog te koop)
+- Bevat `price_local`, `stock_days`, `license_plate`
+- Filtert op merk, model, bouwjaar, brandstof, transmissie, kilometerstand
 
-**Fix:**
-- Voeg `year, mileage, notes` toe aan de DB select (regel 370)
-- Gebruik `v.year` direct (niet alleen `details.buildYear`)
-- Stuur `notes` mee naar Claude in de descriptions string
-- Voeg `mileage` toe aan vehicleInputs voor JP Cars queries
+### Het nieuwe proces (per auto)
 
-### Bug 3: JP Cars query is te breed (geen bouwjaar/km per auto)
-**Nu:** `uniqueCombos` groepeert op `brand|model[0]|brandstof`. Een Audi Q5 2026 15km en een Audi Q5 2023 60.000km krijgen dezelfde JP Cars resultaten.
+```text
+1. Claude herkent: "Range Rover Evoque PHEV 2024 12530km"
+   → brand: Land Rover, model: Range Rover Evoque
+   → brandstof: Hybride, transmissie: Automaat, bouwjaar: 2024
 
-**Fix:** Query JP Cars **per voertuig** met specifieke parameters:
-- `build_year_min/max` = bouwjaar ±1
-- `mileage_min/max` = kilometerstand ±20.000 (als > 1000km, anders weglaten voor nieuwe auto's)
-- Rate limiting 200ms behouden
-- Cache per `brand|model[0]|brandstof|bouwjaar|mileage_bucket` om dubbele calls te voorkomen (3x Audi Q5 2026 15km = 1 call)
+2. POST /api/valuate/extended met:
+   { make: "LAND ROVER", model: "RANGE ROVER EVOQUE",
+     fuel: "Hybrid", gear: "Automatic", build: 2024, mileage: 12530 }
 
-### Bug 4: Verkeerde JP Cars veldnamen
-**Nu:** `listing.stock_days` (regel 244).
-**Bewezen uit taxatie-portal-search:** Het veld heet `days_in_stock`. En `jpcars-dealer-search` gebruikt `stock_days`. Beide zijn dus mogelijk.
+3. Response window[] bevat vergelijkbare auto's met:
+   - dealer_name, price_local, sold_since, stock_days
 
-**Fix:** Fallbacks toevoegen:
-```
-daysInStock = listing.days_in_stock ?? listing.stock_days ?? 0
-dealerPrice = listing.price_local ?? listing.price ?? 0
-dealerName  = listing.dealer_name ?? "Onbekend"
-soldSince   = listing.sold_since (is al correct — is een number)
+4. Filter: sold_since != null (verkocht) en sold_since <= 40 (recent)
+   Bereken: dealerPrijs - 3000 = B2B aanbod
+   Check: aanbod - inkoopprijs >= 3000 = KANS
 ```
 
-### Technische wijzigingen
+### Technische wijzigingen — `supabase/functions/daan-b2b-analyse/index.ts`
 
-**Regel 370** — DB select uitbreiden:
-```typescript
-.select("id, brand, model, year, mileage, license_number, purchase_price, notes, details, created_at")
+**1. Vervang `queryJPCars` functie volledig**
+Van: `GET /api/cars/list?make=X&model=Y` (eigen voorraad)
+Naar: `POST /api/valuate/extended` (markt taxatie met window)
+
+De POST body gebruikt dezelfde mapping als `jpcars-lookup`:
+- `make` / `model` in UPPERCASE
+- `fuel`: Benzine→"Petrol", Diesel→"Diesel", Hybride→"Hybrid", Elektrisch→"Electric"
+- `gear`: Automaat→"Automatic", Handgeschakeld→"Manual"
+- `build`: bouwjaar als nummer
+- `mileage`: kilometerstand
+
+Response: `data.window` is de array met vergelijkbare listings.
+
+**2. Pas `calculateB2BKansen` aan voor window data**
+De window data heeft:
+- `dealer_name` (echte dealer naam) — niet `location_name`
+- `sold_since` (number, dagen) — null = nog te koop
+- `stock_days` of `days_in_stock` — stagedagen
+- `price_local` — prijs
+
+Verwijder de `ownPlates` kenteken-filtering (niet nodig, valuate endpoint geeft al andere dealers).
+
+**3. Filter alleen transportlijst auto's**
+Huidige filter pakt alle offline auto's (53 stuks). Voor de B2B analyse willen we alleen auto's die nog onderweg zijn:
+```
+if (d.transportStatus !== "onderweg") return false;
+```
+Dit geeft ~47 auto's — precies de transportlijst.
+
+**4. Fuel/Gear mapping functies toevoegen**
+Kopieer de bewezen mapping uit `jpcars-lookup`:
+```
+mapFuel: Benzine→"Petrol", Diesel→"Diesel", Hybride→"Hybrid", Elektrisch→"Electric"
+mapGear: Automaat→"Automatic", Handgeschakeld→"Manual"
 ```
 
-**Regel 382** — Filter omdraaien:
-Verwijder `if (d.transportStatus === "onderweg") return false;`
+**5. Excel output: meerdere kansen per auto behouden**
+Nu wordt per auto alleen de beste kans bewaard (dedup op kenteken). Maar import auto's hebben vaak geen kenteken. Dedup op vehicle ID, en bewaar top 3 kansen per auto zodat verkopers meerdere dealers kunnen benaderen.
 
-**Regel 395-400** — vehicleInputs uitbreiden:
-```typescript
-const vehicleInputs = offlineVehicles.map((v: any) => ({
-  id: v.id,
-  brand: v.brand || "",
-  model: v.model || "",
-  bouwjaar: v.year || v.details?.buildYear || null,
-  kilometerstand: v.mileage || 0,
-  omschrijving: v.notes || "",
-}));
-```
-
-**Regel 114** — Claude input uitbreiden:
-```typescript
-const descriptions = vehicles.map((v, i) => 
-  `[${i}] ${v.brand} ${v.model} ${v.bouwjaar || ""} km:${v.kilometerstand || ""} ${v.omschrijving || ""}`
-).join("\n");
-```
-
-**Regel 419-430** — Per-voertuig JP Cars met slimme cache:
-Vervang `uniqueCombos` met cache op `brand|model[0]|brandstof|bouwjaar|mileage_bucket(per 20k)`. Stuur `build_year_min/max` en `mileage_min/max` mee naar `queryJPCars`.
-
-**Regel 243-246** — Veldnamen met fallbacks:
-```typescript
-const daysInStock = listing.days_in_stock ?? listing.stock_days ?? 0;
-const dealerPrice = listing.price_local ?? listing.price ?? 0;
-const dealerName = listing.dealer_name ?? "Onbekend";
-```
-
-**Debug logging** — Na elke JP Cars query:
-Log merk/model/bouwjaar/km + aantal resultaten + eerste listing sample.
+### Wat NIET verandert
+- Claude batch parse (werkt al goed met notes/mileage)
+- Excel styling en format
+- Email verzending
+- Rate limiting (200ms)
+- Upload naar daan-analyses bucket
 
 ### Bestand
 
 | Bestand | Actie |
 |---------|-------|
-| `supabase/functions/daan-b2b-analyse/index.ts` | Alle 4 bugs fixen |
-
-Na deploy kan de analyse opnieuw gedraaid worden. Verwacht: ~47-53 auto's geanalyseerd in plaats van 6, met correcte per-auto JP Cars resultaten en dealer namen.
+| `supabase/functions/daan-b2b-analyse/index.ts` | Vervang queryJPCars + filter + veldnamen |
 
