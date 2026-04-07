@@ -81,6 +81,32 @@ interface B2BKans {
   score: "STERK" | "MOGELIJK";
 }
 
+function parseClaudeResponse(text: string): any[] {
+  try {
+    let cleanText = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+
+    const firstBracket = Math.min(
+      cleanText.indexOf('[') !== -1 ? cleanText.indexOf('[') : Infinity,
+      cleanText.indexOf('{') !== -1 ? cleanText.indexOf('{') : Infinity
+    );
+    const lastBracket = Math.max(
+      cleanText.lastIndexOf(']'),
+      cleanText.lastIndexOf('}')
+    );
+
+    if (firstBracket !== Infinity && lastBracket !== -1 && lastBracket > firstBracket) {
+      cleanText = cleanText.substring(firstBracket, lastBracket + 1);
+    }
+
+    const parsed = JSON.parse(cleanText);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch (error) {
+    console.error("❌ CRITICAL: Failed to parse Claude JSON:", error);
+    console.error("Raw Claude Output (first 500 chars):", text.substring(0, 500));
+    return [];
+  }
+}
+
 async function claudeBatchParse(
   vehicles: { id: string; brand: string; model: string; bouwjaar?: number }[],
   apiKey: string
@@ -120,7 +146,9 @@ Input:
 ${descriptions}
 
 Geef UITSLUITEND een geldige JSON array terug. Formaat:
-[{"id":0,"uitvoering":"T5","brandstof":"Hybride","transmissie":"Automaat","bouwjaar":2021}]`
+[{"id":0,"uitvoering":"T5","brandstof":"Hybride","transmissie":"Automaat","bouwjaar":2021}]
+
+BELANGRIJK: Geef UITSLUITEND de ruwe JSON array terug. Geen inleiding, geen conclusie, geen markdown code blocks. Begin direct met [ en eindig met ].`
       }],
     }),
   });
@@ -132,28 +160,22 @@ Geef UITSLUITEND een geldige JSON array terug. Formaat:
 
   const data = await response.json();
   const text = data.content?.[0]?.text || "[]";
-  const cleanJson = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
 
-  try {
-    const parsed = JSON.parse(cleanJson) as Array<{
-      id: number; uitvoering: string | null; brandstof: string | null; transmissie: string | null; bouwjaar: number | null;
-    }>;
-    const result: Record<string, any> = {};
-    for (const item of parsed) {
-      if (item.id >= 0 && item.id < vehicles.length) {
-        result[vehicles[item.id].id] = {
-          uitvoering: item.uitvoering,
-          brandstof: item.brandstof,
-          transmissie: item.transmissie,
-          bouwjaar: item.bouwjaar,
-        };
-      }
+  const parsed = parseClaudeResponse(text);
+  console.log(`🤖 Claude Parsing voltooid: ${parsed.length} voertuigen succesvol geëxtraheerd`);
+
+  const result: Record<string, any> = {};
+  for (const item of parsed) {
+    if (item.id >= 0 && item.id < vehicles.length) {
+      result[vehicles[item.id].id] = {
+        uitvoering: item.uitvoering,
+        brandstof: item.brandstof,
+        transmissie: item.transmissie,
+        bouwjaar: item.bouwjaar,
+      };
     }
-    return result;
-  } catch (e) {
-    console.error("Failed to parse Claude response:", e);
-    return {};
   }
+  return result;
 }
 
 async function queryJPCars(
