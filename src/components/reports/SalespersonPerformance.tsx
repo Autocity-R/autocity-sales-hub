@@ -64,6 +64,7 @@ export const SalespersonPerformance: React.FC<SalespersonPerformanceProps> = ({ 
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedSalesperson, setSelectedSalesperson] = useState<SalespersonData | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const { isAdmin } = useRoleAccess();
 
   // Fetch salesperson performance data
   const { data: salespersonData, isLoading } = useQuery({
