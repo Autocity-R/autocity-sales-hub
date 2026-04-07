@@ -106,9 +106,9 @@ export const DaanDashboard: React.FC = () => {
         Mario: ["mario", "mario kroon", "mario@auto-city.nl"],
       };
 
-      const stats: Record<string, { b2c: number; b2b: number; total: number; revenue: number; totalMargin: number }> = {};
+      const stats: Record<string, { b2c: number; b2b: number; total: number; revenue: number; vehicles: any[] }> = {};
       Object.keys(teamMappings).forEach((n) => {
-        stats[n] = { b2c: 0, b2b: 0, total: 0, revenue: 0, totalMargin: 0 };
+        stats[n] = { b2c: 0, b2b: 0, total: 0, revenue: 0, vehicles: [] };
       });
 
       for (const v of soldVehicles || []) {
