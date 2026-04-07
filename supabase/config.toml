@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.lisa-email-checklist-reminder]
 verify_jwt = false
+
+[functions.daan-b2b-analyse]
+verify_jwt = false
