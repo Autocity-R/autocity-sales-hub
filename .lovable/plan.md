@@ -1,44 +1,51 @@
 
 
-## Fix: Waterdichte Claude JSON Parsing & JP Cars Response Handler
+## Fix: JP Cars response format — `results` key ontbreekt
 
-### Probleem
-De edge function logs tonen: `SyntaxError: Unexpected non-whitespace character after JSON at position 607`. Claude voegt tekst toe na de JSON array, waardoor `JSON.parse` faalt. Alle Claude-metadata (brandstof, bouwjaar) gaat verloren, en JP Cars queries leveren niks op.
-
-### Aanpassingen in `supabase/functions/daan-b2b-analyse/index.ts`
-
-#### 1. Claude prompt versterken
-Voeg expliciete instructie toe aan het einde van de prompt:
+### Probleem (bewezen door logs)
 ```
-BELANGRIJK: Geef UITSLUITEND de ruwe JSON array terug. Geen inleiding, geen conclusie, geen markdown. Begin direct met [ en eindig met ].
+⚠️ Onverwacht JP Cars response formaat voor Opel Mokka: {"pagable":{"page_index":0,"page_size":100,"total":330},"results":[...]}
 ```
 
-#### 2. Waterdichte JSON parse functie
-Vervang de huidige `cleanJson` + `JSON.parse` logica (regels 135-156) door een robuuste `parseClaudeResponse` functie:
-- Verwijder markdown formatting
-- Zoek eerste `[` of `{` en laatste `]` of `}` — extraheer alleen dat stuk
-- `JSON.parse` in try/catch
-- Als resultaat geen array is, wrap in array
-- Bij falen: log raw output, return lege array
+De JP Cars API retourneert data als `{ pagable: {...}, results: [...] }`. De huidige code (regel 216-226) checkt:
+- `Array.isArray(data)` — nee, het is een object
+- `data.data` — bestaat niet
+- `data.items` — bestaat niet
+- **`data.results` — WORDT NIET GECHECKT** ← dit is het probleem
 
-#### 3. JP Cars response handler verbeteren
-Vervang de huidige `queryJPCars` response handling (regel 190+):
-- Check `response.ok` met status logging (al aanwezig, behouden)
-- Na `response.json()`: check `Array.isArray(data)`, dan `data.data`, dan `data.items`
-- Log onverwacht formaat als warning
+Claude parsing werkt perfect. De data is er. Het wordt alleen weggegooid.
 
-#### 4. Logging toevoegen
-Strategische console.logs op vier punten:
-- Start: aantal offline voertuigen
-- Na Claude: aantal succesvol geëxtraheerde voertuigen
-- Per JP Cars query: merk/model + aantal resultaten
-- Einde: aantal sterke/mogelijke kansen
+### Fix
 
-### Bestand
+**Bestand: `supabase/functions/daan-b2b-analyse/index.ts`**
+
+Voeg `data.results` toe aan de response extractie (regel 219-222):
+
+```typescript
+// Huidige code:
+if (Array.isArray(data)) {
+  listings = data;
+} else if (data && Array.isArray(data.data)) {
+  listings = data.data;
+} else if (data && Array.isArray(data.items)) {
+  listings = data.items;
+}
+
+// Fix — voeg data.results toe als EERSTE check na raw array:
+if (Array.isArray(data)) {
+  listings = data;
+} else if (data && Array.isArray(data.results)) {
+  listings = data.results;
+} else if (data && Array.isArray(data.data)) {
+  listings = data.data;
+} else if (data && Array.isArray(data.items)) {
+  listings = data.items;
+}
+```
+
+Dat is alles. Één `else if` toevoegen, deployen, klaar.
 
 | Bestand | Actie |
 |---------|-------|
-| `supabase/functions/daan-b2b-analyse/index.ts` | Prompt versterken, parse functie vervangen, JP Cars response check, logging |
-
-Na deploy kan de analyse opnieuw gedraaid worden om te verifiëren dat kansen correct worden gevonden.
+| `supabase/functions/daan-b2b-analyse/index.ts` | `data.results` toevoegen aan response extractie |
 
