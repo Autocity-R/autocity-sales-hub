@@ -337,10 +337,11 @@ Deno.serve(async (req) => {
 
     const offlineVehicles = (vehicles || []).filter((v: any) => {
       const d = v.details || {};
-      const showroom = d.showroomOnline;
-      if (showroom === true) return false;
-      const tradeIn = d.isTradeIn;
-      if (tradeIn === true) return false;
+      if (d.showroomOnline === true) return false;
+      if (d.isTradeIn === true) return false;
+      // Auto's die nog onderweg zijn (transport) kunnen niet online staan
+      // en zijn dus geen B2B kansen — exclude ze
+      if (d.transportStatus === "onderweg") return false;
       return true;
     });
 
