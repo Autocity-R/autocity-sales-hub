@@ -1,28 +1,30 @@
 
 
-## Daan Dashboard — Team Performance Aanpassen
+## Marge/financiële data verbergen voor verkopers
 
-### Drie aanpassingen:
+Mario werkt nu — alleen de marge-informatie moet verborgen worden voor niet-admin/owner gebruikers.
 
-### 1. Mario Kroon toevoegen aan teamMappings
-Mario heeft 6 verkopen deze maand (BMW IX1, Renault Arkana, 2x Polestar, BMW X3, Hyundai Ioniq 5) maar staat niet in de mapping. Toevoegen:
-```
-Mario: ["mario", "mario kroon", "mario@auto-city.nl"]
-```
+### Aanpak
 
-### 2. Marge verwijderen uit de team performance tabel
-- Verwijder de `Ø marge` kolom uit de weergave
-- Verwijder `avgMargin` en `totalMargin` berekeningen (of laat ze intern voor eventueel later gebruik)
-- Behoud: Naam, B2C/B2B counts, Omzet, Norm badge
+**`SalespersonDetailDialog.tsx`** — voeg `showMargins` prop toe (default `false`):
+- Verberg summary cards "Totale Winst" en "Gem. Marge" wanneer `showMargins === false`
+- Verberg tabelkolommen "Inkoopprijs", "Marge €", en "Marge %" wanneer `showMargins === false`
+- Grid past zich aan: `grid-cols-2` ipv `grid-cols-4` voor summary stats
 
-### 3. Klikbare namen met verkochte auto's detail dialog
-- Hergebruik het bestaande `SalespersonDetailDialog` component (al aanwezig in `src/components/reports/`)
-- Bij klik op een naam: toon dialog met lijst verkochte auto's (merk, model, verkoopprijs, datum)
-- De vehicle data is al beschikbaar in de query — sla per verkoper ook de individuele auto's op
+**`DaanDashboard.tsx`** — gebruik `useRoleAccess` om te bepalen of marges zichtbaar zijn:
+- Importeer `useRoleAccess`
+- Geef `showMargins={isAdmin}` mee aan `SalespersonDetailDialog`
+- Admin en owner zien alles, verkopers zien alleen: Datum, Voertuig, Verkoopprijs
 
-### Bestand
+**`SalespersonPerformance.tsx`** (rapportages pagina) — zelfde aanpassing:
+- Importeer `useRoleAccess`
+- Geef `showMargins={isAdmin}` mee
+
+### Bestanden
 
 | Bestand | Actie |
 |---------|-------|
-| `src/components/ai-agents/dashboards/DaanDashboard.tsx` | Mario toevoegen, marge weghalen, klikbare namen met detail dialog |
+| `src/components/reports/SalespersonDetailDialog.tsx` | `showMargins` prop toevoegen, conditioneel kolommen/stats verbergen |
+| `src/components/ai-agents/dashboards/DaanDashboard.tsx` | `useRoleAccess` + `showMargins` prop doorgeven |
+| `src/components/reports/SalespersonPerformance.tsx` | `useRoleAccess` + `showMargins` prop doorgeven |
 
