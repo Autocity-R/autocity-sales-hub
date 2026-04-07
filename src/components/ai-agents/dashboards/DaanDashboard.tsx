@@ -321,10 +321,16 @@ export const DaanDashboard: React.FC = () => {
             <div className="space-y-2">
               {teamData?.map((t) => (
                 <div key={t.name} className="flex items-center justify-between text-sm py-1.5 px-2 rounded hover:bg-muted/50">
-                  <span className="font-medium">{t.name}</span>
+                  <span className="font-medium w-20">{t.name}</span>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-muted-foreground">
                       B2C: {t.b2c} | B2B: {t.b2b}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Omzet: {fmt(t.revenue)}
+                    </span>
+                    <span className="text-xs text-green-600">
+                      Ø marge: {fmt(t.avgMargin)}
                     </span>
                     <Badge variant={t.opNorm ? "default" : "destructive"}>
                       {t.b2c}/{t.norm}
