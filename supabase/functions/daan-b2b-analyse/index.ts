@@ -81,6 +81,32 @@ interface B2BKans {
   score: "STERK" | "MOGELIJK";
 }
 
+function parseClaudeResponse(text: string): any[] {
+  try {
+    let cleanText = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+
+    const firstBracket = Math.min(
+      cleanText.indexOf('[') !== -1 ? cleanText.indexOf('[') : Infinity,
+      cleanText.indexOf('{') !== -1 ? cleanText.indexOf('{') : Infinity
+    );
+    const lastBracket = Math.max(
+      cleanText.lastIndexOf(']'),
+      cleanText.lastIndexOf('}')
+    );
+
+    if (firstBracket !== Infinity && lastBracket !== -1 && lastBracket > firstBracket) {
+      cleanText = cleanText.substring(firstBracket, lastBracket + 1);
+    }
+
+    const parsed = JSON.parse(cleanText);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch (error) {
+    console.error("❌ CRITICAL: Failed to parse Claude JSON:", error);
+    console.error("Raw Claude Output (first 500 chars):", text.substring(0, 500));
+    return [];
+  }
+}
+
 async function claudeBatchParse(
   vehicles: { id: string; brand: string; model: string; bouwjaar?: number }[],
   apiKey: string
@@ -120,7 +146,9 @@ Input:
 ${descriptions}
 
 Geef UITSLUITEND een geldige JSON array terug. Formaat:
-[{"id":0,"uitvoering":"T5","brandstof":"Hybride","transmissie":"Automaat","bouwjaar":2021}]`
+[{"id":0,"uitvoering":"T5","brandstof":"Hybride","transmissie":"Automaat","bouwjaar":2021}]
+
+BELANGRIJK: Geef UITSLUITEND de ruwe JSON array terug. Geen inleiding, geen conclusie, geen markdown code blocks. Begin direct met [ en eindig met ].`
       }],
     }),
   });
@@ -132,28 +160,22 @@ Geef UITSLUITEND een geldige JSON array terug. Formaat:
 
   const data = await response.json();
   const text = data.content?.[0]?.text || "[]";
-  const cleanJson = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
 
-  try {
-    const parsed = JSON.parse(cleanJson) as Array<{
-      id: number; uitvoering: string | null; brandstof: string | null; transmissie: string | null; bouwjaar: number | null;
-    }>;
-    const result: Record<string, any> = {};
-    for (const item of parsed) {
-      if (item.id >= 0 && item.id < vehicles.length) {
-        result[vehicles[item.id].id] = {
-          uitvoering: item.uitvoering,
-          brandstof: item.brandstof,
-          transmissie: item.transmissie,
-          bouwjaar: item.bouwjaar,
-        };
-      }
+  const parsed = parseClaudeResponse(text);
+  console.log(`🤖 Claude Parsing voltooid: ${parsed.length} voertuigen succesvol geëxtraheerd`);
+
+  const result: Record<string, any> = {};
+  for (const item of parsed) {
+    if (item.id >= 0 && item.id < vehicles.length) {
+      result[vehicles[item.id].id] = {
+        uitvoering: item.uitvoering,
+        brandstof: item.brandstof,
+        transmissie: item.transmissie,
+        bouwjaar: item.bouwjaar,
+      };
     }
-    return result;
-  } catch (e) {
-    console.error("Failed to parse Claude response:", e);
-    return {};
   }
+  return result;
 }
 
 async function queryJPCars(
@@ -186,13 +208,27 @@ async function queryJPCars(
       headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
     });
     if (!resp.ok) {
-      console.error(`JP Cars error ${resp.status} for ${parsed.brand} ${parsed.model}`);
+      console.error(`❌ JP Cars API Error: ${resp.status} ${resp.statusText} for ${parsed.brand} ${parsed.model}`);
       return [];
     }
     const data = await resp.json();
-    return Array.isArray(data) ? data : [];
+
+    let listings: any[];
+    if (Array.isArray(data)) {
+      listings = data;
+    } else if (data && Array.isArray(data.data)) {
+      listings = data.data;
+    } else if (data && Array.isArray(data.items)) {
+      listings = data.items;
+    } else {
+      console.warn(`⚠️ Onverwacht JP Cars response formaat voor ${parsed.brand} ${parsed.model}:`, JSON.stringify(data).substring(0, 200));
+      listings = [];
+    }
+
+    console.log(`🚗 JP Cars: ${parsed.brand} ${parsed.model} ${parsed.brandstof || ''} ${parsed.bouwjaar || ''} -> ${listings.length} resultaten`);
+    return listings;
   } catch (e) {
-    console.error(`JP Cars fetch error for ${parsed.brand} ${parsed.model}:`, e);
+    console.error(`❌ Fetch error JP Cars ${parsed.brand} ${parsed.model}:`, e);
     return [];
   }
 }
@@ -345,6 +381,8 @@ Deno.serve(async (req) => {
       return true;
     });
 
+    console.log(`📊 START B2B Analyse: ${offlineVehicles.length} offline voertuigen gevonden`);
+
     if (offlineVehicles.length === 0) {
       const result = { sterkeKansen: [], mogelijkeKansen: [], totaalOffline: 0 };
       return new Response(JSON.stringify(result), {
@@ -408,6 +446,8 @@ Deno.serve(async (req) => {
 
     const sterkeKansen = dedupedKansen.filter(k => k.score === "STERK").sort((a, b) => b.onzeMarge - a.onzeMarge);
     const mogelijkeKansen = dedupedKansen.filter(k => k.score === "MOGELIJK").sort((a, b) => b.onzeMarge - a.onzeMarge);
+
+    console.log(`✅ Analyse voltooid: ${sterkeKansen.length} Sterke kansen, ${mogelijkeKansen.length} Mogelijke kansen`);
 
     if (isDownloadMode) {
       return new Response(JSON.stringify({
