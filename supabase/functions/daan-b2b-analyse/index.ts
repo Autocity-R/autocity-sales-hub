@@ -447,6 +447,8 @@ Deno.serve(async (req) => {
     const sterkeKansen = dedupedKansen.filter(k => k.score === "STERK").sort((a, b) => b.onzeMarge - a.onzeMarge);
     const mogelijkeKansen = dedupedKansen.filter(k => k.score === "MOGELIJK").sort((a, b) => b.onzeMarge - a.onzeMarge);
 
+    console.log(`✅ Analyse voltooid: ${sterkeKansen.length} Sterke kansen, ${mogelijkeKansen.length} Mogelijke kansen`);
+
     if (isDownloadMode) {
       return new Response(JSON.stringify({
         sterkeKansen,
