@@ -134,10 +134,10 @@ export const SalespersonDetailDialog: React.FC<SalespersonDetailDialogProps> = (
               <TableRow>
                 <TableHead>Datum</TableHead>
                 <TableHead>Voertuig</TableHead>
-                <TableHead className="text-right">Inkoopprijs</TableHead>
+                {showMargins && <TableHead className="text-right">Inkoopprijs</TableHead>}
                 <TableHead className="text-right">Verkoopprijs</TableHead>
-                <TableHead className="text-right">Marge €</TableHead>
-                <TableHead className="text-right">Marge %</TableHead>
+                {showMargins && <TableHead className="text-right">Marge €</TableHead>}
+                {showMargins && <TableHead className="text-right">Marge %</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
