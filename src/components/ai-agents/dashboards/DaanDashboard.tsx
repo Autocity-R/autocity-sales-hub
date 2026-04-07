@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { SalespersonDetailDialog } from "@/components/reports/SalespersonDetailDialog";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface B2BKans {
   auto: string;
