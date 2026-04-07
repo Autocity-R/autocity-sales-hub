@@ -256,10 +256,14 @@ function calculateB2BKansen(vehicle: ParsedVehicle, listings: any[]): B2BKans[] 
   const autoNaam = `${vehicle.brand} ${vehicle.model}`;
 
   for (const listing of listings) {
+    // Skip eigen voorraad (Auto City)
+    const listingUrl = listing.url_japie || listing.url || "";
+    if (listingUrl.includes("auto-city")) continue;
+
     const soldSince = listing.sold_since;
-    const daysInStock = listing.days_in_stock ?? listing.stock_days ?? 0;
-    const dealerPrice = listing.price_local ?? listing.price ?? 0;
-    const dealerName = listing.dealer_name ?? "Onbekend";
+    const daysInStock = listing.stock_days ?? 0;
+    const dealerPrice = listing.price_local ?? 0;
+    const dealerName = listing.location_name || "Onbekend";
 
     if (soldSince === null || soldSince === undefined) continue;
     if (soldSince > 40) continue;
