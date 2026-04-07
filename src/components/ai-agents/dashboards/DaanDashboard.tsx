@@ -376,6 +376,7 @@ export const DaanDashboard: React.FC = () => {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         salesperson={selectedSalesperson}
+        showMargins={isAdmin}
       />
     </div>
   );

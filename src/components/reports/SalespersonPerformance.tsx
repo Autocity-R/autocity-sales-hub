@@ -217,6 +217,7 @@ export const SalespersonPerformance: React.FC<SalespersonPerformanceProps> = ({ 
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         salesperson={selectedSalesperson}
+        showMargins={isAdmin}
       />
       
       <div className="space-y-6">
