@@ -92,7 +92,7 @@ export const DaanDashboard: React.FC = () => {
 
       const { data: soldVehicles, error } = await supabase
         .from("vehicles")
-        .select("id, status, selling_price, purchase_price, details, sold_date")
+        .select("id, brand, model, status, selling_price, purchase_price, details, sold_date")
         .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"])
         .gte("sold_date", monthStart);
 
