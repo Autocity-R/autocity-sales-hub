@@ -36,6 +36,7 @@ interface Vehicle {
 interface SalespersonDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  showMargins?: boolean;
   salesperson: {
     name: string;
     email: string;
@@ -50,6 +51,7 @@ interface SalespersonDetailDialogProps {
 export const SalespersonDetailDialog: React.FC<SalespersonDetailDialogProps> = ({
   open,
   onOpenChange,
+  showMargins = false,
   salesperson,
 }) => {
   if (!salesperson) return null;
