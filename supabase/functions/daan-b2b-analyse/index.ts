@@ -381,6 +381,8 @@ Deno.serve(async (req) => {
       return true;
     });
 
+    console.log(`📊 START B2B Analyse: ${offlineVehicles.length} offline voertuigen gevonden`);
+
     if (offlineVehicles.length === 0) {
       const result = { sterkeKansen: [], mogelijkeKansen: [], totaalOffline: 0 };
       return new Response(JSON.stringify(result), {
