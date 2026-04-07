@@ -240,7 +240,8 @@ async function queryJPCars(
     console.log(`🚗 JP Cars: ${parsed.brand} ${parsed.model} bj:${parsed.bouwjaar || '?'} km:${parsed.kilometerstand || '?'} ${parsed.brandstof || ''} -> ${listings.length} resultaten`);
     if (listings.length > 0) {
       const sample = listings[0];
-      console.log(`   📋 Sample: prijs=${sample.price_local ?? sample.price} dealer=${sample.dealer_name ?? 'onbekend'} sold_since=${sample.sold_since} stock_days=${sample.days_in_stock ?? sample.stock_days}`);
+      console.log(`   📋 Sample keys: ${Object.keys(sample).join(', ')}`);
+      console.log(`   📋 Sample RAW: ${JSON.stringify(sample).substring(0, 500)}`);
     }
 
     return listings;
