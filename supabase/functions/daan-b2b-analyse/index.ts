@@ -815,11 +815,11 @@ Deno.serve(async (req) => {
 
     // Email mode: verstuur rapport
     const totalKansen = sterkeKansen.length + mogelijkeKansen.length;
-    const totalMarge = allKansen.reduce((s, k) => s + k.onzeMarge, 0);
+    const totalMarge = allKansen.reduce((s, k) => s + k.onze_marge, 0);
 
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px;">
-        <h2 style="color: #1F3864;">🚗 B2B Kansen Rapport — ${datum}</h2>
+        <h2 style="color: #2E4D7B;">🚗 B2B Kansen Rapport — ${datum}</h2>
         <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
           <tr>
             <td style="padding: 12px; background: #E2EFDA; border-radius: 8px; text-align: center;">
@@ -831,7 +831,7 @@ Deno.serve(async (req) => {
               <span style="font-size: 12px;">Mogelijke kansen</span>
             </td>
             <td style="padding: 12px; background: #DEEAF1; border-radius: 8px; text-align: center;">
-              <strong style="font-size: 24px; color: #1F3864;">€${totalMarge.toLocaleString("nl-NL")}</strong><br>
+              <strong style="font-size: 24px; color: #2E4D7B;">€${totalMarge.toLocaleString("nl-NL")}</strong><br>
               <span style="font-size: 12px;">Potentiële marge</span>
             </td>
           </tr>
@@ -848,9 +848,9 @@ Deno.serve(async (req) => {
           </tr>
           ${sterkeKansen.slice(0, 10).map((k, i) => `
           <tr style="background: ${i % 2 === 0 ? "#E2EFDA" : "#F0F7EC"};">
-            <td style="padding: 6px;">${k.auto}</td>
-            <td style="padding: 6px; text-align: right; font-weight: bold;">€${k.onzeMarge.toLocaleString("nl-NL")}</td>
-            <td style="padding: 6px;">${k.dealerNaam}</td>
+            <td style="padding: 6px;">${k.onze_merk} ${k.onze_model}</td>
+            <td style="padding: 6px; text-align: right; font-weight: bold;">€${k.onze_marge.toLocaleString("nl-NL")}</td>
+            <td style="padding: 6px;">${k.dealer_naam}</td>
           </tr>`).join("")}
         </table>` : ""}
         ${signedUrl?.signedUrl ? `
