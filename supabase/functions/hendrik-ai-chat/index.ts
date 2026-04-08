@@ -411,6 +411,9 @@ serve(async (req) => {
       if (isLisaAgent) {
         return await handleLisaToolCall(supabaseClient, toolName, toolInput, ceoData);
       }
+      if (isSaraAgent) {
+        return await handleSaraToolCall(supabaseClient, toolName, toolInput);
+      }
       return await handleStrategicCEOFunctionCall(
         supabaseClient,
         { name: toolName, arguments: JSON.stringify(toolInput) },
