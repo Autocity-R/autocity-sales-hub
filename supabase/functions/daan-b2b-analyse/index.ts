@@ -789,8 +789,8 @@ Deno.serve(async (req) => {
     }
 
     const allKansen = Array.from(kansenPerAuto.values()).flat();
-    const sterkeKansen = allKansen.filter(k => k.score === "STERK").sort((a, b) => b.onzeMarge - a.onzeMarge);
-    const mogelijkeKansen = allKansen.filter(k => k.score === "MOGELIJK").sort((a, b) => b.onzeMarge - a.onzeMarge);
+    const sterkeKansen = allKansen.filter(k => k.score === "STERK").sort((a, b) => b.onze_marge - a.onze_marge);
+    const mogelijkeKansen = allKansen.filter(k => k.score === "MOGELIJK").sort((a, b) => b.onze_marge - a.onze_marge);
 
     console.log(`✅ Analyse: ${sterkeKansen.length} Sterk, ${mogelijkeKansen.length} Mogelijk`);
 
