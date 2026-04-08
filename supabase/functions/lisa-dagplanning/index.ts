@@ -859,6 +859,33 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ===== EMAIL 3: Lloyd ochtendmail — persoonlijke briefing =====
+    try {
+      const dagNamen = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
+      const dagNaam = dagNamen[now.getDay()];
+      const datumKort = now.toLocaleDateString("nl-NL", { day: "numeric", month: "long" });
+
+      const [gisterGedaan, urgentAfleveringen] = await Promise.all([
+        getGisterGedaan(supabase),
+        getUrgentAfleveringen(supabase),
+      ]);
+
+      const lloydOchtendHtml = buildLloydOchtendEmail(gisterGedaan, urgentAfleveringen, datumDisplay);
+
+      await supabase.from("email_queue").insert({
+        payload: {
+          senderEmail: "aftersales@auto-city.nl",
+          to: ["lloyd@auto-city.nl"],
+          subject: `Goedemorgen Lloyd — Aftersales update ${dagNaam} ${datumKort}`,
+          htmlBody: lloydOchtendHtml,
+        },
+        status: "pending",
+      });
+      console.log("✅ Lloyd ochtendmail queued");
+    } catch (emailErr) {
+      console.error("❌ Failed to queue Lloyd ochtendmail:", emailErr);
+    }
+
     return new Response(JSON.stringify({
       success: true,
       url: downloadUrl,
