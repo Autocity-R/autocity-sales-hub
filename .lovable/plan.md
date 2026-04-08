@@ -1,32 +1,36 @@
 
 
-## Fix: Daan Dashboard blank screen — 2 bugs
+## Fix: Lisa Dagplanning download knop werkt niet
 
-### Probleem 1: Auto-analyse op page load
-De B2B kansen query (`useQuery`) roept de edge function aan met `mode: "download"` **bij elke page load**. Dit triggert de volledige analyse (Claude + 47 JP Cars queries = 30+ seconden). Dit veroorzaakt:
-- Timeout / blank screen
-- Onnodige API kosten bij elke keer dat je het dashboard opent
+### Probleem
 
-**Fix:** De `useQuery` voor B2B kansen moet `enabled: false` zijn — data wordt alleen geladen wanneer je handmatig op "Analyse" klikt. Na de analyse worden de resultaten in state bewaard.
+De edge function `lisa-dagplanning` heeft twee problemen:
 
-### Probleem 2: Interface mismatch
-De dashboard `B2BKans` interface gebruikt **oude veldnamen** die niet meer bestaan:
-- `auto`, `kenteken`, `b2bAanbodprijs`, `dealerNaam`, `dealerVerkoopprijs`, `dealerStagedagen`, `verkochtDagenGeleden`, `onzeMarge`, `dealerMargeruimte`
+1. **Idempotency guard blokkeert downloads**: De functie checkt of er vandaag al een dagplanning email is verstuurd. Zo ja, stopt hij meteen met `{ skipped: true }`. Dit geldt ook voor handmatige download-verzoeken — die worden dus ook geblokkeerd.
 
-De edge function retourneert nu **nieuwe veldnamen**:
-- `onze_merk`, `onze_model`, `onze_vin`, `dealer_naam`, `dealer_prijs`, `dealer_stagedagen`, `verkocht_dgn_geleden`, `onze_marge`, `b2b_aanbod`, `jp_cars_url`
+2. **Geen download mode**: De functie leest de request body helemaal niet uit. Er is geen `mode: "download"` logica. De frontend verwacht `data.url` in het response, maar dat wordt nooit teruggegeven.
 
-De `KansenTabel` component rendert `k.auto`, `k.kenteken`, etc. — die zijn allemaal `undefined`.
+De frontend code (`LisaDashboard.tsx`) stuurt `{ mode: "download" }` maar de edge function negeert dit volledig.
 
-**Fix:** Update de interface en `KansenTabel` naar de nieuwe veldnamen. Voeg ook de JP Cars link toe als klikbare kolom.
+### Oplossing
 
-### Technische wijzigingen
+**Bestand: `supabase/functions/lisa-dagplanning/index.ts`**
 
-**Bestand: `src/components/ai-agents/dashboards/DaanDashboard.tsx`**
+1. **Parse de request body** aan het begin (na CORS check), haal `mode` eruit
+2. **Sla de idempotency guard over** als `mode === "download"` — die guard is alleen bedoeld voor de automatische email, niet voor handmatige downloads
+3. **Voeg download mode logica toe**: Na het genereren van de Excel, upload naar de `lisa-planningen` bucket en retourneer een signed URL (`{ url: "..." }`) zodat de frontend `window.open(data.url)` kan doen
+4. **Bij email mode** (bestaand gedrag): bewaar de idempotency guard en stuur de email zoals nu
 
-1. Vervang `B2BKans` interface met nieuwe veldnamen
-2. Verwijder de auto-loading `useQuery` voor B2B — gebruik `useState` + handmatige fetch
-3. Update `KansenTabel` kolommen naar nieuwe velden + voeg JP Cars link kolom toe
-4. "Analyse" knop slaat resultaten op in state
-5. "Excel" knop gebruikt `excelUrl` uit het analyse resultaat (niet opnieuw aanroepen)
+Concreet:
+- Na `if (req.method === "OPTIONS")`, parse body: `const body = await req.json().catch(() => ({}))`
+- Extract: `const mode = body?.mode || "email"`
+- Verplaats idempotency guard achter een `if (mode !== "download")` check
+- Na Excel generatie, als `mode === "download"`: upload naar bucket, maak signed URL (7 dagen), return `{ url }`
+- Als `mode === "email"`: bestaande email logica (ongewijzigd)
+
+### Technisch overzicht
+
+| Bestand | Actie |
+|---------|-------|
+| `supabase/functions/lisa-dagplanning/index.ts` | Parse body, skip guard bij download, upload + signed URL retourneren |
 
