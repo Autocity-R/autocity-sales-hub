@@ -576,6 +576,16 @@ Deno.serve(async (req) => {
       afleveringenWeek: appointments.length,
     };
 
+    // === Download mode: alleen URL teruggeven, geen emails ===
+    if (mode === "download") {
+      return new Response(JSON.stringify({
+        success: true,
+        url: downloadUrl,
+        filename,
+        summary,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // ===== EMAIL 1: Lloyd dagplanning (Excel als bijlage) =====
     try {
       await supabase.from("email_queue").insert({
