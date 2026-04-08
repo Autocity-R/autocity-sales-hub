@@ -81,6 +81,7 @@ interface ParsedVehicle {
   id: string;
   brand: string;
   model: string;
+  vin: string | null;
   uitvoering: string | null;
   brandstof: string | null;
   transmissie: string | null;
@@ -90,17 +91,27 @@ interface ParsedVehicle {
 }
 
 interface B2BKans {
-  auto: string;
-  inkoopprijs: number;
-  b2bAanbodprijs: number;
-  dealerNaam: string;
-  dealerVerkoopprijs: number;
-  dealerStagedagen: number;
-  verkochtDagenGeleden: number;
-  onzeMarge: number;
-  dealerMargeruimte: number;
+  // Onze auto
+  onze_merk: string;
+  onze_model: string;
+  onze_vin: string;
+  onze_bouwjaar: number | null;
+  onze_km: number;
+  onze_inkoop: number;
+  // Dealer auto
+  dealer_naam: string;
+  dealer_merk: string;
+  dealer_model: string;
+  dealer_bouwjaar: number | null;
+  dealer_km: number;
+  dealer_prijs: number;
+  dealer_stagedagen: number;
+  verkocht_dgn_geleden: number;
+  jp_cars_url: string | null;
+  // Berekend
+  b2b_aanbod: number;
+  onze_marge: number;
   score: "STERK" | "MOGELIJK";
-  jpCarsUrl: string | null;
 }
 
 // === CLAUDE PARSING ===
