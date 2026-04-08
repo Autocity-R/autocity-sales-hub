@@ -428,59 +428,121 @@ function buildExcel(
 ): Uint8Array {
   const wb = XLSX.utils.book_new();
 
-  // ===== TAB 1: B2B KANSEN =====
-  const B2B_COLS = ["Onze Auto", "Onze Inkoop", "B2B Aanbod", "Dealer Naam", "Dealer Verkoopprijs", "Stagedagen", "Verk. dgn geleden", "Onze Marge", "Dealer Marge", "JP Cars"];
-  const B2B_WIDTHS = [24, 12, 12, 24, 14, 12, 14, 12, 14, 14];
+  // ===== TAB 1 & 2: B2B KANSEN (Sterke / Mogelijke) =====
+  // 17 kolommen: A-F onze auto, G scheiding, H-O dealer auto, P JP Cars link, Q marge
 
-  function addKansenSheet(name: string, kansen: B2BKans[], fillBg: string, fillAlt: string, hdrFill: string) {
+  function sepCell(fill = C.SCHEIDING): any {
+    return { v: "", t: "s", s: { fill: { fgColor: { rgb: fill }, patternType: "solid" }, border: BORDERS } };
+  }
+
+  function addKansenSheet(name: string, kansen: B2BKans[], fillBg: string, fillAlt: string, dealerHdrFill: string, subtitleBg: string, subtitleAltBg: string) {
     const rows: any[][] = [];
-    rows.push([titleCell(`${name} — ${datum}`), ...Array(B2B_COLS.length - 1).fill(emptyTitleFill())]);
-    rows.push(B2B_COLS.map(c => headerCell(c, hdrFill)));
+    const TOTAL_COLS = 17; // A-Q
 
+    // Rij 1: Titelbalk
+    const titleRow = Array(TOTAL_COLS).fill(null).map(() => ({
+      v: "", t: "s", s: { fill: { fgColor: { rgb: C.DARK_NAVY }, patternType: "solid" }, font: { name: "Calibri", sz: 14, bold: true, color: { rgb: C.WIT } }, alignment: { vertical: "center", horizontal: "left" }, border: BORDERS }
+    }));
+    titleRow[0].v = `${name} — ${datum}`;
+    rows.push(titleRow);
+
+    // Rij 2: Subtitel met regels
+    const subtitleRow = Array(TOTAL_COLS).fill(null).map(() => ({
+      v: "", t: "s", s: { fill: { fgColor: { rgb: subtitleBg }, patternType: "solid" }, font: { ...FONT_BASE, sz: 8, italic: true, color: { rgb: "555555" } }, alignment: { vertical: "center", horizontal: "left" }, border: BORDERS }
+    }));
+    subtitleRow[0].v = "Harde eisen: min. €3.000 onze marge · min. €3.000 dealer margeruimte · verkocht ≤ 40 dagen";
+    rows.push(subtitleRow);
+
+    // Rij 3: Groep headers
+    const groupRow = Array(TOTAL_COLS).fill(null).map(() => makeCell("", { fill: C.GRIJS_H }));
+    groupRow[0] = headerCell("📦 ONZE AUTO", C.DARK_NAVY); // spans A-F
+    groupRow[6] = sepCell(C.SCHEIDING);
+    groupRow[7] = headerCell("🏪 DEALER AUTO (JP Cars — verkocht)", dealerHdrFill); // spans H-O
+    groupRow[15] = headerCell("🔗", C.DARK_NAVY);
+    groupRow[16] = headerCell("💰", C.DARK_NAVY);
+    rows.push(groupRow);
+
+    // Rij 4: Kolom headers
+    const colHeaders = [
+      headerCell("Merk", C.DARK_NAVY), headerCell("Model", C.DARK_NAVY), headerCell("VIN", C.DARK_NAVY),
+      headerCell("Bouwjaar", C.DARK_NAVY), headerCell("KM-stand", C.DARK_NAVY), headerCell("Inkoopprijs", C.DARK_NAVY),
+      sepCell(C.SCHEIDING),
+      headerCell("Dealer Naam", dealerHdrFill), headerCell("Merk", dealerHdrFill), headerCell("Model", dealerHdrFill),
+      headerCell("Bouwjaar", dealerHdrFill), headerCell("KM-stand", dealerHdrFill), headerCell("Verkoopprijs", dealerHdrFill),
+      headerCell("Stagedagen", dealerHdrFill), headerCell("Verkocht", dealerHdrFill),
+      headerCell("JP Cars", C.DARK_NAVY),
+      headerCell("Onze Marge", C.DARK_NAVY),
+    ];
+    rows.push(colHeaders);
+
+    // Data rijen
     kansen.forEach((k, i) => {
       const bg = i % 2 === 0 ? fillBg : fillAlt;
+      const verkochtTekst = k.verkocht_dgn_geleden === 0 ? "Vandaag" : `${k.verkocht_dgn_geleden} dgn`;
+      const verkochtKleur = k.verkocht_dgn_geleden <= 10 ? C.GROEN_H : "000000";
+      const stagKleur = k.dealer_stagedagen > 30 ? C.ROOD_H : "000000";
+      const margeBg = k.onze_marge >= 4000 ? C.MARGE_GROEN : C.MARGE_ORANJE;
+      const margeTxt = k.onze_marge >= 4000 ? C.GROEN_H : C.ORANJE_H;
+
       const row = [
-        makeCell(k.auto, { fill: bg }),
-        makeCell(k.inkoopprijs, { fill: bg, align: "right" }),
-        makeCell(k.b2bAanbodprijs, { fill: bg, align: "right", font: { bold: true } }),
-        makeCell(k.dealerNaam, { fill: bg }),
-        makeCell(k.dealerVerkoopprijs, { fill: bg, align: "right" }),
-        makeCell(k.dealerStagedagen, { fill: bg, align: "center" }),
-        makeCell(k.verkochtDagenGeleden, { fill: bg, align: "center" }),
-        makeCell(k.onzeMarge, { fill: bg, align: "right", font: { bold: true, color: { rgb: C.GROEN_H } } }),
-        makeCell(k.dealerMargeruimte, { fill: bg, align: "right" }),
-        k.jpCarsUrl
-          ? linkCell("Bekijk →", k.jpCarsUrl, { fill: bg })
+        makeCell(k.onze_merk, { fill: bg }),
+        makeCell(k.onze_model, { fill: bg }),
+        makeCell(k.onze_vin, { fill: bg, font: { name: "Courier New", sz: 8 } }),
+        makeCell(k.onze_bouwjaar || "—", { fill: bg, align: "center" }),
+        makeCell(k.onze_km, { fill: bg, align: "center" }),
+        makeCell(k.onze_inkoop, { fill: bg, align: "center" }),
+        sepCell(C.SCHEIDING),
+        makeCell(k.dealer_naam, { fill: bg }),
+        makeCell(k.dealer_merk, { fill: bg, align: "center" }),
+        makeCell(k.dealer_model, { fill: bg, align: "center" }),
+        makeCell(k.dealer_bouwjaar || "—", { fill: bg, align: "center" }),
+        makeCell(k.dealer_km, { fill: bg, align: "center" }),
+        makeCell(k.dealer_prijs, { fill: bg, align: "center" }),
+        makeCell(k.dealer_stagedagen, { fill: bg, align: "center", font: { ...FONT_BASE, color: { rgb: stagKleur }, bold: k.dealer_stagedagen > 30 } }),
+        makeCell(verkochtTekst, { fill: bg, align: "center", font: { ...FONT_BASE, color: { rgb: verkochtKleur } } }),
+        k.jp_cars_url
+          ? linkCell("Bekijk →", k.jp_cars_url, { fill: bg })
           : makeCell("—", { fill: bg, align: "center" }),
+        makeCell(k.onze_marge, { fill: margeBg, align: "center", font: { ...FONT_BASE, bold: true, color: { rgb: margeTxt } } }),
       ];
       rows.push(row);
     });
 
     if (kansen.length === 0) {
-      rows.push([makeCell("Geen kansen gevonden", { fill: C.GRIJS_LT }), ...Array(B2B_COLS.length - 1).fill(makeCell("", { fill: C.GRIJS_LT }))]);
+      const emptyRow = Array(TOTAL_COLS).fill(null).map(() => makeCell("", { fill: C.GRIJS_LT }));
+      emptyRow[0] = makeCell("Geen kansen gevonden", { fill: C.GRIJS_LT });
+      rows.push(emptyRow);
     }
 
     // Totaalregel
     if (kansen.length > 0) {
-      const totalMarge = kansen.reduce((s, k) => s + k.onzeMarge, 0);
-      rows.push([
-        makeCell(`Totaal: ${kansen.length} kansen`, { font: { bold: true }, fill: C.GRIJS_H }),
-        makeCell("", { fill: C.GRIJS_H }), makeCell("", { fill: C.GRIJS_H }),
-        makeCell("", { fill: C.GRIJS_H }), makeCell("", { fill: C.GRIJS_H }),
-        makeCell("", { fill: C.GRIJS_H }), makeCell("", { fill: C.GRIJS_H }),
-        makeCell(totalMarge, { fill: C.GRIJS_H, align: "right", font: { bold: true, color: { rgb: C.GROEN_H } } }),
-        makeCell("", { fill: C.GRIJS_H }), makeCell("", { fill: C.GRIJS_H }),
-      ]);
+      const totalMarge = kansen.reduce((s, k) => s + k.onze_marge, 0);
+      const totRow = Array(TOTAL_COLS).fill(null).map(() => makeCell("", { fill: C.GRIJS_H }));
+      totRow[0] = makeCell(`Totaal: ${kansen.length} kansen`, { font: { bold: true }, fill: C.GRIJS_H });
+      totRow[16] = makeCell(totalMarge, { fill: C.GRIJS_H, align: "center", font: { bold: true, color: { rgb: C.GROEN_H } } });
+      rows.push(totRow);
     }
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws["!cols"] = B2B_WIDTHS.map(w => ({ wch: w }));
-    ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: B2B_COLS.length - 1 } }];
+    ws["!cols"] = [
+      { wch: 14 }, { wch: 26 }, { wch: 18 }, { wch: 9 }, { wch: 11 }, { wch: 11 }, // A-F
+      { wch: 2 }, // G separator
+      { wch: 24 }, { wch: 14 }, { wch: 12 }, { wch: 9 }, { wch: 11 }, { wch: 11 }, { wch: 9 }, { wch: 12 }, // H-O
+      { wch: 10 }, // P JP Cars
+      { wch: 11 }, // Q Marge
+    ];
+    // Merges: title row, subtitle row, group headers
+    ws["!merges"] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: TOTAL_COLS - 1 } }, // title
+      { s: { r: 1, c: 0 }, e: { r: 1, c: TOTAL_COLS - 1 } }, // subtitle
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 5 } },   // "ONZE AUTO" group
+      { s: { r: 2, c: 7 }, e: { r: 2, c: 14 } },   // "DEALER AUTO" group
+    ];
     XLSX.utils.book_append_sheet(wb, ws, name);
   }
 
-  addKansenSheet("🟢 Sterke kansen", sterkeKansen, C.GROEN_BG, C.GROEN_ALT, C.GROEN_H);
-  addKansenSheet("🟡 Mogelijke kansen", mogelijkeKansen, C.ORANJE_BG, C.ORANJE_ALT, C.ORANJE_H);
+  addKansenSheet("🟢 Sterke kansen", sterkeKansen, C.GROEN_BG, C.GROEN_ALT, C.GROEN_H, C.GROEN_BG, C.GROEN_ALT);
+  addKansenSheet("🟡 Mogelijke kansen", mogelijkeKansen, C.ORANJE_BG, C.ORANJE_ALT, C.ORANJE_H, C.ORANJE_BG, C.ORANJE_ALT);
 
   // ===== TAB 2: TEAM PERFORMANCE =====
   {
