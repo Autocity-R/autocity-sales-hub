@@ -2922,6 +2922,15 @@ ${v.blocker ? `- Blokkade: ${v.blocker}` : ''}
 - Afspraak gepland: ${v.has_delivery_appointment ? 'Ja' : 'Nee'}`
           ).join('\n\n')
         };
+      }
+
+      default:
+        return { success: false, error: `Unknown Lisa tool: ${toolName}` };
+    }
+  } catch (error) {
+    console.error(`Lisa tool error (${toolName}):`, error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
 }
 
 // ============================================================
