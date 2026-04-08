@@ -748,6 +748,7 @@ Deno.serve(async (req) => {
         id: v.id,
         brand: v.brand || "",
         model: v.model || "",
+        vin: v.vin || null,
         uitvoering: claude.uitvoering || null,
         brandstof: claude.brandstof || null,
         transmissie: claude.transmissie || null,
