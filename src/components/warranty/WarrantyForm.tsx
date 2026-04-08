@@ -72,12 +72,6 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
     queryFn: fetchDeliveredVehiclesForWarranty
   });
 
-  const { data: loanCars = [], isLoading: loanCarsLoading } = useQuery({
-    queryKey: ["loanCars"],
-    queryFn: fetchLoanCars
-  });
-
-  const availableLoanCars = loanCars.filter((car: LoanCar) => car.available);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
