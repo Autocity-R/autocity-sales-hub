@@ -332,10 +332,16 @@ serve(async (req) => {
     const isLisaAgent = agentName.toLowerCase().includes('lisa') ||
                         agentCapabilities.includes('delivery-planning');
 
+    // Determine if this is Sara (warranty tracker)
+    const isSaraAgent = agentName.toLowerCase().includes('sara') ||
+                        agentCapabilities.includes('warranty-tracking') || agentCapabilities.includes('warranty_tracking');
+
     if (isMarcoAgent) {
       agentTools = getMarcoTools();
     } else if (isLisaAgent) {
       agentTools = getLisaTools();
+    } else if (isSaraAgent) {
+      agentTools = getSaraTools();
     } else if (isCEOAgent) {
       agentTools = getStrategicCEOFunctions();
     } else {
@@ -404,6 +410,9 @@ serve(async (req) => {
       }
       if (isLisaAgent) {
         return await handleLisaToolCall(supabaseClient, toolName, toolInput, ceoData);
+      }
+      if (isSaraAgent) {
+        return await handleSaraToolCall(supabaseClient, toolName, toolInput);
       }
       return await handleStrategicCEOFunctionCall(
         supabaseClient,
@@ -2920,6 +2929,232 @@ ${v.blocker ? `- Blokkade: ${v.blocker}` : ''}
     }
   } catch (error) {
     console.error(`Lisa tool error (${toolName}):`, error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// ============================================================
+// SARA TOOLS — Garantie Tracker
+// ============================================================
+
+function getSaraTools() {
+  return [
+    {
+      name: 'get_warranty_claims',
+      description: 'Haal alle openstaande (pending) en recente (laatste 90 dagen) garantieclaims op. Bevat voertuiginfo, garantiepakket, verkoper, en data_bron indicator (systeem/handmatig).',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: []
+      }
+    },
+    {
+      name: 'get_claim_by_kenteken',
+      description: 'Zoek garantieclaims voor een specifiek kenteken. Zoekt via BEIDE bronnen: handmatig ingevoerd kenteken EN gekoppeld voertuig kenteken.',
+      parameters: {
+        type: 'object',
+        properties: {
+          kenteken: {
+            type: 'string',
+            description: 'Het kenteken om op te zoeken (bijv. "XX-123-YY")'
+          }
+        },
+        required: ['kenteken']
+      }
+    },
+    {
+      name: 'get_loan_cars',
+      description: 'Geeft alle leenauto\'s terug met hun status (beschikbaar/uitgeleend), merk, model en kenteken.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: []
+      }
+    }
+  ];
+}
+
+async function handleSaraToolCall(supabaseClient: any, toolName: string, toolInput: any) {
+  try {
+    switch (toolName) {
+      case 'get_warranty_claims': {
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+        const { data: claims, error } = await supabaseClient
+          .from('warranty_claims')
+          .select(`
+            *,
+            vehicles:vehicle_id (
+              license_number,
+              brand,
+              model,
+              details
+            )
+          `)
+          .or(`claim_status.eq.pending,created_at.gte.${ninetyDaysAgo.toISOString()}`)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const enriched = (claims || []).map((c: any) => ({
+          id: c.id,
+          claim_status: c.claim_status,
+          description: c.description,
+          claim_amount: c.claim_amount,
+          resolution_description: c.resolution_description,
+          loan_car_assigned: c.loan_car_assigned,
+          created_at: c.created_at,
+          updated_at: c.updated_at,
+          // Manual fields
+          manual_customer_name: c.manual_customer_name,
+          manual_customer_phone: c.manual_customer_phone,
+          manual_vehicle_brand: c.manual_vehicle_brand,
+          manual_vehicle_model: c.manual_vehicle_model,
+          manual_license_number: c.manual_license_number,
+          // Vehicle joined fields
+          v_kenteken: c.vehicles?.license_number || null,
+          v_merk: c.vehicles?.brand || null,
+          v_model: c.vehicles?.model || null,
+          garantie_pakket: c.vehicles?.details?.warrantyPackage || null,
+          verkoper: c.vehicles?.details?.salespersonName || null,
+          // Data source indicator
+          data_bron: c.vehicle_id ? 'systeem' : 'handmatig',
+        }));
+
+        return {
+          success: true,
+          data: { claims: enriched, total: enriched.length },
+          message: `${enriched.length} garantieclaims gevonden (pending + laatste 90 dagen). ${enriched.filter((c: any) => c.data_bron === 'systeem').length} via systeem, ${enriched.filter((c: any) => c.data_bron === 'handmatig').length} handmatig ingevoerd.`
+        };
+      }
+
+      case 'get_claim_by_kenteken': {
+        const kenteken = toolInput.kenteken?.trim();
+        if (!kenteken) return { success: false, error: 'Kenteken is verplicht' };
+
+        // Query 1: search by manual_license_number
+        const { data: manualClaims, error: err1 } = await supabaseClient
+          .from('warranty_claims')
+          .select(`
+            *,
+            vehicles:vehicle_id (
+              license_number,
+              brand,
+              model,
+              details
+            )
+          `)
+          .ilike('manual_license_number', `%${kenteken}%`)
+          .order('created_at', { ascending: false });
+
+        if (err1) throw err1;
+
+        // Query 2: search by vehicle license_number
+        const { data: vehicles, error: err2 } = await supabaseClient
+          .from('vehicles')
+          .select('id')
+          .ilike('license_number', `%${kenteken}%`);
+
+        if (err2) throw err2;
+
+        let vehicleClaims: any[] = [];
+        if (vehicles && vehicles.length > 0) {
+          const vehicleIds = vehicles.map((v: any) => v.id);
+          const { data: vClaims, error: err3 } = await supabaseClient
+            .from('warranty_claims')
+            .select(`
+              *,
+              vehicles:vehicle_id (
+                license_number,
+                brand,
+                model,
+                details
+              )
+            `)
+            .in('vehicle_id', vehicleIds)
+            .order('created_at', { ascending: false });
+
+          if (err3) throw err3;
+          vehicleClaims = vClaims || [];
+        }
+
+        // Merge and deduplicate
+        const allClaims = [...(manualClaims || []), ...vehicleClaims];
+        const seen = new Set();
+        const unique = allClaims.filter((c: any) => {
+          if (seen.has(c.id)) return false;
+          seen.add(c.id);
+          return true;
+        });
+
+        const enriched = unique.map((c: any) => ({
+          id: c.id,
+          claim_status: c.claim_status,
+          description: c.description,
+          claim_amount: c.claim_amount,
+          resolution_description: c.resolution_description,
+          loan_car_assigned: c.loan_car_assigned,
+          created_at: c.created_at,
+          updated_at: c.updated_at,
+          manual_customer_name: c.manual_customer_name,
+          manual_customer_phone: c.manual_customer_phone,
+          manual_vehicle_brand: c.manual_vehicle_brand,
+          manual_vehicle_model: c.manual_vehicle_model,
+          manual_license_number: c.manual_license_number,
+          v_kenteken: c.vehicles?.license_number || null,
+          v_merk: c.vehicles?.brand || null,
+          v_model: c.vehicles?.model || null,
+          garantie_pakket: c.vehicles?.details?.warrantyPackage || null,
+          verkoper: c.vehicles?.details?.salespersonName || null,
+          data_bron: c.vehicle_id ? 'systeem' : 'handmatig',
+        }));
+
+        return {
+          success: true,
+          data: { claims: enriched, total: enriched.length, kenteken_gezocht: kenteken },
+          message: `${enriched.length} claim(s) gevonden voor kenteken "${kenteken}".`
+        };
+      }
+
+      case 'get_loan_cars': {
+        const { data: loanCars, error } = await supabaseClient
+          .from('loan_cars')
+          .select(`
+            id,
+            status,
+            vehicles:vehicle_id (
+              brand,
+              model,
+              license_number
+            )
+          `)
+          .order('status', { ascending: true });
+
+        if (error) throw error;
+
+        const result = (loanCars || []).map((lc: any) => ({
+          id: lc.id,
+          status: lc.status,
+          brand: lc.vehicles?.brand || 'Onbekend',
+          model: lc.vehicles?.model || 'Onbekend',
+          license_number: lc.vehicles?.license_number || 'Onbekend',
+        }));
+
+        const beschikbaar = result.filter((lc: any) => lc.status === 'beschikbaar').length;
+
+        return {
+          success: true,
+          data: { loan_cars: result, total: result.length, beschikbaar },
+          message: `${result.length} leenauto('s) totaal, ${beschikbaar} beschikbaar.`
+        };
+      }
+
+      default:
+        return { success: false, error: `Unknown Sara tool: ${toolName}` };
+    }
+  } catch (error) {
+    console.error(`Sara tool error (${toolName}):`, error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
