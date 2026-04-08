@@ -1,36 +1,48 @@
 
 
-## Fix: Lisa Dagplanning download knop werkt niet
+## Plan: Lloyd Ochtendmail toevoegen aan lisa-dagplanning
 
-### Probleem
+### Samenvatting
+Voeg een derde email toe aan de bestaande `lisa-dagplanning` edge function: een persoonlijke ochtendmail voor Lloyd met gisteren afgeronde checklist items en urgente open punten bij aankomende afleveringen.
 
-De edge function `lisa-dagplanning` heeft twee problemen:
+### Wijzigingen in `supabase/functions/lisa-dagplanning/index.ts`
 
-1. **Idempotency guard blokkeert downloads**: De functie checkt of er vandaag al een dagplanning email is verstuurd. Zo ja, stopt hij meteen met `{ skipped: true }`. Dit geldt ook voor handmatige download-verzoeken — die worden dus ook geblokkeerd.
+**1. Twee nieuwe query-functies toevoegen:**
 
-2. **Geen download mode**: De functie leest de request body helemaal niet uit. Er is geen `mode: "download"` logica. De frontend verwacht `data.url` in het response, maar dat wordt nooit teruggegeven.
+- `getGisterGedaan(supabase)` — Query alle checklist items met `completedAt` gisteren, gegroepeerd per auto. Gebruikt `jsonb_array_elements` op `details->'preDeliveryChecklist'` voor `verkocht_b2c` voertuigen.
 
-De frontend code (`LisaDashboard.tsx`) stuurt `{ mode: "download" }` maar de edge function negeert dit volledig.
+- `getUrgentAfleveringen(supabase)` — Query afleveringen vandaag+morgen die nog open checklist items hebben. Join appointments met vehicles, filter op `type='aflevering'`, niet geannuleerd, starttime vandaag of morgen, met open items.
 
-### Oplossing
+**2. Nieuwe HTML builder `buildLloydOchtendEmail()`:**
 
-**Bestand: `supabase/functions/lisa-dagplanning/index.ts`**
+Professionele HTML email in dezelfde Calibri stijl als bestaande emails:
 
-1. **Parse de request body** aan het begin (na CORS check), haal `mode` eruit
-2. **Sla de idempotency guard over** als `mode === "download"` — die guard is alleen bedoeld voor de automatische email, niet voor handmatige downloads
-3. **Voeg download mode logica toe**: Na het genereren van de Excel, upload naar de `lisa-planningen` bucket en retourneer een signed URL (`{ url: "..." }`) zodat de frontend `window.open(data.url)` kan doen
-4. **Bij email mode** (bestaand gedrag): bewaar de idempotency guard en stuur de email zoals nu
+- **Header**: Navy blauw (#1F3864) met "Goedemorgen Lloyd — Aftersales update [dag datum]"
+- **Blok 1 — GISTEREN GEDAAN**: Toon-logica op basis van aantal (0=waarschuwing, 1-4=kan meer, 5-9=goed, 10+=uitstekend). Lijst per auto met kenteken, taken en wie.
+- **Blok 2 — LET OP**: Aankomende afleveringen met open punten. ⚠️ voor >2 open items, 📌 voor 1-2 items. Toont klantnaam, datum/tijd, en open taken.
+- **Footer**: Lisa — Afleverplanning Auto City
 
-Concreet:
-- Na `if (req.method === "OPTIONS")`, parse body: `const body = await req.json().catch(() => ({}))`
-- Extract: `const mode = body?.mode || "email"`
-- Verplaats idempotency guard achter een `if (mode !== "download")` check
-- Na Excel generatie, als `mode === "download"`: upload naar bucket, maak signed URL (7 dagen), return `{ url }`
-- Als `mode === "email"`: bestaande email logica (ongewijzigd)
+**3. Email 3 invoegen (na verkoper emails, rond regel 633):**
+
+Insert in `email_queue` met:
+- `senderEmail: "aftersales@auto-city.nl"`
+- `to: ["lloyd@auto-city.nl"]`
+- Subject: `Goedemorgen Lloyd — Aftersales update ${dagNaam} ${datum}`
+- Body: output van `buildLloydOchtendEmail()`
+
+Geen bijlage — dat zit al bij email 1. Dit is een aparte, persoonlijke briefing.
+
+### Wat NIET verandert
+- Excel generatie (ongewijzigd)
+- Email 1 (Lloyd dagplanning met Excel bijlage)
+- Email 2 (Verkoper notificaties)
+- Download mode
+- Idempotency guard
+- Cron job
 
 ### Technisch overzicht
 
 | Bestand | Actie |
 |---------|-------|
-| `supabase/functions/lisa-dagplanning/index.ts` | Parse body, skip guard bij download, upload + signed URL retourneren |
+| `supabase/functions/lisa-dagplanning/index.ts` | 2 query functies + HTML builder + email insert toevoegen |
 
