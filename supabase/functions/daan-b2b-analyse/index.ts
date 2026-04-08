@@ -205,14 +205,26 @@ function mapGear(transmissie: string | null | undefined): string | undefined {
   return map[transmissie] || undefined;
 }
 
-// === JP CARS TAXATIE via /api/valuate/extended (CORRECT endpoint) ===
+// Make mapping voor merken die JP Cars anders verwacht
+function mapMake(brand: string): string {
+  const normalized = brand.trim().toUpperCase();
+  const makeMap: Record<string, string> = {
+    "LAND ROVER": "LANDROVER",
+    "ALFA ROMEO": "ALFAROMEO", 
+    "MERCEDES-BENZ": "MERCEDES",
+    "MERCEDES BENZ": "MERCEDES",
+    "ROLLS ROYCE": "ROLLSROYCE",
+    "ASTON MARTIN": "ASTONMARTIN",
+  };
+  return makeMap[normalized] || normalized;
+}
 
 async function queryJPCarsValuation(
   parsed: { brand: string; model: string; brandstof?: string | null; transmissie?: string | null; bouwjaar?: number | null; kilometerstand?: number },
   apiToken: string
 ): Promise<any[]> {
   const body: Record<string, any> = {
-    make: parsed.brand.trim().toUpperCase(),
+    make: mapMake(parsed.brand),
     model: parsed.model.trim().toUpperCase(),
     mileage: parsed.kilometerstand || 0,
   };
