@@ -1,95 +1,56 @@
 
 
-## Fix: Daan B2B Analyse — Verkeerd API endpoint
+## Plan: Excel Download + Email met 3 Tabs
 
-### Het probleem (100% bewezen uit logs)
+### Samenvatting
+Drie dingen toevoegen:
+1. **Download knop** in het Daan Dashboard voor de B2B Excel (na analyse)
+2. **Excel upgraden** met JP Cars window link per kans + professionele layout zoals het voorbeeld
+3. **Email Excel bijlage** uitbreiden met 3 tabs: B2B Kansen, Team Performance, Niet Online
 
-De functie gebruikt `GET /api/cars/list` — dit is het **eigen voorraad window** van Auto City. Daarom retourneert ELKE query dezelfde eerste listing: `G-217-NH` uit Schiedam (Auto City zelf). Het maakt niet uit of je zoekt op Audi, Ford of Kia — je krijgt altijd je eigen auto's terug.
+---
 
-Dit endpoint is **niet** bedoeld om de markt te doorzoeken. Het toont alleen wat JP Cars over jouw eigen voorraad weet. Daarom:
-- Dealer naam = alleen `location_name` (stadsnaam), geen echte dealer naam
-- Geen `sold_since` data (het zijn jouw eigen auto's, niet verkochte auto's van anderen)
-- Alle resultaten identiek ongeacht merk/model
+### Wijziging 1: Excel uitbreiden met JP Cars link + 3 tabs
 
-### De oplossing
+**Bestand: `supabase/functions/daan-b2b-analyse/index.ts`**
 
-Gebruik `POST /api/valuate/extended` — hetzelfde endpoint dat jullie taxatie-systeem (`jpcars-lookup`) en dealer-lookup (`jpcars-dealer-lookup`) al succesvol gebruiken. Dit endpoint:
-- Retourneert een `window[]` array met vergelijkbare auto's van ANDERE dealers
-- Bevat `dealer_name` (echte dealer naam, bijv. "frankoomenautos.nl")
-- Bevat `sold_since` (dagen sinds verkoop, null = nog te koop)
-- Bevat `price_local`, `stock_days`, `license_plate`
-- Filtert op merk, model, bouwjaar, brandstof, transmissie, kilometerstand
+**B2BKans interface** — voeg `jpCarsUrl` toe (portal URL uit window response)
 
-### Het nieuwe proces (per auto)
+**queryJPCarsValuation** — `enable_portal_urls=true` zodat elke listing een `portal_url` of `jpcars_url` bevat. Geef deze URL mee in de B2BKans.
 
-```text
-1. Claude herkent: "Range Rover Evoque PHEV 2024 12530km"
-   → brand: Land Rover, model: Range Rover Evoque
-   → brandstof: Hybride, transmissie: Automaat, bouwjaar: 2024
+**buildExcel** uitbreiden met 3 tabs:
+- **Tab 1: B2B Kansen** — Bestaande sterke + mogelijke kansen, maar met extra kolom "JP Cars" als klikbare hyperlink naar het window (zodat verkopers de verkochte auto kunnen dubbelchecken)
+- **Tab 2: Team Performance** — Dezelfde data als het dashboard (verkoper, B2C, B2B, omzet, marge%, status, trend) opgehaald uit de vehicles tabel in de edge function
+- **Tab 3: Niet Online** — Auto's die ingeschreven zijn maar geen online prijs hebben (status voorraad, transportStatus=aangekomen, showroomOnline!=true), met kolommen: Auto, Kenteken, Inkoopprijs, Dagen in bezit, Status, Advies
 
-2. POST /api/valuate/extended met:
-   { make: "LAND ROVER", model: "RANGE ROVER EVOQUE",
-     fuel: "Hybrid", gear: "Automatic", build: 2024, mileage: 12530 }
+Layout volgt exact het geüploade voorbeeld: donkerblauwe headers, gekleurde categorie-secties, professionele styling.
 
-3. Response window[] bevat vergelijkbare auto's met:
-   - dealer_name, price_local, sold_since, stock_days
+**Email return** — Edge function geeft de Excel met alle 3 tabs mee als bijlage in de email (via signed URL download link).
 
-4. Filter: sold_since != null (verkocht) en sold_since <= 40 (recent)
-   Bereken: dealerPrijs - 3000 = B2B aanbod
-   Check: aanbod - inkoopprijs >= 3000 = KANS
-```
+**Download mode response** — Voeg `excelUrl` toe aan het download mode response zodat de frontend direct de Excel kan downloaden.
 
-### Technische wijzigingen — `supabase/functions/daan-b2b-analyse/index.ts`
+### Wijziging 2: Download knop in Dashboard
 
-**1. Vervang `queryJPCars` functie volledig**
-Van: `GET /api/cars/list?make=X&model=Y` (eigen voorraad)
-Naar: `POST /api/valuate/extended` (markt taxatie met window)
+**Bestand: `src/components/ai-agents/dashboards/DaanDashboard.tsx`**
 
-De POST body gebruikt dezelfde mapping als `jpcars-lookup`:
-- `make` / `model` in UPPERCASE
-- `fuel`: Benzine→"Petrol", Diesel→"Diesel", Hybride→"Hybrid", Elektrisch→"Electric"
-- `gear`: Automaat→"Automatic", Handgeschakeld→"Manual"
-- `build`: bouwjaar als nummer
-- `mileage`: kilometerstand
+Na de "Analyse" knop een **Download Excel** knop toevoegen:
+- Roept de edge function aan met `mode: "download"` 
+- Edge function genereert de Excel, uploadt naar `daan-analyses` bucket, retourneert signed URL
+- Frontend opent de signed URL in een nieuw tabblad voor download
+- Knop is disabled als er geen analyse data is
 
-Response: `data.window` is de array met vergelijkbare listings.
+### Wijziging 3: Edge function aanpassen voor alle 3 data-queries
 
-**2. Pas `calculateB2BKansen` aan voor window data**
-De window data heeft:
-- `dealer_name` (echte dealer naam) — niet `location_name`
-- `sold_since` (number, dagen) — null = nog te koop
-- `stock_days` of `days_in_stock` — stagedagen
-- `price_local` — prijs
+In de edge function, naast de B2B analyse ook:
+1. **Team Performance query** — verkochte voertuigen deze maand, gegroepeerd per verkoper (zelfde logica als dashboard)
+2. **Niet Online query** — voorraad auto's die aangekomen zijn maar niet online staan (showroomOnline !== true, transportStatus === 'aangekomen')
 
-Verwijder de `ownPlates` kenteken-filtering (niet nodig, valuate endpoint geeft al andere dealers).
+Beide datasets worden in de Excel verwerkt ongeacht of het email-mode of download-mode is.
 
-**3. Filter alleen transportlijst auto's**
-Huidige filter pakt alle offline auto's (53 stuks). Voor de B2B analyse willen we alleen auto's die nog onderweg zijn:
-```
-if (d.transportStatus !== "onderweg") return false;
-```
-Dit geeft ~47 auto's — precies de transportlijst.
-
-**4. Fuel/Gear mapping functies toevoegen**
-Kopieer de bewezen mapping uit `jpcars-lookup`:
-```
-mapFuel: Benzine→"Petrol", Diesel→"Diesel", Hybride→"Hybrid", Elektrisch→"Electric"
-mapGear: Automaat→"Automatic", Handgeschakeld→"Manual"
-```
-
-**5. Excel output: meerdere kansen per auto behouden**
-Nu wordt per auto alleen de beste kans bewaard (dedup op kenteken). Maar import auto's hebben vaak geen kenteken. Dedup op vehicle ID, en bewaar top 3 kansen per auto zodat verkopers meerdere dealers kunnen benaderen.
-
-### Wat NIET verandert
-- Claude batch parse (werkt al goed met notes/mileage)
-- Excel styling en format
-- Email verzending
-- Rate limiting (200ms)
-- Upload naar daan-analyses bucket
-
-### Bestand
+### Technisch overzicht
 
 | Bestand | Actie |
 |---------|-------|
-| `supabase/functions/daan-b2b-analyse/index.ts` | Vervang queryJPCars + filter + veldnamen |
+| `supabase/functions/daan-b2b-analyse/index.ts` | Excel 3 tabs, JP Cars URL, team + niet-online queries |
+| `src/components/ai-agents/dashboards/DaanDashboard.tsx` | Download knop toevoegen |
 
