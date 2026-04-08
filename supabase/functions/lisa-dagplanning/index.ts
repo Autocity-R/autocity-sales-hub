@@ -414,41 +414,6 @@ function buildLloydOchtendEmail(gisterGedaan: GisterGedaanItem[], urgentAfleveri
     </div>
   `;
 }
-  const autoRows = autos.map(v =>
-    `<tr>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd;">${v.auto}</td>
-      <td style="padding: 8px; text-align: center; border-bottom: 1px solid #ddd;">${v.kenteken}</td>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>${v.klantNaam}</strong><br/><a href="tel:${v.klantTelefoon}" style="color: #1F3864;">${v.klantTelefoon}</a></td>
-      <td style="padding: 8px; text-align: center; border-bottom: 1px solid #ddd;">${v.dagenWacht} dgn</td>
-      <td style="padding: 8px; text-align: center; border-bottom: 1px solid #ddd; color: ${v.dagenWacht > 14 ? '#C00000' : '#375623'}; font-weight: bold;">${v.dagenWacht > 14 ? 'URGENT' : 'Bel klant'}</td>
-    </tr>`
-  ).join("");
-
-  return `
-    <div style="font-family: Calibri, Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px;">
-      <div style="background: #BF5800; color: white; padding: 16px 20px; border-radius: 8px 8px 0 0;">
-        <h1 style="margin: 0; font-size: 18px;">📞 ${autos.length} auto('s) klaar voor aflevering</h1>
-      </div>
-      <div style="background: #f8f8f8; padding: 20px; border: 1px solid #e0e0e0;">
-        <p style="font-size: 14px; margin: 0 0 16px;">Hoi ${verkoperNaam},</p>
-        <p style="font-size: 14px; margin: 0 0 16px;">De volgende auto's zijn klaar (ingeschreven + checklist afgerond) maar hebben nog <strong>geen afleverafspraak</strong>. Bel de klant om een afleverdatum te plannen.</p>
-        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-          <tr style="background: #BF5800; color: white;">
-            <th style="padding: 8px; text-align: left;">Auto</th>
-            <th style="padding: 8px; text-align: center;">Kenteken</th>
-            <th style="padding: 8px; text-align: left;">Klant</th>
-            <th style="padding: 8px; text-align: center;">Wachtdagen</th>
-            <th style="padding: 8px; text-align: center;">Actie</th>
-          </tr>
-          ${autoRows}
-        </table>
-      </div>
-      <div style="padding: 12px 20px; font-size: 11px; color: #999; text-align: center;">
-        Automatisch verstuurd door Aftersales · ${datumDisplay}
-      </div>
-    </div>
-  `;
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
