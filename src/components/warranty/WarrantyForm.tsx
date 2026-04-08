@@ -134,8 +134,6 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         status: "actief" as const,
         priority: priority as any,
         loanCarAssigned,
-        loanCarId: loanCarAssigned ? selectedLoanCar : undefined,
-        loanCarDetails: loanCarAssigned ? loanCars.find((car: LoanCar) => car.id === selectedLoanCar) : undefined,
         estimatedCost,
         additionalNotes,
         attachments: [],
