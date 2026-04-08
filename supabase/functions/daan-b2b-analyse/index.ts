@@ -686,7 +686,7 @@ Deno.serve(async (req) => {
     // STAP 1: Haal transportlijst op
     const { data: vehicles, error: vErr } = await supabase
       .from("vehicles")
-      .select("id, brand, model, year, mileage, license_number, purchase_price, notes, details, created_at")
+      .select("id, brand, model, year, mileage, license_number, purchase_price, notes, details, created_at, vin")
       .eq("status", "voorraad")
       .gt("purchase_price", 0);
 
