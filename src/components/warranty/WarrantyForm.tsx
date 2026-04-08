@@ -566,37 +566,19 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         <CardHeader>
           <CardTitle>Leenauto</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           <div className="flex items-center space-x-2">
             <Switch
               id="loanCar"
               checked={loanCarAssigned}
               onCheckedChange={setLoanCarAssigned}
             />
-            <Label htmlFor="loanCar">Leenauto toewijzen</Label>
+            <Label htmlFor="loanCar">Klant heeft leenauto nodig</Label>
           </div>
-
           {loanCarAssigned && (
-            <div>
-              <Label htmlFor="loanCarSelect">Selecteer Leenauto</Label>
-              <Select value={selectedLoanCar} onValueChange={setSelectedLoanCar}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Kies een beschikbare leenauto..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableLoanCars.map((car: LoanCar) => (
-                    <SelectItem key={car.id} value={car.id}>
-                      {car.brand} {car.model} - {car.licenseNumber}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {availableLoanCars.length === 0 && (
-                <p className="text-sm text-red-600 mt-1">
-                  Geen leenauto's beschikbaar
-                </p>
-              )}
-            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              Een leenauto kan later gekoppeld worden via het Sara Dashboard.
+            </p>
           )}
         </CardContent>
       </Card>
