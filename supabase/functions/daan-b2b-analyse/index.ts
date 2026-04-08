@@ -290,7 +290,6 @@ async function queryJPCarsValuation(
 
 function calculateB2BKansen(vehicle: ParsedVehicle, listings: any[]): B2BKans[] {
   const kansen: B2BKans[] = [];
-  const autoNaam = `${vehicle.brand} ${vehicle.model}`;
 
   for (const listing of listings) {
     const soldSince = listing.sold_since;
@@ -309,17 +308,24 @@ function calculateB2BKansen(vehicle: ParsedVehicle, listings: any[]): B2BKans[] 
     if (onzeMarge < 3000) continue;
 
     kansen.push({
-      auto: autoNaam,
-      inkoopprijs: vehicle.inkoopprijs,
-      b2bAanbodprijs: b2bAanbod,
-      dealerNaam: dealerName,
-      dealerVerkoopprijs: dealerPrice,
-      dealerStagedagen: daysInStock,
-      verkochtDagenGeleden: soldSince,
-      onzeMarge,
-      dealerMargeruimte: 3000,
+      onze_merk: vehicle.brand,
+      onze_model: vehicle.model,
+      onze_vin: vehicle.vin?.substring(0, 17) ?? "—",
+      onze_bouwjaar: vehicle.bouwjaar,
+      onze_km: vehicle.kilometerstand,
+      onze_inkoop: vehicle.inkoopprijs,
+      dealer_naam: dealerName,
+      dealer_merk: listing.make || vehicle.brand,
+      dealer_model: listing.model || vehicle.model,
+      dealer_bouwjaar: listing.build || null,
+      dealer_km: listing.mileage || 0,
+      dealer_prijs: dealerPrice,
+      dealer_stagedagen: daysInStock,
+      verkocht_dgn_geleden: soldSince,
+      jp_cars_url: jpCarsUrl,
+      b2b_aanbod: b2bAanbod,
+      onze_marge: onzeMarge,
       score: onzeMarge >= 4000 ? "STERK" : "MOGELIJK",
-      jpCarsUrl,
     });
   }
   return kansen;
