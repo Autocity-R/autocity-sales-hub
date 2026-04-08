@@ -840,16 +840,21 @@ Deno.serve(async (req) => {
 
       const lloydOchtendHtml = buildLloydOchtendEmail(gisterGedaan, urgentAfleveringen, datumDisplay);
 
-      await supabase.from("email_queue").insert({
-        payload: {
-          senderEmail: "aftersales@auto-city.nl",
-          to: ["lloyd@auto-city.nl"],
-          subject: `Goedemorgen Lloyd — Aftersales update ${dagNaam} ${datumKort}`,
-          htmlBody: lloydOchtendHtml,
-        },
-        status: "pending",
-      });
-      console.log("✅ Lloyd ochtendmail queued");
+      if (LLOYD_OCHTENDMAIL_ACTIEF) {
+        await supabase.from("email_queue").insert({
+          payload: {
+            senderEmail: "aftersales@auto-city.nl",
+            to: ["lloyd@auto-city.nl"],
+            subject: `Goedemorgen Lloyd — Aftersales update ${dagNaam} ${datumKort}`,
+            htmlBody: lloydOchtendHtml,
+          },
+          status: "pending",
+        });
+        console.log("✅ Lloyd ochtendmail queued");
+      } else {
+        console.log("⏸️ Lloyd ochtendmail UITGESCHAKELD (feature flag). Subject zou zijn:", `Goedemorgen Lloyd — Aftersales update ${dagNaam} ${datumKort}`);
+        console.log("📊 Gisteren gedaan:", gisterGedaan.length, "items |", "Urgente afleveringen:", urgentAfleveringen.length);
+      }
     } catch (emailErr) {
       console.error("❌ Failed to queue Lloyd ochtendmail:", emailErr);
     }
