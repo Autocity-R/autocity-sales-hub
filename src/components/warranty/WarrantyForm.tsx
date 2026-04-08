@@ -53,7 +53,7 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
   const [reportDate, setReportDate] = useState<Date>(new Date());
   const [estimatedCost, setEstimatedCost] = useState<number>(0);
   const [loanCarAssigned, setLoanCarAssigned] = useState(false);
-  const [selectedLoanCar, setSelectedLoanCar] = useState<string>("");
+  
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
