@@ -26,8 +26,8 @@ import { nl } from "date-fns/locale";
 import { CalendarIcon, Car, User, AlertTriangle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Vehicle } from "@/types/inventory";
-import { LoanCar, WarrantyClaim } from "@/types/warranty";
-import { fetchLoanCars, createWarrantyClaim, updateWarrantyClaim } from "@/services/warrantyService";
+import { WarrantyClaim } from "@/types/warranty";
+import { createWarrantyClaim, updateWarrantyClaim } from "@/services/warrantyService";
 import { fetchDeliveredVehiclesForWarranty } from "@/services/deliveredVehicleService";
 import { createAppointment } from "@/services/calendarService";
 import { toast } from "@/hooks/use-toast";
@@ -53,7 +53,7 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
   const [reportDate, setReportDate] = useState<Date>(new Date());
   const [estimatedCost, setEstimatedCost] = useState<number>(0);
   const [loanCarAssigned, setLoanCarAssigned] = useState(false);
-  const [selectedLoanCar, setSelectedLoanCar] = useState<string>("");
+  
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,12 +72,6 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
     queryFn: fetchDeliveredVehiclesForWarranty
   });
 
-  const { data: loanCars = [], isLoading: loanCarsLoading } = useQuery({
-    queryKey: ["loanCars"],
-    queryFn: fetchLoanCars
-  });
-
-  const availableLoanCars = loanCars.filter((car: LoanCar) => car.available);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,8 +134,6 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         status: "actief" as const,
         priority: priority as any,
         loanCarAssigned,
-        loanCarId: loanCarAssigned ? selectedLoanCar : undefined,
-        loanCarDetails: loanCarAssigned ? loanCars.find((car: LoanCar) => car.id === selectedLoanCar) : undefined,
         estimatedCost,
         additionalNotes,
         attachments: [],
@@ -163,8 +155,6 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         status: "actief" as const,
         priority: priority as any,
         loanCarAssigned,
-        loanCarId: loanCarAssigned ? selectedLoanCar : undefined,
-        loanCarDetails: loanCarAssigned ? loanCars.find((car: LoanCar) => car.id === selectedLoanCar) : undefined,
         estimatedCost,
         additionalNotes,
         attachments: [],
@@ -576,37 +566,19 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         <CardHeader>
           <CardTitle>Leenauto</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           <div className="flex items-center space-x-2">
             <Switch
               id="loanCar"
               checked={loanCarAssigned}
               onCheckedChange={setLoanCarAssigned}
             />
-            <Label htmlFor="loanCar">Leenauto toewijzen</Label>
+            <Label htmlFor="loanCar">Klant heeft leenauto nodig</Label>
           </div>
-
           {loanCarAssigned && (
-            <div>
-              <Label htmlFor="loanCarSelect">Selecteer Leenauto</Label>
-              <Select value={selectedLoanCar} onValueChange={setSelectedLoanCar}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Kies een beschikbare leenauto..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableLoanCars.map((car: LoanCar) => (
-                    <SelectItem key={car.id} value={car.id}>
-                      {car.brand} {car.model} - {car.licenseNumber}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {availableLoanCars.length === 0 && (
-                <p className="text-sm text-red-600 mt-1">
-                  Geen leenauto's beschikbaar
-                </p>
-              )}
-            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              Een leenauto kan later gekoppeld worden via het Sara Dashboard.
+            </p>
           )}
         </CardContent>
       </Card>
