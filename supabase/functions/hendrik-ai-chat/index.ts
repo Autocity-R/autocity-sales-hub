@@ -332,6 +332,10 @@ serve(async (req) => {
     const isLisaAgent = agentName.toLowerCase().includes('lisa') ||
                         agentCapabilities.includes('delivery-planning');
 
+    // Determine if this is Sara (warranty tracker)
+    const isSaraAgent = agentName.toLowerCase().includes('sara') ||
+                        agentCapabilities.includes('warranty-tracking');
+
     if (isMarcoAgent) {
       agentTools = getMarcoTools();
     } else if (isLisaAgent) {
