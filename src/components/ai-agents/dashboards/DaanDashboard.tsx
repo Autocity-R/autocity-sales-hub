@@ -15,44 +15,41 @@ import { SalespersonDetailDialog } from "@/components/reports/SalespersonDetailD
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface B2BKans {
-  auto: string;
-  kenteken: string;
-  inkoopprijs: number;
-  b2bAanbodprijs: number;
-  dealerNaam: string;
-  dealerVerkoopprijs: number;
-  dealerStagedagen: number;
-  verkochtDagenGeleden: number;
-  onzeMarge: number;
-  dealerMargeruimte: number;
+  onze_merk: string;
+  onze_model: string;
+  onze_vin: string;
+  onze_bouwjaar: number;
+  onze_km: number;
+  onze_inkoop: number;
+  dealer_naam: string;
+  dealer_merk: string;
+  dealer_model: string;
+  dealer_bouwjaar: number;
+  dealer_km: number;
+  dealer_prijs: number;
+  dealer_stagedagen: number;
+  verkocht_dgn_geleden: number;
+  jp_cars_url: string | null;
+  b2b_aanbod: number;
+  onze_marge: number;
   score: "STERK" | "MOGELIJK";
+}
+
+interface B2BResult {
+  sterkeKansen: B2BKans[];
+  mogelijkeKansen: B2BKans[];
+  totaalOffline: number;
+  excelUrl?: string;
 }
 
 const fmt = (n: number) => `€${n.toLocaleString("nl-NL")}`;
 
 export const DaanDashboard: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [b2bResult, setB2bResult] = useState<B2BResult | null>(null);
   const [selectedSalesperson, setSelectedSalesperson] = useState<any>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const { isAdmin } = useRoleAccess();
-
-  // B2B kansen data
-  const { data: b2bData, isLoading: b2bLoading, refetch: refetchB2B } = useQuery({
-    queryKey: ["daan-b2b-kansen"],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("daan-b2b-analyse", {
-        body: { mode: "download" },
-      });
-      if (error) throw error;
-      return data as {
-        sterkeKansen: B2BKans[];
-        mogelijkeKansen: B2BKans[];
-        totaalOffline: number;
-      };
-    },
-    staleTime: 5 * 60 * 1000,
-    retry: 1,
-  });
 
   // Offline voorraad
   const { data: offlineData, isLoading: offlineLoading } = useQuery({
@@ -71,7 +68,6 @@ export const DaanDashboard: React.FC = () => {
       return (data || [])
         .filter((v: any) => {
           const d = v.details || {};
-          // Exclude online, inruil, en onderweg (nog in transport)
           return d.showroomOnline !== true && d.isTradeIn !== true && d.transportStatus !== "onderweg";
         })
         .map((v: any) => ({
@@ -85,7 +81,7 @@ export const DaanDashboard: React.FC = () => {
     },
   });
 
-  // Team performance — live data uit vehicles tabel
+  // Team performance
   const { data: teamData, isLoading: teamLoading } = useQuery({
     queryKey: ["daan-team-performance"],
     queryFn: async () => {
@@ -168,7 +164,7 @@ export const DaanDashboard: React.FC = () => {
         body: { mode: "download" },
       });
       if (error) throw error;
-      await refetchB2B();
+      setB2bResult(data as B2BResult);
       toast.success(`Analyse compleet: ${(data?.sterkeKansen?.length || 0) + (data?.mogelijkeKansen?.length || 0)} kansen gevonden`);
     } catch (e: any) {
       toast.error("Analyse mislukt: " + (e.message || "Onbekende fout"));
@@ -177,8 +173,18 @@ export const DaanDashboard: React.FC = () => {
     }
   };
 
-  const sterke = b2bData?.sterkeKansen || [];
-  const mogelijke = b2bData?.mogelijkeKansen || [];
+  const handleDownloadExcel = () => {
+    if (b2bResult?.excelUrl) {
+      window.open(b2bResult.excelUrl, "_blank");
+      toast.success("Excel download gestart");
+    } else {
+      toast.error("Voer eerst een analyse uit");
+    }
+  };
+
+  const sterke = b2bResult?.sterkeKansen || [];
+  const mogelijke = b2bResult?.mogelijkeKansen || [];
+  const hasResults = b2bResult !== null;
 
   return (
     <div className="space-y-6">
@@ -190,9 +196,7 @@ export const DaanDashboard: React.FC = () => {
               <Star className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-green-600">
-                {b2bLoading ? <Skeleton className="h-7 w-8" /> : sterke.length}
-              </p>
+              <p className="text-2xl font-bold text-green-600">{sterke.length}</p>
               <p className="text-xs text-muted-foreground">Sterke B2B kansen</p>
             </div>
           </CardContent>
@@ -203,9 +207,7 @@ export const DaanDashboard: React.FC = () => {
               <CircleDot className="h-5 w-5 text-orange-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-orange-500">
-                {b2bLoading ? <Skeleton className="h-7 w-8" /> : mogelijke.length}
-              </p>
+              <p className="text-2xl font-bold text-orange-500">{mogelijke.length}</p>
               <p className="text-xs text-muted-foreground">Mogelijke kansen</p>
             </div>
           </CardContent>
@@ -258,24 +260,8 @@ export const DaanDashboard: React.FC = () => {
             <Button
               size="sm"
               variant="outline"
-              onClick={async () => {
-                toast.info("Excel wordt gegenereerd...");
-                try {
-                  const { data, error } = await supabase.functions.invoke("daan-b2b-analyse", {
-                    body: { mode: "download" },
-                  });
-                  if (error) throw error;
-                  if (data?.excelUrl) {
-                    window.open(data.excelUrl, "_blank");
-                    toast.success("Excel download gestart");
-                  } else {
-                    toast.error("Geen Excel beschikbaar");
-                  }
-                } catch (e: any) {
-                  toast.error("Download mislukt: " + (e.message || "Onbekende fout"));
-                }
-              }}
-              disabled={isAnalyzing}
+              onClick={handleDownloadExcel}
+              disabled={isAnalyzing || !hasResults}
             >
               <Download className="h-3 w-3 mr-1" />
               Excel
@@ -283,7 +269,11 @@ export const DaanDashboard: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {b2bLoading ? (
+          {!hasResults && !isAnalyzing ? (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              Klik op "Analyse" om B2B kansen te laden
+            </p>
+          ) : isAnalyzing ? (
             <div className="space-y-2">
               {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
             </div>
@@ -293,7 +283,6 @@ export const DaanDashboard: React.FC = () => {
                 <TabsTrigger value="sterk">🟢 Sterk ({sterke.length})</TabsTrigger>
                 <TabsTrigger value="mogelijk">🟡 Mogelijk ({mogelijke.length})</TabsTrigger>
               </TabsList>
-
               <TabsContent value="sterk">
                 <KansenTabel kansen={sterke} />
               </TabsContent>
@@ -418,29 +407,50 @@ function KansenTabel({ kansen }: { kansen: B2BKans[] }) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-muted-foreground text-xs">
-            <th className="text-left py-2 px-1">Auto</th>
-            <th className="text-left py-2 px-1">Kenteken</th>
+            <th className="text-left py-2 px-1">Merk</th>
+            <th className="text-left py-2 px-1">Model</th>
+            <th className="text-left py-2 px-1 font-mono">VIN</th>
             <th className="text-right py-2 px-1">Inkoop</th>
-            <th className="text-right py-2 px-1 font-bold">B2B Aanbod</th>
             <th className="text-left py-2 px-1">Dealer</th>
             <th className="text-right py-2 px-1">Dealer Prijs</th>
-            <th className="text-center py-2 px-1">Stagedn</th>
+            <th className="text-center py-2 px-1">Stagedgn</th>
             <th className="text-center py-2 px-1">Verk. dgn</th>
             <th className="text-right py-2 px-1 font-bold text-green-600">Marge</th>
+            <th className="text-center py-2 px-1">JP Cars</th>
           </tr>
         </thead>
         <tbody>
           {kansen.map((k, i) => (
-            <tr key={`${k.kenteken}-${i}`} className="border-b last:border-0 hover:bg-muted/30">
-              <td className="py-2 px-1 font-medium">{k.auto}</td>
-              <td className="py-2 px-1 text-muted-foreground">{k.kenteken}</td>
-              <td className="py-2 px-1 text-right">{fmt(k.inkoopprijs)}</td>
-              <td className="py-2 px-1 text-right font-bold">{fmt(k.b2bAanbodprijs)}</td>
-              <td className="py-2 px-1">{k.dealerNaam}</td>
-              <td className="py-2 px-1 text-right">{fmt(k.dealerVerkoopprijs)}</td>
-              <td className="py-2 px-1 text-center">{k.dealerStagedagen}</td>
-              <td className="py-2 px-1 text-center">{k.verkochtDagenGeleden}</td>
-              <td className="py-2 px-1 text-right font-bold text-green-600">{fmt(k.onzeMarge)}</td>
+            <tr key={`${k.onze_vin}-${i}`} className="border-b last:border-0 hover:bg-muted/30">
+              <td className="py-2 px-1 font-medium">{k.onze_merk}</td>
+              <td className="py-2 px-1">{k.onze_model}</td>
+              <td className="py-2 px-1 font-mono text-xs text-muted-foreground">{k.onze_vin?.substring(0, 17) || "—"}</td>
+              <td className="py-2 px-1 text-right">{fmt(k.onze_inkoop)}</td>
+              <td className="py-2 px-1">{k.dealer_naam}</td>
+              <td className="py-2 px-1 text-right">{fmt(k.dealer_prijs)}</td>
+              <td className="py-2 px-1 text-center">
+                <span className={k.dealer_stagedagen > 30 ? "text-red-500 font-medium" : ""}>
+                  {k.dealer_stagedagen}
+                </span>
+              </td>
+              <td className="py-2 px-1 text-center">
+                <span className={k.verkocht_dgn_geleden <= 10 ? "text-green-600 font-medium" : ""}>
+                  {k.verkocht_dgn_geleden === 0 ? "Vandaag" : `${k.verkocht_dgn_geleden}d`}
+                </span>
+              </td>
+              <td className="py-2 px-1 text-right font-bold text-green-600">{fmt(k.onze_marge)}</td>
+              <td className="py-2 px-1 text-center">
+                {k.jp_cars_url ? (
+                  <a
+                    href={k.jp_cars_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-500 hover:text-blue-700 inline-flex items-center gap-1"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : "—"}
+              </td>
             </tr>
           ))}
         </tbody>
