@@ -340,6 +340,8 @@ serve(async (req) => {
       agentTools = getMarcoTools();
     } else if (isLisaAgent) {
       agentTools = getLisaTools();
+    } else if (isSaraAgent) {
+      agentTools = getSaraTools();
     } else if (isCEOAgent) {
       agentTools = getStrategicCEOFunctions();
     } else {
