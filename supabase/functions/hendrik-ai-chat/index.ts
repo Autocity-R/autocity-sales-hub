@@ -3149,12 +3149,3 @@ async function handleSaraToolCall(supabaseClient: any, toolName: string, toolInp
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
-
-      default:
-        return { success: false, error: `Unknown Lisa tool: ${toolName}` };
-    }
-  } catch (error) {
-    console.error(`Lisa tool error (${toolName}):`, error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-  }
-}
