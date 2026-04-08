@@ -13,6 +13,7 @@ const C = {
   ROOD_BG: "FFD7D7", ROOD_ALT: "FFB3B3",
   GROEN_BG: "E2EFDA", GROEN_ALT: "F0F7EC",
   ORANJE_BG: "FCE4D6", ORANJE_ALT: "FFF0E6",
+  BLAUW_BG: "DEEAF1", BLAUW_ALT: "EAF1F5",
   WIT: "FFFFFF", GRIJS_LT: "F8F8F8", GRIJS_H: "EEF2F8",
 };
 
@@ -29,6 +30,19 @@ function makeCell(v: any, opts: any = {}): any {
     fill: opts.fill ? { fgColor: { rgb: opts.fill }, patternType: "solid" } : undefined,
   };
   return cell;
+}
+
+function linkCell(text: string, url: string, opts: any = {}): any {
+  return {
+    v: text, t: "s",
+    l: { Target: url, Tooltip: text },
+    s: {
+      font: { ...FONT_BASE, color: { rgb: "0563C1" }, underline: true, ...(opts.font || {}) },
+      border: BORDERS,
+      alignment: { vertical: "center", horizontal: opts.align || "left" },
+      fill: opts.fill ? { fgColor: { rgb: opts.fill }, patternType: "solid" } : undefined,
+    },
+  };
 }
 
 function headerCell(text: string, fill = C.DARK_NAVY): any {
@@ -55,6 +69,12 @@ function titleCell(text: string): any {
   };
 }
 
+function emptyTitleFill(): any {
+  return { v: "", t: "s", s: { fill: { fgColor: { rgb: C.DARK_NAVY }, patternType: "solid" } } };
+}
+
+// === INTERFACES ===
+
 interface ParsedVehicle {
   id: string;
   brand: string;
@@ -78,30 +98,26 @@ interface B2BKans {
   onzeMarge: number;
   dealerMargeruimte: number;
   score: "STERK" | "MOGELIJK";
+  jpCarsUrl: string | null;
 }
+
+// === CLAUDE PARSING ===
 
 function parseClaudeResponse(text: string): any[] {
   try {
     let cleanText = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-
     const firstBracket = Math.min(
       cleanText.indexOf('[') !== -1 ? cleanText.indexOf('[') : Infinity,
       cleanText.indexOf('{') !== -1 ? cleanText.indexOf('{') : Infinity
     );
-    const lastBracket = Math.max(
-      cleanText.lastIndexOf(']'),
-      cleanText.lastIndexOf('}')
-    );
-
+    const lastBracket = Math.max(cleanText.lastIndexOf(']'), cleanText.lastIndexOf('}'));
     if (firstBracket !== Infinity && lastBracket !== -1 && lastBracket > firstBracket) {
       cleanText = cleanText.substring(firstBracket, lastBracket + 1);
     }
-
     const parsed = JSON.parse(cleanText);
     return Array.isArray(parsed) ? parsed : [parsed];
   } catch (error) {
-    console.error("❌ CRITICAL: Failed to parse Claude JSON:", error);
-    console.error("Raw Claude Output (first 500 chars):", text.substring(0, 500));
+    console.error("❌ Failed to parse Claude JSON:", error);
     return [];
   }
 }
@@ -161,9 +177,8 @@ BELANGRIJK: Geef UITSLUITEND de ruwe JSON array terug. Geen inleiding, geen conc
 
   const data = await response.json();
   const text = data.content?.[0]?.text || "[]";
-
   const parsed = parseClaudeResponse(text);
-  console.log(`🤖 Claude Parsing voltooid: ${parsed.length} voertuigen succesvol geëxtraheerd`);
+  console.log(`🤖 Claude: ${parsed.length} voertuigen geëxtraheerd`);
 
   const result: Record<string, any> = {};
   for (const item of parsed) {
@@ -179,17 +194,13 @@ BELANGRIJK: Geef UITSLUITEND de ruwe JSON array terug. Geen inleiding, geen conc
   return result;
 }
 
-// === FUEL / GEAR MAPPING (zelfde als jpcars-lookup) ===
+// === FUEL / GEAR / MAKE MAPPING ===
 
 function mapFuel(brandstof: string | null | undefined): string | undefined {
   if (!brandstof) return undefined;
   const map: Record<string, string> = {
-    "Benzine": "Petrol",
-    "Diesel": "Diesel",
-    "Hybride": "Hybrid",
-    "Elektrisch": "Electric",
-    "PHEV": "Hybrid",
-    "Plug-in Hybride": "Hybrid",
+    "Benzine": "Petrol", "Diesel": "Diesel", "Hybride": "Hybrid",
+    "Elektrisch": "Electric", "PHEV": "Hybrid", "Plug-in Hybride": "Hybrid",
   };
   return map[brandstof] || undefined;
 }
@@ -197,27 +208,23 @@ function mapFuel(brandstof: string | null | undefined): string | undefined {
 function mapGear(transmissie: string | null | undefined): string | undefined {
   if (!transmissie) return undefined;
   const map: Record<string, string> = {
-    "Automaat": "Automatic",
-    "Handgeschakeld": "Manual",
-    "Manual": "Manual",
-    "Automatic": "Automatic",
+    "Automaat": "Automatic", "Handgeschakeld": "Manual",
+    "Manual": "Manual", "Automatic": "Automatic",
   };
   return map[transmissie] || undefined;
 }
 
-// Make mapping voor merken die JP Cars anders verwacht
 function mapMake(brand: string): string {
   const normalized = brand.trim().toUpperCase();
   const makeMap: Record<string, string> = {
-    "LAND ROVER": "LANDROVER",
-    "ALFA ROMEO": "ALFAROMEO", 
-    "MERCEDES-BENZ": "MERCEDES",
-    "MERCEDES BENZ": "MERCEDES",
-    "ROLLS ROYCE": "ROLLSROYCE",
-    "ASTON MARTIN": "ASTONMARTIN",
+    "LAND ROVER": "LANDROVER", "ALFA ROMEO": "ALFAROMEO",
+    "MERCEDES-BENZ": "MERCEDES", "MERCEDES BENZ": "MERCEDES",
+    "ROLLS ROYCE": "ROLLSROYCE", "ASTON MARTIN": "ASTONMARTIN",
   };
   return makeMap[normalized] || normalized;
 }
+
+// === JP CARS QUERY ===
 
 async function queryJPCarsValuation(
   parsed: { brand: string; model: string; brandstof?: string | null; transmissie?: string | null; bouwjaar?: number | null; kilometerstand?: number },
@@ -228,56 +235,40 @@ async function queryJPCarsValuation(
     model: parsed.model.trim().toUpperCase(),
     mileage: parsed.kilometerstand || 0,
   };
-
   if (parsed.bouwjaar) body.build = parsed.bouwjaar;
-
   const fuel = mapFuel(parsed.brandstof);
   if (fuel) body.fuel = fuel;
-
   const gear = mapGear(parsed.transmissie);
   if (gear) body.gear = gear;
 
-  const url = `https://api.nl.jp.cars/api/valuate/extended?enable_portal_urls=false&enable_top_dealers=true`;
+  // enable_portal_urls=true zodat we JP Cars links krijgen
+  const url = `https://api.nl.jp.cars/api/valuate/extended?enable_portal_urls=true&enable_top_dealers=true`;
 
   try {
-    console.log(`🔎 JP Cars Valuate: ${JSON.stringify(body)}`);
-
+    console.log(`🔎 JP Cars: ${JSON.stringify(body)}`);
     const resp = await fetch(url, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
 
-    // JP Cars kan 500 retourneren maar toch data in de body hebben
     const respText = await resp.text();
     let data: any;
-    try {
-      data = JSON.parse(respText);
-    } catch {
-      console.error(`❌ JP Cars unparseable response for ${parsed.brand} ${parsed.model}: ${respText.substring(0, 200)}`);
+    try { data = JSON.parse(respText); } catch {
+      console.error(`❌ JP Cars unparseable: ${respText.substring(0, 200)}`);
       return [];
     }
 
     const window = data.window || [];
-
     if (data.error) {
-      console.warn(`⚠️ JP Cars Valuate warning for ${parsed.brand} ${parsed.model}: ${data.error_message || data.error} — window: ${window.length} listings`);
+      console.warn(`⚠️ JP Cars: ${parsed.brand} ${parsed.model}: ${data.error_message || data.error} — ${window.length} listings`);
     }
-
     if (window.length > 0) {
-      console.log(`🚗 JP Cars: ${parsed.brand} ${parsed.model} bj:${parsed.bouwjaar || '?'} km:${parsed.kilometerstand || '?'} ${parsed.brandstof || ''} → ${window.length} listings`);
-      const sample = window[0];
-      console.log(`   📋 dealer=${sample.dealer_name}, price=${sample.price_local}, sold_since=${sample.sold_since}, stock_days=${sample.stock_days}`);
-    } else {
-      console.log(`🚗 JP Cars: ${parsed.brand} ${parsed.model} → 0 listings`);
+      console.log(`🚗 ${parsed.brand} ${parsed.model} → ${window.length} listings`);
     }
-
     return window;
   } catch (e) {
-    console.error(`❌ Fetch error JP Cars Valuate ${parsed.brand} ${parsed.model}:`, e);
+    console.error(`❌ JP Cars error ${parsed.brand} ${parsed.model}:`, e);
     return [];
   }
 }
@@ -288,36 +279,21 @@ function calculateB2BKansen(vehicle: ParsedVehicle, listings: any[]): B2BKans[] 
   const kansen: B2BKans[] = [];
   const autoNaam = `${vehicle.brand} ${vehicle.model}`;
 
-  let skipNoSold = 0, skipSoldOld = 0, skipStockHigh = 0, skipNoPrice = 0, skipLowMarge = 0, passed = 0;
-
   for (const listing of listings) {
-    // sold_since: number (dagen sinds verkoop), null = nog te koop
     const soldSince = listing.sold_since;
-    // stagedagen: probeer beide veldnamen
     const daysInStock = listing.days_in_stock ?? listing.stock_days ?? 0;
-    // prijs
     const dealerPrice = listing.price_local ?? listing.price ?? 0;
-    // dealer naam (valuate endpoint geeft echte dealer_name)
     const dealerName = listing.dealer_name || listing.location_name || "Onbekend";
+    const jpCarsUrl = listing.portal_url || listing.jpcars_url || listing.url || null;
 
-    // Alleen verkochte auto's
-    if (soldSince === null || soldSince === undefined) { skipNoSold++; continue; }
-    // Recent verkocht (max 40 dagen geleden)
-    if (soldSince > 40) { skipSoldOld++; continue; }
-    // Niet te lang in voorraad gestaan
-    if (daysInStock > 50) { skipStockHigh++; continue; }
-    // Moet een prijs hebben
-    if (dealerPrice <= 0) { skipNoPrice++; continue; }
+    if (soldSince === null || soldSince === undefined) continue;
+    if (soldSince > 40) continue;
+    if (daysInStock > 50) continue;
+    if (dealerPrice <= 0) continue;
 
-    // B2B marge berekening:
-    // Dealer verkoopprijs - 3000 = ons B2B aanbod
-    // Ons B2B aanbod - onze inkoop = onze marge
     const b2bAanbod = dealerPrice - 3000;
     const onzeMarge = b2bAanbod - vehicle.inkoopprijs;
-
-    // Minimaal €3000 marge voor ons
-    if (onzeMarge < 3000) { skipLowMarge++; continue; }
-    passed++;
+    if (onzeMarge < 3000) continue;
 
     kansen.push({
       auto: autoNaam,
@@ -330,31 +306,121 @@ function calculateB2BKansen(vehicle: ParsedVehicle, listings: any[]): B2BKans[] 
       onzeMarge,
       dealerMargeruimte: 3000,
       score: onzeMarge >= 4000 ? "STERK" : "MOGELIJK",
+      jpCarsUrl,
     });
   }
-
-  if (listings.length > 0) {
-    console.log(`   🔍 ${autoNaam}: ${listings.length} listings → noSold:${skipNoSold} soldOud:${skipSoldOld} stockHoog:${skipStockHigh} geenPrijs:${skipNoPrice} lageMarge:${skipLowMarge} ✅:${passed}`);
-  }
-
   return kansen;
 }
 
-// === EXCEL OUTPUT ===
+// === TEAM PERFORMANCE QUERY ===
 
-function buildExcel(sterkeKansen: B2BKans[], mogelijkeKansen: B2BKans[], datum: string): Uint8Array {
+async function queryTeamPerformance(supabase: any): Promise<any[]> {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+  const { data: soldVehicles, error } = await supabase
+    .from("vehicles")
+    .select("id, brand, model, status, selling_price, purchase_price, details, sold_date")
+    .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"])
+    .gte("sold_date", monthStart);
+
+  if (error) { console.error("Team query error:", error); return []; }
+
+  const teamMappings: Record<string, string[]> = {
+    Daan: ["daan", "daan leyte", "daan@auto-city.nl"],
+    Martijn: ["martijn", "martijn zuyderhoudt", "martijn@auto-city.nl"],
+    Alex: ["alex", "alexander", "alexander kool", "alex@auto-city.nl"],
+    Hendrik: ["hendrik", "hendrik@auto-city.nl"],
+    Mario: ["mario", "mario kroon", "mario@auto-city.nl"],
+  };
+
+  const stats: Record<string, { b2c: number; b2b: number; total: number; revenue: number; margin: number }> = {};
+  Object.keys(teamMappings).forEach(n => { stats[n] = { b2c: 0, b2b: 0, total: 0, revenue: 0, margin: 0 }; });
+
+  for (const v of soldVehicles || []) {
+    const details = (v.details || {}) as any;
+    const sp = (details.salespersonName || details.salesperson || details.verkoper || "").toLowerCase().trim();
+    if (!sp) continue;
+
+    let matched: string | null = null;
+    for (const [name, variations] of Object.entries(teamMappings)) {
+      if (variations.some(var_ => sp.includes(var_) || var_.includes(sp))) { matched = name; break; }
+    }
+    if (!matched) continue;
+
+    const s = stats[matched];
+    const isB2B = v.status === "verkocht_b2b" || (v.status === "afgeleverd" && details.salesType === "b2b");
+    if (isB2B) s.b2b++; else s.b2c++;
+    s.total++;
+    const selling = Number(v.selling_price) || 0;
+    const purchase = Number(v.purchase_price) || Number(details.purchasePrice) || 0;
+    s.revenue += selling;
+    s.margin += selling - purchase;
+  }
+
+  return Object.entries(stats)
+    .filter(([, s]) => s.total > 0)
+    .map(([name, s]) => ({
+      name, ...s,
+      margePerc: s.revenue > 0 ? Math.round((s.margin / s.revenue) * 100) : 0,
+      norm: 10,
+      opNorm: s.b2c >= 10,
+    }))
+    .sort((a, b) => b.total - a.total);
+}
+
+// === NIET ONLINE QUERY ===
+
+async function queryNietOnline(supabase: any): Promise<any[]> {
+  const { data, error } = await supabase
+    .from("vehicles")
+    .select("id, brand, model, license_number, purchase_price, details, created_at")
+    .eq("status", "voorraad")
+    .gt("purchase_price", 0);
+
+  if (error) { console.error("Niet-online query error:", error); return []; }
+
+  const now = Date.now();
+  const DAY = 86400000;
+
+  return (data || [])
+    .filter((v: any) => {
+      const d = v.details || {};
+      return d.showroomOnline !== true && d.isTradeIn !== true && d.transportStatus !== "onderweg";
+    })
+    .map((v: any) => ({
+      naam: `${v.brand || ""} ${v.model || ""}`.trim(),
+      kenteken: v.license_number || "—",
+      inkoopprijs: Number(v.purchase_price) || Number(v.details?.purchasePrice) || 0,
+      dagenInBezit: Math.floor((now - new Date(v.created_at).getTime()) / DAY),
+      status: v.details?.transportStatus === "aangekomen" ? "Aangekomen" : "Voorraad",
+    }))
+    .sort((a: any, b: any) => b.dagenInBezit - a.dagenInBezit);
+}
+
+// === EXCEL OUTPUT (3 TABS) ===
+
+function buildExcel(
+  sterkeKansen: B2BKans[],
+  mogelijkeKansen: B2BKans[],
+  teamData: any[],
+  nietOnline: any[],
+  datum: string
+): Uint8Array {
   const wb = XLSX.utils.book_new();
-  const COLS = ["Onze Auto", "Onze Inkoop", "B2B Aanbod", "Dealer Naam", "Dealer Verkoopprijs", "Stagedagen", "Verkocht dgn geleden", "Onze Marge", "Dealer Margeruimte"];
-  const COL_WIDTHS = [24, 12, 12, 24, 14, 12, 14, 12, 14];
 
-  function addSheet(name: string, kansen: B2BKans[], fillBg: string, fillAlt: string, hdrFill: string) {
+  // ===== TAB 1: B2B KANSEN =====
+  const B2B_COLS = ["Onze Auto", "Onze Inkoop", "B2B Aanbod", "Dealer Naam", "Dealer Verkoopprijs", "Stagedagen", "Verk. dgn geleden", "Onze Marge", "Dealer Marge", "JP Cars"];
+  const B2B_WIDTHS = [24, 12, 12, 24, 14, 12, 14, 12, 14, 14];
+
+  function addKansenSheet(name: string, kansen: B2BKans[], fillBg: string, fillAlt: string, hdrFill: string) {
     const rows: any[][] = [];
-    const titleRow = [titleCell(`${name} — ${datum}`), ...Array(COLS.length - 1).fill({ v: "", t: "s", s: { fill: { fgColor: { rgb: C.DARK_NAVY }, patternType: "solid" } } })];
-    rows.push(titleRow);
-    rows.push(COLS.map(c => headerCell(c, hdrFill)));
+    rows.push([titleCell(`${name} — ${datum}`), ...Array(B2B_COLS.length - 1).fill(emptyTitleFill())]);
+    rows.push(B2B_COLS.map(c => headerCell(c, hdrFill)));
+
     kansen.forEach((k, i) => {
       const bg = i % 2 === 0 ? fillBg : fillAlt;
-      rows.push([
+      const row = [
         makeCell(k.auto, { fill: bg }),
         makeCell(k.inkoopprijs, { fill: bg, align: "right" }),
         makeCell(k.b2bAanbodprijs, { fill: bg, align: "right", font: { bold: true } }),
@@ -364,37 +430,138 @@ function buildExcel(sterkeKansen: B2BKans[], mogelijkeKansen: B2BKans[], datum: 
         makeCell(k.verkochtDagenGeleden, { fill: bg, align: "center" }),
         makeCell(k.onzeMarge, { fill: bg, align: "right", font: { bold: true, color: { rgb: C.GROEN_H } } }),
         makeCell(k.dealerMargeruimte, { fill: bg, align: "right" }),
-      ]);
+        k.jpCarsUrl
+          ? linkCell("Bekijk →", k.jpCarsUrl, { fill: bg })
+          : makeCell("—", { fill: bg, align: "center" }),
+      ];
+      rows.push(row);
     });
 
     if (kansen.length === 0) {
-      rows.push([makeCell("Geen kansen gevonden", { fill: C.GRIJS_LT }), ...Array(COLS.length - 1).fill(makeCell("", { fill: C.GRIJS_LT }))]);
+      rows.push([makeCell("Geen kansen gevonden", { fill: C.GRIJS_LT }), ...Array(B2B_COLS.length - 1).fill(makeCell("", { fill: C.GRIJS_LT }))]);
+    }
+
+    // Totaalregel
+    if (kansen.length > 0) {
+      const totalMarge = kansen.reduce((s, k) => s + k.onzeMarge, 0);
+      rows.push([
+        makeCell(`Totaal: ${kansen.length} kansen`, { font: { bold: true }, fill: C.GRIJS_H }),
+        makeCell("", { fill: C.GRIJS_H }), makeCell("", { fill: C.GRIJS_H }),
+        makeCell("", { fill: C.GRIJS_H }), makeCell("", { fill: C.GRIJS_H }),
+        makeCell("", { fill: C.GRIJS_H }), makeCell("", { fill: C.GRIJS_H }),
+        makeCell(totalMarge, { fill: C.GRIJS_H, align: "right", font: { bold: true, color: { rgb: C.GROEN_H } } }),
+        makeCell("", { fill: C.GRIJS_H }), makeCell("", { fill: C.GRIJS_H }),
+      ]);
     }
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws["!cols"] = COL_WIDTHS.map(w => ({ wch: w }));
-    ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: COLS.length - 1 } }];
+    ws["!cols"] = B2B_WIDTHS.map(w => ({ wch: w }));
+    ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: B2B_COLS.length - 1 } }];
     XLSX.utils.book_append_sheet(wb, ws, name);
   }
 
-  addSheet("🟢 Sterke kansen", sterkeKansen, C.GROEN_BG, C.GROEN_ALT, C.GROEN_H);
-  addSheet("🟡 Mogelijke kansen", mogelijkeKansen, C.ORANJE_BG, C.ORANJE_ALT, C.ORANJE_H);
+  addKansenSheet("🟢 Sterke kansen", sterkeKansen, C.GROEN_BG, C.GROEN_ALT, C.GROEN_H);
+  addKansenSheet("🟡 Mogelijke kansen", mogelijkeKansen, C.ORANJE_BG, C.ORANJE_ALT, C.ORANJE_H);
 
-  const overzichtRows: any[][] = [
-    [titleCell(`B2B Analyse Overzicht — ${datum}`), ...Array(3).fill({ v: "", t: "s", s: { fill: { fgColor: { rgb: C.DARK_NAVY }, patternType: "solid" } } })],
-    [headerCell("KPI"), headerCell("Waarde"), headerCell(""), headerCell("")],
-    [makeCell("Sterke kansen (marge ≥ €4.000)"), makeCell(sterkeKansen.length, { align: "center", font: { bold: true, color: { rgb: C.GROEN_H } } }), makeCell(""), makeCell("")],
-    [makeCell("Mogelijke kansen (marge €3.000-€4.000)"), makeCell(mogelijkeKansen.length, { align: "center", font: { bold: true, color: { rgb: C.ORANJE_H } } }), makeCell(""), makeCell("")],
-    [makeCell("Totaal kansen"), makeCell(sterkeKansen.length + mogelijkeKansen.length, { align: "center", font: { bold: true } }), makeCell(""), makeCell("")],
-    [makeCell("Totale potentiële marge"), makeCell(
-      [...sterkeKansen, ...mogelijkeKansen].reduce((sum, k) => sum + k.onzeMarge, 0),
-      { align: "center", font: { bold: true, color: { rgb: C.GROEN_H } } }
-    ), makeCell(""), makeCell("")],
-  ];
-  const wsOvz = XLSX.utils.aoa_to_sheet(overzichtRows);
-  wsOvz["!cols"] = [{ wch: 35 }, { wch: 15 }, { wch: 10 }, { wch: 10 }];
-  wsOvz["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }];
-  XLSX.utils.book_append_sheet(wb, wsOvz, "📊 Overzicht");
+  // ===== TAB 2: TEAM PERFORMANCE =====
+  {
+    const TEAM_COLS = ["Verkoper", "B2C", "B2B", "Totaal", "Omzet", "Marge", "Marge %", "Norm B2C", "Status"];
+    const TEAM_WIDTHS = [16, 8, 8, 8, 16, 16, 10, 10, 14];
+    const rows: any[][] = [];
+    rows.push([titleCell(`Team Performance — ${datum}`), ...Array(TEAM_COLS.length - 1).fill(emptyTitleFill())]);
+    rows.push(TEAM_COLS.map(c => headerCell(c, C.MID_BLUE)));
+
+    teamData.forEach((t, i) => {
+      const bg = i % 2 === 0 ? C.BLAUW_BG : C.BLAUW_ALT;
+      rows.push([
+        makeCell(t.name, { fill: bg, font: { bold: true } }),
+        makeCell(t.b2c, { fill: bg, align: "center" }),
+        makeCell(t.b2b, { fill: bg, align: "center" }),
+        makeCell(t.total, { fill: bg, align: "center", font: { bold: true } }),
+        makeCell(t.revenue, { fill: bg, align: "right" }),
+        makeCell(t.margin, { fill: bg, align: "right" }),
+        makeCell(`${t.margePerc}%`, { fill: bg, align: "center" }),
+        makeCell(t.norm, { fill: bg, align: "center" }),
+        makeCell(t.opNorm ? "✅ Op norm" : "⚠️ Onder norm", {
+          fill: bg, align: "center",
+          font: { bold: true, color: { rgb: t.opNorm ? C.GROEN_H : C.ROOD_H } },
+        }),
+      ]);
+    });
+
+    if (teamData.length === 0) {
+      rows.push([makeCell("Geen verkoopdata deze maand", { fill: C.GRIJS_LT }), ...Array(TEAM_COLS.length - 1).fill(makeCell("", { fill: C.GRIJS_LT }))]);
+    }
+
+    // Totaal
+    if (teamData.length > 0) {
+      const totB2C = teamData.reduce((s, t) => s + t.b2c, 0);
+      const totB2B = teamData.reduce((s, t) => s + t.b2b, 0);
+      const totTotal = teamData.reduce((s, t) => s + t.total, 0);
+      const totRev = teamData.reduce((s, t) => s + t.revenue, 0);
+      const totMargin = teamData.reduce((s, t) => s + t.margin, 0);
+      const totPerc = totRev > 0 ? Math.round((totMargin / totRev) * 100) : 0;
+      rows.push([
+        makeCell("TOTAAL", { fill: C.GRIJS_H, font: { bold: true } }),
+        makeCell(totB2C, { fill: C.GRIJS_H, align: "center", font: { bold: true } }),
+        makeCell(totB2B, { fill: C.GRIJS_H, align: "center", font: { bold: true } }),
+        makeCell(totTotal, { fill: C.GRIJS_H, align: "center", font: { bold: true } }),
+        makeCell(totRev, { fill: C.GRIJS_H, align: "right", font: { bold: true } }),
+        makeCell(totMargin, { fill: C.GRIJS_H, align: "right", font: { bold: true } }),
+        makeCell(`${totPerc}%`, { fill: C.GRIJS_H, align: "center", font: { bold: true } }),
+        makeCell("", { fill: C.GRIJS_H }), makeCell("", { fill: C.GRIJS_H }),
+      ]);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = TEAM_WIDTHS.map(w => ({ wch: w }));
+    ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: TEAM_COLS.length - 1 } }];
+    XLSX.utils.book_append_sheet(wb, ws, "📊 Team Performance");
+  }
+
+  // ===== TAB 3: NIET ONLINE =====
+  {
+    const NO_COLS = ["Auto", "Kenteken", "Inkoopprijs", "Dagen in bezit", "Status", "Advies"];
+    const NO_WIDTHS = [24, 14, 14, 14, 14, 28];
+    const rows: any[][] = [];
+    rows.push([titleCell(`Niet Online — ${datum}`), ...Array(NO_COLS.length - 1).fill(emptyTitleFill())]);
+    rows.push(NO_COLS.map(c => headerCell(c, C.ROOD_H)));
+
+    nietOnline.forEach((v, i) => {
+      const bg = i % 2 === 0 ? C.ROOD_BG : C.ROOD_ALT;
+      const advies = v.dagenInBezit > 60
+        ? "⚠️ Direct online zetten!"
+        : v.dagenInBezit > 30
+        ? "Snel online zetten"
+        : "Binnenkort online";
+      rows.push([
+        makeCell(v.naam, { fill: bg }),
+        makeCell(v.kenteken, { fill: bg, align: "center" }),
+        makeCell(v.inkoopprijs, { fill: bg, align: "right" }),
+        makeCell(v.dagenInBezit, {
+          fill: bg, align: "center",
+          font: { bold: v.dagenInBezit > 60, color: { rgb: v.dagenInBezit > 60 ? C.ROOD_H : "000000" } },
+        }),
+        makeCell(v.status, { fill: bg, align: "center" }),
+        makeCell(advies, { fill: bg }),
+      ]);
+    });
+
+    if (nietOnline.length === 0) {
+      rows.push([makeCell("Alle auto's staan online 🎉", { fill: C.GRIJS_LT }), ...Array(NO_COLS.length - 1).fill(makeCell("", { fill: C.GRIJS_LT }))]);
+    }
+
+    // Totaal
+    rows.push([
+      makeCell(`Totaal: ${nietOnline.length} auto's`, { fill: C.GRIJS_H, font: { bold: true } }),
+      ...Array(NO_COLS.length - 1).fill(makeCell("", { fill: C.GRIJS_H })),
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = NO_WIDTHS.map(w => ({ wch: w }));
+    ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: NO_COLS.length - 1 } }];
+    XLSX.utils.book_append_sheet(wb, ws, "🔴 Niet Online");
+  }
 
   const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
   return new Uint8Array(buf);
@@ -435,7 +602,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // STAP 1: Haal transportlijst op (auto's die onderweg zijn)
+    // STAP 1: Haal transportlijst op
     const { data: vehicles, error: vErr } = await supabase
       .from("vehicles")
       .select("id, brand, model, year, mileage, license_number, purchase_price, notes, details, created_at")
@@ -444,26 +611,45 @@ Deno.serve(async (req) => {
 
     if (vErr) throw new Error(`Vehicle query failed: ${vErr.message}`);
 
-    // Filter: alleen transportlijst auto's (onderweg, niet inruil)
     const transportVehicles = (vehicles || []).filter((v: any) => {
       const d = v.details || {};
-      // Alleen auto's die onderweg zijn (transportlijst)
       if (d.transportStatus !== "onderweg") return false;
-      // Geen inruil auto's
       if (d.isTradeIn === true) return false;
       return true;
     });
 
-    console.log(`📊 START B2B Analyse: ${transportVehicles.length} transport auto's (onderweg) van ${(vehicles || []).length} totaal voorraad`);
+    console.log(`📊 START: ${transportVehicles.length} transport auto's`);
+
+    // Parallel: team + niet-online data ophalen
+    const [teamData, nietOnline] = await Promise.all([
+      queryTeamPerformance(supabase),
+      queryNietOnline(supabase),
+    ]);
 
     if (transportVehicles.length === 0) {
-      const result = { sterkeKansen: [], mogelijkeKansen: [], totaalTransport: 0 };
-      return new Response(JSON.stringify(result), {
+      if (isDownloadMode) {
+        // Nog steeds Excel genereren met team + niet-online tabs
+        const datum = new Date().toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit", year: "numeric" });
+        const excelBuffer = buildExcel([], [], teamData, nietOnline, datum);
+        const filename = `daan-b2b-${new Date().toISOString().split("T")[0]}.xlsx`;
+        await supabase.storage.from("daan-analyses").upload(filename, excelBuffer, {
+          contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          upsert: true,
+        });
+        const { data: signedUrl } = await supabase.storage.from("daan-analyses").createSignedUrl(filename, 60 * 60 * 24 * 7);
+
+        return new Response(JSON.stringify({
+          sterkeKansen: [], mogelijkeKansen: [],
+          totaalTransport: 0,
+          excelUrl: signedUrl?.signedUrl || null,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ sterkeKansen: [], mogelijkeKansen: [], totaalTransport: 0 }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // STAP 2: Claude specificeert elke auto (brandstof, transmissie, etc.)
+    // STAP 2: Claude specificeert elke auto
     const vehicleInputs = transportVehicles.map((v: any) => ({
       id: v.id,
       brand: v.brand || "",
@@ -490,8 +676,7 @@ Deno.serve(async (req) => {
       };
     });
 
-    // STAP 3: JP Cars taxatie per auto via /api/valuate/extended
-    // Cache op specs om dubbele calls te voorkomen
+    // STAP 3: JP Cars taxatie per auto
     const jpCarsCache = new Map<string, any[]>();
 
     for (const pv of parsedVehicles) {
@@ -500,67 +685,53 @@ Deno.serve(async (req) => {
 
       if (!jpCarsCache.has(cacheKey)) {
         const listings = await queryJPCarsValuation({
-          brand: pv.brand,
-          model: pv.model,
-          brandstof: pv.brandstof,
-          transmissie: pv.transmissie,
-          bouwjaar: pv.bouwjaar,
-          kilometerstand: pv.kilometerstand,
+          brand: pv.brand, model: pv.model, brandstof: pv.brandstof,
+          transmissie: pv.transmissie, bouwjaar: pv.bouwjaar, kilometerstand: pv.kilometerstand,
         }, jpCarsToken);
         jpCarsCache.set(cacheKey, listings);
-        await new Promise(r => setTimeout(r, 200)); // rate limiting
+        await new Promise(r => setTimeout(r, 200));
       }
     }
 
-    // STAP 4: B2B kansen berekenen per auto
-    // Bewaar top 3 kansen per auto (vehicle ID als key, niet kenteken)
+    // STAP 4: B2B kansen berekenen
     const kansenPerAuto = new Map<string, B2BKans[]>();
-
     for (const pv of parsedVehicles) {
       const mileageBucket = Math.round(pv.kilometerstand / 20000) * 20000;
       const cacheKey = `${pv.brand}|${pv.model}|${pv.brandstof || ""}|${pv.transmissie || ""}|${pv.bouwjaar || ""}|${mileageBucket}`;
       const listings = jpCarsCache.get(cacheKey) || [];
       const kansen = calculateB2BKansen(pv, listings);
-
       if (kansen.length > 0) {
-        // Sorteer op marge en bewaar top 3
         kansen.sort((a, b) => b.onzeMarge - a.onzeMarge);
         kansenPerAuto.set(pv.id, kansen.slice(0, 3));
       }
     }
 
-    // Flatten alle kansen
     const allKansen = Array.from(kansenPerAuto.values()).flat();
     const sterkeKansen = allKansen.filter(k => k.score === "STERK").sort((a, b) => b.onzeMarge - a.onzeMarge);
     const mogelijkeKansen = allKansen.filter(k => k.score === "MOGELIJK").sort((a, b) => b.onzeMarge - a.onzeMarge);
 
-    console.log(`✅ Analyse voltooid: ${sterkeKansen.length} Sterke kansen, ${mogelijkeKansen.length} Mogelijke kansen uit ${transportVehicles.length} transport auto's`);
+    console.log(`✅ Analyse: ${sterkeKansen.length} Sterk, ${mogelijkeKansen.length} Mogelijk`);
+
+    // Excel genereren (altijd met 3 tabs)
+    const datum = new Date().toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const excelBuffer = buildExcel(sterkeKansen, mogelijkeKansen, teamData, nietOnline, datum);
+
+    const filename = `daan-b2b-${new Date().toISOString().split("T")[0]}.xlsx`;
+    await supabase.storage.from("daan-analyses").upload(filename, excelBuffer, {
+      contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      upsert: true,
+    });
+    const { data: signedUrl } = await supabase.storage.from("daan-analyses").createSignedUrl(filename, 60 * 60 * 24 * 7);
 
     if (isDownloadMode) {
       return new Response(JSON.stringify({
-        sterkeKansen,
-        mogelijkeKansen,
+        sterkeKansen, mogelijkeKansen,
         totaalTransport: transportVehicles.length,
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+        excelUrl: signedUrl?.signedUrl || null,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const datum = new Date().toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit", year: "numeric" });
-    const excelBuffer = buildExcel(sterkeKansen, mogelijkeKansen, datum);
-
-    const filename = `daan-b2b-${new Date().toISOString().split("T")[0]}.xlsx`;
-    const { error: uploadErr } = await supabase.storage
-      .from("daan-analyses")
-      .upload(filename, excelBuffer, {
-        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        upsert: true,
-      });
-
-    const { data: signedUrl } = await supabase.storage
-      .from("daan-analyses")
-      .createSignedUrl(filename, 60 * 60 * 24 * 7);
-
+    // Email mode: verstuur rapport
     const totalKansen = sterkeKansen.length + mogelijkeKansen.length;
     const totalMarge = allKansen.reduce((s, k) => s + k.onzeMarge, 0);
 
@@ -573,16 +744,18 @@ Deno.serve(async (req) => {
               <strong style="font-size: 24px; color: #375623;">${sterkeKansen.length}</strong><br>
               <span style="font-size: 12px;">Sterke kansen</span>
             </td>
-            <td style="padding: 12px; background: #FCE4D6; border-radius: 8px; text-align: center; margin-left: 8px;">
+            <td style="padding: 12px; background: #FCE4D6; border-radius: 8px; text-align: center;">
               <strong style="font-size: 24px; color: #BF5800;">${mogelijkeKansen.length}</strong><br>
               <span style="font-size: 12px;">Mogelijke kansen</span>
             </td>
-            <td style="padding: 12px; background: #DEEAF1; border-radius: 8px; text-align: center; margin-left: 8px;">
+            <td style="padding: 12px; background: #DEEAF1; border-radius: 8px; text-align: center;">
               <strong style="font-size: 24px; color: #1F3864;">€${totalMarge.toLocaleString("nl-NL")}</strong><br>
               <span style="font-size: 12px;">Potentiële marge</span>
             </td>
           </tr>
         </table>
+        <p><strong>📊 Team:</strong> ${teamData.map(t => `${t.name}: ${t.total} (B2C:${t.b2c}/B2B:${t.b2b})`).join(" | ")}</p>
+        <p><strong>🔴 Niet online:</strong> ${nietOnline.length} auto's</p>
         ${sterkeKansen.length > 0 ? `
         <h3 style="color: #375623;">🟢 Top Sterke Kansen</h3>
         <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
@@ -601,11 +774,11 @@ Deno.serve(async (req) => {
         ${signedUrl?.signedUrl ? `
         <p style="margin-top: 20px;">
           <a href="${signedUrl.signedUrl}" style="background: #1F3864; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: bold;">
-            📥 Download Excel Rapport
+            📥 Download Excel Rapport (3 tabs)
           </a>
         </p>` : ""}
         <p style="color: #999; font-size: 11px; margin-top: 24px;">
-          Geanalyseerd: ${transportVehicles.length} transport auto's | ${datum} | Daan AI Agent
+          ${transportVehicles.length} transport auto's | ${teamData.length} verkopers | ${nietOnline.length} niet online | ${datum}
         </p>
       </div>
     `;
@@ -615,7 +788,7 @@ Deno.serve(async (req) => {
       payload: {
         from: "verkoop@auto-city.nl",
         to: ["hendrik@auto-city.nl"],
-        subject: `B2B Kansen ${datum} — ${totalKansen} kansen gevonden`,
+        subject: `B2B Kansen ${datum} — ${totalKansen} kansen | Team: ${teamData.reduce((s, t) => s + t.total, 0)} verkopen | ${nietOnline.length} niet online`,
         html: emailHtml,
       },
     });
@@ -626,9 +799,7 @@ Deno.serve(async (req) => {
       mogelijkeKansen: mogelijkeKansen.length,
       totaalTransport: transportVehicles.length,
       excelUrl: signedUrl?.signedUrl || null,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (error) {
     console.error("Error in daan-b2b-analyse:", error);
