@@ -506,7 +506,7 @@ Deno.serve(async (req) => {
 
     for (const pv of parsedVehicles) {
       const mileageBucket = Math.round(pv.kilometerstand / 20000) * 20000;
-      const cacheKey = `${pv.brand}|${pv.model.split(" ")[0]}|${pv.brandstof || ""}|${pv.transmissie || ""}|${pv.bouwjaar || ""}|${mileageBucket}`;
+      const cacheKey = `${pv.brand}|${pv.model}|${pv.brandstof || ""}|${pv.transmissie || ""}|${pv.bouwjaar || ""}|${mileageBucket}`;
       const listings = jpCarsCache.get(cacheKey) || [];
       const kansen = calculateB2BKansen(pv, listings);
 
