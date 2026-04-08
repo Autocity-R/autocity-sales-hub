@@ -255,6 +255,31 @@ export const DaanDashboard: React.FC = () => {
               <RefreshCw className={`h-3 w-3 mr-1 ${isAnalyzing ? "animate-spin" : ""}`} />
               {isAnalyzing ? "Bezig..." : "Analyse"}
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                toast.info("Excel wordt gegenereerd...");
+                try {
+                  const { data, error } = await supabase.functions.invoke("daan-b2b-analyse", {
+                    body: { mode: "download" },
+                  });
+                  if (error) throw error;
+                  if (data?.excelUrl) {
+                    window.open(data.excelUrl, "_blank");
+                    toast.success("Excel download gestart");
+                  } else {
+                    toast.error("Geen Excel beschikbaar");
+                  }
+                } catch (e: any) {
+                  toast.error("Download mislukt: " + (e.message || "Onbekende fout"));
+                }
+              }}
+              disabled={isAnalyzing}
+            >
+              <Download className="h-3 w-3 mr-1" />
+              Excel
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
