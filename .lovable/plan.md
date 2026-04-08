@@ -1,56 +1,32 @@
 
 
-## Plan: Excel Download + Email met 3 Tabs
+## Fix: Daan Dashboard blank screen — 2 bugs
 
-### Samenvatting
-Drie dingen toevoegen:
-1. **Download knop** in het Daan Dashboard voor de B2B Excel (na analyse)
-2. **Excel upgraden** met JP Cars window link per kans + professionele layout zoals het voorbeeld
-3. **Email Excel bijlage** uitbreiden met 3 tabs: B2B Kansen, Team Performance, Niet Online
+### Probleem 1: Auto-analyse op page load
+De B2B kansen query (`useQuery`) roept de edge function aan met `mode: "download"` **bij elke page load**. Dit triggert de volledige analyse (Claude + 47 JP Cars queries = 30+ seconden). Dit veroorzaakt:
+- Timeout / blank screen
+- Onnodige API kosten bij elke keer dat je het dashboard opent
 
----
+**Fix:** De `useQuery` voor B2B kansen moet `enabled: false` zijn — data wordt alleen geladen wanneer je handmatig op "Analyse" klikt. Na de analyse worden de resultaten in state bewaard.
 
-### Wijziging 1: Excel uitbreiden met JP Cars link + 3 tabs
+### Probleem 2: Interface mismatch
+De dashboard `B2BKans` interface gebruikt **oude veldnamen** die niet meer bestaan:
+- `auto`, `kenteken`, `b2bAanbodprijs`, `dealerNaam`, `dealerVerkoopprijs`, `dealerStagedagen`, `verkochtDagenGeleden`, `onzeMarge`, `dealerMargeruimte`
 
-**Bestand: `supabase/functions/daan-b2b-analyse/index.ts`**
+De edge function retourneert nu **nieuwe veldnamen**:
+- `onze_merk`, `onze_model`, `onze_vin`, `dealer_naam`, `dealer_prijs`, `dealer_stagedagen`, `verkocht_dgn_geleden`, `onze_marge`, `b2b_aanbod`, `jp_cars_url`
 
-**B2BKans interface** — voeg `jpCarsUrl` toe (portal URL uit window response)
+De `KansenTabel` component rendert `k.auto`, `k.kenteken`, etc. — die zijn allemaal `undefined`.
 
-**queryJPCarsValuation** — `enable_portal_urls=true` zodat elke listing een `portal_url` of `jpcars_url` bevat. Geef deze URL mee in de B2BKans.
+**Fix:** Update de interface en `KansenTabel` naar de nieuwe veldnamen. Voeg ook de JP Cars link toe als klikbare kolom.
 
-**buildExcel** uitbreiden met 3 tabs:
-- **Tab 1: B2B Kansen** — Bestaande sterke + mogelijke kansen, maar met extra kolom "JP Cars" als klikbare hyperlink naar het window (zodat verkopers de verkochte auto kunnen dubbelchecken)
-- **Tab 2: Team Performance** — Dezelfde data als het dashboard (verkoper, B2C, B2B, omzet, marge%, status, trend) opgehaald uit de vehicles tabel in de edge function
-- **Tab 3: Niet Online** — Auto's die ingeschreven zijn maar geen online prijs hebben (status voorraad, transportStatus=aangekomen, showroomOnline!=true), met kolommen: Auto, Kenteken, Inkoopprijs, Dagen in bezit, Status, Advies
-
-Layout volgt exact het geüploade voorbeeld: donkerblauwe headers, gekleurde categorie-secties, professionele styling.
-
-**Email return** — Edge function geeft de Excel met alle 3 tabs mee als bijlage in de email (via signed URL download link).
-
-**Download mode response** — Voeg `excelUrl` toe aan het download mode response zodat de frontend direct de Excel kan downloaden.
-
-### Wijziging 2: Download knop in Dashboard
+### Technische wijzigingen
 
 **Bestand: `src/components/ai-agents/dashboards/DaanDashboard.tsx`**
 
-Na de "Analyse" knop een **Download Excel** knop toevoegen:
-- Roept de edge function aan met `mode: "download"` 
-- Edge function genereert de Excel, uploadt naar `daan-analyses` bucket, retourneert signed URL
-- Frontend opent de signed URL in een nieuw tabblad voor download
-- Knop is disabled als er geen analyse data is
-
-### Wijziging 3: Edge function aanpassen voor alle 3 data-queries
-
-In de edge function, naast de B2B analyse ook:
-1. **Team Performance query** — verkochte voertuigen deze maand, gegroepeerd per verkoper (zelfde logica als dashboard)
-2. **Niet Online query** — voorraad auto's die aangekomen zijn maar niet online staan (showroomOnline !== true, transportStatus === 'aangekomen')
-
-Beide datasets worden in de Excel verwerkt ongeacht of het email-mode of download-mode is.
-
-### Technisch overzicht
-
-| Bestand | Actie |
-|---------|-------|
-| `supabase/functions/daan-b2b-analyse/index.ts` | Excel 3 tabs, JP Cars URL, team + niet-online queries |
-| `src/components/ai-agents/dashboards/DaanDashboard.tsx` | Download knop toevoegen |
+1. Vervang `B2BKans` interface met nieuwe veldnamen
+2. Verwijder de auto-loading `useQuery` voor B2B — gebruik `useState` + handmatige fetch
+3. Update `KansenTabel` kolommen naar nieuwe velden + voeg JP Cars link kolom toe
+4. "Analyse" knop slaat resultaten op in state
+5. "Excel" knop gebruikt `excelUrl` uit het analyse resultaat (niet opnieuw aanroepen)
 
