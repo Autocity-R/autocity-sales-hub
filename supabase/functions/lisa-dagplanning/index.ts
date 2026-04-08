@@ -22,6 +22,9 @@ const BORDER = { style: "thin", color: { rgb: "BFBFBF" } };
 const BORDERS = { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER };
 const FONT_BASE = { name: "Calibri", sz: 9, color: { rgb: "000000" } };
 
+// Feature flag: zet op true zodra garantie tab is opgeruimd
+const LLOYD_OCHTENDMAIL_ACTIEF = false;
+
 const ZWAAR_PATTERNS = /spuit|inlak|lakschade|beschadig|uitdeuk|deuk|spotrepair|restyle|bodywerk|distributieriem|revisie|herstellen|carrosserie|schimmel|kunststof/i;
 const NORMAAL_PATTERNS = /apk|onderhoudsbeurt|beurt|banden|velgen|trekhaak|camera|melding|lichtunit|parkeerrem|onderdeel|bestellen|plaatsen/i;
 
