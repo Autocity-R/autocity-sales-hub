@@ -212,8 +212,8 @@ async function queryJPCarsValuation(
   apiToken: string
 ): Promise<any[]> {
   const body: Record<string, any> = {
-    make: parsed.brand.toUpperCase(),
-    model: parsed.model.split(" ")[0].toUpperCase(),
+    make: parsed.brand.trim().toUpperCase(),
+    model: parsed.model.trim().toUpperCase(),
     mileage: parsed.kilometerstand || 0,
   };
 
@@ -239,20 +239,28 @@ async function queryJPCarsValuation(
       body: JSON.stringify(body),
     });
 
-    if (!resp.ok) {
-      const errText = await resp.text();
-      console.error(`❌ JP Cars Valuate Error: ${resp.status} for ${parsed.brand} ${parsed.model}: ${errText.substring(0, 300)}`);
+    // JP Cars kan 500 retourneren maar toch data in de body hebben
+    const respText = await resp.text();
+    let data: any;
+    try {
+      data = JSON.parse(respText);
+    } catch {
+      console.error(`❌ JP Cars unparseable response for ${parsed.brand} ${parsed.model}: ${respText.substring(0, 200)}`);
       return [];
     }
 
-    const data = await resp.json();
     const window = data.window || [];
 
-    console.log(`🚗 JP Cars Valuate: ${parsed.brand} ${parsed.model} bj:${parsed.bouwjaar || '?'} km:${parsed.kilometerstand || '?'} ${parsed.brandstof || ''} → ${window.length} listings in window`);
+    if (data.error) {
+      console.warn(`⚠️ JP Cars Valuate warning for ${parsed.brand} ${parsed.model}: ${data.error_message || data.error} — window: ${window.length} listings`);
+    }
 
     if (window.length > 0) {
+      console.log(`🚗 JP Cars: ${parsed.brand} ${parsed.model} bj:${parsed.bouwjaar || '?'} km:${parsed.kilometerstand || '?'} ${parsed.brandstof || ''} → ${window.length} listings`);
       const sample = window[0];
-      console.log(`   📋 Sample: dealer=${sample.dealer_name}, price=${sample.price_local}, sold_since=${sample.sold_since}, stock_days=${sample.stock_days}`);
+      console.log(`   📋 dealer=${sample.dealer_name}, price=${sample.price_local}, sold_since=${sample.sold_since}, stock_days=${sample.stock_days}`);
+    } else {
+      console.log(`🚗 JP Cars: ${parsed.brand} ${parsed.model} → 0 listings`);
     }
 
     return window;
