@@ -334,7 +334,7 @@ serve(async (req) => {
 
     // Determine if this is Sara (warranty tracker)
     const isSaraAgent = agentName.toLowerCase().includes('sara') ||
-                        agentCapabilities.includes('warranty-tracking');
+                        agentCapabilities.includes('warranty-tracking') || agentCapabilities.includes('warranty_tracking');
 
     if (isMarcoAgent) {
       agentTools = getMarcoTools();
