@@ -228,25 +228,30 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    const body = await req.json().catch(() => ({}));
+    const mode = body?.mode || "email";
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // === IDEMPOTENCY GUARD: voorkom dubbele dagplanning emails ===
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
-    const { data: existingToday } = await supabase
-      .from("email_queue")
-      .select("id")
-      .gte("created_at", todayStart.toISOString())
-      .like("payload->>subject", "%Dagplanning Aftersales%")
-      .limit(1);
+    // === IDEMPOTENCY GUARD: alleen voor automatische email, niet voor downloads ===
+    if (mode !== "download") {
+      const todayStart = new Date();
+      todayStart.setUTCHours(0, 0, 0, 0);
+      const { data: existingToday } = await supabase
+        .from("email_queue")
+        .select("id")
+        .gte("created_at", todayStart.toISOString())
+        .like("payload->>subject", "%Dagplanning Aftersales%")
+        .limit(1);
 
-    if (existingToday && existingToday.length > 0) {
-      console.log("Dagplanning already ran today, skipping to prevent duplicates");
-      return new Response(JSON.stringify({ skipped: true, reason: "Already ran today" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (existingToday && existingToday.length > 0) {
+        console.log("Dagplanning already ran today, skipping to prevent duplicates");
+        return new Response(JSON.stringify({ skipped: true, reason: "Already ran today" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
     // === END IDEMPOTENCY GUARD ===
 
