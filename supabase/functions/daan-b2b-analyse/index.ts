@@ -665,8 +665,9 @@ Deno.serve(async (req) => {
     let body: any = {};
     try { body = await req.json(); } catch { }
     const isDownloadMode = body?.mode === "download";
+    const isForceMode = body?.force === true;
 
-    if (!isDownloadMode) {
+    if (!isDownloadMode && !isForceMode) {
       const todayStart = new Date();
       todayStart.setUTCHours(0, 0, 0, 0);
       const { data: existing } = await supabase
