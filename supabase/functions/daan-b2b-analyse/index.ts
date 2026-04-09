@@ -868,10 +868,14 @@ Deno.serve(async (req) => {
     await supabase.from("email_queue").insert({
       status: "pending",
       payload: {
-        from: "verkoop@auto-city.nl",
+        senderEmail: "verkoop@auto-city.nl",
         to: ["hendrik@auto-city.nl"],
         subject: `B2B Kansen ${datum} — ${totalKansen} kansen | Team: ${teamData.reduce((s, t) => s + t.total, 0)} verkopen | ${nietOnline.length} niet online`,
-        html: emailHtml,
+        htmlBody: emailHtml,
+        attachments: signedUrl?.signedUrl ? [{
+          filename: filename,
+          url: signedUrl.signedUrl,
+        }] : [],
       },
     });
 
