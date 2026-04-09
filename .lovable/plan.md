@@ -1,48 +1,30 @@
 
 
-## Plan: Fix Daan B2B email — verkeerde payload keys
+## Plan: Force-send Daan B2B email voor test
 
 ### Probleem
-De `daan-b2b-analyse` edge function stuurt de email met verkeerde payload keys:
-- `from` → moet `senderEmail` zijn
-- `html` → moet `htmlBody` zijn
+De functie heeft een duplicate-check die blokkeert omdat er vandaag al een (lege) email in de queue staat. We moeten de check tijdelijk bypassen.
 
-De `process-email-queue` verwacht `senderEmail` en `htmlBody` (zie het `EmailPayload` interface). Doordat `htmlBody` undefined is, komt er een lege email. Doordat `senderEmail` undefined is, valt hij terug op `inkoop@auto-city.nl`.
+### Wijziging
 
-Er is ook geen Excel bijlage gekoppeld aan de email — de signed URL staat alleen als link in de HTML maar niet als attachment.
+**`supabase/functions/daan-b2b-analyse/index.ts` (regel 667-669)**
 
-### Wijzigingen
+Voeg `force` mode toe naast `download`:
 
-**Bestand: `supabase/functions/daan-b2b-analyse/index.ts` (regel 868-876)**
-
-Verander de payload keys:
 ```typescript
-await supabase.from("email_queue").insert({
-  status: "pending",
-  payload: {
-    senderEmail: "verkoop@auto-city.nl",
-    to: ["hendrik@auto-city.nl"],
-    subject: `B2B Kansen ${datum} — ...`,
-    htmlBody: emailHtml,
-    attachments: signedUrl?.signedUrl ? [{
-      filename: filename,
-      url: signedUrl.signedUrl,
-    }] : [],
-  },
-});
+const isDownloadMode = body?.mode === "download";
+const isForceMode = body?.force === true;
+
+if (!isDownloadMode && !isForceMode) {
 ```
 
-Dit fixt:
-1. **Lege email body** — `html` → `htmlBody`
-2. **Verkeerde afzender** — `from` → `senderEmail`
-3. **Geen bijlage** — Excel wordt nu als attachment meegestuurd (naast de download link in de HTML)
+Dit laat ons de functie aanroepen met `{ "force": true }` om de duplicate-check te skippen.
 
-### Wat NIET verandert
-- Excel generatie, upload naar storage — ongewijzigd
-- Email HTML template — ongewijzigd
-- Download mode — ongewijzigd
+Na deploy roep ik de functie aan met `{ "force": true }` zodat de email opnieuw wordt verstuurd — nu met de correcte `htmlBody`, `senderEmail` en Excel bijlage.
+
+De `force` parameter blijft beschikbaar voor toekomstige handmatige tests.
 
 | Bestand | Actie |
 |---------|-------|
-| `supabase/functions/daan-b2b-analyse/index.ts` | Fix payload keys + voeg Excel attachment toe |
+| `supabase/functions/daan-b2b-analyse/index.ts` | `force` bypass toevoegen aan duplicate check |
 
