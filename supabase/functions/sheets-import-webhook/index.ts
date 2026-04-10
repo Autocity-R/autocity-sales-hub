@@ -149,13 +149,15 @@ serve(async (req) => {
       });
     }
 
-    // === BESCHERMING 1: Inruil/leenauto skip ===
-    if (details.isTradeIn === true || vehicle.status === 'leenauto') {
-      console.log(`⏭️ Skipping trade-in/loan car: vehicle ${vehicle.id}`);
+    // === BESCHERMING 1: Leenauto skip ===
+    // Trade-ins worden NIET meer geblokkeerd: als de Sheet een update stuurt
+    // voor een inruilauto, betekent het dat deze ook een importauto is.
+    if (vehicle.status === 'leenauto') {
+      console.log(`⏭️ Skipping loan car: vehicle ${vehicle.id}`);
       return new Response(JSON.stringify({
         success: true,
         skipped: true,
-        reason: 'Vehicle is trade-in or loan car — import sync skipped',
+        reason: 'Vehicle is loan car — import sync skipped',
         vehicle_id: vehicle.id,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
