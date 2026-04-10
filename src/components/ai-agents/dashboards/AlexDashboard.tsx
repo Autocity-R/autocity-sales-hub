@@ -85,8 +85,19 @@ export const AlexDashboard: React.FC = () => {
       const voorraadRotatie = totaalVoorraadWaarde > 0
         ? Math.round((jaaromzet / totaalVoorraadWaarde) * 10) / 10
         : 0;
+
+      return {
+        verkopen_mtd,
+        verkopen_vorige,
+        b2c_marge: avg(b2c_marges),
+        b2b_marge: avg(b2b_marges),
+        omloopsnelheid: avg(omloop),
+        voorraadRegulair,
+        voorraadInruil,
+        voorraadTotaal: totaalVoorraad,
+        voorraadWaarde: totaalVoorraadWaarde,
+        voorraadRotatie,
       };
-    },
     refetchInterval: 60000,
   });
 
