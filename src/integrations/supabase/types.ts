@@ -714,6 +714,165 @@ export type Database = {
           },
         ]
       }
+      alex_conversation_memory: {
+        Row: {
+          beslissingen: string[] | null
+          context_voor_volgende: string | null
+          created_at: string | null
+          datum: string
+          id: string
+          openstaande_vragen: string[] | null
+          samenvatting: string
+        }
+        Insert: {
+          beslissingen?: string[] | null
+          context_voor_volgende?: string | null
+          created_at?: string | null
+          datum?: string
+          id?: string
+          openstaande_vragen?: string[] | null
+          samenvatting: string
+        }
+        Update: {
+          beslissingen?: string[] | null
+          context_voor_volgende?: string | null
+          created_at?: string | null
+          datum?: string
+          id?: string
+          openstaande_vragen?: string[] | null
+          samenvatting?: string
+        }
+        Relationships: []
+      }
+      alex_decisions: {
+        Row: {
+          adressaat: string | null
+          beslissing: string
+          context: string | null
+          correct: boolean | null
+          created_at: string | null
+          datum: string
+          id: string
+          lering: string | null
+          status: string | null
+          uitkomst: string | null
+          updated_at: string | null
+          urgentie: string | null
+        }
+        Insert: {
+          adressaat?: string | null
+          beslissing: string
+          context?: string | null
+          correct?: boolean | null
+          created_at?: string | null
+          datum?: string
+          id?: string
+          lering?: string | null
+          status?: string | null
+          uitkomst?: string | null
+          updated_at?: string | null
+          urgentie?: string | null
+        }
+        Update: {
+          adressaat?: string | null
+          beslissing?: string
+          context?: string | null
+          correct?: boolean | null
+          created_at?: string | null
+          datum?: string
+          id?: string
+          lering?: string | null
+          status?: string | null
+          uitkomst?: string | null
+          updated_at?: string | null
+          urgentie?: string | null
+        }
+        Relationships: []
+      }
+      alex_insights: {
+        Row: {
+          aanbeveling: string | null
+          agent: string | null
+          correct: boolean | null
+          created_at: string | null
+          datum: string
+          id: string
+          prioriteit: string | null
+          signaal: string
+          type: string
+          uitkomst: string | null
+        }
+        Insert: {
+          aanbeveling?: string | null
+          agent?: string | null
+          correct?: boolean | null
+          created_at?: string | null
+          datum?: string
+          id?: string
+          prioriteit?: string | null
+          signaal: string
+          type: string
+          uitkomst?: string | null
+        }
+        Update: {
+          aanbeveling?: string | null
+          agent?: string | null
+          correct?: boolean | null
+          created_at?: string | null
+          datum?: string
+          id?: string
+          prioriteit?: string | null
+          signaal?: string
+          type?: string
+          uitkomst?: string | null
+        }
+        Relationships: []
+      }
+      alex_market_memory: {
+        Row: {
+          beoordeeld_op: string | null
+          bron: string | null
+          categorie: string
+          created_at: string | null
+          geldig_tot: string | null
+          geldigheid: string | null
+          id: string
+          impact_op_strategie: string | null
+          inzicht: string
+          onderwerp: string
+          updated_at: string | null
+          vertrouwen: number | null
+        }
+        Insert: {
+          beoordeeld_op?: string | null
+          bron?: string | null
+          categorie: string
+          created_at?: string | null
+          geldig_tot?: string | null
+          geldigheid?: string | null
+          id?: string
+          impact_op_strategie?: string | null
+          inzicht: string
+          onderwerp: string
+          updated_at?: string | null
+          vertrouwen?: number | null
+        }
+        Update: {
+          beoordeeld_op?: string | null
+          bron?: string | null
+          categorie?: string
+          created_at?: string | null
+          geldig_tot?: string | null
+          geldigheid?: string | null
+          id?: string
+          impact_op_strategie?: string | null
+          inzicht?: string
+          onderwerp?: string
+          updated_at?: string | null
+          vertrouwen?: number | null
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
           ai_agent_id: string | null
@@ -2285,6 +2444,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      model_intelligence: {
+        Row: {
+          alex_aanbeveling: string | null
+          brand: string
+          brandstof_type: string | null
+          created_at: string | null
+          gem_marge_euro: number | null
+          gem_marge_pct: number | null
+          gem_omloopsnelheid_dagen: number | null
+          id: string
+          markt_trend: string | null
+          model_pattern: string
+          notities: string | null
+          updated_at: string | null
+          verkopen_count: number | null
+        }
+        Insert: {
+          alex_aanbeveling?: string | null
+          brand: string
+          brandstof_type?: string | null
+          created_at?: string | null
+          gem_marge_euro?: number | null
+          gem_marge_pct?: number | null
+          gem_omloopsnelheid_dagen?: number | null
+          id?: string
+          markt_trend?: string | null
+          model_pattern: string
+          notities?: string | null
+          updated_at?: string | null
+          verkopen_count?: number | null
+        }
+        Update: {
+          alex_aanbeveling?: string | null
+          brand?: string
+          brandstof_type?: string | null
+          created_at?: string | null
+          gem_marge_euro?: number | null
+          gem_marge_pct?: number | null
+          gem_omloopsnelheid_dagen?: number | null
+          id?: string
+          markt_trend?: string | null
+          model_pattern?: string
+          notities?: string | null
+          updated_at?: string | null
+          verkopen_count?: number | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
