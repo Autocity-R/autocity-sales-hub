@@ -86,3 +86,12 @@ verify_jwt = false
 
 [functions.daan-b2b-analyse]
 verify_jwt = false
+
+[functions.alex-ceo-chat]
+verify_jwt = false
+
+[functions.alex-dagelijkse-briefing]
+verify_jwt = false
+
+[functions.alex-leermoment]
+verify_jwt = false
