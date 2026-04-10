@@ -34,7 +34,8 @@ export const AlexDashboard: React.FC = () => {
       let verkopen_mtd = 0, verkopen_vorige = 0;
       let b2c_marges: number[] = [], b2b_marges: number[] = [];
       let omloop: number[] = [];
-      let voorraad = 0, voorraadWaarde = 0;
+      let voorraadRegulair = 0, voorraadRegulairWaarde = 0;
+      let voorraadInruil = 0, voorraadInruilWaarde = 0;
 
       for (const v of (vehicles || [])) {
         const d = v.details as any;
@@ -54,9 +55,14 @@ export const AlexDashboard: React.FC = () => {
           const days = (new Date(v.sold_date).getTime() - new Date(v.online_since_date).getTime()) / 86400000;
           if (days > 0) omloop.push(days);
         }
-        if (v.status === 'voorraad' && !isTradeIn) {
-          voorraad++;
-          voorraadWaarde += (v.purchase_price || 0);
+        if (v.status === 'voorraad') {
+          if (isTradeIn) {
+            voorraadInruil++;
+            voorraadInruilWaarde += (v.purchase_price || 0);
+          } else {
+            voorraadRegulair++;
+            voorraadRegulairWaarde += (v.purchase_price || 0);
+          }
         }
       }
 
@@ -65,14 +71,20 @@ export const AlexDashboard: React.FC = () => {
         .filter(v => ['verkocht_b2c', 'verkocht_b2b', 'afgeleverd'].includes(v.status) && v.sold_date && v.sold_date >= monthStart)
         .reduce((s, v) => s + (v.selling_price || 0), 0);
 
+      const totaalVoorraad = voorraadRegulair + voorraadInruil;
+      const totaalVoorraadWaarde = voorraadRegulairWaarde + voorraadInruilWaarde;
+
       return {
         verkopen_mtd,
         verkopen_vorige,
         b2c_marge: avg(b2c_marges),
         b2b_marge: avg(b2b_marges),
         omloopsnelheid: avg(omloop),
-        voorraad,
-        voorraadRoi: voorraadWaarde > 0 ? Math.round((omzet_mtd / voorraadWaarde) * 100) / 100 : 0,
+        voorraadRegulair,
+        voorraadInruil,
+        voorraadTotaal: totaalVoorraad,
+        voorraadWaarde: totaalVoorraadWaarde,
+        voorraadRoi: totaalVoorraadWaarde > 0 ? Math.round((omzet_mtd / totaalVoorraadWaarde) * 100) / 100 : 0,
       };
     },
     refetchInterval: 60000,
@@ -188,7 +200,7 @@ export const AlexDashboard: React.FC = () => {
     {
       label: 'Voorraad ROI',
       value: kpis?.voorraadRoi || 0,
-      sub: `${kpis?.voorraad || 0} stuks`,
+      sub: `${kpis?.voorraadRegulair || 0} regulier + ${kpis?.voorraadInruil || 0} inruil = ${kpis?.voorraadTotaal || 0} totaal | €${Math.round((kpis?.voorraadWaarde || 0) / 1000).toLocaleString()}k`,
       icon: Package,
       trend: 'flat',
       color: 'text-purple-700',
