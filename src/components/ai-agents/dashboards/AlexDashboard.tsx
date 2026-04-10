@@ -29,13 +29,14 @@ export const AlexDashboard: React.FC = () => {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
       const prevMonthEnd = monthStart;
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString();
+      const ninetyDaysAgo = new Date(now.getTime() - 90 * 86400000).toISOString();
 
       let verkopen_mtd = 0, verkopen_vorige = 0;
       let b2c_marges: number[] = [], b2b_marges: number[] = [];
       let omloop: number[] = [];
       let voorraadRegulair = 0, voorraadRegulairWaarde = 0;
       let voorraadInruil = 0, voorraadInruilWaarde = 0;
+      let omzet_90d = 0;
 
       for (const v of (vehicles || [])) {
         const d = v.details as any;
@@ -51,9 +52,14 @@ export const AlexDashboard: React.FC = () => {
           }
         }
         if (isSold && v.sold_date && v.sold_date >= prevMonthStart && v.sold_date < prevMonthEnd) verkopen_vorige++;
-        if (isSold && v.sold_date && v.sold_date >= thirtyDaysAgo && v.online_since_date) {
+        // Omloopsnelheid: 90 dagen, alleen niet-inruil
+        if (isSold && !isTradeIn && v.sold_date && v.sold_date >= ninetyDaysAgo && v.online_since_date) {
           const days = (new Date(v.sold_date).getTime() - new Date(v.online_since_date).getTime()) / 86400000;
           if (days > 0) omloop.push(days);
+        }
+        // 90-dagen omzet voor voorraadrotatie
+        if (isSold && v.sold_date && v.sold_date >= ninetyDaysAgo) {
+          omzet_90d += (v.selling_price || 0);
         }
         if (v.status === 'voorraad') {
           if (isTradeIn) {
@@ -74,6 +80,12 @@ export const AlexDashboard: React.FC = () => {
       const totaalVoorraad = voorraadRegulair + voorraadInruil;
       const totaalVoorraadWaarde = voorraadRegulairWaarde + voorraadInruilWaarde;
 
+      // Voorraadrotatie: geannualiseerde omzet / voorraadwaarde
+      const jaaromzet = (omzet_90d / 3) * 12;
+      const voorraadRotatie = totaalVoorraadWaarde > 0
+        ? Math.round((jaaromzet / totaalVoorraadWaarde) * 10) / 10
+        : 0;
+
       return {
         verkopen_mtd,
         verkopen_vorige,
@@ -84,7 +96,7 @@ export const AlexDashboard: React.FC = () => {
         voorraadInruil,
         voorraadTotaal: totaalVoorraad,
         voorraadWaarde: totaalVoorraadWaarde,
-        voorraadRoi: totaalVoorraadWaarde > 0 ? Math.round((omzet_mtd / totaalVoorraadWaarde) * 1000) / 10 : 0,
+        voorraadRotatie,
       };
     },
     refetchInterval: 60000,
@@ -190,20 +202,20 @@ export const AlexDashboard: React.FC = () => {
       color: (kpis?.b2b_marge || 0) >= 2000 ? 'text-green-600' : 'text-red-600',
     },
     {
-      label: 'Omloopsnelheid',
+      label: 'Gem. omloopsnelheid',
       value: `${kpis?.omloopsnelheid || 0}d`,
-      sub: 'doel: ≤45 dagen',
+      sub: '90 dagen | doel: ≤45d',
       icon: Timer,
-      trend: (kpis?.omloopsnelheid || 0) <= 45 ? 'up' : 'down',
-      color: (kpis?.omloopsnelheid || 0) <= 45 ? 'text-green-600' : 'text-red-600',
+      trend: (kpis?.omloopsnelheid || 0) <= 45 ? 'up' : (kpis?.omloopsnelheid || 0) <= 60 ? 'flat' : 'down',
+      color: (kpis?.omloopsnelheid || 0) <= 45 ? 'text-green-600' : (kpis?.omloopsnelheid || 0) <= 60 ? 'text-orange-500' : 'text-red-600',
     },
     {
-      label: 'Voorraad ROI',
-      value: `${kpis?.voorraadRoi || 0}%`,
+      label: 'Voorraadrotatie',
+      value: `${kpis?.voorraadRotatie || 0}x`,
       sub: `${kpis?.voorraadRegulair || 0} regulier + ${kpis?.voorraadInruil || 0} inruil = ${kpis?.voorraadTotaal || 0} totaal | €${Math.round((kpis?.voorraadWaarde || 0) / 1000).toLocaleString()}k`,
       icon: Package,
-      trend: (kpis?.voorraadRoi || 0) >= 25 ? 'up' : 'down',
-      color: (kpis?.voorraadRoi || 0) >= 25 ? 'text-green-600' : 'text-purple-700',
+      trend: (kpis?.voorraadRotatie || 0) >= 8 ? 'up' : (kpis?.voorraadRotatie || 0) >= 5 ? 'flat' : 'down',
+      color: (kpis?.voorraadRotatie || 0) >= 8 ? 'text-green-600' : (kpis?.voorraadRotatie || 0) >= 5 ? 'text-orange-500' : 'text-red-600',
     },
   ];
 
