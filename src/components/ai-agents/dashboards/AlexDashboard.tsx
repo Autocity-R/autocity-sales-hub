@@ -29,13 +29,14 @@ export const AlexDashboard: React.FC = () => {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
       const prevMonthEnd = monthStart;
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString();
+      const ninetyDaysAgo = new Date(now.getTime() - 90 * 86400000).toISOString();
 
       let verkopen_mtd = 0, verkopen_vorige = 0;
       let b2c_marges: number[] = [], b2b_marges: number[] = [];
       let omloop: number[] = [];
       let voorraadRegulair = 0, voorraadRegulairWaarde = 0;
       let voorraadInruil = 0, voorraadInruilWaarde = 0;
+      let omzet_90d = 0;
 
       for (const v of (vehicles || [])) {
         const d = v.details as any;
@@ -51,9 +52,14 @@ export const AlexDashboard: React.FC = () => {
           }
         }
         if (isSold && v.sold_date && v.sold_date >= prevMonthStart && v.sold_date < prevMonthEnd) verkopen_vorige++;
-        if (isSold && v.sold_date && v.sold_date >= thirtyDaysAgo && v.online_since_date) {
+        // Omloopsnelheid: 90 dagen, alleen niet-inruil
+        if (isSold && !isTradeIn && v.sold_date && v.sold_date >= ninetyDaysAgo && v.online_since_date) {
           const days = (new Date(v.sold_date).getTime() - new Date(v.online_since_date).getTime()) / 86400000;
           if (days > 0) omloop.push(days);
+        }
+        // 90-dagen omzet voor voorraadrotatie
+        if (isSold && v.sold_date && v.sold_date >= ninetyDaysAgo) {
+          omzet_90d += (v.selling_price || 0);
         }
         if (v.status === 'voorraad') {
           if (isTradeIn) {
@@ -74,17 +80,11 @@ export const AlexDashboard: React.FC = () => {
       const totaalVoorraad = voorraadRegulair + voorraadInruil;
       const totaalVoorraadWaarde = voorraadRegulairWaarde + voorraadInruilWaarde;
 
-      return {
-        verkopen_mtd,
-        verkopen_vorige,
-        b2c_marge: avg(b2c_marges),
-        b2b_marge: avg(b2b_marges),
-        omloopsnelheid: avg(omloop),
-        voorraadRegulair,
-        voorraadInruil,
-        voorraadTotaal: totaalVoorraad,
-        voorraadWaarde: totaalVoorraadWaarde,
-        voorraadRoi: totaalVoorraadWaarde > 0 ? Math.round((omzet_mtd / totaalVoorraadWaarde) * 1000) / 10 : 0,
+      // Voorraadrotatie: geannualiseerde omzet / voorraadwaarde
+      const jaaromzet = (omzet_90d / 3) * 12;
+      const voorraadRotatie = totaalVoorraadWaarde > 0
+        ? Math.round((jaaromzet / totaalVoorraadWaarde) * 10) / 10
+        : 0;
       };
     },
     refetchInterval: 60000,
