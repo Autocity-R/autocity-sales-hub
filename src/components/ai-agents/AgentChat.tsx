@@ -87,9 +87,11 @@ export const AgentChat: React.FC<AgentChatProps> = ({ agent }) => {
         });
       }
 
-      // Route Kevin to dedicated edge function, others to hendrik-ai-chat
+      // Route agents to dedicated edge functions
       const edgeFunction = agent.id === 'b4000000-0000-0000-0000-000000000004' 
         ? 'kevin-ai-chat' 
+        : agent.id === 'b6000000-0000-0000-0000-000000000006'
+        ? 'alex-ceo-chat'
         : 'hendrik-ai-chat';
 
       const { data, error } = await supabase.functions.invoke(edgeFunction, {
