@@ -36,15 +36,31 @@ const statusMapping: Record<string, string> = {
 const statusHierarchy: Record<string, number> = {
   'niet_gestart': 0,
   'niet_aangemeld': 1,
-  'aanvraag_ontvangen': 2,
-  'aangekomen': 3,
-  'goedgekeurd': 4,
-  'bpm_betaald': 5,
-  'ingeschreven': 6,
+  'aangemeld': 2,
+  'aanvraag_ontvangen': 3,
+  'aangekomen': 4,
+  'goedgekeurd': 5,
+  'transport_geregeld': 5,
+  'onderweg': 5,
+  'afgemeld': 5,
+  'bpm_betaald': 6,
+  'herkeuring': 6,
+  'ingeschreven': 7,
+};
+
+// Reverse lookup: index → status name (voor import_status_highest)
+const statusByIndex: Record<number, string> = {
+  0: 'niet_gestart',
+  1: 'niet_aangemeld',
+  2: 'aangemeld',
+  3: 'aanvraag_ontvangen',
+  4: 'aangekomen',
+  5: 'goedgekeurd',
+  6: 'bpm_betaald',
+  7: 'ingeschreven',
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -59,16 +75,13 @@ serve(async (req) => {
   try {
     console.log('📥 Received webhook request from Google Sheets');
     
-    // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Parse request
     const updateRequest: SheetUpdateRequest = await req.json();
     console.log('Sheet update request:', updateRequest);
 
-    // Validate required fields
     if (!updateRequest.import_status) {
       return new Response(JSON.stringify({ error: 'import_status is required' }), {
         status: 400,
@@ -76,14 +89,15 @@ serve(async (req) => {
       });
     }
 
-    // Map status from sheets to database format
     const mappedStatus = statusMapping[updateRequest.import_status] || updateRequest.import_status.toLowerCase().replace(/ /g, '_');
 
-    // Find vehicle by VIN, license number, or external reference
+    // Find vehicle
     let query = supabase.from('vehicles').select('*');
     
     if (updateRequest.vin) {
-      query = query.eq('vin', updateRequest.vin);
+      // Fuzzy VIN matching: trim, uppercase, match first 17 chars
+      const cleanVin = updateRequest.vin.trim().toUpperCase().substring(0, 17);
+      query = query.ilike('vin', `${cleanVin}%`);
     } else if (updateRequest.license_number) {
       query = query.eq('license_number', updateRequest.license_number);
     } else if (updateRequest.external_reference) {
@@ -121,9 +135,23 @@ serve(async (req) => {
     const oldStatus = vehicle.import_status;
     const details = vehicle.details || {};
 
+    // === EARLY RETURN: Status unchanged ===
+    if (mappedStatus === oldStatus) {
+      console.log(`⏭️ Status unchanged for vehicle ${vehicle.id}: ${oldStatus} — skipping`);
+      return new Response(JSON.stringify({
+        success: true,
+        skipped: true,
+        reason: 'Status unchanged',
+        vehicle_id: vehicle.id,
+        current_status: oldStatus,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // === BESCHERMING 1: Inruil/leenauto skip ===
     if (details.isTradeIn === true || vehicle.status === 'leenauto') {
-      console.log(`⏭️ Skipping trade-in/loan car: vehicle ${vehicle.id} (isTradeIn=${details.isTradeIn}, status=${vehicle.status})`);
+      console.log(`⏭️ Skipping trade-in/loan car: vehicle ${vehicle.id}`);
       return new Response(JSON.stringify({
         success: true,
         skipped: true,
@@ -150,7 +178,7 @@ serve(async (req) => {
 
     // === BESCHERMING 3: Transport check ===
     if (details.transportStatus === 'onderweg' && mappedStatus !== 'niet_aangemeld') {
-      console.log(`🚛 Transport check: vehicle ${vehicle.id} is onderweg — only niet_aangemeld allowed, got ${mappedStatus}`);
+      console.log(`🚛 Transport check: vehicle ${vehicle.id} is onderweg — only niet_aangemeld allowed`);
       return new Response(JSON.stringify({
         success: true,
         skipped: true,
@@ -163,11 +191,15 @@ serve(async (req) => {
       });
     }
 
-    // === BESCHERMING 4: Status hiërarchie check ===
+    // === BESCHERMING 4: Status hiërarchie check met override-detectie ===
     const currentIndex = statusHierarchy[oldStatus] ?? -1;
     const newIndex = statusHierarchy[mappedStatus] ?? -1;
+    const highestReached = statusHierarchy[vehicle.import_status_highest] ?? -1;
 
-    if (newIndex >= 0 && currentIndex >= 0 && newIndex <= currentIndex) {
+    // Detecteer handmatige reset: huidige DB-status is lager dan hoogst bereikte
+    const wasManuallyReset = highestReached >= 0 && currentIndex >= 0 && currentIndex < highestReached;
+
+    if (newIndex >= 0 && currentIndex >= 0 && newIndex <= currentIndex && !wasManuallyReset) {
       console.log(`📊 Hierarchy check: vehicle ${vehicle.id} — cannot go from ${oldStatus}(${currentIndex}) to ${mappedStatus}(${newIndex})`);
       return new Response(JSON.stringify({
         success: true,
@@ -181,12 +213,22 @@ serve(async (req) => {
       });
     }
 
-    // Update vehicle import status
+    if (wasManuallyReset) {
+      console.log(`🔄 Manual reset detected for vehicle ${vehicle.id}: current=${oldStatus}(${currentIndex}), highest=${vehicle.import_status_highest}(${highestReached}). Allowing Sheet override to ${mappedStatus}(${newIndex}).`);
+    }
+
+    // Calculate new highest status
+    const newHighestIndex = Math.max(newIndex, highestReached);
+    const newHighestStatus = statusByIndex[newHighestIndex] || vehicle.import_status_highest || mappedStatus;
+
+    // Update vehicle import status + highest tracking
     const { error: updateError } = await supabase
       .from('vehicles')
       .update({
         import_status: mappedStatus,
         import_updated_at: new Date().toISOString(),
+        import_status_highest: newHighestStatus,
+        import_status_locked_at: new Date().toISOString(),
         external_sheet_reference: updateRequest.external_reference || updateRequest.row_number?.toString() || vehicle.external_sheet_reference
       })
       .eq('id', vehicle.id);
@@ -214,13 +256,14 @@ serve(async (req) => {
       console.error('Error logging status change:', logError);
     }
 
-    console.log(`✅ Successfully updated vehicle ${vehicle.id} from ${oldStatus} to ${mappedStatus}`);
+    console.log(`✅ Successfully updated vehicle ${vehicle.id} from ${oldStatus} to ${mappedStatus}${wasManuallyReset ? ' (manual reset override)' : ''}`);
 
     return new Response(JSON.stringify({ 
       success: true, 
       vehicle_id: vehicle.id,
       old_status: oldStatus,
       new_status: mappedStatus,
+      manual_reset_override: wasManuallyReset,
       message: 'Import status updated successfully'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
