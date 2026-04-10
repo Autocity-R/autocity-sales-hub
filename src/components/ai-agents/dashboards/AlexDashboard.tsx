@@ -202,20 +202,20 @@ export const AlexDashboard: React.FC = () => {
       color: (kpis?.b2b_marge || 0) >= 2000 ? 'text-green-600' : 'text-red-600',
     },
     {
-      label: 'Omloopsnelheid',
+      label: 'Gem. omloopsnelheid',
       value: `${kpis?.omloopsnelheid || 0}d`,
-      sub: 'doel: ≤45 dagen',
+      sub: '90 dagen | doel: ≤45d',
       icon: Timer,
-      trend: (kpis?.omloopsnelheid || 0) <= 45 ? 'up' : 'down',
-      color: (kpis?.omloopsnelheid || 0) <= 45 ? 'text-green-600' : 'text-red-600',
+      trend: (kpis?.omloopsnelheid || 0) <= 45 ? 'up' : (kpis?.omloopsnelheid || 0) <= 60 ? 'flat' : 'down',
+      color: (kpis?.omloopsnelheid || 0) <= 45 ? 'text-green-600' : (kpis?.omloopsnelheid || 0) <= 60 ? 'text-orange-500' : 'text-red-600',
     },
     {
-      label: 'Voorraad ROI',
-      value: `${kpis?.voorraadRoi || 0}%`,
+      label: 'Voorraadrotatie',
+      value: `${kpis?.voorraadRotatie || 0}x`,
       sub: `${kpis?.voorraadRegulair || 0} regulier + ${kpis?.voorraadInruil || 0} inruil = ${kpis?.voorraadTotaal || 0} totaal | €${Math.round((kpis?.voorraadWaarde || 0) / 1000).toLocaleString()}k`,
       icon: Package,
-      trend: (kpis?.voorraadRoi || 0) >= 25 ? 'up' : 'down',
-      color: (kpis?.voorraadRoi || 0) >= 25 ? 'text-green-600' : 'text-purple-700',
+      trend: (kpis?.voorraadRotatie || 0) >= 8 ? 'up' : (kpis?.voorraadRotatie || 0) >= 5 ? 'flat' : 'down',
+      color: (kpis?.voorraadRotatie || 0) >= 8 ? 'text-green-600' : (kpis?.voorraadRotatie || 0) >= 5 ? 'text-orange-500' : 'text-red-600',
     },
   ];
 
