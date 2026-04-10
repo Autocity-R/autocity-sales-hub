@@ -87,10 +87,11 @@ export const AGENTS: AgentConfig[] = [
     role: 'CEO Overzicht',
     color: { bg: 'bg-purple-800', border: 'border-purple-800', text: 'text-purple-800', gradient: 'from-purple-800 to-purple-900' },
     quickQuestions: [
-      'Geef een dagelijkse briefing',
-      'Wat zijn de belangrijkste alerts?',
-      'Hoe presteert het team vandaag?',
-      'Welke escalaties zijn er?',
+      'Dagelijkse briefing',
+      'Inkoopadvies deze week',
+      'Wat heeft de markt veranderd?',
+      'Hoe presteren de agents?',
+      'Analyseer onze voorraad',
     ],
   },
 ];
