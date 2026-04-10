@@ -84,7 +84,7 @@ export const AlexDashboard: React.FC = () => {
         voorraadInruil,
         voorraadTotaal: totaalVoorraad,
         voorraadWaarde: totaalVoorraadWaarde,
-        voorraadRoi: totaalVoorraadWaarde > 0 ? Math.round((omzet_mtd / totaalVoorraadWaarde) * 100) / 100 : 0,
+        voorraadRoi: totaalVoorraadWaarde > 0 ? Math.round((omzet_mtd / totaalVoorraadWaarde) * 1000) / 10 : 0,
       };
     },
     refetchInterval: 60000,
@@ -199,11 +199,11 @@ export const AlexDashboard: React.FC = () => {
     },
     {
       label: 'Voorraad ROI',
-      value: kpis?.voorraadRoi || 0,
+      value: `${kpis?.voorraadRoi || 0}%`,
       sub: `${kpis?.voorraadRegulair || 0} regulier + ${kpis?.voorraadInruil || 0} inruil = ${kpis?.voorraadTotaal || 0} totaal | €${Math.round((kpis?.voorraadWaarde || 0) / 1000).toLocaleString()}k`,
       icon: Package,
-      trend: 'flat',
-      color: 'text-purple-700',
+      trend: (kpis?.voorraadRoi || 0) >= 25 ? 'up' : 'down',
+      color: (kpis?.voorraadRoi || 0) >= 25 ? 'text-green-600' : 'text-purple-700',
     },
   ];
 
