@@ -2969,6 +2969,8 @@ export type Database = {
           goedgekeurd_at: string | null
           id: string
           import_status: string | null
+          import_status_highest: string | null
+          import_status_locked_at: string | null
           import_updated_at: string | null
           ingeschreven_at: string | null
           license_number: string | null
@@ -3009,6 +3011,8 @@ export type Database = {
           goedgekeurd_at?: string | null
           id?: string
           import_status?: string | null
+          import_status_highest?: string | null
+          import_status_locked_at?: string | null
           import_updated_at?: string | null
           ingeschreven_at?: string | null
           license_number?: string | null
@@ -3049,6 +3053,8 @@ export type Database = {
           goedgekeurd_at?: string | null
           id?: string
           import_status?: string | null
+          import_status_highest?: string | null
+          import_status_locked_at?: string | null
           import_updated_at?: string | null
           ingeschreven_at?: string | null
           license_number?: string | null
