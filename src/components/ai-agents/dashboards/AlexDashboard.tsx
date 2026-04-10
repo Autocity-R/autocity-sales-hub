@@ -98,6 +98,7 @@ export const AlexDashboard: React.FC = () => {
         voorraadWaarde: totaalVoorraadWaarde,
         voorraadRotatie,
       };
+    },
     refetchInterval: 60000,
   });
 
