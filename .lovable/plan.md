@@ -1,60 +1,49 @@
 
 
-## Plan: Vervang "Voorraad ROI" door Voorraadrotatie + Omloopsnelheid (90 dagen)
+## Plan: Fix Alex chat — routing + edge function crash
 
-### Probleem
-De vijfde KPI-tegel toont "Voorraad ROI" — geen bruikbare maatstaf in automotive. Moet vervangen worden door **Voorraadrotatie** (stock turns per jaar). De bestaande omloopsnelheid-tegel (tegel 4) gebruikt slechts 30 dagen — moet 90 dagen worden.
+### Probleem 1: Chat routing stuurt Alex naar hendrik-ai-chat
 
-### Wijzigingen in `AlexDashboard.tsx`
+**Oorzaak**: `useProductionAIChat` checkt of agent "Hendrik" is — Alex is dat niet, dus gaat Alex via `regularChat` → `useAIChatWebhook` → `hendrik-ai-chat`. Alex komt nooit bij `alex-ceo-chat`.
 
-**1. KPI berekening aanpassen (regels 32-88)**
-
-- Verander `thirtyDaysAgo` naar `ninetyDaysAgo` (90 dagen)
-- Omloopsnelheid berekenen over 90 dagen i.p.v. 30 dagen, alleen voor niet-inruil auto's
-- Bereken `voorraadRotatie`: geannualiseerde omzet (3-maands omzet × 4) gedeeld door totale voorraadwaarde
-- Verwijder `voorraadRoi` uit return object, vervang door `voorraadRotatie`
-- Bereken 3-maands omzet apart voor de rotatie
-
-**2. KPI tegel 4 — Omloopsnelheid updaten (regels 192-198)**
-- Label: "Gem. omloopsnelheid" met sub "90 dagen | doel: ≤45d"
-- Kleuren: groen ≤45, oranje 45-60, rood >60
-
-**3. KPI tegel 5 — Vervang ROI door Voorraadrotatie (regels 200-207)**
-- Label: "Voorraadrotatie"
-- Value: `{rotatie}x` (bijv. "6.0x")
-- Sub: voorraadinfo (regulier + inruil stuks + waarde)
-- Kleuren: groen ≥8x, oranje 5-8x, rood <5x
-- Icon: `Package` (blijft)
-
-### Berekeningen (dynamisch, geen hardcoded waarden)
+**Fix in `src/hooks/useAIChatWebhook.ts`** (regels 32-41):
+- Na de Hendrik-check, voeg een Alex-check toe die naar `alex-ceo-chat` stuurt
+- Alex detectie: `agentData?.name === 'Alex'` of agent ID === `b6000000-0000-0000-0000-000000000006`
 
 ```typescript
-// 90 dagen geleden
-const ninetyDaysAgo = new Date(now.getTime() - 90 * 86400000).toISOString();
+// Na isHendrikAgent check:
+const isAlexAgent = agentData?.name === 'Alex';
 
-// Omloopsnelheid: alleen niet-inruil, laatste 90 dagen
-if (isSold && !isTradeIn && v.sold_date >= ninetyDaysAgo && v.online_since_date) {
-  const days = (new Date(v.sold_date) - new Date(v.online_since_date)) / 86400000;
-  if (days > 0) omloop.push(days);
+if (isAlexAgent) {
+  const { data: aiResponse, error: aiError } = await supabase.functions.invoke(
+    'alex-ceo-chat',
+    { body: { sessionId: session.id, message: content, agentId } }
+  );
+  // ... handle response
 }
-
-// 3-maands omzet voor rotatie
-const omzet_90d = vehicles.filter(v => isSold && v.sold_date >= ninetyDaysAgo)
-  .reduce((s, v) => s + (v.selling_price || 0), 0);
-const jaaromzet = (omzet_90d / 3) * 12;
-
-// Voorraadrotatie
-const voorraadRotatie = totaalVoorraadWaarde > 0
-  ? Math.round((jaaromzet / totaalVoorraadWaarde) * 10) / 10
-  : 0;
 ```
 
-### Verwacht resultaat
-- Tegel 4: **37d** — groen (≤45)
-- Tegel 5: **6.0x** — oranje (5-8x range)
-- Alle waarden 100% dynamisch uit de vehicles tabel
+### Probleem 2: Edge function crasht op regel 66
+
+**Oorzaak**: `supabase.rpc('', {}).catch()` — Supabase query builder heeft geen `.catch()` methode. Dit gooit `TypeError: supabase.rpc(...).catch is not a function`.
+
+**Fix in `supabase/functions/alex-ceo-chat/index.ts`** (regel 66):
+- Verwijder de kapotte `rpc('')` call volledig — de data wordt al via directe queries opgehaald op regels 69-72
+
+```typescript
+// Verwijder regel 66:
+// const { data: kpiData } = await supabase.rpc('', {}).catch(() => ({ data: null }));
+```
+
+### Samenvatting
 
 | Bestand | Actie |
 |---------|-------|
-| `src/components/ai-agents/dashboards/AlexDashboard.tsx` | Vervang ROI door rotatie, omloopsnelheid naar 90d |
+| `src/hooks/useAIChatWebhook.ts` | Alex-specifieke routing naar `alex-ceo-chat` edge function |
+| `supabase/functions/alex-ceo-chat/index.ts` | Verwijder kapotte `rpc('')` call (regel 66) |
+
+### Verwacht resultaat
+- Alex chat stuurt berichten naar `alex-ceo-chat` met geheugen + web search
+- Edge function crasht niet meer
+- Andere agents blijven ongewijzigd via `hendrik-ai-chat`
 
