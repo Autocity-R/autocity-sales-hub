@@ -63,7 +63,6 @@ serve(async (req) => {
     console.log(`📊 Memory: ${memory.length} items, ${openDecisions.length} open decisions`);
 
     // ── Step 2: Live business KPIs ──
-    const { data: kpiData } = await supabase.rpc('', {}).catch(() => ({ data: null }));
     
     // Use direct queries instead of RPC
     const { data: vehicles } = await supabase

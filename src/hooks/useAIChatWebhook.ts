@@ -33,10 +33,46 @@ export const useAIChatWebhook = () => {
                              agentData?.capabilities?.includes('email-processing') ||
                              agentData?.capabilities?.includes('lead-scoring');
 
+      const isAlexAgent = agentData?.name === 'Alex';
+
+      if (isAlexAgent) {
+        console.log('🧠 Using Alex CEO Chat edge function');
+        
+        const { data: aiResponse, error: aiError } = await supabase.functions.invoke(
+          'alex-ceo-chat',
+          {
+            body: {
+              sessionId: session.id,
+              message: content,
+              agentId: agentId,
+            }
+          }
+        );
+
+        if (aiError) {
+          console.error('❌ Alex AI integration error:', aiError);
+          throw new Error(`AI service error: ${aiError.message}`);
+        }
+
+        const processingTime = Date.now() - startTime;
+
+        if (!aiResponse.success) {
+          throw new Error(aiResponse.error || 'Alex AI service failed');
+        }
+
+        return {
+          success: true,
+          message: aiResponse.message || 'Ik heb je bericht verwerkt.',
+          data: {
+            context_used: aiResponse.context_used
+          },
+          processingTime
+        };
+      }
+
       if (isHendrikAgent) {
         console.log('🤖 Using direct OpenAI integration for Hendrik');
         
-        // Call our new Hendrik AI Chat edge function
         const { data: aiResponse, error: aiError } = await supabase.functions.invoke(
           'hendrik-ai-chat',
           {
