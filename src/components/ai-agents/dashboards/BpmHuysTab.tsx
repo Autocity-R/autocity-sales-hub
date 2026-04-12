@@ -86,10 +86,10 @@ export const BpmHuysTab: React.FC = () => {
     
     // Aangemeld >7d zonder opname
     const noOpname = vehicles.filter((v) => {
-      const d = v.details || {};
+      const d = (v.details || {}) as Record<string, any>;
       if (hasLog(v.id, "auto_opgenomen")) return false;
       if (!d.bpmRequestedDate) return false;
-      return daysSince(d.bpmRequestedDate) > 7;
+      return daysSince(d.bpmRequestedDate as string) > 7;
     });
 
     // Papieren verstuurd >3d zonder RDW
