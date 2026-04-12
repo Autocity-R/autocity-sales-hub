@@ -4,10 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertTriangle, CheckCircle, Clock, Truck, FileText, ShieldCheck, CreditCard, Package, Download, DollarSign, ChevronRight, FileSpreadsheet } from "lucide-react";
 import { exportMarcoExcel } from "@/utils/marcoExport";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { BpmHuysTab } from "./BpmHuysTab";
 
 interface VehicleRow {
   id: string;
@@ -266,139 +268,152 @@ export const MarcoDashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {alertTiles.map((tile, i) => (
-          <Card key={i} className={cn("border-l-4", tile.count > 0 ? `border-l-${tile.color.replace('bg-', '')}` : 'border-l-muted')}>
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className={cn("p-2 rounded-lg", tile.count > 0 ? `${tile.color}/10` : 'bg-muted')}>
-                <tile.icon className={cn("h-5 w-5", tile.count > 0 ? 'text-white' : 'text-muted-foreground')} style={tile.count > 0 ? { color: tile.color.includes('red') ? '#ef4444' : tile.color.includes('amber') ? '#f59e0b' : '#3b82f6' } : {}} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-2xl font-bold">{tile.count}</p>
-                <p className="text-[11px] text-muted-foreground leading-tight">{tile.label}</p>
+    <Tabs defaultValue="pipeline" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+        <TabsTrigger value="bpm-huys">BPM Huys</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="pipeline">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {alertTiles.map((tile, i) => (
+              <Card key={i} className={cn("border-l-4", tile.count > 0 ? `border-l-${tile.color.replace('bg-', '')}` : 'border-l-muted')}>
+                <CardContent className="p-3 flex items-center gap-3">
+                  <div className={cn("p-2 rounded-lg", tile.count > 0 ? `${tile.color}/10` : 'bg-muted')}>
+                    <tile.icon className={cn("h-5 w-5", tile.count > 0 ? 'text-white' : 'text-muted-foreground')} style={tile.count > 0 ? { color: tile.color.includes('red') ? '#ef4444' : tile.color.includes('amber') ? '#f59e0b' : '#3b82f6' } : {}} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-2xl font-bold">{tile.count}</p>
+                    <p className="text-[11px] text-muted-foreground leading-tight">{tile.label}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Truck className="h-4 w-4 text-blue-500" />
+                Importproces Pipeline — {processed.total} auto's actief
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                {PIPELINE_STEPS.map(({ key, label, icon: Icon }) => {
+                  const count = processed.pipeline[key].length;
+                  const isSelected = selectedStep === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setSelectedStep(isSelected ? null : key)}
+                      className={cn(
+                        "rounded-lg border-2 p-3 text-left transition-all hover:shadow-md",
+                        isSelected ? `${stepColors[key]} border-2 shadow-md` : 'border-border hover:border-muted-foreground/30',
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <Icon className={cn("h-4 w-4", stepTextColors[key])} />
+                        {isSelected && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+                      </div>
+                      <p className="text-2xl font-bold">{count}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">{label}</p>
+                    </button>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Truck className="h-4 w-4 text-blue-500" />
-            Importproces Pipeline — {processed.total} auto's actief
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-            {PIPELINE_STEPS.map(({ key, label, icon: Icon }) => {
-              const count = processed.pipeline[key].length;
-              const isSelected = selectedStep === key;
-              return (
-                <button
-                  key={key}
-                  onClick={() => setSelectedStep(isSelected ? null : key)}
-                  className={cn(
-                    "rounded-lg border-2 p-3 text-left transition-all hover:shadow-md",
-                    isSelected ? `${stepColors[key]} border-2 shadow-md` : 'border-border hover:border-muted-foreground/30',
-                  )}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <Icon className={cn("h-4 w-4", stepTextColors[key])} />
-                    {isSelected && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
-                  </div>
-                  <p className="text-2xl font-bold">{count}</p>
-                  <p className="text-[10px] text-muted-foreground leading-tight">{label}</p>
-                </button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {selectedStep && (
-        <Card>
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm">
-              {PIPELINE_STEPS.find(s => s.key === selectedStep)?.label} — {activeVehicles.length} auto's
-            </CardTitle>
-            {selectedStep !== 'ingeschreven' && (
-              <Button variant="outline" size="sm" onClick={() => handleExcelExport(selectedStep)}>
-                <FileSpreadsheet className="h-3 w-3 mr-1" /> Excel
-              </Button>
-            )}
-          </CardHeader>
-          <CardContent>
-            {activeVehicles.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Geen auto's in deze stap</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2 pr-3 font-medium">Auto</th>
-                      <th className="pb-2 pr-3 font-medium">Leverancier</th>
-                      {['pickup', 'import', 'b2b_papieren'].includes(selectedStep) && (
-                        <th className="pb-2 pr-3 font-medium">Klant</th>
-                      )}
-                      <th className="pb-2 pr-3 font-medium text-center">Dagen</th>
-                      <th className="pb-2 pr-3 font-medium">Status</th>
-                      <th className="pb-2 pr-3 font-medium text-center">Betaald</th>
-                      <th className="pb-2 pr-3 font-medium text-center">CMR</th>
-                      <th className="pb-2 pr-3 font-medium text-center">Papieren</th>
-                      <th className="pb-2 font-medium text-center">Urgentie</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeVehicles.map(v => {
-                      const d = v.details || {};
-                      const supplier = v.supplier_id ? contactMap[v.supplier_id] : null;
-                      const customer = (v as any).customer_id ? customerMap[(v as any).customer_id] : null;
-                      const customerName = customer ? (customer.company_name || `${customer.first_name || ''} ${customer.last_name || ''}`.trim()) : (d.customerName || '—');
-                      const paymentStatus = getPurchasePaymentStatus(d);
-                      const paid = paymentStatus === 'volledig_betaald';
-                      const days = daysSince(v.created_at);
-                      const urg = urgencyScore(v, selectedStep);
-
-                      return (
-                        <tr key={v.id} className="border-b border-border/50 hover:bg-muted/30">
-                          <td className="py-2 pr-3">
-                            <p className="font-medium">{v.brand} {v.model}</p>
-                            <p className="text-xs text-muted-foreground">{v.license_number || v.vin || '—'}</p>
-                          </td>
-                          <td className="py-2 pr-3 text-xs">{supplier?.company_name || supplier?.first_name || '—'}</td>
+          {selectedStep && (
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm">
+                  {PIPELINE_STEPS.find(s => s.key === selectedStep)?.label} — {activeVehicles.length} auto's
+                </CardTitle>
+                {selectedStep !== 'ingeschreven' && (
+                  <Button variant="outline" size="sm" onClick={() => handleExcelExport(selectedStep)}>
+                    <FileSpreadsheet className="h-3 w-3 mr-1" /> Excel
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {activeVehicles.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">Geen auto's in deze stap</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-left text-muted-foreground">
+                          <th className="pb-2 pr-3 font-medium">Auto</th>
+                          <th className="pb-2 pr-3 font-medium">Leverancier</th>
                           {['pickup', 'import', 'b2b_papieren'].includes(selectedStep) && (
-                            <td className="py-2 pr-3 text-xs">{customerName}</td>
+                            <th className="pb-2 pr-3 font-medium">Klant</th>
                           )}
-                          <td className="py-2 pr-3 text-center">
-                            <span className={cn("font-medium", days > 30 ? 'text-red-500' : days > 14 ? 'text-amber-500' : '')}>{days}d</span>
-                          </td>
-                          <td className="py-2 pr-3">
-                            <Badge variant="outline" className="text-[10px]">{v.import_status || 'niet_gestart'}</Badge>
-                          </td>
-                          <td className="py-2 pr-3 text-center">
-                            {paid ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : <span className="text-red-500 text-xs font-medium">Nee</span>}
-                          </td>
-                          <td className="py-2 pr-3 text-center">
-                            {isTruthy(d.cmrSent) ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : <span className="text-muted-foreground text-xs">—</span>}
-                          </td>
-                          <td className="py-2 pr-3 text-center">
-                            {isTruthy(d.papersReceived) ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : <span className="text-muted-foreground text-xs">—</span>}
-                          </td>
-                          <td className="py-2 text-center">
-                            <Badge className={cn("text-[10px]", urg > 60 ? 'bg-red-500' : urg > 30 ? 'bg-amber-500' : 'bg-blue-500')} variant="default">{urg}</Badge>
-                          </td>
+                          <th className="pb-2 pr-3 font-medium text-center">Dagen</th>
+                          <th className="pb-2 pr-3 font-medium">Status</th>
+                          <th className="pb-2 pr-3 font-medium text-center">Betaald</th>
+                          <th className="pb-2 pr-3 font-medium text-center">CMR</th>
+                          <th className="pb-2 pr-3 font-medium text-center">Papieren</th>
+                          <th className="pb-2 font-medium text-center">Urgentie</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-    </div>
+                      </thead>
+                      <tbody>
+                        {activeVehicles.map(v => {
+                          const d = v.details || {};
+                          const supplier = v.supplier_id ? contactMap[v.supplier_id] : null;
+                          const customer = (v as any).customer_id ? customerMap[(v as any).customer_id] : null;
+                          const customerName = customer ? (customer.company_name || `${customer.first_name || ''} ${customer.last_name || ''}`.trim()) : (d.customerName || '—');
+                          const paymentStatus = getPurchasePaymentStatus(d);
+                          const paid = paymentStatus === 'volledig_betaald';
+                          const days = daysSince(v.created_at);
+                          const urg = urgencyScore(v, selectedStep);
+
+                          return (
+                            <tr key={v.id} className="border-b border-border/50 hover:bg-muted/30">
+                              <td className="py-2 pr-3">
+                                <p className="font-medium">{v.brand} {v.model}</p>
+                                <p className="text-xs text-muted-foreground">{v.license_number || v.vin || '—'}</p>
+                              </td>
+                              <td className="py-2 pr-3 text-xs">{supplier?.company_name || supplier?.first_name || '—'}</td>
+                              {['pickup', 'import', 'b2b_papieren'].includes(selectedStep) && (
+                                <td className="py-2 pr-3 text-xs">{customerName}</td>
+                              )}
+                              <td className="py-2 pr-3 text-center">
+                                <span className={cn("font-medium", days > 30 ? 'text-red-500' : days > 14 ? 'text-amber-500' : '')}>{days}d</span>
+                              </td>
+                              <td className="py-2 pr-3">
+                                <Badge variant="outline" className="text-[10px]">{v.import_status || 'niet_gestart'}</Badge>
+                              </td>
+                              <td className="py-2 pr-3 text-center">
+                                {paid ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : <span className="text-red-500 text-xs font-medium">Nee</span>}
+                              </td>
+                              <td className="py-2 pr-3 text-center">
+                                {isTruthy(d.cmrSent) ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : <span className="text-muted-foreground text-xs">—</span>}
+                              </td>
+                              <td className="py-2 pr-3 text-center">
+                                {isTruthy(d.papersReceived) ? <CheckCircle className="h-4 w-4 text-green-500 mx-auto" /> : <span className="text-muted-foreground text-xs">—</span>}
+                              </td>
+                              <td className="py-2 text-center">
+                                <Badge className={cn("text-[10px]", urg > 60 ? 'bg-red-500' : urg > 30 ? 'bg-amber-500' : 'bg-blue-500')} variant="default">{urg}</Badge>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </TabsContent>
+
+      <TabsContent value="bpm-huys">
+        <BpmHuysTab />
+      </TabsContent>
+    </Tabs>
   );
 };

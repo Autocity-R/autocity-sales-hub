@@ -472,7 +472,8 @@ export const sendEmailWithTemplate = async (
           
           const updatedDetails = {
             ...currentDetails,
-            bpmRequested: true
+            bpmRequested: true,
+            bpmRequestedDate: currentDetails.bpmRequestedDate || new Date().toISOString()
           };
           
           const { error: updateError } = await supabase
