@@ -239,8 +239,8 @@ export const BpmHuysTab: React.FC = () => {
                 </thead>
                 <tbody>
                   {activeItems.map((v: any) => {
-                    const isLate = selectedCol === "aangemeld" ? v._dagen > 7
-                      : selectedCol === "papieren_verstuurd" ? v._dagen > 3 : false;
+                    const isLate = selectedCol === "aangemeld" ? (v._dagen != null && v._dagen > 7)
+                      : selectedCol === "papieren_verstuurd" ? (v._dagen != null && v._dagen > 3) : false;
                     return (
                       <tr key={v.id} className="border-b border-border/50 hover:bg-muted/30">
                         <td className="py-2 pr-3 font-medium">{v.brand} {v.model}</td>
@@ -249,9 +249,13 @@ export const BpmHuysTab: React.FC = () => {
                         <td className="py-2 pr-3 text-xs">{v._datum?.slice(0, 10) || "—"}</td>
                         {(selectedCol === "aangemeld" || selectedCol === "papieren_verstuurd") && (
                           <td className="py-2">
-                            <Badge variant={isLate ? "destructive" : "outline"} className="text-[10px]">
-                              {v._dagen}d
-                            </Badge>
+                            {v._dagen != null ? (
+                              <Badge variant={isLate ? "destructive" : "outline"} className="text-[10px]">
+                                {v._dagen}d
+                              </Badge>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">—</span>
+                            )}
                           </td>
                         )}
                       </tr>
