@@ -347,7 +347,7 @@ Schrijf een briefing email voor Hendrik. Kort, zakelijk, cijfermatig. Geen emoji
         status: 'pending',
         payload: {
           senderEmail: 'alex@auto-city.nl',
-          to: 'hendrik@auto-city.nl',
+          to: ['hendrik@auto-city.nl'],
           subject: `Alex | CEO Briefing ${today} — ${toon}`,
           htmlBody: briefingData.briefing_html || `<div>${fullText}</div>`,
         },
@@ -365,7 +365,7 @@ Schrijf een briefing email voor Hendrik. Kort, zakelijk, cijfermatig. Geen emoji
           status: 'pending',
           payload: {
             senderEmail: 'alex@auto-city.nl',
-            to: 'hendrik@auto-city.nl',
+            to: ['hendrik@auto-city.nl'],
             subject: `⚠️ URGENT — Alex Alert ${today}`,
             htmlBody: `<h2>Urgente Alerts</h2><ul>${urgentReasons.map(r => `<li>${r}</li>`).join('')}</ul><p>Bekijk de volledige briefing voor details.</p>`,
           },
