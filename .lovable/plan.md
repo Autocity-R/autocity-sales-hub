@@ -1,22 +1,35 @@
 
 
-## Plan: Fix Alex briefing email payload
+## Plan: Watermerk-systeem voor garantie emails + system_config tabel
 
-### Probleem
-In `alex-dagelijkse-briefing/index.ts` wordt `to` als string gezet (`'hendrik@auto-city.nl'`), maar `process-email-queue` verwacht een array en roept `.to.join()` en `.to[0]` aan.
+### Wat
+Een `system_config` tabel toevoegen als generiek key-value store, en de `process-garantie-emails` edge function zo aanpassen dat alleen emails na het laatste sync-moment worden opgehaald — geen historische inbox.
 
-### Fix
-In `supabase/functions/alex-dagelijkse-briefing/index.ts` — twee plekken waar `email_queue.insert` wordt aangeroepen:
+### Database
 
-1. **Briefing email** (rond regel 197): `to: 'hendrik@auto-city.nl'` wordt `to: ['hendrik@auto-city.nl']`
-2. **Urgent alert email** (rond regel 210): zelfde fix
+**Nieuwe tabel: `system_config`**
+- `key` (text, PRIMARY KEY)
+- `value` (text)
+- `updated_at` (timestamptz, default now())
+- Initiële rij: `garantie_email_laatste_sync` met huidige timestamp
+- RLS: service_role full access, authenticated read-only
 
-### Deploy
-Na de fix: deploy `alex-dagelijkse-briefing` edge function.
+### Edge Function aanpassing
+
+In `process-garantie-emails/index.ts` (die we nog gaan bouwen als onderdeel van het Sara email plan):
+
+1. **Bij start**: watermerk ophalen uit `system_config` (`garantie_email_laatste_sync`)
+2. **Gmail query**: `after:` parameter gebruiken met het watermerk-tijdstip (Unix timestamp)
+3. **Na succesvolle verwerking**: watermerk updaten naar `now()`
+4. **Dubbele beveiliging**: `message_id` UNIQUE constraint bestaat al op `garantie_emails` — als een email toch twee keer binnenkomt, wordt de insert genegeerd via `ON CONFLICT DO NOTHING`
 
 ### Bestanden
 
 | Bestand | Actie |
 |---------|-------|
-| `supabase/functions/alex-dagelijkse-briefing/index.ts` | Fix `to` van string naar array (2 plekken) |
+| Migratie | `system_config` tabel + RLS + initiële rij |
+| `supabase/functions/process-garantie-emails/index.ts` | Watermerk logica integreren (onderdeel van het grotere Sara email plan) |
+
+### Opmerking
+Dit wordt meegenomen in de implementatie van het volledige Sara garantie email systeem — het watermerk is onderdeel van dezelfde edge function. De `system_config` tabel is herbruikbaar voor toekomstige systeeminstellingen.
 
