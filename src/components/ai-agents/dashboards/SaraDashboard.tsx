@@ -283,6 +283,9 @@ export const SaraDashboard: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Garantie Email Inbox */}
+      <GarantieEmailInbox />
     </div>
   );
 };
