@@ -133,7 +133,38 @@ serve(async (req) => {
       auto_ouder_90_dagen,
     };
 
-    console.log('📈 KPIs calculated:', kpis);
+    // ── Step 2b: Historical monthly sales (full year) ──
+    const yearStart = new Date(now.getFullYear(), 0, 1).toISOString();
+    const maandelijks: Record<string, { b2c: number; b2b: number; inruil: number; omzet: number; winst: number; garantie: number }> = {};
+
+    for (const v of (vehicles || [])) {
+      const isSold = ['verkocht_b2c', 'verkocht_b2b', 'afgeleverd'].includes(v.status);
+      if (!isSold || !v.sold_date || v.sold_date < yearStart) continue;
+      
+      const details = v.details as any;
+      const maand = v.sold_date.substring(0, 7); // "2026-01" etc
+      if (!maandelijks[maand]) maandelijks[maand] = { b2c: 0, b2b: 0, inruil: 0, omzet: 0, winst: 0, garantie: 0 };
+      const m = maandelijks[maand];
+      
+      const isB2B = details?.warrantyPackage === 'geen_garantie_b2b';
+      const isTradeIn = details?.isTradeIn === true || details?.isTradeIn === 'true';
+      
+      if (isB2B) m.b2b++;
+      else m.b2c++;
+      if (isTradeIn) m.inruil++;
+      
+      m.omzet += (v.selling_price || 0);
+      m.winst += ((v.selling_price || 0) - (v.purchase_price || 0));
+      
+      const garantiePrijs = parseFloat(details?.warrantyPackagePrice || '0');
+      if (garantiePrijs > 0) m.garantie += garantiePrijs;
+    }
+
+    const historische_verkopen = Object.entries(maandelijks)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([maand, data]) => ({ maand, ...data, omzet: Math.round(data.omzet), winst: Math.round(data.winst), garantie: Math.round(data.garantie) }));
+
+    console.log('📈 KPIs calculated:', kpis, `Historical: ${historische_verkopen.length} months`);
 
     // ── Step 3: Send to Claude with web search ──
     const userContent = `MIJN GEHEUGEN (marktkennis):
@@ -145,8 +176,11 @@ ${JSON.stringify(openDecisions, null, 1)}
 LAATSTE GESPREK MET HENDRIK:
 ${JSON.stringify(lastConversation)}
 
-LIVE BEDRIJFSDATA:
+LIVE BEDRIJFSDATA (huidige maand):
 ${JSON.stringify(kpis, null, 1)}
+
+HISTORISCHE VERKOPEN PER MAAND (${now.getFullYear()}):
+${JSON.stringify(historische_verkopen, null, 1)}
 
 VRAAG VAN HENDRIK:
 ${message}`;
