@@ -1,18 +1,22 @@
 
 
-## Plan: Cron jobs fixen — service_role key
+## Plan: Fix Alex briefing email payload
 
-### Actie
+### Probleem
+In `alex-dagelijkse-briefing/index.ts` wordt `to` als string gezet (`'hendrik@auto-city.nl'`), maar `process-email-queue` verwacht een array en roept `.to.join()` en `.to[0]` aan.
 
-Via de Supabase SQL insert tool (niet migratie) in één keer uitvoeren:
+### Fix
+In `supabase/functions/alex-dagelijkse-briefing/index.ts` — twee plekken waar `email_queue.insert` wordt aangeroepen:
 
-1. **Unschedule** drie oude jobs (id 21, 22, 18)
-2. **Schedule** drie nieuwe jobs met service_role key:
-   - `marco-bpm-dagcheck-08u` — `0 6 * * 1-5` (ma-vr 08:00 CET)
-   - `marco-bpm-weekoverzicht` — `0 7 * * 1` (maandag 09:00 CET)
-   - `alex-leermoment-ma` — `0 4 * * 1` (maandag 06:00 CET)
+1. **Briefing email** (rond regel 197): `to: 'hendrik@auto-city.nl'` wordt `to: ['hendrik@auto-city.nl']`
+2. **Urgent alert email** (rond regel 210): zelfde fix
+
+### Deploy
+Na de fix: deploy `alex-dagelijkse-briefing` edge function.
 
 ### Bestanden
 
-Geen code wijzigingen — alleen SQL uitvoeren.
+| Bestand | Actie |
+|---------|-------|
+| `supabase/functions/alex-dagelijkse-briefing/index.ts` | Fix `to` van string naar array (2 plekken) |
 
