@@ -95,3 +95,9 @@ verify_jwt = false
 
 [functions.alex-leermoment]
 verify_jwt = false
+
+[functions.marco-bpm-check]
+verify_jwt = false
+
+[functions.marco-bpm-weekoverzicht]
+verify_jwt = false
