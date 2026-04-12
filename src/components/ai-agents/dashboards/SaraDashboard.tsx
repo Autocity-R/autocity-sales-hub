@@ -124,7 +124,7 @@ export const SaraDashboard: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* KPI Tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10"><ShieldAlert className="h-5 w-5 text-primary" /></div>
@@ -150,6 +150,12 @@ export const SaraDashboard: React.FC = () => {
               <p className="text-2xl font-bold">{data?.loanCarStats?.inUse || 0}/{data?.loanCarStats?.total || 0}</p>
               <p className="text-xs text-muted-foreground">Leenauto's in gebruik</p>
             </div>
+          </CardContent>
+        </Card>
+        <Card className={data?.unreadEmails ? "border-primary" : ""}>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10"><Mail className="h-5 w-5 text-primary" /></div>
+            <div><p className="text-2xl font-bold">{data?.unreadEmails || 0}</p><p className="text-xs text-muted-foreground">Ongelezen emails</p></div>
           </CardContent>
         </Card>
       </div>
