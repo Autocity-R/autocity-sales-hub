@@ -107,8 +107,9 @@ export const BpmHuysTab: React.FC = () => {
         cols.wacht_papieren.push({ ...v, _datum: datum });
       } else {
         const d = (v.details || {}) as Record<string, any>;
-        const dagen = daysSince(d.bpmRequestedDate as string || v.created_at);
-        cols.aangemeld.push({ ...v, _datum: d.bpmRequestedDate || v.created_at, _dagen: dagen });
+        const bpmDate = d.bpmRequestedDate as string | undefined;
+        const dagen = bpmDate ? daysSince(bpmDate) : null;
+        cols.aangemeld.push({ ...v, _datum: bpmDate || null, _dagen: dagen });
       }
     });
 
