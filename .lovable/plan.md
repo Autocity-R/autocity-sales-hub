@@ -1,35 +1,57 @@
 
 
-## Plan: Watermerk-systeem voor garantie emails + system_config tabel
+## Analyse: Import Status Update Geblokkeerd
 
-### Wat
-Een `system_config` tabel toevoegen als generiek key-value store, en de `process-garantie-emails` edge function zo aanpassen dat alleen emails na het laatste sync-moment worden opgehaald — geen historische inbox.
+### Root Cause Gevonden
 
-### Database
+Het probleem zit in de **status hiërarchie** in `sheets-import-webhook/index.ts`. De hiërarchie is:
 
-**Nieuwe tabel: `system_config`**
-- `key` (text, PRIMARY KEY)
-- `value` (text)
-- `updated_at` (timestamptz, default now())
-- Initiële rij: `garantie_email_laatste_sync` met huidige timestamp
-- RLS: service_role full access, authenticated read-only
+```text
+niet_gestart:        0
+niet_aangemeld:      1
+aangemeld:           2
+aanvraag_ontvangen:  3  ← RDW status
+aangekomen:          4  ← Transport status (auto fysiek aangekomen)
+goedgekeurd:         5
+bpm_betaald:         6
+ingeschreven:        7
+```
 
-### Edge Function aanpassing
+**Het probleem**: `aangekomen` (index 4) staat HOGER dan `aanvraag_ontvangen` (index 3). Maar in werkelijkheid is `aanvraag_ontvangen` een RDW-processtatus die NA de fysieke aankomst (`aangekomen`) plaatsvindt.
 
-In `process-garantie-emails/index.ts` (die we nog gaan bouwen als onderdeel van het Sara email plan):
+Wanneer de Google Sheet een update "Aanvraag ontvangen" stuurt voor een voertuig dat al op `aangekomen` staat, **blokkeert de hiërarchie-check op regel 204** dit als een "downgrade" (3 < 4). De update wordt overgeslagen met "Status downgrade not allowed".
 
-1. **Bij start**: watermerk ophalen uit `system_config` (`garantie_email_laatste_sync`)
-2. **Gmail query**: `after:` parameter gebruiken met het watermerk-tijdstip (Unix timestamp)
-3. **Na succesvolle verwerking**: watermerk updaten naar `now()`
-4. **Dubbele beveiliging**: `message_id` UNIQUE constraint bestaat al op `garantie_emails` — als een email toch twee keer binnenkomt, wordt de insert genegeerd via `ON CONFLICT DO NOTHING`
+**Bewijs**:
+- Beide VINs staan op `import_status: aangekomen`, `import_status_highest: null`
+- Er zijn **nul** entries in `vehicle_import_logs` voor deze VINs — de webhook werd nooit succesvol uitgevoerd
+- Andere voertuigen die op `niet_gestart` stonden konden WEL naar `goedgekeurd` of `ingeschreven` springen (zie logs van 10 april)
+
+### Oplossing
+
+De status hiërarchie moet worden aangepast zodat `aangekomen` (transport = fysiek hier) LAGER staat dan de RDW-processtappen:
+
+```text
+niet_gestart:        0
+niet_aangemeld:      1
+aangemeld:           2
+aangekomen:          3  ← VERLAAGD (transport status)
+aanvraag_ontvangen:  4  ← VERHOOGD (RDW proces start)
+goedgekeurd:         5
+transport_geregeld:  5
+onderweg:            5
+afgemeld:            5
+bpm_betaald:         6
+herkeuring:          6
+ingeschreven:        7
+```
 
 ### Bestanden
 
-| Bestand | Actie |
-|---------|-------|
-| Migratie | `system_config` tabel + RLS + initiële rij |
-| `supabase/functions/process-garantie-emails/index.ts` | Watermerk logica integreren (onderdeel van het grotere Sara email plan) |
+| Bestand | Wijziging |
+|---------|-----------|
+| `supabase/functions/sheets-import-webhook/index.ts` | Hiërarchie indices aanpassen: `aangekomen: 3`, `aanvraag_ontvangen: 4`, `goedgekeurd: 5` → `goedgekeurd: 6`, transport statussen → 5, `bpm_betaald: 7`, `herkeuring: 7`, `ingeschreven: 8`. Ook `statusByIndex` updaten. |
 
-### Opmerking
-Dit wordt meegenomen in de implementatie van het volledige Sara garantie email systeem — het watermerk is onderdeel van dezelfde edge function. De `system_config` tabel is herbruikbaar voor toekomstige systeeminstellingen.
+### Na deployment
+
+De edge function opnieuw deployen en testen met een curl-call om te verifiëren dat een voertuig met `aangekomen` nu WEL naar `aanvraag_ontvangen` kan worden geüpdatet.
 
