@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShieldAlert, Clock, AlertTriangle, Car, Link, Unlink } from "lucide-react";
+import { ShieldAlert, Clock, AlertTriangle, Car, Link, Unlink, Mail } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GarantieEmailInbox } from "./sara/GarantieEmailInbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -73,6 +74,13 @@ export const SaraDashboard: React.FC = () => {
           days: Math.floor((now - new Date(c.created_at).getTime()) / DAY),
         }));
 
+      // Fetch unread garantie emails count
+      const { count: unreadEmails } = await supabase
+        .from('garantie_emails' as any)
+        .select('id', { count: 'exact', head: true })
+        .eq('gelezen', false)
+        .eq('richting', 'inkomend');
+
       return {
         totalOpen,
         avgDays,
@@ -82,6 +90,7 @@ export const SaraDashboard: React.FC = () => {
         availableCars: available,
         needingLoanCar,
         loanCarsInUse,
+        unreadEmails: unreadEmails || 0,
       };
     },
     refetchInterval: 60000,
@@ -115,7 +124,7 @@ export const SaraDashboard: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* KPI Tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10"><ShieldAlert className="h-5 w-5 text-primary" /></div>
@@ -141,6 +150,12 @@ export const SaraDashboard: React.FC = () => {
               <p className="text-2xl font-bold">{data?.loanCarStats?.inUse || 0}/{data?.loanCarStats?.total || 0}</p>
               <p className="text-xs text-muted-foreground">Leenauto's in gebruik</p>
             </div>
+          </CardContent>
+        </Card>
+        <Card className={data?.unreadEmails ? "border-primary" : ""}>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10"><Mail className="h-5 w-5 text-primary" /></div>
+            <div><p className="text-2xl font-bold">{data?.unreadEmails || 0}</p><p className="text-xs text-muted-foreground">Ongelezen emails</p></div>
           </CardContent>
         </Card>
       </div>
@@ -268,6 +283,9 @@ export const SaraDashboard: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Garantie Email Inbox */}
+      <GarantieEmailInbox />
     </div>
   );
 };
