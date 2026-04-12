@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShieldAlert, Clock, AlertTriangle, Car, Link, Unlink } from "lucide-react";
+import { ShieldAlert, Clock, AlertTriangle, Car, Link, Unlink, Mail } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GarantieEmailInbox } from "./sara/GarantieEmailInbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -73,6 +74,13 @@ export const SaraDashboard: React.FC = () => {
           days: Math.floor((now - new Date(c.created_at).getTime()) / DAY),
         }));
 
+      // Fetch unread garantie emails count
+      const { count: unreadEmails } = await supabase
+        .from('garantie_emails' as any)
+        .select('id', { count: 'exact', head: true })
+        .eq('gelezen', false)
+        .eq('richting', 'inkomend');
+
       return {
         totalOpen,
         avgDays,
@@ -82,6 +90,7 @@ export const SaraDashboard: React.FC = () => {
         availableCars: available,
         needingLoanCar,
         loanCarsInUse,
+        unreadEmails: unreadEmails || 0,
       };
     },
     refetchInterval: 60000,
