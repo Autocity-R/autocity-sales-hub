@@ -972,6 +972,136 @@ export type Database = {
         }
         Relationships: []
       }
+      bpm_huys_facturen: {
+        Row: {
+          bedrag: number | null
+          belasting_verstuurd_op: string | null
+          betaal_link: string | null
+          betaald_op: string | null
+          created_at: string | null
+          email_verwerkt_id: string | null
+          factuur_datum: string | null
+          factuur_nummer: string | null
+          id: string
+          marco_alert_verstuurd: boolean | null
+          omschrijving_type: string | null
+          rapport_gedownload_op: string | null
+          status: string | null
+          updated_at: string | null
+          vehicle_id: string | null
+          verval_datum: string | null
+          vin: string | null
+        }
+        Insert: {
+          bedrag?: number | null
+          belasting_verstuurd_op?: string | null
+          betaal_link?: string | null
+          betaald_op?: string | null
+          created_at?: string | null
+          email_verwerkt_id?: string | null
+          factuur_datum?: string | null
+          factuur_nummer?: string | null
+          id?: string
+          marco_alert_verstuurd?: boolean | null
+          omschrijving_type?: string | null
+          rapport_gedownload_op?: string | null
+          status?: string | null
+          updated_at?: string | null
+          vehicle_id?: string | null
+          verval_datum?: string | null
+          vin?: string | null
+        }
+        Update: {
+          bedrag?: number | null
+          belasting_verstuurd_op?: string | null
+          betaal_link?: string | null
+          betaald_op?: string | null
+          created_at?: string | null
+          email_verwerkt_id?: string | null
+          factuur_datum?: string | null
+          factuur_nummer?: string | null
+          id?: string
+          marco_alert_verstuurd?: boolean | null
+          omschrijving_type?: string | null
+          rapport_gedownload_op?: string | null
+          status?: string | null
+          updated_at?: string | null
+          vehicle_id?: string | null
+          verval_datum?: string | null
+          vin?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bpm_huys_facturen_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bpm_huys_whatsapp_log: {
+        Row: {
+          aangemeld_op_tijd: boolean | null
+          actie_omschrijving: string | null
+          actie_vereist: boolean | null
+          afzender: string | null
+          bericht_datum: string
+          bericht_inhoud: string | null
+          bericht_type: string
+          created_at: string | null
+          id: string
+          marco_notitie: string | null
+          meldcode: string | null
+          updated_at: string | null
+          vehicle_id: string | null
+          verwacht_aanmelding_voor: string | null
+          vin: string | null
+        }
+        Insert: {
+          aangemeld_op_tijd?: boolean | null
+          actie_omschrijving?: string | null
+          actie_vereist?: boolean | null
+          afzender?: string | null
+          bericht_datum?: string
+          bericht_inhoud?: string | null
+          bericht_type: string
+          created_at?: string | null
+          id?: string
+          marco_notitie?: string | null
+          meldcode?: string | null
+          updated_at?: string | null
+          vehicle_id?: string | null
+          verwacht_aanmelding_voor?: string | null
+          vin?: string | null
+        }
+        Update: {
+          aangemeld_op_tijd?: boolean | null
+          actie_omschrijving?: string | null
+          actie_vereist?: boolean | null
+          afzender?: string | null
+          bericht_datum?: string
+          bericht_inhoud?: string | null
+          bericht_type?: string
+          created_at?: string | null
+          id?: string
+          marco_notitie?: string | null
+          meldcode?: string | null
+          updated_at?: string | null
+          vehicle_id?: string | null
+          verwacht_aanmelding_voor?: string | null
+          vin?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bpm_huys_whatsapp_log_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_sync_logs: {
         Row: {
           appointment_id: string | null
@@ -3450,7 +3580,28 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      alex_verkoop_rapportage: {
+        Row: {
+          b2b_omzet: number | null
+          b2b_verkopen: number | null
+          b2b_winst: number | null
+          b2c_marge_pct: number | null
+          b2c_omzet: number | null
+          b2c_verkopen: number | null
+          b2c_winst: number | null
+          garantie_conversie_pct: number | null
+          garantie_omzet: number | null
+          garantie_verkopen: number | null
+          inruil_omzet: number | null
+          inruil_verkopen: number | null
+          inruil_winst: number | null
+          maand: string | null
+          totaal_verkopen: number | null
+          totale_omzet: number | null
+          totale_winst: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_assign_tasks: { Args: { user_id: string }; Returns: boolean }
