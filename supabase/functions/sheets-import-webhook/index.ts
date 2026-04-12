@@ -37,15 +37,15 @@ const statusHierarchy: Record<string, number> = {
   'niet_gestart': 0,
   'niet_aangemeld': 1,
   'aangemeld': 2,
-  'aanvraag_ontvangen': 3,
-  'aangekomen': 4,
-  'goedgekeurd': 5,
-  'transport_geregeld': 5,
-  'onderweg': 5,
-  'afgemeld': 5,
-  'bpm_betaald': 6,
-  'herkeuring': 6,
-  'ingeschreven': 7,
+  'aangekomen': 3,
+  'transport_geregeld': 4,
+  'onderweg': 4,
+  'afgemeld': 4,
+  'aanvraag_ontvangen': 5,
+  'goedgekeurd': 6,
+  'bpm_betaald': 7,
+  'herkeuring': 7,
+  'ingeschreven': 8,
 };
 
 // Reverse lookup: index → status name (voor import_status_highest)
@@ -53,11 +53,12 @@ const statusByIndex: Record<number, string> = {
   0: 'niet_gestart',
   1: 'niet_aangemeld',
   2: 'aangemeld',
-  3: 'aanvraag_ontvangen',
-  4: 'aangekomen',
-  5: 'goedgekeurd',
-  6: 'bpm_betaald',
-  7: 'ingeschreven',
+  3: 'aangekomen',
+  4: 'transport_geregeld',
+  5: 'aanvraag_ontvangen',
+  6: 'goedgekeurd',
+  7: 'bpm_betaald',
+  8: 'ingeschreven',
 };
 
 serve(async (req) => {
