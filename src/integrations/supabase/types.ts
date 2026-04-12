@@ -2131,6 +2131,139 @@ export type Database = {
         }
         Relationships: []
       }
+      garantie_email_threads: {
+        Row: {
+          aantal_emails: number | null
+          case_samenvatting: string | null
+          created_at: string | null
+          eerste_email_op: string | null
+          garantie_type: string | null
+          id: string
+          klant_email: string
+          klant_naam: string | null
+          laatste_email_op: string | null
+          onderwerp: string | null
+          sara_beslissing: string | null
+          thread_status: string | null
+          updated_at: string | null
+          voertuig_info: string | null
+          warranty_claim_id: string | null
+        }
+        Insert: {
+          aantal_emails?: number | null
+          case_samenvatting?: string | null
+          created_at?: string | null
+          eerste_email_op?: string | null
+          garantie_type?: string | null
+          id?: string
+          klant_email: string
+          klant_naam?: string | null
+          laatste_email_op?: string | null
+          onderwerp?: string | null
+          sara_beslissing?: string | null
+          thread_status?: string | null
+          updated_at?: string | null
+          voertuig_info?: string | null
+          warranty_claim_id?: string | null
+        }
+        Update: {
+          aantal_emails?: number | null
+          case_samenvatting?: string | null
+          created_at?: string | null
+          eerste_email_op?: string | null
+          garantie_type?: string | null
+          id?: string
+          klant_email?: string
+          klant_naam?: string | null
+          laatste_email_op?: string | null
+          onderwerp?: string | null
+          sara_beslissing?: string | null
+          thread_status?: string | null
+          updated_at?: string | null
+          voertuig_info?: string | null
+          warranty_claim_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "garantie_email_threads_warranty_claim_id_fkey"
+            columns: ["warranty_claim_id"]
+            isOneToOne: false
+            referencedRelation: "warranty_claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      garantie_emails: {
+        Row: {
+          body: string | null
+          created_at: string | null
+          definitieve_reactie: string | null
+          gelezen: boolean | null
+          id: string
+          message_id: string | null
+          reactie_status: string | null
+          received_at: string
+          richting: string
+          sara_analyse: string | null
+          sara_beslissing: string | null
+          sara_reactie_voorstel: string | null
+          sender: string
+          sender_email: string
+          subject: string | null
+          thread_id: string
+          verstuurd_door: string | null
+          verstuurd_op: string | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string | null
+          definitieve_reactie?: string | null
+          gelezen?: boolean | null
+          id?: string
+          message_id?: string | null
+          reactie_status?: string | null
+          received_at: string
+          richting: string
+          sara_analyse?: string | null
+          sara_beslissing?: string | null
+          sara_reactie_voorstel?: string | null
+          sender: string
+          sender_email: string
+          subject?: string | null
+          thread_id: string
+          verstuurd_door?: string | null
+          verstuurd_op?: string | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string | null
+          definitieve_reactie?: string | null
+          gelezen?: boolean | null
+          id?: string
+          message_id?: string | null
+          reactie_status?: string | null
+          received_at?: string
+          richting?: string
+          sara_analyse?: string | null
+          sara_beslissing?: string | null
+          sara_reactie_voorstel?: string | null
+          sender?: string
+          sender_email?: string
+          subject?: string | null
+          thread_id?: string
+          verstuurd_door?: string | null
+          verstuurd_op?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "garantie_emails_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "garantie_email_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jpcars_market_history: {
         Row: {
           apr: number | null
@@ -2686,6 +2819,24 @@ export type Database = {
           target_type?: string
           target_value?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      system_config: {
+        Row: {
+          key: string
+          updated_at: string | null
+          value: string | null
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          value?: string | null
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          value?: string | null
         }
         Relationships: []
       }
