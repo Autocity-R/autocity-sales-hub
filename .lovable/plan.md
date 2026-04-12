@@ -1,37 +1,44 @@
 
 
-## Plan: BPM Huys tab omzetten naar pipeline met 4 kolommen
+## Plan: Cron jobs herschedulen met service_role key
 
-### Wat verandert
+### Query check — klaar
 
-**Bestand**: `src/components/ai-agents/dashboards/BpmHuysTab.tsx` — volledig herschrijven
+Alle drie bestanden (`BpmHuysTab.tsx`, `marco-bpm-check/index.ts`, `marco-bpm-weekoverzicht/index.ts`) gebruiken de Supabase JS client met `vehicle_id` UUID lookups. Geen raw SQL met LIKE of RIGHT. De frontend meldcode matching in `BpmHuysTab.tsx` gebruikt `v.vin.slice(-4)` — correct JavaScript. **Geen code aanpassingen nodig.**
 
-De huidige 3 gestapelde secties + handmatig formulier worden vervangen door:
+### Cron jobs — actie vereist
 
-**4 kolommen naast elkaar** (grid layout), dezelfde stijl als de Marco Pipeline:
+Beide Marco cron jobs moeten herescheduled worden met de service_role key via SQL:
 
-| Kolom | Titel | Conditie | Badge |
-|-------|-------|----------|-------|
-| Aangemeld | bpmRequested=true, geen `auto_opgenomen` in log | Oranje als >7 dagen |
-| Wacht op papieren | `auto_opgenomen` gelogd, geen `papieren_verstuurd` | Actie door ons |
-| Papieren verstuurd | `papieren_verstuurd` gelogd, import_status nog niet `aanvraag_ontvangen` | Rood als >3 dagen wachten |
-| Factuur | Placeholder — "Binnenkort beschikbaar" | Leeg |
+```sql
+SELECT cron.unschedule('marco-bpm-dagcheck-08u');
+SELECT cron.unschedule('marco-bpm-weekoverzicht');
 
-**Basisfilter** (query): alle vehicles met `bpmRequested=true`, `isTradeIn=false`, status niet `verkocht_b2c/verkocht_b2b/afgeleverd`, en `import_status` niet in `aanvraag_ontvangen/goedgekeurd/bpm_betaald/ingeschreven`. Zodra RDW de aanvraag ontvangt verdwijnt de auto automatisch.
+SELECT cron.schedule('marco-bpm-dagcheck-08u', '0 6 * * 1-5',
+  $$ SELECT net.http_post(
+    url := 'https://fnwagrmoyfyimdoaynkg.supabase.co/functions/v1/marco-bpm-check',
+    headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZud2Fncm1veWZ5aW1kb2F5bmtnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODI5MzU5MSwiZXhwIjoyMDYzODY5NTkxfQ._PQu0imG938iL7cx8HJxLconejlhuQspXHgUuCvYr1E"}'::jsonb,
+    body := '{}'::jsonb
+  ); $$
+);
 
-**Handmatig formulier** blijft onderaan — meldcode zoeken via `vin.slice(-4)`, type kiezen (Auto opgenomen / Papieren verstuurd), opslaan.
+SELECT cron.schedule('marco-bpm-weekoverzicht', '0 7 * * 1',
+  $$ SELECT net.http_post(
+    url := 'https://fnwagrmoyfyimdoaynkg.supabase.co/functions/v1/marco-bpm-weekoverzicht',
+    headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZud2Fncm1veWZ5aW1kb2F5bmtnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODI5MzU5MSwiZXhwIjoyMDYzODY5NTkxfQ._PQu0imG938iL7cx8HJxLconejlhuQspXHgUuCvYr1E"}'::jsonb,
+    body := '{}'::jsonb
+  ); $$
+);
+```
 
-### Layout
-
-Bovenaan: 4 kolom-kaarten met tellingen (klikbaar om detail te tonen)
-Daaronder: detail tabel van geselecteerde kolom
-Onderaan: handmatig invoer formulier
+Dit wordt uitgevoerd via de Supabase SQL insert tool (niet via migratie — bevat service_role key).
 
 ### Bestanden
 
 | Bestand | Actie |
 |---------|-------|
-| `src/components/ai-agents/dashboards/BpmHuysTab.tsx` | Herschrijven — pipeline layout |
-
-Edge functions en MarcoDashboard blijven ongewijzigd.
+| `BpmHuysTab.tsx` | Geen wijziging nodig |
+| `marco-bpm-check/index.ts` | Geen wijziging nodig |
+| `marco-bpm-weekoverzicht/index.ts` | Geen wijziging nodig |
+| Cron jobs | Herschedulen via SQL met service_role key |
 
