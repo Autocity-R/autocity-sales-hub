@@ -1,113 +1,37 @@
 
 
-## Plan: Marco BPM Huys — volledig bouwen
+## Plan: BPM Huys tab omzetten naar pipeline met 4 kolommen
 
-### Overzicht
-Bouw twee edge functions (dagelijkse check + weekoverzicht), een BPM Huys dashboard tab, en een handmatig invoerformulier. Database tabellen bestaan al. Meldcode koppeling altijd via `RIGHT(vin, 4)`.
+### Wat verandert
 
----
+**Bestand**: `src/components/ai-agents/dashboards/BpmHuysTab.tsx` — volledig herschrijven
 
-### 1. Fix `bpmRequestedDate` bij aanmelding
+De huidige 3 gestapelde secties + handmatig formulier worden vervangen door:
 
-**Bestand**: `src/services/emailTemplateService.ts` (regel 473-476)
+**4 kolommen naast elkaar** (grid layout), dezelfde stijl als de Marco Pipeline:
 
-Voeg `bpmRequestedDate` toe wanneer `bpmRequested` op `true` wordt gezet:
-```typescript
-const updatedDetails = {
-  ...currentDetails,
-  bpmRequested: true,
-  bpmRequestedDate: new Date().toISOString()
-};
-```
+| Kolom | Titel | Conditie | Badge |
+|-------|-------|----------|-------|
+| Aangemeld | bpmRequested=true, geen `auto_opgenomen` in log | Oranje als >7 dagen |
+| Wacht op papieren | `auto_opgenomen` gelogd, geen `papieren_verstuurd` | Actie door ons |
+| Papieren verstuurd | `papieren_verstuurd` gelogd, import_status nog niet `aanvraag_ontvangen` | Rood als >3 dagen wachten |
+| Factuur | Placeholder — "Binnenkort beschikbaar" | Leeg |
 
----
+**Basisfilter** (query): alle vehicles met `bpmRequested=true`, `isTradeIn=false`, status niet `verkocht_b2c/verkocht_b2b/afgeleverd`, en `import_status` niet in `aanvraag_ontvangen/goedgekeurd/bpm_betaald/ingeschreven`. Zodra RDW de aanvraag ontvangt verdwijnt de auto automatisch.
 
-### 2. Edge Function: `marco-bpm-check`
+**Handmatig formulier** blijft onderaan — meldcode zoeken via `vin.slice(-4)`, type kiezen (Auto opgenomen / Papieren verstuurd), opslaan.
 
-**Bestand**: `supabase/functions/marco-bpm-check/index.ts` (nieuw)
+### Layout
 
-Dagelijkse check (ma-vr 08:00 CET) met twee regels:
+Bovenaan: 4 kolom-kaarten met tellingen (klikbaar om detail te tonen)
+Daaronder: detail tabel van geselecteerde kolom
+Onderaan: handmatig invoer formulier
 
-- **Regel 1**: Vehicles met `bpmRequested=true` + `bpmRequestedDate > 7 dagen` zonder `auto_opgenomen` in `bpm_huys_whatsapp_log` → email alert
-- **Regel 3**: Vehicles met `papieren_verstuurd` in whatsapp_log maar na 3 dagen nog geen `aanvraag_ontvangen` import_status → email alert
-
-Emails via `email_queue` insert met `senderEmail: 'marco@auto-city.nl'`, `to: 'hendrik@auto-city.nl'`, `htmlBody`.
-
-Queries gebruiken `RIGHT(vin, 4)` voor meldcode matching, nooit LIKE.
-
----
-
-### 3. Edge Function: `marco-bpm-weekoverzicht`
-
-**Bestand**: `supabase/functions/marco-bpm-weekoverzicht/index.ts` (nieuw)
-
-Maandag 09:00 CET. Genereert HTML email met 4 blokken:
-1. Wacht op opname (bpmRequested=true, geen auto_opgenomen)
-2. Actie vereist door ons (opgenomen, geen papieren_verstuurd)
-3. Wacht op RDW aanmelding (papieren_verstuurd, <3 dagen)
-4. Vastgelopen (papieren_verstuurd, >3 dagen, geen statusupdate)
-
----
-
-### 4. Dashboard: `BpmHuysTab.tsx`
-
-**Bestand**: `src/components/ai-agents/dashboards/BpmHuysTab.tsx` (nieuw)
-
-4 secties:
-
-| Sectie | Inhoud |
-|--------|--------|
-| Actie vereist door ons (oranje) | Opgenomen door BPM Huys maar papieren nog niet verstuurd |
-| Wacht op BPM Huys (rood) | Aangemeld >7d zonder opname + papieren >3d zonder RDW |
-| In behandeling | Alle actieve vehicles met bpmRequested=true |
-| Handmatig invoer | Meldcode (4 cijfers) → `RIGHT(vin, 4)` lookup + bpmRequested=true. Dropdown: Auto opgenomen / Papieren verstuurd. Opslaan → INSERT `bpm_huys_whatsapp_log` |
-
----
-
-### 5. MarcoDashboard.tsx — Tab navigatie
-
-**Bestand**: `src/components/ai-agents/dashboards/MarcoDashboard.tsx` (edit)
-
-Tabs toevoegen: **Pipeline** | **BPM Huys**. Default = Pipeline (huidige view). BPM Huys tab rendert `<BpmHuysTab />`.
-
----
-
-### 6. Config registratie
-
-**Bestand**: `supabase/config.toml` (edit)
-
-```toml
-[functions.marco-bpm-check]
-verify_jwt = false
-
-[functions.marco-bpm-weekoverzicht]
-verify_jwt = false
-```
-
----
-
-### 7. Cron jobs (via SQL insert tool, niet migratie)
-
-Twee cron jobs met service_role key:
-- `marco-bpm-dagcheck-08u`: `0 6 * * 1-5` (08:00 CET)
-- `marco-bpm-weekoverzicht`: `0 7 * * 1` (09:00 CET maandag)
-
----
-
-### Bestanden samenvatting
+### Bestanden
 
 | Bestand | Actie |
 |---------|-------|
-| `src/services/emailTemplateService.ts` | `bpmRequestedDate` toevoegen |
-| `supabase/functions/marco-bpm-check/index.ts` | Nieuw |
-| `supabase/functions/marco-bpm-weekoverzicht/index.ts` | Nieuw |
-| `src/components/ai-agents/dashboards/BpmHuysTab.tsx` | Nieuw |
-| `src/components/ai-agents/dashboards/MarcoDashboard.tsx` | Edit — tabs |
-| `supabase/config.toml` | Edit — 2 functies |
-| Cron jobs | Via SQL insert tool |
+| `src/components/ai-agents/dashboards/BpmHuysTab.tsx` | Herschrijven — pipeline layout |
 
-### Niet bouwen
-- Database tabellen (staan al)
-- Baileys WhatsApp koppeling (later)
-- Factuurverwerking via email (later)
+Edge functions en MarcoDashboard blijven ongewijzigd.
 
