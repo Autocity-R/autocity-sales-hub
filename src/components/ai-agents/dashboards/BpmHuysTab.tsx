@@ -6,42 +6,54 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, CheckCircle, Clock, FileText, Truck, Search, Plus } from "lucide-react";
+import { CheckCircle, Clock, FileText, Search, Plus, Send, Truck, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const DAY = 86400000;
+const DONE_STATUSES = ["aanvraag_ontvangen", "goedgekeurd", "bpm_betaald", "ingeschreven"];
+const SOLD_STATUSES = ["verkocht_b2c", "verkocht_b2b", "afgeleverd"];
 
 function daysSince(dateStr: string | null | undefined): number {
   if (!dateStr) return 0;
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / DAY);
 }
 
+type PipelineColumn = "aangemeld" | "wacht_papieren" | "papieren_verstuurd" | "factuur";
+
+const COLUMNS: { key: PipelineColumn; label: string; icon: React.ReactNode; color: string }[] = [
+  { key: "aangemeld", label: "Aangemeld", icon: <Clock className="h-4 w-4" />, color: "text-blue-500" },
+  { key: "wacht_papieren", label: "Wacht op papieren", icon: <FileText className="h-4 w-4" />, color: "text-orange-500" },
+  { key: "papieren_verstuurd", label: "Papieren verstuurd", icon: <Send className="h-4 w-4" />, color: "text-purple-500" },
+  { key: "factuur", label: "Factuur", icon: <Receipt className="h-4 w-4" />, color: "text-green-500" },
+];
+
 export const BpmHuysTab: React.FC = () => {
   const queryClient = useQueryClient();
+  const [selectedCol, setSelectedCol] = useState<PipelineColumn>("aangemeld");
   const [meldcode, setMeldcode] = useState("");
-  const [berichtType, setBerichtType] = useState<string>("");
+  const [berichtType, setBerichtType] = useState("");
   const [foundVehicle, setFoundVehicle] = useState<any>(null);
   const [searching, setSearching] = useState(false);
 
-  // Fetch all bpmRequested vehicles
   const { data: vehicles, isLoading } = useQuery({
     queryKey: ["bpm-huys-vehicles"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("vehicles")
         .select("id, brand, model, vin, license_number, import_status, status, details, created_at")
-        .neq("status", "afgeleverd");
+        .not("status", "in", `(${SOLD_STATUSES.join(",")})`);
       if (error) throw error;
       return (data || []).filter((v: any) => {
         const d = v.details || {};
-        return d.bpmRequested === true && d.isTradeIn !== true && d.isTradeIn !== "true";
+        return d.bpmRequested === true
+          && d.isTradeIn !== true && d.isTradeIn !== "true"
+          && !DONE_STATUSES.includes(v.import_status || "");
       });
     },
     refetchInterval: 60000,
   });
 
-  // Fetch whatsapp logs
   const { data: whatsappLogs } = useQuery({
     queryKey: ["bpm-huys-logs"],
     queryFn: async () => {
@@ -73,94 +85,65 @@ export const BpmHuysTab: React.FC = () => {
     return log?.bericht_datum;
   };
 
-  // Sectie 1: Actie vereist door ons (opgenomen, geen papieren_verstuurd)
-  const actieDoorOns = useMemo(() => {
-    if (!vehicles) return [];
-    return vehicles.filter((v) => hasLog(v.id, "auto_opgenomen") && !hasLog(v.id, "papieren_verstuurd"));
-  }, [vehicles, logsByVehicle]);
+  const pipeline = useMemo(() => {
+    const cols: Record<PipelineColumn, any[]> = {
+      aangemeld: [],
+      wacht_papieren: [],
+      papieren_verstuurd: [],
+      factuur: [],
+    };
+    if (!vehicles) return cols;
 
-  // Sectie 2: Wacht op BPM Huys
-  const wachtOpBpmHuys = useMemo(() => {
-    if (!vehicles) return [];
-    const threeDaysAgo = new Date(Date.now() - 3 * DAY);
-    
-    // Aangemeld >7d zonder opname
-    const noOpname = vehicles.filter((v) => {
-      const d = (v.details || {}) as Record<string, any>;
-      if (hasLog(v.id, "auto_opgenomen")) return false;
-      if (!d.bpmRequestedDate) return false;
-      return daysSince(d.bpmRequestedDate as string) > 7;
+    vehicles.forEach((v) => {
+      const hasOpgenomen = hasLog(v.id, "auto_opgenomen");
+      const hasPapieren = hasLog(v.id, "papieren_verstuurd");
+
+      if (hasPapieren) {
+        const datum = getLogDate(v.id, "papieren_verstuurd");
+        const dagen = daysSince(datum);
+        cols.papieren_verstuurd.push({ ...v, _datum: datum, _dagen: dagen });
+      } else if (hasOpgenomen) {
+        const datum = getLogDate(v.id, "auto_opgenomen");
+        cols.wacht_papieren.push({ ...v, _datum: datum });
+      } else {
+        const d = (v.details || {}) as Record<string, any>;
+        const dagen = daysSince(d.bpmRequestedDate as string || v.created_at);
+        cols.aangemeld.push({ ...v, _datum: d.bpmRequestedDate || v.created_at, _dagen: dagen });
+      }
     });
 
-    // Papieren verstuurd >3d zonder RDW
-    const noRdw = vehicles.filter((v) => {
-      if (!hasLog(v.id, "papieren_verstuurd")) return false;
-      const datum = getLogDate(v.id, "papieren_verstuurd");
-      if (!datum || new Date(datum) >= threeDaysAgo) return false;
-      return !["aanvraag_ontvangen", "goedgekeurd", "bpm_betaald", "ingeschreven"].includes(v.import_status || "");
-    });
-
-    return [...noOpname.map((v) => ({ ...v, _reason: "Niet opgenomen na 7+ dagen" })),
-            ...noRdw.map((v) => ({ ...v, _reason: "Papieren verstuurd, geen RDW na 3+ dagen" }))];
+    return cols;
   }, [vehicles, logsByVehicle]);
 
-  // Sectie 3: In behandeling
-  const inBehandeling = useMemo(() => {
-    if (!vehicles) return [];
-    return vehicles.map((v) => {
-      let stap = "Aangemeld";
-      if (hasLog(v.id, "auto_opgenomen")) stap = "Opgenomen";
-      if (hasLog(v.id, "papieren_verstuurd")) stap = "Papieren verstuurd";
-      if (["aanvraag_ontvangen", "goedgekeurd", "bpm_betaald"].includes(v.import_status || "")) stap = v.import_status!;
-      if (v.import_status === "ingeschreven") stap = "✅ Ingeschreven";
-      return { ...v, _stap: stap };
-    });
-  }, [vehicles, logsByVehicle]);
-
-  // Meldcode zoeken
+  // Search
   const handleSearch = async () => {
-    if (meldcode.length !== 4) {
-      toast.error("Meldcode moet exact 4 cijfers zijn");
-      return;
-    }
+    if (meldcode.length !== 4) { toast.error("Meldcode moet exact 4 cijfers zijn"); return; }
     setSearching(true);
     setFoundVehicle(null);
     try {
       const { data, error } = await supabase
         .from("vehicles")
         .select("id, brand, model, vin, license_number, details")
-        .neq("status", "afgeleverd");
-
+        .not("status", "in", `(${SOLD_STATUSES.join(",")})`);
       if (error) throw error;
-
       const match = (data || []).find((v: any) => {
         const d = v.details || {};
-        if (d.bpmRequested !== true) return false;
-        if (d.isTradeIn === true || d.isTradeIn === "true") return false;
-        if (!v.vin || v.vin.length < 4) return false;
-        return v.vin.slice(-4) === meldcode;
+        return d.bpmRequested === true && d.isTradeIn !== true && d.isTradeIn !== "true"
+          && v.vin && v.vin.length >= 4 && v.vin.slice(-4) === meldcode;
       });
-
-      if (match) {
-        setFoundVehicle(match);
-      } else {
-        toast.error(`Geen auto gevonden met meldcode ${meldcode} en bpmRequested=true`);
-      }
-    } catch (err) {
-      toast.error("Zoeken mislukt");
-    } finally {
-      setSearching(false);
-    }
+      if (match) setFoundVehicle(match);
+      else toast.error(`Geen auto gevonden met meldcode ${meldcode}`);
+    } catch { toast.error("Zoeken mislukt"); }
+    finally { setSearching(false); }
   };
 
-  // Opslaan whatsapp log
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!foundVehicle || !berichtType) throw new Error("Vul alle velden in");
       const { error } = await supabase.from("bpm_huys_whatsapp_log").insert({
         vehicle_id: foundVehicle.id,
         vin: foundVehicle.vin,
-        meldcode: meldcode,
+        meldcode,
         bericht_type: berichtType,
         bericht_datum: new Date().toISOString(),
         afzender: "handmatig",
@@ -169,9 +152,7 @@ export const BpmHuysTab: React.FC = () => {
     },
     onSuccess: () => {
       toast.success("WhatsApp bericht gelogd");
-      setMeldcode("");
-      setBerichtType("");
-      setFoundVehicle(null);
+      setMeldcode(""); setBerichtType(""); setFoundVehicle(null);
       queryClient.invalidateQueries({ queryKey: ["bpm-huys-logs"] });
     },
     onError: (err: any) => toast.error(err.message),
@@ -179,99 +160,65 @@ export const BpmHuysTab: React.FC = () => {
 
   if (isLoading) return <div className="text-sm text-muted-foreground py-8 text-center">Laden...</div>;
 
+  const activeItems = pipeline[selectedCol];
+
   return (
     <div className="space-y-4">
-      {/* Sectie 1: Actie vereist door ons */}
-      <Card className="border-l-4 border-l-orange-500">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <FileText className="h-4 w-4 text-orange-500" />
-            Actie vereist door ons — papieren sturen ({actieDoorOns.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {actieDoorOns.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Geen acties nodig</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-2 pr-3 font-medium">Auto</th>
-                    <th className="pb-2 pr-3 font-medium">VIN</th>
-                    <th className="pb-2 pr-3 font-medium">Kenteken</th>
-                    <th className="pb-2 font-medium">Opgenomen op</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {actieDoorOns.map((v) => (
-                    <tr key={v.id} className="border-b border-border/50">
-                      <td className="py-2 pr-3 font-medium">{v.brand} {v.model}</td>
-                      <td className="py-2 pr-3 text-xs">{v.vin || "—"}</td>
-                      <td className="py-2 pr-3 text-xs">{v.license_number || "—"}</td>
-                      <td className="py-2 text-xs">{getLogDate(v.id, "auto_opgenomen")?.slice(0, 10) || "?"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Pipeline columns */}
+      <div className="grid grid-cols-4 gap-3">
+        {COLUMNS.map((col) => {
+          const count = col.key === "factuur" ? 0 : pipeline[col.key].length;
+          const isActive = selectedCol === col.key;
+          return (
+            <Card
+              key={col.key}
+              className={cn(
+                "cursor-pointer transition-all hover:shadow-md",
+                isActive && "ring-2 ring-primary"
+              )}
+              onClick={() => setSelectedCol(col.key)}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className={cn("flex items-center gap-1.5 text-xs font-medium", col.color)}>
+                    {col.icon} {col.label}
+                  </span>
+                  <span className="text-2xl font-bold">{count}</span>
+                </div>
+                {col.key === "aangemeld" && (
+                  <p className="text-[10px] text-muted-foreground">Wacht op opname BPM Huys</p>
+                )}
+                {col.key === "wacht_papieren" && (
+                  <p className="text-[10px] text-muted-foreground">Actie door ons — papieren sturen</p>
+                )}
+                {col.key === "papieren_verstuurd" && (
+                  <p className="text-[10px] text-muted-foreground">Wacht op RDW aanmelding</p>
+                )}
+                {col.key === "factuur" && (
+                  <p className="text-[10px] text-muted-foreground">Binnenkort beschikbaar</p>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
-      {/* Sectie 2: Wacht op BPM Huys */}
-      <Card className="border-l-4 border-l-red-500">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-red-500" />
-            Wacht op BPM Huys ({wachtOpBpmHuys.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {wachtOpBpmHuys.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Alles op schema</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-2 pr-3 font-medium">Auto</th>
-                    <th className="pb-2 pr-3 font-medium">VIN</th>
-                    <th className="pb-2 pr-3 font-medium">Probleem</th>
-                    <th className="pb-2 font-medium">Dagen</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {wachtOpBpmHuys.map((v: any, i) => (
-                    <tr key={`${v.id}-${i}`} className="border-b border-border/50">
-                      <td className="py-2 pr-3 font-medium">{v.brand} {v.model}</td>
-                      <td className="py-2 pr-3 text-xs">{v.vin || "—"}</td>
-                      <td className="py-2 pr-3">
-                        <Badge variant="destructive" className="text-[10px]">{v._reason}</Badge>
-                      </td>
-                      <td className="py-2 text-center">
-                        <span className="text-red-500 font-medium">{daysSince(v.details?.bpmRequestedDate || v.created_at)}d</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Sectie 3: In behandeling */}
+      {/* Detail table */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Truck className="h-4 w-4 text-blue-500" />
-            In behandeling — alle BPM Huys auto's ({inBehandeling.length})
+            {COLUMNS.find((c) => c.key === selectedCol)?.icon}
+            {COLUMNS.find((c) => c.key === selectedCol)?.label}
+            {selectedCol !== "factuur" && <Badge variant="secondary" className="text-[10px]">{activeItems.length}</Badge>}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {inBehandeling.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Geen auto's in behandeling</p>
+          {selectedCol === "factuur" ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              Factuurverwerking via email — binnenkort beschikbaar
+            </p>
+          ) : activeItems.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">Geen auto's in deze stap</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -280,24 +227,35 @@ export const BpmHuysTab: React.FC = () => {
                     <th className="pb-2 pr-3 font-medium">Auto</th>
                     <th className="pb-2 pr-3 font-medium">VIN</th>
                     <th className="pb-2 pr-3 font-medium">Kenteken</th>
-                    <th className="pb-2 pr-3 font-medium">Stap</th>
-                    <th className="pb-2 font-medium">Import status</th>
+                    <th className="pb-2 pr-3 font-medium">
+                      {selectedCol === "aangemeld" ? "Aangemeld op" :
+                       selectedCol === "wacht_papieren" ? "Opgenomen op" : "Verstuurd op"}
+                    </th>
+                    {(selectedCol === "aangemeld" || selectedCol === "papieren_verstuurd") && (
+                      <th className="pb-2 font-medium">Dagen</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
-                  {inBehandeling.map((v: any) => (
-                    <tr key={v.id} className="border-b border-border/50 hover:bg-muted/30">
-                      <td className="py-2 pr-3 font-medium">{v.brand} {v.model}</td>
-                      <td className="py-2 pr-3 text-xs">{v.vin || "—"}</td>
-                      <td className="py-2 pr-3 text-xs">{v.license_number || "—"}</td>
-                      <td className="py-2 pr-3">
-                        <Badge variant="outline" className="text-[10px]">{v._stap}</Badge>
-                      </td>
-                      <td className="py-2">
-                        <Badge variant="secondary" className="text-[10px]">{v.import_status || "niet_gestart"}</Badge>
-                      </td>
-                    </tr>
-                  ))}
+                  {activeItems.map((v: any) => {
+                    const isLate = selectedCol === "aangemeld" ? v._dagen > 7
+                      : selectedCol === "papieren_verstuurd" ? v._dagen > 3 : false;
+                    return (
+                      <tr key={v.id} className="border-b border-border/50 hover:bg-muted/30">
+                        <td className="py-2 pr-3 font-medium">{v.brand} {v.model}</td>
+                        <td className="py-2 pr-3 text-xs font-mono">{v.vin || "—"}</td>
+                        <td className="py-2 pr-3 text-xs">{v.license_number || "—"}</td>
+                        <td className="py-2 pr-3 text-xs">{v._datum?.slice(0, 10) || "—"}</td>
+                        {(selectedCol === "aangemeld" || selectedCol === "papieren_verstuurd") && (
+                          <td className="py-2">
+                            <Badge variant={isLate ? "destructive" : "outline"} className="text-[10px]">
+                              {v._dagen}d
+                            </Badge>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -305,7 +263,7 @@ export const BpmHuysTab: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Sectie 4: Handmatig invoer */}
+      {/* Manual entry */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -327,7 +285,6 @@ export const BpmHuysTab: React.FC = () => {
                 <Search className="h-3 w-3 mr-1" /> Zoek
               </Button>
             </div>
-
             {foundVehicle && (
               <>
                 <div className="flex items-center gap-2 text-sm">
@@ -335,7 +292,6 @@ export const BpmHuysTab: React.FC = () => {
                   <span className="font-medium">{foundVehicle.brand} {foundVehicle.model}</span>
                   <span className="text-muted-foreground">{foundVehicle.license_number || foundVehicle.vin}</span>
                 </div>
-
                 <Select value={berichtType} onValueChange={setBerichtType}>
                   <SelectTrigger className="w-48">
                     <SelectValue placeholder="Type bericht" />
@@ -345,12 +301,7 @@ export const BpmHuysTab: React.FC = () => {
                     <SelectItem value="papieren_verstuurd">Papieren verstuurd</SelectItem>
                   </SelectContent>
                 </Select>
-
-                <Button
-                  size="sm"
-                  onClick={() => saveMutation.mutate()}
-                  disabled={!berichtType || saveMutation.isPending}
-                >
+                <Button size="sm" onClick={() => saveMutation.mutate()} disabled={!berichtType || saveMutation.isPending}>
                   Opslaan
                 </Button>
               </>
