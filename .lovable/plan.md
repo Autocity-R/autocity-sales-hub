@@ -1,57 +1,41 @@
 
 
-## Analyse: Import Status Update Geblokkeerd
+## Analyse: Waarom Sara Dashboard leeg is
 
-### Root Cause Gevonden
-
-Het probleem zit in de **status hiërarchie** in `sheets-import-webhook/index.ts`. De hiërarchie is:
-
-```text
-niet_gestart:        0
-niet_aangemeld:      1
-aangemeld:           2
-aanvraag_ontvangen:  3  ← RDW status
-aangekomen:          4  ← Transport status (auto fysiek aangekomen)
-goedgekeurd:         5
-bpm_betaald:         6
-ingeschreven:        7
+### Probleem 1: Claims tonen 0 — verkeerde kolomnaam
+Het dashboard filtert op `status` maar de kolom heet `claim_status`. De query op regel 28:
 ```
-
-**Het probleem**: `aangekomen` (index 4) staat HOGER dan `aanvraag_ontvangen` (index 3). Maar in werkelijkheid is `aanvraag_ontvangen` een RDW-processtatus die NA de fysieke aankomst (`aangekomen`) plaatsvindt.
-
-Wanneer de Google Sheet een update "Aanvraag ontvangen" stuurt voor een voertuig dat al op `aangekomen` staat, **blokkeert de hiërarchie-check op regel 204** dit als een "downgrade" (3 < 4). De update wordt overgeslagen met "Status downgrade not allowed".
-
-**Bewijs**:
-- Beide VINs staan op `import_status: aangekomen`, `import_status_highest: null`
-- Er zijn **nul** entries in `vehicle_import_logs` voor deze VINs — de webhook werd nooit succesvol uitgevoerd
-- Andere voertuigen die op `niet_gestart` stonden konden WEL naar `goedgekeurd` of `ingeschreven` springen (zie logs van 10 april)
-
-### Oplossing
-
-De status hiërarchie moet worden aangepast zodat `aangekomen` (transport = fysiek hier) LAGER staat dan de RDW-processtappen:
-
-```text
-niet_gestart:        0
-niet_aangemeld:      1
-aangemeld:           2
-aangekomen:          3  ← VERLAAGD (transport status)
-aanvraag_ontvangen:  4  ← VERHOOGD (RDW proces start)
-goedgekeurd:         5
-transport_geregeld:  5
-onderweg:            5
-afgemeld:            5
-bpm_betaald:         6
-herkeuring:          6
-ingeschreven:        7
+.or('status.eq.open,status.eq.in_behandeling,status.eq.pending')
 ```
+Moet zijn:
+```
+.or('claim_status.eq.open,claim_status.eq.in_behandeling,claim_status.eq.pending')
+```
+Er zijn 12 pending claims en 88 resolved — die 12 moeten zichtbaar worden.
 
-### Bestanden
+### Probleem 2: Garantie emails inbox leeg — edge function nooit gedraaid
+De `process-garantie-emails` function heeft **nul logs** — hij is nooit aangeroepen. De cron job is niet ingesteld. De function moet:
+1. Gedeployed worden
+2. Handmatig getest worden met een curl-call
+3. Cron job ingesteld worden (elke 10 minuten)
 
-| Bestand | Wijziging |
-|---------|-----------|
-| `supabase/functions/sheets-import-webhook/index.ts` | Hiërarchie indices aanpassen: `aangekomen: 3`, `aanvraag_ontvangen: 4`, `goedgekeurd: 5` → `goedgekeurd: 6`, transport statussen → 5, `bpm_betaald: 7`, `herkeuring: 7`, `ingeschreven: 8`. Ook `statusByIndex` updaten. |
+### Probleem 3: Kolom-mismatches in claims query
+Het dashboard probeert `loan_vehicle:loan_car_id(...)` te joinen maar `vehicles` heeft mogelijk andere kolomnamen. En velden als `description` bestaan niet — het heet `description` (dat klopt wel). Maar `manual_customer_name` en andere velden moeten geverifieerd worden tegen de echte kolommen.
 
-### Na deployment
+---
 
-De edge function opnieuw deployen en testen met een curl-call om te verifiëren dat een voertuig met `aangekomen` nu WEL naar `aanvraag_ontvangen` kan worden geüpdatet.
+### Plan
+
+| Stap | Actie |
+|------|-------|
+| 1 | **SaraDashboard.tsx**: Fix `status` → `claim_status` in alle queries |
+| 2 | **Deploy** `process-garantie-emails` edge function |
+| 3 | **Test** de edge function met een curl-call om te verifiëren dat Gmail-connectie werkt |
+| 4 | **Cron job** instellen via SQL voor automatische 10-minuten verwerking |
+
+### Technisch detail
+- `warranty_claims` kolom is `claim_status` (niet `status`)
+- Waarden in DB: `pending` (12 stuks), `resolved` (88 stuks)
+- `garantie_emails` tabel bestaat maar is leeg — function moet draaien
+- `system_config.garantie_email_laatste_sync` staat op 13 maart 2026 — emails vanaf dat moment worden opgehaald
 
