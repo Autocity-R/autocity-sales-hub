@@ -25,7 +25,7 @@ export const SaraDashboard: React.FC = () => {
       const { data: claims, error } = await supabase
         .from('warranty_claims')
         .select('*, loan_vehicle:loan_car_id(id, brand, model, license_number)')
-        .or('status.eq.open,status.eq.in_behandeling,status.eq.pending');
+        .or('claim_status.eq.open,claim_status.eq.in_behandeling,claim_status.eq.pending');
 
       if (error) throw error;
       const items = claims || [];
