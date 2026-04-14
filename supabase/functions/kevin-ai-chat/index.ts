@@ -28,6 +28,22 @@ Deno.serve(async (req) => {
 
     const systemPrompt = agentData?.system_prompt || 'Je bent Kevin, Head of Purchases.';
 
+    // Load Kevin's agent memory
+    let kevinMemoryContext = '';
+    const { data: kevinMemory } = await supabase
+      .from('agent_memory')
+      .select('type, onderwerp, inhoud')
+      .eq('agent_name', 'Kevin')
+      .eq('actief', true)
+      .order('updated_at', { ascending: false })
+      .limit(20);
+    if (kevinMemory && kevinMemory.length > 0) {
+      kevinMemoryContext = `\nWAT IK AL WEET (mijn geheugen):\n${kevinMemory.map((m: any) =>
+        `[${m.type.toUpperCase()}] ${m.onderwerp}: ${m.inhoud}`
+      ).join('\n')}\n`;
+      console.log(`📚 Kevin memory: ${kevinMemory.length} items loaded`);
+    }
+
     // 2. Get JP Cars market data
     const { data: jpcarsData } = await supabase
       .from('jpcars_voorraad_monitor')
@@ -307,7 +323,7 @@ ${vehicles.map((v: any) => {
     ];
 
     // 12. Call Claude API
-    const fullSystemPrompt = `${systemPrompt}\n\n${marketContext}`;
+    const fullSystemPrompt = `${systemPrompt}${kevinMemoryContext}\n\n${marketContext}`;
 
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -405,6 +421,11 @@ ${vehicles.map((v: any) => {
     }
 
     console.log('✅ Kevin response generated');
+
+    // Non-blocking memory save
+    if (message && responseMessage) {
+      saveKevinMemoryAsync(supabase, message, responseMessage).catch(() => {});
+    }
 
     return new Response(JSON.stringify({
       success: true,
