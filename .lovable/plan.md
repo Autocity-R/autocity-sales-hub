@@ -1,41 +1,62 @@
 
 
-## Analyse: Waarom Sara Dashboard leeg is
+## Plan: Agent Memory voor alle 5 agents
 
-### Probleem 1: Claims tonen 0 — verkeerde kolomnaam
-Het dashboard filtert op `status` maar de kolom heet `claim_status`. De query op regel 28:
-```
-.or('status.eq.open,status.eq.in_behandeling,status.eq.pending')
-```
-Moet zijn:
-```
-.or('claim_status.eq.open,claim_status.eq.in_behandeling,claim_status.eq.pending')
-```
-Er zijn 12 pending claims en 88 resolved — die 12 moeten zichtbaar worden.
+### 1. Edge Function: `hendrik-ai-chat/index.ts`
 
-### Probleem 2: Garantie emails inbox leeg — edge function nooit gedraaid
-De `process-garantie-emails` function heeft **nul logs** — hij is nooit aangeroepen. De cron job is niet ingesteld. De function moet:
-1. Gedeployed worden
-2. Handmatig getest worden met een curl-call
-3. Cron job ingesteld worden (elke 10 minuten)
+**Memory laden (na regel ~295, vóór de Claude call)**:
+- Voor alle agents behalve CEO (die heeft al eigen memory):
+- Query `agent_memory` met `agent_name = agentName`, `actief = true`, max 20, `order('updated_at', desc)`
+- Bouw context blok: `\nWAT IK AL WEET (mijn geheugen):\n[TYPE] onderwerp: inhoud`
+- Voeg toe aan `contextPrompt` (regel ~321-325, naast de bestaande CEO memory check)
 
-### Probleem 3: Kolom-mismatches in claims query
-Het dashboard probeert `loan_vehicle:loan_car_id(...)` te joinen maar `vehicles` heeft mogelijk andere kolomnamen. En velden als `description` bestaan niet — het heet `description` (dat klopt wel). Maar `manual_customer_name` en andere velden moeten geverifieerd worden tegen de echte kolommen.
+**Memory opslaan (na regel ~509, non-blocking)**:
+- Na de response, voor alle agents behalve CEO:
+- Async functie `saveAgentMemory(supabase, agentName, message, responseMessage)`:
+  - Tweede Claude call met spaarzame prompt: alleen opslaan bij correcties, werkwijze, voorkeuren, uitzonderingen
+  - JSON response: `{ "opslaan": boolean, "entries": [...] }`
+  - Insert in `agent_memory` als `opslaan === true`
+- Aangeroepen als: `saveAgentMemory(...).catch(() => {})` — non-blocking
 
----
+### 2. Edge Function: `kevin-ai-chat/index.ts`
 
-### Plan
+Zelfde logica:
+- **Laden**: na regel ~29, query `agent_memory` voor `agent_name = 'Kevin'`, voeg context toe aan user message
+- **Opslaan**: na regel ~407, non-blocking `saveAgentMemory(...).catch(() => {})`
 
-| Stap | Actie |
-|------|-------|
-| 1 | **SaraDashboard.tsx**: Fix `status` → `claim_status` in alle queries |
-| 2 | **Deploy** `process-garantie-emails` edge function |
-| 3 | **Test** de edge function met een curl-call om te verifiëren dat Gmail-connectie werkt |
-| 4 | **Cron job** instellen via SQL voor automatische 10-minuten verwerking |
+### 3. Nieuw component: `AgentMemoryTab.tsx`
 
-### Technisch detail
-- `warranty_claims` kolom is `claim_status` (niet `status`)
-- Waarden in DB: `pending` (12 stuks), `resolved` (88 stuks)
-- `garantie_emails` tabel bestaat maar is leeg — function moet draaien
-- `system_config.garantie_email_laatste_sync` staat op 13 maart 2026 — emails vanaf dat moment worden opgehaald
+`src/components/ai-agents/dashboards/AgentMemoryTab.tsx`:
+- Props: `agentName: string`
+- Query `agent_memory` waar `agent_name = agentName` en `actief = true`, gesorteerd op `updated_at desc`
+- Tabel met: type badge (kleurgecodeerd), onderwerp, inhoud, datum
+- "Deactiveer" knop per entry → update `actief = false`
+- Lege state bij geen geheugen
+
+### 4. Dashboard integratie
+
+Voeg `<AgentMemoryTab>` toe in elk dashboard via een Tabs wrapper of sectie onderaan:
+- `MarcoDashboard.tsx` → `<AgentMemoryTab agentName="Marco" />`
+- `LisaDashboard.tsx` → `<AgentMemoryTab agentName="Lisa" />`
+- `DaanDashboard.tsx` → `<AgentMemoryTab agentName="Daan" />`
+- `KevinDashboard.tsx` → `<AgentMemoryTab agentName="Kevin" />`
+- `SaraDashboard.tsx` → `<AgentMemoryTab agentName="Sara" />`
+
+Alex wordt overgeslagen (heeft eigen memory systeem).
+
+### Bestanden
+
+| Bestand | Actie |
+|---------|-------|
+| `supabase/functions/hendrik-ai-chat/index.ts` | Memory laden + non-blocking opslaan |
+| `supabase/functions/kevin-ai-chat/index.ts` | Zelfde |
+| `src/components/ai-agents/dashboards/AgentMemoryTab.tsx` | Nieuw component |
+| 5 dashboard bestanden | AgentMemoryTab integreren |
+
+### Technische details
+
+- Memory extractie prompt is spaarzaam: alleen bij correcties, werkwijze, voorkeuren, uitzonderingen
+- Non-blocking: `.catch(() => {})` zodat response nooit vertraagd wordt
+- `agent_memory` tabel bestaat al — geen migratie nodig
+- RLS staat al goed: authenticated kan lezen/updaten, service_role heeft full access
 
