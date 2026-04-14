@@ -273,6 +273,7 @@ export const MarcoDashboard: React.FC = () => {
       <TabsList>
         <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
         <TabsTrigger value="bpm-huys">BPM Huys</TabsTrigger>
+        <TabsTrigger value="geheugen">Geheugen</TabsTrigger>
       </TabsList>
 
       <TabsContent value="pipeline">
