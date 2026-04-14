@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { SalespersonDetailDialog } from "@/components/reports/SalespersonDetailDialog";
+import { AgentMemoryTab } from "./AgentMemoryTab";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface B2BKans {
@@ -392,6 +393,7 @@ export const DaanDashboard: React.FC = () => {
         salesperson={selectedSalesperson}
         showMargins={isAdmin}
       />
+      <AgentMemoryTab agentName="Daan" />
     </div>
   );
 };
