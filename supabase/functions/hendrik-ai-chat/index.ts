@@ -248,6 +248,68 @@ async function learnFromAnalysis(supabase: any, ceoData: any): Promise<void> {
   }
 }
 
+// ============================================================================
+// AGENT MEMORY — Non-blocking save after each conversation
+// ============================================================================
+
+async function saveAgentMemoryAsync(
+  supabase: any,
+  agentName: string,
+  userMessage: string,
+  agentResponse: string
+): Promise<void> {
+  try {
+    const memoryResponse = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': Deno.env.get('ANTHROPIC_API_KEY') || '',
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 300,
+        system: `Je bent een geheugenassistent voor AI agent ${agentName}.
+Analyseer dit gesprek en geef JSON terug:
+{ "opslaan": boolean, "entries": [{ "type": "correctie|werkwijze|uitzondering|voorkeur", "onderwerp": "korte titel", "inhoud": "wat onthouden moet worden" }] }
+
+WEES SPAARZAAM. Sla ALLEEN op bij:
+- Correcties ("nee dat klopt niet, het werkt zo...")
+- Werkwijze uitleg ("bij ons gaat dat altijd via...")
+- Voorkeuren ("ik wil dat je dit altijd zo rapporteert")
+- Uitzonderingen op de standaard regel
+
+Bij normale vragen zoals "welke auto's staan open", "geef me een overzicht", data-opvragingen of standaard analyses: { "opslaan": false, "entries": [] }
+Geef ALLEEN valid JSON terug, geen andere tekst.`,
+        messages: [{ role: 'user', content: `Gesprek:\nGebruiker: ${userMessage.substring(0, 500)}\nAgent: ${agentResponse.substring(0, 500)}` }]
+      }),
+    });
+
+    if (!memoryResponse.ok) return;
+
+    const memoryData = await memoryResponse.json();
+    const textContent = memoryData.content?.find((b: any) => b.type === 'text')?.text;
+    if (!textContent) return;
+
+    const result = JSON.parse(textContent);
+    if (!result.opslaan || !result.entries?.length) return;
+
+    await supabase.from('agent_memory').insert(
+      result.entries.map((e: any) => ({
+        agent_name: agentName,
+        type: e.type,
+        onderwerp: e.onderwerp,
+        inhoud: e.inhoud,
+        bron: 'gesprek',
+      }))
+    );
+
+    console.log(`💾 ${agentName} memory: ${result.entries.length} items saved`);
+  } catch (err) {
+    console.error(`❌ Agent memory save error for ${agentName}:`, err);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -286,12 +348,27 @@ serve(async (req) => {
 
     console.log(`🧠 ${agentName} AI Chat:`, { sessionId, agentId, agentName, message: message.substring(0, 100), isCEOAgent, isMarcoAgent });
 
-    // Only load memories for CEO agent
+    // Load memories for CEO agent (ai_memory) and all other agents (agent_memory)
     let memoryContext = '';
     if (isCEOAgent) {
       const memories = await recallMemory(supabaseClient);
       memoryContext = buildMemoryContext(memories);
       console.log(`📚 Memory context: ${memories.length} insights loaded`);
+    } else {
+      // Load agent_memory for Marco, Lisa, Daan, Sara
+      const { data: agentMemory } = await supabaseClient
+        .from('agent_memory')
+        .select('type, onderwerp, inhoud')
+        .eq('agent_name', agentName)
+        .eq('actief', true)
+        .order('updated_at', { ascending: false })
+        .limit(20);
+      if (agentMemory && agentMemory.length > 0) {
+        memoryContext = `\nWAT IK AL WEET (mijn geheugen):\n${agentMemory.map((m: any) =>
+          `[${m.type.toUpperCase()}] ${m.onderwerp}: ${m.inhoud}`
+        ).join('\n')}\n`;
+        console.log(`📚 Agent memory: ${agentMemory.length} items loaded for ${agentName}`);
+      }
     }
 
     // Get comprehensive CEO data (used by all agents for context)
@@ -320,7 +397,7 @@ serve(async (req) => {
       const liveDataContext = buildLiveDataContext(ceoData);
       contextPrompt = `${agentSystemPrompt}\n\n${liveDataContext}`;
       
-      if (isCEOAgent && memoryContext) {
+      if (memoryContext) {
         contextPrompt += memoryContext;
       }
     } else {
@@ -506,6 +583,11 @@ serve(async (req) => {
       learnFromAnalysis(supabaseClient, ceoData).catch(err => 
         console.error('Learning error (non-blocking):', err)
       );
+    }
+
+    // Agent memory saving (non-blocking) for all agents except CEO
+    if (!isCEOAgent && agentName && message && responseMessage) {
+      saveAgentMemoryAsync(supabaseClient, agentName, message, responseMessage).catch(() => {});
     }
 
     console.log(`✅ ${agentName} response generated`);

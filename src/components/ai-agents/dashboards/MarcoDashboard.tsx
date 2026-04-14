@@ -10,6 +10,7 @@ import { exportMarcoExcel } from "@/utils/marcoExport";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { BpmHuysTab } from "./BpmHuysTab";
+import { AgentMemoryTab } from "./AgentMemoryTab";
 
 interface VehicleRow {
   id: string;
@@ -272,6 +273,7 @@ export const MarcoDashboard: React.FC = () => {
       <TabsList>
         <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
         <TabsTrigger value="bpm-huys">BPM Huys</TabsTrigger>
+        <TabsTrigger value="geheugen">Geheugen</TabsTrigger>
       </TabsList>
 
       <TabsContent value="pipeline">
@@ -413,6 +415,10 @@ export const MarcoDashboard: React.FC = () => {
 
       <TabsContent value="bpm-huys">
         <BpmHuysTab />
+      </TabsContent>
+
+      <TabsContent value="geheugen">
+        <AgentMemoryTab agentName="Marco" />
       </TabsContent>
     </Tabs>
   );

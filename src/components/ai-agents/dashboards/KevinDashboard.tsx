@@ -8,8 +8,8 @@ import type { JoinedVehicle } from "./kevin/types";
 import { KevinKPIStrip } from "./kevin/KevinKPIStrip";
 import { KevinActionList } from "./kevin/KevinActionList";
 import { KevinMarketShifts } from "./kevin/KevinMarketShifts";
-
 import { KevinFullTable } from "./kevin/KevinFullTable";
+import { AgentMemoryTab } from "./AgentMemoryTab";
 
 export const KevinDashboard: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
@@ -151,6 +151,8 @@ export const KevinDashboard: React.FC = () => {
       <KevinMarketShifts currentVehicles={joined} />
 
       <KevinFullTable vehicles={joined} />
+
+      <AgentMemoryTab agentName="Kevin" />
     </div>
   );
 };
