@@ -286,12 +286,27 @@ serve(async (req) => {
 
     console.log(`🧠 ${agentName} AI Chat:`, { sessionId, agentId, agentName, message: message.substring(0, 100), isCEOAgent, isMarcoAgent });
 
-    // Only load memories for CEO agent
+    // Load memories for CEO agent (ai_memory) and all other agents (agent_memory)
     let memoryContext = '';
     if (isCEOAgent) {
       const memories = await recallMemory(supabaseClient);
       memoryContext = buildMemoryContext(memories);
       console.log(`📚 Memory context: ${memories.length} insights loaded`);
+    } else {
+      // Load agent_memory for Marco, Lisa, Daan, Sara
+      const { data: agentMemory } = await supabaseClient
+        .from('agent_memory')
+        .select('type, onderwerp, inhoud')
+        .eq('agent_name', agentName)
+        .eq('actief', true)
+        .order('updated_at', { ascending: false })
+        .limit(20);
+      if (agentMemory && agentMemory.length > 0) {
+        memoryContext = `\nWAT IK AL WEET (mijn geheugen):\n${agentMemory.map((m: any) =>
+          `[${m.type.toUpperCase()}] ${m.onderwerp}: ${m.inhoud}`
+        ).join('\n')}\n`;
+        console.log(`📚 Agent memory: ${agentMemory.length} items loaded for ${agentName}`);
+      }
     }
 
     // Get comprehensive CEO data (used by all agents for context)
@@ -320,7 +335,7 @@ serve(async (req) => {
       const liveDataContext = buildLiveDataContext(ceoData);
       contextPrompt = `${agentSystemPrompt}\n\n${liveDataContext}`;
       
-      if (isCEOAgent && memoryContext) {
+      if (memoryContext) {
         contextPrompt += memoryContext;
       }
     } else {
@@ -506,6 +521,11 @@ serve(async (req) => {
       learnFromAnalysis(supabaseClient, ceoData).catch(err => 
         console.error('Learning error (non-blocking):', err)
       );
+    }
+
+    // Agent memory saving (non-blocking) for all agents except CEO
+    if (!isCEOAgent && agentName && message && responseMessage) {
+      saveAgentMemoryAsync(supabaseClient, agentName, message, responseMessage).catch(() => {});
     }
 
     console.log(`✅ ${agentName} response generated`);
