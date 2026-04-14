@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { updateWarrantyClaim } from "@/services/warrantyService";
 import { toast } from "@/hooks/use-toast";
+import { AgentMemoryTab } from "./AgentMemoryTab";
 
 export const SaraDashboard: React.FC = () => {
   const queryClient = useQueryClient();
@@ -286,6 +287,9 @@ export const SaraDashboard: React.FC = () => {
 
       {/* Garantie Email Inbox */}
       <GarantieEmailInbox />
+
+      {/* Geheugen */}
+      <AgentMemoryTab agentName="Sara" />
     </div>
   );
 };

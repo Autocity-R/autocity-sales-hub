@@ -10,6 +10,7 @@ import { AlertTriangle, Zap, Phone, Calendar, ChevronDown, CheckCircle, Wrench, 
 import { format, differenceInDays, startOfDay, endOfDay, addDays } from "date-fns";
 import { nl } from "date-fns/locale";
 import { toast } from "sonner";
+import { AgentMemoryTab } from "./AgentMemoryTab";
 
 const PROFILES_MAP: Record<string, string> = {
   "9f42b4f5-6e01-43e4-87d3-f372e1b4c909": "Daan Leyte",
@@ -240,6 +241,9 @@ export const LisaDashboard: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Geheugen */}
+      <AgentMemoryTab agentName="Lisa" />
     </div>
   );
 };
