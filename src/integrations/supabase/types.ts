@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_memory: {
+        Row: {
+          actief: boolean | null
+          agent_name: string
+          bron: string | null
+          created_at: string | null
+          id: string
+          inhoud: string
+          onderwerp: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          actief?: boolean | null
+          agent_name: string
+          bron?: string | null
+          created_at?: string | null
+          id?: string
+          inhoud: string
+          onderwerp: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          actief?: boolean | null
+          agent_name?: string
+          bron?: string | null
+          created_at?: string | null
+          id?: string
+          inhoud?: string
+          onderwerp?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       ai_agent_calendar_settings: {
         Row: {
           agent_id: string
@@ -2022,6 +2058,248 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      emma_financial_memory: {
+        Row: {
+          actief: boolean | null
+          created_at: string | null
+          geldig_tot: string | null
+          id: string
+          inhoud: string
+          onderwerp: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          actief?: boolean | null
+          created_at?: string | null
+          geldig_tot?: string | null
+          id?: string
+          inhoud: string
+          onderwerp: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          actief?: boolean | null
+          created_at?: string | null
+          geldig_tot?: string | null
+          id?: string
+          inhoud?: string
+          onderwerp?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      emma_openstaande_posten: {
+        Row: {
+          bedrag_openstaand: number
+          bedrag_origineel: number
+          created_at: string | null
+          escalatie_verstuurd: string | null
+          extern_id: string | null
+          factuur_datum: string | null
+          factuur_nummer: string | null
+          herinnering_1_verstuurd: string | null
+          herinnering_2_verstuurd: string | null
+          herinnering_3_verstuurd: string | null
+          id: string
+          partij_email: string | null
+          partij_naam: string | null
+          status: string | null
+          type: string
+          updated_at: string | null
+          vehicle_id: string | null
+          vervaldatum: string | null
+        }
+        Insert: {
+          bedrag_openstaand: number
+          bedrag_origineel: number
+          created_at?: string | null
+          escalatie_verstuurd?: string | null
+          extern_id?: string | null
+          factuur_datum?: string | null
+          factuur_nummer?: string | null
+          herinnering_1_verstuurd?: string | null
+          herinnering_2_verstuurd?: string | null
+          herinnering_3_verstuurd?: string | null
+          id?: string
+          partij_email?: string | null
+          partij_naam?: string | null
+          status?: string | null
+          type: string
+          updated_at?: string | null
+          vehicle_id?: string | null
+          vervaldatum?: string | null
+        }
+        Update: {
+          bedrag_openstaand?: number
+          bedrag_origineel?: number
+          created_at?: string | null
+          escalatie_verstuurd?: string | null
+          extern_id?: string | null
+          factuur_datum?: string | null
+          factuur_nummer?: string | null
+          herinnering_1_verstuurd?: string | null
+          herinnering_2_verstuurd?: string | null
+          herinnering_3_verstuurd?: string | null
+          id?: string
+          partij_email?: string | null
+          partij_naam?: string | null
+          status?: string | null
+          type?: string
+          updated_at?: string | null
+          vehicle_id?: string | null
+          vervaldatum?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emma_openstaande_posten_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      emma_rapportages: {
+        Row: {
+          aantal_afwijkingen: number | null
+          cashflow_verwacht: number | null
+          created_at: string | null
+          id: string
+          inhoud: string
+          openstaande_crediteuren: number | null
+          openstaande_debiteuren: number | null
+          periode_eind: string | null
+          periode_start: string | null
+          samenvatting: string | null
+          type: string
+          verstuurd_naar: string | null
+          verstuurd_op: string | null
+        }
+        Insert: {
+          aantal_afwijkingen?: number | null
+          cashflow_verwacht?: number | null
+          created_at?: string | null
+          id?: string
+          inhoud: string
+          openstaande_crediteuren?: number | null
+          openstaande_debiteuren?: number | null
+          periode_eind?: string | null
+          periode_start?: string | null
+          samenvatting?: string | null
+          type: string
+          verstuurd_naar?: string | null
+          verstuurd_op?: string | null
+        }
+        Update: {
+          aantal_afwijkingen?: number | null
+          cashflow_verwacht?: number | null
+          created_at?: string | null
+          id?: string
+          inhoud?: string
+          openstaande_crediteuren?: number | null
+          openstaande_debiteuren?: number | null
+          periode_eind?: string | null
+          periode_start?: string | null
+          samenvatting?: string | null
+          type?: string
+          verstuurd_naar?: string | null
+          verstuurd_op?: string | null
+        }
+        Relationships: []
+      }
+      emma_transacties: {
+        Row: {
+          afwijking_bedrag: number | null
+          afwijking_type: string | null
+          bedrag: number
+          bron: string
+          btw_bedrag: number | null
+          created_at: string | null
+          datum: string
+          emma_actie: string | null
+          emma_analyse: string | null
+          extern_id: string | null
+          goedgekeurd_door: string | null
+          goedgekeurd_op: string | null
+          id: string
+          match_transactie_id: string | null
+          omschrijving: string | null
+          partij_iban: string | null
+          partij_naam: string | null
+          status: string | null
+          type: string
+          updated_at: string | null
+          valuta: string | null
+          vehicle_id: string | null
+        }
+        Insert: {
+          afwijking_bedrag?: number | null
+          afwijking_type?: string | null
+          bedrag: number
+          bron: string
+          btw_bedrag?: number | null
+          created_at?: string | null
+          datum: string
+          emma_actie?: string | null
+          emma_analyse?: string | null
+          extern_id?: string | null
+          goedgekeurd_door?: string | null
+          goedgekeurd_op?: string | null
+          id?: string
+          match_transactie_id?: string | null
+          omschrijving?: string | null
+          partij_iban?: string | null
+          partij_naam?: string | null
+          status?: string | null
+          type: string
+          updated_at?: string | null
+          valuta?: string | null
+          vehicle_id?: string | null
+        }
+        Update: {
+          afwijking_bedrag?: number | null
+          afwijking_type?: string | null
+          bedrag?: number
+          bron?: string
+          btw_bedrag?: number | null
+          created_at?: string | null
+          datum?: string
+          emma_actie?: string | null
+          emma_analyse?: string | null
+          extern_id?: string | null
+          goedgekeurd_door?: string | null
+          goedgekeurd_op?: string | null
+          id?: string
+          match_transactie_id?: string | null
+          omschrijving?: string | null
+          partij_iban?: string | null
+          partij_naam?: string | null
+          status?: string | null
+          type?: string
+          updated_at?: string | null
+          valuta?: string | null
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emma_transacties_match_transactie_id_fkey"
+            columns: ["match_transactie_id"]
+            isOneToOne: false
+            referencedRelation: "emma_transacties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emma_transacties_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]
