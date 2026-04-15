@@ -1,42 +1,25 @@
 
 
-## Plan: Alex JP Cars implementatie (met gecorrigeerde VOORRAAD NOOT)
+## Plan: JP Cars cron job naar service_role key
 
-Dit is het eerder goedgekeurde plan met één correctie: de VOORRAAD NOOT in het system prompt blok wordt vereenvoudigd.
+### Wat
+`jpcars-sync-hourly` (jobid 7) draait met de anon key. Vervangen door service_role key.
 
-### Deel 0 — Dubbele records fixen
-Via SQL: `cron.unschedule('jpcars-voorraad-sync')` + duplicaten opschonen in `jpcars_voorraad_monitor`.
+### Hoe
+Via SQL tool (niet migratie — bevat secrets):
 
-### Deel 1 — Alex system prompt uitbreiden
-Via SQL update van `ai_agents` tabel. Het JP Cars blok bevat ETR/APR definities, alle velden, prijspositie meetmethode, strategische beslisregels.
+```sql
+SELECT cron.unschedule(7);
 
-**Gecorrigeerde VOORRAAD NOOT:**
+SELECT cron.schedule('jpcars-sync-hourly', '0 * * * *',
+  $$ SELECT net.http_post(
+    url := 'https://fnwagrmoyfyimdoaynkg.supabase.co/functions/v1/jpcars-sync',
+    headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZud2Fncm1veWZ5aW1kb2F5bmtnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODI5MzU5MSwiZXhwIjoyMDYzODY5NTkxfQ._PQu0imG938iL7cx8HJxLconejlhuQspXHgUuCvYr1E"}'::jsonb,
+    body := '{}'::jsonb
+  ); $$
+);
 ```
-VOORRAAD NOOT:
-De JP Cars monitor toont alleen auto's die online staan in de verkoopportalen.
-Gebruik deze data voor op- en afprijzingen van de online voorraad.
-```
-
-### Deel 2 — 6 tools in `alex-ceo-chat/index.ts`
-Tool-use loop (max 5 iteraties) met:
-1. `analyze_market_composition(groupBy)` — segmentoverzicht
-2. `analyze_segment_performance(fuel, make, max_price)` — diepteanalyse
-3. `evaluate_purchase_risk(make, model, proposed_purchase_price)` — inkooprisico
-4. `portfolio_pricing_scan()` — voorraadscan risico/kansen
-5. `analyze_price_history()` — afprijsgedrag
-6. `get_market_snapshot()` — real-time marktoverzicht
-
-Alle tools bevatten client-side deduplicatie op `license_plate`.
-
-### Deel 3 — Briefing aanpassen
-`alex-dagelijkse-briefing/index.ts`: JP Cars marktdata toevoegen aan briefing context.
 
 ### Bestanden
-
-| Bestand | Actie |
-|---------|-------|
-| `ai_agents` tabel (SQL) | System prompt uitbreiden met gecorrigeerde VOORRAAD NOOT |
-| `supabase/functions/alex-ceo-chat/index.ts` | 6 tools + tool-use loop |
-| `supabase/functions/alex-dagelijkse-briefing/index.ts` | Marktdata in briefing |
-| Cron jobs (SQL) | `jpcars-voorraad-sync` unschedule + duplicaten opschonen |
+Geen codewijzigingen. Alleen SQL uitvoering via de SQL tool.
 
