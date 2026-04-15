@@ -1,62 +1,49 @@
 
 
-## Plan: Agent Memory voor alle 5 agents
+## Plan: APR definitie correctie — van "prijspositie" naar "databetrouwbaarheid"
 
-### 1. Edge Function: `hendrik-ai-chat/index.ts`
+### Scope
 
-**Memory laden (na regel ~295, vóór de Claude call)**:
-- Voor alle agents behalve CEO (die heeft al eigen memory):
-- Query `agent_memory` met `agent_name = agentName`, `actief = true`, max 20, `order('updated_at', desc)`
-- Bouw context blok: `\nWAT IK AL WEET (mijn geheugen):\n[TYPE] onderwerp: inhoud`
-- Voeg toe aan `contextPrompt` (regel ~321-325, naast de bestaande CEO memory check)
+APR wordt op 10+ plekken fout gelabeld als "prijspositie". Overal moet het worden: **Automated Price Rating = betrouwbaarheid van de JP Cars voorspelling**. Prijspositie wordt gemeten via `rank_current` en `vvp_25/50/75`.
 
-**Memory opslaan (na regel ~509, non-blocking)**:
-- Na de response, voor alle agents behalve CEO:
-- Async functie `saveAgentMemory(supabase, agentName, message, responseMessage)`:
-  - Tweede Claude call met spaarzame prompt: alleen opslaan bij correcties, werkwijze, voorkeuren, uitzonderingen
-  - JSON response: `{ "opslaan": boolean, "entries": [...] }`
-  - Insert in `agent_memory` als `opslaan === true`
-- Aangeroepen als: `saveAgentMemory(...).catch(() => {})` — non-blocking
+### Wijzigingen
 
-### 2. Edge Function: `kevin-ai-chat/index.ts`
+#### Frontend (labels en uitleg)
 
-Zelfde logica:
-- **Laden**: na regel ~29, query `agent_memory` voor `agent_name = 'Kevin'`, voeg context toe aan user message
-- **Opslaan**: na regel ~407, non-blocking `saveAgentMemory(...).catch(() => {})`
+| Bestand | Wat |
+|---------|-----|
+| `src/components/taxatie/results/CourantheidCard.tsx` | APR label: "Prijspositie" → "Databetrouwbaarheid". Badge: "Uitstekend"→"Betrouwbare data", "Gemiddeld"→"Matige data", "Laag"→"Onbetrouwbare data". Uitleg: scherp geprijsd → betrouwbare data teksten |
+| `src/components/taxatie/results/JPCarsCard.tsx` | APR label: "APR (Prijspositie)" → "APR (Databetrouwbaarheid)" |
+| `src/components/ai-agents/dashboards/kevin/KevinFullTable.tsx` | APR kolom tooltip aanpassen (geen label-wijziging nodig, data is numeriek) |
+| `src/types/taxatie.ts` | Comments updaten: "prijspositie" → "databetrouwbaarheid" |
 
-### 3. Nieuw component: `AgentMemoryTab.tsx`
+#### Edge Functions (comments en AI prompts)
 
-`src/components/ai-agents/dashboards/AgentMemoryTab.tsx`:
-- Props: `agentName: string`
-- Query `agent_memory` waar `agent_name = agentName` en `actief = true`, gesorteerd op `updated_at desc`
-- Tabel met: type badge (kleurgecodeerd), onderwerp, inhoud, datum
-- "Deactiveer" knop per entry → update `actief = false`
-- Lege state bij geen geheugen
+| Bestand | Wat |
+|---------|-----|
+| `supabase/functions/jpcars-lookup/index.ts` | Alle comments "prijspositie" → "databetrouwbaarheid". **Courantheid functie**: APR uit de berekening halen — courantheid moet alleen op ETR gebaseerd zijn (APR = datakwaliteit, niet courantheid) |
+| `supabase/functions/taxatie-ai-advice/index.ts` | Prompt regel 719: "APR (prijspositie)" → "APR (databetrouwbaarheid): hoge APR = betrouwbare voorspelling, lage APR = weinig vergelijkingsdata" |
+| `supabase/functions/kevin-ai-chat/index.ts` | Regel 618: "APR: X%" context aanpassen naar "APR (datakwaliteit): X" |
 
-### 4. Dashboard integratie
+#### Courantheid herberekening
 
-Voeg `<AgentMemoryTab>` toe in elk dashboard via een Tabs wrapper of sectie onderaan:
-- `MarcoDashboard.tsx` → `<AgentMemoryTab agentName="Marco" />`
-- `LisaDashboard.tsx` → `<AgentMemoryTab agentName="Lisa" />`
-- `DaanDashboard.tsx` → `<AgentMemoryTab agentName="Daan" />`
-- `KevinDashboard.tsx` → `<AgentMemoryTab agentName="Kevin" />`
-- `SaraDashboard.tsx` → `<AgentMemoryTab agentName="Sara" />`
+De `determineCourantheid()` functie in `jpcars-lookup/index.ts` combineert nu APR+ETR. Dit is fout — APR zegt niets over hoe snel een auto verkoopt. Fix:
 
-Alex wordt overgeslagen (heeft eigen memory systeem).
+```text
+// OUD (fout): combined = (apr + etr) / 2
+// NIEUW: courantheid = puur ETR-gebaseerd
+ETR >= 4 → hoog
+ETR >= 2.5 → gemiddeld  
+ETR < 2.5 → laag
+```
 
-### Bestanden
+### Geen wijzigingen nodig
 
-| Bestand | Actie |
-|---------|-------|
-| `supabase/functions/hendrik-ai-chat/index.ts` | Memory laden + non-blocking opslaan |
-| `supabase/functions/kevin-ai-chat/index.ts` | Zelfde |
-| `src/components/ai-agents/dashboards/AgentMemoryTab.tsx` | Nieuw component |
-| 5 dashboard bestanden | AgentMemoryTab integreren |
+- ETR labels en logica — al correct
+- `dealerSearchExport.ts` / `bulkTaxatieExport.ts` — APR is daar alleen een numerieke kolom, geen label
+- Database velden — `apr` blijft `apr`, alleen de interpretatie verandert
 
-### Technische details
+### Samenvatting
 
-- Memory extractie prompt is spaarzaam: alleen bij correcties, werkwijze, voorkeuren, uitzonderingen
-- Non-blocking: `.catch(() => {})` zodat response nooit vertraagd wordt
-- `agent_memory` tabel bestaat al — geen migratie nodig
-- RLS staat al goed: authenticated kan lezen/updaten, service_role heeft full access
+8 bestanden, hoofdzakelijk label-wijzigingen. Kritieke logica-fix in `determineCourantheid()` om APR eruit te halen. Edge functions moeten herdeployed worden na de wijziging.
 
