@@ -615,7 +615,7 @@ function handleKevinToolCall(name: string, input: any, vehicles: any[], crm: any
 - Rang: ${vehicle.rank_current ?? '-'} | Stagedagen: ${vehicle.stock_days ?? '-'} (gem: ${vehicle.stock_days_average ?? '-'})
 - Prijs: €${vehicle.price_local?.toLocaleString()} | Marktwaarde: €${vehicle.value?.toLocaleString()}
 - VVP: 5%=€${vehicle.vvp_5?.toLocaleString()} | 25%=€${vehicle.vvp_25?.toLocaleString()} | 50%=€${vehicle.vvp_50?.toLocaleString()} | 75%=€${vehicle.vvp_75?.toLocaleString()} | 95%=€${vehicle.vvp_95?.toLocaleString()}
-- Clicks: ${vehicle.clicks ?? 0} | Leads: ${vehicle.stat_leads ?? 0} | APR: ${vehicle.apr ?? '-'}%
+- Clicks: ${vehicle.clicks ?? 0} | Leads: ${vehicle.stat_leads ?? 0} | APR (datakwaliteit): ${vehicle.apr ?? '-'}
 - Concurrentie: ${vehicle.stat_stock_count ?? '-'} online, ${vehicle.stat_sold_count ?? '-'} recent verkocht | Set size: ${vehicle.competitive_set_size ?? vehicle.window_size ?? '-'}
 - Omzet int: ${vehicle.stat_turnover_int ?? '-'} | ext: ${vehicle.stat_turnover_ext ?? '-'}
 ${supplierInfo ? `- Leverancier: ${supplierInfo.company_name || `${supplierInfo.first_name} ${supplierInfo.last_name}`}` : ''}`,

@@ -299,7 +299,7 @@ serve(async (req) => {
     }
 
     // APR & ETR - Schaal 1-5 van JP Cars (NL markt)
-    // APR: 5 = beste prijspositie, 1 = slechtste
+    // APR: 5 = betrouwbare data (veel vergelijkbare auto's), 1 = onbetrouwbaar (weinig data)
     // ETR: 5 = snelste doorlooptijd, 1 = langzaamste
     // BELANGRIJK: ETR zit in stat_turnover_ext, NIET in data.etr!
     const apr = data.apr || 3; // Default naar gemiddeld (3)
@@ -379,9 +379,9 @@ serve(async (req) => {
         max: calculateRangeMax(data)
       },
       confidence: calculateConfidence(data),
-      apr: apr,  // Schaal 1-5 (prijspositie)
+      apr: apr,  // Schaal 1-5 (databetrouwbaarheid)
       etr: etr,  // Schaal 1-5 (doorloopsnelheid) - nu correct uit stat_turnover_ext
-      courantheid: determineCourantheid(apr, etr),
+      courantheid: determineCourantheid(etr),
       
       // Nieuwe uitgebreide data
       stockStats: {
@@ -719,14 +719,13 @@ function calculateConfidence(data: Record<string, unknown>): number {
   return 0.40;
 }
 
-// Courantheid bepalen op basis van APR + ETR (beide schaal 1-5)
-// APR: 5 = beste prijspositie, 1 = slechtste
+// Courantheid bepalen op basis van ETR (schaal 1-5)
+// APR = databetrouwbaarheid, zegt niets over courantheid
 // ETR: 5 = snelste doorlooptijd, 1 = langzaamste
-function determineCourantheid(apr: number, etr: number): 'hoog' | 'gemiddeld' | 'laag' {
-  const combined = (apr + etr) / 2;  // Gemiddelde van beide scores
-  console.log('📊 Courantheid berekening:', { apr, etr, combined });
+function determineCourantheid(etr: number): 'hoog' | 'gemiddeld' | 'laag' {
+  console.log('📊 Courantheid berekening (puur ETR):', { etr });
   
-  if (combined >= 4) return 'hoog';      // 4-5 = hoge courantheid
-  if (combined >= 2.5) return 'gemiddeld';  // 2.5-4 = gemiddeld
+  if (etr >= 4) return 'hoog';         // 4-5 = hoge courantheid
+  if (etr >= 2.5) return 'gemiddeld';   // 2.5-4 = gemiddeld
   return 'laag';  // 1-2.5 = lage courantheid
 }

@@ -35,15 +35,15 @@ export interface JPCarsWindowItem {
 
 // JP Cars data (inclusief APR/ETR en uitgebreide stats)
 // BELANGRIJK: APR en ETR zijn SCORES (1-5), geen dagen!
-// APR = prijspositie (5 = beste prijs tov markt)
-// ETR = doorloopsnelheid (5 = snelste verkoop)
+// APR = Automated Price Rating = databetrouwbaarheid (5 = veel vergelijkbare data, betrouwbare voorspelling)
+// ETR = doorloopsnelheid/courantheid (5 = snelste verkoop)
 export interface JPCarsData {
   baseValue: number;
   optionValue: number;
   totalValue: number;
   range: { min: number; max: number };
   confidence: number;
-  apr: number;  // Score 1-5 (prijspositie)
+  apr: number;  // Score 1-5 (databetrouwbaarheid: 5=betrouwbaar, 1=weinig data)
   etr: number;  // Score 1-5 (doorloopsnelheid, uit stat_turnover_ext)
   courantheid: 'hoog' | 'gemiddeld' | 'laag';
   

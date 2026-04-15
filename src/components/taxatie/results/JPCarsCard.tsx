@@ -114,7 +114,7 @@ export const JPCarsCard = ({ data, loading }: JPCarsCardProps) => {
           <div className="flex items-start gap-2">
             <TrendingUp className="h-4 w-4 text-muted-foreground mt-0.5" />
             <div>
-              <p className="text-xs text-muted-foreground">APR (Prijspositie)</p>
+              <p className="text-xs text-muted-foreground">APR (Databetrouwbaarheid)</p>
               <p className={`font-semibold ${getScoreColor(data.apr)}`}>
                 {data.apr}/5 ⭐
               </p>

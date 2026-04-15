@@ -37,14 +37,17 @@ export const CourantheidCard = ({ data, loading }: CourantheidCardProps) => {
   const apr = data.apr;
   const etr = data.etr;
 
-  const getScoreBadge = (score: number, type: 'apr' | 'etr') => {
-    if (score >= 4) {
-      return <Badge className="bg-green-500 hover:bg-green-600">{type === 'apr' ? 'Uitstekend' : 'Snel'}</Badge>;
-    }
-    if (score >= 3) {
-      return <Badge className="bg-amber-500 hover:bg-amber-600">Gemiddeld</Badge>;
-    }
-    return <Badge className="bg-red-500 hover:bg-red-600">{type === 'apr' ? 'Laag' : 'Traag'}</Badge>;
+  const getAprBadge = (score: number) => {
+    if (score >= 4) return <Badge className="bg-green-500 hover:bg-green-600">Betrouwbare data</Badge>;
+    if (score >= 3) return <Badge className="bg-amber-500 hover:bg-amber-600">Matige data</Badge>;
+    if (score >= 2) return <Badge className="bg-orange-500 hover:bg-orange-600">Weinig data</Badge>;
+    return <Badge className="bg-red-500 hover:bg-red-600">Onbetrouwbare data</Badge>;
+  };
+
+  const getEtrBadge = (score: number) => {
+    if (score >= 4) return <Badge className="bg-green-500 hover:bg-green-600">Snel</Badge>;
+    if (score >= 3) return <Badge className="bg-amber-500 hover:bg-amber-600">Gemiddeld</Badge>;
+    return <Badge className="bg-red-500 hover:bg-red-600">Traag</Badge>;
   };
 
   const getScoreColor = (score: number) => {
@@ -79,24 +82,24 @@ export const CourantheidCard = ({ data, loading }: CourantheidCardProps) => {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* APR - Schaal 1-5 */}
+        {/* APR - Databetrouwbaarheid */}
         <div className="p-3 rounded-lg border bg-card">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">APR (Prijspositie)</span>
+              <span className="text-sm font-medium">APR (Databetrouwbaarheid)</span>
             </div>
             <div className="flex items-center gap-2">
               <span className={`text-lg font-bold ${getScoreColor(apr)}`}>{apr}/5 ⭐</span>
-              {getScoreBadge(apr, 'apr')}
+              {getAprBadge(apr)}
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
             {apr >= 4
-              ? '✅ Scherp geprijsd - snelle verkoop verwacht'
+              ? '✅ Veel vergelijkbare data — betrouwbare voorspelling'
               : apr >= 3
-              ? '⚠️ Marktconform geprijsd'
-              : '❌ Boven marktgemiddelde - let op!'}
+              ? '⚠️ Matige hoeveelheid data — gebruik met voorzichtigheid'
+              : '❌ Weinig vergelijkingsdata — ETR en prijsadvies minder betrouwbaar'}
           </p>
         </div>
 
@@ -109,7 +112,7 @@ export const CourantheidCard = ({ data, loading }: CourantheidCardProps) => {
             </div>
             <div className="flex items-center gap-2">
               <span className={`text-lg font-bold ${getScoreColor(etr)}`}>{etr}/5 ⭐</span>
-              {getScoreBadge(etr, 'etr')}
+              {getEtrBadge(etr)}
             </div>
           </div>
           <p className="text-xs text-muted-foreground">

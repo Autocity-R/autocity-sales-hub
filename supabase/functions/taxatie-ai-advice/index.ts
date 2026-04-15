@@ -716,7 +716,7 @@ Kijk naar de JP Cars Waarde. Dit is je startpunt, je kompas.
 - Totaalwaarde: €${input.jpCarsData.totalValue?.toLocaleString('nl-NL') || 'n.v.t.'}
 - Range: €${input.jpCarsData.range?.min?.toLocaleString('nl-NL') || '?'} - €${input.jpCarsData.range?.max?.toLocaleString('nl-NL') || '?'}
 - Courantheid: ${input.jpCarsData.courantheid || 'onbekend'}
-- APR (prijspositie): ${input.jpCarsData.apr || '?'}/5
+- APR (databetrouwbaarheid): ${input.jpCarsData.apr || '?'}/5 — hoge APR = betrouwbare voorspelling, lage APR = weinig vergelijkingsdata
 - ETR (omloopsnelheid): ${input.jpCarsData.etr || '?'}/5
 ${stockCount > 0 ? `- Voorraad markt: ${stockCount} auto's${stockDays ? `, gemiddeld ${Math.round(stockDays)} dagen op voorraad` : ''}` : ''}
 ${salesCount > 0 ? `- Verkocht: ${salesCount} auto's${salesDays ? `, gemiddeld ${Math.round(salesDays)} dagen tot verkoop` : ''}` : ''}
