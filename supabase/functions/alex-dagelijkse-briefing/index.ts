@@ -221,15 +221,19 @@ ${JSON.stringify(kpis, null, 1)}
 HISTORISCHE VERKOPEN PER MAAND (${now.getFullYear()}):
 ${JSON.stringify(historische_verkopen, null, 1)}
 
+JP CARS MARKTDATA (real-time online voorraad):
+${JSON.stringify(jpCarsSnapshot, null, 1)}
+
 AGENT SIGNALEN:
 ${JSON.stringify(signals, null, 1)}
 
 OPDRACHT:
 1. Doe marktresearch voor vandaag — zoek naar relevante EV/hybride occasiemarkt ontwikkelingen in Nederland
 2. Analyseer de interne KPIs — wat gaat goed, wat niet
-3. Identificeer risico's en kansen
-4. Geef inkoopadvies voor deze week
-5. Geef aan welke van je geheugenentries je wilt heronderzoeken of bijwerken
+3. Analyseer de JP Cars marktdata — welke auto's moeten urgent afgeprezen, waar liggen marge kansen
+4. Identificeer risico's en kansen
+5. Geef inkoopadvies voor deze week
+6. Geef aan welke van je geheugenentries je wilt heronderzoeken of bijwerken
 
 Schrijf een briefing email voor Hendrik. Kort, zakelijk, cijfermatig. Geen emoji. Eindig met concrete actiepunten.`;
 
