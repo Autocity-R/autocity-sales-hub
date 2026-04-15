@@ -1,25 +1,26 @@
 
 
-## Plan: JP Cars cron job naar service_role key
+## Plan: JP Cars sync herstellen
 
-### Wat
-`jpcars-sync-hourly` (jobid 7) draait met de anon key. Vervangen door service_role key.
+### Probleem
+De `unique_license_plate_sync_date` constraint op `jpcars_voorraad_monitor` blokkeert inserts omdat meerdere voertuigen hetzelfde kenteken kunnen hebben (imports zonder kenteken = allemaal 'NB' of leeg). De tabel is nu leeg — Kevin en Alex zien geen voorraaddata.
 
-### Hoe
-Via SQL tool (niet migratie — bevat secrets):
+### Oplossing
 
+**Stap 1 — Constraint verwijderen (migratie)**
 ```sql
-SELECT cron.unschedule(7);
-
-SELECT cron.schedule('jpcars-sync-hourly', '0 * * * *',
-  $$ SELECT net.http_post(
-    url := 'https://fnwagrmoyfyimdoaynkg.supabase.co/functions/v1/jpcars-sync',
-    headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZud2Fncm1veWZ5aW1kb2F5bmtnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODI5MzU5MSwiZXhwIjoyMDYzODY5NTkxfQ._PQu0imG938iL7cx8HJxLconejlhuQspXHgUuCvYr1E"}'::jsonb,
-    body := '{}'::jsonb
-  ); $$
-);
+ALTER TABLE public.jpcars_voorraad_monitor 
+  DROP CONSTRAINT unique_license_plate_sync_date;
 ```
 
+**Stap 2 — Handmatige sync testen**
+Na de migratie de sync knop in Kevin's dashboard gebruiken om te bevestigen dat de voorraad weer binnenkomt via de JP Cars API.
+
+### Resultaat
+- Kevin ziet weer de volledige voorraadmonitor
+- Alex kan weer marktdata ophalen via zijn JP Cars tools
+- De hourly cron job (al gecorrigeerd naar service_role) vult de data automatisch aan
+
 ### Bestanden
-Geen codewijzigingen. Alleen SQL uitvoering via de SQL tool.
+Geen codewijzigingen — alleen de database constraint verwijderen.
 
