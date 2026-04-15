@@ -1,49 +1,42 @@
 
 
-## Plan: APR definitie correctie — van "prijspositie" naar "databetrouwbaarheid"
+## Plan: Alex JP Cars implementatie (met gecorrigeerde VOORRAAD NOOT)
 
-### Scope
+Dit is het eerder goedgekeurde plan met één correctie: de VOORRAAD NOOT in het system prompt blok wordt vereenvoudigd.
 
-APR wordt op 10+ plekken fout gelabeld als "prijspositie". Overal moet het worden: **Automated Price Rating = betrouwbaarheid van de JP Cars voorspelling**. Prijspositie wordt gemeten via `rank_current` en `vvp_25/50/75`.
+### Deel 0 — Dubbele records fixen
+Via SQL: `cron.unschedule('jpcars-voorraad-sync')` + duplicaten opschonen in `jpcars_voorraad_monitor`.
 
-### Wijzigingen
+### Deel 1 — Alex system prompt uitbreiden
+Via SQL update van `ai_agents` tabel. Het JP Cars blok bevat ETR/APR definities, alle velden, prijspositie meetmethode, strategische beslisregels.
 
-#### Frontend (labels en uitleg)
-
-| Bestand | Wat |
-|---------|-----|
-| `src/components/taxatie/results/CourantheidCard.tsx` | APR label: "Prijspositie" → "Databetrouwbaarheid". Badge: "Uitstekend"→"Betrouwbare data", "Gemiddeld"→"Matige data", "Laag"→"Onbetrouwbare data". Uitleg: scherp geprijsd → betrouwbare data teksten |
-| `src/components/taxatie/results/JPCarsCard.tsx` | APR label: "APR (Prijspositie)" → "APR (Databetrouwbaarheid)" |
-| `src/components/ai-agents/dashboards/kevin/KevinFullTable.tsx` | APR kolom tooltip aanpassen (geen label-wijziging nodig, data is numeriek) |
-| `src/types/taxatie.ts` | Comments updaten: "prijspositie" → "databetrouwbaarheid" |
-
-#### Edge Functions (comments en AI prompts)
-
-| Bestand | Wat |
-|---------|-----|
-| `supabase/functions/jpcars-lookup/index.ts` | Alle comments "prijspositie" → "databetrouwbaarheid". **Courantheid functie**: APR uit de berekening halen — courantheid moet alleen op ETR gebaseerd zijn (APR = datakwaliteit, niet courantheid) |
-| `supabase/functions/taxatie-ai-advice/index.ts` | Prompt regel 719: "APR (prijspositie)" → "APR (databetrouwbaarheid): hoge APR = betrouwbare voorspelling, lage APR = weinig vergelijkingsdata" |
-| `supabase/functions/kevin-ai-chat/index.ts` | Regel 618: "APR: X%" context aanpassen naar "APR (datakwaliteit): X" |
-
-#### Courantheid herberekening
-
-De `determineCourantheid()` functie in `jpcars-lookup/index.ts` combineert nu APR+ETR. Dit is fout — APR zegt niets over hoe snel een auto verkoopt. Fix:
-
-```text
-// OUD (fout): combined = (apr + etr) / 2
-// NIEUW: courantheid = puur ETR-gebaseerd
-ETR >= 4 → hoog
-ETR >= 2.5 → gemiddeld  
-ETR < 2.5 → laag
+**Gecorrigeerde VOORRAAD NOOT:**
+```
+VOORRAAD NOOT:
+De JP Cars monitor toont alleen auto's die online staan in de verkoopportalen.
+Gebruik deze data voor op- en afprijzingen van de online voorraad.
 ```
 
-### Geen wijzigingen nodig
+### Deel 2 — 6 tools in `alex-ceo-chat/index.ts`
+Tool-use loop (max 5 iteraties) met:
+1. `analyze_market_composition(groupBy)` — segmentoverzicht
+2. `analyze_segment_performance(fuel, make, max_price)` — diepteanalyse
+3. `evaluate_purchase_risk(make, model, proposed_purchase_price)` — inkooprisico
+4. `portfolio_pricing_scan()` — voorraadscan risico/kansen
+5. `analyze_price_history()` — afprijsgedrag
+6. `get_market_snapshot()` — real-time marktoverzicht
 
-- ETR labels en logica — al correct
-- `dealerSearchExport.ts` / `bulkTaxatieExport.ts` — APR is daar alleen een numerieke kolom, geen label
-- Database velden — `apr` blijft `apr`, alleen de interpretatie verandert
+Alle tools bevatten client-side deduplicatie op `license_plate`.
 
-### Samenvatting
+### Deel 3 — Briefing aanpassen
+`alex-dagelijkse-briefing/index.ts`: JP Cars marktdata toevoegen aan briefing context.
 
-8 bestanden, hoofdzakelijk label-wijzigingen. Kritieke logica-fix in `determineCourantheid()` om APR eruit te halen. Edge functions moeten herdeployed worden na de wijziging.
+### Bestanden
+
+| Bestand | Actie |
+|---------|-------|
+| `ai_agents` tabel (SQL) | System prompt uitbreiden met gecorrigeerde VOORRAAD NOOT |
+| `supabase/functions/alex-ceo-chat/index.ts` | 6 tools + tool-use loop |
+| `supabase/functions/alex-dagelijkse-briefing/index.ts` | Marktdata in briefing |
+| Cron jobs (SQL) | `jpcars-voorraad-sync` unschedule + duplicaten opschonen |
 
