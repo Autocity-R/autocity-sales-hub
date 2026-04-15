@@ -1,0 +1,1 @@
+ALTER TABLE public.jpcars_voorraad_monitor DROP CONSTRAINT unique_license_plate_sync_date;
