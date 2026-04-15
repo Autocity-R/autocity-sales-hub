@@ -145,6 +145,48 @@ serve(async (req) => {
       .sort(([a], [b]) => b.localeCompare(a))
       .map(([maand, data]) => ({ maand, ...data, omzet: Math.round(data.omzet), winst: Math.round(data.winst), garantie: Math.round(data.garantie) }));
 
+    // ── 3c. JP Cars marktdata snapshot ──
+    const { data: jpCarsData } = await supabase
+      .from('jpcars_voorraad_monitor')
+      .select('*');
+
+    const jpSeen = new Set();
+    const jpUniek = (jpCarsData || []).filter(v => {
+      if (!v.license_plate || jpSeen.has(v.license_plate)) return false;
+      jpSeen.add(v.license_plate);
+      return true;
+    });
+    const jpSorted = [...jpUniek].sort((a, b) => (b.stock_days || 0) - (a.stock_days || 0));
+
+    const jpCarsSnapshot = {
+      sync_tijdstip: jpCarsData?.[0]?.synced_at,
+      totaal_online: jpUniek.length,
+      segmenten: ['ELECTRICITY', 'HYBRID', 'PETROL', 'DIESEL'].map(fuel => {
+        const s = jpUniek.filter(a => a.fuel === fuel);
+        if (s.length === 0) return null;
+        return {
+          brandstof: fuel, aantal: s.length,
+          gem_etr: +(s.reduce((a, v) => a + (v.stat_turnover_ext || 0), 0) / s.length).toFixed(1),
+          hoog_courant: s.filter(a => a.stat_turnover_ext >= 4 && a.apr >= 3).length,
+          laag_courant: s.filter(a => a.stat_turnover_ext <= 2 && a.apr >= 3).length,
+          gem_stock_dagen: Math.round(s.reduce((a, v) => a + (v.stock_days || 0), 0) / s.length),
+        };
+      }).filter(Boolean),
+      urgent_afprijzen: jpSorted
+        .filter(a => a.stat_turnover_ext <= 2 && Number(a.price_local) > Number(a.vvp_50) && a.apr >= 3)
+        .slice(0, 5)
+        .map(a => ({ auto: `${a.make} ${a.model}`, stock_dagen: a.stock_days, boven_mediaan: Math.round(Number(a.price_local) - Number(a.vvp_50)), etr: a.stat_turnover_ext })),
+      marge_kansen: jpSorted
+        .filter(a => a.stat_turnover_ext >= 4 && Number(a.price_local) < Number(a.vvp_50) && a.apr >= 3)
+        .slice(0, 5)
+        .map(a => ({ auto: `${a.make} ${a.model}`, ruimte: Math.round(Number(a.vvp_50) - Number(a.price_local)), etr: a.stat_turnover_ext })),
+      langst_staand: jpSorted.slice(0, 5).map(a => ({
+        auto: `${a.make} ${a.model} ${a.build}`, stock_dagen: a.stock_days, etr: a.stat_turnover_ext, kenteken: a.license_plate
+      }))
+    };
+
+    console.log(`🚗 JP Cars snapshot: ${jpUniek.length} online, ${jpCarsSnapshot.urgent_afprijzen.length} urgent, ${jpCarsSnapshot.marge_kansen.length} kansen`);
+
     // ── 4. Agent signals ──
     const [claimsResult, agentSignals] = await Promise.all([
       supabase.from('warranty_claims').select('id', { count: 'exact', head: true }).eq('claim_status', 'pending'),
@@ -179,15 +221,19 @@ ${JSON.stringify(kpis, null, 1)}
 HISTORISCHE VERKOPEN PER MAAND (${now.getFullYear()}):
 ${JSON.stringify(historische_verkopen, null, 1)}
 
+JP CARS MARKTDATA (real-time online voorraad):
+${JSON.stringify(jpCarsSnapshot, null, 1)}
+
 AGENT SIGNALEN:
 ${JSON.stringify(signals, null, 1)}
 
 OPDRACHT:
 1. Doe marktresearch voor vandaag — zoek naar relevante EV/hybride occasiemarkt ontwikkelingen in Nederland
 2. Analyseer de interne KPIs — wat gaat goed, wat niet
-3. Identificeer risico's en kansen
-4. Geef inkoopadvies voor deze week
-5. Geef aan welke van je geheugenentries je wilt heronderzoeken of bijwerken
+3. Analyseer de JP Cars marktdata — welke auto's moeten urgent afgeprezen, waar liggen marge kansen
+4. Identificeer risico's en kansen
+5. Geef inkoopadvies voor deze week
+6. Geef aan welke van je geheugenentries je wilt heronderzoeken of bijwerken
 
 Schrijf een briefing email voor Hendrik. Kort, zakelijk, cijfermatig. Geen emoji. Eindig met concrete actiepunten.`;
 
