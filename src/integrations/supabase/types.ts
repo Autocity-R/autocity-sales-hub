@@ -825,6 +825,39 @@ export type Database = {
         }
         Relationships: []
       }
+      alex_hendrik_visie: {
+        Row: {
+          actief: boolean | null
+          categorie: string
+          context: string | null
+          created_at: string | null
+          id: string
+          inzicht: string
+          onderwerp: string
+          updated_at: string | null
+        }
+        Insert: {
+          actief?: boolean | null
+          categorie: string
+          context?: string | null
+          created_at?: string | null
+          id?: string
+          inzicht: string
+          onderwerp: string
+          updated_at?: string | null
+        }
+        Update: {
+          actief?: boolean | null
+          categorie?: string
+          context?: string | null
+          created_at?: string | null
+          id?: string
+          inzicht?: string
+          onderwerp?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       alex_insights: {
         Row: {
           aanbeveling: string | null
