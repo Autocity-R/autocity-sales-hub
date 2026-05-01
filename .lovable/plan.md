@@ -1,26 +1,22 @@
-
-
-## Plan: JP Cars sync herstellen
+## Plan: Alex JP Cars dedup verwijderen
 
 ### Probleem
-De `unique_license_plate_sync_date` constraint op `jpcars_voorraad_monitor` blokkeert inserts omdat meerdere voertuigen hetzelfde kenteken kunnen hebben (imports zonder kenteken = allemaal 'NB' of leeg). De tabel is nu leeg — Kevin en Alex zien geen voorraaddata.
+De `dedup()` helper in `supabase/functions/alex-ceo-chat/index.ts` filtert auto's op uniek `license_plate`. JP Cars levert echter al unieke records — meerdere auto's kunnen daarbij hetzelfde (lege/placeholder) kenteken hebben. Resultaat: Alex ziet maar ~10 auto's i.p.v. ~120.
 
-### Oplossing
+### Wijziging
+In `supabase/functions/alex-ceo-chat/index.ts`:
 
-**Stap 1 — Constraint verwijderen (migratie)**
-```sql
-ALTER TABLE public.jpcars_voorraad_monitor 
-  DROP CONSTRAINT unique_license_plate_sync_date;
-```
-
-**Stap 2 — Handmatige sync testen**
-Na de migratie de sync knop in Kevin's dashboard gebruiken om te bevestigen dat de voorraad weer binnenkomt via de JP Cars API.
-
-### Resultaat
-- Kevin ziet weer de volledige voorraadmonitor
-- Alex kan weer marktdata ophalen via zijn JP Cars tools
-- De hourly cron job (al gecorrigeerd naar service_role) vult de data automatisch aan
+1. **`dedup()` functie verwijderen** (regels 16-23).
+2. In elk van de 6 tools `const uniek = dedup(data || [])` vervangen door `const auto_lijst = data ?? []` en alle verdere referenties van `uniek` → `auto_lijst`:
+   - `analyze_market_composition`
+   - `analyze_segment_performance`
+   - `evaluate_purchase_risk`
+   - `portfolio_pricing_scan`
+   - `analyze_price_history` (let op: `metAfprijzing` blijft afgeleid van `auto_lijst`)
+   - `get_market_snapshot`
 
 ### Bestanden
-Geen codewijzigingen — alleen de database constraint verwijderen.
+- `supabase/functions/alex-ceo-chat/index.ts` — alleen tekstvervangingen, geen logicawijzigingen.
 
+### Resultaat
+Alex baseert al zijn marktanalyses op de volledige ~120 auto's uit `jpcars_voorraad_monitor`.
