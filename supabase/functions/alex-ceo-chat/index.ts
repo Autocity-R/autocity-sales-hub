@@ -13,25 +13,16 @@ const ALEX_AGENT_ID = 'b6000000-0000-0000-0000-000000000006';
 // JP CARS TOOL FUNCTIONS
 // ═══════════════════════════════════════
 
-function dedup(data: any[]) {
-  const seen = new Set();
-  return data.filter(v => {
-    if (!v.license_plate || seen.has(v.license_plate)) return false;
-    seen.add(v.license_plate);
-    return true;
-  });
-}
-
 async function analyze_market_composition(supabase: any, input: { group_by: string }) {
   const { data } = await supabase
     .from('jpcars_voorraad_monitor')
     .select('license_plate, fuel, make, body, stat_turnover_ext, apr, vvp_50, stock_days_average, stat_sold_count, stat_stock_count, price_local');
 
-  const uniek = dedup(data || []);
+  const auto_lijst = data ?? [];
   const field = input.group_by === 'fuel' ? 'fuel' : input.group_by === 'make' ? 'make' : 'body';
 
   const groepen: Record<string, any[]> = {};
-  for (const auto of uniek) {
+  for (const auto of auto_lijst) {
     const key = auto[field] || 'Onbekend';
     if (!groepen[key]) groepen[key] = [];
     groepen[key].push(auto);
@@ -56,21 +47,21 @@ async function analyze_segment_performance(supabase: any, input: { fuel?: string
   if (input.max_price) query = query.lte('price_local', input.max_price);
 
   const { data } = await query;
-  const uniek = dedup(data || []);
-  if (uniek.length === 0) return { error: 'Geen data gevonden voor dit segment' };
+  const auto_lijst = data ?? [];
+  if (auto_lijst.length === 0) return { error: 'Geen data gevonden voor dit segment' };
 
   return {
     segment: input,
-    aantal: uniek.length,
-    gem_etr: +(uniek.reduce((s, a) => s + (a.stat_turnover_ext || 0), 0) / uniek.length).toFixed(2),
-    hoog_courant: uniek.filter(a => a.stat_turnover_ext >= 4 && a.apr >= 3).length,
-    laag_courant: uniek.filter(a => a.stat_turnover_ext <= 2 && a.apr >= 3).length,
-    gem_stock_dagen: Math.round(uniek.reduce((s, a) => s + (a.stock_days || 0), 0) / uniek.length),
-    gem_markt_doorlooptijd: Math.round(uniek.reduce((s, a) => s + (a.stock_days_average || 0), 0) / uniek.length),
-    gem_onze_prijs: Math.round(uniek.reduce((s, a) => s + Number(a.price_local || 0), 0) / uniek.length),
-    gem_markt_mediaan: Math.round(uniek.reduce((s, a) => s + Number(a.vvp_50 || 0), 0) / uniek.length),
-    totaal_markt_verkopen: uniek.reduce((s, a) => s + (a.stat_sold_count || 0), 0),
-    auto_lijst: uniek.map(a => ({
+    aantal: auto_lijst.length,
+    gem_etr: +(auto_lijst.reduce((s, a) => s + (a.stat_turnover_ext || 0), 0) / auto_lijst.length).toFixed(2),
+    hoog_courant: auto_lijst.filter(a => a.stat_turnover_ext >= 4 && a.apr >= 3).length,
+    laag_courant: auto_lijst.filter(a => a.stat_turnover_ext <= 2 && a.apr >= 3).length,
+    gem_stock_dagen: Math.round(auto_lijst.reduce((s, a) => s + (a.stock_days || 0), 0) / auto_lijst.length),
+    gem_markt_doorlooptijd: Math.round(auto_lijst.reduce((s, a) => s + (a.stock_days_average || 0), 0) / auto_lijst.length),
+    gem_onze_prijs: Math.round(auto_lijst.reduce((s, a) => s + Number(a.price_local || 0), 0) / auto_lijst.length),
+    gem_markt_mediaan: Math.round(auto_lijst.reduce((s, a) => s + Number(a.vvp_50 || 0), 0) / auto_lijst.length),
+    totaal_markt_verkopen: auto_lijst.reduce((s, a) => s + (a.stat_sold_count || 0), 0),
+    auto_lijst: auto_lijst.map(a => ({
       make: a.make, model: a.model, build: a.build,
       etr: a.stat_turnover_ext, apr: a.apr,
       prijs: a.price_local, mediaan: a.vvp_50,
@@ -86,10 +77,10 @@ async function evaluate_purchase_risk(supabase: any, input: { make: string; mode
     .ilike('make', `%${input.make}%`)
     .ilike('model', `%${input.model}%`);
 
-  const uniek = dedup(data || []);
-  if (uniek.length === 0) return { error: `Geen JP Cars data voor ${input.make} ${input.model}` };
+  const auto_lijst = data ?? [];
+  if (auto_lijst.length === 0) return { error: `Geen JP Cars data voor ${input.make} ${input.model}` };
 
-  const ref = uniek[0];
+  const ref = auto_lijst[0];
   const markt_mediaan = Number(ref.vvp_50) || 0;
   const markt_p25 = Number(ref.vvp_25) || 0;
   const verwachte_verkoopprijs = Math.round(markt_mediaan * 0.97);
@@ -112,7 +103,7 @@ async function evaluate_purchase_risk(supabase: any, input: { make: string; mode
     markt_doorlooptijd: ref.stock_days_average,
     price_sensitivity: ref.price_sensitivity,
     concurrenten: ref.competitive_set_size,
-    vergelijkbare_autos: uniek.length,
+    vergelijkbare_autos: auto_lijst.length,
     advies: marge_pct >= 15
       ? `Inkoop verantwoord. ETR ${ref.stat_turnover_ext}/5, verwachte marge ${marge_pct}%.`
       : `Risico. Verwachte marge ${marge_pct}% — onder 15% norm. Maximale inkoopprijs: €${Math.round(markt_mediaan * 0.82)}.`
@@ -125,11 +116,11 @@ async function portfolio_pricing_scan(supabase: any) {
     .select('*')
     .order('stock_days', { ascending: false });
 
-  const uniek = dedup(data || []);
+  const auto_lijst = data ?? [];
 
   return {
-    totaal_gescand: uniek.length,
-    urgente_afprijzing: uniek
+    totaal_gescand: auto_lijst.length,
+    urgente_afprijzing: auto_lijst
       .filter(a => a.stat_turnover_ext <= 2 && a.apr >= 3 && a.stock_days > 45 && Number(a.price_local) > Number(a.vvp_50))
       .map(a => ({
         auto: `${a.make} ${a.model} ${a.build}`,
@@ -142,7 +133,7 @@ async function portfolio_pricing_scan(supabase: any) {
         aanbevolen_prijs: Math.round(Number(a.vvp_50) * 0.97),
         prijsgevoeligheid: a.price_sensitivity
       })),
-    marge_kansen: uniek
+    marge_kansen: auto_lijst
       .filter(a => a.stat_turnover_ext >= 4 && a.apr >= 3 && Number(a.price_local) < Number(a.vvp_50))
       .map(a => ({
         auto: `${a.make} ${a.model} ${a.build}`,
@@ -153,7 +144,7 @@ async function portfolio_pricing_scan(supabase: any) {
         etr: a.stat_turnover_ext,
         stock_dagen: a.stock_days
       })),
-    trage_voorraad: uniek
+    trage_voorraad: auto_lijst
       .filter(a => a.stock_days > (a.stock_days_average || 0) && (a.stock_days_average || 0) > 0)
       .slice(0, 10)
       .map(a => ({
@@ -173,8 +164,8 @@ async function analyze_price_history(supabase: any) {
     .select('license_plate, make, model, fuel, stock_days, price_local, vvp_50, price_history_amount_1, price_history_date_1, price_history_amount_2, price_history_date_2, stat_turnover_ext, apr')
     .not('price_history_date_1', 'is', null);
 
-  const uniek = dedup(data || []);
-  const metAfprijzing = uniek.filter(a => Number(a.price_history_amount_1) > 0);
+  const auto_lijst = data ?? [];
+  const metAfprijzing = auto_lijst.filter(a => Number(a.price_history_amount_1) > 0);
 
   if (metAfprijzing.length === 0) return { totaal_afgeprezen: 0, auto_lijst: [] };
 
@@ -199,14 +190,14 @@ async function get_market_snapshot(supabase: any) {
     .from('jpcars_voorraad_monitor')
     .select('*');
 
-  const uniek = dedup(data || []);
-  const gesorteerd = [...uniek].sort((a, b) => (b.stock_days || 0) - (a.stock_days || 0));
+  const auto_lijst = data ?? [];
+  const gesorteerd = [...auto_lijst].sort((a, b) => (b.stock_days || 0) - (a.stock_days || 0));
 
   return {
     sync_tijdstip: data?.[0]?.synced_at,
-    totaal_voorraad: uniek.length,
+    totaal_voorraad: auto_lijst.length,
     segmenten: ['ELECTRICITY', 'HYBRID', 'PETROL', 'DIESEL'].map(fuel => {
-      const s = uniek.filter(a => a.fuel === fuel);
+      const s = auto_lijst.filter(a => a.fuel === fuel);
       if (s.length === 0) return null;
       return {
         brandstof: fuel,
