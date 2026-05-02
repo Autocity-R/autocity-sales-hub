@@ -22,6 +22,7 @@ export const exportVehiclesToExcel = async (vehicles: Vehicle[]) => {
     'Model',
     'Bouwjaar',
     'Kleur',
+    'Kenteken',
     'VIN',
     'KM stand',
     'Schadeomschrijving',
@@ -56,6 +57,7 @@ export const exportVehiclesToExcel = async (vehicles: Vehicle[]) => {
       v.model || '',
       v.year?.toString() || '',
       v.color || '',
+      v.licenseNumber || '',
       v.vin || '',
       v.mileage ? v.mileage.toLocaleString('nl-NL') : '',
       v.damage?.description || '',
@@ -80,6 +82,7 @@ export const exportVehiclesToExcel = async (vehicles: Vehicle[]) => {
     { width: 15 },  // Model
     { width: 10 },  // Bouwjaar
     { width: 12 },  // Kleur
+    { width: 12 },  // Kenteken
     { width: 20 },  // VIN
     { width: 12 },  // KM stand
     { width: 30 },  // Schadeomschrijving
