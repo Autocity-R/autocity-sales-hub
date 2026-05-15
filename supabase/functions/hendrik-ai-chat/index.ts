@@ -3025,6 +3025,135 @@ ${v.blocker ? `- Blokkade: ${v.blocker}` : ''}
         };
       }
 
+      case 'get_completed_tasks': {
+        const period: string = toolInput.period || 'today';
+        const medewerkerFilter: string | undefined = toolInput.medewerker
+          ? String(toolInput.medewerker).toLowerCase()
+          : undefined;
+
+        // Bepaal start/end in Europe/Amsterdam tijdzone (CEST = UTC+2 in mei)
+        // We werken met datum-strings (YYYY-MM-DD) in NL tijd
+        const TZ = 'Europe/Amsterdam';
+        const fmt = new Intl.DateTimeFormat('en-CA', {
+          timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'
+        });
+        const toNlDate = (d: Date) => fmt.format(d); // YYYY-MM-DD
+        const today = new Date();
+        const todayStr = toNlDate(today);
+        const yesterday = new Date(today.getTime() - DAY_MS);
+        const yesterdayStr = toNlDate(yesterday);
+
+        // Week start (maandag) in NL tijd
+        const dow = today.getDay(); // 0=zo
+        const daysSinceMonday = (dow + 6) % 7;
+        const weekStart = new Date(today.getTime() - daysSinceMonday * DAY_MS);
+        const weekStartStr = toNlDate(weekStart);
+        const sevenDaysAgo = new Date(today.getTime() - 7 * DAY_MS);
+        const sevenDaysAgoStr = toNlDate(sevenDaysAgo);
+
+        let startStr = todayStr;
+        let endStr = todayStr;
+        if (period === 'yesterday') { startStr = yesterdayStr; endStr = yesterdayStr; }
+        else if (period === 'this_week') { startStr = weekStartStr; endStr = todayStr; }
+        else if (period === 'last_7_days') { startStr = sevenDaysAgoStr; endStr = todayStr; }
+
+        const inRange = (iso: string): boolean => {
+          if (!iso) return false;
+          const d = new Date(iso);
+          if (isNaN(d.getTime())) return false;
+          const ds = toNlDate(d);
+          return ds >= startStr && ds <= endStr;
+        };
+
+        type CompletedTask = {
+          auto: string;
+          license: string;
+          taak: string;
+          medewerker: string;
+          tijd: string;
+        };
+        const completed: CompletedTask[] = [];
+
+        for (const v of allVehicles) {
+          const checklist: any[] = v?.details?.preDeliveryChecklist || [];
+          for (const item of checklist) {
+            if (item?.completed !== true) continue;
+            const completedAt: string = item.completedAt || '';
+            if (!inRange(completedAt)) continue;
+            const naam: string = item.completedByName || 'onbekend';
+            if (medewerkerFilter && !naam.toLowerCase().includes(medewerkerFilter)) continue;
+            completed.push({
+              auto: `${v.brand || ''} ${v.model || ''}`.trim(),
+              license: v.license_number || '-',
+              taak: item.description || '(geen omschrijving)',
+              medewerker: naam,
+              tijd: completedAt,
+            });
+          }
+        }
+
+        // Sorteer nieuwste eerst
+        completed.sort((a, b) => (a.tijd < b.tijd ? 1 : -1));
+
+        // Aggregeer per medewerker
+        const perMedewerkerMap: Record<string, CompletedTask[]> = {};
+        for (const t of completed) {
+          if (!perMedewerkerMap[t.medewerker]) perMedewerkerMap[t.medewerker] = [];
+          perMedewerkerMap[t.medewerker].push(t);
+        }
+        const perMedewerker = Object.entries(perMedewerkerMap)
+          .map(([naam, taken]) => ({
+            medewerker: naam,
+            aantal: taken.length,
+            taken: taken.map(t => ({
+              auto: `${t.auto} (${t.license})`,
+              taak: t.taak,
+              tijd: t.tijd,
+            })),
+          }))
+          .sort((a, b) => b.aantal - a.aantal);
+
+        const periodeLabel: Record<string, string> = {
+          today: 'vandaag',
+          yesterday: 'gisteren',
+          this_week: 'deze week',
+          last_7_days: 'laatste 7 dagen',
+        };
+
+        let message: string;
+        if (completed.length === 0) {
+          message = `Geen afgevinkte checklist taken gevonden voor ${periodeLabel[period] || period}${medewerkerFilter ? ` (medewerker: ${medewerkerFilter})` : ''}.`;
+        } else {
+          const lines = [
+            `📋 Afgevinkte taken ${periodeLabel[period] || period}: ${completed.length} totaal`,
+            ``,
+            ...perMedewerker.map(m => {
+              const taakLines = m.taken.map(t => {
+                const tijd = new Date(t.tijd).toLocaleTimeString('nl-NL', {
+                  timeZone: TZ, hour: '2-digit', minute: '2-digit'
+                });
+                return `  • ${tijd} - ${t.auto}: ${t.taak}`;
+              }).join('\n');
+              return `👤 ${m.medewerker} (${m.aantal})\n${taakLines}`;
+            }),
+          ];
+          message = lines.join('\n');
+        }
+
+        return {
+          success: true,
+          data: {
+            periode: period,
+            start_date: startStr,
+            end_date: endStr,
+            totaal_afgevinkt: completed.length,
+            per_medewerker: perMedewerker,
+            volledige_lijst: completed,
+          },
+          message,
+        };
+      }
+
       default:
         return { success: false, error: `Unknown Lisa tool: ${toolName}` };
     }
