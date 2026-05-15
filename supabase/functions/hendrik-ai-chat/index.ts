@@ -2741,6 +2741,25 @@ function getLisaTools() {
         required: ['search']
       }
     },
+    {
+      name: 'get_completed_tasks',
+      description: 'Haal alle afgevinkt pre-delivery checklist taken op voor een specifieke periode. Gebruik dit als iemand vraagt wat er vandaag/gisteren/deze week is gedaan, wat het team heeft afgevinkt, of wat een specifieke medewerker heeft gedaan.',
+      parameters: {
+        type: 'object',
+        properties: {
+          period: {
+            type: 'string',
+            enum: ['today', 'yesterday', 'this_week', 'last_7_days'],
+            description: 'De periode waarover de rapportage moet gaan'
+          },
+          medewerker: {
+            type: 'string',
+            description: 'Optioneel - filter op specifieke medewerker naam (bijv. lloyd, martijn)'
+          }
+        },
+        required: ['period']
+      }
+    },
   ];
 }
 
