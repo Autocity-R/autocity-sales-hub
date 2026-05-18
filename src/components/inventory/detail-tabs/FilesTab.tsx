@@ -7,6 +7,7 @@ import { FileUploader } from "@/components/inventory/FileUploader";
 import { VehicleFile, FileCategory } from "@/types/inventory";
 import { SavedContractMetadata, deleteContractFromVehicle } from "@/services/contractStorageService";
 import { useToast } from "@/hooks/use-toast";
+import { IntakeInspectionList } from "@/components/inventory/intake/IntakeInspectionList";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +25,12 @@ interface FilesTabProps {
   onFileDelete: (fileId: string, filePath: string) => void;
   onSendEmail?: (type: string) => void;
   readOnly?: boolean;
+  vehicleId?: string;
+  vehicleBrand?: string;
+  vehicleModel?: string;
+  vehicleLicense?: string;
+  vehicleYear?: number;
+  vehicleMileage?: number;
 }
 
 export const FilesTab: React.FC<FilesTabProps> = ({ 
@@ -31,7 +38,13 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   onFileUpload,
   onFileDelete,
   onSendEmail,
-  readOnly = false
+  readOnly = false,
+  vehicleId,
+  vehicleBrand,
+  vehicleModel,
+  vehicleLicense,
+  vehicleYear,
+  vehicleMileage,
 }) => {
   const { toast } = useToast();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -83,7 +96,19 @@ export const FilesTab: React.FC<FilesTabProps> = ({
     <div className="grid grid-cols-1 gap-4">
       <div className="space-y-4">
         <h3 className="text-lg font-medium">Documenten</h3>
-        
+
+        {vehicleId && (
+          <IntakeInspectionList
+            vehicleId={vehicleId}
+            vehicleBrand={vehicleBrand}
+            vehicleModel={vehicleModel}
+            vehicleLicense={vehicleLicense}
+            vehicleYear={vehicleYear}
+            vehicleMileage={vehicleMileage}
+            readOnly={readOnly}
+          />
+        )}
+
         {/* Contracten Sectie */}
         <div className="border rounded-md p-4 space-y-4 bg-primary/5">
           <div className="flex items-center justify-between">
