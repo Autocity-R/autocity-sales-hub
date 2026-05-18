@@ -1,6 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { PDFDocument, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
+import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,37 +11,45 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
 
-// Brand colors
-const NAVY = rgb(0x1f / 255, 0x38 / 255, 0x64 / 255);
-const YELLOW = rgb(0xff / 255, 0xf3 / 255, 0xcd / 255);
-const GREEN = rgb(0xd4 / 255, 0xed / 255, 0xda / 255);
+// ===== BRAND COLORS (v5) =====
+const hex = (h: string) => {
+  const r = parseInt(h.slice(0, 2), 16) / 255;
+  const g = parseInt(h.slice(2, 4), 16) / 255;
+  const b = parseInt(h.slice(4, 6), 16) / 255;
+  return rgb(r, g, b);
+};
+const NAVY = hex("1F3864");
+const YELLOW_ROW = hex("FFF9E6");
+const YELLOW_BOX = hex("FFF3CD");
+const ORANGE = hex("ED7D31");
+const GREEN_CAT = hex("548235");
+const GREEN_CELL = hex("E2EFDA");
+const RED_DMG = hex("C00000");
+const GREY_HEAD = hex("595959");
+const RED_ROW = hex("FFE0E0");
 const WHITE = rgb(1, 1, 1);
-const TEXT = rgb(0.12, 0.12, 0.12);
-const MUTED = rgb(0.45, 0.45, 0.45);
+const TEXT = hex("262626");
+const MUTED = hex("8C8C8C");
+const BORDER = hex("D9D9D9");
 
 function parseClaudeResponse(text: string): any {
   try {
     let clean = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const first = clean.indexOf("{");
-    const last = clean.lastIndexOf("}");
-    if (first !== -1 && last !== -1) clean = clean.substring(first, last + 1);
+    const f = clean.indexOf("{"); const l = clean.lastIndexOf("}");
+    if (f !== -1 && l !== -1) clean = clean.substring(f, l + 1);
     return JSON.parse(clean);
-  } catch (e) {
-    console.error("[robin] parse error", e);
-    return null;
-  }
+  } catch (e) { console.error("[robin] parse error", e); return null; }
 }
 
 async function blobToBase64(blob: Blob): Promise<string> {
   const buf = new Uint8Array(await blob.arrayBuffer());
-  let bin = "";
-  for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+  let bin = ""; const CHUNK = 0x8000;
+  for (let i = 0; i < buf.length; i += CHUNK) bin += String.fromCharCode(...buf.subarray(i, i + CHUNK));
   return btoa(bin);
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
   let inspection_id: string | null = null;
 
@@ -49,28 +57,23 @@ Deno.serve(async (req) => {
     const body = await req.json();
     inspection_id = body.inspection_id;
     if (!inspection_id) throw new Error("inspection_id ontbreekt");
-
     console.log(`[robin] start ${inspection_id}`);
 
-    // 1. Fetch inspection + agent prompt
     const { data: insp, error: inspErr } = await supabase
       .from("intake_inspections").select("*").eq("id", inspection_id).single();
     if (inspErr || !insp) throw new Error(`Inspectie niet gevonden: ${inspErr?.message}`);
 
     const { data: robin } = await supabase
       .from("ai_agents").select("system_prompt").eq("name", "Robin").maybeSingle();
-    const systemPrompt = robin?.system_prompt || "Je bent Robin de inname inspector. Return JSON.";
+    const systemPrompt = robin?.system_prompt || "Je bent Robin. Return JSON.";
 
-    // 2. List frames
     const { data: filesList, error: listErr } = await supabase.storage
-      .from("intake-frames").list(inspection_id, { limit: 100, sortBy: { column: "name", order: "asc" } });
+      .from("intake-frames").list(inspection_id, { limit: 200, sortBy: { column: "name", order: "asc" } });
     if (listErr) throw new Error(`Frames listen: ${listErr.message}`);
     const frameFiles = (filesList || []).filter(f => f.name.endsWith(".jpg")).sort((a, b) => a.name.localeCompare(b.name));
     if (frameFiles.length === 0) throw new Error("Geen frames gevonden");
-
     console.log(`[robin] ${frameFiles.length} frames`);
 
-    // 3. Download frames as base64
     const images: { name: string; b64: string }[] = [];
     for (const f of frameFiles) {
       const { data: blob, error: dlErr } = await supabase.storage
@@ -80,28 +83,33 @@ Deno.serve(async (req) => {
     }
     if (images.length === 0) throw new Error("Geen frames kunnen downloaden");
 
-    // 4. Build Anthropic vision request
     const userContent: any[] = [];
     images.forEach((img) => {
-      userContent.push({
-        type: "image",
-        source: { type: "base64", media_type: "image/jpeg", data: img.b64 },
-      });
-      userContent.push({ type: "text", text: img.name });
+      userContent.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: img.b64 } });
+      userContent.push({ type: "text", text: `[${img.name}]` });
     });
+    const leeftijd = insp.vehicle_year ? Math.max(0, new Date().getFullYear() - Number(insp.vehicle_year)) : null;
+    const kmPerJaar = (insp.vehicle_year && insp.vehicle_mileage && leeftijd && leeftijd > 0)
+      ? Math.round(Number(insp.vehicle_mileage) / leeftijd) : null;
     userContent.push({
       type: "text",
-      text: `\nVOERTUIG: ${insp.vehicle_brand ?? "?"} ${insp.vehicle_model ?? "?"}, bouwjaar ${insp.vehicle_year ?? "?"}, km-stand ${insp.vehicle_mileage ?? "?"}, kenteken ${insp.vehicle_license ?? "?"}.\n\nAnalyseer alle frames hierboven (frame-namen staan tussen de afbeeldingen) en geef je analyse als JSON volgens het OUTPUT FORMAT.`,
+      text:
+`\nVOERTUIG CRM DATA:
+- Merk/Model: ${insp.vehicle_brand ?? "?"} ${insp.vehicle_model ?? ""}
+- Kenteken: ${insp.vehicle_license ?? "— (importauto, nog niet ingeschreven)"}
+- VIN: ${insp.vehicle_vin ?? "?"}
+- Bouwjaar: ${insp.vehicle_year ?? "?"} (leeftijd: ${leeftijd ?? "?"} jaar)
+- Kilometerstand: ${insp.vehicle_mileage ? Number(insp.vehicle_mileage).toLocaleString("nl-NL") : "?"} km
+- Gem. km/jaar: ${kmPerJaar ? kmPerJaar.toLocaleString("nl-NL") : "?"}
+- Aantal frames: ${images.length}
+
+Analyseer alle frames hierboven en geef je analyse als JSON volgens het exacte OUTPUT FORMAT in je system prompt. Frame-namen staan tussen blokhaken na elke foto.`,
     });
 
     console.log(`[robin] calling Anthropic with ${images.length} images`);
     const anthRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: {
-        "x-api-key": ANTHROPIC_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
+      headers: { "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
         max_tokens: 8000,
@@ -118,10 +126,9 @@ Deno.serve(async (req) => {
     const rawText = textBlock?.text || "";
     const analysis = parseClaudeResponse(rawText);
     if (!analysis) throw new Error("Kon Robin's JSON niet parsen");
-
     console.log(`[robin] analysis OK, ${analysis.schade_overzicht?.length ?? 0} schades`);
 
-    // 5. Persist damages
+    // Persist damages (best-effort)
     const damages: any[] = Array.isArray(analysis.schade_overzicht) ? analysis.schade_overzicht : [];
     if (damages.length > 0) {
       const rows = damages.map((d: any) => ({
@@ -132,53 +139,48 @@ Deno.serve(async (req) => {
         ernst: ["minimaal","licht","middel","zwaar"].includes(d.ernst) ? d.ernst : "licht",
         afmeting_cm: typeof d.afmeting_cm === "number" ? d.afmeting_cm : null,
         aanbevolen_actie: ["polijsten","touch_up","restylen","spuiten","vervangen","accepteren"].includes(d.aanbevolen_actie) ? d.aanbevolen_actie : "accepteren",
-        geschatte_kosten_min: d.geschatte_kosten_min ?? 0,
-        geschatte_kosten_max: d.geschatte_kosten_max ?? 0,
+        geschatte_kosten_min: d.kosten_min ?? d.geschatte_kosten_min ?? 0,
+        geschatte_kosten_max: d.kosten_max ?? d.geschatte_kosten_max ?? 0,
         prioriteit: ["kritiek","hoog","midden","laag"].includes(d.prioriteit) ? d.prioriteit : "midden",
         in_taxatierapport: !!d.in_taxatierapport,
         claim_potential: !!d.claim_potential,
-        redenering: d.redenering || null,
+        redenering: d.realism_check || d.redenering || null,
         frame_referentie: d.frame_referentie || null,
       }));
       const { error: dmgErr } = await supabase.from("intake_damages").insert(rows);
       if (dmgErr) console.error("[robin] damages insert error", dmgErr);
     }
 
-    // 6. Update inspection with analysis summary
-    const showroom = analysis.showroom_plan || {};
-    const claim = analysis.claim_advies || {};
     const autoInfo = analysis.auto_info || {};
+    const totaalMin = analysis.totaal_min ?? analysis.showroom_plan?.totale_kosten_min ?? 0;
+    const totaalMax = analysis.totaal_max ?? analysis.showroom_plan?.totale_kosten_max ?? 0;
+    const claim = analysis.claim_advies || {};
 
     await supabase.from("intake_inspections").update({
       status: "generating_pdf",
       categorie: ["A","B","C"].includes(autoInfo.categorie) ? autoInfo.categorie : null,
-      categorie_reden: autoInfo.categorie_reden || null,
-      totale_kosten_min: showroom.totale_kosten_min ?? 0,
-      totale_kosten_max: showroom.totale_kosten_max ?? 0,
+      categorie_reden: autoInfo.categorie_titel || null,
+      totale_kosten_min: totaalMin,
+      totale_kosten_max: totaalMax,
       schade_count: damages.length,
-      claim_aanbevolen: !!claim.claim_aanbevolen,
+      claim_aanbevolen: !!claim.aanbevolen,
       claim_waarde: claim.geschatte_claim_waarde_euro ?? 0,
       samenvatting_team: analysis.samenvatting_team || null,
       robin_analyse: analysis,
-      taxatie_check_result: analysis.taxatie_check?.samenvatting || null,
     }).eq("id", inspection_id);
 
-    // 7. Generate PDF
     console.log(`[robin] generating PDF`);
-    const pdfBytes = await generatePdf(insp, analysis, damages, images, supabase);
+    const pdfBytes = await generatePdf(insp, analysis, images);
 
-    // 8. Upload PDF
     const pdfPath = `${inspection_id}.pdf`;
     const { error: upErr } = await supabase.storage.from("intake-reports").upload(pdfPath, pdfBytes, {
       contentType: "application/pdf", upsert: true,
     });
     if (upErr) throw new Error(`PDF upload: ${upErr.message}`);
 
-    // 9. Signed URL (7 days)
-    const { data: signed } = await supabase.storage.from("intake-reports").createSignedUrl(pdfPath, 60 * 60 * 24 * 7);
+    const { data: signed } = await supabase.storage.from("intake-reports").createSignedUrl(pdfPath, 60 * 60 * 24 * 365);
     const pdfUrl = signed?.signedUrl || "";
 
-    // 10. vehicle_files row → toont in Documenten tab
     const reportName = `Robin Inname Rapport ${new Date().toLocaleDateString("nl-NL")}.pdf`;
     await supabase.from("vehicle_files").insert({
       vehicle_id: insp.vehicle_id,
@@ -189,7 +191,6 @@ Deno.serve(async (req) => {
       metadata: { inspection_id, categorie: autoInfo.categorie, schade_count: damages.length },
     });
 
-    // 11. Finalize
     await supabase.from("intake_inspections").update({
       status: "completed",
       pdf_url: pdfUrl,
@@ -209,219 +210,572 @@ Deno.serve(async (req) => {
       }).eq("id", inspection_id);
     }
     return new Response(JSON.stringify({ ok: false, error: String(e.message || e) }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
 
-// ============ PDF GENERATION ============
-async function generatePdf(
-  insp: any,
-  analysis: any,
-  damages: any[],
-  images: { name: string; b64: string }[],
-  supabase: any,
-): Promise<Uint8Array> {
+// =============================================================
+// PDF GENERATION — matches Robin v5 layout
+// =============================================================
+const PAGE_W = 595, PAGE_H = 842, MARGIN = 50;
+const CONTENT_W = PAGE_W - 2 * MARGIN;
+
+type Ctx = {
+  pdf: PDFDocument;
+  page: PDFPage;
+  y: number;
+  helv: PDFFont;
+  bold: PDFFont;
+  italic: PDFFont;
+};
+
+async function generatePdf(insp: any, analysis: any, images: { name: string; b64: string }[]): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   const helv = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const italic = await pdf.embedFont(StandardFonts.HelveticaOblique);
 
-  const W = 595; // A4
-  const H = 842;
-  const M = 40;
-
-  const autoInfo = analysis.auto_info || {};
-  const showroom = analysis.showroom_plan || {};
-  const claim = analysis.claim_advies || {};
-  const overzicht: any[] = analysis.inspectie_overzicht || [];
-
-  // Helpers
-  const drawText = (page: any, text: string, x: number, y: number, opts: any = {}) => {
-    page.drawText(String(text ?? ""), { x, y, size: opts.size ?? 10, font: opts.bold ? bold : helv, color: opts.color ?? TEXT, ...opts });
-  };
-  const drawBox = (page: any, x: number, y: number, w: number, h: number, color: any) => {
-    page.drawRectangle({ x, y, width: w, height: h, color });
-  };
-  const wrap = (text: string, maxChars: number): string[] => {
-    const words = String(text || "").split(/\s+/);
-    const lines: string[] = []; let cur = "";
-    for (const w of words) {
-      if ((cur + " " + w).trim().length > maxChars) { if (cur) lines.push(cur); cur = w; }
-      else cur = (cur + " " + w).trim();
-    }
-    if (cur) lines.push(cur);
-    return lines;
-  };
+  const ctx: Ctx = { pdf, page: pdf.addPage([PAGE_W, PAGE_H]), y: PAGE_H, helv, bold, italic };
 
   // ===== PAGE 1: COVER =====
-  const p1 = pdf.addPage([W, H]);
-  drawBox(p1, 0, H - 80, W, 80, NAVY);
-  drawText(p1, "ROBIN INNAME RAPPORT", M, H - 45, { size: 20, bold: true, color: WHITE });
-  drawText(p1, "Auto City — AI Schade Inspectie", M, H - 65, { size: 10, color: WHITE });
+  drawCoverHeader(ctx, insp, analysis);
+  drawVoertuiggegevens(ctx, insp, analysis);
+  drawCategorieBlok(ctx, analysis);
+  drawSamenvattingTeam(ctx, analysis);
 
-  let y = H - 120;
-  drawText(p1, `${insp.vehicle_brand ?? ""} ${insp.vehicle_model ?? ""}`, M, y, { size: 22, bold: true });
-  y -= 22;
-  drawText(p1, `Kenteken: ${insp.vehicle_license ?? "—"}`, M, y, { size: 11, color: MUTED });
-  y -= 30;
-
-  // Voertuiggegevens tabel
-  drawText(p1, "VOERTUIGGEGEVENS", M, y, { bold: true, size: 12, color: NAVY }); y -= 18;
-  const rows: [string, string, boolean][] = [
-    ["Merk", String(insp.vehicle_brand ?? "—"), false],
-    ["Model", String(insp.vehicle_model ?? "—"), false],
-    ["Bouwjaar", String(insp.vehicle_year ?? "—"), true],
-    ["Km-stand", insp.vehicle_mileage ? insp.vehicle_mileage.toLocaleString("nl-NL") + " km" : "—", true],
-    ["Km per jaar", calcKmPerYear(insp.vehicle_year, insp.vehicle_mileage), true],
-    ["Categorie", `${autoInfo.categorie ?? "—"} — ${autoInfo.categorie_reden ?? ""}`, false],
-  ];
-  for (const [k, v, hl] of rows) {
-    if (hl) drawBox(p1, M, y - 4, W - 2 * M, 16, YELLOW);
-    drawText(p1, k, M + 6, y, { bold: true });
-    drawText(p1, v, M + 140, y);
-    y -= 18;
-  }
-
-  y -= 16;
-  // Samenvatting team — geel highlight
-  drawText(p1, "SAMENVATTING VOOR HET TEAM", M, y, { bold: true, size: 12, color: NAVY }); y -= 16;
-  const samenvLines = wrap(analysis.samenvatting_team || "Geen samenvatting beschikbaar.", 95);
-  const samenvH = samenvLines.length * 13 + 16;
-  drawBox(p1, M, y - samenvH + 8, W - 2 * M, samenvH, YELLOW);
-  let sy = y;
-  for (const line of samenvLines) { drawText(p1, line, M + 8, sy, { size: 10 }); sy -= 13; }
-  y = sy - 16;
-
-  // Kosten/claim blok
-  drawText(p1, "TOTAAL KOSTENRAMING", M, y, { bold: true, size: 12, color: NAVY }); y -= 18;
-  drawText(p1, `€ ${(showroom.totale_kosten_min ?? 0).toLocaleString("nl-NL")} – € ${(showroom.totale_kosten_max ?? 0).toLocaleString("nl-NL")}`, M, y, { size: 16, bold: true });
-  drawText(p1, `Doorlooptijd: ${showroom.doorlooptijd_dagen ?? "?"} dagen · ${damages.length} schades`, M, y - 18, { size: 10, color: MUTED });
-
-  if (claim.claim_aanbevolen) {
-    y -= 50;
-    drawBox(p1, M, y - 4, W - 2 * M, 28, rgb(1, 0.92, 0.7));
-    drawText(p1, `⚠ CLAIM AANBEVOLEN: € ${(claim.geschatte_claim_waarde_euro ?? 0).toLocaleString("nl-NL")}`, M + 8, y + 8, { bold: true });
-  }
-
-  // ===== PAGE 2+: SCHADE DETAIL met embedded frames =====
-  let curPage: any = null;
-  let cy = 0;
-
-  const ensurePage = (minSpace: number) => {
-    if (!curPage || cy - minSpace < M) {
-      curPage = pdf.addPage([W, H]);
-      drawBox(curPage, 0, H - 40, W, 40, NAVY);
-      drawText(curPage, "SCHADE DETAIL", M, H - 26, { size: 14, bold: true, color: WHITE });
-      cy = H - 60;
-    }
-  };
-
+  // ===== PAGE 2+: SCHADE OVERZICHT =====
+  const damages: any[] = Array.isArray(analysis.schade_overzicht) ? analysis.schade_overzicht : [];
+  newPage(ctx);
+  drawSectionTitle(ctx, "SCHADE OVERZICHT");
   if (damages.length === 0) {
-    ensurePage(40);
-    drawText(curPage, "Geen schades gerapporteerd.", M, cy);
+    ensureSpace(ctx, 30);
+    drawText(ctx, "Geen schades aangetroffen.", MARGIN, ctx.y, { size: 11 });
+    ctx.y -= 16;
   } else {
-    for (const d of damages) {
-      ensurePage(220);
-      // Header
-      drawBox(curPage, M, cy - 4, W - 2 * M, 22, NAVY);
-      drawText(curPage, `${d.id || ""} · ${d.locatie || ""}`, M + 8, cy + 4, { bold: true, color: WHITE, size: 11 });
-      drawText(curPage, `${(d.type || "").toUpperCase()} · ${d.ernst || ""}`, W - M - 130, cy + 4, { color: WHITE, size: 10 });
-      cy -= 30;
-
-      // Frame screenshot
-      const frameImg = images.find(im => im.name === d.frame_referentie);
-      if (frameImg) {
-        try {
-          const imgBytes = Uint8Array.from(atob(frameImg.b64), c => c.charCodeAt(0));
-          const embedded = await pdf.embedJpg(imgBytes);
-          const imgW = (W - 2 * M);
-          const imgH = imgW * (embedded.height / embedded.width);
-          const maxH = 180;
-          const finalH = Math.min(imgH, maxH);
-          const finalW = finalH * (embedded.width / embedded.height);
-          curPage.drawImage(embedded, { x: M, y: cy - finalH, width: finalW, height: finalH });
-          cy -= finalH + 8;
-        } catch (e) {
-          console.warn("[robin] embed frame failed", e);
-        }
-      }
-
-      // Details
-      drawText(curPage, `Actie: ${d.aanbevolen_actie || "—"}`, M, cy, { bold: true }); cy -= 14;
-      drawText(curPage, `Kosten: € ${(d.geschatte_kosten_min ?? 0).toLocaleString("nl-NL")} – € ${(d.geschatte_kosten_max ?? 0).toLocaleString("nl-NL")}  ·  Prioriteit: ${d.prioriteit || "—"}${d.claim_potential ? "  ·  CLAIM" : ""}`, M, cy); cy -= 14;
-      if (d.redenering) {
-        for (const line of wrap(d.redenering, 95)) { ensurePage(14); drawText(curPage, line, M, cy, { size: 9, color: MUTED }); cy -= 12; }
-      }
-      cy -= 14;
-    }
+    for (const d of damages) await drawDamage(ctx, d, images);
   }
 
-  // ===== PAGE: INSPECTIE OVERZICHT =====
-  const p3 = pdf.addPage([W, H]);
-  drawBox(p3, 0, H - 40, W, 40, NAVY);
-  drawText(p3, "INSPECTIE OVERZICHT", M, H - 26, { size: 14, bold: true, color: WHITE });
-  let oy = H - 60;
-  drawText(p3, "Onderdeel", M + 4, oy, { bold: true, size: 10 });
-  drawText(p3, "Status", M + 220, oy, { bold: true, size: 10 });
-  drawText(p3, "Opmerking", M + 300, oy, { bold: true, size: 10 });
-  oy -= 14;
-  for (const item of overzicht) {
-    if (oy < M + 20) break;
-    const isSchade = item.status === "SCHADE";
-    if (isSchade) drawBox(p3, M, oy - 3, W - 2 * M, 14, rgb(1, 0.93, 0.93));
-    drawText(p3, item.onderdeel || "—", M + 4, oy, { size: 9 });
-    drawText(p3, item.status || "—", M + 220, oy, { size: 9, bold: isSchade });
-    drawText(p3, (item.opmerking || "").slice(0, 50), M + 300, oy, { size: 9, color: MUTED });
-    oy -= 14;
+  // ===== PAGE: VOLLEDIGE INSPECTIE OVERZICHT =====
+  newPage(ctx);
+  drawSectionTitle(ctx, "VOLLEDIGE INSPECTIE OVERZICHT");
+  if (analysis.inspectie_intro) {
+    drawWrappedText(ctx, analysis.inspectie_intro, { size: 10 });
+    ctx.y -= 6;
   }
-
-  // ===== PAGE: CLAIM + KOSTEN =====
-  const p4 = pdf.addPage([W, H]);
-  drawBox(p4, 0, H - 40, W, 40, NAVY);
-  drawText(p4, "SHOWROOM PLAN & CLAIM", M, H - 26, { size: 14, bold: true, color: WHITE });
-  let py = H - 70;
-
-  drawText(p4, "Totale kosten", M, py, { bold: true, size: 12, color: NAVY }); py -= 18;
-  drawBox(p4, M, py - 4, W - 2 * M, 24, GREEN);
-  drawText(p4, `€ ${(showroom.totale_kosten_min ?? 0).toLocaleString("nl-NL")} – € ${(showroom.totale_kosten_max ?? 0).toLocaleString("nl-NL")}   ·   ${showroom.doorlooptijd_dagen ?? "?"} dagen doorlooptijd`, M + 8, py + 6, { bold: true });
-  py -= 38;
-
-  const planning = showroom.planning_per_discipline || {};
-  drawText(p4, "Planning per discipline", M, py, { bold: true, size: 12, color: NAVY }); py -= 16;
-  for (const [disc, ids] of Object.entries(planning)) {
-    const arr = Array.isArray(ids) ? ids : [];
-    if (arr.length === 0) continue;
-    drawText(p4, `${disc}:`, M, py, { bold: true, size: 10 });
-    drawText(p4, arr.join(", "), M + 110, py, { size: 10 });
-    py -= 14;
+  drawInspectieTable(ctx, analysis.inspectie_overzicht || []);
+  ctx.y -= 10;
+  if (analysis.algemene_observatie) {
+    drawCalloutBox(ctx, "Robin's algemene observatie: ", analysis.algemene_observatie, GREEN_CELL, GREEN_CAT);
   }
+  ctx.y -= 14;
+  drawSectionTitle(ctx, "BEPERKINGEN VAN DEZE ANALYSE");
+  const beperkingen: string[] = Array.isArray(analysis.beperkingen) ? analysis.beperkingen : [];
+  drawBulletBox(ctx, "Niet beoordeeld op deze video:", beperkingen);
 
-  py -= 14;
-  if (claim.claim_aanbevolen) {
-    drawText(p4, "Claim advies", M, py, { bold: true, size: 12, color: NAVY }); py -= 16;
-    drawBox(p4, M, py - 60, W - 2 * M, 70, YELLOW);
-    drawText(p4, `Aanbevolen claim: € ${(claim.geschatte_claim_waarde_euro ?? 0).toLocaleString("nl-NL")}`, M + 8, py - 2, { bold: true });
-    let cyy = py - 18;
-    for (const line of wrap(claim.onderbouwing || "", 95)) { drawText(p4, line, M + 8, cyy, { size: 9 }); cyy -= 12; if (cyy < py - 55) break; }
-    py -= 80;
-    drawText(p4, `Te claimen schades: ${(claim.te_claimen_schades || []).join(", ")}`, M, py, { size: 9, color: MUTED });
-  } else {
-    drawText(p4, "Geen claim aanbevolen.", M, py, { size: 10, color: MUTED });
-  }
+  // ===== PAGE: KOSTEN + CLAIM + VOLGENDE STAPPEN =====
+  newPage(ctx);
+  drawSectionTitle(ctx, "KOSTEN OVERZICHT");
+  drawKostenTable(ctx, analysis.kosten_overzicht || [], analysis.totaal_min ?? 0, analysis.totaal_max ?? 0);
+  ctx.y -= 16;
+  drawSectionTitle(ctx, "CLAIM ADVIES LEVERANCIER");
+  drawClaimBox(ctx, analysis.claim_advies || {});
+  ctx.y -= 14;
+  drawSectionTitle(ctx, "VOLGENDE STAPPEN");
+  drawNumberedList(ctx, analysis.volgende_stappen || []);
 
-  // Footer op alle pagina's
+  drawCentralFooter(ctx);
+
+  // Page footer + numbers on every page
   const pages = pdf.getPages();
   pages.forEach((p, idx) => {
-    p.drawText(`Robin AI · Auto City · ${new Date().toLocaleDateString("nl-NL")}`, { x: M, y: 20, size: 8, font: helv, color: MUTED });
-    p.drawText(`Pagina ${idx + 1} / ${pages.length}`, { x: W - M - 60, y: 20, size: 8, font: helv, color: MUTED });
+    p.drawText(`Pagina ${idx + 1} / ${pages.length}`, { x: PAGE_W - MARGIN - 70, y: 24, size: 8, font: helv, color: MUTED });
   });
 
   return await pdf.save();
 }
 
-function calcKmPerYear(year: any, mileage: any): string {
-  if (!year || !mileage) return "—";
-  const age = Math.max(1, new Date().getFullYear() - Number(year));
-  return Math.round(Number(mileage) / age).toLocaleString("nl-NL") + " km/jaar";
+// ----------------- low-level draw helpers -----------------
+function drawText(ctx: Ctx, text: string, x: number, y: number, opts: { size?: number; bold?: boolean; italic?: boolean; color?: any } = {}) {
+  const font = opts.bold ? ctx.bold : opts.italic ? ctx.italic : ctx.helv;
+  ctx.page.drawText(String(text ?? ""), { x, y, size: opts.size ?? 10, font, color: opts.color ?? TEXT });
 }
+function drawBox(ctx: Ctx, x: number, y: number, w: number, h: number, color: any) {
+  ctx.page.drawRectangle({ x, y, width: w, height: h, color });
+}
+function drawBorder(ctx: Ctx, x: number, y: number, w: number, h: number, color: any, thickness = 0.5) {
+  ctx.page.drawRectangle({ x, y, width: w, height: h, borderColor: color, borderWidth: thickness });
+}
+function drawHLine(ctx: Ctx, x: number, y: number, w: number, color: any, thickness = 1) {
+  ctx.page.drawLine({ start: { x, y }, end: { x: x + w, y }, color, thickness });
+}
+
+function wrap(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+  const words = String(text || "").split(/\s+/);
+  const lines: string[] = []; let cur = "";
+  for (const w of words) {
+    const test = cur ? cur + " " + w : w;
+    if (font.widthOfTextAtSize(test, size) > maxWidth && cur) { lines.push(cur); cur = w; }
+    else cur = test;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+function newPage(ctx: Ctx) {
+  ctx.page = ctx.pdf.addPage([PAGE_W, PAGE_H]);
+  ctx.y = PAGE_H - MARGIN;
+}
+function ensureSpace(ctx: Ctx, h: number) {
+  if (ctx.y - h < MARGIN + 20) newPage(ctx);
+}
+
+function drawWrappedText(ctx: Ctx, text: string, opts: { size?: number; bold?: boolean; color?: any; indent?: number } = {}) {
+  const size = opts.size ?? 10;
+  const font = opts.bold ? ctx.bold : ctx.helv;
+  const indent = opts.indent ?? 0;
+  const lines = wrap(text, font, size, CONTENT_W - indent);
+  for (const line of lines) {
+    ensureSpace(ctx, size + 4);
+    drawText(ctx, line, MARGIN + indent, ctx.y - size, { size, bold: opts.bold, color: opts.color });
+    ctx.y -= size + 4;
+  }
+}
+
+function drawSectionTitle(ctx: Ctx, title: string) {
+  ensureSpace(ctx, 30);
+  drawText(ctx, title, MARGIN, ctx.y - 14, { size: 13, bold: true, color: NAVY });
+  ctx.y -= 18;
+  drawHLine(ctx, MARGIN, ctx.y, CONTENT_W, NAVY, 1.2);
+  ctx.y -= 14;
+}
+
+// ----------------- COVER -----------------
+function drawCoverHeader(ctx: Ctx, insp: any, _analysis: any) {
+  // Navy bar
+  drawBox(ctx, 0, PAGE_H - 110, PAGE_W, 110, NAVY);
+  drawText(ctx, "ROBIN INNAME", MARGIN, PAGE_H - 55, { size: 22, bold: true, color: WHITE });
+  drawText(ctx, "INSPECTIE", MARGIN, PAGE_H - 80, { size: 22, bold: true, color: WHITE });
+  drawText(ctx, "Auto City Automotive Group B.V.", 320, PAGE_H - 55, { size: 11, color: WHITE });
+  const dt = new Date().toLocaleString("nl-NL", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  drawText(ctx, `Inspectie datum: ${dt}`, 320, PAGE_H - 72, { size: 11, color: WHITE });
+  ctx.y = PAGE_H - 130;
+}
+
+function drawVoertuiggegevens(ctx: Ctx, insp: any, analysis: any) {
+  const ai = analysis.auto_info || {};
+  drawSectionTitle(ctx, "VOERTUIGGEGEVENS");
+
+  const leeftijd = insp.vehicle_year ? Math.max(0, new Date().getFullYear() - Number(insp.vehicle_year)) : null;
+  const kmPerJaar = (insp.vehicle_year && insp.vehicle_mileage && leeftijd && leeftijd > 0)
+    ? Math.round(Number(insp.vehicle_mileage) / leeftijd).toLocaleString("nl-NL") + " km/jaar"
+    : "—";
+  const inkoopDatum = insp.purchase_date ? new Date(insp.purchase_date).toLocaleDateString("nl-NL") : (ai.inkoopdatum || "—");
+  const inkoopPrijs = ai.inkoopprijs || (insp.purchase_price ? "€ " + Number(insp.purchase_price).toLocaleString("nl-NL") : "—");
+
+  const rows: [string, string, boolean][] = [
+    ["Merk/Model", ai.merk_model || `${insp.vehicle_brand ?? ""} ${insp.vehicle_model ?? ""}`.trim() || "—", false],
+    ["Kenteken", insp.vehicle_license || "— (importauto, nog niet ingeschreven)", false],
+    ["Meldcode (laatste 4 VIN)", ai.meldcode || (insp.vehicle_vin ? String(insp.vehicle_vin).slice(-4) : "—"), false],
+    ["Volledig VIN", insp.vehicle_vin || "—", false],
+    ["Bouwjaar", `${insp.vehicle_year ?? "—"}${leeftijd != null ? ` (leeftijd: ${leeftijd} jaar)` : ""}`, true],
+    ["Kilometerstand", insp.vehicle_mileage ? Number(insp.vehicle_mileage).toLocaleString("nl-NL") + " km" : "—", true],
+    ["Gem. km per jaar", ai.gem_km_per_jaar || kmPerJaar, true],
+    ["Status in CRM", ai.status_crm || "Voorraad", false],
+    ["Inkoopdatum", inkoopDatum, false],
+    ["Inkoopprijs", inkoopPrijs, false],
+    ["Kleur", ai.kleur || "—", false],
+  ];
+  const rowH = 22, labelW = 180;
+  for (const [k, v, hl] of rows) {
+    ensureSpace(ctx, rowH + 2);
+    if (hl) drawBox(ctx, MARGIN, ctx.y - rowH + 4, CONTENT_W, rowH, YELLOW_ROW);
+    drawHLine(ctx, MARGIN, ctx.y - rowH + 4, CONTENT_W, BORDER, 0.4);
+    drawText(ctx, k, MARGIN + 8, ctx.y - 12, { bold: true, size: 9.5, color: NAVY });
+    const lines = wrap(v, ctx.helv, 9.5, CONTENT_W - labelW - 16);
+    drawText(ctx, lines[0] || "", MARGIN + labelW, ctx.y - 12, { size: 9.5 });
+    ctx.y -= rowH;
+  }
+  drawHLine(ctx, MARGIN, ctx.y + 4, CONTENT_W, BORDER, 0.4);
+  ctx.y -= 10;
+}
+
+function drawCategorieBlok(ctx: Ctx, analysis: any) {
+  const ai = analysis.auto_info || {};
+  const cat = ai.categorie || "C";
+  const titel = ai.categorie_titel || "";
+  const normLines: string[] = Array.isArray(ai.categorie_norm_lines) ? ai.categorie_norm_lines : [];
+
+  drawSectionTitle(ctx, "STAAT BEOORDELING — REALISM FILTER");
+
+  const boxH = Math.max(140, 50 + normLines.length * 14 + (titel ? 30 : 0));
+  ensureSpace(ctx, boxH + 10);
+  const top = ctx.y;
+  const leftW = 110;
+  // Green category strip
+  drawBox(ctx, MARGIN, top - boxH, leftW, boxH, GREEN_CAT);
+  // Yellow content box + orange border
+  drawBox(ctx, MARGIN + leftW, top - boxH, CONTENT_W - leftW, boxH, YELLOW_BOX);
+  drawBox(ctx, MARGIN + leftW, top - boxH, 4, boxH, ORANGE);
+
+  // Category text centered
+  drawText(ctx, "CATEGORIE", MARGIN + 14, top - boxH / 2 + 6, { bold: true, size: 13, color: WHITE });
+  drawText(ctx, cat, MARGIN + 47, top - boxH / 2 - 12, { bold: true, size: 22, color: WHITE });
+
+  let cy = top - 20;
+  if (titel) {
+    const tLines = wrap(titel, ctx.bold, 10.5, CONTENT_W - leftW - 28);
+    for (const l of tLines) { drawText(ctx, l, MARGIN + leftW + 16, cy, { bold: true, size: 10.5 }); cy -= 14; }
+    cy -= 6;
+  }
+  for (const line of normLines) {
+    const ll = wrap(line, ctx.helv, 9.5, CONTENT_W - leftW - 28);
+    for (let i = 0; i < ll.length; i++) {
+      drawText(ctx, (i === 0 ? "• " : "  ") + ll[i], MARGIN + leftW + 16, cy, { size: 9.5 });
+      cy -= 13;
+    }
+  }
+  ctx.y = top - boxH - 14;
+}
+
+function drawSamenvattingTeam(ctx: Ctx, analysis: any) {
+  drawSectionTitle(ctx, "SAMENVATTING VOOR INNAME TEAM");
+  const text = analysis.samenvatting_team || "—";
+  const innerW = CONTENT_W - 24;
+  const lines = wrap(text, ctx.helv, 10, innerW);
+  const boxH = lines.length * 14 + 20;
+  ensureSpace(ctx, boxH + 6);
+  const top = ctx.y;
+  drawBox(ctx, MARGIN, top - boxH, CONTENT_W, boxH, YELLOW_BOX);
+  drawBox(ctx, MARGIN, top - boxH, 4, boxH, ORANGE);
+  let cy = top - 14;
+  for (const l of lines) { drawText(ctx, l, MARGIN + 14, cy, { size: 10 }); cy -= 14; }
+  ctx.y = top - boxH - 10;
+}
+
+// ----------------- SCHADE DETAIL -----------------
+async function drawDamage(ctx: Ctx, d: any, images: { name: string; b64: string }[]) {
+  ensureSpace(ctx, 60);
+  // Red header
+  const headH = 24;
+  drawBox(ctx, MARGIN, ctx.y - headH, CONTENT_W, headH, RED_DMG);
+  drawText(ctx, `SCHADE ${d.id || "S?"} — ${d.locatie || ""}`, MARGIN + 10, ctx.y - 16, { bold: true, size: 11, color: WHITE });
+  const kosten = `€ ${formatEuro(d.kosten_min ?? d.geschatte_kosten_min ?? 0)} — € ${formatEuro(d.kosten_max ?? d.geschatte_kosten_max ?? 0)}`;
+  const kw = ctx.bold.widthOfTextAtSize(kosten, 11);
+  drawText(ctx, kosten, MARGIN + CONTENT_W - kw - 12, ctx.y - 16, { bold: true, size: 11, color: WHITE });
+  ctx.y -= headH + 10;
+
+  // Overview photo
+  if (d.frame_referentie) {
+    drawText(ctx, d.frame_caption_label || "Overzichtsfoto (uit video):", MARGIN, ctx.y - 11, { bold: true, size: 9.5 });
+    ctx.y -= 16;
+    await embedFrame(ctx, d.frame_referentie, images, 200);
+    if (d.frame_caption) {
+      drawWrappedText(ctx, d.frame_caption, { size: 9, color: GREY_HEAD });
+    }
+  }
+  // Close-up photo
+  if (d.closeup_frame_referentie) {
+    ensureSpace(ctx, 40);
+    drawText(ctx, "Detailfoto (ingezoomd op schade):", MARGIN, ctx.y - 11, { bold: true, size: 9.5 });
+    ctx.y -= 16;
+    await embedFrame(ctx, d.closeup_frame_referentie, images, 160);
+    if (d.closeup_caption) {
+      drawWrappedText(ctx, d.closeup_caption, { size: 9, color: GREY_HEAD });
+    }
+  }
+
+  // Details table
+  const detailRows: [string, string, boolean][] = [
+    ["Locatie", d.locatie_detail || d.locatie || "—", false],
+    ["Type schade", d.type_schade_text || prettyType(d.type), false],
+    ["Ernst", d.ernst_text || cap(d.ernst), false],
+    ["Geschatte afmeting", d.afmeting_text || (d.afmeting_cm ? `~${d.afmeting_cm} cm` : "—"), false],
+    ["Diepte", d.diepte || "—", false],
+    [`Realism check (${(analysis_cat(d) || "C")})`, d.realism_check || "—", true],
+    ["In taxatierapport?", d.in_taxatierapport_text || (d.in_taxatierapport ? "Ja" : "Geen taxatierapport beschikbaar"), false],
+    ["Prioriteit", d.prioriteit_text || cap(d.prioriteit), false],
+    ["Claim potentieel", d.claim_potential_text || (d.claim_potential ? "Ja" : "Nee"), false],
+  ];
+  drawKeyValueTable(ctx, detailRows);
+
+  // Reparatie-ladder
+  ctx.y -= 6;
+  ensureSpace(ctx, 30);
+  drawText(ctx, "Aanbevolen aanpak volgens Auto City reparatie-ladder:", MARGIN, ctx.y - 11, { bold: true, size: 10 });
+  ctx.y -= 16;
+  const ladder: any[] = Array.isArray(d.reparatie_ladder) ? d.reparatie_ladder : [];
+  drawLadderTable(ctx, ladder);
+  ctx.y -= 16;
+}
+
+function analysis_cat(d: any): string | null {
+  return d.realism_categorie || null;
+}
+
+async function embedFrame(ctx: Ctx, frameRef: string, images: { name: string; b64: string }[], maxH: number) {
+  const img = images.find((im) => im.name === frameRef);
+  if (!img) {
+    drawText(ctx, `[Frame ${frameRef} niet gevonden]`, MARGIN, ctx.y - 12, { size: 9, italic: true, color: MUTED });
+    ctx.y -= 16; return;
+  }
+  try {
+    const bytes = Uint8Array.from(atob(img.b64), (c) => c.charCodeAt(0));
+    const emb = await ctx.pdf.embedJpg(bytes);
+    const ratio = emb.width / emb.height;
+    let w = CONTENT_W, h = w / ratio;
+    if (h > maxH) { h = maxH; w = h * ratio; }
+    ensureSpace(ctx, h + 6);
+    ctx.page.drawImage(emb, { x: MARGIN, y: ctx.y - h, width: w, height: h });
+    ctx.y -= h + 6;
+  } catch (e) {
+    console.warn("[robin] embed failed", e);
+    drawText(ctx, `[Frame embed error]`, MARGIN, ctx.y - 12, { size: 9, italic: true, color: MUTED });
+    ctx.y -= 16;
+  }
+}
+
+function drawKeyValueTable(ctx: Ctx, rows: [string, string, boolean][]) {
+  const rowH = 20, labelW = 180;
+  drawHLine(ctx, MARGIN, ctx.y, CONTENT_W, BORDER, 0.4);
+  for (const [k, v, hl] of rows) {
+    ensureSpace(ctx, rowH + 2);
+    const top = ctx.y;
+    if (hl) drawBox(ctx, MARGIN, top - rowH, CONTENT_W, rowH, YELLOW_ROW);
+    drawText(ctx, k, MARGIN + 8, top - 13, { bold: true, size: 9.5, color: NAVY });
+    const vl = wrap(v, ctx.helv, 9.5, CONTENT_W - labelW - 16);
+    drawText(ctx, vl[0] || "", MARGIN + labelW, top - 13, { size: 9.5 });
+    ctx.y -= rowH;
+    drawHLine(ctx, MARGIN, ctx.y, CONTENT_W, BORDER, 0.4);
+  }
+}
+
+function drawLadderTable(ctx: Ctx, rows: any[]) {
+  const cols = [
+    { key: "nr", w: 28, label: "#", align: "left" as const },
+    { key: "methode", w: 130, label: "METHODE", align: "left" as const },
+    { key: "kans", w: 170, label: "KANS OP RESULTAAT", align: "left" as const },
+    { key: "kosten", w: 75, label: "KOSTEN", align: "left" as const },
+    { key: "aanbeveling", w: CONTENT_W - 28 - 130 - 170 - 75, label: "AANBEVELING", align: "left" as const },
+  ];
+  const headH = 22, rowH = 22;
+  ensureSpace(ctx, headH + (rows.length || 1) * rowH + 6);
+  // header
+  const top = ctx.y;
+  drawBox(ctx, MARGIN, top - headH, CONTENT_W, headH, GREY_HEAD);
+  let cx = MARGIN;
+  for (const c of cols) {
+    drawText(ctx, c.label, cx + 8, top - 14, { bold: true, size: 9, color: WHITE });
+    cx += c.w;
+  }
+  ctx.y -= headH;
+
+  for (const r of rows) {
+    ensureSpace(ctx, rowH + 2);
+    const rt = ctx.y;
+    const hl = (r.highlight || "").toLowerCase();
+    if (hl === "groen") drawBox(ctx, MARGIN, rt - rowH, CONTENT_W, rowH, GREEN_CELL);
+    else if (hl === "geel") drawBox(ctx, MARGIN, rt - rowH, CONTENT_W, rowH, YELLOW_BOX);
+    cx = MARGIN;
+    for (const c of cols) {
+      const val = String(r[c.key] ?? "");
+      const isAanb = c.key === "aanbeveling";
+      drawText(ctx, val, cx + 8, rt - 14, { size: 9, bold: isAanb && (hl === "groen" || hl === "geel") });
+      cx += c.w;
+    }
+    ctx.y -= rowH;
+    drawHLine(ctx, MARGIN, ctx.y, CONTENT_W, BORDER, 0.4);
+  }
+}
+
+// ----------------- INSPECTIE OVERZICHT -----------------
+function drawInspectieTable(ctx: Ctx, rows: any[]) {
+  const cols = [
+    { key: "onderdeel", w: 180, label: "ONDERDEEL" },
+    { key: "status", w: 90, label: "STATUS" },
+    { key: "opmerking", w: CONTENT_W - 180 - 90, label: "OPMERKING" },
+  ];
+  const headH = 22, rowH = 18;
+  ensureSpace(ctx, headH + 6);
+  const top = ctx.y;
+  drawBox(ctx, MARGIN, top - headH, CONTENT_W, headH, NAVY);
+  let cx = MARGIN;
+  for (const c of cols) { drawText(ctx, c.label, cx + 8, top - 14, { bold: true, size: 9, color: WHITE }); cx += c.w; }
+  ctx.y -= headH;
+
+  for (const r of rows) {
+    ensureSpace(ctx, rowH + 2);
+    const rt = ctx.y;
+    const isSchade = String(r.status || "").toUpperCase().includes("SCHADE");
+    if (isSchade) drawBox(ctx, MARGIN, rt - rowH, CONTENT_W, rowH, RED_ROW);
+    cx = MARGIN;
+    drawText(ctx, String(r.onderdeel || "—"), cx + 8, rt - 12, { size: 9, bold: isSchade, color: isSchade ? RED_DMG : TEXT });
+    cx += cols[0].w;
+    drawText(ctx, "■ " + String(r.status || "OK"), cx + 8, rt - 12, { size: 9, bold: isSchade });
+    cx += cols[1].w;
+    const opm = String(r.opmerking || "").slice(0, 90);
+    drawText(ctx, opm, cx + 8, rt - 12, { size: 9, bold: isSchade, color: isSchade ? RED_DMG : TEXT });
+    ctx.y -= rowH;
+    drawHLine(ctx, MARGIN, ctx.y, CONTENT_W, BORDER, 0.3);
+  }
+}
+
+function drawCalloutBox(ctx: Ctx, label: string, text: string, bg: any, border: any) {
+  const innerW = CONTENT_W - 24;
+  const full = label + text;
+  const lines = wrap(full, ctx.helv, 9.5, innerW);
+  const h = lines.length * 13 + 18;
+  ensureSpace(ctx, h + 4);
+  const top = ctx.y;
+  drawBox(ctx, MARGIN, top - h, CONTENT_W, h, bg);
+  drawBox(ctx, MARGIN, top - h, 4, h, border);
+  let cy = top - 14;
+  // bold label inline
+  const labelW = ctx.bold.widthOfTextAtSize(label, 9.5);
+  drawText(ctx, label, MARGIN + 14, cy, { bold: true, size: 9.5 });
+  // first line remainder
+  let remaining = text;
+  let firstLine = wrap(remaining, ctx.helv, 9.5, innerW - labelW)[0] || "";
+  drawText(ctx, firstLine, MARGIN + 14 + labelW, cy, { size: 9.5 });
+  cy -= 13;
+  remaining = remaining.slice(firstLine.length).trim();
+  const rest = wrap(remaining, ctx.helv, 9.5, innerW);
+  for (const l of rest) { drawText(ctx, l, MARGIN + 14, cy, { size: 9.5 }); cy -= 13; }
+  ctx.y = top - h - 6;
+}
+
+function drawBulletBox(ctx: Ctx, label: string, items: string[]) {
+  const innerW = CONTENT_W - 28;
+  let totalH = 20 + (label ? 16 : 0);
+  const wrapped = items.map((it) => wrap(it, ctx.helv, 9.5, innerW - 12));
+  for (const w of wrapped) totalH += w.length * 13;
+  ensureSpace(ctx, totalH + 6);
+  const top = ctx.y;
+  drawBox(ctx, MARGIN, top - totalH, CONTENT_W, totalH, YELLOW_BOX);
+  drawBox(ctx, MARGIN, top - totalH, 4, totalH, ORANGE);
+  let cy = top - 14;
+  if (label) { drawText(ctx, label, MARGIN + 14, cy, { bold: true, size: 9.5 }); cy -= 16; }
+  for (let i = 0; i < items.length; i++) {
+    const ll = wrapped[i];
+    for (let j = 0; j < ll.length; j++) {
+      drawText(ctx, (j === 0 ? "• " : "  ") + ll[j], MARGIN + 14, cy, { size: 9.5 });
+      cy -= 13;
+    }
+  }
+  ctx.y = top - totalH - 8;
+}
+
+// ----------------- KOSTEN + CLAIM + STAPPEN -----------------
+function drawKostenTable(ctx: Ctx, rows: any[], totMin: number, totMax: number) {
+  const cols = [
+    { key: "actie", w: 230, label: "ACTIE" },
+    { key: "aantal", w: 90, label: "AANTAL" },
+    { key: "kosten_per_stuk", w: 110, label: "KOSTEN PER STUK" },
+    { key: "totaal", w: CONTENT_W - 230 - 90 - 110, label: "TOTAAL" },
+  ];
+  const headH = 22, rowH = 22;
+  ensureSpace(ctx, headH + (rows.length + 1) * rowH + 4);
+  const top = ctx.y;
+  drawBox(ctx, MARGIN, top - headH, CONTENT_W, headH, NAVY);
+  let cx = MARGIN;
+  for (const c of cols) { drawText(ctx, c.label, cx + 8, top - 14, { bold: true, size: 9, color: WHITE }); cx += c.w; }
+  ctx.y -= headH;
+
+  for (const r of rows) {
+    ensureSpace(ctx, rowH + 2);
+    const rt = ctx.y;
+    cx = MARGIN;
+    for (const c of cols) {
+      drawText(ctx, String(r[c.key] ?? "—"), cx + 8, rt - 14, { size: 9.5 });
+      cx += c.w;
+    }
+    ctx.y -= rowH;
+    drawHLine(ctx, MARGIN, ctx.y, CONTENT_W, BORDER, 0.3);
+  }
+  // Totaal bar
+  ensureSpace(ctx, 28);
+  const tt = ctx.y;
+  drawBox(ctx, MARGIN, tt - 26, CONTENT_W, 26, NAVY);
+  drawText(ctx, "TOTALE GESCHATTE KOSTEN", MARGIN + 10, tt - 17, { bold: true, size: 10.5, color: WHITE });
+  const tot = `€ ${formatEuro(totMin)} — € ${formatEuro(totMax)}`;
+  const tw = ctx.bold.widthOfTextAtSize(tot, 11);
+  drawText(ctx, tot, MARGIN + CONTENT_W - tw - 12, tt - 17, { bold: true, size: 11, color: WHITE });
+  ctx.y -= 30;
+}
+
+function drawClaimBox(ctx: Ctx, claim: any) {
+  const aanbevolen = !!claim.aanbevolen;
+  const titel = claim.titel || (aanbevolen ? "CLAIM AANBEVELING: JA — claim indienen" : "CLAIM AANBEVELING: NEE — geen claim indienen");
+  const bg = aanbevolen ? YELLOW_BOX : GREEN_CELL;
+  const border = aanbevolen ? ORANGE : GREEN_CAT;
+  const text = claim.tekst || claim.onderbouwing || "";
+  const wijclaim = claim.wijclaim_wel_bij || "";
+
+  ensureSpace(ctx, 30);
+  // Title bar
+  const top = ctx.y;
+  drawBox(ctx, MARGIN, top - 26, CONTENT_W, 26, bg);
+  drawBox(ctx, MARGIN, top - 26, 4, 26, border);
+  drawText(ctx, titel, MARGIN + 14, top - 17, { bold: true, size: 11, color: border });
+  ctx.y -= 32;
+
+  if (text) drawWrappedText(ctx, text, { size: 10 });
+  if (wijclaim) {
+    ctx.y -= 4;
+    ensureSpace(ctx, 20);
+    drawText(ctx, "Wij claimen WEL bij: ", MARGIN, ctx.y - 11, { bold: true, size: 10 });
+    const lblW = ctx.bold.widthOfTextAtSize("Wij claimen WEL bij: ", 10);
+    const first = wrap(wijclaim, ctx.helv, 10, CONTENT_W - lblW)[0] || "";
+    drawText(ctx, first, MARGIN + lblW, ctx.y - 11, { size: 10 });
+    ctx.y -= 13;
+    const rest = wrap(wijclaim.slice(first.length).trim(), ctx.helv, 10, CONTENT_W);
+    for (const l of rest) { ensureSpace(ctx, 14); drawText(ctx, l, MARGIN, ctx.y - 11, { size: 10 }); ctx.y -= 13; }
+  }
+}
+
+function drawNumberedList(ctx: Ctx, items: string[]) {
+  for (let i = 0; i < items.length; i++) {
+    ensureSpace(ctx, 18);
+    drawText(ctx, `${i + 1}.`, MARGIN + 6, ctx.y - 12, { bold: true, size: 10, color: NAVY });
+    const lines = wrap(items[i], ctx.helv, 10, CONTENT_W - 40);
+    for (let j = 0; j < lines.length; j++) {
+      if (j > 0) { ensureSpace(ctx, 14); ctx.y -= 0; }
+      drawText(ctx, lines[j], MARGIN + 36, ctx.y - 12, { size: 10 });
+      ctx.y -= 14;
+    }
+    ctx.y -= 4;
+  }
+}
+
+function drawCentralFooter(ctx: Ctx) {
+  ensureSpace(ctx, 50);
+  ctx.y -= 10;
+  const lines = [
+    "Dit rapport is automatisch gegenereerd door Robin (AI Inname Inspector). Realism filter toegepast op",
+    "basis van leeftijd en kilometrage. Robin meldt bandenslijtage alleen wanneer visueel duidelijk zichtbaar —",
+    "vervangt geen werkplaats controle.",
+  ];
+  for (const l of lines) { drawText(ctx, l, MARGIN, ctx.y - 11, { size: 8.5, italic: true, color: MUTED }); ctx.y -= 12; }
+  ctx.y -= 6;
+  const f1 = "Auto City Automotive Group B.V. — Thurledeweg 61A, 3044ER Rotterdam";
+  const f2 = `Gegenereerd: ${new Date().toLocaleString("nl-NL")} — Robin v0.5 (proof of concept)`;
+  const w1 = ctx.helv.widthOfTextAtSize(f1, 9);
+  const w2 = ctx.helv.widthOfTextAtSize(f2, 9);
+  drawText(ctx, f1, (PAGE_W - w1) / 2, ctx.y - 11, { size: 9 }); ctx.y -= 13;
+  drawText(ctx, f2, (PAGE_W - w2) / 2, ctx.y - 11, { size: 9, color: MUTED });
+}
+
+// ----------------- utils -----------------
+function formatEuro(n: any): string {
+  const v = Number(n) || 0;
+  return v.toLocaleString("nl-NL", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+function prettyType(t?: string): string {
+  if (!t) return "—";
+  const map: Record<string, string> = {
+    kras: "Kras", deuk: "Deuk", steenslag: "Steenslag", lakschade: "Lakschade",
+    interieur: "Interieur", glas: "Glas", velg: "Velg", overig: "Overig",
+  };
+  return map[t] || t;
+}
+function cap(s?: string): string { return s ? s.charAt(0).toUpperCase() + s.slice(1) : "—"; }
