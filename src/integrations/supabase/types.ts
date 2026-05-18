@@ -2575,6 +2575,210 @@ export type Database = {
           },
         ]
       }
+      intake_damages: {
+        Row: {
+          aanbevolen_actie: string | null
+          afmeting_cm: number | null
+          claim_potential: boolean | null
+          closeup_screenshot_url: string | null
+          created_at: string
+          damage_code: string
+          ernst: string | null
+          frame_referentie: string | null
+          frame_screenshot_url: string | null
+          geschatte_kosten_max: number | null
+          geschatte_kosten_min: number | null
+          id: string
+          in_taxatierapport: boolean | null
+          inspection_id: string
+          locatie: string
+          prioriteit: string | null
+          redenering: string | null
+          task_status: string | null
+          type: string | null
+        }
+        Insert: {
+          aanbevolen_actie?: string | null
+          afmeting_cm?: number | null
+          claim_potential?: boolean | null
+          closeup_screenshot_url?: string | null
+          created_at?: string
+          damage_code: string
+          ernst?: string | null
+          frame_referentie?: string | null
+          frame_screenshot_url?: string | null
+          geschatte_kosten_max?: number | null
+          geschatte_kosten_min?: number | null
+          id?: string
+          in_taxatierapport?: boolean | null
+          inspection_id: string
+          locatie: string
+          prioriteit?: string | null
+          redenering?: string | null
+          task_status?: string | null
+          type?: string | null
+        }
+        Update: {
+          aanbevolen_actie?: string | null
+          afmeting_cm?: number | null
+          claim_potential?: boolean | null
+          closeup_screenshot_url?: string | null
+          created_at?: string
+          damage_code?: string
+          ernst?: string | null
+          frame_referentie?: string | null
+          frame_screenshot_url?: string | null
+          geschatte_kosten_max?: number | null
+          geschatte_kosten_min?: number | null
+          id?: string
+          in_taxatierapport?: boolean | null
+          inspection_id?: string
+          locatie?: string
+          prioriteit?: string | null
+          redenering?: string | null
+          task_status?: string | null
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intake_damages_inspection_id_fkey"
+            columns: ["inspection_id"]
+            isOneToOne: false
+            referencedRelation: "intake_inspections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      intake_inspections: {
+        Row: {
+          api_cost_usd: number | null
+          categorie: string | null
+          categorie_reden: string | null
+          claim_aanbevolen: boolean | null
+          claim_waarde: number | null
+          created_at: string
+          created_by_name: string | null
+          created_by_user_id: string | null
+          deleted_at: string | null
+          error_message: string | null
+          frames_extracted: number | null
+          id: string
+          pdf_generated_at: string | null
+          pdf_url: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by_user_id: string | null
+          robin_analyse: Json | null
+          samenvatting_team: string | null
+          schade_count: number | null
+          status: string
+          taxatie_check_result: string | null
+          taxatie_pdf_url: string | null
+          totale_kosten_max: number | null
+          totale_kosten_min: number | null
+          vehicle_brand: string | null
+          vehicle_id: string
+          vehicle_license: string | null
+          vehicle_mileage: number | null
+          vehicle_model: string | null
+          vehicle_year: number | null
+          video_duration_seconds: number | null
+          video_url: string | null
+        }
+        Insert: {
+          api_cost_usd?: number | null
+          categorie?: string | null
+          categorie_reden?: string | null
+          claim_aanbevolen?: boolean | null
+          claim_waarde?: number | null
+          created_at?: string
+          created_by_name?: string | null
+          created_by_user_id?: string | null
+          deleted_at?: string | null
+          error_message?: string | null
+          frames_extracted?: number | null
+          id?: string
+          pdf_generated_at?: string | null
+          pdf_url?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          robin_analyse?: Json | null
+          samenvatting_team?: string | null
+          schade_count?: number | null
+          status?: string
+          taxatie_check_result?: string | null
+          taxatie_pdf_url?: string | null
+          totale_kosten_max?: number | null
+          totale_kosten_min?: number | null
+          vehicle_brand?: string | null
+          vehicle_id: string
+          vehicle_license?: string | null
+          vehicle_mileage?: number | null
+          vehicle_model?: string | null
+          vehicle_year?: number | null
+          video_duration_seconds?: number | null
+          video_url?: string | null
+        }
+        Update: {
+          api_cost_usd?: number | null
+          categorie?: string | null
+          categorie_reden?: string | null
+          claim_aanbevolen?: boolean | null
+          claim_waarde?: number | null
+          created_at?: string
+          created_by_name?: string | null
+          created_by_user_id?: string | null
+          deleted_at?: string | null
+          error_message?: string | null
+          frames_extracted?: number | null
+          id?: string
+          pdf_generated_at?: string | null
+          pdf_url?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          robin_analyse?: Json | null
+          samenvatting_team?: string | null
+          schade_count?: number | null
+          status?: string
+          taxatie_check_result?: string | null
+          taxatie_pdf_url?: string | null
+          totale_kosten_max?: number | null
+          totale_kosten_min?: number | null
+          vehicle_brand?: string | null
+          vehicle_id?: string
+          vehicle_license?: string | null
+          vehicle_mileage?: number | null
+          vehicle_model?: string | null
+          vehicle_year?: number | null
+          video_duration_seconds?: number | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intake_inspections_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intake_inspections_reviewed_by_user_id_fkey"
+            columns: ["reviewed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intake_inspections_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jpcars_market_history: {
         Row: {
           apr: number | null
