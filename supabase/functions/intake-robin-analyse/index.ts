@@ -298,7 +298,7 @@ async function generatePdf(insp: any, analysis: any, images: { name: string; b64
 // ----------------- low-level draw helpers -----------------
 function drawText(ctx: Ctx, text: string, x: number, y: number, opts: { size?: number; bold?: boolean; italic?: boolean; color?: any } = {}) {
   const font = opts.bold ? ctx.bold : opts.italic ? ctx.italic : ctx.helv;
-  ctx.page.drawText(String(text ?? ""), { x, y, size: opts.size ?? 10, font, color: opts.color ?? TEXT });
+  ctx.page.drawText(sanitizeWinAnsi(String(text ?? "")), { x, y, size: opts.size ?? 10, font, color: opts.color ?? TEXT });
 }
 function drawBox(ctx: Ctx, x: number, y: number, w: number, h: number, color: any) {
   ctx.page.drawRectangle({ x, y, width: w, height: h, color });
@@ -311,7 +311,7 @@ function drawHLine(ctx: Ctx, x: number, y: number, w: number, color: any, thickn
 }
 
 function wrap(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
-  const words = String(text || "").split(/\s+/);
+  const words = sanitizeWinAnsi(String(text || "")).split(/\s+/);
   const lines: string[] = []; let cur = "";
   for (const w of words) {
     const test = cur ? cur + " " + w : w;
@@ -320,6 +320,25 @@ function wrap(text: string, font: PDFFont, size: number, maxWidth: number): stri
   }
   if (cur) lines.push(cur);
   return lines;
+}
+
+// Replace characters that the WinAnsi-encoded standard PDF fonts cannot render.
+function sanitizeWinAnsi(s: string): string {
+  return s
+    .replace(/[\u2192\u279C\u27A4]/g, "->")  // → ➜ ➤
+    .replace(/[\u2190]/g, "<-")               // ←
+    .replace(/[\u2194]/g, "<->")              // ↔
+    .replace(/[\u2018\u2019\u02BC]/g, "'")    // ' ' ʼ
+    .replace(/[\u201C\u201D]/g, '"')          // " "
+    .replace(/[\u2013\u2014]/g, "-")          // – —
+    .replace(/[\u2026]/g, "...")              // …
+    .replace(/[\u00A0]/g, " ")                // nbsp
+    .replace(/[\u2022\u25E6\u2043]/g, "•")    // bullets → kept (• is in WinAnsi)
+    .replace(/[\u2713\u2714]/g, "v")          // ✓ ✔
+    .replace(/[\u2717\u2718\u2715]/g, "x")    // ✗ ✘ ✕
+    .replace(/[\u20AC]/g, "€")                // € (already in WinAnsi, keep)
+    // Strip any remaining non-WinAnsi codepoints
+    .replace(/[^\x00-\xFF€‚ƒ„…†‡ˆ‰Š‹ŒŽ•™š›œžŸ]/g, "?");
 }
 
 function newPage(ctx: Ctx) {
