@@ -240,7 +240,7 @@ export interface Customer {
 }
 
 // Moving the FileCategory and VehicleFile types from files.ts to inventory.ts since they're related to vehicles
-export type FileCategory = "damage" | "cmr" | "pickup" | "contract_b2b" | "contract_b2c";
+export type FileCategory = "damage" | "cmr" | "pickup" | "contract_b2b" | "contract_b2c" | "inname_rapport";
 
 export interface VehicleFile {
   id: string;
