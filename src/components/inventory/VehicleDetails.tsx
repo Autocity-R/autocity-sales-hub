@@ -250,6 +250,12 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                     onFileDelete={onFileDelete || (() => {})}
                     onSendEmail={(type) => onSendEmail(type, undefined, undefined, undefined, vehicle.id)}
                     readOnly={isReadOnly}
+                    vehicleId={vehicle.id}
+                    vehicleBrand={vehicle.brand}
+                    vehicleModel={vehicle.model}
+                    vehicleLicense={vehicle.licenseNumber}
+                    vehicleYear={vehicle.year}
+                    vehicleMileage={vehicle.mileage}
                   />
                 </TabsContent>
                 
