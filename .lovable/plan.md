@@ -1,53 +1,89 @@
-# Wat er gebeurt met de BMW X5
+## Doel
 
-Ik heb het in de database en logs nagekeken:
+Robin's rapport opschonen én elke schade visueel verduidelijken met een echte ingezoomde uitsnede van de plek waar de schade zit.
 
-- Status van de inspectie staat sinds 6 minuten op `analyzing` zonder error.
-- Edge function log toont alleen: `accept` → `start` → `60 frames` → `calling Anthropic with 60 images`.
-- **Daarna helemaal niets meer** — geen "analysis OK", geen timeout, geen error.
+## Probleem in huidige output
 
-Conclusie: de background-taak (`EdgeRuntime.waitUntil`) is stilletjes gestopt na het versturen van 60 base64-frames (~30-50 MB request body) naar Anthropic. De Supabase edge worker krijgt na het 202-antwoord geen garantie meer dat hij blijft leven; bij grote payloads + lange Anthropic-call wordt de worker geforceerd afgesloten zonder dat onze `catch` triggert. Daardoor zien jij én de UI niets gebeuren.
+1. **Te veel meldingen** — system prompt zegt "MEER detectie dan minder, bij twijfel ALTIJD melden". Resultaat: 33 items op één auto, overzicht weg.
+2. **Vuil = kras** — geen instructie om eerst onderscheid te maken tussen vuil/water/stof en echte beschadiging.
+3. **Geen twijfel-niveau** — alles wordt als bevestigde schade gerapporteerd, mét kosten, ook als Robin twijfelt.
+4. **Detailfoto is niet écht ingezoomd** — `closeup_frame_referentie` pakt nu gewoon een ander volledig videoframe. De inspecteur ziet daardoor geen duidelijke close-up van de schade zelf.
 
-De UI heeft realtime aan staan (gecontroleerd in publicatie), dus zodra de status verandert ziet jij het direct — alleen verandert hij dus nooit als de worker afsterft.
+## Plan
 
-# Plan
+### 1. System prompt van Robin herschrijven
 
-## 1. Live voortgang in de UI
+In `ai_agents.system_prompt` (record `Robin`):
 
-Voeg een kolom `progress_text` (text) en `progress_updated_at` (timestamptz) toe aan `intake_inspections`. De edge function schrijft na elke fase een korte status:
-- "Frames downloaden (12/60)"
-- "Robin analyseert frames…"
-- "Schades opslaan"
-- "PDF genereren"
+**a. Filosofie omkeren naar kwaliteit boven kwantiteit**
+- Weghalen: "MEER detectie dan minder", "vals alarm kost maar 30 sec".
+- Vervangen door: 5 zekere schades > 30 mogelijke. Inspecteur moet erop kunnen vertrouwen.
+- Minimum: alleen melden wat duidelijk zichtbaar is op ≥ 2 frames (of 1 frame als expliciet ingezoomd).
 
-`IntakeInspectionList` toont deze tekst + verstreken tijd ("3 min 12 s") onder de badge. Zo zie jij meteen waar Robin staat.
+**b. Verplichte vuil-check vóór elke kras/lakschade-melding**
+Nieuw blok dat Robin dwingt om eerst te onderscheiden:
+- **Vuil/water/stof** — vlekkig, onregelmatig, druppel-/veegpatroon, loopt over panelen, verandert per frame.
+- **Echte kras** — scherpe lijn, zelfde plek in meerdere frames, blijft staan ongeacht hoek.
+- **Echte lakschade** — scherp afgebakende vlek, geen veegpatroon.
 
-## 2. Watchdog op `progress_updated_at` i.p.v. `created_at`
+Als de auto duidelijk vuil is (vermeld in `auto_conditie`): drempel voor kras/lak omhoog → alleen bij overduidelijke gevallen.
 
-Probleem nu: een retry reset de leeftijd niet, en de watchdog draait alleen wanneer iemand toevallig een nieuwe inspectie start. Oplossing:
-- Watchdog binnen edge function vergelijkt `progress_updated_at` (laatste levensteken) met "ouder dan 10 min" → mark `failed` met duidelijke reden.
-- Daarbovenop een Postgres cron job (elke 5 min) die hetzelfde doet, zodat het ook zonder nieuwe invoke gebeurt. Dan blijft de UI nooit eeuwig op "Robin analyseert" staan.
+**c. Drie zekerheidsniveaus**
+Verplicht veld `confidence`: `zeker` / `waarschijnlijk` / `twijfel`.
+- `zeker` + `waarschijnlijk` → in hoofdtabel, met kosten.
+- `twijfel` → aparte sectie "Nader onderzoek aanbevolen", géén kostencalculatie, met expliciete reden ("kan vuil zijn, afspoelen en herbeoordelen").
 
-## 3. Robuustere Anthropic-call
+**d. Bounding box verplicht voor visuele verduidelijking** (zie stap 4)
+Robin moet per schade `bbox` teruggeven: `{ x, y, w, h }` als percentages 0-1 op het gekozen frame, die het schadegebied strak omsluit (met ~10% padding). Plus `closeup_caption` die kort uitlegt wat je in de uitsnede ziet (bijv. "lichte kras 4 cm, schuin naar onderen, op deurpaneel").
 
-- Cap frames op **30** (was 60). De videoframe-extractor neemt evenwichtig samples; 30 is ruim genoeg voor een schadeanalyse en halveert de payload + responstijd.
-- Wrap de fetch in een extra try/catch dat ook generieke network-errors logt en de status meteen op `failed` zet met de echte foutboodschap.
-- Schrijf vlak vóór en vlak ná de Anthropic-call een `progress_text` update, zodat we in toekomst direct zien of het in de call zelf hangt.
+### 2. Edge function: confidence verwerken
 
-## 4. Reset BMW X5 en testen
+`supabase/functions/intake-robin-analyse/index.ts`:
+- `intake_damages` insert uitbreiden met `confidence`.
+- Items met `confidence='twijfel'` krijgen geen kostenberekening.
+- `schade_count` / `totale_kosten_min|max` tellen alleen `zeker` + `waarschijnlijk`.
 
-Na de migratie zet ik de huidige BMW X5 op `failed` met boodschap "Worker afgebroken — opnieuw proberen". Dan kan jij in de UI op "Opnieuw" klikken en zie je live de voortgang. Met 30 frames i.p.v. 60 verwacht ik dat hij binnen 60-90 sec klaar is.
+### 3. Database
 
-## Technische details
+Migratie: kolom `confidence` (text, default `'zeker'`) op `intake_damages`.
 
-| Verandering | Bestand |
+### 4. Echte zoom-crop in de PDF (visuele verduidelijking)
+
+In de PDF-renderer (`drawDamage` in dezelfde edge function):
+
+- Na het tonen van de overzichtsfoto: pak het frame waarop de schade zit, lees Robin's `bbox`, en **crop dat gebied programmatisch** met `pdf-lib` + een image-crop helper (we tekenen de originele JPEG in een gekromd vlak met geschaalde coördinaten — geen externe library nodig).
+- Render de uitsnede minimaal 2-3× zo groot als hij op het oorspronkelijke frame stond, met een rode rechthoek-overlay op de overzichtsfoto die exact aangeeft welke regio is uitgezoomd.
+- Voeg `closeup_caption` eronder als bijschrift.
+- Fallback: als `bbox` ontbreekt of ongeldig is, val terug op de huidige `closeup_frame_referentie` (gedrag van nu).
+
+Resultaat per schade:
+```
+[Overzichtsfoto met rood kader om schadegebied]
+[Grote uitvergrote crop van datzelfde kader]
+Bijschrift: wat je in de uitsnede ziet
+```
+
+### 5. PDF herstructureren — overzicht terug
+
+Bovenaan een **samenvatting**: aantal zeker / waarschijnlijk / twijfel + totale geschatte kosten (alleen zeker+waarschijnlijk).
+Daarna **sectie "Bevestigde schades"** (zeker + waarschijnlijk) — hoofdtabel met de nieuwe zoom-crops.
+Daarna **sectie "Nader onderzoek aanbevolen"** (twijfel) — kleinere foto's, geen kostenkolom, met reden van twijfel.
+
+## Technisch overzicht
+
+| Wijziging | Waar |
 |---|---|
-| Migratie: `progress_text`, `progress_updated_at` toevoegen | nieuwe migration |
-| Helper `updateProgress(supabase, id, text)` + 5 oproepen | `supabase/functions/intake-robin-analyse/index.ts` |
-| Frame-cap op 30 + extra try/catch rond `fetch` | idem |
-| Watchdog op `progress_updated_at` | idem |
-| Postgres cron job (pg_cron) die `intake-robin-watchdog` aanroept | migration + nieuwe edge function `intake-robin-watchdog` |
-| UI: toon `progress_text` + elapsed timer, refresh elke 10 s als fallback | `IntakeInspectionList.tsx`, `useIntakeInspections.ts` |
-| Reset BMW X5 inspectie naar `failed` | migration |
+| Prompt herschrijven (filosofie, vuil-check, confidence, bbox) | `ai_agents` tabel record Robin |
+| `confidence` kolom toevoegen | migratie op `intake_damages` |
+| Confidence opslaan + summary filteren | `intake-robin-analyse/index.ts` (insert + summary) |
+| Bbox-crop + rood overlay-kader in PDF | `intake-robin-analyse/index.ts` (PDF gedeelte, `drawDamage` + `embedFrame`) |
+| PDF in 2 secties met samenvatting | zelfde file |
 
-Geen wijziging in de video-upload of frame-extractie zelf — die werkt prima (60 frames staan keurig in storage).
+Niets aan video-extractie of UI-list verandert — dit gaat over inhoud, betrouwbaarheid en visualisatie van het rapport.
+
+## Verwacht resultaat
+
+- Hoofdtabel: ~5-10 items i.p.v. 33 — alleen wat er echt toe doet.
+- Vuile auto: dramatisch minder valse kras-meldingen; verdachte plekken in "nader onderzoek".
+- Per schade een grote, scherpe zoom-crop met rood kader op de overzichtsfoto → inspecteur ziet meteen wáár en wát.
+- Bovenaan in één oogopslag: "4 bevestigd, 6 nader onderzoek, geschatte kosten € X".
