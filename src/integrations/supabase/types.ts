@@ -2583,6 +2583,8 @@ export type Database = {
           closeup_screenshot_url: string | null
           created_at: string
           damage_code: string
+          detectie_bewijs: string | null
+          detectie_blok: string | null
           ernst: string | null
           frame_referentie: string | null
           frame_screenshot_url: string | null
@@ -2604,6 +2606,8 @@ export type Database = {
           closeup_screenshot_url?: string | null
           created_at?: string
           damage_code: string
+          detectie_bewijs?: string | null
+          detectie_blok?: string | null
           ernst?: string | null
           frame_referentie?: string | null
           frame_screenshot_url?: string | null
@@ -2625,6 +2629,8 @@ export type Database = {
           closeup_screenshot_url?: string | null
           created_at?: string
           damage_code?: string
+          detectie_bewijs?: string | null
+          detectie_blok?: string | null
           ernst?: string | null
           frame_referentie?: string | null
           frame_screenshot_url?: string | null
