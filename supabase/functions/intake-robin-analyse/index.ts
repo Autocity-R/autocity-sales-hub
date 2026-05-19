@@ -124,15 +124,62 @@ async function blobToBase64(blob: Blob): Promise<string> {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
-  let inspection_id: string | null = null;
 
+  let inspection_id: string | null = null;
   try {
     const body = await req.json();
     inspection_id = body.inspection_id;
-    if (!inspection_id) throw new Error("inspection_id ontbreekt");
-    console.log(`[robin] start ${inspection_id}`);
+    if (!inspection_id) {
+      return new Response(JSON.stringify({ ok: false, error: "inspection_id ontbreekt" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    console.log(`[robin] accept ${inspection_id}`);
 
-    const { data: insp, error: inspErr } = await supabase
+    // Watchdog: markeer eerdere hangende inspecties (>20 min) als failed.
+    const cutoff = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+    await supabase.from("intake_inspections")
+      .update({ status: "failed", error_message: "Analyse timeout — opnieuw proberen" })
+      .in("status", ["analyzing", "generating_pdf", "extracting", "pending"])
+      .lt("created_at", cutoff)
+      .neq("id", inspection_id);
+
+    // Zet huidige inspectie hard op analyzing en clear oude error.
+    await supabase.from("intake_inspections")
+      .update({ status: "analyzing", error_message: null })
+      .eq("id", inspection_id);
+
+    // Heavy work in background — return 202 direct.
+    // @ts-ignore EdgeRuntime is beschikbaar in Supabase edge runtime.
+    EdgeRuntime.waitUntil(processInspection(supabase, inspection_id).catch(async (e) => {
+      console.error("[robin] background FAIL", e);
+      await supabase.from("intake_inspections").update({
+        status: "failed",
+        error_message: String(e?.message || e).slice(0, 500),
+      }).eq("id", inspection_id);
+    }));
+
+    return new Response(JSON.stringify({ ok: true, inspection_id, accepted: true }), {
+      status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e: any) {
+    console.error("[robin] ACCEPT FAIL", e);
+    if (inspection_id) {
+      await supabase.from("intake_inspections").update({
+        status: "failed",
+        error_message: String(e?.message || e).slice(0, 500),
+      }).eq("id", inspection_id);
+    }
+    return new Response(JSON.stringify({ ok: false, error: String(e?.message || e) }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
+
+async function processInspection(supabase: any, inspection_id: string) {
+  console.log(`[robin] start ${inspection_id}`);
+
+  const { data: insp, error: inspErr } = await supabase
       .from("intake_inspections").select("*").eq("id", inspection_id).single();
     if (inspErr || !insp) throw new Error(`Inspectie niet gevonden: ${inspErr?.message}`);
 
@@ -180,7 +227,12 @@ Analyseer alle frames hierboven en geef je analyse als JSON volgens het exacte O
     });
 
     console.log(`[robin] calling Anthropic with ${images.length} images`);
-    const anthRes = await fetch("https://api.anthropic.com/v1/messages", {
+    const ANTH_TIMEOUT_MS = 4 * 60 * 1000;
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), ANTH_TIMEOUT_MS);
+    let anthRes: Response;
+    try {
+      anthRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({
@@ -189,7 +241,14 @@ Analyseer alle frames hierboven en geef je analyse als JSON volgens het exacte O
         system: systemPrompt,
         messages: [{ role: "user", content: userContent }],
       }),
-    });
+      signal: ac.signal,
+      });
+    } catch (err: any) {
+      if (err?.name === "AbortError") throw new Error("Anthropic timeout (4 min)");
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
     if (!anthRes.ok) {
       const t = await anthRes.text();
       throw new Error(`Anthropic ${anthRes.status}: ${t.slice(0, 500)}`);
@@ -273,22 +332,7 @@ Analyseer alle frames hierboven en geef je analyse als JSON volgens het exacte O
     }).eq("id", inspection_id);
 
     console.log(`[robin] done ${inspection_id}`);
-    return new Response(JSON.stringify({ ok: true, inspection_id, pdf_url: pdfUrl }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (e: any) {
-    console.error("[robin] FAIL", e);
-    if (inspection_id) {
-      await supabase.from("intake_inspections").update({
-        status: "failed",
-        error_message: String(e.message || e).slice(0, 500),
-      }).eq("id", inspection_id);
-    }
-    return new Response(JSON.stringify({ ok: false, error: String(e.message || e) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-});
+}
 
 // =============================================================
 // PDF GENERATION — matches Robin v5 layout
