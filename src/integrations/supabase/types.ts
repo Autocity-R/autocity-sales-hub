@@ -2579,8 +2579,10 @@ export type Database = {
         Row: {
           aanbevolen_actie: string | null
           afmeting_cm: number | null
+          bbox: Json | null
           claim_potential: boolean | null
           closeup_screenshot_url: string | null
+          confidence: string
           created_at: string
           damage_code: string
           detectie_bewijs: string | null
@@ -2602,8 +2604,10 @@ export type Database = {
         Insert: {
           aanbevolen_actie?: string | null
           afmeting_cm?: number | null
+          bbox?: Json | null
           claim_potential?: boolean | null
           closeup_screenshot_url?: string | null
+          confidence?: string
           created_at?: string
           damage_code: string
           detectie_bewijs?: string | null
@@ -2625,8 +2629,10 @@ export type Database = {
         Update: {
           aanbevolen_actie?: string | null
           afmeting_cm?: number | null
+          bbox?: Json | null
           claim_potential?: boolean | null
           closeup_screenshot_url?: string | null
+          confidence?: string
           created_at?: string
           damage_code?: string
           detectie_bewijs?: string | null
