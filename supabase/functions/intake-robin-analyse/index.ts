@@ -376,14 +376,33 @@ async function generatePdf(insp: any, analysis: any, images: { name: string; b64
 
   // ===== PAGE 2+: SCHADE OVERZICHT =====
   const damages: any[] = Array.isArray(analysis.schade_overzicht) ? analysis.schade_overzicht : [];
+  const bevestigd = damages.filter((d) => (d.confidence || "zeker") !== "twijfel");
+  const twijfels = damages.filter((d) => d.confidence === "twijfel");
+  const zekerN = damages.filter((d) => (d.confidence || "zeker") === "zeker").length;
+  const waarschijnlijkN = damages.filter((d) => d.confidence === "waarschijnlijk").length;
+
   newPage(ctx);
   drawSectionTitle(ctx, "SCHADE OVERZICHT");
-  if (damages.length === 0) {
+  drawConfidenceSummary(ctx, zekerN, waarschijnlijkN, twijfels.length, analysis.totaal_min ?? 0, analysis.totaal_max ?? 0);
+  ctx.y -= 8;
+
+  drawSectionTitle(ctx, `BEVESTIGDE SCHADES (${bevestigd.length})`);
+  if (bevestigd.length === 0) {
     ensureSpace(ctx, 30);
-    drawText(ctx, "Geen schades aangetroffen.", MARGIN, ctx.y, { size: 11 });
+    drawText(ctx, "Geen bevestigde schades aangetroffen.", MARGIN, ctx.y, { size: 11 });
     ctx.y -= 16;
   } else {
-    for (const d of damages) await drawDamage(ctx, d, images);
+    for (const d of bevestigd) await drawDamage(ctx, d, images, false);
+  }
+
+  if (twijfels.length > 0) {
+    newPage(ctx);
+    drawSectionTitle(ctx, `NADER ONDERZOEK AANBEVOLEN (${twijfels.length})`);
+    ensureSpace(ctx, 30);
+    drawText(ctx, "Robin twijfelt bij onderstaande plekken. Geen kosten berekend — beoordeel fysiek bij inname.",
+      MARGIN, ctx.y - 11, { size: 9.5, italic: true, color: GREY_HEAD });
+    ctx.y -= 18;
+    for (const d of twijfels) await drawDamage(ctx, d, images, true);
   }
 
   // ===== PAGE: VOLLEDIGE INSPECTIE OVERZICHT =====
