@@ -146,6 +146,8 @@ Analyseer alle frames hierboven en geef je analyse als JSON volgens het exacte O
         claim_potential: !!d.claim_potential,
         redenering: d.realism_check || d.redenering || null,
         frame_referentie: d.frame_referentie || null,
+        detectie_blok: d.detectie_blok || null,
+        detectie_bewijs: d.detectie_bewijs || null,
       }));
       const { error: dmgErr } = await supabase.from("intake_damages").insert(rows);
       if (dmgErr) console.error("[robin] damages insert error", dmgErr);
@@ -516,7 +518,19 @@ async function drawDamage(ctx: Ctx, d: any, images: { name: string; b64: string 
     ["Prioriteit", d.prioriteit_text || cap(d.prioriteit), false],
     ["Claim potentieel", d.claim_potential_text || (d.claim_potential ? "Ja" : "Nee"), false],
   ];
+  if (d.detectie_blok) {
+    detailRows.splice(2, 0, ["Detectie-methode", prettyBlok(d.detectie_blok), false]);
+  }
   drawKeyValueTable(ctx, detailRows);
+
+  // Detectie-bewijs (wat Robin specifiek zag)
+  if (d.detectie_bewijs) {
+    ctx.y -= 6;
+    ensureSpace(ctx, 30);
+    drawText(ctx, "Wat Robin zag:", MARGIN, ctx.y - 11, { bold: true, size: 10 });
+    ctx.y -= 16;
+    drawWrappedText(ctx, d.detectie_bewijs, { size: 9.5, color: GREY_HEAD });
+  }
 
   // Reparatie-ladder
   ctx.y -= 6;
@@ -530,6 +544,19 @@ async function drawDamage(ctx: Ctx, d: any, images: { name: string; b64: string 
 
 function analysis_cat(d: any): string | null {
   return d.realism_categorie || null;
+}
+
+function prettyBlok(blok: string): string {
+  const map: Record<string, string> = {
+    A_deuk: "Blok A — deuk via reflectie-vervorming",
+    B_kras: "Blok B — kras via kleur/contrast",
+    C_steenslag: "Blok C — steenslag via puntsgewijs contrast",
+    D_lakschade: "Blok D — lakschade/scuff via vlekkig contrast",
+    E_glas: "Blok E — glas/verlichting visueel",
+    F_velg: "Blok F — velgen/banden (excessief)",
+    G_trim: "Blok G — trim/aanbouw direct zichtbaar",
+  };
+  return map[blok] || blok;
 }
 
 async function embedFrame(ctx: Ctx, frameRef: string, images: { name: string; b64: string }[], maxH: number) {
