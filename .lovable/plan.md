@@ -1,35 +1,115 @@
-## Wat ging er fout
+## Diagnose
 
-Edge function logs tonen:
+De BMW X5 `GVX-49-T` heeft nu een inspectie die al ~30 minuten op `analyzing` staat:
+
+- `id`: `17d251a3-11c5-4e17-a9fa-7e7356b479de`
+- `status`: `analyzing`
+- `frames_extracted`: `60`
+- `error_message`: leeg
+- er zijn nog geen `intake_damages` opgeslagen
+
+Dit wijst niet op een normale analyse die nog bezig is, maar op een edge function die doorloopt/afbreekt zonder dat de database naar `failed` wordt gezet. In echte scenario’s is dit niet betrouwbaar genoeg.
+
+Belangrijkste oorzaken die ik zie:
+
+1. De frontend roept de edge function aan en wacht indirect op een lange AI/PDF-run. Als Supabase/Anthropic timeout of platform-kill optreedt, blijft de DB-status hangen op `analyzing`.
+2. De edge function heeft geen eigen timeouts rondom Anthropic, frame-downloads en PDF-generatie.
+3. Er is geen watchdog die oude `analyzing`/`generating_pdf` records automatisch als `failed` markeert.
+4. `supabase/config.toml` bevat nog geen expliciete entry voor `intake-robin-analyse`, waardoor deployment/config minder duidelijk is dan bij de andere functies.
+5. De UI toont `analyzing` oneindig; er is geen “duurt te lang / opnieuw proberen” toestand.
+
+## Plan
+
+### 1. Edge function echt asynchroon maken
+
+Pas `supabase/functions/intake-robin-analyse/index.ts` aan zodat de HTTP-call direct terugkomt met `202 Accepted` zodra de analyse is gestart.
+
+Daarna loopt de zware verwerking in `EdgeRuntime.waitUntil(...)`:
+
+```text
+request binnen
+  validate inspection_id
+  zet status = analyzing
+  start processInspection(...) via EdgeRuntime.waitUntil
+  return 202 direct naar frontend
+
+background processInspection
+  frames laden
+  Anthropic analyse
+  JSON parsen/herstellen
+  damages opslaan
+  PDF maken
+  status completed of failed zetten
 ```
-[robin] parse error SyntaxError: Expected ',' or ']' after array element in JSON at position 21538
-[robin] FAIL Error: Kon Robin's JSON niet parsen
+
+Hierdoor krijgt de frontend niet meer een 500/timeout op de invoke terwijl de verwerking nog bezig is.
+
+### 2. Harde timeouts en duidelijke foutstatussen toevoegen
+
+Voeg interne timeouts toe voor risicostappen:
+
+- Anthropic-call: bijvoorbeeld 180 seconden
+- frame-download verwerking: fail-fast bij storage-problemen
+- PDF-generatie/upload: fout netjes wegschrijven
+
+Als een stap faalt, wordt altijd dit gezet:
+
+```text
+status = failed
+error_message = duidelijke korte oorzaak
 ```
 
-Claude's antwoord werd **afgekapt** halverwege de `schade_overzicht` array. Oorzaak: `max_tokens: 8000` in `intake-robin-analyse/index.ts` (regel 115). De v7 prompt voegt per schade `detectie_blok` + `detectie_bewijs` (vaak meerdere zinnen bewijs-tekst) toe, dus de output is fors gegroeid. Bij een auto met veel schades knalt hij door de 8000-token limiet → onvolledige JSON → parse fail → status blijft hangen, geen PDF.
+Geen stille `analyzing` meer.
 
-`parseClaudeResponse` (regel 35-42) doet alleen een directe `JSON.parse` — geen herstel bij truncatie.
+### 3. Watchdog tegen hangende inspecties
 
-## Oplossing (2 wijzigingen in `supabase/functions/intake-robin-analyse/index.ts`)
+Voeg bij start van de edge function een cleanup toe voor oude lopende inspecties:
 
-### 1. Verhoog `max_tokens` 8000 → 16000
-Claude Sonnet 4 ondersteunt dit ruim. Geeft ademruimte voor 20+ schades met v7-bewijsteksten.
+```text
+status in ('analyzing', 'generating_pdf')
+created_at ouder dan 20 minuten
+=> failed met error_message = 'Analyse timeout — opnieuw proberen'
+```
 
-### 2. Maak `parseClaudeResponse` robuust tegen truncatie
-Als de directe parse faalt: probeer de laatste onvolledige array-entry weg te knippen en de JSON te sluiten. Pseudo:
-- Detecteer of we in `schade_overzicht: [ ... ]` zitten zonder afsluitende `]`
-- Knip tot laatste complete `}` in die array, sluit met `]` + eventuele resterende `}`
-- Probeer opnieuw te parsen
-- Log een waarschuwing zodat we weten dat er schades zijn afgekapt
+Dit voorkomt dat oude inspecties permanent blijven spinnen.
 
-Zo overleeft de inspectie ook als Claude ooit weer een limiet raakt — beter een rapport met 18 i.p.v. 20 schades dan helemaal niets.
+### 4. BMW X5 huidige vastloper resetten
 
-### 3. Status terugzetten + opnieuw draaien (eenmalig)
-De Tiguan-inspectie van net staat nu op `status = 'error'`. Na deploy: ofwel handmatig de inspectie opnieuw starten via een nieuwe upload, ofwel ik kan via een korte SQL-snippet (in een aparte stap) `status` resetten en de edge function opnieuw invoken op hetzelfde `inspection_id`. Voorkeur?
+Na de codewijziging reset ik de huidige BMW X5 inspectie:
 
-## Buiten scope
-- Geen wijzigingen aan v7 prompt zelf (die werkt — alleen de output is langer).
-- Geen frame-/UI-wijzigingen.
+```text
+17d251a3-11c5-4e17-a9fa-7e7356b479de
+analyzing -> failed
+error_message -> Analyse timeout — opnieuw proberen
+```
 
-## Bestanden
-- `supabase/functions/intake-robin-analyse/index.ts` — `max_tokens` + `parseClaudeResponse` robust maken
+Daarna kun je opnieuw starten, of ik kan dezelfde bestaande frames opnieuw laten analyseren als de edge function klaar staat.
+
+### 5. Config expliciet maken
+
+Voeg aan `supabase/config.toml` toe:
+
+```toml
+[functions.intake-robin-analyse]
+verify_jwt = false
+```
+
+Dit sluit aan bij de rest van jullie functies en voorkomt onduidelijkheid rond function-config.
+
+### 6. UI betrouwbaarder maken
+
+In de intake-lijst:
+
+- Toon een inspectie die langer dan 20 minuten op `analyzing`/`generating_pdf` staat als “Vastgelopen”.
+- Toon de foutmelding zodra `failed` wordt gezet.
+- Optioneel: voeg een knop “Opnieuw proberen” toe bij failed/hangende inspecties, die dezelfde `inspection_id` opnieuw naar de edge function stuurt.
+
+## Resultaat
+
+Na implementatie is de Robin-flow testbaar in een realistisch scenario:
+
+- de upload stopt niet stil;
+- de UI blijft niet oneindig laden;
+- timeouts worden zichtbaar;
+- mislukte analyses kunnen opnieuw gestart worden;
+- succesvolle analyses lopen door tot PDF/document zonder dat de browser-call hoeft open te blijven.
