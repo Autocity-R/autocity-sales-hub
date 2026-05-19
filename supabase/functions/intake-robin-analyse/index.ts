@@ -146,6 +146,8 @@ Analyseer alle frames hierboven en geef je analyse als JSON volgens het exacte O
         claim_potential: !!d.claim_potential,
         redenering: d.realism_check || d.redenering || null,
         frame_referentie: d.frame_referentie || null,
+        detectie_blok: d.detectie_blok || null,
+        detectie_bewijs: d.detectie_bewijs || null,
       }));
       const { error: dmgErr } = await supabase.from("intake_damages").insert(rows);
       if (dmgErr) console.error("[robin] damages insert error", dmgErr);

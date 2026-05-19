@@ -1,35 +1,35 @@
-## Wat ik wil doen
+## Robin v7 implementatie
 
-**1) Tiguan PDF direct beschikbaar**
+De v7 prompt staat al live in `ai_agents.system_prompt` (Claude heeft 'm geüpload) en de edge function leest die al dynamisch (regel 66-68). Stap 1 is dus klaar. Wat resteert: de output van v7 vasthouden en zichtbaar maken.
 
-De inspectie is succesvol afgerond (status `completed`, 22:55:42, 3 schades, categorie C, geen claim aanbevolen). Ik heb de PDF al opgehaald en lever hem hieronder als download.
+### 1. Database (stap 2)
+Migratie al uitgevoerd: `intake_damages` heeft nu kolommen `detectie_blok` en `detectie_bewijs` (TEXT, nullable). De `blokken_toegepast`-array per onderdeel blijft binnen `robin_analyse` JSONB — geen schema-wijziging nodig.
 
-<presentation-artifact path="Tiguan_inspectie_Robin.pdf" mime_type="application/pdf"></presentation-artifact>
-
-**2) Realtime updates fixen (root cause)**
-
-De React-hook `useIntakeInspections` heeft al een Supabase realtime-subscription op `intake_inspections`, maar de **tabel zit niet in de `supabase_realtime` publicatie**. Daarom komen er geen events binnen en zie je de statuswijziging pas als je het venster opnieuw opent.
-
-Check uitgevoerd:
-```
-select * from pg_publication_tables 
-where pubname='supabase_realtime' and tablename='intake_inspections';
-→ leeg
+### 2. Edge function — persist de nieuwe velden
+`supabase/functions/intake-robin-analyse/index.ts`, in de `rows.map` (rond regel 134-149), 2 velden toevoegen:
+```text
+detectie_blok: d.detectie_blok || null,
+detectie_bewijs: d.detectie_bewijs || null,
 ```
 
-**Fix via migratie:**
-```sql
-ALTER TABLE public.intake_inspections REPLICA IDENTITY FULL;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.intake_inspections;
-```
+### 3. PDF generator — toon blok + bewijs per schade (stap 3)
+In `drawDamage` (regel 476-529):
+- In de details-tabel (regel 508-518) een rij toevoegen:
+  `["Detectie-methode", prettyBlok(d.detectie_blok), false]`
+  met een helper `prettyBlok("A_deuk") → "Blok A — deuk via reflectie-vervorming"` voor alle 7 blokken (A_deuk, B_kras, C_steenslag, D_lakschade, E_glas, F_velg, G_trim).
+- Direct na de details-tabel, als `d.detectie_bewijs` gevuld is: een licht-grijs kaartje "Wat Robin zag:" met de bewijs-tekst (multi-line wrap), zodat het team de redenering kan controleren.
 
-Daarna:
-- Frames uitgelezen → Robin analyseert → Klaar / Mislukt verschijnt **direct** in het Documenten-tabblad zonder het venster te sluiten.
-- De bestaande subscription in `useIntakeInspections.ts` werkt dan zonder code-aanpassingen.
+### 4. Test (stap 4)
+Na deploy: nieuwe inspectie draaien op Tiguan 0234. Verwacht:
+- Minimaal 1 schade met `detectie_blok = "A_deuk"` op achterklep links-boven
+- PDF toont "Blok A — deuk via reflectie-vervorming" + bewijs-tekst
+- Realtime UI blijft werken (statusupdates komen al door dankzij eerdere migratie)
 
-## Wat ik NIET aanraak
+### Buiten scope (bewust)
+- Geen wijzigingen aan frame-extractie (kwaliteit/fps) — v7-prompt lost dit op via betere detectie-methode i.p.v. meer frames.
+- Geen tweede verificatie-pass — v7 bewees in 4 tests al consistent te zijn.
+- `IntakeInspectionList.tsx` toont al schade-count; geen UI-uitbreiding nodig.
 
-- Geen wijziging aan de edge function (analyse + PDF werken correct).
-- Geen UI-aanpassing nodig (subscription staat er al).
-
-Klik "Implement plan" en ik draai de migratie.
+### Bestanden
+- `supabase/migrations/...` — al uitgevoerd ✅
+- `supabase/functions/intake-robin-analyse/index.ts` — 2 velden persisteren + PDF-uitbreiding
