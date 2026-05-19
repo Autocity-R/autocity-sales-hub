@@ -1,115 +1,53 @@
-## Diagnose
+# Wat er gebeurt met de BMW X5
 
-De BMW X5 `GVX-49-T` heeft nu een inspectie die al ~30 minuten op `analyzing` staat:
+Ik heb het in de database en logs nagekeken:
 
-- `id`: `17d251a3-11c5-4e17-a9fa-7e7356b479de`
-- `status`: `analyzing`
-- `frames_extracted`: `60`
-- `error_message`: leeg
-- er zijn nog geen `intake_damages` opgeslagen
+- Status van de inspectie staat sinds 6 minuten op `analyzing` zonder error.
+- Edge function log toont alleen: `accept` → `start` → `60 frames` → `calling Anthropic with 60 images`.
+- **Daarna helemaal niets meer** — geen "analysis OK", geen timeout, geen error.
 
-Dit wijst niet op een normale analyse die nog bezig is, maar op een edge function die doorloopt/afbreekt zonder dat de database naar `failed` wordt gezet. In echte scenario’s is dit niet betrouwbaar genoeg.
+Conclusie: de background-taak (`EdgeRuntime.waitUntil`) is stilletjes gestopt na het versturen van 60 base64-frames (~30-50 MB request body) naar Anthropic. De Supabase edge worker krijgt na het 202-antwoord geen garantie meer dat hij blijft leven; bij grote payloads + lange Anthropic-call wordt de worker geforceerd afgesloten zonder dat onze `catch` triggert. Daardoor zien jij én de UI niets gebeuren.
 
-Belangrijkste oorzaken die ik zie:
+De UI heeft realtime aan staan (gecontroleerd in publicatie), dus zodra de status verandert ziet jij het direct — alleen verandert hij dus nooit als de worker afsterft.
 
-1. De frontend roept de edge function aan en wacht indirect op een lange AI/PDF-run. Als Supabase/Anthropic timeout of platform-kill optreedt, blijft de DB-status hangen op `analyzing`.
-2. De edge function heeft geen eigen timeouts rondom Anthropic, frame-downloads en PDF-generatie.
-3. Er is geen watchdog die oude `analyzing`/`generating_pdf` records automatisch als `failed` markeert.
-4. `supabase/config.toml` bevat nog geen expliciete entry voor `intake-robin-analyse`, waardoor deployment/config minder duidelijk is dan bij de andere functies.
-5. De UI toont `analyzing` oneindig; er is geen “duurt te lang / opnieuw proberen” toestand.
+# Plan
 
-## Plan
+## 1. Live voortgang in de UI
 
-### 1. Edge function echt asynchroon maken
+Voeg een kolom `progress_text` (text) en `progress_updated_at` (timestamptz) toe aan `intake_inspections`. De edge function schrijft na elke fase een korte status:
+- "Frames downloaden (12/60)"
+- "Robin analyseert frames…"
+- "Schades opslaan"
+- "PDF genereren"
 
-Pas `supabase/functions/intake-robin-analyse/index.ts` aan zodat de HTTP-call direct terugkomt met `202 Accepted` zodra de analyse is gestart.
+`IntakeInspectionList` toont deze tekst + verstreken tijd ("3 min 12 s") onder de badge. Zo zie jij meteen waar Robin staat.
 
-Daarna loopt de zware verwerking in `EdgeRuntime.waitUntil(...)`:
+## 2. Watchdog op `progress_updated_at` i.p.v. `created_at`
 
-```text
-request binnen
-  validate inspection_id
-  zet status = analyzing
-  start processInspection(...) via EdgeRuntime.waitUntil
-  return 202 direct naar frontend
+Probleem nu: een retry reset de leeftijd niet, en de watchdog draait alleen wanneer iemand toevallig een nieuwe inspectie start. Oplossing:
+- Watchdog binnen edge function vergelijkt `progress_updated_at` (laatste levensteken) met "ouder dan 10 min" → mark `failed` met duidelijke reden.
+- Daarbovenop een Postgres cron job (elke 5 min) die hetzelfde doet, zodat het ook zonder nieuwe invoke gebeurt. Dan blijft de UI nooit eeuwig op "Robin analyseert" staan.
 
-background processInspection
-  frames laden
-  Anthropic analyse
-  JSON parsen/herstellen
-  damages opslaan
-  PDF maken
-  status completed of failed zetten
-```
+## 3. Robuustere Anthropic-call
 
-Hierdoor krijgt de frontend niet meer een 500/timeout op de invoke terwijl de verwerking nog bezig is.
+- Cap frames op **30** (was 60). De videoframe-extractor neemt evenwichtig samples; 30 is ruim genoeg voor een schadeanalyse en halveert de payload + responstijd.
+- Wrap de fetch in een extra try/catch dat ook generieke network-errors logt en de status meteen op `failed` zet met de echte foutboodschap.
+- Schrijf vlak vóór en vlak ná de Anthropic-call een `progress_text` update, zodat we in toekomst direct zien of het in de call zelf hangt.
 
-### 2. Harde timeouts en duidelijke foutstatussen toevoegen
+## 4. Reset BMW X5 en testen
 
-Voeg interne timeouts toe voor risicostappen:
+Na de migratie zet ik de huidige BMW X5 op `failed` met boodschap "Worker afgebroken — opnieuw proberen". Dan kan jij in de UI op "Opnieuw" klikken en zie je live de voortgang. Met 30 frames i.p.v. 60 verwacht ik dat hij binnen 60-90 sec klaar is.
 
-- Anthropic-call: bijvoorbeeld 180 seconden
-- frame-download verwerking: fail-fast bij storage-problemen
-- PDF-generatie/upload: fout netjes wegschrijven
+## Technische details
 
-Als een stap faalt, wordt altijd dit gezet:
+| Verandering | Bestand |
+|---|---|
+| Migratie: `progress_text`, `progress_updated_at` toevoegen | nieuwe migration |
+| Helper `updateProgress(supabase, id, text)` + 5 oproepen | `supabase/functions/intake-robin-analyse/index.ts` |
+| Frame-cap op 30 + extra try/catch rond `fetch` | idem |
+| Watchdog op `progress_updated_at` | idem |
+| Postgres cron job (pg_cron) die `intake-robin-watchdog` aanroept | migration + nieuwe edge function `intake-robin-watchdog` |
+| UI: toon `progress_text` + elapsed timer, refresh elke 10 s als fallback | `IntakeInspectionList.tsx`, `useIntakeInspections.ts` |
+| Reset BMW X5 inspectie naar `failed` | migration |
 
-```text
-status = failed
-error_message = duidelijke korte oorzaak
-```
-
-Geen stille `analyzing` meer.
-
-### 3. Watchdog tegen hangende inspecties
-
-Voeg bij start van de edge function een cleanup toe voor oude lopende inspecties:
-
-```text
-status in ('analyzing', 'generating_pdf')
-created_at ouder dan 20 minuten
-=> failed met error_message = 'Analyse timeout — opnieuw proberen'
-```
-
-Dit voorkomt dat oude inspecties permanent blijven spinnen.
-
-### 4. BMW X5 huidige vastloper resetten
-
-Na de codewijziging reset ik de huidige BMW X5 inspectie:
-
-```text
-17d251a3-11c5-4e17-a9fa-7e7356b479de
-analyzing -> failed
-error_message -> Analyse timeout — opnieuw proberen
-```
-
-Daarna kun je opnieuw starten, of ik kan dezelfde bestaande frames opnieuw laten analyseren als de edge function klaar staat.
-
-### 5. Config expliciet maken
-
-Voeg aan `supabase/config.toml` toe:
-
-```toml
-[functions.intake-robin-analyse]
-verify_jwt = false
-```
-
-Dit sluit aan bij de rest van jullie functies en voorkomt onduidelijkheid rond function-config.
-
-### 6. UI betrouwbaarder maken
-
-In de intake-lijst:
-
-- Toon een inspectie die langer dan 20 minuten op `analyzing`/`generating_pdf` staat als “Vastgelopen”.
-- Toon de foutmelding zodra `failed` wordt gezet.
-- Optioneel: voeg een knop “Opnieuw proberen” toe bij failed/hangende inspecties, die dezelfde `inspection_id` opnieuw naar de edge function stuurt.
-
-## Resultaat
-
-Na implementatie is de Robin-flow testbaar in een realistisch scenario:
-
-- de upload stopt niet stil;
-- de UI blijft niet oneindig laden;
-- timeouts worden zichtbaar;
-- mislukte analyses kunnen opnieuw gestart worden;
-- succesvolle analyses lopen door tot PDF/document zonder dat de browser-call hoeft open te blijven.
+Geen wijziging in de video-upload of frame-extractie zelf — die werkt prima (60 frames staan keurig in storage).
