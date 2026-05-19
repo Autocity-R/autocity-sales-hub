@@ -1,35 +1,35 @@
-## Robin v7 implementatie
+## Wat ging er fout
 
-De v7 prompt staat al live in `ai_agents.system_prompt` (Claude heeft 'm geüpload) en de edge function leest die al dynamisch (regel 66-68). Stap 1 is dus klaar. Wat resteert: de output van v7 vasthouden en zichtbaar maken.
-
-### 1. Database (stap 2)
-Migratie al uitgevoerd: `intake_damages` heeft nu kolommen `detectie_blok` en `detectie_bewijs` (TEXT, nullable). De `blokken_toegepast`-array per onderdeel blijft binnen `robin_analyse` JSONB — geen schema-wijziging nodig.
-
-### 2. Edge function — persist de nieuwe velden
-`supabase/functions/intake-robin-analyse/index.ts`, in de `rows.map` (rond regel 134-149), 2 velden toevoegen:
-```text
-detectie_blok: d.detectie_blok || null,
-detectie_bewijs: d.detectie_bewijs || null,
+Edge function logs tonen:
+```
+[robin] parse error SyntaxError: Expected ',' or ']' after array element in JSON at position 21538
+[robin] FAIL Error: Kon Robin's JSON niet parsen
 ```
 
-### 3. PDF generator — toon blok + bewijs per schade (stap 3)
-In `drawDamage` (regel 476-529):
-- In de details-tabel (regel 508-518) een rij toevoegen:
-  `["Detectie-methode", prettyBlok(d.detectie_blok), false]`
-  met een helper `prettyBlok("A_deuk") → "Blok A — deuk via reflectie-vervorming"` voor alle 7 blokken (A_deuk, B_kras, C_steenslag, D_lakschade, E_glas, F_velg, G_trim).
-- Direct na de details-tabel, als `d.detectie_bewijs` gevuld is: een licht-grijs kaartje "Wat Robin zag:" met de bewijs-tekst (multi-line wrap), zodat het team de redenering kan controleren.
+Claude's antwoord werd **afgekapt** halverwege de `schade_overzicht` array. Oorzaak: `max_tokens: 8000` in `intake-robin-analyse/index.ts` (regel 115). De v7 prompt voegt per schade `detectie_blok` + `detectie_bewijs` (vaak meerdere zinnen bewijs-tekst) toe, dus de output is fors gegroeid. Bij een auto met veel schades knalt hij door de 8000-token limiet → onvolledige JSON → parse fail → status blijft hangen, geen PDF.
 
-### 4. Test (stap 4)
-Na deploy: nieuwe inspectie draaien op Tiguan 0234. Verwacht:
-- Minimaal 1 schade met `detectie_blok = "A_deuk"` op achterklep links-boven
-- PDF toont "Blok A — deuk via reflectie-vervorming" + bewijs-tekst
-- Realtime UI blijft werken (statusupdates komen al door dankzij eerdere migratie)
+`parseClaudeResponse` (regel 35-42) doet alleen een directe `JSON.parse` — geen herstel bij truncatie.
 
-### Buiten scope (bewust)
-- Geen wijzigingen aan frame-extractie (kwaliteit/fps) — v7-prompt lost dit op via betere detectie-methode i.p.v. meer frames.
-- Geen tweede verificatie-pass — v7 bewees in 4 tests al consistent te zijn.
-- `IntakeInspectionList.tsx` toont al schade-count; geen UI-uitbreiding nodig.
+## Oplossing (2 wijzigingen in `supabase/functions/intake-robin-analyse/index.ts`)
 
-### Bestanden
-- `supabase/migrations/...` — al uitgevoerd ✅
-- `supabase/functions/intake-robin-analyse/index.ts` — 2 velden persisteren + PDF-uitbreiding
+### 1. Verhoog `max_tokens` 8000 → 16000
+Claude Sonnet 4 ondersteunt dit ruim. Geeft ademruimte voor 20+ schades met v7-bewijsteksten.
+
+### 2. Maak `parseClaudeResponse` robuust tegen truncatie
+Als de directe parse faalt: probeer de laatste onvolledige array-entry weg te knippen en de JSON te sluiten. Pseudo:
+- Detecteer of we in `schade_overzicht: [ ... ]` zitten zonder afsluitende `]`
+- Knip tot laatste complete `}` in die array, sluit met `]` + eventuele resterende `}`
+- Probeer opnieuw te parsen
+- Log een waarschuwing zodat we weten dat er schades zijn afgekapt
+
+Zo overleeft de inspectie ook als Claude ooit weer een limiet raakt — beter een rapport met 18 i.p.v. 20 schades dan helemaal niets.
+
+### 3. Status terugzetten + opnieuw draaien (eenmalig)
+De Tiguan-inspectie van net staat nu op `status = 'error'`. Na deploy: ofwel handmatig de inspectie opnieuw starten via een nieuwe upload, ofwel ik kan via een korte SQL-snippet (in een aparte stap) `status` resetten en de edge function opnieuw invoken op hetzelfde `inspection_id`. Voorkeur?
+
+## Buiten scope
+- Geen wijzigingen aan v7 prompt zelf (die werkt — alleen de output is langer).
+- Geen frame-/UI-wijzigingen.
+
+## Bestanden
+- `supabase/functions/intake-robin-analyse/index.ts` — `max_tokens` + `parseClaudeResponse` robust maken
