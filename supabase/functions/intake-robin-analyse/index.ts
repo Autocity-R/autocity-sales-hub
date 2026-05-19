@@ -38,7 +38,80 @@ function parseClaudeResponse(text: string): any {
     const f = clean.indexOf("{"); const l = clean.lastIndexOf("}");
     if (f !== -1 && l !== -1) clean = clean.substring(f, l + 1);
     return JSON.parse(clean);
-  } catch (e) { console.error("[robin] parse error", e); return null; }
+  } catch (e) {
+    console.warn("[robin] parse error — attempting truncation recovery", e);
+    return recoverTruncatedJson(text);
+  }
+}
+
+// Best-effort herstel als Claude's output is afgekapt (max_tokens bereikt).
+// Strategie: knip de laatste onvolledige array-entry weg en sluit JSON met de
+// benodigde ] en } in de juiste volgorde, op basis van bracket-depth analyse.
+function recoverTruncatedJson(text: string): any {
+  try {
+    let s = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const start = s.indexOf("{");
+    if (start === -1) return null;
+    s = s.substring(start);
+
+    // Walk door de string, hou bracket-stack bij, negeer strings/escapes.
+    const stack: string[] = [];
+    let inStr = false; let esc = false;
+    let lastSafeEnd = -1; // index t/m welke we een geldig prefix hebben (na een complete waarde op top-level object/array)
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (esc) { esc = false; continue; }
+      if (inStr) {
+        if (c === "\\") { esc = true; continue; }
+        if (c === '"') { inStr = false; }
+        continue;
+      }
+      if (c === '"') { inStr = true; continue; }
+      if (c === "{" || c === "[") { stack.push(c); continue; }
+      if (c === "}" || c === "]") {
+        stack.pop();
+        // Na het sluiten van een element in een array op stack-depth 1 (root = {),
+        // is alles t/m hier een veilig prefix om te sluiten.
+        if (stack.length >= 1) lastSafeEnd = i;
+        continue;
+      }
+      if (c === "," && stack.length >= 1) {
+        lastSafeEnd = i - 1; // komma zelf niet meenemen
+      }
+    }
+
+    if (lastSafeEnd === -1) return null;
+    let prefix = s.substring(0, lastSafeEnd + 1).replace(/[,\s]+$/, "");
+
+    // Reconstrueer stack voor het afgekapt prefix.
+    const stack2: string[] = [];
+    let inStr2 = false; let esc2 = false;
+    for (let i = 0; i < prefix.length; i++) {
+      const c = prefix[i];
+      if (esc2) { esc2 = false; continue; }
+      if (inStr2) {
+        if (c === "\\") { esc2 = true; continue; }
+        if (c === '"') inStr2 = false;
+        continue;
+      }
+      if (c === '"') { inStr2 = true; continue; }
+      if (c === "{" || c === "[") stack2.push(c);
+      else if (c === "}" || c === "]") stack2.pop();
+    }
+
+    // Sluit alle open brackets in omgekeerde volgorde.
+    let closer = "";
+    for (let i = stack2.length - 1; i >= 0; i--) {
+      closer += stack2[i] === "{" ? "}" : "]";
+    }
+    const candidate = prefix + closer;
+    const parsed = JSON.parse(candidate);
+    console.warn("[robin] truncatie hersteld — sommige schades kunnen ontbreken");
+    return parsed;
+  } catch (e) {
+    console.error("[robin] truncation recovery failed", e);
+    return null;
+  }
 }
 
 async function blobToBase64(blob: Blob): Promise<string> {
@@ -112,7 +185,7 @@ Analyseer alle frames hierboven en geef je analyse als JSON volgens het exacte O
       headers: { "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 8000,
+        max_tokens: 16000,
         system: systemPrompt,
         messages: [{ role: "user", content: userContent }],
       }),
