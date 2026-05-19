@@ -263,31 +263,42 @@ Analyseer alle frames hierboven en geef je analyse als JSON volgens het exacte O
     // Persist damages (best-effort)
     const damages: any[] = Array.isArray(analysis.schade_overzicht) ? analysis.schade_overzicht : [];
     if (damages.length > 0) {
-      const rows = damages.map((d: any) => ({
+      const rows = damages.map((d: any) => {
+        const conf = ["zeker","waarschijnlijk","twijfel"].includes(d.confidence) ? d.confidence : "zeker";
+        const isTwijfel = conf === "twijfel";
+        return ({
         inspection_id,
         damage_code: d.id || "S?",
         locatie: d.locatie || "Onbekend",
         type: ["kras","deuk","steenslag","lakschade","interieur","glas","velg","overig"].includes(d.type) ? d.type : "overig",
         ernst: ["minimaal","licht","middel","zwaar"].includes(d.ernst) ? d.ernst : "licht",
         afmeting_cm: typeof d.afmeting_cm === "number" ? d.afmeting_cm : null,
-        aanbevolen_actie: ["polijsten","touch_up","restylen","spuiten","vervangen","accepteren"].includes(d.aanbevolen_actie) ? d.aanbevolen_actie : "accepteren",
-        geschatte_kosten_min: d.kosten_min ?? d.geschatte_kosten_min ?? 0,
-        geschatte_kosten_max: d.kosten_max ?? d.geschatte_kosten_max ?? 0,
+        aanbevolen_actie: isTwijfel ? "accepteren" : (["polijsten","touch_up","restylen","spuiten","vervangen","accepteren"].includes(d.aanbevolen_actie) ? d.aanbevolen_actie : "accepteren"),
+        geschatte_kosten_min: isTwijfel ? 0 : (d.kosten_min ?? d.geschatte_kosten_min ?? 0),
+        geschatte_kosten_max: isTwijfel ? 0 : (d.kosten_max ?? d.geschatte_kosten_max ?? 0),
         prioriteit: ["kritiek","hoog","midden","laag"].includes(d.prioriteit) ? d.prioriteit : "midden",
         in_taxatierapport: !!d.in_taxatierapport,
-        claim_potential: !!d.claim_potential,
+        claim_potential: isTwijfel ? false : !!d.claim_potential,
         redenering: d.realism_check || d.redenering || null,
         frame_referentie: d.frame_referentie || null,
         detectie_blok: d.detectie_blok || null,
         detectie_bewijs: d.detectie_bewijs || null,
-      }));
+        confidence: conf,
+        bbox: d.bbox || null,
+      });
+      });
       const { error: dmgErr } = await supabase.from("intake_damages").insert(rows);
       if (dmgErr) console.error("[robin] damages insert error", dmgErr);
     }
 
     const autoInfo = analysis.auto_info || {};
-    const totaalMin = analysis.totaal_min ?? analysis.showroom_plan?.totale_kosten_min ?? 0;
-    const totaalMax = analysis.totaal_max ?? analysis.showroom_plan?.totale_kosten_max ?? 0;
+    // Tel alleen zeker + waarschijnlijk mee in kosten en schade_count.
+    const confirmed = damages.filter((d: any) => (d.confidence || "zeker") !== "twijfel");
+    const twijfelN = damages.length - confirmed.length;
+    const totaalMin = analysis.totaal_min ?? analysis.showroom_plan?.totale_kosten_min
+      ?? confirmed.reduce((s: number, d: any) => s + Number(d.kosten_min ?? d.geschatte_kosten_min ?? 0), 0);
+    const totaalMax = analysis.totaal_max ?? analysis.showroom_plan?.totale_kosten_max
+      ?? confirmed.reduce((s: number, d: any) => s + Number(d.kosten_max ?? d.geschatte_kosten_max ?? 0), 0);
     const claim = analysis.claim_advies || {};
 
     await supabase.from("intake_inspections").update({
@@ -296,7 +307,7 @@ Analyseer alle frames hierboven en geef je analyse als JSON volgens het exacte O
       categorie_reden: autoInfo.categorie_titel || null,
       totale_kosten_min: totaalMin,
       totale_kosten_max: totaalMax,
-      schade_count: damages.length,
+      schade_count: confirmed.length,
       claim_aanbevolen: !!claim.aanbevolen,
       claim_waarde: claim.geschatte_claim_waarde_euro ?? 0,
       samenvatting_team: analysis.samenvatting_team || null,
