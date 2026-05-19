@@ -104,3 +104,6 @@ verify_jwt = false
 
 [functions.process-garantie-emails]
 verify_jwt = false
+
+[functions.intake-robin-analyse]
+verify_jwt = false

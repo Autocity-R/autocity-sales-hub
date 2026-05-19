@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bot, FileText, Loader2, AlertCircle, ShieldAlert, Plus } from "lucide-react";
+import { Bot, FileText, Loader2, AlertCircle, ShieldAlert, Plus, RotateCcw } from "lucide-react";
 import { useIntakeInspections, IntakeInspectionRow } from "@/hooks/useIntakeInspections";
 import { IntakeInspectionDialog } from "./IntakeInspectionDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface Props {
   vehicleId: string;
@@ -89,12 +91,37 @@ const InspectionRow: React.FC<{ inspection: IntakeInspectionRow }> = ({ inspecti
   const inProgress = ["pending", "extracting", "analyzing", "generating_pdf"].includes(inspection.status);
   const failed = inspection.status === "failed";
   const done = inspection.status === "completed" || inspection.status === "reviewed";
+  const { toast } = useToast();
+  const [retrying, setRetrying] = useState(false);
+
+  // "Vastgelopen" = nog in progress maar ouder dan 20 minuten zonder afronding.
+  const ageMin = (Date.now() - new Date(inspection.created_at).getTime()) / 60000;
+  const stuck = inProgress && ageMin > 20;
+  const canRetry = failed || stuck;
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    try {
+      await supabase.from("intake_inspections")
+        .update({ status: "analyzing", error_message: null })
+        .eq("id", inspection.id);
+      const { error } = await supabase.functions.invoke("intake-robin-analyse", {
+        body: { inspection_id: inspection.id },
+      });
+      if (error) throw error;
+      toast({ title: "Opnieuw gestart", description: "Robin probeert de analyse opnieuw." });
+    } catch (e: any) {
+      toast({ title: "Kon niet opnieuw starten", description: e?.message ?? "Onbekende fout", variant: "destructive" });
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   return (
     <li className="flex items-center justify-between gap-3 p-3 bg-background rounded border flex-wrap">
       <div className="flex items-center gap-3 min-w-0 flex-1">
-        {inProgress && <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />}
-        {failed && <AlertCircle className="h-4 w-4 text-destructive shrink-0" />}
+        {inProgress && !stuck && <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />}
+        {(failed || stuck) && <AlertCircle className="h-4 w-4 text-destructive shrink-0" />}
         {done && <FileText className="h-4 w-4 text-primary shrink-0" />}
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -102,8 +129,8 @@ const InspectionRow: React.FC<{ inspection: IntakeInspectionRow }> = ({ inspecti
             {inspection.categorie && (
               <Badge variant="secondary" className="text-xs">Cat. {inspection.categorie}</Badge>
             )}
-            <Badge variant={failed ? "destructive" : inProgress ? "outline" : "default"} className="text-xs">
-              {statusLabel(inspection.status)}
+            <Badge variant={failed || stuck ? "destructive" : inProgress ? "outline" : "default"} className="text-xs">
+              {stuck ? "Vastgelopen" : statusLabel(inspection.status)}
             </Badge>
             {inspection.claim_aanbevolen && (
               <Badge className="text-xs bg-amber-500 text-white flex items-center gap-1">
@@ -121,13 +148,24 @@ const InspectionRow: React.FC<{ inspection: IntakeInspectionRow }> = ({ inspecti
           {failed && inspection.error_message && (
             <span className="text-xs text-destructive mt-1">{inspection.error_message}</span>
           )}
+          {stuck && !failed && (
+            <span className="text-xs text-destructive mt-1">Analyse hangt &gt; 20 min — probeer opnieuw.</span>
+          )}
         </div>
       </div>
-      {inspection.pdf_url && (
-        <Button size="sm" variant="outline" asChild>
-          <a href={inspection.pdf_url} target="_blank" rel="noopener noreferrer">PDF openen</a>
-        </Button>
-      )}
+      <div className="flex items-center gap-2">
+        {canRetry && (
+          <Button size="sm" variant="outline" onClick={handleRetry} disabled={retrying}>
+            <RotateCcw className={`h-4 w-4 mr-1 ${retrying ? "animate-spin" : ""}`} />
+            Opnieuw
+          </Button>
+        )}
+        {inspection.pdf_url && (
+          <Button size="sm" variant="outline" asChild>
+            <a href={inspection.pdf_url} target="_blank" rel="noopener noreferrer">PDF openen</a>
+          </Button>
+        )}
+      </div>
     </li>
   );
 };
