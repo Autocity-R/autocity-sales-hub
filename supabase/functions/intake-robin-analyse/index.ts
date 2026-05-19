@@ -622,35 +622,51 @@ function drawSamenvattingTeam(ctx: Ctx, analysis: any) {
 }
 
 // ----------------- SCHADE DETAIL -----------------
-async function drawDamage(ctx: Ctx, d: any, images: { name: string; b64: string }[]) {
+async function drawDamage(ctx: Ctx, d: any, images: { name: string; b64: string }[], isTwijfel: boolean) {
   ensureSpace(ctx, 60);
-  // Red header
+  // Header — rood voor bevestigd, oranje voor twijfel
   const headH = 24;
-  drawBox(ctx, MARGIN, ctx.y - headH, CONTENT_W, headH, RED_DMG);
-  drawText(ctx, `SCHADE ${d.id || "S?"} — ${d.locatie || ""}`, MARGIN + 10, ctx.y - 16, { bold: true, size: 11, color: WHITE });
-  const kosten = `€ ${formatEuro(d.kosten_min ?? d.geschatte_kosten_min ?? 0)} — € ${formatEuro(d.kosten_max ?? d.geschatte_kosten_max ?? 0)}`;
-  const kw = ctx.bold.widthOfTextAtSize(kosten, 11);
-  drawText(ctx, kosten, MARGIN + CONTENT_W - kw - 12, ctx.y - 16, { bold: true, size: 11, color: WHITE });
+  const headColor = isTwijfel ? ORANGE : RED_DMG;
+  drawBox(ctx, MARGIN, ctx.y - headH, CONTENT_W, headH, headColor);
+  const confTag = isTwijfel ? " [TWIJFEL]" : (d.confidence === "waarschijnlijk" ? " [WAARSCHIJNLIJK]" : "");
+  drawText(ctx, `SCHADE ${d.id || "S?"} — ${d.locatie || ""}${confTag}`, MARGIN + 10, ctx.y - 16, { bold: true, size: 11, color: WHITE });
+  if (!isTwijfel) {
+    const kosten = `€ ${formatEuro(d.kosten_min ?? d.geschatte_kosten_min ?? 0)} — € ${formatEuro(d.kosten_max ?? d.geschatte_kosten_max ?? 0)}`;
+    const kw = ctx.bold.widthOfTextAtSize(kosten, 11);
+    drawText(ctx, kosten, MARGIN + CONTENT_W - kw - 12, ctx.y - 16, { bold: true, size: 11, color: WHITE });
+  } else {
+    const label = "GEEN KOSTEN — NADER ONDERZOEK";
+    const kw = ctx.bold.widthOfTextAtSize(label, 9.5);
+    drawText(ctx, label, MARGIN + CONTENT_W - kw - 12, ctx.y - 15, { bold: true, size: 9.5, color: WHITE });
+  }
   ctx.y -= headH + 10;
 
-  // Overview photo
+  // Overview photo met rood kader op bbox
   if (d.frame_referentie) {
-    drawText(ctx, d.frame_caption_label || "Overzichtsfoto (uit video):", MARGIN, ctx.y - 11, { bold: true, size: 9.5 });
+    drawText(ctx, "Overzichtsfoto (rood kader = locatie schade):", MARGIN, ctx.y - 11, { bold: true, size: 9.5 });
     ctx.y -= 16;
-    await embedFrame(ctx, d.frame_referentie, images, 200);
+    await embedFrame(ctx, d.frame_referentie, images, isTwijfel ? 160 : 200, d.bbox);
     if (d.frame_caption) {
       drawWrappedText(ctx, d.frame_caption, { size: 9, color: GREY_HEAD });
     }
   }
-  // Close-up photo
-  if (d.closeup_frame_referentie) {
-    ensureSpace(ctx, 40);
-    drawText(ctx, "Detailfoto (ingezoomd op schade):", MARGIN, ctx.y - 11, { bold: true, size: 9.5 });
+  // Zoom-crop op basis van bbox (échte ingezoomde uitsnede)
+  if (d.frame_referentie && isValidBbox(d.bbox)) {
+    const targetW = isTwijfel ? 280 : 360;
+    const targetH = isTwijfel ? 170 : 220;
+    ensureSpace(ctx, targetH + 30);
+    drawText(ctx, "Ingezoomd op schade:", MARGIN, ctx.y - 11, { bold: true, size: 9.5 });
     ctx.y -= 16;
-    await embedFrame(ctx, d.closeup_frame_referentie, images, 160);
-    if (d.closeup_caption) {
+    const ok = await drawZoomCrop(ctx, d.frame_referentie, d.bbox, images, targetW, targetH);
+    if (ok && d.closeup_caption) {
       drawWrappedText(ctx, d.closeup_caption, { size: 9, color: GREY_HEAD });
     }
+  } else if (d.closeup_frame_referentie) {
+    ensureSpace(ctx, 40);
+    drawText(ctx, "Detailfoto:", MARGIN, ctx.y - 11, { bold: true, size: 9.5 });
+    ctx.y -= 16;
+    await embedFrame(ctx, d.closeup_frame_referentie, images, 160);
+    if (d.closeup_caption) drawWrappedText(ctx, d.closeup_caption, { size: 9, color: GREY_HEAD });
   }
 
   // Details table
@@ -658,6 +674,7 @@ async function drawDamage(ctx: Ctx, d: any, images: { name: string; b64: string 
     ["Locatie", d.locatie_detail || d.locatie || "—", false],
     ["Type schade", d.type_schade_text || prettyType(d.type), false],
     ["Ernst", d.ernst_text || cap(d.ernst), false],
+    ["Zekerheid", cap(d.confidence || "zeker"), true],
     ["Geschatte afmeting", d.afmeting_text || (d.afmeting_cm ? `~${d.afmeting_cm} cm` : "—"), false],
     ["Diepte", d.diepte || "—", false],
     [`Realism check (${(analysis_cat(d) || "C")})`, d.realism_check || "—", true],
@@ -670,22 +687,24 @@ async function drawDamage(ctx: Ctx, d: any, images: { name: string; b64: string 
   }
   drawKeyValueTable(ctx, detailRows);
 
-  // Detectie-bewijs (wat Robin specifiek zag)
+  // Detectie-bewijs (wat Robin specifiek zag, of bij twijfel: wat hij niet kon uitsluiten)
   if (d.detectie_bewijs) {
     ctx.y -= 6;
     ensureSpace(ctx, 30);
-    drawText(ctx, "Wat Robin zag:", MARGIN, ctx.y - 11, { bold: true, size: 10 });
+    drawText(ctx, isTwijfel ? "Reden voor twijfel:" : "Wat Robin zag:", MARGIN, ctx.y - 11, { bold: true, size: 10 });
     ctx.y -= 16;
     drawWrappedText(ctx, d.detectie_bewijs, { size: 9.5, color: GREY_HEAD });
   }
 
-  // Reparatie-ladder
-  ctx.y -= 6;
-  ensureSpace(ctx, 30);
-  drawText(ctx, "Aanbevolen aanpak volgens Auto City reparatie-ladder:", MARGIN, ctx.y - 11, { bold: true, size: 10 });
-  ctx.y -= 16;
-  const ladder: any[] = Array.isArray(d.reparatie_ladder) ? d.reparatie_ladder : [];
-  drawLadderTable(ctx, ladder);
+  // Reparatie-ladder alleen bij bevestigd (geen kosten voor twijfel)
+  if (!isTwijfel) {
+    ctx.y -= 6;
+    ensureSpace(ctx, 30);
+    drawText(ctx, "Aanbevolen aanpak volgens Auto City reparatie-ladder:", MARGIN, ctx.y - 11, { bold: true, size: 10 });
+    ctx.y -= 16;
+    const ladder: any[] = Array.isArray(d.reparatie_ladder) ? d.reparatie_ladder : [];
+    drawLadderTable(ctx, ladder);
+  }
   ctx.y -= 16;
 }
 
@@ -706,7 +725,14 @@ function prettyBlok(blok: string): string {
   return map[blok] || blok;
 }
 
-async function embedFrame(ctx: Ctx, frameRef: string, images: { name: string; b64: string }[], maxH: number) {
+function isValidBbox(b: any): boolean {
+  return !!b && typeof b.x === "number" && typeof b.y === "number"
+    && typeof b.w === "number" && typeof b.h === "number"
+    && b.x >= 0 && b.y >= 0 && b.w > 0 && b.h > 0
+    && b.x + b.w <= 1.01 && b.y + b.h <= 1.01;
+}
+
+async function embedFrame(ctx: Ctx, frameRef: string, images: { name: string; b64: string }[], maxH: number, bbox?: any) {
   const img = images.find((im) => im.name === frameRef);
   if (!img) {
     drawText(ctx, `[Frame ${frameRef} niet gevonden]`, MARGIN, ctx.y - 12, { size: 9, italic: true, color: MUTED });
@@ -719,13 +745,91 @@ async function embedFrame(ctx: Ctx, frameRef: string, images: { name: string; b6
     let w = CONTENT_W, h = w / ratio;
     if (h > maxH) { h = maxH; w = h * ratio; }
     ensureSpace(ctx, h + 6);
-    ctx.page.drawImage(emb, { x: MARGIN, y: ctx.y - h, width: w, height: h });
+    const ix = MARGIN, iy = ctx.y - h;
+    ctx.page.drawImage(emb, { x: ix, y: iy, width: w, height: h });
+    if (isValidBbox(bbox)) {
+      const rx = ix + bbox.x * w;
+      const ry = iy + h - (bbox.y + bbox.h) * h;
+      const rw = bbox.w * w;
+      const rh = bbox.h * h;
+      ctx.page.drawRectangle({ x: rx, y: ry, width: rw, height: rh, borderColor: RED_DMG, borderWidth: 2 });
+    }
     ctx.y -= h + 6;
   } catch (e) {
     console.warn("[robin] embed failed", e);
     drawText(ctx, `[Frame embed error]`, MARGIN, ctx.y - 12, { size: 9, italic: true, color: MUTED });
     ctx.y -= 16;
   }
+}
+
+// Echte ingezoomde uitsnede: tekent het frame vergroot zodat de bbox-regio
+// het doelvlak (TX, TY, targetW, targetH) vult. Overhang buiten dat vlak
+// wordt gemaskeerd met witte rechthoeken (PDF-achtergrond is wit).
+async function drawZoomCrop(
+  ctx: Ctx,
+  frameRef: string,
+  bbox: any,
+  images: { name: string; b64: string }[],
+  targetW: number,
+  targetH: number,
+): Promise<boolean> {
+  const img = images.find((im) => im.name === frameRef);
+  if (!img || !isValidBbox(bbox)) return false;
+  try {
+    const bytes = Uint8Array.from(atob(img.b64), (c) => c.charCodeAt(0));
+    const emb = await ctx.pdf.embedJpg(bytes);
+    ensureSpace(ctx, targetH + 6);
+    const TX = MARGIN + (CONTENT_W - targetW) / 2;
+    const TYtop = ctx.y;
+    const TY = TYtop - targetH;
+    const imgW = targetW / bbox.w;
+    const imgH = targetH / bbox.h;
+    const imgX = TX - bbox.x * imgW;
+    const imgY = TYtop - imgH + bbox.y * imgH;
+    ctx.page.drawImage(emb, { x: imgX, y: imgY, width: imgW, height: imgH });
+    // Mask overhang met witte rechthoeken rondom doelvlak
+    const IX2 = imgX + imgW;
+    const IY2 = imgY + imgH;
+    const TX2 = TX + targetW;
+    const TY2 = TY + targetH;
+    if (TX > imgX)  ctx.page.drawRectangle({ x: imgX, y: imgY, width: TX - imgX, height: imgH, color: WHITE });
+    if (IX2 > TX2)  ctx.page.drawRectangle({ x: TX2, y: imgY, width: IX2 - TX2, height: imgH, color: WHITE });
+    if (IY2 > TY2)  ctx.page.drawRectangle({ x: TX, y: TY2, width: targetW, height: IY2 - TY2, color: WHITE });
+    if (TY > imgY)  ctx.page.drawRectangle({ x: TX, y: imgY, width: targetW, height: TY - imgY, color: WHITE });
+    // Rood kader om de crop
+    ctx.page.drawRectangle({ x: TX, y: TY, width: targetW, height: targetH, borderColor: RED_DMG, borderWidth: 1.5 });
+    ctx.y = TY - 6;
+    return true;
+  } catch (e) {
+    console.warn("[robin] zoom crop failed", e);
+    return false;
+  }
+}
+
+// Compact samenvattingsblok bovenaan SCHADE OVERZICHT
+function drawConfidenceSummary(
+  ctx: Ctx, zeker: number, waarsch: number, twijfel: number, totMin: number, totMax: number,
+) {
+  const boxH = 60;
+  ensureSpace(ctx, boxH + 8);
+  const top = ctx.y;
+  drawBox(ctx, MARGIN, top - boxH, CONTENT_W, boxH, YELLOW_BOX);
+  drawBox(ctx, MARGIN, top - boxH, 4, boxH, NAVY);
+  const colW = (CONTENT_W - 8) / 4;
+  const cells: [string, string, any][] = [
+    [String(zeker),    "Zeker",          GREEN_CAT],
+    [String(waarsch),  "Waarschijnlijk", ORANGE],
+    [String(twijfel),  "Twijfel",        GREY_HEAD],
+    [`€ ${formatEuro(totMin)} — € ${formatEuro(totMax)}`, "Geschatte kosten (zeker + waarschijnlijk)", NAVY],
+  ];
+  for (let i = 0; i < cells.length; i++) {
+    const x = MARGIN + 8 + i * colW;
+    const [val, label, col] = cells[i];
+    const isMoney = i === 3;
+    drawText(ctx, val, x, top - 24, { bold: true, size: isMoney ? 12 : 18, color: col });
+    drawText(ctx, label, x, top - 44, { size: 8.5, color: GREY_HEAD });
+  }
+  ctx.y = top - boxH - 4;
 }
 
 function drawKeyValueTable(ctx: Ctx, rows: [string, string, boolean][]) {
