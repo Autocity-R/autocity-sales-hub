@@ -544,15 +544,10 @@ function drawVoertuiggegevens(ctx: Ctx, insp: any, analysis: any) {
   const rows: [string, string, boolean][] = [
     ["Merk/Model", ai.merk_model || `${insp.vehicle_brand ?? ""} ${insp.vehicle_model ?? ""}`.trim() || "—", false],
     ["Kenteken", insp.vehicle_license || "— (importauto, nog niet ingeschreven)", false],
-    ["Meldcode (laatste 4 VIN)", ai.meldcode || (insp.vehicle_vin ? String(insp.vehicle_vin).slice(-4) : "—"), false],
     ["Volledig VIN", insp.vehicle_vin || "—", false],
     ["Bouwjaar", `${insp.vehicle_year ?? "—"}${leeftijd != null ? ` (leeftijd: ${leeftijd} jaar)` : ""}`, true],
     ["Kilometerstand", insp.vehicle_mileage ? Number(insp.vehicle_mileage).toLocaleString("nl-NL") + " km" : "—", true],
     ["Gem. km per jaar", ai.gem_km_per_jaar || kmPerJaar, true],
-    ["Status in CRM", ai.status_crm || "Voorraad", false],
-    ["Inkoopdatum", inkoopDatum, false],
-    ["Inkoopprijs", inkoopPrijs, false],
-    ["Kleur", ai.kleur || "—", false],
   ];
   const rowH = 22, labelW = 180;
   for (const [k, v, hl] of rows) {
@@ -676,24 +671,27 @@ async function drawDamage(ctx: Ctx, d: any, images: { name: string; b64: string 
     ["Ernst", d.ernst_text || cap(d.ernst), false],
     ["Zekerheid", cap(d.confidence || "zeker"), true],
     ["Geschatte afmeting", d.afmeting_text || (d.afmeting_cm ? `~${d.afmeting_cm} cm` : "—"), false],
-    ["Diepte", d.diepte || "—", false],
-    [`Realism check (${(analysis_cat(d) || "C")})`, d.realism_check || "—", true],
-    ["In taxatierapport?", d.in_taxatierapport_text || (d.in_taxatierapport ? "Ja" : "Geen taxatierapport beschikbaar"), false],
+    ["Aanbevolen actie", cap(d.aanbevolen_actie || "—"), false],
     ["Prioriteit", d.prioriteit_text || cap(d.prioriteit), false],
     ["Claim potentieel", d.claim_potential_text || (d.claim_potential ? "Ja" : "Nee"), false],
   ];
-  if (d.detectie_blok) {
-    detailRows.splice(2, 0, ["Detectie-methode", prettyBlok(d.detectie_blok), false]);
+  if (!isTwijfel) {
+    detailRows.splice(5, 0, [
+      "Kosten",
+      `€ ${formatEuro(d.kosten_min ?? d.geschatte_kosten_min ?? 0)} — € ${formatEuro(d.kosten_max ?? d.geschatte_kosten_max ?? 0)}`,
+      true,
+    ]);
   }
   drawKeyValueTable(ctx, detailRows);
 
-  // Detectie-bewijs (wat Robin specifiek zag, of bij twijfel: wat hij niet kon uitsluiten)
-  if (d.detectie_bewijs) {
+  // Korte beschrijving (v8: feitelijke observatie 1-2 zinnen)
+  const beschrijving = d.beschrijving || d.detectie_bewijs;
+  if (beschrijving) {
     ctx.y -= 6;
     ensureSpace(ctx, 30);
-    drawText(ctx, isTwijfel ? "Reden voor twijfel:" : "Wat Robin zag:", MARGIN, ctx.y - 11, { bold: true, size: 10 });
+    drawText(ctx, isTwijfel ? "Reden voor twijfel:" : "Beschrijving:", MARGIN, ctx.y - 11, { bold: true, size: 10 });
     ctx.y -= 16;
-    drawWrappedText(ctx, d.detectie_bewijs, { size: 9.5, color: GREY_HEAD });
+    drawWrappedText(ctx, beschrijving, { size: 9.5, color: GREY_HEAD });
   }
 
   // Reparatie-ladder alleen bij bevestigd (geen kosten voor twijfel)
@@ -748,11 +746,20 @@ async function embedFrame(ctx: Ctx, frameRef: string, images: { name: string; b6
     const ix = MARGIN, iy = ctx.y - h;
     ctx.page.drawImage(emb, { x: ix, y: iy, width: w, height: h });
     if (isValidBbox(bbox)) {
-      const rx = ix + bbox.x * w;
-      const ry = iy + h - (bbox.y + bbox.h) * h;
-      const rw = bbox.w * w;
-      const rh = bbox.h * h;
-      ctx.page.drawRectangle({ x: rx, y: ry, width: rw, height: rh, borderColor: RED_DMG, borderWidth: 2 });
+      const cx = ix + (bbox.x + bbox.w / 2) * w;
+      const cy = iy + h - (bbox.y + bbox.h / 2) * h;
+      const rx_ell = (bbox.w / 2) * w * 1.15;
+      const ry_ell = (bbox.h / 2) * h * 1.15;
+      for (let t = 0; t < 3; t++) {
+        ctx.page.drawEllipse({
+          x: cx,
+          y: cy,
+          xScale: rx_ell + t * 0.5,
+          yScale: ry_ell + t * 0.5,
+          borderColor: RED_DMG,
+          borderWidth: 2,
+        });
+      }
     }
     ctx.y -= h + 6;
   } catch (e) {
@@ -796,8 +803,21 @@ async function drawZoomCrop(
     if (IX2 > TX2)  ctx.page.drawRectangle({ x: TX2, y: imgY, width: IX2 - TX2, height: imgH, color: WHITE });
     if (IY2 > TY2)  ctx.page.drawRectangle({ x: TX, y: TY2, width: targetW, height: IY2 - TY2, color: WHITE });
     if (TY > imgY)  ctx.page.drawRectangle({ x: TX, y: imgY, width: targetW, height: TY - imgY, color: WHITE });
-    // Rood kader om de crop
-    ctx.page.drawRectangle({ x: TX, y: TY, width: targetW, height: targetH, borderColor: RED_DMG, borderWidth: 1.5 });
+    // Rode ellipse rond schade in de crop (bbox vult heel doelvlak, dus center = midden)
+    const cxE = TX + targetW / 2;
+    const cyE = TY + targetH / 2;
+    const rxE = (targetW / 2) * 1.15;
+    const ryE = (targetH / 2) * 1.15;
+    for (let t = 0; t < 3; t++) {
+      ctx.page.drawEllipse({
+        x: cxE,
+        y: cyE,
+        xScale: rxE + t * 0.5,
+        yScale: ryE + t * 0.5,
+        borderColor: RED_DMG,
+        borderWidth: 2,
+      });
+    }
     ctx.y = TY - 6;
     return true;
   } catch (e) {
@@ -1055,7 +1075,7 @@ function drawCentralFooter(ctx: Ctx) {
   for (const l of lines) { drawText(ctx, l, MARGIN, ctx.y - 11, { size: 8.5, italic: true, color: MUTED }); ctx.y -= 12; }
   ctx.y -= 6;
   const f1 = "Auto City Automotive Group B.V. — Thurledeweg 61A, 3044ER Rotterdam";
-  const f2 = `Gegenereerd: ${new Date().toLocaleString("nl-NL")} — Robin v0.5 (proof of concept)`;
+  const f2 = `Gegenereerd: ${new Date().toLocaleString("nl-NL")} — Robin v8`;
   const w1 = ctx.helv.widthOfTextAtSize(f1, 9);
   const w2 = ctx.helv.widthOfTextAtSize(f2, 9);
   drawText(ctx, f1, (PAGE_W - w1) / 2, ctx.y - 11, { size: 9 }); ctx.y -= 13;
