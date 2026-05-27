@@ -64,11 +64,15 @@ export const saveContractToVehicle = async (
     }
     console.log(`[CONTRACT_STORAGE] ✅ Step 3: Uploaded to storage:`, uploadData);
     
-    // 5. Get public URL
-    const { data: { publicUrl } } = supabase.storage
+    // 5. Get signed URL (bucket is private)
+    const { data: signedData, error: signedError } = await supabase.storage
       .from('vehicle-documents')
-      .getPublicUrl(filePath);
-    console.log(`[CONTRACT_STORAGE] 🔗 Public URL: ${publicUrl}`);
+      .createSignedUrl(filePath, 3600);
+    if (signedError) {
+      console.error('[CONTRACT_STORAGE] ⚠️ Signed URL error:', signedError);
+    }
+    const signedUrl = signedData?.signedUrl ?? '';
+    console.log(`[CONTRACT_STORAGE] 🔗 Signed URL generated`);
     
     // 6. Create metadata
     const metadata: SavedContractMetadata = {
@@ -91,7 +95,7 @@ export const saveContractToVehicle = async (
         vehicle_id: vehicle.id,
         file_name: fileName,
         file_path: filePath,
-        file_url: publicUrl,
+        file_url: signedUrl,
         file_type: 'application/pdf',
         category: contractType === 'b2b' ? 'contract_b2b' : 'contract_b2c',
         file_size: pdfBlob.size,
@@ -122,8 +126,8 @@ export const saveContractToVehicle = async (
       name: fileRecord.file_name,
       fileName: fileRecord.file_name,
       filePath: fileRecord.file_path,
-      url: publicUrl,
-      fileUrl: publicUrl,
+      url: signedUrl,
+      fileUrl: signedUrl,
       category: fileRecord.category as any,
       fileSize: fileRecord.file_size,
       size: fileRecord.file_size,
@@ -167,9 +171,10 @@ export const getLatestContractForVehicle = async (
       return null;
     }
     
-    const { data: { publicUrl } } = supabase.storage
+    const { data: signedData } = await supabase.storage
       .from('vehicle-documents')
-      .getPublicUrl(data.file_path);
+      .createSignedUrl(data.file_path, 3600);
+    const signedUrl = signedData?.signedUrl ?? '';
 
     return {
       id: data.id,
@@ -177,8 +182,8 @@ export const getLatestContractForVehicle = async (
       name: data.file_name,
       fileName: data.file_name,
       filePath: data.file_path,
-      url: publicUrl,
-      fileUrl: publicUrl,
+      url: signedUrl,
+      fileUrl: signedUrl,
       category: data.category as any,
       fileSize: data.file_size,
       size: data.file_size,
@@ -211,10 +216,11 @@ export const getAllContractsForVehicle = async (vehicleId: string): Promise<Vehi
       return [];
     }
     
-    return (data || []).map(file => {
-      const { data: { publicUrl } } = supabase.storage
+    return await Promise.all((data || []).map(async (file) => {
+      const { data: signedData } = await supabase.storage
         .from('vehicle-documents')
-        .getPublicUrl(file.file_path);
+        .createSignedUrl(file.file_path, 3600);
+      const signedUrl = signedData?.signedUrl ?? '';
 
       return {
         id: file.id,
@@ -222,8 +228,8 @@ export const getAllContractsForVehicle = async (vehicleId: string): Promise<Vehi
         name: file.file_name,
         fileName: file.file_name,
         filePath: file.file_path,
-        url: publicUrl,
-        fileUrl: publicUrl,
+        url: signedUrl,
+        fileUrl: signedUrl,
         category: file.category as any,
         fileSize: file.file_size,
         size: file.file_size,
@@ -233,7 +239,7 @@ export const getAllContractsForVehicle = async (vehicleId: string): Promise<Vehi
         isLargeFile: false,
         metadata: (file as any).metadata as SavedContractMetadata
       };
-    });
+    }));
   } catch (error) {
     console.error('[CONTRACT_STORAGE] Failed to get contracts:', error);
     return [];
