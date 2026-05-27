@@ -21,7 +21,7 @@ export const KevinTopModels: React.FC = () => {
         .select('jpcars_data')
         .not('jpcars_data', 'is', null)
         .order('created_at', { ascending: false })
-        .limit(500);
+        .limit(250);
       if (error) throw error;
 
       // Aggregate by make+model, find high ETR models
@@ -62,7 +62,10 @@ export const KevinTopModels: React.FC = () => {
         .slice(0, 8);
 
       return models;
-    }
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   return (

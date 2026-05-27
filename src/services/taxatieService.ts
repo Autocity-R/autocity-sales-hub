@@ -541,10 +541,6 @@ export const fetchTaxatieHistory = async (): Promise<TaxatieValuation[]> => {
         created_by,
         license_plate,
         vehicle_data,
-        portal_analysis,
-        jpcars_data,
-        internal_comparison,
-        ai_advice,
         ai_model_version,
         status
       `)
@@ -570,10 +566,12 @@ export const fetchTaxatieHistory = async (): Promise<TaxatieValuation[]> => {
       licensePlate: row.license_plate || '',
       aiModelVersion: row.ai_model_version || 'gpt-4o',
       vehicleData: row.vehicle_data as TaxatieVehicleData,
-      portalAnalysis: row.portal_analysis as PortalAnalysis | null,
-      jpCarsData: row.jpcars_data as JPCarsData | null,
-      internalComparison: row.internal_comparison as InternalComparison | null,
-      aiAdvice: row.ai_advice as AITaxatieAdvice | null,
+      // Heavy JSONB fields are lazily fetched on detail open to keep the
+      // history query fast (was loading 100 rows × ~50KB JSON = MBs).
+      portalAnalysis: null,
+      jpCarsData: null,
+      internalComparison: null,
+      aiAdvice: null,
       status: row.status || 'voltooid',
     }));
 
