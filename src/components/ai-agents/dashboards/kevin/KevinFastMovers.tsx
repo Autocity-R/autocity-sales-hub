@@ -46,10 +46,13 @@ export const KevinFastMovers: React.FC = () => {
         .select('jpcars_data, vehicle_data')
         .not('jpcars_data', 'is', null)
         .order('created_at', { ascending: false })
-        .limit(1000);
+        .limit(500);
       if (error) throw error;
       return data ?? [];
-    }
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const models: FastMoverModel[] = useMemo(() => {
