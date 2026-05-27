@@ -2791,6 +2791,24 @@ export type Database = {
           },
         ]
       }
+      jpcars_diagnose_resultaat: {
+        Row: {
+          created_at: string | null
+          id: number
+          resultaat: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: never
+          resultaat?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: never
+          resultaat?: Json | null
+        }
+        Relationships: []
+      }
       jpcars_market_history: {
         Row: {
           apr: number | null
