@@ -304,6 +304,17 @@ const InventoryB2B = () => {
               ))}
             </SelectContent>
           </Select>
+
+          <Button
+            type="button"
+            variant={onlyDelivered ? "default" : "outline"}
+            size="sm"
+            onClick={() => setOnlyDelivered((v) => !v)}
+            className="gap-2"
+          >
+            <Truck className="h-4 w-4" />
+            Alleen uitgeleverde
+          </Button>
           
           <div className="flex gap-2">
             <Badge variant="outline" className="flex items-center gap-1">
