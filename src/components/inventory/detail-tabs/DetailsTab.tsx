@@ -324,9 +324,9 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
           <Label>Vestiging</Label>
           <ToggleGroup
             type="single"
-            value={(editedVehicle as any).branch || 'rotterdam'}
+            value={editedVehicle.branch || 'rotterdam'}
             onValueChange={(value: string) => {
-              if (value) handleChange('branch' as any, value);
+              if (value) handleChange('branch' as any, value as any);
             }}
             className="justify-start flex flex-wrap"
             disabled={readOnly}
@@ -341,7 +341,52 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
             </ToggleGroupItem>
           </ToggleGroup>
         </div>
-        
+
+        {/* B2B Uitgeleverd aan klant */}
+        {editedVehicle.salesStatus === 'verkocht_b2b' && (
+          <div className="space-y-2">
+            <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <Checkbox
+                id="b2bDelivered"
+                checked={Boolean(editedVehicle.b2bDelivered)}
+                onCheckedChange={(checked) => {
+                  const isChecked = checked === true;
+                  handleChange('b2bDelivered' as any, isChecked as any);
+                  if (isChecked) {
+                    handleChange(
+                      'b2bDeliveredAt' as any,
+                      (editedVehicle.b2bDeliveredAt || new Date().toISOString()) as any,
+                    );
+                  } else {
+                    handleChange('b2bDeliveredAt' as any, null as any);
+                    handleChange('b2bDeliveredBy' as any, null as any);
+                  }
+                }}
+                disabled={readOnly}
+              />
+              <div className="flex-1">
+                <Label htmlFor="b2bDelivered" className="font-semibold cursor-pointer">
+                  Uitgeleverd aan klant
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Zet aan zodra de auto fysiek bij de B2B-klant is. Klant moet nog betalen — auto blijft in "Verkocht B2B".
+                </p>
+                {editedVehicle.b2bDelivered && editedVehicle.b2bDeliveredAt && (
+                  <p className="text-xs text-amber-800 mt-1">
+                    Uitgeleverd op{' '}
+                    {format(new Date(editedVehicle.b2bDeliveredAt), 'd MMMM yyyy', { locale: nl })}
+                  </p>
+                )}
+              </div>
+              {editedVehicle.b2bDelivered && (
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-300">
+                  Uitgeleverd
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Purchase Price & Selling Price */}
         {showPrices && (
           <div className="space-y-4">
