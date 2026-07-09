@@ -45,7 +45,7 @@
 - `<BranchFilter />` (Alles/Rotterdam/HHW) op alle rapportages + agent-dashboards. Niet-admins in aftersales-rapportages hard gefilterd op eigen branch.
 - Nieuwe view "Rotterdam vs Heerhugowaard" side-by-side.
 - Excel-exports krijgen branch-kolom.
-- **Verwijder de "Mock Data / Switch to Database"-toggle en banner uit het Rapportages-scherm** (restant van nooit-gelanceerde Exact Online-koppeling). Rapportages draaien altijd direct op DB.
+- Mock Data / Exact-toggle in Rapportages blijft staan (niet aanpassen).
 
 ## Fase 7 — Verhuizing & test
 - Admin-tool bulk verplaatsen naar HHW.
