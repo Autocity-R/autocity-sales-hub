@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { ReportPeriod } from "@/types/reports";
 import { supplierReportsService } from "@/services/supplierReportsService";
+import { useCurrentBranch } from "@/contexts/BranchContext";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, Legend, ScatterChart, Scatter, ZAxis, ComposedChart, Line } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -129,10 +130,11 @@ export const SupplierAnalytics: React.FC<SupplierAnalyticsProps> = ({ period }) 
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [showOnlyReliable, setShowOnlyReliable] = useState(true); // Default: only show reliable data
   const queryClient = useQueryClient();
+  const { branchFilter } = useCurrentBranch();
 
   const { data: analytics, isLoading } = useQuery({
-    queryKey: ['supplierAnalytics', period, showAllTime],
-    queryFn: () => supplierReportsService.getSupplierAnalytics(period, showAllTime)
+    queryKey: ['supplierAnalytics', period, showAllTime, branchFilter],
+    queryFn: () => supplierReportsService.getSupplierAnalytics(period, showAllTime, branchFilter)
   });
 
   // Real-time updates voor voertuigen

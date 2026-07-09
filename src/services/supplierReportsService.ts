@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { ReportPeriod, SupplierStats, SupplierAnalyticsData, ChannelStats } from "@/types/reports";
+import { applyBranchFilter, type BranchFilter } from "@/contexts/BranchContext";
 
 // Internal interface for building stats
 interface SupplierStatsBuilder extends Omit<SupplierStats, 
@@ -15,9 +16,8 @@ interface SupplierStatsBuilder extends Omit<SupplierStats,
 }
 
 class SupplierReportsService {
-  async getSupplierAnalytics(period: ReportPeriod, showAllTime: boolean = false): Promise<SupplierAnalyticsData> {
-    // Haal alle voertuigen met supplier_id op
-    const { data: vehicles, error: vehiclesError } = await supabase
+  async getSupplierAnalytics(period: ReportPeriod, showAllTime: boolean = false, branch?: BranchFilter): Promise<SupplierAnalyticsData> {
+    let vq = supabase
       .from('vehicles')
       .select(`
         id,
@@ -31,6 +31,8 @@ class SupplierReportsService {
         details
       `)
       .not('supplier_id', 'is', null);
+    vq = applyBranchFilter(vq, branch);
+    const { data: vehicles, error: vehiclesError } = await vq;
 
     if (vehiclesError) throw vehiclesError;
     

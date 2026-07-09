@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SalespersonDetailDialog } from "./SalespersonDetailDialog";
 import { ReportPeriod } from "@/types/reports";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 
 interface SalespersonData {
   id: string;
@@ -65,17 +66,17 @@ export const SalespersonPerformance: React.FC<SalespersonPerformanceProps> = ({ 
   const [selectedSalesperson, setSelectedSalesperson] = useState<SalespersonData | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const { isAdmin } = useRoleAccess();
+  const { branchFilter } = useCurrentBranch();
 
   // Fetch salesperson performance data
   const { data: salespersonData, isLoading } = useQuery({
-    queryKey: ["salesperson-performance", period.startDate, period.endDate],
+    queryKey: ["salesperson-performance", period.startDate, period.endDate, branchFilter],
     queryFn: async (): Promise<SalespersonData[]> => {
       // Use period dates from prop
       const startDate = new Date(period.startDate);
       const endDate = new Date(period.endDate);
 
-      // Fetch sold vehicles with their details
-      const { data: vehicles } = await supabase
+      let vq = supabase
         .from('vehicles')
         .select(`
           id, brand, model, selling_price, sold_date, sold_by_user_id,
@@ -86,6 +87,8 @@ export const SalespersonPerformance: React.FC<SalespersonPerformanceProps> = ({ 
         .not('sold_by_user_id', 'is', null)
         .gte('sold_date', startDate.toISOString())
         .lte('sold_date', endDate.toISOString());
+      vq = applyBranchFilter(vq, branchFilter);
+      const { data: vehicles } = await vq;
 
       if (!vehicles) return [];
 

@@ -50,7 +50,7 @@ interface WarrantyReportsProps {
 export const WarrantyReports = ({ period }: WarrantyReportsProps) => {
   const { data: claims = [], isLoading: claimsLoading } = useQuery({
     queryKey: ["warranty-claims", period.startDate, period.endDate],
-    queryFn: fetchWarrantyClaims,
+    queryFn: () => fetchWarrantyClaims(),
   });
 
   const { data: packageStats, isLoading: packageStatsLoading } = useQuery({

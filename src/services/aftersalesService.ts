@@ -7,13 +7,14 @@ import {
   TaskExtended 
 } from "@/types/aftersales";
 import { differenceInDays } from "date-fns";
+import { applyBranchFilter, type BranchFilter } from "@/contexts/BranchContext";
 
 class AftersalesService {
-  async getDashboardData(): Promise<AftersalesDashboardData> {
+  async getDashboardData(branch?: BranchFilter): Promise<AftersalesDashboardData> {
     const [pendingDeliveries, warrantyClaims, tasks] = await Promise.all([
-      this.getPendingB2CDeliveries(),
-      this.getWarrantyClaims(),
-      this.getAftersalesTasks()
+      this.getPendingB2CDeliveries(branch),
+      this.getWarrantyClaims(branch),
+      this.getAftersalesTasks(branch)
     ]);
 
     const kpis = this.calculateKPIs(pendingDeliveries, warrantyClaims.open, tasks.open);
@@ -28,8 +29,8 @@ class AftersalesService {
     };
   }
 
-  private async getPendingB2CDeliveries(): Promise<PendingDeliveryExtended[]> {
-    const { data: vehicles, error } = await supabase
+  private async getPendingB2CDeliveries(branch?: BranchFilter): Promise<PendingDeliveryExtended[]> {
+    let vq = supabase
       .from('vehicles')
       .select(`
         *,
@@ -43,6 +44,8 @@ class AftersalesService {
       `)
       .eq('status', 'verkocht_b2c')
       .order('sold_date', { ascending: true });
+    vq = applyBranchFilter(vq, branch);
+    const { data: vehicles, error } = await vq;
 
     if (error) {
       console.error('Error fetching pending B2C deliveries:', error);
@@ -113,11 +116,13 @@ class AftersalesService {
     }).sort((a, b) => b.daysSinceSale - a.daysSinceSale);
   }
 
-  private async getWarrantyClaims(): Promise<{ open: WarrantyClaimExtended[], resolved: WarrantyClaimExtended[] }> {
-    const { data: claims, error } = await supabase
+  private async getWarrantyClaims(branch?: BranchFilter): Promise<{ open: WarrantyClaimExtended[], resolved: WarrantyClaimExtended[] }> {
+    let cq = supabase
       .from('warranty_claims')
       .select(`*, vehicles:vehicle_id (brand, model, license_number)`)
       .order('created_at', { ascending: false });
+    cq = applyBranchFilter(cq, branch);
+    const { data: claims, error } = await cq;
 
     if (error) {
       console.error('Error fetching warranty claims:', error);
@@ -156,12 +161,13 @@ class AftersalesService {
     };
   }
 
-  private async getAftersalesTasks(): Promise<{ open: TaskExtended[], completed: TaskExtended[] }> {
-    // Fetch all tasks without category filter
-    const { data: tasks, error } = await supabase
+  private async getAftersalesTasks(branch?: BranchFilter): Promise<{ open: TaskExtended[], completed: TaskExtended[] }> {
+    let tq = supabase
       .from('tasks')
       .select(`*, assigned_to_profile:profiles!tasks_assigned_to_fkey (first_name, last_name)`)
       .order('due_date', { ascending: true });
+    tq = applyBranchFilter(tq, branch);
+    const { data: tasks, error } = await tq;
 
     if (error) {
       console.error('Error fetching aftersales tasks:', error);

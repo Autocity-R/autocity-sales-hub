@@ -1,5 +1,6 @@
 import { WarrantyClaim, WarrantyStats, LoanCar, ActiveWarrantyVehicle, ActiveWarrantyStats } from "@/types/warranty";
 import { supabase } from "@/integrations/supabase/client";
+import { applyBranchFilter, type BranchFilter } from "@/contexts/BranchContext";
 
 // Import from deliveredVehicleService instead
 export { fetchDeliveredVehiclesForWarranty } from "./deliveredVehicleService";
@@ -43,9 +44,9 @@ const mapUiStatusToDb = (status?: import("@/types/warranty").WarrantyClaim["stat
   }
 };
 
-export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
+export const fetchWarrantyClaims = async (branch?: BranchFilter): Promise<WarrantyClaim[]> => {
   try {
-    const { data, error } = await supabase
+    let q = supabase
       .from('warranty_claims')
       .select(`
         *,
@@ -82,6 +83,8 @@ export const fetchWarrantyClaims = async (): Promise<WarrantyClaim[]> => {
         )
       `)
       .order('created_at', { ascending: false });
+    q = applyBranchFilter(q, branch);
+    const { data, error } = await q;
 
     if (error) throw error;
 

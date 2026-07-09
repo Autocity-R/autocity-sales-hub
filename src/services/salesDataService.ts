@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { ReportPeriod } from "@/types/reports";
+import { applyBranchFilter, type BranchFilter } from "@/contexts/BranchContext";
 
 export interface SalesData {
   totalVehicles: number;
@@ -53,16 +54,17 @@ export interface SalesData {
 }
 
 export const salesDataService = {
-  async getSalesData(period: ReportPeriod): Promise<SalesData> {
+  async getSalesData(period: ReportPeriod, branch?: BranchFilter): Promise<SalesData> {
     const startDate = new Date(period.startDate);
     const endDate = new Date(period.endDate);
 
-    // Count all sold vehicles: verkocht_b2b, verkocht_b2c, and afgeleverd
-    const { data: vehicles, error } = await supabase
+    let vq = supabase
       .from("vehicles")
       .select("id, brand, model, status, selling_price, sold_date, created_at, details")
       .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"])
       .order("sold_date", { ascending: false, nullsFirst: false });
+    vq = applyBranchFilter(vq, branch);
+    const { data: vehicles, error } = await vq;
 
     if (error) {
       console.error("Error fetching sales data:", error);
@@ -225,7 +227,7 @@ export const salesDataService = {
     };
   },
 
-  async getMonthlySalesBreakdown(period: ReportPeriod): Promise<Array<{
+  async getMonthlySalesBreakdown(period: ReportPeriod, branch?: BranchFilter): Promise<Array<{
     month: number;
     monthName: string;
     b2b: number;
@@ -236,11 +238,12 @@ export const salesDataService = {
     const startDate = new Date(period.startDate);
     const endDate = new Date(period.endDate);
 
-    // Count all sold vehicles: verkocht_b2b, verkocht_b2c, and afgeleverd
-    const { data: vehicles, error } = await supabase
+    let vq = supabase
       .from("vehicles")
       .select("status, selling_price, sold_date, created_at, details")
       .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"]);
+    vq = applyBranchFilter(vq, branch);
+    const { data: vehicles, error } = await vq;
 
     if (error) throw error;
 

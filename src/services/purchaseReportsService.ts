@@ -1,9 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import { ReportPeriod, PurchaseAnalyticsData, PurchaserStats } from "@/types/reports";
+import { applyBranchFilter, type BranchFilter } from "@/contexts/BranchContext";
 
 class PurchaseReportsService {
-  async getPurchaseAnalytics(period: ReportPeriod): Promise<PurchaseAnalyticsData> {
-    const { data: vehicles, error } = await supabase
+  async getPurchaseAnalytics(period: ReportPeriod, branch?: BranchFilter): Promise<PurchaseAnalyticsData> {
+    let vq = supabase
       .from('vehicles')
       .select(`
         id,
@@ -23,6 +24,8 @@ class PurchaseReportsService {
       .or(`purchase_date.gte.${period.startDate},purchase_date.lte.${period.endDate},purchase_date.is.null`)
       // Also include ALL vehicles with a purchaser assigned (critical for current data)
       .not('purchased_by_user_id', 'is', null);
+    vq = applyBranchFilter(vq, branch);
+    const { data: vehicles, error } = await vq;
 
     if (error) {
       console.error("Error fetching purchase analytics:", error);
