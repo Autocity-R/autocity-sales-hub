@@ -89,24 +89,24 @@ const Calendar = () => {
     loadAppointments();
   }, [calendarView.date]);
 
-  const todayAppointments = appointments.filter(apt => {
+  const todayAppointments = filteredAppointments.filter(apt => {
     const today = startOfDay(new Date());
     const tomorrow = endOfDay(new Date());
     const aptDate = new Date(apt.startTime);
     return aptDate >= today && aptDate <= tomorrow;
   });
 
-  const thisWeekAppointments = appointments.filter(apt => {
+  const thisWeekAppointments = filteredAppointments.filter(apt => {
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
     const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
     const aptDate = new Date(apt.startTime);
     return aptDate >= weekStart && aptDate <= weekEnd;
   });
 
-  const confirmedAppointments = appointments.filter(apt => apt.status === "bevestigd");
-  const pendingAppointments = appointments.filter(apt => apt.status === "gepland");
-  const syncedAppointments = appointments.filter(apt => apt.sync_status === "synced");
-  const pendingSyncAppointments = appointments.filter(apt => apt.sync_status === "pending");
+  const confirmedAppointments = filteredAppointments.filter(apt => apt.status === "bevestigd");
+  const pendingAppointments = filteredAppointments.filter(apt => apt.status === "gepland");
+  const syncedAppointments = filteredAppointments.filter(apt => apt.sync_status === "synced");
+  const pendingSyncAppointments = filteredAppointments.filter(apt => apt.sync_status === "pending");
 
   const getStatusColor = (status: string) => {
     switch (status) {
