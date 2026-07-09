@@ -931,16 +931,21 @@ const generateTextContract = (
 ): string => {
   const isB2B = contractType === "b2b";
   
+  const sellerLines = [
+    companyInfo.tradeName,
+    companyInfo.address,
+    `${companyInfo.postalCode} ${companyInfo.city}, ${companyInfo.country}`.trim(),
+    companyInfo.phone ? `Telefoon: ${companyInfo.phone}` : '',
+    companyInfo.btw ? `BTW-nummer: ${companyInfo.btw}` : '',
+    companyInfo.iban ? `IBAN: ${companyInfo.iban}` : '',
+    companyInfo.kvk ? `KVK: ${companyInfo.kvk}` : '',
+  ].filter(Boolean).join('\n');
+
   return `
 KOOPOVEREENKOMST PERSONENAUTO
 
 VERKOPER:
-${companyInfo.tradeName}
-${companyInfo.address}
-${companyInfo.postalCode} ${companyInfo.city}, ${companyInfo.country}
-Telefoon: ${companyInfo.phone}
-BTW-nummer: ${companyInfo.btw}
-IBAN: ${companyInfo.iban}
+${sellerLines}
 
 CONTRACTGEGEVENS:
 Contractnummer: AC-${vehicle.licenseNumber}-${Date.now().toString().slice(-6)}
