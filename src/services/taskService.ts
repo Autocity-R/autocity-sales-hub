@@ -1,10 +1,14 @@
 
 import { Task, TaskStatus, TaskPriority, TaskCategory, Employee } from "@/types/tasks";
 import { supabase } from "@/integrations/supabase/client";
-import { UserProfile } from "./userService";
-
-// Convert UserProfile to Employee interface (no longer uses role field)
-const profileToEmployee = (profile: UserProfile): Employee => ({
+// Convert profile row to Employee interface (role lives in user_roles, not profiles)
+type ProfileRow = {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+};
+const profileToEmployee = (profile: ProfileRow): Employee => ({
   id: profile.id,
   name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
   role: 'user', // Default role
