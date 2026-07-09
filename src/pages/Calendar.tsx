@@ -18,7 +18,7 @@ import { BranchSyncStatusPanel } from "@/components/calendar/BranchSyncStatusPan
 import { fetchAppointments } from "@/services/calendarService";
 import { Appointment, CalendarView as CalendarViewType } from "@/types/calendar";
 import { useAutoCalendarSync } from "@/hooks/useAutoCalendarSync";
-import { useCurrentBranch, filterByBranch, BRANCH_LABELS, BranchCode } from "@/contexts/BranchContext";
+import { useCurrentBranch, filterByBranch, BRANCH_LABELS, BRANCH_COLOR_CLASSES, BranchCode } from "@/contexts/BranchContext";
 import { BranchChip } from "@/components/layout/BranchSwitcher";
 import { 
   Plus, 
