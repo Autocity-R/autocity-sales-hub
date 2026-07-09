@@ -50,7 +50,7 @@ const Warranty = () => {
   // Fetch warranty claims
   const { data: claims = [], isLoading: claimsLoading, error: claimsError } = useQuery({
     queryKey: ["warrantyClaims"],
-    queryFn: fetchWarrantyClaims
+    queryFn: () => fetchWarrantyClaims()
   });
 
   // Fetch warranty stats

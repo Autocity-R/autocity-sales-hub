@@ -90,7 +90,7 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
   // Fetch full warranty claims for detail modal
   const { data: fullWarrantyClaims = [] } = useQuery({
     queryKey: ['warranty-claims'],
-    queryFn: fetchWarrantyClaims,
+    queryFn: () => fetchWarrantyClaims(),
   });
 
   // All hooks must be called before any conditional returns
