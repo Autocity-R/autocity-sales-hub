@@ -12,6 +12,7 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
+import { BranchChip } from "@/components/layout/BranchSwitcher";
 
 interface VehicleB2CTableRowProps {
   vehicle: Vehicle;
@@ -137,7 +138,10 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
         )}
       </TableCell>
       <TableCell className="align-middle font-medium">
-        {vehicle.brand}
+        <div className="flex items-center gap-2">
+          <BranchChip branch={vehicle.branch} />
+          <span>{vehicle.brand}</span>
+        </div>
       </TableCell>
       <TableCell className="align-middle">
         {vehicle.model}
