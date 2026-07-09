@@ -216,6 +216,12 @@ export interface Vehicle {
   
   // JSONB details field
   details?: VehicleDetails;
+
+  // Fase 3 multi-vestiging
+  branch?: "rotterdam" | "heerhugowaard";
+  b2bDelivered?: boolean;
+  b2bDeliveredAt?: string | null;
+  b2bDeliveredBy?: string | null;
 }
 
 export interface Supplier {
