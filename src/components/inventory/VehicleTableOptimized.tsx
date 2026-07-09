@@ -17,6 +17,7 @@ import { Vehicle, ImportStatus } from "@/types/inventory";
 import { Avatar } from "@/components/ui/avatar";
 import { DeliveryConfirmationDialog, type DeliveryData } from "./DeliveryConfirmationDialog";
 import { OnlineStatusBadge } from "./OnlineStatusBadge";
+import { BranchChip } from "@/components/layout/BranchSwitcher";
 
 interface VehicleTableProps {
   vehicles: Vehicle[];
