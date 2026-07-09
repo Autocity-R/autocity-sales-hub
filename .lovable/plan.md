@@ -32,9 +32,11 @@
 - Verkocht B2C / Aftersales / Garantie / Aflever-agenda: hard filter voor niet-admins.
 - Afgeleverd-menu: branch-kolom + filter.
 
-## Fase 4 — Contracten met aparte entiteit
-- Contract-generator (`contractService` / `contractPdfService`) leest entiteits-header uit `branches` op basis van `vehicle.branch`.
-- Geen apart instellingen-scherm. Heerhugowaard KvK/BTW/IBAN wordt later direct in `branches`-data ingevuld zodra B.V. is opgericht.
+## Fase 4 — Contracten met aparte entiteit ✅
+- `contractService` leest entiteits-header (naam/adres/postcode+plaats/telefoon/e-mail/KvK/BTW/IBAN) uit `branches` op basis van `vehicle.branch`, met fallback naar de oorspronkelijke hardcoded Rotterdam-waarden.
+- Migratie 20260709222215: Rotterdam-rij in `branches` gevuld met bestaande hardcoded contract-gegevens → branches-tabel is nu bron van waarheid.
+- Lege velden voor Heerhugowaard (KvK/BTW/IBAN) worden weggelaten uit HTML- en tekst-header i.p.v. lege labels.
+- Geen instellingen-scherm gebouwd. Bestaande contracten ongewijzigd.
 
 ## Fase 5 — Google Calendar per vestiging
 - `company_calendar_settings` per branch.
