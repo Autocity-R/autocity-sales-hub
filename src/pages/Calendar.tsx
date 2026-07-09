@@ -271,9 +271,47 @@ const Calendar = () => {
         </div>
 
         {showGoogleSync && (
-          <GoogleServiceAccountSetup
-            onSetupComplete={setGoogleCalendarConnected}
-          />
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Rotterdam: bestaande service-account flow — geen seconde onderbroken */}
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${BRANCH_COLOR_CLASSES.rotterdam}`}>
+                  {BRANCH_LABELS.rotterdam}
+                </span>
+                <span className="text-sm text-muted-foreground">Google Calendar Service Account</span>
+              </div>
+              <GoogleServiceAccountSetup
+                onSetupComplete={setGoogleCalendarConnected}
+              />
+            </div>
+            {/* Heerhugowaard: placeholder — echte koppel-flow komt zodra het Google-account bestaat */}
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${BRANCH_COLOR_CLASSES.heerhugowaard}`}>
+                  {BRANCH_LABELS.heerhugowaard}
+                </span>
+                <span className="text-sm text-muted-foreground">Google Calendar Service Account</span>
+              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between text-base">
+                    <span>Nog niet geconfigureerd</span>
+                    <Badge className="bg-gray-100 text-gray-700 border border-gray-200">
+                      <AlertCircle className="mr-1 h-3 w-3" /> Wachten op Google-account
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground space-y-2">
+                  <p>
+                    Voor de vestiging Heerhugowaard komt een aparte Google Workspace-account. Zodra dit account bestaat, wordt hier de service-account koppeling gemaakt (aparte impersonatie, aparte agenda).
+                  </p>
+                  <p>
+                    Tot dan worden Heerhugowaard-afspraken lokaal opgeslagen. Ze belanden <strong>nooit</strong> in de Rotterdam-agenda.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         )}
 
         <Tabs defaultValue="calendar" className="space-y-4">
