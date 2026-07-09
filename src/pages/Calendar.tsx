@@ -287,7 +287,7 @@ const Calendar = () => {
 
           <TabsContent value="calendar">
             <CalendarView
-              appointments={appointments}
+              appointments={filteredAppointments}
               view={calendarView}
               onViewChange={setCalendarView}
               onAppointmentClick={setSelectedAppointment}
@@ -307,7 +307,7 @@ const Calendar = () => {
 
           <TabsContent value="list">
             <AppointmentsList
-              appointments={appointments}
+              appointments={filteredAppointments}
               onAppointmentClick={setSelectedAppointment}
               onRefresh={loadAppointments}
             />
