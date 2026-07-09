@@ -319,44 +319,25 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
           </Select>
         </div>
         
-        {/* Location Status */}
+        {/* Vestiging */}
         <div className="space-y-2">
-          <Label>Locatie auto</Label>
-          <ToggleGroup 
-            type="single" 
-            value={editedVehicle.location}
-            onValueChange={(value: LocationStatus) => {
-              if (value) handleChange('location', value);
+          <Label>Vestiging</Label>
+          <ToggleGroup
+            type="single"
+            value={(editedVehicle as any).branch || 'rotterdam'}
+            onValueChange={(value: string) => {
+              if (value) handleChange('branch' as any, value);
             }}
             className="justify-start flex flex-wrap"
+            disabled={readOnly}
           >
-            <ToggleGroupItem value="showroom" aria-label="Showroom">
+            <ToggleGroupItem value="rotterdam" aria-label="Rotterdam">
               <MapPin className="h-4 w-4 mr-2" />
-              Showroom
+              Rotterdam
             </ToggleGroupItem>
-            <ToggleGroupItem value="werkplaats" aria-label="Werkplaats">
+            <ToggleGroupItem value="heerhugowaard" aria-label="Heerhugowaard">
               <MapPin className="h-4 w-4 mr-2" />
-              Werkplaats
-            </ToggleGroupItem>
-            <ToggleGroupItem value="poetser" aria-label="Poetser">
-              <MapPin className="h-4 w-4 mr-2" />
-              Poetser
-            </ToggleGroupItem>
-            <ToggleGroupItem value="spuiter" aria-label="Spuiter">
-              <MapPin className="h-4 w-4 mr-2" />
-              Spuiter
-            </ToggleGroupItem>
-            <ToggleGroupItem value="calandstraat" aria-label="Calandstraat">
-              <MapPin className="h-4 w-4 mr-2" />
-              Calandstraat
-            </ToggleGroupItem>
-            <ToggleGroupItem value="oud_beijerland" aria-label="Oud Beijerland">
-              <MapPin className="h-4 w-4 mr-2" />
-              Oud Beijerland
-            </ToggleGroupItem>
-            <ToggleGroupItem value="afgeleverd" aria-label="Afgeleverd">
-              <MapPin className="h-4 w-4 mr-2" />
-              🚚 Afgeleverd
+              Heerhugowaard
             </ToggleGroupItem>
           </ToggleGroup>
         </div>
