@@ -946,6 +946,7 @@ export type Database = {
         Row: {
           ai_agent_id: string | null
           assignedto: string | null
+          branch: string
           confirmationsent: boolean | null
           created_at: string
           created_by_ai: boolean | null
@@ -978,6 +979,7 @@ export type Database = {
         Insert: {
           ai_agent_id?: string | null
           assignedto?: string | null
+          branch?: string
           confirmationsent?: boolean | null
           created_at?: string
           created_by_ai?: boolean | null
@@ -1010,6 +1012,7 @@ export type Database = {
         Update: {
           ai_agent_id?: string | null
           assignedto?: string | null
+          branch?: string
           confirmationsent?: boolean | null
           created_at?: string
           created_by_ai?: boolean | null
@@ -1171,6 +1174,69 @@ export type Database = {
           },
         ]
       }
+      branches: {
+        Row: {
+          address: string | null
+          btw_number: string | null
+          city: string | null
+          code: string
+          color: string | null
+          company_name: string | null
+          created_at: string
+          email: string | null
+          google_auth_email: string | null
+          google_calendar_id: string | null
+          iban: string | null
+          id: string
+          is_active: boolean
+          kvk_number: string | null
+          name: string
+          phone: string | null
+          postal_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          btw_number?: string | null
+          city?: string | null
+          code: string
+          color?: string | null
+          company_name?: string | null
+          created_at?: string
+          email?: string | null
+          google_auth_email?: string | null
+          google_calendar_id?: string | null
+          iban?: string | null
+          id?: string
+          is_active?: boolean
+          kvk_number?: string | null
+          name: string
+          phone?: string | null
+          postal_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          btw_number?: string | null
+          city?: string | null
+          code?: string
+          color?: string | null
+          company_name?: string | null
+          created_at?: string
+          email?: string | null
+          google_auth_email?: string | null
+          google_calendar_id?: string | null
+          iban?: string | null
+          id?: string
+          is_active?: boolean
+          kvk_number?: string | null
+          name?: string
+          phone?: string | null
+          postal_code?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       calendar_sync_logs: {
         Row: {
           appointment_id: string | null
@@ -1264,6 +1330,7 @@ export type Database = {
         Row: {
           auth_type: string | null
           auto_sync: boolean | null
+          branch: string
           calendar_email: string | null
           calendar_name: string | null
           company_id: string
@@ -1283,6 +1350,7 @@ export type Database = {
         Insert: {
           auth_type?: string | null
           auto_sync?: boolean | null
+          branch?: string
           calendar_email?: string | null
           calendar_name?: string | null
           company_id?: string
@@ -1302,6 +1370,7 @@ export type Database = {
         Update: {
           auth_type?: string | null
           auto_sync?: boolean | null
+          branch?: string
           calendar_email?: string | null
           calendar_name?: string | null
           company_id?: string
@@ -1601,6 +1670,7 @@ export type Database = {
       }
       contracts: {
         Row: {
+          branch: string
           contract_amount: number | null
           contract_number: string
           created_at: string
@@ -1612,6 +1682,7 @@ export type Database = {
           vehicle_id: string | null
         }
         Insert: {
+          branch?: string
           contract_amount?: number | null
           contract_number: string
           created_at?: string
@@ -1623,6 +1694,7 @@ export type Database = {
           vehicle_id?: string | null
         }
         Update: {
+          branch?: string
           contract_amount?: number | null
           contract_number?: string
           created_at?: string
@@ -3099,6 +3171,7 @@ export type Database = {
       leads: {
         Row: {
           assigned_to: string | null
+          branch: string
           created_at: string
           email: string | null
           email_thread_id: string | null
@@ -3126,6 +3199,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          branch?: string
           created_at?: string
           email?: string | null
           email_thread_id?: string | null
@@ -3153,6 +3227,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          branch?: string
           created_at?: string
           email?: string | null
           email_thread_id?: string | null
@@ -3303,6 +3378,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          branch: string
           company: string | null
           created_at: string
           email: string
@@ -3312,6 +3388,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          branch?: string
           company?: string | null
           created_at?: string
           email: string
@@ -3321,6 +3398,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          branch?: string
           company?: string | null
           created_at?: string
           email?: string
@@ -3333,6 +3411,7 @@ export type Database = {
       }
       sales_targets: {
         Row: {
+          branch: string
           created_at: string
           created_by: string | null
           id: string
@@ -3344,6 +3423,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          branch?: string
           created_at?: string
           created_by?: string | null
           id?: string
@@ -3355,6 +3435,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          branch?: string
           created_at?: string
           created_by?: string | null
           id?: string
@@ -3454,6 +3535,7 @@ export type Database = {
         Row: {
           assigned_by: string
           assigned_to: string
+          branch: string
           category: string
           completed_at: string | null
           created_at: string
@@ -3480,6 +3562,7 @@ export type Database = {
         Insert: {
           assigned_by: string
           assigned_to: string
+          branch?: string
           category?: string
           completed_at?: string | null
           created_at?: string
@@ -3506,6 +3589,7 @@ export type Database = {
         Update: {
           assigned_by?: string
           assigned_to?: string
+          branch?: string
           category?: string
           completed_at?: string | null
           created_at?: string
@@ -3948,8 +4032,10 @@ export type Database = {
           change_timestamp: string
           changed_by: string | null
           id: string
+          new_branch: string | null
           new_location: string | null
           new_status: string
+          old_branch: string | null
           old_location: string | null
           old_status: string | null
           vehicle_id: string
@@ -3959,8 +4045,10 @@ export type Database = {
           change_timestamp?: string
           changed_by?: string | null
           id?: string
+          new_branch?: string | null
           new_location?: string | null
           new_status: string
+          old_branch?: string | null
           old_location?: string | null
           old_status?: string | null
           vehicle_id: string
@@ -3970,8 +4058,10 @@ export type Database = {
           change_timestamp?: string
           changed_by?: string | null
           id?: string
+          new_branch?: string | null
           new_location?: string | null
           new_status?: string
+          old_branch?: string | null
           old_location?: string | null
           old_status?: string | null
           vehicle_id?: string
@@ -3990,7 +4080,11 @@ export type Database = {
         Row: {
           aangekomen_at: string | null
           aanvraag_ontvangen_at: string | null
+          b2b_delivered: boolean
+          b2b_delivered_at: string | null
+          b2b_delivered_by: string | null
           bpm_betaald_at: string | null
+          branch: string
           brand: string
           color: string | null
           created_at: string
@@ -4032,7 +4126,11 @@ export type Database = {
         Insert: {
           aangekomen_at?: string | null
           aanvraag_ontvangen_at?: string | null
+          b2b_delivered?: boolean
+          b2b_delivered_at?: string | null
+          b2b_delivered_by?: string | null
           bpm_betaald_at?: string | null
+          branch?: string
           brand: string
           color?: string | null
           created_at?: string
@@ -4074,7 +4172,11 @@ export type Database = {
         Update: {
           aangekomen_at?: string | null
           aanvraag_ontvangen_at?: string | null
+          b2b_delivered?: boolean
+          b2b_delivered_at?: string | null
+          b2b_delivered_by?: string | null
           bpm_betaald_at?: string | null
+          branch?: string
           brand?: string
           color?: string | null
           created_at?: string
@@ -4140,6 +4242,7 @@ export type Database = {
       warranty_claims: {
         Row: {
           appointment_id: string | null
+          branch: string
           claim_amount: number | null
           claim_status: string
           created_at: string
@@ -4161,6 +4264,7 @@ export type Database = {
         }
         Insert: {
           appointment_id?: string | null
+          branch?: string
           claim_amount?: number | null
           claim_status?: string
           created_at?: string
@@ -4182,6 +4286,7 @@ export type Database = {
         }
         Update: {
           appointment_id?: string | null
+          branch?: string
           claim_amount?: number | null
           claim_status?: string
           created_at?: string
@@ -4236,6 +4341,7 @@ export type Database = {
         Row: {
           b2b_sales: number
           b2c_sales: number
+          branch: string
           created_at: string
           id: string
           sale_date: string | null
@@ -4249,6 +4355,7 @@ export type Database = {
         Insert: {
           b2b_sales?: number
           b2c_sales?: number
+          branch?: string
           created_at?: string
           id?: string
           sale_date?: string | null
@@ -4262,6 +4369,7 @@ export type Database = {
         Update: {
           b2b_sales?: number
           b2c_sales?: number
+          branch?: string
           created_at?: string
           id?: string
           sale_date?: string | null
