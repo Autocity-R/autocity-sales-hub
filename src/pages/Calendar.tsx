@@ -14,6 +14,7 @@ import { AppointmentDetail } from "@/components/calendar/AppointmentDetail";
 import { GoogleServiceAccountSetup } from "@/components/calendar/GoogleServiceAccountSetup";
 import { CalendarSyncStatus } from "@/components/calendar/CalendarSyncStatus";
 import { GoogleCalendarTest } from "@/components/calendar/GoogleCalendarTest";
+import { BranchSyncStatusPanel } from "@/components/calendar/BranchSyncStatusPanel";
 import { fetchAppointments } from "@/services/calendarService";
 import { Appointment, CalendarView as CalendarViewType } from "@/types/calendar";
 import { useAutoCalendarSync } from "@/hooks/useAutoCalendarSync";
