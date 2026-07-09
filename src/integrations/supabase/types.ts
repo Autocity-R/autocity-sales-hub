@@ -4422,6 +4422,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      current_user_branch: { Args: never; Returns: string }
       get_valid_exact_online_token: {
         Args: { user_uuid: string }
         Returns: {
@@ -4452,14 +4453,24 @@ export type Database = {
       }
       is_admin_or_owner: { Args: never; Returns: boolean }
       is_admin_user: { Args: { user_id: string }; Returns: boolean }
-      update_weekly_sales: {
-        Args: {
-          p_sales_type: string
-          p_salesperson_id: string
-          p_salesperson_name: string
-        }
-        Returns: undefined
-      }
+      update_weekly_sales:
+        | {
+            Args: {
+              p_sales_type: string
+              p_salesperson_id: string
+              p_salesperson_name: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_branch?: string
+              p_sales_type: string
+              p_salesperson_id: string
+              p_salesperson_name: string
+            }
+            Returns: undefined
+          }
       verify_webhook_sync: {
         Args: { agent_uuid: string }
         Returns: {
