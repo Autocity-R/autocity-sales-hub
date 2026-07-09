@@ -43,6 +43,9 @@ import { DamageRepairAnalytics } from "@/components/reports/DamageRepairAnalytic
 import { BranchManagerDashboard } from "@/components/reports/branch-manager";
 import { AftersalesDashboard } from "@/components/reports/AftersalesDashboard";
 import { PeriodSelector } from "@/components/reports/PeriodSelector";
+import { BranchFilter } from "@/components/reports/BranchFilter";
+import { BranchComparison } from "@/components/reports/BranchComparison";
+import { useCurrentBranch } from "@/contexts/BranchContext";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useVehicleDetailDialog } from "@/hooks/useVehicleDetailDialog";
 import { VehicleDetails } from "@/components/inventory/VehicleDetails";
@@ -83,6 +86,7 @@ const Reports = () => {
   const [isUsingMockData, setIsUsingMockData] = useState(false);
   const queryClient = useQueryClient();
   const { userRole, hasAftersalesOnlyReportsAccess } = useRoleAccess();
+  const { branchFilter } = useCurrentBranch();
   
   // Vehicle detail dialog for "Bekijk" buttons
   const vehicleDialog = useVehicleDetailDialog();
@@ -178,11 +182,11 @@ const Reports = () => {
     error,
     refetch 
   } = useQuery({
-    queryKey: ['reports', reportPeriod],
+    queryKey: ['reports', reportPeriod, branchFilter],
     queryFn: async () => {
       try {
         // Use system data from vehicles table
-        return await systemReportsService.getReportsData(reportPeriod);
+        return await systemReportsService.getReportsData(reportPeriod, branchFilter);
       } catch (error) {
         console.error('Error fetching system reports data:', error);
         // Fallback to mock data only on error
@@ -210,8 +214,8 @@ const Reports = () => {
 
   // Fetch inventory metrics
   const { data: inventoryMetrics, isLoading: inventoryLoading } = useQuery({
-    queryKey: ['inventory-metrics'],
-    queryFn: () => systemReportsService.getInventoryMetrics(),
+    queryKey: ['inventory-metrics', branchFilter],
+    queryFn: () => systemReportsService.getInventoryMetrics(branchFilter),
     refetchOnMount: true,
     refetchOnWindowFocus: false
   });
