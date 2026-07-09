@@ -3,6 +3,96 @@ import { ContractOptions } from "@/types/email";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
+ * Hardcoded fallback bedrijfsgegevens per vestiging. Wordt alleen gebruikt
+ * als de branches-tabel voor die velden nog leeg is. De branches-tabel is
+ * de bron van waarheid.
+ */
+const BRANCH_COMPANY_FALLBACK: Record<string, {
+  tradeName: string;
+  address: string;
+  postalCode: string;
+  city: string;
+  phone: string;
+  email?: string;
+  iban: string;
+  btw: string;
+  kvk: string;
+}> = {
+  rotterdam: {
+    tradeName: "Autocity Automotive Group B.V",
+    address: "Thurledeweg 61a",
+    postalCode: "3044ER",
+    city: "Rotterdam",
+    phone: "010-2623980",
+    email: "verkoop@auto-city.nl",
+    iban: "NL24ABNA0595583911",
+    btw: "NL868445794B01",
+    kvk: "98322702",
+  },
+};
+
+const COUNTRY_DEFAULT = "Nederland";
+const WEBSITE_DEFAULT = "www.auto-city.nl";
+
+interface CompanyInfo {
+  tradeName: string;
+  address: string;
+  postalCode: string;
+  city: string;
+  country: string;
+  phone: string;
+  email?: string;
+  iban?: string;
+  btw?: string;
+  kvk?: string;
+  website: string;
+}
+
+/**
+ * Haalt de entiteits-header voor een koopcontract op uit de branches-tabel
+ * op basis van vehicle.branch. Ontbrekende velden vallen terug op de
+ * hardcoded Rotterdam-waarden zodat oudere contracten er pixel-identiek
+ * blijven uitzien. Voor Heerhugowaard blijven ontbrekende velden gewoon
+ * leeg — de header laat die regels dan weg.
+ */
+const loadBranchCompanyInfo = async (branchCode?: string | null): Promise<CompanyInfo> => {
+  const code = (branchCode || "rotterdam").toLowerCase();
+  const fallback = BRANCH_COMPANY_FALLBACK[code];
+
+  let row: any = null;
+  try {
+    const { data } = await supabase
+      .from("branches")
+      .select("company_name,address,postal_code,city,phone,email,kvk_number,btw_number,iban")
+      .eq("code", code)
+      .maybeSingle();
+    row = data;
+  } catch (err) {
+    console.warn("[CONTRACT_SERVICE] Could not load branch, using fallback", err);
+  }
+
+  const pick = (dbVal: any, fbVal?: string) => {
+    const v = (dbVal ?? "").toString().trim();
+    if (v) return v;
+    return fbVal && fbVal.trim() ? fbVal : undefined;
+  };
+
+  return {
+    tradeName: pick(row?.company_name, fallback?.tradeName) || "",
+    address:   pick(row?.address, fallback?.address) || "",
+    postalCode: pick(row?.postal_code, fallback?.postalCode) || "",
+    city:      pick(row?.city, fallback?.city) || "",
+    country:   COUNTRY_DEFAULT,
+    phone:     pick(row?.phone, fallback?.phone) || "",
+    email:     pick(row?.email, fallback?.email),
+    iban:      pick(row?.iban, fallback?.iban),
+    btw:       pick(row?.btw_number, fallback?.btw),
+    kvk:       pick(row?.kvk_number, fallback?.kvk),
+    website:   WEBSITE_DEFAULT,
+  };
+};
+
+/**
  * Convert image URL to base64 data URL
  */
 const imageToBase64 = async (imageUrl: string): Promise<string> => {
@@ -125,19 +215,8 @@ export const generateContract = async (
     ? "vrijgesteld van BTW (margeregeling)" 
     : "inclusief BTW";
 
-  // Bedrijfsgegevens
-  const companyInfo = {
-    tradeName: "Autocity Automotive Group B.V",
-    address: "Thurledeweg 61a",
-    postalCode: "3044ER",
-    city: "Rotterdam",
-    country: "Nederland",
-    phone: "010-2623980",
-    iban: "NL24ABNA0595583911",
-    btw: "NL868445794B01",
-    kvk: "98322702",
-    website: "www.auto-city.nl"
-  };
+  // Bedrijfsgegevens: entiteit per vestiging (bron van waarheid = branches-tabel)
+  const companyInfo = await loadBranchCompanyInfo(vehicle.branch);
 
   // Ensure full customer address - prioritize manual contractAddress
   const formatAddressParts = (
