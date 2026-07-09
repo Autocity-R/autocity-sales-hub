@@ -17,6 +17,8 @@ import { GoogleCalendarTest } from "@/components/calendar/GoogleCalendarTest";
 import { fetchAppointments } from "@/services/calendarService";
 import { Appointment, CalendarView as CalendarViewType } from "@/types/calendar";
 import { useAutoCalendarSync } from "@/hooks/useAutoCalendarSync";
+import { useCurrentBranch, filterByBranch, BRANCH_LABELS, BranchCode } from "@/contexts/BranchContext";
+import { BranchChip } from "@/components/layout/BranchSwitcher";
 import { 
   Plus, 
   Calendar as CalendarIcon, 
@@ -36,6 +38,11 @@ import { format, startOfDay, endOfDay, addDays, subDays, startOfWeek, endOfWeek 
 
 const Calendar = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const { branchFilter } = useCurrentBranch();
+  const filteredAppointments = React.useMemo(
+    () => filterByBranch(appointments, branchFilter),
+    [appointments, branchFilter],
+  );
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
