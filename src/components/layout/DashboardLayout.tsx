@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { AuthHeader } from "./AuthHeader";
+import { BranchSwitcher } from "./BranchSwitcher";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,7 @@ const DashboardLayout = ({
           <div className="flex flex-1 gap-x-2 md:gap-x-4 self-stretch lg:gap-x-6">
             <div className="flex flex-1"></div>
             <div className="flex items-center gap-x-2 md:gap-x-4 lg:gap-x-6">
+              <BranchSwitcher />
               <AuthHeader />
             </div>
           </div>
