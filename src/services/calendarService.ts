@@ -231,7 +231,8 @@ export const createAppointment = async (
     const dbAppointment = convertToDbInsert({
       ...appointment,
       createdBy: appointment.createdBy || user.email || 'Unknown User',
-      sync_status: 'pending' // Nieuwe afspraken starten als pending voor auto-sync
+      sync_status: 'pending', // Nieuwe afspraken starten als pending voor auto-sync
+      branch: await resolveBranchForAppointment(appointment),
     });
 
     console.log('📝 Creating appointment with data:', dbAppointment);
