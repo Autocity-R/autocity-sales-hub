@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Search, Filter, User } from "lucide-react";
+import { Search, Filter, User, Truck } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { B2BInventoryHeader } from "@/components/inventory/B2BInventoryHeader";
 import { B2BInventoryContent } from "@/components/inventory/B2BInventoryContent";
 import { ContractConfigDialog } from "@/components/inventory/ContractConfigDialog";
@@ -18,6 +19,7 @@ import { ContractOptions } from "@/types/email";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useCurrentBranch, filterByBranch } from "@/contexts/BranchContext";
 
 const InventoryB2B = () => {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
@@ -27,6 +29,8 @@ const InventoryB2B = () => {
   const [invoiceVehicle, setInvoiceVehicle] = useState<Vehicle | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [salespersonFilter, setSalespersonFilter] = useState("");
+  const [onlyDelivered, setOnlyDelivered] = useState(false);
+  const { branchFilter } = useCurrentBranch();
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -36,7 +40,7 @@ const InventoryB2B = () => {
   
   // Filter vehicles based on search term
   const filteredVehicles = useMemo(() => {
-    let result = vehicles.filter(vehicle =>
+    let result = filterByBranch(vehicles, branchFilter).filter(vehicle =>
       `${vehicle.brand} ${vehicle.model} ${vehicle.licenseNumber} ${vehicle.vin}`
         .toLowerCase()
         .includes(searchTerm.toLowerCase())
@@ -44,8 +48,11 @@ const InventoryB2B = () => {
     if (salespersonFilter) {
       result = result.filter(v => v.salespersonName === salespersonFilter);
     }
+    if (onlyDelivered) {
+      result = result.filter(v => v.b2bDelivered === true);
+    }
     return result;
-  }, [vehicles, searchTerm, salespersonFilter]);
+  }, [vehicles, searchTerm, salespersonFilter, onlyDelivered, branchFilter]);
 
   // Extract unique salespeople from vehicles
   const uniqueSalespeople = useMemo(() => {
