@@ -38,10 +38,12 @@
 - Lege velden voor Heerhugowaard (KvK/BTW/IBAN) worden weggelaten uit HTML- en tekst-header i.p.v. lege labels.
 - Geen instellingen-scherm gebouwd. Bestaande contracten ongewijzigd.
 
-## Fase 5 — Google Calendar per vestiging
-- `company_calendar_settings` per branch.
-- Calendar-service kiest calendar-ID op basis van `appointment.branch`.
-- Instellingen-scherm: kaart per vestiging (HHW "nog niet geconfigureerd").
+## Fase 5 — Google Calendar per vestiging ✅
+- Migratie 20260709222515: unieke koppeling `(company_id, branch)` op `company_calendar_settings`; Rotterdam-rij ongewijzigd; placeholder-rij voor Heerhugowaard (sync uit).
+- Edge function `calendar-sync` kiest `impersonate_email` + `google_calendar_id` per `appointment.branch`. Zonder volledige config → afspraak krijgt `sync_status='no_calendar'`, wordt lokaal opgeslagen, en belandt NOOIT in de verkeerde agenda.
+- `calendarService.createAppointment` erft branch van gekoppeld voertuig, anders van `profiles.branch`, default `rotterdam`.
+- Agenda-pagina: branch-switcher filtert alle tabs (Kalender/Lijst/Vandaag), branch-chip per afspraak, per-branch cards in de Sync Status-tab en in de Service Account-setup (Heerhugowaard: "Nog niet geconfigureerd — Google-account volgt").
+- Rotterdam-sync: onveranderd — dezelfde service-account, dezelfde impersonatie (`verkoop@auto-city.nl`), dezelfde `primary` calendar.
 
 ## Fase 6 — Rapportages
 - `<BranchFilter />` (Alles/Rotterdam/HHW) op alle rapportages + agent-dashboards. Niet-admins in aftersales-rapportages hard gefilterd op eigen branch.

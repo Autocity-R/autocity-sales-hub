@@ -34,10 +34,13 @@ export interface Appointment {
   // Google Calendar integration (will be available after SQL migration)
   googleEventId?: string;
   googleCalendarId?: string;
-  sync_status?: 'pending' | 'synced' | 'error';
+  sync_status?: 'pending' | 'synced' | 'error' | 'no_calendar';
   last_synced_at?: Date | string;
   created_by_ai?: boolean;
   ai_agent_id?: string;
+
+  // Vestiging (branch) — bepaalt naar welke Google-agenda deze afspraak syncet
+  branch?: string;
 }
 
 export type AppointmentType = 

@@ -14,9 +14,12 @@ import { AppointmentDetail } from "@/components/calendar/AppointmentDetail";
 import { GoogleServiceAccountSetup } from "@/components/calendar/GoogleServiceAccountSetup";
 import { CalendarSyncStatus } from "@/components/calendar/CalendarSyncStatus";
 import { GoogleCalendarTest } from "@/components/calendar/GoogleCalendarTest";
+import { BranchSyncStatusPanel } from "@/components/calendar/BranchSyncStatusPanel";
 import { fetchAppointments } from "@/services/calendarService";
 import { Appointment, CalendarView as CalendarViewType } from "@/types/calendar";
 import { useAutoCalendarSync } from "@/hooks/useAutoCalendarSync";
+import { useCurrentBranch, filterByBranch, BRANCH_LABELS, BRANCH_COLOR_CLASSES, BranchCode } from "@/contexts/BranchContext";
+import { BranchChip } from "@/components/layout/BranchSwitcher";
 import { 
   Plus, 
   Calendar as CalendarIcon, 
@@ -36,6 +39,11 @@ import { format, startOfDay, endOfDay, addDays, subDays, startOfWeek, endOfWeek 
 
 const Calendar = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const { branchFilter } = useCurrentBranch();
+  const filteredAppointments = React.useMemo(
+    () => filterByBranch(appointments, branchFilter),
+    [appointments, branchFilter],
+  );
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
@@ -82,24 +90,24 @@ const Calendar = () => {
     loadAppointments();
   }, [calendarView.date]);
 
-  const todayAppointments = appointments.filter(apt => {
+  const todayAppointments = filteredAppointments.filter(apt => {
     const today = startOfDay(new Date());
     const tomorrow = endOfDay(new Date());
     const aptDate = new Date(apt.startTime);
     return aptDate >= today && aptDate <= tomorrow;
   });
 
-  const thisWeekAppointments = appointments.filter(apt => {
+  const thisWeekAppointments = filteredAppointments.filter(apt => {
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
     const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
     const aptDate = new Date(apt.startTime);
     return aptDate >= weekStart && aptDate <= weekEnd;
   });
 
-  const confirmedAppointments = appointments.filter(apt => apt.status === "bevestigd");
-  const pendingAppointments = appointments.filter(apt => apt.status === "gepland");
-  const syncedAppointments = appointments.filter(apt => apt.sync_status === "synced");
-  const pendingSyncAppointments = appointments.filter(apt => apt.sync_status === "pending");
+  const confirmedAppointments = filteredAppointments.filter(apt => apt.status === "bevestigd");
+  const pendingAppointments = filteredAppointments.filter(apt => apt.status === "gepland");
+  const syncedAppointments = filteredAppointments.filter(apt => apt.sync_status === "synced");
+  const pendingSyncAppointments = filteredAppointments.filter(apt => apt.sync_status === "pending");
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -263,9 +271,47 @@ const Calendar = () => {
         </div>
 
         {showGoogleSync && (
-          <GoogleServiceAccountSetup
-            onSetupComplete={setGoogleCalendarConnected}
-          />
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Rotterdam: bestaande service-account flow — geen seconde onderbroken */}
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${BRANCH_COLOR_CLASSES.rotterdam}`}>
+                  {BRANCH_LABELS.rotterdam}
+                </span>
+                <span className="text-sm text-muted-foreground">Google Calendar Service Account</span>
+              </div>
+              <GoogleServiceAccountSetup
+                onSetupComplete={setGoogleCalendarConnected}
+              />
+            </div>
+            {/* Heerhugowaard: placeholder — echte koppel-flow komt zodra het Google-account bestaat */}
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${BRANCH_COLOR_CLASSES.heerhugowaard}`}>
+                  {BRANCH_LABELS.heerhugowaard}
+                </span>
+                <span className="text-sm text-muted-foreground">Google Calendar Service Account</span>
+              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between text-base">
+                    <span>Nog niet geconfigureerd</span>
+                    <Badge className="bg-gray-100 text-gray-700 border border-gray-200">
+                      <AlertCircle className="mr-1 h-3 w-3" /> Wachten op Google-account
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground space-y-2">
+                  <p>
+                    Voor de vestiging Heerhugowaard komt een aparte Google Workspace-account. Zodra dit account bestaat, wordt hier de service-account koppeling gemaakt (aparte impersonatie, aparte agenda).
+                  </p>
+                  <p>
+                    Tot dan worden Heerhugowaard-afspraken lokaal opgeslagen. Ze belanden <strong>nooit</strong> in de Rotterdam-agenda.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         )}
 
         <Tabs defaultValue="calendar" className="space-y-4">
@@ -280,7 +326,7 @@ const Calendar = () => {
 
           <TabsContent value="calendar">
             <CalendarView
-              appointments={appointments}
+              appointments={filteredAppointments}
               view={calendarView}
               onViewChange={setCalendarView}
               onAppointmentClick={setSelectedAppointment}
@@ -300,7 +346,7 @@ const Calendar = () => {
 
           <TabsContent value="list">
             <AppointmentsList
-              appointments={appointments}
+              appointments={filteredAppointments}
               onAppointmentClick={setSelectedAppointment}
               onRefresh={loadAppointments}
             />
@@ -333,6 +379,7 @@ const Calendar = () => {
                             <Badge variant="outline">
                               {getTypeLabel(appointment.type)}
                             </Badge>
+                            <BranchChip branch={appointment.branch} />
                             <CalendarSyncStatus
                               appointmentId={appointment.id}
                               googleEventId={appointment.googleEventId}
@@ -360,63 +407,10 @@ const Calendar = () => {
           </TabsContent>
 
           <TabsContent value="sync">
-            <Card>
-              <CardHeader>
-                <CardTitle>Google Calendar Synchronisatie Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {!googleCalendarConnected ? (
-                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <div className="flex items-center gap-2 text-yellow-800">
-                        <AlertCircle className="h-4 w-4" />
-                        <strong>Google Calendar niet verbonden</strong>
-                      </div>
-                      <p className="text-sm text-yellow-700 mt-1">
-                        Verbind eerst je Google Calendar om synchronisatie te activeren
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="text-center p-4 bg-green-50 rounded-lg">
-                          <div className="text-2xl font-bold text-green-600">{syncedAppointments.length}</div>
-                          <div className="text-sm text-green-700">Gesynchroniseerd</div>
-                        </div>
-                        <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                          <div className="text-2xl font-bold text-yellow-600">{pendingSyncAppointments.length}</div>
-                          <div className="text-sm text-yellow-700">Wachten op sync</div>
-                        </div>
-                        <div className="text-center p-4 bg-blue-50 rounded-lg">
-                          <div className="text-2xl font-bold text-blue-600">{appointments.filter(apt => apt.created_by_ai).length}</div>
-                          <div className="text-sm text-blue-700">Door AI aangemaakt</div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <h4 className="font-medium">Recente Afspraken</h4>
-                        {appointments.slice(0, 5).map((appointment) => (
-                          <div key={appointment.id} className="flex items-center justify-between p-3 border rounded">
-                            <div>
-                              <div className="font-medium">{appointment.title}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {format(new Date(appointment.startTime), 'dd MMM yyyy HH:mm')}
-                              </div>
-                            </div>
-                            <CalendarSyncStatus
-                              appointmentId={appointment.id}
-                              googleEventId={appointment.googleEventId}
-                              syncStatus={appointment.sync_status || 'pending'}
-                              onSyncComplete={loadAppointments}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <BranchSyncStatusPanel
+              appointments={appointments}
+              onSyncComplete={loadAppointments}
+            />
           </TabsContent>
 
           <TabsContent value="test">

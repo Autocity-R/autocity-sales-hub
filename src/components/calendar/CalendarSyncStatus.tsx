@@ -10,7 +10,8 @@ import {
   AlertCircle, 
   Clock, 
   ExternalLink,
-  Zap 
+  Zap,
+  CalendarOff
 } from "lucide-react";
 
 interface CalendarSyncStatusProps {
@@ -43,6 +44,8 @@ export const CalendarSyncStatus: React.FC<CalendarSyncStatusProps> = ({
         return <AlertCircle className="h-4 w-4 text-red-500" />;
       case 'pending':
         return <Clock className="h-4 w-4 text-yellow-500 animate-pulse" />;
+      case 'no_calendar':
+        return <CalendarOff className="h-4 w-4 text-gray-500" />;
       default:
         return <RefreshCw className="h-4 w-4 text-gray-500" />;
     }
@@ -56,6 +59,8 @@ export const CalendarSyncStatus: React.FC<CalendarSyncStatusProps> = ({
         return 'Sync fout';
       case 'pending':
         return 'Auto-sync...';
+      case 'no_calendar':
+        return 'Niet gesynct — geen agenda geconfigureerd';
       default:
         return 'Niet gesynchroniseerd';
     }
@@ -69,6 +74,8 @@ export const CalendarSyncStatus: React.FC<CalendarSyncStatusProps> = ({
         return 'bg-red-100 text-red-800 border-red-200';
       case 'pending':
         return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'no_calendar':
+        return 'bg-gray-100 text-gray-700 border-gray-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
