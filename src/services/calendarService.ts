@@ -27,18 +27,14 @@ const autoSyncToGoogle = async (appointmentId: string, retryCount = 0) => {
     }
 
     if (data?.success) {
+      if (data.skipped) {
+        // Geen calendar geconfigureerd voor deze vestiging — géén retry, géén error.
+        // De edge function heeft sync_status al op 'no_calendar' gezet.
+        console.log(`ℹ️  Auto-sync skipped for ${appointmentId}: ${data.reason} (branch=${data.branch})`);
+        return;
+      }
       console.log('✅ Auto-sync successful for appointment:', appointmentId, 'Google Event ID:', data.googleEventId);
-      
-      // Update appointment status to synced with the returned Google event ID
-      await supabase
-        .from('appointments')
-        .update({ 
-          sync_status: 'synced',
-          google_event_id: data.googleEventId,
-          google_calendar_id: data.impersonateEmail || 'inkoop@auto-city.nl',
-          last_synced_at: new Date().toISOString()
-        })
-        .eq('id', appointmentId);
+      // De edge function heeft sync_status al bijgewerkt.
     } else {
       console.error('❌ Auto-sync returned unsuccessful response:', data);
       throw new Error('Sync returned unsuccessful response');
@@ -111,10 +107,11 @@ const convertDbAppointment = (dbAppointment: DbAppointment): Appointment => ({
   updatedAt: dbAppointment.updated_at,
   googleEventId: dbAppointment.google_event_id || undefined,
   googleCalendarId: dbAppointment.google_calendar_id || undefined,
-  sync_status: dbAppointment.sync_status as 'pending' | 'synced' | 'error' || 'pending',
+  sync_status: (dbAppointment.sync_status as 'pending' | 'synced' | 'error' | 'no_calendar') || 'pending',
   last_synced_at: dbAppointment.last_synced_at || undefined,
   created_by_ai: dbAppointment.created_by_ai || false,
-  ai_agent_id: dbAppointment.ai_agent_id || undefined
+  ai_agent_id: dbAppointment.ai_agent_id || undefined,
+  branch: (dbAppointment as any).branch || undefined,
 });
 
 // Convert frontend appointment to database insert format
@@ -146,7 +143,42 @@ const convertToDbInsert = (appointment: Omit<Appointment, 'id' | 'createdAt' | '
   last_synced_at: typeof appointment.last_synced_at === 'string' ? appointment.last_synced_at : appointment.last_synced_at?.toISOString(),
   created_by_ai: appointment.created_by_ai,
   ai_agent_id: appointment.ai_agent_id
+, branch: appointment.branch,
 });
+
+/**
+ * Bepaal de branch voor een nieuwe afspraak:
+ * 1. Als expliciet meegegeven → gebruiken.
+ * 2. Anders erven van gekoppeld voertuig (vehicles.branch).
+ * 3. Anders erven van de aangemelde gebruiker (profiles.branch).
+ * 4. Anders 'rotterdam' als default (huidige situatie).
+ */
+const resolveBranchForAppointment = async (
+  appointment: Pick<Appointment, 'branch' | 'vehicleId'>
+): Promise<string> => {
+  if (appointment.branch) return appointment.branch;
+
+  if (appointment.vehicleId) {
+    const { data: vehicle } = await supabase
+      .from('vehicles')
+      .select('branch')
+      .eq('id', appointment.vehicleId)
+      .maybeSingle();
+    if (vehicle?.branch) return vehicle.branch;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('branch')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (profile?.branch) return profile.branch;
+  }
+
+  return 'rotterdam';
+};
 
 export const fetchAppointments = async (
   startDate?: Date,
