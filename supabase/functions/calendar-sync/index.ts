@@ -7,9 +7,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// TARGET CALENDAR naar primary met Domain-wide delegation
-const TARGET_CALENDAR = 'primary';
-const IMPERSONATE_EMAIL = 'verkoop@auto-city.nl';
+// Fase 5: per vestiging (branch) een aparte Google Calendar-config.
+// De target calendar en te impersoneren e-mail worden per branch uit
+// company_calendar_settings gehaald op basis van appointment.branch.
+//
+// Fallback op de "verkeerde" agenda is EXPLICIET NIET toegestaan:
+// een Heerhugowaard-afspraak mag nooit in de Rotterdam-agenda belanden.
 
 interface CalendarEvent {
   id?: string;
@@ -19,6 +22,56 @@ interface CalendarEvent {
   end: { dateTime: string; timeZone?: string };
   location?: string;
   attendees?: Array<{ email: string; displayName?: string }>;
+}
+
+interface BranchCalendarConfig {
+  branch: string;
+  targetCalendar: string;
+  impersonateEmail: string;
+  authType: string;
+}
+
+/**
+ * Haalt de kalenderconfig op voor een specifieke branch.
+ * Retourneert null als er (nog) geen volledige service-account configuratie is
+ * — dan wordt de afspraak NIET gesynct (en NOOIT naar een andere agenda).
+ */
+async function loadBranchCalendarConfig(
+  supabase: any,
+  branch: string | null | undefined,
+): Promise<BranchCalendarConfig | null> {
+  const branchCode = (branch || 'rotterdam').toLowerCase();
+
+  const { data, error } = await supabase
+    .from('company_calendar_settings')
+    .select('*')
+    .eq('company_id', 'auto-city')
+    .eq('branch', branchCode)
+    .maybeSingle();
+
+  if (error) {
+    console.error(`❌ Could not load calendar settings for branch ${branchCode}:`, error);
+    return null;
+  }
+  if (!data) {
+    console.warn(`⚠️  No calendar config row for branch ${branchCode}`);
+    return null;
+  }
+  if (data.auth_type !== 'service_account') {
+    console.warn(`⚠️  Branch ${branchCode} calendar not on service_account auth`);
+    return null;
+  }
+  if (!data.calendar_email || !data.sync_enabled) {
+    console.warn(`⚠️  Branch ${branchCode} calendar missing calendar_email or sync disabled`);
+    return null;
+  }
+
+  return {
+    branch: branchCode,
+    targetCalendar: data.google_calendar_id || 'primary',
+    impersonateEmail: data.calendar_email,
+    authType: data.auth_type,
+  };
 }
 
 serve(async (req) => {
@@ -51,41 +104,6 @@ serve(async (req) => {
     const { action, appointmentId } = await req.json();
 
     console.log('🔄 Calendar sync action:', action, 'for appointment:', appointmentId);
-    console.log('🎯 Target calendar (Domain-wide delegation):', TARGET_CALENDAR, 'impersonating:', IMPERSONATE_EMAIL);
-
-    // Get company calendar settings using service role
-    const { data: calendarSettingsArray, error: settingsError } = await supabase
-      .from('company_calendar_settings')
-      .select('*')
-      .eq('company_id', 'auto-city')
-      .eq('auth_type', 'service_account')
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    console.log('📋 Calendar settings query result:', { calendarSettingsArray, settingsError });
-
-    if (settingsError || !calendarSettingsArray || calendarSettingsArray.length === 0) {
-      console.error('❌ Calendar settings error:', settingsError);
-      throw new Error('Company calendar not configured. Please set up Service Account first.');
-    }
-
-    const calendarSettings = calendarSettingsArray[0];
-
-    if (!calendarSettings.auth_type || calendarSettings.auth_type !== 'service_account') {
-      throw new Error('Service Account authentication not configured');
-    }
-
-    // Get fresh access token using Service Account with Domain-wide delegation DIRECTLY
-    let accessToken: string;
-    
-    try {
-      console.log('🔑 Getting fresh access token with Domain-wide delegation...');
-      accessToken = await getServiceAccountToken();
-      console.log('✅ Got access token successfully with Domain-wide delegation');
-    } catch (tokenError) {
-      console.error('❌ Failed to get access token:', tokenError);
-      throw new Error(`Failed to get Service Account access token: ${tokenError instanceof Error ? tokenError.message : 'Unknown error'}`);
-    }
 
     switch (action) {
       case 'sync_to_google': {
@@ -99,6 +117,48 @@ serve(async (req) => {
         if (apptError || !appointment) {
           console.error('❌ Appointment query error:', apptError);
           throw new Error('Appointment not found');
+        }
+
+        // Kies calendar-config op basis van appointment.branch.
+        const branchConfig = await loadBranchCalendarConfig(supabase, appointment.branch);
+
+        if (!branchConfig) {
+          console.warn(`⏭️  Skipping sync — no calendar configured for branch "${appointment.branch}"`);
+          await supabase
+            .from('appointments')
+            .update({
+              sync_status: 'no_calendar',
+              last_synced_at: new Date().toISOString(),
+            })
+            .eq('id', appointmentId);
+          await supabase.from('calendar_sync_logs').insert({
+            appointment_id: appointmentId,
+            sync_direction: 'crm_to_google',
+            sync_action: 'skip',
+            sync_status: 'skipped',
+            performed_by_user_id: user.id,
+            sync_data: { reason: 'no_calendar_for_branch', branch: appointment.branch },
+          });
+          return new Response(JSON.stringify({
+            success: true,
+            skipped: true,
+            reason: 'no_calendar_for_branch',
+            branch: appointment.branch,
+            message: `Geen Google-agenda geconfigureerd voor vestiging "${appointment.branch || 'onbekend'}". Afspraak is lokaal opgeslagen zonder Google-sync.`,
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        const TARGET_CALENDAR = branchConfig.targetCalendar;
+        const IMPERSONATE_EMAIL = branchConfig.impersonateEmail;
+        console.log(`🎯 Branch ${branchConfig.branch} → calendar=${TARGET_CALENDAR} impersonate=${IMPERSONATE_EMAIL}`);
+
+        // Fresh access token voor deze branch (per branch andere impersonatie).
+        let accessToken: string;
+        try {
+          accessToken = await getServiceAccountToken(IMPERSONATE_EMAIL);
+        } catch (tokenError) {
+          console.error('❌ Failed to get access token:', tokenError);
+          throw new Error(`Failed to get Service Account access token: ${tokenError instanceof Error ? tokenError.message : 'Unknown error'}`);
         }
 
         console.log('📅 Creating Google Calendar event for appointment:', appointment.title);
@@ -242,15 +302,16 @@ serve(async (req) => {
             sync_action: syncAction,
             sync_status: 'success',
             performed_by_user_id: user.id,
-            sync_data: { appointment, googleEvent, targetCalendar: TARGET_CALENDAR, impersonateEmail: IMPERSONATE_EMAIL },
+            sync_data: { appointment, googleEvent, targetCalendar: TARGET_CALENDAR, impersonateEmail: IMPERSONATE_EMAIL, branch: branchConfig.branch },
           });
 
-        console.log('🎉 Sync completed successfully to primary calendar via Domain-wide delegation');
+        console.log(`🎉 Sync completed for branch ${branchConfig.branch} → ${IMPERSONATE_EMAIL}`);
 
         return new Response(JSON.stringify({ 
           success: true, 
           googleEventId,
           syncAction,
+          branch: branchConfig.branch,
           targetCalendar: TARGET_CALENDAR,
           impersonateEmail: IMPERSONATE_EMAIL,
           message: `Event successfully synced to ${IMPERSONATE_EMAIL} primary calendar`
@@ -262,18 +323,27 @@ serve(async (req) => {
       case 'delete_from_google': {
         const { data: appointment } = await supabase
           .from('appointments')
-          .select('google_event_id')
+          .select('google_event_id, google_calendar_id, branch')
           .eq('id', appointmentId)
           .single();
 
         if (appointment?.google_event_id) {
-          console.log('🗑️ Deleting Google Calendar event:', appointment.google_event_id);
-          
-          // Get fresh access token for delete operation
-          const deleteAccessToken = await getServiceAccountToken();
-          
+          // Bepaal welke branch/impersonatie voor delete gebruikt moet worden.
+          // Prefer de branch van de afspraak; anders leiden we het af uit de
+          // google_calendar_id (dat is de impersonate_email waarnaar destijds
+          // is gesynct).
+          const branchConfig = await loadBranchCalendarConfig(supabase, appointment.branch);
+          const deleteImpersonate = branchConfig?.impersonateEmail || appointment.google_calendar_id;
+          const deleteTarget = branchConfig?.targetCalendar || 'primary';
+
+          if (!deleteImpersonate) {
+            console.warn('⚠️  No impersonation email known for delete — skipping Google delete.');
+          } else {
+            console.log(`🗑️ Deleting Google event ${appointment.google_event_id} via ${deleteImpersonate}`);
+            const deleteAccessToken = await getServiceAccountToken(deleteImpersonate);
+
           const deleteResponse = await fetch(
-            `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(TARGET_CALENDAR)}/events/${appointment.google_event_id}`,
+              `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(deleteTarget)}/events/${appointment.google_event_id}`,
             {
               method: 'DELETE',
               headers: { 'Authorization': `Bearer ${deleteAccessToken}` },
@@ -307,6 +377,7 @@ serve(async (req) => {
               sync_status: 'success',
               performed_by_user_id: user.id,
             });
+          }
         }
 
         return new Response(JSON.stringify({ 
@@ -355,9 +426,9 @@ function formatDateTimeForGoogle(dateTimeInput: string | Date): string {
 }
 
 // Helper function to get Service Account access token with Domain-wide delegation DIRECTLY
-async function getServiceAccountToken(): Promise<string> {
+async function getServiceAccountToken(impersonateEmail: string): Promise<string> {
   try {
-    console.log('🔄 Getting Service Account token directly...');
+    console.log(`🔄 Getting Service Account token for ${impersonateEmail}...`);
     
     const serviceAccountKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
     
@@ -385,14 +456,14 @@ async function getServiceAccountToken(): Promise<string> {
     // Create JWT payload with Domain-wide delegation
     const payload = {
       iss: credentials.client_email,
-      sub: IMPERSONATE_EMAIL, // This enables impersonation via Domain-wide delegation
+      sub: impersonateEmail, // Domain-wide delegation impersonation target
       scope: 'https://www.googleapis.com/auth/calendar',
       aud: 'https://oauth2.googleapis.com/token',
       exp: expires,
       iat: now
     };
 
-    console.log('🔑 Creating JWT with impersonation for:', IMPERSONATE_EMAIL);
+    console.log('🔑 Creating JWT with impersonation for:', impersonateEmail);
 
     // Create JWT assertion
     const jwt = await createJWTAssertion(header, payload, credentials.private_key);
