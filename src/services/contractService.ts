@@ -685,10 +685,10 @@ const generateHtmlContract = (
                 <div>${companyInfo.address}</div>
                 <div>${companyInfo.postalCode} ${companyInfo.city}</div>
                 <div>${companyInfo.country}</div>
-                <div>Tel: ${companyInfo.phone}</div>
-                <div>IBAN: ${companyInfo.iban}</div>
-                <div>BTW: ${companyInfo.btw}</div>
-                <div>KVK: ${companyInfo.kvk}</div>
+                ${companyInfo.phone ? `<div>Tel: ${companyInfo.phone}</div>` : ''}
+                ${companyInfo.iban ? `<div>IBAN: ${companyInfo.iban}</div>` : ''}
+                ${companyInfo.btw ? `<div>BTW: ${companyInfo.btw}</div>` : ''}
+                ${companyInfo.kvk ? `<div>KVK: ${companyInfo.kvk}</div>` : ''}
             </div>
         </div>
         
