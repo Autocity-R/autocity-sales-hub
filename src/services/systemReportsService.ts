@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { PerformanceData, ReportPeriod } from "@/types/reports";
+import { applyBranchFilter, type BranchFilter } from "@/contexts/BranchContext";
 
 /**
  * Service for generating reports from actual system data
@@ -8,19 +9,18 @@ export class SystemReportsService {
   /**
    * Get reports data from actual vehicle sales in the system
    */
-  async getReportsData(period: ReportPeriod): Promise<PerformanceData> {
+  async getReportsData(period: ReportPeriod, branch?: BranchFilter): Promise<PerformanceData> {
     const { startDate, endDate } = period;
 
-    // Fetch sold vehicles within the period
-    // Only vehicles with status verkocht_b2b, verkocht_b2c, or afgeleverd count as sales
-    // Vehicles must have a sold_date to be counted
-    const { data: soldVehicles, error } = await supabase
+    let query = supabase
       .from('vehicles')
       .select('*')
       .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
       .not('sold_date', 'is', null)
       .gte('sold_date', startDate)
       .lte('sold_date', endDate);
+    query = applyBranchFilter(query, branch);
+    const { data: soldVehicles, error } = await query;
 
     if (error) {
       console.error("Error fetching sold vehicles:", error);
@@ -193,23 +193,21 @@ export class SystemReportsService {
   /**
    * Get inventory metrics from system data
    */
-  async getInventoryMetrics() {
+  async getInventoryMetrics(branch?: BranchFilter) {
     try {
-      // Get all vehicles currently in stock (voorraad status only)
-      const { data: stockVehicles, error: stockError } = await supabase
-        .from('vehicles')
-        .select('*')
-        .eq('status', 'voorraad');
+      let sq = supabase.from('vehicles').select('*').eq('status', 'voorraad');
+      sq = applyBranchFilter(sq, branch);
+      const { data: stockVehicles, error: stockError } = await sq;
 
       if (stockError) throw stockError;
 
-      // Get sold vehicles to calculate average days in stock
-      // Only count vehicles that have been sold (moved from voorraad to verkocht)
-      const { data: soldVehicles, error: soldError } = await supabase
+      let sdq = supabase
         .from('vehicles')
         .select('*')
         .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
         .not('sold_date', 'is', null);
+      sdq = applyBranchFilter(sdq, branch);
+      const { data: soldVehicles, error: soldError } = await sdq;
 
       if (soldError) throw soldError;
 
@@ -251,11 +249,13 @@ export class SystemReportsService {
       // 1. Calculate average transport lead time (doorlooptijd)
       // Time from when vehicle was added to transport (location='onderweg') until it was marked as arrived
       // Get vehicles that have completed transport journey (were onderweg, now in showroom)
-      const { data: completedTransportVehicles, error: completedError } = await supabase
+      let ctq = supabase
         .from('vehicles')
         .select('*')
         .neq('location', 'onderweg')
-        .not('purchase_date', 'is', null); // Has a purchase/arrival date
+        .not('purchase_date', 'is', null);
+      ctq = applyBranchFilter(ctq, branch);
+      const { data: completedTransportVehicles, error: completedError } = await ctq;
 
       if (completedError) console.error('Error fetching completed transport:', completedError);
 
@@ -282,10 +282,9 @@ export class SystemReportsService {
 
       // 2. Get vehicles currently in transport (onderweg)
       // This should match exactly what's shown in the Transport menu
-      const { data: transportVehicles, error: transportError } = await supabase
-        .from('vehicles')
-        .select('*')
-        .eq('location', 'onderweg');
+      let tvq = supabase.from('vehicles').select('*').eq('location', 'onderweg');
+      tvq = applyBranchFilter(tvq, branch);
+      const { data: transportVehicles, error: transportError } = await tvq;
 
       if (transportError) console.error('Error fetching transport vehicles:', transportError);
 
@@ -293,11 +292,13 @@ export class SystemReportsService {
 
       // 3. Get vehicles "in bestelling" (sold but still in transport/onderweg)
       // These are B2B/B2C sold vehicles that are still onderweg
-      const { data: orderedVehicles, error: orderedError } = await supabase
+      let ovq = supabase
         .from('vehicles')
         .select('*')
         .in('status', ['verkocht_b2b', 'verkocht_b2c'])
-        .eq('location', 'onderweg'); // Still in transport
+        .eq('location', 'onderweg');
+      ovq = applyBranchFilter(ovq, branch);
+      const { data: orderedVehicles, error: orderedError } = await ovq;
 
       if (orderedError) console.error('Error fetching ordered vehicles:', orderedError);
 

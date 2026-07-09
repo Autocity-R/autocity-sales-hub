@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { salesDataService } from "@/services/salesDataService";
 import { ReportPeriod } from "@/types/reports";
+import { useCurrentBranch } from "@/contexts/BranchContext";
 import { 
   TrendingUp, 
   DollarSign, 
@@ -36,18 +37,17 @@ interface SalesAnalyticsProps {
 
 export const SalesAnalytics = ({ period }: SalesAnalyticsProps) => {
   const queryClient = useQueryClient();
+  const { branchFilter } = useCurrentBranch();
 
-  // Fetch sales data for selected period
   const { data: salesData, isLoading } = useQuery({
-    queryKey: ["sales-data", period.startDate, period.endDate],
-    queryFn: () => salesDataService.getSalesData(period),
+    queryKey: ["sales-data", period.startDate, period.endDate, branchFilter],
+    queryFn: () => salesDataService.getSalesData(period, branchFilter),
     refetchInterval: 30000,
   });
 
-  // Fetch monthly breakdown for year view
   const { data: monthlyBreakdown } = useQuery({
-    queryKey: ["monthly-sales-breakdown", period.startDate, period.endDate],
-    queryFn: () => salesDataService.getMonthlySalesBreakdown(period),
+    queryKey: ["monthly-sales-breakdown", period.startDate, period.endDate, branchFilter],
+    queryFn: () => salesDataService.getMonthlySalesBreakdown(period, branchFilter),
     enabled: period.type === "year" || period.type === "all-time",
   });
 

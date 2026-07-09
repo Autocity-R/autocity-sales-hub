@@ -130,3 +130,20 @@ export function filterByBranch<T extends { branch?: string | null }>(
   if (branchFilter === "all") return items;
   return items.filter((it) => (it.branch ?? "rotterdam") === branchFilter);
 }
+
+/**
+ * Pas een Supabase-query filter toe op basis van de actieve branch-selectie.
+ * - branch = 'all' of undefined → geen wijziging (behoud huidig gedrag)
+ * - branch = 'rotterdam'/'heerhugowaard' → `.eq('branch', branch)`
+ *
+ * Gebruik in service-methodes:
+ *   let q = supabase.from('vehicles').select('*');
+ *   q = applyBranchFilter(q, branch);
+ */
+export function applyBranchFilter<T>(query: T, branch?: BranchFilter | null): T {
+  if (!branch || branch === "all") return query;
+  // @ts-expect-error - supabase query builder chain
+  return query.eq("branch", branch);
+}
+
+export const BRANCH_CODES: BranchCode[] = ["rotterdam", "heerhugowaard"];

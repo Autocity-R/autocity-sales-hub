@@ -11,6 +11,7 @@ import { TargetsManager } from './TargetsManager';
 import { B2CPeriodSelector, getCurrentMonthPeriod } from './B2CPeriodSelector';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { useCurrentBranch, BRANCH_LABELS, type BranchCode } from '@/contexts/BranchContext';
 import { 
   Settings, 
   AlertTriangle, 
@@ -27,15 +28,30 @@ export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ 
   const [localPeriod, setLocalPeriod] = useState<ReportPeriod>(getCurrentMonthPeriod());
   const [showTargetsManager, setShowTargetsManager] = useState(false);
   const [showOnlyAlerts, setShowOnlyAlerts] = useState(false);
+  const { branchFilter } = useCurrentBranch();
 
   // Use local period for B2C dashboard
   const activePeriod = localPeriod;
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['branch-manager-dashboard', activePeriod],
-    queryFn: () => branchManagerService.getDashboardData(activePeriod),
+    queryKey: ['branch-manager-dashboard', activePeriod, branchFilter],
+    queryFn: () => branchManagerService.getDashboardData(activePeriod, branchFilter),
     refetchOnMount: true,
     refetchOnWindowFocus: false
+  });
+
+  // Side-by-side per-branch data when filter is 'all'
+  const { data: perBranchData } = useQuery({
+    queryKey: ['branch-manager-dashboard-per-branch', activePeriod],
+    queryFn: async () => {
+      const [rtd, hhw] = await Promise.all([
+        branchManagerService.getDashboardData(activePeriod, 'rotterdam'),
+        branchManagerService.getDashboardData(activePeriod, 'heerhugowaard'),
+      ]);
+      return { rotterdam: rtd, heerhugowaard: hhw };
+    },
+    enabled: branchFilter === 'all',
+    refetchOnWindowFocus: false,
   });
 
   if (isLoading) {
@@ -63,6 +79,7 @@ export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ 
   if (!data) return null;
 
   const criticalAlerts = data.alerts.filter(a => a.severity === 'critical').length;
+  const showSideBySide = branchFilter === 'all' && perBranchData;
 
   return (
     <div className="space-y-6">
@@ -121,6 +138,25 @@ export const BranchManagerDashboard: React.FC<BranchManagerDashboardProps> = ({ 
               onViewVehicle={onViewVehicle}
             />
           )}
+        </div>
+      ) : showSideBySide ? (
+        // Side-by-side per branch when filter='Alles'
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {(['rotterdam', 'heerhugowaard'] as BranchCode[]).map((b) => {
+            const bd = perBranchData![b];
+            return (
+              <div key={b} className="space-y-4 rounded-lg border p-4 bg-card">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 rounded-full bg-primary" />
+                  {BRANCH_LABELS[b]}
+                </h3>
+                <B2CKPICards kpis={bd.kpis} tradeIns={bd.tradeIns} onViewVehicle={onViewVehicle} />
+                <B2CSalespersonTable salespersons={bd.salespersonStats} period={activePeriod} />
+                <StockAgeAnalysis data={bd.stockAge} onViewVehicle={onViewVehicle} />
+                <PendingDeliveriesB2C deliveries={bd.pendingDeliveries} onRefresh={refetch} onViewVehicle={onViewVehicle} />
+              </div>
+            );
+          })}
         </div>
       ) : (
         // Full dashboard view

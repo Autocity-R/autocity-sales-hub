@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReportPeriod } from "@/types/reports";
 import { purchaseReportsService } from "@/services/purchaseReportsService";
+import { useCurrentBranch } from "@/contexts/BranchContext";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TrendingUp, Package, DollarSign, Percent } from "lucide-react";
@@ -17,10 +18,11 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accen
 
 export const PurchaseAnalytics = ({ period }: PurchaseAnalyticsProps) => {
   const queryClient = useQueryClient();
+  const { branchFilter } = useCurrentBranch();
   
   const { data: purchaseData, isLoading } = useQuery({
-    queryKey: ['purchase-analytics', period.startDate, period.endDate],
-    queryFn: () => purchaseReportsService.getPurchaseAnalytics(period)
+    queryKey: ['purchase-analytics', period.startDate, period.endDate, branchFilter],
+    queryFn: () => purchaseReportsService.getPurchaseAnalytics(period, branchFilter)
   });
 
   // Real-time updates for vehicles

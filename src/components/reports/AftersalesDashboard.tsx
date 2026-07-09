@@ -24,6 +24,7 @@ import { updateTaskStatus } from '@/services/taskService';
 import { TaskStatus } from '@/types/tasks';
 import { aftersalesService } from '@/services/aftersalesService';
 import { format } from 'date-fns';
+import { useCurrentBranch } from '@/contexts/BranchContext';
 import { nl } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useVehicleDetailDialog } from '@/hooks/useVehicleDetailDialog';
@@ -41,6 +42,7 @@ interface AftersalesDashboardProps {
 export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onViewVehicle }) => {
   const vehicleDialog = useVehicleDetailDialog();
   const queryClient = useQueryClient();
+  const { branchFilter } = useCurrentBranch();
   const { toast } = useToast();
   const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'in_progress' | 'ready'>('all');
   const [selectedClaim, setSelectedClaim] = useState<WarrantyClaim | null>(null);
@@ -80,8 +82,8 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
   };
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['aftersales-dashboard'],
-    queryFn: () => aftersalesService.getDashboardData(),
+    queryKey: ['aftersales-dashboard', branchFilter],
+    queryFn: () => aftersalesService.getDashboardData(branchFilter),
     refetchInterval: 60000, // Elke minuut verversen
   });
 

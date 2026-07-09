@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { ReportPeriod } from "@/types/reports";
+import { applyBranchFilter, type BranchFilter } from "@/contexts/BranchContext";
 import {
   B2CKPIData,
   B2CSalespersonStats,
@@ -15,14 +16,14 @@ import {
 import { format, differenceInDays, parseISO, startOfDay } from "date-fns";
 
 class BranchManagerService {
-  async getDashboardData(period: ReportPeriod): Promise<BranchManagerDashboardData> {
+  async getDashboardData(period: ReportPeriod, branch?: BranchFilter): Promise<BranchManagerDashboardData> {
     const [kpis, salespersonStats, stockAge, pendingDeliveries, tradeIns, targets] = await Promise.all([
-      this.getB2CKPIs(period),
-      this.getB2CSalespersonStats(period),
-      this.getStockAgeAnalysis(),
-      this.getPendingDeliveries(),
-      this.getTradeInStats(period),
-      this.getTargets(period)
+      this.getB2CKPIs(period, branch),
+      this.getB2CSalespersonStats(period, branch),
+      this.getStockAgeAnalysis(branch),
+      this.getPendingDeliveries(branch),
+      this.getTradeInStats(period, branch),
+      this.getTargets(period, branch)
     ]);
 
     const alerts = this.generateAlerts(kpis, salespersonStats, stockAge, pendingDeliveries, tradeIns);
@@ -39,17 +40,18 @@ class BranchManagerService {
     };
   }
 
-  async getB2CKPIs(period: ReportPeriod): Promise<B2CKPIData> {
+  async getB2CKPIs(period: ReportPeriod, branch?: BranchFilter): Promise<B2CKPIData> {
     const startDate = new Date(period.startDate);
     const endDate = new Date(period.endDate);
 
-    // Fetch B2C sold vehicles in period
-    const { data: b2cVehicles, error } = await supabase
+    let bq = supabase
       .from('vehicles')
       .select('*')
       .in('status', ['verkocht_b2c', 'afgeleverd'])
       .gte('sold_date', startDate.toISOString())
       .lte('sold_date', endDate.toISOString());
+    bq = applyBranchFilter(bq, branch);
+    const { data: b2cVehicles, error } = await bq;
 
     if (error) {
       console.error('Error fetching B2C vehicles:', error);
@@ -84,11 +86,13 @@ class BranchManagerService {
 
     // Calculate average waiting time for vehicles pending delivery (status = verkocht_b2c)
     // This shows how long vehicles have been waiting since sale date
-    const { data: pendingVehicles } = await supabase
+    let pq = supabase
       .from('vehicles')
       .select('sold_date')
       .eq('status', 'verkocht_b2c')
       .not('sold_date', 'is', null);
+    pq = applyBranchFilter(pq, branch);
+    const { data: pendingVehicles } = await pq;
 
     let avgDeliveryDays = 0;
     if (pendingVehicles && pendingVehicles.length > 0) {
@@ -100,15 +104,16 @@ class BranchManagerService {
       avgDeliveryDays = totalWaitDays / pendingVehicles.length;
     }
 
-    // Get pending deliveries count
-    const { count: pendingCount } = await supabase
+    let pcq = supabase
       .from('vehicles')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'verkocht_b2c');
+    pcq = applyBranchFilter(pcq, branch);
+    const { count: pendingCount } = await pcq;
 
     // Get targets for current period
     const periodKey = format(startDate, 'yyyy-MM');
-    const targets = await this.getTargets(period);
+    const targets = await this.getTargets(period, branch);
     
     const b2cUnitsTarget = targets.find(t => t.target_type === 'b2c_units' && !t.salesperson_id)?.target_value || 40;
     const b2cRevenueTarget = targets.find(t => t.target_type === 'b2c_revenue' && !t.salesperson_id)?.target_value || 120000;
@@ -133,17 +138,18 @@ class BranchManagerService {
     };
   }
 
-  async getB2CSalespersonStats(period: ReportPeriod): Promise<B2CSalespersonStats[]> {
+  async getB2CSalespersonStats(period: ReportPeriod, branch?: BranchFilter): Promise<B2CSalespersonStats[]> {
     const startDate = new Date(period.startDate);
     const endDate = new Date(period.endDate);
 
-    // Get all B2C sales
-    const { data: vehicles, error } = await supabase
+    let vq = supabase
       .from('vehicles')
       .select('*')
       .in('status', ['verkocht_b2c', 'afgeleverd'])
       .gte('sold_date', startDate.toISOString())
       .lte('sold_date', endDate.toISOString());
+    vq = applyBranchFilter(vq, branch);
+    const { data: vehicles, error } = await vq;
 
     if (error) {
       console.error('Error fetching salesperson stats:', error);
@@ -251,12 +257,13 @@ class BranchManagerService {
     return stats.sort((a, b) => b.b2cSales - a.b2cSales);
   }
 
-  async getStockAgeAnalysis(): Promise<StockAgeData> {
-    // Get online vehicles with online_since_date
-    const { data: vehicles, error } = await supabase
+  async getStockAgeAnalysis(branch?: BranchFilter): Promise<StockAgeData> {
+    let sq = supabase
       .from('vehicles')
       .select('*')
       .eq('status', 'voorraad');
+    sq = applyBranchFilter(sq, branch);
+    const { data: vehicles, error } = await sq;
 
     if (error) {
       console.error('Error fetching stock age data:', error);
@@ -335,12 +342,14 @@ class BranchManagerService {
     };
   }
 
-  async getPendingDeliveries(): Promise<PendingDelivery[]> {
-    const { data: vehicles, error } = await supabase
+  async getPendingDeliveries(branch?: BranchFilter): Promise<PendingDelivery[]> {
+    let pq = supabase
       .from('vehicles')
       .select('*')
       .eq('status', 'verkocht_b2c')
       .order('sold_date', { ascending: true });
+    pq = applyBranchFilter(pq, branch);
+    const { data: vehicles, error } = await pq;
 
     if (error) {
       console.error('Error fetching pending deliveries:', error);
@@ -371,13 +380,15 @@ class BranchManagerService {
     });
   }
 
-  async getPendingDeliveryVehicles(): Promise<PendingDeliveryVehicle[]> {
-    const { data: vehicles, error } = await supabase
+  async getPendingDeliveryVehicles(branch?: BranchFilter): Promise<PendingDeliveryVehicle[]> {
+    let pq = supabase
       .from('vehicles')
       .select('id, brand, model, license_number, vin, sold_date')
       .eq('status', 'verkocht_b2c')
       .not('sold_date', 'is', null)
       .order('sold_date', { ascending: true });
+    pq = applyBranchFilter(pq, branch);
+    const { data: vehicles, error } = await pq;
 
     if (error) {
       console.error('Error fetching pending delivery vehicles:', error);
@@ -397,17 +408,18 @@ class BranchManagerService {
     }));
   }
 
-  async getTradeInStats(period: ReportPeriod): Promise<TradeInStats> {
+  async getTradeInStats(period: ReportPeriod, branch?: BranchFilter): Promise<TradeInStats> {
     const startDate = new Date(period.startDate);
     const endDate = new Date(period.endDate);
 
-    // Get trade-in vehicles
-    const { data: vehicles, error } = await supabase
+    let tq = supabase
       .from('vehicles')
       .select('*')
       .eq('details->>isTradeIn', 'true')
       .gte('sold_date', startDate.toISOString())
       .lte('sold_date', endDate.toISOString());
+    tq = applyBranchFilter(tq, branch);
+    const { data: vehicles, error } = await tq;
 
     if (error) {
       console.error('Error fetching trade-in stats:', error);
@@ -465,13 +477,15 @@ class BranchManagerService {
     };
   }
 
-  async getTargets(period: ReportPeriod): Promise<SalesTarget[]> {
+  async getTargets(period: ReportPeriod, branch?: BranchFilter): Promise<SalesTarget[]> {
     const periodKey = format(new Date(period.startDate), 'yyyy-MM');
 
-    const { data, error } = await supabase
+    let tq = supabase
       .from('sales_targets')
       .select('*')
       .eq('target_period', periodKey);
+    tq = applyBranchFilter(tq, branch);
+    const { data, error } = await tq;
 
     if (error) {
       console.error('Error fetching targets:', error);
