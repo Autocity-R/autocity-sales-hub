@@ -145,7 +145,10 @@ const VehicleRow = memo<{
         )}
       </TableCell>
       <TableCell className="align-middle font-medium">
-        {vehicle.brand}
+        <div className="flex items-center gap-2">
+          <BranchChip branch={vehicle.branch} />
+          <span>{vehicle.brand}</span>
+        </div>
       </TableCell>
       <TableCell className="align-middle">
         {vehicle.model}
