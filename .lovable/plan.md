@@ -65,3 +65,33 @@ De scope is groot (11 tabs, ~10 services, 5 agent-dashboards, exports, nieuwe ve
 
 - Akkoord met splitsing **6a nu, 6b in aparte GO**? Of moet alles in één klap?
 - Voor "Vestiging vergelijking": nieuwe tab in Reports (voorstel), of eigen menu-item in de sidebar?
+
+---
+
+### Status na deze GO
+
+**Fase 6a — geïmplementeerd (typecheck groen):**
+- `<BranchFilter />` component gemount in `Reports.tsx` header (gekoppeld aan `BranchContext`, read-only chip voor niet-admins).
+- Helper `applyBranchFilter(query, branch)` in `BranchContext.tsx`.
+- Services krijgen optionele `branch?: BranchFilter` parameter (default = huidig gedrag):
+  - `systemReportsService.getReportsData` / `getInventoryMetrics`
+  - `salesDataService.getSalesData` / `getMonthlySalesBreakdown`
+  - `branchManagerService.getDashboardData` + alle sub-methodes (KPIs, salespersonStats, stockAge, pendingDeliveries, tradeIns, targets)
+  - `aftersalesService.getDashboardData` + sub-methodes (deliveries, warranty claims, tasks)
+  - `supplierReportsService.getSupplierAnalytics`
+  - `purchaseReportsService.getPurchaseAnalytics`
+  - `fetchWarrantyClaims`
+- Alle rapport-tabs die deze services callen respecteren nu de branch (via `useCurrentBranch()` + queryKey met branch): Overzicht, Verkoop, Inkoop, Leveranciers, Performance, Voorraad, Aftersales, Vestiging B2C, Garantie.
+- **Vestiging B2C Dashboard**: bij branchFilter='all' side-by-side rendering per vestiging (Rotterdam | Heerhugowaard).
+- **Nieuwe tab "Vestiging vergelijking"** in Reports met side-by-side KPI-tabel: omzet, marge (€ + %), B2C/B2B aantal, sta-dagen, voorraad, aftersales wachttijd, openstaande leveringen.
+- Mock Data/Exact-toggle onaangeroerd.
+
+**Niet aangeraakt (voor 6b / apart):**
+- Salesperson-KPI groepering per vestiging bij 'Alles' (kopjes RTD/HHW) — nu nog platte lijst maar wél gefilterd.
+- Targets-scherm UI-veld "vestiging" bij nieuwe target — `sales_targets.branch` bestaat al in DB (fase 1) maar UI-input volgt in 6b.
+- Agent-dashboards (Kevin/Daan/Alex/Sara/Lisa): geen BranchFilter/branch-param nog.
+- Excel-exports (marco/briefing/stockAge/b2b-payment/tasks): nog geen `Vestiging`-kolom + branchFilter-respect.
+- `damageRepairReportsService`: geen branch-filter (records hebben geen directe branch-kolom; vereist join).
+- `enhancedReportsService`: alleen connection-status wordt aangeroepen, geen data-queries geraakt.
+
+Klaar voor Hendrik's verificatie: bij BranchFilter='Alles' zijn cijfers gelijk aan nu; wisselen naar Rotterdam/Heerhugowaard filtert alle tabs en de nieuwe vergelijkings-tab werkt.
