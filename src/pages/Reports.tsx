@@ -366,6 +366,7 @@ const Reports = () => {
           description="Uitgebreide analyses en prestatie-indicatoren"
         >
           <div className="flex gap-2 items-center">
+            <BranchFilter />
             <Button variant="outline" onClick={handleExportData} className="gap-2">
               <Download className="h-4 w-4" />
               Export
@@ -403,6 +404,12 @@ const Reports = () => {
               <TabsTrigger value="vestiging" className="gap-2">
                 <Building className="h-4 w-4" />
                 Vestiging B2C
+              </TabsTrigger>
+            )}
+            {hasBranchManagerAccess && !isAftersalesOnly && (
+              <TabsTrigger value="branch-comparison" className="gap-2">
+                <Building className="h-4 w-4" />
+                Vestiging vergelijking
               </TabsTrigger>
             )}
             {/* Aftersales tab - zichtbaar voor aftersales_manager, admin, manager */}
@@ -740,6 +747,10 @@ const Reports = () => {
 
           <TabsContent value="aftersales" className="space-y-6">
             <AftersalesDashboard />
+          </TabsContent>
+
+          <TabsContent value="branch-comparison" className="space-y-6">
+            <BranchComparison period={reportPeriod} />
           </TabsContent>
         </Tabs>
       </div>
