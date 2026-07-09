@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { InventoryBulkActions } from "@/components/inventory/InventoryBulkActions";
 import { supabase } from "@/integrations/supabase/client";
 import { deliveredVehicleService } from "@/services/deliveredVehicleService";
+import { useCurrentBranch, filterByBranch } from "@/contexts/BranchContext";
 
 const Inventory = () => {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
@@ -32,6 +33,7 @@ const Inventory = () => {
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { branchFilter } = useCurrentBranch();
 
   // Fetch all vehicles
   const { data: allVehicles = [], isLoading: isLoadingAll, error: errorAll } = useQuery({
@@ -126,7 +128,7 @@ const Inventory = () => {
 
   // Filter and sort vehicles
   const filteredAndSortedVehicles = useMemo(() => {
-    let filtered = currentVehicles.filter(vehicle =>
+    let filtered = filterByBranch(currentVehicles, branchFilter).filter(vehicle =>
       `${vehicle.brand} ${vehicle.model} ${vehicle.licenseNumber} ${vehicle.vin}`
         .toLowerCase()
         .includes(searchTerm.toLowerCase())
@@ -184,7 +186,7 @@ const Inventory = () => {
     }
 
     return filtered;
-  }, [currentVehicles, searchTerm, sortField, sortDirection]);
+  }, [currentVehicles, searchTerm, sortField, sortDirection, branchFilter]);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
