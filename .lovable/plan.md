@@ -24,7 +24,7 @@
 - Hard branch-filter RLS op weekly_sales, sales_targets, warranty_claims, appointments (aflever), verkocht-B2C, aftersales-taken. Admin/owner ziet alles.
 - **Verhuis-trigger**: bij UPDATE van `vehicles.branch` propageert de nieuwe branch naar OPEN taken (status ≠ voltooid/geannuleerd) en TOEKOMSTIGE afspraken (start_time > now()) van dat voertuig. Afgeronde taken en verleden afspraken ongemoeid.
 
-## Fase 3 — Frontend basis
+## Fase 3 — Frontend basis ✅
 - `BranchContext` + `useCurrentBranch()` + `<BranchSwitcher />` in header.
 - Voertuig-detail: dropdown "Vestiging" + (bij Verkocht B2B) checkbox "Uitgeleverd aan klant" met datum-log.
 - Voorraad-tabellen: branch-kolom + filter-chip.

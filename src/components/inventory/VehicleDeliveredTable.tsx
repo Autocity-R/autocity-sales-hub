@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { ChevronUp, ChevronDown, FileText } from "lucide-react";
 import { Vehicle } from "@/types/inventory";
+import { BranchChip } from "@/components/layout/BranchSwitcher";
 import { PurchaserQuickEdit } from "./PurchaserQuickEdit";
 
 interface VehicleDeliveredTableProps {
@@ -183,7 +184,10 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
                   />
                 </TableCell>
                 <TableCell className="align-middle font-medium truncate">
-                  {vehicle.brand}
+                  <div className="flex items-center gap-2">
+                    <BranchChip branch={vehicle.branch} />
+                    <span>{vehicle.brand}</span>
+                  </div>
                 </TableCell>
                 <TableCell className="align-middle truncate">
                   {vehicle.model}

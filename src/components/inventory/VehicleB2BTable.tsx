@@ -45,6 +45,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { PurchaserQuickEdit } from "./PurchaserQuickEdit";
 import { EmailConfirmDialog } from "@/components/ui/email-confirm-dialog";
 import { DeliveryConfirmationDialog, DeliveryData } from "./DeliveryConfirmationDialog";
+import { BranchChip } from "@/components/layout/BranchSwitcher";
 
 interface VehicleB2BTableProps {
   vehicles: Vehicle[];
@@ -362,7 +363,20 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
                     </div>
                   )}
                 </TableCell>
-                <TableCell className="font-medium">{vehicle.brand}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    <BranchChip branch={vehicle.branch} />
+                    <span>{vehicle.brand}</span>
+                    {vehicle.b2bDelivered && (
+                      <Badge
+                        variant="secondary"
+                        className="bg-amber-100 text-amber-800 border border-amber-300 text-[10px] uppercase tracking-wide"
+                      >
+                        Uitgeleverd
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>{vehicle.model}</TableCell>
                 <TableCell className="text-muted-foreground">{vehicle.year || '-'}</TableCell>
                 <TableCell>{vehicle.mileage ? `${vehicle.mileage.toLocaleString('nl-NL')} km` : '-'}</TableCell>

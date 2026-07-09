@@ -17,6 +17,7 @@ import { Vehicle, ImportStatus } from "@/types/inventory";
 import { Avatar } from "@/components/ui/avatar";
 import { DeliveryConfirmationDialog, type DeliveryData } from "./DeliveryConfirmationDialog";
 import { OnlineStatusBadge } from "./OnlineStatusBadge";
+import { BranchChip } from "@/components/layout/BranchSwitcher";
 
 interface VehicleTableProps {
   vehicles: Vehicle[];
@@ -145,7 +146,10 @@ const VehicleRow = memo<{
         )}
       </TableCell>
       <TableCell className="align-middle font-medium">
-        {vehicle.brand}
+        <div className="flex items-center gap-2">
+          <BranchChip branch={vehicle.branch} />
+          <span>{vehicle.brand}</span>
+        </div>
       </TableCell>
       <TableCell className="align-middle">
         {vehicle.model}

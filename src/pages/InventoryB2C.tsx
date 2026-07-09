@@ -19,6 +19,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrentBranch, filterByBranch } from "@/contexts/BranchContext";
 
 const InventoryB2C = () => {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
@@ -29,6 +30,7 @@ const InventoryB2C = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [salespersonFilter, setSalespersonFilter] = useState("");
   const [deliveryFilter, setDeliveryFilter] = useState<"all" | "ready" | "scheduled" | "not_ready">("all");
+  const { branchFilter } = useCurrentBranch();
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -111,7 +113,7 @@ const InventoryB2C = () => {
 
   // Filter vehicles by salesperson + delivery status
   const displayVehicles = useMemo(() => {
-    let filtered = vehicles;
+    let filtered = filterByBranch(vehicles, branchFilter);
     
     if (salespersonFilter) {
       filtered = filtered.filter(v => v.salespersonName === salespersonFilter);
@@ -139,7 +141,7 @@ const InventoryB2C = () => {
     }
 
     return filtered;
-  }, [vehicles, salespersonFilter, deliveryFilter, deliveryDatesMap]);
+  }, [vehicles, salespersonFilter, deliveryFilter, deliveryDatesMap, branchFilter]);
 
   // Properly fetch files for selected vehicle using our hook
   const { vehicleFiles } = useVehicleFiles(selectedVehicle);

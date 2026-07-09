@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { useCurrentBranch, filterByBranch } from "@/contexts/BranchContext";
 
 const InventoryDelivered = () => {
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
@@ -37,6 +38,7 @@ const InventoryDelivered = () => {
   const [customerTypeFilter, setCustomerTypeFilter] = useState<string>("all");
   const [dateFromFilter, setDateFromFilter] = useState<Date | null>(null);
   const [dateToFilter, setDateToFilter] = useState<Date | null>(null);
+  const { branchFilter } = useCurrentBranch();
   
   // Fetch delivered vehicles
   const { data: vehicles = [], isLoading, error } = useQuery({
@@ -58,7 +60,7 @@ const InventoryDelivered = () => {
   };
   
   // Filter vehicles based on search query and filters
-  const filteredVehicles = vehicles.filter((vehicle: Vehicle) => {
+  const filteredVehicles = filterByBranch(vehicles, branchFilter).filter((vehicle: Vehicle) => {
     // Search query filtering
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
