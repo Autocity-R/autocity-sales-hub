@@ -693,7 +693,13 @@ export class SupabaseInventoryService {
       details: details,
       
       // Derived fields
-      arrived: supabaseVehicle.location !== 'onderweg'
+      arrived: supabaseVehicle.location !== 'onderweg',
+
+      // Fase 3 multi-vestiging
+      branch: (supabaseVehicle.branch as any) || 'rotterdam',
+      b2bDelivered: supabaseVehicle.b2b_delivered ?? false,
+      b2bDeliveredAt: supabaseVehicle.b2b_delivered_at || null,
+      b2bDeliveredBy: supabaseVehicle.b2b_delivered_by || null,
     };
   }
 
