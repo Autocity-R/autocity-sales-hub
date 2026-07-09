@@ -409,6 +409,29 @@ export class SupabaseInventoryService {
       updateData.transporter_id = vehicle.transporter_id;
     }
 
+    // Fase 3 — Vestiging
+    if ((vehicle as any).branch !== undefined) {
+      updateData.branch = (vehicle as any).branch;
+    }
+
+    // Fase 3 — B2B uitgeleverd vlag (checkbox in voertuig-detail)
+    if ((vehicle as any).b2bDelivered !== undefined) {
+      const flag = Boolean((vehicle as any).b2bDelivered);
+      updateData.b2b_delivered = flag;
+      if (flag) {
+        updateData.b2b_delivered_at =
+          (vehicle as any).b2bDeliveredAt || existingVehicle.b2b_delivered_at || new Date().toISOString();
+        // Alleen zetten als nog niet bekend
+        if (!existingVehicle.b2b_delivered_by) {
+          const { data: userData } = await supabase.auth.getUser();
+          updateData.b2b_delivered_by = userData.user?.id || null;
+        }
+      } else {
+        updateData.b2b_delivered_at = null;
+        updateData.b2b_delivered_by = null;
+      }
+    }
+
     console.log('[UPDATE_VEHICLE] Updating vehicle:', {
       id: vehicle.id,
       customerId: vehicle.customerId,
