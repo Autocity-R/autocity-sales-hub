@@ -340,6 +340,7 @@ const Calendar = () => {
                             <Badge variant="outline">
                               {getTypeLabel(appointment.type)}
                             </Badge>
+                            <BranchChip branch={appointment.branch} />
                             <CalendarSyncStatus
                               appointmentId={appointment.id}
                               googleEventId={appointment.googleEventId}
