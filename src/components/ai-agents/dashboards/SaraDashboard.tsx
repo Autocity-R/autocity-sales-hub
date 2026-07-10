@@ -131,6 +131,9 @@ export const SaraDashboard: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <BranchFilter />
+      </div>
       {/* KPI Tiles */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card>
