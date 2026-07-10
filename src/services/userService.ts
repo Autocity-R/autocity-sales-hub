@@ -8,6 +8,7 @@ export interface UserProfile {
   last_name: string | null;
   role: 'admin' | 'owner' | 'manager' | 'aftersales_manager' | 'verkoper' | 'operationeel' | 'user';
   company: string | null;
+  branch: string | null;
   created_at: string;
   updated_at: string;
 }
