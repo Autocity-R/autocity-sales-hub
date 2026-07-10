@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import { supabase } from '@/integrations/supabase/client';
 import { format, differenceInDays } from 'date-fns';
+import type { BranchFilter } from '@/contexts/BranchContext';
 
 interface StockAgeVehicle {
   id: string;
@@ -13,16 +14,23 @@ interface StockAgeVehicle {
   online_since_date: string | null;
   vin: string | null;
   license_number: string | null;
+  branch: string | null;
   daysOnline: number;
 }
 
-export const exportStockAgeToExcel = async (): Promise<{ success: boolean; filename: string; count: number }> => {
+export const exportStockAgeToExcel = async (
+  branch?: BranchFilter,
+): Promise<{ success: boolean; filename: string; count: number }> => {
   // Fetch all online vehicles (same filter as StockAgeAnalysis)
-  const { data: vehicles, error } = await supabase
+  let vq = supabase
     .from('vehicles')
-    .select('id, brand, model, year, mileage, purchase_price, details, online_since_date, created_at, vin, license_number')
+    .select('id, brand, model, year, mileage, purchase_price, details, online_since_date, created_at, vin, license_number, branch')
     .eq('status', 'voorraad')
     .contains('details', { showroomOnline: true });
+  if (branch && branch !== 'all') {
+    vq = vq.eq('branch', branch);
+  }
+  const { data: vehicles, error } = await vq;
 
   if (error) {
     throw new Error(`Fout bij ophalen voorraad: ${error.message}`);
@@ -47,6 +55,7 @@ export const exportStockAgeToExcel = async (): Promise<{ success: boolean; filen
       online_since_date: v.online_since_date,
       vin: v.vin,
       license_number: v.license_number,
+      branch: (v as any).branch ?? null,
       daysOnline: v.online_since_date
         ? differenceInDays(today, new Date(v.online_since_date))
         : v.created_at
@@ -68,6 +77,7 @@ export const exportStockAgeToExcel = async (): Promise<{ success: boolean; filen
     { header: 'Bouwjaar', key: 'year', width: 12 },
     { header: 'KM Stand', key: 'mileage', width: 14 },
     { header: 'Inkoopprijs', key: 'purchasePrice', width: 14 },
+    { header: 'Vestiging', key: 'branch', width: 14 },
     { header: 'Stadagen', key: 'daysOnline', width: 12 },
   ];
 
@@ -95,6 +105,7 @@ export const exportStockAgeToExcel = async (): Promise<{ success: boolean; filen
       year: vehicle.year || '-',
       mileage: vehicle.mileage || 0,
       purchasePrice: purchasePrice,
+      branch: vehicle.branch === 'heerhugowaard' ? 'Heerhugowaard' : (vehicle.branch === 'rotterdam' ? 'Rotterdam' : '-'),
       daysOnline: vehicle.daysOnline
     });
 

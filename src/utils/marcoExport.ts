@@ -16,6 +16,7 @@ interface MarcoVehicle {
   details: any;
   supplier_id: string | null;
   customer_id: string | null;
+  branch?: string | null;
 }
 
 interface ContactInfo {
@@ -74,6 +75,10 @@ function getColumnsForStep(step: PipelineStep): ColumnDef[] {
   const kenteken: ColumnDef = { header: 'Kenteken', width: 14, value: v => v.license_number || '—' };
   const vin: ColumnDef = { header: 'VIN', width: 20, value: v => v.vin || '—' };
   const dagen: ColumnDef = { header: 'Dagen', width: 8, value: v => daysSince(v.created_at) };
+  const vestiging: ColumnDef = {
+    header: 'Vestiging', width: 14,
+    value: v => v.branch === 'heerhugowaard' ? 'Heerhugowaard' : (v.branch === 'rotterdam' ? 'Rotterdam' : '—'),
+  };
 
   const betaald: ColumnDef = {
     header: 'Betaald', width: 12,
@@ -103,19 +108,19 @@ function getColumnsForStep(step: PipelineStep): ColumnDef[] {
 
   switch (step) {
     case 'nieuw':
-      return [merk, model, kenteken, vin, dagen, betaald, pickup, leverancier];
+      return [merk, model, kenteken, vin, dagen, vestiging, betaald, pickup, leverancier];
     case 'betaald':
-      return [merk, model, kenteken, vin, dagen, betaald, pickup, leverancier];
+      return [merk, model, kenteken, vin, dagen, vestiging, betaald, pickup, leverancier];
     case 'pickup':
-      return [merk, model, kenteken, vin, dagen, betaald, pickup, verkocht, klant, leverancier];
+      return [merk, model, kenteken, vin, dagen, vestiging, betaald, pickup, verkocht, klant, leverancier];
     case 'aangekomen':
-      return [merk, model, kenteken, vin, dagen, cmr, leverancier];
+      return [merk, model, kenteken, vin, dagen, vestiging, cmr, leverancier];
     case 'import':
-      return [merk, model, kenteken, vin, dagen, importStatus, verkocht, klant];
+      return [merk, model, kenteken, vin, dagen, vestiging, importStatus, verkocht, klant];
     case 'b2b_papieren':
-      return [merk, model, vin, dagen, klant, leverancier];
+      return [merk, model, vin, dagen, vestiging, klant, leverancier];
     default:
-      return [merk, model, kenteken, vin];
+      return [merk, model, kenteken, vin, vestiging];
   }
 }
 

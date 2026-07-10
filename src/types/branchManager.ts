@@ -20,6 +20,7 @@ export interface SalesTarget {
   updated_at: string;
   created_by: string | null;
   notes: string | null;
+  branch?: 'rotterdam' | 'heerhugowaard';
 }
 
 export interface B2CKPIData {

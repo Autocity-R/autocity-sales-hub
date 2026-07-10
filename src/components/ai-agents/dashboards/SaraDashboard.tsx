@@ -13,20 +13,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { updateWarrantyClaim } from "@/services/warrantyService";
 import { toast } from "@/hooks/use-toast";
 import { AgentMemoryTab } from "./AgentMemoryTab";
+import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
+import { BranchFilter } from "@/components/reports/BranchFilter";
 
 export const SaraDashboard: React.FC = () => {
   const queryClient = useQueryClient();
   const [linkingClaimId, setLinkingClaimId] = useState<string | null>(null);
   const [selectedCarId, setSelectedCarId] = useState<string>("");
+  const { branchFilter } = useCurrentBranch();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['sara-dashboard'],
+    queryKey: ['sara-dashboard', branchFilter],
     queryFn: async () => {
       // Fetch open claims with loan car info
-      const { data: claims, error } = await supabase
+      let cq = supabase
         .from('warranty_claims')
         .select('*, loan_vehicle:loan_car_id(id, brand, model, license_number)')
         .or('claim_status.eq.open,claim_status.eq.in_behandeling,claim_status.eq.pending');
+      cq = applyBranchFilter(cq, branchFilter);
+      const { data: claims, error } = await cq;
 
       if (error) throw error;
       const items = claims || [];
@@ -48,10 +53,12 @@ export const SaraDashboard: React.FC = () => {
       const avgDays = totalOpen > 0 ? Math.round(totalDays / totalOpen) : 0;
 
       // Fetch loan car stats
-      const { data: loanCars } = await supabase
+      let lq = supabase
         .from('vehicles')
         .select('id, brand, model, license_number')
         .eq('details->>isLoanCar', 'true');
+      lq = applyBranchFilter(lq, branchFilter);
+      const { data: loanCars } = await lq;
 
       const allLoanCars = loanCars || [];
       const activeLoanCarIds = items
@@ -124,6 +131,9 @@ export const SaraDashboard: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <BranchFilter />
+      </div>
       {/* KPI Tiles */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card>

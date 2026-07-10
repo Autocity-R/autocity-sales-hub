@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { BpmHuysTab } from "./BpmHuysTab";
 import { AgentMemoryTab } from "./AgentMemoryTab";
+import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 
 interface VehicleRow {
   id: string;
@@ -29,6 +30,7 @@ interface VehicleRow {
   vin: string | null;
   supplier_id: string | null;
   customer_id: string | null;
+  branch: string | null;
 }
 
 type PipelineStep = 'nieuw' | 'betaald' | 'pickup' | 'aangekomen' | 'import' | 'ingeschreven' | 'b2b_papieren';
@@ -127,14 +129,17 @@ function urgencyScore(v: VehicleRow, step: PipelineStep): number {
 
 export const MarcoDashboard: React.FC = () => {
   const [selectedStep, setSelectedStep] = useState<PipelineStep | null>(null);
+  const { branchFilter } = useCurrentBranch();
 
   const { data: vehicles, isLoading } = useQuery({
-    queryKey: ['marco-dashboard-v2'],
+    queryKey: ['marco-dashboard-v2', branchFilter],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let vq = supabase
         .from('vehicles')
-        .select('id, import_status, status, details, created_at, goedgekeurd_at, bpm_betaald_at, aangekomen_at, aanvraag_ontvangen_at, ingeschreven_at, brand, model, license_number, vin, supplier_id, customer_id')
+        .select('id, import_status, status, details, created_at, goedgekeurd_at, bpm_betaald_at, aangekomen_at, aanvraag_ontvangen_at, ingeschreven_at, brand, model, license_number, vin, supplier_id, customer_id, branch')
         .neq('status', 'afgeleverd');
+      vq = applyBranchFilter(vq, branchFilter);
+      const { data, error } = await vq;
       if (error) throw error;
       return (data || []) as VehicleRow[];
     },

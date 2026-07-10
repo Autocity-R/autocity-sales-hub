@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { ReportPeriod } from "@/types/reports";
+import type { BranchFilter } from "@/contexts/BranchContext";
 
 const COST_PER_PART = 300; // €300 per onderdeel
 
@@ -10,6 +11,7 @@ export interface RepairRecord {
   vehicleModel: string;
   vehicleVin: string;
   vehicleLicenseNumber: string;
+  branch: string | null;
   repairedParts: string[];
   partCount: number;
   repairCost: number;
@@ -44,15 +46,23 @@ export interface DamageRepairStats {
 }
 
 export const damageRepairReportsService = {
-  async getDamageRepairStats(period: ReportPeriod): Promise<DamageRepairStats> {
+  async getDamageRepairStats(period: ReportPeriod, branch?: BranchFilter): Promise<DamageRepairStats> {
     try {
-      // Fetch from permanent damage_repair_records table
-      const { data: records, error } = await supabase
+      // Fetch from permanent damage_repair_records table (join vehicles voor branch-filter)
+      const wantInner = !!(branch && branch !== 'all');
+      const joinSpec = wantInner
+        ? 'vehicle:vehicles!inner(branch)'
+        : 'vehicle:vehicles(branch)';
+      let dq: any = supabase
         .from('damage_repair_records')
-        .select('*')
+        .select(`*, ${joinSpec}`)
         .gte('completed_at', period.startDate)
         .lte('completed_at', period.endDate)
         .order('completed_at', { ascending: false });
+      if (wantInner) {
+        dq = dq.eq('vehicle.branch', branch);
+      }
+      const { data: records, error } = await dq;
 
       if (error) {
         console.error('Error fetching damage repair records:', error);
@@ -71,6 +81,7 @@ export const damageRepairReportsService = {
         const parts = (record.repaired_parts as string[]) || [];
         const partCount = record.part_count || parts.length;
         totalParts += partCount;
+        const vBranch: string | null = (record as any)?.vehicle?.branch ?? null;
 
         // Track vehicle
         if (record.vehicle_id) {
@@ -85,6 +96,7 @@ export const damageRepairReportsService = {
           vehicleModel: record.vehicle_model || '-',
           vehicleVin: record.vehicle_vin || '-',
           vehicleLicenseNumber: record.vehicle_license_number || '-',
+          branch: vBranch,
           repairedParts: parts,
           partCount,
           repairCost: record.repair_cost || partCount * COST_PER_PART,

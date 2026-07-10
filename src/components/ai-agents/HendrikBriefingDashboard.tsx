@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { format, parseISO, isToday, isThisWeek, isThisMonth } from "date-fns";
 import { nl } from "date-fns/locale";
 import { exportBriefingToExcel, exportBriefingToPDF } from "@/utils/briefingExport";
+import { useCurrentBranch, BRANCH_LABELS } from "@/contexts/BranchContext";
 
 // Hendrik's agent ID
 const HENDRIK_AGENT_ID = '43004cb6-26e9-4453-861d-75ff8dffb3fe';
@@ -69,6 +70,8 @@ export const HendrikBriefingDashboard = () => {
   const [selectedBriefing, setSelectedBriefing] = useState<Briefing | null>(null);
   const [activeTab, setActiveTab] = useState("all");
   const [generatingType, setGeneratingType] = useState<string | null>(null);
+  const { branchFilter } = useCurrentBranch();
+  const branchLabelForExport = branchFilter === 'all' ? 'Alles' : BRANCH_LABELS[branchFilter];
 
   // Fetch all briefings for Hendrik
   const { data: briefings, isLoading: briefingsLoading, refetch: refetchBriefings } = useQuery({
@@ -342,7 +345,7 @@ export const HendrikBriefingDashboard = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => exportBriefingToExcel(selectedBriefing)}
+                        onClick={() => exportBriefingToExcel(selectedBriefing, branchLabelForExport)}
                       >
                         <Download className="h-4 w-4 mr-2" />
                         Excel

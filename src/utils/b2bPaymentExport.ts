@@ -82,7 +82,7 @@ export const exportB2BPaymentOverview = async (vehicles: Vehicle[]) => {
 
   // 3. Titel rij
   const dateStr = format(new Date(), 'dd-MM-yyyy', { locale: nl });
-  worksheet.mergeCells('A1:I1');
+  worksheet.mergeCells('A1:J1');
   const titleCell = worksheet.getCell('A1');
   titleCell.value = `B2B Betalingsoverzicht - ${dateStr}`;
   titleCell.font = { bold: true, size: 16, color: { argb: COLORS.HEADER_BG } };
@@ -97,6 +97,7 @@ export const exportB2BPaymentOverview = async (vehicles: Vehicle[]) => {
     'VIN',
     'Klant',
     'Verkoopprijs',
+    'Vestiging',
     'Locatie',
     'Papieren',
     'Klant Betaling'
@@ -125,6 +126,9 @@ export const exportB2BPaymentOverview = async (vehicles: Vehicle[]) => {
     const locationStyle = getLocationStyle(vehicle.location);
     const papersStyle = getPapersStyle(vehicle.papersReceived);
     const paymentStyle = getPaymentStyle(vehicle.details?.sales_payment_status);
+    const branchLabel = vehicle.branch === 'heerhugowaard'
+      ? 'Heerhugowaard'
+      : (vehicle.branch === 'rotterdam' ? 'Rotterdam' : '-');
 
     const row = worksheet.addRow([
       vehicle.brand || '-',
@@ -133,6 +137,7 @@ export const exportB2BPaymentOverview = async (vehicles: Vehicle[]) => {
       vehicle.vin || '-',
       vehicle.customerName || 'Onbekend',
       formatCurrency(vehicle.sellingPrice),
+      branchLabel,
       locationStyle.text,
       papersStyle.text,
       paymentStyle.text
@@ -147,8 +152,8 @@ export const exportB2BPaymentOverview = async (vehicles: Vehicle[]) => {
       };
       cell.alignment = { vertical: 'middle' };
 
-      // Locatie kolom (7)
-      if (colNumber === 7) {
+      // Locatie kolom (8)
+      if (colNumber === 8) {
         cell.fill = {
           type: 'pattern',
           pattern: 'solid',
@@ -158,8 +163,8 @@ export const exportB2BPaymentOverview = async (vehicles: Vehicle[]) => {
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
       }
       
-      // Papieren kolom (8)
-      if (colNumber === 8) {
+      // Papieren kolom (9)
+      if (colNumber === 9) {
         cell.fill = {
           type: 'pattern',
           pattern: 'solid',
@@ -169,8 +174,8 @@ export const exportB2BPaymentOverview = async (vehicles: Vehicle[]) => {
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
       }
       
-      // Betaling kolom (9)
-      if (colNumber === 9) {
+      // Betaling kolom (10)
+      if (colNumber === 10) {
         cell.fill = {
           type: 'pattern',
           pattern: 'solid',
@@ -184,6 +189,11 @@ export const exportB2BPaymentOverview = async (vehicles: Vehicle[]) => {
       if (colNumber === 6) {
         cell.alignment = { horizontal: 'right', vertical: 'middle' };
       }
+
+      // Vestiging kolom (7) - centreren
+      if (colNumber === 7) {
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      }
     });
   });
 
@@ -195,6 +205,7 @@ export const exportB2BPaymentOverview = async (vehicles: Vehicle[]) => {
     { width: 20 },  // VIN
     { width: 25 },  // Klant
     { width: 14 },  // Verkoopprijs
+    { width: 14 },  // Vestiging
     { width: 14 },  // Locatie
     { width: 14 },  // Papieren
     { width: 16 },  // Klant Betaling
