@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Save } from 'lucide-react';
 import { SalesTarget } from '@/types/branchManager';
 import { ReportPeriod } from '@/types/reports';
@@ -17,6 +18,7 @@ import { branchManagerService } from '@/services/branchManagerService';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
+import { useCurrentBranch, BRANCH_LABELS, type BranchCode } from '@/contexts/BranchContext';
 
 interface TargetsManagerProps {
   period: ReportPeriod;
@@ -33,9 +35,18 @@ export const TargetsManager: React.FC<TargetsManagerProps> = ({
 }) => {
   const periodKey = format(new Date(period.startDate), 'yyyy-MM');
   const periodLabel = format(new Date(period.startDate), 'MMMM yyyy', { locale: nl });
+  const { branchFilter, canSwitchBranch, userBranch } = useCurrentBranch();
+  // Wanneer BranchFilter='all' start standaard op Rotterdam; anders overnemen.
+  const initialBranch: BranchCode =
+    (branchFilter !== 'all' ? branchFilter : (userBranch ?? 'rotterdam')) as BranchCode;
+  const [branch, setBranch] = useState<BranchCode>(initialBranch);
 
-  const getTargetValue = (type: string): number => {
-    const target = targets.find(t => t.target_type === type && !t.salesperson_id);
+  const getTargetValue = (type: string, forBranch: BranchCode): number => {
+    const target = targets.find(t =>
+      t.target_type === type &&
+      !t.salesperson_id &&
+      ((t as any).branch ?? 'rotterdam') === forBranch
+    );
     return target?.target_value || getDefaultValue(type);
   };
 
@@ -50,13 +61,24 @@ export const TargetsManager: React.FC<TargetsManagerProps> = ({
   };
 
   const [formValues, setFormValues] = useState({
-    b2c_units: getTargetValue('b2c_units'),
-    b2c_revenue: getTargetValue('b2c_revenue'),
-    b2c_margin_percent: getTargetValue('b2c_margin_percent'),
-    upsales_revenue: getTargetValue('upsales_revenue')
+    b2c_units: getTargetValue('b2c_units', initialBranch),
+    b2c_revenue: getTargetValue('b2c_revenue', initialBranch),
+    b2c_margin_percent: getTargetValue('b2c_margin_percent', initialBranch),
+    upsales_revenue: getTargetValue('upsales_revenue', initialBranch)
   });
 
   const [isSaving, setIsSaving] = useState(false);
+
+  // Bij wisselen van vestiging: laad target-waarden voor die vestiging (of defaults).
+  React.useEffect(() => {
+    setFormValues({
+      b2c_units: getTargetValue('b2c_units', branch),
+      b2c_revenue: getTargetValue('b2c_revenue', branch),
+      b2c_margin_percent: getTargetValue('b2c_margin_percent', branch),
+      upsales_revenue: getTargetValue('upsales_revenue', branch),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branch]);
 
   const handleChange = (field: keyof typeof formValues, value: string) => {
     setFormValues(prev => ({
@@ -73,22 +95,26 @@ export const TargetsManager: React.FC<TargetsManagerProps> = ({
         branchManagerService.updateTarget({
           target_type: 'b2c_units',
           target_period: periodKey,
-          target_value: formValues.b2c_units
+          target_value: formValues.b2c_units,
+          branch,
         }),
         branchManagerService.updateTarget({
           target_type: 'b2c_revenue',
           target_period: periodKey,
-          target_value: formValues.b2c_revenue
+          target_value: formValues.b2c_revenue,
+          branch,
         }),
         branchManagerService.updateTarget({
           target_type: 'b2c_margin_percent',
           target_period: periodKey,
-          target_value: formValues.b2c_margin_percent
+          target_value: formValues.b2c_margin_percent,
+          branch,
         }),
         branchManagerService.updateTarget({
           target_type: 'upsales_revenue',
           target_period: periodKey,
-          target_value: formValues.upsales_revenue
+          target_value: formValues.upsales_revenue,
+          branch,
         })
       ]);
 
@@ -108,11 +134,30 @@ export const TargetsManager: React.FC<TargetsManagerProps> = ({
         <DialogHeader>
           <DialogTitle>Targets Instellen</DialogTitle>
           <DialogDescription className="capitalize">
-            Team targets voor {periodLabel}
+            Team targets voor {periodLabel} — {BRANCH_LABELS[branch]}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Vestiging</Label>
+            <div className="col-span-3">
+              {canSwitchBranch ? (
+                <Select value={branch} onValueChange={(v) => setBranch(v as BranchCode)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="rotterdam">Rotterdam</SelectItem>
+                    <SelectItem value="heerhugowaard">Heerhugowaard</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="text-sm py-2">{BRANCH_LABELS[branch]}</div>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="b2c_units" className="text-right">
               B2C Verkopen
