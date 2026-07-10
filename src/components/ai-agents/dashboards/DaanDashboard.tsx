@@ -196,6 +196,9 @@ export const DaanDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <BranchFilter />
+      </div>
       {/* KPI Strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
