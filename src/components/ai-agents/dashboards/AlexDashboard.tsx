@@ -12,18 +12,23 @@ import {
   Timer, Package, Users,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
+import { BranchFilter } from "@/components/reports/BranchFilter";
 
 export const AlexDashboard: React.FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { branchFilter } = useCurrentBranch();
 
   // ── KPI Data ──
   const { data: kpis, isLoading: kpisLoading } = useQuery({
-    queryKey: ['alex-kpis'],
+    queryKey: ['alex-kpis', branchFilter],
     queryFn: async () => {
-      const { data: vehicles } = await supabase
+      let vq = supabase
         .from('vehicles')
         .select('status, selling_price, purchase_price, sold_date, online_since_date, details');
+      vq = applyBranchFilter(vq, branchFilter);
+      const { data: vehicles } = await vq;
 
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
