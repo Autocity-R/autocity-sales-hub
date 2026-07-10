@@ -9,6 +9,7 @@ import { damageRepairReportsService } from "@/services/damageRepairReportsServic
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { ReportPeriod } from "@/types/reports";
+import { useCurrentBranch } from "@/contexts/BranchContext";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
@@ -17,9 +18,10 @@ interface DamageRepairAnalyticsProps {
 }
 
 export const DamageRepairAnalytics: React.FC<DamageRepairAnalyticsProps> = ({ period }) => {
+  const { branchFilter } = useCurrentBranch();
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['damage-repair-stats', period.startDate, period.endDate],
-    queryFn: () => damageRepairReportsService.getDamageRepairStats(period),
+    queryKey: ['damage-repair-stats', period.startDate, period.endDate, branchFilter],
+    queryFn: () => damageRepairReportsService.getDamageRepairStats(period, branchFilter),
     refetchOnMount: true
   });
 
