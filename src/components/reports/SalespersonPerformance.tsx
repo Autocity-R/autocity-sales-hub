@@ -24,11 +24,13 @@ import { SalespersonDetailDialog } from "./SalespersonDetailDialog";
 import { ReportPeriod } from "@/types/reports";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
+import { BRANCH_LABELS, BRANCH_COLOR_CLASSES, type BranchCode } from "@/contexts/BranchContext";
 
 interface SalespersonData {
   id: string;
   name: string;
   email: string;
+  branch: BranchCode;
   totalSales: number;
   totalRevenue: number;
   totalMargin: number;
@@ -80,7 +82,7 @@ export const SalespersonPerformance: React.FC<SalespersonPerformanceProps> = ({ 
         .from('vehicles')
         .select(`
           id, brand, model, selling_price, sold_date, sold_by_user_id,
-          details
+          details, branch
         `)
         .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
         .not('sold_date', 'is', null)
@@ -103,10 +105,14 @@ export const SalespersonPerformance: React.FC<SalespersonPerformanceProps> = ({ 
         const vDetails = ((vehicle as any).details as any) || {};
         const salespersonName = vDetails?.salespersonName || 'Onbekend';
         const salespersonEmail = vDetails?.salespersonEmail || '';
+        const vBranch: BranchCode = ((vehicle as any).branch === 'heerhugowaard' ? 'heerhugowaard' : 'rotterdam');
+        // Uniek per (verkoper + vestiging), zodat splits per vestiging correct kloppen
+        const mapKey = `${sellerId}::${vBranch}`;
 
-        if (!salespersonMap.has(sellerId)) {
-          salespersonMap.set(sellerId, {
+        if (!salespersonMap.has(mapKey)) {
+          salespersonMap.set(mapKey, {
             id: sellerId,
+            branch: vBranch,
             name: salespersonName,
             email: salespersonEmail,
             totalSales: 0,
@@ -119,7 +125,7 @@ export const SalespersonPerformance: React.FC<SalespersonPerformanceProps> = ({ 
           });
         }
 
-        const salesperson = salespersonMap.get(sellerId)!;
+        const salesperson = salespersonMap.get(mapKey)!;
 
         const sellingPrice = (vehicle as any).selling_price || 0;
         const purchasePrice = vDetails?.purchasePrice || 0;
@@ -179,6 +185,21 @@ export const SalespersonPerformance: React.FC<SalespersonPerformanceProps> = ({ 
 
     return filtered;
   }, [salespersonData, searchTerm, sortBy, sortOrder]);
+
+  // Groepeer bij BranchFilter='all' de rijen per vestiging.
+  const grouped = React.useMemo(() => {
+    if (branchFilter !== 'all') {
+      return [{ branch: (branchFilter as BranchCode), items: filteredData }];
+    }
+    const map = new Map<BranchCode, typeof filteredData>();
+    (['rotterdam', 'heerhugowaard'] as BranchCode[]).forEach(b => map.set(b, []));
+    filteredData.forEach(sp => {
+      const arr = map.get(sp.branch) ?? [];
+      arr.push(sp);
+      map.set(sp.branch, arr);
+    });
+    return Array.from(map.entries()).map(([branch, items]) => ({ branch, items }));
+  }, [filteredData, branchFilter]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('nl-NL', {
@@ -331,7 +352,17 @@ export const SalespersonPerformance: React.FC<SalespersonPerformanceProps> = ({ 
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {filteredData.map((salesperson) => (
+            {grouped.map(({ branch, items }) => (
+              <div key={`grp-${branch}`} className="space-y-3">
+                {branchFilter === 'all' && (
+                  <div className="flex items-center gap-2 pt-2">
+                    <span className={`rounded-md px-2 py-1 text-xs font-semibold ${BRANCH_COLOR_CLASSES[branch]}`}>
+                      {BRANCH_LABELS[branch]}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{items.length} verkoper(s)</span>
+                  </div>
+                )}
+                {items.map((salesperson) => (
               <Card key={salesperson.id} className="border-l-4 border-l-primary">
                 <CardContent className="p-4">
                   <div className="flex flex-col lg:flex-row gap-4">
@@ -427,6 +458,8 @@ export const SalespersonPerformance: React.FC<SalespersonPerformanceProps> = ({ 
                   )}
                 </CardContent>
               </Card>
+                ))}
+              </div>
             ))}
 
             {filteredData.length === 0 && (
