@@ -175,3 +175,24 @@ export const getUserLastLogin = async (userId: string): Promise<string | null> =
     return null;
   }
 };
+
+export const updateUsersBranch = async (
+  userIds: string[],
+  branch: 'rotterdam' | 'heerhugowaard'
+): Promise<{ ok: number; fail: number }> => {
+  let ok = 0;
+  let fail = 0;
+  for (const id of userIds) {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ branch })
+      .eq('id', id);
+    if (error) {
+      console.error('[updateUsersBranch] failed for', id, error);
+      fail++;
+    } else {
+      ok++;
+    }
+  }
+  return { ok, fail };
+};
