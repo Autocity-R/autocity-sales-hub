@@ -10,6 +10,8 @@ export interface Task {
   vehicleModel?: string;
   vehicleLicenseNumber?: string;
   vehicleVin?: string;
+  /** Vestiging waarop de taak/voertuig valt (Fase 6b). */
+  branch?: "rotterdam" | "heerhugowaard";
   dueDate: Date | string;
   status: TaskStatus;
   priority: TaskPriority;
