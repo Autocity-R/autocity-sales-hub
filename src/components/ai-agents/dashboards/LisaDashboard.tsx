@@ -202,7 +202,7 @@ export const LisaDashboard: React.FC = () => {
     <div className="space-y-4">
       {/* Download + KPI */}
       <div className="flex items-center justify-between">
-        <div />
+        <BranchFilter />
         <Button onClick={handleDownload} disabled={downloading} variant="outline" className="gap-2">
           {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           Download Dagplanning
