@@ -186,6 +186,11 @@ const InventoryDelivered = () => {
               <FileText className="h-4 w-4 mr-2" />
               Export selectie
             </Button>
+            <BulkBranchMoveButton
+              selectedVehicleIds={selectedVehicles}
+              invalidateQueryKeys={[["deliveredVehicles"], ["vehicles"]]}
+              onDone={() => setSelectedVehicles([])}
+            />
           </div>
         </PageHeader>
         
