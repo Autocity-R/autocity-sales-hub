@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Vehicle } from "@/types/inventory";
+import { BulkBranchMoveButton } from "@/components/inventory/BulkBranchMoveButton";
 import { PageHeader } from "@/components/ui/page-header";
 import { fetchDeliveredVehicles } from "@/services/inventoryService";
 import {
