@@ -82,7 +82,7 @@ export const exportB2BPaymentOverview = async (vehicles: Vehicle[]) => {
 
   // 3. Titel rij
   const dateStr = format(new Date(), 'dd-MM-yyyy', { locale: nl });
-  worksheet.mergeCells('A1:I1');
+  worksheet.mergeCells('A1:J1');
   const titleCell = worksheet.getCell('A1');
   titleCell.value = `B2B Betalingsoverzicht - ${dateStr}`;
   titleCell.font = { bold: true, size: 16, color: { argb: COLORS.HEADER_BG } };
