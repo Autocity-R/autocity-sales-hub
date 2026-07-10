@@ -70,6 +70,8 @@ export const HendrikBriefingDashboard = () => {
   const [selectedBriefing, setSelectedBriefing] = useState<Briefing | null>(null);
   const [activeTab, setActiveTab] = useState("all");
   const [generatingType, setGeneratingType] = useState<string | null>(null);
+  const { branchFilter } = useCurrentBranch();
+  const branchLabelForExport = branchFilter === 'all' ? 'Alles' : BRANCH_LABELS[branchFilter];
 
   // Fetch all briefings for Hendrik
   const { data: briefings, isLoading: briefingsLoading, refetch: refetchBriefings } = useQuery({
