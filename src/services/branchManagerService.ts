@@ -508,9 +508,10 @@ class BranchManagerService {
         target_period: target.target_period,
         target_value: target.target_value,
         salesperson_id: target.salesperson_id || null,
-        notes: target.notes || null
+        notes: target.notes || null,
+        branch: (target as any).branch || 'rotterdam'
       }, {
-        onConflict: 'target_type,target_period,salesperson_id'
+        onConflict: 'target_type,target_period,branch,salesperson_id'
       });
 
     if (error) {
