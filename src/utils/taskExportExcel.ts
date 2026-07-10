@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import { Task, TaskCategory } from '@/types/tasks';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
+import type { BranchFilter } from '@/contexts/BranchContext';
 
 const categoryLabels: Record<TaskCategory, string> = {
   klaarmaken: 'Klaarmaken',
@@ -18,7 +19,8 @@ const categoryLabels: Record<TaskCategory, string> = {
 
 export const exportTasksToExcel = async (
   tasks: Task[],
-  categoryFilter: TaskCategory | 'all'
+  categoryFilter: TaskCategory | 'all',
+  branchFilter: BranchFilter = 'all',
 ): Promise<void> => {
   // Filter tasks: only non-completed and by category
   let filteredTasks = tasks.filter(t => 
@@ -27,6 +29,9 @@ export const exportTasksToExcel = async (
 
   if (categoryFilter !== 'all') {
     filteredTasks = filteredTasks.filter(t => t.category === categoryFilter);
+  }
+  if (branchFilter !== 'all') {
+    filteredTasks = filteredTasks.filter(t => (t.branch ?? 'rotterdam') === branchFilter);
   }
 
   // Create workbook and worksheet
@@ -56,14 +61,14 @@ export const exportTasksToExcel = async (
   const titleRow = worksheet.addRow([`WERKLIJST ${categoryName.toUpperCase()} - ${dateStr}`]);
   titleRow.font = { bold: true, size: 14 };
   titleRow.height = 25;
-  worksheet.mergeCells('A1:F1');
+  worksheet.mergeCells('A1:G1');
   titleRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
 
   // Empty row
   worksheet.addRow([]);
 
   // Header row
-  const headerRow = worksheet.addRow(['Merk', 'Model', 'Kenteken', 'VIN', 'Taak', '✓']);
+  const headerRow = worksheet.addRow(['Merk', 'Model', 'Kenteken', 'VIN', 'Vestiging', 'Taak', '✓']);
   headerRow.font = { bold: true, size: 11 };
   headerRow.height = 22;
   headerRow.eachCell((cell) => {
@@ -87,6 +92,7 @@ export const exportTasksToExcel = async (
     { key: 'model', width: 14 },
     { key: 'license', width: 12 },
     { key: 'vin', width: 12 },
+    { key: 'branch', width: 14 },
     { key: 'task', width: 45 },
     { key: 'checkbox', width: 6 }
   ];
@@ -97,12 +103,16 @@ export const exportTasksToExcel = async (
     const vinShort = task.vehicleVin 
       ? `...${task.vehicleVin.slice(-8)}` 
       : '-';
+    const branchLabel = task.branch === 'heerhugowaard'
+      ? 'Heerhugowaard'
+      : (task.branch === 'rotterdam' ? 'Rotterdam' : '-');
 
     const row = worksheet.addRow([
       task.vehicleBrand || '-',
       task.vehicleModel || '-',
       task.vehicleLicenseNumber || '-',
       vinShort,
+      branchLabel,
       task.description || task.title,
       '○'
     ]);
@@ -118,12 +128,12 @@ export const exportTasksToExcel = async (
         right: { style: 'thin' }
       };
       
-      // Checkbox column centered
-      if (colNumber === 6) {
+      // Checkbox column centered (now col 7)
+      if (colNumber === 7) {
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.font = { size: 14 };
       } else {
-        cell.alignment = { vertical: 'middle', wrapText: colNumber === 5 };
+        cell.alignment = { vertical: 'middle', wrapText: colNumber === 6 };
       }
     });
   });
