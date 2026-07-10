@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { format, parseISO, isToday, isThisWeek, isThisMonth } from "date-fns";
 import { nl } from "date-fns/locale";
 import { exportBriefingToExcel, exportBriefingToPDF } from "@/utils/briefingExport";
+import { useCurrentBranch, BRANCH_LABELS } from "@/contexts/BranchContext";
 
 // Hendrik's agent ID
 const HENDRIK_AGENT_ID = '43004cb6-26e9-4453-861d-75ff8dffb3fe';
