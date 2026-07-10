@@ -11,6 +11,7 @@ import {
 import { Task, TaskCategory } from '@/types/tasks';
 import { exportTasksToExcel } from '@/utils/taskExportExcel';
 import { useToast } from '@/hooks/use-toast';
+import { useCurrentBranch } from '@/contexts/BranchContext';
 
 interface TaskExportButtonProps {
   tasks: Task[];
@@ -28,10 +29,11 @@ const exportCategories: { key: TaskCategory | 'all'; label: string; icon: React.
 
 export const TaskExportButton: React.FC<TaskExportButtonProps> = ({ tasks }) => {
   const { toast } = useToast();
+  const { branchFilter } = useCurrentBranch();
 
   const handleExport = async (category: TaskCategory | 'all') => {
     try {
-      await exportTasksToExcel(tasks, category);
+      await exportTasksToExcel(tasks, category, branchFilter);
       toast({
         description: 'Werklijst gedownload'
       });
