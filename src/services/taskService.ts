@@ -208,6 +208,7 @@ export const createTask = async (task: Omit<Task, 'id' | 'createdAt' | 'updatedA
       vehicleModel: data.vehicle_model,
       vehicleLicenseNumber: data.vehicle_license_number,
       vehicleVin: data.vehicle_vin,
+      branch: (data as any).branch || undefined,
       dueDate: data.due_date,
       status: data.status as TaskStatus,
       priority: data.priority as TaskPriority,
