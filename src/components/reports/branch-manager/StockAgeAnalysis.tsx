@@ -13,6 +13,7 @@ import { StockAgeData } from '@/types/branchManager';
 import { cn } from '@/lib/utils';
 import { exportStockAgeToExcel } from '@/services/stockAgeExport';
 import { toast } from 'sonner';
+import { useCurrentBranch } from '@/contexts/BranchContext';
 
 interface StockAgeAnalysisProps {
   data: StockAgeData;
@@ -26,6 +27,7 @@ export const StockAgeAnalysis: React.FC<StockAgeAnalysisProps> = ({
   onViewVehicle
 }) => {
   const [isExporting, setIsExporting] = useState(false);
+  const { branchFilter } = useCurrentBranch();
 
   const handleViewVehicle = (vehicleId: string) => {
     if (onViewVehicle) {
@@ -36,7 +38,7 @@ export const StockAgeAnalysis: React.FC<StockAgeAnalysisProps> = ({
   const handleExportStockAge = async () => {
     setIsExporting(true);
     try {
-      const result = await exportStockAgeToExcel();
+      const result = await exportStockAgeToExcel(branchFilter);
       toast.success(`Voorraadlijst geëxporteerd (${result.count} voertuigen)`);
     } catch (error) {
       console.error('Export error:', error);
