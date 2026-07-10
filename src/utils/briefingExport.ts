@@ -25,7 +25,10 @@ const BriefingTypeLabels: Record<string, string> = {
 /**
  * Export briefing to Excel format
  */
-export const exportBriefingToExcel = async (briefing: Briefing): Promise<void> => {
+export const exportBriefingToExcel = async (
+  briefing: Briefing,
+  branchLabel: string = 'Alles',
+): Promise<void> => {
   try {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Jacob AI';
@@ -60,26 +63,28 @@ export const exportBriefingToExcel = async (briefing: Briefing): Promise<void> =
     briefingSheet.getCell('B5').value = briefing.alerts_included || 0;
     briefingSheet.getCell('A6').value = 'Inzichten Gebruikt:';
     briefingSheet.getCell('B6').value = briefing.memories_used || 0;
+    briefingSheet.getCell('A7').value = 'Vestiging:';
+    briefingSheet.getCell('B7').value = branchLabel;
 
     // Style meta labels
-    ['A3', 'A4', 'A5', 'A6'].forEach(cell => {
+    ['A3', 'A4', 'A5', 'A6', 'A7'].forEach(cell => {
       briefingSheet.getCell(cell).font = { bold: true };
     });
 
     // Summary
     if (briefing.summary) {
-      briefingSheet.mergeCells('A8:D8');
-      briefingSheet.getCell('A8').value = 'Samenvatting';
-      briefingSheet.getCell('A8').font = { bold: true, size: 12 };
-      
       briefingSheet.mergeCells('A9:D9');
-      briefingSheet.getCell('A9').value = briefing.summary;
-      briefingSheet.getCell('A9').alignment = { wrapText: true };
-      briefingSheet.getRow(9).height = 40;
+      briefingSheet.getCell('A9').value = 'Samenvatting';
+      briefingSheet.getCell('A9').font = { bold: true, size: 12 };
+
+      briefingSheet.mergeCells('A10:D10');
+      briefingSheet.getCell('A10').value = briefing.summary;
+      briefingSheet.getCell('A10').alignment = { wrapText: true };
+      briefingSheet.getRow(10).height = 40;
     }
 
     // Content header
-    const contentStartRow = briefing.summary ? 11 : 8;
+    const contentStartRow = briefing.summary ? 12 : 9;
     briefingSheet.mergeCells(`A${contentStartRow}:D${contentStartRow}`);
     briefingSheet.getCell(`A${contentStartRow}`).value = 'Briefing Inhoud';
     briefingSheet.getCell(`A${contentStartRow}`).font = { bold: true, size: 12 };
