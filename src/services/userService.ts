@@ -8,6 +8,7 @@ export interface UserProfile {
   last_name: string | null;
   role: 'admin' | 'owner' | 'manager' | 'aftersales_manager' | 'verkoper' | 'operationeel' | 'user';
   company: string | null;
+  branch: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -173,4 +174,25 @@ export const getUserLastLogin = async (userId: string): Promise<string | null> =
     console.error("Failed to get user last login:", error);
     return null;
   }
+};
+
+export const updateUsersBranch = async (
+  userIds: string[],
+  branch: 'rotterdam' | 'heerhugowaard'
+): Promise<{ ok: number; fail: number }> => {
+  let ok = 0;
+  let fail = 0;
+  for (const id of userIds) {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ branch })
+      .eq('id', id);
+    if (error) {
+      console.error('[updateUsersBranch] failed for', id, error);
+      fail++;
+    } else {
+      ok++;
+    }
+  }
+  return { ok, fail };
 };

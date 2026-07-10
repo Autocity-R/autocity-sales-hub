@@ -4,15 +4,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, UserPlus, Shield, Mail, Trash2, MoreHorizontal } from "lucide-react";
+import { Users, UserPlus, Shield, Mail, Trash2, MoreHorizontal, Building2, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenuLabel } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAllUsers, updateUserRole, UserProfile } from "@/services/userService";
+import { getAllUsers, updateUserRole, updateUsersBranch, UserProfile } from "@/services/userService";
 import { useAuth } from "@/contexts/AuthContext";
 import { AddUserDialog } from "./AddUserDialog";
 import { UserActivityIndicator } from "./UserActivityIndicator";
 import { DeleteUserDialog } from "./DeleteUserDialog";
+
+type Branch = "rotterdam" | "heerhugowaard";
+const BRANCH_LABEL: Record<Branch, string> = {
+  rotterdam: "Rotterdam",
+  heerhugowaard: "Heerhugowaard",
+};
 
 export const UserManagement = () => {
   const { toast } = useToast();
@@ -21,6 +39,9 @@ export const UserManagement = () => {
   const [showAddUserDialog, setShowAddUserDialog] = useState(false);
   const [showDeleteUserDialog, setShowDeleteUserDialog] = useState(false);
   const [selectedUserToDelete, setSelectedUserToDelete] = useState<UserProfile | null>(null);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [branchTarget, setBranchTarget] = useState<Branch | null>(null);
+  const [isMovingBranch, setIsMovingBranch] = useState(false);
 
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ["users"],
@@ -58,6 +79,49 @@ export const UserManagement = () => {
   const handleCloseDeleteDialog = () => {
     setSelectedUserToDelete(null);
     setShowDeleteUserDialog(false);
+  };
+
+  const toggleSelectUser = (id: string, checked: boolean) => {
+    setSelectedUserIds((prev) =>
+      checked ? [...prev, id] : prev.filter((x) => x !== id),
+    );
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedUserIds(users.map((u: UserProfile) => u.id));
+    } else {
+      setSelectedUserIds([]);
+    }
+  };
+
+  const handleConfirmBranchMove = async () => {
+    if (!branchTarget || selectedUserIds.length === 0) return;
+    setIsMovingBranch(true);
+    const { ok, fail } = await updateUsersBranch(selectedUserIds, branchTarget);
+    setIsMovingBranch(false);
+    setBranchTarget(null);
+    await queryClient.invalidateQueries({ queryKey: ["users"] });
+
+    if (ok > 0 && fail === 0) {
+      toast({
+        title: "Vestiging bijgewerkt",
+        description: `${ok} gebruiker(s) verplaatst naar ${BRANCH_LABEL[branchTarget]}`,
+      });
+    } else if (ok > 0 && fail > 0) {
+      toast({
+        title: "Deels gelukt",
+        description: `${ok} verplaatst, ${fail} mislukt`,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Verplaatsen mislukt",
+        description: `${fail} gebruiker(s) konden niet worden bijgewerkt`,
+        variant: "destructive",
+      });
+    }
+    setSelectedUserIds([]);
   };
 
   if (!isAdmin) {
@@ -100,20 +164,65 @@ export const UserManagement = () => {
                 Beheer alle gebruikers in het systeem en hun toegangsrechten
               </CardDescription>
             </div>
-            <Button 
-              onClick={() => setShowAddUserDialog(true)}
-              className="flex items-center gap-2"
-            >
-              <UserPlus className="h-4 w-4" />
-              Nieuwe Gebruiker
-            </Button>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    disabled={selectedUserIds.length === 0}
+                  >
+                    <Building2 className="h-4 w-4" />
+                    Verplaats naar vestiging ({selectedUserIds.length})
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>Doelvestiging</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setBranchTarget("rotterdam")}>
+                    Rotterdam
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setBranchTarget("heerhugowaard")}>
+                    Heerhugowaard
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                onClick={() => setShowAddUserDialog(true)}
+                className="flex items-center gap-2"
+              >
+                <UserPlus className="h-4 w-4" />
+                Nieuwe Gebruiker
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            {users.length > 0 && (
+              <div className="flex items-center gap-2 px-2 text-sm text-muted-foreground">
+                <Checkbox
+                  checked={
+                    selectedUserIds.length === users.length && users.length > 0
+                  }
+                  onCheckedChange={(v) => toggleSelectAll(Boolean(v))}
+                />
+                <span>
+                  {selectedUserIds.length > 0
+                    ? `${selectedUserIds.length} geselecteerd`
+                    : "Alles selecteren"}
+                </span>
+              </div>
+            )}
             {users.map((user: UserProfile) => (
               <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex items-center gap-3">
+                  <Checkbox
+                    checked={selectedUserIds.includes(user.id)}
+                    onCheckedChange={(v) =>
+                      toggleSelectUser(user.id, Boolean(v))
+                    }
+                  />
                   <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                     <span className="text-blue-600 font-medium">
                       {(user.first_name?.[0] || '') + (user.last_name?.[0] || '')}
@@ -134,6 +243,14 @@ export const UserManagement = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <UserActivityIndicator user={user} />
+                  <Badge variant="outline" className="flex items-center gap-1">
+                    <Building2 className="h-3 w-3" />
+                    {user.branch === "heerhugowaard"
+                      ? "Heerhugowaard"
+                      : user.branch === "rotterdam"
+                      ? "Rotterdam"
+                      : "—"}
+                  </Badge>
                   <Badge variant={user.role === "admin" || user.role === "owner" ? "default" : "secondary"}>
                     {user.role === "admin" ? "Admin" : 
                      user.role === "owner" ? "Owner" :
@@ -198,6 +315,47 @@ export const UserManagement = () => {
         onClose={handleCloseDeleteDialog}
         user={selectedUserToDelete}
       />
+
+      <AlertDialog
+        open={branchTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !isMovingBranch) setBranchTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Gebruikers verplaatsen</AlertDialogTitle>
+            <AlertDialogDescription>
+              Je staat op het punt om <b>{selectedUserIds.length}</b> gebruiker(s)
+              te verplaatsen naar{" "}
+              <b>{branchTarget ? BRANCH_LABEL[branchTarget] : ""}</b>. Hun
+              standaardvestiging wordt aangepast; bestaande data blijft
+              ongewijzigd.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isMovingBranch}>
+              Annuleren
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmBranchMove();
+              }}
+              disabled={isMovingBranch}
+            >
+              {isMovingBranch ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Bezig...
+                </>
+              ) : (
+                "Verplaatsen"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

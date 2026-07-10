@@ -24,6 +24,7 @@ import {
 } from "@/services/inventoryService";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { InventoryBulkActions } from "@/components/inventory/InventoryBulkActions";
+import { BulkBranchMoveButton } from "@/components/inventory/BulkBranchMoveButton";
 import { supabase } from "@/integrations/supabase/client";
 
 const InventoryOnline = () => {
@@ -401,6 +402,10 @@ const InventoryOnline = () => {
             selectedVehicles={selectedVehicles}
             vehicles={filteredVehicles}
             onBulkAction={handleBulkAction}
+          />
+          <BulkBranchMoveButton
+            selectedVehicleIds={selectedVehicles}
+            invalidateQueryKeys={[["vehicles"]]}
           />
         </PageHeader>
 

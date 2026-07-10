@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Vehicle } from "@/types/inventory";
+import { BulkBranchMoveButton } from "@/components/inventory/BulkBranchMoveButton";
 import { PageHeader } from "@/components/ui/page-header";
 import { fetchDeliveredVehicles } from "@/services/inventoryService";
 import {
@@ -186,6 +187,11 @@ const InventoryDelivered = () => {
               <FileText className="h-4 w-4 mr-2" />
               Export selectie
             </Button>
+            <BulkBranchMoveButton
+              selectedVehicleIds={selectedVehicles}
+              invalidateQueryKeys={[["deliveredVehicles"], ["vehicles"]]}
+              onDone={() => setSelectedVehicles([])}
+            />
           </div>
         </PageHeader>
         

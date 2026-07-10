@@ -17,6 +17,7 @@ import { fetchVehicles, fetchB2CVehicles, fetchB2BVehicles, getVehicleStats, upd
 import { DataSourceIndicator } from "@/components/common/DataSourceIndicator";
 import { useToast } from "@/hooks/use-toast";
 import { InventoryBulkActions } from "@/components/inventory/InventoryBulkActions";
+import { BulkBranchMoveButton } from "@/components/inventory/BulkBranchMoveButton";
 import { supabase } from "@/integrations/supabase/client";
 import { deliveredVehicleService } from "@/services/deliveredVehicleService";
 import { useCurrentBranch, filterByBranch } from "@/contexts/BranchContext";
@@ -584,6 +585,11 @@ const Inventory = () => {
               selectedVehicles={selectedVehicles}
               vehicles={filteredAndSortedVehicles}
               onBulkAction={handleBulkAction}
+            />
+            <BulkBranchMoveButton
+              selectedVehicleIds={selectedVehicles}
+              invalidateQueryKeys={[["vehicles"]]}
+              onDone={() => setSelectedVehicles([])}
             />
             <Button onClick={() => setShowForm(true)} className="gap-2">
               <Plus className="h-4 w-4" />

@@ -14,6 +14,7 @@ import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { useB2CVehicleHandlers } from "@/hooks/useB2CVehicleHandlers";
 import { useB2CVehicles } from "@/hooks/useB2CVehicles";
 import { InventoryBulkActions } from "@/components/inventory/InventoryBulkActions";
+import { BulkBranchMoveButton } from "@/components/inventory/BulkBranchMoveButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Vehicle } from "@/types/inventory";
@@ -335,6 +336,10 @@ const InventoryB2C = () => {
             selectedVehicles={selectedVehicles}
             vehicles={vehicles}
             onBulkAction={handleBulkAction}
+          />
+          <BulkBranchMoveButton
+            selectedVehicleIds={selectedVehicles}
+            invalidateQueryKeys={[["b2cVehicles"]]}
           />
         </PageHeader>
 

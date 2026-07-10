@@ -3,6 +3,7 @@ import { FileSpreadsheet, Trash2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { BulkActionDialog } from "./BulkActionDialog";
+import { BulkBranchMoveButton } from "./BulkBranchMoveButton";
 import { Vehicle } from "@/types/inventory";
 import { exportB2BPaymentOverview } from "@/utils/b2bPaymentExport";
 import { useToast } from "@/hooks/use-toast";
@@ -91,6 +92,10 @@ export const B2BInventoryHeader = ({ selectedVehicles, vehicles, onBulkAction }:
             <Trash2 className="h-4 w-4 mr-2" />
             Verwijderen
           </Button>
+          <BulkBranchMoveButton
+            selectedVehicleIds={selectedVehicles}
+            invalidateQueryKeys={[["b2bVehicles"], ["vehicles"]]}
+          />
         </div>
       </PageHeader>
 
