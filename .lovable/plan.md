@@ -94,4 +94,27 @@ De scope is groot (11 tabs, ~10 services, 5 agent-dashboards, exports, nieuwe ve
 - `damageRepairReportsService`: geen branch-filter (records hebben geen directe branch-kolom; vereist join).
 - `enhancedReportsService`: alleen connection-status wordt aangeroepen, geen data-queries geraakt.
 
+---
+
+### Fase 6b — geïmplementeerd (typecheck groen)
+
+- `SalespersonPerformance`: bij BranchFilter='all' twee groepen (Rotterdam / Heerhugowaard) met chip-kopje; bij specifieke vestiging platte lijst. Sleutel per (verkoper × vestiging) zodat splits correct blijven.
+- `TargetsManager`: extra "Vestiging"-veld (dropdown voor admin/owner, read-only chip voor overige rollen). Bij wisselen worden target-waarden voor die vestiging geladen. `branchManagerService.updateTarget` neemt `branch` mee; upsert-conflict target = `(target_type, target_period, branch, salesperson_id)`. Migratie: unique index met `NULLS NOT DISTINCT`.
+- Agent-dashboards:
+  - `AlexDashboard`, `DaanDashboard`, `SaraDashboard`, `LisaDashboard`, `MarcoDashboard`: `<BranchFilter />` bovenaan, alle onderliggende `vehicles` / `warranty_claims` / `appointments`-queries krijgen `applyBranchFilter(q, branchFilter)`. Voor niet-admins is filter hard vastgezet op eigen branch via `BranchContext`.
+  - `KevinDashboard`: bewust NIET gekoppeld — Kevin's data komt uit `jpcars_voorraad_monitor` (externe marktdata, geen vestiging).
+- `damageRepairReportsService.getDamageRepairStats(period, branch?)`: joint met `vehicles(branch)`; bij specifieke branch inner-join + `eq('vehicle.branch', ...)`. `DamageRepairAnalytics` geeft `branchFilter` door.
+- Excel-exports:
+  - `b2bPaymentExport`: nieuwe kolom "Vestiging" tussen "Verkoopprijs" en "Locatie", header-merge uitgebreid naar `A1:J1`, kleur-kolomindexen +1 geschoven.
+  - `stockAgeExport(branch?)`: extra kolom "Vestiging", filter op branch als meegegeven; `StockAgeAnalysis` geeft huidige branchFilter door.
+  - `taskExportExcel(tasks, category, branchFilter?)`: extra kolom "Vestiging", filter op branch; `TaskExportButton` geeft `branchFilter` door. `Task`-type + `taskService`-mapping krijgen `branch?` mee.
+  - `marcoExport`: kolom "Vestiging" in elk pipeline-schema; `MarcoDashboard` selecteert `branch` op vehicles en past `applyBranchFilter` toe.
+  - `briefingExport(briefing, branchLabel?)`: extra meta-rij "Vestiging"; `HendrikBriefingDashboard` geeft huidige BranchFilter-label mee.
+- Mock Data/Exact-toggle onaangeroerd.
+- Regel gehandhaafd: met BranchFilter='Alles' zijn queries identiek aan huidig gedrag.
+
+**Nog te doen (fase 7):**
+- Verhuis-tooling voor voertuigen tussen vestigingen (UI + audit).
+- Eind-tot-eind RLS-test met beide accounts.
+
 Klaar voor Hendrik's verificatie: bij BranchFilter='Alles' zijn cijfers gelijk aan nu; wisselen naar Rotterdam/Heerhugowaard filtert alle tabs en de nieuwe vergelijkings-tab werkt.
