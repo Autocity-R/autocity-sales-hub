@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { SalespersonDetailDialog } from "@/components/reports/SalespersonDetailDialog";
 import { AgentMemoryTab } from "./AgentMemoryTab";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
+import { BranchFilter } from "@/components/reports/BranchFilter";
 
 interface B2BKans {
   onze_merk: string;
@@ -51,16 +53,19 @@ export const DaanDashboard: React.FC = () => {
   const [selectedSalesperson, setSelectedSalesperson] = useState<any>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const { isAdmin } = useRoleAccess();
+  const { branchFilter } = useCurrentBranch();
 
   // Offline voorraad
   const { data: offlineData, isLoading: offlineLoading } = useQuery({
-    queryKey: ["daan-offline-voorraad"],
+    queryKey: ["daan-offline-voorraad", branchFilter],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let vq = supabase
         .from("vehicles")
         .select("id, brand, model, license_number, purchase_price, details, created_at")
         .eq("status", "voorraad")
         .gt("purchase_price", 0);
+      vq = applyBranchFilter(vq, branchFilter);
+      const { data, error } = await vq;
 
       if (error) throw error;
       const now = Date.now();
@@ -84,16 +89,18 @@ export const DaanDashboard: React.FC = () => {
 
   // Team performance
   const { data: teamData, isLoading: teamLoading } = useQuery({
-    queryKey: ["daan-team-performance"],
+    queryKey: ["daan-team-performance", branchFilter],
     queryFn: async () => {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-      const { data: soldVehicles, error } = await supabase
+      let vq = supabase
         .from("vehicles")
         .select("id, brand, model, status, selling_price, purchase_price, details, sold_date")
         .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"])
         .gte("sold_date", monthStart);
+      vq = applyBranchFilter(vq, branchFilter);
+      const { data: soldVehicles, error } = await vq;
 
       if (error) throw error;
 
