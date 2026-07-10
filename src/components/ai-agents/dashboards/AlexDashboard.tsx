@@ -245,6 +245,9 @@ export const AlexDashboard: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <BranchFilter />
+      </div>
       {/* ── Section 1: KPI Strip ── */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {kpiTiles.map(({ label, value, sub, icon: Icon, trend, color }) => (
