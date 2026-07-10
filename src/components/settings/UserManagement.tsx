@@ -315,6 +315,47 @@ export const UserManagement = () => {
         onClose={handleCloseDeleteDialog}
         user={selectedUserToDelete}
       />
+
+      <AlertDialog
+        open={branchTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !isMovingBranch) setBranchTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Gebruikers verplaatsen</AlertDialogTitle>
+            <AlertDialogDescription>
+              Je staat op het punt om <b>{selectedUserIds.length}</b> gebruiker(s)
+              te verplaatsen naar{" "}
+              <b>{branchTarget ? BRANCH_LABEL[branchTarget] : ""}</b>. Hun
+              standaardvestiging wordt aangepast; bestaande data blijft
+              ongewijzigd.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isMovingBranch}>
+              Annuleren
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmBranchMove();
+              }}
+              disabled={isMovingBranch}
+            >
+              {isMovingBranch ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Bezig...
+                </>
+              ) : (
+                "Verplaatsen"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
