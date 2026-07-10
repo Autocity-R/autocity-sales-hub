@@ -11,6 +11,8 @@ import { format, differenceInDays, startOfDay, endOfDay, addDays } from "date-fn
 import { nl } from "date-fns/locale";
 import { toast } from "sonner";
 import { AgentMemoryTab } from "./AgentMemoryTab";
+import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
+import { BranchFilter } from "@/components/reports/BranchFilter";
 
 const PROFILES_MAP: Record<string, string> = {
   "9f42b4f5-6e01-43e4-87d3-f372e1b4c909": "Daan Leyte",
@@ -79,25 +81,30 @@ interface DeliveryVehicle {
 
 export const LisaDashboard: React.FC = () => {
   const [downloading, setDownloading] = useState(false);
+  const { branchFilter } = useCurrentBranch();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["lisa-dashboard-v2"],
+    queryKey: ["lisa-dashboard-v2", branchFilter],
     queryFn: async () => {
       const today = new Date();
       const weekFromNow = addDays(today, 7);
+      let vq = supabase
+        .from("vehicles")
+        .select("id, brand, model, license_number, import_status, sold_date, sold_by_user_id, status, details")
+        .eq("status", "verkocht_b2c");
+      vq = applyBranchFilter(vq, branchFilter);
+      let aq = supabase
+        .from("appointments")
+        .select("*")
+        .eq("type", "aflevering")
+        .neq("status", "geannuleerd")
+        .gte("starttime", startOfDay(today).toISOString())
+        .lte("starttime", endOfDay(weekFromNow).toISOString())
+        .order("starttime");
+      aq = applyBranchFilter(aq, branchFilter);
       const [vehiclesRes, appointmentsRes] = await Promise.all([
-        supabase
-          .from("vehicles")
-          .select("id, brand, model, license_number, import_status, sold_date, sold_by_user_id, status, details")
-          .eq("status", "verkocht_b2c"),
-        supabase
-          .from("appointments")
-          .select("*")
-          .eq("type", "aflevering")
-          .neq("status", "geannuleerd")
-          .gte("starttime", startOfDay(today).toISOString())
-          .lte("starttime", endOfDay(weekFromNow).toISOString())
-          .order("starttime"),
+        vq,
+        aq,
       ]);
       return { vehicles: vehiclesRes.data || [], appointments: appointmentsRes.data || [] };
     },
