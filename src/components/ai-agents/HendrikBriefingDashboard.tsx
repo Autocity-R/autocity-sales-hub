@@ -345,7 +345,7 @@ export const HendrikBriefingDashboard = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => exportBriefingToExcel(selectedBriefing)}
+                        onClick={() => exportBriefingToExcel(selectedBriefing, branchLabelForExport)}
                       >
                         <Download className="h-4 w-4 mr-2" />
                         Excel
