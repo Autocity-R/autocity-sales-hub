@@ -80,6 +80,7 @@ export const fetchTasks = async (filters?: any): Promise<Task[]> => {
       vehicleModel: task.vehicle_model || task.vehicle?.model,
       vehicleLicenseNumber: task.vehicle_license_number || task.vehicle?.license_number,
       vehicleVin: task.vehicle_vin || task.vehicle?.vin,
+      branch: (task.branch as any) || (task.vehicle?.branch as any) || undefined,
       dueDate: task.due_date,
       status: task.status as TaskStatus,
       priority: task.priority,
