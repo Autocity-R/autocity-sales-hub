@@ -426,6 +426,7 @@ const InventoryB2C = () => {
           vehicle={selectedVehicle}
           onClose={() => setSelectedVehicle(null)}
           onUpdate={handleUpdateVehicle}
+          onAutoSave={handleUpdateVehicle}
           onSendEmail={handleSendEmail}
           onPhotoUpload={handleUploadPhoto}
           onRemovePhoto={handleRemovePhoto}
