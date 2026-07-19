@@ -92,20 +92,30 @@ const V2_CSS = `
   background: linear-gradient(90deg,transparent,rgba(255,107,0,0.3),#FF6B00);
 }
 .cdv2-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
-.cdv2-header .company img { height: 42px; margin-bottom: 12px; filter: brightness(1.05); }
-.cdv2-header .company .cname { font-family: 'Space Grotesk'; font-weight: 600; font-size: 14px; color: #fff; }
-.cdv2-header .company .clines { font-size: 10.5px; color: #888; line-height: 1.55; margin-top: 4px; }
-.cdv2-header .title-block { text-align: right; }
-.cdv2-header .title-block .title {
-  font-family: 'Space Grotesk'; font-weight: 700; font-size: 32px; letter-spacing: 0.5px; color: #fff;
+.cdv2-header .brand-block img { height: 46px; margin-bottom: 14px; filter: brightness(1.05); display: block; }
+.cdv2-header .brand-block .title {
+  font-family: 'Space Grotesk'; font-weight: 700; font-size: 36px; letter-spacing: 0.5px; color: #fff;
   line-height: 1;
 }
-.cdv2-header .title-block .nr { font-size: 11px; color: #666; margin-top: 8px; font-family: 'JetBrains Mono'; }
-.cdv2-header .title-block .delivery {
+.cdv2-header .brand-block .nr { font-size: 11px; color: #888; margin-top: 8px; font-family: 'JetBrains Mono'; }
+.cdv2-header .brand-block .delivery {
   display: inline-block; margin-top: 6px; padding: 4px 10px; border-radius: 2px;
   background: rgba(255,107,0,0.12); color: var(--accent); font-size: 10.5px;
   border: 1px solid rgba(255,107,0,0.3); font-family: 'JetBrains Mono';
 }
+.cdv2-header .brand-block .badge-fin {
+  display: inline-block; margin-top: 6px; margin-left: 6px; padding: 4px 10px; border-radius: 2px;
+  background: rgba(255,200,0,0.12); color: #FFC800; font-size: 10.5px;
+  border: 1px solid rgba(255,200,0,0.35); font-family: 'JetBrains Mono';
+}
+.cdv2-header .company-block {
+  text-align: right; font-size: 10.5px; color: #b8b8b8; line-height: 1.55; min-width: 240px;
+  border-left: 1px solid rgba(255,255,255,0.06); padding-left: 20px;
+}
+.cdv2-header .company-block .cname {
+  font-family: 'Space Grotesk'; font-weight: 600; font-size: 13px; color: #fff; margin-bottom: 4px;
+}
+.cdv2-header .company-block .cmeta { font-family: 'JetBrains Mono'; font-size: 9.5px; color: #888; margin-top: 4px; line-height: 1.6; }
 
 .cdv2-hero {
   position: relative; margin: 28px 0 32px; height: 260px; border-radius: 2px; overflow: hidden;
