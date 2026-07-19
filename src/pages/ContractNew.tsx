@@ -242,12 +242,22 @@ export default function ContractNew() {
         : parseFloat(warrantyPrice) || 0,
       tradeInVehicle: tradeInEnabled
         ? {
-            description: tradeInDesc || undefined,
+            brand: tradeInBrand || undefined,
+            model: tradeInModel || undefined,
+            year: tradeInYear ? parseInt(tradeInYear, 10) : null,
             licenseNumber: tradeInLicense || undefined,
+            mileage: tradeInMileage ? parseInt(tradeInMileage, 10) : null,
             value: parseFloat(tradeInValue) || 0,
           }
         : null,
       tradeInValue: tradeInEnabled ? parseFloat(tradeInValue) || 0 : 0,
+      accessories: accessories
+        .map((a) => ({ name: a.name.trim(), price: parseFloat(a.price) || 0 }))
+        .filter((a) => a.name.length > 0),
+      financingConditional,
+      financingParty: financingConditional && financingParty.trim()
+        ? financingParty.trim()
+        : null,
       specialTerms: specialTerms || undefined,
       deliveryDate: deliveryDate || undefined,
     });
