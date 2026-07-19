@@ -21,11 +21,16 @@ import { SearchableCustomerSelector } from "@/components/customers/SearchableCus
 import { Contact } from "@/types/customer";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { AlertCircle, ArrowLeft, ShieldCheck, Save } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Save, Send, Copy, Check } from "lucide-react";
 import {
   WARRANTY_PACKAGE_OPTIONS,
   createContractV2,
+  sendContractV2,
 } from "@/services/contractV2Service";
+import {
+  ContractDocumentV2,
+  ContractV2Snapshot,
+} from "@/components/contracts/ContractDocumentV2";
 
 interface VehicleRow {
   id: string;
@@ -45,13 +50,6 @@ interface VehicleRow {
 
 const branchLabel = (code: string) =>
   code === "heerhugowaard" ? "Heerhugowaard" : "Rotterdam";
-
-const fmtEur = (n: number) =>
-  new Intl.NumberFormat("nl-NL", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-  }).format(isFinite(n) ? n : 0);
 
 export default function ContractNew() {
   const [params] = useSearchParams();
@@ -76,6 +74,13 @@ export default function ContractNew() {
   const [tradeInValue, setTradeInValue] = useState<string>("0");
   const [specialTerms, setSpecialTerms] = useState("");
   const [contractType, setContractType] = useState<"b2b" | "b2c">("b2c");
+  const [deliveryDate, setDeliveryDate] = useState<string>("");
+
+  // Saved-contract state (after "Concept opslaan")
+  const [savedContract, setSavedContract] = useState<any | null>(null);
+  const [signUrl, setSignUrl] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const existingWarrantyPrice: number = Number(
     vehicle?.details?.warrantyPackagePrice || 0,
@@ -176,6 +181,7 @@ export default function ContractNew() {
         : null,
       tradeInValue: tradeInEnabled ? parseFloat(tradeInValue) || 0 : 0,
       specialTerms: specialTerms || undefined,
+      deliveryDate: deliveryDate || undefined,
     });
     setSaving(false);
     if (res.error) {
@@ -194,12 +200,103 @@ export default function ContractNew() {
       }
       return;
     }
+    setSavedContract(res.contract);
     toast({
       title: "Concept opgeslagen",
       description: `Contract ${res.contract?.contract_number} aangemaakt.`,
     });
-    navigate(-1);
   }
+
+  async function handleSend() {
+    if (!savedContract) return;
+    setSending(true);
+    const res = await sendContractV2(savedContract.id);
+    setSending(false);
+    if (res.error) {
+      toast({
+        title: "Versturen mislukt",
+        description: res.detail || res.error,
+        variant: "destructive",
+      });
+      return;
+    }
+    setSignUrl(res.sign_url ?? null);
+    toast({
+      title: "Ondertekenlink verstuurd",
+      description: "De klant heeft een e-mail met een 48 uur geldige link ontvangen.",
+    });
+  }
+
+  // Build preview snapshot (uses form state; snapshots-shape mirrors what the
+  // edge function stores so the LMS-style document renders 1-op-1).
+  const previewData: ContractV2Snapshot | null = vehicle
+    ? {
+        contract_number:
+          savedContract?.contract_number ||
+          `AC-${vehicle.branch === "heerhugowaard" ? "HHW" : "RTD"}-${new Date().getFullYear()}-####`,
+        contract_type: contractType,
+        status: (savedContract?.status as any) || "concept",
+        branch: vehicle.branch,
+        created_at: savedContract?.created_at || new Date().toISOString(),
+        delivery_date: deliveryDate || null,
+        vehicle_snapshot: {
+          brand: vehicle.brand,
+          model: vehicle.model,
+          year: vehicle.year,
+          licenseNumber: vehicle.license_number,
+          vin: vehicle.vin,
+          mileage: vehicle.mileage,
+          color: vehicle.color,
+          fuel: (vehicle.details as any)?.fuel || (vehicle.details as any)?.brandstof || null,
+          transmission:
+            (vehicle.details as any)?.transmission ||
+            (vehicle.details as any)?.transmissie ||
+            null,
+        },
+        customer_snapshot: customer
+          ? {
+              companyName: customer.companyName,
+              firstName: customer.firstName,
+              lastName: customer.lastName,
+              email: customer.email,
+              phone: customer.phone,
+              street: (customer as any).addressStreet,
+              number: (customer as any).addressNumber,
+              city: (customer as any).addressCity,
+              zipCode: (customer as any).addressPostalCode,
+            }
+          : {},
+        company_snapshot: {
+          companyName:
+            vehicle.branch === "heerhugowaard"
+              ? "Autocity Noord Holland B.V."
+              : "Autocity Automotive Group B.V.",
+          city: branchLabel(vehicle.branch),
+        },
+        sale_price_ex: parseFloat(salePriceEx) || 0,
+        btw_type: btwType,
+        warranty_package: hasExistingWarranty
+          ? (vehicle.details as any)?.warrantyPackage
+          : warrantyCode || null,
+        warranty_package_name: hasExistingWarranty
+          ? existingWarrantyName
+          : WARRANTY_PACKAGE_OPTIONS.find((p) => p.code === warrantyCode)?.name || null,
+        warranty_price: hasExistingWarranty
+          ? existingWarrantyPrice
+          : parseFloat(warrantyPrice) || 0,
+        trade_in_vehicle: tradeInEnabled
+          ? { description: tradeInDesc, licenseNumber: tradeInLicense }
+          : null,
+        trade_in_value: tradeInEnabled ? parseFloat(tradeInValue) || 0 : 0,
+        special_terms: specialTerms || null,
+        total_price: total,
+        main_photo_url: (vehicle.details as any)?.mainPhotoUrl || null,
+        salesperson_name: savedContract?.salesperson_name || null,
+        salesperson_email: savedContract?.salesperson_email || null,
+        salesperson_signature_svg:
+          savedContract?.salesperson_signature_svg || null,
+      }
+    : null;
 
   if (loading) {
     return (
@@ -476,134 +573,64 @@ export default function ContractNew() {
               <Button variant="outline" onClick={() => navigate(-1)}>
                 Annuleren
               </Button>
-              <Button disabled={!canSave} onClick={handleSave}>
+              <Button disabled={!canSave || !!savedContract} onClick={handleSave}>
                 <Save className="h-4 w-4 mr-2" />
-                {saving ? "Opslaan…" : "Concept opslaan"}
+                {saving ? "Opslaan…" : savedContract ? "Opgeslagen" : "Concept opslaan"}
               </Button>
+              {savedContract && !signUrl && (
+                <Button onClick={handleSend} disabled={sending}>
+                  <Send className="h-4 w-4 mr-2" />
+                  {sending ? "Versturen…" : "Verstuur ter ondertekening"}
+                </Button>
+              )}
             </div>
+
+            {signUrl && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Ondertekenlink</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <p className="text-muted-foreground">
+                    De klant heeft een e-mail ontvangen. De link is 48 uur geldig.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input value={signUrl} readOnly />
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(signUrl);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                    >
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* ==== PREVIEW ==== */}
           <div className="lg:sticky lg:top-4 h-fit">
             <Card>
               <CardHeader>
-                <CardTitle>Preview</CardTitle>
+                <CardTitle>Live preview (LMS-stijl)</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="rounded-md border bg-white text-black p-6 space-y-4 text-sm shadow-sm min-h-[600px]">
-                  <div className="flex items-start justify-between border-b pb-3">
-                    <div>
-                      <div className="font-semibold text-base">
-                        {vehicle.branch === "heerhugowaard"
-                          ? "Autocity Noord Holland B.V."
-                          : "Autocity Automotive Group B.V."}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Vestiging {branchLabel(vehicle.branch)}
-                      </div>
-                    </div>
-                    <div className="text-right text-xs">
-                      <div className="font-medium">Koopovereenkomst</div>
-                      <div>Concept</div>
-                    </div>
-                  </div>
-
-                  <section>
-                    <div className="font-medium mb-1">Verkoper</div>
-                    <div className="text-xs">
-                      Autocity —{" "}
-                      {vehicle.branch === "heerhugowaard"
-                        ? "Heerhugowaard"
-                        : "Rotterdam"}
-                    </div>
-                  </section>
-
-                  <section>
-                    <div className="font-medium mb-1">Koper</div>
-                    <div className="text-xs">
-                      {customer
-                        ? `${customer.companyName ? customer.companyName + " — " : ""}${customer.firstName} ${customer.lastName}`
-                        : "— geen klant geselecteerd —"}
-                    </div>
-                    {customer && (
-                      <div className="text-xs text-muted-foreground">
-                        {customer.email} · {customer.phone}
-                      </div>
-                    )}
-                  </section>
-
-                  <section>
-                    <div className="font-medium mb-1">Voertuig</div>
-                    <div className="text-xs">
-                      {vehicle.brand} {vehicle.model} ({vehicle.year ?? "-"})
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Kenteken {vehicle.license_number ?? "-"} · VIN{" "}
-                      {vehicle.vin ?? "-"} ·{" "}
-                      {vehicle.mileage
-                        ? vehicle.mileage.toLocaleString("nl-NL") + " km"
-                        : "-"}
-                    </div>
-                  </section>
-
-                  <Separator />
-
-                  <section className="space-y-1">
-                    <div className="flex justify-between">
-                      <span>Kale verkoopprijs ({btwType})</span>
-                      <span>{fmtEur(parseFloat(salePriceEx) || 0)}</span>
-                    </div>
-                    {(hasExistingWarranty || warrantyCode) && (
-                      <div className="flex justify-between">
-                        <span>
-                          Garantiepakket:{" "}
-                          {hasExistingWarranty
-                            ? existingWarrantyName
-                            : WARRANTY_PACKAGE_OPTIONS.find(
-                                (p) => p.code === warrantyCode,
-                              )?.name}
-                        </span>
-                        <span>
-                          {fmtEur(
-                            hasExistingWarranty
-                              ? existingWarrantyPrice
-                              : parseFloat(warrantyPrice) || 0,
-                          )}
-                        </span>
-                      </div>
-                    )}
-                    {tradeInEnabled && (
-                      <div className="flex justify-between">
-                        <span>
-                          Inruil: {tradeInDesc || "-"}{" "}
-                          {tradeInLicense ? `(${tradeInLicense})` : ""}
-                        </span>
-                        <span>-{fmtEur(parseFloat(tradeInValue) || 0)}</span>
-                      </div>
-                    )}
-                    <Separator className="my-2" />
-                    <div className="flex justify-between font-semibold text-base">
-                      <span>Totaal</span>
-                      <span>{fmtEur(total)}</span>
-                    </div>
-                  </section>
-
-                  {specialTerms && (
-                    <>
-                      <Separator />
-                      <section>
-                        <div className="font-medium mb-1">Speciale afspraken</div>
-                        <div className="text-xs whitespace-pre-wrap">
-                          {specialTerms}
-                        </div>
-                      </section>
-                    </>
-                  )}
-
-                  <div className="text-[10px] text-muted-foreground pt-4 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    Definitieve LMS-stijl template volgt in fase 3.
-                  </div>
+              <CardContent className="p-0">
+                <div
+                  style={{
+                    maxHeight: "80vh",
+                    overflow: "auto",
+                    background: "#0b0b0b",
+                    transform: "scale(0.55)",
+                    transformOrigin: "top left",
+                    width: "182%",
+                    height: 900,
+                  }}
+                >
+                  {previewData && <ContractDocumentV2 data={previewData} />}
                 </div>
               </CardContent>
             </Card>
