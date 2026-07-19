@@ -180,9 +180,10 @@ const V2_CSS = `
   font-size: 10px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;
 }
 .cdv2-sign-box {
-  height: 72px; display: flex; align-items: flex-end; padding-bottom: 4px;
+  height: 90px; display: flex; align-items: center; justify-content: flex-start;
+  padding: 4px 8px; background: #fff; border-radius: 2px;
 }
-.cdv2-sign-box img, .cdv2-sign-box svg { max-height: 60px; max-width: 100%; }
+.cdv2-sign-box img, .cdv2-sign-box svg { max-height: 82px; max-width: 100%; object-fit: contain; }
 .cdv2-sign-line { border-bottom: 1px solid rgba(255,255,255,0.12); height: 1px; }
 .cdv2-sign-meta { font-size: 10.5px; color: #888; margin-top: 8px; font-family: 'JetBrains Mono'; }
 
