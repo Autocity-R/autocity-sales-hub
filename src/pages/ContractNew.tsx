@@ -560,6 +560,15 @@ export default function ContractNew() {
                 <CardTitle>Speciale afspraken</CardTitle>
               </CardHeader>
               <CardContent>
+                <div className="mb-4">
+                  <Label htmlFor="deliveryDate">Afleverdatum (optioneel)</Label>
+                  <Input
+                    id="deliveryDate"
+                    type="date"
+                    value={deliveryDate}
+                    onChange={(e) => setDeliveryDate(e.target.value)}
+                  />
+                </div>
                 <Textarea
                   value={specialTerms}
                   onChange={(e) => setSpecialTerms(e.target.value)}
