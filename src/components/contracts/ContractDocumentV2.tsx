@@ -19,6 +19,9 @@ export interface ContractV2Snapshot {
   warranty_price?: number | null;
   trade_in_vehicle?: any;
   trade_in_value?: number | null;
+  accessories?: Array<{ name: string; price: number }> | null;
+  financing_conditional?: boolean | null;
+  financing_party?: string | null;
   special_terms?: string | null;
   total_price: number | null;
   main_photo_url?: string | null;
@@ -89,20 +92,30 @@ const V2_CSS = `
   background: linear-gradient(90deg,transparent,rgba(255,107,0,0.3),#FF6B00);
 }
 .cdv2-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
-.cdv2-header .company img { height: 42px; margin-bottom: 12px; filter: brightness(1.05); }
-.cdv2-header .company .cname { font-family: 'Space Grotesk'; font-weight: 600; font-size: 14px; color: #fff; }
-.cdv2-header .company .clines { font-size: 10.5px; color: #888; line-height: 1.55; margin-top: 4px; }
-.cdv2-header .title-block { text-align: right; }
-.cdv2-header .title-block .title {
-  font-family: 'Space Grotesk'; font-weight: 700; font-size: 32px; letter-spacing: 0.5px; color: #fff;
+.cdv2-header .brand-block img { height: 46px; margin-bottom: 14px; filter: brightness(1.05); display: block; }
+.cdv2-header .brand-block .title {
+  font-family: 'Space Grotesk'; font-weight: 700; font-size: 36px; letter-spacing: 0.5px; color: #fff;
   line-height: 1;
 }
-.cdv2-header .title-block .nr { font-size: 11px; color: #666; margin-top: 8px; font-family: 'JetBrains Mono'; }
-.cdv2-header .title-block .delivery {
+.cdv2-header .brand-block .nr { font-size: 11px; color: #888; margin-top: 8px; font-family: 'JetBrains Mono'; }
+.cdv2-header .brand-block .delivery {
   display: inline-block; margin-top: 6px; padding: 4px 10px; border-radius: 2px;
   background: rgba(255,107,0,0.12); color: var(--accent); font-size: 10.5px;
   border: 1px solid rgba(255,107,0,0.3); font-family: 'JetBrains Mono';
 }
+.cdv2-header .brand-block .badge-fin {
+  display: inline-block; margin-top: 6px; margin-left: 6px; padding: 4px 10px; border-radius: 2px;
+  background: rgba(255,200,0,0.12); color: #FFC800; font-size: 10.5px;
+  border: 1px solid rgba(255,200,0,0.35); font-family: 'JetBrains Mono';
+}
+.cdv2-header .company-block {
+  text-align: right; font-size: 10.5px; color: #b8b8b8; line-height: 1.55; min-width: 240px;
+  border-left: 1px solid rgba(255,255,255,0.06); padding-left: 20px;
+}
+.cdv2-header .company-block .cname {
+  font-family: 'Space Grotesk'; font-weight: 600; font-size: 13px; color: #fff; margin-bottom: 4px;
+}
+.cdv2-header .company-block .cmeta { font-family: 'JetBrains Mono'; font-size: 9.5px; color: #888; margin-top: 4px; line-height: 1.6; }
 
 .cdv2-hero {
   position: relative; margin: 28px 0 32px; height: 260px; border-radius: 2px; overflow: hidden;
@@ -298,13 +311,10 @@ export const ContractDocumentV2: React.FC<{
   const salesPrice = Number(data.sale_price_ex) || 0;
   const tradeIn = Number(data.trade_in_value) || 0;
   const warrantyPrice = Number(data.warranty_price) || 0;
-  const total = data.total_price ?? salesPrice + warrantyPrice - tradeIn;
 
   const specsBits = [
     v.year,
     v.color,
-    v.fuel,
-    v.transmission,
     v.mileage ? `${Number(v.mileage).toLocaleString("nl-NL")} km` : null,
   ].filter(Boolean);
 
@@ -320,17 +330,42 @@ export const ContractDocumentV2: React.FC<{
     [cust.zipCode, cust.city].filter(Boolean).join(" ") || "—";
 
   const companyName = c.companyName || c.company_name || c.name || "Autocity";
-  const companyLines = [
-    c.address,
-    [c.postalCode || c.postal_code, c.city].filter(Boolean).join(" "),
-    c.phone,
-    c.email,
-  ].filter(Boolean);
+  const companyAddress = c.address || "";
+  const companyPostalCity = [c.postalCode || c.postal_code, c.city].filter(Boolean).join(" ");
+  const companyPhone = c.phone || "";
+  const companyIban = c.iban || "";
+  const companyBtw = c.btw || c.btw_number || "";
+  const companyKvk = c.kvk || c.kvk_number || "";
 
   const btwNote =
     data.btw_type === "btw"
       ? "BTW-voertuig · 21% btw inbegrepen in de koopsom (voor ondernemers verrekenbaar)"
       : "Margevoertuig · margeregeling, btw niet apart verrekenbaar";
+
+  const accessories = Array.isArray(data.accessories) ? data.accessories : [];
+  const accessoriesTotal = accessories.reduce(
+    (s, a) => s + (Number(a?.price) || 0),
+    0,
+  );
+  const total =
+    data.total_price ?? (salesPrice + warrantyPrice + accessoriesTotal - tradeIn);
+
+  const tradeInV = data.trade_in_vehicle || {};
+  const tradeInLine = tradeIn > 0
+    ? (() => {
+        const parts: string[] = [];
+        const bm = [tradeInV.brand, tradeInV.model].filter(Boolean).join(" ");
+        if (bm) parts.push(bm);
+        if (tradeInV.year) parts.push(`(${tradeInV.year})`);
+        const meta: string[] = [];
+        if (tradeInV.licenseNumber) meta.push(tradeInV.licenseNumber);
+        if (tradeInV.mileage) meta.push(`${Number(tradeInV.mileage).toLocaleString("nl-NL")} km`);
+        const left = parts.join(" ");
+        const right = meta.length ? ` · ${meta.join(" · ")}` : "";
+        const desc = tradeInV.description || "";
+        return left ? `Inruil: ${left}${right}` : desc ? `Inruil: ${desc}${right}` : "Inruil";
+      })()
+    : "";
 
   return (
     <div className="cdv2-root">
@@ -339,25 +374,34 @@ export const ContractDocumentV2: React.FC<{
         <div className="cdv2-page">
           {/* Header */}
           <div className="cdv2-header">
-            <div className="company">
+            <div className="brand-block">
               <img src={LOGO_URL} alt="Autocity" />
-              <div className="cname">{companyName}</div>
-              <div className="clines">
-                {companyLines.map((l, i) => (
-                  <div key={i}>{l}</div>
-                ))}
-              </div>
-            </div>
-            <div className="title-block">
               <div className="title">KOOPCONTRACT</div>
               <div className="nr">
                 Nr. {data.contract_number} · {fmtDate(data.created_at)}
               </div>
-              {data.delivery_date && (
-                <div className="delivery">
-                  Afleverdatum {fmtDate(data.delivery_date)}
-                </div>
-              )}
+              <div>
+                {data.delivery_date && (
+                  <span className="delivery">
+                    Afleverdatum {fmtDate(data.delivery_date)}
+                  </span>
+                )}
+                {data.financing_conditional && (
+                  <span className="badge-fin">Onder voorbehoud van financiering</span>
+                )}
+              </div>
+            </div>
+            <div className="company-block">
+              <div className="cname">{companyName}</div>
+              {companyAddress && <div>{companyAddress}</div>}
+              {companyPostalCity && <div>{companyPostalCity}</div>}
+              <div>Nederland</div>
+              {companyPhone && <div>Tel: {companyPhone}</div>}
+              <div className="cmeta">
+                {companyIban && <div>IBAN: {companyIban}</div>}
+                {companyBtw && <div>BTW: {companyBtw}</div>}
+                {companyKvk && <div>KVK: {companyKvk}</div>}
+              </div>
             </div>
           </div>
 
@@ -422,16 +466,16 @@ export const ContractDocumentV2: React.FC<{
                   </span>
                 </div>
                 <div className="cdv2-row">
+                  <span className="k">Kenteken</span>
+                  <span className="v mono">{v.licenseNumber || "—"}</span>
+                </div>
+                <div className="cdv2-row">
+                  <span className="k">VIN</span>
+                  <span className="v mono">{v.vin || "—"}</span>
+                </div>
+                <div className="cdv2-row">
                   <span className="k">Bouwjaar</span>
                   <span className="v">{v.year || "—"}</span>
-                </div>
-                <div className="cdv2-row">
-                  <span className="k">Brandstof</span>
-                  <span className="v">{v.fuel || "—"}</span>
-                </div>
-                <div className="cdv2-row">
-                  <span className="k">Transmissie</span>
-                  <span className="v">{v.transmission || "—"}</span>
                 </div>
                 <div className="cdv2-row">
                   <span className="k">Kilometerstand</span>
@@ -442,8 +486,8 @@ export const ContractDocumentV2: React.FC<{
                   </span>
                 </div>
                 <div className="cdv2-row">
-                  <span className="k">VIN</span>
-                  <span className="v mono">{v.vin || "—"}</span>
+                  <span className="k">Kleur</span>
+                  <span className="v">{v.color || "—"}</span>
                 </div>
               </div>
             </div>
@@ -463,17 +507,15 @@ export const ContractDocumentV2: React.FC<{
                   <span className="v">{fmtEur(warrantyPrice)}</span>
                 </div>
               )}
+              {accessories.map((a, i) => (
+                <div className="cdv2-price-row" key={`acc-${i}`}>
+                  <span>Accessoire · {a.name || "—"}</span>
+                  <span className="v">{fmtEur(Number(a.price) || 0)}</span>
+                </div>
+              ))}
               {tradeIn > 0 && (
                 <div className="cdv2-price-row neg">
-                  <span>
-                    Inruil{" "}
-                    {data.trade_in_vehicle?.description
-                      ? `· ${data.trade_in_vehicle.description}`
-                      : ""}
-                    {data.trade_in_vehicle?.licenseNumber
-                      ? ` (${data.trade_in_vehicle.licenseNumber})`
-                      : ""}
-                  </span>
+                  <span>{tradeInLine}</span>
                   <span className="v">− {fmtEur(tradeIn)}</span>
                 </div>
               )}
@@ -482,6 +524,12 @@ export const ContractDocumentV2: React.FC<{
                 <span className="v">{fmtEur(total)}</span>
               </div>
               <div className="cdv2-btw-note">{btwNote}</div>
+              {data.financing_conditional && (
+                <div className="cdv2-btw-note" style={{ color: "#FFC800", marginTop: 6 }}>
+                  Deze koop is gesloten onder voorbehoud van financiering
+                  {data.financing_party ? ` bij ${data.financing_party}` : ""}.
+                </div>
+              )}
             </div>
           </div>
 
@@ -533,10 +581,6 @@ export const ContractDocumentV2: React.FC<{
               <div>
                 KVK {c.kvk || c.kvk_number || "—"} · BTW{" "}
                 {c.btw || c.btw_number || "—"} · IBAN {c.iban || "—"}
-              </div>
-              <div className="fnote">
-                Telefoongesprekken kunnen worden opgenomen voor kwaliteits- en
-                trainingsdoeleinden.
               </div>
             </div>
             <div style={{ textAlign: "right" }}>

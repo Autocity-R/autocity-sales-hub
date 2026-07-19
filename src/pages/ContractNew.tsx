@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -21,7 +20,9 @@ import { SearchableCustomerSelector } from "@/components/customers/SearchableCus
 import { Contact } from "@/types/customer";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ShieldCheck, Save, Send, Copy, Check } from "lucide-react";
+import {
+  ArrowLeft, ShieldCheck, Save, Send, Copy, Check, Plus, Trash2,
+} from "lucide-react";
 import {
   WARRANTY_PACKAGE_OPTIONS,
   createContractV2,
@@ -31,6 +32,7 @@ import {
   ContractDocumentV2,
   ContractV2Snapshot,
 } from "@/components/contracts/ContractDocumentV2";
+import { buildSalespersonSignatureSvg } from "@/utils/salespersonSignature";
 
 interface VehicleRow {
   id: string;
@@ -69,12 +71,26 @@ export default function ContractNew() {
   const [warrantyCode, setWarrantyCode] = useState<string>("");
   const [warrantyPrice, setWarrantyPrice] = useState<string>("0");
   const [tradeInEnabled, setTradeInEnabled] = useState(false);
-  const [tradeInDesc, setTradeInDesc] = useState("");
+  const [tradeInBrand, setTradeInBrand] = useState("");
+  const [tradeInModel, setTradeInModel] = useState("");
+  const [tradeInYear, setTradeInYear] = useState<string>("");
   const [tradeInLicense, setTradeInLicense] = useState("");
+  const [tradeInMileage, setTradeInMileage] = useState<string>("");
   const [tradeInValue, setTradeInValue] = useState<string>("0");
+  const [accessories, setAccessories] = useState<Array<{ name: string; price: string }>>([]);
+  const [financingConditional, setFinancingConditional] = useState(false);
+  const [financingParty, setFinancingParty] = useState("");
   const [specialTerms, setSpecialTerms] = useState("");
   const [contractType, setContractType] = useState<"b2b" | "b2c">("b2c");
   const [deliveryDate, setDeliveryDate] = useState<string>("");
+
+  // Salesperson (ingelogde verkoper is contractant)
+  const [salespersonName, setSalespersonName] = useState<string | null>(null);
+  const [salespersonEmail, setSalespersonEmail] = useState<string | null>(null);
+
+  // Extras
+  const [mainPhotoUrl, setMainPhotoUrl] = useState<string | null>(null);
+  const [branchInfo, setBranchInfo] = useState<any | null>(null);
 
   // Saved-contract state (after "Concept opslaan")
   const [savedContract, setSavedContract] = useState<any | null>(null);
@@ -121,6 +137,55 @@ export default function ContractNew() {
       if (data.status === "verkocht_b2b") setContractType("b2b");
       if (data.customer_id) setCustomerId(data.customer_id);
       setLoading(false);
+
+      // Salesperson (ingelogde gebruiker)
+      const { data: authData } = await supabase.auth.getUser();
+      const uid = authData?.user?.id;
+      if (uid) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("first_name, last_name, email")
+          .eq("id", uid)
+          .maybeSingle();
+        if (prof) {
+          const name = [prof.first_name, prof.last_name].filter(Boolean).join(" ");
+          setSalespersonName(name || null);
+          setSalespersonEmail(prof.email || authData.user?.email || null);
+        }
+      }
+
+      // Branch entiteitgegevens (voor company_snapshot in preview)
+      const { data: br } = await supabase
+        .from("branches")
+        .select("*")
+        .eq("code", (data as any).branch)
+        .maybeSingle();
+      if (br) setBranchInfo(br);
+
+      // Hoofdfoto voor hero
+      let photo: string | null = (data.details as any)?.mainPhotoUrl || null;
+      if (!photo) {
+        const { data: pf } = await supabase
+          .from("vehicle_files")
+          .select("file_url, file_path")
+          .eq("vehicle_id", data.id)
+          .in("category", ["photo", "main_photo"])
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        photo = (pf as any)?.file_url || null;
+      }
+      if (!photo) {
+        const { data: sh } = await supabase
+          .from("vehicle_showroom_photos")
+          .select("photo_url")
+          .eq("vehicle_id", data.id)
+          .order("photo_index", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        photo = (sh as any)?.photo_url || null;
+      }
+      setMainPhotoUrl(photo);
     }
     load();
     return () => {
@@ -134,7 +199,8 @@ export default function ContractNew() {
       ? existingWarrantyPrice
       : parseFloat(warrantyPrice) || 0;
     const t = tradeInEnabled ? parseFloat(tradeInValue) || 0 : 0;
-    return s + w - t;
+    const accTotal = accessories.reduce((acc, a) => acc + (parseFloat(a.price) || 0), 0);
+    return s + w + accTotal - t;
   }, [
     salePriceEx,
     warrantyPrice,
@@ -142,6 +208,7 @@ export default function ContractNew() {
     tradeInEnabled,
     hasExistingWarranty,
     existingWarrantyPrice,
+    accessories,
   ]);
 
   const canSave =
@@ -174,12 +241,22 @@ export default function ContractNew() {
         : parseFloat(warrantyPrice) || 0,
       tradeInVehicle: tradeInEnabled
         ? {
-            description: tradeInDesc || undefined,
+            brand: tradeInBrand || undefined,
+            model: tradeInModel || undefined,
+            year: tradeInYear ? parseInt(tradeInYear, 10) : null,
             licenseNumber: tradeInLicense || undefined,
+            mileage: tradeInMileage ? parseInt(tradeInMileage, 10) : null,
             value: parseFloat(tradeInValue) || 0,
           }
         : null,
       tradeInValue: tradeInEnabled ? parseFloat(tradeInValue) || 0 : 0,
+      accessories: accessories
+        .map((a) => ({ name: a.name.trim(), price: parseFloat(a.price) || 0 }))
+        .filter((a) => a.name.length > 0),
+      financingConditional,
+      financingParty: financingConditional && financingParty.trim()
+        ? financingParty.trim()
+        : null,
       specialTerms: specialTerms || undefined,
       deliveryDate: deliveryDate || undefined,
     });
@@ -255,24 +332,40 @@ export default function ContractNew() {
         },
         customer_snapshot: customer
           ? {
+              id: customer.id,
+              type: customer.type,
               companyName: customer.companyName,
               firstName: customer.firstName,
               lastName: customer.lastName,
               email: customer.email,
               phone: customer.phone,
-              street: (customer as any).addressStreet,
-              number: (customer as any).addressNumber,
-              city: (customer as any).addressCity,
-              zipCode: (customer as any).addressPostalCode,
+              street: customer.address?.street,
+              number: customer.address?.number,
+              city: customer.address?.city,
+              zipCode: customer.address?.zipCode,
             }
           : {},
-        company_snapshot: {
-          companyName:
-            vehicle.branch === "heerhugowaard"
-              ? "Autocity Noord Holland B.V."
-              : "Autocity Automotive Group B.V.",
-          city: branchLabel(vehicle.branch),
-        },
+        company_snapshot: branchInfo
+          ? {
+              code: branchInfo.code,
+              name: branchInfo.name,
+              companyName: branchInfo.company_name,
+              address: branchInfo.address,
+              postalCode: branchInfo.postal_code,
+              city: branchInfo.city,
+              phone: branchInfo.phone,
+              email: branchInfo.email,
+              kvk: branchInfo.kvk_number,
+              btw: branchInfo.btw_number,
+              iban: branchInfo.iban,
+            }
+          : {
+              companyName:
+                vehicle.branch === "heerhugowaard"
+                  ? "Autocity Noord Holland B.V."
+                  : "Autocity Automotive Group B.V.",
+              city: branchLabel(vehicle.branch),
+            },
         sale_price_ex: parseFloat(salePriceEx) || 0,
         btw_type: btwType,
         warranty_package: hasExistingWarranty
@@ -285,16 +378,28 @@ export default function ContractNew() {
           ? existingWarrantyPrice
           : parseFloat(warrantyPrice) || 0,
         trade_in_vehicle: tradeInEnabled
-          ? { description: tradeInDesc, licenseNumber: tradeInLicense }
+          ? {
+              brand: tradeInBrand || undefined,
+              model: tradeInModel || undefined,
+              year: tradeInYear ? parseInt(tradeInYear, 10) : null,
+              licenseNumber: tradeInLicense || undefined,
+              mileage: tradeInMileage ? parseInt(tradeInMileage, 10) : null,
+            }
           : null,
         trade_in_value: tradeInEnabled ? parseFloat(tradeInValue) || 0 : 0,
+        accessories: accessories
+          .map((a) => ({ name: a.name.trim(), price: parseFloat(a.price) || 0 }))
+          .filter((a) => a.name.length > 0),
+        financing_conditional: financingConditional,
+        financing_party: financingConditional && financingParty.trim() ? financingParty.trim() : null,
         special_terms: specialTerms || null,
         total_price: total,
-        main_photo_url: (vehicle.details as any)?.mainPhotoUrl || null,
-        salesperson_name: savedContract?.salesperson_name || null,
-        salesperson_email: savedContract?.salesperson_email || null,
+        main_photo_url: mainPhotoUrl,
+        salesperson_name: savedContract?.salesperson_name || salespersonName,
+        salesperson_email: savedContract?.salesperson_email || salespersonEmail,
         salesperson_signature_svg:
-          savedContract?.salesperson_signature_svg || null,
+          savedContract?.salesperson_signature_svg ||
+          buildSalespersonSignatureSvg(salespersonName),
       }
     : null;
 
@@ -524,32 +629,112 @@ export default function ContractNew() {
                   Inruilvoertuig toevoegen
                 </label>
                 {tradeInEnabled && (
-                  <div className="grid grid-cols-1 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label>Omschrijving</Label>
+                      <Label>Merk</Label>
+                      <Input value={tradeInBrand} onChange={(e) => setTradeInBrand(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Model</Label>
+                      <Input value={tradeInModel} onChange={(e) => setTradeInModel(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Bouwjaar</Label>
+                      <Input type="number" value={tradeInYear} onChange={(e) => setTradeInYear(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Kenteken</Label>
+                      <Input value={tradeInLicense} onChange={(e) => setTradeInLicense(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Kilometerstand</Label>
+                      <Input type="number" value={tradeInMileage} onChange={(e) => setTradeInMileage(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Inruilwaarde (€)</Label>
+                      <Input type="number" value={tradeInValue} onChange={(e) => setTradeInValue(e.target.value)} />
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Accessoires</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {accessories.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Nog geen accessoires toegevoegd.</p>
+                )}
+                {accessories.map((a, i) => (
+                  <div key={i} className="grid grid-cols-[1fr,140px,40px] gap-2 items-end">
+                    <div>
+                      <Label>Naam</Label>
                       <Input
-                        value={tradeInDesc}
-                        onChange={(e) => setTradeInDesc(e.target.value)}
-                        placeholder="Merk / model / bouwjaar"
+                        value={a.name}
+                        onChange={(e) => {
+                          const copy = [...accessories];
+                          copy[i] = { ...copy[i], name: e.target.value };
+                          setAccessories(copy);
+                        }}
+                        placeholder="Bijv. Trekhaak"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label>Kenteken</Label>
-                        <Input
-                          value={tradeInLicense}
-                          onChange={(e) => setTradeInLicense(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <Label>Inruilwaarde (€)</Label>
-                        <Input
-                          type="number"
-                          value={tradeInValue}
-                          onChange={(e) => setTradeInValue(e.target.value)}
-                        />
-                      </div>
+                    <div>
+                      <Label>Prijs (€)</Label>
+                      <Input
+                        type="number"
+                        value={a.price}
+                        onChange={(e) => {
+                          const copy = [...accessories];
+                          copy[i] = { ...copy[i], price: e.target.value };
+                          setAccessories(copy);
+                        }}
+                      />
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() =>
+                        setAccessories(accessories.filter((_, idx) => idx !== i))
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAccessories([...accessories, { name: "", price: "" }])}
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Accessoire toevoegen
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Financiering</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={financingConditional}
+                    onChange={(e) => setFinancingConditional(e.target.checked)}
+                  />
+                  Onder voorbehoud van financiering
+                </label>
+                {financingConditional && (
+                  <div>
+                    <Label>Financieringsmaatschappij (optioneel)</Label>
+                    <Input
+                      value={financingParty}
+                      onChange={(e) => setFinancingParty(e.target.value)}
+                      placeholder="Bijv. Findio"
+                    />
                   </div>
                 )}
               </CardContent>

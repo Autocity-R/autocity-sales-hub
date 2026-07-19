@@ -88,6 +88,11 @@ Deno.serve(async (req) => {
       .update({ status: "getekend", signed_at: now.toISOString() })
       .eq("id", doc.id);
 
+    // Signed URL for immediate download / notifications
+    const { data: signed } = await admin.storage
+      .from("vehicle-documents")
+      .createSignedUrl(path, 60 * 60 * 24 * 7);
+
     // Register in vehicle_files so it appears in the vehicle detail's contracts list
     const category =
       doc.contract_type === "b2b" ? "contract_b2b" : "contract_b2c";
@@ -97,6 +102,9 @@ Deno.serve(async (req) => {
         category,
         file_name: `${doc.contract_number}.pdf`,
         file_path: path,
+        file_url: signed?.signedUrl || null,
+        file_type: "application/pdf",
+        file_size: pdfBytes.byteLength,
         metadata: {
           contractType: doc.contract_type,
           contract_id: doc.id,
@@ -108,11 +116,6 @@ Deno.serve(async (req) => {
     } catch (e) {
       console.warn("vehicle_files insert failed", e);
     }
-
-    // Signed URL for immediate download
-    const { data: signed } = await admin.storage
-      .from("vehicle-documents")
-      .createSignedUrl(path, 60 * 60 * 24 * 7);
 
     // Notify parties
     const cust = (doc.customer_snapshot as any) || {};
@@ -153,6 +156,56 @@ Deno.serve(async (req) => {
       }
     } catch (e) {
       console.warn("email_queue insert failed", e);
+    }
+
+    // LMS terugkoppeling — mag NOOIT de teken-flow breken
+    try {
+      const { data: secretRow } = await admin.rpc("vault_secret", {
+        secret_name: "lms_sync_secret",
+      });
+      const lmsSecret = typeof secretRow === "string" ? secretRow : null;
+      if (lmsSecret) {
+        const veh = (doc.vehicle_snapshot as any) || {};
+        const lmsPayload = {
+          contract_number: doc.contract_number,
+          signed_at: now.toISOString(),
+          price: Number(doc.sale_price_ex) || 0,
+          financing_conditional: !!(doc as any).financing_conditional,
+          vin: veh.vin || null,
+          kenteken: veh.licenseNumber || null,
+          customer: {
+            name:
+              cust.companyName ||
+              [cust.firstName, cust.lastName].filter(Boolean).join(" ") ||
+              null,
+            email: cust.email || null,
+            phone: cust.phone || null,
+          },
+          salesperson: { email: salesEmail || null },
+          pdf_base64: body.pdf_base64,
+        };
+        const lmsResp = await fetch(
+          "https://aogxdgnvhbogimoqjwpp.supabase.co/functions/v1/crm-intake",
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-lms-secret": lmsSecret,
+            },
+            body: JSON.stringify(lmsPayload),
+          },
+        );
+        await admin.from("lms_sync_log").insert({
+          contract_number: doc.contract_number,
+          status: lmsResp.ok ? "success" : "error",
+          http_status: lmsResp.status,
+          response_body: await lmsResp.text().catch(() => null),
+        } as any);
+      } else {
+        console.warn("lms_sync_secret not configured, skipping LMS sync");
+      }
+    } catch (e) {
+      console.warn("LMS sync failed (non-blocking)", e);
     }
 
     return json({ ok: true, pdf_url: signed?.signedUrl || null });

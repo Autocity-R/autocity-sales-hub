@@ -1670,6 +1670,7 @@ export type Database = {
       }
       contract_documents: {
         Row: {
+          accessories: Json
           branch: string
           btw_type: string | null
           company_snapshot: Json
@@ -1680,6 +1681,8 @@ export type Database = {
           customer_id: string | null
           customer_snapshot: Json
           delivery_date: string | null
+          financing_conditional: boolean
+          financing_party: string | null
           id: string
           main_photo_url: string | null
           sale_price_ex: number | null
@@ -1701,6 +1704,7 @@ export type Database = {
           warranty_price: number | null
         }
         Insert: {
+          accessories?: Json
           branch?: string
           btw_type?: string | null
           company_snapshot?: Json
@@ -1711,6 +1715,8 @@ export type Database = {
           customer_id?: string | null
           customer_snapshot?: Json
           delivery_date?: string | null
+          financing_conditional?: boolean
+          financing_party?: string | null
           id?: string
           main_photo_url?: string | null
           sale_price_ex?: number | null
@@ -1732,6 +1738,7 @@ export type Database = {
           warranty_price?: number | null
         }
         Update: {
+          accessories?: Json
           branch?: string
           btw_type?: string | null
           company_snapshot?: Json
@@ -1742,6 +1749,8 @@ export type Database = {
           customer_id?: string | null
           customer_snapshot?: Json
           delivery_date?: string | null
+          financing_conditional?: boolean
+          financing_party?: string | null
           id?: string
           main_photo_url?: string | null
           sale_price_ex?: number | null
