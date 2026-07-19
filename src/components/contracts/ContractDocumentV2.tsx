@@ -465,16 +465,16 @@ export const ContractDocumentV2: React.FC<{
                   </span>
                 </div>
                 <div className="cdv2-row">
+                  <span className="k">Kenteken</span>
+                  <span className="v mono">{v.licenseNumber || "—"}</span>
+                </div>
+                <div className="cdv2-row">
+                  <span className="k">VIN</span>
+                  <span className="v mono">{v.vin || "—"}</span>
+                </div>
+                <div className="cdv2-row">
                   <span className="k">Bouwjaar</span>
                   <span className="v">{v.year || "—"}</span>
-                </div>
-                <div className="cdv2-row">
-                  <span className="k">Brandstof</span>
-                  <span className="v">{v.fuel || "—"}</span>
-                </div>
-                <div className="cdv2-row">
-                  <span className="k">Transmissie</span>
-                  <span className="v">{v.transmission || "—"}</span>
                 </div>
                 <div className="cdv2-row">
                   <span className="k">Kilometerstand</span>
@@ -485,8 +485,8 @@ export const ContractDocumentV2: React.FC<{
                   </span>
                 </div>
                 <div className="cdv2-row">
-                  <span className="k">VIN</span>
-                  <span className="v mono">{v.vin || "—"}</span>
+                  <span className="k">Kleur</span>
+                  <span className="v">{v.color || "—"}</span>
                 </div>
               </div>
             </div>
@@ -506,17 +506,15 @@ export const ContractDocumentV2: React.FC<{
                   <span className="v">{fmtEur(warrantyPrice)}</span>
                 </div>
               )}
+              {accessories.map((a, i) => (
+                <div className="cdv2-price-row" key={`acc-${i}`}>
+                  <span>Accessoire · {a.name || "—"}</span>
+                  <span className="v">{fmtEur(Number(a.price) || 0)}</span>
+                </div>
+              ))}
               {tradeIn > 0 && (
                 <div className="cdv2-price-row neg">
-                  <span>
-                    Inruil{" "}
-                    {data.trade_in_vehicle?.description
-                      ? `· ${data.trade_in_vehicle.description}`
-                      : ""}
-                    {data.trade_in_vehicle?.licenseNumber
-                      ? ` (${data.trade_in_vehicle.licenseNumber})`
-                      : ""}
-                  </span>
+                  <span>{tradeInLine}</span>
                   <span className="v">− {fmtEur(tradeIn)}</span>
                 </div>
               )}
@@ -525,6 +523,12 @@ export const ContractDocumentV2: React.FC<{
                 <span className="v">{fmtEur(total)}</span>
               </div>
               <div className="cdv2-btw-note">{btwNote}</div>
+              {data.financing_conditional && (
+                <div className="cdv2-btw-note" style={{ color: "#FFC800", marginTop: 6 }}>
+                  Deze koop is gesloten onder voorbehoud van financiering
+                  {data.financing_party ? ` bij ${data.financing_party}` : ""}.
+                </div>
+              )}
             </div>
           </div>
 
