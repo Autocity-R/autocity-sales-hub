@@ -138,6 +138,55 @@ export default function ContractNew() {
       if (data.status === "verkocht_b2b") setContractType("b2b");
       if (data.customer_id) setCustomerId(data.customer_id);
       setLoading(false);
+
+      // Salesperson (ingelogde gebruiker)
+      const { data: authData } = await supabase.auth.getUser();
+      const uid = authData?.user?.id;
+      if (uid) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("first_name, last_name, email")
+          .eq("id", uid)
+          .maybeSingle();
+        if (prof) {
+          const name = [prof.first_name, prof.last_name].filter(Boolean).join(" ");
+          setSalespersonName(name || null);
+          setSalespersonEmail(prof.email || authData.user?.email || null);
+        }
+      }
+
+      // Branch entiteitgegevens (voor company_snapshot in preview)
+      const { data: br } = await supabase
+        .from("branches")
+        .select("*")
+        .eq("code", (data as any).branch)
+        .maybeSingle();
+      if (br) setBranchInfo(br);
+
+      // Hoofdfoto voor hero
+      let photo: string | null = (data.details as any)?.mainPhotoUrl || null;
+      if (!photo) {
+        const { data: pf } = await supabase
+          .from("vehicle_files")
+          .select("file_url, file_path")
+          .eq("vehicle_id", data.id)
+          .in("category", ["photo", "main_photo"])
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        photo = (pf as any)?.file_url || null;
+      }
+      if (!photo) {
+        const { data: sh } = await supabase
+          .from("vehicle_showroom_photos")
+          .select("photo_url")
+          .eq("vehicle_id", data.id)
+          .order("photo_index", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        photo = (sh as any)?.photo_url || null;
+      }
+      setMainPhotoUrl(photo);
     }
     load();
     return () => {
