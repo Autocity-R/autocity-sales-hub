@@ -10,11 +10,18 @@ export interface ContractV2Input {
   warrantyPackageName?: string;
   warrantyPrice?: number;
   tradeInVehicle?: {
-    description?: string;
+    brand?: string;
+    model?: string;
+    year?: number | null;
     licenseNumber?: string;
+    mileage?: number | null;
     value?: number;
+    description?: string;
   } | null;
   tradeInValue?: number;
+  accessories?: Array<{ name: string; price: number }>;
+  financingConditional?: boolean;
+  financingParty?: string | null;
   specialTerms?: string;
   deliveryDate?: string | null;
 }
