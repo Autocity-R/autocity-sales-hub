@@ -107,3 +107,6 @@ verify_jwt = false
 
 [functions.intake-robin-analyse]
 verify_jwt = false
+
+[functions.contract-create]
+verify_jwt = true
