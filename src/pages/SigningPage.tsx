@@ -9,6 +9,7 @@ import {
   fetchContractByToken,
   submitContractSignature,
 } from "@/services/contractV2Service";
+import { SignaturePad } from "@/components/common/SignaturePad";
 
 type Status =
   | "loading"
@@ -26,13 +27,11 @@ export default function SigningPage() {
   const [contract, setContract] = useState<ContractV2Snapshot | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const docRef = useRef<HTMLDivElement | null>(null);
-  const drawingRef = useRef(false);
-  const hasStrokeRef = useRef(false);
   const [signerName, setSignerName] = useState("");
   const [signerEmail, setSignerEmail] = useState("");
   const [buyerSigDataUrl, setBuyerSigDataUrl] = useState<string | null>(null);
+  const [pendingSig, setPendingSig] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -66,64 +65,9 @@ export default function SigningPage() {
     })();
   }, [token]);
 
-  // Canvas drawing
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.lineWidth = 2.2;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.strokeStyle = "#FF6B00";
-
-    const getPos = (e: PointerEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      return {
-        x: (e.clientX - rect.left) * (canvas.width / rect.width),
-        y: (e.clientY - rect.top) * (canvas.height / rect.height),
-      };
-    };
-    const down = (e: PointerEvent) => {
-      drawingRef.current = true;
-      hasStrokeRef.current = true;
-      const { x, y } = getPos(e);
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      canvas.setPointerCapture(e.pointerId);
-    };
-    const move = (e: PointerEvent) => {
-      if (!drawingRef.current) return;
-      const { x, y } = getPos(e);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    };
-    const up = () => {
-      drawingRef.current = false;
-    };
-    canvas.addEventListener("pointerdown", down);
-    canvas.addEventListener("pointermove", move);
-    canvas.addEventListener("pointerup", up);
-    canvas.addEventListener("pointerleave", up);
-    return () => {
-      canvas.removeEventListener("pointerdown", down);
-      canvas.removeEventListener("pointermove", move);
-      canvas.removeEventListener("pointerup", up);
-      canvas.removeEventListener("pointerleave", up);
-    };
-  }, [status]);
-
-  const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx?.clearRect(0, 0, canvas.width, canvas.height);
-    hasStrokeRef.current = false;
-  };
-
   const handleSign = async () => {
     if (!token || !contract) return;
-    if (!hasStrokeRef.current) {
+    if (!pendingSig) {
       alert("Zet uw handtekening in het vak.");
       return;
     }
@@ -132,9 +76,7 @@ export default function SigningPage() {
       return;
     }
     setStatus("signing");
-
-    const canvas = canvasRef.current!;
-    const dataUrl = canvas.toDataURL("image/png");
+    const dataUrl = pendingSig;
     setBuyerSigDataUrl(dataUrl);
 
     // Wait a tick so the document re-renders with the buyer signature
@@ -254,23 +196,13 @@ export default function SigningPage() {
               />
             </div>
           </div>
-          <canvas
-            ref={canvasRef}
-            width={720}
+          <SignaturePad
+            value={null}
+            onChange={setPendingSig}
             height={200}
-            style={{
-              width: "100%",
-              height: 200,
-              background: "#fff",
-              borderRadius: 2,
-              touchAction: "none",
-              cursor: "crosshair",
-            }}
+            strokeColor="#111"
           />
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, gap: 8 }}>
-            <button onClick={clearCanvas} style={btnGhost}>
-              Wissen
-            </button>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12, gap: 8 }}>
             <button
               onClick={handleSign}
               disabled={status === "signing"}

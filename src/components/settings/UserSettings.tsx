@@ -7,13 +7,15 @@ import { EmailSettings } from "./EmailSettings";
 import { AccountPreferences } from "./AccountPreferences";
 import { UserManagement } from "./UserManagement";
 import { NewUserForm } from "./NewUserForm";
+import { SignatureSettings } from "./SignatureSettings";
 
 export const UserSettings = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <Tabs defaultValue="personal" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="personal">Persoonlijke Gegevens</TabsTrigger>
+          <TabsTrigger value="signature">Handtekening</TabsTrigger>
           <TabsTrigger value="email">Email Instellingen</TabsTrigger>
           <TabsTrigger value="preferences">Voorkeuren</TabsTrigger>
           <TabsTrigger value="users">Gebruikers</TabsTrigger>
@@ -22,6 +24,10 @@ export const UserSettings = () => {
         
         <TabsContent value="personal" className="space-y-6">
           <PersonalInfoForm />
+        </TabsContent>
+
+        <TabsContent value="signature" className="space-y-6">
+          <SignatureSettings />
         </TabsContent>
         
         <TabsContent value="email" className="space-y-6">

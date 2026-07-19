@@ -1688,6 +1688,7 @@ export type Database = {
           sale_price_ex: number | null
           salesperson_email: string | null
           salesperson_name: string | null
+          salesperson_signature_png: string | null
           salesperson_signature_svg: string | null
           sent_at: string | null
           signed_at: string | null
@@ -1722,6 +1723,7 @@ export type Database = {
           sale_price_ex?: number | null
           salesperson_email?: string | null
           salesperson_name?: string | null
+          salesperson_signature_png?: string | null
           salesperson_signature_svg?: string | null
           sent_at?: string | null
           signed_at?: string | null
@@ -1756,6 +1758,7 @@ export type Database = {
           sale_price_ex?: number | null
           salesperson_email?: string | null
           salesperson_name?: string | null
+          salesperson_signature_png?: string | null
           salesperson_signature_svg?: string | null
           sent_at?: string | null
           signed_at?: string | null
@@ -3618,6 +3621,7 @@ export type Database = {
           first_name: string | null
           id: string
           last_name: string | null
+          signature_png: string | null
           updated_at: string
         }
         Insert: {
@@ -3628,6 +3632,7 @@ export type Database = {
           first_name?: string | null
           id: string
           last_name?: string | null
+          signature_png?: string | null
           updated_at?: string
         }
         Update: {
@@ -3638,6 +3643,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           last_name?: string | null
+          signature_png?: string | null
           updated_at?: string
         }
         Relationships: []

@@ -24,6 +24,7 @@ export interface ContractV2Input {
   financingParty?: string | null;
   specialTerms?: string;
   deliveryDate?: string | null;
+  salespersonSignaturePng?: string | null;
 }
 
 export interface ContractV2 {

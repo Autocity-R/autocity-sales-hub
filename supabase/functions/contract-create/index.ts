@@ -31,6 +31,7 @@ interface Payload {
   financingParty?: string | null;
   specialTerms?: string;
   deliveryDate?: string | null;
+  salespersonSignaturePng?: string | null;
 }
 
 Deno.serve(async (req) => {
@@ -166,18 +167,17 @@ Deno.serve(async (req) => {
     // Salesperson snapshot
     const { data: prof } = await admin
       .from("profiles")
-      .select("first_name, last_name, email")
+      .select("first_name, last_name, email, signature_png")
       .eq("id", userId)
       .maybeSingle();
     const salespersonName =
       [prof?.first_name, prof?.last_name].filter(Boolean).join(" ") || null;
     const salespersonEmail = prof?.email || userData.user.email || null;
-
-    // Deterministic script-style seller signature (SVG)
-    const safeName = (salespersonName || "").replace(/[<>&]/g, "");
-    const signatureSvg = salespersonName
-      ? `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 80' width='240' height='60'><g fill='none' stroke='#FF6B00' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M8 62 C 28 22, 58 22, 78 58 S 118 74, 138 34 S 178 20, 198 60 S 238 72, 258 30 S 298 24, 314 58'/></g><text x='160' y='22' text-anchor='middle' font-family='Space Grotesk, sans-serif' font-size='12' fill='#ffffff' opacity='0.9'>${safeName}</text></svg>`
-      : null;
+    const signaturePng =
+      body.salespersonSignaturePng || (prof as any)?.signature_png || null;
+    if (!signaturePng) {
+      return json({ error: "salesperson_signature_missing" }, 400);
+    }
 
     const customerSnapshot = {
       id: customer.id,
@@ -236,7 +236,8 @@ Deno.serve(async (req) => {
         delivery_date: body.deliveryDate || null,
         salesperson_name: salespersonName,
         salesperson_email: salespersonEmail,
-        salesperson_signature_svg: signatureSvg,
+        salesperson_signature_svg: null,
+        salesperson_signature_png: signaturePng,
         created_by: userId,
       })
       .select("*")
