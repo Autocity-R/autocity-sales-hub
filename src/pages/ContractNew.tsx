@@ -333,24 +333,40 @@ export default function ContractNew() {
         },
         customer_snapshot: customer
           ? {
+              id: customer.id,
+              type: customer.type,
               companyName: customer.companyName,
               firstName: customer.firstName,
               lastName: customer.lastName,
               email: customer.email,
               phone: customer.phone,
-              street: (customer as any).addressStreet,
-              number: (customer as any).addressNumber,
-              city: (customer as any).addressCity,
-              zipCode: (customer as any).addressPostalCode,
+              street: customer.address?.street,
+              number: customer.address?.number,
+              city: customer.address?.city,
+              zipCode: customer.address?.zipCode,
             }
           : {},
-        company_snapshot: {
-          companyName:
-            vehicle.branch === "heerhugowaard"
-              ? "Autocity Noord Holland B.V."
-              : "Autocity Automotive Group B.V.",
-          city: branchLabel(vehicle.branch),
-        },
+        company_snapshot: branchInfo
+          ? {
+              code: branchInfo.code,
+              name: branchInfo.name,
+              companyName: branchInfo.company_name,
+              address: branchInfo.address,
+              postalCode: branchInfo.postal_code,
+              city: branchInfo.city,
+              phone: branchInfo.phone,
+              email: branchInfo.email,
+              kvk: branchInfo.kvk_number,
+              btw: branchInfo.btw_number,
+              iban: branchInfo.iban,
+            }
+          : {
+              companyName:
+                vehicle.branch === "heerhugowaard"
+                  ? "Autocity Noord Holland B.V."
+                  : "Autocity Automotive Group B.V.",
+              city: branchLabel(vehicle.branch),
+            },
         sale_price_ex: parseFloat(salePriceEx) || 0,
         btw_type: btwType,
         warranty_package: hasExistingWarranty
@@ -363,16 +379,28 @@ export default function ContractNew() {
           ? existingWarrantyPrice
           : parseFloat(warrantyPrice) || 0,
         trade_in_vehicle: tradeInEnabled
-          ? { description: tradeInDesc, licenseNumber: tradeInLicense }
+          ? {
+              brand: tradeInBrand || undefined,
+              model: tradeInModel || undefined,
+              year: tradeInYear ? parseInt(tradeInYear, 10) : null,
+              licenseNumber: tradeInLicense || undefined,
+              mileage: tradeInMileage ? parseInt(tradeInMileage, 10) : null,
+            }
           : null,
         trade_in_value: tradeInEnabled ? parseFloat(tradeInValue) || 0 : 0,
+        accessories: accessories
+          .map((a) => ({ name: a.name.trim(), price: parseFloat(a.price) || 0 }))
+          .filter((a) => a.name.length > 0),
+        financing_conditional: financingConditional,
+        financing_party: financingConditional && financingParty.trim() ? financingParty.trim() : null,
         special_terms: specialTerms || null,
         total_price: total,
-        main_photo_url: (vehicle.details as any)?.mainPhotoUrl || null,
-        salesperson_name: savedContract?.salesperson_name || null,
-        salesperson_email: savedContract?.salesperson_email || null,
+        main_photo_url: mainPhotoUrl,
+        salesperson_name: savedContract?.salesperson_name || salespersonName,
+        salesperson_email: savedContract?.salesperson_email || salespersonEmail,
         salesperson_signature_svg:
-          savedContract?.salesperson_signature_svg || null,
+          savedContract?.salesperson_signature_svg ||
+          buildSalespersonSignatureSvg(salespersonName),
       }
     : null;
 
