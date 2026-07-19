@@ -1668,6 +1668,197 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_documents: {
+        Row: {
+          accessories: Json
+          branch: string
+          btw_type: string | null
+          company_snapshot: Json
+          contract_number: string | null
+          contract_type: string
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          customer_snapshot: Json
+          delivery_date: string | null
+          financing_conditional: boolean
+          financing_party: string | null
+          id: string
+          main_photo_url: string | null
+          sale_price_ex: number | null
+          salesperson_email: string | null
+          salesperson_name: string | null
+          salesperson_signature_svg: string | null
+          sent_at: string | null
+          signed_at: string | null
+          special_terms: string | null
+          status: string
+          total_price: number | null
+          trade_in_value: number | null
+          trade_in_vehicle: Json | null
+          updated_at: string
+          vehicle_id: string | null
+          vehicle_snapshot: Json
+          warranty_package: string | null
+          warranty_package_name: string | null
+          warranty_price: number | null
+        }
+        Insert: {
+          accessories?: Json
+          branch?: string
+          btw_type?: string | null
+          company_snapshot?: Json
+          contract_number?: string | null
+          contract_type: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_snapshot?: Json
+          delivery_date?: string | null
+          financing_conditional?: boolean
+          financing_party?: string | null
+          id?: string
+          main_photo_url?: string | null
+          sale_price_ex?: number | null
+          salesperson_email?: string | null
+          salesperson_name?: string | null
+          salesperson_signature_svg?: string | null
+          sent_at?: string | null
+          signed_at?: string | null
+          special_terms?: string | null
+          status?: string
+          total_price?: number | null
+          trade_in_value?: number | null
+          trade_in_vehicle?: Json | null
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_snapshot?: Json
+          warranty_package?: string | null
+          warranty_package_name?: string | null
+          warranty_price?: number | null
+        }
+        Update: {
+          accessories?: Json
+          branch?: string
+          btw_type?: string | null
+          company_snapshot?: Json
+          contract_number?: string | null
+          contract_type?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_snapshot?: Json
+          delivery_date?: string | null
+          financing_conditional?: boolean
+          financing_party?: string | null
+          id?: string
+          main_photo_url?: string | null
+          sale_price_ex?: number | null
+          salesperson_email?: string | null
+          salesperson_name?: string | null
+          salesperson_signature_svg?: string | null
+          sent_at?: string | null
+          signed_at?: string | null
+          special_terms?: string | null
+          status?: string
+          total_price?: number | null
+          trade_in_value?: number | null
+          trade_in_vehicle?: Json | null
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_snapshot?: Json
+          warranty_package?: string | null
+          warranty_package_name?: string | null
+          warranty_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_documents_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_number_sequences: {
+        Row: {
+          branch: string
+          last_seq: number
+          year: number
+        }
+        Insert: {
+          branch: string
+          last_seq?: number
+          year: number
+        }
+        Update: {
+          branch?: string
+          last_seq?: number
+          year?: number
+        }
+        Relationships: []
+      }
+      contract_signatures: {
+        Row: {
+          contract_id: string
+          created_at: string
+          id: string
+          pdf_path: string | null
+          signature_data: string | null
+          signed_at: string | null
+          signer_email: string | null
+          signer_ip: string | null
+          signer_name: string | null
+          token: string
+          token_expires_at: string
+          updated_at: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          id?: string
+          pdf_path?: string | null
+          signature_data?: string | null
+          signed_at?: string | null
+          signer_email?: string | null
+          signer_ip?: string | null
+          signer_name?: string | null
+          token: string
+          token_expires_at?: string
+          updated_at?: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          id?: string
+          pdf_path?: string | null
+          signature_data?: string | null
+          signed_at?: string | null
+          signer_email?: string | null
+          signer_ip?: string | null
+          signer_name?: string | null
+          token?: string
+          token_expires_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_signatures_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contract_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           branch: string
@@ -3277,6 +3468,48 @@ export type Database = {
           },
         ]
       }
+      lms_sync_log: {
+        Row: {
+          contract_number: string | null
+          dry_run: boolean
+          error: string | null
+          id: string
+          match_method: string | null
+          matched_contact_id: string | null
+          matched_vehicle_id: string | null
+          ok: boolean
+          payload: Json | null
+          planned_actions: Json | null
+          received_at: string
+        }
+        Insert: {
+          contract_number?: string | null
+          dry_run?: boolean
+          error?: string | null
+          id?: string
+          match_method?: string | null
+          matched_contact_id?: string | null
+          matched_vehicle_id?: string | null
+          ok?: boolean
+          payload?: Json | null
+          planned_actions?: Json | null
+          received_at?: string
+        }
+        Update: {
+          contract_number?: string | null
+          dry_run?: boolean
+          error?: string | null
+          id?: string
+          match_method?: string | null
+          matched_contact_id?: string | null
+          matched_vehicle_id?: string | null
+          ok?: boolean
+          payload?: Json | null
+          planned_actions?: Json | null
+          received_at?: string
+        }
+        Relationships: []
+      }
       loan_cars: {
         Row: {
           created_at: string
@@ -4423,6 +4656,7 @@ export type Database = {
         Returns: boolean
       }
       current_user_branch: { Args: never; Returns: string }
+      get_contract_by_token: { Args: { _token: string }; Returns: Json }
       get_valid_exact_online_token: {
         Args: { user_uuid: string }
         Returns: {
@@ -4471,6 +4705,7 @@ export type Database = {
             }
             Returns: undefined
           }
+      vault_secret: { Args: { secret_name: string }; Returns: string }
       verify_webhook_sync: {
         Args: { agent_uuid: string }
         Returns: {

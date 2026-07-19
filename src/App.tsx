@@ -34,6 +34,8 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 const TestContract = lazy(() => import("@/pages/TestContract"));
 const ContractPreview = lazy(() => import("@/pages/ContractPreview"));
 const ChecklistView = lazy(() => import("@/pages/ChecklistView"));
+const ContractNew = lazy(() => import("@/pages/ContractNew"));
+const SigningPage = lazy(() => import("@/pages/SigningPage"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -54,6 +56,7 @@ function App() {
           <Route path="/auth" element={<Auth />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/contract/sign/:token" element={<DigitalSignaturePage />} />
+          <Route path="/teken/:token" element={<SigningPage />} />
           <Route path="/checklist/view/:token" element={<ChecklistView />} />
           <Route path="/" element={
             <ProtectedRoute>
@@ -183,6 +186,11 @@ function App() {
         <Route path="/contract-preview" element={
           <ProtectedRoute>
             <ContractPreview />
+          </ProtectedRoute>
+        } />
+        <Route path="/contracten/nieuw" element={
+          <ProtectedRoute>
+            <ContractNew />
           </ProtectedRoute>
         } />
           <Route path="*" element={<NotFound />} />
