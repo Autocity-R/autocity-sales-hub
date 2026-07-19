@@ -21,7 +21,7 @@ import { Contact } from "@/types/customer";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft, ShieldCheck, Save, Send, Copy, Check, Plus, Trash2, Eye, EyeOff,
+  ArrowLeft, ShieldCheck, Save, Send, Copy, Check, Plus, Trash2,
 } from "lucide-react";
 import {
   WARRANTY_PACKAGE_OPTIONS,
