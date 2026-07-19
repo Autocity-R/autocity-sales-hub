@@ -22,7 +22,7 @@ import { supabaseCustomerService } from "@/services/supabaseCustomerService";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft, ShieldCheck, Save, Send, Copy, Check, Plus, Trash2, PenLine, AlertTriangle,
+  ArrowLeft, ShieldCheck, Save, Send, Copy, Check, Plus, Trash2,
 } from "lucide-react";
 import {
   WARRANTY_PACKAGE_OPTIONS,
@@ -33,6 +33,15 @@ import {
   ContractDocumentV2,
   ContractV2Snapshot,
 } from "@/components/contracts/ContractDocumentV2";
+import { buildSalespersonSignatureSvg } from "@/utils/salespersonSignature";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface VehicleRow {
   id: string;
@@ -87,7 +96,6 @@ export default function ContractNew() {
   // Salesperson (ingelogde verkoper is contractant)
   const [salespersonName, setSalespersonName] = useState<string | null>(null);
   const [salespersonEmail, setSalespersonEmail] = useState<string | null>(null);
-  const [salespersonSignaturePng, setSalespersonSignaturePng] = useState<string | null>(null);
 
   // Extras
   const [mainPhotoUrl, setMainPhotoUrl] = useState<string | null>(null);
@@ -98,6 +106,8 @@ export default function ContractNew() {
   const [signUrl, setSignUrl] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState("");
 
   const existingWarrantyPrice: number = Number(
     vehicle?.details?.warrantyPackagePrice || 0,
@@ -145,14 +155,13 @@ export default function ContractNew() {
       if (uid) {
         const { data: prof } = await supabase
           .from("profiles")
-          .select("first_name, last_name, email, signature_png")
+          .select("first_name, last_name, email")
           .eq("id", uid)
           .maybeSingle();
         if (prof) {
           const name = [prof.first_name, prof.last_name].filter(Boolean).join(" ");
           setSalespersonName(name || null);
           setSalespersonEmail(prof.email || authData.user?.email || null);
-          setSalespersonSignaturePng((prof as any).signature_png || null);
         }
       }
 
@@ -191,7 +200,10 @@ export default function ContractNew() {
   // Prefill / hydrate the full customer object whenever we only have an id.
   useEffect(() => {
     let cancelled = false;
-    if (customerId && (!customer || customer.id !== customerId)) {
+    // Always refetch the FULL contact when the id changes: the search list can
+    // ship a lightweight subset without address/phone, so we cannot trust the
+    // object passed from the selector.
+    if (customerId) {
       supabaseCustomerService
         .getContactById(customerId)
         .then((c) => {
@@ -233,19 +245,15 @@ export default function ContractNew() {
   const missingForSend: string[] = [];
   if (!customerId) missingForSend.push("Klant");
   if (!salePriceEx || parseFloat(salePriceEx) <= 0) missingForSend.push("Verkoopprijs");
-  if (!salespersonSignaturePng) missingForSend.push("Handtekening verkoper");
   const canSend = missingForSend.length === 0 && !saving && !sending;
+
+  const salespersonSignatureSvg = useMemo(
+    () => buildSalespersonSignatureSvg(salespersonName),
+    [salespersonName],
+  );
 
   async function handleSave() {
     if (!vehicle) return;
-    if (!salespersonSignaturePng) {
-      toast({
-        title: "Handtekening ontbreekt",
-        description: "Zet éérst je handtekening in Instellingen → Handtekening.",
-        variant: "destructive",
-      });
-      return;
-    }
     setSaving(true);
     const selectedPkg = WARRANTY_PACKAGE_OPTIONS.find(
       (p) => p.code === warrantyCode,
@@ -285,7 +293,6 @@ export default function ContractNew() {
         : null,
       specialTerms: specialTerms || undefined,
       deliveryDate: deliveryDate || undefined,
-      salespersonSignaturePng,
     });
     setSaving(false);
     if (res.error) {
@@ -312,7 +319,14 @@ export default function ContractNew() {
     return res.contract;
   }
 
+  function openSendDialog() {
+    if (!canSend) return;
+    setConfirmEmail(customer?.email || "");
+    setConfirmOpen(true);
+  }
+
   async function handleSend() {
+    setConfirmOpen(false);
     // Save-then-send flow: sla eerst op indien nog geen concept bestaat
     let contract = savedContract;
     if (!contract) {
@@ -320,7 +334,7 @@ export default function ContractNew() {
       if (!contract) return;
     }
     setSending(true);
-    const res = await sendContractV2(contract.id);
+    const res = await sendContractV2(contract.id, confirmEmail || null);
     setSending(false);
     if (res.error) {
       toast({
@@ -336,7 +350,7 @@ export default function ContractNew() {
     );
     toast({
       title: "Ondertekenlink verstuurd",
-      description: "De klant heeft een e-mail met een 48 uur geldige link ontvangen.",
+      description: `E-mail met 48 uur geldige tekenlink verstuurd naar ${confirmEmail}.`,
     });
   }
 
@@ -433,9 +447,10 @@ export default function ContractNew() {
         main_photo_url: mainPhotoUrl,
         salesperson_name: savedContract?.salesperson_name || salespersonName,
         salesperson_email: savedContract?.salesperson_email || salespersonEmail,
-        salesperson_signature_svg: null,
+        salesperson_signature_svg:
+          savedContract?.salesperson_signature_svg || salespersonSignatureSvg,
         salesperson_signature_png:
-          savedContract?.salesperson_signature_png || salespersonSignaturePng,
+          savedContract?.salesperson_signature_png || null,
       }
     : null;
 
@@ -471,6 +486,24 @@ export default function ContractNew() {
           />
           <div className="flex items-center gap-2">
             <Badge variant="outline">{branchLabel(vehicle.branch)}</Badge>
+            {savedContract && (
+              <Badge
+                className={
+                  savedContract.status === "verstuurd"
+                    ? "bg-amber-500/15 text-amber-600 border-amber-500/40"
+                    : savedContract.status === "getekend"
+                      ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/40"
+                      : "bg-muted text-muted-foreground"
+                }
+                variant="outline"
+              >
+                {savedContract.status === "verstuurd"
+                  ? "Verstuurd — wacht op ondertekening"
+                  : savedContract.status === "getekend"
+                    ? "Getekend"
+                    : "Concept"}
+              </Badge>
+            )}
             <Button variant="outline" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Terug
@@ -799,27 +832,6 @@ export default function ContractNew() {
               </CardContent>
             </Card>
 
-            {!salespersonSignaturePng && (
-              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm flex items-start gap-3">
-                <AlertTriangle className="h-4 w-4 mt-0.5 text-amber-500 shrink-0" />
-                <div className="flex-1">
-                  <div className="font-medium">Teken eerst éénmalig je handtekening</div>
-                  <div className="text-muted-foreground text-xs mt-1">
-                    Zonder handtekening kan je geen contract versturen. Ga naar
-                    Instellingen → Handtekening om deze op te slaan.
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    navigate("/instellingen?tab=general")
-                  }
-                >
-                  <PenLine className="h-4 w-4 mr-2" /> Instellen
-                </Button>
-              </div>
-            )}
             <div className="flex flex-wrap justify-end gap-2">
               <Button variant="outline" onClick={() => navigate(-1)}>
                 Annuleren
@@ -833,7 +845,7 @@ export default function ContractNew() {
                 {saving ? "Opslaan…" : savedContract ? "Opgeslagen" : "Concept opslaan"}
               </Button>
               <Button
-                onClick={handleSend}
+                onClick={openSendDialog}
                 disabled={!canSend || !!signUrl}
                 title={
                   missingForSend.length
@@ -849,6 +861,39 @@ export default function ContractNew() {
                     : "Versturen voor ondertekening"}
               </Button>
             </div>
+
+            <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Contract versturen ter ondertekening</DialogTitle>
+                  <DialogDescription>
+                    De klant ontvangt een e-mail met een unieke tekenlink
+                    (48 uur geldig). Controleer het e-mailadres hieronder.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmEmail">E-mailadres klant</Label>
+                  <Input
+                    id="confirmEmail"
+                    type="email"
+                    value={confirmEmail}
+                    onChange={(e) => setConfirmEmail(e.target.value)}
+                  />
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+                    Annuleren
+                  </Button>
+                  <Button
+                    onClick={handleSend}
+                    disabled={!confirmEmail || !/^\S+@\S+\.\S+$/.test(confirmEmail)}
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Versturen
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             {signUrl && (
               <Card>

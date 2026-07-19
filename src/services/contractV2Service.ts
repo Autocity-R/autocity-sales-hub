@@ -24,7 +24,6 @@ export interface ContractV2Input {
   financingParty?: string | null;
   specialTerms?: string;
   deliveryDate?: string | null;
-  salespersonSignaturePng?: string | null;
 }
 
 export interface ContractV2 {
@@ -106,10 +105,11 @@ export interface SendContractResult {
 
 export async function sendContractV2(
   contractId: string,
+  overrideEmail?: string | null,
 ): Promise<SendContractResult> {
   const publicBaseUrl = window.location.origin;
   const { data, error } = await supabase.functions.invoke("contract-send", {
-    body: { contractId, publicBaseUrl },
+    body: { contractId, publicBaseUrl, overrideEmail: overrideEmail ?? null },
   });
   if (error) return { error: error.message };
   return data as SendContractResult;
