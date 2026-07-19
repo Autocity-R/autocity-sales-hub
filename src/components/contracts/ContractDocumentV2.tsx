@@ -311,7 +311,6 @@ export const ContractDocumentV2: React.FC<{
   const salesPrice = Number(data.sale_price_ex) || 0;
   const tradeIn = Number(data.trade_in_value) || 0;
   const warrantyPrice = Number(data.warranty_price) || 0;
-  const total = data.total_price ?? salesPrice + warrantyPrice - tradeIn;
 
   const specsBits = [
     v.year,
