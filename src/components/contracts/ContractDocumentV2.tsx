@@ -582,10 +582,6 @@ export const ContractDocumentV2: React.FC<{
                 KVK {c.kvk || c.kvk_number || "—"} · BTW{" "}
                 {c.btw || c.btw_number || "—"} · IBAN {c.iban || "—"}
               </div>
-              <div className="fnote">
-                Telefoongesprekken kunnen worden opgenomen voor kwaliteits- en
-                trainingsdoeleinden.
-              </div>
             </div>
             <div style={{ textAlign: "right" }}>
               <div>
