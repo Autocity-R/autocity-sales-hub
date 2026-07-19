@@ -547,7 +547,9 @@ export const ContractDocumentV2: React.FC<{
             <div className="cdv2-sign-col">
               <div className="lbl">Verkoper</div>
               <div className="cdv2-sign-box">
-                {data.salesperson_signature_svg ? (
+                {data.salesperson_signature_png ? (
+                  <img src={data.salesperson_signature_png} alt="handtekening verkoper" />
+                ) : data.salesperson_signature_svg ? (
                   <div
                     dangerouslySetInnerHTML={{
                       __html: data.salesperson_signature_svg,
