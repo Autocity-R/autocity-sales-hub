@@ -158,6 +158,56 @@ Deno.serve(async (req) => {
       console.warn("email_queue insert failed", e);
     }
 
+    // LMS terugkoppeling — mag NOOIT de teken-flow breken
+    try {
+      const { data: secretRow } = await admin.rpc("vault_secret", {
+        secret_name: "lms_sync_secret",
+      });
+      const lmsSecret = typeof secretRow === "string" ? secretRow : null;
+      if (lmsSecret) {
+        const veh = (doc.vehicle_snapshot as any) || {};
+        const lmsPayload = {
+          contract_number: doc.contract_number,
+          signed_at: now.toISOString(),
+          price: Number(doc.sale_price_ex) || 0,
+          financing_conditional: !!(doc as any).financing_conditional,
+          vin: veh.vin || null,
+          kenteken: veh.licenseNumber || null,
+          customer: {
+            name:
+              cust.companyName ||
+              [cust.firstName, cust.lastName].filter(Boolean).join(" ") ||
+              null,
+            email: cust.email || null,
+            phone: cust.phone || null,
+          },
+          salesperson: { email: salesEmail || null },
+          pdf_base64: body.pdf_base64,
+        };
+        const lmsResp = await fetch(
+          "https://aogxdgnvhbogimoqjwpp.supabase.co/functions/v1/crm-intake",
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-lms-secret": lmsSecret,
+            },
+            body: JSON.stringify(lmsPayload),
+          },
+        );
+        await admin.from("lms_sync_log").insert({
+          contract_number: doc.contract_number,
+          status: lmsResp.ok ? "success" : "error",
+          http_status: lmsResp.status,
+          response_body: await lmsResp.text().catch(() => null),
+        } as any);
+      } else {
+        console.warn("lms_sync_secret not configured, skipping LMS sync");
+      }
+    } catch (e) {
+      console.warn("LMS sync failed (non-blocking)", e);
+    }
+
     return json({ ok: true, pdf_url: signed?.signedUrl || null });
   } catch (err) {
     console.error(err);
