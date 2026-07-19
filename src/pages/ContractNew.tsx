@@ -630,32 +630,112 @@ export default function ContractNew() {
                   Inruilvoertuig toevoegen
                 </label>
                 {tradeInEnabled && (
-                  <div className="grid grid-cols-1 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label>Omschrijving</Label>
+                      <Label>Merk</Label>
+                      <Input value={tradeInBrand} onChange={(e) => setTradeInBrand(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Model</Label>
+                      <Input value={tradeInModel} onChange={(e) => setTradeInModel(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Bouwjaar</Label>
+                      <Input type="number" value={tradeInYear} onChange={(e) => setTradeInYear(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Kenteken</Label>
+                      <Input value={tradeInLicense} onChange={(e) => setTradeInLicense(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Kilometerstand</Label>
+                      <Input type="number" value={tradeInMileage} onChange={(e) => setTradeInMileage(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Inruilwaarde (€)</Label>
+                      <Input type="number" value={tradeInValue} onChange={(e) => setTradeInValue(e.target.value)} />
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Accessoires</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {accessories.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Nog geen accessoires toegevoegd.</p>
+                )}
+                {accessories.map((a, i) => (
+                  <div key={i} className="grid grid-cols-[1fr,140px,40px] gap-2 items-end">
+                    <div>
+                      <Label>Naam</Label>
                       <Input
-                        value={tradeInDesc}
-                        onChange={(e) => setTradeInDesc(e.target.value)}
-                        placeholder="Merk / model / bouwjaar"
+                        value={a.name}
+                        onChange={(e) => {
+                          const copy = [...accessories];
+                          copy[i] = { ...copy[i], name: e.target.value };
+                          setAccessories(copy);
+                        }}
+                        placeholder="Bijv. Trekhaak"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label>Kenteken</Label>
-                        <Input
-                          value={tradeInLicense}
-                          onChange={(e) => setTradeInLicense(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <Label>Inruilwaarde (€)</Label>
-                        <Input
-                          type="number"
-                          value={tradeInValue}
-                          onChange={(e) => setTradeInValue(e.target.value)}
-                        />
-                      </div>
+                    <div>
+                      <Label>Prijs (€)</Label>
+                      <Input
+                        type="number"
+                        value={a.price}
+                        onChange={(e) => {
+                          const copy = [...accessories];
+                          copy[i] = { ...copy[i], price: e.target.value };
+                          setAccessories(copy);
+                        }}
+                      />
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() =>
+                        setAccessories(accessories.filter((_, idx) => idx !== i))
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAccessories([...accessories, { name: "", price: "" }])}
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Accessoire toevoegen
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Financiering</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={financingConditional}
+                    onChange={(e) => setFinancingConditional(e.target.checked)}
+                  />
+                  Onder voorbehoud van financiering
+                </label>
+                {financingConditional && (
+                  <div>
+                    <Label>Financieringsmaatschappij (optioneel)</Label>
+                    <Input
+                      value={financingParty}
+                      onChange={(e) => setFinancingParty(e.target.value)}
+                      placeholder="Bijv. Findio"
+                    />
                   </div>
                 )}
               </CardContent>
