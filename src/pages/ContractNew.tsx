@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -21,7 +20,9 @@ import { SearchableCustomerSelector } from "@/components/customers/SearchableCus
 import { Contact } from "@/types/customer";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, ShieldCheck, Save, Send, Copy, Check } from "lucide-react";
+import {
+  ArrowLeft, ShieldCheck, Save, Send, Copy, Check, Plus, Trash2, Eye, EyeOff,
+} from "lucide-react";
 import {
   WARRANTY_PACKAGE_OPTIONS,
   createContractV2,
@@ -31,6 +32,7 @@ import {
   ContractDocumentV2,
   ContractV2Snapshot,
 } from "@/components/contracts/ContractDocumentV2";
+import { buildSalespersonSignatureSvg } from "@/utils/salespersonSignature";
 
 interface VehicleRow {
   id: string;
