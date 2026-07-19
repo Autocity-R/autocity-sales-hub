@@ -110,3 +110,9 @@ verify_jwt = false
 
 [functions.contract-create]
 verify_jwt = true
+
+[functions.contract-send]
+verify_jwt = true
+
+[functions.contract-sign]
+verify_jwt = false

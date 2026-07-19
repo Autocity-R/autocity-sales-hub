@@ -1679,8 +1679,15 @@ export type Database = {
           created_by: string | null
           customer_id: string | null
           customer_snapshot: Json
+          delivery_date: string | null
           id: string
+          main_photo_url: string | null
           sale_price_ex: number | null
+          salesperson_email: string | null
+          salesperson_name: string | null
+          salesperson_signature_svg: string | null
+          sent_at: string | null
+          signed_at: string | null
           special_terms: string | null
           status: string
           total_price: number | null
@@ -1690,6 +1697,7 @@ export type Database = {
           vehicle_id: string | null
           vehicle_snapshot: Json
           warranty_package: string | null
+          warranty_package_name: string | null
           warranty_price: number | null
         }
         Insert: {
@@ -1702,8 +1710,15 @@ export type Database = {
           created_by?: string | null
           customer_id?: string | null
           customer_snapshot?: Json
+          delivery_date?: string | null
           id?: string
+          main_photo_url?: string | null
           sale_price_ex?: number | null
+          salesperson_email?: string | null
+          salesperson_name?: string | null
+          salesperson_signature_svg?: string | null
+          sent_at?: string | null
+          signed_at?: string | null
           special_terms?: string | null
           status?: string
           total_price?: number | null
@@ -1713,6 +1728,7 @@ export type Database = {
           vehicle_id?: string | null
           vehicle_snapshot?: Json
           warranty_package?: string | null
+          warranty_package_name?: string | null
           warranty_price?: number | null
         }
         Update: {
@@ -1725,8 +1741,15 @@ export type Database = {
           created_by?: string | null
           customer_id?: string | null
           customer_snapshot?: Json
+          delivery_date?: string | null
           id?: string
+          main_photo_url?: string | null
           sale_price_ex?: number | null
+          salesperson_email?: string | null
+          salesperson_name?: string | null
+          salesperson_signature_svg?: string | null
+          sent_at?: string | null
+          signed_at?: string | null
           special_terms?: string | null
           status?: string
           total_price?: number | null
@@ -1736,6 +1759,7 @@ export type Database = {
           vehicle_id?: string | null
           vehicle_snapshot?: Json
           warranty_package?: string | null
+          warranty_package_name?: string | null
           warranty_price?: number | null
         }
         Relationships: [

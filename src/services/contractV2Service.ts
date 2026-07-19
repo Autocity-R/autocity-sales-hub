@@ -16,6 +16,7 @@ export interface ContractV2Input {
   } | null;
   tradeInValue?: number;
   specialTerms?: string;
+  deliveryDate?: string | null;
 }
 
 export interface ContractV2 {
@@ -85,3 +86,48 @@ export const WARRANTY_PACKAGE_OPTIONS: WarrantyPackageOption[] = [
     defaultPrice: 795,
   },
 ];
+
+export interface SendContractResult {
+  ok?: boolean;
+  token?: string;
+  sign_url?: string;
+  expires_at?: string;
+  error?: string;
+  detail?: string;
+}
+
+export async function sendContractV2(
+  contractId: string,
+): Promise<SendContractResult> {
+  const publicBaseUrl = window.location.origin;
+  const { data, error } = await supabase.functions.invoke("contract-send", {
+    body: { contractId, publicBaseUrl },
+  });
+  if (error) return { error: error.message };
+  return data as SendContractResult;
+}
+
+export async function fetchContractByToken(token: string) {
+  const { data, error } = await supabase.rpc("get_contract_by_token" as any, {
+    _token: token,
+  });
+  if (error) return { error: error.message } as { error: string };
+  return { data } as { data: any };
+}
+
+export async function submitContractSignature(payload: {
+  token: string;
+  signature_data_url: string;
+  pdf_base64: string;
+  signer_name?: string;
+  signer_email?: string;
+}) {
+  const { data, error } = await supabase.functions.invoke("contract-sign", {
+    body: {
+      ...payload,
+      user_agent: navigator.userAgent,
+    },
+  });
+  if (error) return { error: error.message } as { error: string };
+  return data as { ok?: boolean; pdf_url?: string; error?: string };
+}
