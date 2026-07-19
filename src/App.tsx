@@ -34,6 +34,7 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 const TestContract = lazy(() => import("@/pages/TestContract"));
 const ContractPreview = lazy(() => import("@/pages/ContractPreview"));
 const ChecklistView = lazy(() => import("@/pages/ChecklistView"));
+const ContractNew = lazy(() => import("@/pages/ContractNew"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -183,6 +184,11 @@ function App() {
         <Route path="/contract-preview" element={
           <ProtectedRoute>
             <ContractPreview />
+          </ProtectedRoute>
+        } />
+        <Route path="/contracten/nieuw" element={
+          <ProtectedRoute>
+            <ContractNew />
           </ProtectedRoute>
         } />
           <Route path="*" element={<NotFound />} />
