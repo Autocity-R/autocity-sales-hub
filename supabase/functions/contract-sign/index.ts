@@ -88,6 +88,11 @@ Deno.serve(async (req) => {
       .update({ status: "getekend", signed_at: now.toISOString() })
       .eq("id", doc.id);
 
+    // Signed URL for immediate download / notifications
+    const { data: signed } = await admin.storage
+      .from("vehicle-documents")
+      .createSignedUrl(path, 60 * 60 * 24 * 7);
+
     // Register in vehicle_files so it appears in the vehicle detail's contracts list
     const category =
       doc.contract_type === "b2b" ? "contract_b2b" : "contract_b2c";
