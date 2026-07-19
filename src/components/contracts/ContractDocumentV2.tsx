@@ -28,6 +28,7 @@ export interface ContractV2Snapshot {
   salesperson_name?: string | null;
   salesperson_email?: string | null;
   salesperson_signature_svg?: string | null;
+  salesperson_signature_png?: string | null;
   buyer_signature_data_url?: string | null;
 }
 
