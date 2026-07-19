@@ -18,10 +18,11 @@ import {
 } from "@/components/ui/select";
 import { SearchableCustomerSelector } from "@/components/customers/SearchableCustomerSelector";
 import { Contact } from "@/types/customer";
+import { supabaseCustomerService } from "@/services/supabaseCustomerService";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft, ShieldCheck, Save, Send, Copy, Check, Plus, Trash2,
+  ArrowLeft, ShieldCheck, Save, Send, Copy, Check, Plus, Trash2, PenLine, AlertTriangle,
 } from "lucide-react";
 import {
   WARRANTY_PACKAGE_OPTIONS,
@@ -32,7 +33,6 @@ import {
   ContractDocumentV2,
   ContractV2Snapshot,
 } from "@/components/contracts/ContractDocumentV2";
-import { buildSalespersonSignatureSvg } from "@/utils/salespersonSignature";
 
 interface VehicleRow {
   id: string;
@@ -87,6 +87,7 @@ export default function ContractNew() {
   // Salesperson (ingelogde verkoper is contractant)
   const [salespersonName, setSalespersonName] = useState<string | null>(null);
   const [salespersonEmail, setSalespersonEmail] = useState<string | null>(null);
+  const [salespersonSignaturePng, setSalespersonSignaturePng] = useState<string | null>(null);
 
   // Extras
   const [mainPhotoUrl, setMainPhotoUrl] = useState<string | null>(null);
@@ -144,13 +145,14 @@ export default function ContractNew() {
       if (uid) {
         const { data: prof } = await supabase
           .from("profiles")
-          .select("first_name, last_name, email")
+          .select("first_name, last_name, email, signature_png")
           .eq("id", uid)
           .maybeSingle();
         if (prof) {
           const name = [prof.first_name, prof.last_name].filter(Boolean).join(" ");
           setSalespersonName(name || null);
           setSalespersonEmail(prof.email || authData.user?.email || null);
+          setSalespersonSignaturePng((prof as any).signature_png || null);
         }
       }
 
@@ -163,17 +165,10 @@ export default function ContractNew() {
       if (br) setBranchInfo(br);
 
       // Hoofdfoto voor hero
-      let photo: string | null = (data.details as any)?.mainPhotoUrl || null;
-      if (!photo) {
-        const { data: pf } = await supabase
-          .from("vehicle_files")
-          .select("file_url, file_path")
-          .eq("vehicle_id", data.id)
-          .in("category", ["photo", "main_photo"])
-          .order("created_at", { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        photo = (pf as any)?.file_url || null;
+      const det = (data.details as any) || {};
+      let photo: string | null = det.mainPhotoUrl || null;
+      if (!photo && Array.isArray(det.photos) && det.photos.length > 0) {
+        photo = det.photos[0] || null;
       }
       if (!photo) {
         const { data: sh } = await supabase
@@ -192,6 +187,23 @@ export default function ContractNew() {
       cancelled = true;
     };
   }, [vehicleId, toast]);
+
+  // Prefill / hydrate the full customer object whenever we only have an id.
+  useEffect(() => {
+    let cancelled = false;
+    if (customerId && (!customer || customer.id !== customerId)) {
+      supabaseCustomerService
+        .getContactById(customerId)
+        .then((c) => {
+          if (!cancelled && c) setCustomer(c);
+        })
+        .catch((e) => console.warn("customer fetch failed", e));
+    }
+    if (!customerId && customer) setCustomer(null);
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId]);
 
   const total = useMemo(() => {
     const s = parseFloat(salePriceEx) || 0;
@@ -218,8 +230,22 @@ export default function ContractNew() {
     parseFloat(salePriceEx) > 0 &&
     !saving;
 
+  const missingForSend: string[] = [];
+  if (!customerId) missingForSend.push("Klant");
+  if (!salePriceEx || parseFloat(salePriceEx) <= 0) missingForSend.push("Verkoopprijs");
+  if (!salespersonSignaturePng) missingForSend.push("Handtekening verkoper");
+  const canSend = missingForSend.length === 0 && !saving && !sending;
+
   async function handleSave() {
     if (!vehicle) return;
+    if (!salespersonSignaturePng) {
+      toast({
+        title: "Handtekening ontbreekt",
+        description: "Zet éérst je handtekening in Instellingen → Handtekening.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSaving(true);
     const selectedPkg = WARRANTY_PACKAGE_OPTIONS.find(
       (p) => p.code === warrantyCode,
@@ -259,6 +285,7 @@ export default function ContractNew() {
         : null,
       specialTerms: specialTerms || undefined,
       deliveryDate: deliveryDate || undefined,
+      salespersonSignaturePng,
     });
     setSaving(false);
     if (res.error) {
@@ -282,12 +309,18 @@ export default function ContractNew() {
       title: "Concept opgeslagen",
       description: `Contract ${res.contract?.contract_number} aangemaakt.`,
     });
+    return res.contract;
   }
 
   async function handleSend() {
-    if (!savedContract) return;
+    // Save-then-send flow: sla eerst op indien nog geen concept bestaat
+    let contract = savedContract;
+    if (!contract) {
+      contract = await handleSave();
+      if (!contract) return;
+    }
     setSending(true);
-    const res = await sendContractV2(savedContract.id);
+    const res = await sendContractV2(contract.id);
     setSending(false);
     if (res.error) {
       toast({
@@ -298,6 +331,9 @@ export default function ContractNew() {
       return;
     }
     setSignUrl(res.sign_url ?? null);
+    setSavedContract((prev: any) =>
+      prev ? { ...prev, status: "verstuurd" } : prev,
+    );
     toast({
       title: "Ondertekenlink verstuurd",
       description: "De klant heeft een e-mail met een 48 uur geldige link ontvangen.",
@@ -397,9 +433,9 @@ export default function ContractNew() {
         main_photo_url: mainPhotoUrl,
         salesperson_name: savedContract?.salesperson_name || salespersonName,
         salesperson_email: savedContract?.salesperson_email || salespersonEmail,
-        salesperson_signature_svg:
-          savedContract?.salesperson_signature_svg ||
-          buildSalespersonSignatureSvg(salespersonName),
+        salesperson_signature_svg: null,
+        salesperson_signature_png:
+          savedContract?.salesperson_signature_png || salespersonSignaturePng,
       }
     : null;
 
