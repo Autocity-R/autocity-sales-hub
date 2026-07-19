@@ -200,7 +200,8 @@ export default function ContractNew() {
       ? existingWarrantyPrice
       : parseFloat(warrantyPrice) || 0;
     const t = tradeInEnabled ? parseFloat(tradeInValue) || 0 : 0;
-    return s + w - t;
+    const accTotal = accessories.reduce((acc, a) => acc + (parseFloat(a.price) || 0), 0);
+    return s + w + accTotal - t;
   }, [
     salePriceEx,
     warrantyPrice,
@@ -208,6 +209,7 @@ export default function ContractNew() {
     tradeInEnabled,
     hasExistingWarranty,
     existingWarrantyPrice,
+    accessories,
   ]);
 
   const canSave =
