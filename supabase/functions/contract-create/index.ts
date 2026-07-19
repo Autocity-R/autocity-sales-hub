@@ -129,12 +129,10 @@ Deno.serve(async (req) => {
       lastName: customer.last_name,
       email: customer.email,
       phone: customer.phone,
-      address: customer.address_street,
       street: customer.address_street,
       number: customer.address_number,
       city: customer.address_city,
-      zipCode: customer.address_zip_code,
-      country: customer.address_country,
+      zipCode: customer.address_postal_code,
     };
     const companySnapshot = branchRow
       ? {
