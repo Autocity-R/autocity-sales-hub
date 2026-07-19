@@ -373,25 +373,34 @@ export const ContractDocumentV2: React.FC<{
         <div className="cdv2-page">
           {/* Header */}
           <div className="cdv2-header">
-            <div className="company">
+            <div className="brand-block">
               <img src={LOGO_URL} alt="Autocity" />
-              <div className="cname">{companyName}</div>
-              <div className="clines">
-                {companyLines.map((l, i) => (
-                  <div key={i}>{l}</div>
-                ))}
-              </div>
-            </div>
-            <div className="title-block">
               <div className="title">KOOPCONTRACT</div>
               <div className="nr">
                 Nr. {data.contract_number} · {fmtDate(data.created_at)}
               </div>
-              {data.delivery_date && (
-                <div className="delivery">
-                  Afleverdatum {fmtDate(data.delivery_date)}
-                </div>
-              )}
+              <div>
+                {data.delivery_date && (
+                  <span className="delivery">
+                    Afleverdatum {fmtDate(data.delivery_date)}
+                  </span>
+                )}
+                {data.financing_conditional && (
+                  <span className="badge-fin">Onder voorbehoud van financiering</span>
+                )}
+              </div>
+            </div>
+            <div className="company-block">
+              <div className="cname">{companyName}</div>
+              {companyAddress && <div>{companyAddress}</div>}
+              {companyPostalCity && <div>{companyPostalCity}</div>}
+              <div>Nederland</div>
+              {companyPhone && <div>Tel: {companyPhone}</div>}
+              <div className="cmeta">
+                {companyIban && <div>IBAN: {companyIban}</div>}
+                {companyBtw && <div>BTW: {companyBtw}</div>}
+                {companyKvk && <div>KVK: {companyKvk}</div>}
+              </div>
             </div>
           </div>
 
