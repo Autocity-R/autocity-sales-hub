@@ -71,12 +71,27 @@ export default function ContractNew() {
   const [warrantyCode, setWarrantyCode] = useState<string>("");
   const [warrantyPrice, setWarrantyPrice] = useState<string>("0");
   const [tradeInEnabled, setTradeInEnabled] = useState(false);
-  const [tradeInDesc, setTradeInDesc] = useState("");
+  const [tradeInBrand, setTradeInBrand] = useState("");
+  const [tradeInModel, setTradeInModel] = useState("");
+  const [tradeInYear, setTradeInYear] = useState<string>("");
   const [tradeInLicense, setTradeInLicense] = useState("");
+  const [tradeInMileage, setTradeInMileage] = useState<string>("");
   const [tradeInValue, setTradeInValue] = useState<string>("0");
+  const [accessories, setAccessories] = useState<Array<{ name: string; price: string }>>([]);
+  const [financingConditional, setFinancingConditional] = useState(false);
+  const [financingParty, setFinancingParty] = useState("");
   const [specialTerms, setSpecialTerms] = useState("");
   const [contractType, setContractType] = useState<"b2b" | "b2c">("b2c");
   const [deliveryDate, setDeliveryDate] = useState<string>("");
+
+  // Salesperson (ingelogde verkoper is contractant)
+  const [salespersonName, setSalespersonName] = useState<string | null>(null);
+  const [salespersonEmail, setSalespersonEmail] = useState<string | null>(null);
+
+  // Extras
+  const [mainPhotoUrl, setMainPhotoUrl] = useState<string | null>(null);
+  const [branchInfo, setBranchInfo] = useState<any | null>(null);
+  const [mobileTab, setMobileTab] = useState<"form" | "preview">("form");
 
   // Saved-contract state (after "Concept opslaan")
   const [savedContract, setSavedContract] = useState<any | null>(null);
