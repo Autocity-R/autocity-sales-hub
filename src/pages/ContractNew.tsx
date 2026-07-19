@@ -799,20 +799,55 @@ export default function ContractNew() {
               </CardContent>
             </Card>
 
-            <div className="flex justify-end gap-2">
+            {!salespersonSignaturePng && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm flex items-start gap-3">
+                <AlertTriangle className="h-4 w-4 mt-0.5 text-amber-500 shrink-0" />
+                <div className="flex-1">
+                  <div className="font-medium">Teken eerst éénmalig je handtekening</div>
+                  <div className="text-muted-foreground text-xs mt-1">
+                    Zonder handtekening kan je geen contract versturen. Ga naar
+                    Instellingen → Handtekening om deze op te slaan.
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    navigate("/instellingen?tab=general")
+                  }
+                >
+                  <PenLine className="h-4 w-4 mr-2" /> Instellen
+                </Button>
+              </div>
+            )}
+            <div className="flex flex-wrap justify-end gap-2">
               <Button variant="outline" onClick={() => navigate(-1)}>
                 Annuleren
               </Button>
-              <Button disabled={!canSave || !!savedContract} onClick={handleSave}>
+              <Button
+                variant="outline"
+                disabled={!canSave || !!savedContract}
+                onClick={() => handleSave()}
+              >
                 <Save className="h-4 w-4 mr-2" />
                 {saving ? "Opslaan…" : savedContract ? "Opgeslagen" : "Concept opslaan"}
               </Button>
-              {savedContract && !signUrl && (
-                <Button onClick={handleSend} disabled={sending}>
-                  <Send className="h-4 w-4 mr-2" />
-                  {sending ? "Versturen…" : "Verstuur ter ondertekening"}
-                </Button>
-              )}
+              <Button
+                onClick={handleSend}
+                disabled={!canSend || !!signUrl}
+                title={
+                  missingForSend.length
+                    ? `Ontbreekt: ${missingForSend.join(", ")}`
+                    : undefined
+                }
+              >
+                <Send className="h-4 w-4 mr-2" />
+                {sending
+                  ? "Versturen…"
+                  : signUrl
+                    ? "Verstuurd"
+                    : "Versturen voor ondertekening"}
+              </Button>
             </div>
 
             {signUrl && (
