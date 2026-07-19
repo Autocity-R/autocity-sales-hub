@@ -91,7 +91,6 @@ export default function ContractNew() {
   // Extras
   const [mainPhotoUrl, setMainPhotoUrl] = useState<string | null>(null);
   const [branchInfo, setBranchInfo] = useState<any | null>(null);
-  const [mobileTab, setMobileTab] = useState<"form" | "preview">("form");
 
   // Saved-contract state (after "Concept opslaan")
   const [savedContract, setSavedContract] = useState<any | null>(null);
