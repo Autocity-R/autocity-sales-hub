@@ -3277,6 +3277,48 @@ export type Database = {
           },
         ]
       }
+      lms_sync_log: {
+        Row: {
+          contract_number: string | null
+          dry_run: boolean
+          error: string | null
+          id: string
+          match_method: string | null
+          matched_contact_id: string | null
+          matched_vehicle_id: string | null
+          ok: boolean
+          payload: Json | null
+          planned_actions: Json | null
+          received_at: string
+        }
+        Insert: {
+          contract_number?: string | null
+          dry_run?: boolean
+          error?: string | null
+          id?: string
+          match_method?: string | null
+          matched_contact_id?: string | null
+          matched_vehicle_id?: string | null
+          ok?: boolean
+          payload?: Json | null
+          planned_actions?: Json | null
+          received_at?: string
+        }
+        Update: {
+          contract_number?: string | null
+          dry_run?: boolean
+          error?: string | null
+          id?: string
+          match_method?: string | null
+          matched_contact_id?: string | null
+          matched_vehicle_id?: string | null
+          ok?: boolean
+          payload?: Json | null
+          planned_actions?: Json | null
+          received_at?: string
+        }
+        Relationships: []
+      }
       loan_cars: {
         Row: {
           created_at: string
@@ -4471,6 +4513,7 @@ export type Database = {
             }
             Returns: undefined
           }
+      vault_secret: { Args: { secret_name: string }; Returns: string }
       verify_webhook_sync: {
         Args: { agent_uuid: string }
         Returns: {

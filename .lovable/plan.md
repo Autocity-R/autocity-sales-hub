@@ -118,3 +118,112 @@ De scope is groot (11 tabs, ~10 services, 5 agent-dashboards, exports, nieuwe ve
 - Eind-tot-eind RLS-test met beide accounts.
 
 Klaar voor Hendrik's verificatie: bij BranchFilter='Alles' zijn cijfers gelijk aan nu; wisselen naar Rotterdam/Heerhugowaard filtert alle tabs en de nieuwe vergelijkings-tab werkt.
+
+---
+
+# Koopcontract 2.0 — Plan
+
+Doel: één bedrijfsbrede manier van koopcontracten maken, geënt op de professionelere flow uit het LMS (Autocity Lead Hub). De huidige contract-generator in dit CRM wordt vervangen door een nieuwe flow met een strak document, directe garantie-koppeling en digitale ondertekening via een publieke tekenlink. Bestaande contracten blijven onaangetast.
+
+## Wat NIET verandert (harde afspraken)
+
+- Reeds gegenereerde contracten in de `contracts`-tabel + bijbehorende bestanden in `vehicle_files` blijven exact zoals ze zijn (inzien, downloaden, printen blijft werken).
+- De multivestiging-logica (fases 1–7) wordt niet aangeraakt: de nieuwe flow hergebruikt `branches` als bron van waarheid voor de entiteits-header (Rotterdam = Autocity Automotive Group B.V., Heerhugowaard = Autocity Noord Holland B.V.).
+- RLS-scoping per branch (multivestiging fase 2) blijft leidend.
+- Bestaande e-mail-, taken- en aftersales-flows worden niet gewijzigd.
+- Contra-koppeling naar het LMS zit **niet** in dit plan (aparte fase 6, later).
+
+## Fase-opzet
+
+Na elke fase stopt de implementatie voor test door Hendrik. Elke fase is puur additief: de oude generator blijft werken tot fase 5 de nieuwe flow als default zet.
+
+### Fase 1 — Datamodel & entiteits-header (backend-only)
+
+- Nieuwe tabel `contract_documents`:
+  - `id`, `contract_number` (uniek, formaat `AC-{BRANCH}-{YYYY}-{seq}` per branch per jaar), `vehicle_id`, `customer_id`, `branch`, `status` (`concept` | `verstuurd` | `getekend` | `geannuleerd`), `contract_type` (`b2b` | `b2c`), `created_by`, `created_at`, `updated_at`.
+  - Snapshot-velden zodat het document reproduceerbaar blijft ook als de auto later wijzigt: `vehicle_snapshot` (jsonb: merk, model, uitvoering, kenteken, VIN, km, kleur, bouwjaar), `customer_snapshot` (jsonb), `company_snapshot` (jsonb: header uit `branches` op moment van opmaak).
+  - Prijzen: `sale_price_ex`, `btw_type` (`marge` | `btw`), `warranty_package`, `warranty_price`, `trade_in_vehicle` (jsonb), `trade_in_value`, `special_terms` (text), `total_price`.
+- Nieuwe tabel `contract_signatures`: `contract_id` (FK), `token` (uniek, 32 bytes hex), `token_expires_at`, `signed_at`, `signer_name`, `signer_email`, `signer_ip`, `signature_data` (base64 PNG), `pdf_path` (storage-key in `vehicle-documents`).
+- Sequence + trigger voor `contract_number` per branch per jaar.
+- RLS: verkoper/admin van dezelfde branch mag SELECT/INSERT/UPDATE; `service_role` voor edge functions; **anon SELECT uitsluitend via de RPC `get_contract_by_token(token)`** (security definer) — geen directe anon-reads op de tabellen.
+- GRANTs volgens huisregel (authenticated + service_role, geen anon op de tabellen zelf).
+
+**Risico's**: sequence-collision bij gelijktijdig aanmaken → DB-sequence + retry. Snapshots vergroten rijomvang; jsonb is prima.
+
+**Test na fase 1**: Hendrik verifieert via een dummy-record dat contractnummer klopt en RLS zowel branch-scoping als token-RPC correct afdwingt.
+
+### Fase 2 — Contract-opstellen UI (concept-status, nog geen versturen)
+
+- Nieuwe route `/contracten/nieuw?vehicleId=…` + dialog-variant vanuit voertuig-detail en Verkocht B2C.
+- Formulier in LMS-stijl: klant kiezen/aanmaken (hergebruik `SearchableCustomerSelector`), voertuig-blok (readonly uit vehicle), kale verkoopprijs, BTW/marge-radio, garantiepakket-dropdown (hergebruik `warrantyPackageService` + prijs), inruilvoertuig-blok optioneel, speciale afspraken (rich text), totaal live berekend.
+- **Directe garantie-registratie**: bij opslaan van concept worden de bestaande `warrantyPackage`-velden op `vehicles` (het groene blokje) meteen bijgewerkt (`warrantyPackage`, `warrantyPackagePrice`, `warrantyPackageSetAt`, `warrantyPackageSetBy`). Wijzigen op het concept overschrijft ook direct op het voertuig. Dubbele invoer verdwijnt. Als er al een ander pakket op de auto staat: bevestigingsdialoog vóór overschrijven.
+- Preview-paneel rechts toont het gerenderde document (zelfde template als de uiteindelijke PDF).
+- Opslaan → status `concept`, snapshots gevuld, entiteits-header uit `branches` via `vehicle.branch`.
+
+**Risico's**: garantie per ongeluk overschrijven — gemitigeerd met bevestiging.
+
+**Test na fase 2**: Hendrik maakt 2 concepten (RTD + HHW), controleert header, totaal, en dat het groene blokje op de auto meebeweegt.
+
+### Fase 3 — Documenttemplate & PDF-render
+
+- Nieuw HTML/CSS-template `contractDocumentV2` in de stijl van het LMS: strakke sans-serif, entiteits-header links + logo rechts, contractnummer + datum rechts, secties: Partijen, Voertuig, Financieel (kale prijs, BTW/marge, garantie, inruil, totaal), Speciale afspraken, Handtekeningblok (leeg in concept-preview).
+- PDF-generatie via bestaande `contractPdfService.generatePdfFromHtml`.
+- Preview- en download-knop op het concept.
+- Template haalt uitsluitend uit `contract_documents.*_snapshot` → document reproduceerbaar ook na wijzigingen aan auto/klant/branch.
+
+**Risico's**: pagebreaks in html2pdf → `avoid`-classes per sectie en testen met lange afspraken.
+
+**Test na fase 3**: Hendrik downloadt PDF van een concept en vergelijkt met het door hem aangeleverde LMS-voorbeeld.
+
+### Fase 4 — Digitaal tekenen via publieke link
+
+- "Versturen"-knop op concept → status `verstuurd`, nieuwe rij in `contract_signatures` met random `token` (32 bytes hex) en `token_expires_at` (voorstel: 14 dagen).
+- E-mail naar klant via bestaande email-queue met link `/teken/{token}` (geen inlog).
+- Nieuwe publieke route `/teken/{token}`:
+  - Fetch via RPC `get_contract_by_token(token)` (security definer, valideert expiry + status). Geen directe tabel-reads voor anon.
+  - Rendert het document readonly + handtekening-canvas (touch + muis, via `react-signature-canvas`), verplicht `signer_name` + `signer_email` (voorgevuld uit klantgegevens).
+  - Submit → edge function `contract-sign`:
+    - Verifieert token + status `verstuurd`.
+    - Slaat handtekening, `signed_at`, `signer_ip`, `signer_name`, `signer_email` op.
+    - Rendert definitieve PDF (handtekening ingebed), uploadt naar `vehicle-documents` bucket, path in `pdf_path`.
+    - Registreert het bestand in `vehicle_files` bij de auto (bestaande flow).
+    - Zet `contract_documents.status = 'getekend'`.
+    - Mailt beide partijen (klant + verkoper via `profiles.email` van `created_by`) met de getekende PDF als bijlage.
+- Verkoper ziet in contract-detail live status: `concept` → `verstuurd` (met tijdstip, kopieerbare link, "opnieuw versturen") → `getekend` (met signer-info, tijdstip, IP).
+- "Annuleren" op `verstuurd` invalideert token (`token_expires_at = now()`, status `geannuleerd`).
+
+**Risico's**:
+- Token-lek in e-mail → expiry + eenmalig gebruik (na `getekend` weigert de RPC).
+- Handtekening op mobiel → touch-events expliciet getest.
+- E-mail-delivery: hergebruik bestaande queue, geen nieuwe SMTP.
+- IP-logging AVG: alleen serverside via edge function, gedocumenteerd in privacy-doc.
+
+**Test na fase 4**: Hendrik stuurt een contract naar zijn eigen mail, tekent op telefoon, verifieert dat de PDF in `vehicle_files` bij de auto staat en beide partijen de mail met bijlage krijgen.
+
+### Fase 5 — Cutover: nieuwe flow wordt de standaard
+
+- Entrypoints "Contract opstellen" in Verkocht B2C-lijst en voertuig-detail wijzen naar de nieuwe flow.
+- De oude generator (`contractService.generateContract` + UI) blijft technisch aanwezig zodat oude contracten inzichtbaar blijven, maar is niet meer bereikbaar als "nieuw contract" pad.
+- Nieuwe tab "Koopcontracten 2.0" in het contract-menu, filters op status + branch (respecteert `BranchFilter`); oude tab blijft ernaast voor historie.
+- Korte help-notitie in Settings > Help.
+
+**Risico's**: verkopers zoeken de oude knop → knop-tekst en plaats blijven identiek, alleen het target-scherm verandert.
+
+**Test na fase 5**: Hendrik + één verkoper doorlopen end-to-end op een echte verkoop (concept → tekenen → aflevering).
+
+### Fase 6 — LATER (out of scope nu): LMS contra-koppeling
+
+Zodra een CRM-contract status `getekend` krijgt, stuurt een edge function een webhook naar het LMS (Autocity Lead Hub) met VIN + kenteken + PDF-URL, zodat de bijbehorende auto in het LMS als "verkocht via CRM" wordt geregistreerd. Vereist afstemming met LMS-team over endpoint + shared secret. Eigen mini-plan als het zover is.
+
+## Technische bevestigingen
+
+- Hergebruik: `warrantyPackageService`, `SearchableCustomerSelector`, `contractPdfService.generatePdfFromHtml`, `vehicle-documents` storage-bucket, email-queue, `BranchContext`, `branches`-tabel.
+- Nieuw pakket: `react-signature-canvas` (~15KB) voor het handtekening-canvas.
+- Alle nieuwe DB-toegang via RLS + security-definer RPC voor de publieke tekenlink; geen anon-select op tabellen.
+- Typecheck moet groen blijven per fase.
+
+## Openstaand voor bevestiging vóór fase 1
+
+1. Contractnummer-formaat: voorstel `AC-RTD-2026-0001` / `AC-HHW-2026-0001` (per branch per jaar). Akkoord?
+2. Token-geldigheid: voorstel 14 dagen. Akkoord, of langer/korter?
+3. Garantie-overschrijving: zonder bevestiging als het voertuig nog geen pakket heeft, mét bevestigingsdialoog als er al een ander pakket staat. Akkoord?
