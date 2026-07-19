@@ -19,6 +19,9 @@ export interface ContractV2Snapshot {
   warranty_price?: number | null;
   trade_in_vehicle?: any;
   trade_in_value?: number | null;
+  accessories?: Array<{ name: string; price: number }> | null;
+  financing_conditional?: boolean | null;
+  financing_party?: string | null;
   special_terms?: string | null;
   total_price: number | null;
   main_photo_url?: string | null;
