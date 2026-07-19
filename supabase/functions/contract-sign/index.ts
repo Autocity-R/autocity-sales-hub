@@ -97,6 +97,9 @@ Deno.serve(async (req) => {
         category,
         file_name: `${doc.contract_number}.pdf`,
         file_path: path,
+        file_url: signed?.signedUrl || null,
+        file_type: "application/pdf",
+        file_size: pdfBytes.byteLength,
         metadata: {
           contractType: doc.contract_type,
           contract_id: doc.id,
@@ -108,11 +111,6 @@ Deno.serve(async (req) => {
     } catch (e) {
       console.warn("vehicle_files insert failed", e);
     }
-
-    // Signed URL for immediate download
-    const { data: signed } = await admin.storage
-      .from("vehicle-documents")
-      .createSignedUrl(path, 60 * 60 * 24 * 7);
 
     // Notify parties
     const cust = (doc.customer_snapshot as any) || {};
