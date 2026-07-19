@@ -10,6 +10,7 @@ const corsHeaders = {
 interface Payload {
   contractId: string;
   publicBaseUrl?: string;
+  overrideEmail?: string | null;
 }
 
 function randomToken(len = 40): string {
@@ -81,7 +82,9 @@ Deno.serve(async (req) => {
       cust.companyName ||
       [cust.firstName, cust.lastName].filter(Boolean).join(" ") ||
       "geachte klant";
-    const buyerEmail = cust.email;
+    const buyerEmail =
+      (typeof body.overrideEmail === "string" && body.overrideEmail.trim()) ||
+      cust.email;
     if (buyerEmail) {
       const company = ((doc.company_snapshot as any)?.companyName) || "Autocity";
       const subject = `Uw koopcontract ${doc.contract_number} — digitaal ondertekenen`;
