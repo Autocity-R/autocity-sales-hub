@@ -227,3 +227,11 @@ Zodra een CRM-contract status `getekend` krijgt, stuurt een edge function een we
 1. Contractnummer-formaat: voorstel `AC-RTD-2026-0001` / `AC-HHW-2026-0001` (per branch per jaar). Akkoord?
 2. Token-geldigheid: voorstel 14 dagen. Akkoord, of langer/korter?
 3. Garantie-overschrijving: zonder bevestiging als het voertuig nog geen pakket heeft, mét bevestigingsdialoog als er al een ander pakket staat. Akkoord?
+
+## Beslissingen Hendrik (definitief)
+
+1. Contractnummer-formaat `AC-RTD-2026-0001` / `AC-HHW-2026-0001`: **akkoord**.
+2. Token-geldigheid: **48 uur**. Na verloop kan de verkoper opnieuw versturen (nieuwe token, oude wordt geïnvalideerd).
+3. Garantiepakket: **één pakket per voertuig, harde beveiliging — geen overschrijf-dialoog**. Als het voertuig al een pakket heeft, toont het contract-formulier dat pakket read-only ("Pakket al geregistreerd: {naam} — €{prijs}") zonder keuze of registratie-optie. Server-side afgedwongen: opslag-flow weigert een warranty-registratie via het contract als er al een pakket op het voertuig staat. Corrigeren/verwijderen blijft uitsluitend via de bestaande flow op het voertuig-detail zelf.
+
+Fase 1 wordt uitgevoerd met deze parameters (token-expiry `now() + interval '48 hours'`, nummer-sequence per branch per jaar, geen aanpassing aan bestaande warranty-flow).
