@@ -316,8 +316,6 @@ export const ContractDocumentV2: React.FC<{
   const specsBits = [
     v.year,
     v.color,
-    v.fuel,
-    v.transmission,
     v.mileage ? `${Number(v.mileage).toLocaleString("nl-NL")} km` : null,
   ].filter(Boolean);
 
