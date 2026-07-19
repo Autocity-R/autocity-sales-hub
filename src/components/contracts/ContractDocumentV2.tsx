@@ -347,6 +347,8 @@ export const ContractDocumentV2: React.FC<{
     (s, a) => s + (Number(a?.price) || 0),
     0,
   );
+  const total =
+    data.total_price ?? (salesPrice + warrantyPrice + accessoriesTotal - tradeIn);
 
   const tradeInV = data.trade_in_vehicle || {};
   const tradeInLine = tradeIn > 0
