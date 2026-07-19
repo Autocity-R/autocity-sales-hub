@@ -333,17 +333,40 @@ export const ContractDocumentV2: React.FC<{
     [cust.zipCode, cust.city].filter(Boolean).join(" ") || "—";
 
   const companyName = c.companyName || c.company_name || c.name || "Autocity";
-  const companyLines = [
-    c.address,
-    [c.postalCode || c.postal_code, c.city].filter(Boolean).join(" "),
-    c.phone,
-    c.email,
-  ].filter(Boolean);
+  const companyAddress = c.address || "";
+  const companyPostalCity = [c.postalCode || c.postal_code, c.city].filter(Boolean).join(" ");
+  const companyPhone = c.phone || "";
+  const companyIban = c.iban || "";
+  const companyBtw = c.btw || c.btw_number || "";
+  const companyKvk = c.kvk || c.kvk_number || "";
 
   const btwNote =
     data.btw_type === "btw"
       ? "BTW-voertuig · 21% btw inbegrepen in de koopsom (voor ondernemers verrekenbaar)"
       : "Margevoertuig · margeregeling, btw niet apart verrekenbaar";
+
+  const accessories = Array.isArray(data.accessories) ? data.accessories : [];
+  const accessoriesTotal = accessories.reduce(
+    (s, a) => s + (Number(a?.price) || 0),
+    0,
+  );
+
+  const tradeInV = data.trade_in_vehicle || {};
+  const tradeInLine = tradeIn > 0
+    ? (() => {
+        const parts: string[] = [];
+        const bm = [tradeInV.brand, tradeInV.model].filter(Boolean).join(" ");
+        if (bm) parts.push(bm);
+        if (tradeInV.year) parts.push(`(${tradeInV.year})`);
+        const meta: string[] = [];
+        if (tradeInV.licenseNumber) meta.push(tradeInV.licenseNumber);
+        if (tradeInV.mileage) meta.push(`${Number(tradeInV.mileage).toLocaleString("nl-NL")} km`);
+        const left = parts.join(" ");
+        const right = meta.length ? ` · ${meta.join(" · ")}` : "";
+        const desc = tradeInV.description || "";
+        return left ? `Inruil: ${left}${right}` : desc ? `Inruil: ${desc}${right}` : "Inruil";
+      })()
+    : "";
 
   return (
     <div className="cdv2-root">
