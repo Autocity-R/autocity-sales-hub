@@ -17,11 +17,18 @@ interface Payload {
   warrantyPackageName?: string;
   warrantyPrice?: number;
   tradeInVehicle?: {
-    description?: string;
+    brand?: string;
+    model?: string;
+    year?: number | null;
     licenseNumber?: string;
+    mileage?: number | null;
     value?: number;
+    description?: string;
   } | null;
   tradeInValue?: number;
+  accessories?: Array<{ name: string; price: number }>;
+  financingConditional?: boolean;
+  financingParty?: string | null;
   specialTerms?: string;
   deliveryDate?: string | null;
 }
@@ -109,7 +116,13 @@ Deno.serve(async (req) => {
 
     const tradeInValue = Number(body.tradeInValue || body.tradeInVehicle?.value || 0);
     const salePriceEx = Number(body.salePriceEx || 0);
-    const totalPrice = salePriceEx + effectiveWarrantyPrice - tradeInValue;
+    const accessories = Array.isArray(body.accessories)
+      ? body.accessories
+          .map((a) => ({ name: String(a?.name || "").trim(), price: Number(a?.price) || 0 }))
+          .filter((a) => a.name.length > 0)
+      : [];
+    const accessoriesTotal = accessories.reduce((s, a) => s + a.price, 0);
+    const totalPrice = salePriceEx + effectiveWarrantyPrice + accessoriesTotal - tradeInValue;
 
     // Snapshots
     const vehicleSnapshot = {
@@ -138,6 +151,16 @@ Deno.serve(async (req) => {
         .limit(1)
         .maybeSingle();
       mainPhotoUrl = (photoRow as any)?.url || (photoRow as any)?.file_url || null;
+    }
+    if (!mainPhotoUrl) {
+      const { data: showroomRow } = await admin
+        .from("vehicle_showroom_photos")
+        .select("photo_url")
+        .eq("vehicle_id", vehicle.id)
+        .order("photo_index", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      mainPhotoUrl = (showroomRow as any)?.photo_url || null;
     }
 
     // Salesperson snapshot
@@ -204,6 +227,9 @@ Deno.serve(async (req) => {
         warranty_price: effectiveWarrantyPrice || null,
         trade_in_vehicle: body.tradeInVehicle ?? null,
         trade_in_value: tradeInValue || null,
+        accessories,
+        financing_conditional: !!body.financingConditional,
+        financing_party: body.financingParty || null,
         special_terms: body.specialTerms || null,
         total_price: totalPrice,
         main_photo_url: mainPhotoUrl,
