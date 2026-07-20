@@ -124,17 +124,20 @@ Deno.serve(async (req) => {
       cust.companyName ||
       [cust.firstName, cust.lastName].filter(Boolean).join(" ") ||
       "geachte klant";
-    const company = (doc.company_snapshot as any)?.companyName || "Autocity";
+    const companySnap = (doc.company_snapshot as any) || {};
+    const company = companySnap.companyName || companySnap.name || "Auto City";
+    const companyPhone = companySnap.phone || "";
     const salesEmail = (doc as any).salesperson_email || "inkoop@auto-city.nl";
-    const html = `
-      <div style="font-family:Inter,Arial,sans-serif;color:#222;max-width:560px;margin:0 auto;">
-        <p>Beste ${buyerName},</p>
-        <p>Bedankt voor het digitaal ondertekenen van koopcontract <strong>${doc.contract_number}</strong>. Uw ondertekende kopie is als PDF bijgevoegd en ook via onderstaande link (7 dagen geldig) te downloaden.</p>
-        <p style="text-align:center;margin:24px 0;">
-          <a href="${signed?.signedUrl || "#"}" style="background:#FF6B00;color:#fff;text-decoration:none;padding:12px 22px;border-radius:2px;font-weight:600;">Ondertekend contract downloaden</a>
-        </p>
-        <p style="font-size:12px;color:#999;">Met vriendelijke groet,<br/>${company}</p>
-      </div>`;
+    const salesName = (doc as any).salesperson_name || "Team Auto City";
+    const buyerHtml = renderContractEmail({
+      buyerName,
+      intro: `Bedankt voor het digitaal ondertekenen van koopcontract <strong>${doc.contract_number}</strong>. Uw ondertekende kopie is als PDF bijgevoegd en ook via onderstaande knop (7 dagen geldig) te downloaden.`,
+      ctaText: "Ondertekend contract downloaden",
+      ctaUrl: signed?.signedUrl || "#",
+      salesName,
+      companyName: company,
+      companyPhone,
+    });
     const attachments = signed?.signedUrl
       ? [
           {
@@ -153,13 +156,22 @@ Deno.serve(async (req) => {
           senderEmail: salesEmail,
           to: [buyerEmail],
           subject: `Ondertekend koopcontract ${doc.contract_number}`,
-          htmlBody: html,
+          htmlBody: buyerHtml,
           attachments,
         },
       });
       if (qErr1) console.error("email_queue insert (buyer) failed", qErr1);
     }
     if (salesEmail) {
+      const salesHtml = renderContractEmail({
+        buyerName: salesName,
+        intro: `Contract <strong>${doc.contract_number}</strong> is zojuist digitaal ondertekend door ${buyerName}. Gebruik onderstaande knop om de PDF te bekijken.`,
+        ctaText: "Ondertekend contract bekijken",
+        ctaUrl: signed?.signedUrl || "#",
+        salesName: "Auto City CRM",
+        companyName: company,
+        companyPhone,
+      });
       const { error: qErr2 } = await admin.from("email_queue").insert({
         status: "pending",
         attempts: 0,
@@ -169,7 +181,7 @@ Deno.serve(async (req) => {
           senderEmail: "inkoop@auto-city.nl",
           to: [salesEmail],
           subject: `Contract ${doc.contract_number} is ondertekend`,
-          htmlBody: `<p>Contract <strong>${doc.contract_number}</strong> is zojuist digitaal ondertekend door ${buyerName}. <a href="${signed?.signedUrl || "#"}">Bekijk PDF</a>.</p>`,
+          htmlBody: salesHtml,
           attachments,
         },
       });
@@ -195,9 +207,16 @@ Deno.serve(async (req) => {
             name:
               cust.companyName ||
               [cust.firstName, cust.lastName].filter(Boolean).join(" ") ||
+              cust.name ||
               null,
             email: cust.email || null,
             phone: cust.phone || null,
+            address:
+              [cust.street || cust.address, cust.number]
+                .filter(Boolean)
+                .join(" ") || null,
+            postal_code: cust.zipCode || cust.postal_code || cust.postalCode || null,
+            city: cust.city || null,
           },
           salesperson: { email: salesEmail || null },
           pdf_base64: body.pdf_base64,
@@ -238,4 +257,67 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+const LOGO_URL =
+  "https://www.auto-city.nl/upload/logo/logo_images_0_1698072999114488851.png";
+
+function sanitizeText(s: string): string {
+  return s
+    .replace(/\u2014/g, "-")
+    .replace(/\u2013/g, "-")
+    .replace(/\u2011/g, "-");
+}
+
+function renderContractEmail(opts: {
+  buyerName: string;
+  intro: string;
+  ctaText: string;
+  ctaUrl: string;
+  salesName: string;
+  companyName: string;
+  companyPhone?: string;
+  extraHtml?: string;
+}): string {
+  const {
+    buyerName,
+    intro,
+    ctaText,
+    ctaUrl,
+    salesName,
+    companyName,
+    companyPhone,
+    extraHtml,
+  } = opts;
+  const s = sanitizeText;
+  return `<!doctype html>
+<html><body style="margin:0;padding:0;background:#f6f6f6;">
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#222;max-width:600px;margin:0 auto;background:#ffffff;padding:32px 36px;">
+    <p style="font-size:15px;margin:0 0 12px;">Beste ${s(buyerName)},</p>
+    <p style="font-size:14px;line-height:1.55;color:#333;margin:0 0 20px;">${s(intro)}</p>
+    <p style="text-align:center;margin:28px 0;">
+      <a href="${ctaUrl}" style="background:#FF6B00;color:#ffffff;text-decoration:none;padding:14px 26px;border-radius:4px;font-weight:600;letter-spacing:0.3px;display:inline-block;font-size:14px;">${s(ctaText)}</a>
+    </p>
+    <p style="font-size:12px;color:#666;margin:0 0 6px;">Werkt de knop niet? Open deze link:</p>
+    <p style="font-size:12px;color:#0066cc;word-break:break-all;margin:0 0 24px;">
+      <a href="${ctaUrl}" style="color:#0066cc;text-decoration:underline;">${ctaUrl}</a>
+    </p>
+    ${extraHtml || ""}
+    <hr style="border:none;border-top:1px solid #e5e5e5;margin:28px 0 20px;" />
+    <table cellpadding="0" cellspacing="0" border="0" style="width:100%;font-size:12px;color:#555;">
+      <tr>
+        <td style="vertical-align:top;padding-right:16px;width:80px;">
+          <img src="${LOGO_URL}" alt="Auto City" style="width:70px;height:auto;display:block;" />
+        </td>
+        <td style="vertical-align:top;line-height:1.6;">
+          <div style="color:#333;">Met vriendelijke groet,</div>
+          <div style="font-weight:600;color:#222;">${s(salesName)}</div>
+          <div>${s(companyName)}</div>
+          ${companyPhone ? `<div>Tel: ${s(companyPhone)}</div>` : ""}
+          <div><a href="https://www.auto-city.nl" style="color:#FF6B00;text-decoration:none;">www.auto-city.nl</a></div>
+        </td>
+      </tr>
+    </table>
+  </div>
+</body></html>`;
 }

@@ -32,12 +32,9 @@ export interface ContractV2Snapshot {
   buyer_signature_data_url?: string | null;
 }
 
-const LOGO_URL =
-  "https://www.auto-city.nl/upload/logo/logo_images_0_1698072999114488851.png";
-
-// LMS-style hero uses the fixed Auto City pand photo — geen voertuigfoto's meer.
-const DEFAULT_PHOTO =
-  "https://www.auto-city.nl/upload/page/header_images_1_1757419884335413792.jpg";
+// Same-origin copies so html2canvas can embed them without CORS issues.
+const LOGO_URL = "/contract/logo.png";
+const DEFAULT_PHOTO = "/contract/hero.jpg";
 
 const fmtEur = (n: number | null | undefined) =>
   new Intl.NumberFormat("nl-NL", {
