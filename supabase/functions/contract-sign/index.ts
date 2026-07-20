@@ -306,10 +306,12 @@ function renderContractEmail(opts: {
     <hr style="border:none;border-top:1px solid #e5e5e5;margin:28px 0 20px;" />
     <table cellpadding="0" cellspacing="0" border="0" style="width:100%;font-size:12px;color:#555;">
       <tr>
-        <td style="vertical-align:top;padding-right:16px;width:80px;">
-          <img src="${LOGO_URL}" alt="Auto City" style="width:70px;height:auto;display:block;" />
+        <td style="vertical-align:middle;width:72px;padding:0;">
+          <div style="background:#000000;width:64px;height:64px;border-radius:4px;padding:8px;box-sizing:border-box;">
+            <img src="${LOGO_URL}" alt="Auto City" style="width:100%;height:100%;object-fit:contain;display:block;" />
+          </div>
         </td>
-        <td style="vertical-align:top;line-height:1.6;">
+        <td style="vertical-align:middle;line-height:1.6;border-left:3px solid #FF6B00;padding-left:14px;">
           <div style="color:#333;">Met vriendelijke groet,</div>
           <div style="font-weight:600;color:#222;">${s(salesName)}</div>
           <div>${s(companyName)}</div>
