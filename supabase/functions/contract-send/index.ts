@@ -11,6 +11,7 @@ interface Payload {
   contractId: string;
   publicBaseUrl?: string;
   overrideEmail?: string | null;
+  resend?: boolean;
 }
 
 function randomToken(len = 40): string {
@@ -52,19 +53,39 @@ Deno.serve(async (req) => {
     if (doc.status === "geannuleerd")
       return json({ error: "cancelled" }, 409);
 
-    const token = randomToken(48);
-    const expires = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
-
-    const { data: sig, error: sErr } = await admin
+    // Re-use a still-valid unsigned signature when resending; otherwise mint fresh.
+    let token: string;
+    let expires: string;
+    const { data: existingSig } = await admin
       .from("contract_signatures")
-      .insert({
-        contract_id: doc.id,
-        token,
-        token_expires_at: expires,
-      })
       .select("*")
-      .single();
-    if (sErr) return json({ error: "signature_insert_failed", detail: sErr.message }, 500);
+      .eq("contract_id", doc.id)
+      .is("signed_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (
+      existingSig &&
+      new Date(existingSig.token_expires_at).getTime() > Date.now() + 60_000
+    ) {
+      token = existingSig.token;
+      expires = existingSig.token_expires_at;
+    } else {
+      token = randomToken(48);
+      expires = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
+      const { error: sErr } = await admin
+        .from("contract_signatures")
+        .insert({
+          contract_id: doc.id,
+          token,
+          token_expires_at: expires,
+        });
+      if (sErr)
+        return json(
+          { error: "signature_insert_failed", detail: sErr.message },
+          500,
+        );
+    }
 
     await admin
       .from("contract_documents")
@@ -76,7 +97,7 @@ Deno.serve(async (req) => {
       ? `${baseUrl.replace(/\/$/, "")}/teken/${token}`
       : `/teken/${token}`;
 
-    // Queue an email to the customer
+    // Queue an email to the customer via the shared email_queue processor.
     const cust = (doc.customer_snapshot as any) || {};
     const buyerName =
       cust.companyName ||
@@ -85,30 +106,42 @@ Deno.serve(async (req) => {
     const buyerEmail =
       (typeof body.overrideEmail === "string" && body.overrideEmail.trim()) ||
       cust.email;
-    if (buyerEmail) {
-      const company = ((doc.company_snapshot as any)?.companyName) || "Autocity";
-      const subject = `Uw koopcontract ${doc.contract_number} — digitaal ondertekenen`;
-      const html = `
-        <div style="font-family:Inter,Arial,sans-serif;color:#222;max-width:560px;margin:0 auto;">
-          <p>Beste ${buyerName},</p>
-          <p>Hierbij ontvangt u uw koopcontract <strong>${doc.contract_number}</strong> ter digitale ondertekening.</p>
-          <p style="text-align:center;margin:28px 0;">
-            <a href="${signUrl}" style="background:#FF6B00;color:#fff;text-decoration:none;padding:14px 24px;border-radius:2px;font-weight:600;letter-spacing:0.5px;">Contract bekijken &amp; ondertekenen</a>
-          </p>
-          <p style="font-size:12px;color:#666;">De link is 48 uur geldig. Na ondertekening ontvangt u automatisch een kopie per e-mail.</p>
-          <p style="font-size:12px;color:#999;">Met vriendelijke groet,<br/>${company}</p>
-        </div>`;
-      try {
-        await admin.from("email_queue").insert({
-          to: [buyerEmail],
-          subject,
-          html,
-          status: "pending",
-          meta: { source: "contract-send", contract_id: doc.id },
-        });
-      } catch (e) {
-        console.warn("email_queue insert failed", e);
-      }
+    if (!buyerEmail) {
+      return json(
+        { error: "missing_recipient", detail: "Geen e-mailadres bekend voor de koper." },
+        400,
+      );
+    }
+    const company = ((doc.company_snapshot as any)?.companyName) || "Autocity";
+    const salesEmail = (doc as any).salesperson_email || "inkoop@auto-city.nl";
+    const subject = `Uw koopcontract ${doc.contract_number} — digitaal ondertekenen`;
+    const htmlBody = `
+      <div style="font-family:Inter,Arial,sans-serif;color:#222;max-width:560px;margin:0 auto;">
+        <p>Beste ${buyerName},</p>
+        <p>Hierbij ontvangt u uw koopcontract <strong>${doc.contract_number}</strong> ter digitale ondertekening.</p>
+        <p style="text-align:center;margin:28px 0;">
+          <a href="${signUrl}" style="background:#FF6B00;color:#fff;text-decoration:none;padding:14px 24px;border-radius:2px;font-weight:600;letter-spacing:0.5px;">Contract bekijken &amp; ondertekenen</a>
+        </p>
+        <p style="font-size:12px;color:#666;">De link is 48 uur geldig. Na ondertekening ontvangt u automatisch een kopie per e-mail.</p>
+        <p style="font-size:12px;color:#999;">Met vriendelijke groet,<br/>${company}</p>
+      </div>`;
+    const { error: qErr } = await admin.from("email_queue").insert({
+      status: "pending",
+      attempts: 0,
+      vehicle_id: doc.vehicle_id ?? null,
+      template_id: "contract_v2_send",
+      payload: {
+        senderEmail: salesEmail,
+        to: [buyerEmail],
+        subject,
+        htmlBody,
+      },
+    });
+    if (qErr) {
+      return json(
+        { error: "email_queue_failed", detail: qErr.message },
+        500,
+      );
     }
 
     return json({ ok: true, token, sign_url: signUrl, expires_at: expires });
