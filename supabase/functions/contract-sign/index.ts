@@ -124,17 +124,20 @@ Deno.serve(async (req) => {
       cust.companyName ||
       [cust.firstName, cust.lastName].filter(Boolean).join(" ") ||
       "geachte klant";
-    const company = (doc.company_snapshot as any)?.companyName || "Autocity";
+    const companySnap = (doc.company_snapshot as any) || {};
+    const company = companySnap.companyName || companySnap.name || "Auto City";
+    const companyPhone = companySnap.phone || "";
     const salesEmail = (doc as any).salesperson_email || "inkoop@auto-city.nl";
-    const html = `
-      <div style="font-family:Inter,Arial,sans-serif;color:#222;max-width:560px;margin:0 auto;">
-        <p>Beste ${buyerName},</p>
-        <p>Bedankt voor het digitaal ondertekenen van koopcontract <strong>${doc.contract_number}</strong>. Uw ondertekende kopie is als PDF bijgevoegd en ook via onderstaande link (7 dagen geldig) te downloaden.</p>
-        <p style="text-align:center;margin:24px 0;">
-          <a href="${signed?.signedUrl || "#"}" style="background:#FF6B00;color:#fff;text-decoration:none;padding:12px 22px;border-radius:2px;font-weight:600;">Ondertekend contract downloaden</a>
-        </p>
-        <p style="font-size:12px;color:#999;">Met vriendelijke groet,<br/>${company}</p>
-      </div>`;
+    const salesName = (doc as any).salesperson_name || "Team Auto City";
+    const buyerHtml = renderContractEmail({
+      buyerName,
+      intro: `Bedankt voor het digitaal ondertekenen van koopcontract <strong>${doc.contract_number}</strong>. Uw ondertekende kopie is als PDF bijgevoegd en ook via onderstaande knop (7 dagen geldig) te downloaden.`,
+      ctaText: "Ondertekend contract downloaden",
+      ctaUrl: signed?.signedUrl || "#",
+      salesName,
+      companyName: company,
+      companyPhone,
+    });
     const attachments = signed?.signedUrl
       ? [
           {
