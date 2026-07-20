@@ -413,7 +413,7 @@ export const ContractDocumentV2: React.FC<{
 
           {/* Hero */}
           <div className="cdv2-hero">
-            <img src={DEFAULT_PHOTO} alt="Autocity" crossOrigin="anonymous" />
+            <img src={DEFAULT_PHOTO} alt="Autocity" />
             <div className="overlay" />
             <div className="left">
               <h2>
