@@ -258,3 +258,66 @@ function json(body: unknown, status = 200) {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
+
+const LOGO_URL =
+  "https://www.auto-city.nl/upload/logo/logo_images_0_1698072999114488851.png";
+
+function sanitizeText(s: string): string {
+  return s
+    .replace(/\u2014/g, "-")
+    .replace(/\u2013/g, "-")
+    .replace(/\u2011/g, "-");
+}
+
+function renderContractEmail(opts: {
+  buyerName: string;
+  intro: string;
+  ctaText: string;
+  ctaUrl: string;
+  salesName: string;
+  companyName: string;
+  companyPhone?: string;
+  extraHtml?: string;
+}): string {
+  const {
+    buyerName,
+    intro,
+    ctaText,
+    ctaUrl,
+    salesName,
+    companyName,
+    companyPhone,
+    extraHtml,
+  } = opts;
+  const s = sanitizeText;
+  return `<!doctype html>
+<html><body style="margin:0;padding:0;background:#f6f6f6;">
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#222;max-width:600px;margin:0 auto;background:#ffffff;padding:32px 36px;">
+    <p style="font-size:15px;margin:0 0 12px;">Beste ${s(buyerName)},</p>
+    <p style="font-size:14px;line-height:1.55;color:#333;margin:0 0 20px;">${s(intro)}</p>
+    <p style="text-align:center;margin:28px 0;">
+      <a href="${ctaUrl}" style="background:#FF6B00;color:#ffffff;text-decoration:none;padding:14px 26px;border-radius:4px;font-weight:600;letter-spacing:0.3px;display:inline-block;font-size:14px;">${s(ctaText)}</a>
+    </p>
+    <p style="font-size:12px;color:#666;margin:0 0 6px;">Werkt de knop niet? Open deze link:</p>
+    <p style="font-size:12px;color:#0066cc;word-break:break-all;margin:0 0 24px;">
+      <a href="${ctaUrl}" style="color:#0066cc;text-decoration:underline;">${ctaUrl}</a>
+    </p>
+    ${extraHtml || ""}
+    <hr style="border:none;border-top:1px solid #e5e5e5;margin:28px 0 20px;" />
+    <table cellpadding="0" cellspacing="0" border="0" style="width:100%;font-size:12px;color:#555;">
+      <tr>
+        <td style="vertical-align:top;padding-right:16px;width:80px;">
+          <img src="${LOGO_URL}" alt="Auto City" style="width:70px;height:auto;display:block;" />
+        </td>
+        <td style="vertical-align:top;line-height:1.6;">
+          <div style="color:#333;">Met vriendelijke groet,</div>
+          <div style="font-weight:600;color:#222;">${s(salesName)}</div>
+          <div>${s(companyName)}</div>
+          ${companyPhone ? `<div>Tel: ${s(companyPhone)}</div>` : ""}
+          <div><a href="https://www.auto-city.nl" style="color:#FF6B00;text-decoration:none;">www.auto-city.nl</a></div>
+        </td>
+      </tr>
+    </table>
+  </div>
+</body></html>`;
+}
