@@ -35,6 +35,10 @@ export interface ContractV2Snapshot {
 const LOGO_URL =
   "https://www.auto-city.nl/upload/logo/logo_images_0_1698072999114488851.png";
 
+// LMS-style hero uses the fixed Auto City pand photo — geen voertuigfoto's meer.
+const DEFAULT_PHOTO =
+  "https://www.auto-city.nl/upload/page/header_images_1_1757419884335413792.jpg";
+
 const fmtEur = (n: number | null | undefined) =>
   new Intl.NumberFormat("nl-NL", {
     style: "currency",
@@ -181,7 +185,7 @@ const V2_CSS = `
 }
 .cdv2-sign-box {
   height: 90px; display: flex; align-items: center; justify-content: flex-start;
-  padding: 4px 8px; background: #fff; border-radius: 2px;
+  padding: 4px 8px; background: #000; border: 1px solid rgba(255,255,255,0.1); border-radius: 2px;
 }
 .cdv2-sign-box img, .cdv2-sign-box svg { max-height: 82px; max-width: 100%; object-fit: contain; }
 .cdv2-sign-line { border-bottom: 1px solid rgba(255,255,255,0.12); height: 1px; }
@@ -409,11 +413,7 @@ export const ContractDocumentV2: React.FC<{
 
           {/* Hero */}
           <div className="cdv2-hero">
-            {data.main_photo_url ? (
-              <img src={data.main_photo_url} alt="voertuig" />
-            ) : (
-              <div style={{ width: "100%", height: "100%", background: "#111" }} />
-            )}
+            <img src={DEFAULT_PHOTO} alt="Autocity" crossOrigin="anonymous" />
             <div className="overlay" />
             <div className="left">
               <h2>
