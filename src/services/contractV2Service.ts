@@ -139,3 +139,12 @@ export async function submitContractSignature(payload: {
   if (error) return { error: error.message } as { error: string };
   return data as { ok?: boolean; pdf_url?: string; error?: string };
 }
+
+export async function fetchSignedContractDownload(token: string) {
+  const { data, error } = await supabase.functions.invoke(
+    "contract-signed-download",
+    { body: { token } },
+  );
+  if (error) return { error: error.message } as { error: string };
+  return data as { ok?: boolean; signed_at?: string; pdf_url?: string; error?: string };
+}

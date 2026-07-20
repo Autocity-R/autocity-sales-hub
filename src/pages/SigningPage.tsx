@@ -8,6 +8,7 @@ import {
 import {
   fetchContractByToken,
   submitContractSignature,
+  fetchSignedContractDownload,
 } from "@/services/contractV2Service";
 import { SignaturePad } from "@/components/common/SignaturePad";
 
@@ -26,6 +27,7 @@ export default function SigningPage() {
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [contract, setContract] = useState<ContractV2Snapshot | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [signedAt, setSignedAt] = useState<string | null>(null);
 
   const docRef = useRef<HTMLDivElement | null>(null);
   const [signerName, setSignerName] = useState("");
@@ -45,7 +47,12 @@ export default function SigningPage() {
       const d = (res as any).data;
       if (d?.error) {
         if (d.error === "expired") setStatus("expired");
-        else if (d.error === "already_signed") setStatus("already_signed");
+        else if (d.error === "already_signed") {
+          const dl = await fetchSignedContractDownload(token!);
+          if ((dl as any)?.pdf_url) setPdfUrl((dl as any).pdf_url);
+          if ((dl as any)?.signed_at) setSignedAt((dl as any).signed_at);
+          setStatus("already_signed");
+        }
         else {
           setErrorMsg(d.error);
           setStatus("error");
@@ -133,7 +140,27 @@ export default function SigningPage() {
       </CenterMsg>
     );
   if (status === "already_signed")
-    return <CenterMsg>Dit contract is reeds ondertekend.</CenterMsg>;
+    return (
+      <CenterMsg>
+        <div style={{ fontSize: 20, fontWeight: 600, color: "#FF6B00", marginBottom: 12, fontFamily: "'Space Grotesk', sans-serif" }}>
+          CONTRACT REEDS ONDERTEKEND
+        </div>
+        <p style={{ color: "#ccc", marginBottom: 20 }}>
+          Dit contract is al ondertekend
+          {signedAt ? ` op ${new Date(signedAt).toLocaleDateString("nl-NL", { day: "2-digit", month: "long", year: "numeric" })}` : ""}.
+        </p>
+        {pdfUrl && (
+          <a
+            href={pdfUrl}
+            target="_blank"
+            rel="noreferrer"
+            style={{ ...btnPrimary, display: "inline-block", textDecoration: "none" }}
+          >
+            Ondertekend contract downloaden
+          </a>
+        )}
+      </CenterMsg>
+    );
   if (status === "error")
     return <CenterMsg>Er ging iets mis: {errorMsg}</CenterMsg>;
 
