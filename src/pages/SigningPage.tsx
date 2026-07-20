@@ -200,7 +200,8 @@ export default function SigningPage() {
             value={null}
             onChange={setPendingSig}
             height={200}
-            strokeColor="#111"
+            strokeColor="#ffffff"
+            background="#000000"
           />
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12, gap: 8 }}>
             <button

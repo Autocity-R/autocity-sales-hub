@@ -32,10 +32,10 @@ export function buildSalespersonSignatureSvg(
       <style>@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&amp;family=Dancing+Script:wght@600;700&amp;family=Inter:wght@400;500&amp;display=swap');</style>
     </defs>
     <g transform='translate(24,${72 + s(9, 3)}) rotate(${tilt.toFixed(2)})'>
-      <text x='0' y='0' font-family='Great Vibes, Dancing Script, cursive' font-size='72' fill='#111' font-weight='400'>${initials}</text>
+      <text x='0' y='0' font-family='Great Vibes, Dancing Script, cursive' font-size='72' fill='#ffffff' font-weight='400'>${initials}</text>
     </g>
-    <path d='M 14 ${flourishY.toFixed(1)} C 70 ${(flourishY + 12).toFixed(1)}, 150 ${(flourishY + 8).toFixed(1)}, 230 ${(flourishY - 6).toFixed(1)} S 320 ${(flourishY - 14).toFixed(1)}, 330 ${(flourishY + 2).toFixed(1)}' stroke='#111' stroke-width='1.4' fill='none' stroke-linecap='round'/>
-    <path d='M 40 ${swoopY.toFixed(1)} q 60 8 140 -2' stroke='#111' stroke-width='0.9' fill='none' stroke-linecap='round' opacity='0.55'/>
-    <text x='170' y='104' text-anchor='middle' font-family='Inter, system-ui, sans-serif' font-size='9' fill='#555' letter-spacing='0.6'>${safeName}</text>
+    <path d='M 14 ${flourishY.toFixed(1)} C 70 ${(flourishY + 12).toFixed(1)}, 150 ${(flourishY + 8).toFixed(1)}, 230 ${(flourishY - 6).toFixed(1)} S 320 ${(flourishY - 14).toFixed(1)}, 330 ${(flourishY + 2).toFixed(1)}' stroke='#ffffff' stroke-width='1.4' fill='none' stroke-linecap='round'/>
+    <path d='M 40 ${swoopY.toFixed(1)} q 60 8 140 -2' stroke='#ffffff' stroke-width='0.9' fill='none' stroke-linecap='round' opacity='0.55'/>
+    <text x='170' y='104' text-anchor='middle' font-family='Inter, system-ui, sans-serif' font-size='9' fill='rgba(255,255,255,0.7)' letter-spacing='0.6'>${safeName}</text>
   </svg>`;
 }
