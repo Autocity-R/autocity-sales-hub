@@ -156,13 +156,22 @@ Deno.serve(async (req) => {
           senderEmail: salesEmail,
           to: [buyerEmail],
           subject: `Ondertekend koopcontract ${doc.contract_number}`,
-          htmlBody: html,
+          htmlBody: buyerHtml,
           attachments,
         },
       });
       if (qErr1) console.error("email_queue insert (buyer) failed", qErr1);
     }
     if (salesEmail) {
+      const salesHtml = renderContractEmail({
+        buyerName: salesName,
+        intro: `Contract <strong>${doc.contract_number}</strong> is zojuist digitaal ondertekend door ${buyerName}. Gebruik onderstaande knop om de PDF te bekijken.`,
+        ctaText: "Ondertekend contract bekijken",
+        ctaUrl: signed?.signedUrl || "#",
+        salesName: "Auto City CRM",
+        companyName: company,
+        companyPhone,
+      });
       const { error: qErr2 } = await admin.from("email_queue").insert({
         status: "pending",
         attempts: 0,
@@ -172,7 +181,7 @@ Deno.serve(async (req) => {
           senderEmail: "inkoop@auto-city.nl",
           to: [salesEmail],
           subject: `Contract ${doc.contract_number} is ondertekend`,
-          htmlBody: `<p>Contract <strong>${doc.contract_number}</strong> is zojuist digitaal ondertekend door ${buyerName}. <a href="${signed?.signedUrl || "#"}">Bekijk PDF</a>.</p>`,
+          htmlBody: salesHtml,
           attachments,
         },
       });
@@ -198,9 +207,16 @@ Deno.serve(async (req) => {
             name:
               cust.companyName ||
               [cust.firstName, cust.lastName].filter(Boolean).join(" ") ||
+              cust.name ||
               null,
             email: cust.email || null,
             phone: cust.phone || null,
+            address:
+              [cust.street || cust.address, cust.number]
+                .filter(Boolean)
+                .join(" ") || null,
+            postal_code: cust.zipCode || cust.postal_code || cust.postalCode || null,
+            city: cust.city || null,
           },
           salesperson: { email: salesEmail || null },
           pdf_base64: body.pdf_base64,
