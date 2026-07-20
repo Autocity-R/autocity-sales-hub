@@ -112,19 +112,21 @@ Deno.serve(async (req) => {
         400,
       );
     }
-    const company = ((doc.company_snapshot as any)?.companyName) || "Autocity";
+    const companySnap = (doc.company_snapshot as any) || {};
+    const company = companySnap.companyName || companySnap.name || "Auto City";
+    const companyPhone = companySnap.phone || "";
     const salesEmail = (doc as any).salesperson_email || "inkoop@auto-city.nl";
-    const subject = `Uw koopcontract ${doc.contract_number} — digitaal ondertekenen`;
-    const htmlBody = `
-      <div style="font-family:Inter,Arial,sans-serif;color:#222;max-width:560px;margin:0 auto;">
-        <p>Beste ${buyerName},</p>
-        <p>Hierbij ontvangt u uw koopcontract <strong>${doc.contract_number}</strong> ter digitale ondertekening.</p>
-        <p style="text-align:center;margin:28px 0;">
-          <a href="${signUrl}" style="background:#FF6B00;color:#fff;text-decoration:none;padding:14px 24px;border-radius:2px;font-weight:600;letter-spacing:0.5px;">Contract bekijken &amp; ondertekenen</a>
-        </p>
-        <p style="font-size:12px;color:#666;">De link is 48 uur geldig. Na ondertekening ontvangt u automatisch een kopie per e-mail.</p>
-        <p style="font-size:12px;color:#999;">Met vriendelijke groet,<br/>${company}</p>
-      </div>`;
+    const salesName = (doc as any).salesperson_name || "Team Auto City";
+    const subject = `Uw koopcontract ${doc.contract_number} - digitaal ondertekenen`;
+    const htmlBody = renderContractEmail({
+      buyerName,
+      intro: `Hierbij ontvangt u uw koopcontract <strong>${doc.contract_number}</strong> ter digitale ondertekening. Klik op onderstaande knop om uw contract te bekijken en te ondertekenen. De link is 48 uur geldig.`,
+      ctaText: "Contract bekijken & ondertekenen",
+      ctaUrl: signUrl,
+      salesName,
+      companyName: company,
+      companyPhone,
+    });
     const { error: qErr } = await admin.from("email_queue").insert({
       status: "pending",
       attempts: 0,
