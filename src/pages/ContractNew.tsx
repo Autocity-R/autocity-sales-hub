@@ -846,7 +846,11 @@ export default function ContractNew() {
               </Button>
               <Button
                 onClick={openSendDialog}
-                disabled={!canSend || !!signUrl}
+                disabled={
+                  !canSend ||
+                  sending ||
+                  savedContract?.status === "getekend"
+                }
                 title={
                   missingForSend.length
                     ? `Ontbreekt: ${missingForSend.join(", ")}`
@@ -856,8 +860,8 @@ export default function ContractNew() {
                 <Send className="h-4 w-4 mr-2" />
                 {sending
                   ? "Versturen…"
-                  : signUrl
-                    ? "Verstuurd"
+                  : savedContract?.status === "verstuurd" || signUrl
+                    ? "Opnieuw versturen"
                     : "Versturen voor ondertekening"}
               </Button>
             </div>
