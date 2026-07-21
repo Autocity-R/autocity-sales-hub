@@ -68,25 +68,38 @@ Deno.serve(async (req) => {
       return json({ error: "upload_failed", detail: upErr.message }, 500);
     }
 
-    // Update signature
-    await admin
+    // Update signature (schema: signer_ip, no user_agent column)
+    const { error: sigUpdErr } = await admin
       .from("contract_signatures")
       .update({
         signed_at: now.toISOString(),
         signature_data: body.signature_data_url,
         signer_name: body.signer_name || null,
         signer_email: body.signer_email || null,
-        ip_address: body.ip || null,
-        user_agent: body.user_agent || null,
+        signer_ip: body.ip || null,
         pdf_path: path,
       })
       .eq("id", sig.id);
+    if (sigUpdErr) {
+      console.error("signature update failed", sigUpdErr);
+      return json(
+        { error: "signature_update_failed", detail: sigUpdErr.message },
+        500,
+      );
+    }
 
     // Update contract doc
-    await admin
+    const { error: docUpdErr } = await admin
       .from("contract_documents")
       .update({ status: "getekend", signed_at: now.toISOString() })
       .eq("id", doc.id);
+    if (docUpdErr) {
+      console.error("contract update failed", docUpdErr);
+      return json(
+        { error: "contract_update_failed", detail: docUpdErr.message },
+        500,
+      );
+    }
 
     // Signed URL for immediate download / notifications
     const { data: signed } = await admin.storage
