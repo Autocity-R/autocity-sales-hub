@@ -1,25 +1,34 @@
-## Doel
-De e-mail-footer krijgt het Auto City-logo links met een **oranje verticale scheidingsstreep** tussen logo en tekst (zoals in de screenshot). Dit geldt voor **alle drie de contract-e-mails**: tekenlink, koper-getekend, én verkoper-getekend. De verkoper-naam boven de footer komt (zoals nu al) uit voornaam + achternaam van de ingelogde verkoper (`profiles.first_name` + `profiles.last_name` via `salesperson_name` op het contract).
+# Fix: getekend contract kan opnieuw ondertekend worden
 
-## Wijziging
-Alleen de `renderContractEmail` helper aanpassen. Deze helper staat in twee edge functions (identieke kopieën) — beide krijgen exact dezelfde patch:
-- `supabase/functions/contract-send/index.ts`
-- `supabase/functions/contract-sign/index.ts`
+## Root cause (bevestigd via DB-check)
 
-### Footer-opmaak (exact als screenshot)
-- Logo-cel: vast **zwart vierkant** ~64×64 px met het witte Auto City-logo binnenin (padding ~8 px, `border-radius:4px`, `background:#000000`). Kolom-breedte `width:72px`, `padding-right:0`.
-- **Oranje verticale streep**: op de tekst-cel `border-left:3px solid #FF6B00;` + `padding-left:14px`. Dit geeft de streep die je in Gmail ziet, exact tussen logo en tekst.
-- Tekst-cel inhoud blijft ongewijzigd: "Met vriendelijke groet,", verkoper-naam (bold), bedrijfsnaam, optioneel "Tel: {telefoon}", en `www.auto-city.nl` (oranje link).
-- Table: `cellpadding=0 cellspacing=0`, cellen `vertical-align:middle` zodat streep netjes op logo-hoogte staat.
+`contract_signatures` van AC-RTD-2026-0005 heeft `status='getekend'` op het contract, maar op de handtekening-rij is `signed_at = NULL` en `pdf_path = NULL`. Daardoor blijft `get_contract_by_token()` de sign-UI teruggeven.
 
-### Verkoper-naam (bevestiging huidige werking)
-- `salesName` wordt in `contract-send` en `contract-sign` gelezen uit `doc.salesperson_name`, dat bij aanmaak wordt gezet op `${profiles.first_name} ${profiles.last_name}`. Blijft ongewijzigd — de screenshot toont "Hendrik Moesman", precies deze bron.
+Oorzaak zit in `supabase/functions/contract-sign/index.ts` (rond regel 72-83): de update schrijft naar kolommen die niet bestaan in de tabel:
+
+- code schrijft `ip_address` → tabel heeft `signer_ip`
+- code schrijft `user_agent` → kolom bestaat helemaal niet
+
+De update krijgt daardoor een PostgREST-fout, maar de code doet geen `if (upErr)`-check en gaat vrolijk door: `contract_documents.status` wordt wél op `getekend` gezet, PDF wordt geüpload, maar de signature-rij blijft ongewijzigd → `signed_at` blijft leeg → tokenlink toont opnieuw sign-UI.
+
+## Fix
+
+### 1. `supabase/functions/contract-sign/index.ts`
+- Update-payload aanpassen aan echte schema: `signer_ip` i.p.v. `ip_address`, `user_agent`-veld verwijderen (of migratie toevoegen — kiezen voor verwijderen, is niet essentieel).
+- Uitvoering foutbestendig maken: return van de `update(...)` opvangen en bij `error` een 500 teruggeven i.p.v. stilzwijgend doorgaan. Zelfde voor de `contract_documents`-update en de `vehicle_files`-insert.
+
+### 2. Repareer bestaande vervuilde rijen (data fix)
+Migratie die voor elke `contract_documents.status='getekend'` waarvan de bijbehorende `contract_signatures.signed_at IS NULL` de signature-rij bijwerkt met `signed_at = contract_documents.signed_at`. Zonder deze data-fix blijven AC-RTD-2026-0003 en AC-RTD-2026-0005 kapot.
+
+Voor deze rijen bestaat er nog geen `pdf_path`, dus de "download getekend contract"-knop op de tekenpagina toont niets. Dat is acceptabel voor die twee oude testcontracten — de melding "Dit contract is al ondertekend op {datum}" verschijnt wél, wat het gerapporteerde probleem oplost.
+
+### 3. Extra veiligheidsnet in de RPC (kleine harden-stap)
+`get_contract_by_token()` uitbreiden zodat hij óók `already_signed` retourneert wanneer `contract_documents.status = 'getekend'`, zelfs als per ongeluk `contract_signatures.signed_at` leeg zou zijn. Voorkomt dat een schrijffout in de toekomst weer dezelfde symptomen geeft.
 
 ## Test
-Hendrik verstuurt het testcontract opnieuw via "Opnieuw versturen" en tekent het daarna, om te bevestigen dat:
-1. Tekenlink-mail toont logo + oranje streep + Hendrik Moesman.
-2. Koper-getekend-mail (aan de klant) toont dezelfde footer.
-3. Verkoper-getekend-mail (aan Hendrik zelf) toont dezelfde footer.
 
-## Niet in scope
-Geen wijzigingen aan document, PDF, tekenpagina of verzendlogica. Niet deployen — Hendrik doet dat zelf.
+Na deploy:
+1. Nieuw contract sturen, ondertekenen, dan de tekenlink opnieuw openen → moet direct "Dit contract is al ondertekend op {datum}" tonen met downloadknop.
+2. Oude testcontracten (0003, 0005) via hun tekenlink openen → tonen ook al-getekend melding.
+
+Niet publiceren; Hendrik test in preview.
