@@ -1,7 +1,8 @@
 
 import React from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -13,6 +14,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAdmin = false 
 }) => {
   const { user, loading, isAdmin } = useAuth();
+  const { isRestrictedWorkshopUser, getHomeRoute } = useRoleAccess();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -24,6 +27,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (!user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  // Restricted werkplaats/uitdeuk/operationeel rollen: forceer hun eigen home-route
+  if (isRestrictedWorkshopUser()) {
+    const home = getHomeRoute();
+    const allowed = location.pathname === home
+      || location.pathname.startsWith('/werkplaats/mijn-planning')
+      || location.pathname.startsWith('/uitdeuk')
+      || location.pathname.startsWith('/werkplaats/overzicht')
+      || location.pathname.startsWith('/operationeel');
+    if (!allowed) {
+      return <Navigate to={home} replace />;
+    }
   }
 
   if (requireAdmin && !isAdmin) {
