@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { BranchChip } from "@/components/layout/BranchSwitcher";
+import { useOpenWorkOrdersMap, summariseWOs } from "@/hooks/useOpenWorkOrdersMap";
 
 interface VehicleB2CTableRowProps {
   vehicle: Vehicle;
@@ -96,6 +97,8 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
   deliveryDate
 }) => {
   const { hasPriceAccess } = useRoleAccess();
+  const { data: woMap } = useOpenWorkOrdersMap();
+  const woBadge = summariseWOs(woMap?.[vehicle.id]);
   
   const formatPrice = (price: number | undefined) => {
     if (!price) return "€ -";
@@ -141,6 +144,11 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
         <div className="flex items-center gap-2">
           <BranchChip branch={vehicle.branch} />
           <span>{vehicle.brand}</span>
+          {woBadge && (
+            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${woBadge.cls}`} title={`Werkplaats: ${woBadge.label}`}>
+              {woBadge.icon} {woBadge.label}
+            </Badge>
+          )}
         </div>
       </TableCell>
       <TableCell className="align-middle">
