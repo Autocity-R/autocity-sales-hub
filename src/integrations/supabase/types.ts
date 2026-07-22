@@ -4141,6 +4141,67 @@ export type Database = {
           },
         ]
       }
+      vehicle_intakes: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          branch: string
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          points: Json | null
+          status: string
+          vehicle_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          branch?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          points?: Json | null
+          status?: string
+          vehicle_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          branch?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          points?: Json | null
+          status?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_intakes_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_intakes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_intakes_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_price_audit_log: {
         Row: {
           change_reason: string | null
@@ -4621,6 +4682,113 @@ export type Database = {
         }
         Relationships: []
       }
+      work_orders: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          assigned_to: string | null
+          branch: string
+          created_at: string
+          created_by: string | null
+          description: string
+          discipline: string
+          finish_note: string | null
+          finished_at: string | null
+          id: string
+          is_rush: boolean
+          photos: Json | null
+          reject_note: string | null
+          rejected_count: number
+          result_photos: Json | null
+          sort_order: number
+          source: string
+          started_at: string | null
+          status: string
+          vehicle_id: string
+          warranty_claim_id: string | null
+          work_seconds: number | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          assigned_to?: string | null
+          branch?: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          discipline: string
+          finish_note?: string | null
+          finished_at?: string | null
+          id?: string
+          is_rush?: boolean
+          photos?: Json | null
+          reject_note?: string | null
+          rejected_count?: number
+          result_photos?: Json | null
+          sort_order?: number
+          source?: string
+          started_at?: string | null
+          status?: string
+          vehicle_id: string
+          warranty_claim_id?: string | null
+          work_seconds?: number | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          assigned_to?: string | null
+          branch?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          discipline?: string
+          finish_note?: string | null
+          finished_at?: string | null
+          id?: string
+          is_rush?: boolean
+          photos?: Json | null
+          reject_note?: string | null
+          rejected_count?: number
+          result_photos?: Json | null
+          sort_order?: number
+          source?: string
+          started_at?: string | null
+          status?: string
+          vehicle_id?: string
+          warranty_claim_id?: string | null
+          work_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_orders_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_orders_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       alex_verkoop_rapportage: {
@@ -4724,6 +4892,7 @@ export type Database = {
           webhooks_count: number
         }[]
       }
+      werkplaats_rol: { Args: never; Returns: string }
     }
     Enums: {
       app_role:
@@ -4734,6 +4903,11 @@ export type Database = {
         | "operationeel"
         | "user"
         | "aftersales_manager"
+        | "spuiter"
+        | "monteur"
+        | "werkplaats_chef"
+        | "uitdeuker_extern"
+        | "operationeel_directeur"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4869,6 +5043,11 @@ export const Constants = {
         "operationeel",
         "user",
         "aftersales_manager",
+        "spuiter",
+        "monteur",
+        "werkplaats_chef",
+        "uitdeuker_extern",
+        "operationeel_directeur",
       ],
     },
   },
