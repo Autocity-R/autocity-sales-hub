@@ -27,6 +27,7 @@ const Customers = lazy(() => import("@/pages/Customers"));
 const CustomerDetail = lazy(() => import("@/pages/CustomerDetail"));
 const Reports = lazy(() => import("@/pages/Reports"));
 const Warranty = lazy(() => import("@/pages/Warranty"));
+const GarantieInbox = lazy(() => import("@/pages/garantie/GarantieInbox"));
 const Taxatie = lazy(() => import("@/pages/Taxatie"));
 const FotoStudio = lazy(() => import("@/pages/FotoStudio"));
 const Settings = lazy(() => import("@/pages/Settings"));
@@ -172,6 +173,11 @@ function App() {
         <Route path="/warranty" element={
           <ProtectedRoute>
             <Warranty />
+          </ProtectedRoute>
+        } />
+        <Route path="/garantie/inbox" element={
+          <ProtectedRoute>
+            <GarantieInbox />
           </ProtectedRoute>
         } />
         {/* TODO: Tijdelijk geen rol-check - later terugzetten met RoleProtectedRoute */}
