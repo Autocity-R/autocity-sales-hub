@@ -102,63 +102,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             </Button>
           </Link>
         </div>
-DUMMYEND
-
-/* stray marker to be removed */
-      { url: "/werkplaats", label: "Dashboard", icon: HomeIcon, exact: true },
-      { url: "/inventory", label: "Voorraad", icon: CarIcon, exact: true },
-      { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
-      { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
-      { url: "/customers", label: "Alle klanten", icon: UsersIcon, exact: true },
-      { url: "/warranty", label: "Garantie", icon: ShieldIcon },
-      { url: "/werkplaats/planning", label: "Planning", icon: GanttChartIcon },
-      { url: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
-      { url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
-      { url: "/werkplaats/goedkeuren", label: "Goedkeuren", icon: ClipboardCheck },
-      { url: "/reports", label: "Rapportages", icon: BarChart3 },
-      { url: "/loan-cars", label: "Leenauto beheer", icon: CarIcon },
-      { url: "/calendar", label: "Agenda", icon: CalendarIcon },
-    ];
-    return (
-      <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
-        <ScrollArea className="flex-1 px-2 py-3">
-          <div className="space-y-1">
-            {items.map((it) => {
-              const active = it.exact ? location.pathname === it.url : isActive(it.url);
-              return (
-                <Link key={it.url} to={it.url}>
-                  <Button
-                    variant={active ? "default" : "ghost"}
-                    className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                    size="sm"
-                  >
-                    <it.icon className="mr-2 h-4 w-4" />
-                    {it.label}
-                  </Button>
-                </Link>
-              );
-            })}
-          </div>
-        </ScrollArea>
-      </div>
-    );
-  }
-
-  return (
-    <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
-      <ScrollArea className="flex-1 px-2 py-3">
-        <div className="space-y-1">
-          <Link to="/">
-            <Button
-              variant={isActive("/") ? "default" : "ghost"}
-              className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-              size="sm"
-            >
-              <HomeIcon className="mr-2 h-4 w-4" />
-              Dashboard
-            </Button>
-          </Link>
-        </div>
 
         <div className="mt-8">
           <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
