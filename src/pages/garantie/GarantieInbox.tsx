@@ -12,7 +12,7 @@ import {
 import { Loader2, Search, Send, Sparkles, CheckCircle2, Phone, MapPin, StickyNote, Link2, Shield, Car } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { nl } from "date-fns/locale";
-import { AsPage, AsCard, AsPill, AsMono } from "@/components/aftersales/ui";
+import { AsPage, AsCard, AsPill, AsMono, fmtWait } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
 
 type Filter = "action" | "all" | "done";
@@ -304,7 +304,7 @@ const GarantieInbox: React.FC = () => {
                           <div className="flex items-baseline gap-2">
                             <div className="text-[13px] font-semibold text-slate-900 truncate flex-1">{t.klant_naam || t.klant_email || "Onbekend"}</div>
                             {h !== null && (
-                              <div className={cn("text-[11px] font-semibold tabular-nums", sevText(s!))}>{h}u</div>
+                              <div className={cn("text-[11px] font-semibold tabular-nums", sevText(s!))}>{fmtWait(h)}</div>
                             )}
                           </div>
                           <div className="text-[12px] text-slate-600 truncate">{t.onderwerp || "(geen onderwerp)"}</div>
