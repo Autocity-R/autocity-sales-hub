@@ -30,6 +30,7 @@ export const useRoleAccess = () => {
     if (isUitdeukerExtern()) return '/uitdeuk';
     if (isWerkplaatsChef()) return '/werkplaats/overzicht';
     if (isOperationeelDirecteur()) return '/operationeel';
+    if (isAftersalesManager()) return '/werkplaats';
     return '/';
   };
 
