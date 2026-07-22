@@ -35,8 +35,9 @@ export const useRoleAccess = () => {
 
   // Toegang tot het nieuwe WERKPLAATS menu-blok (aftersales pilaar)
   const hasWerkplaatsAccess = () => {
-    return isAdmin || userRole === 'manager' || userRole === 'operationeel'
-      || userRole === 'aftersales_manager';
+    // Per-dashboard uitrol: WERKPLAATS-menu is UITSLUITEND zichtbaar voor aftersales_manager.
+    // Owner/admin behouden data-toegang via RLS, maar zien het menu (nog) niet.
+    return userRole === 'aftersales_manager';
   };
 
   const hasReportsAccess = () => {
