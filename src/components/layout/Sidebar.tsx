@@ -84,7 +84,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
 
   // Aftersales manager: eigen strak menu — géén ruis van andere rollen
   if (isAftersalesManager()) {
-    const items: { url: string; label: string; icon: any; exact?: boolean }[] = [
+    return <AftersalesSidebar className={className} isActive={isActive} location={location} />;
+  }
+
+  return (
+    <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
+      <ScrollArea className="flex-1 px-2 py-3">
+        <div className="space-y-1">
+          <Link to="/">
+            <Button
+              variant={isActive("/") ? "default" : "ghost"}
+              className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+              size="sm"
+            >
+              <HomeIcon className="mr-2 h-4 w-4" />
+              Dashboard
+            </Button>
+          </Link>
+        </div>
+DUMMYEND
+
+/* stray marker to be removed */
       { url: "/werkplaats", label: "Dashboard", icon: HomeIcon, exact: true },
       { url: "/inventory", label: "Voorraad", icon: CarIcon, exact: true },
       { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
