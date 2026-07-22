@@ -12,7 +12,7 @@ import {
 import { differenceInHours, differenceInDays, format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { AsPage, AsCard, AsPill, AsDot, AsVehicleThumb, AsMono, AsSectionHead, useLiveTimer } from "@/components/aftersales/ui";
+import { AsPage, AsCard, AsPill, AsDot, AsVehicleThumb, AsMono, AsCardHead, AsCardFoot, fmtWait, useLiveTimer } from "@/components/aftersales/ui";
 
 interface WaitingThread {
   id: string;
@@ -304,16 +304,7 @@ const LiveTimerPill: React.FC<{ started?: string | null; tone?: "violet" }> = ({
   return <AsPill tone="violet"><Activity className="h-3 w-3" />{t}</AsPill>;
 };
 
-const CardFooter: React.FC<{ label: string; onClick: () => void }> = ({ label, onClick }) => (
-  <button
-    type="button"
-    onClick={(e) => { e.stopPropagation(); onClick(); }}
-    className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-medium text-slate-600 hover:text-slate-900 border-t border-slate-100"
-  >
-    <span>{label}</span>
-    <ArrowRight className="h-3.5 w-3.5" />
-  </button>
-);
+const CardFooter = AsCardFoot;
 
 const EmptyState: React.FC<{ text: string }> = ({ text }) => (
   <div className="px-4 py-6 text-center text-[12px] text-slate-400">{text}</div>
@@ -373,7 +364,7 @@ const WerkplaatsDashboard: React.FC = () => {
           <div className="flex items-center gap-2 flex-wrap">
             <KpiChip label="Open werkorders" value={totalOpen} />
             <KpiChip label="Nu bezig" value={busyCount} tone="violet" icon={<Activity className="h-4 w-4" />} />
-            <KpiChip label="Garantie >20u" value={warrantyRed} tone={warrantyRed > 0 ? "red" : "slate"} icon={<AlarmClock className="h-4 w-4" />} />
+            <KpiChip label="Mails >20u" value={warrantyRed} tone={warrantyRed > 0 ? "red" : "slate"} icon={<AlarmClock className="h-4 w-4" />} />
             <BranchFilter_UI />
           </div>
         </div>
