@@ -1,18 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrentBranch, applyBranchFilter, BRANCH_LABELS, type BranchFilter } from "@/contexts/BranchContext";
 import BranchFilter_UI from "@/components/reports/BranchFilter";
 import {
   Shield, Wrench, PaintBucket, Hammer, ClipboardCheck, Truck, Inbox,
-  Loader2, ChevronRight, Clock, User as UserIcon, CheckCircle2, AlertCircle,
+  Loader2, ChevronRight, Clock, CheckCircle2, AlertCircle, AlarmClock, Activity, ArrowRight,
 } from "lucide-react";
 import { differenceInHours, differenceInDays, format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { AsPage, AsCard, AsPill, AsDot, AsVehicleThumb, AsMono, AsSectionHead, useLiveTimer } from "@/components/aftersales/ui";
 
 interface WaitingThread {
   id: string;
@@ -24,18 +24,28 @@ interface WaitingThread {
 interface WoLine {
   id: string;
   vehicle: string;
+  vehicleId?: string;
+  photo?: string | null;
+  license?: string | null;
+  vin?: string | null;
   description: string;
   assignee?: string;
   status: string;
   ageDays?: number;
+  startedAt?: string | null;
 }
 interface DeliveryLine {
   id: string;
   vehicle: string;
   license?: string;
+  vin?: string | null;
+  photo?: string | null;
+  time?: string | null;
+  customer?: string | null;
   when: "vandaag" | "morgen";
   ready: boolean;
   missing: string;
+  bits: string[];
 }
 
 interface CockpitData {
@@ -56,11 +66,8 @@ interface CockpitData {
   intakeLines: WoLine[];
 }
 
-const dot = (sev: "green" | "orange" | "red") =>
-  sev === "red" ? "bg-red-500" : sev === "orange" ? "bg-orange-500" : "bg-emerald-500";
-
 const vehicleLabel = (v: any) =>
-  v ? `${v.brand || ""} ${v.model || ""}${v.license_number ? ` (${v.license_number})` : ""}`.trim() : "Onbekend voertuig";
+  v ? `${v.brand || ""} ${v.model || ""}`.trim() : "Onbekend voertuig";
 
 async function loadCockpit(branch: BranchFilter): Promise<CockpitData> {
   const now = new Date();
@@ -107,7 +114,7 @@ async function loadCockpit(branch: BranchFilter): Promise<CockpitData> {
     applyBranchFilter(
       supabase
         .from("work_orders")
-        .select("id, discipline, status, description, vehicle_id, assigned_to, is_rush, sort_order, created_at, started_at, finished_at, vehicles:vehicle_id(brand, model, license_number)"),
+        .select("id, discipline, status, description, vehicle_id, assigned_to, is_rush, sort_order, created_at, started_at, finished_at, work_seconds, vehicles:vehicle_id(brand, model, license_number, vin, showroom_photo_url)"),
       branch
     );
 
@@ -129,10 +136,15 @@ async function loadCockpit(branch: BranchFilter): Promise<CockpitData> {
   const toLine = (w: any): WoLine => ({
     id: w.id,
     vehicle: vehicleLabel(w.vehicles),
+    vehicleId: w.vehicle_id,
+    photo: w.vehicles?.showroom_photo_url || null,
+    license: w.vehicles?.license_number || null,
+    vin: w.vehicles?.vin || null,
     description: w.description || "—",
     assignee: w.assigned_to ? profileMap.get(w.assigned_to) : undefined,
     status: w.status,
     ageDays: w.created_at ? differenceInDays(now, new Date(w.created_at)) : undefined,
+    startedAt: w.started_at || null,
   });
 
   const wpOpen = (wpOpenRes.data as any[]) || [];
@@ -152,7 +164,7 @@ async function loadCockpit(branch: BranchFilter): Promise<CockpitData> {
 
   let dq = supabase
     .from("vehicles")
-    .select("id, brand, model, license_number, delivery_date, import_status, details")
+    .select("id, brand, model, license_number, vin, showroom_photo_url, delivery_date, import_status, details")
     .eq("status", "verkocht_b2c")
     .in("delivery_date", [iso(today), iso(tomorrow)])
     .order("delivery_date", { ascending: true });
@@ -189,16 +201,21 @@ async function loadCockpit(branch: BranchFilter): Promise<CockpitData> {
       id: v.id,
       vehicle: `${v.brand} ${v.model}`,
       license: v.license_number,
+      vin: v.vin || null,
+      photo: v.showroom_photo_url || null,
+      time: details.deliveryTime || null,
+      customer: details.customerName || null,
       when: v.delivery_date === iso(today) ? "vandaag" : "morgen",
       ready,
       missing: ready ? "Gereed voor aflevering" : bits.join(" · "),
+      bits,
     };
   });
 
   // 7) Inname
   let iq = supabase
     .from("vehicle_intakes")
-    .select("id, vehicle_id, created_at, vehicles:vehicle_id(brand, model, license_number)")
+    .select("id, vehicle_id, created_at, vehicles:vehicle_id(brand, model, license_number, vin, showroom_photo_url)")
     .eq("status", "open")
     .order("created_at", { ascending: true })
     .limit(20);
@@ -226,80 +243,88 @@ async function loadCockpit(branch: BranchFilter): Promise<CockpitData> {
     intakeLines: ((intakes as any[]) || []).slice(0, 3).map((i: any) => ({
       id: i.id,
       vehicle: vehicleLabel(i.vehicles),
+      license: i.vehicles?.license_number || null,
+      vin: i.vehicles?.vin || null,
+      photo: i.vehicles?.showroom_photo_url || null,
       description: `${differenceInHours(now, new Date(i.created_at))}u binnengemeld`,
       status: "open",
     })),
   };
 }
 
-/* ------- Building blocks ------- */
 
-const Block: React.FC<{
-  icon: React.ReactNode;
-  title: string;
-  count: number;
-  onClick?: () => void;
-  accent?: string;
-  children?: React.ReactNode;
-  emptyLabel?: string;
-}> = ({ icon, title, count, onClick, accent, children, emptyLabel }) => (
-  <Card
-    className={cn(
-      "border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer",
-      accent
-    )}
-    onClick={onClick}
-  >
-    <CardHeader className="pb-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-md bg-muted text-foreground/70">{icon}</div>
-          <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
-            {title}
-          </CardTitle>
-        </div>
-        <div className="text-2xl font-bold leading-none tabular-nums">{count}</div>
+/* ================= Aftersales-only cockpit UI ================= */
+
+const KpiChip: React.FC<{ label: string; value: number | string; tone?: "slate" | "red" | "violet"; icon?: React.ReactNode }> = ({ label, value, tone = "slate", icon }) => {
+  const map: Record<string, string> = {
+    slate: "bg-white border-slate-200 text-slate-900",
+    red: "bg-white border-red-200 text-red-700",
+    violet: "bg-white border-violet-200 text-violet-700",
+  };
+  return (
+    <div className={cn("flex items-center gap-3 rounded-xl border px-4 py-2.5 shadow-sm", map[tone])}>
+      <div className="text-[11px] uppercase tracking-wide text-slate-500 font-medium">{label}</div>
+      <div className="text-lg font-semibold tabular-nums flex items-center gap-1.5">
+        {icon}{value}
       </div>
-    </CardHeader>
-    <CardContent className="pt-1">
-      {children ?? (
-        <div className="text-xs text-muted-foreground py-2">{emptyLabel || "Geen items"}</div>
-      )}
-    </CardContent>
-  </Card>
-);
+    </div>
+  );
+};
 
-const Row: React.FC<{
-  onClick?: (e: React.MouseEvent) => void;
-  left: React.ReactNode;
+const VehicleLine: React.FC<{
+  photo?: string | null;
+  title: string;
+  license?: string | null;
+  vin?: string | null;
+  meta?: React.ReactNode;
   right?: React.ReactNode;
-  sub?: React.ReactNode;
-}> = ({ onClick, left, right, sub }) => (
+  onClick?: () => void;
+}> = ({ photo, title, license, vin, meta, right, onClick }) => (
   <button
     type="button"
-    onClick={(e) => {
-      e.stopPropagation();
-      onClick?.(e);
-    }}
-    className="w-full text-left group flex items-start justify-between gap-2 py-1.5 border-b border-gray-100 last:border-0 hover:bg-muted/40 rounded px-1 -mx-1 transition-colors"
+    onClick={(e) => { e.stopPropagation(); onClick?.(); }}
+    className="w-full text-left group flex items-center gap-3 py-2.5 px-4 hover:bg-slate-50 transition-colors border-t border-slate-100 first:border-t-0"
   >
+    <AsVehicleThumb src={photo} className="h-11 w-16" />
     <div className="min-w-0 flex-1">
-      <div className="text-sm truncate">{left}</div>
-      {sub && <div className="text-xs text-muted-foreground truncate">{sub}</div>}
+      <div className="text-[13px] font-semibold text-slate-900 truncate">{title}</div>
+      <div className="text-[12px] text-slate-500 truncate flex items-center gap-2">
+        {license && <AsMono className="text-slate-700">{license}</AsMono>}
+        {vin && <AsMono>· {vin.slice(-8)}</AsMono>}
+      </div>
+      {meta && <div className="text-[12px] text-slate-600 mt-0.5 truncate">{meta}</div>}
     </div>
-    <div className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground">
-      {right}
-      <ChevronRight className="h-3.5 w-3.5 opacity-40 group-hover:opacity-80" />
-    </div>
+    <div className="shrink-0 flex items-center gap-2">{right}<ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-500" /></div>
   </button>
 );
 
-/* ------- Page ------- */
+const LiveTimerPill: React.FC<{ started?: string | null; tone?: "violet" }> = ({ started }) => {
+  const t = useLiveTimer(started);
+  if (!t) return null;
+  return <AsPill tone="violet"><Activity className="h-3 w-3" />{t}</AsPill>;
+};
+
+const CardFooter: React.FC<{ label: string; onClick: () => void }> = ({ label, onClick }) => (
+  <button
+    type="button"
+    onClick={(e) => { e.stopPropagation(); onClick(); }}
+    className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-medium text-slate-600 hover:text-slate-900 border-t border-slate-100"
+  >
+    <span>{label}</span>
+    <ArrowRight className="h-3.5 w-3.5" />
+  </button>
+);
+
+const EmptyState: React.FC<{ text: string }> = ({ text }) => (
+  <div className="px-4 py-6 text-center text-[12px] text-slate-400">{text}</div>
+);
+
+/* ================= Page ================= */
 
 const WerkplaatsDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { branchFilter, userBranch } = useCurrentBranch();
+  const { branchFilter } = useCurrentBranch();
   const [data, setData] = useState<CockpitData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -307,13 +332,9 @@ const WerkplaatsDashboard: React.FC = () => {
     let cancelled = false;
     setLoading(true);
     loadCockpit(branchFilter)
-      .then((d) => {
-        if (!cancelled) setData(d);
-      })
+      .then((d) => { if (!cancelled) setData(d); })
       .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [branchFilter]);
 
   const greeting = useMemo(() => {
@@ -332,260 +353,249 @@ const WerkplaatsDashboard: React.FC = () => {
       ? "Alle vestigingen"
       : BRANCH_LABELS[branchFilter as keyof typeof BRANCH_LABELS];
 
+  const busyCount = data ? data.wpBezig.length + data.spuitBezig.length : 0;
+  const warrantyRed = data ? data.waitingThreads.filter((t) => t.severity === "red").length : 0;
+  const totalOpen = data ? data.wpOpen + data.spuitOpen + data.uitdeukOpen : 0;
+
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-1 mb-6">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
+      <AsPage>
+        {/* Hero */}
+        <div className="flex items-start justify-between gap-6 flex-wrap mb-5">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-              {greeting}, {displayName}
+            <h1 className="text-2xl md:text-[26px] font-semibold tracking-tight text-slate-900">
+              {greeting}, {displayName} <span className="ml-1">👋</span>
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-[13px] text-slate-500 mt-1">
               {format(new Date(), "EEEE d MMMM yyyy", { locale: nl })} · {branchLabel}
             </p>
           </div>
-          <BranchFilter_UI />
+          <div className="flex items-center gap-2 flex-wrap">
+            <KpiChip label="Open werkorders" value={totalOpen} />
+            <KpiChip label="Nu bezig" value={busyCount} tone="violet" icon={<Activity className="h-4 w-4" />} />
+            <KpiChip label="Garantie >20u" value={warrantyRed} tone={warrantyRed > 0 ? "red" : "slate"} icon={<AlarmClock className="h-4 w-4" />} />
+            <BranchFilter_UI />
+          </div>
         </div>
-      </div>
 
-      {loading || !data ? (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Cockpit laden…
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {/* Garantie */}
-          <Block
-            icon={<Shield className="h-4 w-4" />}
-            title="Openstaande garantie"
-            count={data.warrantyOpen}
-            onClick={() => navigate("/warranty")}
-            emptyLabel="Geen wachtende garantie-mails"
-          >
-            {data.waitingThreads.length === 0 ? (
-              <div className="text-xs text-muted-foreground py-2">
-                Geen wachtende garantie-mails.
-              </div>
-            ) : (
-              <div className="space-y-0">
-                {data.waitingThreads.map((t) => (
-                  <Row
-                    key={t.id}
-                    onClick={() => navigate("/warranty")}
-                    left={
-                      <div className="flex items-center gap-2">
-                        <span className={cn("h-2 w-2 rounded-full shrink-0", dot(t.severity))} />
-                        <span className="font-medium">{t.klant}</span>
+        {loading || !data ? (
+          <div className="flex items-center gap-2 text-slate-500 py-16 justify-center">
+            <Loader2 className="h-4 w-4 animate-spin" /> Cockpit laden…
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 auto-rows-min">
+            {/* Afleveringen — span 7 */}
+            <AsCard className="md:col-span-7 overflow-hidden">
+              <AsSectionHead
+                icon={<Truck className="h-4 w-4" />}
+                title="Afleveringen vandaag & morgen"
+                count={data.deliveries.length}
+              />
+              {data.deliveries.length === 0 ? (
+                <EmptyState text="Geen afleveringen gepland voor vandaag of morgen." />
+              ) : (
+                <div>
+                  {data.deliveries.map((d) => (
+                    <VehicleLine
+                      key={d.id}
+                      photo={d.photo}
+                      title={d.vehicle}
+                      license={d.license}
+                      vin={d.vin}
+                      meta={
+                        <span className="flex items-center gap-2 flex-wrap">
+                          <AsPill tone={d.when === "vandaag" ? "blue" : "slate"}>{d.when}{d.time ? ` · ${d.time}` : ""}</AsPill>
+                          {d.customer && <span className="text-slate-600">{d.customer}</span>}
+                        </span>
+                      }
+                      right={
+                        d.ready ? (
+                          <AsPill tone="green"><CheckCircle2 className="h-3 w-3" />Gereed voor levering</AsPill>
+                        ) : (
+                          <div className="flex items-center gap-1 flex-wrap justify-end max-w-[280px]">
+                            {d.bits.map((b, i) => (
+                              <AsPill key={i} tone={b.includes("checklist") && !b.includes("100") ? "amber" : "red"}>{b}</AsPill>
+                            ))}
+                          </div>
+                        )
+                      }
+                      onClick={() => navigate("/inventory/consumer")}
+                    />
+                  ))}
+                </div>
+              )}
+              <CardFooter label="Alle geplande afleveringen" onClick={() => navigate("/inventory/consumer")} />
+            </AsCard>
+
+            {/* Garantie — span 5 */}
+            <AsCard className="md:col-span-5 overflow-hidden">
+              <AsSectionHead
+                icon={<Shield className="h-4 w-4" />}
+                title="Openstaande garantie"
+                count={data.warrantyOpen}
+                right={warrantyRed > 0 ? <AsPill tone="red"><AlarmClock className="h-3 w-3" />{warrantyRed} deadline</AsPill> : null}
+              />
+              {data.waitingThreads.length === 0 ? (
+                <EmptyState text="Geen wachtende garantie-mails." />
+              ) : (
+                <div>
+                  {data.waitingThreads.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => navigate("/garantie/inbox")}
+                      className="w-full text-left group flex items-start gap-3 px-4 py-2.5 border-t border-slate-100 first:border-t-0 hover:bg-slate-50 transition-colors"
+                    >
+                      <AsDot tone={t.severity === "red" ? "red" : t.severity === "orange" ? "amber" : "green"} />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[13px] font-semibold text-slate-900 truncate">{t.klant}</div>
+                        <div className="text-[12px] text-slate-500 truncate">{t.onderwerp}</div>
                       </div>
-                    }
-                    sub={t.onderwerp}
-                    right={<span className="tabular-nums">{t.hours}u</span>}
-                  />
-                ))}
-              </div>
-            )}
-          </Block>
+                      <div className="shrink-0 text-right">
+                        <div className={cn("text-[12px] font-semibold tabular-nums", t.severity === "red" ? "text-red-600" : t.severity === "orange" ? "text-amber-700" : "text-slate-500")}>
+                          {t.severity === "red" && "⏰ "}{t.hours}u
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <CardFooter label="Naar inbox" onClick={() => navigate("/garantie/inbox")} />
+            </AsCard>
 
-          {/* Werkplaats */}
-          <Block
-            icon={<Wrench className="h-4 w-4" />}
-            title="Werkplaats open"
-            count={data.wpOpen}
-            onClick={() => navigate("/werkplaats/planning")}
-            emptyLabel="Geen open werkplaats-orders"
-          >
-            {data.wpBezig.length > 0 && (
-              <div className="mb-2 text-[11px] uppercase tracking-wide text-muted-foreground">
-                Nu bezig
-              </div>
-            )}
-            {data.wpBezig.map((l) => (
-              <Row
-                key={l.id}
-                onClick={() => navigate("/werkplaats/planning")}
-                left={<span className="font-medium">{l.vehicle}</span>}
-                sub={l.description}
-                right={
-                  <span className="flex items-center gap-1">
-                    <UserIcon className="h-3 w-3" />
-                    {l.assignee || "—"}
-                  </span>
-                }
-              />
-            ))}
-            {data.wpLines.length > 0 && data.wpBezig.length > 0 && (
-              <div className="mt-2 mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-                Ingepland
-              </div>
-            )}
-            {data.wpLines.map((l) => (
-              <Row
-                key={l.id}
-                onClick={() => navigate("/werkplaats/planning")}
-                left={<span className="font-medium">{l.vehicle}</span>}
-                sub={l.description}
-                right={l.assignee || "—"}
-              />
-            ))}
-          </Block>
-
-          {/* Schadeherstel */}
-          <Block
-            icon={<PaintBucket className="h-4 w-4" />}
-            title="Schadeherstel open"
-            count={data.spuitOpen}
-            onClick={() => navigate("/werkplaats/planning")}
-            emptyLabel="Geen open spuit-orders"
-          >
-            {data.spuitBezig.length > 0 && (
-              <div className="mb-2 text-[11px] uppercase tracking-wide text-muted-foreground">
-                Nu bezig
-              </div>
-            )}
-            {data.spuitBezig.map((l) => (
-              <Row
-                key={l.id}
-                onClick={() => navigate("/werkplaats/planning")}
-                left={<span className="font-medium">{l.vehicle}</span>}
-                sub={l.description}
-                right={
-                  <span className="flex items-center gap-1">
-                    <UserIcon className="h-3 w-3" />
-                    {l.assignee || "—"}
-                  </span>
-                }
-              />
-            ))}
-            {data.spuitLines.length > 0 && data.spuitBezig.length > 0 && (
-              <div className="mt-2 mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-                Ingepland
-              </div>
-            )}
-            {data.spuitLines.map((l) => (
-              <Row
-                key={l.id}
-                onClick={() => navigate("/werkplaats/planning")}
-                left={<span className="font-medium">{l.vehicle}</span>}
-                sub={l.description}
-                right={l.assignee || "—"}
-              />
-            ))}
-          </Block>
-
-          {/* Uitdeuken */}
-          <Block
-            icon={<Hammer className="h-4 w-4" />}
-            title="Uitdeuken"
-            count={data.uitdeukOpen}
-            onClick={() => navigate("/werkplaats/uitdeuken")}
-            emptyLabel="Geen open uitdeuk-orders"
-          >
-            {data.uitdeukLongest && (
-              <Row
-                onClick={() => navigate("/werkplaats/uitdeuken")}
-                left={<span className="font-medium">{data.uitdeukLongest.vehicle}</span>}
-                sub={data.uitdeukLongest.description}
-                right={
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {data.uitdeukLongest.ageDays ?? 0}d
-                  </span>
-                }
-              />
-            )}
-          </Block>
-
-          {/* Goedkeuring */}
-          <Block
-            icon={<ClipboardCheck className="h-4 w-4" />}
-            title="Wacht op goedkeuring"
-            count={data.waitApproval}
-            onClick={() => navigate("/werkplaats/goedkeuren")}
-            accent={data.waitApproval > 0 ? "ring-1 ring-orange-200" : undefined}
-            emptyLabel="Niets te controleren"
-          >
-            {data.approvalLines.map((l) => (
-              <Row
-                key={l.id}
-                onClick={() => navigate("/werkplaats/goedkeuren")}
-                left={
-                  <span>
-                    <span className="font-medium">{l.vehicle}</span>{" "}
-                    <span className="text-muted-foreground">— afgerond door {l.assignee || "onbekend"}</span>
-                  </span>
-                }
-                sub={l.description}
-                right={
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {l.ageDays ?? 0}d
-                  </span>
-                }
-              />
-            ))}
-          </Block>
-
-          {/* Afleveringen */}
-          <Block
-            icon={<Truck className="h-4 w-4" />}
-            title="Afleveringen vandaag & morgen"
-            count={data.deliveries.length}
-            onClick={() => navigate("/inventory/consumer")}
-            emptyLabel="Geen afleveringen gepland"
-          >
-            {data.deliveries.map((d) => (
-              <Row
-                key={d.id}
-                onClick={() => navigate("/inventory/consumer")}
-                left={
-                  <div className="flex items-center gap-2">
-                    {d.ready ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 text-orange-500 shrink-0" />
-                    )}
-                    <span className="font-medium">
-                      {d.vehicle}
-                      {d.license ? ` · ${d.license}` : ""}
-                    </span>
+            {/* Werkplaats — span 4 */}
+            <AsCard className="md:col-span-4 overflow-hidden">
+              <AsSectionHead icon={<Wrench className="h-4 w-4" />} title="Werkplaats" count={data.wpOpen} />
+              {data.wpBezig[0] ? (
+                <div className="px-4 py-3 border-t border-slate-100 bg-violet-50/40">
+                  <div className="text-[11px] uppercase tracking-wide text-violet-700 font-semibold mb-1">Nu bezig</div>
+                  <div className="flex items-center gap-3">
+                    <AsVehicleThumb src={data.wpBezig[0].photo} className="h-10 w-14" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[13px] font-semibold truncate">{data.wpBezig[0].vehicle}</div>
+                      <div className="text-[12px] text-slate-500 truncate">{data.wpBezig[0].assignee || "—"} · {data.wpBezig[0].description}</div>
+                    </div>
+                    <LiveTimerPill started={data.wpBezig[0].startedAt} />
                   </div>
-                }
-                sub={d.missing}
-                right={
-                  <span
-                    className={cn(
-                      "px-1.5 py-0.5 rounded text-[10px] uppercase font-medium",
-                      d.when === "vandaag"
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-slate-100 text-slate-700"
-                    )}
-                  >
-                    {d.when}
-                  </span>
-                }
-              />
-            ))}
-          </Block>
+                </div>
+              ) : null}
+              {data.wpLines[0] ? (
+                <VehicleLine
+                  photo={data.wpLines[0].photo}
+                  title={data.wpLines[0].vehicle}
+                  license={data.wpLines[0].license}
+                  meta={data.wpLines[0].description}
+                  right={<AsPill tone="slate">wachtrij</AsPill>}
+                  onClick={() => navigate("/werkplaats/planning")}
+                />
+              ) : (!data.wpBezig[0] && <EmptyState text="Geen open werkplaats-orders." />)}
+              <CardFooter label="Naar planning" onClick={() => navigate("/werkplaats/planning")} />
+            </AsCard>
 
-          {/* Inname */}
-          <Block
-            icon={<Inbox className="h-4 w-4" />}
-            title="Inname te doen"
-            count={data.intakeOpen}
-            onClick={() => navigate("/werkplaats/inname")}
-            emptyLabel="Geen open innames"
-          >
-            {data.intakeLines.map((l) => (
-              <Row
-                key={l.id}
-                onClick={() => navigate("/werkplaats/inname")}
-                left={<span className="font-medium">{l.vehicle}</span>}
-                sub={l.description}
-              />
-            ))}
-          </Block>
-        </div>
-      )}
+            {/* Schadeherstel — span 4 */}
+            <AsCard className="md:col-span-4 overflow-hidden">
+              <AsSectionHead icon={<PaintBucket className="h-4 w-4" />} title="Schadeherstel" count={data.spuitOpen} />
+              {data.spuitBezig[0] ? (
+                <div className="px-4 py-3 border-t border-slate-100 bg-violet-50/40">
+                  <div className="text-[11px] uppercase tracking-wide text-violet-700 font-semibold mb-1">Nu bezig</div>
+                  <div className="flex items-center gap-3">
+                    <AsVehicleThumb src={data.spuitBezig[0].photo} className="h-10 w-14" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[13px] font-semibold truncate">{data.spuitBezig[0].vehicle}</div>
+                      <div className="text-[12px] text-slate-500 truncate">{data.spuitBezig[0].assignee || "—"} · {data.spuitBezig[0].description}</div>
+                    </div>
+                    <LiveTimerPill started={data.spuitBezig[0].startedAt} />
+                  </div>
+                </div>
+              ) : null}
+              {data.spuitLines[0] ? (
+                <VehicleLine
+                  photo={data.spuitLines[0].photo}
+                  title={data.spuitLines[0].vehicle}
+                  license={data.spuitLines[0].license}
+                  meta={data.spuitLines[0].description}
+                  right={<AsPill tone="slate">wachtrij</AsPill>}
+                  onClick={() => navigate("/werkplaats/planning")}
+                />
+              ) : (!data.spuitBezig[0] && <EmptyState text="Geen open spuit-orders." />)}
+              <CardFooter label="Naar planning" onClick={() => navigate("/werkplaats/planning")} />
+            </AsCard>
+
+            {/* Uitdeuken — span 4 */}
+            <AsCard className="md:col-span-4 overflow-hidden">
+              <AsSectionHead icon={<Hammer className="h-4 w-4" />} title="Uitdeuken" count={data.uitdeukOpen} />
+              {data.uitdeukLongest ? (
+                <VehicleLine
+                  photo={data.uitdeukLongest.photo}
+                  title={data.uitdeukLongest.vehicle}
+                  license={data.uitdeukLongest.license}
+                  meta={data.uitdeukLongest.description}
+                  right={
+                    <AsPill tone={(data.uitdeukLongest.ageDays ?? 0) > 3 ? "red" : (data.uitdeukLongest.ageDays ?? 0) > 1 ? "amber" : "slate"}>
+                      <Clock className="h-3 w-3" />{data.uitdeukLongest.ageDays ?? 0}d
+                    </AsPill>
+                  }
+                  onClick={() => navigate("/werkplaats/uitdeuken")}
+                />
+              ) : (
+                <EmptyState text="Geen open uitdeuk-orders." />
+              )}
+              <CardFooter label="Alle uitdeuk-orders" onClick={() => navigate("/werkplaats/uitdeuken")} />
+            </AsCard>
+
+            {/* Goedkeuring — span 6 */}
+            <AsCard className="md:col-span-6 overflow-hidden">
+              <AsSectionHead icon={<ClipboardCheck className="h-4 w-4" />} title="Wacht op jouw goedkeuring" count={data.waitApproval} />
+              {data.approvalLines.length === 0 ? (
+                <EmptyState text="Niets te controleren." />
+              ) : (
+                <div>
+                  {data.approvalLines.map((l) => (
+                    <VehicleLine
+                      key={l.id}
+                      photo={l.photo}
+                      title={l.vehicle}
+                      license={l.license}
+                      meta={<span>door <span className="font-medium text-slate-700">{l.assignee || "onbekend"}</span> · {l.description}</span>}
+                      right={
+                        <>
+                          <AsPill tone="amber"><Clock className="h-3 w-3" />{l.ageDays ?? 0}d</AsPill>
+                          <AsPill tone="blue">controleer</AsPill>
+                        </>
+                      }
+                      onClick={() => navigate("/werkplaats/goedkeuren")}
+                    />
+                  ))}
+                </div>
+              )}
+              <CardFooter label="Alle goedkeuringen" onClick={() => navigate("/werkplaats/goedkeuren")} />
+            </AsCard>
+
+            {/* Inname — span 6 */}
+            <AsCard className="md:col-span-6 overflow-hidden">
+              <AsSectionHead icon={<Inbox className="h-4 w-4" />} title="Inname te doen" count={data.intakeOpen} />
+              {data.intakeLines.length === 0 ? (
+                <EmptyState text="Geen open innames." />
+              ) : (
+                <div>
+                  {data.intakeLines.map((l) => (
+                    <VehicleLine
+                      key={l.id}
+                      photo={l.photo}
+                      title={l.vehicle}
+                      license={l.license}
+                      meta={l.description}
+                      right={<AsPill tone="slate"><AlertCircle className="h-3 w-3" />open</AsPill>}
+                      onClick={() => navigate("/werkplaats/inname")}
+                    />
+                  ))}
+                </div>
+              )}
+              <CardFooter label="Alle innames" onClick={() => navigate("/werkplaats/inname")} />
+            </AsCard>
+          </div>
+        )}
+      </AsPage>
     </DashboardLayout>
   );
 };
