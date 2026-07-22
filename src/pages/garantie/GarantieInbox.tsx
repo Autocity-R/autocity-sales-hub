@@ -196,7 +196,7 @@ const GarantieInbox: React.FC = () => {
         received_at: new Date().toISOString(),
         verstuurd_op: new Date().toISOString(),
         verstuurd_door: senderName,
-      });
+      } as any);
       await supabase.from("garantie_email_threads")
         .update({ laatste_email_op: new Date().toISOString() })
         .eq("id", selectedThread.id);
@@ -221,7 +221,7 @@ const GarantieInbox: React.FC = () => {
       body: eventText.trim(),
       richting: "event",
       received_at: new Date().toISOString(),
-    });
+    } as any);
     setEventText("");
     setEventDialog({ open: false, type: "notitie" });
     await loadThread(selectedThread.id);
