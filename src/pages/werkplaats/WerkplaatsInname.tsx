@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,8 +10,9 @@ import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import BranchFilter from "@/components/reports/BranchFilter";
 import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
 import { AddWorkOrderDialog } from "@/components/werkplaats/AddWorkOrderDialog";
-import { Loader2, Plus, Check, Car } from "lucide-react";
+import { Loader2, Plus, Check, Car, Inbox } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { AsPage, AsCard, AsCardHead } from "@/components/aftersales/ui";
 
 interface IntakePoint { text: string; photo_paths?: string[]; work_order_id?: string | null; }
 interface Intake {
@@ -96,60 +96,66 @@ const WerkplaatsInname: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-3xl font-bold">Inname</h1>
-        <div className="flex items-center gap-2">
-          <BranchFilter />
-          <Button onClick={() => setNewOpen(true)}><Plus className="h-4 w-4 mr-1" />Nieuwe inname</Button>
+      <AsPage>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Inname</h1>
+            <p className="text-[13px] text-slate-500 mt-0.5">Binnengemelde auto's punt-voor-punt vastleggen en goedkeuren.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <BranchFilter />
+            <Button onClick={() => setNewOpen(true)}><Plus className="h-4 w-4 mr-1" />Nieuwe inname</Button>
+          </div>
         </div>
-      </div>
 
-      {loading ? <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Laden…</div>
-        : rows.length === 0 ? <p className="text-muted-foreground">Geen open innames.</p>
-          : (
-            <div className="space-y-4">
-              {rows.map(intake => (
-                <Card key={intake.id}>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold text-lg">{intake.vehicle?.brand} {intake.vehicle?.model}</div>
-                        <div className="text-xs text-muted-foreground">{intake.vehicle?.license_number || "—"}</div>
-                      </div>
-                      <Button variant="default" onClick={() => approve(intake)}><Check className="h-4 w-4 mr-1" />Inname goedkeuren</Button>
-                    </div>
-
-                    <div className="space-y-2">
-                      {intake.points.length === 0 && <p className="text-sm text-muted-foreground">Nog geen punten toegevoegd.</p>}
-                      {intake.points.map((p, idx) => (
-                        <div key={idx} className="border rounded p-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1">
-                              <div className="text-sm">{p.text}</div>
-                              {p.photo_paths && p.photo_paths.length > 0 && (
-                                <div className="flex gap-2 mt-2 flex-wrap">
-                                  {p.photo_paths.map((path, i) => <WorkshopPhoto key={i} path={path} className="w-16 h-16" />)}
-                                </div>
-                              )}
-                            </div>
-                            {p.work_order_id
-                              ? <Badge className="bg-emerald-500 text-white">Taak aangemaakt</Badge>
-                              : <Button size="sm" variant="outline" onClick={() => setAddTask({ intake, pointIndex: idx })}>→ Taak toewijzen</Button>}
+        {loading ? (
+          <div className="flex items-center gap-2 text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Laden…</div>
+        ) : rows.length === 0 ? (
+          <AsCard className="p-10 text-center text-slate-400 text-[13px]">Geen open innames.</AsCard>
+        ) : (
+          <div className="space-y-4">
+            {rows.map(intake => (
+              <AsCard key={intake.id} className="overflow-hidden">
+                <AsCardHead
+                  tone="green"
+                  icon={<Inbox className="h-4 w-4" />}
+                  title={`${intake.vehicle?.brand ?? ""} ${intake.vehicle?.model ?? ""}`.trim() || "Onbekend voertuig"}
+                  subtitle={intake.vehicle?.license_number || "—"}
+                  count={intake.points.length}
+                  right={<Button size="sm" onClick={() => approve(intake)}><Check className="h-4 w-4 mr-1" />Goedkeuren</Button>}
+                />
+                <div className="px-5 pb-4 pt-4 border-t border-slate-100 space-y-3">
+                  <div className="space-y-2">
+                    {intake.points.length === 0 && <p className="text-sm text-slate-400">Nog geen punten toegevoegd.</p>}
+                    {intake.points.map((p, idx) => (
+                      <div key={idx} className="border border-slate-200 rounded-md p-2.5 bg-white">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <div className="text-sm">{p.text}</div>
+                            {p.photo_paths && p.photo_paths.length > 0 && (
+                              <div className="flex gap-2 mt-2 flex-wrap">
+                                {p.photo_paths.map((path, i) => <WorkshopPhoto key={i} path={path} className="w-16 h-16" />)}
+                              </div>
+                            )}
                           </div>
+                          {p.work_order_id
+                            ? <Badge className="bg-emerald-500 text-white">Taak aangemaakt</Badge>
+                            : <Button size="sm" variant="outline" onClick={() => setAddTask({ intake, pointIndex: idx })}>→ Taak toewijzen</Button>}
                         </div>
-                      ))}
-                    </div>
-
-                    <div className="border-t pt-3 space-y-2">
-                      <Textarea placeholder="Nieuw inname-punt…" value={pointText[intake.id] || ""} onChange={(e) => setPointText(p => ({ ...p, [intake.id]: e.target.value }))} />
-                      <Input type="file" multiple accept="image/*" onChange={(e) => setPointFiles(p => ({ ...p, [intake.id]: Array.from(e.target.files || []) }))} />
-                      <Button size="sm" onClick={() => addPoint(intake)}>Punt toevoegen</Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-slate-100 pt-3 space-y-2">
+                    <Textarea placeholder="Nieuw inname-punt…" value={pointText[intake.id] || ""} onChange={(e) => setPointText(p => ({ ...p, [intake.id]: e.target.value }))} />
+                    <Input type="file" multiple accept="image/*" onChange={(e) => setPointFiles(p => ({ ...p, [intake.id]: Array.from(e.target.files || []) }))} />
+                    <Button size="sm" onClick={() => addPoint(intake)}>Punt toevoegen</Button>
+                  </div>
+                </div>
+              </AsCard>
+            ))}
+          </div>
+        )}
+      </AsPage>
 
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
         <DialogContent>

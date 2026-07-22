@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,8 +7,9 @@ import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import BranchFilter from "@/components/reports/BranchFilter";
 import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
 import { DISCIPLINE_LABELS, WorkOrderDiscipline } from "@/components/werkplaats/workOrderTypes";
-import { Check, Loader2, Undo2, Timer } from "lucide-react";
+import { Check, Loader2, Undo2, Timer, ClipboardCheck } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { AsPage, AsCard, AsCardHead } from "@/components/aftersales/ui";
 
 interface WO {
   id: string; discipline: string; description: string; is_rush: boolean;
@@ -70,57 +70,63 @@ const WerkplaatsGoedkeuren: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-3xl font-bold">Goedkeuren <Badge className="ml-2">{rows.length}</Badge></h1>
-          <p className="text-muted-foreground">Afgeronde werkorders controleren en akkoord geven.</p>
+      <AsPage>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Goedkeuren</h1>
+            <p className="text-[13px] text-slate-500 mt-0.5">Afgeronde werkorders controleren en akkoord geven.</p>
+          </div>
+          <BranchFilter />
         </div>
-        <BranchFilter />
-      </div>
 
-      {loading ? <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Laden…</div>
-        : rows.length === 0 ? <p className="text-muted-foreground">Geen orders wachten op goedkeuring.</p>
-          : (
-            <div className="space-y-3">
-              {rows.map(w => (
-                <Card key={w.id}>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-semibold text-lg">{w.vehicle?.brand} {w.vehicle?.model} · {w.vehicle?.license_number || "—"}</div>
-                        <div className="text-sm text-muted-foreground">{DISCIPLINE_LABELS[w.discipline as WorkOrderDiscipline] || w.discipline}</div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="default" onClick={() => approve(w)}><Check className="h-4 w-4 mr-1" />Goedkeuren</Button>
-                        <Button variant="outline" onClick={() => reject(w)}><Undo2 className="h-4 w-4 mr-1" />Terugsturen</Button>
+        {loading ? (
+          <div className="flex items-center gap-2 text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Laden…</div>
+        ) : rows.length === 0 ? (
+          <AsCard className="p-10 text-center text-slate-400 text-[13px]">Geen orders wachten op goedkeuring.</AsCard>
+        ) : (
+          <div className="space-y-4">
+            {rows.map(w => (
+              <AsCard key={w.id} className="overflow-hidden">
+                <AsCardHead
+                  tone="teal"
+                  icon={<ClipboardCheck className="h-4 w-4" />}
+                  title={`${w.vehicle?.brand ?? ""} ${w.vehicle?.model ?? ""} · ${w.vehicle?.license_number || "—"}`}
+                  subtitle={DISCIPLINE_LABELS[w.discipline as WorkOrderDiscipline] || w.discipline}
+                  right={
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => approve(w)}><Check className="h-4 w-4 mr-1" />Goedkeuren</Button>
+                      <Button size="sm" variant="outline" onClick={() => reject(w)}><Undo2 className="h-4 w-4 mr-1" />Terugsturen</Button>
+                    </div>
+                  }
+                />
+                <div className="px-5 pb-4 pt-4 border-t border-slate-100 space-y-3">
+                  <div className="text-sm text-slate-800">{w.description}</div>
+                  {w.finish_note && <div className="text-sm italic text-slate-500">Notitie: {w.finish_note}</div>}
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <Timer className="h-4 w-4" /> Werktijd: {fmtSec(w.work_seconds)}
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wide mb-1 text-slate-500 font-semibold">Opdracht-foto's</div>
+                      <div className="flex flex-wrap gap-2">
+                        {(w.photos || []).length === 0 && <span className="text-xs text-slate-400">—</span>}
+                        {(w.photos || []).map((p, i) => <WorkshopPhoto key={i} path={p} className="w-24 h-24" />)}
                       </div>
                     </div>
-                    <div className="text-sm">{w.description}</div>
-                    {w.finish_note && <div className="text-sm italic text-muted-foreground">Notitie: {w.finish_note}</div>}
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Timer className="h-4 w-4" /> Werktijd: {fmtSec(w.work_seconds)}
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div>
-                        <div className="text-xs uppercase tracking-wide mb-1">Opdracht-foto's</div>
-                        <div className="flex flex-wrap gap-2">
-                          {(w.photos || []).length === 0 && <span className="text-xs text-muted-foreground">—</span>}
-                          {(w.photos || []).map((p, i) => <WorkshopPhoto key={i} path={p} className="w-24 h-24" />)}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs uppercase tracking-wide mb-1">Resultaat-foto's</div>
-                        <div className="flex flex-wrap gap-2">
-                          {(w.result_photos || []).length === 0 && <span className="text-xs text-muted-foreground">—</span>}
-                          {(w.result_photos || []).map((p, i) => <WorkshopPhoto key={i} path={p} className="w-24 h-24" />)}
-                        </div>
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wide mb-1 text-slate-500 font-semibold">Resultaat-foto's</div>
+                      <div className="flex flex-wrap gap-2">
+                        {(w.result_photos || []).length === 0 && <span className="text-xs text-slate-400">—</span>}
+                        {(w.result_photos || []).map((p, i) => <WorkshopPhoto key={i} path={p} className="w-24 h-24" />)}
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                  </div>
+                </div>
+              </AsCard>
+            ))}
+          </div>
+        )}
+      </AsPage>
     </DashboardLayout>
   );
 };

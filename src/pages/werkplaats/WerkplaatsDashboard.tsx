@@ -12,7 +12,7 @@ import {
 import { differenceInHours, differenceInDays, format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { AsPage, AsCard, AsPill, AsDot, AsVehicleThumb, AsMono, AsSectionHead, useLiveTimer } from "@/components/aftersales/ui";
+import { AsPage, AsCard, AsPill, AsDot, AsVehicleThumb, AsMono, AsCardHead, AsCardFoot, fmtWait, useLiveTimer } from "@/components/aftersales/ui";
 
 interface WaitingThread {
   id: string;
@@ -304,16 +304,7 @@ const LiveTimerPill: React.FC<{ started?: string | null; tone?: "violet" }> = ({
   return <AsPill tone="violet"><Activity className="h-3 w-3" />{t}</AsPill>;
 };
 
-const CardFooter: React.FC<{ label: string; onClick: () => void }> = ({ label, onClick }) => (
-  <button
-    type="button"
-    onClick={(e) => { e.stopPropagation(); onClick(); }}
-    className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-medium text-slate-600 hover:text-slate-900 border-t border-slate-100"
-  >
-    <span>{label}</span>
-    <ArrowRight className="h-3.5 w-3.5" />
-  </button>
-);
+const CardFooter = AsCardFoot;
 
 const EmptyState: React.FC<{ text: string }> = ({ text }) => (
   <div className="px-4 py-6 text-center text-[12px] text-slate-400">{text}</div>
@@ -373,7 +364,7 @@ const WerkplaatsDashboard: React.FC = () => {
           <div className="flex items-center gap-2 flex-wrap">
             <KpiChip label="Open werkorders" value={totalOpen} />
             <KpiChip label="Nu bezig" value={busyCount} tone="violet" icon={<Activity className="h-4 w-4" />} />
-            <KpiChip label="Garantie >20u" value={warrantyRed} tone={warrantyRed > 0 ? "red" : "slate"} icon={<AlarmClock className="h-4 w-4" />} />
+            <KpiChip label="Mails >20u" value={warrantyRed} tone={warrantyRed > 0 ? "red" : "slate"} icon={<AlarmClock className="h-4 w-4" />} />
             <BranchFilter_UI />
           </div>
         </div>
@@ -386,9 +377,11 @@ const WerkplaatsDashboard: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4 auto-rows-min">
             {/* Afleveringen — span 7 */}
             <AsCard className="md:col-span-7 overflow-hidden">
-              <AsSectionHead
+              <AsCardHead
+                tone="blue"
                 icon={<Truck className="h-4 w-4" />}
                 title="Afleveringen vandaag & morgen"
+                subtitle="Gereedheid per auto — checklist · inschrijving · open werkorders"
                 count={data.deliveries.length}
               />
               {data.deliveries.length === 0 ? (
@@ -424,15 +417,17 @@ const WerkplaatsDashboard: React.FC = () => {
                   ))}
                 </div>
               )}
-              <CardFooter label="Alle geplande afleveringen" onClick={() => navigate("/inventory/consumer")} />
+              <AsCardFoot label="Alle geplande afleveringen →" onClick={() => navigate("/inventory/consumer")} />
             </AsCard>
 
             {/* Garantie — span 5 */}
             <AsCard className="md:col-span-5 overflow-hidden">
-              <AsSectionHead
+              <AsCardHead
+                tone="red"
                 icon={<Shield className="h-4 w-4" />}
-                title="Openstaande garantie"
-                count={data.warrantyOpen}
+                title="Openstaande mails"
+                subtitle="garantie@auto-city.nl · 24-uurs opvolgregel"
+                count={data.waitingThreads.length}
                 right={warrantyRed > 0 ? <AsPill tone="red"><AlarmClock className="h-3 w-3" />{warrantyRed} deadline</AsPill> : null}
               />
               {data.waitingThreads.length === 0 ? (
@@ -453,19 +448,19 @@ const WerkplaatsDashboard: React.FC = () => {
                       </div>
                       <div className="shrink-0 text-right">
                         <div className={cn("text-[12px] font-semibold tabular-nums", t.severity === "red" ? "text-red-600" : t.severity === "orange" ? "text-amber-700" : "text-slate-500")}>
-                          {t.severity === "red" && "⏰ "}{t.hours}u
+                          {t.severity === "red" && "⏰ "}{fmtWait(t.hours)}
                         </div>
                       </div>
                     </button>
                   ))}
                 </div>
               )}
-              <CardFooter label="Naar inbox" onClick={() => navigate("/garantie/inbox")} />
+              <AsCardFoot label="Open de inbox →" onClick={() => navigate("/garantie/inbox")} />
             </AsCard>
 
             {/* Werkplaats — span 4 */}
             <AsCard className="md:col-span-4 overflow-hidden">
-              <AsSectionHead icon={<Wrench className="h-4 w-4" />} title="Werkplaats" count={data.wpOpen} />
+              <AsCardHead tone="blue" icon={<Wrench className="h-4 w-4" />} title="Werkplaats" subtitle="Monteurs · wachtrij & bezig" count={data.wpOpen} />
               {data.wpBezig[0] ? (
                 <div className="px-4 py-3 border-t border-slate-100 bg-violet-50/40">
                   <div className="text-[11px] uppercase tracking-wide text-violet-700 font-semibold mb-1">Nu bezig</div>
@@ -489,12 +484,12 @@ const WerkplaatsDashboard: React.FC = () => {
                   onClick={() => navigate("/werkplaats/planning")}
                 />
               ) : (!data.wpBezig[0] && <EmptyState text="Geen open werkplaats-orders." />)}
-              <CardFooter label="Naar planning" onClick={() => navigate("/werkplaats/planning")} />
+              <AsCardFoot label="Naar planning →" onClick={() => navigate("/werkplaats/planning")} />
             </AsCard>
 
             {/* Schadeherstel — span 4 */}
             <AsCard className="md:col-span-4 overflow-hidden">
-              <AsSectionHead icon={<PaintBucket className="h-4 w-4" />} title="Schadeherstel" count={data.spuitOpen} />
+              <AsCardHead tone="violet" icon={<PaintBucket className="h-4 w-4" />} title="Schadeherstel" subtitle="Spuiterij · wachtrij & bezig" count={data.spuitOpen} />
               {data.spuitBezig[0] ? (
                 <div className="px-4 py-3 border-t border-slate-100 bg-violet-50/40">
                   <div className="text-[11px] uppercase tracking-wide text-violet-700 font-semibold mb-1">Nu bezig</div>
@@ -518,12 +513,12 @@ const WerkplaatsDashboard: React.FC = () => {
                   onClick={() => navigate("/werkplaats/planning")}
                 />
               ) : (!data.spuitBezig[0] && <EmptyState text="Geen open spuit-orders." />)}
-              <CardFooter label="Naar planning" onClick={() => navigate("/werkplaats/planning")} />
+              <AsCardFoot label="Naar planning →" onClick={() => navigate("/werkplaats/planning")} />
             </AsCard>
 
             {/* Uitdeuken — span 4 */}
             <AsCard className="md:col-span-4 overflow-hidden">
-              <AsSectionHead icon={<Hammer className="h-4 w-4" />} title="Uitdeuken" count={data.uitdeukOpen} />
+              <AsCardHead tone="amber" icon={<Hammer className="h-4 w-4" />} title="Uitdeuken" subtitle="Extern · dagen-teller" count={data.uitdeukOpen} />
               {data.uitdeukLongest ? (
                 <VehicleLine
                   photo={data.uitdeukLongest.photo}
@@ -540,12 +535,12 @@ const WerkplaatsDashboard: React.FC = () => {
               ) : (
                 <EmptyState text="Geen open uitdeuk-orders." />
               )}
-              <CardFooter label="Alle uitdeuk-orders" onClick={() => navigate("/werkplaats/uitdeuken")} />
+              <AsCardFoot label="Alle uitdeuk-orders →" onClick={() => navigate("/werkplaats/uitdeuken")} />
             </AsCard>
 
             {/* Goedkeuring — span 6 */}
             <AsCard className="md:col-span-6 overflow-hidden">
-              <AsSectionHead icon={<ClipboardCheck className="h-4 w-4" />} title="Wacht op jouw goedkeuring" count={data.waitApproval} />
+              <AsCardHead tone="teal" icon={<ClipboardCheck className="h-4 w-4" />} title="Wacht op jouw goedkeuring" subtitle="Afgeronde werkorders — controleer" count={data.waitApproval} />
               {data.approvalLines.length === 0 ? (
                 <EmptyState text="Niets te controleren." />
               ) : (
@@ -568,12 +563,12 @@ const WerkplaatsDashboard: React.FC = () => {
                   ))}
                 </div>
               )}
-              <CardFooter label="Alle goedkeuringen" onClick={() => navigate("/werkplaats/goedkeuren")} />
+              <AsCardFoot label="Alle goedkeuringen →" onClick={() => navigate("/werkplaats/goedkeuren")} />
             </AsCard>
 
             {/* Inname — span 6 */}
             <AsCard className="md:col-span-6 overflow-hidden">
-              <AsSectionHead icon={<Inbox className="h-4 w-4" />} title="Inname te doen" count={data.intakeOpen} />
+              <AsCardHead tone="green" icon={<Inbox className="h-4 w-4" />} title="Inname te doen" subtitle="Binnengemelde auto's zonder inname" count={data.intakeOpen} />
               {data.intakeLines.length === 0 ? (
                 <EmptyState text="Geen open innames." />
               ) : (
@@ -591,7 +586,7 @@ const WerkplaatsDashboard: React.FC = () => {
                   ))}
                 </div>
               )}
-              <CardFooter label="Alle innames" onClick={() => navigate("/werkplaats/inname")} />
+              <AsCardFoot label="Alle innames →" onClick={() => navigate("/werkplaats/inname")} />
             </AsCard>
           </div>
         )}

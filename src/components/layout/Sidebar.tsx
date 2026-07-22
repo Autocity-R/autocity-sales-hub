@@ -366,69 +366,99 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
 import { Inbox as InboxIcon } from "lucide-react";
 import { useGarantieUnread } from "@/hooks/useGarantieUnread";
 
+type AsNavItem = { url: string; label: string; icon: any; exact?: boolean; badge?: number; sub?: AsNavItem[] };
+type AsNavSection = { label: string; items: AsNavItem[] };
+
 const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) => boolean; location: ReturnType<typeof useLocation> }> = ({ className, isActive, location }) => {
   const garantieUnread = useGarantieUnread();
 
-  const items: { url: string; label: string; icon: any; exact?: boolean; sub?: { url: string; label: string; icon: any; badge?: number }[] }[] = [
-    { url: "/werkplaats", label: "Dashboard", icon: HomeIcon, exact: true },
-    { url: "/inventory", label: "Voorraad", icon: CarIcon, exact: true },
-    { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
-    { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
-    { url: "/customers", label: "Alle klanten", icon: UsersIcon, exact: true },
+  const sections: AsNavSection[] = [
     {
-      url: "/warranty", label: "Garantie", icon: ShieldIcon,
-      sub: [{ url: "/garantie/inbox", label: "Inbox", icon: InboxIcon, badge: garantieUnread }],
+      label: "OVERZICHT",
+      items: [{ url: "/werkplaats", label: "Dashboard", icon: HomeIcon, exact: true }],
     },
-    { url: "/werkplaats/planning", label: "Planning", icon: GanttChartIcon },
-    { url: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
-    { url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
-    { url: "/werkplaats/goedkeuren", label: "Goedkeuren", icon: ClipboardCheck },
-    { url: "/reports", label: "Rapportages", icon: BarChart3 },
-    { url: "/loan-cars", label: "Leenauto beheer", icon: CarIcon },
-    { url: "/calendar", label: "Agenda", icon: CalendarIcon },
+    {
+      label: "VOERTUIGEN",
+      items: [
+        { url: "/inventory", label: "Voorraad", icon: CarIcon, exact: true },
+        { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
+        { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
+      ],
+    },
+    {
+      label: "WERKPLAATS",
+      items: [
+        { url: "/werkplaats/planning", label: "Planning", icon: GanttChartIcon },
+        { url: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
+        { url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
+        { url: "/werkplaats/goedkeuren", label: "Goedkeuren", icon: ClipboardCheck },
+      ],
+    },
+    {
+      label: "SERVICE",
+      items: [
+        {
+          url: "/warranty", label: "Garantie", icon: ShieldIcon, badge: garantieUnread,
+          sub: [{ url: "/garantie/inbox", label: "Inbox", icon: InboxIcon, badge: garantieUnread }],
+        },
+        { url: "/customers", label: "Alle klanten", icon: UsersIcon, exact: true },
+        { url: "/loan-cars", label: "Leenauto beheer", icon: CarIcon },
+      ],
+    },
+    {
+      label: "OVERIG",
+      items: [
+        { url: "/reports", label: "Rapportages", icon: BarChart3 },
+        { url: "/calendar", label: "Agenda", icon: CalendarIcon },
+      ],
+    },
   ];
+
+  const renderBadge = (n?: number) =>
+    typeof n === "number" && n > 0 ? (
+      <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-semibold flex items-center justify-center px-1.5 shadow-sm">
+        {n > 99 ? "99+" : n}
+      </span>
+    ) : null;
+
+  const renderItem = (it: AsNavItem, indent = false) => {
+    const active = it.exact ? location.pathname === it.url : isActive(it.url);
+    return (
+      <React.Fragment key={it.url}>
+        <Link to={it.url} className="block">
+          <div
+            className={cn(
+              "group relative flex items-center gap-2 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
+              indent && "pl-9",
+              active
+                ? "bg-gradient-to-r from-blue-600/30 via-blue-600/10 to-transparent text-white before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-r before:bg-blue-400"
+                : "text-gray-300 hover:text-white hover:bg-gray-800/60",
+            )}
+          >
+            <it.icon className={cn("h-4 w-4 shrink-0", active ? "text-blue-300" : "text-gray-400 group-hover:text-gray-200")} />
+            <span className="truncate">{it.label}</span>
+            {renderBadge(it.badge)}
+          </div>
+        </Link>
+        {it.sub?.map((s) => renderItem(s, true))}
+      </React.Fragment>
+    );
+  };
 
   return (
     <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
-      <ScrollArea className="flex-1 px-2 py-3">
-        <div className="space-y-1">
-          {items.map((it) => {
-            const active = it.exact ? location.pathname === it.url : isActive(it.url);
-            return (
-              <React.Fragment key={it.url}>
-                <Link to={it.url}>
-                  <Button
-                    variant={active ? "default" : "ghost"}
-                    className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                    size="sm"
-                  >
-                    <it.icon className="mr-2 h-4 w-4" />
-                    {it.label}
-                  </Button>
-                </Link>
-                {it.sub?.map((s) => {
-                  const sActive = isActive(s.url);
-                  return (
-                    <Link key={s.url} to={s.url}>
-                      <Button
-                        variant={sActive ? "default" : "ghost"}
-                        className="w-full justify-start pl-8 text-white hover:text-white hover:bg-gray-800"
-                        size="sm"
-                      >
-                        <s.icon className="mr-2 h-3.5 w-3.5" />
-                        <span className="flex-1 text-left">{s.label}</span>
-                        {typeof s.badge === "number" && s.badge > 0 && (
-                          <span className="ml-2 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-semibold flex items-center justify-center px-1">
-                            {s.badge > 99 ? "99+" : s.badge}
-                          </span>
-                        )}
-                      </Button>
-                    </Link>
-                  );
-                })}
-              </React.Fragment>
-            );
-          })}
+      <ScrollArea className="flex-1 px-3 py-4">
+        <div className="space-y-6">
+          {sections.map((sec) => (
+            <div key={sec.label}>
+              <div className="px-3 mb-1.5 text-[10px] font-semibold tracking-[0.14em] text-gray-500">
+                {sec.label}
+              </div>
+              <div className="space-y-0.5">
+                {sec.items.map((it) => renderItem(it))}
+              </div>
+            </div>
+          ))}
         </div>
       </ScrollArea>
     </div>
