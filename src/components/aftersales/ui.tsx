@@ -1,5 +1,6 @@
 import React from "react";
 import { cn } from "@/lib/utils";
+import { ArrowRight } from "lucide-react";
 
 /**
  * Aftersales-only design primitives. Locally scoped, not shared with other roles.
@@ -96,6 +97,71 @@ export const AsSectionHead: React.FC<{ icon?: React.ReactNode; title: string; co
     {right}
   </div>
 );
+
+/**
+ * Dashboard-kaart kop met betekenisvolle icoon-tegel, titel + subregel en grote teller rechts.
+ * Vervangt AsSectionHead voor de aftersales-cockpit en lijstpagina's.
+ */
+export type AsTone = "blue" | "red" | "amber" | "green" | "violet" | "teal" | "slate" | "pink";
+
+const TONE_ICON: Record<AsTone, string> = {
+  blue: "bg-blue-50 text-blue-600 ring-1 ring-blue-100",
+  red: "bg-red-50 text-red-600 ring-1 ring-red-100",
+  amber: "bg-amber-50 text-amber-700 ring-1 ring-amber-100",
+  green: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
+  violet: "bg-violet-50 text-violet-700 ring-1 ring-violet-100",
+  teal: "bg-teal-50 text-teal-700 ring-1 ring-teal-100",
+  slate: "bg-slate-100 text-slate-600 ring-1 ring-slate-200",
+  pink: "bg-pink-50 text-pink-700 ring-1 ring-pink-100",
+};
+
+export const AsCardHead: React.FC<{
+  icon: React.ReactNode;
+  tone?: AsTone;
+  title: string;
+  subtitle?: string;
+  count?: number | string;
+  right?: React.ReactNode;
+}> = ({ icon, tone = "slate", title, subtitle, count, right }) => (
+  <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4">
+    <div className="flex items-start gap-3 min-w-0">
+      <div className={cn("h-[34px] w-[34px] rounded-xl flex items-center justify-center shrink-0", TONE_ICON[tone])}>
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <div className="text-[13px] font-semibold tracking-tight text-slate-900 truncate">{title}</div>
+        {subtitle && <div className="text-[11.5px] text-slate-500 truncate mt-0.5">{subtitle}</div>}
+      </div>
+    </div>
+    <div className="flex items-center gap-2 shrink-0">
+      {right}
+      {typeof count !== "undefined" && (
+        <div className="text-[22px] font-extrabold tabular-nums text-slate-900 leading-none">{count}</div>
+      )}
+    </div>
+  </div>
+);
+
+export const AsCardFoot: React.FC<{ label: string; onClick?: () => void; className?: string }> = ({ label, onClick, className }) => (
+  <button
+    type="button"
+    onClick={(e) => { e.stopPropagation(); onClick?.(); }}
+    className={cn(
+      "w-full flex items-center justify-between px-5 py-3 text-[12.5px] font-semibold text-blue-600 hover:text-blue-700 border-t border-slate-100 bg-slate-50/40",
+      className,
+    )}
+  >
+    <span>{label}</span>
+    <ArrowRight className="h-3.5 w-3.5" />
+  </button>
+);
+
+/** Wachttijd-format: <24u toont uren ("14u"), daarna dagen ("5 dgn", "31 dgn"). */
+export const fmtWait = (hours: number): string => {
+  if (hours < 24) return `${hours}u`;
+  const d = Math.floor(hours / 24);
+  return `${d} dgn`;
+};
 
 export function useLiveTimer(fromIso?: string | null) {
   const [now, setNow] = React.useState(() => Date.now());
