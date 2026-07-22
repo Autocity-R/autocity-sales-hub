@@ -79,7 +79,7 @@ const WerkplaatsInname: React.FC = () => {
       paths.push(path);
     }
     const newPoints = [...intake.points, { text, photo_paths: paths, work_order_id: null }];
-    const { error } = await supabase.from("vehicle_intakes").update({ points: newPoints }).eq("id", intake.id);
+    const { error } = await supabase.from("vehicle_intakes").update({ points: newPoints as any }).eq("id", intake.id);
     if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
     setPointText(p => ({ ...p, [intake.id]: "" })); setPointFiles(p => ({ ...p, [intake.id]: [] }));
     load();
