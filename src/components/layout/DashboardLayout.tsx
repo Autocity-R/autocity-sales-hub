@@ -6,6 +6,8 @@ import { BranchSwitcher } from "./BranchSwitcher";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { NotificationBell } from "@/components/aftersales/NotificationBell";
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
@@ -15,6 +17,7 @@ const DashboardLayout = ({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const isInventory = location.pathname.startsWith("/inventory");
+  const { isAftersalesManager } = useRoleAccess();
   return <div className="flex min-h-screen bg-gray-50">
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:z-40">
@@ -41,6 +44,7 @@ const DashboardLayout = ({
             <div className="flex flex-1"></div>
             <div className="flex items-center gap-x-2 md:gap-x-4 lg:gap-x-6">
               <BranchSwitcher />
+              {isAftersalesManager() && <NotificationBell />}
               <AuthHeader />
             </div>
           </div>
