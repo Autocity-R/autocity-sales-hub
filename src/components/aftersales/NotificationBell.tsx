@@ -27,8 +27,12 @@ const kindIcon = (n: AftersalesNotification) => {
   }
 };
 
-const dotClass = (sev: string) =>
-  sev === "red" ? "bg-red-500" : sev === "orange" ? "bg-orange-500" : "bg-slate-400";
+const iconTone = (sev: string) =>
+  sev === "red"
+    ? "bg-red-50 text-red-600 border-red-200"
+    : sev === "orange"
+    ? "bg-amber-50 text-amber-700 border-amber-200"
+    : "bg-slate-50 text-slate-600 border-slate-200";
 
 export const NotificationBell: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -55,12 +59,12 @@ export const NotificationBell: React.FC = () => {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-96 p-0">
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <div className="font-semibold text-sm">Meldingen</div>
+      <PopoverContent align="end" className="w-[380px] p-0 rounded-[14px] border-slate-200 shadow-[0_10px_40px_-10px_rgba(15,23,42,0.25)]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+          <div className="font-semibold text-[13px] tracking-tight text-slate-900">Meldingen</div>
           <div className="flex items-center gap-2">
             {unreadCount > 0 && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-[11px] bg-slate-100 text-slate-600 border-0">
                 {unreadCount} nieuw
               </Badge>
             )}
@@ -68,21 +72,21 @@ export const NotificationBell: React.FC = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs"
+                className="h-7 text-[11px] text-slate-500 hover:text-slate-900"
                 onClick={() => markAllRead()}
               >
-                Alles als gelezen
+                Alles gelezen
               </Button>
             )}
           </div>
         </div>
         <ScrollArea className="max-h-[420px]">
           {notifications.length === 0 ? (
-            <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+            <div className="px-4 py-10 text-center text-[13px] text-slate-400">
               Geen meldingen — alles onder controle.
             </div>
           ) : (
-            <ul className="divide-y">
+            <ul className="divide-y divide-slate-100">
               {notifications.map((n) => {
                 const Icon = kindIcon(n);
                 const isRead = readIds.has(n.id);
@@ -91,18 +95,19 @@ export const NotificationBell: React.FC = () => {
                     <button
                       onClick={() => onClickItem(n)}
                       className={cn(
-                        "w-full text-left px-4 py-3 hover:bg-muted/60 flex gap-3 items-start transition-colors",
-                        !isRead && "bg-muted/30"
+                        "w-full text-left px-4 py-3 hover:bg-slate-50 flex gap-3 items-start transition-colors",
+                        !isRead && "bg-slate-50/60"
                       )}
                     >
-                      <span className={cn("mt-1.5 h-2 w-2 rounded-full shrink-0", dotClass(n.severity))} />
-                      <Icon className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                      <div className={cn("h-8 w-8 rounded-lg border flex items-center justify-center shrink-0", iconTone(n.severity))}>
+                        <Icon className="h-4 w-4" />
+                      </div>
                       <div className="flex-1 min-w-0">
-                        <div className={cn("text-sm", !isRead ? "font-semibold" : "font-medium")}>
+                        <div className={cn("text-[13px] text-slate-900", !isRead ? "font-semibold" : "font-medium")}>
                           {n.title}
                         </div>
-                        <div className="text-xs text-muted-foreground truncate">{n.detail}</div>
-                        <div className="text-[11px] text-muted-foreground mt-0.5">
+                        <div className="text-[12px] text-slate-500 truncate">{n.detail}</div>
+                        <div className="text-[11px] text-slate-400 mt-0.5">
                           {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: nl })}
                         </div>
                       </div>

@@ -84,44 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
 
   // Aftersales manager: eigen strak menu — géén ruis van andere rollen
   if (isAftersalesManager()) {
-    const items: { url: string; label: string; icon: any; exact?: boolean }[] = [
-      { url: "/werkplaats", label: "Dashboard", icon: HomeIcon, exact: true },
-      { url: "/inventory", label: "Voorraad", icon: CarIcon, exact: true },
-      { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
-      { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
-      { url: "/customers", label: "Alle klanten", icon: UsersIcon, exact: true },
-      { url: "/warranty", label: "Garantie", icon: ShieldIcon },
-      { url: "/werkplaats/planning", label: "Planning", icon: GanttChartIcon },
-      { url: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
-      { url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
-      { url: "/werkplaats/goedkeuren", label: "Goedkeuren", icon: ClipboardCheck },
-      { url: "/reports", label: "Rapportages", icon: BarChart3 },
-      { url: "/loan-cars", label: "Leenauto beheer", icon: CarIcon },
-      { url: "/calendar", label: "Agenda", icon: CalendarIcon },
-    ];
-    return (
-      <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
-        <ScrollArea className="flex-1 px-2 py-3">
-          <div className="space-y-1">
-            {items.map((it) => {
-              const active = it.exact ? location.pathname === it.url : isActive(it.url);
-              return (
-                <Link key={it.url} to={it.url}>
-                  <Button
-                    variant={active ? "default" : "ghost"}
-                    className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                    size="sm"
-                  >
-                    <it.icon className="mr-2 h-4 w-4" />
-                    {it.label}
-                  </Button>
-                </Link>
-              );
-            })}
-          </div>
-        </ScrollArea>
-      </div>
-    );
+    return <AftersalesSidebar className={className} isActive={isActive} location={location} />;
   }
 
   return (
@@ -393,6 +356,79 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
               </Link>
             )}
           </div>
+        </div>
+      </ScrollArea>
+    </div>
+  );
+};
+
+/* ============ Aftersales-only sidebar ============ */
+import { Inbox as InboxIcon } from "lucide-react";
+import { useGarantieUnread } from "@/hooks/useGarantieUnread";
+
+const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) => boolean; location: ReturnType<typeof useLocation> }> = ({ className, isActive, location }) => {
+  const garantieUnread = useGarantieUnread();
+
+  const items: { url: string; label: string; icon: any; exact?: boolean; sub?: { url: string; label: string; icon: any; badge?: number }[] }[] = [
+    { url: "/werkplaats", label: "Dashboard", icon: HomeIcon, exact: true },
+    { url: "/inventory", label: "Voorraad", icon: CarIcon, exact: true },
+    { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
+    { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
+    { url: "/customers", label: "Alle klanten", icon: UsersIcon, exact: true },
+    {
+      url: "/warranty", label: "Garantie", icon: ShieldIcon,
+      sub: [{ url: "/garantie/inbox", label: "Inbox", icon: InboxIcon, badge: garantieUnread }],
+    },
+    { url: "/werkplaats/planning", label: "Planning", icon: GanttChartIcon },
+    { url: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
+    { url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
+    { url: "/werkplaats/goedkeuren", label: "Goedkeuren", icon: ClipboardCheck },
+    { url: "/reports", label: "Rapportages", icon: BarChart3 },
+    { url: "/loan-cars", label: "Leenauto beheer", icon: CarIcon },
+    { url: "/calendar", label: "Agenda", icon: CalendarIcon },
+  ];
+
+  return (
+    <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
+      <ScrollArea className="flex-1 px-2 py-3">
+        <div className="space-y-1">
+          {items.map((it) => {
+            const active = it.exact ? location.pathname === it.url : isActive(it.url);
+            return (
+              <React.Fragment key={it.url}>
+                <Link to={it.url}>
+                  <Button
+                    variant={active ? "default" : "ghost"}
+                    className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+                    size="sm"
+                  >
+                    <it.icon className="mr-2 h-4 w-4" />
+                    {it.label}
+                  </Button>
+                </Link>
+                {it.sub?.map((s) => {
+                  const sActive = isActive(s.url);
+                  return (
+                    <Link key={s.url} to={s.url}>
+                      <Button
+                        variant={sActive ? "default" : "ghost"}
+                        className="w-full justify-start pl-8 text-white hover:text-white hover:bg-gray-800"
+                        size="sm"
+                      >
+                        <s.icon className="mr-2 h-3.5 w-3.5" />
+                        <span className="flex-1 text-left">{s.label}</span>
+                        {typeof s.badge === "number" && s.badge > 0 && (
+                          <span className="ml-2 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-semibold flex items-center justify-center px-1">
+                            {s.badge > 99 ? "99+" : s.badge}
+                          </span>
+                        )}
+                      </Button>
+                    </Link>
+                  );
+                })}
+              </React.Fragment>
+            );
+          })}
         </div>
       </ScrollArea>
     </div>
