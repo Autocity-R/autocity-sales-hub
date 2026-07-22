@@ -305,7 +305,7 @@ const WerkplaatsPlanning: React.FC = () => {
     const target = rows.find(r => r.id === targetId);
     setDragId(null);
     if (!drag || !target) return;
-    const updates: Promise<any>[] = [
+    const updates: any[] = [
       supabase.from("work_orders").update({ sort_order: target.sort_order - 1 }).eq("id", drag.id),
     ];
     if (drag.assigned_to !== target.assigned_to) {
