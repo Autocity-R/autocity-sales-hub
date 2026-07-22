@@ -11,6 +11,34 @@ export const useRoleAccess = () => {
     return userRole === 'aftersales_manager';
   };
 
+  // Werkplaats/operationeel rollen
+  const isSpuiter = () => userRole === 'spuiter';
+  const isMonteur = () => userRole === 'monteur';
+  const isWerkplaatsChef = () => userRole === 'werkplaats_chef';
+  const isUitdeukerExtern = () => userRole === 'uitdeuker_extern';
+  const isOperationeelDirecteur = () => userRole === 'operationeel_directeur';
+
+  // Gebruikers met een "gesloten" werkplaats-omgeving (geen normale CRM menu's)
+  const isRestrictedWorkshopUser = () => (
+    isSpuiter() || isMonteur() || isWerkplaatsChef() ||
+    isUitdeukerExtern() || isOperationeelDirecteur()
+  );
+
+  // Startroute per rol (voor auto-redirect vanuit "/")
+  const getHomeRoute = (): string => {
+    if (isSpuiter() || isMonteur()) return '/werkplaats/mijn-planning';
+    if (isUitdeukerExtern()) return '/uitdeuk';
+    if (isWerkplaatsChef()) return '/werkplaats/overzicht';
+    if (isOperationeelDirecteur()) return '/operationeel';
+    return '/';
+  };
+
+  // Toegang tot het nieuwe WERKPLAATS menu-blok (aftersales pilaar)
+  const hasWerkplaatsAccess = () => {
+    return isAdmin || userRole === 'manager' || userRole === 'operationeel'
+      || userRole === 'aftersales_manager';
+  };
+
   const hasReportsAccess = () => {
     // Aftersales manager mag naar rapportages (alleen Aftersales tab)
     return isAdmin || userRole === 'manager' || userRole === 'aftersales_manager';
@@ -105,6 +133,14 @@ export const useRoleAccess = () => {
     hasGarantieAccess,
     isAftersalesManager,
     canManageChecklists,
+    isSpuiter,
+    isMonteur,
+    isWerkplaatsChef,
+    isUitdeukerExtern,
+    isOperationeelDirecteur,
+    isRestrictedWorkshopUser,
+    getHomeRoute,
+    hasWerkplaatsAccess,
     userRole,
     isAdmin
   };
