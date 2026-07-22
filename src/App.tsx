@@ -37,6 +37,18 @@ const ChecklistView = lazy(() => import("@/pages/ChecklistView"));
 const ContractNew = lazy(() => import("@/pages/ContractNew"));
 const SigningPage = lazy(() => import("@/pages/SigningPage"));
 
+// Werkplaats module
+const WerkplaatsDashboard = lazy(() => import("@/pages/werkplaats/WerkplaatsDashboard"));
+const WerkplaatsAutos = lazy(() => import("@/pages/werkplaats/WerkplaatsAutos"));
+const WerkplaatsPlanning = lazy(() => import("@/pages/werkplaats/WerkplaatsPlanning"));
+const WerkplaatsInname = lazy(() => import("@/pages/werkplaats/WerkplaatsInname"));
+const WerkplaatsUitdeuken = lazy(() => import("@/pages/werkplaats/WerkplaatsUitdeuken"));
+const WerkplaatsGoedkeuren = lazy(() => import("@/pages/werkplaats/WerkplaatsGoedkeuren"));
+const MijnPlanning = lazy(() => import("@/pages/werkplaats/MijnPlanning"));
+const UitdeukHome = lazy(() => import("@/pages/werkplaats/UitdeukHome"));
+const WerkplaatsOverzicht = lazy(() => import("@/pages/werkplaats/WerkplaatsOverzicht"));
+const OperationeelHome = lazy(() => import("@/pages/werkplaats/OperationeelHome"));
+
 // Loading fallback component
 const PageLoader = () => (
   <div className="flex h-screen items-center justify-center">
@@ -193,6 +205,18 @@ function App() {
             <ContractNew />
           </ProtectedRoute>
         } />
+        {/* Werkplaats module (aftersales) */}
+        <Route path="/werkplaats" element={<ProtectedRoute><WerkplaatsDashboard /></ProtectedRoute>} />
+        <Route path="/werkplaats/autos" element={<ProtectedRoute><WerkplaatsAutos /></ProtectedRoute>} />
+        <Route path="/werkplaats/planning" element={<ProtectedRoute><WerkplaatsPlanning /></ProtectedRoute>} />
+        <Route path="/werkplaats/inname" element={<ProtectedRoute><WerkplaatsInname /></ProtectedRoute>} />
+        <Route path="/werkplaats/uitdeuken" element={<ProtectedRoute><WerkplaatsUitdeuken /></ProtectedRoute>} />
+        <Route path="/werkplaats/goedkeuren" element={<ProtectedRoute><WerkplaatsGoedkeuren /></ProtectedRoute>} />
+        {/* Role-specifieke placeholder-startpagina's */}
+        <Route path="/werkplaats/mijn-planning" element={<ProtectedRoute><MijnPlanning /></ProtectedRoute>} />
+        <Route path="/uitdeuk" element={<ProtectedRoute><UitdeukHome /></ProtectedRoute>} />
+        <Route path="/werkplaats/overzicht" element={<ProtectedRoute><WerkplaatsOverzicht /></ProtectedRoute>} />
+        <Route path="/operationeel" element={<ProtectedRoute><OperationeelHome /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
