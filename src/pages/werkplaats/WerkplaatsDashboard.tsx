@@ -124,7 +124,7 @@ async function loadCockpit(branch: BranchFilter): Promise<CockpitData> {
     woBase().eq("discipline", "spuit").in("status", ["aangevraagd", "ingepland"]).order("sort_order", { ascending: true }).limit(20),
     woBase().eq("discipline", "spuit").eq("status", "bezig").limit(20),
     woBase().eq("discipline", "uitdeuk").in("status", ["aangevraagd", "ingepland", "bezig"]).order("created_at", { ascending: true }).limit(50),
-    woBase().eq("status", "afgerond").order("finished_at", { ascending: true }).limit(20),
+    woBase().eq("status", "afgerond").neq("discipline", "uitdeuk").order("finished_at", { ascending: true }).limit(20),
     supabase.from("profiles").select("id, first_name, last_name"),
   ]);
 
