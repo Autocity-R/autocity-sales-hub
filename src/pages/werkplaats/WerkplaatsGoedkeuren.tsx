@@ -9,13 +9,13 @@ import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
 import { DISCIPLINE_LABELS, WorkOrderDiscipline } from "@/components/werkplaats/workOrderTypes";
 import { Check, Loader2, Undo2, Timer, ClipboardCheck } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { AsPage, AsCard, AsCardHead } from "@/components/aftersales/ui";
+import { AsPage, AsCard, AsCardHead, AsLicensePlate } from "@/components/aftersales/ui";
 
 interface WO {
-  id: string; discipline: string; description: string; is_rush: boolean;
+  id: string; discipline: string; description: string; part: string | null; is_rush: boolean;
   photos: string[] | null; result_photos: string[] | null;
   work_seconds: number | null; finish_note: string | null; branch: string | null;
-  vehicle: { brand: string; model: string; license_number: string | null } | null;
+  vehicle: { brand: string; model: string; year: number | null; license_number: string | null } | null;
 }
 
 const fmtSec = (s: number | null) => {
@@ -32,8 +32,9 @@ const WerkplaatsGoedkeuren: React.FC = () => {
   const load = async () => {
     setLoading(true);
     let q = supabase.from("work_orders")
-      .select("id, discipline, description, is_rush, photos, result_photos, work_seconds, finish_note, branch, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, license_number)")
+      .select("id, discipline, description, part, is_rush, photos, result_photos, work_seconds, finish_note, branch, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number)")
       .eq("status", "afgerond")
+      .neq("discipline", "uitdeuk")
       .order("finished_at", { ascending: true });
     q = applyBranchFilter(q as any, branchFilter);
     const { data } = await q;
@@ -90,7 +91,12 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                 <AsCardHead
                   tone="teal"
                   icon={<ClipboardCheck className="h-4 w-4" />}
-                  title={`${w.vehicle?.brand ?? ""} ${w.vehicle?.model ?? ""} · ${w.vehicle?.license_number || "—"}`}
+                  title={
+                    <span className="flex items-center gap-2">
+                      <AsLicensePlate value={w.vehicle?.license_number} size="sm" />
+                      <span>{w.vehicle?.brand} {w.vehicle?.model}{w.vehicle?.year ? ` · ${w.vehicle.year}` : ""}</span>
+                    </span>
+                  }
                   subtitle={DISCIPLINE_LABELS[w.discipline as WorkOrderDiscipline] || w.discipline}
                   right={
                     <div className="flex gap-2">
@@ -100,6 +106,11 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                   }
                 />
                 <div className="px-5 pb-4 pt-4 border-t border-slate-100 space-y-3">
+                  {w.part && (
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 text-white text-[12.5px] font-semibold">
+                      {w.part}
+                    </div>
+                  )}
                   <div className="text-sm text-slate-800">{w.description}</div>
                   {w.finish_note && <div className="text-sm italic text-slate-500">Notitie: {w.finish_note}</div>}
                   <div className="flex items-center gap-2 text-sm text-slate-500">
