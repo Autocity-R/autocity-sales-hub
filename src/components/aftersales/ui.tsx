@@ -26,7 +26,7 @@ export const AsCard: React.FC<{
   <div
     onClick={onClick}
     className={cn(
-      "bg-white rounded-[14px] border border-slate-200/70 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-16px_rgba(15,23,42,0.12)]",
+      "bg-[#f8f9fb] rounded-[14px] border border-[#e8eaee] shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_18px_-14px_rgba(15,23,42,0.10)]",
       (interactive || onClick) && "cursor-pointer transition-shadow hover:shadow-[0_1px_2px_rgba(15,23,42,0.06),0_12px_28px_-14px_rgba(15,23,42,0.18)]",
       className,
     )}

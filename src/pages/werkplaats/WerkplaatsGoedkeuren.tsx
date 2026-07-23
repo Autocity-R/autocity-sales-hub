@@ -10,6 +10,7 @@ import { DISCIPLINE_LABELS, WorkOrderDiscipline } from "@/components/werkplaats/
 import { Check, Loader2, Undo2, Timer, ClipboardCheck } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { AsPage, AsCard, AsCardHead, AsLicensePlate } from "@/components/aftersales/ui";
+import { DamageReportDialog, DamageReportPayload } from "@/components/aftersales/DamageReportDialog";
 
 interface WO {
   id: string; discipline: string; description: string; part: string | null; is_rush: boolean;
@@ -28,6 +29,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
   const [rows, setRows] = useState<WO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [report, setReport] = useState<DamageReportPayload | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -87,7 +89,14 @@ const WerkplaatsGoedkeuren: React.FC = () => {
         ) : (
           <div className="space-y-4">
             {rows.map(w => (
-              <AsCard key={w.id} className="overflow-hidden">
+              <AsCard
+                key={w.id}
+                className="overflow-hidden cursor-pointer"
+                onClick={() => setReport({
+                  part: w.part, description: w.description, photos: w.photos, result_photos: w.result_photos,
+                  discipline: w.discipline, status: "afgerond", finish_note: w.finish_note, vehicle: w.vehicle as any,
+                })}
+              >
                 <AsCardHead
                   tone="teal"
                   icon={<ClipboardCheck className="h-4 w-4" />}
@@ -99,7 +108,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                   }
                   subtitle={DISCIPLINE_LABELS[w.discipline as WorkOrderDiscipline] || w.discipline}
                   right={
-                    <div className="flex gap-2">
+                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                       <Button size="sm" onClick={() => approve(w)}><Check className="h-4 w-4 mr-1" />Goedkeuren</Button>
                       <Button size="sm" variant="outline" onClick={() => reject(w)}><Undo2 className="h-4 w-4 mr-1" />Terugsturen</Button>
                     </div>
@@ -137,6 +146,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
             ))}
           </div>
         )}
+        <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} />
       </AsPage>
     </DashboardLayout>
   );

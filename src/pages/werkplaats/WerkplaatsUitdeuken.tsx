@@ -10,6 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { differenceInDays } from "date-fns";
 import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
+import { DamageReportDialog, DamageReportPayload } from "@/components/aftersales/DamageReportDialog";
 
 interface WO {
   id: string; description: string; part: string | null; status: string; is_rush: boolean; sort_order: number;
@@ -21,6 +22,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
   const [rows, setRows] = useState<WO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [report, setReport] = useState<DamageReportPayload | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -81,7 +83,11 @@ const WerkplaatsUitdeuken: React.FC = () => {
               const done = w.status === "goedgekeurd";
               const days = differenceInDays(new Date(), new Date(w.created_at));
               return (
-                <AsCard key={w.id} className={cn("p-4 md:p-5", done && "bg-emerald-50/40 border-emerald-100")}>
+                <AsCard
+                  key={w.id}
+                  onClick={() => setReport({ part: w.part, description: w.description, photos: w.photos, discipline: "uitdeuk", status: w.status, vehicle: v as any })}
+                  className={cn("p-4 md:p-5", done && "bg-emerald-50/40 border-emerald-100")}
+                >
                   <div className="flex items-start gap-4">
                     <div className="pt-0.5"><AsLicensePlate value={v?.license_number} size="lg" /></div>
                     <div className="flex-1 min-w-0">
@@ -115,7 +121,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
                       )}
 
                       {!done && (
-                        <div className="flex items-center gap-2 mt-4">
+                        <div className="flex items-center gap-2 mt-4" onClick={(e) => e.stopPropagation()}>
                           <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => markDone(w)}>
                             <Check className="h-4 w-4 mr-1" /> Gedaan
                           </Button>
@@ -128,6 +134,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
             })}
           </div>
         )}
+        <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} />
       </AsPage>
     </DashboardLayout>
   );
