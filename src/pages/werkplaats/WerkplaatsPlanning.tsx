@@ -36,7 +36,6 @@ interface WO {
     license_number: string | null;
     vin: string | null;
     showroom_photo_url: string | null;
-    build_year: number | null;
     mileage: number | null;
     color: string | null;
     delivery_date: string | null;
