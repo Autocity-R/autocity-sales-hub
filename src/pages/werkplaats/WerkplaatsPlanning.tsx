@@ -9,7 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, Flame, Shield, ArrowUp, ArrowDown, Plus, GripVertical, Wrench, PaintBucket, CheckCircle2, ClipboardCheck } from "lucide-react";
 import { format, isToday, isTomorrow } from "date-fns";
 import { nl } from "date-fns/locale";
-import { AsPage, AsCard, AsPill, AsVehicleThumb, AsMono, useLiveTimer } from "@/components/aftersales/ui";
+import { AsPage, AsCard, AsPill, AsMono, AsLicensePlate, AsVehicleThumb, useLiveTimer } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
 
 type Discipline = "werkplaats" | "spuit";
@@ -18,6 +18,7 @@ interface WO {
   id: string;
   discipline: string;
   description: string;
+  part: string | null;
   status: string;
   is_rush: boolean;
   sort_order: number;
@@ -90,16 +91,18 @@ const TaskCard: React.FC<{
         <div className="text-[22px] font-semibold text-slate-300 leading-none tabular-nums">{index + 1}</div>
         <GripVertical className="h-3.5 w-3.5 text-slate-300 cursor-grab" />
       </div>
-      <AsVehicleThumb src={v?.showroom_photo_url} className="h-12 w-16" />
       <div className="min-w-0 flex-1">
-        <div className="text-[13px] font-semibold text-slate-900 truncate">
-          {v?.brand} {v?.model}
+        <div className="flex items-center gap-2 flex-wrap">
+          <AsLicensePlate value={v?.license_number} size="sm" />
+          <span className="text-[13px] font-bold text-slate-900 truncate">{v?.brand} {v?.model}</span>
+          {v?.year && <span className="text-[12px] text-slate-500">· {v.year}</span>}
         </div>
-        <div className="text-[12px] text-slate-500 truncate flex items-center gap-2">
-          {specs}
-          {v?.license_number && <AsMono className="text-slate-700">{v.license_number}</AsMono>}
-        </div>
-        {v?.vin && <div className="mt-0.5"><AsMono>{v.vin}</AsMono></div>}
+        <div className="text-[11px] text-slate-500 truncate mt-0.5">{specs}</div>
+        {w.part && (
+          <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-900 text-white text-[11.5px] font-semibold">
+            {w.part}
+          </div>
+        )}
         <div className="mt-1.5 text-[12px] text-slate-700 line-clamp-2">{w.description}</div>
         <div className="mt-2 flex flex-wrap gap-1.5 items-center">
           {w.is_rush && (
@@ -217,7 +220,7 @@ const WerkplaatsPlanning: React.FC = () => {
 
   const load = async () => {
     setLoading(true);
-    const select = "id, discipline, description, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date)";
+    const select = "id, discipline, description, part, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date, photos)";
 
     let q = supabase
       .from("work_orders")

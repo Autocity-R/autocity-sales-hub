@@ -4728,6 +4728,7 @@ export type Database = {
           finished_at: string | null
           id: string
           is_rush: boolean
+          part: string | null
           photos: Json | null
           reject_note: string | null
           rejected_count: number
@@ -4753,6 +4754,7 @@ export type Database = {
           finished_at?: string | null
           id?: string
           is_rush?: boolean
+          part?: string | null
           photos?: Json | null
           reject_note?: string | null
           rejected_count?: number
@@ -4778,6 +4780,7 @@ export type Database = {
           finished_at?: string | null
           id?: string
           is_rush?: boolean
+          part?: string | null
           photos?: Json | null
           reject_note?: string | null
           rejected_count?: number
