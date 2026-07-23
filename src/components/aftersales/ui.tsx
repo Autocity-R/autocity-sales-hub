@@ -85,6 +85,22 @@ export const AsMono: React.FC<{ children: React.ReactNode; className?: string }>
   <span className={cn("font-mono text-[11px] tracking-tight text-slate-500", className)}>{children}</span>
 );
 
+/** NL kentekenplaat-badge (geel). */
+export const AsLicensePlate: React.FC<{ value?: string | null; size?: "sm" | "md" | "lg"; className?: string }> = ({ value, size = "md", className }) => {
+  const sz = size === "sm" ? "text-[11px] px-1.5 py-0.5" : size === "lg" ? "text-[15px] px-2.5 py-1" : "text-[13px] px-2 py-0.5";
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-[4px] bg-[#FFCD00] border border-black/70 font-black tracking-widest text-black font-mono uppercase shadow-[inset_0_-2px_0_rgba(0,0,0,0.08)]",
+        sz,
+        className,
+      )}
+    >
+      {value || "—"}
+    </span>
+  );
+};
+
 export const AsSectionHead: React.FC<{ icon?: React.ReactNode; title: string; count?: number; right?: React.ReactNode }> = ({ icon, title, count, right }) => (
   <div className="flex items-center justify-between px-4 pt-4 pb-2">
     <div className="flex items-center gap-2.5">
