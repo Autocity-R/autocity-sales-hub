@@ -9,11 +9,12 @@ import { toast } from "@/hooks/use-toast";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, Search, Send, Sparkles, CheckCircle2, Phone, MapPin, StickyNote, Link2, Shield, Car } from "lucide-react";
+import { Loader2, Search, Send, Sparkles, CheckCircle2, Phone, MapPin, StickyNote, Shield, Car, ChevronDown, Wand2, RefreshCw } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { AsPage, AsCard, AsPill, AsMono, fmtWait } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
+import { sanitizeMailText, splitQuotedReply } from "@/utils/mailBubble";
 
 type Filter = "action" | "all" | "done";
 
@@ -54,8 +55,6 @@ const sevColor = (s: "green" | "amber" | "red") =>
 const sevText = (s: "green" | "amber" | "red") =>
   s === "red" ? "text-red-600" : s === "amber" ? "text-amber-700" : "text-slate-500";
 
-const stripHtml = (s: string | null) => (s || "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
-
 const salespersonSignatureHtml = (name: string) => `
 <div style="margin-top:24px;padding-top:16px;border-top:1px solid #e5e7eb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0f172a">
   <div style="font-weight:600;color:#0f172a;font-size:14px">${name}</div>
@@ -84,9 +83,14 @@ const GarantieInbox: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [eventDialog, setEventDialog] = useState<{ open: boolean; type: "gebeld" | "bezoek" | "notitie" }>({ open: false, type: "notitie" });
   const [eventText, setEventText] = useState("");
-  const [linkDialog, setLinkDialog] = useState(false);
-  const [claimSearch, setClaimSearch] = useState("");
-  const [claimResults, setClaimResults] = useState<Claim[]>([]);
+  // Garantie Agent
+  const [agentSuggestion, setAgentSuggestion] = useState<string>("");
+  const [agentLoading, setAgentLoading] = useState(false);
+  const [agentHint, setAgentHint] = useState("");
+  const [agentChat, setAgentChat] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [agentQuestion, setAgentQuestion] = useState("");
+  const [agentAsking, setAgentAsking] = useState(false);
+  const [expandedQuoted, setExpandedQuoted] = useState<Record<string, boolean>>({});
 
   const senderName = useMemo(() => {
     const p = userProfile;
@@ -139,6 +143,16 @@ const GarantieInbox: React.FC = () => {
     } else {
       setClaim(null);
     }
+    // Reset & load agent chat for this thread
+    setAgentSuggestion("");
+    setAgentHint("");
+    setExpandedQuoted({});
+    const { data: chats } = await (supabase as any)
+      .from("garantie_agent_chats")
+      .select("role, content")
+      .eq("thread_id", id)
+      .order("created_at", { ascending: true });
+    setAgentChat((chats as any) || []);
     setLoadingThread(false);
   };
 
@@ -237,22 +251,41 @@ const GarantieInbox: React.FC = () => {
     await loadList();
   };
 
-  const searchClaims = async (q: string) => {
-    setClaimSearch(q);
-    if (q.length < 2) { setClaimResults([]); return; }
-    const { data } = await supabase.from("warranty_claims")
-      .select("id, claim_status, description, created_at, vehicle_id, manual_vehicle_brand, manual_vehicle_model, manual_license_number, vehicles:vehicle_id(brand, model, license_number, vin, sold_date)")
-      .or(`manual_customer_name.ilike.%${q}%,manual_license_number.ilike.%${q}%,description.ilike.%${q}%`)
-      .order("created_at", { ascending: false }).limit(20);
-    setClaimResults((data as any) || []);
+  const fetchSuggestion = async (hint?: string) => {
+    if (!selectedThread) return;
+    setAgentLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("garantie-agent", {
+        body: { action: "suggest", thread_id: selectedThread.id, hint: hint || "" },
+      });
+      if (error) throw error;
+      setAgentSuggestion(((data as any)?.suggestion || "").trim());
+    } catch (e: any) {
+      toast({ title: "Agent-fout", description: e.message, variant: "destructive" });
+    } finally {
+      setAgentLoading(false);
+    }
   };
 
-  const linkClaim = async (id: string) => {
-    if (!selectedThread) return;
-    await supabase.from("garantie_email_threads").update({ warranty_claim_id: id }).eq("id", selectedThread.id);
-    setLinkDialog(false);
-    await loadList();
-    await loadThread(selectedThread.id);
+  const askAgent = async () => {
+    if (!selectedThread || !agentQuestion.trim()) return;
+    const q = agentQuestion.trim();
+    setAgentAsking(true);
+    setAgentChat((prev) => [...prev, { role: "user", content: q }]);
+    setAgentQuestion("");
+    try {
+      const { data, error } = await supabase.functions.invoke("garantie-agent", {
+        body: { action: "chat", thread_id: selectedThread.id, question: q },
+      });
+      if (error) throw error;
+      const answer = ((data as any)?.answer || "").trim();
+      setAgentChat((prev) => [...prev, { role: "assistant", content: answer }]);
+    } catch (e: any) {
+      toast({ title: "Agent-fout", description: e.message, variant: "destructive" });
+      setAgentChat((prev) => prev.slice(0, -1));
+    } finally {
+      setAgentAsking(false);
+    }
   };
 
   return (
@@ -345,7 +378,6 @@ const GarantieInbox: React.FC = () => {
                         <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setEventDialog({ open: true, type: "gebeld" })}><Phone className="h-3 w-3 mr-1" />Gebeld</Button>
                         <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setEventDialog({ open: true, type: "bezoek" })}><MapPin className="h-3 w-3 mr-1" />Bezoek</Button>
                         <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setEventDialog({ open: true, type: "notitie" })}><StickyNote className="h-3 w-3 mr-1" />Notitie</Button>
-                        <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setLinkDialog(true)}><Link2 className="h-3 w-3 mr-1" />Claim</Button>
                         <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={closeThread}><CheckCircle2 className="h-3 w-3 mr-1" />Afronden</Button>
                       </div>
                     </div>
@@ -361,31 +393,86 @@ const GarantieInbox: React.FC = () => {
                         return (
                           <div key={e.id} className="flex justify-center">
                             <div className="inline-flex items-center gap-2 bg-teal-50 border border-teal-200 text-teal-800 text-[12px] rounded-full px-3 py-1">
-                              <span className="font-medium">{e.subject}</span>
-                              <span className="text-teal-700/80">· {e.body}</span>
+                              <span className="font-medium">{sanitizeMailText(e.subject)}</span>
+                              <span className="text-teal-700/80">· {sanitizeMailText(e.body)}</span>
                               <span className="text-teal-600/60">· {format(new Date(e.received_at), "d MMM HH:mm", { locale: nl })}</span>
                             </div>
                           </div>
                         );
                       }
                       const outgoing = e.richting === "uitgaand";
+                      const cleaned = sanitizeMailText(e.body);
+                      const { main, quoted } = splitQuotedReply(cleaned);
+                      const isOpen = !!expandedQuoted[e.id];
                       return (
                         <div key={e.id} className={cn("flex", outgoing ? "justify-end" : "justify-start")}>
-                          <div className={cn("max-w-[80%] rounded-2xl px-4 py-3 shadow-sm text-[13px] leading-relaxed",
+                          <div className={cn("max-w-[78%] rounded-2xl px-4 py-3 shadow-sm text-[13.5px] leading-[1.65]",
                             outgoing ? "bg-blue-50 border border-blue-100 text-slate-900" : "bg-white border border-slate-200 text-slate-900")}>
-                            <div className="flex items-center justify-between gap-3 mb-1">
-                              <div className="text-[11px] font-semibold text-slate-500">{e.sender || (outgoing ? senderName : "Klant")}</div>
-                              <div className="text-[11px] text-slate-400">{format(new Date(e.received_at), "d MMM HH:mm", { locale: nl })}</div>
+                            <div className="flex items-center justify-between gap-3 mb-1.5">
+                              <div className="text-[11px] font-semibold text-slate-600 truncate">{e.sender || (outgoing ? senderName : "Klant")}</div>
+                              <div className="text-[11px] text-slate-400 shrink-0">{format(new Date(e.received_at), "d MMM HH:mm", { locale: nl })}</div>
                             </div>
-                            <div className="whitespace-pre-wrap break-words">{stripHtml(e.body)}</div>
+                            <div className="whitespace-pre-wrap break-words">{main || "(leeg bericht)"}</div>
+                            {quoted && (
+                              <div className="mt-2 pt-2 border-t border-slate-200/60">
+                                <button
+                                  onClick={() => setExpandedQuoted((p) => ({ ...p, [e.id]: !p[e.id] }))}
+                                  className="text-[11px] font-medium text-slate-500 hover:text-slate-800 inline-flex items-center gap-1"
+                                >
+                                  <ChevronDown className={cn("h-3 w-3 transition-transform", isOpen && "rotate-180")} />
+                                  ··· {isOpen ? "Verberg eerdere berichten" : "Toon eerdere berichten"}
+                                </button>
+                                {isOpen && (
+                                  <div className="mt-2 pl-3 border-l-2 border-slate-200 text-[12px] text-slate-500 whitespace-pre-wrap break-words">
+                                    {quoted}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
                     })}
                   </div>
 
-                  {/* Compose */}
+                  {/* Agent suggestion + Compose */}
                   <div className="border-t border-slate-100 p-3 bg-white">
+                    <div className="mb-3 rounded-lg border border-violet-200 bg-gradient-to-br from-violet-50 via-white to-blue-50 p-3">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="text-[11px] font-semibold text-violet-700 uppercase tracking-wide flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5" /> Garantie Agent · voorstel
+                        </div>
+                        {!agentSuggestion && !agentLoading && (
+                          <Button size="sm" variant="outline" className="h-7 text-[11px] border-violet-200" onClick={() => fetchSuggestion()}>
+                            <Wand2 className="h-3 w-3 mr-1" /> Voorstel ophalen
+                          </Button>
+                        )}
+                        {agentLoading && (
+                          <div className="text-[11px] text-violet-700 inline-flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Agent denkt na…</div>
+                        )}
+                      </div>
+                      {agentSuggestion && (
+                        <>
+                          <div className="whitespace-pre-wrap text-[13px] text-slate-800 leading-relaxed bg-white border border-violet-100 rounded-md p-3 max-h-[220px] overflow-auto">
+                            {agentSuggestion}
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <Button size="sm" className="h-7 text-[11px]" onClick={() => { setReply(agentSuggestion); toast({ title: "Voorstel gebruikt", description: "Bewerk het antwoord en verstuur wanneer klaar." }); }}>
+                              Gebruik voorstel
+                            </Button>
+                            <Input
+                              value={agentHint}
+                              onChange={(e) => setAgentHint(e.target.value)}
+                              placeholder="Bijstelling (bv. 'kort houden, uitnodigen voor bezichtiging')"
+                              className="h-7 text-[11px] flex-1 min-w-[220px]"
+                            />
+                            <Button size="sm" variant="outline" className="h-7 text-[11px]" disabled={agentLoading} onClick={() => fetchSuggestion(agentHint)}>
+                              <RefreshCw className="h-3 w-3 mr-1" /> Herschrijf
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                     <Textarea
                       value={reply}
                       onChange={(e) => setReply(e.target.value)}
@@ -407,7 +494,7 @@ const GarantieInbox: React.FC = () => {
             </div>
 
             {/* ============ Contextpaneel ============ */}
-            <div className="border-l border-slate-100 p-4 space-y-3 bg-slate-50/30">
+            <div className="border-l border-slate-100 p-4 space-y-3 bg-slate-50/30 flex flex-col min-h-0">
               <div>
                 <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5"><Car className="h-3.5 w-3.5" />Voertuig</div>
                 <div className="bg-white border border-slate-200 rounded-lg p-3 text-[12px] space-y-1">
@@ -442,10 +529,42 @@ const GarantieInbox: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-violet-50 to-blue-50 border border-violet-100 rounded-lg p-3">
-                <div className="text-[11px] font-semibold text-violet-700 uppercase tracking-wide flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" />Garantie Agent</div>
-                <div className="text-[12px] text-slate-600 mt-1.5 leading-relaxed">
-                  Tekstvoorstellen en overleg komen in de volgende stap.
+              {/* Overlegchat met de Garantie Agent */}
+              <div className="flex flex-col flex-1 min-h-[260px] rounded-lg border border-violet-100 bg-gradient-to-br from-violet-50/60 to-white overflow-hidden">
+                <div className="px-3 py-2 border-b border-violet-100 text-[11px] font-semibold text-violet-700 uppercase tracking-wide flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" /> Overleg met agent
+                </div>
+                <div className="flex-1 overflow-y-auto p-3 space-y-2 text-[12px]">
+                  {selectedThread ? (
+                    agentChat.length === 0 ? (
+                      <div className="text-slate-400 italic text-[12px]">Nog geen overleg — stel hieronder een vraag over deze casus.</div>
+                    ) : (
+                      agentChat.map((m, i) => (
+                        <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+                          <div className={cn("max-w-[92%] rounded-lg px-2.5 py-1.5 whitespace-pre-wrap break-words leading-relaxed",
+                            m.role === "user" ? "bg-slate-900 text-white" : "bg-white border border-violet-100 text-slate-800")}>
+                            {m.content}
+                          </div>
+                        </div>
+                      ))
+                    )
+                  ) : (
+                    <div className="text-slate-400 italic text-[12px]">Kies een thread.</div>
+                  )}
+                  {agentAsking && <div className="text-[11px] text-violet-500 inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Agent denkt na…</div>}
+                </div>
+                <div className="border-t border-violet-100 p-2 bg-white/60 flex gap-1.5">
+                  <Input
+                    value={agentQuestion}
+                    onChange={(e) => setAgentQuestion(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askAgent(); } }}
+                    placeholder="Vraag de agent…"
+                    className="h-8 text-[12px]"
+                    disabled={!selectedThread || agentAsking}
+                  />
+                  <Button size="sm" className="h-8" disabled={!selectedThread || !agentQuestion.trim() || agentAsking} onClick={askAgent}>
+                    <Send className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               </div>
             </div>
@@ -476,22 +595,6 @@ const GarantieInbox: React.FC = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Link claim dialog */}
-        <Dialog open={linkDialog} onOpenChange={setLinkDialog}>
-          <DialogContent className="max-w-xl">
-            <DialogHeader><DialogTitle>Koppel garantieclaim</DialogTitle></DialogHeader>
-            <Input value={claimSearch} onChange={(e) => searchClaims(e.target.value)} placeholder="Zoek op klant, kenteken of omschrijving…" />
-            <div className="max-h-[300px] overflow-y-auto space-y-1 mt-2">
-              {claimResults.map((c) => (
-                <button key={c.id} onClick={() => linkClaim(c.id)} className="w-full text-left p-2.5 border border-slate-200 rounded-md hover:bg-slate-50">
-                  <div className="text-[13px] font-medium">{c.vehicles?.brand || c.manual_vehicle_brand} {c.vehicles?.model || c.manual_vehicle_model} · <span className="font-mono">{c.vehicles?.license_number || c.manual_license_number}</span></div>
-                  <div className="text-[11px] text-slate-500 line-clamp-1">{c.description}</div>
-                </button>
-              ))}
-              {claimSearch.length >= 2 && claimResults.length === 0 && <div className="text-[12px] text-slate-400 py-4 text-center">Geen resultaten.</div>}
-            </div>
-          </DialogContent>
-        </Dialog>
       </AsPage>
     </DashboardLayout>
   );

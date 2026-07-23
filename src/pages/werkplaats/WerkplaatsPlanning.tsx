@@ -36,10 +36,10 @@ interface WO {
     license_number: string | null;
     vin: string | null;
     showroom_photo_url: string | null;
-    build_year: number | null;
     mileage: number | null;
     color: string | null;
     delivery_date: string | null;
+    year: number | null;
   } | null;
 }
 
@@ -73,7 +73,7 @@ const TaskCard: React.FC<{
   const live = useLiveTimer(w.status === "bezig" ? w.started_at : null);
   const reason = rushReason(w);
   const v = w.vehicle;
-  const specs = [v?.build_year, v?.mileage ? `${v.mileage.toLocaleString("nl-NL")} km` : null, v?.color].filter(Boolean).join(" · ");
+  const specs = [v?.year, v?.mileage ? `${v.mileage.toLocaleString("nl-NL")} km` : null, v?.color].filter(Boolean).join(" · ");
 
   return (
     <div
@@ -217,7 +217,7 @@ const WerkplaatsPlanning: React.FC = () => {
 
   const load = async () => {
     setLoading(true);
-    const select = "id, discipline, description, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, build_year, mileage, color, delivery_date)";
+    const select = "id, discipline, description, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date)";
 
     let q = supabase
       .from("work_orders")
