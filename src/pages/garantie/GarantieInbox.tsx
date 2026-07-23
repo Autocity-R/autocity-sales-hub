@@ -9,11 +9,12 @@ import { toast } from "@/hooks/use-toast";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, Search, Send, Sparkles, CheckCircle2, Phone, MapPin, StickyNote, Link2, Shield, Car } from "lucide-react";
+import { Loader2, Search, Send, Sparkles, CheckCircle2, Phone, MapPin, StickyNote, Shield, Car, ChevronDown, Wand2, RefreshCw } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { AsPage, AsCard, AsPill, AsMono, fmtWait } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
+import { sanitizeMailText, splitQuotedReply } from "@/utils/mailBubble";
 
 type Filter = "action" | "all" | "done";
 
@@ -54,8 +55,6 @@ const sevColor = (s: "green" | "amber" | "red") =>
 const sevText = (s: "green" | "amber" | "red") =>
   s === "red" ? "text-red-600" : s === "amber" ? "text-amber-700" : "text-slate-500";
 
-const stripHtml = (s: string | null) => (s || "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
-
 const salespersonSignatureHtml = (name: string) => `
 <div style="margin-top:24px;padding-top:16px;border-top:1px solid #e5e7eb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0f172a">
   <div style="font-weight:600;color:#0f172a;font-size:14px">${name}</div>
@@ -84,9 +83,14 @@ const GarantieInbox: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [eventDialog, setEventDialog] = useState<{ open: boolean; type: "gebeld" | "bezoek" | "notitie" }>({ open: false, type: "notitie" });
   const [eventText, setEventText] = useState("");
-  const [linkDialog, setLinkDialog] = useState(false);
-  const [claimSearch, setClaimSearch] = useState("");
-  const [claimResults, setClaimResults] = useState<Claim[]>([]);
+  // Garantie Agent
+  const [agentSuggestion, setAgentSuggestion] = useState<string>("");
+  const [agentLoading, setAgentLoading] = useState(false);
+  const [agentHint, setAgentHint] = useState("");
+  const [agentChat, setAgentChat] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [agentQuestion, setAgentQuestion] = useState("");
+  const [agentAsking, setAgentAsking] = useState(false);
+  const [expandedQuoted, setExpandedQuoted] = useState<Record<string, boolean>>({});
 
   const senderName = useMemo(() => {
     const p = userProfile;
@@ -139,6 +143,16 @@ const GarantieInbox: React.FC = () => {
     } else {
       setClaim(null);
     }
+    // Reset & load agent chat for this thread
+    setAgentSuggestion("");
+    setAgentHint("");
+    setExpandedQuoted({});
+    const { data: chats } = await (supabase as any)
+      .from("garantie_agent_chats")
+      .select("role, content")
+      .eq("thread_id", id)
+      .order("created_at", { ascending: true });
+    setAgentChat((chats as any) || []);
     setLoadingThread(false);
   };
 
@@ -237,22 +251,41 @@ const GarantieInbox: React.FC = () => {
     await loadList();
   };
 
-  const searchClaims = async (q: string) => {
-    setClaimSearch(q);
-    if (q.length < 2) { setClaimResults([]); return; }
-    const { data } = await supabase.from("warranty_claims")
-      .select("id, claim_status, description, created_at, vehicle_id, manual_vehicle_brand, manual_vehicle_model, manual_license_number, vehicles:vehicle_id(brand, model, license_number, vin, sold_date)")
-      .or(`manual_customer_name.ilike.%${q}%,manual_license_number.ilike.%${q}%,description.ilike.%${q}%`)
-      .order("created_at", { ascending: false }).limit(20);
-    setClaimResults((data as any) || []);
+  const fetchSuggestion = async (hint?: string) => {
+    if (!selectedThread) return;
+    setAgentLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("garantie-agent", {
+        body: { action: "suggest", thread_id: selectedThread.id, hint: hint || "" },
+      });
+      if (error) throw error;
+      setAgentSuggestion(((data as any)?.suggestion || "").trim());
+    } catch (e: any) {
+      toast({ title: "Agent-fout", description: e.message, variant: "destructive" });
+    } finally {
+      setAgentLoading(false);
+    }
   };
 
-  const linkClaim = async (id: string) => {
-    if (!selectedThread) return;
-    await supabase.from("garantie_email_threads").update({ warranty_claim_id: id }).eq("id", selectedThread.id);
-    setLinkDialog(false);
-    await loadList();
-    await loadThread(selectedThread.id);
+  const askAgent = async () => {
+    if (!selectedThread || !agentQuestion.trim()) return;
+    const q = agentQuestion.trim();
+    setAgentAsking(true);
+    setAgentChat((prev) => [...prev, { role: "user", content: q }]);
+    setAgentQuestion("");
+    try {
+      const { data, error } = await supabase.functions.invoke("garantie-agent", {
+        body: { action: "chat", thread_id: selectedThread.id, question: q },
+      });
+      if (error) throw error;
+      const answer = ((data as any)?.answer || "").trim();
+      setAgentChat((prev) => [...prev, { role: "assistant", content: answer }]);
+    } catch (e: any) {
+      toast({ title: "Agent-fout", description: e.message, variant: "destructive" });
+      setAgentChat((prev) => prev.slice(0, -1));
+    } finally {
+      setAgentAsking(false);
+    }
   };
 
   return (
