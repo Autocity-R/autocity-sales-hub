@@ -9,7 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, Flame, Shield, ArrowUp, ArrowDown, Plus, GripVertical, Wrench, PaintBucket, CheckCircle2, ClipboardCheck } from "lucide-react";
 import { format, isToday, isTomorrow } from "date-fns";
 import { nl } from "date-fns/locale";
-import { AsPage, AsCard, AsPill, AsVehicleThumb, AsMono, useLiveTimer } from "@/components/aftersales/ui";
+import { AsPage, AsCard, AsPill, AsMono, AsLicensePlate, useLiveTimer } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
 
 type Discipline = "werkplaats" | "spuit";
@@ -18,6 +18,7 @@ interface WO {
   id: string;
   discipline: string;
   description: string;
+  part: string | null;
   status: string;
   is_rush: boolean;
   sort_order: number;
@@ -217,7 +218,7 @@ const WerkplaatsPlanning: React.FC = () => {
 
   const load = async () => {
     setLoading(true);
-    const select = "id, discipline, description, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date)";
+    const select = "id, discipline, description, part, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date, photos)";
 
     let q = supabase
       .from("work_orders")
