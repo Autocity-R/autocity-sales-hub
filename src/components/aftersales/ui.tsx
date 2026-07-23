@@ -134,7 +134,7 @@ const TONE_ICON: Record<AsTone, string> = {
 export const AsCardHead: React.FC<{
   icon: React.ReactNode;
   tone?: AsTone;
-  title: string;
+  title: React.ReactNode;
   subtitle?: string;
   count?: number | string;
   right?: React.ReactNode;
