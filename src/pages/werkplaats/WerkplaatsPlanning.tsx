@@ -11,6 +11,7 @@ import { format, isToday, isTomorrow } from "date-fns";
 import { nl } from "date-fns/locale";
 import { AsPage, AsCard, AsPill, AsMono, AsLicensePlate, AsVehicleThumb, useLiveTimer } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
+import { DamageReportDialog, DamageReportPayload } from "@/components/aftersales/DamageReportDialog";
 
 type Discipline = "werkplaats" | "spuit";
 
@@ -70,7 +71,8 @@ const TaskCard: React.FC<{
   onToggleRush: (w: WO) => void;
   onDragStart: (id: string) => void;
   onDrop: (targetId: string) => void;
-}> = ({ w, index, onReorder, onToggleRush, onDragStart, onDrop }) => {
+  onOpen: (w: WO) => void;
+}> = ({ w, index, onReorder, onToggleRush, onDragStart, onDrop, onOpen }) => {
   const live = useLiveTimer(w.status === "bezig" ? w.started_at : null);
   const reason = rushReason(w);
   const v = w.vehicle;
@@ -82,8 +84,9 @@ const TaskCard: React.FC<{
       onDragStart={() => onDragStart(w.id)}
       onDragOver={(e) => e.preventDefault()}
       onDrop={() => onDrop(w.id)}
+      onClick={() => onOpen(w)}
       className={cn(
-        "bg-white rounded-[12px] border border-slate-200 shadow-sm hover:shadow transition p-3 flex gap-3 items-start",
+        "bg-white rounded-[12px] border border-slate-200 shadow-sm hover:shadow transition p-3 flex gap-3 items-start cursor-pointer",
         w.is_rush && "border-red-300 ring-1 ring-red-100"
       )}
     >
@@ -120,7 +123,7 @@ const TaskCard: React.FC<{
           </div>
         )}
       </div>
-      <div className="flex flex-col gap-1 shrink-0">
+      <div className="flex flex-col gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
         <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onReorder(w.id, -1)} title="Omhoog"><ArrowUp className="h-3.5 w-3.5" /></Button>
         <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onReorder(w.id, 1)} title="Omlaag"><ArrowDown className="h-3.5 w-3.5" /></Button>
         <Button
@@ -145,7 +148,8 @@ const EmployeeColumn: React.FC<{
   onToggleRush: (w: WO) => void;
   onDragStart: (id: string) => void;
   onDrop: (targetId: string) => void;
-}> = ({ profile, items, doneTodayCount, onReorder, onToggleRush, onDragStart, onDrop }) => (
+  onOpen: (w: WO) => void;
+}> = ({ profile, items, doneTodayCount, onReorder, onToggleRush, onDragStart, onDrop, onOpen }) => (
   <AsCard className="p-3 flex flex-col gap-3 min-w-[320px]">
     <div className="flex items-center gap-3 px-1">
       <div className="h-9 w-9 rounded-full bg-slate-100 text-slate-600 font-semibold text-[13px] flex items-center justify-center">
@@ -171,6 +175,7 @@ const EmployeeColumn: React.FC<{
           onToggleRush={onToggleRush}
           onDragStart={onDragStart}
           onDrop={onDrop}
+          onOpen={onOpen}
         />
       ))}
     </div>
@@ -217,6 +222,10 @@ const WerkplaatsPlanning: React.FC = () => {
   const [profiles, setProfiles] = useState<Map<string, Profile>>(new Map());
   const [loading, setLoading] = useState(true);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [report, setReport] = useState<DamageReportPayload | null>(null);
+  const openReport = (w: WO) => setReport({
+    part: w.part, description: w.description, photos: (w as any).photos, discipline: w.discipline, status: w.status, vehicle: w.vehicle as any,
+  });
 
   const load = async () => {
     setLoading(true);
@@ -379,11 +388,13 @@ const WerkplaatsPlanning: React.FC = () => {
                 onToggleRush={toggleRush}
                 onDragStart={setDragId}
                 onDrop={onDrop}
+                onOpen={openReport}
               />
             ))}
             <DoneTodayColumn items={doneToday} nameFor={nameFor} />
           </div>
         )}
+        <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} />
       </AsPage>
     </DashboardLayout>
   );
