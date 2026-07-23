@@ -2708,6 +2708,38 @@ export type Database = {
         }
         Relationships: []
       }
+      garantie_agent_chats: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          thread_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          thread_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "garantie_agent_chats_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "garantie_email_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       garantie_email_threads: {
         Row: {
           aantal_emails: number | null
