@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Check, PackageCheck, PackageOpen, Truck, Loader2, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AddPartOrderDialog } from "@/components/aftersales/AddPartOrderDialog";
 
 type Status = "te_bestellen" | "besteld" | "binnen";
 
@@ -21,13 +22,13 @@ interface PartOrder {
   branch: string;
   created_at: string;
   vehicle?: {
-    id: string; brand: string; model: string;
+    id: string; brand: string; model: string; year: number | null;
     license_number: string | null; vin: string | null;
   } | null;
 }
 
 const STATUS_META: Record<Status, { label: string; tone: any; icon: any }> = {
-  te_bestellen: { label: "Te bestellen", tone: "amber", icon: PackageOpen },
+  te_bestellen: { label: "Nog niet besteld", tone: "amber", icon: PackageOpen },
   besteld:      { label: "Besteld",      tone: "blue",  icon: Truck },
   binnen:       { label: "Binnen",       tone: "green", icon: PackageCheck },
 };
@@ -37,12 +38,13 @@ const WerkplaatsOnderdelen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
 
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("parts_orders")
-      .select("id, vehicle_id, part_name, note, status, ordered_at, arrived_at, branch, created_at, vehicle:vehicles!parts_orders_vehicle_id_fkey(id, brand, model, license_number, vin)")
+      .select("id, vehicle_id, part_name, note, status, ordered_at, arrived_at, branch, created_at, vehicle:vehicles!parts_orders_vehicle_id_fkey(id, brand, model, year, license_number, vin)")
       .order("created_at", { ascending: false });
     if (error) toast({ title: "Fout bij laden", description: error.message, variant: "destructive" });
     setOrders((data as any) || []);
@@ -89,22 +91,32 @@ const WerkplaatsOnderdelen: React.FC = () => {
 
   const renderCard = (o: PartOrder) => {
     const v = o.vehicle;
+    const tone: any = o.status === "binnen" ? "green" : o.status === "besteld" ? "blue" : "amber";
+    const statusLabel = STATUS_META[o.status].label;
     return (
       <div key={o.id} className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
         <div className="flex items-start gap-2">
           <AsLicensePlate value={v?.license_number} size="sm" />
           <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-semibold text-slate-900 truncate">{v?.brand} {v?.model}</div>
-            <div className="text-[12.5px] text-slate-700 mt-0.5">
-              <span className="font-medium">{o.part_name}</span>
-              {o.note && <span className="text-slate-500"> — {o.note}</span>}
+            <div className="text-[13px] font-semibold text-slate-900 truncate">
+              {v?.brand} {v?.model}
+              {v?.year && <span className="text-slate-500 font-medium"> · {v.year}</span>}
+            </div>
+            {v?.vin && (
+              <div className="text-[10.5px] font-mono text-slate-500 truncate">VIN {v.vin}</div>
+            )}
+            <div className="text-[13px] text-slate-900 mt-1.5">
+              <span className="font-bold">{o.part_name}</span>
+              {o.note && <span className="text-slate-500 font-normal"> — {o.note}</span>}
             </div>
           </div>
           <Button size="icon" variant="ghost" onClick={() => removeOrder(o.id)} className="h-7 w-7 text-slate-400 hover:text-red-600">
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
-        <div className="flex gap-1.5 mt-3">
+        <div className="flex items-center gap-1.5 mt-3">
+          <AsPill tone={tone}>{statusLabel}</AsPill>
+          <div className="ml-auto flex gap-1.5">
           {o.status === "te_bestellen" && (
             <Button size="sm" className="h-8 text-[12px] bg-blue-600 hover:bg-blue-700 text-white"
                     disabled={busy === o.id} onClick={() => setStatus(o.id, "besteld")}>
@@ -122,6 +134,7 @@ const WerkplaatsOnderdelen: React.FC = () => {
               Binnen op {o.arrived_at ? new Date(o.arrived_at).toLocaleDateString("nl-NL") : "—"}
             </div>
           )}
+          </div>
         </div>
       </div>
     );
@@ -156,11 +169,16 @@ const WerkplaatsOnderdelen: React.FC = () => {
             <div className="text-[18px] font-bold text-slate-900 tracking-tight">Onderdelen</div>
             <div className="text-[12.5px] text-slate-500">Overzicht van bestelde onderdelen per voertuig</div>
           </div>
-          <Input
-            placeholder="Zoek op onderdeel, merk, model, kenteken…"
-            value={filter} onChange={(e) => setFilter(e.target.value)}
-            className="max-w-sm bg-white"
-          />
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Zoek op onderdeel, merk, model, kenteken…"
+              value={filter} onChange={(e) => setFilter(e.target.value)}
+              className="w-72 bg-white"
+            />
+            <Button onClick={() => setAddOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
+              <Plus className="h-4 w-4 mr-1" /> Onderdeel bestellen
+            </Button>
+          </div>
         </div>
 
         {loading ? (
@@ -174,6 +192,12 @@ const WerkplaatsOnderdelen: React.FC = () => {
             <Column status="binnen" items={grouped.binnen} />
           </div>
         )}
+
+        <AddPartOrderDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          onCreated={() => load()}
+        />
       </AsPage>
     </DashboardLayout>
   );
