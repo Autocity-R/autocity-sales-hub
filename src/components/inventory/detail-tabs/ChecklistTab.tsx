@@ -20,6 +20,7 @@ import { ChecklistQRDialog } from "@/components/inventory/ChecklistQRDialog";
 import { DeliveryAppointmentCard } from "@/components/inventory/DeliveryAppointmentCard";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { ChecklistAssignDialog } from "@/components/aftersales/ChecklistAssignDialog";
 
 interface ChecklistTabProps {
   vehicle: Vehicle;
@@ -34,6 +35,7 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [assignTaskItem, setAssignTaskItem] = useState<ChecklistItem | null>(null);
   const [showQRDialog, setShowQRDialog] = useState(false);
+  const [assignDialog, setAssignDialog] = useState<{ item: ChecklistItem; discipline: "werkplaats" | "spuit" | "uitdeuk" } | null>(null);
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { canManageChecklists } = useRoleAccess();
@@ -189,42 +191,17 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
     setAssignTaskItem(null);
   };
 
-  const handleAssignToWorkshop = async (item: ChecklistItem, discipline: "werkplaats" | "spuit" | "uitdeuk") => {
-    try {
-      const { data: userRes } = await supabase.auth.getUser();
-      const { data: inserted, error } = await supabase.from("work_orders").insert({
-        vehicle_id: vehicle.id,
-        discipline,
-        part: item.description.slice(0, 60),
-        description: item.description,
-        status: "ingepland",
-        source: "checklist",
-        branch: (vehicle as any).branch || "rotterdam",
-        created_by: userRes.user?.id ?? null,
-        checklist_items: [item.id],
-      } as any).select("id").single();
-      if (error) throw error;
-      const woId = (inserted as any).id as string;
-
-      const updatedChecklist = checklist.map((c: any) =>
-        c.id === item.id ? { ...c, linkedWorkOrderId: woId, assignedDiscipline: discipline } : c
-      );
-      const updatedVehicle = {
-        ...vehicle,
-        details: { ...vehicle.details, preDeliveryChecklist: updatedChecklist },
-      };
-      onUpdate(updatedVehicle);
-      if (onAutoSave) onAutoSave(updatedVehicle);
-      toast({
-        title: "Opdracht aangemaakt",
-        description:
-          discipline === "werkplaats" ? "Naar de werkplaats" :
-          discipline === "spuit" ? "Naar schadeherstel" : "Naar uitdeuken (extern)",
-      });
-      queryClient.invalidateQueries({ queryKey: ["checklist-workorders"] });
-    } catch (e: any) {
-      toast({ title: "Fout", description: e.message, variant: "destructive" });
-    }
+  const handleAssignCreated = ({ workOrderId, itemIds, discipline }: { workOrderId: string; itemIds: string[]; discipline: "werkplaats" | "spuit" | "uitdeuk" }) => {
+    const updatedChecklist = checklist.map((c: any) =>
+      itemIds.includes(c.id) ? { ...c, linkedWorkOrderId: workOrderId, assignedDiscipline: discipline } : c
+    );
+    const updatedVehicle = {
+      ...vehicle,
+      details: { ...vehicle.details, preDeliveryChecklist: updatedChecklist },
+    };
+    onUpdate(updatedVehicle);
+    if (onAutoSave) onAutoSave(updatedVehicle);
+    queryClient.invalidateQueries({ queryKey: ["checklist-workorders"] });
   };
 
   const handleDeliveryAppointmentCreated = (appointmentId: string) => {
@@ -443,24 +420,6 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
                           Taak toegewezen
                         </Badge>
                       )}
-                      {(() => {
-                        const wid = (item as any).linkedWorkOrderId as string | undefined;
-                        const wo = wid ? workOrderStatusMap[wid] : null;
-                        if (!wo) return null;
-                        const label =
-                          wo.discipline === "spuit" ? "Schadeherstel" :
-                          wo.discipline === "uitdeuk" ? "Uitdeuken" : "Werkplaats";
-                        const statusLabel =
-                          wo.status === "ingepland" ? "ingepland" :
-                          wo.status === "bezig" ? "bezig" :
-                          wo.status === "afgerond" ? "afgerond" :
-                          wo.status === "goedgekeurd" ? "goedgekeurd" : wo.status;
-                        return (
-                          <Badge variant="secondary" className="text-xs">
-                            {label} · {statusLabel}
-                          </Badge>
-                        );
-                      })()}
                     </div>
 
                     <div className="text-xs text-muted-foreground space-y-0.5">
@@ -489,13 +448,13 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
                         <DropdownMenuContent align="end" className="w-56 bg-background">
                           <DropdownMenuLabel>Toewijzen aan…</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleAssignToWorkshop(item, "werkplaats")}>
+                          <DropdownMenuItem onClick={() => setAssignDialog({ item, discipline: "werkplaats" })}>
                             <Wrench className="h-4 w-4 mr-2" /> Werkplaats
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAssignToWorkshop(item, "spuit")}>
+                          <DropdownMenuItem onClick={() => setAssignDialog({ item, discipline: "spuit" })}>
                             <PaintBucket className="h-4 w-4 mr-2" /> Schadeherstel
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAssignToWorkshop(item, "uitdeuk")}>
+                          <DropdownMenuItem onClick={() => setAssignDialog({ item, discipline: "uitdeuk" })}>
                             <Hammer className="h-4 w-4 mr-2" /> Uitdeuken (extern)
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -571,6 +530,19 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
         open={showQRDialog}
         onOpenChange={setShowQRDialog}
       />
+
+      {/* Toewijs-dialog werkplaats / schadeherstel / uitdeuken */}
+      {assignDialog && (
+        <ChecklistAssignDialog
+          open={!!assignDialog}
+          onOpenChange={(v) => !v && setAssignDialog(null)}
+          discipline={assignDialog.discipline}
+          vehicle={vehicle}
+          checklist={checklist}
+          initialItemId={assignDialog.item.id}
+          onCreated={handleAssignCreated}
+        />
+      )}
     </div>
   );
 };

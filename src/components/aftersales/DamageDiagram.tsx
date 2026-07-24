@@ -127,7 +127,7 @@ export const DamageDiagram: React.FC<Props> = ({
   return (
     <svg
       viewBox="0 0 720 780"
-      className={cn("w-full h-auto select-none", compact ? "max-w-[200px]" : "max-w-[560px]", className)}
+      className={cn("w-full h-auto select-none", compact ? "max-w-[200px]" : "", className)}
       xmlns="http://www.w3.org/2000/svg"
     >
       {/* ==== Formulier achtergrondlijnen ==== */}
