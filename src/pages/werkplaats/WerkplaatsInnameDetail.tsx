@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Check, Loader2, PaintBucket, Hammer, Camera, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Loader2, PaintBucket, Hammer, Camera, Plus, Trash2, Package } from "lucide-react";
 import { AsPage, AsCard, AsLicensePlate, AsMono, AsPill } from "@/components/aftersales/ui";
 import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
 import { BODY_PART_GROUPS } from "@/components/werkplaats/bodyParts";
@@ -47,6 +47,12 @@ const WerkplaatsInnameDetail: React.FC = () => {
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState<File[]>([]);
 
+  // Onderdelen composer
+  const [partName, setPartName] = useState("");
+  const [partNote, setPartNote] = useState("");
+  const [partSaving, setPartSaving] = useState(false);
+  const [parts, setParts] = useState<Array<{ id: string; part_name: string; note: string | null; status: string }>>([]);
+
   const load = async () => {
     if (!id) return;
     setLoading(true);
@@ -58,6 +64,34 @@ const WerkplaatsInnameDetail: React.FC = () => {
     setLoading(false);
   };
   useEffect(() => { load(); /* eslint-disable-line */ }, [id]);
+
+  const loadParts = async (vehicleId: string) => {
+    const { data } = await supabase.from("parts_orders")
+      .select("id, part_name, note, status")
+      .eq("vehicle_id", vehicleId)
+      .order("created_at", { ascending: false });
+    setParts((data as any) || []);
+  };
+  useEffect(() => { if (intake?.vehicle_id) loadParts(intake.vehicle_id); }, [intake?.vehicle_id]);
+
+  const addPartOrder = async () => {
+    if (!intake || !partName.trim()) return;
+    setPartSaving(true);
+    const { data: userRes } = await supabase.auth.getUser();
+    const { error } = await supabase.from("parts_orders").insert({
+      vehicle_id: intake.vehicle_id,
+      part_name: partName.trim(),
+      note: partNote.trim() || null,
+      status: "te_bestellen",
+      branch: intake.branch || "rotterdam",
+      created_by: userRes.user?.id ?? null,
+    });
+    setPartSaving(false);
+    if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
+    setPartName(""); setPartNote("");
+    toast({ title: "Onderdeel toegevoegd", description: "Zichtbaar onder menu 'Onderdelen'." });
+    loadParts(intake.vehicle_id);
+  };
 
   const openZone = (zone: DamageZone) => {
     setActiveZone(zone);
@@ -174,7 +208,7 @@ const WerkplaatsInnameDetail: React.FC = () => {
       approved_at: new Date().toISOString(),
     }).eq("id", intake.id);
     if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
-    toast({ title: "Inname afgerond" });
+    toast({ title: "Auto ingenomen", description: "Verdwijnt uit het Inname-menu." });
     navigate("/werkplaats/inname");
   };
 
@@ -300,10 +334,39 @@ const WerkplaatsInnameDetail: React.FC = () => {
             </div>
         </AsCard>
 
-        {/* Inname afronden */}
+        {/* Onderdelen composer */}
+        <AsCard className="p-5 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Package className="h-4 w-4 text-slate-500" />
+            <div className="text-[13px] font-semibold text-slate-900">Onderdelen bestellen</div>
+            <AsPill tone="slate" className="ml-auto">{parts.length}</AsPill>
+          </div>
+          <div className="grid md:grid-cols-[1fr_1.4fr_auto] gap-2">
+            <Input placeholder="Onderdeel (bv. koplamp L)" value={partName} onChange={(e) => setPartName(e.target.value)} />
+            <Input placeholder="Notitie (optioneel)" value={partNote} onChange={(e) => setPartNote(e.target.value)} />
+            <Button onClick={addPartOrder} disabled={partSaving || !partName.trim()}>
+              <Plus className="h-4 w-4 mr-1" /> Toevoegen
+            </Button>
+          </div>
+          {parts.length > 0 && (
+            <div className="mt-3 space-y-1.5">
+              {parts.map(p => (
+                <div key={p.id} className="flex items-center gap-2 text-[12.5px] bg-white border border-slate-200 rounded-lg px-3 py-2">
+                  <span className="font-medium text-slate-900">{p.part_name}</span>
+                  {p.note && <span className="text-slate-500 truncate">— {p.note}</span>}
+                  <AsPill tone={p.status === "binnen" ? "green" : p.status === "besteld" ? "blue" : "amber"} className="ml-auto">
+                    {p.status === "te_bestellen" ? "Te bestellen" : p.status === "besteld" ? "Besteld" : "Binnen"}
+                  </AsPill>
+                </div>
+              ))}
+            </div>
+          )}
+        </AsCard>
+
+        {/* Auto ingenomen */}
         <div className="flex justify-end">
           <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={finishIntake}>
-            <Check className="h-4 w-4 mr-1" /> Inname afronden
+            <Check className="h-4 w-4 mr-1" /> Auto ingenomen
           </Button>
         </div>
 

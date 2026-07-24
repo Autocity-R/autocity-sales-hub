@@ -27,6 +27,7 @@ import {
   Hammer,
   PaintBucket,
   ClipboardCheck,
+  Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -401,6 +402,7 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
           url: "/warranty", label: "Garantie", icon: ShieldIcon, badge: garantieUnread,
           sub: [{ url: "/garantie/inbox", label: "Inbox", icon: InboxIcon, badge: garantieUnread }],
         },
+        { url: "/werkplaats/onderdelen", label: "Onderdelen", icon: Package },
         { url: "/customers", label: "Alle klanten", icon: UsersIcon, exact: true },
         { url: "/loan-cars", label: "Leenauto beheer", icon: CarIcon },
       ],

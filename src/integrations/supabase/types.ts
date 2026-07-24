@@ -3644,6 +3644,70 @@ export type Database = {
         }
         Relationships: []
       }
+      parts_orders: {
+        Row: {
+          arrived_at: string | null
+          branch: string
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          ordered_at: string | null
+          part_name: string
+          status: string
+          vehicle_id: string
+          work_order_id: string | null
+        }
+        Insert: {
+          arrived_at?: string | null
+          branch?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          ordered_at?: string | null
+          part_name: string
+          status?: string
+          vehicle_id: string
+          work_order_id?: string | null
+        }
+        Update: {
+          arrived_at?: string | null
+          branch?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          ordered_at?: string | null
+          part_name?: string
+          status?: string
+          vehicle_id?: string
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parts_orders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parts_orders_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parts_orders_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           branch: string
@@ -4720,6 +4784,7 @@ export type Database = {
           approved_by: string | null
           assigned_to: string | null
           branch: string
+          checklist_items: Json | null
           created_at: string
           created_by: string | null
           description: string
@@ -4746,6 +4811,7 @@ export type Database = {
           approved_by?: string | null
           assigned_to?: string | null
           branch?: string
+          checklist_items?: Json | null
           created_at?: string
           created_by?: string | null
           description: string
@@ -4772,6 +4838,7 @@ export type Database = {
           approved_by?: string | null
           assigned_to?: string | null
           branch?: string
+          checklist_items?: Json | null
           created_at?: string
           created_by?: string | null
           description?: string

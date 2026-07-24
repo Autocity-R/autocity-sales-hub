@@ -1,5 +1,8 @@
 import React, { useState } from "react";
-import { ClipboardCheck, Circle, CheckCircle2, Trash2, Plus, UserPlus, ClipboardList, Download, QrCode, CalendarCheck, XCircle } from "lucide-react";
+import { ClipboardCheck, Circle, CheckCircle2, Trash2, Plus, UserPlus, ClipboardList, Download, QrCode, CalendarCheck, XCircle, Wrench, PaintBucket, Hammer } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { toast } from "@/hooks/use-toast";
 import { exportChecklistToExcel } from "@/utils/checklistExportExcel";
 import { Vehicle, ChecklistItem } from "@/types/inventory";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,8 +36,30 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
   const [showQRDialog, setShowQRDialog] = useState(false);
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { canManageChecklists } = useRoleAccess();
+  const canAssignWorkshop = canManageChecklists();
 
   const checklist = vehicle.details?.preDeliveryChecklist || [];
+
+  // Werkorder-status voor gekoppelde items
+  const linkedWorkOrderIds = checklist
+    .filter((i: any) => i.linkedWorkOrderId)
+    .map((i: any) => i.linkedWorkOrderId as string);
+  const { data: workOrderStatusMap = {} } = useQuery({
+    queryKey: ["checklist-workorders", linkedWorkOrderIds],
+    queryFn: async () => {
+      if (linkedWorkOrderIds.length === 0) return {};
+      const { data } = await supabase
+        .from("work_orders")
+        .select("id, status, discipline")
+        .in("id", linkedWorkOrderIds);
+      const map: Record<string, { status: string; discipline: string }> = {};
+      (data || []).forEach((r: any) => { map[r.id] = { status: r.status, discipline: r.discipline }; });
+      return map;
+    },
+    enabled: linkedWorkOrderIds.length > 0,
+    staleTime: 30000,
+  });
   const completedCount = checklist.filter(item => item.completed).length;
   const totalCount = checklist.length;
   const progressPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -162,6 +187,44 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
     }
     
     setAssignTaskItem(null);
+  };
+
+  const handleAssignToWorkshop = async (item: ChecklistItem, discipline: "werkplaats" | "spuit" | "uitdeuk") => {
+    try {
+      const { data: userRes } = await supabase.auth.getUser();
+      const { data: inserted, error } = await supabase.from("work_orders").insert({
+        vehicle_id: vehicle.id,
+        discipline,
+        part: item.description.slice(0, 60),
+        description: item.description,
+        status: "ingepland",
+        source: "checklist",
+        branch: (vehicle as any).branch || "rotterdam",
+        created_by: userRes.user?.id ?? null,
+        checklist_items: [item.id],
+      } as any).select("id").single();
+      if (error) throw error;
+      const woId = (inserted as any).id as string;
+
+      const updatedChecklist = checklist.map((c: any) =>
+        c.id === item.id ? { ...c, linkedWorkOrderId: woId, assignedDiscipline: discipline } : c
+      );
+      const updatedVehicle = {
+        ...vehicle,
+        details: { ...vehicle.details, preDeliveryChecklist: updatedChecklist },
+      };
+      onUpdate(updatedVehicle);
+      if (onAutoSave) onAutoSave(updatedVehicle);
+      toast({
+        title: "Opdracht aangemaakt",
+        description:
+          discipline === "werkplaats" ? "Naar de werkplaats" :
+          discipline === "spuit" ? "Naar schadeherstel" : "Naar uitdeuken (extern)",
+      });
+      queryClient.invalidateQueries({ queryKey: ["checklist-workorders"] });
+    } catch (e: any) {
+      toast({ title: "Fout", description: e.message, variant: "destructive" });
+    }
   };
 
   const handleDeliveryAppointmentCreated = (appointmentId: string) => {
@@ -380,6 +443,24 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
                           Taak toegewezen
                         </Badge>
                       )}
+                      {(() => {
+                        const wid = (item as any).linkedWorkOrderId as string | undefined;
+                        const wo = wid ? workOrderStatusMap[wid] : null;
+                        if (!wo) return null;
+                        const label =
+                          wo.discipline === "spuit" ? "Schadeherstel" :
+                          wo.discipline === "uitdeuk" ? "Uitdeuken" : "Werkplaats";
+                        const statusLabel =
+                          wo.status === "ingepland" ? "ingepland" :
+                          wo.status === "bezig" ? "bezig" :
+                          wo.status === "afgerond" ? "afgerond" :
+                          wo.status === "goedgekeurd" ? "goedgekeurd" : wo.status;
+                        return (
+                          <Badge variant="secondary" className="text-xs">
+                            {label} · {statusLabel}
+                          </Badge>
+                        );
+                      })()}
                     </div>
 
                     <div className="text-xs text-muted-foreground space-y-0.5">
@@ -397,6 +478,30 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-1">
+                    {/* Toewijzen aan werkplaats/schadeherstel/uitdeuken (aftersales+) */}
+                    {!readOnly && !item.completed && canAssignWorkshop && !(item as any).linkedWorkOrderId && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" title="Toewijzen aan werkplaats">
+                            <Wrench className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56 bg-background">
+                          <DropdownMenuLabel>Toewijzen aan…</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleAssignToWorkshop(item, "werkplaats")}>
+                            <Wrench className="h-4 w-4 mr-2" /> Werkplaats
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAssignToWorkshop(item, "spuit")}>
+                            <PaintBucket className="h-4 w-4 mr-2" /> Schadeherstel
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAssignToWorkshop(item, "uitdeuk")}>
+                            <Hammer className="h-4 w-4 mr-2" /> Uitdeuken (extern)
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+
                     {/* Assign Task Button - alleen tonen voor niet-voltooide items zonder bestaande gekoppelde taak */}
                     {!readOnly && !item.completed && !taskExists(item.linkedTaskId) && (
                       <Button
