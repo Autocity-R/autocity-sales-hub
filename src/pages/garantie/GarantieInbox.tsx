@@ -9,7 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, Search, Send, Sparkles, CheckCircle2, Phone, MapPin, StickyNote, Shield, Car, ChevronDown, Wand2, RefreshCw } from "lucide-react";
+import { Loader2, Search, Send, Sparkles, CheckCircle2, Phone, MapPin, StickyNote, Shield, Car, ChevronDown, Wand2, RefreshCw, Inbox, MessagesSquare, PanelRight } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { AsPage, AsCard, AsPill, AsMono, fmtWait } from "@/components/aftersales/ui";
@@ -302,6 +302,16 @@ const GarantieInbox: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)_320px] min-h-[70vh]">
             {/* ============ Threadlijst ============ */}
             <div className="border-r border-slate-100 flex flex-col">
+              {/* Kop-balk */}
+              <div className="flex items-center gap-2.5 px-3 py-2.5 bg-[#f4f6f9] border-b border-[#e2e6ec]">
+                <div className="h-[26px] w-[26px] rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-100 flex items-center justify-center">
+                  <Inbox className="h-3.5 w-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[12.5px] font-semibold text-slate-900 leading-tight">Threads</div>
+                  <div className="text-[10.5px] text-slate-500">{threads.length} open · reageer binnen 24u</div>
+                </div>
+              </div>
               <div className="p-3 border-b border-slate-100 space-y-2">
                 <div className="relative">
                   <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -355,6 +365,17 @@ const GarantieInbox: React.FC = () => {
 
             {/* ============ Tijdlijn ============ */}
             <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-2.5 px-4 py-2.5 bg-[#f4f6f9] border-b border-[#e2e6ec]">
+                <div className="h-[26px] w-[26px] rounded-md bg-violet-50 text-violet-600 ring-1 ring-violet-100 flex items-center justify-center">
+                  <MessagesSquare className="h-3.5 w-3.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[12.5px] font-semibold text-slate-900 leading-tight">Gesprek</div>
+                  <div className="text-[10.5px] text-slate-500 truncate">
+                    {selectedThread ? (selectedThread.klant_naam || selectedThread.klant_email || "—") : "Selecteer een thread"}
+                  </div>
+                </div>
+              </div>
               {!selectedThread ? (
                 <div className="flex-1 flex items-center justify-center text-slate-400 text-[13px]">Kies een thread links.</div>
               ) : (
@@ -494,7 +515,17 @@ const GarantieInbox: React.FC = () => {
             </div>
 
             {/* ============ Contextpaneel ============ */}
-            <div className="border-l border-slate-100 p-4 space-y-3 bg-slate-50/30 flex flex-col min-h-0">
+            <div className="border-l border-slate-100 bg-slate-50/30 flex flex-col min-h-0">
+              <div className="flex items-center gap-2.5 px-3 py-2.5 bg-[#f4f6f9] border-b border-[#e2e6ec]">
+                <div className="h-[26px] w-[26px] rounded-md bg-teal-50 text-teal-600 ring-1 ring-teal-100 flex items-center justify-center">
+                  <PanelRight className="h-3.5 w-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[12.5px] font-semibold text-slate-900 leading-tight">Context & agent</div>
+                  <div className="text-[10.5px] text-slate-500">Voertuig · claim · overleg</div>
+                </div>
+              </div>
+              <div className="p-4 space-y-3 flex flex-col flex-1 min-h-0">
               <div>
                 <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5"><Car className="h-3.5 w-3.5" />Voertuig</div>
                 <div className="bg-white border border-slate-200 rounded-lg p-3 text-[12px] space-y-1">
@@ -566,6 +597,7 @@ const GarantieInbox: React.FC = () => {
                     <Send className="h-3.5 w-3.5" />
                   </Button>
                 </div>
+              </div>
               </div>
             </div>
           </div>
