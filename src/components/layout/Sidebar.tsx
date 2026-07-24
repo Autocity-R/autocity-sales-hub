@@ -393,6 +393,7 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
         { url: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
         { url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
         { url: "/werkplaats/goedkeuren", label: "Goedkeuren", icon: ClipboardCheck },
+        { url: "/werkplaats/onderdelen", label: "Onderdelen", icon: Package },
       ],
     },
     {
@@ -402,7 +403,6 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
           url: "/warranty", label: "Garantie", icon: ShieldIcon, badge: garantieUnread,
           sub: [{ url: "/garantie/inbox", label: "Inbox", icon: InboxIcon, badge: garantieUnread }],
         },
-        { url: "/werkplaats/onderdelen", label: "Onderdelen", icon: Package },
         { url: "/customers", label: "Alle klanten", icon: UsersIcon, exact: true },
         { url: "/loan-cars", label: "Leenauto beheer", icon: CarIcon },
       ],
