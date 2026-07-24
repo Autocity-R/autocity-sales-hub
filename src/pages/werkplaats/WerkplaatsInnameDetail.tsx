@@ -12,6 +12,7 @@ import { AsPage, AsCard, AsLicensePlate, AsMono, AsPill } from "@/components/aft
 import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
 import { DamageDiagram, DAMAGE_ZONES, findZoneByName, DamageZone } from "@/components/aftersales/DamageDiagram";
 import { cn } from "@/lib/utils";
+import { AddPartOrderDialog } from "@/components/aftersales/AddPartOrderDialog";
 
 interface IntakePoint { text: string; photo_paths?: string[]; work_order_id?: string | null; }
 interface Intake {
@@ -47,10 +48,8 @@ const WerkplaatsInnameDetail: React.FC = () => {
   const [files, setFiles] = useState<File[]>([]);
 
   // Onderdelen composer
-  const [partName, setPartName] = useState("");
-  const [partNote, setPartNote] = useState("");
-  const [partSaving, setPartSaving] = useState(false);
   const [parts, setParts] = useState<Array<{ id: string; part_name: string; note: string | null; status: string }>>([]);
+  const [addPartOpen, setAddPartOpen] = useState(false);
 
   const load = async () => {
     if (!id) return;
@@ -73,24 +72,7 @@ const WerkplaatsInnameDetail: React.FC = () => {
   };
   useEffect(() => { if (intake?.vehicle_id) loadParts(intake.vehicle_id); }, [intake?.vehicle_id]);
 
-  const addPartOrder = async () => {
-    if (!intake || !partName.trim()) return;
-    setPartSaving(true);
-    const { data: userRes } = await supabase.auth.getUser();
-    const { error } = await supabase.from("parts_orders").insert({
-      vehicle_id: intake.vehicle_id,
-      part_name: partName.trim(),
-      note: partNote.trim() || null,
-      status: "te_bestellen",
-      branch: intake.branch || "rotterdam",
-      created_by: userRes.user?.id ?? null,
-    });
-    setPartSaving(false);
-    if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
-    setPartName(""); setPartNote("");
-    toast({ title: "Onderdeel toegevoegd", description: "Zichtbaar onder menu 'Onderdelen'." });
-    loadParts(intake.vehicle_id);
-  };
+  // add-part flow gebruikt gedeeld AddPartOrderDialog
 
   const openZone = (zone: DamageZone) => {
     setActiveZone(zone);
@@ -311,13 +293,9 @@ const WerkplaatsInnameDetail: React.FC = () => {
             <div className="text-[13px] font-semibold text-slate-900">Onderdelen bestellen</div>
             <AsPill tone="slate" className="ml-auto">{parts.length}</AsPill>
           </div>
-          <div className="grid md:grid-cols-[1fr_1.4fr_auto] gap-2">
-            <Input placeholder="Onderdeel (bv. koplamp L)" value={partName} onChange={(e) => setPartName(e.target.value)} />
-            <Input placeholder="Notitie (optioneel)" value={partNote} onChange={(e) => setPartNote(e.target.value)} />
-            <Button onClick={addPartOrder} disabled={partSaving || !partName.trim()}>
-              <Plus className="h-4 w-4 mr-1" /> Toevoegen
-            </Button>
-          </div>
+          <Button onClick={() => setAddPartOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Plus className="h-4 w-4 mr-1" /> Onderdeel bestellen
+          </Button>
           {parts.length > 0 && (
             <div className="mt-3 space-y-1.5">
               {parts.map(p => (
@@ -325,13 +303,28 @@ const WerkplaatsInnameDetail: React.FC = () => {
                   <span className="font-medium text-slate-900">{p.part_name}</span>
                   {p.note && <span className="text-slate-500 truncate">— {p.note}</span>}
                   <AsPill tone={p.status === "binnen" ? "green" : p.status === "besteld" ? "blue" : "amber"} className="ml-auto">
-                    {p.status === "te_bestellen" ? "Te bestellen" : p.status === "besteld" ? "Besteld" : "Binnen"}
+                    {p.status === "te_bestellen" ? "Nog niet besteld" : p.status === "besteld" ? "Besteld" : "Binnen"}
                   </AsPill>
                 </div>
               ))}
             </div>
           )}
         </AsCard>
+
+        <AddPartOrderDialog
+          open={addPartOpen}
+          onOpenChange={setAddPartOpen}
+          presetVehicle={intake?.vehicle ? {
+            id: intake.vehicle.id,
+            brand: intake.vehicle.brand,
+            model: intake.vehicle.model,
+            year: intake.vehicle.year,
+            license_number: intake.vehicle.license_number,
+            vin: intake.vehicle.vin,
+            branch: intake.branch,
+          } : null}
+          onCreated={() => intake?.vehicle_id && loadParts(intake.vehicle_id)}
+        />
 
         {/* Auto ingenomen */}
         <div className="flex justify-end">
