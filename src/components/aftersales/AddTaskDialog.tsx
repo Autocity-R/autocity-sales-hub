@@ -214,7 +214,8 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
         let cursor = nextSort;
         for (const zid of zoneIds) {
           const zone = DAMAGE_ZONES.find(z => z.id === zid)!;
-          const desc = (zoneNotes[zid] || description).trim() || zone.name;
+          const baseDesc = (zoneNotes[zid] || description).trim() || zone.name;
+          const desc = dueDate ? `[Klaar vóór ${dueDate}] ${baseDesc}` : baseDesc;
           const { error } = await supabase.from("work_orders").insert({
             vehicle_id: vehicle.id,
             discipline, part: zone.name, description: desc,
@@ -222,7 +223,6 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
             source: "aftersales", branch: vehicle.branch || "rotterdam",
             assigned_to: assignedTo || null,
             is_rush: isRush,
-            due_date: dueDate || null,
             created_by: userRes.user?.id ?? null,
           } as any);
           if (error) throw error;
@@ -231,7 +231,8 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
       } else {
         const photos = await uploadPhotos();
         const zone = zoneIds[0] ? DAMAGE_ZONES.find(z => z.id === zoneIds[0]) : null;
-        const desc = description.trim() || (zone?.name ?? "");
+        const baseDesc = description.trim() || (zone?.name ?? "");
+        const desc = dueDate ? `[Klaar vóór ${dueDate}] ${baseDesc}` : baseDesc;
         const { error } = await supabase.from("work_orders").insert({
           vehicle_id: vehicle.id,
           discipline,
@@ -241,7 +242,6 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
           source: "aftersales", branch: vehicle.branch || "rotterdam",
           assigned_to: assignedTo || null,
           is_rush: isRush,
-          due_date: dueDate || null,
           warranty_claim_id: warrantyClaimId || null,
           created_by: userRes.user?.id ?? null,
         } as any);
