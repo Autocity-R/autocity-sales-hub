@@ -10,7 +10,7 @@ export const AsPage: React.FC<{ children: React.ReactNode; className?: string }>
   children,
   className,
 }) => (
-  <div className={cn("min-h-full -mx-3 -my-3 md:-mx-4 md:-my-6 lg:-mx-6 px-3 md:px-6 py-4 md:py-6 bg-[#f6f7f9] font-sans text-slate-900", className)}
+  <div className={cn("min-h-full -mx-3 -my-3 md:-mx-4 md:-my-6 lg:-mx-6 px-3 md:px-6 py-4 md:py-6 bg-[#e7eaef] font-sans text-slate-900", className)}
     style={{ fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto' }}
   >
     {children}
@@ -26,7 +26,7 @@ export const AsCard: React.FC<{
   <div
     onClick={onClick}
     className={cn(
-      "bg-[#f8f9fb] rounded-[14px] border border-[#e8eaee] shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_18px_-14px_rgba(15,23,42,0.10)]",
+      "bg-white rounded-[14px] border border-[#dfe3ea] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_22px_-16px_rgba(15,23,42,0.14)] overflow-hidden",
       (interactive || onClick) && "cursor-pointer transition-shadow hover:shadow-[0_1px_2px_rgba(15,23,42,0.06),0_12px_28px_-14px_rgba(15,23,42,0.18)]",
       className,
     )}
@@ -139,20 +139,20 @@ export const AsCardHead: React.FC<{
   count?: number | string;
   right?: React.ReactNode;
 }> = ({ icon, tone = "slate", title, subtitle, count, right }) => (
-  <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4">
+  <div className="flex items-start justify-between gap-3 px-4 py-3 bg-[#f4f6f9] border-b border-[#e2e6ec]">
     <div className="flex items-start gap-3 min-w-0">
-      <div className={cn("h-[34px] w-[34px] rounded-xl flex items-center justify-center shrink-0", TONE_ICON[tone])}>
+      <div className={cn("h-[30px] w-[30px] rounded-lg flex items-center justify-center shrink-0", TONE_ICON[tone])}>
         {icon}
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 pt-0.5">
         <div className="text-[13px] font-semibold tracking-tight text-slate-900 truncate">{title}</div>
-        {subtitle && <div className="text-[11.5px] text-slate-500 truncate mt-0.5">{subtitle}</div>}
+        {subtitle && <div className="text-[11.5px] text-slate-500 truncate">{subtitle}</div>}
       </div>
     </div>
     <div className="flex items-center gap-2 shrink-0">
       {right}
       {typeof count !== "undefined" && (
-        <div className="text-[22px] font-extrabold tabular-nums text-slate-900 leading-none">{count}</div>
+        <div className="text-[20px] font-extrabold tabular-nums text-slate-900 leading-none">{count}</div>
       )}
     </div>
   </div>

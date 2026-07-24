@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { AsPage, AsCard, AsLicensePlate, AsPill } from "@/components/aftersales/ui";
+import { AsPage, AsCard, AsCardHead, AsLicensePlate, AsPill } from "@/components/aftersales/ui";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -143,13 +143,17 @@ const WerkplaatsOnderdelen: React.FC = () => {
   const Column: React.FC<{ status: Status; items: PartOrder[] }> = ({ status, items }) => {
     const meta = STATUS_META[status];
     const Icon = meta.icon;
+    const tone: any = status === "binnen" ? "green" : status === "besteld" ? "blue" : "amber";
     return (
-      <AsCard className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Icon className="h-4 w-4 text-slate-500" />
-          <div className="text-[13px] font-semibold text-slate-900">{meta.label}</div>
-          <AsPill tone={meta.tone} className="ml-auto">{items.length}</AsPill>
-        </div>
+      <AsCard>
+        <AsCardHead
+          tone={tone}
+          icon={<Icon className="h-4 w-4" />}
+          title={meta.label}
+          subtitle={status === "te_bestellen" ? "Nog niet besteld" : status === "besteld" ? "Onderweg" : "Binnengekomen"}
+          count={items.length}
+        />
+        <div className="p-4">
         {items.length === 0 ? (
           <div className="text-[12px] text-slate-400 border border-dashed border-slate-200 rounded-lg p-4 text-center bg-white">
             Leeg
@@ -157,6 +161,7 @@ const WerkplaatsOnderdelen: React.FC = () => {
         ) : (
           <div className="space-y-2">{items.map(renderCard)}</div>
         )}
+        </div>
       </AsCard>
     );
   };

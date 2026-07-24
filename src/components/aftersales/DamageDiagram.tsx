@@ -2,9 +2,12 @@ import React from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Klassiek meervoudig schadeformulier: bovenaanzicht in het midden,
- * links vooraanzicht, rechts achteraanzicht, boven L-zijaanzicht, onder R-zijaanzicht.
- * Zone-IDs / -namen mappen 1-op-1 op `part` in work_orders / vehicle_intakes.points.
+ * Schadediagram in drie aanzichten (viewBox 900x1100):
+ *   - Zijkant LINKS  (boven)   y   20..300
+ *   - BOVENAANZICHT  (midden)  y  340..960  — auto rijdt naar boven (VOOR = boven)
+ *   - Zijkant RECHTS (onder, gespiegeld) y 1000..1280? — nee: passen in 1100
+ * Alle drie aanzichten zijn volledig klikbaar. Zone-IDs / -namen komen 1-op-1
+ * terug in work_orders.part en vehicle_intakes.points.
  */
 
 export interface DamageZone {
@@ -17,49 +20,114 @@ export interface DamageZone {
   x?: number; y?: number; w?: number; h?: number; // rect
 }
 
-/**
- * Layout (viewBox 0 0 720 780):
- *  - TOP-view (main): x 240..480, y 30..750  (breedte 240, hoogte 720)
- *  - LEFT-side (L):   x 240..480, y 780..0 top strip? — hier boven top view geplaatst: y -140..-20? Nee.
- * Voor eenvoud: we plaatsen top-view in het midden en 4 kleinere silhouetten er omheen op een aparte
- * "damageform" layout: left side boven, right side onder, front links, rear rechts.
+/*
+ * ============= COORDINATES =============
+ *  viewBox 900 x 1100
+ *  Row 1 — SIDE LEFT  (rijrichting naar rechts): y 40..300, x 40..860
+ *  Row 2 — TOP VIEW   (auto rijdt naar boven):   center x 330..570, y 340..960
+ *  Row 3 — SIDE RIGHT (gespiegeld — rijrichting naar links): y 1000..1260 ... 900 hoog te kort.
+ *  → Verruim viewBox naar 900 x 1320.
  */
 
+// ---- Side left helper (rijrichting → RECHTS) ----
+// Basis-silhouet van x 40 tot 860 (breed 820), y-basis 40..300
+// hoogte 260. Wiel-kasten rond y 260 (bodem).
+const SL_Y0 = 40, SL_H = 260;
+
+// ---- Side right (bottom): translate/scale wordt op group niveau gedaan ----
+const SR_Y0 = 1020;
+
+// ---- Top view ----
+const TV_XL = 340, TV_XR = 560; // body left/right
+const TV_YT = 360, TV_YB = 940;
+
+// Helper: side-view zones (relatief aan y0)
+const sideZones = (side: "L" | "R", y0: number): DamageZone[] => {
+  const ids = (base: string) => `${side}_${base}`;
+  const nm = (name: string) => `${side === "L" ? "L" : "R"} ${name}`;
+  // Vertical anchors within the 260h side silhouette:
+  //   y0..y0+40 = top (dak/pilaars/side ruiten bovenrand)
+  //   y0+40..y0+140 = middenband (portieren/ruiten)
+  //   y0+140..y0+230 = onderkant portieren / dorpel
+  //   y0+230..y0+260 = wielkast/velg
+  // Horizontally (in original / left orientation, rijdt naar rechts):
+  //   40..170  = achter (achterbumper/achterlicht/achterscherm/velg achter)
+  //   170..380 = achterportier + zijruit achter
+  //   380..600 = voorportier + zijruit voor + spiegel
+  //   600..760 = voorscherm + koplamp
+  //   760..860 = voorbumper
+  const y = (dy: number) => y0 + dy;
+  return [
+    // Achterbumper
+    { id: ids("achterbumper"), name: nm("achterbumper"), shape: "polygon",
+      points: `40,${y(150)} 90,${y(150)} 110,${y(230)} 40,${y(230)}` },
+    // Achterlicht
+    { id: ids("achterlicht"), name: nm("achterlicht"), shape: "polygon",
+      points: `85,${y(110)} 130,${y(110)} 130,${y(150)} 85,${y(150)}` },
+    // Achterscherm
+    { id: ids("achterscherm"), name: nm("achterscherm"), shape: "polygon",
+      points: `85,${y(70)} 200,${y(70)} 200,${y(230)} 110,${y(230)} 90,${y(150)} 85,${y(150)}` },
+    // Zijruit achter (donker)
+    { id: ids("zijruit_achter"), name: nm("zijruit achter"), shape: "polygon",
+      points: `210,${y(30)} 380,${y(20)} 380,${y(70)} 210,${y(70)}` },
+    // Achterportier
+    { id: ids("achterportier"), name: nm("achterportier"), shape: "polygon",
+      points: `210,${y(70)} 380,${y(70)} 380,${y(230)} 210,${y(230)}` },
+    // Zijruit voor (donker)
+    { id: ids("zijruit_voor"), name: nm("zijruit voor"), shape: "polygon",
+      points: `390,${y(20)} 570,${y(20)} 590,${y(70)} 390,${y(70)}` },
+    // Voorportier
+    { id: ids("voorportier"), name: nm("voorportier"), shape: "polygon",
+      points: `390,${y(70)} 590,${y(70)} 590,${y(230)} 390,${y(230)}` },
+    // Spiegel
+    { id: ids("spiegel"), name: nm("buitenspiegel"), shape: "ellipse",
+      cx: 400, cy: y(58), rx: 14, ry: 8 },
+    // Voorscherm
+    { id: ids("voorscherm"), name: nm("voorscherm"), shape: "polygon",
+      points: `600,${y(60)} 760,${y(50)} 780,${y(230)} 690,${y(230)} 600,${y(230)}` },
+    // Koplamp
+    { id: ids("koplamp"), name: nm("koplamp"), shape: "polygon",
+      points: `730,${y(90)} 790,${y(85)} 820,${y(120)} 760,${y(125)}` },
+    // Voorbumper
+    { id: ids("voorbumper"), name: nm("voorbumper"), shape: "polygon",
+      points: `790,${y(120)} 855,${y(140)} 855,${y(200)} 800,${y(230)} 780,${y(230)}` },
+    // Dorpel
+    { id: ids("dorpel"), name: nm("dorpel"), shape: "rect",
+      x: 110, y: y(230), w: 690, h: 12 },
+    // Velg achter (dubbele circle door renderer als 2 circles achtergrond)
+    { id: ids("velg_achter"), name: nm("velg achter"), shape: "circle",
+      cx: 145, cy: y(255), r: 30 },
+    // Velg voor
+    { id: ids("velg_voor"), name: nm("velg voor"), shape: "circle",
+      cx: 705, cy: y(255), r: 30 },
+  ];
+};
+
+// Top-view zones (auto rijdt naar boven; VOOR = boven, LINKS = links)
+const topZones = (): DamageZone[] => {
+  const xl = TV_XL, xr = TV_XR;
+  return [
+    { id: "voorbumper", name: "Voorbumper", shape: "polygon",
+      points: `${xl+5},${TV_YT+10} ${xr-5},${TV_YT+10} ${xr+15},${TV_YT+60} ${xl-15},${TV_YT+60}` },
+    { id: "motorkap", name: "Motorkap", shape: "polygon",
+      points: `${xl-15},${TV_YT+60} ${xr+15},${TV_YT+60} ${xr+15},${TV_YT+180} ${xl-15},${TV_YT+180}` },
+    { id: "voorruit", name: "Voorruit", shape: "polygon",
+      points: `${xl-15},${TV_YT+180} ${xr+15},${TV_YT+180} ${xr+10},${TV_YT+250} ${xl-10},${TV_YT+250}` },
+    { id: "dak", name: "Dak", shape: "polygon",
+      points: `${xl-10},${TV_YT+250} ${xr+10},${TV_YT+250} ${xr+10},${TV_YT+430} ${xl-10},${TV_YT+430}` },
+    { id: "achterruit", name: "Achterruit", shape: "polygon",
+      points: `${xl-10},${TV_YT+430} ${xr+10},${TV_YT+430} ${xr+15},${TV_YT+500} ${xl-15},${TV_YT+500}` },
+    { id: "achterklep", name: "Achterklep", shape: "polygon",
+      points: `${xl-15},${TV_YT+500} ${xr+15},${TV_YT+500} ${xr+15},${TV_YT+560} ${xl-15},${TV_YT+560}` },
+    { id: "achterbumper", name: "Achterbumper", shape: "polygon",
+      points: `${xl-15},${TV_YT+560} ${xr+15},${TV_YT+560} ${xr-5},${TV_YT+590} ${xl+5},${TV_YT+590}` },
+  ];
+};
+
 export const DAMAGE_ZONES: DamageZone[] = [
-  // ------------- TOP VIEW (bovenaanzicht) — center column (viewBox 720x780) -------------
-  // Voorbumper met afgeronde neus
-  { id: "voorbumper", name: "Voorbumper", shape: "polygon", points: "265,60 455,60 465,110 255,110" },
-  { id: "grille", name: "Grille", shape: "rect", x: 320, y: 82, w: 80, h: 20 },
-  { id: "koplamp_L", name: "Koplamp L", shape: "polygon", points: "270,70 305,70 315,95 265,95" },
-  { id: "koplamp_R", name: "Koplamp R", shape: "polygon", points: "415,70 450,70 455,95 405,95" },
-  { id: "motorkap", name: "Motorkap", shape: "polygon", points: "270,110 450,110 450,220 270,220" },
-  { id: "voorruit", name: "Voorruit", shape: "polygon", points: "270,220 450,220 445,290 275,290" },
-  { id: "dak", name: "Dak", shape: "polygon", points: "275,290 445,290 445,470 275,470" },
-  { id: "achterruit", name: "Achterruit", shape: "polygon", points: "275,470 445,470 450,530 270,530" },
-  { id: "achterklep", name: "Achterklep", shape: "polygon", points: "270,530 450,530 450,620 270,620" },
-  { id: "achterbumper", name: "Achterbumper", shape: "polygon", points: "255,620 465,620 460,680 260,680" },
-  { id: "achterlicht_L", name: "Achterlicht L", shape: "polygon", points: "260,625 305,625 305,655 260,655" },
-  { id: "achterlicht_R", name: "Achterlicht R", shape: "polygon", points: "415,625 460,625 460,655 415,655" },
-  // spatschermen + portieren links/rechts
-  { id: "L_voorscherm", name: "L voorscherm", shape: "polygon", points: "255,110 275,110 275,220 245,220" },
-  { id: "R_voorscherm", name: "R voorscherm", shape: "polygon", points: "445,110 465,110 475,220 445,220" },
-  { id: "L_voorportier", name: "L voorportier", shape: "polygon", points: "245,220 275,220 275,380 245,380" },
-  { id: "R_voorportier", name: "R voorportier", shape: "polygon", points: "445,220 475,220 475,380 445,380" },
-  { id: "L_achterportier", name: "L achterportier", shape: "polygon", points: "245,380 275,380 275,470 245,470" },
-  { id: "R_achterportier", name: "R achterportier", shape: "polygon", points: "445,380 475,380 475,470 445,470" },
-  { id: "L_achterscherm", name: "L achterscherm", shape: "polygon", points: "245,470 275,470 270,620 250,620" },
-  { id: "R_achterscherm", name: "R achterscherm", shape: "polygon", points: "445,470 475,470 470,620 450,620" },
-  // dorpels
-  { id: "L_dorpel", name: "L dorpel", shape: "rect", x: 232, y: 220, w: 13, h: 250 },
-  { id: "R_dorpel", name: "R dorpel", shape: "rect", x: 475, y: 220, w: 13, h: 250 },
-  // spiegels
-  { id: "L_spiegel", name: "L buitenspiegel", shape: "ellipse", cx: 230, cy: 235, rx: 12, ry: 8 },
-  { id: "R_spiegel", name: "R buitenspiegel", shape: "ellipse", cx: 490, cy: 235, rx: 12, ry: 8 },
-  // velgen (kleine rondjes op de zijkanten van top view)
-  { id: "velg_LV", name: "Velg L voor", shape: "circle", cx: 233, cy: 175, r: 12 },
-  { id: "velg_RV", name: "Velg R voor", shape: "circle", cx: 487, cy: 175, r: 12 },
-  { id: "velg_LA", name: "Velg L achter", shape: "circle", cx: 233, cy: 555, r: 12 },
-  { id: "velg_RA", name: "Velg R achter", shape: "circle", cx: 487, cy: 555, r: 12 },
+  ...sideZones("L", SL_Y0),
+  ...topZones(),
+  ...sideZones("R", SR_Y0),
 ];
 
 export const findZoneByName = (name?: string | null): DamageZone | undefined =>
@@ -124,109 +192,97 @@ export const DamageDiagram: React.FC<Props> = ({
     return null;
   };
 
+  // helper: renders a side-view silhouette background (rijrichting → rechts) at y0
+  const SideSilhouette: React.FC<{ y0: number }> = ({ y0 }) => {
+    const y = (d: number) => y0 + d;
+    return (
+      <g>
+        {/* body */}
+        <path
+          d={`M 40 ${y(200)} L 60 ${y(150)} L 90 ${y(150)} L 200 ${y(70)} Q 380 ${y(20)} 590 ${y(60)} L 760 ${y(50)} L 830 ${y(110)} L 855 ${y(140)} L 855 ${y(230)} L 40 ${y(230)} Z`}
+          fill="#f1f4f9" stroke="#94a3b8" strokeWidth="1.4"
+        />
+        {/* wheel arches */}
+        <path d={`M 115 ${y(240)} A 30 30 0 0 1 175 ${y(240)}`} fill="none" stroke="#94a3b8" strokeWidth="1.2" />
+        <path d={`M 675 ${y(240)} A 30 30 0 0 1 735 ${y(240)}`} fill="none" stroke="#94a3b8" strokeWidth="1.2" />
+        {/* wheel outer black tyres (double-circle) */}
+        <circle cx={145} cy={y(255)} r={32} fill="#1e293b" />
+        <circle cx={705} cy={y(255)} r={32} fill="#1e293b" />
+        <circle cx={145} cy={y(255)} r={22} fill="#e2e8f0" stroke="#64748b" />
+        <circle cx={705} cy={y(255)} r={22} fill="#e2e8f0" stroke="#64748b" />
+        {/* glass tint (overlay under clickable zone shapes) */}
+        <path d={`M 210 ${y(30)} L 380 ${y(20)} L 380 ${y(70)} L 210 ${y(70)} Z`} fill="#c9d5e2" opacity="0.55" />
+        <path d={`M 390 ${y(20)} L 570 ${y(20)} L 590 ${y(70)} L 390 ${y(70)} Z`} fill="#c9d5e2" opacity="0.55" />
+      </g>
+    );
+  };
+
   return (
     <svg
-      viewBox="0 0 720 780"
-      className={cn("w-full h-auto select-none", compact ? "max-w-[200px]" : "", className)}
+      viewBox="0 0 900 1320"
+      className={cn("w-full h-auto select-none", compact ? "max-w-[220px]" : "", className)}
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* ==== Formulier achtergrondlijnen ==== */}
-      <g stroke="#e2e8f0" strokeWidth="1" fill="none">
-        <line x1="230" y1="20" x2="230" y2="760" />
-        <line x1="490" y1="20" x2="490" y2="760" />
-      </g>
+      {/* ============ SIDE LEFT (boven) ============ */}
+      <text x="450" y="30" textAnchor="middle" fontSize="14" fontWeight="700" fill="#334155" letterSpacing="3">ZIJKANT LINKS</text>
+      <SideSilhouette y0={SL_Y0} />
 
-      {/* ==== TOP VIEW carrosserie-silhouet (achtergrond) ==== */}
+      {/* ============ TOP VIEW (midden) ============ */}
+      <text x="450" y="335" textAnchor="middle" fontSize="14" fontWeight="700" fill="#334155" letterSpacing="3">BOVENAANZICHT</text>
+      <text x={TV_XL - 40} y={(TV_YT + TV_YB) / 2} textAnchor="middle" fontSize="11" fill="#94a3b8"
+            transform={`rotate(-90 ${TV_XL - 40} ${(TV_YT + TV_YB) / 2})`} letterSpacing="2">LINKS</text>
+      <text x={TV_XR + 40} y={(TV_YT + TV_YB) / 2} textAnchor="middle" fontSize="11" fill="#94a3b8"
+            transform={`rotate(90 ${TV_XR + 40} ${(TV_YT + TV_YB) / 2})`} letterSpacing="2">RECHTS</text>
+      <text x="450" y={TV_YT - 10} textAnchor="middle" fontSize="11" fill="#94a3b8" letterSpacing="2">VOOR</text>
+      <text x="450" y={TV_YB + 20} textAnchor="middle" fontSize="11" fill="#94a3b8" letterSpacing="2">ACHTER</text>
+      {/* body silhouette */}
       <path
-        d="M 265 60 Q 360 30 455 60 L 465 110 L 488 220 L 488 470 L 470 620 L 465 680 Q 360 705 255 680 L 250 620 L 232 470 L 232 220 L 255 110 Z"
-        fill="#f8fafc"
-        stroke="#94a3b8"
-        strokeWidth="1.5"
+        d={`M ${TV_XL+5} ${TV_YT+10} Q 450 ${TV_YT-20} ${TV_XR-5} ${TV_YT+10} L ${TV_XR+15} ${TV_YT+60} L ${TV_XR+15} ${TV_YT+560} L ${TV_XR+15} ${TV_YT+590} Q 450 ${TV_YT+620} ${TV_XL-15} ${TV_YT+590} L ${TV_XL-15} ${TV_YT+560} L ${TV_XL-15} ${TV_YT+60} Z`}
+        fill="#f1f4f9" stroke="#94a3b8" strokeWidth="1.4"
       />
-      {/* raamlijn top */}
-      <path d="M 275 290 L 445 290 L 445 470 L 275 470 Z" fill="#eef2f7" stroke="#cbd5e1" strokeWidth="1" />
-      {/* portier-scheidingslijn */}
-      <line x1="245" y1="380" x2="275" y2="380" stroke="#cbd5e1" />
-      <line x1="445" y1="380" x2="475" y2="380" stroke="#cbd5e1" />
+      {/* windshield/roof/rear-window tint */}
+      <path d={`M ${TV_XL-10} ${TV_YT+250} L ${TV_XR+10} ${TV_YT+250} L ${TV_XR+10} ${TV_YT+430} L ${TV_XL-10} ${TV_YT+430} Z`} fill="#c9d5e2" opacity="0.6" />
+      {/* spiegels op zijkant top-view */}
+      {/* achter-nog-mirror as separate rendered zones below */}
 
-      {/* labels top view */}
-      <text x="360" y="42" textAnchor="middle" fontSize="12" fontWeight="600" fill="#64748b" letterSpacing="2">VOOR</text>
-      <text x="360" y="720" textAnchor="middle" fontSize="12" fontWeight="600" fill="#64748b" letterSpacing="2">ACHTER</text>
-      <text x="185" y="390" textAnchor="middle" fontSize="10" fill="#94a3b8" transform="rotate(-90 185 390)" letterSpacing="2">LINKS</text>
-      <text x="535" y="390" textAnchor="middle" fontSize="10" fill="#94a3b8" transform="rotate(90 535 390)" letterSpacing="2">RECHTS</text>
+      {/* ============ SIDE RIGHT (onder, gespiegeld) ============ */}
+      <text x="450" y={SR_Y0 - 20} textAnchor="middle" fontSize="14" fontWeight="700" fill="#334155" letterSpacing="3">ZIJKANT RECHTS</text>
+      {/* We spiegelen niet fysiek (om click-mapping stabiel te houden), maar tekenen de silhouette normaal
+          en tonen kleine indicator dat rijrichting naar links is */}
+      <g transform={`translate(900, 0) scale(-1, 1)`}>
+        <SideSilhouette y0={SR_Y0} />
+      </g>
 
       {/* ==== Klikbare zones ==== */}
-      {DAMAGE_ZONES.map(renderZone)}
-
-      {/* raster/naden voor herkenbaarheid */}
-      <g fill="none" stroke="#94a3b8" strokeWidth="0.8" opacity="0.5">
-        <line x1="270" y1="110" x2="450" y2="110" />
-        <line x1="270" y1="220" x2="450" y2="220" />
-        <line x1="275" y1="290" x2="445" y2="290" />
-        <line x1="275" y1="470" x2="445" y2="470" />
-        <line x1="270" y1="530" x2="450" y2="530" />
-        <line x1="270" y1="620" x2="450" y2="620" />
-      </g>
-
-      {/* ==== Mini FRONT view (links) ==== */}
-      <g transform="translate(30,180)">
-        <text x="90" y="-8" textAnchor="middle" fontSize="10" fontWeight="600" fill="#64748b" letterSpacing="1">FRONT</text>
-        <path d="M 20 90 Q 20 20 90 12 Q 160 20 160 90 L 160 130 L 20 130 Z" fill="#f8fafc" stroke="#94a3b8" strokeWidth="1.2" />
-        <path d="M 40 40 L 140 40 L 150 78 L 30 78 Z" fill="#eef2f7" stroke="#cbd5e1" strokeWidth="0.8" />
-        <ellipse cx="45" cy="95" rx="14" ry="6" fill="#fff" stroke="#94a3b8" />
-        <ellipse cx="135" cy="95" rx="14" ry="6" fill="#fff" stroke="#94a3b8" />
-        <rect x="70" y="105" width="40" height="10" fill="#fff" stroke="#94a3b8" />
-      </g>
-
-      {/* ==== Mini REAR view (rechts) ==== */}
-      <g transform="translate(510,180)">
-        <text x="90" y="-8" textAnchor="middle" fontSize="10" fontWeight="600" fill="#64748b" letterSpacing="1">ACHTER</text>
-        <path d="M 20 90 Q 20 22 90 14 Q 160 22 160 90 L 160 130 L 20 130 Z" fill="#f8fafc" stroke="#94a3b8" strokeWidth="1.2" />
-        <path d="M 35 40 L 145 40 L 150 82 L 30 82 Z" fill="#eef2f7" stroke="#cbd5e1" strokeWidth="0.8" />
-        <rect x="30" y="90" width="30" height="14" fill="#fff" stroke="#94a3b8" />
-        <rect x="120" y="90" width="30" height="14" fill="#fff" stroke="#94a3b8" />
-      </g>
-
-      {/* ==== Mini SIDE view LEFT (boven) ==== */}
-      <g transform="translate(60,470)">
-        <text x="290" y="-8" textAnchor="middle" fontSize="10" fontWeight="600" fill="#64748b" letterSpacing="1">ZIJKANT LINKS</text>
-        <path d="M 10 90 Q 20 40 90 30 L 200 20 Q 350 20 500 40 L 560 60 L 560 100 L 10 100 Z"
-              fill="#f8fafc" stroke="#94a3b8" strokeWidth="1.2" />
-        <path d="M 130 45 L 340 32 L 420 44 L 400 78 L 150 78 Z" fill="#eef2f7" stroke="#cbd5e1" strokeWidth="0.8" />
-        <line x1="270" y1="35" x2="270" y2="78" stroke="#cbd5e1" />
-        <circle cx="100" cy="100" r="20" fill="#fff" stroke="#94a3b8" strokeWidth="1.4" />
-        <circle cx="100" cy="100" r="10" fill="#f1f5f9" stroke="#94a3b8" />
-        <circle cx="470" cy="100" r="20" fill="#fff" stroke="#94a3b8" strokeWidth="1.4" />
-        <circle cx="470" cy="100" r="10" fill="#f1f5f9" stroke="#94a3b8" />
-      </g>
-
-      {/* ==== Mini SIDE view RIGHT (onder) — gespiegeld ==== */}
-      <g transform="translate(60,620)">
-        <text x="290" y="-8" textAnchor="middle" fontSize="10" fontWeight="600" fill="#64748b" letterSpacing="1">ZIJKANT RECHTS</text>
-        <g transform="translate(570,0) scale(-1,1)">
-          <path d="M 10 90 Q 20 40 90 30 L 200 20 Q 350 20 500 40 L 560 60 L 560 100 L 10 100 Z"
-                fill="#f8fafc" stroke="#94a3b8" strokeWidth="1.2" />
-          <path d="M 130 45 L 340 32 L 420 44 L 400 78 L 150 78 Z" fill="#eef2f7" stroke="#cbd5e1" strokeWidth="0.8" />
-          <line x1="270" y1="35" x2="270" y2="78" stroke="#cbd5e1" />
-          <circle cx="100" cy="100" r="20" fill="#fff" stroke="#94a3b8" strokeWidth="1.4" />
-          <circle cx="100" cy="100" r="10" fill="#f1f5f9" stroke="#94a3b8" />
-          <circle cx="470" cy="100" r="20" fill="#fff" stroke="#94a3b8" strokeWidth="1.4" />
-          <circle cx="470" cy="100" r="10" fill="#f1f5f9" stroke="#94a3b8" />
-        </g>
-      </g>
+      {DAMAGE_ZONES.map(z => {
+        // Als de zone een R_-side zone is (y > SR_Y0), spiegelen we z voor rendering,
+        // maar de original coords blijven kloppen omdat sideZones() ze al op SR_Y0 baseert
+        // en we op group-niveau -1 scale doen.
+        if (z.id.startsWith("R_")) {
+          return (
+            <g key={z.id} transform={`translate(900, 0) scale(-1, 1)`}>
+              {renderZone(z)}
+            </g>
+          );
+        }
+        return <React.Fragment key={z.id}>{renderZone(z)}</React.Fragment>;
+      })}
 
       {/* ==== markers ==== */}
       {markers.map(m => {
         const z = DAMAGE_ZONES.find(x => x.id === m.zoneId);
         if (!z) return null;
-        const { x, y } = zoneCenter(z);
-        const r = compact ? 8 : 12;
+        const c = zoneCenter(z);
+        // Mirror right-side markers to visual coordinates
+        const x = z.id.startsWith("R_") ? (900 - c.x) : c.x;
+        const y = c.y;
+        const r = compact ? 10 : 14;
         return (
           <g key={`m-${m.index}`}
              className={cn(onMarkerClick && "cursor-pointer")}
              onClick={onMarkerClick ? (e) => { e.stopPropagation(); onMarkerClick(m.index); } : undefined}>
-            <circle cx={x} cy={y} r={r} fill="#dc2626" stroke="white" strokeWidth={compact ? 1.8 : 2.4} />
-            <text x={x} y={y + (compact ? 3 : 4)} textAnchor="middle" fontSize={compact ? 10 : 14} fontWeight={700} fill="white">
+            <circle cx={x} cy={y} r={r} fill="#dc2626" stroke="white" strokeWidth={compact ? 2 : 2.8} />
+            <text x={x} y={y + (compact ? 3 : 5)} textAnchor="middle" fontSize={compact ? 11 : 15} fontWeight={700} fill="white">
               {m.index}
             </text>
           </g>

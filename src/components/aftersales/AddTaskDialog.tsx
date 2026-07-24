@@ -1,0 +1,499 @@
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { AsLicensePlate } from "@/components/aftersales/ui";
+import { DamageDiagram, DAMAGE_ZONES, DamageZone } from "@/components/aftersales/DamageDiagram";
+import { Search, X, Car, Loader2, Plus, PaintBucket, Wrench, Hammer, Sparkles, Camera, Flame, AlertTriangle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { WorkOrderDiscipline } from "@/components/werkplaats/workOrderTypes";
+
+export interface AddTaskVehicle {
+  id: string;
+  brand: string | null;
+  model: string | null;
+  year: number | null;
+  license_number: string | null;
+  vin: string | null;
+  mileage?: number | null;
+  color?: string | null;
+  branch?: string | null;
+  delivery_date?: string | null;
+}
+
+interface Props {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  discipline: WorkOrderDiscipline;
+  presetVehicle?: AddTaskVehicle | null;
+  onCreated?: () => void;
+}
+
+const DISCIPLINE_META: Record<WorkOrderDiscipline, {
+  title: string;
+  icon: React.ReactNode;
+  accent: string; // tailwind text
+  bar: string;    // tailwind bg for header
+  roles: string[];
+  needsDiagram?: boolean;
+  multiZone?: boolean;
+  freeText?: boolean;
+  showPhotos?: boolean;
+  showWarranty?: boolean;
+}> = {
+  spuit: {
+    title: "Nieuwe schadeherstel-taak",
+    icon: <PaintBucket className="h-4 w-4" />,
+    accent: "text-orange-600",
+    bar: "bg-orange-50 border-orange-200",
+    roles: ["spuiter"],
+    needsDiagram: true,
+    multiZone: false,
+    showPhotos: true,
+  },
+  werkplaats: {
+    title: "Nieuwe werkplaats-taak",
+    icon: <Wrench className="h-4 w-4" />,
+    accent: "text-blue-600",
+    bar: "bg-blue-50 border-blue-200",
+    roles: ["monteur", "werkplaats_chef"],
+    freeText: true,
+    showWarranty: true,
+  },
+  uitdeuk: {
+    title: "Nieuwe uitdeuk-taak",
+    icon: <Hammer className="h-4 w-4" />,
+    accent: "text-slate-700",
+    bar: "bg-slate-50 border-slate-200",
+    roles: ["uitdeuker_extern"],
+    needsDiagram: true,
+    multiZone: true,
+    showPhotos: true,
+  },
+  poets: {
+    title: "Nieuwe poets-taak",
+    icon: <Sparkles className="h-4 w-4" />,
+    accent: "text-emerald-600",
+    bar: "bg-emerald-50 border-emerald-200",
+    roles: ["poetser"],
+    freeText: true,
+  },
+};
+
+export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline, presetVehicle, onCreated }) => {
+  const meta = DISCIPLINE_META[discipline];
+  const [vehicle, setVehicle] = useState<AddTaskVehicle | null>(presetVehicle ?? null);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<AddTaskVehicle[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [description, setDescription] = useState("");
+  const [zoneIds, setZoneIds] = useState<string[]>([]);
+  const [zoneNotes, setZoneNotes] = useState<Record<string, string>>({});
+  const [files, setFiles] = useState<File[]>([]);
+  const [assignedTo, setAssignedTo] = useState<string>("");
+  const [dueDate, setDueDate] = useState<string>("");
+  const [isRush, setIsRush] = useState(false);
+  const [warrantyClaimId, setWarrantyClaimId] = useState<string>("");
+  const [warrantyClaims, setWarrantyClaims] = useState<Array<{ id: string; description: string | null }>>([]);
+  const [employees, setEmployees] = useState<Array<{ id: string; name: string }>>([]);
+  const [saving, setSaving] = useState(false);
+  const searchTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setVehicle(presetVehicle ?? null);
+    setQuery(""); setResults([]);
+    setDescription(""); setZoneIds([]); setZoneNotes({}); setFiles([]);
+    setAssignedTo(""); setDueDate(""); setIsRush(false); setWarrantyClaimId("");
+  }, [open, presetVehicle, discipline]);
+
+  // Load employees by role for this discipline
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data: ur } = await supabase
+        .from("user_roles")
+        .select("user_id, role")
+        .in("role", meta.roles as any);
+      const ids = Array.from(new Set(((ur as any[]) || []).map(r => r.user_id)));
+      if (!ids.length) { setEmployees([]); return; }
+      const { data: ps } = await supabase.from("profiles").select("id, first_name, last_name").in("id", ids);
+      setEmployees(((ps as any[]) || []).map(p => ({
+        id: p.id,
+        name: `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Onbekend",
+      })).sort((a, b) => a.name.localeCompare(b.name)));
+    })();
+  }, [open, discipline]);
+
+  // Warranty claims for vehicle (werkplaats only)
+  useEffect(() => {
+    if (!open || !meta.showWarranty || !vehicle) { setWarrantyClaims([]); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("warranty_claims")
+        .select("id, description")
+        .eq("vehicle_id", vehicle.id)
+        .in("claim_status", ["pending", "actief", "in_behandeling", "open"])
+        .order("created_at", { ascending: false });
+      setWarrantyClaims((data as any) || []);
+    })();
+  }, [open, vehicle, meta.showWarranty]);
+
+  // Live search
+  useEffect(() => {
+    if (vehicle) return;
+    if (searchTimer.current) window.clearTimeout(searchTimer.current);
+    const q = query.trim();
+    if (q.length < 2) { setResults([]); return; }
+    searchTimer.current = window.setTimeout(async () => {
+      setSearching(true);
+      const { data } = await supabase.from("vehicles")
+        .select("id, brand, model, year, license_number, vin, mileage, color, branch, delivery_date")
+        .or(`license_number.ilike.%${q}%,brand.ilike.%${q}%,model.ilike.%${q}%,vin.ilike.%${q}%`)
+        .limit(12);
+      setResults((data as any) || []);
+      setSearching(false);
+    }, 220);
+  }, [query, vehicle]);
+
+  const toggleZone = (z: DamageZone) => {
+    if (meta.multiZone) {
+      setZoneIds(prev => prev.includes(z.id) ? prev.filter(x => x !== z.id) : [...prev, z.id]);
+    } else {
+      setZoneIds([z.id]);
+    }
+  };
+
+  const zoneNames = zoneIds
+    .map(id => DAMAGE_ZONES.find(z => z.id === id)?.name)
+    .filter(Boolean) as string[];
+
+  const canSave = useMemo(() => {
+    if (!vehicle) return false;
+    if (meta.needsDiagram && zoneIds.length === 0) return false;
+    if (!description.trim() && !meta.needsDiagram) return false;
+    if (meta.needsDiagram && zoneIds.length === 1 && !description.trim()) return false;
+    return !saving;
+  }, [vehicle, zoneIds, description, saving, meta]);
+
+  const hasDeliveryConflict = !!vehicle?.delivery_date && !!dueDate && new Date(dueDate) > new Date(vehicle.delivery_date);
+
+  const submit = async () => {
+    if (!vehicle) return;
+    setSaving(true);
+    try {
+      const { data: userRes } = await supabase.auth.getUser();
+
+      // sort_order: front bij spoed, achteraan anders
+      const { data: bounds } = await supabase.from("work_orders")
+        .select("sort_order").eq("discipline", discipline)
+        .in("status", ["ingepland", "bezig"])
+        .order("sort_order", { ascending: isRush ? true : false }).limit(1);
+      const base = ((bounds as any)?.[0]?.sort_order ?? 0);
+      const nextSort = isRush ? base - 10 : base + 10;
+
+      // Foto's uploaden
+      const uploadPhotos = async (): Promise<string[]> => {
+        const paths: string[] = [];
+        for (const f of files) {
+          const path = `${vehicle.id}/task/${Date.now()}_${f.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+          const { error } = await supabase.storage.from("workshop-photos").upload(path, f);
+          if (error) throw error;
+          paths.push(path);
+        }
+        return paths;
+      };
+
+      if (meta.multiZone && zoneIds.length > 1) {
+        // Uitdeuk: één work_order per zone
+        const photos = await uploadPhotos();
+        let cursor = nextSort;
+        for (const zid of zoneIds) {
+          const zone = DAMAGE_ZONES.find(z => z.id === zid)!;
+          const baseDesc = (zoneNotes[zid] || description).trim() || zone.name;
+          const desc = dueDate ? `[Klaar vóór ${dueDate}] ${baseDesc}` : baseDesc;
+          const { error } = await supabase.from("work_orders").insert({
+            vehicle_id: vehicle.id,
+            discipline, part: zone.name, description: desc,
+            photos, status: "ingepland", sort_order: cursor,
+            source: "aftersales", branch: vehicle.branch || "rotterdam",
+            assigned_to: assignedTo || null,
+            is_rush: isRush,
+            created_by: userRes.user?.id ?? null,
+          } as any);
+          if (error) throw error;
+          cursor += isRush ? -1 : 10;
+        }
+      } else {
+        const photos = await uploadPhotos();
+        const zone = zoneIds[0] ? DAMAGE_ZONES.find(z => z.id === zoneIds[0]) : null;
+        const baseDesc = description.trim() || (zone?.name ?? "");
+        const desc = dueDate ? `[Klaar vóór ${dueDate}] ${baseDesc}` : baseDesc;
+        const { error } = await supabase.from("work_orders").insert({
+          vehicle_id: vehicle.id,
+          discipline,
+          part: zone?.name || null,
+          description: desc,
+          photos, status: "ingepland", sort_order: nextSort,
+          source: "aftersales", branch: vehicle.branch || "rotterdam",
+          assigned_to: assignedTo || null,
+          is_rush: isRush,
+          warranty_claim_id: warrantyClaimId || null,
+          created_by: userRes.user?.id ?? null,
+        } as any);
+        if (error) throw error;
+      }
+
+      toast({ title: "Taak aangemaakt" });
+      onCreated?.();
+      onOpenChange(false);
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: "Fout", description: e.message, variant: "destructive" });
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[720px] max-h-[92vh] overflow-y-auto p-0">
+        {/* Kop-balk in stijl van de rest */}
+        <div className={cn("flex items-center gap-3 px-5 py-3 border-b", meta.bar)}>
+          <div className={cn("h-8 w-8 rounded-lg bg-white/70 flex items-center justify-center", meta.accent)}>
+            {meta.icon}
+          </div>
+          <div className="min-w-0">
+            <div className="text-[14px] font-semibold text-slate-900">{meta.title}</div>
+            <div className="text-[11.5px] text-slate-500">Vul de gegevens in — één kolom van boven naar beneden.</div>
+          </div>
+        </div>
+
+        <div className="px-5 py-4 space-y-5">
+          {/* Voertuig */}
+          <div>
+            <Label className="text-[12px] font-semibold text-slate-700">
+              Voertuig <span className="text-red-500">*</span>
+            </Label>
+            {vehicle ? (
+              <div className="mt-1.5 flex items-center gap-3 bg-white border border-slate-200 rounded-lg p-2.5">
+                <AsLicensePlate value={vehicle.license_number} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13px] font-semibold text-slate-900 truncate">
+                    {vehicle.brand} {vehicle.model}
+                    {vehicle.year && <span className="text-slate-500 font-medium"> · {vehicle.year}</span>}
+                  </div>
+                  <div className="text-[11px] text-slate-500 truncate">
+                    {[vehicle.mileage ? `${vehicle.mileage.toLocaleString("nl-NL")} km` : null,
+                      vehicle.color,
+                      vehicle.vin ? `VIN ${vehicle.vin.slice(-8)}` : null].filter(Boolean).join(" · ")}
+                  </div>
+                </div>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setVehicle(null)}>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <div className="mt-1.5 relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input autoFocus value={query} onChange={(e) => setQuery(e.target.value)}
+                       placeholder="Zoek op kenteken, merk, model of VIN…" className="pl-8" />
+                {query.trim().length >= 2 && (
+                  <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white">
+                    {searching && <div className="flex items-center gap-2 p-3 text-[12px] text-slate-500"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Zoeken…</div>}
+                    {!searching && results.length === 0 && <div className="p-3 text-[12px] text-slate-400">Geen resultaten</div>}
+                    {!searching && results.map((v) => (
+                      <button key={v.id} type="button" onClick={() => setVehicle(v)}
+                              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 border-b border-slate-100 last:border-b-0 text-left">
+                        <AsLicensePlate value={v.license_number} size="sm" />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[12.5px] font-semibold text-slate-900 truncate">
+                            {v.brand} {v.model}{v.year && <span className="text-slate-500 font-medium"> · {v.year}</span>}
+                          </div>
+                        </div>
+                        <Car className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Diagram — schadeherstel/uitdeuk */}
+          {meta.needsDiagram && (
+            <div>
+              <Label className="text-[12px] font-semibold text-slate-700">
+                Waar zit {discipline === "uitdeuk" ? "de deuk" : "de schade"}? <span className="text-red-500">*</span>
+                {zoneNames.length > 0 && (
+                  <span className="ml-2 text-blue-600 font-semibold">{zoneNames.join(", ")}</span>
+                )}
+              </Label>
+              <div className="mt-2 bg-white border border-slate-200 rounded-lg p-3">
+                <div className="mx-auto max-w-[640px]">
+                  <DamageDiagram
+                    markers={zoneIds.map((id, i) => ({ index: i + 1, zoneId: id }))}
+                    selectedZoneId={zoneIds[zoneIds.length - 1] || null}
+                    onZoneClick={toggleZone}
+                  />
+                </div>
+                {meta.multiZone && (
+                  <p className="text-[11px] text-slate-400 mt-2 text-center">Klik meerdere zones aan — per zone wordt één taak aangemaakt.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Beschrijving */}
+          <div>
+            <Label className="text-[12px] font-semibold text-slate-700">
+              {discipline === "werkplaats"
+                ? <>Werkzaamheden <span className="text-red-500">*</span></>
+                : discipline === "poets"
+                  ? <>Wat moet er gepoetst worden? <span className="text-red-500">*</span></>
+                  : "Omschrijving"}
+            </Label>
+            <Textarea rows={discipline === "werkplaats" ? 5 : 3}
+              value={description} onChange={(e) => setDescription(e.target.value)}
+              placeholder={discipline === "werkplaats"
+                ? "Typ vrij wat er moet gebeuren (bijv. Grote beurt · APK · nieuwe accu)…"
+                : discipline === "poets"
+                  ? "Bijv. Compleet showroom-klaar (interieur + exterieur)."
+                  : "Wat en hoe? (specifieke instructies voor de uitvoerder)"}
+              className="mt-1.5"
+            />
+          </div>
+
+          {/* Warranty toggle (werkplaats only) */}
+          {meta.showWarranty && warrantyClaims.length > 0 && (
+            <div>
+              <Label className="text-[12px] font-semibold text-slate-700">Koppel garantieclaim (optioneel)</Label>
+              <select value={warrantyClaimId} onChange={(e) => setWarrantyClaimId(e.target.value)}
+                className="mt-1.5 w-full h-9 rounded-md border border-slate-200 bg-white px-2 text-[13px]">
+                <option value="">— Geen —</option>
+                {warrantyClaims.map(c => (
+                  <option key={c.id} value={c.id}>{(c.description || "(zonder omschrijving)").slice(0, 60)}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Foto's */}
+          {meta.showPhotos && (
+            <div>
+              <Label className="text-[12px] font-semibold text-slate-700">Foto's (optioneel)</Label>
+              <label className="mt-1.5 flex items-center gap-2 border border-dashed border-slate-300 rounded-lg p-3 cursor-pointer hover:border-slate-400 bg-white">
+                <Camera className="h-4 w-4 text-slate-500" />
+                <span className="text-[12.5px] text-slate-600 flex-1">
+                  {files.length ? `${files.length} foto('s) gekozen` : "Maak of kies foto's"}
+                </span>
+                <Input type="file" multiple accept="image/*" capture="environment" className="hidden"
+                  onChange={(e) => setFiles(Array.from(e.target.files || []))} />
+              </label>
+            </div>
+          )}
+
+          {/* Medewerker + Deadline + Prioriteit */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <Label className="text-[12px] font-semibold text-slate-700">Medewerker</Label>
+              <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}
+                className="mt-1.5 w-full h-9 rounded-md border border-slate-200 bg-white px-2 text-[13px]">
+                <option value="">— Niet toegewezen —</option>
+                {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label className="text-[12px] font-semibold text-slate-700">Klaar vóór</Label>
+              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
+                     className={cn("mt-1.5", hasDeliveryConflict && "border-red-400")} />
+              {hasDeliveryConflict && (
+                <div className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" /> Aflevering staat op {new Date(vehicle!.delivery_date!).toLocaleDateString("nl-NL")}
+                </div>
+              )}
+            </div>
+            <div>
+              <Label className="text-[12px] font-semibold text-slate-700">Prioriteit</Label>
+              <div className="mt-1.5 inline-flex bg-slate-100 rounded-md p-0.5 w-full">
+                <button type="button" onClick={() => setIsRush(false)}
+                  className={cn("flex-1 text-[12px] font-medium py-1.5 rounded transition",
+                    !isRush ? "bg-white text-slate-900 shadow-sm" : "text-slate-500")}>Normaal</button>
+                <button type="button" onClick={() => setIsRush(true)}
+                  className={cn("flex-1 text-[12px] font-semibold py-1.5 rounded transition inline-flex items-center justify-center gap-1",
+                    isRush ? "bg-red-500 text-white shadow-sm" : "text-slate-500")}>
+                  <Flame className="h-3 w-3" /> SPOED
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="px-5 py-3 border-t bg-slate-50">
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Annuleren</Button>
+          <Button onClick={submit} disabled={!canSave} className="bg-blue-600 hover:bg-blue-700 text-white">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+            Taak aanmaken
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+/* ============= Balk met vier knoppen ============= */
+
+export const AddTaskBar: React.FC<{ onCreated?: () => void; presetVehicle?: AddTaskVehicle | null }> = ({
+  onCreated, presetVehicle,
+}) => {
+  const [open, setOpen] = useState<WorkOrderDiscipline | null>(null);
+  const buttons: Array<{ d: WorkOrderDiscipline; label: string; icon: React.ReactNode; className: string }> = [
+    { d: "spuit", label: "Schadeherstel", icon: <PaintBucket className="h-5 w-5" />,
+      className: "bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700" },
+    { d: "werkplaats", label: "Werkplaats", icon: <Wrench className="h-5 w-5" />,
+      className: "bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700" },
+    { d: "uitdeuk", label: "Uitdeuken", icon: <Hammer className="h-5 w-5" />,
+      className: "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800" },
+    { d: "poets", label: "Poetsen", icon: <Sparkles className="h-5 w-5" />,
+      className: "bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700" },
+  ];
+
+  return (
+    <>
+      <div className="bg-white rounded-[14px] border border-[#dfe3ea] overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_22px_-16px_rgba(15,23,42,0.14)] mb-4">
+        <div className="flex items-center gap-3 px-4 py-3 bg-[#f4f6f9] border-b border-[#e2e6ec]">
+          <div className="h-[30px] w-[30px] rounded-lg bg-blue-50 text-blue-600 ring-1 ring-blue-100 flex items-center justify-center">
+            <Plus className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[13px] font-semibold text-slate-900">Taak toevoegen</div>
+            <div className="text-[11.5px] text-slate-500">Kies de discipline — zoek de auto, vul in, klaar.</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4">
+          {buttons.map(b => (
+            <button key={b.d} onClick={() => setOpen(b.d)}
+              className={cn("flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors font-semibold text-[13.5px]", b.className)}>
+              <div className="h-9 w-9 rounded-lg bg-white/70 flex items-center justify-center">{b.icon}</div>
+              <span>{b.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {open && (
+        <AddTaskDialog
+          open={!!open}
+          onOpenChange={(v) => { if (!v) setOpen(null); }}
+          discipline={open}
+          presetVehicle={presetVehicle}
+          onCreated={onCreated}
+        />
+      )}
+    </>
+  );
+};
+
+export default AddTaskDialog;

@@ -11,9 +11,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { format, isToday, isTomorrow } from "date-fns";
 import { nl } from "date-fns/locale";
-import { AsPage, AsCard, AsPill, AsMono, AsLicensePlate, AsVehicleThumb, useLiveTimer } from "@/components/aftersales/ui";
+import { AsPage, AsCard, AsCardHead, AsPill, AsMono, AsLicensePlate, AsVehicleThumb, useLiveTimer } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
 import { DamageReportDialog, DamageReportPayload } from "@/components/aftersales/DamageReportDialog";
+import { AddTaskBar } from "@/components/aftersales/AddTaskDialog";
 
 type Discipline = "werkplaats" | "spuit";
 
@@ -165,17 +166,17 @@ const EmployeeColumn: React.FC<{
   onOpen: (w: WO) => void;
   onDelete?: (w: WO) => void;
 }> = ({ profile, items, doneTodayCount, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete }) => (
-  <AsCard className="p-3 flex flex-col gap-3 min-w-[320px]">
-    <div className="flex items-center gap-3 px-1">
-      <div className="h-9 w-9 rounded-full bg-slate-100 text-slate-600 font-semibold text-[13px] flex items-center justify-center">
-        {initialsOf(profile)}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-[13px] font-semibold text-slate-900 truncate">{nameOf(profile)}</div>
-        <div className="text-[11px] text-slate-500">Vandaag {doneTodayCount} afgerond · {items.length} in planning</div>
-      </div>
-    </div>
-    <div className="flex flex-col gap-2">
+  <AsCard className="flex flex-col min-w-[320px]">
+    <AsCardHead
+      tone="slate"
+      icon={
+        <span className="text-[11px] font-bold">{initialsOf(profile)}</span>
+      }
+      title={nameOf(profile)}
+      subtitle={`Vandaag ${doneTodayCount} afgerond · ${items.length} in planning`}
+      count={items.length}
+    />
+    <div className="flex flex-col gap-2 p-3">
       {items.length === 0 && (
         <div className="text-[12px] text-slate-400 px-1 py-4 text-center border border-dashed border-slate-200 rounded-lg">
           Geen taken in planning
@@ -199,12 +200,15 @@ const EmployeeColumn: React.FC<{
 );
 
 const DoneTodayColumn: React.FC<{ items: WO[]; nameFor: (uid: string | null) => string }> = ({ items, nameFor }) => (
-  <AsCard className="p-3 flex flex-col gap-2 min-w-[280px]">
-    <div className="flex items-center gap-2 px-1 py-1">
-      <div className="p-1.5 rounded-md bg-emerald-50 text-emerald-600"><CheckCircle2 className="h-4 w-4" /></div>
-      <div className="text-[13px] font-semibold text-slate-900">Vandaag afgerond</div>
-      <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 rounded-full px-2 py-0.5 tabular-nums ml-auto">{items.length}</span>
-    </div>
+  <AsCard className="flex flex-col min-w-[280px]">
+    <AsCardHead
+      tone="green"
+      icon={<CheckCircle2 className="h-4 w-4" />}
+      title="Vandaag afgerond"
+      subtitle="Wachtend op controle · goedgekeurd"
+      count={items.length}
+    />
+    <div className="flex flex-col gap-2 p-3">
     {items.length === 0 ? (
       <div className="text-[12px] text-slate-400 px-1 py-4 text-center">Nog niets afgerond vandaag.</div>
     ) : (
@@ -226,6 +230,7 @@ const DoneTodayColumn: React.FC<{ items: WO[]; nameFor: (uid: string | null) => 
         );
       })
     )}
+    </div>
   </AsCard>
 );
 
@@ -425,11 +430,11 @@ const WerkplaatsPlanning: React.FC = () => {
               </button>
             </div>
             <BranchFilter />
-            <Button size="sm" className="rounded-full h-9 px-3.5" onClick={() => navigate("/werkplaats/autos")}>
-              <Plus className="h-4 w-4 mr-1" /> Taak toevoegen
-            </Button>
           </div>
         </div>
+
+        {/* Taak toevoegen-balk */}
+        <AddTaskBar onCreated={load} />
 
         {loading ? (
           <div className="flex items-center gap-2 text-slate-500 py-16 justify-center">
