@@ -10,7 +10,6 @@ import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Check, Loader2, PaintBucket, Hammer, Camera, Plus, Trash2, Package } from "lucide-react";
 import { AsPage, AsCard, AsLicensePlate, AsMono, AsPill } from "@/components/aftersales/ui";
 import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
-import { BODY_PART_GROUPS } from "@/components/werkplaats/bodyParts";
 import { DamageDiagram, DAMAGE_ZONES, findZoneByName, DamageZone } from "@/components/aftersales/DamageDiagram";
 import { cn } from "@/lib/utils";
 
@@ -99,12 +98,6 @@ const WerkplaatsInnameDetail: React.FC = () => {
     setFiles([]);
     setDiscipline("spuit");
     setSheetOpen(true);
-  };
-
-  const openPartByName = (name: string) => {
-    const z = findZoneByName(name);
-    if (z) openZone(z);
-    else openZone({ id: `custom_${name}`, name, shape: "polygon" });
   };
 
   const createOpdracht = async () => {
@@ -261,8 +254,8 @@ const WerkplaatsInnameDetail: React.FC = () => {
         {/* Schadediagram + puntenlijst */}
         <AsCard className="p-5 mb-4">
           <div className="text-[13px] font-semibold text-slate-900 mb-3">Schaderapport — tik op een deel</div>
-          <div className="grid md:grid-cols-[minmax(0,320px)_1fr] gap-6">
-            <div className="flex justify-center bg-white rounded-xl border border-slate-200 p-3">
+          <div className="bg-white rounded-xl border border-slate-200 p-3 md:p-5">
+            <div className="mx-auto w-full max-w-[820px]">
               <DamageDiagram
                 markers={markers}
                 onZoneClick={openZone}
@@ -272,10 +265,12 @@ const WerkplaatsInnameDetail: React.FC = () => {
                 }}
               />
             </div>
-            <div className="min-w-0">
-              <div className="text-[12px] text-slate-500 mb-2 font-medium">
-                Geregistreerde punten ({intake.points.length})
-              </div>
+          </div>
+
+          <div className="mt-5">
+            <div className="text-[12px] text-slate-500 mb-2 font-medium">
+              Geregistreerde punten ({intake.points.length})
+            </div>
               {intake.points.length === 0 ? (
                 <div className="text-[12.5px] text-slate-400 border border-dashed border-slate-200 rounded-lg p-4 text-center bg-white">
                   Nog geen schade geregistreerd. Tik op het diagram om een deel te selecteren.
@@ -306,32 +301,7 @@ const WerkplaatsInnameDetail: React.FC = () => {
                   ))}
                 </div>
               )}
-            </div>
           </div>
-        </AsCard>
-
-        {/* Fallback chip-raster */}
-        <AsCard className="p-5 mb-4">
-          <div className="text-[12.5px] text-slate-600 mb-3">Of kies uit lijst</div>
-            <div className="space-y-3">
-              {BODY_PART_GROUPS.map(g => (
-                <div key={g.label}>
-                  <div className="text-[11px] text-slate-500 mb-1.5">{g.label}</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {g.parts.map(p => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => openPartByName(p)}
-                        className="text-[12px] px-2.5 py-1 rounded-full border transition-colors bg-white text-slate-700 border-slate-200 hover:border-slate-400"
-                      >
-                        {p}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
         </AsCard>
 
         {/* Onderdelen composer */}

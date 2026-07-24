@@ -6,7 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import BranchFilter from "@/components/reports/BranchFilter";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Flame, Shield, ArrowUp, ArrowDown, Plus, GripVertical, Wrench, PaintBucket, CheckCircle2, ClipboardCheck } from "lucide-react";
+import { Loader2, Flame, Shield, ArrowUp, ArrowDown, Plus, GripVertical, Wrench, PaintBucket, CheckCircle2, ClipboardCheck, Trash2, AlertTriangle } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { format, isToday, isTomorrow } from "date-fns";
 import { nl } from "date-fns/locale";
 import { AsPage, AsCard, AsPill, AsMono, AsLicensePlate, AsVehicleThumb, useLiveTimer } from "@/components/aftersales/ui";
@@ -72,7 +74,8 @@ const TaskCard: React.FC<{
   onDragStart: (id: string) => void;
   onDrop: (targetId: string) => void;
   onOpen: (w: WO) => void;
-}> = ({ w, index, onReorder, onToggleRush, onDragStart, onDrop, onOpen }) => {
+  onDelete?: (w: WO) => void;
+}> = ({ w, index, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete }) => {
   const live = useLiveTimer(w.status === "bezig" ? w.started_at : null);
   const reason = rushReason(w);
   const v = w.vehicle;
@@ -135,6 +138,17 @@ const TaskCard: React.FC<{
         >
           <Flame className="h-3.5 w-3.5" />
         </Button>
+        {onDelete && (
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-7 w-7 text-slate-500 hover:text-red-600 hover:border-red-300"
+            onClick={() => onDelete(w)}
+            title="Taak verwijderen"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -149,7 +163,8 @@ const EmployeeColumn: React.FC<{
   onDragStart: (id: string) => void;
   onDrop: (targetId: string) => void;
   onOpen: (w: WO) => void;
-}> = ({ profile, items, doneTodayCount, onReorder, onToggleRush, onDragStart, onDrop, onOpen }) => (
+  onDelete?: (w: WO) => void;
+}> = ({ profile, items, doneTodayCount, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete }) => (
   <AsCard className="p-3 flex flex-col gap-3 min-w-[320px]">
     <div className="flex items-center gap-3 px-1">
       <div className="h-9 w-9 rounded-full bg-slate-100 text-slate-600 font-semibold text-[13px] flex items-center justify-center">
@@ -176,6 +191,7 @@ const EmployeeColumn: React.FC<{
           onDragStart={onDragStart}
           onDrop={onDrop}
           onOpen={onOpen}
+          onDelete={onDelete}
         />
       ))}
     </div>
@@ -216,6 +232,8 @@ const DoneTodayColumn: React.FC<{ items: WO[]; nameFor: (uid: string | null) => 
 const WerkplaatsPlanning: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
   const navigate = useNavigate();
+  const { isAftersalesManager, isAdmin } = useRoleAccess() as any;
+  const canDelete = (typeof isAftersalesManager === "function" && isAftersalesManager()) || (typeof isAdmin === "function" && isAdmin());
   const [discipline, setDiscipline] = useState<Discipline>("werkplaats");
   const [rows, setRows] = useState<WO[]>([]);
   const [doneToday, setDoneToday] = useState<WO[]>([]);
@@ -223,6 +241,7 @@ const WerkplaatsPlanning: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [dragId, setDragId] = useState<string | null>(null);
   const [report, setReport] = useState<DamageReportPayload | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<WO | null>(null);
   const openReport = (w: WO) => setReport({
     part: w.part, description: w.description, photos: (w as any).photos, discipline: w.discipline, status: w.status, vehicle: w.vehicle as any,
   });
@@ -295,15 +314,39 @@ const WerkplaatsPlanning: React.FC = () => {
   }, [doneToday]);
 
   const reorder = async (id: string, dir: -1 | 1) => {
-    const list = rows.find(r => r.id === id)?.assigned_to || "__unassigned__";
-    const sibling = rows.filter(r => (r.assigned_to || "__unassigned__") === list);
+    const target = rows.find(r => r.id === id);
+    if (!target) return;
+    const groupKey = target.assigned_to || "__unassigned__";
+    // sorted siblings same as UI: rush desc, sort_order asc
+    const sibling = rows
+      .filter(r => (r.assigned_to || "__unassigned__") === groupKey)
+      .sort((a, b) => (Number(b.is_rush) - Number(a.is_rush)) || (a.sort_order - b.sort_order));
     const idx = sibling.findIndex(w => w.id === id);
     const swap = sibling[idx + dir];
     if (!swap) return;
-    const a = sibling[idx].sort_order; const b = swap.sort_order;
-    await supabase.from("work_orders").update({ sort_order: b }).eq("id", sibling[idx].id);
-    await supabase.from("work_orders").update({ sort_order: a }).eq("id", swap.id);
-    load();
+    if (swap.is_rush !== target.is_rush) {
+      toast({ title: "Kan niet verwisselen", description: "Spoed-taken staan altijd bovenaan.", variant: "destructive" });
+      return;
+    }
+    const a = target.sort_order; const b = swap.sort_order;
+    // optimistic
+    setRows(prev => prev.map(r =>
+      r.id === target.id ? { ...r, sort_order: b } :
+      r.id === swap.id ? { ...r, sort_order: a } : r
+    ));
+    try {
+      // gebruik tijdelijke waarde om unique-conflicten te vermijden
+      const tmp = -Date.now();
+      const { error: e1 } = await supabase.from("work_orders").update({ sort_order: tmp }).eq("id", target.id);
+      if (e1) throw e1;
+      const { error: e2 } = await supabase.from("work_orders").update({ sort_order: a }).eq("id", swap.id);
+      if (e2) throw e2;
+      const { error: e3 } = await supabase.from("work_orders").update({ sort_order: b }).eq("id", target.id);
+      if (e3) throw e3;
+    } catch (e: any) {
+      toast({ title: "Fout bij volgorde opslaan", description: e.message, variant: "destructive" });
+      load();
+    }
   };
 
   const toggleRush = async (w: WO) => {
@@ -317,14 +360,35 @@ const WerkplaatsPlanning: React.FC = () => {
     const target = rows.find(r => r.id === targetId);
     setDragId(null);
     if (!drag || !target) return;
-    const updates: any[] = [
-      supabase.from("work_orders").update({ sort_order: target.sort_order - 1 }).eq("id", drag.id),
-    ];
-    if (drag.assigned_to !== target.assigned_to) {
-      updates.push(supabase.from("work_orders").update({ assigned_to: target.assigned_to }).eq("id", drag.id));
+    const newSort = target.sort_order - 1;
+    const newAssigned = drag.assigned_to !== target.assigned_to ? target.assigned_to : drag.assigned_to;
+    // optimistic
+    setRows(prev => prev.map(r => r.id === drag.id ? { ...r, sort_order: newSort, assigned_to: newAssigned } : r));
+    try {
+      const patch: any = { sort_order: newSort };
+      if (drag.assigned_to !== target.assigned_to) patch.assigned_to = target.assigned_to;
+      const { error } = await supabase.from("work_orders").update(patch).eq("id", drag.id);
+      if (error) throw error;
+      load();
+    } catch (e: any) {
+      toast({ title: "Fout bij verplaatsen", description: e.message, variant: "destructive" });
+      load();
     }
-    await Promise.all(updates);
-    load();
+  };
+
+  const doDelete = async (w: WO) => {
+    // optimistic verwijder uit lijst
+    setRows(prev => prev.filter(r => r.id !== w.id));
+    setConfirmDelete(null);
+    const { error } = await supabase.from("work_orders")
+      .update({ status: "geannuleerd" })
+      .eq("id", w.id);
+    if (error) {
+      toast({ title: "Verwijderen mislukt", description: error.message, variant: "destructive" });
+      load();
+      return;
+    }
+    toast({ title: "Taak verwijderd", description: "Status → geannuleerd." });
   };
 
   const nameFor = (uid: string | null) => nameOf(uid ? profiles.get(uid) : undefined);
@@ -389,12 +453,46 @@ const WerkplaatsPlanning: React.FC = () => {
                 onDragStart={setDragId}
                 onDrop={onDrop}
                 onOpen={openReport}
+                onDelete={canDelete ? (w) => setConfirmDelete(w) : undefined}
               />
             ))}
             <DoneTodayColumn items={doneToday} nameFor={nameFor} />
           </div>
         )}
         <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} />
+        <AlertDialog open={!!confirmDelete} onOpenChange={(v) => !v && setConfirmDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <Trash2 className="h-5 w-5 text-red-500" /> Taak verwijderen?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                <span className="block">
+                  {confirmDelete?.vehicle?.brand} {confirmDelete?.vehicle?.model}
+                  {confirmDelete?.part ? ` · ${confirmDelete.part}` : ""}
+                </span>
+                {confirmDelete?.status === "bezig" && (
+                  <span className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2.5 text-[12.5px] text-amber-800">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                    Let op: een medewerker is hiermee bezig. Weet je zeker dat je de opdracht wilt annuleren?
+                  </span>
+                )}
+                <span className="block text-[12px] text-slate-500">
+                  De taak wordt op status <b>geannuleerd</b> gezet en verdwijnt uit alle lijsten en tellers.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuleren</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-red-600 hover:bg-red-700"
+                onClick={() => confirmDelete && doDelete(confirmDelete)}
+              >
+                Verwijderen
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </AsPage>
     </DashboardLayout>
   );
