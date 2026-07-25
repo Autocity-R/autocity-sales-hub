@@ -9,6 +9,7 @@ import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
 import { DISCIPLINE_LABELS, WorkOrderDiscipline } from "@/components/werkplaats/workOrderTypes";
 import { Check, Loader2, Undo2, Timer, ClipboardCheck } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { removeWorkOrderFromWerkplaatsCalendar } from "@/services/werkplaatsCalendarService";
 import { AsPage, AsCard, AsCardHead, AsLicensePlate } from "@/components/aftersales/ui";
 import { DamageReportDialog, DamageReportPayload } from "@/components/aftersales/DamageReportDialog";
 import { AsPill } from "@/components/aftersales/ui";
@@ -83,6 +84,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
     }).eq("id", w.id);
     if (error) toast({ title: "Fout", description: error.message, variant: "destructive" });
     else {
+      removeWorkOrderFromWerkplaatsCalendar(w.id, (w as any).branch || "rotterdam");
       toast({ title: "Goedgekeurd" });
       if (isExtern(w)) setInvoice(invoiceDraftFor(w));
       load();

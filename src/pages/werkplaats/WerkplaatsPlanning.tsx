@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import BranchFilter from "@/components/reports/BranchFilter";
 import { toast } from "@/hooks/use-toast";
+import { syncWorkOrderToWerkplaatsCalendar, removeWorkOrderFromWerkplaatsCalendar } from "@/services/werkplaatsCalendarService";
 import { Loader2, Flame, Shield, ArrowUp, ArrowDown, Plus, GripVertical, Wrench, PaintBucket, CheckCircle2, ClipboardCheck, Trash2, AlertTriangle, CalendarClock, Building2, X } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -447,6 +448,7 @@ const WerkplaatsPlanning: React.FC = () => {
       load();
       return;
     }
+    removeWorkOrderFromWerkplaatsCalendar(w.id, (w as any).branch || "rotterdam");
     toast({ title: "Taak verwijderd", description: "Status → geannuleerd." });
   };
 
@@ -480,6 +482,7 @@ const WerkplaatsPlanning: React.FC = () => {
       toast({ title: "Verzetten mislukt", description: error.message, variant: "destructive" });
       return;
     }
+    syncWorkOrderToWerkplaatsCalendar(reschedule.id, (reschedule as any).branch || "rotterdam");
     toast({ title: "Afspraak verzet" });
     load();
   };

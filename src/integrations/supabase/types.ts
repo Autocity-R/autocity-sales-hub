@@ -4778,6 +4778,48 @@ export type Database = {
         }
         Relationships: []
       }
+      werkplaats_calendar_settings: {
+        Row: {
+          branch: string
+          calendar_id: string | null
+          calendar_name: string | null
+          connected_at: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          last_sync_at: string | null
+          managed_by_user_id: string | null
+          sync_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          branch?: string
+          calendar_id?: string | null
+          calendar_name?: string | null
+          connected_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          managed_by_user_id?: string | null
+          sync_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          branch?: string
+          calendar_id?: string | null
+          calendar_name?: string | null
+          connected_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          managed_by_user_id?: string | null
+          sync_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       work_orders: {
         Row: {
           approved_at: string | null

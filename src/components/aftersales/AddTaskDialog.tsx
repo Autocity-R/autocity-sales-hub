@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { syncWorkOrderToWerkplaatsCalendar } from "@/services/werkplaatsCalendarService";
 import { AsLicensePlate } from "@/components/aftersales/ui";
 import { DamageDiagram, DAMAGE_ZONES, DamageZone } from "@/components/aftersales/DamageDiagram";
 import { Search, X, Car, Loader2, Plus, PaintBucket, Wrench, Hammer, Sparkles, Camera, Flame, AlertTriangle, Home, Truck, Building2, UserRound } from "lucide-react";
@@ -348,7 +349,7 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
       const base = ((bounds as any)?.[0]?.sort_order ?? 0);
       const nextSort = isRush ? base - 10 : base + 10;
 
-      const { error: wErr } = await supabase.from("work_orders").insert({
+      const { data: createdWo, error: wErr } = await supabase.from("work_orders").insert({
         vehicle_id: (extVehicle as any).id,
         discipline,
         description: description.trim(),
@@ -377,8 +378,13 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
         due_date: dueDate || null,
         warranty_claim_id: warrantyClaimId || null,
         created_by: userRes.user?.id ?? null,
-      } as any);
+      } as any).select("id, branch").single();
       if (wErr) throw wErr;
+
+      // Werkplaats-agenda (eigen spoor, faalt nooit blokkerend)
+      if ((createdWo as any)?.id) {
+        syncWorkOrderToWerkplaatsCalendar((createdWo as any).id, (createdWo as any).branch || "rotterdam");
+      }
 
       toast({ title: "Externe opdracht ingepland" });
       onCreated?.();
