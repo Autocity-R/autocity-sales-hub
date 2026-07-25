@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { AsLicensePlate } from "@/components/aftersales/ui";
 import { DamageDiagram, DAMAGE_ZONES, DamageZone } from "@/components/aftersales/DamageDiagram";
-import { Search, X, Car, Loader2, Plus, PaintBucket, Wrench, Hammer, Sparkles, Camera, Flame, AlertTriangle, Home, Truck } from "lucide-react";
+import { Search, X, Car, Loader2, Plus, PaintBucket, Wrench, Hammer, Sparkles, Camera, Flame, AlertTriangle, Home, Truck, Building2, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { WorkOrderDiscipline } from "@/components/werkplaats/workOrderTypes";
 
@@ -104,6 +104,14 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
   const [saving, setSaving] = useState(false);
   const searchTimer = useRef<number | null>(null);
 
+  // Extern (alleen werkplaats)
+  const externAllowed = discipline === "werkplaats";
+  const [mode, setMode] = useState<"intern" | "extern">("intern");
+  const [ext, setExt] = useState({
+    brand: "", model: "", plate: "", name: "", address: "", email: "", phone: "",
+  });
+  const [plannedAt, setPlannedAt] = useState<string>("");
+
   useEffect(() => {
     if (!open) return;
     setVehicle(presetVehicle ?? null);
@@ -111,6 +119,9 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
     setDescription(""); setZoneIds([]); setZoneNotes({}); setFiles([]);
     setAssignedTo(""); setDueDate(""); setIsRush(false); setWarrantyClaimId("");
     setPoetsType("showroom");
+    setMode("intern");
+    setExt({ brand: "", model: "", plate: "", name: "", address: "", email: "", phone: "" });
+    setPlannedAt("");
   }, [open, presetVehicle, discipline]);
 
   // Bij poets/aflevering: due_date default op afleverdatum van auto
@@ -184,17 +195,23 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
     .filter(Boolean) as string[];
 
   const canSave = useMemo(() => {
+    if (saving) return false;
+    if (externAllowed && mode === "extern") {
+      return !!(ext.brand.trim() && ext.model.trim() && ext.plate.trim() && ext.name.trim()
+        && plannedAt && description.trim());
+    }
     if (!vehicle) return false;
     if (meta.needsDiagram && zoneIds.length === 0) return false;
     if (!description.trim() && !meta.needsDiagram) return false;
     if (meta.needsDiagram && zoneIds.length === 1 && !description.trim()) return false;
     if (discipline === "poets" && poetsType === "aflevering" && !dueDate) return false;
     return !saving;
-  }, [vehicle, zoneIds, description, saving, meta, discipline, poetsType, dueDate]);
+  }, [vehicle, zoneIds, description, saving, meta, discipline, poetsType, dueDate, externAllowed, mode, ext, plannedAt]);
 
   const hasDeliveryConflict = !!vehicle?.delivery_date && !!dueDate && new Date(dueDate) > new Date(vehicle.delivery_date);
 
   const submit = async () => {
+    if (externAllowed && mode === "extern") return submitExtern();
     if (!vehicle) return;
     setSaving(true);
     try {
@@ -262,6 +279,92 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
       }
 
       toast({ title: "Taak aangemaakt" });
+      onCreated?.();
+      onOpenChange(false);
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: "Fout", description: e.message, variant: "destructive" });
+    } finally { setSaving(false); }
+  };
+
+  /** Externe klant + licht voertuig + werkorder aanmaken. */
+  const submitExtern = async () => {
+    setSaving(true);
+    try {
+      const { data: userRes } = await supabase.auth.getUser();
+
+      // (a) klant opzoeken op e-mail/telefoon, anders aanmaken
+      let customerId: string | null = null;
+      const email = ext.email.trim();
+      const phone = ext.phone.trim();
+      if (email || phone) {
+        const filters: string[] = [];
+        if (email) filters.push(`email.ilike.${email}`);
+        if (phone) filters.push(`phone.eq.${phone}`);
+        const { data: found } = await supabase.from("contacts").select("id").or(filters.join(",")).limit(1);
+        customerId = (found as any)?.[0]?.id ?? null;
+      }
+      if (!customerId) {
+        const parts = ext.name.trim().split(/\s+/);
+        const first = parts[0] || ext.name.trim();
+        const last = parts.slice(1).join(" ") || "-";
+        const { data: created, error: cErr } = await supabase.from("contacts").insert({
+          first_name: first,
+          last_name: last,
+          email: email || `extern-${Date.now()}@werkplaats.local`,
+          phone: phone || null,
+          address_street: ext.address.trim() || null,
+          type: "klant",
+        } as any).select("id").single();
+        if (cErr) throw cErr;
+        customerId = (created as any).id;
+      }
+
+      // (b) licht extern voertuig — status extern_werkplaats zodat het NOOIT in voorraad/verkoop verschijnt
+      const { data: extVehicle, error: vErr } = await supabase.from("vehicles").insert({
+        brand: ext.brand.trim(),
+        model: ext.model.trim(),
+        license_number: ext.plate.trim().toUpperCase(),
+        status: "extern_werkplaats",
+        customer_id: customerId,
+        details: { externalWorkshop: true, excludeFromStock: true, customerName: ext.name.trim() } as any,
+      } as any).select("id, branch").single();
+      if (vErr) throw vErr;
+
+      // (c) werkorder
+      const { data: bounds } = await supabase.from("work_orders")
+        .select("sort_order").eq("discipline", discipline)
+        .in("status", ["ingepland", "bezig"])
+        .order("sort_order", { ascending: isRush ? true : false }).limit(1);
+      const base = ((bounds as any)?.[0]?.sort_order ?? 0);
+      const nextSort = isRush ? base - 10 : base + 10;
+
+      const { error: wErr } = await supabase.from("work_orders").insert({
+        vehicle_id: (extVehicle as any).id,
+        discipline,
+        description: description.trim(),
+        status: "ingepland",
+        sort_order: nextSort,
+        source: "extern",
+        origin: "extern",
+        planned_at: new Date(plannedAt).toISOString(),
+        external_customer: {
+          name: ext.name.trim(),
+          address: ext.address.trim() || null,
+          email: email || null,
+          phone: phone || null,
+          customer_id: customerId,
+        } as any,
+        branch: (extVehicle as any).branch || "rotterdam",
+        assigned_to: assignedTo || null,
+        is_rush: isRush,
+        due_date: dueDate || null,
+        warranty_claim_id: warrantyClaimId || null,
+        created_by: userRes.user?.id ?? null,
+      } as any);
+      if (wErr) throw wErr;
+
+      toast({ title: "Externe opdracht ingepland" });
       onCreated?.();
       onOpenChange(false);
     } catch (e: any) {
