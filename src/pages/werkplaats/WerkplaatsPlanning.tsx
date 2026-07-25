@@ -109,6 +109,7 @@ const TaskCard: React.FC<{
   onDelete?: (w: WO) => void;
 }> = ({ w, index, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete }) => {
   const live = useLiveTimer(w.status === "bezig" ? w.started_at : null);
+  const navigateTo = useNavigate();
   const reason = rushReason(w);
   const v = w.vehicle;
   const specs = [v?.year, v?.mileage ? `${v.mileage.toLocaleString("nl-NL")} km` : null, v?.color].filter(Boolean).join(" · ");
@@ -163,7 +164,16 @@ const TaskCard: React.FC<{
             );
           })()}
           {w.warranty_claim_id && (
-            <AsPill tone="pink"><Shield className="h-3 w-3" />Garantie</AsPill>
+            <>
+              <AsPill tone="violet"><Shield className="h-3 w-3" />🛡️ GARANTIE</AsPill>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); navigateTo("/warranty"); }}
+                className="text-[11px] text-violet-600 underline underline-offset-2 hover:text-violet-800"
+              >
+                Bekijk claim
+              </button>
+            </>
           )}
           {w.status === "bezig" && live && <AsPill tone="violet">● bezig · {live}</AsPill>}
           {w.source && <AsPill tone="slate">{w.source}</AsPill>}
