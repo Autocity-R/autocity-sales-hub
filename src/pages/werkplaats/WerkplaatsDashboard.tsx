@@ -7,7 +7,7 @@ import { useCurrentBranch, applyBranchFilter, BRANCH_LABELS, type BranchFilter }
 import BranchFilter_UI from "@/components/reports/BranchFilter";
 import {
   Shield, Wrench, PaintBucket, Hammer, ClipboardCheck, Truck, Inbox,
-  Loader2, ChevronRight, Clock, CheckCircle2, AlertCircle, AlarmClock, Activity, ArrowRight,
+  Loader2, ChevronRight, Clock, CheckCircle2, AlertCircle, AlarmClock, Activity, ArrowRight, CalendarClock,
 } from "lucide-react";
 import { differenceInHours, differenceInDays, format } from "date-fns";
 import { nl } from "date-fns/locale";
