@@ -1,0 +1,133 @@
+import React, { useEffect, useMemo, useState } from "react";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { supabase } from "@/integrations/supabase/client";
+import { AsPage, AsCard, AsCardHead, AsLicensePlate, AsPill } from "@/components/aftersales/ui";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { FileText, Loader2, Search, ExternalLink, Send, Pencil } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import WorkshopInvoiceDialog from "@/components/werkplaats/WorkshopInvoiceDialog";
+import { eur, getInvoiceSignedUrl, queueInvoiceEmail, InvoiceDraft } from "@/services/workshopInvoiceService";
+
+interface InvoiceRow {
+  id: string; invoice_number: string | null; created_at: string; status: string;
+  customer: any; vehicle: any; lines: any; total: number; pdf_path: string | null; branch: string | null;
+  work_order_id: string | null;
+}
+
+const WerkplaatsFacturen: React.FC = () => {
+  const [rows, setRows] = useState<InvoiceRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState("");
+  const [edit, setEdit] = useState<InvoiceDraft | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await (supabase as any)
+      .from("workshop_invoices")
+      .select("id, invoice_number, created_at, status, customer, vehicle, lines, total, pdf_path, branch, work_order_id")
+      .order("created_at", { ascending: false })
+      .limit(300);
+    if (error) toast({ title: "Fout", description: error.message, variant: "destructive" });
+    setRows((data as any) || []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return rows;
+    return rows.filter((r) =>
+      [r.invoice_number, r.customer?.name, r.vehicle?.license_number, r.vehicle?.brand, r.vehicle?.model]
+        .filter(Boolean).some((v: string) => String(v).toLowerCase().includes(s)),
+    );
+  }, [rows, q]);
+
+  const openPdf = async (r: InvoiceRow) => {
+    if (!r.pdf_path) { toast({ title: "Geen PDF beschikbaar", description: "Deze factuur is nog een concept." }); return; }
+    const url = await getInvoiceSignedUrl(r.pdf_path);
+    if (url) window.open(url, "_blank");
+    else toast({ title: "PDF kon niet worden geopend", variant: "destructive" });
+  };
+
+  const resend = async (r: InvoiceRow) => {
+    try {
+      const url = r.pdf_path ? await getInvoiceSignedUrl(r.pdf_path) : null;
+      await queueInvoiceEmail({
+        invoiceNumber: r.invoice_number || "",
+        customerName: r.customer?.name || "",
+        plate: r.vehicle?.license_number || "",
+        total: Number(r.total) || 0,
+        signedUrl: url,
+      });
+      toast({ title: "Factuur opnieuw in de mailwachtrij geplaatst" });
+    } catch (e: any) {
+      toast({ title: "Fout", description: e.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <DashboardLayout>
+      <AsPage>
+        <div className="flex items-center justify-between mb-5 gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Werkplaats facturen</h1>
+            <p className="text-[13px] text-slate-500 mt-0.5">Facturen van externe werkplaatsopdrachten.</p>
+          </div>
+        </div>
+
+        <AsCard>
+          <AsCardHead
+            icon={<FileText className="h-4 w-4" />} tone="teal" title="Facturen"
+            subtitle="Zoek op nummer, klant of kenteken" count={filtered.length}
+          />
+          <div className="p-4 border-b border-slate-100">
+            <div className="relative max-w-sm">
+              <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Input className="pl-8" placeholder="Zoeken…" value={q} onChange={(e) => setQ(e.target.value)} />
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="p-8 flex items-center gap-2 text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Laden…</div>
+          ) : filtered.length === 0 ? (
+            <div className="p-10 text-center text-[13px] text-slate-400">Geen facturen gevonden.</div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {filtered.map((r) => (
+                <div key={r.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                  <div className="w-[130px] font-mono text-[12.5px] font-semibold text-slate-900">{r.invoice_number || "concept"}</div>
+                  <div className="w-[92px] text-[12px] text-slate-500">{new Date(r.created_at).toLocaleDateString("nl-NL")}</div>
+                  <div className="flex-1 min-w-[150px] text-[13px] text-slate-800 truncate">{r.customer?.name || "—"}</div>
+                  <AsLicensePlate value={r.vehicle?.license_number} size="sm" />
+                  <div className="w-[110px] text-right text-[13px] font-semibold tabular-nums">{eur(Number(r.total) || 0)}</div>
+                  <AsPill tone={r.status === "verstuurd" ? "green" : "amber"}>{r.status}</AsPill>
+                  <div className="flex gap-1">
+                    {r.status === "verstuurd" ? (
+                      <>
+                        <Button size="sm" variant="outline" onClick={() => openPdf(r)}><ExternalLink className="h-3.5 w-3.5 mr-1" />PDF</Button>
+                        <Button size="sm" variant="ghost" onClick={() => resend(r)}><Send className="h-3.5 w-3.5 mr-1" />Mailen</Button>
+                      </>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => setEdit({
+                        id: r.id, work_order_id: r.work_order_id, invoice_number: null, branch: r.branch,
+                        customer: r.customer || { name: "" }, vehicle: r.vehicle || {},
+                        lines: Array.isArray(r.lines) ? r.lines : [],
+                      })}>
+                        <Pencil className="h-3.5 w-3.5 mr-1" />Afmaken
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </AsCard>
+
+        <WorkshopInvoiceDialog open={!!edit} onOpenChange={(v) => !v && setEdit(null)} initial={edit} onSaved={load} />
+      </AsPage>
+    </DashboardLayout>
+  );
+};
+
+export default WerkplaatsFacturen;
