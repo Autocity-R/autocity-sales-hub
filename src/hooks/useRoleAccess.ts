@@ -36,9 +36,9 @@ export const useRoleAccess = () => {
 
   // Toegang tot het nieuwe WERKPLAATS menu-blok (aftersales pilaar)
   const hasWerkplaatsAccess = () => {
-    // Per-dashboard uitrol: WERKPLAATS-menu is UITSLUITEND zichtbaar voor aftersales_manager.
+    // Per-dashboard uitrol: WERKPLAATS-menu is zichtbaar voor aftersales_manager en werkplaats_chef.
     // Owner/admin behouden data-toegang via RLS, maar zien het menu (nog) niet.
-    return userRole === 'aftersales_manager';
+    return userRole === 'aftersales_manager' || userRole === 'werkplaats_chef';
   };
 
   const hasReportsAccess = () => {
