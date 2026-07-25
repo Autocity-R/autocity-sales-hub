@@ -30,6 +30,7 @@ import {
   Package,
   Sparkles,
 } from "lucide-react";
+import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -414,6 +415,7 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
       label: "OVERIG",
       items: [
         { url: "/reports", label: "Rapportages", icon: BarChart3 },
+        { url: "/werkplaats/facturen", label: "Werkplaats facturen", icon: FileText },
         { url: "/calendar", label: "Agenda", icon: CalendarIcon },
       ],
     },

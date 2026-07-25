@@ -11,12 +11,17 @@ import { Check, Loader2, Undo2, Timer, ClipboardCheck } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { AsPage, AsCard, AsCardHead, AsLicensePlate } from "@/components/aftersales/ui";
 import { DamageReportDialog, DamageReportPayload } from "@/components/aftersales/DamageReportDialog";
+import { AsPill } from "@/components/aftersales/ui";
+import WorkshopInvoiceDialog from "@/components/werkplaats/WorkshopInvoiceDialog";
+import { InvoiceDraft } from "@/services/workshopInvoiceService";
+import { FileText } from "lucide-react";
 
 interface WO {
   id: string; discipline: string; description: string; part: string | null; is_rush: boolean;
   photos: string[] | null; result_photos: string[] | null;
   work_seconds: number | null; finish_note: string | null; branch: string | null;
-  vehicle: { brand: string; model: string; year: number | null; license_number: string | null } | null;
+  origin: string | null; external_customer: any | null;
+  vehicle: { brand: string; model: string; year: number | null; license_number: string | null; vin?: string | null } | null;
 }
 
 const fmtSec = (s: number | null) => {
@@ -30,11 +35,12 @@ const WerkplaatsGoedkeuren: React.FC = () => {
   const [rows, setRows] = useState<WO[]>([]);
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<DamageReportPayload | null>(null);
+  const [invoice, setInvoice] = useState<InvoiceDraft | null>(null);
 
   const load = async () => {
     setLoading(true);
     let q = supabase.from("work_orders")
-      .select("id, discipline, description, part, is_rush, photos, result_photos, work_seconds, finish_note, branch, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number)")
+      .select("id, discipline, description, part, is_rush, photos, result_photos, work_seconds, finish_note, branch, origin, external_customer, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin)")
       .eq("status", "afgerond")
       .neq("discipline", "uitdeuk")
       .order("finished_at", { ascending: true });
@@ -45,13 +51,33 @@ const WerkplaatsGoedkeuren: React.FC = () => {
   };
   useEffect(() => { load(); /* eslint-disable-line */ }, [branchFilter]);
 
+  const isExtern = (w: WO) => w.origin === "extern";
+
+  const invoiceDraftFor = (w: WO): InvoiceDraft => {
+    const c = (w.external_customer as any) || {};
+    return {
+      work_order_id: w.id,
+      branch: w.branch || "rotterdam",
+      customer: { name: c.name || "", address: c.address || "", email: c.email || "", phone: c.phone || "" },
+      vehicle: {
+        brand: w.vehicle?.brand || "", model: w.vehicle?.model || "",
+        license_number: w.vehicle?.license_number || "", vin: w.vehicle?.vin || null,
+      },
+      lines: [{ description: [w.part, w.description].filter(Boolean).join(" — "), amount: 0 }],
+    };
+  };
+
   const approve = async (w: WO) => {
     const { data: userRes } = await supabase.auth.getUser();
     const { error } = await supabase.from("work_orders").update({
       status: "goedgekeurd", approved_by: userRes.user?.id ?? null, approved_at: new Date().toISOString(),
     }).eq("id", w.id);
     if (error) toast({ title: "Fout", description: error.message, variant: "destructive" });
-    else { toast({ title: "Goedgekeurd" }); load(); }
+    else {
+      toast({ title: "Goedgekeurd" });
+      if (isExtern(w)) setInvoice(invoiceDraftFor(w));
+      load();
+    }
   };
 
   const reject = async (w: WO) => {
@@ -104,11 +130,22 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                     <span className="flex items-center gap-2">
                       <AsLicensePlate value={w.vehicle?.license_number} size="sm" />
                       <span>{w.vehicle?.brand} {w.vehicle?.model}{w.vehicle?.year ? ` · ${w.vehicle.year}` : ""}</span>
+                      {isExtern(w) && (
+                        <>
+                          <AsPill tone="blue">EXTERN · {w.external_customer?.name || "klant"}</AsPill>
+                          <AsPill tone="amber">Factuur nodig</AsPill>
+                        </>
+                      )}
                     </span>
                   }
                   subtitle={DISCIPLINE_LABELS[w.discipline as WorkOrderDiscipline] || w.discipline}
                   right={
                     <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                      {isExtern(w) && (
+                        <Button size="sm" variant="outline" onClick={() => setInvoice(invoiceDraftFor(w))}>
+                          <FileText className="h-4 w-4 mr-1" />Factuur opmaken
+                        </Button>
+                      )}
                       <Button size="sm" onClick={() => approve(w)}><Check className="h-4 w-4 mr-1" />Goedkeuren</Button>
                       <Button size="sm" variant="outline" onClick={() => reject(w)}><Undo2 className="h-4 w-4 mr-1" />Terugsturen</Button>
                     </div>
@@ -147,6 +184,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
           </div>
         )}
         <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} />
+        <WorkshopInvoiceDialog open={!!invoice} onOpenChange={(v) => !v && setInvoice(null)} initial={invoice} />
       </AsPage>
     </DashboardLayout>
   );
