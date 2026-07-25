@@ -293,13 +293,15 @@ const WerkplaatsPlanning: React.FC = () => {
   const [dragId, setDragId] = useState<string | null>(null);
   const [report, setReport] = useState<DamageReportPayload | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<WO | null>(null);
+  const [reschedule, setReschedule] = useState<WO | null>(null);
+  const [newPlanned, setNewPlanned] = useState<string>("");
   const openReport = (w: WO) => setReport({
     part: w.part, description: w.description, photos: (w as any).photos, discipline: w.discipline, status: w.status, vehicle: w.vehicle as any,
   });
 
   const load = async () => {
     setLoading(true);
-    const select = "id, discipline, description, part, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, due_date, photos, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date)";
+    const select = "id, discipline, description, part, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, due_date, planned_at, origin, external_customer, photos, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date)";
 
     let q = supabase
       .from("work_orders")
@@ -342,10 +344,16 @@ const WerkplaatsPlanning: React.FC = () => {
 
   const groups = useMemo(() => {
     const m = new Map<string, WO[]>();
-    for (const w of rows) {
+    for (const w of rows.filter(r => !isFuturePlanned(r))) {
       const key = w.assigned_to || "__unassigned__";
       if (!m.has(key)) m.set(key, []);
       m.get(key)!.push(w);
+    }
+    for (const [, items] of m) {
+      items.sort((a, b) =>
+        (Number(isNearPlanned(b)) - Number(isNearPlanned(a))) ||
+        (Number(b.is_rush) - Number(a.is_rush)) ||
+        (a.sort_order - b.sort_order));
     }
     return Array.from(m.entries()).sort((a, b) => {
       if (a[0] === "__unassigned__") return 1;
@@ -444,6 +452,38 @@ const WerkplaatsPlanning: React.FC = () => {
 
   const nameFor = (uid: string | null) => nameOf(uid ? profiles.get(uid) : undefined);
 
+  /** Geplande orders (>1 dag) gegroepeerd per dag. */
+  const plannedGroups = useMemo(() => {
+    const future = rows.filter(isFuturePlanned)
+      .sort((a, b) => new Date(a.planned_at!).getTime() - new Date(b.planned_at!).getTime());
+    const m = new Map<string, WO[]>();
+    for (const w of future) {
+      const key = format(startOfDay(new Date(w.planned_at!)), "yyyy-MM-dd");
+      if (!m.has(key)) m.set(key, []);
+      m.get(key)!.push(w);
+    }
+    return Array.from(m.entries());
+  }, [rows]);
+
+  const doReschedule = async () => {
+    if (!reschedule || !newPlanned) return;
+    const oldIso = reschedule.planned_at;
+    const note = oldIso
+      ? `\n[verzet van ${format(new Date(oldIso), "EEE d/M HH:mm", { locale: nl })} → ${format(new Date(newPlanned), "EEE d/M HH:mm", { locale: nl })}]`
+      : "";
+    const { error } = await supabase.from("work_orders").update({
+      planned_at: new Date(newPlanned).toISOString(),
+      description: `${reschedule.description || ""}${note}`,
+    }).eq("id", reschedule.id);
+    setReschedule(null); setNewPlanned("");
+    if (error) {
+      toast({ title: "Verzetten mislukt", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Afspraak verzet" });
+    load();
+  };
+
   return (
     <DashboardLayout>
       <AsPage>
@@ -510,6 +550,77 @@ const WerkplaatsPlanning: React.FC = () => {
             <DoneTodayColumn items={doneToday} nameFor={nameFor} />
           </div>
         )}
+
+        {/* Gepland (>1 dag in de toekomst) */}
+        {!loading && plannedGroups.length > 0 && (
+          <AsCard className="mt-4 overflow-hidden">
+            <AsCardHead
+              tone="blue"
+              icon={<CalendarClock className="h-4 w-4" />}
+              title="Gepland"
+              subtitle="Afspraken verder dan 1 dag vooruit — verschijnen automatisch 1 dag vóór de afspraak in de planning"
+              count={plannedGroups.reduce((n, [, items]) => n + items.length, 0)}
+            />
+            <div className="p-3 space-y-4">
+              {plannedGroups.map(([day, items]) => (
+                <div key={day}>
+                  <div className="text-[12px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                    {isTomorrow(new Date(day)) ? "Morgen" : format(new Date(day), "EEE d MMM", { locale: nl })}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+                    {items.map((w) => (
+                      <div key={w.id} className="bg-white rounded-[12px] border border-slate-200 p-3">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <AsLicensePlate value={w.vehicle?.license_number} size="sm" />
+                          <span className="text-[13px] font-bold text-slate-900 truncate">{w.vehicle?.brand} {w.vehicle?.model}</span>
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap gap-1.5 items-center">
+                          <AsPill tone="slate"><CalendarClock className="h-3 w-3" />{format(new Date(w.planned_at!), "EEE d MMM · HH:mm", { locale: nl })}</AsPill>
+                          <ExternBadge w={w} />
+                          {w.warranty_claim_id && <AsPill tone="pink"><Shield className="h-3 w-3" />Garantie</AsPill>}
+                          {w.is_rush && <AsPill tone="red"><Flame className="h-3 w-3" />Spoed</AsPill>}
+                        </div>
+                        <div className="mt-1.5 text-[12px] text-slate-700 line-clamp-3 whitespace-pre-line">{w.description}</div>
+                        <div className="mt-2 flex items-center gap-2">
+                          <Button size="sm" variant="outline" className="h-7 text-[12px]"
+                                  onClick={() => { setReschedule(w); setNewPlanned(w.planned_at ? format(new Date(w.planned_at), "yyyy-MM-dd'T'HH:mm") : ""); }}>
+                            Verzetten
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-[12px] text-slate-500 hover:text-red-600"
+                                  onClick={() => setConfirmDelete(w)}>
+                            <X className="h-3.5 w-3.5 mr-1" />Annuleren
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </AsCard>
+        )}
+
+        <Dialog open={!!reschedule} onOpenChange={(v) => { if (!v) { setReschedule(null); setNewPlanned(""); } }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Afspraak verzetten</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="text-[13px] text-slate-600">
+                {reschedule?.vehicle?.brand} {reschedule?.vehicle?.model}
+                {reschedule?.planned_at && <> · nu {format(new Date(reschedule.planned_at), "EEE d MMM HH:mm", { locale: nl })}</>}
+              </div>
+              <div>
+                <Label className="text-[12px] font-semibold text-slate-700">Nieuwe datum + tijd</Label>
+                <Input className="mt-1.5" type="datetime-local" value={newPlanned} onChange={(e) => setNewPlanned(e.target.value)} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setReschedule(null); setNewPlanned(""); }}>Annuleren</Button>
+              <Button onClick={doReschedule} disabled={!newPlanned}>Verzetten</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} />
         <AlertDialog open={!!confirmDelete} onOpenChange={(v) => !v && setConfirmDelete(null)}>
           <AlertDialogContent>
