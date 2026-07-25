@@ -28,6 +28,7 @@ import {
   PaintBucket,
   ClipboardCheck,
   Package,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -216,7 +217,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
         {hasWerkplaatsAccess() && (
           <div className="mt-8">
             <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
-              WERKPLAATS
+              OPERATIONEEL
             </h2>
             <div className="space-y-1">
               {[
@@ -226,6 +227,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 { url: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
                 { url: "/werkplaats/uitdeuken", label: "Uitdeuken (extern)", icon: Hammer },
                 { url: "/werkplaats/goedkeuren", label: "Goedkeuren", icon: CheckCircle },
+                { url: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles },
               ].map((it) => (
                 <Link key={it.url} to={it.url}>
                   <Button
@@ -387,13 +389,14 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
       ],
     },
     {
-      label: "WERKPLAATS",
+      label: "OPERATIONEEL",
       items: [
         { url: "/werkplaats/planning", label: "Planning", icon: GanttChartIcon },
         { url: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
         { url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
         { url: "/werkplaats/goedkeuren", label: "Goedkeuren", icon: ClipboardCheck },
         { url: "/werkplaats/onderdelen", label: "Onderdelen", icon: Package },
+        { url: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles },
       ],
     },
     {

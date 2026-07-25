@@ -9,7 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, Flame, Shield, ArrowUp, ArrowDown, Plus, GripVertical, Wrench, PaintBucket, CheckCircle2, ClipboardCheck, Trash2, AlertTriangle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
-import { format, isToday, isTomorrow } from "date-fns";
+import { format, isToday, isTomorrow, isPast } from "date-fns";
 import { nl } from "date-fns/locale";
 import { AsPage, AsCard, AsCardHead, AsPill, AsMono, AsLicensePlate, AsVehicleThumb, useLiveTimer } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,7 @@ interface WO {
   branch: string | null;
   assigned_to: string | null;
   created_at: string;
+  due_date: string | null;
   vehicle: {
     id: string;
     brand: string;
@@ -115,6 +116,16 @@ const TaskCard: React.FC<{
           {w.is_rush && (
             <AsPill tone="red"><Flame className="h-3 w-3" />Spoed{reason ? ` · ${reason}` : ""}</AsPill>
           )}
+          {w.due_date && (() => {
+            const d = new Date(w.due_date);
+            const overdue = isPast(d) && !isToday(d);
+            const tone: any = overdue || isToday(d) ? "red" : isTomorrow(d) ? "amber" : "slate";
+            return (
+              <AsPill tone={tone}>
+                Klaar vóór {format(d, "d MMM", { locale: nl })}
+              </AsPill>
+            );
+          })()}
           {w.warranty_claim_id && (
             <AsPill tone="pink"><Shield className="h-3 w-3" />Garantie</AsPill>
           )}
@@ -253,7 +264,7 @@ const WerkplaatsPlanning: React.FC = () => {
 
   const load = async () => {
     setLoading(true);
-    const select = "id, discipline, description, part, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, photos, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date)";
+    const select = "id, discipline, description, part, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, due_date, photos, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date)";
 
     let q = supabase
       .from("work_orders")

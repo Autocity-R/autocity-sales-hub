@@ -4789,12 +4789,14 @@ export type Database = {
           created_by: string | null
           description: string
           discipline: string
+          due_date: string | null
           finish_note: string | null
           finished_at: string | null
           id: string
           is_rush: boolean
           part: string | null
           photos: Json | null
+          poets_type: string | null
           reject_note: string | null
           rejected_count: number
           result_photos: Json | null
@@ -4816,12 +4818,14 @@ export type Database = {
           created_by?: string | null
           description: string
           discipline: string
+          due_date?: string | null
           finish_note?: string | null
           finished_at?: string | null
           id?: string
           is_rush?: boolean
           part?: string | null
           photos?: Json | null
+          poets_type?: string | null
           reject_note?: string | null
           rejected_count?: number
           result_photos?: Json | null
@@ -4843,12 +4847,14 @@ export type Database = {
           created_by?: string | null
           description?: string
           discipline?: string
+          due_date?: string | null
           finish_note?: string | null
           finished_at?: string | null
           id?: string
           is_rush?: boolean
           part?: string | null
           photos?: Json | null
+          poets_type?: string | null
           reject_note?: string | null
           rejected_count?: number
           result_photos?: Json | null

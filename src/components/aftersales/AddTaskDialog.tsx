@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { AsLicensePlate } from "@/components/aftersales/ui";
 import { DamageDiagram, DAMAGE_ZONES, DamageZone } from "@/components/aftersales/DamageDiagram";
-import { Search, X, Car, Loader2, Plus, PaintBucket, Wrench, Hammer, Sparkles, Camera, Flame, AlertTriangle } from "lucide-react";
+import { Search, X, Car, Loader2, Plus, PaintBucket, Wrench, Hammer, Sparkles, Camera, Flame, AlertTriangle, Home, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { WorkOrderDiscipline } from "@/components/werkplaats/workOrderTypes";
 
@@ -100,6 +100,7 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
   const [warrantyClaimId, setWarrantyClaimId] = useState<string>("");
   const [warrantyClaims, setWarrantyClaims] = useState<Array<{ id: string; description: string | null }>>([]);
   const [employees, setEmployees] = useState<Array<{ id: string; name: string }>>([]);
+  const [poetsType, setPoetsType] = useState<"showroom" | "aflevering">("showroom");
   const [saving, setSaving] = useState(false);
   const searchTimer = useRef<number | null>(null);
 
@@ -109,7 +110,17 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
     setQuery(""); setResults([]);
     setDescription(""); setZoneIds([]); setZoneNotes({}); setFiles([]);
     setAssignedTo(""); setDueDate(""); setIsRush(false); setWarrantyClaimId("");
+    setPoetsType("showroom");
   }, [open, presetVehicle, discipline]);
+
+  // Bij poets/aflevering: due_date default op afleverdatum van auto
+  useEffect(() => {
+    if (discipline !== "poets") return;
+    if (poetsType !== "aflevering") return;
+    if (!vehicle?.delivery_date) return;
+    if (dueDate) return;
+    setDueDate(vehicle.delivery_date.slice(0, 10));
+  }, [discipline, poetsType, vehicle, dueDate]);
 
   // Load employees by role for this discipline
   useEffect(() => {
@@ -177,8 +188,9 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
     if (meta.needsDiagram && zoneIds.length === 0) return false;
     if (!description.trim() && !meta.needsDiagram) return false;
     if (meta.needsDiagram && zoneIds.length === 1 && !description.trim()) return false;
+    if (discipline === "poets" && poetsType === "aflevering" && !dueDate) return false;
     return !saving;
-  }, [vehicle, zoneIds, description, saving, meta]);
+  }, [vehicle, zoneIds, description, saving, meta, discipline, poetsType, dueDate]);
 
   const hasDeliveryConflict = !!vehicle?.delivery_date && !!dueDate && new Date(dueDate) > new Date(vehicle.delivery_date);
 
@@ -214,8 +226,7 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
         let cursor = nextSort;
         for (const zid of zoneIds) {
           const zone = DAMAGE_ZONES.find(z => z.id === zid)!;
-          const baseDesc = (zoneNotes[zid] || description).trim() || zone.name;
-          const desc = dueDate ? `[Klaar vóór ${dueDate}] ${baseDesc}` : baseDesc;
+          const desc = (zoneNotes[zid] || description).trim() || zone.name;
           const { error } = await supabase.from("work_orders").insert({
             vehicle_id: vehicle.id,
             discipline, part: zone.name, description: desc,
@@ -223,6 +234,7 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
             source: "aftersales", branch: vehicle.branch || "rotterdam",
             assigned_to: assignedTo || null,
             is_rush: isRush,
+            due_date: dueDate || null,
             created_by: userRes.user?.id ?? null,
           } as any);
           if (error) throw error;
@@ -231,8 +243,7 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
       } else {
         const photos = await uploadPhotos();
         const zone = zoneIds[0] ? DAMAGE_ZONES.find(z => z.id === zoneIds[0]) : null;
-        const baseDesc = description.trim() || (zone?.name ?? "");
-        const desc = dueDate ? `[Klaar vóór ${dueDate}] ${baseDesc}` : baseDesc;
+        const desc = description.trim() || (zone?.name ?? "");
         const { error } = await supabase.from("work_orders").insert({
           vehicle_id: vehicle.id,
           discipline,
@@ -243,6 +254,8 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
           assigned_to: assignedTo || null,
           is_rush: isRush,
           warranty_claim_id: warrantyClaimId || null,
+          due_date: dueDate || null,
+          poets_type: discipline === "poets" ? poetsType : null,
           created_by: userRes.user?.id ?? null,
         } as any);
         if (error) throw error;
@@ -321,6 +334,41 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
               </div>
             )}
           </div>
+
+          {/* Poets TYPE toggle */}
+          {discipline === "poets" && (
+            <div>
+              <Label className="text-[12px] font-semibold text-slate-700">
+                Type <span className="text-red-500">*</span>
+              </Label>
+              <div className="mt-1.5 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPoetsType("showroom")}
+                  className={cn(
+                    "flex items-center justify-center gap-2 py-3 rounded-lg border text-[13px] font-semibold transition",
+                    poetsType === "showroom"
+                      ? "bg-emerald-50 border-emerald-300 text-emerald-800 ring-2 ring-emerald-200"
+                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50",
+                  )}
+                >
+                  <Home className="h-4 w-4" /> Showroom
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPoetsType("aflevering")}
+                  className={cn(
+                    "flex items-center justify-center gap-2 py-3 rounded-lg border text-[13px] font-semibold transition",
+                    poetsType === "aflevering"
+                      ? "bg-blue-50 border-blue-300 text-blue-800 ring-2 ring-blue-200"
+                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50",
+                  )}
+                >
+                  <Truck className="h-4 w-4" /> Aflevering
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Diagram — schadeherstel/uitdeuk */}
           {meta.needsDiagram && (
@@ -406,9 +454,15 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
               </select>
             </div>
             <div>
-              <Label className="text-[12px] font-semibold text-slate-700">Klaar vóór</Label>
+              <Label className="text-[12px] font-semibold text-slate-700">
+                Klaar vóór{discipline === "poets" && poetsType === "aflevering" && <span className="text-red-500"> *</span>}
+              </Label>
               <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
-                     className={cn("mt-1.5", hasDeliveryConflict && "border-red-400")} />
+                     className={cn(
+                       "mt-1.5",
+                       hasDeliveryConflict && "border-red-400",
+                       discipline === "poets" && poetsType === "aflevering" && dueDate && "text-red-600 font-semibold border-red-300",
+                     )} />
               {hasDeliveryConflict && (
                 <div className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
                   <AlertTriangle className="h-3 w-3" /> Aflevering staat op {new Date(vehicle!.delivery_date!).toLocaleDateString("nl-NL")}
