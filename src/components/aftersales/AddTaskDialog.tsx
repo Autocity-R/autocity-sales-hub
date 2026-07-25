@@ -448,7 +448,6 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
               </div>
             </div>
           ) : (
-          {/* Voertuig */}
           <div>
             <Label className="text-[12px] font-semibold text-slate-700">
               Voertuig <span className="text-red-500">*</span>
