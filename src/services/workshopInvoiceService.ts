@@ -126,6 +126,24 @@ export const nextInvoiceNumber = async (): Promise<string> => {
   return data as string;
 };
 
+/** Blob -> base64 (zonder data-url prefix), chunked i.v.m. grote PDF's. */
+export const blobToBase64 = async (blob: Blob): Promise<string> => {
+  const buf = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < buf.length; i += chunk) {
+    binary += String.fromCharCode(...buf.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+};
+
+/** Haalt een opgeslagen factuur-PDF uit de bucket en geeft base64 terug. */
+export const getInvoicePdfBase64 = async (path: string): Promise<string | null> => {
+  const { data, error } = await supabase.storage.from("workshop-invoices").download(path);
+  if (error || !data) return null;
+  return blobToBase64(data);
+};
+
 /** Slaat de factuur op als concept (send=false) of definitief + PDF + mail (send=true). */
 export const saveWorkshopInvoice = async (
   draft: InvoiceDraft,
@@ -138,7 +156,7 @@ export const saveWorkshopInvoice = async (
   const invoiceNumber = draft.invoice_number || (opts.send ? await nextInvoiceNumber() : null);
 
   let pdfPath: string | null = null;
-  let signedUrl: string | null = null;
+  let pdfBase64: string | null = null;
 
   if (opts.send && invoiceNumber) {
     const html = renderInvoiceHtml({ ...draft, invoice_number: invoiceNumber, lines });
@@ -148,10 +166,7 @@ export const saveWorkshopInvoice = async (
       .from("workshop-invoices")
       .upload(pdfPath, blob, { contentType: "application/pdf", upsert: true });
     if (upErr) throw upErr;
-    const { data: signed } = await supabase.storage
-      .from("workshop-invoices")
-      .createSignedUrl(pdfPath, 60 * 60 * 24 * 7);
-    signedUrl = signed?.signedUrl ?? null;
+    pdfBase64 = await blobToBase64(blob);
   }
 
   const row: any = {
@@ -190,7 +205,7 @@ export const saveWorkshopInvoice = async (
       customerName: draft.customer.name,
       plate: draft.vehicle.license_number || "",
       total,
-      signedUrl,
+      pdfBase64,
     });
   }
 
@@ -202,7 +217,7 @@ export const queueInvoiceEmail = async (p: {
   customerName: string;
   plate: string;
   total: number;
-  signedUrl?: string | null;
+  pdfBase64?: string | null;
 }) => {
   const htmlBody = `<div style="font-family:Arial,Helvetica,sans-serif;background:#f4f6f9;padding:24px">
     <div style="max-width:600px;margin:0 auto;background:#fff;border:1px solid #e6e8ec;border-radius:10px;overflow:hidden">
@@ -232,7 +247,15 @@ export const queueInvoiceEmail = async (p: {
       to: ["werkplaats@auto-city.nl", "administratie@auto-city.nl"],
       subject: `Werkplaatsfactuur ${p.invoiceNumber} - ${p.plate} - ${p.customerName}`,
       htmlBody,
-      attachments: p.signedUrl ? [{ filename: `${p.invoiceNumber}.pdf`, url: p.signedUrl }] : [],
+      attachments: p.pdfBase64
+        ? [
+            {
+              filename: `${p.invoiceNumber}.pdf`,
+              content: p.pdfBase64,
+              base64Content: p.pdfBase64,
+            },
+          ]
+        : [],
     },
   });
   if (error) throw error;

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FileText, Loader2, Search, ExternalLink, Send, Pencil } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import WorkshopInvoiceDialog from "@/components/werkplaats/WorkshopInvoiceDialog";
-import { eur, getInvoiceSignedUrl, queueInvoiceEmail, InvoiceDraft } from "@/services/workshopInvoiceService";
+import { eur, getInvoiceSignedUrl, getInvoicePdfBase64, queueInvoiceEmail, InvoiceDraft } from "@/services/workshopInvoiceService";
 
 interface InvoiceRow {
   id: string; invoice_number: string | null; created_at: string; status: string;
@@ -52,13 +52,14 @@ const WerkplaatsFacturen: React.FC = () => {
 
   const resend = async (r: InvoiceRow) => {
     try {
-      const url = r.pdf_path ? await getInvoiceSignedUrl(r.pdf_path) : null;
+      const pdfBase64 = r.pdf_path ? await getInvoicePdfBase64(r.pdf_path) : null;
+      if (!pdfBase64) { toast({ title: "Geen PDF beschikbaar", description: "Deze factuur heeft nog geen opgeslagen PDF.", variant: "destructive" }); return; }
       await queueInvoiceEmail({
         invoiceNumber: r.invoice_number || "",
         customerName: r.customer?.name || "",
         plate: r.vehicle?.license_number || "",
         total: Number(r.total) || 0,
-        signedUrl: url,
+        pdfBase64,
       });
       toast({ title: "Factuur opnieuw in de mailwachtrij geplaatst" });
     } catch (e: any) {
