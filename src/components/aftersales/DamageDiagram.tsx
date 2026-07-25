@@ -2,10 +2,9 @@ import React from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Schadediagram in drie aanzichten (viewBox 900x1100):
- *   - Zijkant LINKS  (boven)   y   20..300
- *   - BOVENAANZICHT  (midden)  y  340..960  — auto rijdt naar boven (VOOR = boven)
- *   - Zijkant RECHTS (onder, gespiegeld) y 1000..1280? — nee: passen in 1100
+ * Schadediagram in drie aanzichten (viewBox 900x1320).
+ * Beide zijaanzichten worden met de neus naar LINKS getekend (identieke oriëntatie);
+ * kleine labels "VOOR" (links) en "ACHTER" (rechts) markeren de uiteinden.
  * Alle drie aanzichten zijn volledig klikbaar. Zone-IDs / -namen komen 1-op-1
  * terug in work_orders.part en vehicle_intakes.points.
  */
@@ -20,86 +19,76 @@ export interface DamageZone {
   x?: number; y?: number; w?: number; h?: number; // rect
 }
 
-/*
- * ============= COORDINATES =============
- *  viewBox 900 x 1100
- *  Row 1 — SIDE LEFT  (rijrichting naar rechts): y 40..300, x 40..860
- *  Row 2 — TOP VIEW   (auto rijdt naar boven):   center x 330..570, y 340..960
- *  Row 3 — SIDE RIGHT (gespiegeld — rijrichting naar links): y 1000..1260 ... 900 hoog te kort.
- *  → Verruim viewBox naar 900 x 1320.
- */
-
-// ---- Side left helper (rijrichting → RECHTS) ----
-// Basis-silhouet van x 40 tot 860 (breed 820), y-basis 40..300
-// hoogte 260. Wiel-kasten rond y 260 (bodem).
-const SL_Y0 = 40, SL_H = 260;
-
-// ---- Side right (bottom): translate/scale wordt op group niveau gedaan ----
-const SR_Y0 = 1020;
+// ---- Side-view baselines ----
+//  Beide zijaanzichten identiek getekend, neus naar LINKS.
+//  Silhouet occupeert x 40..860, hoogte ~260 (y0..y0+260).
+const SL_Y0 = 60;   // zijkant LINKS (boven)
+const SR_Y0 = 1020; // zijkant RECHTS (onder)
 
 // ---- Top view ----
 const TV_XL = 340, TV_XR = 560; // body left/right
 const TV_YT = 360, TV_YB = 940;
 
-// Helper: side-view zones (relatief aan y0)
+// Helper: side-view zones (relatief aan y0). Neus links, achter rechts.
 const sideZones = (side: "L" | "R", y0: number): DamageZone[] => {
   const ids = (base: string) => `${side}_${base}`;
   const nm = (name: string) => `${side === "L" ? "L" : "R"} ${name}`;
-  // Vertical anchors within the 260h side silhouette:
-  //   y0..y0+40 = top (dak/pilaars/side ruiten bovenrand)
-  //   y0+40..y0+140 = middenband (portieren/ruiten)
-  //   y0+140..y0+230 = onderkant portieren / dorpel
-  //   y0+230..y0+260 = wielkast/velg
-  // Horizontally (in original / left orientation, rijdt naar rechts):
-  //   40..170  = achter (achterbumper/achterlicht/achterscherm/velg achter)
-  //   170..380 = achterportier + zijruit achter
-  //   380..600 = voorportier + zijruit voor + spiegel
-  //   600..760 = voorscherm + koplamp
-  //   760..860 = voorbumper
   const y = (dy: number) => y0 + dy;
+  // Verticale ankers (silhouet 0..210):
+  //   y+25          = dakrand
+  //   y+92..95      = beltline (onderrand ruiten, bovenrand deuren)
+  //   y+195         = onderrand deuren
+  //   y+200..210    = dorpel + wielhoogte
+  // Horizontaal (neus LINKS):
+  //   40..90        = voorbumper
+  //   90..250       = voorscherm + koplamp
+  //   250..440      = voorportier + zijruit voor
+  //   440..640      = achterportier + zijruit achter
+  //   640..820      = achterscherm + achterlicht
+  //   820..860      = achterbumper
   return [
-    // Achterbumper
-    { id: ids("achterbumper"), name: nm("achterbumper"), shape: "polygon",
-      points: `40,${y(150)} 90,${y(150)} 110,${y(230)} 40,${y(230)}` },
-    // Achterlicht
-    { id: ids("achterlicht"), name: nm("achterlicht"), shape: "polygon",
-      points: `85,${y(110)} 130,${y(110)} 130,${y(150)} 85,${y(150)}` },
-    // Achterscherm
-    { id: ids("achterscherm"), name: nm("achterscherm"), shape: "polygon",
-      points: `85,${y(70)} 200,${y(70)} 200,${y(230)} 110,${y(230)} 90,${y(150)} 85,${y(150)}` },
-    // Zijruit achter (donker)
-    { id: ids("zijruit_achter"), name: nm("zijruit achter"), shape: "polygon",
-      points: `210,${y(30)} 380,${y(20)} 380,${y(70)} 210,${y(70)}` },
-    // Achterportier
-    { id: ids("achterportier"), name: nm("achterportier"), shape: "polygon",
-      points: `210,${y(70)} 380,${y(70)} 380,${y(230)} 210,${y(230)}` },
-    // Zijruit voor (donker)
-    { id: ids("zijruit_voor"), name: nm("zijruit voor"), shape: "polygon",
-      points: `390,${y(20)} 570,${y(20)} 590,${y(70)} 390,${y(70)}` },
-    // Voorportier
-    { id: ids("voorportier"), name: nm("voorportier"), shape: "polygon",
-      points: `390,${y(70)} 590,${y(70)} 590,${y(230)} 390,${y(230)}` },
-    // Spiegel
-    { id: ids("spiegel"), name: nm("buitenspiegel"), shape: "ellipse",
-      cx: 400, cy: y(58), rx: 14, ry: 8 },
-    // Voorscherm
-    { id: ids("voorscherm"), name: nm("voorscherm"), shape: "polygon",
-      points: `600,${y(60)} 760,${y(50)} 780,${y(230)} 690,${y(230)} 600,${y(230)}` },
+    // Voorbumper (uiterst links)
+    { id: ids("voorbumper"), name: nm("voorbumper"), shape: "polygon",
+      points: `40,${y(130)} 60,${y(115)} 90,${y(105)} 90,${y(195)} 40,${y(195)}` },
     // Koplamp
     { id: ids("koplamp"), name: nm("koplamp"), shape: "polygon",
-      points: `730,${y(90)} 790,${y(85)} 820,${y(120)} 760,${y(125)}` },
-    // Voorbumper
-    { id: ids("voorbumper"), name: nm("voorbumper"), shape: "polygon",
-      points: `790,${y(120)} 855,${y(140)} 855,${y(200)} 800,${y(230)} 780,${y(230)}` },
-    // Dorpel
+      points: `62,${y(112)} 118,${y(102)} 118,${y(128)} 62,${y(135)}` },
+    // Voorscherm (boven voorwiel)
+    { id: ids("voorscherm"), name: nm("voorscherm"), shape: "polygon",
+      points: `90,${y(102)} 245,${y(94)} 245,${y(195)} 218,${y(195)} 218,${y(200)} 142,${y(200)} 142,${y(195)} 90,${y(195)}` },
+    // Buitenspiegel (op A-stijl)
+    { id: ids("spiegel"), name: nm("buitenspiegel"), shape: "ellipse",
+      cx: 292, cy: y(88), rx: 15, ry: 9 },
+    // Zijruit voor (tussen A- en B-stijl)
+    { id: ids("zijruit_voor"), name: nm("zijruit voor"), shape: "polygon",
+      points: `316,${y(28)} 438,${y(28)} 438,${y(92)} 258,${y(92)}` },
+    // Voorportier
+    { id: ids("voorportier"), name: nm("voorportier"), shape: "polygon",
+      points: `250,${y(94)} 442,${y(94)} 442,${y(195)} 250,${y(195)}` },
+    // Zijruit achter (tussen B- en C-stijl)
+    { id: ids("zijruit_achter"), name: nm("zijruit achter"), shape: "polygon",
+      points: `448,${y(28)} 568,${y(28)} 632,${y(92)} 448,${y(92)}` },
+    // Achterportier
+    { id: ids("achterportier"), name: nm("achterportier"), shape: "polygon",
+      points: `446,${y(94)} 638,${y(94)} 638,${y(195)} 446,${y(195)}` },
+    // Achterscherm (boven achterwiel)
+    { id: ids("achterscherm"), name: nm("achterscherm"), shape: "polygon",
+      points: `640,${y(94)} 815,${y(96)} 815,${y(195)} 738,${y(195)} 738,${y(200)} 662,${y(200)} 662,${y(195)} 640,${y(195)}` },
+    // Achterlicht
+    { id: ids("achterlicht"), name: nm("achterlicht"), shape: "polygon",
+      points: `770,${y(100)} 815,${y(102)} 815,${y(128)} 770,${y(126)}` },
+    // Achterbumper (uiterst rechts)
+    { id: ids("achterbumper"), name: nm("achterbumper"), shape: "polygon",
+      points: `818,${y(102)} 858,${y(120)} 858,${y(195)} 818,${y(195)}` },
+    // Dorpel (dunne strip tussen wielen)
     { id: ids("dorpel"), name: nm("dorpel"), shape: "rect",
-      x: 110, y: y(230), w: 690, h: 12 },
-    // Velg achter (dubbele circle door renderer als 2 circles achtergrond)
-    { id: ids("velg_achter"), name: nm("velg achter"), shape: "circle",
-      cx: 145, cy: y(255), r: 30 },
+      x: 142, y: y(198), w: 596, h: 6 },
     // Velg voor
     { id: ids("velg_voor"), name: nm("velg voor"), shape: "circle",
-      cx: 705, cy: y(255), r: 30 },
+      cx: 180, cy: y(210), r: 30 },
+    // Velg achter
+    { id: ids("velg_achter"), name: nm("velg achter"), shape: "circle",
+      cx: 700, cy: y(210), r: 30 },
   ];
 };
 
@@ -177,9 +166,9 @@ export const DamageDiagram: React.FC<Props> = ({
       interactive && "cursor-pointer",
       isSelected
         ? "fill-blue-500/60 stroke-blue-600"
-        : "fill-white/70 stroke-slate-400 hover:fill-blue-50 hover:stroke-blue-500",
+        : "fill-white/0 stroke-slate-400/70 hover:fill-blue-100/60 hover:stroke-blue-500",
     );
-    const strokeWidth = 1.3;
+    const strokeWidth = 1.1;
     const common = {
       className: cls,
       strokeWidth,
@@ -192,30 +181,71 @@ export const DamageDiagram: React.FC<Props> = ({
     return null;
   };
 
-  // helper: renders a side-view silhouette background (rijrichting → rechts) at y0
+  // helper: renders a professional side-view silhouette (neus LINKS) at y0
   const SideSilhouette: React.FC<{ y0: number }> = ({ y0 }) => {
     const y = (d: number) => y0 + d;
     return (
       <g>
-        {/* body */}
+        {/* Body-hoofdvorm — sedan silhouet, neus links */}
         <path
-          d={`M 40 ${y(200)} L 60 ${y(150)} L 90 ${y(150)} L 200 ${y(70)} Q 380 ${y(20)} 590 ${y(60)} L 760 ${y(50)} L 830 ${y(110)} L 855 ${y(140)} L 855 ${y(230)} L 40 ${y(230)} Z`}
-          fill="#f1f4f9" stroke="#94a3b8" strokeWidth="1.4"
+          d={
+            `M 40 ${y(155)} ` +
+            `Q 42 ${y(128)} 60 ${y(115)} ` +           // voorbumper afronding
+            `L 92 ${y(100)} ` +                        // hoek naar motorkap
+            `Q 165 ${y(88)} 250 ${y(92)} ` +           // motorkap (vloeiend)
+            `L 310 ${y(25)} ` +                        // A-stijl
+            `L 570 ${y(25)} ` +                        // dak
+            `L 640 ${y(92)} ` +                        // C-stijl
+            `Q 730 ${y(90)} 815 ${y(96)} ` +           // kofferdek
+            `L 850 ${y(112)} ` +                       // achterhoek
+            `Q 858 ${y(128)} 858 ${y(155)} ` +
+            `L 858 ${y(200)} ` +
+            `L 738 ${y(200)} ` +                       // naar achterwielkast
+            `A 38 38 0 0 0 662 ${y(200)} ` +           // achterwielkast (naar boven)
+            `L 218 ${y(200)} ` +                       // over dorpel
+            `A 38 38 0 0 0 142 ${y(200)} ` +           // voorwielkast
+            `L 40 ${y(200)} Z`
+          }
+          fill="#f4f6fb" stroke="#475569" strokeWidth="1.8" strokeLinejoin="round"
         />
-        {/* wheel arches */}
-        <path d={`M 115 ${y(240)} A 30 30 0 0 1 175 ${y(240)}`} fill="none" stroke="#94a3b8" strokeWidth="1.2" />
-        <path d={`M 675 ${y(240)} A 30 30 0 0 1 735 ${y(240)}`} fill="none" stroke="#94a3b8" strokeWidth="1.2" />
-        {/* wheel outer black tyres (double-circle) */}
-        <circle cx={145} cy={y(255)} r={32} fill="#1e293b" />
-        <circle cx={705} cy={y(255)} r={32} fill="#1e293b" />
-        <circle cx={145} cy={y(255)} r={22} fill="#e2e8f0" stroke="#64748b" />
-        <circle cx={705} cy={y(255)} r={22} fill="#e2e8f0" stroke="#64748b" />
-        {/* glass tint (overlay under clickable zone shapes) */}
-        <path d={`M 210 ${y(30)} L 380 ${y(20)} L 380 ${y(70)} L 210 ${y(70)} Z`} fill="#c9d5e2" opacity="0.55" />
-        <path d={`M 390 ${y(20)} L 570 ${y(20)} L 590 ${y(70)} L 390 ${y(70)} Z`} fill="#c9d5e2" opacity="0.55" />
+        {/* Beltline (onderrand ruiten) */}
+        <line x1={250} y1={y(94)} x2={640} y2={y(94)} stroke="#475569" strokeWidth="1.2" />
+        {/* Greenhouse — ruiten getint */}
+        <path d={`M 316 ${y(28)} L 438 ${y(28)} L 438 ${y(92)} L 258 ${y(92)} Z`} fill="#cbd5e1" opacity="0.55" />
+        <path d={`M 448 ${y(28)} L 568 ${y(28)} L 632 ${y(92)} L 448 ${y(92)} Z`} fill="#cbd5e1" opacity="0.55" />
+        {/* B-stijl tussen ruiten */}
+        <line x1={443} y1={y(28)} x2={443} y2={y(92)} stroke="#475569" strokeWidth="1.6" />
+        {/* Deurnaden (dunne verticale lijnen) */}
+        <line x1={248} y1={y(94)} x2={248} y2={y(195)} stroke="#94a3b8" strokeWidth="1" />
+        <line x1={444} y1={y(94)} x2={444} y2={y(195)} stroke="#94a3b8" strokeWidth="1" />
+        <line x1={640} y1={y(94)} x2={640} y2={y(195)} stroke="#94a3b8" strokeWidth="1" />
+        {/* Dorpel — smalle onderstrook */}
+        <rect x={142} y={y(198)} width={596} height={6} fill="#e2e8f0" stroke="#94a3b8" strokeWidth="0.8" />
+        {/* Wielen — dubbele cirkel met velg-spaken hint */}
+        <circle cx={180} cy={y(210)} r={38} fill="#1e293b" />
+        <circle cx={180} cy={y(210)} r={26} fill="#e2e8f0" stroke="#475569" strokeWidth="1.2" />
+        <circle cx={180} cy={y(210)} r={8} fill="#94a3b8" />
+        <circle cx={700} cy={y(210)} r={38} fill="#1e293b" />
+        <circle cx={700} cy={y(210)} r={26} fill="#e2e8f0" stroke="#475569" strokeWidth="1.2" />
+        <circle cx={700} cy={y(210)} r={8} fill="#94a3b8" />
+        {/* Deurgrepen (subtiel) */}
+        <rect x={330} y={y(130)} width={38} height={5} rx={2} fill="#94a3b8" opacity="0.6" />
+        <rect x={530} y={y(130)} width={38} height={5} rx={2} fill="#94a3b8" opacity="0.6" />
+        {/* Koplamp-detail */}
+        <path d={`M 62 ${y(112)} L 118 ${y(102)} L 118 ${y(128)} L 62 ${y(135)} Z`} fill="#fef3c7" opacity="0.55" stroke="#94a3b8" strokeWidth="0.8" />
+        {/* Achterlicht-detail */}
+        <path d={`M 770 ${y(100)} L 815 ${y(102)} L 815 ${y(128)} L 770 ${y(126)} Z`} fill="#fecaca" opacity="0.55" stroke="#94a3b8" strokeWidth="0.8" />
       </g>
     );
   };
+
+  // Kleine "VOOR" / "ACHTER" labels aan de uiteinden van een zijaanzicht
+  const SideEndLabels: React.FC<{ y0: number }> = ({ y0 }) => (
+    <g>
+      <text x={45} y={y0 + 18} fontSize="10" fill="#64748b" letterSpacing="1.5" fontWeight={600}>VOOR</text>
+      <text x={855} y={y0 + 18} textAnchor="end" fontSize="10" fill="#64748b" letterSpacing="1.5" fontWeight={600}>ACHTER</text>
+    </g>
+  );
 
   return (
     <svg
@@ -225,6 +255,7 @@ export const DamageDiagram: React.FC<Props> = ({
     >
       {/* ============ SIDE LEFT (boven) ============ */}
       <text x="450" y="30" textAnchor="middle" fontSize="14" fontWeight="700" fill="#334155" letterSpacing="3">ZIJKANT LINKS</text>
+      <SideEndLabels y0={SL_Y0} />
       <SideSilhouette y0={SL_Y0} />
 
       {/* ============ TOP VIEW (midden) ============ */}
@@ -247,34 +278,21 @@ export const DamageDiagram: React.FC<Props> = ({
 
       {/* ============ SIDE RIGHT (onder, gespiegeld) ============ */}
       <text x="450" y={SR_Y0 - 20} textAnchor="middle" fontSize="14" fontWeight="700" fill="#334155" letterSpacing="3">ZIJKANT RECHTS</text>
-      {/* We spiegelen niet fysiek (om click-mapping stabiel te houden), maar tekenen de silhouette normaal
-          en tonen kleine indicator dat rijrichting naar links is */}
-      <g transform={`translate(900, 0) scale(-1, 1)`}>
-        <SideSilhouette y0={SR_Y0} />
-      </g>
+      {/* Beide zijaanzichten identiek getekend (neus LINKS) — geen spiegeling. */}
+      <SideEndLabels y0={SR_Y0} />
+      <SideSilhouette y0={SR_Y0} />
 
       {/* ==== Klikbare zones ==== */}
-      {DAMAGE_ZONES.map(z => {
-        // Als de zone een R_-side zone is (y > SR_Y0), spiegelen we z voor rendering,
-        // maar de original coords blijven kloppen omdat sideZones() ze al op SR_Y0 baseert
-        // en we op group-niveau -1 scale doen.
-        if (z.id.startsWith("R_")) {
-          return (
-            <g key={z.id} transform={`translate(900, 0) scale(-1, 1)`}>
-              {renderZone(z)}
-            </g>
-          );
-        }
-        return <React.Fragment key={z.id}>{renderZone(z)}</React.Fragment>;
-      })}
+      {DAMAGE_ZONES.map(z => (
+        <React.Fragment key={z.id}>{renderZone(z)}</React.Fragment>
+      ))}
 
       {/* ==== markers ==== */}
       {markers.map(m => {
         const z = DAMAGE_ZONES.find(x => x.id === m.zoneId);
         if (!z) return null;
         const c = zoneCenter(z);
-        // Mirror right-side markers to visual coordinates
-        const x = z.id.startsWith("R_") ? (900 - c.x) : c.x;
+        const x = c.x;
         const y = c.y;
         const r = compact ? 10 : 14;
         return (
