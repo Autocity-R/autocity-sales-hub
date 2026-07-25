@@ -172,12 +172,38 @@ serve(async (req) => {
       if (!wo.planned_at) throw new Error("Werkorder heeft geen geplande datum.");
 
       const ext = (wo.external_customer || {}) as any;
+
+      // Garantieclaim-context (alleen werkplaats-spoor)
+      let claim: any = null;
+      let loanCarLabel: string | null = null;
+      if (wo.warranty_claim_id) {
+        const { data: c } = await admin
+          .from("warranty_claims")
+          .select("id, description, loan_car_id, manual_license_number, manual_vehicle_brand, manual_vehicle_model, manual_customer_name")
+          .eq("id", wo.warranty_claim_id)
+          .maybeSingle();
+        claim = c;
+        if (c?.loan_car_id) {
+          const { data: lc } = await admin
+            .from("loan_cars")
+            .select("id, vehicle:vehicles(brand, model, license_number)")
+            .eq("id", c.loan_car_id)
+            .maybeSingle();
+          const lv = (lc as any)?.vehicle;
+          loanCarLabel = lv ? [lv.brand, lv.model, lv.license_number].filter(Boolean).join(" · ") : "toegewezen";
+        }
+      }
       const vehicle = (wo as any).vehicle || {};
-      const plate = vehicle.license_number ? String(vehicle.license_number).toUpperCase() : "GEEN KENTEKEN";
-      const vehicleLabel = [vehicle.brand, vehicle.model].filter(Boolean).join(" ") || "Voertuig";
+      const rawPlate = vehicle.license_number || claim?.manual_license_number || null;
+      const plate = rawPlate ? String(rawPlate).toUpperCase() : "GEEN KENTEKEN";
+      const vehicleLabel =
+        [vehicle.brand, vehicle.model].filter(Boolean).join(" ") ||
+        [claim?.manual_vehicle_brand, claim?.manual_vehicle_model].filter(Boolean).join(" ") ||
+        "Voertuig";
       const who = wo.origin === "extern" && ext.name
         ? ext.name
-        : (wo.description ? String(wo.description).slice(0, 40) : "Werkplaats");
+        : (claim?.manual_customer_name
+          || (wo.description ? String(wo.description).slice(0, 40) : "Werkplaats"));
 
       let assignedName = "niet toegewezen";
       if (wo.assigned_to) {
@@ -185,13 +211,17 @@ serve(async (req) => {
         if (prof) assignedName = [prof.first_name, prof.last_name].filter(Boolean).join(" ") || assignedName;
       }
 
-      const title = `${wo.is_rush ? "⚡ SPOED " : ""}🔧 [${plate}] ${vehicleLabel} — ${who}`;
+      const title = `${wo.is_rush ? "⚡ SPOED " : ""}${claim ? "🛡️ GARANTIE " : ""}🔧 [${plate}] ${vehicleLabel} — ${who}`;
       const siteUrl = (Deno.env.get("SITE_URL") || "").replace(/\/$/, "");
       const descriptionLines = [
         `Discipline: ${DISCIPLINE_LABELS[wo.discipline] || wo.discipline}`,
         `Werkzaamheden: ${wo.description || "-"}`,
         `Medewerker: ${assignedName}`,
       ];
+      if (claim) {
+        descriptionLines.push(`Garantieclaim: ${claim.description || "-"}`);
+        if (loanCarLabel) descriptionLines.push(`Leenauto: ${loanCarLabel}`);
+      }
       if (wo.origin === "extern") {
         descriptionLines.push(`Klant: ${ext.name || "-"}`);
         descriptionLines.push(`Telefoon: ${ext.phone || "-"}`);
