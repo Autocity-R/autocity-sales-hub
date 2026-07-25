@@ -454,9 +454,15 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
               </select>
             </div>
             <div>
-              <Label className="text-[12px] font-semibold text-slate-700">Klaar vóór</Label>
+              <Label className="text-[12px] font-semibold text-slate-700">
+                Klaar vóór{discipline === "poets" && poetsType === "aflevering" && <span className="text-red-500"> *</span>}
+              </Label>
               <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
-                     className={cn("mt-1.5", hasDeliveryConflict && "border-red-400")} />
+                     className={cn(
+                       "mt-1.5",
+                       hasDeliveryConflict && "border-red-400",
+                       discipline === "poets" && poetsType === "aflevering" && dueDate && "text-red-600 font-semibold border-red-300",
+                     )} />
               {hasDeliveryConflict && (
                 <div className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
                   <AlertTriangle className="h-3 w-3" /> Aflevering staat op {new Date(vehicle!.delivery_date!).toLocaleDateString("nl-NL")}
