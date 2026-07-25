@@ -388,6 +388,66 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
         </div>
 
         <div className="px-5 py-4 space-y-5">
+          {/* Intern | Extern */}
+          {externAllowed && (
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setMode("intern")}
+                className={cn("flex items-center justify-center gap-2 py-3 rounded-lg border text-[13px] font-semibold transition",
+                  mode === "intern" ? "bg-blue-50 border-blue-300 text-blue-800 ring-2 ring-blue-200" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50")}>
+                <Car className="h-4 w-4" /> Intern
+              </button>
+              <button type="button" onClick={() => setMode("extern")}
+                className={cn("flex items-center justify-center gap-2 py-3 rounded-lg border text-[13px] font-semibold transition",
+                  mode === "extern" ? "bg-indigo-50 border-indigo-300 text-indigo-800 ring-2 ring-indigo-200" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50")}>
+                <Building2 className="h-4 w-4" /> Extern
+              </button>
+            </div>
+          )}
+
+          {externAllowed && mode === "extern" ? (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-indigo-200 bg-indigo-50/60 px-3 py-2 text-[12px] text-indigo-800 flex items-center gap-2">
+                <UserRound className="h-3.5 w-3.5" /> Externe klantauto — komt niet in de voorraad of verkoopcijfers.
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Label className="text-[12px] font-semibold text-slate-700">Merk <span className="text-red-500">*</span></Label>
+                  <Input className="mt-1.5" value={ext.brand} onChange={(e) => setExt({ ...ext, brand: e.target.value })} placeholder="Volkswagen" />
+                </div>
+                <div>
+                  <Label className="text-[12px] font-semibold text-slate-700">Model <span className="text-red-500">*</span></Label>
+                  <Input className="mt-1.5" value={ext.model} onChange={(e) => setExt({ ...ext, model: e.target.value })} placeholder="Golf" />
+                </div>
+                <div>
+                  <Label className="text-[12px] font-semibold text-slate-700">Kenteken <span className="text-red-500">*</span></Label>
+                  <Input className="mt-1.5 uppercase" value={ext.plate} onChange={(e) => setExt({ ...ext, plate: e.target.value })} placeholder="XX-123-X" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-[12px] font-semibold text-slate-700">Klantnaam <span className="text-red-500">*</span></Label>
+                  <Input className="mt-1.5" value={ext.name} onChange={(e) => setExt({ ...ext, name: e.target.value })} placeholder="Naam klant" />
+                </div>
+                <div>
+                  <Label className="text-[12px] font-semibold text-slate-700">Adres</Label>
+                  <Input className="mt-1.5" value={ext.address} onChange={(e) => setExt({ ...ext, address: e.target.value })} placeholder="Straat en huisnummer" />
+                </div>
+                <div>
+                  <Label className="text-[12px] font-semibold text-slate-700">E-mail</Label>
+                  <Input className="mt-1.5" type="email" value={ext.email} onChange={(e) => setExt({ ...ext, email: e.target.value })} placeholder="klant@mail.nl" />
+                </div>
+                <div>
+                  <Label className="text-[12px] font-semibold text-slate-700">Telefoonnummer</Label>
+                  <Input className="mt-1.5" value={ext.phone} onChange={(e) => setExt({ ...ext, phone: e.target.value })} placeholder="06…" />
+                </div>
+              </div>
+              <div>
+                <Label className="text-[12px] font-semibold text-slate-700">Datum + tijdstip <span className="text-red-500">*</span></Label>
+                <Input className="mt-1.5" type="datetime-local" value={plannedAt} onChange={(e) => setPlannedAt(e.target.value)} />
+                <p className="text-[11px] text-slate-500 mt-1">Verschijnt in de sectie “Gepland” en komt 1 dag vóór de afspraak bovenaan de planning.</p>
+              </div>
+            </div>
+          ) : (
           {/* Voertuig */}
           <div>
             <Label className="text-[12px] font-semibold text-slate-700">
@@ -437,6 +497,7 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
               </div>
             )}
           </div>
+          )}
 
           {/* Poets TYPE toggle */}
           {discipline === "poets" && (
