@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
+import { WarrantyScheduleAction } from "@/components/warranty/ScheduleWarrantyWorkOrder";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -553,6 +554,7 @@ const GarantieInbox: React.FC = () => {
                         <span className="text-slate-400">· {formatDistanceToNow(new Date(claim.created_at), { addSuffix: true, locale: nl })}</span>
                       </div>
                       <div className="text-slate-700 line-clamp-3">{claim.description}</div>
+                      <div className="pt-1.5"><WarrantyScheduleAction claimId={claim.id} /></div>
                     </div>
                   ) : (
                     <div className="text-slate-400 italic">Nog geen claim gekoppeld.</div>

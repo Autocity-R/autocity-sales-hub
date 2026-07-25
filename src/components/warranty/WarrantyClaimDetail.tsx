@@ -53,6 +53,7 @@ import {
 import { WarrantyClaim, LoanCar } from "@/types/warranty";
 import { useToast } from "@/hooks/use-toast";
 import { fetchLoanCars } from "@/services/warrantyService";
+import { WarrantyScheduleAction } from "./ScheduleWarrantyWorkOrder";
 
 interface WarrantyClaimDetailProps {
   claim: WarrantyClaim;
@@ -261,7 +262,8 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Garantieclaim #{claim.id}</span>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
+                <WarrantyScheduleAction claimId={claim.id} />
                 {getStatusBadge(claim.status)}
                 {getPriorityBadge(claim.priority)}
               </div>

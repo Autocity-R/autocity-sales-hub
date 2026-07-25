@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { WarrantyClaim } from "@/types/warranty";
 import { WarrantyClaimDetail } from "./WarrantyClaimDetail";
+import { WarrantyScheduleAction } from "./ScheduleWarrantyWorkOrder";
 import { updateWarrantyClaim, resolveWarrantyClaim, deleteWarrantyClaim } from "@/services/warrantyService";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -326,14 +327,17 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
                   </>
                 )}
                 <TableCell onClick={(e) => e.stopPropagation()}>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setSelectedClaim(claim)}
-                  >
-                    <Eye className="h-4 w-4 mr-1" />
-                    Details
-                  </Button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setSelectedClaim(claim)}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      Details
+                    </Button>
+                    <WarrantyScheduleAction claimId={claim.id} />
+                  </div>
                 </TableCell>
               </TableRow>
             ))
