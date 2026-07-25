@@ -468,6 +468,42 @@ const WerkplaatsDashboard: React.FC = () => {
             </AsCard>
 
             {/* Garantie — span 5 */}
+            {/* Verwacht vandaag & morgen — span 12 */}
+            <AsCard className="md:col-span-12 overflow-hidden">
+              <AsCardHead
+                tone="blue"
+                icon={<CalendarClock className="h-4 w-4" />}
+                title="Verwacht vandaag & morgen"
+                subtitle="Geplande werkorders — externe klanten en garantie-afspraken"
+                count={data.expected.length}
+              />
+              {data.expected.length === 0 ? (
+                <EmptyState text="Geen geplande afspraken voor vandaag of morgen." />
+              ) : (
+                <div>
+                  {data.expected.map((e) => (
+                    <VehicleLine
+                      key={e.id}
+                      photo={e.photo}
+                      title={e.vehicle}
+                      license={e.license}
+                      vin={e.vin}
+                      meta={
+                        <span className="flex items-center gap-2 flex-wrap">
+                          <AsPill tone={e.when === "vandaag" ? "red" : "amber"}>{e.when} · {e.time}</AsPill>
+                          {e.extern && <AsPill tone="blue">EXTERN{e.customer ? ` · ${e.customer}` : ""}</AsPill>}
+                          {e.warranty && <AsPill tone="pink">GARANTIE</AsPill>}
+                          <span className="text-slate-600 truncate">{e.description}</span>
+                        </span>
+                      }
+                      onClick={() => navigate("/werkplaats/planning")}
+                    />
+                  ))}
+                </div>
+              )}
+              <AsCardFoot label="Naar de planning →" onClick={() => navigate("/werkplaats/planning")} />
+            </AsCard>
+
             <AsCard className="md:col-span-5 overflow-hidden">
               <AsCardHead
                 tone="red"
