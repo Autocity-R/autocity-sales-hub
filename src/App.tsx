@@ -47,6 +47,7 @@ const WerkplaatsInnameDetail = lazy(() => import("@/pages/werkplaats/WerkplaatsI
 const WerkplaatsUitdeuken = lazy(() => import("@/pages/werkplaats/WerkplaatsUitdeuken"));
 const WerkplaatsGoedkeuren = lazy(() => import("@/pages/werkplaats/WerkplaatsGoedkeuren"));
 const WerkplaatsOnderdelen = lazy(() => import("@/pages/werkplaats/WerkplaatsOnderdelen"));
+const WerkplaatsPoetsen = lazy(() => import("@/pages/werkplaats/WerkplaatsPoetsen"));
 const MijnPlanning = lazy(() => import("@/pages/werkplaats/MijnPlanning"));
 const UitdeukHome = lazy(() => import("@/pages/werkplaats/UitdeukHome"));
 const WerkplaatsOverzicht = lazy(() => import("@/pages/werkplaats/WerkplaatsOverzicht"));
@@ -222,6 +223,7 @@ function App() {
         <Route path="/werkplaats/uitdeuken" element={<ProtectedRoute><WerkplaatsUitdeuken /></ProtectedRoute>} />
         <Route path="/werkplaats/goedkeuren" element={<ProtectedRoute><WerkplaatsGoedkeuren /></ProtectedRoute>} />
         <Route path="/werkplaats/onderdelen" element={<ProtectedRoute><WerkplaatsOnderdelen /></ProtectedRoute>} />
+        <Route path="/werkplaats/poetsen" element={<ProtectedRoute><WerkplaatsPoetsen /></ProtectedRoute>} />
         {/* Role-specifieke placeholder-startpagina's */}
         <Route path="/werkplaats/mijn-planning" element={<ProtectedRoute><MijnPlanning /></ProtectedRoute>} />
         <Route path="/uitdeuk" element={<ProtectedRoute><UitdeukHome /></ProtectedRoute>} />
