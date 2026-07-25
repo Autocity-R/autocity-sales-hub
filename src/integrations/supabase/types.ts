@@ -4784,18 +4784,22 @@ export type Database = {
           approved_by: string | null
           assigned_to: string | null
           branch: string
+          calendar_event_id: string | null
           checklist_items: Json | null
           created_at: string
           created_by: string | null
           description: string
           discipline: string
           due_date: string | null
+          external_customer: Json | null
           finish_note: string | null
           finished_at: string | null
           id: string
           is_rush: boolean
+          origin: string
           part: string | null
           photos: Json | null
+          planned_at: string | null
           poets_type: string | null
           reject_note: string | null
           rejected_count: number
@@ -4813,18 +4817,22 @@ export type Database = {
           approved_by?: string | null
           assigned_to?: string | null
           branch?: string
+          calendar_event_id?: string | null
           checklist_items?: Json | null
           created_at?: string
           created_by?: string | null
           description: string
           discipline: string
           due_date?: string | null
+          external_customer?: Json | null
           finish_note?: string | null
           finished_at?: string | null
           id?: string
           is_rush?: boolean
+          origin?: string
           part?: string | null
           photos?: Json | null
+          planned_at?: string | null
           poets_type?: string | null
           reject_note?: string | null
           rejected_count?: number
@@ -4842,18 +4850,22 @@ export type Database = {
           approved_by?: string | null
           assigned_to?: string | null
           branch?: string
+          calendar_event_id?: string | null
           checklist_items?: Json | null
           created_at?: string
           created_by?: string | null
           description?: string
           discipline?: string
           due_date?: string | null
+          external_customer?: Json | null
           finish_note?: string | null
           finished_at?: string | null
           id?: string
           is_rush?: boolean
+          origin?: string
           part?: string | null
           photos?: Json | null
+          planned_at?: string | null
           poets_type?: string | null
           reject_note?: string | null
           rejected_count?: number
@@ -4893,6 +4905,75 @@ export type Database = {
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workshop_invoices: {
+        Row: {
+          branch: string
+          created_at: string
+          created_by: string | null
+          customer: Json
+          id: string
+          invoice_number: string
+          lines: Json
+          pdf_path: string | null
+          sent_at: string | null
+          status: string
+          subtotal: number
+          total: number
+          vat: number
+          vehicle: Json
+          work_order_id: string | null
+        }
+        Insert: {
+          branch?: string
+          created_at?: string
+          created_by?: string | null
+          customer: Json
+          id?: string
+          invoice_number: string
+          lines?: Json
+          pdf_path?: string | null
+          sent_at?: string | null
+          status?: string
+          subtotal?: number
+          total?: number
+          vat?: number
+          vehicle: Json
+          work_order_id?: string | null
+        }
+        Update: {
+          branch?: string
+          created_at?: string
+          created_by?: string | null
+          customer?: Json
+          id?: string
+          invoice_number?: string
+          lines?: Json
+          pdf_path?: string | null
+          sent_at?: string | null
+          status?: string
+          subtotal?: number
+          total?: number
+          vat?: number
+          vehicle?: Json
+          work_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workshop_invoices_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workshop_invoices_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -4969,6 +5050,7 @@ export type Database = {
       }
       is_admin_or_owner: { Args: never; Returns: boolean }
       is_admin_user: { Args: { user_id: string }; Returns: boolean }
+      next_workshop_invoice_number: { Args: never; Returns: string }
       update_weekly_sales:
         | {
             Args: {
