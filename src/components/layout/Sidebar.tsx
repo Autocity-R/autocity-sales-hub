@@ -416,6 +416,7 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
       items: [
         { url: "/reports", label: "Rapportages", icon: BarChart3 },
         { url: "/werkplaats/facturen", label: "Werkplaats facturen", icon: FileText },
+        { url: "/werkplaats/agenda", label: "Werkplaats agenda", icon: CalendarIcon },
         { url: "/calendar", label: "Agenda", icon: CalendarIcon },
       ],
     },
