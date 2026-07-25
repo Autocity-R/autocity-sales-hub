@@ -6,10 +6,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import BranchFilter from "@/components/reports/BranchFilter";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Flame, Shield, ArrowUp, ArrowDown, Plus, GripVertical, Wrench, PaintBucket, CheckCircle2, ClipboardCheck, Trash2, AlertTriangle } from "lucide-react";
+import { Loader2, Flame, Shield, ArrowUp, ArrowDown, Plus, GripVertical, Wrench, PaintBucket, CheckCircle2, ClipboardCheck, Trash2, AlertTriangle, CalendarClock, Building2, X } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
-import { format, isToday, isTomorrow, isPast } from "date-fns";
+import { format, isToday, isTomorrow, isPast, addDays, startOfDay, endOfDay } from "date-fns";
 import { nl } from "date-fns/locale";
 import { AsPage, AsCard, AsCardHead, AsPill, AsMono, AsLicensePlate, AsVehicleThumb, useLiveTimer } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
@@ -35,6 +38,9 @@ interface WO {
   assigned_to: string | null;
   created_at: string;
   due_date: string | null;
+  planned_at: string | null;
+  origin: string | null;
+  external_customer: any | null;
   vehicle: {
     id: string;
     brand: string;
@@ -66,6 +72,29 @@ const rushReason = (w: WO): string | null => {
   if (isToday(dd)) return `aflevering vandaag${w.vehicle?.license_number ? "" : ""}`;
   if (isTomorrow(dd)) return "aflevering morgen";
   return null;
+};
+
+/** Geplande order die binnen 1 dag valt (vandaag of morgen) → hoort in de actieve planning. */
+const isNearPlanned = (w: WO): boolean => {
+  if (!w.planned_at) return false;
+  const d = new Date(w.planned_at);
+  return d <= endOfDay(addDays(new Date(), 1));
+};
+/** Geplande order die verder dan 1 dag in de toekomst ligt → sectie "Gepland". */
+const isFuturePlanned = (w: WO): boolean => !!w.planned_at && !isNearPlanned(w);
+
+const plannedLabel = (iso: string): string => {
+  const d = new Date(iso);
+  const time = format(d, "HH:mm", { locale: nl });
+  if (isToday(d)) return `vandaag · ${time}`;
+  if (isTomorrow(d)) return `morgen · ${time}`;
+  return `${format(d, "EEE d MMM", { locale: nl })} · ${time}`;
+};
+
+const ExternBadge: React.FC<{ w: WO }> = ({ w }) => {
+  if (w.origin !== "extern") return null;
+  const name = (w.external_customer as any)?.name;
+  return <AsPill tone="blue"><Building2 className="h-3 w-3" />EXTERN{name ? ` · ${name}` : ""}</AsPill>;
 };
 
 const TaskCard: React.FC<{
@@ -113,6 +142,12 @@ const TaskCard: React.FC<{
         )}
         <div className="mt-1.5 text-[12px] text-slate-700 line-clamp-2">{w.description}</div>
         <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+          {w.planned_at && (
+            <AsPill tone={isToday(new Date(w.planned_at)) ? "red" : "amber"}>
+              <CalendarClock className="h-3 w-3" />{plannedLabel(w.planned_at)}
+            </AsPill>
+          )}
+          <ExternBadge w={w} />
           {w.is_rush && (
             <AsPill tone="red"><Flame className="h-3 w-3" />Spoed{reason ? ` · ${reason}` : ""}</AsPill>
           )}
