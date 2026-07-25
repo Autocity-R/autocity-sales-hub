@@ -2,7 +2,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { generatePdfFromHtml } from "@/services/contractPdfService";
 
 export interface InvoiceLine { description: string; amount: number }
-export interface InvoiceCustomer { name: string; address?: string | null; email?: string | null; phone?: string | null }
+export interface InvoiceCustomer {
+  name: string;
+  /** legacy vrij adresveld — alleen nog voor backwards compatibiliteit */
+  address?: string | null;
+  street?: string | null;
+  house_number?: string | null;
+  postal_code?: string | null;
+  city?: string | null;
+  email?: string | null;
+  phone?: string | null;
+}
+
+/** Adres als max. twee regels: "Straat Huisnummer" en "Postcode Plaats". Valt terug op het oude vrije veld. */
+export const customerAddressLines = (c: InvoiceCustomer): string[] => {
+  const line1 = [c.street, c.house_number].filter((v) => String(v ?? "").trim()).join(" ").trim();
+  const line2 = [c.postal_code, c.city].filter((v) => String(v ?? "").trim()).join(" ").trim();
+  const lines = [line1, line2].filter(Boolean);
+  if (lines.length) return lines;
+  return String(c.address ?? "").trim() ? [String(c.address).trim()] : [];
+};
 export interface InvoiceVehicle { brand?: string | null; model?: string | null; license_number?: string | null; vin?: string | null }
 
 export interface InvoiceDraft {
@@ -77,7 +96,7 @@ export const renderInvoiceHtml = (d: InvoiceDraft & { invoice_date?: string }): 
         <div style="font-size:10px;font-weight:700;letter-spacing:.9px;color:#6b7280;text-transform:uppercase">Factuuradres</div>
         <div style="font-size:12.5px;margin-top:6px;line-height:1.6">
           <strong>${esc(d.customer.name) || "—"}</strong><br/>
-          ${esc(d.customer.address) || ""}${d.customer.address ? "<br/>" : ""}
+          ${customerAddressLines(d.customer).map((l) => `${esc(l)}<br/>`).join("")}
           ${esc(d.customer.email) || ""}${d.customer.email ? "<br/>" : ""}
           ${esc(d.customer.phone) || ""}
         </div>

@@ -18,7 +18,9 @@ export interface WorkshopInvoiceDialogProps {
 }
 
 export const WorkshopInvoiceDialog: React.FC<WorkshopInvoiceDialogProps> = ({ open, onOpenChange, initial, onSaved }) => {
-  const [customer, setCustomer] = useState({ name: "", address: "", email: "", phone: "" });
+  const [customer, setCustomer] = useState({
+    name: "", address: "", street: "", house_number: "", postal_code: "", city: "", email: "", phone: "",
+  });
   const [vehicle, setVehicle] = useState({ brand: "", model: "", license_number: "", vin: "" });
   const [lines, setLines] = useState<InvoiceLine[]>([{ description: "", amount: 0 }]);
   const [busy, setBusy] = useState<null | "concept" | "send">(null);
@@ -28,6 +30,10 @@ export const WorkshopInvoiceDialog: React.FC<WorkshopInvoiceDialogProps> = ({ op
     setCustomer({
       name: initial.customer?.name || "",
       address: initial.customer?.address || "",
+      street: initial.customer?.street || "",
+      house_number: initial.customer?.house_number || "",
+      postal_code: initial.customer?.postal_code || "",
+      city: initial.customer?.city || "",
       email: initial.customer?.email || "",
       phone: initial.customer?.phone || "",
     });
@@ -94,9 +100,25 @@ export const WorkshopInvoiceDialog: React.FC<WorkshopInvoiceDialogProps> = ({ op
                     <Label className="text-[12px]">Naam</Label>
                     <Input value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
                   </div>
-                  <div className="sm:col-span-2">
-                    <Label className="text-[12px]">Adres</Label>
-                    <Input value={customer.address} onChange={(e) => setCustomer({ ...customer, address: e.target.value })} />
+                  <div className="sm:col-span-2 grid grid-cols-[1fr_90px] gap-3">
+                    <div>
+                      <Label className="text-[12px]">Straat</Label>
+                      <Input value={customer.street} onChange={(e) => setCustomer({ ...customer, street: e.target.value })} placeholder="Thurledeweg" />
+                    </div>
+                    <div>
+                      <Label className="text-[12px]">Huisnr.</Label>
+                      <Input value={customer.house_number} onChange={(e) => setCustomer({ ...customer, house_number: e.target.value })} placeholder="61-a" />
+                    </div>
+                  </div>
+                  <div className="sm:col-span-2 grid grid-cols-[120px_1fr] gap-3">
+                    <div>
+                      <Label className="text-[12px]">Postcode</Label>
+                      <Input value={customer.postal_code} onChange={(e) => setCustomer({ ...customer, postal_code: e.target.value })} placeholder="3044 ER" />
+                    </div>
+                    <div>
+                      <Label className="text-[12px]">Plaats</Label>
+                      <Input value={customer.city} onChange={(e) => setCustomer({ ...customer, city: e.target.value })} placeholder="Rotterdam" />
+                    </div>
                   </div>
                   <div>
                     <Label className="text-[12px]">E-mail</Label>

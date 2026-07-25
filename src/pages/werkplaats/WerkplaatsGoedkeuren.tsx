@@ -58,7 +58,16 @@ const WerkplaatsGoedkeuren: React.FC = () => {
     return {
       work_order_id: w.id,
       branch: w.branch || "rotterdam",
-      customer: { name: c.name || "", address: c.address || "", email: c.email || "", phone: c.phone || "" },
+      customer: {
+        name: c.name || "",
+        address: c.address || "",
+        street: c.street || "",
+        house_number: c.house_number || "",
+        postal_code: c.postal_code || "",
+        city: c.city || "",
+        email: c.email || "",
+        phone: c.phone || "",
+      },
       vehicle: {
         brand: w.vehicle?.brand || "", model: w.vehicle?.model || "",
         license_number: w.vehicle?.license_number || "", vin: w.vehicle?.vin || null,

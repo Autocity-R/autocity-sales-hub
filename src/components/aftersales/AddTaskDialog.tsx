@@ -108,7 +108,9 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
   const externAllowed = discipline === "werkplaats";
   const [mode, setMode] = useState<"intern" | "extern">("intern");
   const [ext, setExt] = useState({
-    brand: "", model: "", plate: "", name: "", address: "", email: "", phone: "",
+    brand: "", model: "", plate: "", name: "",
+    street: "", house_number: "", postal_code: "", city: "",
+    email: "", phone: "",
   });
   const [plannedAt, setPlannedAt] = useState<string>("");
 
@@ -120,7 +122,11 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
     setAssignedTo(""); setDueDate(""); setIsRush(false); setWarrantyClaimId("");
     setPoetsType("showroom");
     setMode("intern");
-    setExt({ brand: "", model: "", plate: "", name: "", address: "", email: "", phone: "" });
+    setExt({
+      brand: "", model: "", plate: "", name: "",
+      street: "", house_number: "", postal_code: "", city: "",
+      email: "", phone: "",
+    });
     setPlannedAt("");
   }, [open, presetVehicle, discipline]);
 
@@ -313,7 +319,10 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
           last_name: last,
           email: email || `extern-${Date.now()}@werkplaats.local`,
           phone: phone || null,
-          address_street: ext.address.trim() || null,
+          address_street: ext.street.trim() || null,
+          address_number: ext.house_number.trim() || null,
+          address_postal_code: ext.postal_code.trim() || null,
+          address_city: ext.city.trim() || null,
           type: "b2c",
         } as any).select("id").single();
         if (cErr) throw cErr;
@@ -350,7 +359,14 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
         planned_at: new Date(plannedAt).toISOString(),
         external_customer: {
           name: ext.name.trim(),
-          address: ext.address.trim() || null,
+          street: ext.street.trim() || null,
+          house_number: ext.house_number.trim() || null,
+          postal_code: ext.postal_code.trim() || null,
+          city: ext.city.trim() || null,
+          address: [
+            [ext.street.trim(), ext.house_number.trim()].filter(Boolean).join(" "),
+            [ext.postal_code.trim(), ext.city.trim()].filter(Boolean).join(" "),
+          ].filter(Boolean).join(", ") || null,
           email: email || null,
           phone: phone || null,
           customer_id: customerId,
@@ -428,9 +444,25 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
                   <Label className="text-[12px] font-semibold text-slate-700">Klantnaam <span className="text-red-500">*</span></Label>
                   <Input className="mt-1.5" value={ext.name} onChange={(e) => setExt({ ...ext, name: e.target.value })} placeholder="Naam klant" />
                 </div>
-                <div>
-                  <Label className="text-[12px] font-semibold text-slate-700">Adres</Label>
-                  <Input className="mt-1.5" value={ext.address} onChange={(e) => setExt({ ...ext, address: e.target.value })} placeholder="Straat en huisnummer" />
+                <div className="grid grid-cols-[1fr_80px] gap-2">
+                  <div>
+                    <Label className="text-[12px] font-semibold text-slate-700">Straat</Label>
+                    <Input className="mt-1.5" value={ext.street} onChange={(e) => setExt({ ...ext, street: e.target.value })} placeholder="Thurledeweg" />
+                  </div>
+                  <div>
+                    <Label className="text-[12px] font-semibold text-slate-700">Huisnr.</Label>
+                    <Input className="mt-1.5" value={ext.house_number} onChange={(e) => setExt({ ...ext, house_number: e.target.value })} placeholder="61-a" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-[110px_1fr] gap-2">
+                  <div>
+                    <Label className="text-[12px] font-semibold text-slate-700">Postcode</Label>
+                    <Input className="mt-1.5" value={ext.postal_code} onChange={(e) => setExt({ ...ext, postal_code: e.target.value })} placeholder="3044 ER" />
+                  </div>
+                  <div>
+                    <Label className="text-[12px] font-semibold text-slate-700">Plaats</Label>
+                    <Input className="mt-1.5" value={ext.city} onChange={(e) => setExt({ ...ext, city: e.target.value })} placeholder="Rotterdam" />
+                  </div>
                 </div>
                 <div>
                   <Label className="text-[12px] font-semibold text-slate-700">E-mail</Label>
