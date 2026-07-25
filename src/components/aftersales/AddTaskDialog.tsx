@@ -314,18 +314,18 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
           email: email || `extern-${Date.now()}@werkplaats.local`,
           phone: phone || null,
           address_street: ext.address.trim() || null,
-          type: "klant",
+          type: "b2c",
         } as any).select("id").single();
         if (cErr) throw cErr;
         customerId = (created as any).id;
       }
 
-      // (b) licht extern voertuig — status extern_werkplaats zodat het NOOIT in voorraad/verkoop verschijnt
+      // (b) licht extern voertuig — status 'extern' zodat het NOOIT in voorraad/verkoop verschijnt
       const { data: extVehicle, error: vErr } = await supabase.from("vehicles").insert({
         brand: ext.brand.trim(),
         model: ext.model.trim(),
         license_number: ext.plate.trim().toUpperCase(),
-        status: "extern_werkplaats",
+        status: "extern",
         customer_id: customerId,
         details: { externalWorkshop: true, excludeFromStock: true, customerName: ext.name.trim() } as any,
       } as any).select("id, branch").single();
