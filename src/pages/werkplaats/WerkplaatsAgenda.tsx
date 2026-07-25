@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { CalendarDays, Copy, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { useBranch } from "@/contexts/BranchContext";
 import {
   WERKPLAATS_SERVICE_ACCOUNT_EMAIL,
   fetchWerkplaatsCalendarSettings,
@@ -15,8 +14,7 @@ import {
 } from "@/services/werkplaatsCalendarService";
 
 const WerkplaatsAgenda: React.FC = () => {
-  let branch = "rotterdam";
-  try { branch = (useBranch() as any)?.activeBranch || "rotterdam"; } catch { /* geen provider */ }
+  const branch = "rotterdam";
 
   const [settings, setSettings] = useState<WerkplaatsCalendarSettings | null>(null);
   const [calendarId, setCalendarId] = useState("werkplaats@auto-city.nl");
