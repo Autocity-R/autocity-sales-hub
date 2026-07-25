@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { syncWorkOrderToWerkplaatsCalendar } from "@/services/werkplaatsCalendarService";
 import { AsLicensePlate } from "@/components/aftersales/ui";
 import { DamageDiagram, DAMAGE_ZONES, DamageZone } from "@/components/aftersales/DamageDiagram";
 import { Search, X, Car, Loader2, Plus, PaintBucket, Wrench, Hammer, Sparkles, Camera, Flame, AlertTriangle, Home, Truck, Building2, UserRound } from "lucide-react";
