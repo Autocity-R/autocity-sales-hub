@@ -64,6 +64,21 @@ interface CockpitData {
   deliveries: DeliveryLine[];
   intakeOpen: number;
   intakeLines: WoLine[];
+  expected: ExpectedLine[];
+}
+
+interface ExpectedLine {
+  id: string;
+  vehicle: string;
+  license?: string | null;
+  vin?: string | null;
+  photo?: string | null;
+  when: "vandaag" | "morgen";
+  time: string;
+  customer?: string | null;
+  extern: boolean;
+  warranty: boolean;
+  description: string;
 }
 
 const vehicleLabel = (v: any) =>
@@ -222,6 +237,37 @@ async function loadCockpit(branch: BranchFilter): Promise<CockpitData> {
   iq = applyBranchFilter(iq, branch);
   const { data: intakes } = await iq;
 
+  // 8) Verwacht vandaag & morgen (geplande werkorders)
+  const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
+  const endTomorrow = new Date(); endTomorrow.setDate(endTomorrow.getDate() + 1); endTomorrow.setHours(23, 59, 59, 999);
+  let pq = supabase
+    .from("work_orders")
+    .select("id, description, planned_at, origin, external_customer, warranty_claim_id, vehicles:vehicle_id(brand, model, license_number, vin, showroom_photo_url)")
+    .in("status", ["ingepland", "bezig"])
+    .not("planned_at", "is", null)
+    .gte("planned_at", startToday.toISOString())
+    .lte("planned_at", endTomorrow.toISOString())
+    .order("planned_at", { ascending: true });
+  pq = applyBranchFilter(pq, branch);
+  const { data: planned } = await pq;
+
+  const expected: ExpectedLine[] = ((planned as any[]) || []).map((w) => {
+    const d = new Date(w.planned_at);
+    return {
+      id: w.id,
+      vehicle: vehicleLabel(w.vehicles),
+      license: w.vehicles?.license_number || null,
+      vin: w.vehicles?.vin || null,
+      photo: w.vehicles?.showroom_photo_url || null,
+      when: d.toISOString().slice(0, 10) === iso(today) ? "vandaag" : "morgen",
+      time: format(d, "HH:mm"),
+      customer: (w.external_customer as any)?.name || null,
+      extern: w.origin === "extern",
+      warranty: !!w.warranty_claim_id,
+      description: w.description || "—",
+    };
+  });
+
   return {
     warrantyOpen: warrantyOpen || 0,
     waitingThreads: waitingThreads.slice(0, 3),
@@ -249,6 +295,7 @@ async function loadCockpit(branch: BranchFilter): Promise<CockpitData> {
       description: `${differenceInHours(now, new Date(i.created_at))}u binnengemeld`,
       status: "open",
     })),
+    expected,
   };
 }
 
