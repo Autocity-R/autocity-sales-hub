@@ -72,7 +72,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (isWerkplaatsChef()) {
     const blockedChefPrefixes = ['/werkplaats/poetsen', '/werkplaats/uitdeuken', '/garantie'];
     const allowedChefPrefixes = [
-      '/werkplaats', '/loan-cars', '/settings', '/inventory/consumer', '/warranty',
+      '/werkplaats', '/loan-cars', '/settings', '/inventory/consumer', '/warranty', '/customers',
     ];
     const ok =
       !blockedChefPrefixes.some(pre => location.pathname.startsWith(pre)) &&

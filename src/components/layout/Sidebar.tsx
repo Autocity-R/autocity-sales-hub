@@ -444,6 +444,7 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
         // Chef: alleen de claims (geen mailbox). Aftersales: claims + inbox.
         ...(isChef ? [
           { url: "/warranty", label: "Garantieclaims", icon: ShieldIcon },
+          { url: "/customers", label: "Alle klanten", icon: UsersIcon, exact: true },
         ] : [
           {
             url: "/warranty", label: "Garantie", icon: ShieldIcon, badge: garantieUnread,
