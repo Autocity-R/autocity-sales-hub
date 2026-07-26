@@ -169,8 +169,7 @@ const WerkplaatsSchadeherstel: React.FC = () => {
     if (!uid) return;
     const { error } = await supabase.from("work_orders")
       .update({ assigned_to: uid, status: "bezig", started_at: new Date().toISOString() })
-      .eq("id", w.id)
-      .is("assigned_to", null);
+      .eq("id", w.id);
     if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Gestart" });
     load();
