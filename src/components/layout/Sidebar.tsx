@@ -59,6 +59,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     return paths.some((path) => location.pathname === path);
   };
 
+  // Monteur: mobiel-eerst, alleen "Mijn werk"
+  if (isMonteur()) {
+    return (
+      <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
+        <ScrollArea className="flex-1 px-2 py-3">
+          <div className="space-y-1">
+            <Link to="/werkplaats/mijn-werk">
+              <Button variant={isActive("/werkplaats/mijn-werk") ? "default" : "ghost"} className="w-full justify-start text-white hover:text-white hover:bg-gray-800" size="sm">
+                <Wrench className="mr-2 h-4 w-4" />
+                Mijn werk
+              </Button>
+            </Link>
+          </div>
+        </ScrollArea>
+      </div>
+    );
+  }
+
   // Gesloten werkplaats-omgeving: alleen eigen menu-item
   if (isRestrictedWorkshopUser()) {
     const home = getHomeRoute();
@@ -86,8 +104,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   }
 
   // Aftersales manager: eigen strak menu — géén ruis van andere rollen
-  if (isAftersalesManager()) {
-    return <AftersalesSidebar className={className} isActive={isActive} location={location} />;
+  if (isAftersalesManager() || isWerkplaatsChef()) {
+    return (
+      <AftersalesSidebar
+        className={className}
+        isActive={isActive}
+        location={location}
+        variant={isWerkplaatsChef() ? "chef" : "aftersales"}
+      />
+    );
   }
 
   return (
@@ -373,21 +398,24 @@ import { useGarantieUnread } from "@/hooks/useGarantieUnread";
 type AsNavItem = { url: string; label: string; icon: any; exact?: boolean; badge?: number; sub?: AsNavItem[] };
 type AsNavSection = { label: string; items: AsNavItem[] };
 
-const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) => boolean; location: ReturnType<typeof useLocation> }> = ({ className, isActive, location }) => {
+const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) => boolean; location: ReturnType<typeof useLocation>; variant?: "aftersales" | "chef" }> = ({ className, isActive, location, variant = "aftersales" }) => {
   const garantieUnread = useGarantieUnread();
+  const isChef = variant === "chef";
 
-  const sections: AsNavSection[] = [
+  const allSections: AsNavSection[] = [
     {
       label: "OVERZICHT",
       items: [{ url: "/werkplaats", label: "Dashboard", icon: HomeIcon, exact: true }],
     },
     {
       label: "VOERTUIGEN",
-      items: [
-        { url: "/inventory", label: "Voorraad", icon: CarIcon, exact: true },
-        { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
-        { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
-      ],
+      items: isChef
+        ? [{ url: "/werkplaats/autos", label: "Auto's", icon: CarIcon }]
+        : [
+            { url: "/inventory", label: "Voorraad", icon: CarIcon, exact: true },
+            { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
+            { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
+          ],
     },
     {
       label: "OPERATIONEEL",
@@ -407,20 +435,25 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
           url: "/warranty", label: "Garantie", icon: ShieldIcon, badge: garantieUnread,
           sub: [{ url: "/garantie/inbox", label: "Inbox", icon: InboxIcon, badge: garantieUnread }],
         },
-        { url: "/customers", label: "Alle klanten", icon: UsersIcon, exact: true },
+        ...(isChef ? [] : [{ url: "/customers", label: "Alle klanten", icon: UsersIcon, exact: true }]),
         { url: "/loan-cars", label: "Leenauto beheer", icon: CarIcon },
-      ],
+      ] as AsNavItem[],
     },
     {
       label: "OVERIG",
       items: [
-        { url: "/reports", label: "Rapportages", icon: BarChart3 },
+        // Verkoop-onderdelen (rapportages buiten de werkplaats + verkoopagenda) niet voor de chef
+        ...(isChef ? [] : [
+          { url: "/reports", label: "Rapportages", icon: BarChart3 },
+          { url: "/calendar", label: "Agenda", icon: CalendarIcon },
+        ]),
         { url: "/werkplaats/facturen", label: "Werkplaats facturen", icon: FileText },
         { url: "/werkplaats/agenda", label: "Werkplaats agenda", icon: CalendarIcon },
-        { url: "/calendar", label: "Agenda", icon: CalendarIcon },
-      ],
+      ] as AsNavItem[],
     },
   ];
+
+  const sections = allSections.filter(sec => sec.items.length > 0);
 
   const renderBadge = (n?: number) =>
     typeof n === "number" && n > 0 ? (

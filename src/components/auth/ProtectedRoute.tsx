@@ -34,7 +34,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const home = getHomeRoute();
     const allowed = location.pathname === home
       || location.pathname.startsWith('/werkplaats/mijn-werk')
-      || location.pathname.startsWith('/werkplaats/onderdelen')
       || location.pathname.startsWith('/werkplaats/mijn-planning')
       || location.pathname.startsWith('/uitdeuk')
       || location.pathname.startsWith('/werkplaats/overzicht')
