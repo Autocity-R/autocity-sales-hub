@@ -8,6 +8,7 @@ import { Loader2, Truck, Home, CheckCircle2, Sparkles } from "lucide-react";
 import { format, isToday, isPast, isTomorrow } from "date-fns";
 import { nl } from "date-fns/locale";
 import { AsPage, AsCard, AsCardHead, AsLicensePlate, AsMono, useLiveTimer } from "@/components/aftersales/ui";
+import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Play, Timer } from "lucide-react";
@@ -108,6 +109,7 @@ const WerkplaatsPoetsen: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
   const [rows, setRows] = useState<PoetsWO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [detail, setDetail] = useState<PoetsWO | null>(null);
 
   const load = async () => {
     setLoading(true);
