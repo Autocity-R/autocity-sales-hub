@@ -71,7 +71,9 @@ export const useRoleAccess = () => {
 
   const hasCustomersAccess = () => {
     // Aftersales manager mag GEEN klanten beheren
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper';
+    // Werkplaats_chef mag klanten wél inzien (read-only, geen verkoopflows)
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
+      userRole === 'werkplaats_chef';
   };
 
   const hasAIAgentsAccess = () => {
