@@ -96,14 +96,18 @@ const WerkplaatsFacturen: React.FC = () => {
           ) : (
             <div className="divide-y divide-slate-100">
               {filtered.map((r) => (
-                <div key={r.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                  <div className="w-[130px] font-mono text-[12.5px] font-semibold text-slate-900">{r.invoice_number || "concept"}</div>
-                  <div className="w-[92px] text-[12px] text-slate-500">{new Date(r.created_at).toLocaleDateString("nl-NL")}</div>
-                  <div className="flex-1 min-w-[150px] text-[13px] text-slate-800 truncate">{r.customer?.name || "—"}</div>
-                  <AsLicensePlate value={r.vehicle?.license_number} size="sm" />
-                  <div className="w-[110px] text-right text-[13px] font-semibold tabular-nums">{eur(Number(r.total) || 0)}</div>
-                  <AsPill tone={r.status === "verstuurd" ? "green" : "amber"}>{r.status}</AsPill>
-                  <div className="flex gap-1">
+                <div key={r.id} className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-2 md:gap-3 px-4 py-3">
+                  <div className="flex items-center gap-2 md:contents">
+                    <div className="md:w-[130px] font-mono text-[12.5px] font-semibold text-slate-900">{r.invoice_number || "concept"}</div>
+                    <div className="md:w-[92px] text-[12px] text-slate-500">{new Date(r.created_at).toLocaleDateString("nl-NL")}</div>
+                  </div>
+                  <div className="md:flex-1 md:min-w-[150px] text-[13px] text-slate-800 truncate">{r.customer?.name || "—"}</div>
+                  <div className="flex items-center gap-2 md:contents">
+                    <AsLicensePlate value={r.vehicle?.license_number} size="sm" />
+                    <div className="md:w-[110px] md:text-right text-[13px] font-semibold tabular-nums">{eur(Number(r.total) || 0)}</div>
+                    <AsPill tone={r.status === "verstuurd" ? "green" : "amber"}>{r.status}</AsPill>
+                  </div>
+                  <div className="flex gap-2 [&_button]:min-h-[44px] md:[&_button]:min-h-0">
                     {r.status === "verstuurd" ? (
                       <>
                         <Button size="sm" variant="outline" onClick={() => openPdf(r)}><ExternalLink className="h-3.5 w-3.5 mr-1" />PDF</Button>

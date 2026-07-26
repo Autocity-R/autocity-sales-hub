@@ -11,6 +11,7 @@ import {
 } from "@/components/aftersales/ui";
 import {
   Loader2, Play, CheckCircle2, Timer, Clock, HandMetal, CalendarDays, Inbox, Phone, Undo2,
+  RefreshCw,
 } from "lucide-react";
 import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 
@@ -281,9 +282,15 @@ const MijnWerk: React.FC = () => {
   return (
     <DashboardLayout>
       <AsPage>
-        <div className="mb-5">
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Mijn werk</h1>
-          <p className="text-[13px] text-slate-500 mt-1">Start je klus, tik op ✓ Klaar als je klaar bent</p>
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-[20px] md:text-2xl font-semibold tracking-tight text-slate-900">Mijn werk</h1>
+            <p className="text-[13px] text-slate-500 mt-0.5">Start je klus, tik op ✓ Klaar als je klaar bent</p>
+          </div>
+          <Button variant="outline" onClick={() => load()} aria-label="Vernieuwen"
+            className="h-11 w-11 p-0 shrink-0">
+            <RefreshCw className={cn("h-5 w-5", loading && "animate-spin")} />
+          </Button>
         </div>
 
         {loading ? (

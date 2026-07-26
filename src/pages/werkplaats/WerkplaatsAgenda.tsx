@@ -322,7 +322,7 @@ const WerkplaatsAgenda: React.FC = () => {
             )}
 
             <div className="overflow-x-auto">
-              <div className="min-w-[640px] lg:min-w-0">
+              <div className="min-w-0 md:min-w-[640px] lg:min-w-0">
                 {/* dagkoppen */}
                 <div
                   className="grid border-b border-slate-200 bg-white"

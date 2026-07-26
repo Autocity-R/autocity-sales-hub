@@ -223,7 +223,7 @@ const EmployeeColumn: React.FC<{
   onOpen: (w: WO) => void;
   onDelete?: (w: WO) => void;
 }> = ({ profile, items, doneTodayCount, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete }) => (
-  <AsCard className="flex flex-col min-w-[320px]">
+  <AsCard className="flex flex-col w-full md:min-w-[320px]">
     <AsCardHead
       tone="slate"
       icon={
@@ -257,7 +257,7 @@ const EmployeeColumn: React.FC<{
 );
 
 const DoneTodayColumn: React.FC<{ items: WO[]; nameFor: (uid: string | null) => string }> = ({ items, nameFor }) => (
-  <AsCard className="flex flex-col min-w-[280px]">
+  <AsCard className="flex flex-col w-full md:min-w-[280px]">
     <AsCardHead
       tone="green"
       icon={<CheckCircle2 className="h-4 w-4" />}
@@ -540,9 +540,9 @@ const WerkplaatsPlanning: React.FC = () => {
             <Loader2 className="h-4 w-4 animate-spin" /> Planning laden…
           </div>
         ) : (
-          <div className="flex gap-4 overflow-x-auto pb-4">
+          <div className="flex flex-col md:flex-row gap-4 md:overflow-x-auto pb-4">
             {groups.length === 0 && (
-              <AsCard className="p-8 text-center text-[13px] text-slate-500 min-w-[320px]">
+              <AsCard className="p-8 text-center text-[13px] text-slate-500 w-full md:min-w-[320px]">
                 Geen open taken voor {discipline === "werkplaats" ? "de werkplaats" : "schadeherstel"}.
               </AsCard>
             )}
