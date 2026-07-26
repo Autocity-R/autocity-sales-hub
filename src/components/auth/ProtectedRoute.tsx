@@ -46,9 +46,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Werkplaats_chef: operationele omgeving, géén verkoop-onderdelen en géén garantie-mailbox
   if (isWerkplaatsChef()) {
-    const blockedChefPrefixes = ['/werkplaats/poetsen', '/werkplaats/uitdeuken'];
+    const blockedChefPrefixes = ['/werkplaats/poetsen', '/werkplaats/uitdeuken', '/garantie'];
     const allowedChefPrefixes = [
-      '/werkplaats', '/loan-cars', '/settings', '/inventory/consumer',
+      '/werkplaats', '/loan-cars', '/settings', '/inventory/consumer', '/warranty',
     ];
     const ok =
       !blockedChefPrefixes.some(pre => location.pathname.startsWith(pre)) &&

@@ -440,8 +440,10 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
     {
       label: "SERVICE",
       items: [
-        // Garantie-mailbox is aftersales-werk; de chef ziet geplande garantie-orders in Planning/agenda
-        ...(isChef ? [] : [
+        // Chef: alleen de claims (geen mailbox). Aftersales: claims + inbox.
+        ...(isChef ? [
+          { url: "/warranty", label: "Garantieclaims", icon: ShieldIcon },
+        ] : [
           {
             url: "/warranty", label: "Garantie", icon: ShieldIcon, badge: garantieUnread,
             sub: [{ url: "/garantie/inbox", label: "Inbox", icon: InboxIcon, badge: garantieUnread }],

@@ -24,6 +24,7 @@ import { fetchWarrantyClaims, getWarrantyStats } from "@/services/warrantyServic
 import { WarrantyClaimsTable } from "@/components/warranty/WarrantyClaimsTable";
 import { WarrantyForm } from "@/components/warranty/WarrantyForm";
 import { WarrantyStatsCards } from "@/components/warranty/WarrantyStatsCards";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import {
   Select,
   SelectContent,
@@ -45,6 +46,7 @@ const Warranty = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const { canManageWarrantyClaims } = useRoleAccess();
   const [activeTab, setActiveTab] = useState("active");
 
   // Fetch warranty claims
@@ -124,6 +126,7 @@ const Warranty = () => {
           description="Beheer voertuiggaranties, claims en klanttevredenheid"
         >
           <div className="flex space-x-2">
+            {canManageWarrantyClaims() && (
             <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
               <DialogTrigger asChild>
                 <Button className="bg-blue-600 hover:bg-blue-700">
@@ -138,6 +141,7 @@ const Warranty = () => {
                 <WarrantyForm onClose={handleClaimCreated} />
               </DialogContent>
             </Dialog>
+            )}
           </div>
         </PageHeader>
 

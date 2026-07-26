@@ -54,6 +54,7 @@ import { WarrantyClaim, LoanCar } from "@/types/warranty";
 import { useToast } from "@/hooks/use-toast";
 import { fetchLoanCars } from "@/services/warrantyService";
 import { WarrantyScheduleAction } from "./ScheduleWarrantyWorkOrder";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface WarrantyClaimDetailProps {
   claim: WarrantyClaim;
@@ -76,6 +77,8 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
   onResolve,
   onDelete
 }) => {
+  const { canManageWarrantyClaims } = useRoleAccess();
+  const canManageClaims = canManageWarrantyClaims();
   const [isEditing, setIsEditing] = useState(false);
   const [editedClaim, setEditedClaim] = useState(claim);
   const [showResolveDialog, setShowResolveDialog] = useState(false);
@@ -394,7 +397,7 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 Claim Details
-                {!isEditing && claim.status !== "opgelost" && (
+                {canManageClaims && !isEditing && claim.status !== "opgelost" && (
                   <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                     <Edit className="h-4 w-4 mr-2" />
                     Bewerken
@@ -632,6 +635,7 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
           )}
 
           {/* Acties */}
+          {canManageClaims && (
           <div className="flex gap-2 pt-4 justify-between">
             <div className="flex gap-2">
               {claim.status !== "opgelost" && (
@@ -661,6 +665,7 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
               Verwijder Claim
             </Button>
           </div>
+          )}
         </DialogContent>
       </Dialog>
 
