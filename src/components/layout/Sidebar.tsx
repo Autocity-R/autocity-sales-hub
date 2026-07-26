@@ -416,7 +416,10 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
     {
       label: "VOERTUIGEN",
       items: isChef
-        ? [{ url: "/werkplaats/autos", label: "Auto's", icon: CarIcon }]
+        ? [
+            { url: "/werkplaats/autos", label: "Auto's", icon: CarIcon },
+            { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
+          ]
         : [
             { url: "/inventory", label: "Voorraad", icon: CarIcon, exact: true },
             { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
@@ -425,23 +428,26 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
     },
     {
       label: "OPERATIONEEL",
-      items: [
+      items: ([
         { url: "/werkplaats/planning", label: "Planning", icon: GanttChartIcon },
         { url: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
-        { url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
+        ...(isChef ? [] : [{ url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer }]),
         { url: "/werkplaats/goedkeuren", label: "Goedkeuren", icon: ClipboardCheck },
         { url: "/werkplaats/onderdelen", label: "Onderdelen", icon: Package },
-        { url: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles },
-      ],
+        ...(isChef ? [] : [{ url: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles }]),
+      ] as AsNavItem[]),
     },
     {
       label: "SERVICE",
       items: [
-        {
-          url: "/warranty", label: "Garantie", icon: ShieldIcon, badge: garantieUnread,
-          sub: [{ url: "/garantie/inbox", label: "Inbox", icon: InboxIcon, badge: garantieUnread }],
-        },
-        ...(isChef ? [] : [{ url: "/customers", label: "Alle klanten", icon: UsersIcon, exact: true }]),
+        // Garantie-mailbox is aftersales-werk; de chef ziet geplande garantie-orders in Planning/agenda
+        ...(isChef ? [] : [
+          {
+            url: "/warranty", label: "Garantie", icon: ShieldIcon, badge: garantieUnread,
+            sub: [{ url: "/garantie/inbox", label: "Inbox", icon: InboxIcon, badge: garantieUnread }],
+          },
+          { url: "/customers", label: "Alle klanten", icon: UsersIcon, exact: true },
+        ]),
         { url: "/loan-cars", label: "Leenauto beheer", icon: CarIcon },
       ] as AsNavItem[],
     },
