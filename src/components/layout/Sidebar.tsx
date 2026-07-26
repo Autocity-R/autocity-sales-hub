@@ -71,6 +71,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 Mijn werk
               </Button>
             </Link>
+            <Link to="/werkplaats/agenda">
+              <Button variant={isActive("/werkplaats/agenda") ? "default" : "ghost"} className="w-full justify-start text-white hover:text-white hover:bg-gray-800" size="sm">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                Werkplaats agenda
+              </Button>
+            </Link>
           </div>
         </ScrollArea>
       </div>
