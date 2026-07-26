@@ -14,7 +14,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAdmin = false 
 }) => {
   const { user, loading, isAdmin } = useAuth();
-  const { isRestrictedWorkshopUser, getHomeRoute } = useRoleAccess();
+  const { isRestrictedWorkshopUser, getHomeRoute, isWerkplaatsChef } = useRoleAccess();
   const location = useLocation();
 
   if (loading) {
@@ -40,6 +40,17 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       || location.pathname.startsWith('/operationeel');
     if (!allowed) {
       return <Navigate to={home} replace />;
+    }
+  }
+
+  // Werkplaats_chef: volledige operationele omgeving, géén verkoop-onderdelen
+  if (isWerkplaatsChef()) {
+    const allowedChefPrefixes = [
+      '/werkplaats', '/warranty', '/garantie', '/loan-cars', '/settings',
+    ];
+    const ok = allowedChefPrefixes.some(pre => location.pathname.startsWith(pre));
+    if (!ok) {
+      return <Navigate to="/werkplaats" replace />;
     }
   }
 
