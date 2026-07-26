@@ -10,7 +10,7 @@ export const AsPage: React.FC<{ children: React.ReactNode; className?: string }>
   children,
   className,
 }) => (
-  <div className={cn("min-h-full -mx-3 -my-3 md:-mx-4 md:-my-6 lg:-mx-6 px-3 md:px-6 py-4 md:py-6 bg-[#e7eaef] font-sans text-slate-900", className)}
+  <div className={cn("min-h-full -mx-3 -my-3 md:-mx-4 md:-my-6 lg:-mx-6 px-3 md:px-6 py-3 md:py-6 bg-[#e7eaef] font-sans text-slate-900 overflow-x-hidden", className)}
     style={{ fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto' }}
   >
     {children}
