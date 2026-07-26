@@ -14,7 +14,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAdmin = false 
 }) => {
   const { user, loading, isAdmin } = useAuth();
-  const { isRestrictedWorkshopUser, getHomeRoute, isWerkplaatsChef, isUitdeukerExtern, isSchadeherstel } = useRoleAccess();
+  const { isRestrictedWorkshopUser, getHomeRoute, isWerkplaatsChef, isUitdeukerExtern, isSchadeherstel, isPoetser } = useRoleAccess();
   const location = useLocation();
 
   if (loading) {
@@ -46,6 +46,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Restricted werkplaats/uitdeuk/operationeel rollen: forceer hun eigen home-route
+  // Poetser: uitsluitend zijn eigen scherm
+  if (isPoetser()) {
+    if (location.pathname !== '/werkplaats/poetsen') {
+      return <Navigate to="/werkplaats/poetsen" replace />;
+    }
+    return <>{children}</>;
+  }
+
   if (isRestrictedWorkshopUser()) {
     const home = getHomeRoute();
     const allowed = location.pathname === home
