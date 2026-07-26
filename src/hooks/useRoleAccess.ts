@@ -122,8 +122,20 @@ export const useRoleAccess = () => {
     return isAdmin || userRole === 'manager' || userRole === 'verkoper';
   };
 
-  // Aftersales manager MAG garantie claims beheren (werkplaats_chef niet: mailbox is aftersales-werk)
+  // Garantie-CLAIMS (overzicht + detail): werkplaats_chef mag hier wél bij
   const hasGarantieAccess = () => {
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
+      userRole === 'aftersales_manager' || userRole === 'werkplaats_chef';
+  };
+
+  // Garantie-INBOX / e-mails: aftersales-werk, NIET voor de werkplaats_chef
+  const hasGarantieInboxAccess = () => {
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
+      userRole === 'aftersales_manager';
+  };
+
+  // Claimbeheer (aanmaken, afwikkelen, verwijderen, klantmails): niet voor de chef
+  const canManageWarrantyClaims = () => {
     return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
       userRole === 'aftersales_manager';
   };
@@ -150,6 +162,8 @@ export const useRoleAccess = () => {
     canChecklistToggle,
     canEditVehicles,
     hasGarantieAccess,
+    hasGarantieInboxAccess,
+    canManageWarrantyClaims,
     isAftersalesManager,
     canManageChecklists,
     isSpuiter,
