@@ -131,6 +131,7 @@ const WerkplaatsSchadeherstel: React.FC = () => {
   const [names, setNames] = useState<Record<string, string>>({});
   const [myId, setMyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [detail, setDetail] = useState<WO | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -175,6 +176,7 @@ const WerkplaatsSchadeherstel: React.FC = () => {
       .eq("id", w.id);
     if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Gestart" });
+    setDetail(null);
     load();
   };
 
@@ -186,6 +188,7 @@ const WerkplaatsSchadeherstel: React.FC = () => {
       .eq("id", w.id);
     if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Klaar gemeld" });
+    setDetail(null);
     load();
   };
 
@@ -211,13 +214,32 @@ const WerkplaatsSchadeherstel: React.FC = () => {
         ) : (
           <div className="space-y-3">
             {open.map(w => (
-              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} />
+              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onOpen={setDetail} />
             ))}
             {done.map(w => (
-              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} />
+              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onOpen={setDetail} />
             ))}
           </div>
         )}
+
+        <TaskDetailSheet
+          open={!!detail}
+          onOpenChange={(v) => !v && setDetail(null)}
+          workOrder={detail as any}
+          actions={detail && detail.status !== "afgerond" ? (
+            detail.status !== "bezig" ? (
+              <Button size="lg" className="w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => handleStart(detail)}>
+                <Play className="h-4 w-4 mr-1" /> Start
+              </Button>
+            ) : detail.assigned_to === myId ? (
+              <Button size="lg" className="w-full h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => handleDone(detail)}>
+                <Check className="h-4 w-4 mr-1" /> Klaar
+              </Button>
+            ) : null
+          ) : null}
+        />
       </AsPage>
     </DashboardLayout>
   );
