@@ -44,12 +44,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
   }
 
-  // Werkplaats_chef: volledige operationele omgeving, géén verkoop-onderdelen
+  // Werkplaats_chef: operationele omgeving, géén verkoop-onderdelen en géén garantie-mailbox
   if (isWerkplaatsChef()) {
+    const blockedChefPrefixes = ['/werkplaats/poetsen', '/werkplaats/uitdeuken'];
     const allowedChefPrefixes = [
-      '/werkplaats', '/warranty', '/garantie', '/loan-cars', '/settings',
+      '/werkplaats', '/loan-cars', '/settings', '/inventory/consumer',
     ];
-    const ok = allowedChefPrefixes.some(pre => location.pathname.startsWith(pre));
+    const ok =
+      !blockedChefPrefixes.some(pre => location.pathname.startsWith(pre)) &&
+      allowedChefPrefixes.some(pre => location.pathname.startsWith(pre));
     if (!ok) {
       return <Navigate to="/werkplaats" replace />;
     }
