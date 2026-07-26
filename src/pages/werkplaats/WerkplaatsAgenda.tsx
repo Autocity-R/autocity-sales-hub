@@ -72,16 +72,15 @@ const WerkplaatsAgenda: React.FC = () => {
           />
           <div className="p-5 space-y-5">
             <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 text-sm text-slate-700">
-              <p className="font-semibold mb-2">Zo koppel je de agenda (3 stappen)</p>
-              <ol className="list-decimal pl-5 space-y-1">
-                <li>Deel de agenda <b>werkplaats@auto-city.nl</b> in Google Agenda met het service-account hieronder, met rechten <b>"Wijzigingen aanbrengen in afspraken"</b>.</li>
-                <li>Vul hieronder het agenda-ID in (meestal het e-mailadres van de agenda).</li>
-                <li>Klik op <b>Verbinding testen</b> en zet daarna de synchronisatie aan.</li>
-              </ol>
+              <p className="font-semibold mb-2">Zo koppel je de agenda</p>
+              <p>
+                Er hoeft niets gedeeld te worden — de koppeling werkt via de domeinkoppeling van Auto-City.
+                Vul het agenda-adres in (<b>werkplaats@auto-city.nl</b>) en klik op <b>Verbinding testen</b>.
+              </p>
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-600">Service-account e-mailadres</label>
+              <label className="text-xs font-semibold text-slate-600">Service-account (technisch detail)</label>
               <div className="mt-1 flex gap-2">
                 <Input readOnly value={WERKPLAATS_SERVICE_ACCOUNT_EMAIL} className="font-mono text-xs" />
                 <Button
@@ -98,7 +97,7 @@ const WerkplaatsAgenda: React.FC = () => {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-600">Agenda-ID</label>
+              <label className="text-xs font-semibold text-slate-600">Agenda-adres</label>
               <Input
                 className="mt-1"
                 value={calendarId}
