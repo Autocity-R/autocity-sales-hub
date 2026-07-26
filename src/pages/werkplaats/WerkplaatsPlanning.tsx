@@ -294,8 +294,8 @@ const DoneTodayColumn: React.FC<{ items: WO[]; nameFor: (uid: string | null) => 
 const WerkplaatsPlanning: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
   const navigate = useNavigate();
-  const { isAftersalesManager, isAdmin } = useRoleAccess() as any;
-  const canDelete = (typeof isAftersalesManager === "function" && isAftersalesManager()) || (typeof isAdmin === "function" && isAdmin());
+  const { canManageWorkOrders } = useRoleAccess();
+  const canDelete = canManageWorkOrders();
   const [discipline, setDiscipline] = useState<Discipline>("werkplaats");
   const [rows, setRows] = useState<WO[]>([]);
   const [doneToday, setDoneToday] = useState<WO[]>([]);
