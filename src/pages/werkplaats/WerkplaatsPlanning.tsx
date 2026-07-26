@@ -223,7 +223,7 @@ const EmployeeColumn: React.FC<{
   onOpen: (w: WO) => void;
   onDelete?: (w: WO) => void;
 }> = ({ profile, items, doneTodayCount, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete }) => (
-  <AsCard className="flex flex-col min-w-[320px]">
+  <AsCard className="flex flex-col w-full md:min-w-[320px]">
     <AsCardHead
       tone="slate"
       icon={
@@ -257,7 +257,7 @@ const EmployeeColumn: React.FC<{
 );
 
 const DoneTodayColumn: React.FC<{ items: WO[]; nameFor: (uid: string | null) => string }> = ({ items, nameFor }) => (
-  <AsCard className="flex flex-col min-w-[280px]">
+  <AsCard className="flex flex-col w-full md:min-w-[280px]">
     <AsCardHead
       tone="green"
       icon={<CheckCircle2 className="h-4 w-4" />}
