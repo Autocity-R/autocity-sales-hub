@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { differenceInDays } from "date-fns";
 import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono, useLiveTimer } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
+import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 
 interface WO {
   id: string;
@@ -21,6 +22,7 @@ interface WO {
   started_at: string | null;
   finished_at: string | null;
   assigned_to: string | null;
+  vehicle_id: string | null;
   vehicle: {
     brand: string; model: string; year: number | null;
     license_number: string | null; vin: string | null;
@@ -29,7 +31,7 @@ interface WO {
 }
 
 const SELECT =
-  "id, description, part, status, is_rush, sort_order, photos, created_at, started_at, finished_at, assigned_to, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
+  "id, description, part, status, is_rush, sort_order, photos, created_at, started_at, finished_at, assigned_to, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
 
 const Card: React.FC<{
   w: WO;
@@ -38,7 +40,8 @@ const Card: React.FC<{
   myId: string | null;
   onStart: (w: WO) => void;
   onDone: (w: WO) => void;
-}> = ({ w, names, myId, onStart, onDone }) => {
+  onOpen?: (w: WO) => void;
+}> = ({ w, names, myId, onStart, onDone, onOpen }) => {
   const v = w.vehicle;
   const done = w.status === "afgerond";
   const busy = w.status === "bezig";
@@ -52,7 +55,7 @@ const Card: React.FC<{
   ].filter(Boolean) as string[];
 
   return (
-    <AsCard className={cn("p-4 md:p-5", done && "bg-slate-50 border-slate-200 opacity-70")}>
+    <AsCard onClick={onOpen ? () => onOpen(w) : undefined} className={cn("p-4 md:p-5", done && "bg-slate-50 border-slate-200 opacity-70")}>
       <div className="flex items-start gap-4">
         <div className="pt-0.5"><AsLicensePlate value={v?.license_number} size="lg" /></div>
         <div className="flex-1 min-w-0">
@@ -97,7 +100,7 @@ const Card: React.FC<{
           )}
 
           {!done && (
-            <div className="mt-4">
+            <div className="mt-4" onClick={(e) => e.stopPropagation()}>
               {!busy ? (
                 <Button
                   size="lg"
