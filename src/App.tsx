@@ -44,6 +44,7 @@ const WerkplaatsAutos = lazy(() => import("@/pages/werkplaats/WerkplaatsAutos"))
 const WerkplaatsPlanning = lazy(() => import("@/pages/werkplaats/WerkplaatsPlanning"));
 const WerkplaatsInname = lazy(() => import("@/pages/werkplaats/WerkplaatsInname"));
 const WerkplaatsInnameDetail = lazy(() => import("@/pages/werkplaats/WerkplaatsInnameDetail"));
+const WerkplaatsSchadeherstel = lazy(() => import("@/pages/werkplaats/WerkplaatsSchadeherstel"));
 const WerkplaatsUitdeuken = lazy(() => import("@/pages/werkplaats/WerkplaatsUitdeuken"));
 const WerkplaatsGoedkeuren = lazy(() => import("@/pages/werkplaats/WerkplaatsGoedkeuren"));
 const WerkplaatsOnderdelen = lazy(() => import("@/pages/werkplaats/WerkplaatsOnderdelen"));
@@ -223,6 +224,7 @@ function App() {
         <Route path="/werkplaats/planning" element={<ProtectedRoute><WerkplaatsPlanning /></ProtectedRoute>} />
         <Route path="/werkplaats/inname" element={<ProtectedRoute><WerkplaatsInname /></ProtectedRoute>} />
         <Route path="/werkplaats/inname/:id" element={<ProtectedRoute><WerkplaatsInnameDetail /></ProtectedRoute>} />
+        <Route path="/werkplaats/schadeherstel" element={<ProtectedRoute><WerkplaatsSchadeherstel /></ProtectedRoute>} />
         <Route path="/werkplaats/uitdeuken" element={<ProtectedRoute><WerkplaatsUitdeuken /></ProtectedRoute>} />
         <Route path="/werkplaats/goedkeuren" element={<ProtectedRoute><WerkplaatsGoedkeuren /></ProtectedRoute>} />
         <Route path="/werkplaats/onderdelen" element={<ProtectedRoute><WerkplaatsOnderdelen /></ProtectedRoute>} />

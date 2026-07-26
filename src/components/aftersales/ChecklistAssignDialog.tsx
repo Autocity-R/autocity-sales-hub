@@ -19,7 +19,7 @@ interface Profile { id: string; first_name: string | null; last_name: string | n
 
 const ROLE_MAP: Record<Discipline, string[]> = {
   werkplaats: ["monteur", "werkplaats_chef"],
-  spuit: ["spuiter", "werkplaats_chef"],
+  spuit: ["schadeherstel", "werkplaats_chef"],
   uitdeuk: ["uitdeuker_extern", "werkplaats_chef"],
 };
 

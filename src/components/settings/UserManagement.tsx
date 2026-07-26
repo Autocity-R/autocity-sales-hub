@@ -256,7 +256,8 @@ export const UserManagement = () => {
                      user.role === "owner" ? "Owner" :
                      user.role === "manager" ? "Manager" :
                      user.role === "verkoper" ? "Verkoper" :
-                     user.role === "aftersales_manager" ? "Aftersales Manager" : "Gebruiker"}
+                     user.role === "aftersales_manager" ? "Aftersales Manager" :
+                     user.role === "schadeherstel" ? "Schadeherstel" : "Gebruiker"}
                   </Badge>
                   <Select
                     value={user.role}
@@ -272,6 +273,7 @@ export const UserManagement = () => {
                       <SelectItem value="manager">Manager</SelectItem>
                       <SelectItem value="aftersales_manager">Aftersales Manager</SelectItem>
                       <SelectItem value="verkoper">Verkoper</SelectItem>
+                      <SelectItem value="schadeherstel">Schadeherstel</SelectItem>
                       <SelectItem value="operationeel">Operationeel Gebruiker</SelectItem>
                     </SelectContent>
                   </Select>
