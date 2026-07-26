@@ -77,6 +77,8 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
   onResolve,
   onDelete
 }) => {
+  const { canManageWarrantyClaims } = useRoleAccess();
+  const canManageClaims = canManageWarrantyClaims();
   const [isEditing, setIsEditing] = useState(false);
   const [editedClaim, setEditedClaim] = useState(claim);
   const [showResolveDialog, setShowResolveDialog] = useState(false);
