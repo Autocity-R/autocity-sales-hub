@@ -8,6 +8,7 @@ import { Loader2, Truck, Home, CheckCircle2, Sparkles } from "lucide-react";
 import { format, isToday, isPast, isTomorrow } from "date-fns";
 import { nl } from "date-fns/locale";
 import { AsPage, AsCard, AsCardHead, AsLicensePlate, AsMono, useLiveTimer } from "@/components/aftersales/ui";
+import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Play, Timer } from "lucide-react";
@@ -46,7 +47,8 @@ const PoetsCard: React.FC<{
   onStart: (w: PoetsWO) => void;
   onDone: (w: PoetsWO) => void;
   showDeadline: boolean;
-}> = ({ w, onStart, onDone, showDeadline }) => {
+  onOpen?: (w: PoetsWO) => void;
+}> = ({ w, onStart, onDone, showDeadline, onOpen }) => {
   const tone = deadlineTone(w.due_date);
   const timer = useLiveTimer(w.status === "bezig" ? w.started_at : null);
   const toneCls =
@@ -59,7 +61,10 @@ const PoetsCard: React.FC<{
     w.vehicle?.color || null,
   ].filter(Boolean) as string[];
   return (
-    <div className="bg-white rounded-[12px] border border-slate-200 shadow-sm p-4 flex flex-col gap-3">
+    <div
+      onClick={onOpen ? () => onOpen(w) : undefined}
+      className={cn("bg-white rounded-[12px] border border-slate-200 shadow-sm p-4 flex flex-col gap-3", onOpen && "cursor-pointer")}
+    >
       <div className="flex items-center gap-2 flex-wrap">
         <AsLicensePlate value={w.vehicle?.license_number} size="sm" />
         <span className="text-[14px] font-bold text-slate-900 truncate">{w.vehicle?.brand} {w.vehicle?.model}</span>
@@ -79,6 +84,7 @@ const PoetsCard: React.FC<{
           <Timer className="h-4 w-4" /> {timer ?? "00:00"}
         </div>
       )}
+      <div onClick={(e) => e.stopPropagation()} className="contents">
       {w.status === "ingepland" ? (
         <Button
           onClick={() => onStart(w)}
@@ -94,6 +100,7 @@ const PoetsCard: React.FC<{
           <CheckCircle2 className="h-5 w-5 mr-2" /> Schoon
         </Button>
       )}
+      </div>
     </div>
   );
 };
@@ -102,6 +109,7 @@ const WerkplaatsPoetsen: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
   const [rows, setRows] = useState<PoetsWO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [detail, setDetail] = useState<PoetsWO | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -196,7 +204,7 @@ const WerkplaatsPoetsen: React.FC = () => {
                     Geen afleveringen.
                   </div>
                 ) : afleveringen.map(w => (
-                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline />
+                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline onOpen={setDetail} />
                 ))}
               </div>
             </AsCard>
@@ -215,12 +223,31 @@ const WerkplaatsPoetsen: React.FC = () => {
                     Geen showroom-taken.
                   </div>
                 ) : showroom.map(w => (
-                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline={false} />
+                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline={false} onOpen={setDetail} />
                 ))}
               </div>
             </AsCard>
           </div>
         )}
+
+        <TaskDetailSheet
+          open={!!detail}
+          onOpenChange={(v) => !v && setDetail(null)}
+          workOrder={detail as any}
+          actions={detail ? (
+            detail.status === "ingepland" ? (
+              <Button onClick={() => { markStarted(detail); setDetail(null); }}
+                className="h-12 w-full bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold">
+                <Play className="h-5 w-5 mr-2" /> Gestart
+              </Button>
+            ) : (
+              <Button onClick={() => { markDone(detail); setDetail(null); }}
+                className="h-12 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[15px] font-semibold">
+                <CheckCircle2 className="h-5 w-5 mr-2" /> Schoon
+              </Button>
+            )
+          ) : null}
+        />
       </AsPage>
     </DashboardLayout>
   );

@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { differenceInDays } from "date-fns";
 import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono, useLiveTimer } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
+import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 
 interface WO {
   id: string;
@@ -21,6 +22,7 @@ interface WO {
   started_at: string | null;
   finished_at: string | null;
   assigned_to: string | null;
+  vehicle_id: string | null;
   vehicle: {
     brand: string; model: string; year: number | null;
     license_number: string | null; vin: string | null;
@@ -29,7 +31,7 @@ interface WO {
 }
 
 const SELECT =
-  "id, description, part, status, is_rush, sort_order, photos, created_at, started_at, finished_at, assigned_to, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
+  "id, description, part, status, is_rush, sort_order, photos, created_at, started_at, finished_at, assigned_to, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
 
 const Card: React.FC<{
   w: WO;
@@ -38,7 +40,8 @@ const Card: React.FC<{
   myId: string | null;
   onStart: (w: WO) => void;
   onDone: (w: WO) => void;
-}> = ({ w, names, myId, onStart, onDone }) => {
+  onOpen?: (w: WO) => void;
+}> = ({ w, names, myId, onStart, onDone, onOpen }) => {
   const v = w.vehicle;
   const done = w.status === "afgerond";
   const busy = w.status === "bezig";
@@ -52,7 +55,7 @@ const Card: React.FC<{
   ].filter(Boolean) as string[];
 
   return (
-    <AsCard className={cn("p-4 md:p-5", done && "bg-slate-50 border-slate-200 opacity-70")}>
+    <AsCard onClick={onOpen ? () => onOpen(w) : undefined} className={cn("p-4 md:p-5", done && "bg-slate-50 border-slate-200 opacity-70")}>
       <div className="flex items-start gap-4">
         <div className="pt-0.5"><AsLicensePlate value={v?.license_number} size="lg" /></div>
         <div className="flex-1 min-w-0">
@@ -97,7 +100,7 @@ const Card: React.FC<{
           )}
 
           {!done && (
-            <div className="mt-4">
+            <div className="mt-4" onClick={(e) => e.stopPropagation()}>
               {!busy ? (
                 <Button
                   size="lg"
@@ -128,6 +131,7 @@ const WerkplaatsSchadeherstel: React.FC = () => {
   const [names, setNames] = useState<Record<string, string>>({});
   const [myId, setMyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [detail, setDetail] = useState<WO | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -172,6 +176,7 @@ const WerkplaatsSchadeherstel: React.FC = () => {
       .eq("id", w.id);
     if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Gestart" });
+    setDetail(null);
     load();
   };
 
@@ -183,6 +188,7 @@ const WerkplaatsSchadeherstel: React.FC = () => {
       .eq("id", w.id);
     if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Klaar gemeld" });
+    setDetail(null);
     load();
   };
 
@@ -208,13 +214,32 @@ const WerkplaatsSchadeherstel: React.FC = () => {
         ) : (
           <div className="space-y-3">
             {open.map(w => (
-              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} />
+              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onOpen={setDetail} />
             ))}
             {done.map(w => (
-              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} />
+              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onOpen={setDetail} />
             ))}
           </div>
         )}
+
+        <TaskDetailSheet
+          open={!!detail}
+          onOpenChange={(v) => !v && setDetail(null)}
+          workOrder={detail as any}
+          actions={detail && detail.status !== "afgerond" ? (
+            detail.status !== "bezig" ? (
+              <Button size="lg" className="w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => handleStart(detail)}>
+                <Play className="h-4 w-4 mr-1" /> Start
+              </Button>
+            ) : detail.assigned_to === myId ? (
+              <Button size="lg" className="w-full h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => handleDone(detail)}>
+                <Check className="h-4 w-4 mr-1" /> Klaar
+              </Button>
+            ) : null
+          ) : null}
+        />
       </AsPage>
     </DashboardLayout>
   );

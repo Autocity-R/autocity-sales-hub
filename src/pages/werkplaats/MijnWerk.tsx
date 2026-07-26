@@ -12,10 +12,13 @@ import {
 import {
   Loader2, Play, CheckCircle2, Timer, Clock, HandMetal, CalendarDays, Inbox, Phone, Undo2,
 } from "lucide-react";
+import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 
 interface WorkRow {
   id: string;
   description: string | null;
+  part: string | null;
+  photos: string[] | null;
   status: string;
   planned_at: string | null;
   started_at: string | null;
@@ -25,13 +28,14 @@ interface WorkRow {
   warranty_claim_id: string | null;
   external_customer: any;
   branch: string | null;
+  vehicle_id: string | null;
   vehicle: {
     brand: string | null; model: string | null; license_number: string | null; year: number | null;
   } | null;
 }
 
 const SELECT =
-  "id, description, status, planned_at, started_at, is_rush, assigned_to, origin, warranty_claim_id, external_customer, branch, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, license_number, year)";
+  "id, description, part, photos, status, planned_at, started_at, is_rush, assigned_to, origin, warranty_claim_id, external_customer, branch, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, license_number, year)";
 
 const MijnWerkCard: React.FC<{
   w: WorkRow;
@@ -41,14 +45,18 @@ const MijnWerkCard: React.FC<{
   onClaim: (w: WorkRow) => void;
   onRelease: (w: WorkRow) => void;
   busy: boolean;
-}> = ({ w, mine, onStart, onDone, onClaim, onRelease, busy }) => {
+  onOpen?: (w: WorkRow) => void;
+}> = ({ w, mine, onStart, onDone, onClaim, onRelease, busy, onOpen }) => {
   const timer = useLiveTimer(w.status === "bezig" ? w.started_at : null);
   const ext = (w.external_customer || {}) as any;
   const isExtern = w.origin === "extern";
   const phone: string | null = ext.phone || ext.telephone || null;
 
   return (
-    <div className="bg-white rounded-[12px] border border-slate-200 shadow-sm p-4 flex flex-col gap-3">
+    <div
+      onClick={onOpen ? () => onOpen(w) : undefined}
+      className={cn("bg-white rounded-[12px] border border-slate-200 shadow-sm p-4 flex flex-col gap-3", onOpen && "cursor-pointer")}
+    >
       <div className="flex items-center gap-2 flex-wrap">
         <AsLicensePlate value={w.vehicle?.license_number} size="sm" />
         <span className="text-[15px] font-bold text-slate-900">
@@ -82,6 +90,7 @@ const MijnWerkCard: React.FC<{
         </div>
       )}
 
+      <div onClick={(e) => e.stopPropagation()} className="contents">
       {!mine ? (
         <Button onClick={() => onClaim(w)} disabled={busy}
           className="h-12 w-full bg-slate-900 hover:bg-slate-800 text-white text-[15px] font-semibold">
@@ -104,6 +113,7 @@ const MijnWerkCard: React.FC<{
           </Button>
         </div>
       )}
+      </div>
     </div>
   );
 };
@@ -113,6 +123,7 @@ const MijnWerk: React.FC = () => {
   const [rows, setRows] = useState<WorkRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [detail, setDetail] = useState<WorkRow | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -220,12 +231,14 @@ const MijnWerk: React.FC = () => {
   const onStart = async (w: WorkRow) => {
     const startedAt = new Date().toISOString();
     await patch(w.id, { status: "bezig", started_at: startedAt }, { status: "bezig", started_at: startedAt });
+    setDetail(null);
   };
 
   const onDone = async (w: WorkRow) => {
     const started = w.started_at ? new Date(w.started_at).getTime() : null;
     const workSeconds = started ? Math.max(0, Math.round((Date.now() - started) / 1000)) : null;
     setRows(prev => prev.filter(r => r.id !== w.id));
+    setDetail(null);
     const { error } = await supabase.from("work_orders").update({
       status: "afgerond",
       finished_at: new Date().toISOString(),
@@ -259,7 +272,7 @@ const MijnWerk: React.FC = () => {
           </div>
         ) : list.map(w => (
           <MijnWerkCard key={w.id} w={w} mine={!!w.assigned_to}
-            onStart={onStart} onDone={onDone} onClaim={onClaim} onRelease={onRelease} busy={busy} />
+            onStart={onStart} onDone={onDone} onClaim={onClaim} onRelease={onRelease} busy={busy} onOpen={setDetail} />
         ))}
       </div>
     </AsCard>
@@ -285,6 +298,30 @@ const MijnWerk: React.FC = () => {
               <Inbox className="h-4 w-4" />, open, false, "Geen open taken.")}
           </div>
         )}
+
+        <TaskDetailSheet
+          open={!!detail}
+          onOpenChange={(v) => !v && setDetail(null)}
+          workOrder={detail as any}
+          actions={detail ? (
+            !detail.assigned_to ? (
+              <Button onClick={() => { onClaim(detail); setDetail(null); }} disabled={busy}
+                className="h-12 w-full bg-slate-900 hover:bg-slate-800 text-white text-[15px] font-semibold">
+                <HandMetal className="h-5 w-5 mr-2" /> Oppakken
+              </Button>
+            ) : detail.status === "bezig" ? (
+              <Button onClick={() => onDone(detail)} disabled={busy}
+                className="h-12 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[15px] font-semibold">
+                <CheckCircle2 className="h-5 w-5 mr-2" /> Klaar
+              </Button>
+            ) : (
+              <Button onClick={() => onStart(detail)} disabled={busy}
+                className="h-12 w-full bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold">
+                <Play className="h-5 w-5 mr-2" /> Start
+              </Button>
+            )
+          ) : null}
+        />
       </AsPage>
     </DashboardLayout>
   );
