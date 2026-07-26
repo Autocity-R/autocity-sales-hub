@@ -10,7 +10,7 @@ import {
   AsPage, AsCard, AsPill, AsLicensePlate, useLiveTimer,
 } from "@/components/aftersales/ui";
 import {
-  Loader2, Play, CheckCircle2, Timer, Clock, HandMetal, CalendarDays, Inbox, Phone,
+  Loader2, Play, CheckCircle2, Timer, Clock, HandMetal, CalendarDays, Inbox, Phone, Undo2,
 } from "lucide-react";
 
 interface WorkRow {
@@ -39,8 +39,9 @@ const MijnWerkCard: React.FC<{
   onStart: (w: WorkRow) => void;
   onDone: (w: WorkRow) => void;
   onClaim: (w: WorkRow) => void;
+  onRelease: (w: WorkRow) => void;
   busy: boolean;
-}> = ({ w, mine, onStart, onDone, onClaim, busy }) => {
+}> = ({ w, mine, onStart, onDone, onClaim, onRelease, busy }) => {
   const timer = useLiveTimer(w.status === "bezig" ? w.started_at : null);
   const ext = (w.external_customer || {}) as any;
   const isExtern = w.origin === "extern";
@@ -92,10 +93,16 @@ const MijnWerkCard: React.FC<{
           <CheckCircle2 className="h-5 w-5 mr-2" /> Klaar
         </Button>
       ) : (
-        <Button onClick={() => onStart(w)} disabled={busy}
-          className="h-12 w-full bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold">
-          <Play className="h-5 w-5 mr-2" /> Start
-        </Button>
+        <div className="flex flex-col gap-2">
+          <Button onClick={() => onStart(w)} disabled={busy}
+            className="h-12 w-full bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold">
+            <Play className="h-5 w-5 mr-2" /> Start
+          </Button>
+          <Button onClick={() => onRelease(w)} disabled={busy} variant="outline"
+            className="h-10 w-full text-[13.5px] font-medium text-slate-600">
+            <Undo2 className="h-4 w-4 mr-2" /> Terugleggen
+          </Button>
+        </div>
       )}
     </div>
   );
@@ -117,7 +124,7 @@ const MijnWerk: React.FC = () => {
       .from("work_orders")
       .select(SELECT)
       .eq("discipline", "werkplaats")
-      .in("status", ["ingepland", "bezig"])
+      .in("status", ["aangevraagd", "ingepland", "bezig"])
       .order("planned_at", { ascending: true, nullsFirst: false });
 
     if (error) toast({ title: "Fout bij laden", description: error.message, variant: "destructive" });
@@ -127,16 +134,30 @@ const MijnWerk: React.FC = () => {
 
   useEffect(() => { load(); }, [load]);
 
+  // Realtime: de open pot moet kloppen als meerdere monteurs tegelijk werken
+  useEffect(() => {
+    const channel = supabase
+      .channel("mijn-werk-work-orders")
+      .on("postgres_changes", { event: "*", schema: "public", table: "work_orders" }, () => load())
+      .subscribe();
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [load]);
+
   const { vandaag, open } = useMemo(() => {
     const mine = rows.filter(r => r.assigned_to && r.assigned_to === userId);
-    const vandaagList = mine
-      .filter(r => r.status === "bezig" || (r.planned_at && isToday(new Date(r.planned_at))))
-      .sort((a, b) => (a.planned_at || "9999").localeCompare(b.planned_at || "9999"));
-    const vandaagIds = new Set(vandaagList.map(r => r.id));
-    const openList = [
-      ...mine.filter(r => !vandaagIds.has(r.id) && !r.planned_at),
-      ...rows.filter(r => !r.assigned_to),
-    ].sort((a, b) => Number(b.is_rush) - Number(a.is_rush));
+    const vandaagList = [...mine].sort((a, b) =>
+      (a.planned_at || "9999").localeCompare(b.planned_at || "9999"));
+    // Open pot: alles zonder toewijzing (ook toekomstig gepland)
+    const openList = rows
+      .filter(r => !r.assigned_to)
+      .sort((a, b) =>
+        Number(b.is_rush) - Number(a.is_rush) ||
+        (a.planned_at || "9999").localeCompare(b.planned_at || "9999"));
     return { vandaag: vandaagList, open: openList };
   }, [rows, userId]);
 
@@ -155,8 +176,44 @@ const MijnWerk: React.FC = () => {
 
   const onClaim = async (w: WorkRow) => {
     if (!userId) return;
-    if (await patch(w.id, { assigned_to: userId }, { assigned_to: userId })) {
-      toast({ title: "Opgepakt", description: "De taak staat nu op jouw naam." });
+    setBusy(true);
+    setRows(prev => prev.map(r => (r.id === w.id ? { ...r, assigned_to: userId } : r)));
+    // Race-bescherming: alleen claimen zolang niemand anders hem heeft
+    const { data, error } = await supabase
+      .from("work_orders")
+      .update({ assigned_to: userId } as any)
+      .eq("id", w.id)
+      .is("assigned_to", null)
+      .select("id, assigned_to");
+    setBusy(false);
+
+    if (error) {
+      toast({ title: "Kon niet oppakken", description: error.message, variant: "destructive" });
+      load();
+      return;
+    }
+    if (!data || data.length === 0) {
+      // Iemand anders was sneller — haal de naam op
+      const { data: cur } = await supabase
+        .from("work_orders").select("assigned_to").eq("id", w.id).maybeSingle();
+      let naam = "een collega";
+      if (cur?.assigned_to) {
+        const { data: p } = await supabase
+          .from("profiles").select("first_name, last_name").eq("id", cur.assigned_to).maybeSingle();
+        const full = [p?.first_name, p?.last_name].filter(Boolean).join(" ").trim();
+        if (full) naam = full;
+      }
+      toast({ title: "Al opgepakt", description: `Al opgepakt door ${naam}.`, variant: "destructive" });
+      load();
+      return;
+    }
+    toast({ title: "Opgepakt", description: "De taak staat nu op jouw naam." });
+  };
+
+  const onRelease = async (w: WorkRow) => {
+    if (w.status !== "ingepland" && w.status !== "aangevraagd") return;
+    if (await patch(w.id, { assigned_to: null }, { assigned_to: null })) {
+      toast({ title: "Teruggelegd", description: "De taak staat weer in de open pot." });
     }
   };
 
@@ -202,7 +259,7 @@ const MijnWerk: React.FC = () => {
           </div>
         ) : list.map(w => (
           <MijnWerkCard key={w.id} w={w} mine={!!w.assigned_to}
-            onStart={onStart} onDone={onDone} onClaim={onClaim} busy={busy} />
+            onStart={onStart} onDone={onDone} onClaim={onClaim} onRelease={onRelease} busy={busy} />
         ))}
       </div>
     </AsCard>
@@ -222,10 +279,10 @@ const MijnWerk: React.FC = () => {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {section("Vandaag", "Jouw klussen van vandaag", <CalendarDays className="h-4 w-4" />, vandaag, true,
+            {section("Vandaag", "Jouw klussen", <CalendarDays className="h-4 w-4" />, vandaag, true,
               "Niks ingepland voor vandaag.")}
-            {section("Open taken", "Zonder datum of nog niet toegewezen", <Inbox className="h-4 w-4" />, open, false,
-              "Geen open taken.")}
+            {section("🔧 Open taken — vrij op te pakken", "Nog niet toegewezen · pak zelf op",
+              <Inbox className="h-4 w-4" />, open, false, "Geen open taken.")}
           </div>
         )}
       </AsPage>
