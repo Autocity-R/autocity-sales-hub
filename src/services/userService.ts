@@ -6,7 +6,7 @@ export interface UserProfile {
   email: string;
   first_name: string | null;
   last_name: string | null;
-  role: 'admin' | 'owner' | 'manager' | 'aftersales_manager' | 'verkoper' | 'operationeel' | 'schadeherstel' | 'user';
+  role: 'admin' | 'owner' | 'manager' | 'aftersales_manager' | 'verkoper' | 'operationeel' | 'schadeherstel' | 'poetser' | 'user';
   company: string | null;
   branch: string | null;
   created_at: string;
