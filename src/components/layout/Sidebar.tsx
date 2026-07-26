@@ -44,7 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   const {
     hasReportsAccess, hasAIAgentsAccess, hasSettingsAccess,
     hasWerkplaatsAccess, isRestrictedWorkshopUser, getHomeRoute,
-    isSchadeherstel, isMonteur, isUitdeukerExtern, isWerkplaatsChef, isOperationeelDirecteur,
+    isSchadeherstel, isMonteur, isUitdeukerExtern, isWerkplaatsChef, isOperationeelDirecteur, isPoetser,
     isAftersalesManager,
   } = useRoleAccess();
 
@@ -89,10 +89,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     const label = isSchadeherstel() ? "Schadeherstel"
       : isMonteur() ? "Jouw planning (Monteur)"
       : isUitdeukerExtern() ? "Uitdeuken"
+      : isPoetser() ? "Poetsen"
       : isWerkplaatsChef() ? "Werkplaats overzicht"
       : isOperationeelDirecteur() ? "Operationeel"
       : "Werkplaats";
-    const Icon = isUitdeukerExtern() ? Hammer : isSchadeherstel() ? PaintBucket : Wrench;
+    const Icon = isUitdeukerExtern() ? Hammer : isSchadeherstel() ? PaintBucket : isPoetser() ? Sparkles : Wrench;
     return (
       <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
         <ScrollArea className="flex-1 px-2 py-3">
