@@ -10,12 +10,13 @@ import { toast } from "@/hooks/use-toast";
 import { differenceInDays } from "date-fns";
 import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
-import { DamageReportDialog, DamageReportPayload } from "@/components/aftersales/DamageReportDialog";
+import { TaskDetailSheet, TaskDetailWorkOrder } from "@/components/werkplaats/TaskDetailSheet";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface WO {
   id: string; description: string; part: string | null; status: string; is_rush: boolean; sort_order: number;
   photos: string[] | null; branch: string | null; created_at: string; approved_at: string | null; finished_at?: string | null;
+  vehicle_id?: string | null;
   vehicle: { brand: string; model: string; year: number | null; license_number: string | null; vin: string | null; mileage: number | null; color: string | null } | null;
 }
 
@@ -25,12 +26,12 @@ const WerkplaatsUitdeuken: React.FC = () => {
   const isExtern = isUitdeukerExtern();
   const [rows, setRows] = useState<WO[]>([]);
   const [loading, setLoading] = useState(true);
-  const [report, setReport] = useState<DamageReportPayload | null>(null);
+  const [detail, setDetail] = useState<WO | null>(null);
 
   const load = async () => {
     setLoading(true);
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const select = "id, description, part, status, is_rush, sort_order, photos, branch, created_at, approved_at, finished_at, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
+    const select = "id, description, part, status, is_rush, sort_order, photos, branch, created_at, approved_at, finished_at, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
 
     let qOpen = supabase.from("work_orders").select(select)
       .eq("discipline", "uitdeuk")
@@ -65,7 +66,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
         finished_at: new Date().toISOString(),
       }).eq("id", w.id);
       if (error) toast({ title: "Fout", description: error.message, variant: "destructive" });
-      else { toast({ title: "Klaar gemeld" }); load(); }
+      else { toast({ title: "Klaar gemeld" }); setDetail(null); load(); }
       return;
     }
     const { data: userRes } = await supabase.auth.getUser();
@@ -76,7 +77,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
       approved_by: userRes.user?.id ?? null,
     }).eq("id", w.id);
     if (error) toast({ title: "Fout", description: error.message, variant: "destructive" });
-    else { toast({ title: "Uitdeuk-taak gedaan" }); load(); }
+    else { toast({ title: "Uitdeuk-taak gedaan" }); setDetail(null); load(); }
   };
 
   return (
@@ -107,7 +108,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
               return (
                 <AsCard
                   key={w.id}
-                  onClick={() => setReport({ part: w.part, description: w.description, photos: w.photos, discipline: "uitdeuk", status: w.status, vehicle: v as any })}
+                  onClick={() => setDetail(w)}
                   className={cn("p-4 md:p-5", done && "bg-emerald-50/40 border-emerald-100")}
                 >
                   <div className="flex items-start gap-4">
@@ -160,7 +161,20 @@ const WerkplaatsUitdeuken: React.FC = () => {
             })}
           </div>
         )}
-        <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} />
+        <TaskDetailSheet
+          open={!!detail}
+          onOpenChange={(v) => !v && setDetail(null)}
+          workOrder={detail as TaskDetailWorkOrder | null}
+          actions={detail && !(isExtern ? detail.status === "afgerond" : detail.status === "goedgekeurd") ? (
+            <Button
+              size="lg"
+              className="w-full h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => markDone(detail)}
+            >
+              <Check className="h-4 w-4 mr-1" /> {isExtern ? "Klaar" : "Gedaan"}
+            </Button>
+          ) : null}
+        />
       </AsPage>
     </DashboardLayout>
   );
