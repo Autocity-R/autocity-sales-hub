@@ -119,10 +119,10 @@ export const useRoleAccess = () => {
     return isAdmin || userRole === 'manager' || userRole === 'verkoper';
   };
 
-  // Aftersales manager MAG garantie claims beheren
+  // Aftersales manager MAG garantie claims beheren (werkplaats_chef niet: mailbox is aftersales-werk)
   const hasGarantieAccess = () => {
     return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
-      userRole === 'aftersales_manager' || userRole === 'werkplaats_chef';
+      userRole === 'aftersales_manager';
   };
 
   // Aftersales manager MAG checklisten volledig bewerken (items toevoegen, afvinken, taken toewijzen)
