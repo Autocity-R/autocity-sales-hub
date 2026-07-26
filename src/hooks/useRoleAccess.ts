@@ -13,6 +13,7 @@ export const useRoleAccess = () => {
 
   // Werkplaats/operationeel rollen
   const isSchadeherstel = () => userRole === 'schadeherstel';
+  const isPoetser = () => userRole === 'poetser';
   const isMonteur = () => userRole === 'monteur';
   const isWerkplaatsChef = () => userRole === 'werkplaats_chef';
   const isUitdeukerExtern = () => userRole === 'uitdeuker_extern';
@@ -22,7 +23,7 @@ export const useRoleAccess = () => {
   // Werkplaats_chef heeft de VOLLEDIGE operationele omgeving en is dus niet "restricted".
   const isRestrictedWorkshopUser = () => (
     isSchadeherstel() || isMonteur() ||
-    isUitdeukerExtern() || isOperationeelDirecteur()
+    isUitdeukerExtern() || isOperationeelDirecteur() || isPoetser()
   );
 
   // Startroute per rol (voor auto-redirect vanuit "/")
@@ -30,6 +31,7 @@ export const useRoleAccess = () => {
     if (isMonteur()) return '/werkplaats/mijn-werk';
     if (isSchadeherstel()) return '/werkplaats/schadeherstel';
     if (isUitdeukerExtern()) return '/werkplaats/uitdeuken';
+    if (isPoetser()) return '/werkplaats/poetsen';
     if (isWerkplaatsChef()) return '/werkplaats';
     if (isOperationeelDirecteur()) return '/operationeel';
     if (isAftersalesManager()) return '/werkplaats';
@@ -167,6 +169,7 @@ export const useRoleAccess = () => {
     isAftersalesManager,
     canManageChecklists,
     isSchadeherstel,
+    isPoetser,
     isMonteur,
     isWerkplaatsChef,
     isUitdeukerExtern,
