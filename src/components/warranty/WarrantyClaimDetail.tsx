@@ -397,7 +397,7 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 Claim Details
-                {!isEditing && claim.status !== "opgelost" && (
+                {canManageClaims && !isEditing && claim.status !== "opgelost" && (
                   <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                     <Edit className="h-4 w-4 mr-2" />
                     Bewerken
