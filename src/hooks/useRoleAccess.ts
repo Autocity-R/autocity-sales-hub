@@ -29,7 +29,7 @@ export const useRoleAccess = () => {
   const getHomeRoute = (): string => {
     if (isMonteur()) return '/werkplaats/mijn-werk';
     if (isSpuiter()) return '/werkplaats/mijn-planning';
-    if (isUitdeukerExtern()) return '/uitdeuk';
+    if (isUitdeukerExtern()) return '/werkplaats/uitdeuken';
     if (isWerkplaatsChef()) return '/werkplaats';
     if (isOperationeelDirecteur()) return '/operationeel';
     if (isAftersalesManager()) return '/werkplaats';

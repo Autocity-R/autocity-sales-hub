@@ -11,15 +11,18 @@ import { differenceInDays } from "date-fns";
 import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
 import { DamageReportDialog, DamageReportPayload } from "@/components/aftersales/DamageReportDialog";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface WO {
   id: string; description: string; part: string | null; status: string; is_rush: boolean; sort_order: number;
-  photos: string[] | null; branch: string | null; created_at: string; approved_at: string | null;
+  photos: string[] | null; branch: string | null; created_at: string; approved_at: string | null; finished_at?: string | null;
   vehicle: { brand: string; model: string; year: number | null; license_number: string | null; vin: string | null; mileage: number | null; color: string | null } | null;
 }
 
 const WerkplaatsUitdeuken: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
+  const { isUitdeukerExtern } = useRoleAccess();
+  const isExtern = isUitdeukerExtern();
   const [rows, setRows] = useState<WO[]>([]);
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<DamageReportPayload | null>(null);
@@ -27,20 +30,26 @@ const WerkplaatsUitdeuken: React.FC = () => {
   const load = async () => {
     setLoading(true);
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const select = "id, description, part, status, is_rush, sort_order, photos, branch, created_at, approved_at, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
+    const select = "id, description, part, status, is_rush, sort_order, photos, branch, created_at, approved_at, finished_at, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
 
     let qOpen = supabase.from("work_orders").select(select)
       .eq("discipline", "uitdeuk")
-      .in("status", ["ingepland", "bezig", "afgerond"])
+      .in("status", isExtern ? ["aangevraagd", "ingepland", "bezig"] : ["ingepland", "bezig", "afgerond"])
       .order("is_rush", { ascending: false })
       .order("sort_order", { ascending: true });
     qOpen = applyBranchFilter(qOpen as any, branchFilter);
 
-    let qDone = supabase.from("work_orders").select(select)
-      .eq("discipline", "uitdeuk")
-      .eq("status", "goedgekeurd")
-      .gte("approved_at", since)
-      .order("approved_at", { ascending: false });
+    let qDone = isExtern
+      ? supabase.from("work_orders").select(select)
+          .eq("discipline", "uitdeuk")
+          .eq("status", "afgerond")
+          .gte("finished_at", since)
+          .order("finished_at", { ascending: false })
+      : supabase.from("work_orders").select(select)
+          .eq("discipline", "uitdeuk")
+          .eq("status", "goedgekeurd")
+          .gte("approved_at", since)
+          .order("approved_at", { ascending: false });
     qDone = applyBranchFilter(qDone as any, branchFilter);
 
     const [{ data: openData }, { data: doneData }] = await Promise.all([qOpen, qDone]);
@@ -50,6 +59,15 @@ const WerkplaatsUitdeuken: React.FC = () => {
   useEffect(() => { load(); /* eslint-disable-line */ }, [branchFilter]);
 
   const markDone = async (w: WO) => {
+    if (isExtern) {
+      const { error } = await supabase.from("work_orders").update({
+        status: "afgerond",
+        finished_at: new Date().toISOString(),
+      }).eq("id", w.id);
+      if (error) toast({ title: "Fout", description: error.message, variant: "destructive" });
+      else { toast({ title: "Klaar gemeld" }); load(); }
+      return;
+    }
     const { data: userRes } = await supabase.auth.getUser();
     const { error } = await supabase.from("work_orders").update({
       status: "goedgekeurd",
@@ -66,10 +84,14 @@ const WerkplaatsUitdeuken: React.FC = () => {
       <AsPage>
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Uitdeuken (extern)</h1>
-            <p className="text-[13px] text-slate-500 mt-0.5">Werkorders bij externe uitdeuk-partner. Afgevinkt = direct gedaan (blijft 24u zichtbaar).</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{isExtern ? "Jouw uitdeukwerk" : "Uitdeuken (extern)"}</h1>
+            <p className="text-[13px] text-slate-500 mt-0.5">
+              {isExtern
+                ? "Vink af zodra een auto klaar is. Afgeronde auto's blijven 24 uur zichtbaar."
+                : "Werkorders bij externe uitdeuk-partner. Afgevinkt = direct gedaan (blijft 24u zichtbaar)."}
+            </p>
           </div>
-          <BranchFilter />
+          {!isExtern && <BranchFilter />}
         </div>
 
         {loading ? (
@@ -80,7 +102,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
           <div className="space-y-3">
             {rows.map(w => {
               const v = w.vehicle;
-              const done = w.status === "goedgekeurd";
+              const done = isExtern ? w.status === "afgerond" : w.status === "goedgekeurd";
               const days = differenceInDays(new Date(), new Date(w.created_at));
               return (
                 <AsCard
@@ -103,7 +125,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
                         <div className="flex items-center gap-2 shrink-0">
                           {w.is_rush && !done && <AsPill tone="red"><Flame className="h-3 w-3" />Spoed</AsPill>}
                           {done
-                            ? <AsPill tone="green"><CheckCircle2 className="h-3 w-3" />Gedaan</AsPill>
+                            ? <AsPill tone="green"><CheckCircle2 className="h-3 w-3" />{isExtern ? "Vandaag afgerond" : "Gedaan"}</AsPill>
                             : <AsPill tone={days > 3 ? "red" : days > 1 ? "amber" : "slate"}>{days}d bij uitdeuker</AsPill>}
                         </div>
                       </div>
@@ -122,8 +144,12 @@ const WerkplaatsUitdeuken: React.FC = () => {
 
                       {!done && (
                         <div className="flex items-center gap-2 mt-4" onClick={(e) => e.stopPropagation()}>
-                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => markDone(w)}>
-                            <Check className="h-4 w-4 mr-1" /> Gedaan
+                          <Button
+                            size={isExtern ? "lg" : "sm"}
+                            className={cn("bg-emerald-600 hover:bg-emerald-700 text-white", isExtern && "w-full h-12 text-base font-semibold")}
+                            onClick={() => markDone(w)}
+                          >
+                            <Check className="h-4 w-4 mr-1" /> {isExtern ? "Klaar" : "Gedaan"}
                           </Button>
                         </div>
                       )}
