@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { NotificationBell } from "@/components/aftersales/NotificationBell";
+import { MobileTabBar, useMobileTabs } from "./MobileTabBar";
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
@@ -18,6 +19,8 @@ const DashboardLayout = ({
   const location = useLocation();
   const isInventory = location.pathname.startsWith("/inventory");
   const { isAftersalesManager } = useRoleAccess();
+  const mobileTabs = useMobileTabs();
+  const appShell = !!mobileTabs;
   return <div className="flex min-h-screen bg-gray-50">
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:z-40">
@@ -25,7 +28,7 @@ const DashboardLayout = ({
       </div>
 
       {/* Mobile Sidebar */}
-      {sidebarOpen && <>
+      {sidebarOpen && !appShell && <>
           <div className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 lg:hidden" onClick={() => setSidebarOpen(false)} />
           <div className="fixed inset-y-0 left-0 z-50 w-64 lg:hidden">
             <Sidebar />
@@ -36,9 +39,9 @@ const DashboardLayout = ({
       <div className="flex flex-1 flex-col lg:pl-64 px-px">
         {/* Top bar */}
         <div className="sticky top-0 z-20 flex h-12 md:h-16 shrink-0 items-center gap-x-2 md:gap-x-4 border-b border-gray-200 bg-white shadow-sm px-3 md:px-4 lg:px-6">
-          <Button variant="ghost" size="sm" className="lg:hidden h-9 w-9 p-0 touch-manipulation" onClick={() => setSidebarOpen(!sidebarOpen)}>
+          {!appShell && <Button variant="ghost" size="sm" className="lg:hidden h-9 w-9 p-0 touch-manipulation" onClick={() => setSidebarOpen(!sidebarOpen)}>
             <Menu className="h-5 w-5 md:h-6 md:w-6" />
-          </Button>
+          </Button>}
           
           <div className="flex flex-1 gap-x-2 md:gap-x-4 self-stretch lg:gap-x-6">
             <div className="flex flex-1"></div>
@@ -51,10 +54,11 @@ const DashboardLayout = ({
         </div>
         
         {/* Page content */}
-        <main className="flex-1 py-3 px-3 md:py-6 md:px-4 lg:px-6">
+        <main className={cn("flex-1 py-3 px-3 md:py-6 md:px-4 lg:px-6", appShell && "pb-[calc(72px+env(safe-area-inset-bottom))] lg:pb-6")}>
           {children}
         </main>
       </div>
+      <MobileTabBar />
     </div>;
 };
 export default DashboardLayout;
