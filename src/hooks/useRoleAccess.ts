@@ -87,7 +87,8 @@ export const useRoleAccess = () => {
 
   const hasTaskManagementAccess = () => {
     // Aftersales manager MAG taken beheren
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper' || userRole === 'aftersales_manager';
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
+      userRole === 'aftersales_manager' || userRole === 'werkplaats_chef';
   };
 
   const hasTaxatieAccess = () => {
@@ -97,7 +98,8 @@ export const useRoleAccess = () => {
 
   const canAssignTasks = () => {
     // Aftersales manager MAG taken toewijzen
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper' || userRole === 'aftersales_manager';
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
+      userRole === 'aftersales_manager' || userRole === 'werkplaats_chef';
   };
 
   const isOperationalUser = () => {
@@ -111,7 +113,8 @@ export const useRoleAccess = () => {
   const canChecklistToggle = () => {
     // Aftersales manager MAG checklist items afvinken
     return isAdmin || userRole === 'manager' || userRole === 'verkoper' || 
-           userRole === 'user' || userRole === 'operationeel' || userRole === 'aftersales_manager';
+           userRole === 'user' || userRole === 'operationeel' ||
+           userRole === 'aftersales_manager' || userRole === 'werkplaats_chef';
   };
 
   // Nieuwe functie: Aftersales manager mag GEEN voertuigen bewerken
@@ -127,7 +130,8 @@ export const useRoleAccess = () => {
 
   // Aftersales manager MAG checklisten volledig bewerken (items toevoegen, afvinken, taken toewijzen)
   const canManageChecklists = () => {
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper' || userRole === 'aftersales_manager';
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
+      userRole === 'aftersales_manager' || userRole === 'werkplaats_chef';
   };
 
   return {
