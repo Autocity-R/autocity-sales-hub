@@ -40,7 +40,7 @@ async function createJWTAssertion(header: any, payload: any, privateKey: string)
   return `${signatureInput}.${base64UrlEncode(signature)}`;
 }
 
-async function getServiceAccountToken(): Promise<{ token: string; clientEmail: string }> {
+async function getServiceAccountToken(subject: string): Promise<{ token: string; clientEmail: string }> {
   const raw = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_KEY");
   if (!raw) throw new Error("Service-account sleutel ontbreekt (GOOGLE_SERVICE_ACCOUNT_KEY).");
   let credentials: any;
@@ -53,6 +53,7 @@ async function getServiceAccountToken(): Promise<{ token: string; clientEmail: s
     { alg: "RS256", typ: "JWT", kid: credentials.private_key_id },
     {
       iss: credentials.client_email,
+      sub: subject,
       scope: "https://www.googleapis.com/auth/calendar",
       aud: "https://oauth2.googleapis.com/token",
       exp: now + 3600,
@@ -72,8 +73,8 @@ async function getServiceAccountToken(): Promise<{ token: string; clientEmail: s
 
 function friendlyGoogleError(status: number, body: any, calendarId: string): string {
   const msg = body?.error?.message || "onbekende fout";
-  if (status === 404) return `Agenda "${calendarId}" niet gevonden — is de agenda al gedeeld met het service-account?`;
-  if (status === 403) return `Geen toegang tot "${calendarId}" — deel de agenda met het service-account met rechten "Wijzigingen aanbrengen in afspraken". (${msg})`;
+  if (status === 404) return `Agenda "${calendarId}" niet gevonden — controleer of dit agenda-adres bestaat binnen auto-city.nl.`;
+  if (status === 403) return `Domeinkoppeling weigert "${calendarId}" — controleer of het een @auto-city.nl-adres is. (${msg})`;
   return `Google Agenda fout (${status}): ${msg}`;
 }
 
@@ -107,7 +108,15 @@ serve(async (req) => {
     const calendarId: string | null = body.calendar_id || settings?.calendar_id || null;
     if (!calendarId) throw new Error("Geen agenda-ID ingesteld voor de werkplaats.");
 
-    const { token, clientEmail } = await getServiceAccountToken();
+    const subject = String(calendarId).trim().toLowerCase();
+    if (!subject.endsWith("@auto-city.nl")) {
+      throw new Error("Het agenda-adres moet een @auto-city.nl-adres zijn (bijv. werkplaats@auto-city.nl).");
+    }
+    if (subject === "verkoop@auto-city.nl") {
+      throw new Error("Verkoop@auto-city.nl is niet toegestaan hier — gebruik hiervoor de verkoopagenda-koppeling.");
+    }
+
+    const { token, clientEmail } = await getServiceAccountToken(subject);
     const api = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}`;
     const authHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
