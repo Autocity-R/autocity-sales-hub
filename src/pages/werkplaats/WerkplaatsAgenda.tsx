@@ -7,6 +7,7 @@ import BranchFilter from "@/components/reports/BranchFilter";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import WerkplaatsAgendaSettingsDialog from "@/components/werkplaats/WerkplaatsAgendaSettingsDialog";
@@ -63,7 +64,8 @@ const WerkplaatsAgenda: React.FC = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { branchFilter } = useCurrentBranch();
-  const { isMonteur, canManageWorkOrders, userRole } = useRoleAccess();
+  const { isMonteur, canManageWorkOrders } = useRoleAccess();
+  const { user } = useAuth();
   const readOnly = isMonteur();
 
   const [anchor, setAnchor] = useState<Date>(new Date());
@@ -166,7 +168,7 @@ const WerkplaatsAgenda: React.FC = () => {
 
   const TodayCard: React.FC<{ w: AgendaWO }> = ({ w }) => {
     const p = w.assigned_to ? profiles.get(w.assigned_to) : undefined;
-    const mine = readOnly && !!w.assigned_to && w.assigned_to === (undefined as any);
+    const mine = readOnly && !!w.assigned_to && w.assigned_to === user?.id;
     return (
       <AsCard interactive onClick={() => openItem(w)} className={cn("p-3", mine && "ring-2 ring-blue-300")}>
         <div className="flex items-start gap-3">
@@ -216,7 +218,7 @@ const WerkplaatsAgenda: React.FC = () => {
           {w.vehicle?.brand} {w.vehicle?.model}
         </div>
         <div className="text-[10px] opacity-75 tabular-nums">
-          {format(d, "HH:mm")}–{format(addDays(d, 0).setHours(d.getHours() + DUR_HOURS) && new Date(d.getTime() + DUR_HOURS * 3600000), "HH:mm")}
+          {format(d, "HH:mm")}–{format(new Date(d.getTime() + DUR_HOURS * 3600000), "HH:mm")}
         </div>
       </button>
     );
