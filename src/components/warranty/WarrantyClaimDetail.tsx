@@ -54,6 +54,7 @@ import { WarrantyClaim, LoanCar } from "@/types/warranty";
 import { useToast } from "@/hooks/use-toast";
 import { fetchLoanCars } from "@/services/warrantyService";
 import { WarrantyScheduleAction } from "./ScheduleWarrantyWorkOrder";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface WarrantyClaimDetailProps {
   claim: WarrantyClaim;
@@ -632,6 +633,7 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
           )}
 
           {/* Acties */}
+          {canManageClaims && (
           <div className="flex gap-2 pt-4 justify-between">
             <div className="flex gap-2">
               {claim.status !== "opgelost" && (
@@ -661,6 +663,7 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
               Verwijder Claim
             </Button>
           </div>
+          )}
         </DialogContent>
       </Dialog>
 
