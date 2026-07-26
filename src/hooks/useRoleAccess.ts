@@ -19,16 +19,18 @@ export const useRoleAccess = () => {
   const isOperationeelDirecteur = () => userRole === 'operationeel_directeur';
 
   // Gebruikers met een "gesloten" werkplaats-omgeving (geen normale CRM menu's)
+  // Werkplaats_chef heeft de VOLLEDIGE operationele omgeving en is dus niet "restricted".
   const isRestrictedWorkshopUser = () => (
-    isSpuiter() || isMonteur() || isWerkplaatsChef() ||
+    isSpuiter() || isMonteur() ||
     isUitdeukerExtern() || isOperationeelDirecteur()
   );
 
   // Startroute per rol (voor auto-redirect vanuit "/")
   const getHomeRoute = (): string => {
-    if (isSpuiter() || isMonteur()) return '/werkplaats/mijn-planning';
+    if (isMonteur()) return '/werkplaats/mijn-werk';
+    if (isSpuiter()) return '/werkplaats/mijn-planning';
     if (isUitdeukerExtern()) return '/uitdeuk';
-    if (isWerkplaatsChef()) return '/werkplaats/overzicht';
+    if (isWerkplaatsChef()) return '/werkplaats';
     if (isOperationeelDirecteur()) return '/operationeel';
     if (isAftersalesManager()) return '/werkplaats';
     return '/';
@@ -40,6 +42,16 @@ export const useRoleAccess = () => {
     // Owner/admin behouden data-toegang via RLS, maar zien het menu (nog) niet.
     return userRole === 'aftersales_manager' || userRole === 'werkplaats_chef';
   };
+
+  // Mag operationele werkorders beheren (aanmaken, toewijzen, verzetten, verwijderen)
+  const canManageWorkOrders = () => (
+    isAdmin || userRole === 'manager' || userRole === 'aftersales_manager' ||
+    userRole === 'werkplaats_chef' || userRole === 'operationeel_directeur'
+  );
+
+  // Mag werkorders goedkeuren / factureren (monteur nadrukkelijk NIET)
+  const canApproveWorkOrders = () => canManageWorkOrders();
+  const canInvoiceWorkOrders = () => canManageWorkOrders();
 
   const hasReportsAccess = () => {
     // Aftersales manager mag naar rapportages (alleen Aftersales tab)
@@ -109,7 +121,8 @@ export const useRoleAccess = () => {
 
   // Aftersales manager MAG garantie claims beheren
   const hasGarantieAccess = () => {
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper' || userRole === 'aftersales_manager';
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
+      userRole === 'aftersales_manager' || userRole === 'werkplaats_chef';
   };
 
   // Aftersales manager MAG checklisten volledig bewerken (items toevoegen, afvinken, taken toewijzen)
@@ -143,6 +156,9 @@ export const useRoleAccess = () => {
     isRestrictedWorkshopUser,
     getHomeRoute,
     hasWerkplaatsAccess,
+    canManageWorkOrders,
+    canApproveWorkOrders,
+    canInvoiceWorkOrders,
     userRole,
     isAdmin
   };
