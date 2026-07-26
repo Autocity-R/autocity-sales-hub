@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
+import ChefDashboard from "./ChefDashboard";
 import { useCurrentBranch, applyBranchFilter, BRANCH_LABELS, type BranchFilter } from "@/contexts/BranchContext";
 import BranchFilter_UI from "@/components/reports/BranchFilter";
 import {
@@ -362,18 +364,21 @@ const EmptyState: React.FC<{ text: string }> = ({ text }) => (
 const WerkplaatsDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isWerkplaatsChef } = useRoleAccess();
   const { branchFilter } = useCurrentBranch();
   const [data, setData] = useState<CockpitData | null>(null);
   const [loading, setLoading] = useState(true);
+  const chef = isWerkplaatsChef();
 
   useEffect(() => {
     let cancelled = false;
+    if (chef) return;
     setLoading(true);
     loadCockpit(branchFilter)
       .then((d) => { if (!cancelled) setData(d); })
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
-  }, [branchFilter]);
+  }, [branchFilter, chef]);
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
@@ -394,6 +399,9 @@ const WerkplaatsDashboard: React.FC = () => {
   const busyCount = data ? data.wpBezig.length + data.spuitBezig.length : 0;
   const warrantyRed = data ? data.waitingThreads.filter((t) => t.severity === "red").length : 0;
   const totalOpen = data ? data.wpOpen + data.spuitOpen + data.uitdeukOpen : 0;
+
+  // Werkplaats-chef krijgt zijn eigen overzichts-cockpit
+  if (chef) return <ChefDashboard />;
 
   return (
     <DashboardLayout>
