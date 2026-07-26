@@ -123,6 +123,7 @@ const MijnWerk: React.FC = () => {
   const [rows, setRows] = useState<WorkRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [detail, setDetail] = useState<WorkRow | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -230,12 +231,14 @@ const MijnWerk: React.FC = () => {
   const onStart = async (w: WorkRow) => {
     const startedAt = new Date().toISOString();
     await patch(w.id, { status: "bezig", started_at: startedAt }, { status: "bezig", started_at: startedAt });
+    setDetail(null);
   };
 
   const onDone = async (w: WorkRow) => {
     const started = w.started_at ? new Date(w.started_at).getTime() : null;
     const workSeconds = started ? Math.max(0, Math.round((Date.now() - started) / 1000)) : null;
     setRows(prev => prev.filter(r => r.id !== w.id));
+    setDetail(null);
     const { error } = await supabase.from("work_orders").update({
       status: "afgerond",
       finished_at: new Date().toISOString(),
@@ -269,7 +272,7 @@ const MijnWerk: React.FC = () => {
           </div>
         ) : list.map(w => (
           <MijnWerkCard key={w.id} w={w} mine={!!w.assigned_to}
-            onStart={onStart} onDone={onDone} onClaim={onClaim} onRelease={onRelease} busy={busy} />
+            onStart={onStart} onDone={onDone} onClaim={onClaim} onRelease={onRelease} busy={busy} onOpen={setDetail} />
         ))}
       </div>
     </AsCard>
@@ -295,6 +298,30 @@ const MijnWerk: React.FC = () => {
               <Inbox className="h-4 w-4" />, open, false, "Geen open taken.")}
           </div>
         )}
+
+        <TaskDetailSheet
+          open={!!detail}
+          onOpenChange={(v) => !v && setDetail(null)}
+          workOrder={detail as any}
+          actions={detail ? (
+            !detail.assigned_to ? (
+              <Button onClick={() => { onClaim(detail); setDetail(null); }} disabled={busy}
+                className="h-12 w-full bg-slate-900 hover:bg-slate-800 text-white text-[15px] font-semibold">
+                <HandMetal className="h-5 w-5 mr-2" /> Oppakken
+              </Button>
+            ) : detail.status === "bezig" ? (
+              <Button onClick={() => onDone(detail)} disabled={busy}
+                className="h-12 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[15px] font-semibold">
+                <CheckCircle2 className="h-5 w-5 mr-2" /> Klaar
+              </Button>
+            ) : (
+              <Button onClick={() => onStart(detail)} disabled={busy}
+                className="h-12 w-full bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold">
+                <Play className="h-5 w-5 mr-2" /> Start
+              </Button>
+            )
+          ) : null}
+        />
       </AsPage>
     </DashboardLayout>
   );
