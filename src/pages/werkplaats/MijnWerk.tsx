@@ -12,10 +12,13 @@ import {
 import {
   Loader2, Play, CheckCircle2, Timer, Clock, HandMetal, CalendarDays, Inbox, Phone, Undo2,
 } from "lucide-react";
+import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 
 interface WorkRow {
   id: string;
   description: string | null;
+  part: string | null;
+  photos: string[] | null;
   status: string;
   planned_at: string | null;
   started_at: string | null;
@@ -25,13 +28,14 @@ interface WorkRow {
   warranty_claim_id: string | null;
   external_customer: any;
   branch: string | null;
+  vehicle_id: string | null;
   vehicle: {
     brand: string | null; model: string | null; license_number: string | null; year: number | null;
   } | null;
 }
 
 const SELECT =
-  "id, description, status, planned_at, started_at, is_rush, assigned_to, origin, warranty_claim_id, external_customer, branch, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, license_number, year)";
+  "id, description, part, photos, status, planned_at, started_at, is_rush, assigned_to, origin, warranty_claim_id, external_customer, branch, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, license_number, year)";
 
 const MijnWerkCard: React.FC<{
   w: WorkRow;
@@ -41,14 +45,18 @@ const MijnWerkCard: React.FC<{
   onClaim: (w: WorkRow) => void;
   onRelease: (w: WorkRow) => void;
   busy: boolean;
-}> = ({ w, mine, onStart, onDone, onClaim, onRelease, busy }) => {
+  onOpen?: (w: WorkRow) => void;
+}> = ({ w, mine, onStart, onDone, onClaim, onRelease, busy, onOpen }) => {
   const timer = useLiveTimer(w.status === "bezig" ? w.started_at : null);
   const ext = (w.external_customer || {}) as any;
   const isExtern = w.origin === "extern";
   const phone: string | null = ext.phone || ext.telephone || null;
 
   return (
-    <div className="bg-white rounded-[12px] border border-slate-200 shadow-sm p-4 flex flex-col gap-3">
+    <div
+      onClick={onOpen ? () => onOpen(w) : undefined}
+      className={cn("bg-white rounded-[12px] border border-slate-200 shadow-sm p-4 flex flex-col gap-3", onOpen && "cursor-pointer")}
+    >
       <div className="flex items-center gap-2 flex-wrap">
         <AsLicensePlate value={w.vehicle?.license_number} size="sm" />
         <span className="text-[15px] font-bold text-slate-900">
@@ -82,6 +90,7 @@ const MijnWerkCard: React.FC<{
         </div>
       )}
 
+      <div onClick={(e) => e.stopPropagation()} className="contents">
       {!mine ? (
         <Button onClick={() => onClaim(w)} disabled={busy}
           className="h-12 w-full bg-slate-900 hover:bg-slate-800 text-white text-[15px] font-semibold">
@@ -104,6 +113,7 @@ const MijnWerkCard: React.FC<{
           </Button>
         </div>
       )}
+      </div>
     </div>
   );
 };
