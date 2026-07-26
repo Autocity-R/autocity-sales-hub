@@ -14,7 +14,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAdmin = false 
 }) => {
   const { user, loading, isAdmin } = useAuth();
-  const { isRestrictedWorkshopUser, getHomeRoute, isWerkplaatsChef, isUitdeukerExtern } = useRoleAccess();
+  const { isRestrictedWorkshopUser, getHomeRoute, isWerkplaatsChef, isUitdeukerExtern, isSchadeherstel } = useRoleAccess();
   const location = useLocation();
 
   if (loading) {
@@ -33,6 +33,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (isUitdeukerExtern()) {
     if (location.pathname !== '/werkplaats/uitdeuken') {
       return <Navigate to="/werkplaats/uitdeuken" replace />;
+    }
+    return <>{children}</>;
+  }
+
+  // Schadeherstel: uitsluitend zijn eigen scherm
+  if (isSchadeherstel()) {
+    if (location.pathname !== '/werkplaats/schadeherstel') {
+      return <Navigate to="/werkplaats/schadeherstel" replace />;
     }
     return <>{children}</>;
   }

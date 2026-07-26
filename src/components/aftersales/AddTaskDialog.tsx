@@ -51,7 +51,7 @@ const DISCIPLINE_META: Record<WorkOrderDiscipline, {
     icon: <PaintBucket className="h-4 w-4" />,
     accent: "text-orange-600",
     bar: "bg-orange-50 border-orange-200",
-    roles: ["spuiter"],
+    roles: ["schadeherstel"],
     needsDiagram: true,
     multiZone: false,
     showPhotos: true,

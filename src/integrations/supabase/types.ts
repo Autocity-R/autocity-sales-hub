@@ -5135,7 +5135,7 @@ export type Database = {
         | "operationeel"
         | "user"
         | "aftersales_manager"
-        | "spuiter"
+        | "schadeherstel"
         | "monteur"
         | "werkplaats_chef"
         | "uitdeuker_extern"
@@ -5275,7 +5275,7 @@ export const Constants = {
         "operationeel",
         "user",
         "aftersales_manager",
-        "spuiter",
+        "schadeherstel",
         "monteur",
         "werkplaats_chef",
         "uitdeuker_extern",

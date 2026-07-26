@@ -12,7 +12,7 @@ export const useRoleAccess = () => {
   };
 
   // Werkplaats/operationeel rollen
-  const isSpuiter = () => userRole === 'spuiter';
+  const isSchadeherstel = () => userRole === 'schadeherstel';
   const isMonteur = () => userRole === 'monteur';
   const isWerkplaatsChef = () => userRole === 'werkplaats_chef';
   const isUitdeukerExtern = () => userRole === 'uitdeuker_extern';
@@ -21,14 +21,14 @@ export const useRoleAccess = () => {
   // Gebruikers met een "gesloten" werkplaats-omgeving (geen normale CRM menu's)
   // Werkplaats_chef heeft de VOLLEDIGE operationele omgeving en is dus niet "restricted".
   const isRestrictedWorkshopUser = () => (
-    isSpuiter() || isMonteur() ||
+    isSchadeherstel() || isMonteur() ||
     isUitdeukerExtern() || isOperationeelDirecteur()
   );
 
   // Startroute per rol (voor auto-redirect vanuit "/")
   const getHomeRoute = (): string => {
     if (isMonteur()) return '/werkplaats/mijn-werk';
-    if (isSpuiter()) return '/werkplaats/mijn-planning';
+    if (isSchadeherstel()) return '/werkplaats/schadeherstel';
     if (isUitdeukerExtern()) return '/werkplaats/uitdeuken';
     if (isWerkplaatsChef()) return '/werkplaats';
     if (isOperationeelDirecteur()) return '/operationeel';
@@ -166,7 +166,7 @@ export const useRoleAccess = () => {
     canManageWarrantyClaims,
     isAftersalesManager,
     canManageChecklists,
-    isSpuiter,
+    isSchadeherstel,
     isMonteur,
     isWerkplaatsChef,
     isUitdeukerExtern,
