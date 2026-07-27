@@ -534,7 +534,7 @@ const WerkplaatsPlanning: React.FC = () => {
         </div>
 
         {/* Taak toevoegen-balk */}
-        <AddTaskBar onCreated={load} />
+        {!readOnly && <AddTaskBar onCreated={load} />}
 
         {loading ? (
           <div className="flex items-center gap-2 text-slate-500 py-16 justify-center">
@@ -595,16 +595,18 @@ const WerkplaatsPlanning: React.FC = () => {
                           {w.is_rush && <AsPill tone="red"><Flame className="h-3 w-3" />Spoed</AsPill>}
                         </div>
                         <div className="mt-1.5 text-[12px] text-slate-700 line-clamp-3 whitespace-pre-line">{w.description}</div>
-                        <div className="mt-2 flex items-center gap-2">
-                          <Button size="sm" variant="outline" className="h-7 text-[12px]"
-                                  onClick={() => { setReschedule(w); setNewPlanned(w.planned_at ? format(new Date(w.planned_at), "yyyy-MM-dd'T'HH:mm") : ""); }}>
-                            Verzetten
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-7 text-[12px] text-slate-500 hover:text-red-600"
-                                  onClick={() => setConfirmDelete(w)}>
-                            <X className="h-3.5 w-3.5 mr-1" />Annuleren
-                          </Button>
-                        </div>
+                        {!readOnly && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <Button size="sm" variant="outline" className="h-7 text-[12px]"
+                                    onClick={() => { setReschedule(w); setNewPlanned(w.planned_at ? format(new Date(w.planned_at), "yyyy-MM-dd'T'HH:mm") : ""); }}>
+                              Verzetten
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 text-[12px] text-slate-500 hover:text-red-600"
+                                    onClick={() => setConfirmDelete(w)}>
+                              <X className="h-3.5 w-3.5 mr-1" />Annuleren
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
