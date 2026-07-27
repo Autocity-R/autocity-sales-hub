@@ -90,12 +90,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       { to: "/werkplaats/planning", label: "Planning", icon: Wrench },
       { to: "/werkplaats/agenda", label: "Agenda", icon: CalendarIcon },
       { to: "/werkplaats/facturen", label: "Facturen", icon: FileText },
-      { to: "/warranty", label: "Garantieclaims", icon: Shield },
+      { to: "/warranty", label: "Garantieclaims", icon: ShieldIcon },
       { to: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
       { to: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles },
       { to: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
       { to: "/werkplaats/onderdelen", label: "Onderdelen", icon: Package },
-      { to: "/customers", label: "Klanten", icon: Users },
+      { to: "/customers", label: "Klanten", icon: UsersIcon },
     ];
     return (
       <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
