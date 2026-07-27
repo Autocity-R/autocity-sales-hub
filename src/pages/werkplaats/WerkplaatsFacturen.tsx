@@ -107,6 +107,16 @@ const WerkplaatsFacturen: React.FC = () => {
         </div>
 
         <AsCard>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">Intern deze maand (excl. btw)</div>
+              <div className="text-lg font-semibold tabular-nums text-slate-900">{eur(monthTotals.intern)}</div>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">Extern deze maand (excl. btw)</div>
+              <div className="text-lg font-semibold tabular-nums text-slate-900">{eur(monthTotals.extern)}</div>
+            </div>
+          </div>
           <AsCardHead
             icon={<FileText className="h-4 w-4" />} tone="teal" title="Facturen"
             subtitle="Zoek op nummer, klant of kenteken" count={filtered.length}
