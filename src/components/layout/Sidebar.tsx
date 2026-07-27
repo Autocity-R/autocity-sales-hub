@@ -83,6 +83,45 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     );
   }
 
+  // Operationeel directeur: read-only directie-cockpit met inzicht-menu
+  if (isOperationeelDirecteur()) {
+    const directieItems: { to: string; label: string; icon: any }[] = [
+      { to: "/directie", label: "Directie", icon: HomeIcon },
+      { to: "/werkplaats/planning", label: "Planning", icon: Wrench },
+      { to: "/werkplaats/agenda", label: "Agenda", icon: CalendarIcon },
+      { to: "/werkplaats/facturen", label: "Facturen", icon: FileText },
+      { to: "/warranty", label: "Garantieclaims", icon: ShieldIcon },
+      { to: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
+      { to: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles },
+      { to: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
+      { to: "/werkplaats/onderdelen", label: "Onderdelen", icon: Package },
+      { to: "/customers", label: "Klanten", icon: UsersIcon },
+    ];
+    return (
+      <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
+        <ScrollArea className="flex-1 px-2 py-3">
+          <div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+            Directie · alleen-lezen
+          </div>
+          <div className="space-y-1">
+            {directieItems.map(({ to, label, icon: Icon }) => (
+              <Link key={to} to={to}>
+                <Button
+                  variant={isActive(to) ? "default" : "ghost"}
+                  className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+                  size="sm"
+                >
+                  <Icon className="mr-2 h-4 w-4" />
+                  {label}
+                </Button>
+              </Link>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+    );
+  }
+
   // Gesloten werkplaats-omgeving: alleen eigen menu-item
   if (isRestrictedWorkshopUser()) {
     const home = getHomeRoute();
