@@ -35,6 +35,7 @@ const STATUS_META: Record<Status, { label: string; tone: any; icon: any }> = {
 };
 
 const WerkplaatsOnderdelen: React.FC = () => {
+  const readOnly = useRoleAccess().isDirectieReadOnly();
   const [orders, setOrders] = useState<PartOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
