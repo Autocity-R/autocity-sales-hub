@@ -108,6 +108,7 @@ const TaskCard: React.FC<{
   onOpen: (w: WO) => void;
   onDelete?: (w: WO) => void;
 }> = ({ w, index, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete }) => {
+  const readOnly = useRoleAccess().isDirectieReadOnly();
   const live = useLiveTimer(w.status === "bezig" ? w.started_at : null);
   const navigateTo = useNavigate();
   const reason = rushReason(w);
@@ -116,10 +117,10 @@ const TaskCard: React.FC<{
 
   return (
     <div
-      draggable
-      onDragStart={() => onDragStart(w.id)}
+      draggable={!readOnly}
+      onDragStart={() => !readOnly && onDragStart(w.id)}
       onDragOver={(e) => e.preventDefault()}
-      onDrop={() => onDrop(w.id)}
+      onDrop={() => !readOnly && onDrop(w.id)}
       onClick={() => onOpen(w)}
       className={cn(
         "bg-white rounded-[12px] border border-slate-200 shadow-sm hover:shadow transition p-3 flex gap-3 items-start cursor-pointer",
@@ -184,7 +185,7 @@ const TaskCard: React.FC<{
           </div>
         )}
       </div>
-      <div className="flex flex-col gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+      <div className={cn("flex flex-col gap-1 shrink-0", readOnly && "hidden")} onClick={(e) => e.stopPropagation()}>
         <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onReorder(w.id, -1)} title="Omhoog"><ArrowUp className="h-3.5 w-3.5" /></Button>
         <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onReorder(w.id, 1)} title="Omlaag"><ArrowDown className="h-3.5 w-3.5" /></Button>
         <Button
@@ -558,7 +559,7 @@ const WerkplaatsPlanning: React.FC = () => {
                 onDragStart={setDragId}
                 onDrop={onDrop}
                 onOpen={openReport}
-                onDelete={canDelete ? (w) => setConfirmDelete(w) : undefined}
+                onDelete={canDelete && !readOnly ? (w) => setConfirmDelete(w) : undefined}
               />
             ))}
             <DoneTodayColumn items={doneToday} nameFor={nameFor} />
