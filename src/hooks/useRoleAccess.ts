@@ -33,7 +33,7 @@ export const useRoleAccess = () => {
     if (isUitdeukerExtern()) return '/werkplaats/uitdeuken';
     if (isPoetser()) return '/werkplaats/poetsen';
     if (isWerkplaatsChef()) return '/werkplaats';
-    if (isOperationeelDirecteur()) return '/directie';
+    if (isOperationeelDirecteur()) return '/operationeel';
     if (isAftersalesManager()) return '/werkplaats';
     return '/';
   };
@@ -48,11 +48,8 @@ export const useRoleAccess = () => {
   // Mag operationele werkorders beheren (aanmaken, toewijzen, verzetten, verwijderen)
   const canManageWorkOrders = () => (
     isAdmin || userRole === 'manager' || userRole === 'aftersales_manager' ||
-    userRole === 'werkplaats_chef'
+    userRole === 'werkplaats_chef' || userRole === 'operationeel_directeur'
   );
-
-  // Directie-cockpit: overal inzicht, nergens mutaties
-  const isDirectieReadOnly = () => isOperationeelDirecteur();
 
   // Mag werkorders goedkeuren / factureren (monteur nadrukkelijk NIET)
   const canApproveWorkOrders = () => canManageWorkOrders();
@@ -76,7 +73,7 @@ export const useRoleAccess = () => {
     // Aftersales manager mag GEEN klanten beheren
     // Werkplaats_chef mag klanten wél inzien (read-only, geen verkoopflows)
     return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
-      userRole === 'werkplaats_chef' || userRole === 'operationeel_directeur';
+      userRole === 'werkplaats_chef';
   };
 
   const hasAIAgentsAccess = () => {
@@ -132,8 +129,7 @@ export const useRoleAccess = () => {
   // Garantie-CLAIMS (overzicht + detail): werkplaats_chef mag hier wél bij
   const hasGarantieAccess = () => {
     return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
-      userRole === 'aftersales_manager' || userRole === 'werkplaats_chef' ||
-      userRole === 'operationeel_directeur';
+      userRole === 'aftersales_manager' || userRole === 'werkplaats_chef';
   };
 
   // Garantie-INBOX / e-mails: aftersales-werk, NIET voor de werkplaats_chef
@@ -180,7 +176,6 @@ export const useRoleAccess = () => {
     isWerkplaatsChef,
     isUitdeukerExtern,
     isOperationeelDirecteur,
-    isDirectieReadOnly,
     isRestrictedWorkshopUser,
     getHomeRoute,
     hasWerkplaatsAccess,
