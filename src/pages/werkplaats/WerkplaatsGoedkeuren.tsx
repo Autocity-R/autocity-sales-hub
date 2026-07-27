@@ -14,7 +14,7 @@ import { AsPage, AsCard, AsCardHead, AsLicensePlate } from "@/components/aftersa
 import { DamageReportDialog, DamageReportPayload } from "@/components/aftersales/DamageReportDialog";
 import { AsPill } from "@/components/aftersales/ui";
 import WorkshopInvoiceDialog from "@/components/werkplaats/WorkshopInvoiceDialog";
-import { InvoiceDraft } from "@/services/workshopInvoiceService";
+import { InvoiceDraft, dispatchPendingInternalInvoices } from "@/services/workshopInvoiceService";
 import { FileText } from "lucide-react";
 
 interface WO {
@@ -102,6 +102,12 @@ const WerkplaatsGoedkeuren: React.FC = () => {
         }
       }
       if (isExtern(w)) setInvoice(invoiceDraftFor(w));
+      // interne facturatie tussen de BV's: de DB maakt de factuur aan, hier alleen PDF + mail
+      if (!isExtern(w) && ["werkplaats", "spuit"].includes(w.discipline)) {
+        dispatchPendingInternalInvoices()
+          .then((n) => { if (n > 0) toast({ title: "Interne factuur verstuurd naar administratie" }); })
+          .catch(() => toast({ title: "Interne factuur staat klaar als concept", description: "Mailen is niet gelukt, probeer het later opnieuw vanuit Facturen." }));
+      }
       load();
     }
   };
