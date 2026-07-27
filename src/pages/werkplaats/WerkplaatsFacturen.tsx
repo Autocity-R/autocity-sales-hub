@@ -7,12 +7,15 @@ import { Button } from "@/components/ui/button";
 import { FileText, Loader2, Search, ExternalLink, Send, Pencil } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import WorkshopInvoiceDialog from "@/components/werkplaats/WorkshopInvoiceDialog";
-import { eur, getInvoiceSignedUrl, getInvoicePdfBase64, queueInvoiceEmail, InvoiceDraft } from "@/services/workshopInvoiceService";
+import {
+  eur, getInvoiceSignedUrl, getInvoicePdfBase64, queueInvoiceEmail, InvoiceDraft,
+  dispatchPendingInternalInvoices, resendInternalInvoice,
+} from "@/services/workshopInvoiceService";
 
 interface InvoiceRow {
   id: string; invoice_number: string | null; created_at: string; status: string;
   customer: any; vehicle: any; lines: any; total: number; pdf_path: string | null; branch: string | null;
-  work_order_id: string | null;
+  work_order_id: string | null; invoice_kind: string | null; subtotal: number | null;
 }
 
 const WerkplaatsFacturen: React.FC = () => {
@@ -20,28 +23,49 @@ const WerkplaatsFacturen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [edit, setEdit] = useState<InvoiceDraft | null>(null);
+  const [tab, setTab] = useState<"intern" | "extern">("extern");
 
   const load = async () => {
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from("workshop_invoices")
-      .select("id, invoice_number, created_at, status, customer, vehicle, lines, total, pdf_path, branch, work_order_id")
+      .select("id, invoice_number, created_at, status, customer, vehicle, lines, total, subtotal, pdf_path, branch, work_order_id, invoice_kind")
       .order("created_at", { ascending: false })
       .limit(300);
     if (error) toast({ title: "Fout", description: error.message, variant: "destructive" });
     setRows((data as any) || []);
     setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    (async () => {
+      await load();
+      // openstaande interne facturen alsnog van PDF voorzien en mailen
+      const n = await dispatchPendingInternalInvoices();
+      if (n > 0) { toast({ title: `${n} interne factuur/facturen verstuurd` }); load(); }
+    })();
+  }, []);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    if (!s) return rows;
-    return rows.filter((r) =>
+    const base = rows.filter((r) => (r.invoice_kind === "intern" ? "intern" : "extern") === tab);
+    if (!s) return base;
+    return base.filter((r) =>
       [r.invoice_number, r.customer?.name, r.vehicle?.license_number, r.vehicle?.brand, r.vehicle?.model]
         .filter(Boolean).some((v: string) => String(v).toLowerCase().includes(s)),
     );
-  }, [rows, q]);
+  }, [rows, q, tab]);
+
+  const monthTotals = useMemo(() => {
+    const now = new Date();
+    const inMonth = (d: string) => {
+      const dt = new Date(d);
+      return dt.getMonth() === now.getMonth() && dt.getFullYear() === now.getFullYear();
+    };
+    const sum = (kind: string) => rows
+      .filter((r) => inMonth(r.created_at) && (r.invoice_kind === "intern" ? "intern" : "extern") === kind)
+      .reduce((s, r) => s + (Number(r.subtotal) || 0), 0);
+    return { intern: sum("intern"), extern: sum("extern") };
+  }, [rows]);
 
   const openPdf = async (r: InvoiceRow) => {
     if (!r.pdf_path) { toast({ title: "Geen PDF beschikbaar", description: "Deze factuur is nog een concept." }); return; }
@@ -52,6 +76,11 @@ const WerkplaatsFacturen: React.FC = () => {
 
   const resend = async (r: InvoiceRow) => {
     try {
+      if (r.invoice_kind === "intern") {
+        await resendInternalInvoice(r as any);
+        toast({ title: "Interne factuur opnieuw in de mailwachtrij geplaatst" });
+        return;
+      }
       const pdfBase64 = r.pdf_path ? await getInvoicePdfBase64(r.pdf_path) : null;
       if (!pdfBase64) { toast({ title: "Geen PDF beschikbaar", description: "Deze factuur heeft nog geen opgeslagen PDF.", variant: "destructive" }); return; }
       await queueInvoiceEmail({
@@ -77,15 +106,30 @@ const WerkplaatsFacturen: React.FC = () => {
           </div>
         </div>
 
+        <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">Intern deze maand (excl. btw)</div>
+              <div className="text-lg font-semibold tabular-nums text-slate-900">{eur(monthTotals.intern)}</div>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">Extern deze maand (excl. btw)</div>
+              <div className="text-lg font-semibold tabular-nums text-slate-900">{eur(monthTotals.extern)}</div>
+            </div>
+        </div>
+
         <AsCard>
           <AsCardHead
             icon={<FileText className="h-4 w-4" />} tone="teal" title="Facturen"
             subtitle="Zoek op nummer, klant of kenteken" count={filtered.length}
           />
-          <div className="p-4 border-b border-slate-100">
+          <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center gap-3 justify-between">
             <div className="relative max-w-sm">
               <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <Input className="pl-8" placeholder="Zoeken…" value={q} onChange={(e) => setQ(e.target.value)} />
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant={tab === "extern" ? "default" : "outline"} onClick={() => setTab("extern")}>Extern</Button>
+              <Button size="sm" variant={tab === "intern" ? "default" : "outline"} onClick={() => setTab("intern")}>Intern</Button>
             </div>
           </div>
 
