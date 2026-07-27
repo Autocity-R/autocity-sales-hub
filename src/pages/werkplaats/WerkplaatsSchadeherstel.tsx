@@ -43,6 +43,7 @@ const Card: React.FC<{
   onDone: (w: WO) => void;
   onOpen?: (w: WO) => void;
 }> = ({ w, names, myId, onStart, onDone, onOpen }) => {
+  const readOnly = useRoleAccess().isDirectieReadOnly();
   const v = w.vehicle;
   const done = w.status === "afgerond";
   const busy = w.status === "bezig";
@@ -100,7 +101,7 @@ const Card: React.FC<{
             </div>
           )}
 
-          {!done && !useRoleAccess().isDirectieReadOnly() && (
+          {!done && !readOnly && (
             <div className="mt-4" onClick={(e) => e.stopPropagation()}>
               {!busy ? (
                 <Button
@@ -128,6 +129,7 @@ const Card: React.FC<{
 };
 
 const WerkplaatsSchadeherstel: React.FC = () => {
+  const readOnly = useRoleAccess().isDirectieReadOnly();
   const [rows, setRows] = useState<WO[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [myId, setMyId] = useState<string | null>(null);
