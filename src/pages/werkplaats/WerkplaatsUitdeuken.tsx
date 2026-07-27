@@ -22,9 +22,8 @@ interface WO {
 
 const WerkplaatsUitdeuken: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
-  const { isUitdeukerExtern, isDirectieReadOnly } = useRoleAccess();
+  const { isUitdeukerExtern } = useRoleAccess();
   const isExtern = isUitdeukerExtern();
-  const readOnly = isDirectieReadOnly();
   const [rows, setRows] = useState<WO[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<WO | null>(null);
@@ -144,7 +143,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
                         </div>
                       )}
 
-                      {!done && !readOnly && (
+                      {!done && (
                         <div className="flex items-center gap-2 mt-4" onClick={(e) => e.stopPropagation()}>
                           <Button
                             size={isExtern ? "lg" : "sm"}
@@ -166,7 +165,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
           open={!!detail}
           onOpenChange={(v) => !v && setDetail(null)}
           workOrder={detail as TaskDetailWorkOrder | null}
-          actions={detail && !readOnly && !(isExtern ? detail.status === "afgerond" : detail.status === "goedgekeurd") ? (
+          actions={detail && !(isExtern ? detail.status === "afgerond" : detail.status === "goedgekeurd") ? (
             <Button
               size="lg"
               className="w-full h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"

@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import BranchFilter from "@/components/reports/BranchFilter";
 import { AddWorkOrderDialog } from "@/components/werkplaats/AddWorkOrderDialog";
@@ -29,7 +28,6 @@ interface Row {
 }
 
 const WerkplaatsAutos: React.FC = () => {
-  const readOnly = useRoleAccess().isDirectieReadOnly();
   const [params, setParams] = useSearchParams();
   const initial = (params.get("tab") as TabKey) || "voorraad";
   const [tab, setTab] = useState<TabKey>(initial);
@@ -137,11 +135,9 @@ const WerkplaatsAutos: React.FC = () => {
                     </Badge>
                   ))}
                 </div>
-                {!readOnly && (
-                  <Button size="sm" onClick={() => setAddFor(v)}>
-                    <Plus className="h-4 w-4 mr-1" /> Taak toewijzen
-                  </Button>
-                )}
+                <Button size="sm" onClick={() => setAddFor(v)}>
+                  <Plus className="h-4 w-4 mr-1" /> Taak toewijzen
+                </Button>
               </CardContent>
             </Card>
           ))}

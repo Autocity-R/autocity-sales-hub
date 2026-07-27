@@ -56,7 +56,6 @@ const MijnWerk = lazy(() => import("@/pages/werkplaats/MijnWerk"));
 const UitdeukHome = lazy(() => import("@/pages/werkplaats/UitdeukHome"));
 const WerkplaatsOverzicht = lazy(() => import("@/pages/werkplaats/WerkplaatsOverzicht"));
 const OperationeelHome = lazy(() => import("@/pages/werkplaats/OperationeelHome"));
-const DirectieDashboard = lazy(() => import("@/pages/directie/DirectieDashboard"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -238,7 +237,6 @@ function App() {
         <Route path="/uitdeuk" element={<ProtectedRoute><UitdeukHome /></ProtectedRoute>} />
         <Route path="/werkplaats/overzicht" element={<ProtectedRoute><WerkplaatsOverzicht /></ProtectedRoute>} />
         <Route path="/operationeel" element={<ProtectedRoute><OperationeelHome /></ProtectedRoute>} />
-        <Route path="/directie" element={<ProtectedRoute><DirectieDashboard /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
