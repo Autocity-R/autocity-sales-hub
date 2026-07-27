@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { differenceInDays } from "date-fns";
 import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono, useLiveTimer } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 
 interface WO {
@@ -42,6 +43,7 @@ const Card: React.FC<{
   onDone: (w: WO) => void;
   onOpen?: (w: WO) => void;
 }> = ({ w, names, myId, onStart, onDone, onOpen }) => {
+  const readOnly = useRoleAccess().isDirectieReadOnly();
   const v = w.vehicle;
   const done = w.status === "afgerond";
   const busy = w.status === "bezig";
@@ -99,7 +101,7 @@ const Card: React.FC<{
             </div>
           )}
 
-          {!done && (
+          {!done && !readOnly && (
             <div className="mt-4" onClick={(e) => e.stopPropagation()}>
               {!busy ? (
                 <Button
@@ -127,6 +129,7 @@ const Card: React.FC<{
 };
 
 const WerkplaatsSchadeherstel: React.FC = () => {
+  const readOnly = useRoleAccess().isDirectieReadOnly();
   const [rows, setRows] = useState<WO[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [myId, setMyId] = useState<string | null>(null);
@@ -226,7 +229,7 @@ const WerkplaatsSchadeherstel: React.FC = () => {
           open={!!detail}
           onOpenChange={(v) => !v && setDetail(null)}
           workOrder={detail as any}
-          actions={detail && detail.status !== "afgerond" ? (
+          actions={detail && !readOnly && detail.status !== "afgerond" ? (
             detail.status !== "bezig" ? (
               <Button size="lg" className="w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white"
                 onClick={() => handleStart(detail)}>

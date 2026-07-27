@@ -15,7 +15,7 @@ export type MobileTab = { url: string; label: string; icon: any; exact?: boolean
 /** Bepaalt of de ingelogde rol de mobiele app-shell (onderbalk) krijgt. */
 export const useMobileTabs = (): { tabs: MobileTab[]; more: MobileTab[] } | null => {
   const {
-    isMonteur, isSchadeherstel, isUitdeukerExtern, isPoetser, isWerkplaatsChef,
+    isMonteur, isSchadeherstel, isUitdeukerExtern, isPoetser, isWerkplaatsChef, isOperationeelDirecteur,
   } = useRoleAccess();
 
   if (isMonteur()) {
@@ -35,6 +35,26 @@ export const useMobileTabs = (): { tabs: MobileTab[]; more: MobileTab[] } | null
   }
   if (isPoetser()) {
     return { tabs: [{ url: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles }], more: [] };
+  }
+  if (isOperationeelDirecteur()) {
+    return {
+      tabs: [
+        { url: "/directie", label: "Directie", icon: Home, exact: true },
+        { url: "/werkplaats/planning", label: "Planning", icon: GanttChartIcon },
+        { url: "/werkplaats/facturen", label: "Facturen", icon: FileText },
+        { url: "/warranty", label: "Garantie", icon: ShieldIcon },
+      ],
+      more: [
+        { url: "/werkplaats/agenda", label: "Werkplaats agenda", icon: CalendarDays },
+        { url: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
+        { url: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles },
+        { url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
+        { url: "/werkplaats/onderdelen", label: "Onderdelen", icon: Package },
+        { url: "/werkplaats/autos", label: "Auto's", icon: CarIcon },
+        { url: "/customers", label: "Klanten", icon: Users, exact: true },
+        { url: "/inventory/consumer", label: "Verkocht B2C", icon: Flag },
+      ],
+    };
   }
   if (isWerkplaatsChef()) {
     return {

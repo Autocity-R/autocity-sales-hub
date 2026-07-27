@@ -108,6 +108,7 @@ const TaskCard: React.FC<{
   onOpen: (w: WO) => void;
   onDelete?: (w: WO) => void;
 }> = ({ w, index, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete }) => {
+  const readOnly = useRoleAccess().isDirectieReadOnly();
   const live = useLiveTimer(w.status === "bezig" ? w.started_at : null);
   const navigateTo = useNavigate();
   const reason = rushReason(w);
@@ -116,10 +117,10 @@ const TaskCard: React.FC<{
 
   return (
     <div
-      draggable
-      onDragStart={() => onDragStart(w.id)}
+      draggable={!readOnly}
+      onDragStart={() => !readOnly && onDragStart(w.id)}
       onDragOver={(e) => e.preventDefault()}
-      onDrop={() => onDrop(w.id)}
+      onDrop={() => !readOnly && onDrop(w.id)}
       onClick={() => onOpen(w)}
       className={cn(
         "bg-white rounded-[12px] border border-slate-200 shadow-sm hover:shadow transition p-3 flex gap-3 items-start cursor-pointer",
@@ -184,7 +185,7 @@ const TaskCard: React.FC<{
           </div>
         )}
       </div>
-      <div className="flex flex-col gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+      <div className={cn("flex flex-col gap-1 shrink-0", readOnly && "hidden")} onClick={(e) => e.stopPropagation()}>
         <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onReorder(w.id, -1)} title="Omhoog"><ArrowUp className="h-3.5 w-3.5" /></Button>
         <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onReorder(w.id, 1)} title="Omlaag"><ArrowDown className="h-3.5 w-3.5" /></Button>
         <Button
@@ -294,7 +295,8 @@ const DoneTodayColumn: React.FC<{ items: WO[]; nameFor: (uid: string | null) => 
 const WerkplaatsPlanning: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
   const navigate = useNavigate();
-  const { canManageWorkOrders } = useRoleAccess();
+  const { canManageWorkOrders, isDirectieReadOnly } = useRoleAccess();
+  const readOnly = isDirectieReadOnly();
   const canDelete = canManageWorkOrders();
   const [discipline, setDiscipline] = useState<Discipline>("werkplaats");
   const [rows, setRows] = useState<WO[]>([]);
@@ -533,7 +535,7 @@ const WerkplaatsPlanning: React.FC = () => {
         </div>
 
         {/* Taak toevoegen-balk */}
-        <AddTaskBar onCreated={load} />
+        {!readOnly && <AddTaskBar onCreated={load} />}
 
         {loading ? (
           <div className="flex items-center gap-2 text-slate-500 py-16 justify-center">
@@ -557,7 +559,7 @@ const WerkplaatsPlanning: React.FC = () => {
                 onDragStart={setDragId}
                 onDrop={onDrop}
                 onOpen={openReport}
-                onDelete={canDelete ? (w) => setConfirmDelete(w) : undefined}
+                onDelete={canDelete && !readOnly ? (w) => setConfirmDelete(w) : undefined}
               />
             ))}
             <DoneTodayColumn items={doneToday} nameFor={nameFor} />
@@ -594,16 +596,18 @@ const WerkplaatsPlanning: React.FC = () => {
                           {w.is_rush && <AsPill tone="red"><Flame className="h-3 w-3" />Spoed</AsPill>}
                         </div>
                         <div className="mt-1.5 text-[12px] text-slate-700 line-clamp-3 whitespace-pre-line">{w.description}</div>
-                        <div className="mt-2 flex items-center gap-2">
-                          <Button size="sm" variant="outline" className="h-7 text-[12px]"
-                                  onClick={() => { setReschedule(w); setNewPlanned(w.planned_at ? format(new Date(w.planned_at), "yyyy-MM-dd'T'HH:mm") : ""); }}>
-                            Verzetten
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-7 text-[12px] text-slate-500 hover:text-red-600"
-                                  onClick={() => setConfirmDelete(w)}>
-                            <X className="h-3.5 w-3.5 mr-1" />Annuleren
-                          </Button>
-                        </div>
+                        {!readOnly && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <Button size="sm" variant="outline" className="h-7 text-[12px]"
+                                    onClick={() => { setReschedule(w); setNewPlanned(w.planned_at ? format(new Date(w.planned_at), "yyyy-MM-dd'T'HH:mm") : ""); }}>
+                              Verzetten
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 text-[12px] text-slate-500 hover:text-red-600"
+                                    onClick={() => setConfirmDelete(w)}>
+                              <X className="h-3.5 w-3.5 mr-1" />Annuleren
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

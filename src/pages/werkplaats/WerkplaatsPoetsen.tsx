@@ -11,6 +11,7 @@ import { AsPage, AsCard, AsCardHead, AsLicensePlate, AsMono, useLiveTimer } from
 import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { Play, Timer } from "lucide-react";
 
 interface PoetsWO {
@@ -49,6 +50,8 @@ const PoetsCard: React.FC<{
   showDeadline: boolean;
   onOpen?: (w: PoetsWO) => void;
 }> = ({ w, onStart, onDone, showDeadline, onOpen }) => {
+  const { isDirectieReadOnly } = useRoleAccess();
+  const readOnly = isDirectieReadOnly();
   const tone = deadlineTone(w.due_date);
   const timer = useLiveTimer(w.status === "bezig" ? w.started_at : null);
   const toneCls =
@@ -85,7 +88,7 @@ const PoetsCard: React.FC<{
         </div>
       )}
       <div onClick={(e) => e.stopPropagation()} className="contents">
-      {w.status === "ingepland" ? (
+      {readOnly ? null : w.status === "ingepland" ? (
         <Button
           onClick={() => onStart(w)}
           className="h-12 w-full bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold"
@@ -106,6 +109,8 @@ const PoetsCard: React.FC<{
 };
 
 const WerkplaatsPoetsen: React.FC = () => {
+  const { isDirectieReadOnly } = useRoleAccess();
+  const readOnly = isDirectieReadOnly();
   const { branchFilter } = useCurrentBranch();
   const [rows, setRows] = useState<PoetsWO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -234,7 +239,7 @@ const WerkplaatsPoetsen: React.FC = () => {
           open={!!detail}
           onOpenChange={(v) => !v && setDetail(null)}
           workOrder={detail as any}
-          actions={detail ? (
+          actions={detail && !readOnly ? (
             detail.status === "ingepland" ? (
               <Button onClick={() => { markStarted(detail); setDetail(null); }}
                 className="h-12 w-full bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold">
