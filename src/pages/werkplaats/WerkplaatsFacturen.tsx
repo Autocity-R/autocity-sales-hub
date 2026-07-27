@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { AsPage, AsCard, AsCardHead, AsLicensePlate, AsPill } from "@/components/aftersales/ui";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ interface InvoiceRow {
 }
 
 const WerkplaatsFacturen: React.FC = () => {
+  const readOnly = useRoleAccess().isDirectieReadOnly();
   const [rows, setRows] = useState<InvoiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -155,9 +157,9 @@ const WerkplaatsFacturen: React.FC = () => {
                     {r.status === "verstuurd" ? (
                       <>
                         <Button size="sm" variant="outline" onClick={() => openPdf(r)}><ExternalLink className="h-3.5 w-3.5 mr-1" />PDF</Button>
-                        <Button size="sm" variant="ghost" onClick={() => resend(r)}><Send className="h-3.5 w-3.5 mr-1" />Mailen</Button>
+                        {!readOnly && <Button size="sm" variant="ghost" onClick={() => resend(r)}><Send className="h-3.5 w-3.5 mr-1" />Mailen</Button>}
                       </>
-                    ) : (
+                    ) : readOnly ? null : (
                       <Button size="sm" variant="outline" onClick={() => setEdit({
                         id: r.id, work_order_id: r.work_order_id, invoice_number: null, branch: r.branch,
                         customer: r.customer || { name: "" }, vehicle: r.vehicle || {},
