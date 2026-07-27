@@ -5061,6 +5061,10 @@ export type Database = {
         Returns: boolean
       }
       current_user_branch: { Args: never; Returns: string }
+      ensure_showroom_poets_order: {
+        Args: { _vehicle_id: string }
+        Returns: string
+      }
       get_contract_by_token: { Args: { _token: string }; Returns: Json }
       get_valid_exact_online_token: {
         Args: { user_uuid: string }
