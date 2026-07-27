@@ -41,11 +41,12 @@ const WerkplaatsFacturen: React.FC = () => {
   useEffect(() => {
     (async () => {
       await load();
+      if (readOnly) return; // directie: alleen-lezen, geen automatische verzending
       // openstaande interne facturen alsnog van PDF voorzien en mailen
       const n = await dispatchPendingInternalInvoices();
       if (n > 0) { toast({ title: `${n} interne factuur/facturen verstuurd` }); load(); }
     })();
-  }, []);
+  }, [readOnly]);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();

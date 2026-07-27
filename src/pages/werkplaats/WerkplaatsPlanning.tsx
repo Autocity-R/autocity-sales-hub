@@ -294,7 +294,8 @@ const DoneTodayColumn: React.FC<{ items: WO[]; nameFor: (uid: string | null) => 
 const WerkplaatsPlanning: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
   const navigate = useNavigate();
-  const { canManageWorkOrders } = useRoleAccess();
+  const { canManageWorkOrders, isDirectieReadOnly } = useRoleAccess();
+  const readOnly = isDirectieReadOnly();
   const canDelete = canManageWorkOrders();
   const [discipline, setDiscipline] = useState<Discipline>("werkplaats");
   const [rows, setRows] = useState<WO[]>([]);
