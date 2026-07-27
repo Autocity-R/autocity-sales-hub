@@ -284,3 +284,135 @@ export const getInvoiceSignedUrl = async (path: string): Promise<string | null> 
   const { data } = await supabase.storage.from("workshop-invoices").createSignedUrl(path, 3600);
   return data?.signedUrl ?? null;
 };
+
+/* ------------------------------------------------------------------ */
+/*  Interne facturatie tussen de BV's (Repairs -> Automotive Group)    */
+/* ------------------------------------------------------------------ */
+
+export const INTERNAL_INVOICE_RECIPIENT = "administratie@auto-city.nl";
+
+/** Mailt één interne factuur (PDF als base64-bijlage) naar de administratie. */
+export const queueInternalInvoiceEmail = async (p: {
+  invoiceNumber: string;
+  plate: string;
+  lines: InvoiceLine[];
+  total: number;
+  pdfBase64: string;
+}) => {
+  const rows = p.lines
+    .map(
+      (l) =>
+        `<tr><td style="padding:5px 0;color:#6b7280">${esc(l.description)}</td><td style="padding:5px 0;text-align:right">${eur(l.amount)}</td></tr>`,
+    )
+    .join("");
+
+  const htmlBody = `<div style="font-family:Arial,Helvetica,sans-serif;background:#f4f6f9;padding:24px">
+    <div style="max-width:600px;margin:0 auto;background:#fff;border:1px solid #e6e8ec;border-radius:10px;overflow:hidden">
+      <div style="background:#111827;color:#fff;padding:16px 20px;font-size:15px;font-weight:700">${COMPANY.name}</div>
+      <div style="padding:20px;font-size:13.5px;color:#111827;line-height:1.7">
+        <p style="margin:0 0 12px">Interne factuur aan Autocity Automotive Group B.V.</p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <tr><td style="padding:5px 0;color:#6b7280">Factuurnummer</td><td style="padding:5px 0;text-align:right"><strong>${esc(p.invoiceNumber)}</strong></td></tr>
+          <tr><td style="padding:5px 0;color:#6b7280">Kenteken</td><td style="padding:5px 0;text-align:right">${esc(p.plate)}</td></tr>
+          ${rows}
+          <tr><td style="padding:8px 0;color:#6b7280;border-top:1px solid #e6e8ec">Totaal incl. btw</td><td style="padding:8px 0;text-align:right;border-top:1px solid #e6e8ec"><strong>${eur(p.total)}</strong></td></tr>
+        </table>
+        <p style="margin:16px 0 0;color:#4b5563">De factuur is als PDF bijgevoegd.</p>
+      </div>
+      <div style="padding:12px 20px;background:#f7f8fa;border-top:1px solid #e6e8ec;font-size:11px;color:#6b7280;text-align:center">
+        ${COMPANY.name} · ${COMPANY.address}, ${COMPANY.city} · IBAN ${COMPANY.iban}
+      </div>
+    </div>
+  </div>`;
+
+  const { error } = await (supabase as any).from("email_queue").insert({
+    status: "pending",
+    attempts: 0,
+    template_id: "workshop_invoice_intern",
+    payload: {
+      senderEmail: "werkplaats@auto-city.nl",
+      to: [INTERNAL_INVOICE_RECIPIENT],
+      subject: `Interne factuur ${p.invoiceNumber} — ${p.plate}`,
+      htmlBody,
+      attachments: [
+        { filename: `${p.invoiceNumber}.pdf`, content: p.pdfBase64, base64Content: p.pdfBase64 },
+      ],
+    },
+  });
+  if (error) throw error;
+};
+
+/**
+ * Verwerkt alle interne facturen die nog niet verstuurd zijn: PDF genereren,
+ * opslaan in de bucket en mailen naar de administratie. Volledig idempotent —
+ * mislukt het mailen, dan blijft de factuur als concept staan.
+ */
+export const dispatchPendingInternalInvoices = async (): Promise<number> => {
+  const { data, error } = await (supabase as any)
+    .from("workshop_invoices")
+    .select("id, invoice_number, customer, vehicle, lines, total, branch, created_at")
+    .eq("invoice_kind", "intern")
+    .eq("status", "concept")
+    .order("created_at", { ascending: true })
+    .limit(20);
+  if (error || !data?.length) return 0;
+
+  let sent = 0;
+  for (const inv of data as any[]) {
+    try {
+      const lines: InvoiceLine[] = Array.isArray(inv.lines) ? inv.lines : [];
+      const html = renderInvoiceHtml({
+        invoice_number: inv.invoice_number,
+        invoice_date: new Date(inv.created_at).toLocaleDateString("nl-NL"),
+        customer: inv.customer || { name: "Autocity Automotive Group B.V." },
+        vehicle: inv.vehicle || {},
+        lines,
+        branch: inv.branch,
+      });
+      const blob = await generatePdfFromHtml(html);
+      const pdfPath = `${inv.invoice_number}.pdf`;
+      const { error: upErr } = await supabase.storage
+        .from("workshop-invoices")
+        .upload(pdfPath, blob, { contentType: "application/pdf", upsert: true });
+      if (upErr) throw upErr;
+      const pdfBase64 = await blobToBase64(blob);
+
+      await queueInternalInvoiceEmail({
+        invoiceNumber: inv.invoice_number,
+        plate: inv.vehicle?.license_number || "",
+        lines,
+        total: Number(inv.total) || 0,
+        pdfBase64,
+      });
+
+      await (supabase as any)
+        .from("workshop_invoices")
+        .update({ status: "verstuurd", pdf_path: pdfPath, sent_at: new Date().toISOString() })
+        .eq("id", inv.id);
+      sent += 1;
+    } catch (e) {
+      console.error("Interne factuur versturen mislukt", inv.invoice_number, e);
+    }
+  }
+  return sent;
+};
+
+/** Mailt een reeds verstuurde interne factuur opnieuw. */
+export const resendInternalInvoice = async (inv: {
+  invoice_number: string | null;
+  pdf_path: string | null;
+  vehicle: any;
+  lines: any;
+  total: number;
+}) => {
+  if (!inv.pdf_path || !inv.invoice_number) throw new Error("Geen PDF beschikbaar");
+  const pdfBase64 = await getInvoicePdfBase64(inv.pdf_path);
+  if (!pdfBase64) throw new Error("Geen PDF beschikbaar");
+  await queueInternalInvoiceEmail({
+    invoiceNumber: inv.invoice_number,
+    plate: inv.vehicle?.license_number || "",
+    lines: Array.isArray(inv.lines) ? inv.lines : [],
+    total: Number(inv.total) || 0,
+    pdfBase64,
+  });
+};
