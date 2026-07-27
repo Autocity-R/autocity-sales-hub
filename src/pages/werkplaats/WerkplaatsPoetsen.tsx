@@ -50,6 +50,8 @@ const PoetsCard: React.FC<{
   showDeadline: boolean;
   onOpen?: (w: PoetsWO) => void;
 }> = ({ w, onStart, onDone, showDeadline, onOpen }) => {
+  const { isDirectieReadOnly } = useRoleAccess();
+  const readOnly = isDirectieReadOnly();
   const tone = deadlineTone(w.due_date);
   const timer = useLiveTimer(w.status === "bezig" ? w.started_at : null);
   const toneCls =
@@ -107,6 +109,8 @@ const PoetsCard: React.FC<{
 };
 
 const WerkplaatsPoetsen: React.FC = () => {
+  const { isDirectieReadOnly } = useRoleAccess();
+  const readOnly = isDirectieReadOnly();
   const { branchFilter } = useCurrentBranch();
   const [rows, setRows] = useState<PoetsWO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -235,7 +239,7 @@ const WerkplaatsPoetsen: React.FC = () => {
           open={!!detail}
           onOpenChange={(v) => !v && setDetail(null)}
           workOrder={detail as any}
-          actions={detail ? (
+          actions={detail && !readOnly ? (
             detail.status === "ingepland" ? (
               <Button onClick={() => { markStarted(detail); setDetail(null); }}
                 className="h-12 w-full bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold">
