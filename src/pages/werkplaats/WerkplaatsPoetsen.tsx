@@ -11,6 +11,7 @@ import { AsPage, AsCard, AsCardHead, AsLicensePlate, AsMono, useLiveTimer } from
 import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { Play, Timer } from "lucide-react";
 
 interface PoetsWO {
@@ -85,7 +86,7 @@ const PoetsCard: React.FC<{
         </div>
       )}
       <div onClick={(e) => e.stopPropagation()} className="contents">
-      {w.status === "ingepland" ? (
+      {readOnly ? null : w.status === "ingepland" ? (
         <Button
           onClick={() => onStart(w)}
           className="h-12 w-full bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold"
