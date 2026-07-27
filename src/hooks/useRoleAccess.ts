@@ -76,7 +76,7 @@ export const useRoleAccess = () => {
     // Aftersales manager mag GEEN klanten beheren
     // Werkplaats_chef mag klanten wél inzien (read-only, geen verkoopflows)
     return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
-      userRole === 'werkplaats_chef';
+      userRole === 'werkplaats_chef' || userRole === 'operationeel_directeur';
   };
 
   const hasAIAgentsAccess = () => {
@@ -132,7 +132,8 @@ export const useRoleAccess = () => {
   // Garantie-CLAIMS (overzicht + detail): werkplaats_chef mag hier wél bij
   const hasGarantieAccess = () => {
     return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
-      userRole === 'aftersales_manager' || userRole === 'werkplaats_chef';
+      userRole === 'aftersales_manager' || userRole === 'werkplaats_chef' ||
+      userRole === 'operationeel_directeur';
   };
 
   // Garantie-INBOX / e-mails: aftersales-werk, NIET voor de werkplaats_chef
