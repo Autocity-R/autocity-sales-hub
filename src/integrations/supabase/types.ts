@@ -4958,15 +4958,18 @@ export type Database = {
           created_by: string | null
           customer: Json
           id: string
+          invoice_kind: string
           invoice_number: string
           lines: Json
           pdf_path: string | null
           sent_at: string | null
+          source_work_order_ids: Json
           status: string
           subtotal: number
           total: number
           vat: number
           vehicle: Json
+          vehicle_id: string | null
           work_order_id: string | null
         }
         Insert: {
@@ -4975,15 +4978,18 @@ export type Database = {
           created_by?: string | null
           customer: Json
           id?: string
+          invoice_kind?: string
           invoice_number: string
           lines?: Json
           pdf_path?: string | null
           sent_at?: string | null
+          source_work_order_ids?: Json
           status?: string
           subtotal?: number
           total?: number
           vat?: number
           vehicle: Json
+          vehicle_id?: string | null
           work_order_id?: string | null
         }
         Update: {
@@ -4992,15 +4998,18 @@ export type Database = {
           created_by?: string | null
           customer?: Json
           id?: string
+          invoice_kind?: string
           invoice_number?: string
           lines?: Json
           pdf_path?: string | null
           sent_at?: string | null
+          source_work_order_ids?: Json
           status?: string
           subtotal?: number
           total?: number
           vat?: number
           vehicle?: Json
+          vehicle_id?: string | null
           work_order_id?: string | null
         }
         Relationships: [
