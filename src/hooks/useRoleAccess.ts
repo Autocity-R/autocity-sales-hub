@@ -33,7 +33,7 @@ export const useRoleAccess = () => {
     if (isUitdeukerExtern()) return '/werkplaats/uitdeuken';
     if (isPoetser()) return '/werkplaats/poetsen';
     if (isWerkplaatsChef()) return '/werkplaats';
-    if (isOperationeelDirecteur()) return '/operationeel';
+    if (isOperationeelDirecteur()) return '/directie';
     if (isAftersalesManager()) return '/werkplaats';
     return '/';
   };
@@ -48,8 +48,11 @@ export const useRoleAccess = () => {
   // Mag operationele werkorders beheren (aanmaken, toewijzen, verzetten, verwijderen)
   const canManageWorkOrders = () => (
     isAdmin || userRole === 'manager' || userRole === 'aftersales_manager' ||
-    userRole === 'werkplaats_chef' || userRole === 'operationeel_directeur'
+    userRole === 'werkplaats_chef'
   );
+
+  // Directie-cockpit: overal inzicht, nergens mutaties
+  const isDirectieReadOnly = () => isOperationeelDirecteur();
 
   // Mag werkorders goedkeuren / factureren (monteur nadrukkelijk NIET)
   const canApproveWorkOrders = () => canManageWorkOrders();
@@ -176,6 +179,7 @@ export const useRoleAccess = () => {
     isWerkplaatsChef,
     isUitdeukerExtern,
     isOperationeelDirecteur,
+    isDirectieReadOnly,
     isRestrictedWorkshopUser,
     getHomeRoute,
     hasWerkplaatsAccess,

@@ -5,8 +5,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import {
-  Download, TrendingUp, TrendingDown, Wrench, PaintBucket, Clock, ShieldIcon,
-  AlertTriangle, Trophy, Car, Users, RefreshCw,
+  Download, TrendingUp, TrendingDown, Wrench, Clock, ShieldIcon,
+  AlertTriangle, Car, Users, RefreshCw,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono } from "@/components/aftersales/ui";
