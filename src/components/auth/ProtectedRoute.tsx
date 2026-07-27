@@ -14,7 +14,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAdmin = false 
 }) => {
   const { user, loading, isAdmin } = useAuth();
-  const { isRestrictedWorkshopUser, getHomeRoute, isWerkplaatsChef, isUitdeukerExtern, isSchadeherstel, isPoetser } = useRoleAccess();
+  const { isRestrictedWorkshopUser, getHomeRoute, isWerkplaatsChef, isUitdeukerExtern, isSchadeherstel, isPoetser, isOperationeelDirecteur } = useRoleAccess();
   const location = useLocation();
 
   if (loading) {
@@ -41,6 +41,30 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (isSchadeherstel()) {
     if (location.pathname !== '/werkplaats/schadeherstel') {
       return <Navigate to="/werkplaats/schadeherstel" replace />;
+    }
+    return <>{children}</>;
+  }
+
+  // Operationeel directeur: read-only cockpit met een vaste set inzicht-routes
+  if (isOperationeelDirecteur()) {
+    const directieAllowed = [
+      '/directie',
+      '/werkplaats/planning',
+      '/werkplaats/agenda',
+      '/werkplaats/facturen',
+      '/werkplaats/inname',
+      '/werkplaats/poetsen',
+      '/werkplaats/uitdeuken',
+      '/werkplaats/schadeherstel',
+      '/werkplaats/onderdelen',
+      '/werkplaats/autos',
+      '/warranty',
+      '/customers',
+      '/inventory/consumer',
+      '/inventory/b2c',
+    ];
+    if (!directieAllowed.some(pre => location.pathname.startsWith(pre))) {
+      return <Navigate to="/directie" replace />;
     }
     return <>{children}</>;
   }
