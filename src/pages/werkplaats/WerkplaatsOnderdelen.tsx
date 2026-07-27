@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Check, PackageCheck, PackageOpen, Truck, Loader2, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { AddPartOrderDialog } from "@/components/aftersales/AddPartOrderDialog";
 
 type Status = "te_bestellen" | "besteld" | "binnen";
@@ -110,20 +111,20 @@ const WerkplaatsOnderdelen: React.FC = () => {
               {o.note && <span className="text-slate-500 font-normal"> — {o.note}</span>}
             </div>
           </div>
-          <Button size="icon" variant="ghost" onClick={() => removeOrder(o.id)} className="h-7 w-7 text-slate-400 hover:text-red-600">
+          {!readOnly && <Button size="icon" variant="ghost" onClick={() => removeOrder(o.id)} className="h-7 w-7 text-slate-400 hover:text-red-600">
             <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          </Button>}
         </div>
         <div className="flex items-center gap-1.5 mt-3">
           <AsPill tone={tone}>{statusLabel}</AsPill>
           <div className="ml-auto flex gap-1.5">
-          {o.status === "te_bestellen" && (
+          {!readOnly && o.status === "te_bestellen" && (
             <Button size="sm" className="h-8 text-[12px] bg-blue-600 hover:bg-blue-700 text-white"
                     disabled={busy === o.id} onClick={() => setStatus(o.id, "besteld")}>
               <Truck className="h-3.5 w-3.5 mr-1" /> Markeer besteld
             </Button>
           )}
-          {o.status === "besteld" && (
+          {!readOnly && o.status === "besteld" && (
             <Button size="sm" className="h-8 text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white"
                     disabled={busy === o.id} onClick={() => setStatus(o.id, "binnen")}>
               <Check className="h-3.5 w-3.5 mr-1" /> Binnen
@@ -180,9 +181,11 @@ const WerkplaatsOnderdelen: React.FC = () => {
               value={filter} onChange={(e) => setFilter(e.target.value)}
               className="w-72 bg-white"
             />
-            <Button onClick={() => setAddOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
-              <Plus className="h-4 w-4 mr-1" /> Onderdeel bestellen
-            </Button>
+            {!readOnly && (
+              <Button onClick={() => setAddOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Plus className="h-4 w-4 mr-1" /> Onderdeel bestellen
+              </Button>
+            )}
           </div>
         </div>
 

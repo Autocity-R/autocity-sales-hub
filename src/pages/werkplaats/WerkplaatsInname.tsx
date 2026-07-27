@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import BranchFilter from "@/components/reports/BranchFilter";
 import { Loader2, Plus, Check, Car } from "lucide-react";
@@ -35,6 +36,7 @@ const SpecCol: React.FC<{ label: string; children: React.ReactNode }> = ({ label
 );
 
 const WerkplaatsInname: React.FC = () => {
+  const readOnly = useRoleAccess().isDirectieReadOnly();
   const { branchFilter } = useCurrentBranch();
   const navigate = useNavigate();
   const [rows, setRows] = useState<Intake[]>([]);
@@ -118,7 +120,7 @@ const WerkplaatsInname: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <BranchFilter />
-            <Button onClick={() => setNewOpen(true)}><Plus className="h-4 w-4 mr-1" />Nieuwe inname</Button>
+            {!readOnly && <Button onClick={() => setNewOpen(true)}><Plus className="h-4 w-4 mr-1" />Nieuwe inname</Button>}
           </div>
         </div>
 
@@ -172,20 +174,24 @@ const WerkplaatsInname: React.FC = () => {
                         <span className="text-[11.5px] text-slate-500 mr-1">
                           {hasTasks ? "→ Wacht op schadeherstel" : "→ Poetsen na innemen"}
                         </span>
-                        <Button
-                          size="sm"
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                          onClick={(e) => approveNoDamage(e, intake)}
-                        >
-                          <Check className="h-4 w-4 mr-1" />Innemen — geen schade
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => { e.stopPropagation(); navigate(`/werkplaats/inname/${intake.id}`); }}
-                        >
-                          <Plus className="h-4 w-4 mr-1" />Taken toewijzen
-                        </Button>
+                        {!readOnly && (
+                          <>
+                            <Button
+                              size="sm"
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                              onClick={(e) => approveNoDamage(e, intake)}
+                            >
+                              <Check className="h-4 w-4 mr-1" />Innemen — geen schade
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => { e.stopPropagation(); navigate(`/werkplaats/inname/${intake.id}`); }}
+                            >
+                              <Plus className="h-4 w-4 mr-1" />Taken toewijzen
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
