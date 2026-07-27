@@ -183,7 +183,15 @@ const WerkplaatsInnameDetail: React.FC = () => {
       approved_at: new Date().toISOString(),
     }).eq("id", intake.id);
     if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
-    toast({ title: "Auto ingenomen", description: "Verdwijnt uit het Inname-menu." });
+    const { count } = await supabase.from("work_orders")
+      .select("id", { count: "exact", head: true })
+      .eq("vehicle_id", intake.vehicle_id)
+      .in("discipline", ["spuit", "uitdeuk"])
+      .not("status", "in", "(goedgekeurd,geannuleerd)");
+    toast({
+      title: "Auto ingenomen",
+      description: (count ?? 0) > 0 ? "→ Wacht op schadeherstel" : "→ Poetsen",
+    });
     navigate("/werkplaats/inname");
   };
 
@@ -327,7 +335,10 @@ const WerkplaatsInnameDetail: React.FC = () => {
         />
 
         {/* Auto ingenomen */}
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-3">
+          <span className="text-[12px] text-slate-500">
+            {intake.points.some(p => !!p.work_order_id) ? "→ Wacht op schadeherstel" : "→ Poetsen na innemen"}
+          </span>
           <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={finishIntake}>
             <Check className="h-4 w-4 mr-1" /> Auto ingenomen
           </Button>

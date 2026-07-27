@@ -18,7 +18,7 @@ import { InvoiceDraft } from "@/services/workshopInvoiceService";
 import { FileText } from "lucide-react";
 
 interface WO {
-  id: string; discipline: string; description: string; part: string | null; is_rush: boolean;
+  id: string; vehicle_id: string; discipline: string; description: string; part: string | null; is_rush: boolean;
   photos: string[] | null; result_photos: string[] | null;
   work_seconds: number | null; finish_note: string | null; branch: string | null;
   origin: string | null; external_customer: any | null;
@@ -41,7 +41,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
   const load = async () => {
     setLoading(true);
     let q = supabase.from("work_orders")
-      .select("id, discipline, description, part, is_rush, photos, result_photos, work_seconds, finish_note, branch, origin, external_customer, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin)")
+      .select("id, vehicle_id, discipline, description, part, is_rush, photos, result_photos, work_seconds, finish_note, branch, origin, external_customer, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin)")
       .eq("status", "afgerond")
       .neq("discipline", "uitdeuk")
       .order("finished_at", { ascending: true });
@@ -86,6 +86,21 @@ const WerkplaatsGoedkeuren: React.FC = () => {
     else {
       removeWorkOrderFromWerkplaatsCalendar(w.id, (w as any).branch || "rotterdam");
       toast({ title: "Goedgekeurd" });
+      if (["spuit", "uitdeuk"].includes(w.discipline)) {
+        const { count } = await supabase.from("work_orders")
+          .select("id", { count: "exact", head: true })
+          .eq("vehicle_id", w.vehicle_id)
+          .in("discipline", ["spuit", "uitdeuk"])
+          .not("status", "in", "(goedgekeurd,geannuleerd)");
+        if ((count ?? 0) === 0) {
+          const { count: poetsCount } = await supabase.from("work_orders")
+            .select("id", { count: "exact", head: true })
+            .eq("vehicle_id", w.vehicle_id)
+            .eq("discipline", "poets")
+            .not("status", "in", "(goedgekeurd,geannuleerd)");
+          if ((poetsCount ?? 0) > 0) toast({ title: "Auto doorgezet naar Poetsen" });
+        }
+      }
       if (isExtern(w)) setInvoice(invoiceDraftFor(w));
       load();
     }

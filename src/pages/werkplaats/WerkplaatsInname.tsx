@@ -78,6 +78,15 @@ const WerkplaatsInname: React.FC = () => {
     navigate(`/werkplaats/inname/${(data as any).id}`);
   };
 
+  const openRepairCount = async (vehicleId: string) => {
+    const { count } = await supabase.from("work_orders")
+      .select("id", { count: "exact", head: true })
+      .eq("vehicle_id", vehicleId)
+      .in("discipline", ["spuit", "uitdeuk"])
+      .not("status", "in", "(goedgekeurd,geannuleerd)");
+    return count ?? 0;
+  };
+
   const approveNoDamage = async (e: React.MouseEvent, intake: Intake) => {
     e.stopPropagation();
     if (intake.points.length > 0) {
@@ -89,7 +98,14 @@ const WerkplaatsInname: React.FC = () => {
       status: "goedgekeurd", approved_by: userRes.user?.id ?? null, approved_at: new Date().toISOString(),
     }).eq("id", intake.id);
     if (error) toast({ title: "Fout", description: error.message, variant: "destructive" });
-    else { toast({ title: "Inname goedgekeurd", description: "Geen schade geregistreerd." }); load(); }
+    else {
+      const open = await openRepairCount(intake.vehicle_id);
+      toast({
+        title: "Inname goedgekeurd",
+        description: open > 0 ? "→ Wacht op schadeherstel" : "→ Poetsen",
+      });
+      load();
+    }
   };
 
   return (
@@ -153,6 +169,9 @@ const WerkplaatsInname: React.FC = () => {
                         </div>
                       )}
                       <div className="flex items-center gap-2 mt-4">
+                        <span className="text-[11.5px] text-slate-500 mr-1">
+                          {hasTasks ? "→ Wacht op schadeherstel" : "→ Poetsen na innemen"}
+                        </span>
                         <Button
                           size="sm"
                           className="bg-emerald-600 hover:bg-emerald-700 text-white"
