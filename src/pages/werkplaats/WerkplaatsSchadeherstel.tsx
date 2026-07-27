@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { differenceInDays } from "date-fns";
 import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono, useLiveTimer } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 
 interface WO {
@@ -99,7 +100,7 @@ const Card: React.FC<{
             </div>
           )}
 
-          {!done && (
+          {!done && !useRoleAccess().isDirectieReadOnly() && (
             <div className="mt-4" onClick={(e) => e.stopPropagation()}>
               {!busy ? (
                 <Button
@@ -226,7 +227,7 @@ const WerkplaatsSchadeherstel: React.FC = () => {
           open={!!detail}
           onOpenChange={(v) => !v && setDetail(null)}
           workOrder={detail as any}
-          actions={detail && detail.status !== "afgerond" ? (
+          actions={detail && !readOnly && detail.status !== "afgerond" ? (
             detail.status !== "bezig" ? (
               <Button size="lg" className="w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white"
                 onClick={() => handleStart(detail)}>
