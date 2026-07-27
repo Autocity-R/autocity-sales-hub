@@ -88,7 +88,7 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
     branchFilter(supabase.from("work_orders").select(woSel).not("status", "in", '("goedgekeurd","geannuleerd")'), branch),
     branchFilter(supabase.from("vehicle_intakes").select("id,vehicle_id,created_at,approved_at,status,branch").gte("created_at", sixM.toISOString()), branch),
     branchFilter(supabase.from("warranty_claims").select("id,claim_status,claim_amount,estimated_amount,created_at,resolution_date,branch").gte("created_at", from.toISOString()).lt("created_at", to.toISOString()), branch),
-    supabase.from("loan_cars").select("id,status").eq("status", "active"),
+    supabase.from("loan_cars").select("id,status").eq("status", "uitgeleend"),
     branchFilter(supabase.from("parts_orders").select("id,status,part_name,created_at,branch").neq("status", "binnen"), branch),
     supabase.from("profiles").select("id,first_name,last_name"),
   ]);
