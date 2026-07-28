@@ -247,6 +247,7 @@ const InventoryB2C = () => {
 
       let successCount = 0;
       let errorCount = 0;
+      const blockedIds: string[] = [];
 
       for (const vehicleId of selectedVehicles) {
         try {
@@ -277,14 +278,21 @@ const InventoryB2C = () => {
           
           if (error) {
             console.error('Error deleting vehicle:', vehicleId, error);
-            errorCount++;
+            if (isWorkshopHistoryError(error)) blockedIds.push(vehicleId);
+            else errorCount++;
           } else {
             successCount++;
           }
         } catch (error) {
           console.error('Exception deleting vehicle:', vehicleId, error);
-          errorCount++;
+          if (isWorkshopHistoryError(error)) blockedIds.push(vehicleId);
+          else errorCount++;
         }
+      }
+
+      if (blockedIds.length > 0) {
+        setBlockedVehicles(await fetchVehicleLabels(blockedIds));
+        setBlockedDialogOpen(true);
       }
 
       if (successCount > 0) {

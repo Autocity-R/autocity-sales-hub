@@ -41,17 +41,32 @@ const InventoryOnline = () => {
 
   const handleBulkAction = async (action: string, value?: string) => {
     if (action === 'delete') {
+      const blockedIds: string[] = [];
+      let successCount = 0;
       for (const vehicleId of selectedVehicles) {
         try {
-          await supabase.from('vehicles').delete().eq('id', vehicleId);
+          const { error } = await supabase.from('vehicles').delete().eq('id', vehicleId);
+          if (error) {
+            if (isWorkshopHistoryError(error)) blockedIds.push(vehicleId);
+            console.error('Error deleting vehicle:', error);
+          } else {
+            successCount++;
+          }
         } catch (error) {
+          if (isWorkshopHistoryError(error)) blockedIds.push(vehicleId);
           console.error('Error deleting vehicle:', error);
         }
       }
-      toast({
-        title: "Voertuigen verwijderd",
-        description: `${selectedVehicles.length} voertuig(en) succesvol verwijderd`,
-      });
+      if (blockedIds.length > 0) {
+        setBlockedVehicles(await fetchVehicleLabels(blockedIds));
+        setBlockedDialogOpen(true);
+      }
+      if (successCount > 0) {
+        toast({
+          title: "Voertuigen verwijderd",
+          description: `${successCount} voertuig(en) succesvol verwijderd`,
+        });
+      }
     } else if (action === 'status' && value) {
       console.log(`[BULK_ACTION] Updating ${selectedVehicles.length} vehicles to status: ${value}`);
       
