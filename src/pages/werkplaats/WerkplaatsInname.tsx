@@ -18,7 +18,7 @@ interface IntakePoint { text: string; photo_paths?: string[]; work_order_id?: st
 interface Intake {
   id: string; vehicle_id: string; status: string; branch: string | null; created_at: string;
   note: string | null; points: IntakePoint[];
-  vehicle: { id: string; brand: string; model: string; year: number | null; license_number: string | null; vin: string | null; mileage: number | null; color: string | null } | null;
+  vehicle: { id: string; brand: string; model: string; year: number | null; license_number: string | null; vin: string | null; mileage: number | null; color: string | null; status: string | null } | null;
 }
 
 const fmtIn = (iso: string) => {
@@ -49,7 +49,7 @@ const WerkplaatsInname: React.FC = () => {
     setLoading(true);
     let q = supabase
       .from("vehicle_intakes")
-      .select("id, vehicle_id, status, branch, note, points, created_at, vehicle:vehicles!vehicle_intakes_vehicle_id_fkey(id, brand, model, year, license_number, vin, mileage, color)")
+      .select("id, vehicle_id, status, branch, note, points, created_at, vehicle:vehicles!vehicle_intakes_vehicle_id_fkey(id, brand, model, year, license_number, vin, mileage, color, status)")
       .eq("status", "open")
       .order("created_at", { ascending: false });
     q = applyBranchFilter(q as any, branchFilter);
@@ -97,6 +97,7 @@ const WerkplaatsInname: React.FC = () => {
       if (!ok) return;
     }
     const { data: userRes } = await supabase.auth.getUser();
+    const isB2B = intake.vehicle?.status === "verkocht_b2b";
     const { error } = await supabase.from("vehicle_intakes").update({
       status: "goedgekeurd", approved_by: userRes.user?.id ?? null, approved_at: new Date().toISOString(),
     }).eq("id", intake.id);
@@ -105,7 +106,7 @@ const WerkplaatsInname: React.FC = () => {
       const open = await openRepairCount(intake.vehicle_id);
       toast({
         title: "Inname goedgekeurd",
-        description: open > 0 ? "→ Wacht op schadeherstel" : "→ Poetsen",
+        description: open > 0 ? "→ Wacht op schadeherstel" : isB2B ? "→ Geen poets (B2B)" : "→ Poetsen",
       });
       load();
     }
@@ -134,6 +135,7 @@ const WerkplaatsInname: React.FC = () => {
             {rows.map(intake => {
               const v = intake.vehicle;
               const hasTasks = intake.points.some(p => !!p.work_order_id);
+              const isB2B = v?.status === "verkocht_b2b";
               const status = hasTasks
                 ? { label: "Ingepland", tone: "blue" as const }
                 : { label: "Te inspecteren", tone: "amber" as const };
@@ -173,7 +175,7 @@ const WerkplaatsInname: React.FC = () => {
                       )}
                       <div className="flex items-center gap-2 mt-4">
                         <span className="text-[11.5px] text-slate-500 mr-1">
-                          {hasTasks ? "→ Wacht op schadeherstel" : "→ Poetsen na innemen"}
+                          {hasTasks ? "→ Wacht op schadeherstel" : isB2B ? "→ Geen poets (B2B)" : "→ Poetsen na innemen"}
                         </span>
                         {!readOnly && (
                           <>

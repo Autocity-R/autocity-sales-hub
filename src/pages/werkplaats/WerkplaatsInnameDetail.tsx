@@ -20,7 +20,7 @@ interface Intake {
   points: IntakePoint[];
   vehicle: {
     id: string; brand: string; model: string; year: number | null; license_number: string | null;
-    vin: string | null; mileage: number | null; color: string | null;
+    vin: string | null; mileage: number | null; color: string | null; status?: string | null;
   } | null;
 }
 
@@ -56,7 +56,7 @@ const WerkplaatsInnameDetail: React.FC = () => {
     setLoading(true);
     const { data } = await supabase
       .from("vehicle_intakes")
-      .select("id, vehicle_id, branch, status, created_at, points, vehicle:vehicles!vehicle_intakes_vehicle_id_fkey(id, brand, model, year, license_number, vin, mileage, color)")
+      .select("id, vehicle_id, branch, status, created_at, points, vehicle:vehicles!vehicle_intakes_vehicle_id_fkey(id, brand, model, year, license_number, vin, mileage, color, status)")
       .eq("id", id).single();
     if (data) setIntake({ ...(data as any), points: Array.isArray((data as any).points) ? (data as any).points : [] });
     setLoading(false);
@@ -188,9 +188,10 @@ const WerkplaatsInnameDetail: React.FC = () => {
       .eq("vehicle_id", intake.vehicle_id)
       .in("discipline", ["spuit", "uitdeuk"])
       .not("status", "in", "(goedgekeurd,geannuleerd)");
+    const isB2B = intake.vehicle?.status === "verkocht_b2b";
     toast({
       title: "Auto ingenomen",
-      description: (count ?? 0) > 0 ? "→ Wacht op schadeherstel" : "→ Poetsen",
+      description: (count ?? 0) > 0 ? "→ Wacht op schadeherstel" : isB2B ? "→ Geen poets (B2B)" : "→ Poetsen",
     });
     navigate("/werkplaats/inname");
   };
@@ -337,7 +338,11 @@ const WerkplaatsInnameDetail: React.FC = () => {
         {/* Auto ingenomen */}
         <div className="flex items-center justify-end gap-3">
           <span className="text-[12px] text-slate-500">
-            {intake.points.some(p => !!p.work_order_id) ? "→ Wacht op schadeherstel" : "→ Poetsen na innemen"}
+            {intake.points.some(p => !!p.work_order_id)
+              ? "→ Wacht op schadeherstel"
+              : intake.vehicle?.status === "verkocht_b2b"
+                ? "→ Geen poets (B2B)"
+                : "→ Poetsen na innemen"}
           </span>
           <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={finishIntake}>
             <Check className="h-4 w-4 mr-1" /> Auto ingenomen
