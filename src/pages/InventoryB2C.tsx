@@ -21,6 +21,8 @@ import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrentBranch, filterByBranch } from "@/contexts/BranchContext";
+import { isWorkshopHistoryError, fetchVehicleLabels } from "@/utils/vehicleDeleteGuard";
+import { VehicleDeleteBlockedDialog } from "@/components/inventory/VehicleDeleteBlockedDialog";
 
 const InventoryB2C = () => {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
@@ -29,6 +31,8 @@ const InventoryB2C = () => {
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [invoiceVehicle, setInvoiceVehicle] = useState<Vehicle | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [blockedVehicles, setBlockedVehicles] = useState<string[]>([]);
+  const [blockedDialogOpen, setBlockedDialogOpen] = useState(false);
   const [salespersonFilter, setSalespersonFilter] = useState("");
   const [deliveryFilter, setDeliveryFilter] = useState<"all" | "ready" | "scheduled" | "not_ready">("all");
   const { branchFilter } = useCurrentBranch();
@@ -457,6 +461,7 @@ const InventoryB2C = () => {
         onConfirm={handleInvoiceConfirm}
         vehicle={invoiceVehicle}
       />
+      <VehicleDeleteBlockedDialog open={blockedDialogOpen} onOpenChange={setBlockedDialogOpen} vehicles={blockedVehicles} />
     </DashboardLayout>
   );
 };

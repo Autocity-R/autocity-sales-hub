@@ -20,6 +20,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentBranch, filterByBranch } from "@/contexts/BranchContext";
+import { isWorkshopHistoryError, fetchVehicleLabels } from "@/utils/vehicleDeleteGuard";
+import { VehicleDeleteBlockedDialog } from "@/components/inventory/VehicleDeleteBlockedDialog";
 
 const InventoryB2B = () => {
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
@@ -28,6 +30,8 @@ const InventoryB2B = () => {
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [invoiceVehicle, setInvoiceVehicle] = useState<Vehicle | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [blockedVehicles, setBlockedVehicles] = useState<string[]>([]);
+  const [blockedDialogOpen, setBlockedDialogOpen] = useState(false);
   const [salespersonFilter, setSalespersonFilter] = useState("");
   const [onlyDelivered, setOnlyDelivered] = useState(false);
   const { branchFilter } = useCurrentBranch();
@@ -381,6 +385,7 @@ const InventoryB2B = () => {
         onConfirm={handleInvoiceConfirm}
         vehicle={invoiceVehicle}
       />
+      <VehicleDeleteBlockedDialog open={blockedDialogOpen} onOpenChange={setBlockedDialogOpen} vehicles={blockedVehicles} />
     </DashboardLayout>
   );
 };

@@ -26,11 +26,15 @@ import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { InventoryBulkActions } from "@/components/inventory/InventoryBulkActions";
 import { BulkBranchMoveButton } from "@/components/inventory/BulkBranchMoveButton";
 import { supabase } from "@/integrations/supabase/client";
+import { isWorkshopHistoryError, fetchVehicleLabels } from "@/utils/vehicleDeleteGuard";
+import { VehicleDeleteBlockedDialog } from "@/components/inventory/VehicleDeleteBlockedDialog";
 
 const InventoryOnline = () => {
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [blockedVehicles, setBlockedVehicles] = useState<string[]>([]);
+  const [blockedDialogOpen, setBlockedDialogOpen] = useState(false);
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -466,6 +470,7 @@ const InventoryOnline = () => {
           files={vehicleFiles}
         />
       )}
+      <VehicleDeleteBlockedDialog open={blockedDialogOpen} onOpenChange={setBlockedDialogOpen} vehicles={blockedVehicles} />
     </DashboardLayout>
   );
 };
