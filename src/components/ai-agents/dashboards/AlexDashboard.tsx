@@ -26,7 +26,8 @@ export const AlexDashboard: React.FC = () => {
     queryFn: async () => {
       let vq = supabase
         .from('vehicles')
-        .select('status, selling_price, purchase_price, sold_date, online_since_date, details');
+        .select('status, selling_price, purchase_price, sold_date, online_since_date, details')
+        .neq('status', 'extern');
       vq = applyBranchFilter(vq, branchFilter);
       const { data: vehicles } = await vq;
 

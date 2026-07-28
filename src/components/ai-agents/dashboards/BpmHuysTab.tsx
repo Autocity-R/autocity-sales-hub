@@ -42,7 +42,8 @@ export const BpmHuysTab: React.FC = () => {
       const { data, error } = await supabase
         .from("vehicles")
         .select("id, brand, model, vin, license_number, import_status, status, details, created_at")
-        .not("status", "in", `(${SOLD_STATUSES.join(",")})`);
+        .not("status", "in", `(${SOLD_STATUSES.join(",")})`)
+        .neq("status", "extern");
       if (error) throw error;
       return (data || []).filter((v: any) => {
         const d = v.details || {};
@@ -125,7 +126,8 @@ export const BpmHuysTab: React.FC = () => {
       const { data, error } = await supabase
         .from("vehicles")
         .select("id, brand, model, vin, license_number, details")
-        .not("status", "in", `(${SOLD_STATUSES.join(",")})`);
+        .not("status", "in", `(${SOLD_STATUSES.join(",")})`)
+        .neq("status", "extern");
       if (error) throw error;
       const match = (data || []).find((v: any) => {
         const d = v.details || {};

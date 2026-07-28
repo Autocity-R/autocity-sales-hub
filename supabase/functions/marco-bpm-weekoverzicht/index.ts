@@ -23,7 +23,8 @@ Deno.serve(async (req) => {
     const { data: allVehicles } = await supabase
       .from("vehicles")
       .select("id, brand, model, vin, license_number, import_status, details")
-      .neq("status", "afgeleverd");
+      .neq("status", "afgeleverd")
+      .neq("status", "extern");
 
     const bpmVehicles = (allVehicles || []).filter((v: any) => {
       const d = v.details || {};

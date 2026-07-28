@@ -143,6 +143,7 @@ const searchVehicles = async (data: any, permissions: SystemDataAccess) => {
     .from('vehicles')
     .select('*')
     .or(`brand.ilike.%${data.searchTerm}%,model.ilike.%${data.searchTerm}%,license_number.ilike.%${data.searchTerm}%`)
+    .neq('status', 'extern')
     .limit(15);
 
   if (error) throw error;

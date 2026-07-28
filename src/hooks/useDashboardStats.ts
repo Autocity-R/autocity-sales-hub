@@ -15,14 +15,16 @@ export const useDashboardStats = () => {
         .from("vehicles")
         .select("*", { count: "exact", head: true })
         .not("details", "cs", JSON.stringify({ transportStatus: "onderweg" }))
-        .neq("status", "afgeleverd");
+        .neq("status", "afgeleverd")
+        .neq("status", "extern");
 
       // Voertuigen onderweg (in transport menu, nog niet binnengemeld)
       const { count: transportCount } = await supabase
         .from("vehicles")
         .select("*", { count: "exact", head: true })
         .contains("details", { transportStatus: "onderweg" })
-        .neq("status", "afgeleverd");
+        .neq("status", "afgeleverd")
+        .neq("status", "extern");
 
       // Openstaande garantieclaims
       const { count: garantieCount } = await supabase

@@ -6,12 +6,13 @@ import ContactHistory from "@/components/customers/ContactHistory";
 import { PurchaseHistory } from "@/components/customers/PurchaseHistory";
 import { Contact } from "@/types/customer";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Clock, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Clock, ShoppingCart, Wrench } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
+import CustomerWorkshopHistory from "@/components/customers/CustomerWorkshopHistory";
 
 const CustomerDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -120,6 +121,10 @@ const CustomerDetail = () => {
               <Clock className="mr-2 h-4 w-4" />
               Geschiedenis
             </TabsTrigger>
+            <TabsTrigger value="workshop">
+              <Wrench className="mr-2 h-4 w-4" />
+              Werkplaats
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="details" className="space-y-6">
@@ -146,6 +151,10 @@ const CustomerDetail = () => {
                 />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="workshop" className="space-y-6">
+            {id && <CustomerWorkshopHistory contactId={id} />}
           </TabsContent>
         </Tabs>
       </div>

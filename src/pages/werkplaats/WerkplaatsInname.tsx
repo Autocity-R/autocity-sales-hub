@@ -63,7 +63,8 @@ const WerkplaatsInname: React.FC = () => {
     setVehicleSearch(s);
     if (s.length < 2) { setVehicleResults([]); return; }
     let q = supabase.from("vehicles").select("id, brand, model, license_number, branch").limit(15)
-      .or(`brand.ilike.%${s}%,model.ilike.%${s}%,license_number.ilike.%${s}%`);
+      .or(`brand.ilike.%${s}%,model.ilike.%${s}%,license_number.ilike.%${s}%`)
+      .neq("status", "extern");
     q = applyBranchFilter(q, branchFilter);
     const { data } = await q;
     setVehicleResults((data as any) || []);

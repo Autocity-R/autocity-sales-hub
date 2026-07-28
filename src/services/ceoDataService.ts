@@ -68,6 +68,7 @@ export const getImportStatusAlerts = async (): Promise<CriticalAlert | null> => 
       .from('vehicles')
       .select('id, brand, model, license_number, import_status, import_updated_at, created_at')
       .in('import_status', ['aangemeld', 'goedgekeurd', 'bpm_betaald'])
+      .neq('status', 'extern')
       .lt('import_updated_at', thresholdDate.toISOString())
       .order('import_updated_at', { ascending: true });
 
@@ -113,6 +114,7 @@ export const getTransportAlerts = async (): Promise<CriticalAlert | null> => {
     const { data: vehicles, error } = await supabase
       .from('vehicles')
       .select('id, brand, model, license_number, details, created_at, purchase_date')
+      .neq('status', 'extern')
       .lt('purchase_date', thresholdDate.toISOString())
       .order('purchase_date', { ascending: true });
 
@@ -320,7 +322,8 @@ export const getWorkshopBottlenecks = async (): Promise<CriticalAlert | null> =>
     const { data: vehicles, error } = await supabase
       .from('vehicles')
       .select('id, brand, model, license_number, details, updated_at')
-      .in('location', ['werkplaats', 'workshop']);
+      .in('location', ['werkplaats', 'workshop'])
+      .neq('status', 'extern');
 
     if (error) throw error;
     if (!vehicles) return null;
@@ -508,7 +511,8 @@ export const getLeaseSupplierStats = async (): Promise<LeaseSupplierStats[]> => 
         const { data: vehicles } = await supabase
           .from('vehicles')
           .select('id, status, created_at, details')
-          .eq('supplier_id', supplier.id);
+          .eq('supplier_id', supplier.id)
+          .neq('status', 'extern');
 
         const totalVehicles = vehicles?.length || 0;
         const deliveredVehicles = vehicles?.filter(v => v.status === 'afgeleverd').length || 0;
@@ -550,7 +554,8 @@ export const getDailyStats = async () => {
     // Vehicles in transit - check transportStatus = 'onderweg'
     const { data: allVehiclesForTransit } = await supabase
       .from('vehicles')
-      .select('id, details');
+      .select('id, details')
+      .neq('status', 'extern');
 
     const inTransit = allVehiclesForTransit?.filter(v => {
       const details = v.details as any;

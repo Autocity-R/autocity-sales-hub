@@ -62,7 +62,8 @@ serve(async (req) => {
     // ── 3. Live KPIs ──
     const { data: vehicles } = await supabase
       .from('vehicles')
-      .select('status, selling_price, purchase_price, sold_date, online_since_date, details, import_status');
+      .select('status, selling_price, purchase_price, sold_date, online_since_date, details, import_status')
+      .neq('status', 'extern');
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();

@@ -160,6 +160,7 @@ export class SupabaseInventoryService {
          .from('vehicles')
          .select('*')
          .contains('details', { transportStatus: 'onderweg' })
+         .neq('status', 'extern')
          .order('created_at', { ascending: false });
 
        if (error) {

@@ -46,6 +46,7 @@ export const fetchRecentActivity = async (permissions: SystemDataAccess): Promis
     const { data: recentVehicles } = await supabase
       .from('vehicles')
       .select('id, brand, model, status, created_at')
+      .neq('status', 'extern')
       .order('created_at', { ascending: false })
       .limit(5);
 

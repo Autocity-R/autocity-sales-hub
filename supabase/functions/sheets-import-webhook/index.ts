@@ -93,7 +93,7 @@ serve(async (req) => {
     const mappedStatus = statusMapping[updateRequest.import_status] || updateRequest.import_status.toLowerCase().replace(/ /g, '_');
 
     // Find vehicle
-    let query = supabase.from('vehicles').select('*');
+    let query = supabase.from('vehicles').select('*').neq('status', 'extern');
     
     if (updateRequest.vin) {
       // Fuzzy VIN matching: trim, uppercase, match first 17 chars

@@ -30,7 +30,8 @@ class SupplierReportsService {
         selling_price,
         details
       `)
-      .not('supplier_id', 'is', null);
+      .not('supplier_id', 'is', null)
+      .neq('status', 'extern');
     vq = applyBranchFilter(vq, branch);
     const { data: vehicles, error: vehiclesError } = await vq;
 

@@ -41,6 +41,7 @@ export const fetchVehicles = async (permissions: SystemDataAccess, maxItems: num
   const { data: vehicles } = await supabase
     .from('vehicles')
     .select('*')
+    .neq('status', 'extern')
     .order('created_at', { ascending: false })
     .limit(maxItems);
   

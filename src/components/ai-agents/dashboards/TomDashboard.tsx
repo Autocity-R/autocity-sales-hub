@@ -14,7 +14,8 @@ export const TomDashboard: React.FC = () => {
       const { data: vehicles, error } = await supabase
         .from('vehicles')
         .select('id, status, details, aangekomen_at')
-        .neq('status', 'afgeleverd');
+        .neq('status', 'afgeleverd')
+        .neq('status', 'extern');
 
       if (error) throw error;
       const items = vehicles || [];
