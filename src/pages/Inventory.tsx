@@ -1,5 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from "react";
+import { isWorkshopHistoryError, fetchVehicleLabels } from "@/utils/vehicleDeleteGuard";
+import { VehicleDeleteBlockedDialog } from "@/components/inventory/VehicleDeleteBlockedDialog";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
@@ -28,6 +30,8 @@ const Inventory = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("all");
+  const [blockedVehicles, setBlockedVehicles] = useState<string[]>([]);
+  const [blockedDialogOpen, setBlockedDialogOpen] = useState(false);
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [isUsingMockData, setIsUsingMockData] = useState(false);
@@ -432,6 +436,7 @@ const Inventory = () => {
       
       let successCount = 0;
       let errorCount = 0;
+      const blockedIds: string[] = [];
       
       for (const vehicleId of selectedVehicles) {
         try {
@@ -462,17 +467,24 @@ const Inventory = () => {
           
           if (error) {
             console.error('[BULK_DELETE] Error deleting vehicle:', vehicleId, error);
-            errorCount++;
+            if (isWorkshopHistoryError(error)) blockedIds.push(vehicleId);
+            else errorCount++;
           } else {
             console.log('[BULK_DELETE] Successfully deleted vehicle:', vehicleId);
             successCount++;
           }
         } catch (error) {
           console.error('[BULK_DELETE] Exception deleting vehicle:', vehicleId, error);
-          errorCount++;
+          if (isWorkshopHistoryError(error)) blockedIds.push(vehicleId);
+          else errorCount++;
         }
       }
       
+      if (blockedIds.length > 0) {
+        setBlockedVehicles(await fetchVehicleLabels(blockedIds));
+        setBlockedDialogOpen(true);
+      }
+
       if (successCount > 0) {
         toast({
           title: "Voertuigen verwijderd",
@@ -729,6 +741,7 @@ const Inventory = () => {
           </TabsContent>
         </Tabs>
       </div>
+      <VehicleDeleteBlockedDialog open={blockedDialogOpen} onOpenChange={setBlockedDialogOpen} vehicles={blockedVehicles} />
     </DashboardLayout>
   );
 };

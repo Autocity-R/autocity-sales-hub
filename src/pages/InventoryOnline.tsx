@@ -26,28 +26,47 @@ import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { InventoryBulkActions } from "@/components/inventory/InventoryBulkActions";
 import { BulkBranchMoveButton } from "@/components/inventory/BulkBranchMoveButton";
 import { supabase } from "@/integrations/supabase/client";
+import { isWorkshopHistoryError, fetchVehicleLabels } from "@/utils/vehicleDeleteGuard";
+import { VehicleDeleteBlockedDialog } from "@/components/inventory/VehicleDeleteBlockedDialog";
 
 const InventoryOnline = () => {
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [blockedVehicles, setBlockedVehicles] = useState<string[]>([]);
+  const [blockedDialogOpen, setBlockedDialogOpen] = useState(false);
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const handleBulkAction = async (action: string, value?: string) => {
     if (action === 'delete') {
+      const blockedIds: string[] = [];
+      let successCount = 0;
       for (const vehicleId of selectedVehicles) {
         try {
-          await supabase.from('vehicles').delete().eq('id', vehicleId);
+          const { error } = await supabase.from('vehicles').delete().eq('id', vehicleId);
+          if (error) {
+            if (isWorkshopHistoryError(error)) blockedIds.push(vehicleId);
+            console.error('Error deleting vehicle:', error);
+          } else {
+            successCount++;
+          }
         } catch (error) {
+          if (isWorkshopHistoryError(error)) blockedIds.push(vehicleId);
           console.error('Error deleting vehicle:', error);
         }
       }
-      toast({
-        title: "Voertuigen verwijderd",
-        description: `${selectedVehicles.length} voertuig(en) succesvol verwijderd`,
-      });
+      if (blockedIds.length > 0) {
+        setBlockedVehicles(await fetchVehicleLabels(blockedIds));
+        setBlockedDialogOpen(true);
+      }
+      if (successCount > 0) {
+        toast({
+          title: "Voertuigen verwijderd",
+          description: `${successCount} voertuig(en) succesvol verwijderd`,
+        });
+      }
     } else if (action === 'status' && value) {
       console.log(`[BULK_ACTION] Updating ${selectedVehicles.length} vehicles to status: ${value}`);
       
@@ -466,6 +485,7 @@ const InventoryOnline = () => {
           files={vehicleFiles}
         />
       )}
+      <VehicleDeleteBlockedDialog open={blockedDialogOpen} onOpenChange={setBlockedDialogOpen} vehicles={blockedVehicles} />
     </DashboardLayout>
   );
 };
