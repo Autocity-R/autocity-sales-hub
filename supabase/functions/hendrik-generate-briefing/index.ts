@@ -109,7 +109,8 @@ async function getBriefingData(supabase: any, briefingType: string) {
   // Get all vehicles
   const { data: allVehicles } = await supabase
     .from('vehicles')
-    .select('*');
+    .select('*')
+    .neq('status', 'extern');
 
   const vehicles = allVehicles || [];
   console.log(`📊 Loaded ${vehicles.length} vehicles`);

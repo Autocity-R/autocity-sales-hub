@@ -253,6 +253,7 @@ export class SystemReportsService {
         .from('vehicles')
         .select('*')
         .neq('location', 'onderweg')
+        .neq('status', 'extern')
         .not('purchase_date', 'is', null);
       ctq = applyBranchFilter(ctq, branch);
       const { data: completedTransportVehicles, error: completedError } = await ctq;
@@ -282,7 +283,7 @@ export class SystemReportsService {
 
       // 2. Get vehicles currently in transport (onderweg)
       // This should match exactly what's shown in the Transport menu
-      let tvq = supabase.from('vehicles').select('*').eq('location', 'onderweg');
+      let tvq = supabase.from('vehicles').select('*').eq('location', 'onderweg').neq('status', 'extern');
       tvq = applyBranchFilter(tvq, branch);
       const { data: transportVehicles, error: transportError } = await tvq;
 

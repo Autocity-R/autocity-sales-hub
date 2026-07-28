@@ -416,6 +416,7 @@ class BranchManagerService {
       .from('vehicles')
       .select('*')
       .eq('details->>isTradeIn', 'true')
+      .neq('status', 'extern')
       .gte('sold_date', startDate.toISOString())
       .lte('sold_date', endDate.toISOString());
     tq = applyBranchFilter(tq, branch);

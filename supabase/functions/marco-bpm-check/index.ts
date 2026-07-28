@@ -26,6 +26,7 @@ Deno.serve(async (req) => {
       .from("vehicles")
       .select("id, brand, model, vin, license_number, details")
       .neq("status", "afgeleverd")
+      .neq("status", "extern")
       .not("import_status", "eq", "ingeschreven");
 
     const bpmRequested = (bpmVehicles || []).filter((v: any) => {

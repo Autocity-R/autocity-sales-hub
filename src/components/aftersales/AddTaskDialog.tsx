@@ -330,16 +330,34 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
         customerId = (created as any).id;
       }
 
-      // (b) licht extern voertuig — status 'extern' zodat het NOOIT in voorraad/verkoop verschijnt
-      const { data: extVehicle, error: vErr } = await supabase.from("vehicles").insert({
-        brand: ext.brand.trim(),
-        model: ext.model.trim(),
-        license_number: ext.plate.trim().toUpperCase(),
-        status: "extern",
-        customer_id: customerId,
-        details: { externalWorkshop: true, excludeFromStock: true, customerName: ext.name.trim() } as any,
-      } as any).select("id, branch").single();
-      if (vErr) throw vErr;
+      // (b) licht extern voertuig — status 'extern' zodat het NOOIT in voorraad/verkoop verschijnt.
+      //     Bestaat het kenteken al als extern voertuig? Dan hergebruiken (geen duplicaten).
+      const plate = ext.plate.trim().toUpperCase();
+      let extVehicle: { id: string; branch: string | null } | null = null;
+      if (plate) {
+        const { data: existing } = await supabase
+          .from("vehicles")
+          .select("id, branch")
+          .eq("status", "extern")
+          .ilike("license_number", plate)
+          .limit(1);
+        extVehicle = ((existing as any)?.[0] as any) ?? null;
+        if (extVehicle) {
+          await supabase.from("vehicles").update({ customer_id: customerId }).eq("id", extVehicle.id);
+        }
+      }
+      if (!extVehicle) {
+        const { data: createdVeh, error: vErr } = await supabase.from("vehicles").insert({
+          brand: ext.brand.trim(),
+          model: ext.model.trim(),
+          license_number: plate,
+          status: "extern",
+          customer_id: customerId,
+          details: { externalWorkshop: true, excludeFromStock: true, customerName: ext.name.trim() } as any,
+        } as any).select("id, branch").single();
+        if (vErr) throw vErr;
+        extVehicle = createdVeh as any;
+      }
 
       // (c) werkorder
       const { data: bounds } = await supabase.from("work_orders")

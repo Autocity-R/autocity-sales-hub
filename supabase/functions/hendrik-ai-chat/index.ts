@@ -628,7 +628,8 @@ async function getCompleteCEOData(supabase: any) {
   // Get ALL vehicles for comprehensive analysis
   const { data: allVehicles } = await supabase
     .from('vehicles')
-    .select('*');
+    .select('*')
+    .neq('status', 'extern');
 
   const vehicles = allVehicles || [];
   console.log(`📊 Loaded ${vehicles.length} vehicles for analysis`);
@@ -3284,7 +3285,8 @@ async function handleSaraToolCall(supabaseClient: any, toolName: string, toolInp
         const { data: vehicles, error: err2 } = await supabaseClient
           .from('vehicles')
           .select('id')
-          .ilike('license_number', `%${kenteken}%`);
+          .ilike('license_number', `%${kenteken}%`)
+          .neq('status', 'extern');
 
         if (err2) throw err2;
 

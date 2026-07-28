@@ -23,7 +23,8 @@ class PurchaseReportsService {
       // This ensures vehicles with newly assigned purchasers show up
       .or(`purchase_date.gte.${period.startDate},purchase_date.lte.${period.endDate},purchase_date.is.null`)
       // Also include ALL vehicles with a purchaser assigned (critical for current data)
-      .not('purchased_by_user_id', 'is', null);
+      .not('purchased_by_user_id', 'is', null)
+      .neq('status', 'extern');
     vq = applyBranchFilter(vq, branch);
     const { data: vehicles, error } = await vq;
 

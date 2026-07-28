@@ -56,7 +56,8 @@ export const SaraDashboard: React.FC = () => {
       let lq = supabase
         .from('vehicles')
         .select('id, brand, model, license_number')
-        .eq('details->>isLoanCar', 'true');
+        .eq('details->>isLoanCar', 'true')
+        .neq('status', 'extern');
       lq = applyBranchFilter(lq, branchFilter);
       const { data: loanCars } = await lq;
 
