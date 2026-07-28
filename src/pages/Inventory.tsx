@@ -432,6 +432,7 @@ const Inventory = () => {
       
       let successCount = 0;
       let errorCount = 0;
+      const blockedIds: string[] = [];
       
       for (const vehicleId of selectedVehicles) {
         try {
@@ -462,17 +463,24 @@ const Inventory = () => {
           
           if (error) {
             console.error('[BULK_DELETE] Error deleting vehicle:', vehicleId, error);
-            errorCount++;
+            if (isWorkshopHistoryError(error)) blockedIds.push(vehicleId);
+            else errorCount++;
           } else {
             console.log('[BULK_DELETE] Successfully deleted vehicle:', vehicleId);
             successCount++;
           }
         } catch (error) {
           console.error('[BULK_DELETE] Exception deleting vehicle:', vehicleId, error);
-          errorCount++;
+          if (isWorkshopHistoryError(error)) blockedIds.push(vehicleId);
+          else errorCount++;
         }
       }
       
+      if (blockedIds.length > 0) {
+        setBlockedVehicles(await fetchVehicleLabels(blockedIds));
+        setBlockedDialogOpen(true);
+      }
+
       if (successCount > 0) {
         toast({
           title: "Voertuigen verwijderd",
