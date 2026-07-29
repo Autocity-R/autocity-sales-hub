@@ -159,9 +159,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Button size="sm" variant="ghost">
-                          <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
-                        </Button>
+                        <Button size="sm" variant="ghost" asChild disabled={!file.url}>
+                          <a href={file.url || "#"} target="_blank" rel="noopener noreferrer">Bekijk</a>
+                          </Button>
                         {!readOnly && (
                           <Button 
                             size="sm" 
@@ -227,9 +227,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                           Te groot
                         </Button>
                       ) : (
-                        <Button size="sm" variant="ghost">
-                          <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
-                        </Button>
+                        <Button size="sm" variant="ghost" asChild disabled={!file.url}>
+                          <a href={file.url || "#"} target="_blank" rel="noopener noreferrer">Bekijk</a>
+                          </Button>
                       )}
                       {!readOnly && (
                         <Button 
@@ -290,9 +290,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                           Te groot
                         </Button>
                       ) : (
-                        <Button size="sm" variant="ghost">
-                          <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
-                        </Button>
+                        <Button size="sm" variant="ghost" asChild disabled={!file.url}>
+                          <a href={file.url || "#"} target="_blank" rel="noopener noreferrer">Bekijk</a>
+                          </Button>
                       )}
                       {!readOnly && (
                         <Button 
@@ -353,9 +353,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                           Te groot
                         </Button>
                       ) : (
-                        <Button size="sm" variant="ghost">
-                          <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
-                        </Button>
+                        <Button size="sm" variant="ghost" asChild disabled={!file.url}>
+                          <a href={file.url || "#"} target="_blank" rel="noopener noreferrer">Bekijk</a>
+                          </Button>
                       )}
                       {!readOnly && (
                         <Button 
