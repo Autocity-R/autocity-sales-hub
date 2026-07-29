@@ -5,7 +5,7 @@
  */
 /** Officiële Autocity-logo (zwart/wit blok) — publiek bereikbaar voor e-mailclients. */
 export const AUTOCITY_LOGO_URL =
-  "https://autocity-crm.nl/__l5e/assets-v1/2e144415-db30-4949-b4ec-3187dedcc9a3/autocity-logo.png";
+  "https://fnwagrmoyfyimdoaynkg.supabase.co/storage/v1/object/public/email-assets/autocity-logo-v3.png";
 
 /**
  * Werkplaats-adres per vestiging (LOS van het verkoop-/vestigingsadres in `branches`).
@@ -43,7 +43,7 @@ export function buildLmsSignatureHtml(name: string, org = "Autocity"): string {
   <div style="font-size:13px;color:#475569;margin-bottom:8px">Met vriendelijke groet,</div>
   <div style="font-weight:600;color:#0f172a;font-size:14px">${safeName}</div>
   <div style="font-size:13px;color:#475569;margin-top:2px">${safeOrg}</div>
-  <div style="margin:16px 0 10px"><img src="${AUTOCITY_LOGO_URL}" alt="Auto City" width="110" style="width:110px;max-width:110px;height:auto;display:block;border:0;border-radius:10px" /></div>
+  <div style="margin:16px 0 10px"><img src="${AUTOCITY_LOGO_URL}" alt="Autocity" width="110" height="110" style="width:110px;height:110px;max-width:110px;display:block;border:0;border-radius:10px" /></div>
   <div style="font-size:13px;color:#475569;margin-top:2px">📞 010 262 3980 · 🌐 <a style="color:#f97316;text-decoration:none" href="https://www.auto-city.nl">www.auto-city.nl</a></div>
 </div>`;
 }

@@ -379,7 +379,7 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
       status: "pending",
       payload: {
         to: [opts.to],
-        subject: `Bevestiging werkplaatsafspraak ${when.toLocaleDateString("nl-NL")} — ${plate || "afspraak"}`,
+        subject: "Bevestiging van uw werkplaatsafspraak",
         htmlBody,
         senderEmail: "werkplaats@auto-city.nl",
         senderName: "Autocity Werkplaats",
