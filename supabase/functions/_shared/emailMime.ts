@@ -38,7 +38,7 @@ export function wrapBase64(base64: string): string {
 }
 
 export function base64UrlEncodeMimeMessage(message: string): string {
-  return encodeBase64(new TextEncoder().encode(message))
+  return encodeBase64(new TextEncoder().encode(message).buffer)
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
@@ -63,7 +63,7 @@ export async function loadAutocityLogoBase64(supabase: StorageClient): Promise<s
     throw new Error(`Autocity logo could not be loaded from storage: ${error?.message || "no data"}`);
   }
 
-  return wrapBase64(encodeBase64(new Uint8Array(await data.arrayBuffer())));
+  return wrapBase64(encodeBase64(await data.arrayBuffer()));
 }
 
 export function buildGmailMimeMessage(options: BuildGmailMimeMessageOptions): string {
@@ -124,7 +124,7 @@ export function buildGmailMimeMessage(options: BuildGmailMimeMessageOptions): st
     'Content-Type: text/html; charset="UTF-8"',
     "Content-Transfer-Encoding: base64",
     "",
-    wrapBase64(encodeBase64(new TextEncoder().encode(options.htmlBody))),
+    wrapBase64(encodeBase64(new TextEncoder().encode(options.htmlBody).buffer)),
   ].join("\r\n");
 }
 
@@ -157,7 +157,7 @@ function buildHtmlPart(htmlBody: string): string {
     'Content-Type: text/html; charset="UTF-8"',
     "Content-Transfer-Encoding: base64",
     "",
-    wrapBase64(encodeBase64(new TextEncoder().encode(htmlBody))),
+    wrapBase64(encodeBase64(new TextEncoder().encode(htmlBody).buffer)),
   ].join("\r\n");
 }
 
@@ -184,7 +184,7 @@ function buildAttachmentPart(attachment: PreparedEmailAttachment): string {
 }
 
 function encodeMimeHeader(value: string): string {
-  return `=?UTF-8?B?${encodeBase64(new TextEncoder().encode(value))}?=`;
+  return `=?UTF-8?B?${encodeBase64(new TextEncoder().encode(value).buffer)}?=`;
 }
 
 function makeBoundary(prefix: string): string {
