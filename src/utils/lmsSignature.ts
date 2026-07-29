@@ -3,9 +3,37 @@
  * Naam van de ingelogde gebruiker + organisatieregel eronder.
  * Wordt gedeeld door werkplaats-bevestigingen en garantie-antwoorden.
  */
-/** Officiële Autocity-logo-URL, identiek aan de LMS/verkoop-mails. */
+/** Officiële Autocity-logo (zwart/wit blok) — publiek bereikbaar voor e-mailclients. */
 export const AUTOCITY_LOGO_URL =
-  "https://www.auto-city.nl/upload/logo/logo_images_0_1698072999114488851.png";
+  "https://autocity-crm.nl/__l5e/assets-v1/2e144415-db30-4949-b4ec-3187dedcc9a3/autocity-logo.png";
+
+/**
+ * Werkplaats-adres per vestiging (LOS van het verkoop-/vestigingsadres in `branches`).
+ * Wordt gebruikt in bevestigingsmails van werkplaatsafspraken.
+ */
+export const WORKSHOP_LOCATIONS: Record<string, { name: string; address: string; phone: string }> = {
+  rotterdam: {
+    name: "Autocity Werkplaats",
+    address: "Calandstraat 94, Schiedam",
+    phone: "010-2623980",
+  },
+};
+
+/** Nette locatieregel voor de werkplaats; valt terug op het vestigingsadres. */
+export function workshopLocationLine(
+  branchCode: string | null | undefined,
+  fallback?: { company_name?: string | null; address?: string | null; postal_code?: string | null; city?: string | null; phone?: string | null } | null,
+): { line: string; phone: string } {
+  const w = WORKSHOP_LOCATIONS[(branchCode || "").toLowerCase()];
+  if (w) return { line: `${w.name} — ${w.address}`, phone: w.phone };
+  const addressLine = [fallback?.address, [fallback?.postal_code, fallback?.city].filter(Boolean).join(" ")]
+    .filter(Boolean)
+    .join(", ");
+  return {
+    line: `${fallback?.company_name || "Autocity"}${addressLine ? ` — ${addressLine}` : ""}`,
+    phone: fallback?.phone || "010-2623980",
+  };
+}
 
 export function buildLmsSignatureHtml(name: string, org = "Autocity"): string {
   const safeName = (name || "Autocity").replace(/[<>]/g, "").trim();
@@ -15,7 +43,7 @@ export function buildLmsSignatureHtml(name: string, org = "Autocity"): string {
   <div style="font-size:13px;color:#475569;margin-bottom:8px">Met vriendelijke groet,</div>
   <div style="font-weight:600;color:#0f172a;font-size:14px">${safeName}</div>
   <div style="font-size:13px;color:#475569;margin-top:2px">${safeOrg}</div>
-  <div style="margin:12px 0 8px"><img src="${AUTOCITY_LOGO_URL}" alt="Autocity" width="180" style="width:180px;max-width:180px;height:auto;display:block;border:0" /></div>
+  <div style="margin:16px 0 10px"><img src="${AUTOCITY_LOGO_URL}" alt="Auto City" width="110" style="width:110px;max-width:110px;height:auto;display:block;border:0;border-radius:10px" /></div>
   <div style="font-size:13px;color:#475569;margin-top:2px">📞 010 262 3980 · 🌐 <a style="color:#f97316;text-decoration:none" href="https://www.auto-city.nl">www.auto-city.nl</a></div>
 </div>`;
 }

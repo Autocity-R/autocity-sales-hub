@@ -12,7 +12,7 @@ import { DamageDiagram, DAMAGE_ZONES, DamageZone } from "@/components/aftersales
 import { Search, X, Car, Loader2, Plus, PaintBucket, Wrench, Hammer, Sparkles, Camera, Flame, AlertTriangle, Home, Truck, Building2, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { WorkOrderDiscipline } from "@/components/werkplaats/workOrderTypes";
-import { buildLmsSignatureHtml, profileFullName } from "@/utils/lmsSignature";
+import { buildLmsSignatureHtml, profileFullName, workshopLocationLine } from "@/utils/lmsSignature";
 
 export interface AddTaskVehicle {
   id: string;
@@ -356,7 +356,7 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
     const dateLabel = when.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
     const timeLabel = when.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
     const plate = ext.plate.trim().toUpperCase();
-    const addressLine = [b.address, [b.postal_code, b.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+    const loc = workshopLocationLine(opts.branchCode, b);
     const row = (k: string, v: string) =>
       `<tr><td style="padding:6px 12px 6px 0;color:#64748b;font-size:13px;white-space:nowrap">${k}</td><td style="padding:6px 0;color:#0f172a;font-size:13px;font-weight:600">${v}</td></tr>`;
 
@@ -369,9 +369,9 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
     ${row("Tijd", timeLabel)}
     ${row("Voertuig", `${ext.brand.trim()} ${ext.model.trim()}${plate ? ` · ${plate}` : ""}`)}
     ${row("Werkzaamheden", (description.trim() || "-").replace(/\n/g, "<br/>"))}
-    ${row("Locatie", `${b.company_name || "Autocity"}${addressLine ? ` — ${addressLine}` : ""}`)}
+    ${row("Locatie", loc.line)}
   </table>
-  <p style="margin:0 0 12px">Kunt u er onverhoopt niet bij zijn? Laat het ons dan even weten${b.phone ? ` via ${b.phone}` : ""}.</p>
+  <p style="margin:0 0 12px">Kunt u er onverhoopt niet bij zijn? Laat het ons dan even weten${loc.phone ? ` via ${loc.phone}` : ""}.</p>
   ${buildLmsSignatureHtml(planner, "Autocity")}
 </div>`;
 
