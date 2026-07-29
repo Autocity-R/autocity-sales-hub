@@ -16,6 +16,7 @@ import { nl } from "date-fns/locale";
 import { AsPage, AsCard, AsPill, AsMono, fmtWait } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
 import { sanitizeMailText, splitQuotedReply } from "@/utils/mailBubble";
+import { buildLmsSignatureHtml } from "@/utils/lmsSignature";
 
 type Filter = "action" | "all" | "done";
 
@@ -56,17 +57,10 @@ const sevColor = (s: "green" | "amber" | "red") =>
 const sevText = (s: "green" | "amber" | "red") =>
   s === "red" ? "text-red-600" : s === "amber" ? "text-amber-700" : "text-slate-500";
 
-const salespersonSignatureHtml = (name: string) => `
-<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e5e7eb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0f172a">
-  <div style="font-weight:600;color:#0f172a;font-size:14px">${name}</div>
-  <div style="font-size:13px;color:#475569;margin-top:2px">Autocity Automotive Group</div>
-  <div style="font-size:13px;color:#475569;margin-top:2px">📞 010 262 3980 · 🌐 <a style="color:#f97316;text-decoration:none" href="https://www.auto-city.nl">www.auto-city.nl</a></div>
-</div>`;
-
 const renderReplyHtml = (body: string, signatureName: string) => `
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0f172a;font-size:14px;line-height:1.6">
   ${body.split(/\n\n+/).map(p => `<p style="margin:0 0 12px">${p.replace(/\n/g, "<br/>")}</p>`).join("")}
-  ${salespersonSignatureHtml(signatureName)}
+  ${buildLmsSignatureHtml(signatureName, "Autocity Aftersales")}
 </div>`;
 
 const GarantieInbox: React.FC = () => {
