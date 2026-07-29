@@ -86,6 +86,9 @@ const GarantieInbox: React.FC = () => {
   const [agentQuestion, setAgentQuestion] = useState("");
   const [agentAsking, setAgentAsking] = useState(false);
   const [expandedQuoted, setExpandedQuoted] = useState<Record<string, boolean>>({});
+  const [agentPregenerated, setAgentPregenerated] = useState(false);
+  const [agentDecision, setAgentDecision] = useState<string>("");
+  const [agentAnalysis, setAgentAnalysis] = useState<string>("");
 
   const senderName = useMemo(() => {
     const p = userProfile;
@@ -141,6 +144,23 @@ const GarantieInbox: React.FC = () => {
     // Reset & load agent chat for this thread
     setAgentSuggestion("");
     setAgentHint("");
+    setAgentPregenerated(false);
+    setAgentDecision("");
+    setAgentAnalysis("");
+    const { data: concept } = await supabase
+      .from("garantie_emails")
+      .select("sara_reactie_voorstel, sara_analyse, sara_beslissing, received_at")
+      .eq("thread_id", id)
+      .eq("richting", "inkomend")
+      .order("received_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (concept?.sara_reactie_voorstel) {
+      setAgentSuggestion(String(concept.sara_reactie_voorstel).trim());
+      setAgentPregenerated(true);
+    }
+    setAgentDecision(concept?.sara_beslissing || "");
+    setAgentAnalysis(concept?.sara_analyse || "");
     setExpandedQuoted({});
     const { data: chats } = await (supabase as any)
       .from("garantie_agent_chats")
@@ -255,6 +275,7 @@ const GarantieInbox: React.FC = () => {
       });
       if (error) throw error;
       setAgentSuggestion(((data as any)?.suggestion || "").trim());
+      setAgentPregenerated(false);
     } catch (e: any) {
       toast({ title: "Agent-fout", description: e.message, variant: "destructive" });
     } finally {
@@ -457,6 +478,16 @@ const GarantieInbox: React.FC = () => {
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <div className="text-[11px] font-semibold text-violet-700 uppercase tracking-wide flex items-center gap-1.5">
                           <Sparkles className="h-3.5 w-3.5" /> Garantie Agent · voorstel
+                          {agentPregenerated && (
+                            <span className="normal-case tracking-normal text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">
+                              AI-concept klaar
+                            </span>
+                          )}
+                          {agentDecision && (
+                            <span className="normal-case tracking-normal text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                              {agentDecision.replace(/_/g, " ")}
+                            </span>
+                          )}
                         </div>
                         {!agentSuggestion && !agentLoading && (
                           <Button size="sm" variant="outline" className="h-7 text-[11px] border-violet-200" onClick={() => fetchSuggestion()}>
@@ -467,6 +498,11 @@ const GarantieInbox: React.FC = () => {
                           <div className="text-[11px] text-violet-700 inline-flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Agent denkt na…</div>
                         )}
                       </div>
+                      {agentAnalysis && (
+                        <div className="mb-2 text-[11.5px] text-slate-600 bg-white/70 border border-violet-100 rounded-md px-2.5 py-1.5 leading-relaxed">
+                          <span className="font-semibold text-violet-700">Analyse · </span>{agentAnalysis}
+                        </div>
+                      )}
                       {agentSuggestion && (
                         <>
                           <div className="whitespace-pre-wrap text-[13px] text-slate-800 leading-relaxed bg-white border border-violet-100 rounded-md p-3 max-h-[220px] overflow-auto">
