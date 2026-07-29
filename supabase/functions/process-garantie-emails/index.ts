@@ -316,6 +316,17 @@ serve(async (req) => {
           })
           .join('\n\n');
 
+        // ─── Tijdsafhankelijke Nederlandse aanhef (Europe/Amsterdam) ───
+        const uur = Number(
+          new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', hour: '2-digit', hour12: false })
+            .format(new Date()),
+        );
+        const dagdeel = uur < 12 ? 'Goedemorgen' : uur < 18 ? 'Goedemiddag' : 'Goedenavond';
+        const achternaam = String(senderName || '').replace(/[<>]/g, '').trim().split(/\s+/).slice(-1)[0] || '';
+        const aanhef = achternaam && !achternaam.includes('@') && achternaam.length > 1
+          ? `${dagdeel} heer ${achternaam},`
+          : `${dagdeel},`;
+
         // ─── Stap 6: Claude analyse ───
         const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -331,7 +342,7 @@ serve(async (req) => {
             messages: [
               {
                 role: 'user',
-                content: `CASE GESCHIEDENIS:\n${historyText}\n\nNIEUWE EMAIL VAN KLANT:\nVan: ${senderName} <${senderEmail}>\nOnderwerp: ${subject}\n\n${body}\n\nAnalyseer deze email in context van de volledige case. Geef JSON terug.`,
+                content: `CASE GESCHIEDENIS:\n${historyText}\n\nNIEUWE EMAIL VAN KLANT:\nVan: ${senderName} <${senderEmail}>\nOnderwerp: ${subject}\n\n${body}\n\nAnalyseer deze email in context van de volledige case. Geef JSON terug.\n\nBELANGRIJK voor "reactie_voorstel": begin de tekst met exact deze aanhef op de eerste regel, gevolgd door een lege regel: "${aanhef}". Geen Engelse of stijve juridische opening, geen handtekening (die wordt automatisch toegevoegd).`,
               },
             ],
           }),
@@ -355,6 +366,9 @@ serve(async (req) => {
               beslissing = parsed.beslissing || '';
               caseSamenvatting = parsed.case_samenvatting || '';
               reactieVoorstel = parsed.reactie_voorstel || '';
+              if (reactieVoorstel && !/^(goedemorgen|goedemiddag|goedenavond|beste|geachte)/i.test(reactieVoorstel.trim())) {
+                reactieVoorstel = `${aanhef}\n\n${reactieVoorstel.trim()}`;
+              }
             }
           } catch {
             console.error('⚠️ Claude response was not valid JSON, using raw text');

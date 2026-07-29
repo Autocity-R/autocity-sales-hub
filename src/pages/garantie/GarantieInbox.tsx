@@ -315,9 +315,9 @@ const GarantieInbox: React.FC = () => {
         </div>
 
         <AsCard className="overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)_320px] min-h-[70vh]">
+          <div className="grid grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)_320px] min-h-[70vh] lg:h-[calc(100vh-190px)]">
             {/* ============ Threadlijst ============ */}
-            <div className="border-r border-slate-100 flex flex-col">
+            <div className="border-r border-slate-100 flex flex-col min-h-0">
               {/* Kop-balk */}
               <div className="flex items-center gap-2.5 px-3 py-2.5 bg-[#f4f6f9] border-b border-[#e2e6ec]">
                 <div className="h-[26px] w-[26px] rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-100 flex items-center justify-center">
@@ -343,7 +343,7 @@ const GarantieInbox: React.FC = () => {
                   ))}
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 min-h-0 max-h-[45vh] lg:max-h-none overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
                 {loadingList ? (
                   <div className="p-6 text-center text-slate-400"><Loader2 className="h-4 w-4 animate-spin mx-auto" /></div>
                 ) : filteredThreads.length === 0 ? (
@@ -380,7 +380,7 @@ const GarantieInbox: React.FC = () => {
             </div>
 
             {/* ============ Tijdlijn ============ */}
-            <div className="flex flex-col min-w-0">
+            <div className="flex flex-col min-w-0 min-h-0">
               <div className="flex items-center gap-2.5 px-4 py-2.5 bg-[#f4f6f9] border-b border-[#e2e6ec]">
                 <div className="h-[26px] w-[26px] rounded-md bg-violet-50 text-violet-600 ring-1 ring-violet-100 flex items-center justify-center">
                   <MessagesSquare className="h-3.5 w-3.5" />
