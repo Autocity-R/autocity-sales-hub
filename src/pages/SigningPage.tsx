@@ -9,6 +9,7 @@ import {
   fetchContractByToken,
   submitContractSignature,
   fetchSignedContractDownload,
+  markContractOpened,
 } from "@/services/contractV2Service";
 import { SignaturePad } from "@/components/common/SignaturePad";
 
@@ -61,6 +62,8 @@ export default function SigningPage() {
       }
       const c = d as any;
       const cust = c.customer_snapshot || {};
+      // Registreer eenmalig dat de klant de tekenlink heeft geopend
+      void markContractOpened(token);
       setSignerName(
         cust.companyName ||
           [cust.firstName, cust.lastName].filter(Boolean).join(" ") ||
