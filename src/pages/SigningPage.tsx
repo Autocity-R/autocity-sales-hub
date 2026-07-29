@@ -34,6 +34,7 @@ export default function SigningPage() {
   const [signerName, setSignerName] = useState("");
   const [signerEmail, setSignerEmail] = useState("");
   const [buyerSigDataUrl, setBuyerSigDataUrl] = useState<string | null>(null);
+  const [localSignedAt, setLocalSignedAt] = useState<string | null>(null);
   const [pendingSig, setPendingSig] = useState<string | null>(null);
 
   useEffect(() => {
@@ -88,6 +89,8 @@ export default function SigningPage() {
     setStatus("signing");
     const dataUrl = pendingSig;
     setBuyerSigDataUrl(dataUrl);
+    const signedAtIso = new Date().toISOString();
+    setLocalSignedAt(signedAtIso);
 
     // Wait a tick so the document re-renders with the buyer signature
     await new Promise((r) => setTimeout(r, 100));
@@ -99,7 +102,13 @@ export default function SigningPage() {
       return;
     }
 
-    const pdfBlob: Blob = await html2pdf()
+    // Exacte A4-rendermodus: geen extra marges (lege slotpagina) tijdens PDF-generatie
+    const rootEl = el.querySelector(".cdv2-root") as HTMLElement | null;
+    rootEl?.classList.add("cdv2-pdf");
+
+    let pdfBlob: Blob;
+    try {
+      pdfBlob = await html2pdf()
       .set({
         margin: 0,
         filename: `${contract.contract_number}.pdf`,
@@ -111,9 +120,16 @@ export default function SigningPage() {
           windowWidth: 794,
         },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        pagebreak: {
+          mode: ["css", "legacy"],
+          avoid: [".cdv2-keep", ".cdv2-sign-grid", ".cdv2-footer"],
+        },
       } as any)
       .from(el)
       .outputPdf("blob");
+    } finally {
+      rootEl?.classList.remove("cdv2-pdf");
+    }
 
     const b64 = await blobToBase64(pdfBlob);
 
@@ -182,6 +198,8 @@ export default function SigningPage() {
           data={{
             ...contract,
             buyer_signature_data_url: buyerSigDataUrl,
+            buyer_signer_name: signerName || null,
+            signed_at: contract.signed_at || localSignedAt,
           }}
         />
       </div>

@@ -30,6 +30,7 @@ export interface ContractV2Snapshot {
   salesperson_signature_svg?: string | null;
   salesperson_signature_png?: string | null;
   buyer_signature_data_url?: string | null;
+  buyer_signer_name?: string | null;
 }
 
 // Same-origin copies so html2canvas can embed them without CORS issues.
@@ -51,6 +52,7 @@ const fmtDate = (d?: string | null) => {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+    timeZone: "Europe/Amsterdam",
   });
 };
 
@@ -177,6 +179,7 @@ const V2_CSS = `
 }
 
 .cdv2-sign-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin: 30px 0 24px; }
+.cdv2-keep { page-break-inside: avoid; break-inside: avoid; }
 .cdv2-sign-col .lbl {
   font-size: 10px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;
 }
@@ -206,6 +209,13 @@ const V2_CSS = `
   margin: 8px 0 3px; text-transform: uppercase; letter-spacing: 1px;
 }
 .cdv2-terms p { margin: 0 0 8px; break-inside: avoid; }
+
+/* PDF-rendermodus: exacte A4-pagina's zonder extra marges (voorkomt lege slotpagina) */
+.cdv2-root.cdv2-pdf { padding: 0; background: #080808; }
+.cdv2-root.cdv2-pdf .cdv2-page {
+  margin: 0 auto; box-shadow: none; border-radius: 0;
+  min-height: 1123px; overflow: visible;
+}
 
 @media print {
   @page { size: A4; margin: 0; }
@@ -540,7 +550,8 @@ export const ContractDocumentV2: React.FC<{
             </div>
           )}
 
-          {/* Signatures */}
+          {/* Signatures + footer: altijd samen op één pagina */}
+          <div className="cdv2-keep">
           <div className="cdv2-sign-grid">
             <div className="cdv2-sign-col">
               <div className="lbl">Verkoper</div>
@@ -570,7 +581,7 @@ export const ContractDocumentV2: React.FC<{
               </div>
               <div className="cdv2-sign-line" />
               <div className="cdv2-sign-meta">
-                {customerName} · Datum:{" "}
+                {data.buyer_signer_name || customerName} · Datum:{" "}
                 {data.signed_at ? fmtDate(data.signed_at) : "__ / __ / ____"}
               </div>
             </div>
@@ -593,6 +604,7 @@ export const ContractDocumentV2: React.FC<{
                 www.auto-city.nl
               </div>
             </div>
+          </div>
           </div>
         </div>
 
