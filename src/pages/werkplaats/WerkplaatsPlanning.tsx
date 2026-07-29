@@ -385,36 +385,58 @@ const WerkplaatsPlanning: React.FC = () => {
     return m;
   }, [doneToday]);
 
+  /**
+   * Volgorde wisselen. De zichtbare lijst wordt gesorteerd op
+   * (near-planned, spoed, sort_order) — dezelfde comparator als `groups`.
+   * Daarom renummeren we de hele kolom in de nieuwe zichtbare volgorde
+   * (10, 20, 30 …) en slaan we die op; anders "verspringt" een swap tussen
+   * twee taken die door pinning tóch weer op hun oude plek belanden.
+   */
   const reorder = async (id: string, dir: -1 | 1) => {
     const target = rows.find(r => r.id === id);
     if (!target) return;
     const groupKey = target.assigned_to || "__unassigned__";
-    // sorted siblings same as UI: rush desc, sort_order asc
-    const sibling = rows
-      .filter(r => (r.assigned_to || "__unassigned__") === groupKey)
-      .sort((a, b) => (Number(b.is_rush) - Number(a.is_rush)) || (a.sort_order - b.sort_order));
-    const idx = sibling.findIndex(w => w.id === id);
-    const swap = sibling[idx + dir];
-    if (!swap) return;
+    const visible = rows
+      .filter(r => (r.assigned_to || "__unassigned__") === groupKey && !isFuturePlanned(r))
+      .sort((a, b) =>
+        (Number(isNearPlanned(b)) - Number(isNearPlanned(a))) ||
+        (Number(b.is_rush) - Number(a.is_rush)) ||
+        (a.sort_order - b.sort_order));
+    const idx = visible.findIndex(w => w.id === id);
+    const swap = visible[idx + dir];
+    if (idx < 0 || !swap) return;
     if (swap.is_rush !== target.is_rush) {
       toast({ title: "Kan niet verwisselen", description: "Spoed-taken staan altijd bovenaan.", variant: "destructive" });
       return;
     }
-    const a = target.sort_order; const b = swap.sort_order;
-    // optimistic
-    setRows(prev => prev.map(r =>
-      r.id === target.id ? { ...r, sort_order: b } :
-      r.id === swap.id ? { ...r, sort_order: a } : r
-    ));
+    if (isNearPlanned(swap) !== isNearPlanned(target)) {
+      toast({ title: "Kan niet verwisselen", description: "Afspraken van vandaag/morgen staan altijd bovenaan.", variant: "destructive" });
+      return;
+    }
+
+    const next = [...visible];
+    next[idx] = swap;
+    next[idx + dir] = target;
+
+    // nieuwe, strikt oplopende sort_orders in de nieuwe zichtbare volgorde
+    const patches = next.map((w, i) => ({ id: w.id, sort_order: (i + 1) * 10 }));
+    const byId = new Map(patches.map(p => [p.id, p.sort_order]));
+
+    // optimistisch
+    setRows(prev => prev.map(r => byId.has(r.id) ? { ...r, sort_order: byId.get(r.id)! } : r));
+
     try {
-      // gebruik tijdelijke waarde om unique-conflicten te vermijden
-      const tmp = -Date.now();
-      const { error: e1 } = await supabase.from("work_orders").update({ sort_order: tmp }).eq("id", target.id);
-      if (e1) throw e1;
-      const { error: e2 } = await supabase.from("work_orders").update({ sort_order: a }).eq("id", swap.id);
-      if (e2) throw e2;
-      const { error: e3 } = await supabase.from("work_orders").update({ sort_order: b }).eq("id", target.id);
-      if (e3) throw e3;
+      const results = await Promise.all(
+        patches
+          .filter(p => (rows.find(r => r.id === p.id)?.sort_order ?? null) !== p.sort_order)
+          .map(p => supabase.from("work_orders").update({ sort_order: p.sort_order }).eq("id", p.id).select("id")),
+      );
+      const failed = results.find(r => r.error);
+      if (failed?.error) throw failed.error;
+      const blocked = results.find(r => !r.error && (r.data?.length ?? 0) === 0);
+      if (blocked) {
+        throw new Error("Geen rechten om de volgorde van deze taak op te slaan.");
+      }
     } catch (e: any) {
       toast({ title: "Fout bij volgorde opslaan", description: e.message, variant: "destructive" });
       load();
