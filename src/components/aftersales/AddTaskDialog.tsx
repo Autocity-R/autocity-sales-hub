@@ -12,7 +12,7 @@ import { DamageDiagram, DAMAGE_ZONES, DamageZone } from "@/components/aftersales
 import { Search, X, Car, Loader2, Plus, PaintBucket, Wrench, Hammer, Sparkles, Camera, Flame, AlertTriangle, Home, Truck, Building2, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { WorkOrderDiscipline } from "@/components/werkplaats/workOrderTypes";
-import { buildLmsSignatureHtml, profileFullName } from "@/utils/lmsSignature";
+import { buildLmsSignatureHtml, profileFullName, workshopLocationLine } from "@/utils/lmsSignature";
 
 export interface AddTaskVehicle {
   id: string;
