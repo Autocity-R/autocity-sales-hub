@@ -3,9 +3,9 @@
  * Naam van de ingelogde gebruiker + organisatieregel eronder.
  * Wordt gedeeld door werkplaats-bevestigingen en garantie-antwoorden.
  */
-/** Officiële Autocity-logo (zwart/wit blok) — publiek bereikbaar voor e-mailclients. */
+/** Werkende LMS/verkoop-logo-URL die in contractmails al zichtbaar doorkomt in Gmail. */
 export const AUTOCITY_LOGO_URL =
-  "cid:autocity-logo";
+  "https://www.auto-city.nl/upload/logo/logo_images_0_1698072999114488851.png";
 
 /**
  * Werkplaats-adres per vestiging (LOS van het verkoop-/vestigingsadres in `branches`).
@@ -39,12 +39,23 @@ export function buildLmsSignatureHtml(name: string, org = "Autocity"): string {
   const safeName = (name || "Autocity").replace(/[<>]/g, "").trim();
   const safeOrg = (org || "Autocity").replace(/[<>]/g, "").trim();
   return `
-<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e5e7eb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0f172a">
-  <div style="font-size:13px;color:#475569;margin-bottom:8px">Met vriendelijke groet,</div>
-  <div style="font-weight:600;color:#0f172a;font-size:14px">${safeName}</div>
-  <div style="font-size:13px;color:#475569;margin-top:2px">${safeOrg}</div>
-  <div style="margin:16px 0 10px"><img src="${AUTOCITY_LOGO_URL}" alt="Autocity" width="110" style="width:110px;height:auto;max-width:110px;display:block;border:0;border-radius:10px" /></div>
-  <div style="font-size:13px;color:#475569;margin-top:2px">📞 010 262 3980 · 🌐 <a style="color:#f97316;text-decoration:none" href="https://www.auto-city.nl">www.auto-city.nl</a></div>
+<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e5e7eb;font-family:Arial,Helvetica,sans-serif;color:#222">
+  <table cellpadding="0" cellspacing="0" border="0" style="width:100%;font-size:12px;color:#555;table-layout:fixed">
+    <tr>
+      <td style="vertical-align:middle;width:72px;padding:0;">
+        <div style="background:#000000;width:64px;height:64px;border-radius:4px;padding:8px;box-sizing:border-box;">
+          <img src="${AUTOCITY_LOGO_URL}" alt="Auto City" style="width:100%;height:100%;object-fit:contain;display:block;border:0;" />
+        </div>
+      </td>
+      <td style="vertical-align:middle;line-height:1.6;border-left:3px solid #FF6B00;padding-left:14px;">
+        <div style="color:#333;">Met vriendelijke groet,</div>
+        <div style="font-weight:600;color:#222;">${safeName}</div>
+        <div>${safeOrg}</div>
+        <div>Tel: 010-2623980</div>
+        <div><a href="https://www.auto-city.nl" style="color:#FF6B00;text-decoration:none;">www.auto-city.nl</a></div>
+      </td>
+    </tr>
+  </table>
 </div>`;
 }
 

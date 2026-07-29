@@ -1,6 +1,7 @@
 import { assert, assertFalse, assertStringIncludes } from "https://deno.land/std@0.177.0/testing/asserts.ts";
 import {
   AUTOCITY_LOGO_CONTENT_ID,
+  AUTOCITY_LOGO_PUBLIC_URL,
   buildGmailMimeMessage,
   normalizeHtmlForInlineLogo,
 } from "../_shared/emailMime.ts";
@@ -38,4 +39,12 @@ Deno.test("does not add inline logo MIME when no LMS signature logo is present",
   assertFalse(shouldAttachLogo);
   assertFalse(mime.includes("Content-ID: <autocity-logo>"));
   assertStringIncludes(mime, "Content-Type: text/html;");
+});
+
+Deno.test("keeps public logo URLs external unless cid is explicitly requested", () => {
+  const html = `<p>Externe test</p><img src="${AUTOCITY_LOGO_PUBLIC_URL}" alt="Autocity">`;
+  const { htmlBody, shouldAttachLogo } = normalizeHtmlForInlineLogo(html);
+
+  assertFalse(shouldAttachLogo);
+  assertStringIncludes(htmlBody, AUTOCITY_LOGO_PUBLIC_URL);
 });
