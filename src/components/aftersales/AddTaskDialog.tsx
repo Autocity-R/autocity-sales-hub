@@ -339,6 +339,55 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
     } finally { setSaving(false); }
   };
 
+  /** Bevestigingsmail (LMS-stijl) via de bestaande email-queue. */
+  const sendConfirmationMail = async (opts: {
+    to: string; branchCode: string; userId: string | null; userEmail: string | null;
+  }) => {
+    const [{ data: branchRow }, { data: prof }] = await Promise.all([
+      supabase.from("branches").select("name, company_name, address, postal_code, city, phone")
+        .eq("code", opts.branchCode).maybeSingle(),
+      opts.userId
+        ? supabase.from("profiles").select("first_name, last_name").eq("id", opts.userId).maybeSingle()
+        : Promise.resolve({ data: null } as any),
+    ]);
+    const b: any = branchRow || {};
+    const planner = profileFullName(prof as any, opts.userEmail);
+    const when = new Date(plannedAt);
+    const dateLabel = when.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const timeLabel = when.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+    const plate = ext.plate.trim().toUpperCase();
+    const addressLine = [b.address, [b.postal_code, b.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+    const row = (k: string, v: string) =>
+      `<tr><td style="padding:6px 12px 6px 0;color:#64748b;font-size:13px;white-space:nowrap">${k}</td><td style="padding:6px 0;color:#0f172a;font-size:13px;font-weight:600">${v}</td></tr>`;
+
+    const htmlBody = `
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0f172a;font-size:14px;line-height:1.6">
+  <p style="margin:0 0 12px">Beste ${ext.name.trim() || "klant"},</p>
+  <p style="margin:0 0 16px">Hierbij bevestigen wij uw afspraak in onze werkplaats.</p>
+  <table style="border-collapse:collapse;margin:0 0 16px">
+    ${row("Datum", dateLabel)}
+    ${row("Tijd", timeLabel)}
+    ${row("Voertuig", `${ext.brand.trim()} ${ext.model.trim()}${plate ? ` · ${plate}` : ""}`)}
+    ${row("Werkzaamheden", (description.trim() || "-").replace(/\n/g, "<br/>"))}
+    ${row("Locatie", `${b.company_name || "Autocity"}${addressLine ? ` — ${addressLine}` : ""}`)}
+  </table>
+  <p style="margin:0 0 12px">Kunt u er onverhoopt niet bij zijn? Laat het ons dan even weten${b.phone ? ` via ${b.phone}` : ""}.</p>
+  ${buildLmsSignatureHtml(planner, "Autocity")}
+</div>`;
+
+    const { error } = await supabase.from("email_queue").insert({
+      status: "pending",
+      payload: {
+        to: [opts.to],
+        subject: `Bevestiging werkplaatsafspraak ${when.toLocaleDateString("nl-NL")} — ${plate || "afspraak"}`,
+        htmlBody,
+        senderEmail: "werkplaats@auto-city.nl",
+        senderName: "Autocity Werkplaats",
+      },
+    } as any);
+    if (error) throw error;
+  };
+
   /** Externe klant + licht voertuig + werkorder aanmaken. */
   const submitExtern = async () => {
     setSaving(true);
