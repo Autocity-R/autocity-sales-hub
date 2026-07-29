@@ -573,6 +573,51 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
                   <Input className="mt-1.5 uppercase" value={ext.plate} onChange={(e) => setExt({ ...ext, plate: e.target.value })} placeholder="XX-123-X" />
                 </div>
               </div>
+              {/* Bestaande klant | Nieuwe klant */}
+              <div>
+                <Label className="text-[12px] font-semibold text-slate-700">Klant</Label>
+                <div className="mt-1.5 grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => { setCustMode("bestaand"); }}
+                    className={cn("py-2 rounded-lg border text-[12.5px] font-semibold transition",
+                      custMode === "bestaand" ? "bg-indigo-50 border-indigo-300 text-indigo-800 ring-2 ring-indigo-200" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50")}>
+                    Bestaande klant
+                  </button>
+                  <button type="button" onClick={() => { setCustMode("nieuw"); setSelectedContactId(null); }}
+                    className={cn("py-2 rounded-lg border text-[12.5px] font-semibold transition",
+                      custMode === "nieuw" ? "bg-indigo-50 border-indigo-300 text-indigo-800 ring-2 ring-indigo-200" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50")}>
+                    Nieuwe klant
+                  </button>
+                </div>
+                {custMode === "bestaand" && (
+                  <div className="mt-2 relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input className="pl-8" value={custQuery} onChange={(e) => setCustQuery(e.target.value)}
+                           placeholder="Zoek op naam, bedrijf, e-mail of telefoon…" />
+                    {custQuery.trim().length >= 2 && (
+                      <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-white">
+                        {custSearching && <div className="flex items-center gap-2 p-3 text-[12px] text-slate-500"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Zoeken…</div>}
+                        {!custSearching && custResults.length === 0 && <div className="p-3 text-[12px] text-slate-400">Geen klanten gevonden</div>}
+                        {!custSearching && custResults.map((c) => (
+                          <button key={c.id} type="button" onClick={() => pickContact(c)}
+                                  className="w-full text-left px-3 py-2 hover:bg-slate-50 border-b border-slate-100 last:border-b-0">
+                            <div className="text-[12.5px] font-semibold text-slate-900 truncate">
+                              {c.company_name || `${c.first_name || ""} ${c.last_name || ""}`.trim() || "Onbekend"}
+                            </div>
+                            <div className="text-[11px] text-slate-500 truncate">
+                              {[c.email, c.phone, c.address_city].filter(Boolean).join(" · ")}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {selectedContactId && (
+                      <div className="mt-2 flex items-center gap-2 text-[11.5px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1.5">
+                        <UserRound className="h-3.5 w-3.5" /> Klant gekoppeld — gegevens hieronder aanpasbaar.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label className="text-[12px] font-semibold text-slate-700">Klantnaam <span className="text-red-500">*</span></Label>
@@ -612,6 +657,15 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
                 <Input className="mt-1.5" type="datetime-local" value={plannedAt} onChange={(e) => setPlannedAt(e.target.value)} />
                 <p className="text-[11px] text-slate-500 mt-1">Verschijnt in de sectie “Gepland” en komt 1 dag vóór de afspraak bovenaan de planning.</p>
               </div>
+              <label className={cn("flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-[12.5px]",
+                ext.email.trim() ? "border-slate-200 bg-white cursor-pointer" : "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed")}>
+                <input type="checkbox" className="h-4 w-4 accent-indigo-600"
+                       disabled={!ext.email.trim()}
+                       checked={sendConfirmation && !!ext.email.trim()}
+                       onChange={(e) => setSendConfirmation(e.target.checked)} />
+                <span className="font-semibold">✉️ Stuur bevestiging naar de klant</span>
+                {!ext.email.trim() && <span className="text-[11px]">(vul eerst een e-mailadres in)</span>}
+              </label>
             </div>
           ) : (
           <div>
