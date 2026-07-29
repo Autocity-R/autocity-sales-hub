@@ -8,6 +8,7 @@ import { VehicleFile, FileCategory } from "@/types/inventory";
 import { SavedContractMetadata, deleteContractFromVehicle } from "@/services/contractStorageService";
 import { useToast } from "@/hooks/use-toast";
 import { IntakeInspectionList } from "@/components/inventory/intake/IntakeInspectionList";
+import { VehicleContractStatusList } from "@/components/contracts/VehicleContractStatusList";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,7 +52,11 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   const [contractToDelete, setContractToDelete] = useState<VehicleFile | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  const contractFiles = files.filter(f => f.category === 'contract_b2b' || f.category === 'contract_b2c');
+  const contractFiles = files.filter(
+    f =>
+      (f.category === 'contract_b2b' || f.category === 'contract_b2c') &&
+      (f.metadata as any)?.source !== 'contract_v2'
+  );
   const damageFiles = files.filter(f => f.category === 'damage');
   const cmrFiles = files.filter(f => f.category === 'cmr');
   const pickupFiles = files.filter(f => f.category === 'pickup');
@@ -117,6 +122,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
               {contractFiles.length}
             </Badge>
           </div>
+          {vehicleId && (
+            <VehicleContractStatusList vehicleId={vehicleId} readOnly={readOnly} />
+          )}
           {contractFiles.length > 0 ? (
             <>
               <p className="text-sm text-muted-foreground">
@@ -159,9 +167,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Button size="sm" variant="ghost">
-                          <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
-                        </Button>
+                        <Button size="sm" variant="ghost" asChild>
+                          <a href={file.url || "#"} target="_blank" rel="noopener noreferrer">Bekijk</a>
+                          </Button>
                         {!readOnly && (
                           <Button 
                             size="sm" 
@@ -227,9 +235,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                           Te groot
                         </Button>
                       ) : (
-                        <Button size="sm" variant="ghost">
-                          <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
-                        </Button>
+                        <Button size="sm" variant="ghost" asChild>
+                          <a href={file.url || "#"} target="_blank" rel="noopener noreferrer">Bekijk</a>
+                          </Button>
                       )}
                       {!readOnly && (
                         <Button 
@@ -290,9 +298,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                           Te groot
                         </Button>
                       ) : (
-                        <Button size="sm" variant="ghost">
-                          <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
-                        </Button>
+                        <Button size="sm" variant="ghost" asChild>
+                          <a href={file.url || "#"} target="_blank" rel="noopener noreferrer">Bekijk</a>
+                          </Button>
                       )}
                       {!readOnly && (
                         <Button 
@@ -353,9 +361,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                           Te groot
                         </Button>
                       ) : (
-                        <Button size="sm" variant="ghost">
-                          <a href={file.url} target="_blank" rel="noopener noreferrer">Bekijk</a>
-                        </Button>
+                        <Button size="sm" variant="ghost" asChild>
+                          <a href={file.url || "#"} target="_blank" rel="noopener noreferrer">Bekijk</a>
+                          </Button>
                       )}
                       {!readOnly && (
                         <Button 

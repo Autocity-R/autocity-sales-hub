@@ -9,6 +9,7 @@ import {
   fetchContractByToken,
   submitContractSignature,
   fetchSignedContractDownload,
+  markContractOpened,
 } from "@/services/contractV2Service";
 import { SignaturePad } from "@/components/common/SignaturePad";
 
@@ -61,6 +62,8 @@ export default function SigningPage() {
       }
       const c = d as any;
       const cust = c.customer_snapshot || {};
+      // Registreer eenmalig dat de klant de tekenlink heeft geopend
+      void markContractOpened(token);
       setSignerName(
         cust.companyName ||
           [cust.firstName, cust.lastName].filter(Boolean).join(" ") ||
@@ -162,7 +165,13 @@ export default function SigningPage() {
       </CenterMsg>
     );
   if (status === "error")
-    return <CenterMsg>Er ging iets mis: {errorMsg}</CenterMsg>;
+    return (
+      <CenterMsg>
+        {errorMsg === "cancelled"
+          ? "Dit contract is ingetrokken. Neem contact op met uw contactpersoon voor een nieuw contract."
+          : `Er ging iets mis: ${errorMsg}`}
+      </CenterMsg>
+    );
 
   if (!contract) return null;
 

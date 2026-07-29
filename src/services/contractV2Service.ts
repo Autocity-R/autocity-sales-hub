@@ -148,3 +148,87 @@ export async function fetchSignedContractDownload(token: string) {
   if (error) return { error: error.message } as { error: string };
   return data as { ok?: boolean; signed_at?: string; pdf_url?: string; error?: string };
 }
+
+export interface VehicleContractV2 {
+  id: string;
+  contract_number: string;
+  contract_type: string;
+  status: string;
+  created_at: string;
+  sent_at: string | null;
+  signed_at: string | null;
+  opened_at: string | null;
+  pdf_path: string | null;
+  pdf_url: string | null;
+}
+
+/** Alle v2-contracten van een voertuig, met status-keten en getekende PDF-link. */
+export async function fetchVehicleContractsV2(
+  vehicleId: string,
+): Promise<VehicleContractV2[]> {
+  const { data, error } = await supabase
+    .from("contract_documents")
+    .select(
+      "id, contract_number, contract_type, status, created_at, sent_at, signed_at, contract_signatures(opened_at, signed_at, pdf_path, created_at)",
+    )
+    .eq("vehicle_id", vehicleId)
+    .neq("status", "geannuleerd")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[CONTRACT_V2] fetch vehicle contracts failed", error);
+    return [];
+  }
+
+  return Promise.all(
+    (data || []).map(async (doc: any) => {
+      const sigs: any[] = doc.contract_signatures || [];
+      const signedSig = sigs.find((s) => s.signed_at);
+      const latest =
+        signedSig ||
+        [...sigs].sort((a, b) =>
+          (b.created_at || "").localeCompare(a.created_at || ""),
+        )[0];
+      const pdfPath = signedSig?.pdf_path ?? null;
+      let pdfUrl: string | null = null;
+      if (pdfPath) {
+        const { data: signed } = await supabase.storage
+          .from("vehicle-documents")
+          .createSignedUrl(pdfPath, 3600);
+        pdfUrl = signed?.signedUrl ?? null;
+      }
+      return {
+        id: doc.id,
+        contract_number: doc.contract_number,
+        contract_type: doc.contract_type,
+        status: doc.status,
+        created_at: doc.created_at,
+        sent_at: doc.sent_at,
+        signed_at: doc.signed_at ?? signedSig?.signed_at ?? null,
+        opened_at: latest?.opened_at ?? null,
+        pdf_path: pdfPath,
+        pdf_url: pdfUrl,
+      } as VehicleContractV2;
+    }),
+  );
+}
+
+/** Contract intrekken: tekenlink direct ongeldig + document uit de lijst. */
+export async function cancelContractV2(
+  contractId: string,
+): Promise<{ ok?: boolean; error?: string }> {
+  const { data, error } = await supabase.rpc("cancel_contract_v2" as any, {
+    _contract_id: contractId,
+  });
+  if (error) return { error: error.message };
+  return (data as any) || {};
+}
+
+/** Eenmalig registreren dat de klant de tekenlink heeft geopend. */
+export async function markContractOpened(token: string): Promise<void> {
+  try {
+    await supabase.rpc("mark_contract_opened" as any, { _token: token });
+  } catch (e) {
+    console.warn("[CONTRACT_V2] mark opened failed", e);
+  }
+}
