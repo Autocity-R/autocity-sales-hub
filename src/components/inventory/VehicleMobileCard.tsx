@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Vehicle, PaymentStatus, PaintStatus } from "@/types/inventory";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -82,12 +83,12 @@ export const VehicleMobileCard: React.FC<VehicleMobileCardProps> = ({
                 <FileText className="mr-2 h-4 w-4" />
                 Details bekijken
               </DropdownMenuItem>
-              {onOpenContractConfig && (
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onOpenContractConfig(vehicle, "b2c"); }}>
+              <DropdownMenuItem asChild onClick={(e) => e.stopPropagation()}>
+                <Link to={`/contracten/nieuw?vehicleId=${vehicle.id}`}>
                   <FileText className="mr-2 h-4 w-4" />
-                  Contract aanmaken
-                </DropdownMenuItem>
-              )}
+                  Koopcontract B2C — digitaal ondertekenen
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onSendEmail('payment_received', vehicle.id); }}>
                 <Mail className="mr-2 h-4 w-4" />
                 Betaling ontvangen

@@ -1,5 +1,6 @@
 
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { Mail, AlertCircle, CheckCircle, Calendar, FileText, Settings, PenTool } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -8,7 +9,6 @@ import { Separator } from "@/components/ui/separator";
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 import { isButtonLinkedToTemplate, emailTemplates } from "@/services/emailTemplateService";
-import { ContractConfigDialog } from "../ContractConfigDialog";
 import { EmailConfirmDialog } from "@/components/ui/email-confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
 
@@ -28,39 +28,12 @@ interface PendingEmailAction {
 }
 
 export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle, onUpdateReminder }) => {
-  const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [emailConfirmOpen, setEmailConfirmOpen] = useState(false);
   const [pendingEmailAction, setPendingEmailAction] = useState<PendingEmailAction | null>(null);
   const { toast } = useToast();
   
   const isB2C = vehicle?.salesStatus === "verkocht_b2c";
   const isVehicleArrived = vehicle?.arrived;
-
-  const handleContractClick = () => {
-    setContractDialogOpen(true);
-  };
-
-  const handleSendContract = (options: ContractOptions) => {
-    if (!vehicle.customerId) {
-      toast({
-        title: "Geen klant gekoppeld",
-        description: "Koppel eerst een klant aan dit voertuig in het 'Contacten' tabblad.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    const customerContact = vehicle?.customerContact;
-    setPendingEmailAction({ 
-      type: "contract_b2c_digital", 
-      options,
-      recipientEmail: customerContact?.email,
-      recipientName: customerContact?.name || 'Klant',
-      subject: "Koopcontract B2C - Digitaal",
-      previewContent: "Contract document wordt verzonden..."
-    });
-    setEmailConfirmOpen(true);
-  };
 
   const handleConfirmEmail = () => {
     if (pendingEmailAction) {
@@ -77,14 +50,8 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
 
   const renderEmailButton = (buttonType: string, icon: React.ReactNode, label: string, variant: "default" | "outline" = "default") => {
     const hasTemplate = isButtonLinkedToTemplate(buttonType);
-    const isContractButton = buttonType.includes("contract");
     
     const handleClick = async () => {
-      if (isContractButton) {
-        handleContractClick();
-        return;
-      }
-      
       // Determine recipient type
       const isPapersReminder = buttonType === "reminder_papers";
       const recipientType = isPapersReminder ? "leverancier" : "klant";
@@ -182,17 +149,12 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
           <h4 className="font-medium mb-4">Particuliere klant</h4>
           
           <div className="space-y-3">
-            {renderEmailButton(
-              "contract_b2c_digital", 
-              <PenTool className="mr-2 h-4 w-4" />, 
-              "Koopcontract B2C - Digitaal"
-            )}
-
-            {renderEmailButton(
-              "contract_send", 
-              <FileText className="mr-2 h-4 w-4" />, 
-              "Koopcontract sturen"
-            )}
+            <Button asChild className="w-full justify-start">
+              <Link to={`/contracten/nieuw?vehicleId=${vehicle.id}`}>
+                <PenTool className="mr-2 h-4 w-4" />
+                Koopcontract B2C — digitaal ondertekenen
+              </Link>
+            </Button>
             
             {renderEmailButton(
               "rdw_approved", 
@@ -308,17 +270,6 @@ export const B2CEmailsTab: React.FC<B2CEmailsTabProps> = ({ onSendEmail, vehicle
         <p>Knoppen met een ⚙️ icoon hebben nog geen email template gekoppeld. 
         Ga naar Instellingen → Email Templates om templates aan knoppen te koppelen.</p>
       </div>
-
-      {/* Contract Configuration Dialog */}
-      {vehicle && (
-        <ContractConfigDialog
-          isOpen={contractDialogOpen}
-          onClose={() => setContractDialogOpen(false)}
-          vehicle={vehicle}
-          contractType="b2c"
-          onSendContract={handleSendContract}
-        />
-      )}
 
       <EmailConfirmDialog
         open={emailConfirmOpen}

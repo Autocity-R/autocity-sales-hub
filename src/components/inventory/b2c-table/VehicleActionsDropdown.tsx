@@ -1,5 +1,6 @@
 
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -94,9 +95,11 @@ export const VehicleActionsDropdown: React.FC<VehicleActionsDropdownProps> = ({
         {/* Only show contract emails for sold vehicles */}
         {isVehicleSold && (
           <>
-            <DropdownMenuItem onClick={() => handleContractAction("b2c")}>
-              <FileText className="h-4 w-4 mr-2" />
-              Stuur koopcontract B2C
+            <DropdownMenuItem asChild>
+              <Link to={`/contracten/nieuw?vehicleId=${vehicle.id}`}>
+                <FileText className="h-4 w-4 mr-2" />
+                Koopcontract B2C — digitaal ondertekenen
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleContractAction("b2b")}>
               <FileText className="h-4 w-4 mr-2" />
