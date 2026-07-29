@@ -105,15 +105,22 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
   const [saving, setSaving] = useState(false);
   const searchTimer = useRef<number | null>(null);
 
-  // Extern (alleen werkplaats)
-  const externAllowed = discipline === "werkplaats";
+  // Extern (werkplaats + schadeherstel)
+  const externAllowed = discipline === "werkplaats" || discipline === "spuit";
   const [mode, setMode] = useState<"intern" | "extern">("intern");
+  const [custMode, setCustMode] = useState<"bestaand" | "nieuw">("nieuw");
+  const [custQuery, setCustQuery] = useState("");
+  const [custResults, setCustResults] = useState<Array<any>>([]);
+  const [custSearching, setCustSearching] = useState(false);
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [sendConfirmation, setSendConfirmation] = useState(true);
   const [ext, setExt] = useState({
     brand: "", model: "", plate: "", name: "",
     street: "", house_number: "", postal_code: "", city: "",
     email: "", phone: "",
   });
   const [plannedAt, setPlannedAt] = useState<string>("");
+  const custTimer = useRef<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -123,6 +130,9 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
     setAssignedTo(""); setDueDate(""); setIsRush(false); setWarrantyClaimId("");
     setPoetsType("showroom");
     setMode("intern");
+    setCustMode("nieuw");
+    setCustQuery(""); setCustResults([]); setSelectedContactId(null);
+    setSendConfirmation(true);
     setExt({
       brand: "", model: "", plate: "", name: "",
       street: "", house_number: "", postal_code: "", city: "",
