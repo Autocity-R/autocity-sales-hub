@@ -346,10 +346,10 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
       const { data: userRes } = await supabase.auth.getUser();
 
       // (a) klant opzoeken op e-mail/telefoon, anders aanmaken
-      let customerId: string | null = null;
+      let customerId: string | null = selectedContactId;
       const email = ext.email.trim();
       const phone = ext.phone.trim();
-      if (email || phone) {
+      if (!customerId && (email || phone)) {
         const filters: string[] = [];
         if (email) filters.push(`email.ilike.${email}`);
         if (phone) filters.push(`phone.eq.${phone}`);
@@ -447,6 +447,22 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
       // Werkplaats-agenda (eigen spoor, faalt nooit blokkerend)
       if ((createdWo as any)?.id) {
         syncWorkOrderToWerkplaatsCalendar((createdWo as any).id, (createdWo as any).branch || "rotterdam");
+      }
+
+      // (d) bevestigingsmail naar de klant — mag het opslaan nooit blokkeren
+      if (sendConfirmation && email) {
+        try {
+          await sendConfirmationMail({
+            to: email,
+            branchCode: (createdWo as any)?.branch || "rotterdam",
+            userId: userRes.user?.id ?? null,
+            userEmail: userRes.user?.email ?? null,
+          });
+          toast({ title: "Bevestiging verstuurd", description: `Mail naar ${email} staat in de wachtrij.` });
+        } catch (mailErr: any) {
+          console.error(mailErr);
+          toast({ title: "Bevestiging niet verstuurd", description: mailErr.message, variant: "destructive" });
+        }
       }
 
       toast({ title: "Externe opdracht ingepland" });
