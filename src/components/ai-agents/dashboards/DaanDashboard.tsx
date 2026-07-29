@@ -48,6 +48,40 @@ interface B2BResult {
 const fmt = (n: number) => `€${n.toLocaleString("nl-NL")}`;
 
 export const DaanDashboard: React.FC = () => {
+  const { data: agent, isLoading: agentLoading } = useQuery({
+    queryKey: ["daan-agent-status"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ai_agents")
+        .select("is_active")
+        .eq("id", "b3000000-0000-0000-0000-000000000003")
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  if (agentLoading) return <Skeleton className="h-40 w-full" />;
+  if (agent && agent.is_active === false) {
+    return (
+      <Card className="border-dashed">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CircleDot className="h-4 w-4 text-muted-foreground" />
+            Daan is gepauzeerd
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground space-y-1">
+          <p>De B2B-verkoopleider-agent staat tijdelijk uit. Er draaien geen automatische analyses of e-mails.</p>
+          <p>Alle data en instellingen blijven bewaard; we zetten hem later weer aan.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return <DaanDashboardInner />;
+};
+
+const DaanDashboardInner: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [b2bResult, setB2bResult] = useState<B2BResult | null>(null);
   const [selectedSalesperson, setSelectedSalesperson] = useState<any>(null);
