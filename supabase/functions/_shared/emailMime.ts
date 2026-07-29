@@ -98,7 +98,7 @@ export function buildGmailMimeMessage(options: BuildGmailMimeMessageOptions): st
     const relatedBoundary = makeBoundary("related");
     return [
       ...commonHeaders,
-      `Content-Type: multipart/related; boundary="${relatedBoundary}"`,
+      `Content-Type: multipart/related; boundary="${relatedBoundary}"; type="text/html"`,
       "",
       `--${relatedBoundary}`,
       htmlPart,
@@ -126,10 +126,9 @@ export function buildGmailMimeMessage(options: BuildGmailMimeMessageOptions): st
 
   return [
     ...commonHeaders,
-    'Content-Type: text/html; charset="UTF-8"',
-    "Content-Transfer-Encoding: base64",
+    ...buildBodyHeaders(options.htmlBody),
     "",
-    wrapBase64(encodeBase64(new TextEncoder().encode(options.htmlBody).buffer)),
+    encodeBody(options.htmlBody),
   ].join("\r\n");
 }
 
@@ -147,7 +146,7 @@ function buildCommonHeaders(options: BuildGmailMimeMessageOptions): string[] {
 
 function buildRelatedPart(boundary: string, htmlPart: string, inlineLogoBase64: string): string {
   return [
-    `Content-Type: multipart/related; boundary="${boundary}"`,
+    `Content-Type: multipart/related; boundary="${boundary}"; type="text/html"`,
     "",
     `--${boundary}`,
     htmlPart,
@@ -159,11 +158,33 @@ function buildRelatedPart(boundary: string, htmlPart: string, inlineLogoBase64: 
 
 function buildHtmlPart(htmlBody: string): string {
   return [
-    'Content-Type: text/html; charset="UTF-8"',
-    "Content-Transfer-Encoding: base64",
+    ...buildBodyHeaders(htmlBody),
     "",
-    wrapBase64(encodeBase64(new TextEncoder().encode(htmlBody).buffer)),
+    encodeBody(htmlBody),
   ].join("\r\n");
+}
+
+function buildBodyHeaders(htmlBody: string): string[] {
+  return [
+    'Content-Type: text/html; charset="UTF-8"',
+    `Content-Transfer-Encoding: ${isAscii(htmlBody) ? "7bit" : "base64"}`,
+  ];
+}
+
+function encodeBody(htmlBody: string): string {
+  if (isAscii(htmlBody)) {
+    return normalizeLineEndings(htmlBody);
+  }
+
+  return wrapBase64(encodeBase64(new TextEncoder().encode(htmlBody).buffer));
+}
+
+function isAscii(value: string): boolean {
+  return /^[\x00-\x7F]*$/.test(value);
+}
+
+function normalizeLineEndings(value: string): string {
+  return value.replace(/\r?\n/g, "\r\n");
 }
 
 function buildInlineLogoPart(inlineLogoBase64: string): string {

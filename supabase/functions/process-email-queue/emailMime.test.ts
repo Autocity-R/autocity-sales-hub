@@ -39,6 +39,8 @@ Deno.test("does not add inline logo MIME when no LMS signature logo is present",
   assertFalse(shouldAttachLogo);
   assertFalse(mime.includes("Content-ID: <autocity-logo>"));
   assertStringIncludes(mime, "Content-Type: text/html;");
+  assertStringIncludes(mime, "Content-Transfer-Encoding: 7bit");
+  assertStringIncludes(mime, "<p>Geen handtekening</p>");
 });
 
 Deno.test("keeps public logo URLs external unless cid is explicitly requested", () => {
