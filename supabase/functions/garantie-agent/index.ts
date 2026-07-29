@@ -107,7 +107,7 @@ async function loadContext(supabase: any, threadId: string) {
 
   // ── Voertuig: via claim → via kenteken in tekst → via klant ──
   let vehicle: any = null;
-  const vehicleSelect = "id, brand, model, year, mileage, license_number, vin, sold_date, selling_price, sales_status, customer_id, details";
+  const vehicleSelect = "id, brand, model, year, mileage, license_number, vin, sold_date, status, customer_id, branch";
   if (claim?.vehicle_id) {
     const { data: v } = await supabase.from("vehicles").select(vehicleSelect).eq("id", claim.vehicle_id).maybeSingle();
     vehicle = v;
@@ -147,7 +147,7 @@ async function loadContext(supabase: any, threadId: string) {
   if (vehicle?.id) {
     const { data } = await supabase
       .from("work_orders")
-      .select("id, order_type, status, description, created_at, completed_at, total_cost")
+      .select("id, discipline, status, description, created_at, finished_at, source")
       .eq("vehicle_id", vehicle.id)
       .order("created_at", { ascending: false })
       .limit(15);
@@ -170,7 +170,7 @@ async function loadContext(supabase: any, threadId: string) {
   const warrantyBlock = (() => {
     if (!vehicle) return "Garantiestatus: onbekend — geen voertuig gekoppeld, verkoopdatum niet vast te stellen.";
     if (monthsSinceSale === null) return `Garantiestatus: verkoopdatum onbekend voor ${vehicle.brand} ${vehicle.model}; termijn niet te berekenen.`;
-    const b2b = String(vehicle.sales_status || "").includes("b2b") || contact?.is_car_dealer;
+    const b2b = String(vehicle.status || "").includes("b2b") || contact?.is_car_dealer;
     const lines = [
       `Levering/verkoopdatum: ${vehicle.sold_date} (± ${monthsSinceSale} maanden geleden).`,
       monthsSinceSale <= 12
@@ -182,7 +182,7 @@ async function loadContext(supabase: any, threadId: string) {
   })();
 
   const vehicleBlock = vehicle
-    ? `Voertuig: ${vehicle.brand} ${vehicle.model} (${vehicle.year || "?"}) · kenteken ${vehicle.license_number || "-"} · ${vehicle.mileage ?? "?"} km bij verkoop · verkoopstatus ${vehicle.sales_status || "-"}`
+    ? `Voertuig: ${vehicle.brand} ${vehicle.model} (${vehicle.year || "?"}) · kenteken ${vehicle.license_number || "-"} · ${vehicle.mileage ?? "?"} km bij verkoop · status ${vehicle.status || "-"}`
     : thread?.voertuig_info || "Geen voertuiginformatie beschikbaar.";
 
   const customerBlock = contact
@@ -198,7 +198,7 @@ async function loadContext(supabase: any, threadId: string) {
     : "Geen eerdere garantieclaims bekend.";
 
   const workBlock = workOrders.length
-    ? workOrders.map((w: any) => `- ${w.created_at?.slice(0, 10)} · ${w.order_type || "werkorder"} · ${w.status} · ${sanitize(w.description).slice(0, 160)}${w.total_cost ? ` · € ${w.total_cost}` : ""}`).join("\n")
+    ? workOrders.map((w: any) => `- ${w.created_at?.slice(0, 10)} · ${w.discipline || "werkorder"} · ${w.status}${w.source ? ` (${w.source})` : ""} · ${sanitize(w.description).slice(0, 160)}`).join("\n")
     : "Geen werkplaatshistorie bekend voor dit voertuig.";
 
   const memoryBlock = (memories || []).length
