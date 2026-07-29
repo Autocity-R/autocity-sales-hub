@@ -1814,6 +1814,7 @@ export type Database = {
           contract_id: string
           created_at: string
           id: string
+          opened_at: string | null
           pdf_path: string | null
           signature_data: string | null
           signed_at: string | null
@@ -1828,6 +1829,7 @@ export type Database = {
           contract_id: string
           created_at?: string
           id?: string
+          opened_at?: string | null
           pdf_path?: string | null
           signature_data?: string | null
           signed_at?: string | null
@@ -1842,6 +1844,7 @@ export type Database = {
           contract_id?: string
           created_at?: string
           id?: string
+          opened_at?: string | null
           pdf_path?: string | null
           signature_data?: string | null
           signed_at?: string | null
@@ -5060,6 +5063,7 @@ export type Database = {
         Args: { task_id: string; user_id: string }
         Returns: boolean
       }
+      cancel_contract_v2: { Args: { _contract_id: string }; Returns: Json }
       clean_expired_exact_online_cache: { Args: never; Returns: number }
       complete_pre_delivery_checklist_item: {
         Args: {
@@ -5105,6 +5109,7 @@ export type Database = {
       }
       is_admin_or_owner: { Args: never; Returns: boolean }
       is_admin_user: { Args: { user_id: string }; Returns: boolean }
+      mark_contract_opened: { Args: { _token: string }; Returns: undefined }
       next_workshop_invoice_number: { Args: never; Returns: string }
       update_weekly_sales:
         | {
