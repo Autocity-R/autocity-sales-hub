@@ -214,7 +214,7 @@ serve(async (req) => {
     for (const task of tasks) {
       try {
         // Mark as processing
-        await supabase
+        const claimQuery = supabase
           .from('email_queue')
           .update({
             status: 'processing',
@@ -222,6 +222,19 @@ serve(async (req) => {
             last_attempt_at: new Date().toISOString(),
           })
           .eq('id', task.id);
+
+        if (task.status === 'retry') {
+          claimQuery.eq('status', 'retry').lte('retry_after', new Date().toISOString());
+        } else {
+          claimQuery.eq('status', 'pending');
+        }
+
+        const { data: claimedRows, error: claimError } = await claimQuery.select('id');
+        if (claimError) throw claimError;
+        if (!claimedRows || claimedRows.length === 0) {
+          console.log(`⏭️ Task ${task.id} was already claimed by another queue worker — skipping`);
+          continue;
+        }
 
         // Get access token for the sender (dynamic impersonation with fallback)
         const senderEmail = task.payload.senderEmail ?? 'inkoop@auto-city.nl';
