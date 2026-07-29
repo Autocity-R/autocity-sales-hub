@@ -214,7 +214,7 @@ const V2_CSS = `
 .cdv2-root.cdv2-pdf { padding: 0; background: #080808; }
 .cdv2-root.cdv2-pdf .cdv2-page {
   margin: 0 auto; box-shadow: none; border-radius: 0;
-  height: 1123px; min-height: 1123px;
+  min-height: 1123px; overflow: visible;
 }
 
 @media print {
