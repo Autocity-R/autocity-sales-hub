@@ -244,7 +244,12 @@ ${timeline}`;
 
   const lastIncomingId = [...(emails || [])].reverse().find((e: any) => e.richting === "inkomend")?.id || null;
 
-  return { thread, dossier, lastIncomingId };
+  const klantNaam =
+    [contact?.first_name, contact?.last_name].filter(Boolean).join(" ") ||
+    thread?.klant_naam ||
+    "";
+
+  return { thread, dossier, lastIncomingId, klantNaam };
 }
 
 serve(async (req) => {
@@ -266,13 +271,19 @@ serve(async (req) => {
 
     if (action === "suggest" || action === "draft") {
       const hint: string = body.hint || "";
+      const aanhef = dutchGreeting(ctx.klantNaam);
       const prompt = `DOSSIER
 ${ctx.dossier}
 
 OPDRACHT:
-Schrijf een professioneel Nederlands conceptantwoord aan de klant op de laatste inkomende e-mail. Weeg het dossier expliciet mee (termijn sinds levering, bewijslast, eerdere claims en werkplaatshistorie), maar noem geen interne kosten of marges. Empathisch, concreet, met duidelijke vervolgstap. GEEN aanhef ("Beste ...") en GEEN handtekening (die worden automatisch toegevoegd). Geef alléén de kale antwoordtekst terug — geen JSON, geen markdown, geen uitleg.${hint ? `\n\nEXTRA AANWIJZING: ${hint}` : ""}`;
+Schrijf een professioneel Nederlands conceptantwoord aan de klant op de laatste inkomende e-mail. Weeg het dossier expliciet mee (termijn sinds levering, bewijslast, eerdere claims en werkplaatshistorie), maar noem geen interne kosten of marges. Empathisch, concreet, met duidelijke vervolgstap.
+BEGIN de mail met exact deze aanhef op de eerste regel, gevolgd door een lege regel: "${aanhef}"
+Geen andere of Engelse opening, geen stijve juridische aanhef. GEEN handtekening (die wordt automatisch toegevoegd). Geef alléén de kale antwoordtekst terug — geen JSON, geen markdown, geen uitleg.${hint ? `\n\nEXTRA AANWIJZING: ${hint}` : ""}`;
 
-      const suggestion = await callAnthropic(anthKey, prompt, 1000);
+      let suggestion = await callAnthropic(anthKey, prompt, 1000);
+      if (suggestion && !/^(goedemorgen|goedemiddag|goedenavond|beste|geachte)/i.test(suggestion.trim())) {
+        suggestion = `${aanhef}\n\n${suggestion.trim()}`;
+      }
 
       if (action === "draft" && ctx.lastIncomingId && suggestion) {
         await supabase.from("garantie_emails")
