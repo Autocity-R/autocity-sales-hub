@@ -2,10 +2,21 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import * as jose from 'https://deno.land/x/jose@v4.14.4/index.ts';
+import {
+  base64UrlEncodeMimeMessage,
+  buildGmailMimeMessage,
+  loadAutocityLogoBase64,
+  normalizeHtmlForInlineLogo,
+  PreparedEmailAttachment,
+  wrapBase64,
+} from '../_shared/emailMime.ts';
 
 interface EmailAttachment {
   filename: string;
+  mimeType?: string;
   url?: string;
+  base64?: string;
+  content?: string;
   base64Content?: string;
 }
 
@@ -79,82 +90,51 @@ async function getAccessTokenForSender(serviceAccount: ServiceAccount, senderEma
   return token;
 }
 
-async function sendEmailViaGmail(payload: EmailPayload, accessToken: string): Promise<void> {
+async function sendEmailViaGmail(payload: EmailPayload, accessToken: string, supabase: ReturnType<typeof createClient>): Promise<void> {
   console.log(`📤 Sending email to ${payload.to[0]}...`);
 
   // Process attachments
-  const processedAttachments = [];
+  const processedAttachments: PreparedEmailAttachment[] = [];
   for (const att of (payload.attachments || [])) {
     try {
       let base64Data: string;
-      if (att.base64Content) {
-        base64Data = att.base64Content;
+      let mimeType = att.mimeType || 'application/octet-stream';
+      if (att.base64Content || att.base64 || att.content) {
+        base64Data = att.base64Content || att.base64 || att.content || '';
       } else if (att.url) {
         const response = await fetch(att.url);
         if (!response.ok) throw new Error(`Failed to fetch attachment: ${att.filename}`);
+        mimeType = response.headers.get('content-type') || mimeType;
         const buffer = await response.arrayBuffer();
         base64Data = btoa(String.fromCharCode(...new Uint8Array(buffer)));
       } else {
         continue;
       }
-      processedAttachments.push({ filename: att.filename, content: base64Data });
+      processedAttachments.push({ filename: att.filename, mimeType, data: wrapBase64(base64Data) });
     } catch (error) {
       console.error(`Failed to process attachment ${att.filename}:`, error);
     }
   }
 
-  // Build MIME message
-  const boundary = `boundary_${Date.now()}`;
-  let message = [
-    `From: ${payload.senderEmail}`,
-    `To: ${payload.to.join(', ')}`,
-  ];
+  const normalized = normalizeHtmlForInlineLogo(payload.htmlBody);
+  const inlineLogoBase64 = normalized.shouldAttachLogo
+    ? await loadAutocityLogoBase64(supabase)
+    : undefined;
 
-  if (payload.cc && payload.cc.length > 0) {
-    message.push(`Cc: ${payload.cc.join(', ')}`);
+  if (inlineLogoBase64) {
+    console.log('📎 Inline Autocity logo attached via CID');
   }
 
-  message.push(
-    `Subject: ${payload.subject}`,
-    'MIME-Version: 1.0',
-    `Content-Type: multipart/mixed; boundary="${boundary}"`,
-    '',
-    `--${boundary}`,
-    'Content-Type: text/html; charset=UTF-8',
-    '',
-    payload.htmlBody,
-    ''
-  );
-
-  for (const att of processedAttachments) {
-    message.push(
-      `--${boundary}`,
-      `Content-Type: application/octet-stream; name="${att.filename}"`,
-      'Content-Transfer-Encoding: base64',
-      `Content-Disposition: attachment; filename="${att.filename}"`,
-      '',
-      att.content,
-      ''
-    );
-  }
-
-  message.push(`--${boundary}--`);
-
-  const rawMessage = message.join('\r\n');
-  
-  // Convert to UTF-8 bytes to handle Dutch characters (é, ë, ï, etc.)
-  const utf8Bytes = new TextEncoder().encode(rawMessage);
-  
-  // Convert bytes to base64 using Uint8Array
-  let binaryString = '';
-  utf8Bytes.forEach(byte => {
-    binaryString += String.fromCharCode(byte);
+  const rawMessage = buildGmailMimeMessage({
+    senderEmail: payload.senderEmail,
+    to: payload.to,
+    cc: payload.cc,
+    subject: payload.subject,
+    htmlBody: normalized.htmlBody,
+    attachments: processedAttachments,
+    inlineLogoBase64,
   });
-  
-  const encodedMessage = btoa(binaryString)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
+  const encodedMessage = base64UrlEncodeMimeMessage(rawMessage);
 
   const response = await fetch(
     `https://gmail.googleapis.com/gmail/v1/users/me/messages/send`,
@@ -248,7 +228,7 @@ serve(async (req) => {
         const accessToken = await getAccessTokenForSender(serviceAccount, senderEmail);
 
         // Send email
-        await sendEmailViaGmail(task.payload, accessToken);
+        await sendEmailViaGmail(task.payload, accessToken, supabase);
 
         // Mark as sent
         await supabase
