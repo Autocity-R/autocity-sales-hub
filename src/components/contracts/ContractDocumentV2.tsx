@@ -550,7 +550,8 @@ export const ContractDocumentV2: React.FC<{
             </div>
           )}
 
-          {/* Signatures */}
+          {/* Signatures + footer: altijd samen op één pagina */}
+          <div className="cdv2-keep">
           <div className="cdv2-sign-grid">
             <div className="cdv2-sign-col">
               <div className="lbl">Verkoper</div>
@@ -580,7 +581,7 @@ export const ContractDocumentV2: React.FC<{
               </div>
               <div className="cdv2-sign-line" />
               <div className="cdv2-sign-meta">
-                {customerName} · Datum:{" "}
+                {data.buyer_signer_name || customerName} · Datum:{" "}
                 {data.signed_at ? fmtDate(data.signed_at) : "__ / __ / ____"}
               </div>
             </div>
@@ -603,6 +604,7 @@ export const ContractDocumentV2: React.FC<{
                 www.auto-city.nl
               </div>
             </div>
+          </div>
           </div>
         </div>
 
