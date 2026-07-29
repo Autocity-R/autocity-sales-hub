@@ -190,17 +190,6 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
             <DialogDescription>
               Details van voertuig bekijken en bewerken.
             </DialogDescription>
-            {(vehicle.salesStatus === 'verkocht_b2b' ||
-              vehicle.salesStatus === 'verkocht_b2c') && (
-              <div className="pt-2">
-                <Button asChild size="sm" variant="outline">
-                  <Link to={`/contracten/nieuw?vehicleId=${vehicle.id}`}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Nieuw koopcontract (v2)
-                  </Link>
-                </Button>
-              </div>
-            )}
           </DialogHeader>
           
           {/* Scrollable content area */}
