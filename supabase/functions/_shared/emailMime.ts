@@ -2,6 +2,8 @@ import { encode as encodeBase64 } from "https://deno.land/std@0.177.0/encoding/b
 
 export const AUTOCITY_LOGO_CONTENT_ID = "autocity-logo";
 export const AUTOCITY_LOGO_FILENAME = "autocity-logo-v3.png";
+export const AUTOCITY_LEGACY_LOGO_URL =
+  "https://www.auto-city.nl/upload/logo/logo_images_0_1698072999114488851.png";
 const AUTOCITY_LOGO_BUCKET = "email-assets";
 const AUTOCITY_LOGO_PATH = "autocity-logo-v3.png";
 const AUTOCITY_LOGO_PUBLIC_URL =
@@ -46,7 +48,9 @@ export function base64UrlEncodeMimeMessage(message: string): string {
 
 export function normalizeHtmlForInlineLogo(htmlBody: string): { htmlBody: string; shouldAttachLogo: boolean } {
   const containsCid = htmlBody.includes(`cid:${AUTOCITY_LOGO_CONTENT_ID}`);
-  const containsOldPublicUrl = htmlBody.includes(AUTOCITY_LOGO_PUBLIC_URL) || htmlBody.includes(AUTOCITY_LOGO_FILENAME);
+  const containsOldPublicUrl =
+    htmlBody.includes(AUTOCITY_LOGO_PUBLIC_URL) ||
+    htmlBody.includes(AUTOCITY_LOGO_FILENAME);
   const htmlWithCid = htmlBody
     .replaceAll(AUTOCITY_LOGO_PUBLIC_URL, `cid:${AUTOCITY_LOGO_CONTENT_ID}`)
     .replaceAll(AUTOCITY_LOGO_PUBLIC_URL.replace(/&/g, "&amp;"), `cid:${AUTOCITY_LOGO_CONTENT_ID}`);
@@ -55,6 +59,14 @@ export function normalizeHtmlForInlineLogo(htmlBody: string): { htmlBody: string
     htmlBody: htmlWithCid,
     shouldAttachLogo: containsCid || containsOldPublicUrl,
   };
+}
+
+export function forceInlineLogoVariant(htmlBody: string): string {
+  return htmlBody
+    .replaceAll(AUTOCITY_LEGACY_LOGO_URL, `cid:${AUTOCITY_LOGO_CONTENT_ID}`)
+    .replaceAll(AUTOCITY_LEGACY_LOGO_URL.replace(/&/g, "&amp;"), `cid:${AUTOCITY_LOGO_CONTENT_ID}`)
+    .replaceAll(AUTOCITY_LOGO_PUBLIC_URL, `cid:${AUTOCITY_LOGO_CONTENT_ID}`)
+    .replaceAll(AUTOCITY_LOGO_PUBLIC_URL.replace(/&/g, "&amp;"), `cid:${AUTOCITY_LOGO_CONTENT_ID}`);
 }
 
 export async function loadAutocityLogoBase64(supabase: StorageClient): Promise<string> {
