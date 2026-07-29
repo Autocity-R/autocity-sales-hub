@@ -62,10 +62,6 @@ function monthsBetween(from: string | null | undefined, to = new Date()): number
 }
 
 function findPlate(text: string): string | null {
-  return _findPlate(text);
-}
-
-function _findPlate(text: string): string | null {
   const m = text.toUpperCase().match(/\b[A-Z0-9]{1,3}-?[A-Z0-9]{1,3}-?[A-Z0-9]{1,3}\b/g);
   if (!m) return null;
   const cand = m.find((x) => x.replace(/-/g, "").length === 6 && /\d/.test(x) && /[A-Z]/.test(x));
@@ -73,7 +69,7 @@ function _findPlate(text: string): string | null {
 }
 
 /** Tijdsafhankelijke Nederlandse aanhef (Europe/Amsterdam). */
-export function dutchGreeting(name?: string | null): string {
+function dutchGreeting(name?: string | null): string {
   const hour = Number(
     new Intl.DateTimeFormat("nl-NL", { timeZone: "Europe/Amsterdam", hour: "2-digit", hour12: false })
       .format(new Date()),
@@ -82,7 +78,7 @@ export function dutchGreeting(name?: string | null): string {
   const clean = String(name || "").replace(/[<>]/g, "").trim();
   const last = clean ? clean.split(/\s+/).slice(-1)[0] : "";
   const usable = last && !/@/.test(last) && last.length > 1 ? last : "";
-  return usable ? `${deel} heer/mevrouw ${usable},` : `${deel},`;
+  return usable ? `${deel} heer ${usable},` : `${deel},`;
 }
 
 async function loadContext(supabase: any, threadId: string) {
