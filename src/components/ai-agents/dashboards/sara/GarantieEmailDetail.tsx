@@ -9,6 +9,8 @@ import { ArrowLeft, Send, Edit, Mail, Reply } from "lucide-react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
+import { buildLmsSignatureHtml, profileFullName } from "@/utils/lmsSignature";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
   threadId: string;
@@ -17,6 +19,8 @@ interface Props {
 
 export const GarantieEmailDetail: React.FC<Props> = ({ threadId, onBack }) => {
   const queryClient = useQueryClient();
+  const { user, userProfile } = useAuth() as any;
+  const senderName = profileFullName(userProfile, user?.email);
   const [editing, setEditing] = useState(false);
   const [responseText, setResponseText] = useState('');
   const [sending, setSending] = useState(false);
@@ -66,12 +70,18 @@ export const GarantieEmailDetail: React.FC<Props> = ({ threadId, onBack }) => {
     setSending(true);
 
     try {
+      const htmlBody = `
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0f172a;font-size:14px;line-height:1.6">
+  ${currentResponse.split(/\n\n+/).map((p: string) => `<p style="margin:0 0 12px">${p.replace(/\n/g, "<br/>")}</p>`).join("")}
+  ${buildLmsSignatureHtml(senderName, "Autocity Aftersales")}
+</div>`;
+
       // Insert into email_queue
       const { error: queueError } = await supabase.from('email_queue').insert({
         payload: {
           to: [thread.klant_email],
           subject: `Re: ${thread.onderwerp || 'Garantie'}`,
-          htmlBody: currentResponse.replace(/\n/g, '<br/>'),
+          htmlBody,
           senderEmail: 'garantie@auto-city.nl',
         },
         status: 'pending',
@@ -93,7 +103,7 @@ export const GarantieEmailDetail: React.FC<Props> = ({ threadId, onBack }) => {
         reactie_status: 'verstuurd',
         definitieve_reactie: currentResponse,
         verstuurd_op: new Date().toISOString(),
-        verstuurd_door: 'Lloyd',
+        verstuurd_door: senderName,
       } as any);
 
       // Update latest inbound email status
@@ -104,7 +114,7 @@ export const GarantieEmailDetail: React.FC<Props> = ({ threadId, onBack }) => {
             reactie_status: 'verstuurd',
             definitieve_reactie: currentResponse,
             verstuurd_op: new Date().toISOString(),
-            verstuurd_door: 'Lloyd',
+            verstuurd_door: senderName,
           } as any)
           .eq('id', latestInbound.id);
       }
