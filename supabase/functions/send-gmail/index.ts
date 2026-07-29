@@ -4,6 +4,14 @@ import { encode as encodeBase64 } from "https://deno.land/std@0.177.0/encoding/b
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
 import * as jose from "https://deno.land/x/jose@v4.14.4/index.ts";
 import { corsHeaders } from '../_shared/cors.ts';
+import {
+  base64UrlEncodeMimeMessage,
+  buildGmailMimeMessage,
+  loadAutocityLogoBase64,
+  normalizeHtmlForInlineLogo,
+  PreparedEmailAttachment,
+  wrapBase64,
+} from '../_shared/emailMime.ts';
 
 // --- INTERFACES (AANGEPAST VOOR OPTIONELE BASE64) ---
 interface EmailAttachment {
@@ -11,6 +19,8 @@ interface EmailAttachment {
   mimeType?: string;
   url?: string;
   base64?: string;
+  base64Content?: string;
+  content?: string;
 }
 
 interface EmailRequest {
@@ -40,12 +50,6 @@ interface ServiceAccount {
   token_uri: string;
   auth_provider_x509_cert_url: string;
   client_x509_cert_url: string;
-}
-
-// --- HELPER FUNCTIES ---
-function base64urlEncode(str: string): string {
-  const base64 = btoa(unescape(encodeURIComponent(str)));
-  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 // --- MAIN SERVER LOGIC ---
@@ -148,16 +152,16 @@ serve(async (req) => {
       const accessToken = await getAccessTokenWithRetry(serviceAccount, senderEmail);
 
       // --- 2. BIJLAGEN VERWERKEN (VOLLEDIG VERNIEUWD) ---
-      const validAttachments = [];
+      const validAttachments: PreparedEmailAttachment[] = [];
       for (const att of attachments) {
         try {
           let base64Data: string;
           let mimeType = att.mimeType || 'application/octet-stream';
 
-          if (att.base64) {
+          if (att.base64 || att.base64Content || att.content) {
             console.log(`✅ Using provided base64 data for attachment: ${att.filename}`);
             // Sanitize: remove any existing line breaks for consistent formatting
-            base64Data = att.base64.replace(/\r?\n/g, '');
+            base64Data = (att.base64 || att.base64Content || att.content || '').replace(/\r?\n/g, '');
           } else if (att.url) {
             console.log(`📥 Fetching attachment from URL: ${att.filename}`);
             const response = await fetch(att.url);
@@ -185,13 +189,10 @@ serve(async (req) => {
             throw new Error(`Attachment "${att.filename}" has no url or base64 data.`);
           }
 
-          // Base64 wrapping op 76 karakters per regel
-          const base64Wrapped = base64Data.match(/.{1,76}/g)?.join('\r\n') ?? base64Data;
-
           validAttachments.push({
             filename: att.filename,
             mimeType: mimeType,
-            data: base64Wrapped,
+            data: wrapBase64(base64Data),
           });
 
         } catch (error) {
@@ -207,63 +208,37 @@ serve(async (req) => {
         throw new Error('All attachment downloads or processing failed. Halting email send.');
       }
 
-      // --- 3. MIME MESSAGE BOUWEN (AANGEPAST) ---
-      let mimeMessage: string;
-      const boundary = `----=${crypto.randomUUID()}`;
+      // --- 3. MIME MESSAGE BOUWEN ---
+      const normalized = normalizeHtmlForInlineLogo(emailBody);
+      let inlineLogoBase64: string | undefined;
+      if (normalized.shouldAttachLogo) {
+        const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+        if (!serviceRoleKey) {
+          throw new Error('SUPABASE_SERVICE_ROLE_KEY not configured; cannot attach inline Autocity logo');
+        }
 
-      const subjectEncoded = `Subject: =?utf-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`;
-      const commonHeaders = [
-        `From: ${senderEmail}`,
-        `To: ${to.join(', ')}`,
-        cc.length > 0 ? `Cc: ${cc.join(', ')}` : null,
-        subjectEncoded,
-        'MIME-Version: 1.0',
-        // Add email threading headers for replies
-        metadata.replyToMessageId ? `In-Reply-To: ${metadata.replyToMessageId}` : null,
-        metadata.replyToMessageId ? `References: ${metadata.replyToMessageId}` : null,
-      ].filter(line => line !== null);
-
-      if (validAttachments.length > 0) {
-        // Multipart message met bijlagen
-        const htmlPart = [
-          `Content-Type: text/html; charset="UTF-8"`,
-          'Content-Transfer-Encoding: 7bit', // FIX: Veranderd van quoted-printable naar 7bit
-          '',
-          emailBody,
-        ].join('\r\n');
-
-        const attachmentParts = validAttachments.map(att => [
-          `Content-Type: ${att.mimeType}; name="${att.filename}"`,
-          'Content-Transfer-Encoding: base64',
-          `Content-Disposition: attachment; filename="${att.filename}"`,
-          '',
-          att.data, // Gebruik de gewrapte base64 data
-        ].join('\r\n')).join(`\r\n--${boundary}\r\n`);
-
-        mimeMessage = [
-          ...commonHeaders,
-          `Content-Type: multipart/mixed; boundary="${boundary}"`,
-          '',
-          `--${boundary}`,
-          htmlPart,
-          `--${boundary}`,
-          attachmentParts,
-          `--${boundary}--`,
-        ].join('\r\n');
-
-      } else {
-        // Simpele HTML-only message
-        mimeMessage = [
-          ...commonHeaders,
-          'Content-Type: text/html; charset="UTF-8"',
-          'Content-Transfer-Encoding: 7bit',
-          '',
-          emailBody,
-        ].join('\r\n');
+        const storageSupabase = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          serviceRoleKey,
+          { auth: { persistSession: false } },
+        );
+        inlineLogoBase64 = await loadAutocityLogoBase64(storageSupabase);
+        console.log('📎 Inline Autocity logo attached via CID');
       }
 
+      const mimeMessage = buildGmailMimeMessage({
+        senderEmail,
+        to,
+        cc,
+        subject,
+        htmlBody: normalized.htmlBody,
+        attachments: validAttachments,
+        inlineLogoBase64,
+        replyToMessageId: metadata.replyToMessageId,
+      });
+
       // --- 4. VERSTUREN VIA GMAIL API ---
-      const base64EncodedEmail = base64urlEncode(mimeMessage);
+      const base64EncodedEmail = base64UrlEncodeMimeMessage(mimeMessage);
 
       const sendResult = await sendEmailWithRetry(accessToken, senderEmail, base64EncodedEmail);
       
