@@ -165,7 +165,13 @@ export default function SigningPage() {
       </CenterMsg>
     );
   if (status === "error")
-    return <CenterMsg>Er ging iets mis: {errorMsg}</CenterMsg>;
+    return (
+      <CenterMsg>
+        {errorMsg === "cancelled"
+          ? "Dit contract is ingetrokken. Neem contact op met uw contactpersoon voor een nieuw contract."
+          : `Er ging iets mis: ${errorMsg}`}
+      </CenterMsg>
+    );
 
   if (!contract) return null;
 
