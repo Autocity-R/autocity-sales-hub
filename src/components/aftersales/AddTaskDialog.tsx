@@ -183,6 +183,40 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
     })();
   }, [open, vehicle, meta.showWarranty]);
 
+  // Live klant-zoeker (bestaande klant bij externe order)
+  useEffect(() => {
+    if (!open || mode !== "extern" || custMode !== "bestaand") return;
+    if (custTimer.current) window.clearTimeout(custTimer.current);
+    const q = custQuery.trim();
+    if (q.length < 2) { setCustResults([]); return; }
+    custTimer.current = window.setTimeout(async () => {
+      setCustSearching(true);
+      const { data } = await supabase
+        .from("contacts")
+        .select("id, first_name, last_name, company_name, email, phone, address_street, address_number, address_postal_code, address_city")
+        .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,company_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%`)
+        .limit(10);
+      setCustResults((data as any[]) || []);
+      setCustSearching(false);
+    }, 220);
+  }, [custQuery, custMode, mode, open]);
+
+  const pickContact = (c: any) => {
+    setSelectedContactId(c.id);
+    setCustResults([]);
+    setCustQuery("");
+    setExt(prev => ({
+      ...prev,
+      name: c.company_name || `${c.first_name || ""} ${c.last_name || ""}`.trim(),
+      email: c.email && !String(c.email).endsWith("@werkplaats.local") ? c.email : "",
+      phone: c.phone || "",
+      street: c.address_street || "",
+      house_number: c.address_number || "",
+      postal_code: c.address_postal_code || "",
+      city: c.address_city || "",
+    }));
+  };
+
   // Live search
   useEffect(() => {
     if (vehicle) return;
