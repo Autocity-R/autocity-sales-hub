@@ -859,7 +859,8 @@ export class SupabaseInventoryService {
               uploadedBy: file.uploaded_by,
               isLargeFile: isLargeFile || false,
               filePath: file.file_path,
-              createdAt: file.created_at
+              createdAt: file.created_at,
+              metadata: (file as any).metadata ?? undefined
             };
           } catch (urlError) {
             console.error('Error generating signed URL for file:', file.file_name, urlError);
@@ -875,7 +876,8 @@ export class SupabaseInventoryService {
               uploadedBy: file.uploaded_by,
               isLargeFile: file.file_size ? file.file_size > 10 * 1024 * 1024 : false,
               filePath: file.file_path,
-              createdAt: file.created_at
+              createdAt: file.created_at,
+              metadata: (file as any).metadata ?? undefined
             };
           }
         })
