@@ -61,6 +61,7 @@ const InventoryB2C = () => {
     handleRemovePhoto,
     handleSetMainPhoto,
     handleUpdateVehicle,
+    handleAutoSaveVehicle,
     handleSendEmail,
     handleUpdateSellingPrice,
     handleUpdatePaymentStatus,
@@ -438,6 +439,7 @@ const InventoryB2C = () => {
           vehicle={selectedVehicle}
           onClose={() => setSelectedVehicle(null)}
           onUpdate={handleUpdateVehicle}
+          onAutoSave={handleAutoSaveVehicle}
           onSendEmail={handleSendEmail}
           onPhotoUpload={handleUploadPhoto}
           onRemovePhoto={handleRemovePhoto}

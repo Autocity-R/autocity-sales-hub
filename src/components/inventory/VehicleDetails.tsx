@@ -179,8 +179,13 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   };
 
   return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-[90%] sm:max-w-[75%] lg:max-w-[66%] xl:max-w-[50%] h-[90vh] p-0 flex flex-col">
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent
+        className="max-w-[90%] sm:max-w-[75%] lg:max-w-[66%] xl:max-w-[50%] h-[90vh] p-0 flex flex-col"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <div className="flex flex-col h-full overflow-hidden">
           {/* Sticky header */}
           <DialogHeader className="sticky top-0 z-10 bg-background p-6 pb-2 border-b">
