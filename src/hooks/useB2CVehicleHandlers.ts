@@ -1,9 +1,10 @@
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Vehicle, PaymentStatus, PaintStatus, FileCategory } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
-import { uploadVehiclePhoto } from "@/services/inventoryService";
+import { uploadVehiclePhoto, updateVehicle } from "@/services/inventoryService";
 import { useB2CVehicleOperations } from "./useB2CVehicleOperations";
 
 export const useB2CVehicleHandlers = () => {
@@ -13,6 +14,7 @@ export const useB2CVehicleHandlers = () => {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const {
     updateVehicleMutation,
     sendEmailMutation,
@@ -103,6 +105,26 @@ export const useB2CVehicleHandlers = () => {
   const handleUpdateVehicle = (updatedVehicle: Vehicle) => {
     updateVehicleMutation.mutate(updatedVehicle);
     setSelectedVehicle(null);
+  };
+
+  /**
+   * Stille auto-save: bewaart wijzigingen (bijv. checklist) zonder het
+   * detailvenster te sluiten of toasts te tonen.
+   */
+  const handleAutoSaveVehicle = async (updatedVehicle: Vehicle) => {
+    try {
+      await updateVehicle(updatedVehicle);
+      setSelectedVehicle(prev =>
+        prev && prev.id === updatedVehicle.id ? updatedVehicle : prev
+      );
+      queryClient.invalidateQueries({ queryKey: ["b2cVehicles"] });
+    } catch (error) {
+      console.error("Error auto-saving vehicle:", error);
+      toast({
+        variant: "destructive",
+        description: "Fout bij het automatisch opslaan van de wijzigingen"
+      });
+    }
   };
   
   const handleSendEmail = (
@@ -202,6 +224,7 @@ export const useB2CVehicleHandlers = () => {
     handleRemovePhoto,
     handleSetMainPhoto,
     handleUpdateVehicle,
+    handleAutoSaveVehicle,
     handleSendEmail,
     handleUpdateSellingPrice,
     handleUpdatePaymentStatus,
