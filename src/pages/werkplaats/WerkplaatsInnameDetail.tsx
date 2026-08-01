@@ -4,10 +4,9 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Check, Loader2, PaintBucket, Hammer, Camera, Plus, Trash2, Package } from "lucide-react";
+import { ArrowLeft, Check, Loader2, PaintBucket, Hammer, Camera, Plus, Trash2, Package, X } from "lucide-react";
 import { AsPage, AsCard, AsLicensePlate, AsMono, AsPill } from "@/components/aftersales/ui";
 import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
 import { DamageDiagram, DAMAGE_ZONES, findZoneByName, DamageZone } from "@/components/aftersales/DamageDiagram";
@@ -40,11 +39,10 @@ const WerkplaatsInnameDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // sheet / composer state
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [activeZone, setActiveZone] = useState<DamageZone | null>(null);
+  // composer state — één order per discipline met meerdere delen
   const [discipline, setDiscipline] = useState<Discipline>("spuit");
-  const [description, setDescription] = useState("");
+  const [selection, setSelection] = useState<Record<Discipline, string[]>>({ spuit: [], uitdeuk: [] });
+  const [descriptions, setDescriptions] = useState<Record<Discipline, string>>({ spuit: "", uitdeuk: "" });
   const [files, setFiles] = useState<File[]>([]);
 
   // Onderdelen composer
@@ -74,19 +72,33 @@ const WerkplaatsInnameDetail: React.FC = () => {
 
   // add-part flow gebruikt gedeeld AddPartOrderDialog
 
-  const openZone = (zone: DamageZone) => {
-    setActiveZone(zone);
-    setDescription("");
-    setFiles([]);
-    setDiscipline("spuit");
-    setSheetOpen(true);
+  const selectedParts = selection[discipline];
+  const description = descriptions[discipline];
+  const setDescription = (v: string) =>
+    setDescriptions(prev => ({ ...prev, [discipline]: v }));
+
+  const toggleZone = (zone: DamageZone) => {
+    setSelection(prev => {
+      const cur = prev[discipline];
+      return {
+        ...prev,
+        [discipline]: cur.includes(zone.name) ? cur.filter(n => n !== zone.name) : [...cur, zone.name],
+      };
+    });
   };
+
+  const removeSelected = (name: string) =>
+    setSelection(prev => ({ ...prev, [discipline]: prev[discipline].filter(n => n !== name) }));
+
+  const selectedZoneIds = selectedParts
+    .map(n => findZoneByName(n)?.id)
+    .filter(Boolean) as string[];
 
   const createOpdracht = async () => {
     if (!intake) return;
-    if (!activeZone) { toast({ title: "Kies eerst een onderdeel", variant: "destructive" }); return; }
+    if (selectedParts.length === 0) { toast({ title: "Kies minstens één deel op het diagram", variant: "destructive" }); return; }
     if (!description.trim()) { toast({ title: "Omschrijving is verplicht", variant: "destructive" }); return; }
-    const part = activeZone.name;
+    const partList = [...selectedParts];
     setSaving(true);
     try {
       // upload photos
@@ -109,7 +121,8 @@ const WerkplaatsInnameDetail: React.FC = () => {
       const { data: inserted, error: insErr } = await supabase.from("work_orders").insert({
         vehicle_id: intake.vehicle_id,
         discipline,
-        part,
+        part: partList[0],
+        parts: partList,
         description: description.trim(),
         photos: paths,
         status: "ingepland",
@@ -122,7 +135,7 @@ const WerkplaatsInnameDetail: React.FC = () => {
 
       // append point + koppel
       const newPoint: IntakePoint = {
-        text: `${part} — ${description.trim()}`,
+        text: `${partList.join(" · ")} — ${description.trim()}`,
         photo_paths: paths,
         work_order_id: (inserted as any).id,
       };
@@ -131,9 +144,13 @@ const WerkplaatsInnameDetail: React.FC = () => {
         .update({ points: newPoints as any }).eq("id", intake.id);
       if (upErr) throw upErr;
 
-      toast({ title: "Opdracht aangemaakt", description: `${part}` });
-      setSheetOpen(false);
-      setActiveZone(null);
+      toast({
+        title: "Opdracht aangemaakt",
+        description: `${partList.length} deel/delen — ${partList.join(" · ")}`,
+      });
+      setSelection(prev => ({ ...prev, [discipline]: [] }));
+      setDescriptions(prev => ({ ...prev, [discipline]: "" }));
+      setFiles([]);
       load();
     } catch (e: any) {
       console.error(e);
@@ -211,11 +228,12 @@ const WerkplaatsInnameDetail: React.FC = () => {
   const v = intake.vehicle;
 
   // build markers uit points, gematcht op zone-naam prefix
-  const markers = intake.points.map((p, i) => {
-    const partName = p.text.split(" — ")[0];
-    const zone = findZoneByName(partName);
-    return { index: i + 1, zoneId: zone?.id || "" };
-  }).filter(m => m.zoneId);
+  const markers = intake.points.flatMap((p, i) =>
+    p.text.split(" — ")[0].split(" · ")
+      .map(name => findZoneByName(name.trim())?.id || "")
+      .filter(Boolean)
+      .map(zoneId => ({ index: i + 1, zoneId })),
+  );
 
   return (
     <DashboardLayout>
@@ -244,18 +262,92 @@ const WerkplaatsInnameDetail: React.FC = () => {
 
         {/* Schadediagram + puntenlijst */}
         <AsCard className="p-5 mb-4">
-          <div className="text-[13px] font-semibold text-slate-900 mb-3">Schaderapport — tik op een deel</div>
+          <div className="text-[13px] font-semibold text-slate-900 mb-3">Schaderapport — kies type en tik de delen aan</div>
+
+          {/* Type reparatie */}
+          <div className="grid grid-cols-2 gap-2 mb-3 max-w-md">
+            {(["spuit", "uitdeuk"] as Discipline[]).map(d => {
+              const active = discipline === d;
+              const Icon = d === "spuit" ? PaintBucket : Hammer;
+              const count = selection[d].length;
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDiscipline(d)}
+                  className={cn(
+                    "flex items-center justify-center gap-2 border rounded-xl px-3 py-3 text-[13px] font-semibold transition-colors",
+                    active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {d === "spuit" ? "Schadeherstel" : "Uitdeuken"}
+                  {count > 0 && (
+                    <span className={cn("ml-1 rounded-full px-1.5 text-[11px]", active ? "bg-white/20" : "bg-slate-100 text-slate-600")}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
           <div className="bg-white rounded-xl border border-slate-200 p-3 md:p-5">
             <div className="mx-auto w-full max-w-[820px]">
               <DamageDiagram
                 markers={markers}
-                onZoneClick={openZone}
+                selectedZoneIds={selectedZoneIds}
+                onZoneClick={toggleZone}
                 onMarkerClick={(idx) => {
                   const el = document.getElementById(`schade-punt-${idx - 1}`);
                   el?.scrollIntoView({ behavior: "smooth", block: "center" });
                 }}
               />
             </div>
+          </div>
+
+          {/* Geselecteerde delen + omschrijving */}
+          <div className="mt-4">
+            {selectedParts.length === 0 ? (
+              <div className="text-[12.5px] text-slate-400 border border-dashed border-slate-200 rounded-lg p-3 text-center bg-white">
+                Tik op het diagram om delen te selecteren voor {discipline === "spuit" ? "schadeherstel" : "uitdeuken"}.
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedParts.map(name => (
+                    <span key={name} className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 text-white px-2.5 py-1 text-[12.5px] font-semibold">
+                      {name}
+                      <button type="button" onClick={() => removeSelected(name)} className="text-white/70 hover:text-white" title="Verwijderen">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+
+                <div className="mt-3">
+                  <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Foto's</div>
+                  <label className="flex items-center gap-2 border border-dashed border-slate-300 rounded-lg p-3 cursor-pointer hover:border-slate-400 bg-white">
+                    <Camera className="h-4 w-4 text-slate-500" />
+                    <span className="text-[12.5px] text-slate-600 flex-1">
+                      {files.length ? `${files.length} foto('s) gekozen` : "Maak of kies foto's"}
+                    </span>
+                    <Input type="file" multiple accept="image/*" capture="environment" className="hidden"
+                      onChange={(e) => setFiles(Array.from(e.target.files || []))} />
+                  </label>
+                </div>
+
+                <div className="mt-3">
+                  <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Werkzaamheden (hele order)</div>
+                  <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)}
+                    placeholder={`Wat & hoe voor: ${selectedParts.join(" · ")}`} />
+                </div>
+
+                <Button className="mt-3 w-full md:w-auto h-11 text-[14px]" onClick={createOpdracht} disabled={saving || !description.trim()}>
+                  <Plus className="h-4 w-4 mr-1" /> {saving ? "Bezig…" : `Opdracht aanmaken (${selectedParts.length} deel/delen)`}
+                </Button>
+              </>
+            )}
           </div>
 
           <div className="mt-5">
@@ -349,63 +441,6 @@ const WerkplaatsInnameDetail: React.FC = () => {
           </Button>
         </div>
 
-        {/* Bottom-sheet opdracht-maker per zone */}
-        <Sheet open={sheetOpen} onOpenChange={(v) => { setSheetOpen(v); if (!v) setActiveZone(null); }}>
-          <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto rounded-t-2xl">
-            <SheetHeader className="text-left">
-              <SheetTitle className="text-[16px]">
-                {activeZone?.name || "Onderdeel"}
-              </SheetTitle>
-            </SheetHeader>
-            <div className="space-y-4 mt-3 pb-6">
-              <div>
-                <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Type reparatie</div>
-                <div className="grid grid-cols-2 gap-2">
-                  {(["spuit", "uitdeuk"] as Discipline[]).map(d => {
-                    const active = discipline === d;
-                    const Icon = d === "spuit" ? PaintBucket : Hammer;
-                    return (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setDiscipline(d)}
-                        className={cn(
-                          "flex items-center justify-center gap-2 border rounded-xl px-3 py-3 text-[13px] font-semibold transition-colors",
-                          active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                        {d === "spuit" ? "Schadeherstel" : "Uitdeuken"}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Foto's</div>
-                <label className="flex items-center gap-2 border border-dashed border-slate-300 rounded-lg p-3 cursor-pointer hover:border-slate-400 bg-white">
-                  <Camera className="h-4 w-4 text-slate-500" />
-                  <span className="text-[12.5px] text-slate-600 flex-1">
-                    {files.length ? `${files.length} foto('s) gekozen` : "Maak of kies foto's"}
-                  </span>
-                  <Input type="file" multiple accept="image/*" capture="environment" className="hidden"
-                    onChange={(e) => setFiles(Array.from(e.target.files || []))} />
-                </label>
-              </div>
-
-              <div>
-                <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Omschrijving</div>
-                <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)}
-                  placeholder={activeZone ? `Wat & hoe met "${activeZone.name}"?` : "Wat & hoe?"} />
-              </div>
-
-              <Button className="w-full h-11 text-[14px]" onClick={createOpdracht} disabled={saving || !description.trim()}>
-                <Plus className="h-4 w-4 mr-1" /> {saving ? "Bezig…" : "Opdracht aanmaken"}
-              </Button>
-            </div>
-          </SheetContent>
-        </Sheet>
       </AsPage>
     </DashboardLayout>
   );
