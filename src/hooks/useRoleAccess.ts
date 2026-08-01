@@ -89,7 +89,14 @@ export const useRoleAccess = () => {
 
   const hasPriceAccess = () => {
     // Aftersales manager mag GEEN prijzen zien
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper';
+    // Operationeel directeur mag prijzen INZIEN (read-only, geen mutaties)
+    return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
+      userRole === 'operationeel_directeur';
+  };
+
+  // Rapportages-omgeving (Omzet / Performance / KPI / Doorlooptijden)
+  const hasRapportagesAccess = () => {
+    return isAdmin || userRole === 'manager' || userRole === 'operationeel_directeur';
   };
 
   const hasTaskManagementAccess = () => {
@@ -156,6 +163,7 @@ export const useRoleAccess = () => {
 
   return {
     hasReportsAccess,
+    hasRapportagesAccess,
     hasAftersalesOnlyReportsAccess,
     hasLeadsAccess,
     hasCustomersAccess,

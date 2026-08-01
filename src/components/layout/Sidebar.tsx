@@ -29,6 +29,7 @@ import {
   ClipboardCheck,
   Package,
   Sparkles,
+  Clock,
 } from "lucide-react";
 import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   const location = useLocation();
   const {
     hasReportsAccess, hasAIAgentsAccess, hasSettingsAccess,
+    hasRapportagesAccess,
     hasWerkplaatsAccess, isRestrictedWorkshopUser, getHomeRoute,
     isSchadeherstel, isMonteur, isUitdeukerExtern, isWerkplaatsChef, isOperationeelDirecteur, isPoetser,
     isAftersalesManager,
@@ -87,6 +89,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   if (isOperationeelDirecteur()) {
     const directieItems: { to: string; label: string; icon: any }[] = [
       { to: "/directie", label: "Directie", icon: HomeIcon },
+      { to: "/rapportages/omzet", label: "Rapportages", icon: BarChart3 },
+      { to: "/inventory", label: "Voorraad", icon: CarIcon },
+      { to: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
       { to: "/werkplaats/planning", label: "Planning", icon: Wrench },
       { to: "/werkplaats/agenda", label: "Agenda", icon: CalendarIcon },
       { to: "/werkplaats/facturen", label: "Facturen", icon: FileText },
@@ -316,6 +321,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           </div>
         )}
 
+        {hasRapportagesAccess() && (
+          <div className="mt-8">
+            <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
+              RAPPORTAGES
+            </h2>
+            <div className="space-y-1">
+              {[
+                { url: "/rapportages/omzet", label: "Omzet", icon: BarChart3 },
+                { url: "/rapportages/performance", label: "Performance", icon: UsersIcon },
+                { url: "/rapportages/kpi", label: "KPI-dashboard", icon: GanttChartIcon },
+                { url: "/rapportages/doorlooptijden", label: "Doorlooptijden", icon: Clock },
+              ].map((it) => (
+                <Link key={it.url} to={it.url}>
+                  <Button
+                    variant={isActive(it.url) ? "default" : "ghost"}
+                    className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+                    size="sm"
+                  >
+                    <it.icon className="mr-2 h-4 w-4" />
+                    {it.label}
+                  </Button>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="mt-8">
           <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
             KLANTEN
@@ -377,7 +409,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                   size="sm"
                 >
                   <BarChart3 className="mr-2 h-4 w-4" />
-                  Rapportages
+                  Analytics (verkoop)
                 </Button>
               </Link>
             )}
