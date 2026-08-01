@@ -19,6 +19,7 @@ import { AsPage, AsCard, AsCardHead, AsPill, AsMono, AsLicensePlate, AsVehicleTh
 import { cn } from "@/lib/utils";
 import { DamageReportDialog, DamageReportPayload } from "@/components/aftersales/DamageReportDialog";
 import { AddTaskBar } from "@/components/aftersales/AddTaskDialog";
+import { PartChips } from "@/components/werkplaats/workOrderParts";
 
 type Discipline = "werkplaats" | "spuit";
 
@@ -27,6 +28,7 @@ interface WO {
   discipline: string;
   description: string;
   part: string | null;
+  parts?: string[] | null;
   status: string;
   is_rush: boolean;
   sort_order: number;
