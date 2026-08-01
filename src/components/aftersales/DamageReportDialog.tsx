@@ -3,9 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { DamageDiagram, findZoneByName } from "./DamageDiagram";
 import { AsLicensePlate, AsMono, AsPill } from "./ui";
 import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
+import { PartChips, getWorkOrderParts } from "@/components/werkplaats/workOrderParts";
 
 export interface DamageReportPayload {
   part?: string | null;
+  parts?: string[] | null;
   description?: string | null;
   photos?: string[] | null;
   result_photos?: string[] | null;
@@ -35,8 +37,8 @@ const disciplineLabel = (d?: string | null) => {
 export const DamageReportDialog: React.FC<Props> = ({ open, onOpenChange, report }) => {
   if (!report) return null;
   const v = report.vehicle;
-  const zone = findZoneByName(report.part);
-  const marker = zone ? [{ index: 1, zoneId: zone.id }] : [];
+  const zoneIds = getWorkOrderParts(report).map(p => findZoneByName(p)?.id).filter(Boolean) as string[];
+  const marker = zoneIds.map((zoneId, i) => ({ index: i + 1, zoneId }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -51,14 +53,10 @@ export const DamageReportDialog: React.FC<Props> = ({ open, onOpenChange, report
 
         <div className="grid md:grid-cols-[220px_1fr] gap-5 px-5 pb-5 pt-2">
           <div className="flex justify-center bg-slate-50 rounded-xl border border-slate-200 py-3">
-            <DamageDiagram markers={marker} interactive={false} className="max-w-[160px]" />
+            <DamageDiagram markers={marker} selectedZoneIds={zoneIds} interactive={false} className="max-w-[160px]" />
           </div>
           <div className="min-w-0 space-y-3">
-            {report.part && (
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 text-white text-[12.5px] font-semibold">
-                {report.part}
-              </div>
-            )}
+            <PartChips workOrder={report} />
             {report.description && <div className="text-[13.5px] text-slate-800">{report.description}</div>}
             {report.finish_note && <div className="text-[12.5px] italic text-slate-500">Notitie: {report.finish_note}</div>}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
