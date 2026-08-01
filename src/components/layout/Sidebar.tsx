@@ -87,6 +87,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   if (isOperationeelDirecteur()) {
     const directieItems: { to: string; label: string; icon: any }[] = [
       { to: "/directie", label: "Directie", icon: HomeIcon },
+      { to: "/rapportages/omzet", label: "Rapportages", icon: BarChart3 },
+      { to: "/inventory", label: "Voorraad", icon: CarIcon },
+      { to: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
       { to: "/werkplaats/planning", label: "Planning", icon: Wrench },
       { to: "/werkplaats/agenda", label: "Agenda", icon: CalendarIcon },
       { to: "/werkplaats/facturen", label: "Facturen", icon: FileText },

@@ -592,22 +592,28 @@ const Inventory = () => {
           title="Voertuig Beheer"
           description="Beheer alle voertuigen in voorraad en verkocht"
         >
-          <div className="flex gap-2">
-            <InventoryBulkActions 
-              selectedVehicles={selectedVehicles}
-              vehicles={filteredAndSortedVehicles}
-              onBulkAction={handleBulkAction}
-            />
-            <BulkBranchMoveButton
-              selectedVehicleIds={selectedVehicles}
-              invalidateQueryKeys={[["vehicles"]]}
-              onDone={() => setSelectedVehicles([])}
-            />
-            <Button onClick={() => setShowForm(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nieuw Voertuig
-            </Button>
-          </div>
+          {readOnly ? (
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Alleen-lezen
+            </span>
+          ) : (
+            <div className="flex gap-2">
+              <InventoryBulkActions 
+                selectedVehicles={selectedVehicles}
+                vehicles={filteredAndSortedVehicles}
+                onBulkAction={handleBulkAction}
+              />
+              <BulkBranchMoveButton
+                selectedVehicleIds={selectedVehicles}
+                invalidateQueryKeys={[["vehicles"]]}
+                onDone={() => setSelectedVehicles([])}
+              />
+              <Button onClick={() => setShowForm(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Nieuw Voertuig
+              </Button>
+            </div>
+          )}
         </PageHeader>
 
         {/* Data Source Indicator */}

@@ -345,15 +345,23 @@ const InventoryB2C = () => {
           title="Verkocht B2C" 
           description="Beheer uw verkochte voertuigen aan particuliere klanten"
         >
-          <InventoryBulkActions 
-            selectedVehicles={selectedVehicles}
-            vehicles={vehicles}
-            onBulkAction={handleBulkAction}
-          />
-          <BulkBranchMoveButton
-            selectedVehicleIds={selectedVehicles}
-            invalidateQueryKeys={[["b2cVehicles"]]}
-          />
+          {readOnly ? (
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Alleen-lezen
+            </span>
+          ) : (
+            <>
+              <InventoryBulkActions 
+                selectedVehicles={selectedVehicles}
+                vehicles={vehicles}
+                onBulkAction={handleBulkAction}
+              />
+              <BulkBranchMoveButton
+                selectedVehicleIds={selectedVehicles}
+                invalidateQueryKeys={[["b2cVehicles"]]}
+              />
+            </>
+          )}
         </PageHeader>
 
         {/* Search and Filters */}
