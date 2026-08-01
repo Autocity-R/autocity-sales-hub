@@ -138,11 +138,7 @@ const TaskCard: React.FC<{
           {v?.year && <span className="text-[12px] text-slate-500">· {v.year}</span>}
         </div>
         <div className="text-[11px] text-slate-500 truncate mt-0.5">{specs}</div>
-        {w.part && (
-          <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-900 text-white text-[11.5px] font-semibold">
-            {w.part}
-          </div>
-        )}
+        <PartChips workOrder={w as any} size="sm" className="mt-2" />
         <div className="mt-1.5 text-[12px] text-slate-700 line-clamp-2">{w.description}</div>
         <div className="mt-2 flex flex-wrap gap-1.5 items-center">
           {w.planned_at && (
