@@ -130,6 +130,8 @@ export interface DamageMarker {
 interface Props {
   markers?: DamageMarker[];
   selectedZoneId?: string | null;
+  /** Meerdere delen tegelijk blauw markeren (gebundelde orders). */
+  selectedZoneIds?: string[];
   onZoneClick?: (zone: DamageZone) => void;
   onMarkerClick?: (index: number) => void;
   className?: string;
@@ -140,6 +142,7 @@ interface Props {
 export const DamageDiagram: React.FC<Props> = ({
   markers = [],
   selectedZoneId,
+  selectedZoneIds,
   onZoneClick,
   onMarkerClick,
   className,
@@ -160,7 +163,7 @@ export const DamageDiagram: React.FC<Props> = ({
   };
 
   const renderZone = (z: DamageZone) => {
-    const isSelected = selectedZoneId === z.id;
+    const isSelected = selectedZoneId === z.id || (selectedZoneIds ?? []).includes(z.id);
     const cls = cn(
       "transition-colors",
       interactive && "cursor-pointer",

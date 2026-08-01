@@ -4843,6 +4843,7 @@ export type Database = {
           is_rush: boolean
           origin: string
           part: string | null
+          parts: Json
           photos: Json | null
           planned_at: string | null
           poets_type: string | null
@@ -4876,6 +4877,7 @@ export type Database = {
           is_rush?: boolean
           origin?: string
           part?: string | null
+          parts?: Json
           photos?: Json | null
           planned_at?: string | null
           poets_type?: string | null
@@ -4909,6 +4911,7 @@ export type Database = {
           is_rush?: boolean
           origin?: string
           part?: string | null
+          parts?: Json
           photos?: Json | null
           planned_at?: string | null
           poets_type?: string | null

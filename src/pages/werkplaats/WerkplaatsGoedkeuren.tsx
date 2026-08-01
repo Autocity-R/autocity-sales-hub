@@ -16,9 +16,10 @@ import { AsPill } from "@/components/aftersales/ui";
 import WorkshopInvoiceDialog from "@/components/werkplaats/WorkshopInvoiceDialog";
 import { InvoiceDraft, dispatchPendingInternalInvoices } from "@/services/workshopInvoiceService";
 import { FileText } from "lucide-react";
+import { PartChips, getWorkOrderParts } from "@/components/werkplaats/workOrderParts";
 
 interface WO {
-  id: string; vehicle_id: string; discipline: string; description: string; part: string | null; is_rush: boolean;
+  id: string; vehicle_id: string; discipline: string; description: string; part: string | null; parts?: string[] | null; is_rush: boolean;
   photos: string[] | null; result_photos: string[] | null;
   work_seconds: number | null; finish_note: string | null; branch: string | null;
   origin: string | null; external_customer: any | null;
@@ -41,7 +42,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
   const load = async () => {
     setLoading(true);
     let q = supabase.from("work_orders")
-      .select("id, vehicle_id, discipline, description, part, is_rush, photos, result_photos, work_seconds, finish_note, branch, origin, external_customer, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin)")
+      .select("id, vehicle_id, discipline, description, part, parts, is_rush, photos, result_photos, work_seconds, finish_note, branch, origin, external_customer, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin)")
       .eq("status", "afgerond")
       .neq("discipline", "uitdeuk")
       .order("finished_at", { ascending: true });
@@ -73,7 +74,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
         brand: w.vehicle?.brand || "", model: w.vehicle?.model || "",
         license_number: w.vehicle?.license_number || "", vin: w.vehicle?.vin || null,
       },
-      lines: [{ description: [w.part, w.description].filter(Boolean).join(" — "), amount: 0 }],
+      lines: [{ description: [getWorkOrderParts(w).join(" · ") || null, w.description].filter(Boolean).join(" — "), amount: 0 }],
     };
   };
 
@@ -151,7 +152,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                 key={w.id}
                 className="overflow-hidden cursor-pointer"
                 onClick={() => setReport({
-                  part: w.part, description: w.description, photos: w.photos, result_photos: w.result_photos,
+                  part: w.part, parts: (w as any).parts, description: w.description, photos: w.photos, result_photos: w.result_photos,
                   discipline: w.discipline, status: "afgerond", finish_note: w.finish_note, vehicle: w.vehicle as any,
                 })}
               >
@@ -184,11 +185,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                   }
                 />
                 <div className="px-5 pb-4 pt-4 border-t border-slate-100 space-y-3">
-                  {w.part && (
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 text-white text-[12.5px] font-semibold">
-                      {w.part}
-                    </div>
-                  )}
+                  <PartChips workOrder={w as any} />
                   <div className="text-sm text-slate-800">{w.description}</div>
                   {w.finish_note && <div className="text-sm italic text-slate-500">Notitie: {w.finish_note}</div>}
                   <div className="flex items-center gap-2 text-sm text-slate-500">

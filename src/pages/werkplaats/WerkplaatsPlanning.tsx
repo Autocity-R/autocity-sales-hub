@@ -19,6 +19,7 @@ import { AsPage, AsCard, AsCardHead, AsPill, AsMono, AsLicensePlate, AsVehicleTh
 import { cn } from "@/lib/utils";
 import { DamageReportDialog, DamageReportPayload } from "@/components/aftersales/DamageReportDialog";
 import { AddTaskBar } from "@/components/aftersales/AddTaskDialog";
+import { PartChips } from "@/components/werkplaats/workOrderParts";
 
 type Discipline = "werkplaats" | "spuit";
 
@@ -27,6 +28,7 @@ interface WO {
   discipline: string;
   description: string;
   part: string | null;
+  parts?: string[] | null;
   status: string;
   is_rush: boolean;
   sort_order: number;
@@ -138,11 +140,7 @@ const TaskCard: React.FC<{
           {v?.year && <span className="text-[12px] text-slate-500">· {v.year}</span>}
         </div>
         <div className="text-[11px] text-slate-500 truncate mt-0.5">{specs}</div>
-        {w.part && (
-          <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-900 text-white text-[11.5px] font-semibold">
-            {w.part}
-          </div>
-        )}
+        <PartChips workOrder={w as any} size="sm" className="mt-2" />
         <div className="mt-1.5 text-[12px] text-slate-700 line-clamp-2">{w.description}</div>
         <div className="mt-2 flex flex-wrap gap-1.5 items-center">
           {w.planned_at && (
@@ -309,12 +307,12 @@ const WerkplaatsPlanning: React.FC = () => {
   const [reschedule, setReschedule] = useState<WO | null>(null);
   const [newPlanned, setNewPlanned] = useState<string>("");
   const openReport = (w: WO) => setReport({
-    part: w.part, description: w.description, photos: (w as any).photos, discipline: w.discipline, status: w.status, vehicle: w.vehicle as any,
+    part: w.part, parts: (w as any).parts, description: w.description, photos: (w as any).photos, discipline: w.discipline, status: w.status, vehicle: w.vehicle as any,
   });
 
   const load = async () => {
     setLoading(true);
-    const select = "id, discipline, description, part, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, due_date, planned_at, origin, external_customer, photos, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date)";
+    const select = "id, discipline, description, part, parts, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, due_date, planned_at, origin, external_customer, photos, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date)";
 
     let q = supabase
       .from("work_orders")
