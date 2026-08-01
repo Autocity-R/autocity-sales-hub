@@ -24,7 +24,10 @@ import { useCurrentBranch, filterByBranch } from "@/contexts/BranchContext";
 import { isWorkshopHistoryError, fetchVehicleLabels } from "@/utils/vehicleDeleteGuard";
 import { VehicleDeleteBlockedDialog } from "@/components/inventory/VehicleDeleteBlockedDialog";
 
+import { useRoleAccess } from "@/hooks/useRoleAccess";
+
 const InventoryB2C = () => {
+  const readOnly = useRoleAccess().isDirectieReadOnly();
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [contractVehicle, setContractVehicle] = useState<Vehicle | null>(null);
   const [contractType, setContractType] = useState<"b2b" | "b2c">("b2c");

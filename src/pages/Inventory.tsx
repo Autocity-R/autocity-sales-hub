@@ -24,7 +24,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { deliveredVehicleService } from "@/services/deliveredVehicleService";
 import { useCurrentBranch, filterByBranch } from "@/contexts/BranchContext";
 
+import { useRoleAccess } from "@/hooks/useRoleAccess";
+
 const Inventory = () => {
+  const readOnly = useRoleAccess().isDirectieReadOnly();
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
