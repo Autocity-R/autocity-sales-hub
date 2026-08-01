@@ -125,23 +125,26 @@ export interface OmzetStats { schade: OmzetGroup; werkplaats: OmzetGroup; trend:
 
 const emptyGroup = (): OmzetGroup => ({ intern: 0, extern: 0, total: 0, invoices: 0, parts: 0, avgPerInvoice: 0, avgPerPart: 0 });
 
-export function omzetStats(raw: RapRaw): OmzetStats {
+export function omzetGroups(invoices: RapInvoice[]): { schade: OmzetGroup; werkplaats: OmzetGroup } {
   const schade = emptyGroup(), werkplaats = emptyGroup();
-  sentOnly(raw.invoices).forEach(inv => {
+  sentOnly(invoices).forEach(inv => {
     const s = splitInvoice(inv);
     if (s.schade > 0) {
       schade[s.kind] += s.schade; schade.total += s.schade; schade.invoices += 1; schade.parts += s.schadeParts;
     }
     if (s.werk > 0) {
-      werkplaats[s.kind] += s.werk; werkplaats.total += s.werk; werkplaats.invoices += 1;
-      werkplaats.parts += 1;
+      werkplaats[s.kind] += s.werk; werkplaats.total += s.werk; werkplaats.invoices += 1; werkplaats.parts += 1;
     }
   });
   [schade, werkplaats].forEach(g => {
     g.avgPerInvoice = div(g.total, g.invoices);
     g.avgPerPart = div(g.total, g.parts);
   });
+  return { schade, werkplaats };
+}
 
+export function omzetStats(raw: RapRaw): OmzetStats {
+  const { schade, werkplaats } = omzetGroups(raw.invoices);
   const trend: OmzetStats["trend"] = [];
   const now = new Date();
   for (let i = 5; i >= 0; i--) {
