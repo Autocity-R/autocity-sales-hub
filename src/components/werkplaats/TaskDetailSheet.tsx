@@ -5,6 +5,7 @@ import { AsLicensePlate, AsMono, AsPill } from "@/components/aftersales/ui";
 import { DamageDiagram, findZoneByName, DamageMarker } from "@/components/aftersales/DamageDiagram";
 import { Loader2, Phone, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PartChips, getWorkOrderParts } from "@/components/werkplaats/workOrderParts";
 
 /** Read-only taakdetail voor uitvoerende rollen (schadeherstel, uitdeuk, monteur, poetser). */
 
@@ -17,6 +18,7 @@ export interface TaskDetailWorkOrder {
   id: string;
   description?: string | null;
   part?: string | null;
+  parts?: string[] | null;
   status?: string | null;
   is_rush?: boolean | null;
   photos?: string[] | null;
@@ -127,7 +129,10 @@ export const TaskDetailSheet: React.FC<Props> = ({ open, onOpenChange, workOrder
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, workOrder?.id, vehicleId]);
 
-  const partZone = useMemo(() => findZoneByName(workOrder?.part), [workOrder?.part]);
+  const partZoneIds = useMemo(
+    () => getWorkOrderParts(workOrder).map(p => findZoneByName(p)?.id).filter(Boolean) as string[],
+    [workOrder?.part, (workOrder as any)?.parts],
+  );
 
   const markers: DamageMarker[] = useMemo(() => {
     const out: DamageMarker[] = [];
@@ -153,7 +158,7 @@ export const TaskDetailSheet: React.FC<Props> = ({ open, onOpenChange, workOrder
   const ext = (workOrder.external_customer || {}) as any;
   const isExtern = workOrder.origin === "extern";
   const phone: string | null = ext.phone || ext.telephone || null;
-  const showDiagram = markers.length > 0 || !!partZone;
+  const showDiagram = markers.length > 0 || partZoneIds.length > 0;
 
   const specs = [
     typeof v?.mileage === "number" ? `${v.mileage.toLocaleString("nl-NL")} km` : null,
@@ -197,11 +202,7 @@ export const TaskDetailSheet: React.FC<Props> = ({ open, onOpenChange, workOrder
             {/* Werkzaamheden */}
             <div>
               <div className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold mb-2">Werkzaamheden</div>
-              {workOrder.part && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-2 rounded-md bg-slate-900 text-white text-[12.5px] font-semibold">
-                  {workOrder.part}
-                </div>
-              )}
+              <PartChips workOrder={workOrder} className="mb-2" />
               <div className="text-[13.5px] text-slate-800 whitespace-pre-wrap">{workOrder.description || "—"}</div>
             </div>
 
@@ -216,7 +217,7 @@ export const TaskDetailSheet: React.FC<Props> = ({ open, onOpenChange, workOrder
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-center">
                   <DamageDiagram
                     markers={markers}
-                    selectedZoneId={partZone?.id ?? null}
+                    selectedZoneIds={partZoneIds}
                     interactive={false}
                     className="max-w-[320px]"
                   />
