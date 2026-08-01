@@ -43,6 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   const location = useLocation();
   const {
     hasReportsAccess, hasAIAgentsAccess, hasSettingsAccess,
+    hasRapportagesAccess,
     hasWerkplaatsAccess, isRestrictedWorkshopUser, getHomeRoute,
     isSchadeherstel, isMonteur, isUitdeukerExtern, isWerkplaatsChef, isOperationeelDirecteur, isPoetser,
     isAftersalesManager,
@@ -380,7 +381,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                   size="sm"
                 >
                   <BarChart3 className="mr-2 h-4 w-4" />
-                  Rapportages
+                  Analytics (verkoop)
                 </Button>
               </Link>
             )}
