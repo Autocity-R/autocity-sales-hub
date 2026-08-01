@@ -324,6 +324,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
             KLANTEN
           </h2>
+          {null}
           <div className="space-y-1">
             <Link to="/customers">
               <Button
