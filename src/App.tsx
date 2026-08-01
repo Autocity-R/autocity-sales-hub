@@ -58,6 +58,12 @@ const WerkplaatsOverzicht = lazy(() => import("@/pages/werkplaats/WerkplaatsOver
 const OperationeelHome = lazy(() => import("@/pages/werkplaats/OperationeelHome"));
 const DirectieDashboard = lazy(() => import("@/pages/directie/DirectieDashboard"));
 
+// Rapportages
+const RapportageOmzet = lazy(() => import("@/pages/rapportages/RapportageOmzet"));
+const RapportagePerformance = lazy(() => import("@/pages/rapportages/RapportagePerformance"));
+const RapportageKpi = lazy(() => import("@/pages/rapportages/RapportageKpi"));
+const RapportageDoorlooptijden = lazy(() => import("@/pages/rapportages/RapportageDoorlooptijden"));
+
 // Loading fallback component
 const PageLoader = () => (
   <div className="flex h-screen items-center justify-center">
@@ -181,6 +187,41 @@ function App() {
         <Route path="/warranty" element={
           <ProtectedRoute>
             <Warranty />
+          </ProtectedRoute>
+        } />
+        <Route path="/rapportages" element={
+          <ProtectedRoute>
+            <RoleProtectedRoute requiredAccess="rapportages" fallbackPath="/">
+              <RapportageOmzet />
+            </RoleProtectedRoute>
+          </ProtectedRoute>
+        } />
+        <Route path="/rapportages/omzet" element={
+          <ProtectedRoute>
+            <RoleProtectedRoute requiredAccess="rapportages" fallbackPath="/">
+              <RapportageOmzet />
+            </RoleProtectedRoute>
+          </ProtectedRoute>
+        } />
+        <Route path="/rapportages/performance" element={
+          <ProtectedRoute>
+            <RoleProtectedRoute requiredAccess="rapportages" fallbackPath="/">
+              <RapportagePerformance />
+            </RoleProtectedRoute>
+          </ProtectedRoute>
+        } />
+        <Route path="/rapportages/kpi" element={
+          <ProtectedRoute>
+            <RoleProtectedRoute requiredAccess="rapportages" fallbackPath="/">
+              <RapportageKpi />
+            </RoleProtectedRoute>
+          </ProtectedRoute>
+        } />
+        <Route path="/rapportages/doorlooptijden" element={
+          <ProtectedRoute>
+            <RoleProtectedRoute requiredAccess="rapportages" fallbackPath="/">
+              <RapportageDoorlooptijden />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } />
         <Route path="/garantie/inbox" element={
