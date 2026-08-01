@@ -307,12 +307,12 @@ const WerkplaatsPlanning: React.FC = () => {
   const [reschedule, setReschedule] = useState<WO | null>(null);
   const [newPlanned, setNewPlanned] = useState<string>("");
   const openReport = (w: WO) => setReport({
-    part: w.part, description: w.description, photos: (w as any).photos, discipline: w.discipline, status: w.status, vehicle: w.vehicle as any,
+    part: w.part, parts: (w as any).parts, description: w.description, photos: (w as any).photos, discipline: w.discipline, status: w.status, vehicle: w.vehicle as any,
   });
 
   const load = async () => {
     setLoading(true);
-    const select = "id, discipline, description, part, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, due_date, planned_at, origin, external_customer, photos, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date)";
+    const select = "id, discipline, description, part, parts, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, due_date, planned_at, origin, external_customer, photos, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date)";
 
     let q = supabase
       .from("work_orders")

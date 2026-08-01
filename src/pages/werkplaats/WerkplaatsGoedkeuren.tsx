@@ -18,7 +18,7 @@ import { InvoiceDraft, dispatchPendingInternalInvoices } from "@/services/worksh
 import { FileText } from "lucide-react";
 
 interface WO {
-  id: string; vehicle_id: string; discipline: string; description: string; part: string | null; is_rush: boolean;
+  id: string; vehicle_id: string; discipline: string; description: string; part: string | null; parts?: string[] | null; is_rush: boolean;
   photos: string[] | null; result_photos: string[] | null;
   work_seconds: number | null; finish_note: string | null; branch: string | null;
   origin: string | null; external_customer: any | null;
@@ -41,7 +41,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
   const load = async () => {
     setLoading(true);
     let q = supabase.from("work_orders")
-      .select("id, vehicle_id, discipline, description, part, is_rush, photos, result_photos, work_seconds, finish_note, branch, origin, external_customer, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin)")
+      .select("id, vehicle_id, discipline, description, part, parts, is_rush, photos, result_photos, work_seconds, finish_note, branch, origin, external_customer, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin)")
       .eq("status", "afgerond")
       .neq("discipline", "uitdeuk")
       .order("finished_at", { ascending: true });
@@ -73,7 +73,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
         brand: w.vehicle?.brand || "", model: w.vehicle?.model || "",
         license_number: w.vehicle?.license_number || "", vin: w.vehicle?.vin || null,
       },
-      lines: [{ description: [w.part, w.description].filter(Boolean).join(" — "), amount: 0 }],
+      lines: [{ description: [getWorkOrderParts(w).join(" · ") || null, w.description].filter(Boolean).join(" — "), amount: 0 }],
     };
   };
 
@@ -151,7 +151,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                 key={w.id}
                 className="overflow-hidden cursor-pointer"
                 onClick={() => setReport({
-                  part: w.part, description: w.description, photos: w.photos, result_photos: w.result_photos,
+                  part: w.part, parts: (w as any).parts, description: w.description, photos: w.photos, result_photos: w.result_photos,
                   discipline: w.discipline, status: "afgerond", finish_note: w.finish_note, vehicle: w.vehicle as any,
                 })}
               >

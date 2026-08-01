@@ -12,9 +12,10 @@ import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono } from "@/components/aft
 import { cn } from "@/lib/utils";
 import { TaskDetailSheet, TaskDetailWorkOrder } from "@/components/werkplaats/TaskDetailSheet";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { PartChips } from "@/components/werkplaats/workOrderParts";
 
 interface WO {
-  id: string; description: string; part: string | null; status: string; is_rush: boolean; sort_order: number;
+  id: string; description: string; part: string | null; parts?: string[] | null; status: string; is_rush: boolean; sort_order: number;
   photos: string[] | null; branch: string | null; created_at: string; approved_at: string | null; finished_at?: string | null;
   vehicle_id?: string | null;
   vehicle: { brand: string; model: string; year: number | null; license_number: string | null; vin: string | null; mileage: number | null; color: string | null } | null;
@@ -32,7 +33,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
   const load = async () => {
     setLoading(true);
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const select = "id, description, part, status, is_rush, sort_order, photos, branch, created_at, approved_at, finished_at, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
+    const select = "id, description, part, parts, status, is_rush, sort_order, photos, branch, created_at, approved_at, finished_at, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
 
     let qOpen = supabase.from("work_orders").select(select)
       .eq("discipline", "uitdeuk")
@@ -132,11 +133,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
                         </div>
                       </div>
 
-                      {w.part && (
-                        <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 text-white text-[12.5px] font-semibold">
-                          {w.part}
-                        </div>
-                      )}
+                      <PartChips workOrder={w as any} className="mt-3" />
                       <div className="mt-2 text-[13px] text-slate-700">{w.description}</div>
                       {w.photos && w.photos.length > 0 && (
                         <div className="flex gap-2 mt-3 flex-wrap">

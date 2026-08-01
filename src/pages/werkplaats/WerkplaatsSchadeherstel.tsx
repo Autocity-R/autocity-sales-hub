@@ -10,11 +10,13 @@ import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono, useLiveTimer } from "@/
 import { cn } from "@/lib/utils";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
+import { PartChips } from "@/components/werkplaats/workOrderParts";
 
 interface WO {
   id: string;
   description: string;
   part: string | null;
+  parts?: string[] | null;
   status: string;
   is_rush: boolean;
   sort_order: number;
@@ -32,7 +34,7 @@ interface WO {
 }
 
 const SELECT =
-  "id, description, part, status, is_rush, sort_order, photos, created_at, started_at, finished_at, assigned_to, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
+  "id, description, part, parts, status, is_rush, sort_order, photos, created_at, started_at, finished_at, assigned_to, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
 
 const Card: React.FC<{
   w: WO;
@@ -79,11 +81,7 @@ const Card: React.FC<{
             </div>
           </div>
 
-          {w.part && (
-            <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-900 text-white text-[12.5px] font-semibold">
-              {w.part}
-            </div>
-          )}
+          <PartChips workOrder={w as any} className="mt-3" />
           <div className="mt-2 text-[13px] text-slate-700">{w.description}</div>
 
           {w.photos && w.photos.length > 0 && (
