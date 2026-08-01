@@ -29,6 +29,7 @@ import {
   ClipboardCheck,
   Package,
   Sparkles,
+  Clock,
 } from "lucide-react";
 import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -320,11 +321,37 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           </div>
         )}
 
+        {hasRapportagesAccess() && (
+          <div className="mt-8">
+            <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
+              RAPPORTAGES
+            </h2>
+            <div className="space-y-1">
+              {[
+                { url: "/rapportages/omzet", label: "Omzet", icon: BarChart3 },
+                { url: "/rapportages/performance", label: "Performance", icon: UsersIcon },
+                { url: "/rapportages/kpi", label: "KPI-dashboard", icon: GanttChartIcon },
+                { url: "/rapportages/doorlooptijden", label: "Doorlooptijden", icon: Clock },
+              ].map((it) => (
+                <Link key={it.url} to={it.url}>
+                  <Button
+                    variant={isActive(it.url) ? "default" : "ghost"}
+                    className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+                    size="sm"
+                  >
+                    <it.icon className="mr-2 h-4 w-4" />
+                    {it.label}
+                  </Button>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="mt-8">
           <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
             KLANTEN
           </h2>
-          {null}
           <div className="space-y-1">
             <Link to="/customers">
               <Button
