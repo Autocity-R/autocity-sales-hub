@@ -237,6 +237,8 @@ export const queueInvoiceEmail = async (p: {
   plate: string;
   total: number;
   pdfBase64?: string | null;
+  /** Optionele ontvangers; standaard werkplaats + administratie. */
+  to?: string[];
 }) => {
   const htmlBody = `<div style="font-family:Arial,Helvetica,sans-serif;background:#f4f6f9;padding:24px">
     <div style="max-width:600px;margin:0 auto;background:#fff;border:1px solid #e6e8ec;border-radius:10px;overflow:hidden">
@@ -263,7 +265,7 @@ export const queueInvoiceEmail = async (p: {
     template_id: "workshop_invoice",
     payload: {
       senderEmail: "werkplaats@auto-city.nl",
-      to: ["werkplaats@auto-city.nl", "administratie@auto-city.nl"],
+      to: p.to?.length ? p.to : ["werkplaats@auto-city.nl", "administratie@auto-city.nl"],
       subject: `Werkplaatsfactuur ${p.invoiceNumber} - ${p.plate} - ${p.customerName}`,
       htmlBody,
       attachments: p.pdfBase64
