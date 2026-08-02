@@ -2,19 +2,18 @@
 import React from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate, useLocation } from "react-router-dom";
-import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { canAccessRoute } from "@/lib/routeAccess";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
-  requireAdmin = false 
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
+  requireAdmin = false
 }) => {
-  const { user, loading, isAdmin } = useAuth();
-  const { isRestrictedWorkshopUser, getHomeRoute, isWerkplaatsChef, isUitdeukerExtern, isSchadeherstel, isPoetser, isOperationeelDirecteur, roleLoading } = useRoleAccess();
+  const { user, loading, isAdmin, userRole, roleLoading } = useAuth();
   const location = useLocation();
 
   if (loading || (user && roleLoading)) {
@@ -29,81 +28,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/auth" replace />;
   }
 
-  // Externe uitdeuker: uitsluitend zijn eigen scherm
-  if (isUitdeukerExtern()) {
-    if (location.pathname !== '/werkplaats/uitdeuken') {
-      return <Navigate to="/werkplaats/uitdeuken" replace />;
-    }
-    return <>{children}</>;
-  }
-
-  // Schadeherstel: uitsluitend zijn eigen scherm
-  if (isSchadeherstel()) {
-    if (location.pathname !== '/werkplaats/schadeherstel') {
-      return <Navigate to="/werkplaats/schadeherstel" replace />;
-    }
-    return <>{children}</>;
-  }
-
-  // Operationeel directeur: read-only cockpit met een vaste set inzicht-routes
-  if (isOperationeelDirecteur()) {
-    const directieAllowed = [
-      '/directie',
-      '/werkplaats/planning',
-      '/werkplaats/agenda',
-      '/werkplaats/facturen',
-      '/werkplaats/inname',
-      '/werkplaats/poetsen',
-      '/werkplaats/uitdeuken',
-      '/werkplaats/schadeherstel',
-      '/werkplaats/onderdelen',
-      '/werkplaats/autos',
-      '/warranty',
-      '/customers',
-      '/inventory/consumer',
-      '/inventory/b2c',
-    ];
-    if (!directieAllowed.some(pre => location.pathname.startsWith(pre))) {
-      return <Navigate to="/directie" replace />;
-    }
-    return <>{children}</>;
-  }
-
-  // Restricted werkplaats/uitdeuk/operationeel rollen: forceer hun eigen home-route
-  // Poetser: uitsluitend zijn eigen scherm
-  if (isPoetser()) {
-    if (location.pathname !== '/werkplaats/poetsen') {
-      return <Navigate to="/werkplaats/poetsen" replace />;
-    }
-    return <>{children}</>;
-  }
-
-  if (isRestrictedWorkshopUser()) {
-    const home = getHomeRoute();
-    const allowed = location.pathname === home
-      || location.pathname.startsWith('/werkplaats/mijn-werk')
-      || location.pathname.startsWith('/werkplaats/agenda')
-      || location.pathname.startsWith('/werkplaats/mijn-planning')
-      || location.pathname.startsWith('/uitdeuk')
-      || location.pathname.startsWith('/werkplaats/overzicht')
-      || location.pathname.startsWith('/operationeel');
-    if (!allowed) {
-      return <Navigate to={home} replace />;
-    }
-  }
-
-  // Werkplaats_chef: operationele omgeving, géén verkoop-onderdelen en géén garantie-mailbox
-  if (isWerkplaatsChef()) {
-    const blockedChefPrefixes = ['/werkplaats/poetsen', '/werkplaats/uitdeuken', '/garantie'];
-    const allowedChefPrefixes = [
-      '/werkplaats', '/loan-cars', '/settings', '/inventory/consumer', '/warranty', '/customers',
-    ];
-    const ok =
-      !blockedChefPrefixes.some(pre => location.pathname.startsWith(pre)) &&
-      allowedChefPrefixes.some(pre => location.pathname.startsWith(pre));
-    if (!ok) {
-      return <Navigate to="/werkplaats" replace />;
-    }
+  // Eén centrale, geteste beslissing (owner/admin worden nooit geredirect).
+  const decision = canAccessRoute(userRole, location.pathname);
+  if (!decision.allowed && decision.redirectTo !== location.pathname) {
+    return <Navigate to={decision.redirectTo} replace />;
   }
 
   if (requireAdmin && !isAdmin) {
