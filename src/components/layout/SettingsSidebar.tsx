@@ -12,7 +12,8 @@ import {
   FileText,
   PenTool,
   Bot,
-  Calendar
+  Calendar,
+  Wrench
 } from "lucide-react";
 
 const settingsItems = [
@@ -65,6 +66,11 @@ const settingsItems = [
     name: "Leenauto's",
     href: "/settings?tab=loan-cars",
     icon: Car,
+  },
+  {
+    name: "Werkplaats-tarieven",
+    href: "/settings?tab=werkplaats-tarieven",
+    icon: Wrench,
   },
   {
     name: "Beveiliging",

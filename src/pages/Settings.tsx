@@ -12,6 +12,7 @@ import { LoanCarManagement } from "@/components/settings/LoanCarManagement";
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
 import { AIAgentManagement } from "@/components/settings/AIAgentManagement";
 import { CalendarSettings } from "@/components/settings/CalendarSettings";
+import { WerkplaatsTarieven } from "@/components/settings/WerkplaatsTarieven";
 import { useSearchParams } from "react-router-dom";
 
 const Settings = () => {
@@ -40,6 +41,8 @@ const Settings = () => {
         return <APISettings />;
       case "loan-cars":
         return <LoanCarManagement />;
+      case "werkplaats-tarieven":
+        return <WerkplaatsTarieven />;
       case "security":
         return <SecuritySettings />;
       default:

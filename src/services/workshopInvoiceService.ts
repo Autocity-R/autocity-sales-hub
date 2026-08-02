@@ -237,6 +237,8 @@ export const queueInvoiceEmail = async (p: {
   plate: string;
   total: number;
   pdfBase64?: string | null;
+  /** Optionele ontvangers; standaard werkplaats + administratie. */
+  to?: string[];
 }) => {
   const htmlBody = `<div style="font-family:Arial,Helvetica,sans-serif;background:#f4f6f9;padding:24px">
     <div style="max-width:600px;margin:0 auto;background:#fff;border:1px solid #e6e8ec;border-radius:10px;overflow:hidden">
@@ -263,7 +265,7 @@ export const queueInvoiceEmail = async (p: {
     template_id: "workshop_invoice",
     payload: {
       senderEmail: "werkplaats@auto-city.nl",
-      to: ["werkplaats@auto-city.nl", "administratie@auto-city.nl"],
+      to: p.to?.length ? p.to : ["werkplaats@auto-city.nl", "administratie@auto-city.nl"],
       subject: `Werkplaatsfactuur ${p.invoiceNumber} - ${p.plate} - ${p.customerName}`,
       htmlBody,
       attachments: p.pdfBase64
@@ -414,5 +416,106 @@ export const resendInternalInvoice = async (inv: {
     lines: Array.isArray(inv.lines) ? inv.lines : [],
     total: Number(inv.total) || 0,
     pdfBase64,
+  });
+};
+/* ------------------------------------------------------------------ */
+/*  Handmatige facturen (los van de automatische goedkeuringsflow)     */
+/* ------------------------------------------------------------------ */
+
+export type PaymentStatus = "open" | "betaald" | "nvt";
+
+export interface ManualInvoiceInput {
+  invoice_kind: "intern" | "extern";
+  customer: InvoiceCustomer;
+  vehicle: InvoiceVehicle & { mileage?: string | number | null };
+  lines: InvoiceLine[];
+  branch?: string | null;
+  vehicle_id?: string | null;
+}
+
+/**
+ * Slaat een handmatige factuur definitief op: nummer uit de bestaande reeks,
+ * PDF in dezelfde huisstijl in de bucket, direct in het archief. Er wordt niets
+ * automatisch gemaild — dat is een aparte, expliciete actie.
+ */
+export const saveManualInvoice = async (
+  input: ManualInvoiceInput,
+): Promise<{ id: string; invoiceNumber: string; pdfPath: string; total: number }> => {
+  const lines = input.lines.filter((l) => String(l.description ?? "").trim() || Number(l.amount));
+  if (!lines.length) throw new Error("Voeg minimaal één factuurregel toe");
+  const { subtotal, vat, total } = calcTotals(lines);
+  const { data: userRes } = await supabase.auth.getUser();
+
+  const invoiceNumber = await nextInvoiceNumber();
+  const html = renderInvoiceHtml({
+    invoice_number: invoiceNumber,
+    customer: input.customer,
+    vehicle: input.vehicle,
+    lines,
+    branch: input.branch,
+  });
+  const blob = await generatePdfFromHtml(html);
+  const pdfPath = `${invoiceNumber}.pdf`;
+  const { error: upErr } = await supabase.storage
+    .from("workshop-invoices")
+    .upload(pdfPath, blob, { contentType: "application/pdf", upsert: true });
+  if (upErr) throw upErr;
+
+  const { data, error } = await (supabase as any)
+    .from("workshop_invoices")
+    .insert({
+      invoice_number: invoiceNumber,
+      invoice_kind: input.invoice_kind,
+      work_order_id: null,
+      vehicle_id: input.vehicle_id ?? null,
+      customer: input.customer as any,
+      vehicle: input.vehicle as any,
+      lines: lines as any,
+      subtotal,
+      vat,
+      total,
+      status: "verstuurd",
+      pdf_path: pdfPath,
+      branch: input.branch ?? "rotterdam",
+      sent_at: new Date().toISOString(),
+      created_by: userRes.user?.id ?? null,
+      payment_status: input.invoice_kind === "intern" ? "nvt" : "open",
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+
+  return { id: data.id, invoiceNumber, pdfPath, total };
+};
+
+/** Zet de betaalstatus van een factuur om (open ↔ betaald). */
+export const setInvoicePaymentStatus = async (id: string, status: PaymentStatus): Promise<void> => {
+  const { error } = await (supabase as any)
+    .from("workshop_invoices")
+    .update({ payment_status: status, paid_at: status === "betaald" ? new Date().toISOString() : null })
+    .eq("id", id);
+  if (error) throw error;
+};
+
+/** Mailt een factuur naar zelfgekozen ontvangers (klant en/of administratie). */
+export const mailInvoiceTo = async (p: {
+  to: string[];
+  invoiceNumber: string;
+  customerName: string;
+  plate: string;
+  total: number;
+  pdfPath: string;
+}) => {
+  const recipients = p.to.map((t) => t.trim()).filter(Boolean);
+  if (!recipients.length) throw new Error("Geen ontvangers opgegeven");
+  const pdfBase64 = await getInvoicePdfBase64(p.pdfPath);
+  if (!pdfBase64) throw new Error("Geen PDF beschikbaar");
+  await queueInvoiceEmail({
+    invoiceNumber: p.invoiceNumber,
+    customerName: p.customerName,
+    plate: p.plate,
+    total: p.total,
+    pdfBase64,
+    to: recipients,
   });
 };
