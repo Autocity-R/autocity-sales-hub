@@ -242,12 +242,14 @@ export default function ContractNew() {
   const canSave =
     !!vehicle &&
     !!customerId &&
+    !!salespersonId &&
     !!salePriceEx &&
     parseFloat(salePriceEx) > 0 &&
     !saving;
 
   const missingForSend: string[] = [];
   if (!customerId) missingForSend.push("Klant");
+  if (!salespersonId) missingForSend.push("Verkoper");
   if (!salePriceEx || parseFloat(salePriceEx) <= 0) missingForSend.push("Verkoopprijs");
   const canSend = missingForSend.length === 0 && !saving && !sending;
 
