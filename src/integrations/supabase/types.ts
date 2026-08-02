@@ -4901,6 +4901,39 @@ export type Database = {
         }
         Relationships: []
       }
+      werkplaats_tarieven: {
+        Row: {
+          created_at: string
+          id: string
+          klein_materiaal_enabled: boolean
+          klein_materiaal_pct: number
+          milieukosten_bedrag: number
+          milieukosten_enabled: boolean
+          updated_at: string
+          uurtarief_ex_btw: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          klein_materiaal_enabled?: boolean
+          klein_materiaal_pct?: number
+          milieukosten_bedrag?: number
+          milieukosten_enabled?: boolean
+          updated_at?: string
+          uurtarief_ex_btw?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          klein_materiaal_enabled?: boolean
+          klein_materiaal_pct?: number
+          milieukosten_bedrag?: number
+          milieukosten_enabled?: boolean
+          updated_at?: string
+          uurtarief_ex_btw?: number
+        }
+        Relationships: []
+      }
       work_orders: {
         Row: {
           approved_at: string | null
@@ -5045,6 +5078,8 @@ export type Database = {
           invoice_kind: string
           invoice_number: string
           lines: Json
+          paid_at: string | null
+          payment_status: string
           pdf_path: string | null
           sent_at: string | null
           source_work_order_ids: Json
@@ -5065,6 +5100,8 @@ export type Database = {
           invoice_kind?: string
           invoice_number: string
           lines?: Json
+          paid_at?: string | null
+          payment_status?: string
           pdf_path?: string | null
           sent_at?: string | null
           source_work_order_ids?: Json
@@ -5085,6 +5122,8 @@ export type Database = {
           invoice_kind?: string
           invoice_number?: string
           lines?: Json
+          paid_at?: string | null
+          payment_status?: string
           pdf_path?: string | null
           sent_at?: string | null
           source_work_order_ids?: Json
