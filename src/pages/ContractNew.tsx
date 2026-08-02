@@ -920,6 +920,9 @@ export default function ContractNew() {
                     value={confirmEmail}
                     onChange={(e) => setConfirmEmail(e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Verkoper: <span className="font-medium">{salespersonName || "—"}</span>
+                  </p>
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setConfirmOpen(false)}>
