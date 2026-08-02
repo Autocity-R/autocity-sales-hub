@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Plus, Search, Trash2, Wrench, Package, PenLine, Mail, Save, ExternalLink } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useBranch } from "@/contexts/BranchContext";
+import { useCurrentBranch } from "@/contexts/BranchContext";
 import {
   InvoiceLine, calcTotals, eur, saveManualInvoice, mailInvoiceTo, getInvoiceSignedUrl,
 } from "@/services/workshopInvoiceService";
@@ -44,7 +44,7 @@ const INTERN_CUSTOMER = {
 };
 
 const ManualInvoiceDialog: React.FC<Props> = ({ open, onOpenChange, prefillLine, onSaved }) => {
-  const { currentBranch } = useBranch() as any;
+  const { userBranch } = useCurrentBranch();
   const [kind, setKind] = useState<"extern" | "intern">("extern");
   const [customer, setCustomer] = useState({ ...emptyCustomer });
   const [vehicle, setVehicle] = useState({ ...emptyVehicle });
@@ -123,7 +123,7 @@ const ManualInvoiceDialog: React.FC<Props> = ({ open, onOpenChange, prefillLine,
     if (!s) return;
     const { data } = await (supabase as any)
       .from("contacts")
-      .select("id, first_name, last_name, company_name, email, phone, address, zip_code, city")
+      .select("id, first_name, last_name, company_name, email, phone, address_street, address_number, address_postal_code, address_city")
       .or(`first_name.ilike.%${s}%,last_name.ilike.%${s}%,company_name.ilike.%${s}%,email.ilike.%${s}%`)
       .limit(8);
     setCustResults(data || []);
@@ -132,10 +132,10 @@ const ManualInvoiceDialog: React.FC<Props> = ({ open, onOpenChange, prefillLine,
   const pickCustomer = (c: any) => {
     setCustomer({
       name: c.company_name || `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(),
-      street: c.address || "",
-      house_number: "",
-      postal_code: c.zip_code || "",
-      city: c.city || "",
+      street: c.address_street || "",
+      house_number: c.address_number || "",
+      postal_code: c.address_postal_code || "",
+      city: c.address_city || "",
       email: c.email || "",
       phone: c.phone || "",
     });
@@ -223,7 +223,7 @@ const ManualInvoiceDialog: React.FC<Props> = ({ open, onOpenChange, prefillLine,
         customer,
         vehicle,
         lines: allLines,
-        branch: currentBranch || "rotterdam",
+        branch: userBranch || "rotterdam",
         vehicle_id: vehicleId,
       });
       setSaved(res);
