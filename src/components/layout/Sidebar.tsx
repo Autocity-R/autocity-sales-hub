@@ -30,6 +30,7 @@ import {
   Package,
   Sparkles,
   Clock,
+  ChevronDown,
 } from "lucide-react";
 import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -167,49 +168,101 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   }
 
   // ============ Standaard-sidebar (owner/admin/manager/verkoper/operationeel) ============
-  // Rechten blijven exact gelijk aan de vorige versie; alleen de ordening is opgeschoond.
-  type NavItem = { url: string; label: string; icon: any; exact?: boolean; indent?: boolean };
-  type NavSection = { label: string | null; items: NavItem[] };
+  // Rechten en routes blijven exact gelijk; alleen presentatie/ordening is opgeschoond.
+  return (
+    <StandardSidebar
+      className={className}
+      isActive={isActive}
+      getSubActive={getSubActive}
+      location={location}
+      access={{
+        hasReportsAccess: hasReportsAccess(),
+        hasAIAgentsAccess: hasAIAgentsAccess(),
+        hasSettingsAccess: hasSettingsAccess(),
+        hasRapportagesAccess: hasRapportagesAccess(),
+        hasLeadsAccess: hasLeadsAccess(),
+        hasCustomersAccess: hasCustomersAccess(),
+        hasGarantieInboxAccess: hasGarantieInboxAccess(),
+        hasWerkplaatsAccess: hasWerkplaatsAccess(),
+      }}
+    />
+  );
+};
 
-  const inventoryRootActive =
-    isActive("/inventory") &&
-    !getSubActive(["/inventory/b2b", "/inventory/online", "/inventory/consumer", "/inventory/delivered"]);
-  const customersRootActive =
-    isActive("/customers") && !getSubActive(["/customers/b2b", "/customers/b2c", "/suppliers"]);
+/* ============ Standaard-sidebar (presentatie) ============ */
 
-  const sections: NavSection[] = [
+type StdItem = { url: string; label: string; icon: any; exact?: boolean; badge?: number };
+type StdGroup = {
+  url: string;
+  label: string;
+  icon: any;
+  key: string;
+  sub: StdItem[];
+};
+type StdSection = { label: string | null; entries: (StdItem | StdGroup)[] };
+
+const isGroup = (e: StdItem | StdGroup): e is StdGroup => (e as StdGroup).sub !== undefined;
+
+const StandardSidebar: React.FC<{
+  className?: string;
+  isActive: (p: string) => boolean;
+  getSubActive: (paths: string[]) => boolean;
+  location: ReturnType<typeof useLocation>;
+  access: {
+    hasReportsAccess: boolean;
+    hasAIAgentsAccess: boolean;
+    hasSettingsAccess: boolean;
+    hasRapportagesAccess: boolean;
+    hasLeadsAccess: boolean;
+    hasCustomersAccess: boolean;
+    hasGarantieInboxAccess: boolean;
+    hasWerkplaatsAccess: boolean;
+  };
+}> = ({ className, isActive, getSubActive, location, access }) => {
+  const garantieUnread = useGarantieUnread();
+
+  const inventorySubPaths = ["/inventory/online", "/inventory/b2b", "/inventory/consumer", "/inventory/delivered"];
+  const customerSubPaths = ["/customers/b2b", "/customers/b2c", "/suppliers"];
+
+  const sections: StdSection[] = [
     {
       label: null,
-      items: [{ url: "/", label: "Dashboard", icon: HomeIcon, exact: true }],
+      entries: [{ url: "/", label: "Dashboard", icon: HomeIcon, exact: true }],
     },
     {
       label: "VERKOOP",
-      items: [
-        ...(hasLeadsAccess() ? [{ url: "/leads", label: "Werkbak / Leads", icon: BookIcon }] : []),
+      entries: [
+        ...(access.hasLeadsAccess ? [{ url: "/leads", label: "Werkbak / Leads", icon: BookIcon }] : []),
         { url: "/calendar", label: "Agenda", icon: CalendarIcon },
-        ...(hasCustomersAccess()
-          ? [
-              { url: "/customers", label: "Klanten", icon: UsersIcon },
-              { url: "/customers/b2b", label: "Zakelijk", icon: BoxIcon, indent: true },
-              { url: "/customers/b2c", label: "Particulier", icon: UsersIcon, indent: true },
-              { url: "/suppliers", label: "Leveranciers", icon: TruckIcon, indent: true },
-            ]
+        ...(access.hasCustomersAccess
+          ? [{
+              url: "/customers", label: "Klanten", icon: UsersIcon, key: "customers",
+              sub: [
+                { url: "/customers/b2b", label: "Zakelijk", icon: BoxIcon },
+                { url: "/customers/b2c", label: "Particulier", icon: UsersIcon },
+                { url: "/suppliers", label: "Leveranciers", icon: TruckIcon },
+              ],
+            } as StdGroup]
           : []),
-        { url: "/inventory", label: "Voorraad", icon: CarIcon },
-        { url: "/inventory/online", label: "Online", icon: ShoppingBagIcon, indent: true },
-        { url: "/inventory/b2b", label: "Verkocht B2B", icon: BoxIcon, indent: true },
-        { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon, indent: true },
-        { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag, indent: true },
+        {
+          url: "/inventory", label: "Voorraad", icon: CarIcon, key: "inventory",
+          sub: [
+            { url: "/inventory/online", label: "Online", icon: ShoppingBagIcon },
+            { url: "/inventory/b2b", label: "Verkocht B2B", icon: BoxIcon },
+            { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
+            { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
+          ],
+        } as StdGroup,
         { url: "/transport", label: "Transport", icon: TruckIcon },
         { url: "/tasks", label: "Taken schema", icon: ClipboardList },
         { url: "/taxatie", label: "Taxatie", icon: Calculator },
         { url: "/foto-studio", label: "Foto Studio", icon: Camera },
-      ] as NavItem[],
+      ],
     },
     {
       label: "OPERATIONEEL",
-      items: hasWerkplaatsAccess()
-        ? ([
+      entries: access.hasWerkplaatsAccess
+        ? [
             { url: "/werkplaats", label: "Werkplaats dashboard", icon: Wrench, exact: true },
             { url: "/werkplaats/planning", label: "Planning", icon: GanttChartIcon },
             { url: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
@@ -220,77 +273,138 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             { url: "/werkplaats/uitdeuken", label: "Uitdeuken (extern)", icon: Hammer },
             { url: "/werkplaats/autos", label: "Auto's", icon: CarIcon },
             { url: "/werkplaats/facturen", label: "Facturen (werkplaats)", icon: FileText },
-          ] as NavItem[])
+          ]
         : [],
     },
     {
       label: "GARANTIE",
-      items: [
-        ...(hasGarantieInboxAccess() ? [{ url: "/garantie/inbox", label: "Garantie-inbox", icon: InboxIcon }] : []),
+      entries: [
+        ...(access.hasGarantieInboxAccess
+          ? [{ url: "/garantie/inbox", label: "Garantie-inbox", icon: InboxIcon, badge: garantieUnread }]
+          : []),
         { url: "/warranty", label: "Garantieclaims", icon: ShieldIcon },
         { url: "/loan-cars", label: "Leenauto's", icon: CarIcon },
-      ] as NavItem[],
+      ],
     },
     {
       label: "RAPPORTAGES",
-      items: hasRapportagesAccess()
-        ? ([
+      entries: access.hasRapportagesAccess
+        ? [
             { url: "/rapportages/omzet", label: "Omzet", icon: BarChart3 },
             { url: "/rapportages/performance", label: "Performance", icon: UsersIcon },
             { url: "/rapportages/kpi", label: "KPI-dashboard", icon: GanttChartIcon },
             { url: "/rapportages/doorlooptijden", label: "Doorlooptijden", icon: Clock },
-          ] as NavItem[])
+          ]
         : [],
     },
     {
       label: "BEHEER",
-      items: [
-        ...(hasAIAgentsAccess() ? [{ url: "/ai-agents", label: "AI Team", icon: Bot }] : []),
-        ...(hasReportsAccess() ? [{ url: "/reports", label: "Prestaties (verkoop)", icon: BarChart3 }] : []),
-        ...(hasSettingsAccess() ? [{ url: "/settings", label: "Instellingen", icon: SettingsIcon }] : []),
-      ] as NavItem[],
+      entries: [
+        ...(access.hasAIAgentsAccess ? [{ url: "/ai-agents", label: "AI Team", icon: Bot }] : []),
+        ...(access.hasReportsAccess ? [{ url: "/reports", label: "Prestaties verkoop", icon: BarChart3 }] : []),
+        ...(access.hasSettingsAccess ? [{ url: "/settings", label: "Instellingen", icon: SettingsIcon }] : []),
+      ],
     },
   ];
 
-  const visibleSections = sections.filter((s) => s.items.length > 0);
+  const inventoryOpenByRoute = getSubActive(inventorySubPaths);
+  const customersOpenByRoute = getSubActive(customerSubPaths);
+
+  const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({
+    inventory: inventoryOpenByRoute,
+    customers: customersOpenByRoute,
+  });
+
+  // Automatisch openklappen wanneer een subroute actief wordt
+  React.useEffect(() => {
+    setOpenGroups((prev) => ({
+      ...prev,
+      inventory: prev.inventory || inventoryOpenByRoute,
+      customers: prev.customers || customersOpenByRoute,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inventoryOpenByRoute, customersOpenByRoute]);
+
+  const visibleSections = sections.filter((s) => s.entries.length > 0);
+
+  const renderBadge = (n?: number) =>
+    typeof n === "number" && n > 0 ? (
+      <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-semibold flex items-center justify-center px-1.5 shadow-sm">
+        {n > 99 ? "99+" : n}
+      </span>
+    ) : null;
+
+  const rowClass = (active: boolean, indent: boolean) =>
+    cn(
+      "group relative flex items-center gap-2 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
+      indent && "pl-9",
+      active
+        ? "bg-gradient-to-r from-blue-600/30 via-blue-600/10 to-transparent text-white before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-r before:bg-blue-400"
+        : "text-gray-300 hover:text-white hover:bg-gray-800/60",
+    );
+
+  const iconClass = (active: boolean) =>
+    cn("h-4 w-4 shrink-0", active ? "text-blue-300" : "text-gray-400 group-hover:text-gray-200");
+
+  const renderItem = (it: StdItem, indent = false) => {
+    const active = it.exact ? location.pathname === it.url : isActive(it.url);
+    return (
+      <Link key={it.url} to={it.url} className="block">
+        <div className={rowClass(active, indent)}>
+          <it.icon className={iconClass(active)} />
+          <span className="truncate">{it.label}</span>
+          {renderBadge(it.badge)}
+        </div>
+      </Link>
+    );
+  };
+
+  const renderGroup = (g: StdGroup) => {
+    const subActive = g.sub.some((s) => location.pathname === s.url || isActive(s.url));
+    const rootActive = isActive(g.url) && !subActive;
+    const parentActive = rootActive || subActive;
+    const open = !!openGroups[g.key];
+    return (
+      <div key={g.url}>
+        <div className={cn(rowClass(parentActive, false), "pr-1")}>
+          <Link to={g.url} className="flex flex-1 items-center gap-2 min-w-0">
+            <g.icon className={iconClass(parentActive)} />
+            <span className="truncate">{g.label}</span>
+          </Link>
+          <button
+            type="button"
+            aria-label={open ? `${g.label} inklappen` : `${g.label} uitklappen`}
+            aria-expanded={open}
+            onClick={(e) => {
+              e.preventDefault();
+              setOpenGroups((prev) => ({ ...prev, [g.key]: !prev[g.key] }));
+            }}
+            className="ml-auto shrink-0 rounded p-1 text-gray-400 hover:text-white hover:bg-gray-700/60"
+          >
+            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />
+          </button>
+        </div>
+        {open && <div className="mt-0.5 space-y-0.5">{g.sub.map((s) => renderItem(s, true))}</div>}
+      </div>
+    );
+  };
 
   return (
     <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
-      <ScrollArea className="flex-1 px-2 py-3">
-        <div className="space-y-6 pb-4">
+      <ScrollArea className="flex-1 px-3 py-4">
+        <div className="pb-6">
           {visibleSections.map((sec, idx) => (
-            <div key={sec.label ?? `top-${idx}`}>
+            <div
+              key={sec.label ?? `top-${idx}`}
+              className={cn(idx > 0 && "mt-5 pt-4 border-t border-gray-800/70")}
+            >
               {sec.label && (
-                <h2 className="mb-2 px-2 text-[10px] font-semibold tracking-[0.14em] text-gray-500">
+                <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                   {sec.label}
-                </h2>
+                </div>
               )}
-              <div className="space-y-1">
-                {sec.items.map((it) => {
-                  const active =
-                    it.url === "/inventory"
-                      ? inventoryRootActive
-                      : it.url === "/customers"
-                        ? customersRootActive
-                        : it.exact
-                          ? location.pathname === it.url
-                          : isActive(it.url);
-                  return (
-                    <Link key={it.url} to={it.url}>
-                      <Button
-                        variant={active ? "default" : "ghost"}
-                        className={cn(
-                          "w-full justify-start text-white hover:text-white hover:bg-gray-800",
-                          it.indent && "pl-5",
-                        )}
-                        size="sm"
-                      >
-                        <it.icon className="mr-2 h-4 w-4" />
-                        {it.label}
-                      </Button>
-                    </Link>
-                  );
-                })}
+              <div className="space-y-0.5">
+                {sec.entries.map((e) => (isGroup(e) ? renderGroup(e) : renderItem(e)))}
               </div>
             </div>
           ))}
