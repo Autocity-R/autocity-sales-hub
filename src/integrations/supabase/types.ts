@@ -1681,9 +1681,12 @@ export type Database = {
           customer_id: string | null
           customer_snapshot: Json
           delivery_date: string | null
+          down_payment: number | null
           financing_conditional: boolean
           financing_party: string | null
           id: string
+          lms_push_status: string | null
+          lms_pushed_at: string | null
           main_photo_url: string | null
           registered_by: string | null
           sale_price_ex: number | null
@@ -1718,9 +1721,12 @@ export type Database = {
           customer_id?: string | null
           customer_snapshot?: Json
           delivery_date?: string | null
+          down_payment?: number | null
           financing_conditional?: boolean
           financing_party?: string | null
           id?: string
+          lms_push_status?: string | null
+          lms_pushed_at?: string | null
           main_photo_url?: string | null
           registered_by?: string | null
           sale_price_ex?: number | null
@@ -1755,9 +1761,12 @@ export type Database = {
           customer_id?: string | null
           customer_snapshot?: Json
           delivery_date?: string | null
+          down_payment?: number | null
           financing_conditional?: boolean
           financing_party?: string | null
           id?: string
+          lms_push_status?: string | null
+          lms_pushed_at?: string | null
           main_photo_url?: string | null
           registered_by?: string | null
           sale_price_ex?: number | null

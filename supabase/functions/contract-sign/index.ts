@@ -201,7 +201,181 @@ Deno.serve(async (req) => {
       if (qErr2) console.error("email_queue insert (sales) failed", qErr2);
     }
 
-    // LMS terugkoppeling — mag NOOIT de teken-flow breken
+    // Lange (1 jaar) signed URL voor administratie-mail en LMS-push
+    let longPdfUrl: string | null = null;
+    try {
+      const { data: longSigned } = await admin.storage
+        .from("vehicle-documents")
+        .createSignedUrl(path, 60 * 60 * 24 * 365);
+      longPdfUrl = longSigned?.signedUrl || null;
+    } catch (e) {
+      console.warn("long signed url failed", e);
+    }
+
+    const isB2C = doc.contract_type !== "b2b";
+    const financingConditional = !!(doc as any).financing_conditional;
+    const downPayment = Number((doc as any).down_payment) || 0;
+
+    // B2C zonder financieringsvoorbehoud → administratie informeren
+    if (isB2C && !financingConditional) {
+      try {
+        const veh = (doc.vehicle_snapshot as any) || {};
+        const rows: Array<[string, string]> = [
+          ["Contractnummer", doc.contract_number],
+          ["Klant", buyerName],
+          ["E-mail klant", cust.email || "—"],
+          ["Telefoon klant", cust.phone || "—"],
+          [
+            "Voertuig",
+            [veh.brand, veh.model, veh.year ? `(${veh.year})` : null]
+              .filter(Boolean)
+              .join(" ") || "—",
+          ],
+          ["Kenteken", veh.licenseNumber || veh.license_number || "—"],
+          ["VIN", veh.vin || "—"],
+          ["Verkoopbedrag (kaal)", fmtEur(Number(doc.sale_price_ex) || 0)],
+          ["Totaalbedrag", fmtEur(Number(doc.total_price) || 0)],
+          ["BTW / marge", doc.btw_type === "btw" ? "BTW-voertuig" : "Margevoertuig"],
+          ...(downPayment > 0
+            ? ([
+                ["Aanbetaling", fmtEur(downPayment)],
+                [
+                  "Restant bij aflevering",
+                  fmtEur((Number(doc.total_price) || 0) - downPayment),
+                ],
+              ] as Array<[string, string]>)
+            : []),
+          ["Garantiepakket", (doc as any).warranty_package_name || "—"],
+          ["Verkoper", salesName],
+          ["Getekend op", now.toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam" })],
+        ];
+        const tableHtml = `<table cellpadding="0" cellspacing="0" border="0" style="width:100%;font-size:13px;color:#333;border-collapse:collapse;margin:0 0 8px;">
+          ${rows
+            .map(
+              ([k, v]) =>
+                `<tr><td style="padding:6px 0;color:#666;width:45%;">${sanitizeText(String(k))}</td><td style="padding:6px 0;font-weight:600;">${sanitizeText(String(v))}</td></tr>`,
+            )
+            .join("")}
+        </table>`;
+        const adminHtml = renderContractEmail({
+          buyerName: "Administratie",
+          intro: `Koopcontract <strong>${doc.contract_number}</strong> is digitaal ondertekend door ${buyerName}. Deze verkoop is definitief (geen financieringsvoorbehoud).`,
+          ctaText: "Ondertekend contract downloaden",
+          ctaUrl: longPdfUrl || signed?.signedUrl || "#",
+          salesName: "Auto City CRM",
+          companyName: company,
+          companyPhone,
+          extraHtml: tableHtml,
+        });
+        const { error: qErr3 } = await admin.from("email_queue").insert({
+          status: "pending",
+          attempts: 0,
+          vehicle_id: doc.vehicle_id ?? null,
+          template_id: "contract_v2_signed_administratie",
+          payload: {
+            senderEmail: "inkoop@auto-city.nl",
+            to: ["administratie@auto-city.nl"],
+            subject: "Getekend koopcontract — definitieve verkoop",
+            htmlBody: adminHtml,
+            attachments,
+          },
+        });
+        if (qErr3) console.error("email_queue insert (administratie) failed", qErr3);
+      } catch (e) {
+        console.warn("administratie mail failed (non-blocking)", e);
+      }
+    }
+
+    // B2C MET financieringsvoorbehoud → push naar LMS Financieringen-menu
+    if (isB2C && financingConditional) {
+      try {
+        const { data: secretRow } = await admin.rpc("vault_secret", {
+          secret_name: "lms_sync_secret",
+        });
+        const lmsSecret = typeof secretRow === "string" ? secretRow : null;
+        if (!lmsSecret) {
+          console.error("lms_sync_secret not configured — financiering-push skipped");
+          await admin
+            .from("contract_documents")
+            .update({ lms_push_status: "error: no_secret" })
+            .eq("id", doc.id);
+        } else {
+          const veh = (doc.vehicle_snapshot as any) || {};
+          const payload = {
+            source: "autocity-crm",
+            contract_number: doc.contract_number,
+            crm_contract_id: doc.id,
+            signed_at: now.toISOString(),
+            financing_conditional: true,
+            financing_party: (doc as any).financing_party || null,
+            price: Number(doc.sale_price_ex) || 0,
+            total_amount: Number(doc.total_price) || 0,
+            down_payment: downPayment || null,
+            btw_type: doc.btw_type || null,
+            vehicle: {
+              brand: veh.brand || null,
+              model: veh.model || null,
+              year: veh.year ?? null,
+              kenteken: veh.licenseNumber || veh.license_number || null,
+              vin: veh.vin || null,
+            },
+            customer: {
+              name: buyerName,
+              email: cust.email || null,
+              phone: cust.phone || null,
+            },
+            salesperson: {
+              name: (doc as any).salesperson_name || null,
+              email: (doc as any).salesperson_email || null,
+            },
+            pdf_url: longPdfUrl || signed?.signedUrl || null,
+          };
+          const resp = await fetch(
+            "https://aogxdgnvhbogimoqjwpp.supabase.co/functions/v1/external-contract-intake",
+            {
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                "x-lms-secret": lmsSecret,
+              },
+              body: JSON.stringify(payload),
+            },
+          );
+          const bodyText = await resp.text().catch(() => null);
+          if (!resp.ok) {
+            console.error(
+              `LMS financiering-push failed [${resp.status}]: ${bodyText}`,
+            );
+          }
+          await admin
+            .from("contract_documents")
+            .update({
+              lms_push_status: resp.ok ? "success" : `error:${resp.status}`,
+              lms_pushed_at: new Date().toISOString(),
+            })
+            .eq("id", doc.id);
+          await admin.from("lms_sync_log").insert({
+            contract_number: doc.contract_number,
+            status: resp.ok ? "success" : "error",
+            http_status: resp.status,
+            response_body: bodyText,
+          } as any);
+        }
+      } catch (e) {
+        console.error("LMS financiering-push failed (non-blocking)", e);
+        try {
+          await admin
+            .from("contract_documents")
+            .update({
+              lms_push_status: "error:exception",
+              lms_pushed_at: new Date().toISOString(),
+            })
+            .eq("id", doc.id);
+        } catch (_) { /* ignore */ }
+      }
+    }
+
+    // LMS terugkoppeling (bestaand) — mag NOOIT de teken-flow breken
     try {
       const { data: secretRow } = await admin.rpc("vault_secret", {
         secret_name: "lms_sync_secret",
@@ -280,6 +454,10 @@ function sanitizeText(s: string): string {
     .replace(/\u2014/g, "-")
     .replace(/\u2013/g, "-")
     .replace(/\u2011/g, "-");
+}
+
+function fmtEur(n: number): string {
+  return `EUR ${Number(n || 0).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function renderContractEmail(opts: {

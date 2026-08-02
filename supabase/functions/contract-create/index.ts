@@ -33,6 +33,7 @@ interface Payload {
   financingParty?: string | null;
   specialTerms?: string;
   deliveryDate?: string | null;
+  downPayment?: number;
 }
 
 Deno.serve(async (req) => {
@@ -231,6 +232,7 @@ Deno.serve(async (req) => {
         financing_conditional: !!body.financingConditional,
         financing_party: body.financingParty || null,
         special_terms: body.specialTerms || null,
+        down_payment: Number(body.downPayment || 0) || null,
         total_price: totalPrice,
         main_photo_url: mainPhotoUrl,
         delivery_date: body.deliveryDate || null,

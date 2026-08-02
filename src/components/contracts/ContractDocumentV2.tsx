@@ -24,6 +24,7 @@ export interface ContractV2Snapshot {
   financing_party?: string | null;
   special_terms?: string | null;
   total_price: number | null;
+  down_payment?: number | null;
   main_photo_url?: string | null;
   salesperson_name?: string | null;
   salesperson_email?: string | null;
@@ -362,6 +363,8 @@ export const ContractDocumentV2: React.FC<{
   );
   const total =
     data.total_price ?? (salesPrice + warrantyPrice + accessoriesTotal - tradeIn);
+  const downPayment = Number(data.down_payment) || 0;
+  const remaining = total - downPayment;
 
   const tradeInV = data.trade_in_vehicle || {};
   const tradeInLine = tradeIn > 0
@@ -532,6 +535,18 @@ export const ContractDocumentV2: React.FC<{
                 <span className="k">Totaalprijs</span>
                 <span className="v">{fmtEur(total)}</span>
               </div>
+              {downPayment > 0 && (
+                <>
+                  <div className="cdv2-price-row neg">
+                    <span>Aanbetaling</span>
+                    <span className="v">− {fmtEur(downPayment)}</span>
+                  </div>
+                  <div className="cdv2-price-row">
+                    <span>Restant te voldoen bij aflevering</span>
+                    <span className="v">{fmtEur(remaining)}</span>
+                  </div>
+                </>
+              )}
               <div className="cdv2-btw-note">{btwNote}</div>
               {data.financing_conditional && (
                 <div className="cdv2-btw-note" style={{ color: "#FFC800", marginTop: 6 }}>

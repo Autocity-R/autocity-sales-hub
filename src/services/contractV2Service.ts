@@ -26,6 +26,7 @@ export interface ContractV2Input {
   financingParty?: string | null;
   specialTerms?: string;
   deliveryDate?: string | null;
+  downPayment?: number;
 }
 
 export interface ContractV2 {
@@ -42,6 +43,7 @@ export interface ContractV2 {
   trade_in_value: number | null;
   special_terms: string | null;
   total_price: number | null;
+  down_payment?: number | null;
   vehicle_snapshot: any;
   customer_snapshot: any;
   company_snapshot: any;

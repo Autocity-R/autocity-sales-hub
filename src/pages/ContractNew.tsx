@@ -78,6 +78,7 @@ export default function ContractNew() {
   const [customer, setCustomer] = useState<Contact | null>(null);
   const [salePriceEx, setSalePriceEx] = useState<string>("");
   const [btwType, setBtwType] = useState<"marge" | "btw">("marge");
+  const [downPayment, setDownPayment] = useState<string>("");
   const [warrantyCode, setWarrantyCode] = useState<string>("");
   const [warrantyPrice, setWarrantyPrice] = useState<string>("0");
   const [tradeInEnabled, setTradeInEnabled] = useState(false);
@@ -311,6 +312,7 @@ export default function ContractNew() {
         : null,
       specialTerms: specialTerms || undefined,
       deliveryDate: deliveryDate || undefined,
+      downPayment: parseFloat(downPayment) || 0,
     });
     setSaving(false);
     if (res.error) {
@@ -462,6 +464,7 @@ export default function ContractNew() {
         financing_party: financingConditional && financingParty.trim() ? financingParty.trim() : null,
         special_terms: specialTerms || null,
         total_price: total,
+        down_payment: parseFloat(downPayment) || 0,
         main_photo_url: mainPhotoUrl,
         salesperson_name: savedContract?.salesperson_name || salespersonName,
         salesperson_email: savedContract?.salesperson_email || salespersonEmail,
@@ -654,6 +657,19 @@ export default function ContractNew() {
                       <RadioGroupItem value="btw" /> BTW
                     </label>
                   </RadioGroup>
+                </div>
+                <div>
+                  <Label htmlFor="downPayment">Aanbetaling (€)</Label>
+                  <Input
+                    id="downPayment"
+                    type="number"
+                    value={downPayment}
+                    onChange={(e) => setDownPayment(e.target.value)}
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Optioneel. Wordt op het contract getoond met het restant bij aflevering.
+                  </p>
                 </div>
               </CardContent>
             </Card>
