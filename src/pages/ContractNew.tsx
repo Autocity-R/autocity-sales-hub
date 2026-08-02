@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SearchableCustomerSelector } from "@/components/customers/SearchableCustomerSelector";
+import { useSalespeople } from "@/hooks/useSalespeople";
 import { Contact } from "@/types/customer";
 import { supabaseCustomerService } from "@/services/supabaseCustomerService";
 import { supabase } from "@/integrations/supabase/client";
@@ -93,7 +94,9 @@ export default function ContractNew() {
   const [contractType, setContractType] = useState<"b2b" | "b2c">("b2c");
   const [deliveryDate, setDeliveryDate] = useState<string>("");
 
-  // Salesperson (ingelogde verkoper is contractant)
+  // Verkoper-attributie: de GESELECTEERDE verkoper is leidend (kantoren delen
+  // computers). Het ingelogde account wordt apart als registered_by vastgelegd.
+  const [salespersonId, setSalespersonId] = useState<string>("");
   const [salespersonName, setSalespersonName] = useState<string | null>(null);
   const [salespersonEmail, setSalespersonEmail] = useState<string | null>(null);
 
@@ -149,10 +152,11 @@ export default function ContractNew() {
       if (data.customer_id) setCustomerId(data.customer_id);
       setLoading(false);
 
-      // Salesperson (ingelogde gebruiker)
+      // Verkoper vooringevuld met de ingelogde gebruiker (één klik blijft één klik)
       const { data: authData } = await supabase.auth.getUser();
       const uid = authData?.user?.id;
       if (uid) {
+        setSalespersonId((prev) => prev || uid);
         const { data: prof } = await supabase
           .from("profiles")
           .select("first_name, last_name, email")
