@@ -370,6 +370,19 @@ export class SupabaseInventoryService {
         : existingVehicle.sold_by_user_id
     };
 
+    // AUDIT: leg vast WIE de verkoop registreerde (ingelogd account), los van de
+    // verkoper-attributie in sold_by_user_id.
+    if (vehicle.salespersonId !== undefined && vehicle.salespersonId !== existingVehicle.sold_by_user_id) {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        (updateData as any).sold_registered_by = vehicle.salespersonId
+          ? authData?.user?.id ?? null
+          : null;
+      } catch (e) {
+        console.warn('[UPDATE_VEHICLE] could not resolve registered_by', e);
+      }
+    }
+
     // CRITICAL: Sync salespersonName in details when salespersonId changes
     if (vehicle.salespersonId !== undefined && vehicle.salespersonId !== existingVehicle.sold_by_user_id) {
       // Fetch the profile name for this salesperson
