@@ -8,6 +8,7 @@ import { Users, UserPlus, Shield, Mail, Trash2, MoreHorizontal, Building2, Loade
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ROLE_OPTIONS, getRoleLabel } from "@/lib/roles";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -252,13 +253,7 @@ export const UserManagement = () => {
                       : "—"}
                   </Badge>
                   <Badge variant={user.role === "admin" || user.role === "owner" ? "default" : "secondary"}>
-                    {user.role === "admin" ? "Admin" : 
-                     user.role === "owner" ? "Owner" :
-                     user.role === "manager" ? "Manager" :
-                     user.role === "verkoper" ? "Verkoper" :
-                     user.role === "aftersales_manager" ? "Aftersales Manager" :
-                     user.role === "schadeherstel" ? "Schadeherstel" :
-                     user.role === "poetser" ? "Poetser" : "Gebruiker"}
+                    {getRoleLabel(user.role)}
                   </Badge>
                   <Select
                     value={user.role}
@@ -269,14 +264,11 @@ export const UserManagement = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="owner">Owner</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      <SelectItem value="aftersales_manager">Aftersales Manager</SelectItem>
-                      <SelectItem value="verkoper">Verkoper</SelectItem>
-                      <SelectItem value="schadeherstel">Schadeherstel</SelectItem>
-                      <SelectItem value="poetser">Poetser</SelectItem>
-                      <SelectItem value="operationeel">Operationeel Gebruiker</SelectItem>
+                      {ROLE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   
