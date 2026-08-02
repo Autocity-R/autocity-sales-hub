@@ -151,6 +151,36 @@ describe("werkplaats_chef", () => {
   });
 });
 
+describe("verkoper mag inname doen, maar niet goedkeuren", () => {
+  it.each(["/werkplaats/inname", "/werkplaats/inname/abc-123"])("mag %s", (url) => {
+    expect(canAccessRoute("verkoper", url)).toEqual({ allowed: true });
+  });
+
+  it("wordt van goedkeuren weggestuurd naar inname", () => {
+    expect(canAccessRoute("verkoper", "/werkplaats/goedkeuren")).toEqual({
+      allowed: false,
+      redirectTo: "/werkplaats/inname",
+    });
+  });
+
+  it("heeft inname-feature wel, goedkeuren-feature niet", () => {
+    expect(featureAccess.inname("verkoper")).toBe(true);
+    expect(featureAccess.goedkeuren("verkoper")).toBe(false);
+  });
+
+  it("goedkeuren blijft voor aftersales/owner/admin/chef", () => {
+    for (const r of ["owner", "admin", "aftersales_manager", "werkplaats_chef", "manager"]) {
+      expect(featureAccess.goedkeuren(r)).toBe(true);
+      expect(canAccessRoute(r, "/werkplaats/goedkeuren")).toEqual({ allowed: true });
+    }
+  });
+
+  it("inname-routes zijn geregistreerd", () => {
+    expect(routeExists("/werkplaats/inname")).toBe(true);
+    expect(routeExists("/werkplaats/inname/abc")).toBe(true);
+  });
+});
+
 describe("onbekende rol (nog niet geladen)", () => {
   it("veroorzaakt geen redirect", () => {
     expect(canAccessRoute(null, "/inventory")).toEqual({ allowed: true });
