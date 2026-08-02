@@ -44,7 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   const location = useLocation();
   const {
     hasReportsAccess, hasAIAgentsAccess, hasSettingsAccess,
-    hasRapportagesAccess,
+    hasRapportagesAccess, hasLeadsAccess, hasCustomersAccess, hasGarantieInboxAccess,
     hasWerkplaatsAccess, isRestrictedWorkshopUser, getHomeRoute,
     isSchadeherstel, isMonteur, isUitdeukerExtern, isWerkplaatsChef, isOperationeelDirecteur, isPoetser,
     isAftersalesManager,
@@ -166,303 +166,134 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     );
   }
 
+  // ============ Standaard-sidebar (owner/admin/manager/verkoper/operationeel) ============
+  // Rechten blijven exact gelijk aan de vorige versie; alleen de ordening is opgeschoond.
+  type NavItem = { url: string; label: string; icon: any; exact?: boolean; indent?: boolean };
+  type NavSection = { label: string | null; items: NavItem[] };
+
+  const inventoryRootActive =
+    isActive("/inventory") &&
+    !getSubActive(["/inventory/b2b", "/inventory/online", "/inventory/consumer", "/inventory/delivered"]);
+  const customersRootActive =
+    isActive("/customers") && !getSubActive(["/customers/b2b", "/customers/b2c", "/suppliers"]);
+
+  const sections: NavSection[] = [
+    {
+      label: null,
+      items: [{ url: "/", label: "Dashboard", icon: HomeIcon, exact: true }],
+    },
+    {
+      label: "VERKOOP",
+      items: [
+        ...(hasLeadsAccess() ? [{ url: "/leads", label: "Werkbak / Leads", icon: BookIcon }] : []),
+        { url: "/calendar", label: "Agenda", icon: CalendarIcon },
+        ...(hasCustomersAccess()
+          ? [
+              { url: "/customers", label: "Klanten", icon: UsersIcon },
+              { url: "/customers/b2b", label: "Zakelijk", icon: BoxIcon, indent: true },
+              { url: "/customers/b2c", label: "Particulier", icon: UsersIcon, indent: true },
+              { url: "/suppliers", label: "Leveranciers", icon: TruckIcon, indent: true },
+            ]
+          : []),
+        { url: "/inventory", label: "Voorraad", icon: CarIcon },
+        { url: "/inventory/online", label: "Online", icon: ShoppingBagIcon, indent: true },
+        { url: "/inventory/b2b", label: "Verkocht B2B", icon: BoxIcon, indent: true },
+        { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon, indent: true },
+        { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag, indent: true },
+        { url: "/transport", label: "Transport", icon: TruckIcon },
+        { url: "/tasks", label: "Taken schema", icon: ClipboardList },
+        { url: "/taxatie", label: "Taxatie", icon: Calculator },
+        { url: "/foto-studio", label: "Foto Studio", icon: Camera },
+      ] as NavItem[],
+    },
+    {
+      label: "OPERATIONEEL",
+      items: hasWerkplaatsAccess()
+        ? ([
+            { url: "/werkplaats", label: "Werkplaats dashboard", icon: Wrench, exact: true },
+            { url: "/werkplaats/planning", label: "Planning", icon: GanttChartIcon },
+            { url: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
+            { url: "/werkplaats/agenda", label: "Werkplaats agenda", icon: CalendarIcon },
+            { url: "/werkplaats/goedkeuren", label: "Goedkeuren", icon: CheckCircle },
+            { url: "/werkplaats/onderdelen", label: "Onderdelen", icon: Package },
+            { url: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles },
+            { url: "/werkplaats/uitdeuken", label: "Uitdeuken (extern)", icon: Hammer },
+            { url: "/werkplaats/autos", label: "Auto's", icon: CarIcon },
+            { url: "/werkplaats/facturen", label: "Facturen (werkplaats)", icon: FileText },
+          ] as NavItem[])
+        : [],
+    },
+    {
+      label: "GARANTIE",
+      items: [
+        ...(hasGarantieInboxAccess() ? [{ url: "/garantie/inbox", label: "Garantie-inbox", icon: InboxIcon }] : []),
+        { url: "/warranty", label: "Garantieclaims", icon: ShieldIcon },
+        { url: "/loan-cars", label: "Leenauto's", icon: CarIcon },
+      ] as NavItem[],
+    },
+    {
+      label: "RAPPORTAGES",
+      items: hasRapportagesAccess()
+        ? ([
+            { url: "/rapportages/omzet", label: "Omzet", icon: BarChart3 },
+            { url: "/rapportages/performance", label: "Performance", icon: UsersIcon },
+            { url: "/rapportages/kpi", label: "KPI-dashboard", icon: GanttChartIcon },
+            { url: "/rapportages/doorlooptijden", label: "Doorlooptijden", icon: Clock },
+          ] as NavItem[])
+        : [],
+    },
+    {
+      label: "BEHEER",
+      items: [
+        ...(hasAIAgentsAccess() ? [{ url: "/ai-agents", label: "AI Team", icon: Bot }] : []),
+        ...(hasReportsAccess() ? [{ url: "/reports", label: "Prestaties (verkoop)", icon: BarChart3 }] : []),
+        ...(hasSettingsAccess() ? [{ url: "/settings", label: "Instellingen", icon: SettingsIcon }] : []),
+      ] as NavItem[],
+    },
+  ];
+
+  const visibleSections = sections.filter((s) => s.items.length > 0);
+
   return (
     <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
       <ScrollArea className="flex-1 px-2 py-3">
-        <div className="space-y-1">
-          <Link to="/">
-            <Button
-              variant={isActive("/") ? "default" : "ghost"}
-              className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-              size="sm"
-            >
-              <HomeIcon className="mr-2 h-4 w-4" />
-              Dashboard
-            </Button>
-          </Link>
-        </div>
-
-        <div className="mt-8">
-          <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
-            VOERTUIGEN
-          </h2>
-          <div className="space-y-1">
-            <Link to="/inventory">
-              <Button
-                variant={isActive("/inventory") && !getSubActive(["/inventory/b2b", "/inventory/online", "/inventory/consumer", "/inventory/delivered"]) ? "default" : "ghost"}
-                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <CarIcon className="mr-2 h-4 w-4" />
-                Voorraad
-              </Button>
-            </Link>
-            <Link to="/inventory/online">
-              <Button
-                variant={isActive("/inventory/online") ? "default" : "ghost"}
-                className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <ShoppingBagIcon className="mr-2 h-4 w-4" />
-                Online
-              </Button>
-            </Link>
-            <Link to="/inventory/b2b">
-              <Button
-                variant={isActive("/inventory/b2b") ? "default" : "ghost"}
-                className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <BoxIcon className="mr-2 h-4 w-4" />
-                Verkocht B2B
-              </Button>
-            </Link>
-            <Link to="/inventory/consumer">
-              <Button
-                variant={isActive("/inventory/consumer") ? "default" : "ghost"}
-                className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <UsersIcon className="mr-2 h-4 w-4" />
-                Verkocht B2C
-              </Button>
-            </Link>
-            <Link to="/inventory/delivered">
-              <Button
-                variant={isActive("/inventory/delivered") ? "default" : "ghost"}
-                className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <Flag className="mr-2 h-4 w-4" />
-                Afgeleverd
-              </Button>
-            </Link>
-            <Link to="/transport">
-              <Button
-                variant={isActive("/transport") ? "default" : "ghost"}
-                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <TruckIcon className="mr-2 h-4 w-4" />
-                Transport
-              </Button>
-            </Link>
-            <Link to="/tasks">
-              <Button
-                variant={isActive("/tasks") ? "default" : "ghost"}
-                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <ClipboardList className="mr-2 h-4 w-4" />
-                Taken Schema
-              </Button>
-            </Link>
-            <Link to="/warranty">
-              <Button
-                variant={isActive("/warranty") ? "default" : "ghost"}
-                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <ShieldIcon className="mr-2 h-4 w-4" />
-                Garantie
-              </Button>
-            </Link>
-            {/* TODO: Tijdelijk geen rol-check - later terugzetten */}
-            <Link to="/taxatie">
-              <Button
-                variant={isActive("/taxatie") ? "default" : "ghost"}
-                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <Calculator className="mr-2 h-4 w-4" />
-                Taxatie
-              </Button>
-            </Link>
-            <Link to="/foto-studio">
-              <Button
-                variant={isActive("/foto-studio") ? "default" : "ghost"}
-                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <Camera className="mr-2 h-4 w-4" />
-                Foto Studio
-              </Button>
-            </Link>
-          </div>
-        </div>
-
-        {hasWerkplaatsAccess() && (
-          <div className="mt-8">
-            <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
-              OPERATIONEEL
-            </h2>
-            <div className="space-y-1">
-              {[
-                { url: "/werkplaats", label: "Dashboard", icon: Wrench, exact: true },
-                { url: "/werkplaats/autos", label: "Auto's", icon: CarIcon },
-                { url: "/werkplaats/planning", label: "Planning", icon: GanttChartIcon },
-                { url: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
-                { url: "/werkplaats/uitdeuken", label: "Uitdeuken (extern)", icon: Hammer },
-                { url: "/werkplaats/goedkeuren", label: "Goedkeuren", icon: CheckCircle },
-                { url: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles },
-              ].map((it) => (
-                <Link key={it.url} to={it.url}>
-                  <Button
-                    variant={(it.exact ? location.pathname === it.url : isActive(it.url)) ? "default" : "ghost"}
-                    className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                    size="sm"
-                  >
-                    <it.icon className="mr-2 h-4 w-4" />
-                    {it.label}
-                  </Button>
-                </Link>
-              ))}
+        <div className="space-y-6 pb-4">
+          {visibleSections.map((sec, idx) => (
+            <div key={sec.label ?? `top-${idx}`}>
+              {sec.label && (
+                <h2 className="mb-2 px-2 text-[10px] font-semibold tracking-[0.14em] text-gray-500">
+                  {sec.label}
+                </h2>
+              )}
+              <div className="space-y-1">
+                {sec.items.map((it) => {
+                  const active =
+                    it.url === "/inventory"
+                      ? inventoryRootActive
+                      : it.url === "/customers"
+                        ? customersRootActive
+                        : it.exact
+                          ? location.pathname === it.url
+                          : isActive(it.url);
+                  return (
+                    <Link key={it.url} to={it.url}>
+                      <Button
+                        variant={active ? "default" : "ghost"}
+                        className={cn(
+                          "w-full justify-start text-white hover:text-white hover:bg-gray-800",
+                          it.indent && "pl-5",
+                        )}
+                        size="sm"
+                      >
+                        <it.icon className="mr-2 h-4 w-4" />
+                        {it.label}
+                      </Button>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
-
-        {hasRapportagesAccess() && (
-          <div className="mt-8">
-            <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
-              RAPPORTAGES
-            </h2>
-            <div className="space-y-1">
-              {[
-                { url: "/rapportages/omzet", label: "Omzet", icon: BarChart3 },
-                { url: "/rapportages/performance", label: "Performance", icon: UsersIcon },
-                { url: "/rapportages/kpi", label: "KPI-dashboard", icon: GanttChartIcon },
-                { url: "/rapportages/doorlooptijden", label: "Doorlooptijden", icon: Clock },
-              ].map((it) => (
-                <Link key={it.url} to={it.url}>
-                  <Button
-                    variant={isActive(it.url) ? "default" : "ghost"}
-                    className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                    size="sm"
-                  >
-                    <it.icon className="mr-2 h-4 w-4" />
-                    {it.label}
-                  </Button>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="mt-8">
-          <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
-            KLANTEN
-          </h2>
-          <div className="space-y-1">
-            <Link to="/customers">
-              <Button
-                variant={isActive("/customers") && !getSubActive(["/customers/b2b", "/customers/b2c", "/suppliers"]) ? "default" : "ghost"}
-                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <UsersIcon className="mr-2 h-4 w-4" />
-                Alle Klanten
-              </Button>
-            </Link>
-            <Link to="/customers/b2b">
-              <Button
-                variant={isActive("/customers/b2b") ? "default" : "ghost"}
-                className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <BoxIcon className="mr-2 h-4 w-4" />
-                Zakelijk
-              </Button>
-            </Link>
-            <Link to="/customers/b2c">
-              <Button
-                variant={isActive("/customers/b2c") ? "default" : "ghost"}
-                className="w-full justify-start pl-2 text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <UsersIcon className="mr-2 h-4 w-4" />
-                Particulier
-              </Button>
-            </Link>
-            <Link to="/suppliers">
-              <Button
-                variant={isActive("/suppliers") ? "default" : "ghost"}
-                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <TruckIcon className="mr-2 h-4 w-4" />
-                Leveranciers
-              </Button>
-            </Link>
-          </div>
-        </div>
-
-        <div className="mt-8">
-          <h2 className="mb-2 px-2 text-xs font-semibold text-gray-400">
-            ADMINISTRATIE
-          </h2>
-          <div className="space-y-1">
-            {hasReportsAccess() && (
-              <Link to="/reports">
-                <Button
-                  variant={isActive("/reports") ? "default" : "ghost"}
-                  className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                  size="sm"
-                >
-                  <BarChart3 className="mr-2 h-4 w-4" />
-                  Analytics (verkoop)
-                </Button>
-              </Link>
-            )}
-            {hasAIAgentsAccess() && (
-              <Link to="/ai-agents">
-                <Button
-                  variant={isActive("/ai-agents") ? "default" : "ghost"}
-                  className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                  size="sm"
-                >
-                  <Bot className="mr-2 h-4 w-4" />
-                  AI Team
-                </Button>
-              </Link>
-            )}
-            <Link to="/loan-cars">
-              <Button
-                variant={isActive("/loan-cars") ? "default" : "ghost"}
-                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <CarIcon className="mr-2 h-4 w-4" />
-                Leen auto beheer
-              </Button>
-            </Link>
-            <Link to="/calendar">
-              <Button
-                variant={isActive("/calendar") ? "default" : "ghost"}
-                className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                size="sm"
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                Agenda
-              </Button>
-            </Link>
-          </div>
-        </div>
-
-        <div className="mt-8 pb-4">
-          <div className="space-y-1">
-            {hasSettingsAccess() && (
-              <Link to="/settings">
-                <Button
-                  variant={isActive("/settings") ? "default" : "ghost"}
-                  className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                  size="sm"
-                >
-                  <SettingsIcon className="mr-2 h-4 w-4" />
-                  Instellingen
-                </Button>
-              </Link>
-            )}
-          </div>
+          ))}
         </div>
       </ScrollArea>
     </div>

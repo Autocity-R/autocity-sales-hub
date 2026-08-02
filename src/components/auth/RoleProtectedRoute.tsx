@@ -15,6 +15,17 @@ export const RoleProtectedRoute: React.FC<RoleProtectedRouteProps> = ({
 }) => {
   const roleAccess = useRoleAccess();
 
+  // Belangrijk: de rol wordt asynchroon opgehaald ná de sessie. Zolang die niet
+  // bekend is, mogen we NIET redirecten (dat veroorzaakte het direct terugvallen
+  // naar het dashboard bij o.a. Rapportages).
+  if (roleAccess.roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-400" />
+      </div>
+    );
+  }
+
   const hasAccess = () => {
     switch (requiredAccess) {
       case 'reports':
