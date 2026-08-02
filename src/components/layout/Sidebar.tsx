@@ -282,7 +282,7 @@ const StandardSidebar: React.FC<{
   const rapportagesOpenByRoute = location.pathname.startsWith("/rapportages");
 
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({
-    inventory: inventoryOpenByRoute,
+    inventory: true,
     customers: customersOpenByRoute,
     rapportages: rapportagesOpenByRoute,
   });
@@ -427,7 +427,7 @@ const DirectieSidebar: React.FC<{
   const inventoryOpenByRoute = getSubActive(inventorySubPaths);
   const rapportagesOpenByRoute = location.pathname.startsWith("/rapportages");
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({
-    inventory: inventoryOpenByRoute,
+    inventory: true,
     rapportages: rapportagesOpenByRoute,
   });
 
@@ -561,14 +561,17 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
       ] as AsNavItem[],
     },
     {
+      label: "FINANCIEEL",
+      items: [
+        // Rapportages buiten de werkplaats niet voor de chef
+        ...(isChef ? [] : [{ url: "/reports", label: "Rapportages", icon: BarChart3 }]),
+        { url: "/werkplaats/facturen", label: "Werkplaats facturen", icon: FileText },
+      ] as AsNavItem[],
+    },
+    {
       label: "OVERIG",
       items: [
-        // Verkoop-onderdelen (rapportages buiten de werkplaats + verkoopagenda) niet voor de chef
-        ...(isChef ? [] : [
-          { url: "/reports", label: "Rapportages", icon: BarChart3 },
-          { url: "/calendar", label: "Agenda", icon: CalendarIcon },
-        ]),
-        { url: "/werkplaats/facturen", label: "Werkplaats facturen", icon: FileText },
+        ...(isChef ? [] : [{ url: "/calendar", label: "Agenda", icon: CalendarIcon }]),
         { url: "/werkplaats/agenda", label: "Werkplaats agenda", icon: CalendarIcon },
       ] as AsNavItem[],
     },
