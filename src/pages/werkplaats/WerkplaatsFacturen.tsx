@@ -1,26 +1,37 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { AsPage, AsCard, AsCardHead, AsLicensePlate, AsPill } from "@/components/aftersales/ui";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FileText, Loader2, Search, ExternalLink, Send, Pencil } from "lucide-react";
+import { FileText, Loader2, Search, ExternalLink, Send, Pencil, Plus, Check, Calculator } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import WorkshopInvoiceDialog from "@/components/werkplaats/WorkshopInvoiceDialog";
+import ManualInvoiceDialog, { ManualInvoicePrefill } from "@/components/werkplaats/ManualInvoiceDialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { featureAccess } from "@/lib/routeAccess";
 import {
   eur, getInvoiceSignedUrl, getInvoicePdfBase64, queueInvoiceEmail, InvoiceDraft,
-  dispatchPendingInternalInvoices, resendInternalInvoice,
+  dispatchPendingInternalInvoices, resendInternalInvoice, setInvoicePaymentStatus,
 } from "@/services/workshopInvoiceService";
 
 interface InvoiceRow {
   id: string; invoice_number: string | null; created_at: string; status: string;
   customer: any; vehicle: any; lines: any; total: number; pdf_path: string | null; branch: string | null;
   work_order_id: string | null; invoice_kind: string | null; subtotal: number | null;
+  payment_status: string | null;
 }
 
 const WerkplaatsFacturen: React.FC = () => {
   const readOnly = useRoleAccess().isDirectieReadOnly();
+  const { userRole, isAdmin } = useAuth();
+  const mayCreateManual = isAdmin || featureAccess["handmatige-facturen"](userRole);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [manualOpen, setManualOpen] = useState(false);
+  const [prefill, setPrefill] = useState<ManualInvoicePrefill | null>(null);
   const [rows, setRows] = useState<InvoiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -31,7 +42,7 @@ const WerkplaatsFacturen: React.FC = () => {
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from("workshop_invoices")
-      .select("id, invoice_number, created_at, status, customer, vehicle, lines, total, subtotal, pdf_path, branch, work_order_id, invoice_kind")
+      .select("id, invoice_number, created_at, status, customer, vehicle, lines, total, subtotal, pdf_path, branch, work_order_id, invoice_kind, payment_status")
       .order("created_at", { ascending: false })
       .limit(300);
     if (error) toast({ title: "Fout", description: error.message, variant: "destructive" });
@@ -47,6 +58,25 @@ const WerkplaatsFacturen: React.FC = () => {
       if (n > 0) { toast({ title: `${n} interne factuur/facturen verstuurd` }); load(); }
     })();
   }, [readOnly]);
+
+  useEffect(() => {
+    const line = (location.state as any)?.prefillLine;
+    if (line && mayCreateManual) {
+      setPrefill({ description: line.description, amount: Number(line.amount) || 0 });
+      setManualOpen(true);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, mayCreateManual, navigate, location.pathname]);
+
+  const togglePaid = async (r: InvoiceRow) => {
+    const next = r.payment_status === "betaald" ? "open" : "betaald";
+    try {
+      await setInvoicePaymentStatus(r.id, next);
+      setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, payment_status: next } : x)));
+    } catch (e: any) {
+      toast({ title: "Bijwerken mislukt", description: e.message, variant: "destructive" });
+    }
+  };
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -107,6 +137,16 @@ const WerkplaatsFacturen: React.FC = () => {
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Werkplaats facturen</h1>
             <p className="text-[13px] text-slate-500 mt-0.5">Facturen van externe werkplaatsopdrachten.</p>
           </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => navigate("/werkplaats/prijslijst")}>
+              <Calculator className="h-4 w-4 mr-1" />Prijslijst
+            </Button>
+            {mayCreateManual && (
+              <Button size="sm" onClick={() => { setPrefill(null); setManualOpen(true); }}>
+                <Plus className="h-4 w-4 mr-1" />Nieuwe factuur
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3 mb-4">
@@ -153,11 +193,23 @@ const WerkplaatsFacturen: React.FC = () => {
                     <AsLicensePlate value={r.vehicle?.license_number} size="sm" />
                     <div className="md:w-[110px] md:text-right text-[13px] font-semibold tabular-nums">{eur(Number(r.total) || 0)}</div>
                     <AsPill tone={r.status === "verstuurd" ? "green" : "amber"}>{r.status}</AsPill>
+                    {r.invoice_kind === "intern" || r.payment_status === "nvt" ? (
+                      <AsPill tone="slate">betaling n.v.t.</AsPill>
+                    ) : (
+                      <AsPill tone={r.payment_status === "betaald" ? "green" : "red"}>
+                        {r.payment_status === "betaald" ? "betaald" : "open"}
+                      </AsPill>
+                    )}
                   </div>
                   <div className="flex gap-2 [&_button]:min-h-[44px] md:[&_button]:min-h-0">
                     {r.status === "verstuurd" ? (
                       <>
                         <Button size="sm" variant="outline" onClick={() => openPdf(r)}><ExternalLink className="h-3.5 w-3.5 mr-1" />PDF</Button>
+                        {!readOnly && r.invoice_kind !== "intern" && r.payment_status !== "nvt" && (
+                          <Button size="sm" variant="ghost" onClick={() => togglePaid(r)}>
+                            <Check className="h-3.5 w-3.5 mr-1" />{r.payment_status === "betaald" ? "Op open" : "Betaald"}
+                          </Button>
+                        )}
                         {!readOnly && <Button size="sm" variant="ghost" onClick={() => resend(r)}><Send className="h-3.5 w-3.5 mr-1" />Mailen</Button>}
                       </>
                     ) : readOnly ? null : (
@@ -175,6 +227,13 @@ const WerkplaatsFacturen: React.FC = () => {
             </div>
           )}
         </AsCard>
+
+        <ManualInvoiceDialog
+          open={manualOpen}
+          onOpenChange={(v) => { setManualOpen(v); if (!v) setPrefill(null); }}
+          prefillLine={prefill}
+          onSaved={load}
+        />
 
         <WorkshopInvoiceDialog open={!!edit} onOpenChange={(v) => !v && setEdit(null)} initial={edit} onSaved={load} />
       </AsPage>
