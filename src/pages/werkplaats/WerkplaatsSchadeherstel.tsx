@@ -12,6 +12,7 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 import { PartChips } from "@/components/werkplaats/workOrderParts";
 import { MyPerformanceCard } from "@/components/werkplaats/MyPerformanceCard";
+import { isPlannedInFuture, formatPlannedDay } from "@/components/werkplaats/plannedVisibility";
 
 interface WO {
   id: string;
@@ -23,6 +24,7 @@ interface WO {
   sort_order: number;
   photos: string[] | null;
   created_at: string;
+  planned_at: string | null;
   started_at: string | null;
   finished_at: string | null;
   assigned_to: string | null;
@@ -35,7 +37,7 @@ interface WO {
 }
 
 const SELECT =
-  "id, description, part, parts, status, is_rush, sort_order, photos, created_at, started_at, finished_at, assigned_to, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
+  "id, description, part, parts, status, is_rush, sort_order, photos, created_at, planned_at, started_at, finished_at, assigned_to, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
 
 const Card: React.FC<{
   w: WO;
@@ -170,6 +172,16 @@ const WerkplaatsSchadeherstel: React.FC = () => {
   useEffect(() => { load(); }, [load]);
 
   const handleStart = async (w: WO) => {
+    if (isPlannedInFuture(w.planned_at)) {
+      toast({
+        title: "Nog niet beschikbaar",
+        description: `Deze klus staat gepland voor ${formatPlannedDay(w.planned_at!)} — de auto is er nog niet.`,
+        variant: "destructive",
+      });
+      setDetail(null);
+      load();
+      return;
+    }
     const { data: userRes } = await supabase.auth.getUser();
     const uid = userRes.user?.id;
     if (!uid) return;
@@ -194,7 +206,8 @@ const WerkplaatsSchadeherstel: React.FC = () => {
     load();
   };
 
-  const open = rows.filter(r => r.status !== "afgerond");
+  // Gepland voor een latere dag = nog niet zichtbaar op de vloer
+  const open = rows.filter(r => r.status !== "afgerond" && !isPlannedInFuture(r.planned_at));
   const done = rows.filter(r => r.status === "afgerond");
 
   return (
@@ -211,7 +224,7 @@ const WerkplaatsSchadeherstel: React.FC = () => {
 
         {loading ? (
           <div className="flex items-center gap-2 text-slate-500 py-10"><Loader2 className="h-4 w-4 animate-spin" /> Laden…</div>
-        ) : rows.length === 0 ? (
+        ) : open.length === 0 && done.length === 0 ? (
           <AsCard className="p-10 text-center text-slate-400 text-[13px]">
             <PaintBucket className="h-5 w-5 mx-auto mb-2 text-slate-300" />Geen schadeherstel-taken.
           </AsCard>

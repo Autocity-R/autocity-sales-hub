@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 import { MyPerformanceCard } from "@/components/werkplaats/MyPerformanceCard";
+import { isPlannedInFuture, formatPlannedDay } from "@/components/werkplaats/plannedVisibility";
 
 interface WorkRow {
   id: string;
@@ -168,7 +169,8 @@ const MijnWerk: React.FC = () => {
       (a.planned_at || "9999").localeCompare(b.planned_at || "9999"));
     // Open pot: alles zonder toewijzing (ook toekomstig gepland)
     const openList = rows
-      .filter(r => !r.assigned_to)
+      // Gepland voor een latere dag = auto is er nog niet: nog niet zichtbaar
+      .filter(r => !r.assigned_to && !isPlannedInFuture(r.planned_at))
       .sort((a, b) =>
         Number(b.is_rush) - Number(a.is_rush) ||
         (a.planned_at || "9999").localeCompare(b.planned_at || "9999"));
@@ -188,8 +190,19 @@ const MijnWerk: React.FC = () => {
     return true;
   };
 
+  const blockIfFuture = (w: WorkRow) => {
+    if (!isPlannedInFuture(w.planned_at)) return false;
+    toast({
+      title: "Nog niet beschikbaar",
+      description: `Deze klus staat gepland voor ${formatPlannedDay(w.planned_at!)} — de auto is er nog niet.`,
+      variant: "destructive",
+    });
+    return true;
+  };
+
   const onClaim = async (w: WorkRow) => {
     if (!userId) return;
+    if (blockIfFuture(w)) { setDetail(null); load(); return; }
     setBusy(true);
     setRows(prev => prev.map(r => (r.id === w.id ? { ...r, assigned_to: userId } : r)));
     // Race-bescherming: alleen claimen zolang niemand anders hem heeft
@@ -232,6 +245,7 @@ const MijnWerk: React.FC = () => {
   };
 
   const onStart = async (w: WorkRow) => {
+    if (blockIfFuture(w)) { setDetail(null); load(); return; }
     const startedAt = new Date().toISOString();
     await patch(w.id, { status: "bezig", started_at: startedAt }, { status: "bezig", started_at: startedAt });
     setDetail(null);
