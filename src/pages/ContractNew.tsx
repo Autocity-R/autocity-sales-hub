@@ -256,6 +256,17 @@ export default function ContractNew() {
     [salespersonName],
   );
 
+  // Verkoperslijst + naam/e-mail synchroon houden met de selectie
+  const { data: salespeople = [] } = useSalespeople();
+  useEffect(() => {
+    if (!salespersonId || salespeople.length === 0) return;
+    const sp = salespeople.find((s) => s.id === salespersonId);
+    if (sp) {
+      setSalespersonName(sp.name);
+      setSalespersonEmail(sp.email);
+    }
+  }, [salespersonId, salespeople]);
+
   async function handleSave() {
     if (!vehicle) return;
     setSaving(true);
@@ -266,6 +277,7 @@ export default function ContractNew() {
       vehicleId: vehicle.id,
       customerId,
       contractType,
+      salespersonId: salespersonId || null,
       salePriceEx: parseFloat(salePriceEx) || 0,
       btwType,
       warrantyPackage: hasExistingWarranty
