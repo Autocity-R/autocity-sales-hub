@@ -650,7 +650,11 @@ export class SupabaseInventoryService {
           purchase_date: vehicleData.purchaseDate ? new Date(vehicleData.purchaseDate).toISOString() : new Date().toISOString(),
           
           // CRITICAL FIX: Set salesperson on vehicle creation
-          sold_by_user_id: vehicleData.salespersonId || null
+          sold_by_user_id: vehicleData.salespersonId || null,
+          // AUDIT: wie voerde dit in (ingelogd account), los van de verkoper
+          sold_registered_by: vehicleData.salespersonId
+            ? (await supabase.auth.getUser()).data?.user?.id ?? null
+            : null
         }])
         .select()
         .single();
