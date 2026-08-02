@@ -14,6 +14,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
+import { MyPerformanceCard } from "@/components/werkplaats/MyPerformanceCard";
 
 interface WorkRow {
   id: string;
@@ -293,6 +294,8 @@ const MijnWerk: React.FC = () => {
             <RefreshCw className={cn("h-5 w-5", loading && "animate-spin")} />
           </Button>
         </div>
+
+        <MyPerformanceCard discipline="werkplaats" variant="monteur" />
 
         {loading ? (
           <div className="flex items-center gap-2 text-slate-500 py-16 justify-center">
