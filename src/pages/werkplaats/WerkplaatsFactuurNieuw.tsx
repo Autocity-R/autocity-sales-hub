@@ -30,7 +30,7 @@ import {
 
 type LineKind = "arbeid" | "onderdeel" | "vrij";
 
-interface EditLine {
+export interface EditLine {
   id: string;
   kind: LineKind;
   description: string;
@@ -83,7 +83,7 @@ const Section: React.FC<{ icon: React.ReactNode; title: string; right?: React.Re
     </div>
   );
 
-const Field: React.FC<{
+export const Field: React.FC<{
   label: string; value: string; onChange: (v: string) => void;
   placeholder?: string; required?: boolean; type?: string; invalid?: boolean;
 }> = ({ label, value, onChange, placeholder, required, type, invalid }) => (
@@ -99,14 +99,14 @@ const Field: React.FC<{
   </div>
 );
 
-interface LineRowProps {
+export interface LineRowProps {
   line: EditLine;
   onPatch: (id: string, patch: Partial<EditLine>) => void;
   onRemove: (id: string) => void;
   onDuplicate: (id: string) => void;
 }
 
-const LineRow: React.FC<LineRowProps> = ({ line, onPatch, onRemove, onDuplicate }) => (
+export const LineRow: React.FC<LineRowProps> = ({ line, onPatch, onRemove, onDuplicate }) => (
   <div className="px-3 py-2.5">
     <div className="flex items-start gap-2">
       <Input
