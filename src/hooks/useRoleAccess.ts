@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 
 export const useRoleAccess = () => {
-  const { userRole, isAdmin } = useAuth();
+  const { userRole, isAdmin, roleLoading } = useAuth();
 
   // Debug logging
   console.log('[useRoleAccess] Current userRole:', userRole, 'isAdmin:', isAdmin);
@@ -196,6 +196,7 @@ export const useRoleAccess = () => {
     canApproveWorkOrders,
     canInvoiceWorkOrders,
     userRole,
-    isAdmin
+    isAdmin,
+    roleLoading,
   };
 };
