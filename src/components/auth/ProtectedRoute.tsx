@@ -14,10 +14,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requireAdmin = false 
 }) => {
   const { user, loading, isAdmin } = useAuth();
-  const { isRestrictedWorkshopUser, getHomeRoute, isWerkplaatsChef, isUitdeukerExtern, isSchadeherstel, isPoetser, isOperationeelDirecteur } = useRoleAccess();
+  const { isRestrictedWorkshopUser, getHomeRoute, isWerkplaatsChef, isUitdeukerExtern, isSchadeherstel, isPoetser, isOperationeelDirecteur, roleLoading } = useRoleAccess();
   const location = useLocation();
 
-  if (loading) {
+  if (loading || (user && roleLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
