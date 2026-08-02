@@ -88,44 +88,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
 
   // Operationeel directeur: read-only directie-cockpit met inzicht-menu
   if (isOperationeelDirecteur()) {
-    const directieItems: { to: string; label: string; icon: any }[] = [
-      { to: "/directie", label: "Directie", icon: HomeIcon },
-      { to: "/rapportages/omzet", label: "Rapportages", icon: BarChart3 },
-      { to: "/inventory", label: "Voorraad", icon: CarIcon },
-      { to: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
-      { to: "/werkplaats/planning", label: "Planning", icon: Wrench },
-      { to: "/werkplaats/agenda", label: "Agenda", icon: CalendarIcon },
-      { to: "/werkplaats/facturen", label: "Facturen", icon: FileText },
-      { to: "/warranty", label: "Garantieclaims", icon: ShieldIcon },
-      { to: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
-      { to: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles },
-      { to: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
-      { to: "/werkplaats/onderdelen", label: "Onderdelen", icon: Package },
-      { to: "/customers", label: "Klanten", icon: UsersIcon },
-    ];
-    return (
-      <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
-        <ScrollArea className="flex-1 px-2 py-3">
-          <div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-            Directie · alleen-lezen
-          </div>
-          <div className="space-y-1">
-            {directieItems.map(({ to, label, icon: Icon }) => (
-              <Link key={to} to={to}>
-                <Button
-                  variant={isActive(to) ? "default" : "ghost"}
-                  className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
-                  size="sm"
-                >
-                  <Icon className="mr-2 h-4 w-4" />
-                  {label}
-                </Button>
-              </Link>
-            ))}
-          </div>
-        </ScrollArea>
-      </div>
-    );
+    return <DirectieSidebar className={className} isActive={isActive} getSubActive={getSubActive} location={location} />;
   }
 
   // Gesloten werkplaats-omgeving: alleen eigen menu-item
@@ -325,6 +288,29 @@ const StandardSidebar: React.FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inventoryOpenByRoute, customersOpenByRoute]);
 
+  return (
+    <StyledNav
+      className={className}
+      sections={sections}
+      isActive={isActive}
+      location={location}
+      openGroups={openGroups}
+      toggleGroup={(key) => setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }))}
+    />
+  );
+};
+
+/* ============ Gedeelde, gestileerde navigatie-renderer ============ */
+
+const StyledNav: React.FC<{
+  className?: string;
+  sections: StdSection[];
+  isActive: (p: string) => boolean;
+  location: ReturnType<typeof useLocation>;
+  openGroups: Record<string, boolean>;
+  toggleGroup: (key: string) => void;
+  note?: string;
+}> = ({ className, sections, isActive, location, openGroups, toggleGroup, note }) => {
   const visibleSections = sections.filter((s) => s.entries.length > 0);
 
   const renderBadge = (n?: number) =>
@@ -377,7 +363,7 @@ const StandardSidebar: React.FC<{
             aria-expanded={open}
             onClick={(e) => {
               e.preventDefault();
-              setOpenGroups((prev) => ({ ...prev, [g.key]: !prev[g.key] }));
+              toggleGroup(g.key);
             }}
             className="ml-auto shrink-0 rounded p-1 text-gray-400 hover:text-white hover:bg-gray-700/60"
           >
@@ -393,6 +379,11 @@ const StandardSidebar: React.FC<{
     <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
       <ScrollArea className="flex-1 px-3 py-4">
         <div className="pb-6">
+          {note && (
+            <div className="px-3 pb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+              {note}
+            </div>
+          )}
           {visibleSections.map((sec, idx) => (
             <div
               key={sec.label ?? `top-${idx}`}
@@ -411,6 +402,81 @@ const StandardSidebar: React.FC<{
         </div>
       </ScrollArea>
     </div>
+  );
+};
+
+/* ============ Directie-sidebar (read-only, zelfde stijl) ============ */
+
+const DirectieSidebar: React.FC<{
+  className?: string;
+  isActive: (p: string) => boolean;
+  getSubActive: (paths: string[]) => boolean;
+  location: ReturnType<typeof useLocation>;
+}> = ({ className, isActive, getSubActive, location }) => {
+  const inventorySubPaths = ["/inventory/online", "/inventory/b2b", "/inventory/consumer", "/inventory/delivered"];
+  const inventoryOpenByRoute = getSubActive(inventorySubPaths);
+  const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({ inventory: inventoryOpenByRoute });
+
+  React.useEffect(() => {
+    setOpenGroups((prev) => ({ ...prev, inventory: prev.inventory || inventoryOpenByRoute }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inventoryOpenByRoute]);
+
+  const sections: StdSection[] = [
+    { label: null, entries: [{ url: "/directie", label: "Cockpit", icon: HomeIcon }] },
+    {
+      label: "OPERATIONEEL",
+      entries: [
+        { url: "/werkplaats/planning", label: "Planning", icon: GanttChartIcon },
+        { url: "/werkplaats/agenda", label: "Werkplaats agenda", icon: CalendarIcon },
+        { url: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
+        { url: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles },
+        { url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
+        { url: "/werkplaats/onderdelen", label: "Onderdelen", icon: Package },
+        { url: "/werkplaats/autos", label: "Auto's", icon: CarIcon },
+        { url: "/werkplaats/facturen", label: "Facturen", icon: FileText },
+      ],
+    },
+    {
+      label: "VERKOOP (INZICHT)",
+      entries: [
+        {
+          url: "/inventory", label: "Voorraad", icon: CarIcon, key: "inventory",
+          sub: [
+            { url: "/inventory/online", label: "Online", icon: ShoppingBagIcon },
+            { url: "/inventory/b2b", label: "Verkocht B2B", icon: BoxIcon },
+            { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
+            { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
+          ],
+        } as StdGroup,
+        { url: "/customers", label: "Klanten", icon: UsersIcon },
+      ],
+    },
+    {
+      label: "GARANTIE",
+      entries: [{ url: "/warranty", label: "Garantieclaims", icon: ShieldIcon }],
+    },
+    {
+      label: "RAPPORTAGES",
+      entries: [
+        { url: "/rapportages/omzet", label: "Omzet", icon: BarChart3 },
+        { url: "/rapportages/performance", label: "Performance", icon: UsersIcon },
+        { url: "/rapportages/kpi", label: "KPI-dashboard", icon: GanttChartIcon },
+        { url: "/rapportages/doorlooptijden", label: "Doorlooptijden", icon: Clock },
+      ],
+    },
+  ];
+
+  return (
+    <StyledNav
+      className={className}
+      sections={sections}
+      isActive={isActive}
+      location={location}
+      openGroups={openGroups}
+      toggleGroup={(key) => setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }))}
+      note="Directie · alleen-lezen"
+    />
   );
 };
 
