@@ -508,6 +508,7 @@ export class SupabaseInventoryService {
         updateData.sold_date = null;
         updateData.delivery_date = null;
         updateData.sold_by_user_id = null;
+        updateData.sold_registered_by = null;
         console.log(`Clearing sold_date for vehicle ${vehicleId} — sale cancelled`);
       }
 
