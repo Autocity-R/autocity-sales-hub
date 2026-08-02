@@ -30,7 +30,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Eén centrale, geteste beslissing (owner/admin worden nooit geredirect).
   const decision = canAccessRoute(userRole, location.pathname);
-  if (!decision.allowed && decision.redirectTo !== location.pathname) {
+  if (decision.allowed === false && decision.redirectTo !== location.pathname) {
     return <Navigate to={decision.redirectTo} replace />;
   }
 
