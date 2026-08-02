@@ -44,7 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   const location = useLocation();
   const {
     hasReportsAccess, hasAIAgentsAccess, hasSettingsAccess,
-    hasRapportagesAccess,
+    hasRapportagesAccess, hasLeadsAccess, hasCustomersAccess, hasGarantieInboxAccess,
     hasWerkplaatsAccess, isRestrictedWorkshopUser, getHomeRoute,
     isSchadeherstel, isMonteur, isUitdeukerExtern, isWerkplaatsChef, isOperationeelDirecteur, isPoetser,
     isAftersalesManager,
