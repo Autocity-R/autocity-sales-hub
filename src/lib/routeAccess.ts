@@ -72,12 +72,21 @@ export const WERKPLAATS_CHEF_ALLOWED_PREFIXES = [
   "/customers",
 ];
 
+/** Administratie: plat, alleen-lezen inzicht in voorraad, klanten en facturen. */
+export const ADMINISTRATIE_ALLOWED_PREFIXES = [
+  "/inventory",
+  "/customers",
+  "/suppliers",
+  "/werkplaats/facturen",
+];
+
 export const getHomeRouteForRole = (role: Role): string => {
   if (role && CLOSED_ROLE_ROUTES[role]) return CLOSED_ROLE_ROUTES[role];
   if (role === "monteur") return "/werkplaats/mijn-werk";
   if (role === "werkplaats_chef") return "/werkplaats";
   if (role === "operationeel_directeur") return "/directie";
   if (role === "aftersales_manager") return "/werkplaats";
+  if (role === "administratie") return "/inventory";
   return "/";
 };
 
@@ -116,6 +125,12 @@ export const canAccessRoute = (role: Role, pathname: string): RouteDecision => {
     return !blocked && allowed ? { allowed: true } : { allowed: false, redirectTo: "/werkplaats" };
   }
 
+  if (role === "administratie") {
+    return startsWithAny(pathname, ADMINISTRATIE_ALLOWED_PREFIXES)
+      ? { allowed: true }
+      : { allowed: false, redirectTo: "/inventory" };
+  }
+
   // Overige/onbekende rollen: geen rol-redirect (RLS bepaalt de data).
   return { allowed: true };
 };
@@ -129,7 +144,7 @@ export const featureAccess: Record<string, (role: Role) => boolean> = {
   leads: (r) => isAdminRole(r) || r === "manager" || r === "verkoper",
   customers: (r) =>
     isAdminRole(r) || r === "manager" || r === "verkoper" || r === "werkplaats_chef" ||
-    r === "operationeel_directeur",
+    r === "operationeel_directeur" || r === "administratie",
   "ai-agents": (r) =>
     isAdminRole(r) || r === "manager" || r === "verkoper" || r === "operationeel" ||
     r === "aftersales_manager",
