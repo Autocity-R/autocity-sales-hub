@@ -93,6 +93,40 @@ describe("operationeel_directeur (read-only cockpit)", () => {
   });
 });
 
+const ADMINISTRATIE_MENU = [
+  "/inventory", "/inventory/consumer", "/inventory/b2b", "/inventory/delivered",
+  "/customers", "/werkplaats/facturen",
+];
+
+describe("administratie (plat, alleen-lezen menu)", () => {
+  it.each(ADMINISTRATIE_MENU)("mag %s", (url) => {
+    expect(canAccessRoute("administratie", url)).toEqual({ allowed: true });
+  });
+
+  it("mag klantendetail en leveranciers", () => {
+    expect(canAccessRoute("administratie", "/suppliers")).toEqual({ allowed: true });
+    expect(canAccessRoute("administratie", "/customers/123")).toEqual({ allowed: true });
+    expect(featureAccess.customers("administratie")).toBe(true);
+  });
+
+  it("wordt elders naar /inventory gestuurd", () => {
+    for (const url of ["/", "/leads", "/taxatie", "/settings", "/werkplaats", "/rapportages/omzet", "/ai-agents"]) {
+      expect(canAccessRoute("administratie", url)).toEqual({ allowed: false, redirectTo: "/inventory" });
+    }
+  });
+
+  it("heeft geen rapportages-, reports- of settings-toegang", () => {
+    expect(featureAccess.rapportages("administratie")).toBe(false);
+    expect(featureAccess.reports("administratie")).toBe(false);
+    expect(featureAccess.settings("administratie")).toBe(false);
+    expect(featureAccess.taxatie("administratie")).toBe(false);
+  });
+
+  it.each(ADMINISTRATIE_MENU)("%s is een geregistreerde route", (url) => {
+    expect(routeExists(url)).toBe(true);
+  });
+});
+
 describe("vakman-rollen houden hun eigen scherm", () => {
   const cases: [string, string][] = [
     ["poetser", "/werkplaats/poetsen"],
