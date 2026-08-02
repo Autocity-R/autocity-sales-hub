@@ -105,7 +105,7 @@ const WerkplaatsPrijslijst: React.FC = () => {
   const naarFactuur = (r: Reparatie, niveau: Niveau) => {
     const u = urenVoorNiveau(r, niveau);
     const amount = berekenArbeid(u, tarieven.uurtarief_ex_btw, merkFactor);
-    navigate("/werkplaats/facturen", {
+    navigate("/werkplaats/facturen/nieuw", {
       state: {
         prefillLine: {
           description: `${r.reparatie}${merk ? ` — ${merk}${model ? ` ${model}` : ""}` : ""} (${urenFmt(u)} arbeid)`,

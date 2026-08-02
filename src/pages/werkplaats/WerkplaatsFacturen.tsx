@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { FileText, Loader2, Search, ExternalLink, Send, Pencil, Plus, Check, Calculator } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import WorkshopInvoiceDialog from "@/components/werkplaats/WorkshopInvoiceDialog";
-import ManualInvoiceDialog, { ManualInvoicePrefill } from "@/components/werkplaats/ManualInvoiceDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { featureAccess } from "@/lib/routeAccess";
 import {
@@ -28,10 +27,7 @@ const WerkplaatsFacturen: React.FC = () => {
   const readOnly = useRoleAccess().isDirectieReadOnly();
   const { userRole, isAdmin } = useAuth();
   const mayCreateManual = isAdmin || featureAccess["handmatige-facturen"](userRole);
-  const location = useLocation();
   const navigate = useNavigate();
-  const [manualOpen, setManualOpen] = useState(false);
-  const [prefill, setPrefill] = useState<ManualInvoicePrefill | null>(null);
   const [rows, setRows] = useState<InvoiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -58,15 +54,6 @@ const WerkplaatsFacturen: React.FC = () => {
       if (n > 0) { toast({ title: `${n} interne factuur/facturen verstuurd` }); load(); }
     })();
   }, [readOnly]);
-
-  useEffect(() => {
-    const line = (location.state as any)?.prefillLine;
-    if (line && mayCreateManual) {
-      setPrefill({ description: line.description, amount: Number(line.amount) || 0 });
-      setManualOpen(true);
-      navigate(location.pathname, { replace: true, state: null });
-    }
-  }, [location.state, mayCreateManual, navigate, location.pathname]);
 
   const togglePaid = async (r: InvoiceRow) => {
     const next = r.payment_status === "betaald" ? "open" : "betaald";
@@ -142,7 +129,7 @@ const WerkplaatsFacturen: React.FC = () => {
               <Calculator className="h-4 w-4 mr-1" />Prijslijst
             </Button>
             {mayCreateManual && (
-              <Button size="sm" onClick={() => { setPrefill(null); setManualOpen(true); }}>
+              <Button size="sm" onClick={() => navigate("/werkplaats/facturen/nieuw")}>
                 <Plus className="h-4 w-4 mr-1" />Nieuwe factuur
               </Button>
             )}
@@ -227,13 +214,6 @@ const WerkplaatsFacturen: React.FC = () => {
             </div>
           )}
         </AsCard>
-
-        <ManualInvoiceDialog
-          open={manualOpen}
-          onOpenChange={(v) => { setManualOpen(v); if (!v) setPrefill(null); }}
-          prefillLine={prefill}
-          onSaved={load}
-        />
 
         <WorkshopInvoiceDialog open={!!edit} onOpenChange={(v) => !v && setEdit(null)} initial={edit} onSaved={load} />
       </AsPage>
