@@ -4841,6 +4841,66 @@ export type Database = {
         }
         Relationships: []
       }
+      werkplaats_modellen: {
+        Row: {
+          created_at: string
+          id: string
+          merk: string
+          merk_factor: number
+          model: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          merk: string
+          merk_factor?: number
+          model: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          merk?: string
+          merk_factor?: number
+          model?: string
+        }
+        Relationships: []
+      }
+      werkplaats_reparaties: {
+        Row: {
+          actief: boolean
+          categorie: string
+          code: string
+          created_at: string
+          id: string
+          reparatie: string
+          uren_hoog: number
+          uren_laag: number
+          uren_standaard: number
+        }
+        Insert: {
+          actief?: boolean
+          categorie: string
+          code: string
+          created_at?: string
+          id?: string
+          reparatie: string
+          uren_hoog: number
+          uren_laag: number
+          uren_standaard: number
+        }
+        Update: {
+          actief?: boolean
+          categorie?: string
+          code?: string
+          created_at?: string
+          id?: string
+          reparatie?: string
+          uren_hoog?: number
+          uren_laag?: number
+          uren_standaard?: number
+        }
+        Relationships: []
+      }
       work_orders: {
         Row: {
           approved_at: string | null
