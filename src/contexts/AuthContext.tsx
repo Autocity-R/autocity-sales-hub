@@ -48,21 +48,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userRole, setUserRole] = useState<string | null>(null);
   const [roleLoading, setRoleLoading] = useState(true);
 
+  // Rol-prioriteit: bij meerdere rijen wint de zwaarste rol (voorkomt dat een
+  // owner met een extra rol-rij op null uitkomt en guards hem wegsturen).
+  const ROLE_PRIORITY = [
+    'owner', 'admin', 'manager', 'aftersales_manager', 'werkplaats_chef',
+    'operationeel_directeur', 'verkoper', 'operationeel', 'monteur',
+    'schadeherstel', 'uitdeuker_extern', 'poetser', 'user',
+  ];
+
   const checkUserRole = async (userId: string) => {
     try {
-      const { data: userRole } = await supabase
+      const { data, error } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', userId)
-        .single();
-      
-      const role = userRole?.role || null;
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      const roles = (data ?? []).map((r: any) => r.role as string);
+      const role =
+        ROLE_PRIORITY.find((p) => roles.includes(p)) ?? roles[0] ?? null;
+
       setUserRole(role);
       setIsAdmin(role === 'admin' || role === 'owner');
     } catch (error) {
+      // Bij een mislukte rol-query de bestaande rol NIET wissen: dat leidde tot
+      // ongewenste redirects naar het dashboard.
       console.error('Error checking user role:', error);
-      setIsAdmin(false);
-      setUserRole(null);
     } finally {
       setRoleLoading(false);
     }

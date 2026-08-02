@@ -1,4 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { featureAccess } from "@/lib/routeAccess";
 
 export const useRoleAccess = () => {
   const { userRole, isAdmin, roleLoading } = useAuth();
@@ -58,30 +59,19 @@ export const useRoleAccess = () => {
   const canApproveWorkOrders = () => canManageWorkOrders();
   const canInvoiceWorkOrders = () => canManageWorkOrders();
 
-  const hasReportsAccess = () => {
-    // Aftersales manager mag naar rapportages (alleen Aftersales tab)
-    return isAdmin || userRole === 'manager' || userRole === 'aftersales_manager';
-  };
+  // Zelfde bron als de route-guards, zodat menu en guard nooit uit elkaar lopen.
+  const hasReportsAccess = () => isAdmin || featureAccess.reports(userRole);
 
   // Specifiek voor rapportages tab filtering - alleen Aftersales tab
   const hasAftersalesOnlyReportsAccess = () => {
     return userRole === 'aftersales_manager';
   };
 
-  const hasLeadsAccess = () => {
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper';
-  };
+  const hasLeadsAccess = () => isAdmin || featureAccess.leads(userRole);
 
-  const hasCustomersAccess = () => {
-    // Aftersales manager mag GEEN klanten beheren
-    // Werkplaats_chef mag klanten wél inzien (read-only, geen verkoopflows)
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
-      userRole === 'werkplaats_chef' || userRole === 'operationeel_directeur';
-  };
+  const hasCustomersAccess = () => isAdmin || featureAccess.customers(userRole);
 
-  const hasAIAgentsAccess = () => {
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper' || userRole === 'operationeel' || userRole === 'aftersales_manager';
-  };
+  const hasAIAgentsAccess = () => isAdmin || featureAccess["ai-agents"](userRole);
 
   const hasSettingsAccess = () => {
     return isAdmin;
@@ -95,9 +85,7 @@ export const useRoleAccess = () => {
   };
 
   // Rapportages-omgeving (Omzet / Performance / KPI / Doorlooptijden)
-  const hasRapportagesAccess = () => {
-    return isAdmin || userRole === 'manager' || userRole === 'operationeel_directeur';
-  };
+  const hasRapportagesAccess = () => isAdmin || featureAccess.rapportages(userRole);
 
   const hasTaskManagementAccess = () => {
     // Aftersales manager MAG taken beheren
@@ -105,10 +93,7 @@ export const useRoleAccess = () => {
       userRole === 'aftersales_manager' || userRole === 'werkplaats_chef';
   };
 
-  const hasTaxatieAccess = () => {
-    // Aftersales manager mag GEEN taxaties doen
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper';
-  };
+  const hasTaxatieAccess = () => isAdmin || featureAccess.taxatie(userRole);
 
   const canAssignTasks = () => {
     // Aftersales manager MAG taken toewijzen
