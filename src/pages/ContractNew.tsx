@@ -599,6 +599,27 @@ export default function ContractNew() {
                     </label>
                   </RadioGroup>
                 </div>
+                <div>
+                  <Label>Verkoper *</Label>
+                  <Select
+                    value={salespersonId || undefined}
+                    onValueChange={setSalespersonId}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Selecteer verkoper" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {salespeople.map((sp) => (
+                        <SelectItem key={sp.id} value={sp.id}>
+                          {sp.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Dit contract wordt op naam van deze verkoper geregistreerd.
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
