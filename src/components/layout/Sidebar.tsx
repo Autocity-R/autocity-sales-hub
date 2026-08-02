@@ -48,7 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     hasRapportagesAccess,
     hasWerkplaatsAccess, isRestrictedWorkshopUser, getHomeRoute,
     isSchadeherstel, isMonteur, isUitdeukerExtern, isWerkplaatsChef, isOperationeelDirecteur, isPoetser,
-    isAftersalesManager,
+    isAftersalesManager, isAdministratie,
   } = useRoleAccess();
 
   const isActive = (path: string) => {
@@ -89,6 +89,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   // Operationeel directeur: read-only directie-cockpit (nieuwe indeling)
   if (isOperationeelDirecteur()) {
     return <DirectieSidebar className={className} isActive={isActive} getSubActive={getSubActive} location={location} />;
+  }
+
+  // Administratie: plat menu met uitsluitend inzicht-pagina's
+  if (isAdministratie()) {
+    return <AdministratieSidebar className={className} isActive={isActive} location={location} />;
   }
 
   // Gesloten werkplaats-omgeving: alleen eigen menu-item
@@ -633,6 +638,41 @@ const DirectieSidebar: React.FC<{
 };
 
 /* ============ Aftersales-only sidebar ============ */
+
+/* ============ Administratie-sidebar (plat, alleen-lezen) ============ */
+
+const AdministratieSidebar: React.FC<{
+  className?: string;
+  isActive: (p: string) => boolean;
+  location: ReturnType<typeof useLocation>;
+}> = ({ className, isActive, location }) => {
+  const sections: StdSection[] = [
+    {
+      label: null,
+      entries: [
+        { url: "/inventory", label: "Voorraad", icon: CarIcon, exact: true },
+        { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
+        { url: "/inventory/b2b", label: "Verkocht B2B", icon: BoxIcon },
+        { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
+        { url: "/customers", label: "Klanten & Leveranciers", icon: UsersIcon, exact: true },
+        { url: "/werkplaats/facturen", label: "Werkplaats Facturen", icon: FileText },
+      ],
+    },
+  ];
+
+  return (
+    <StyledNav
+      className={className}
+      sections={sections}
+      isActive={isActive}
+      location={location}
+      openGroups={{}}
+      toggleGroup={() => {}}
+      note="Administratie · alleen-lezen"
+    />
+  );
+};
+
 import { Inbox as InboxIcon } from "lucide-react";
 import { useGarantieUnread } from "@/hooks/useGarantieUnread";
 

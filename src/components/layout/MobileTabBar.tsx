@@ -16,6 +16,7 @@ export type MobileTab = { url: string; label: string; icon: any; exact?: boolean
 export const useMobileTabs = (): { tabs: MobileTab[]; more: MobileTab[] } | null => {
   const {
     isMonteur, isSchadeherstel, isUitdeukerExtern, isPoetser, isWerkplaatsChef, isOperationeelDirecteur,
+    isAdministratie,
   } = useRoleAccess();
 
   if (isMonteur()) {
@@ -35,6 +36,20 @@ export const useMobileTabs = (): { tabs: MobileTab[]; more: MobileTab[] } | null
   }
   if (isPoetser()) {
     return { tabs: [{ url: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles }], more: [] };
+  }
+  if (isAdministratie()) {
+    return {
+      tabs: [
+        { url: "/inventory", label: "Voorraad", icon: CarIcon, exact: true },
+        { url: "/inventory/consumer", label: "B2C", icon: Flag },
+        { url: "/werkplaats/facturen", label: "Facturen", icon: FileText },
+      ],
+      more: [
+        { url: "/inventory/b2b", label: "Verkocht B2B", icon: CarIcon },
+        { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
+        { url: "/customers", label: "Klanten & Leveranciers", icon: Users, exact: true },
+      ],
+    };
   }
   if (isOperationeelDirecteur()) {
     return {

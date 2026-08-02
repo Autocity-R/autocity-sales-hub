@@ -19,6 +19,7 @@ export const useRoleAccess = () => {
   const isWerkplaatsChef = () => userRole === 'werkplaats_chef';
   const isUitdeukerExtern = () => userRole === 'uitdeuker_extern';
   const isOperationeelDirecteur = () => userRole === 'operationeel_directeur';
+  const isAdministratie = () => userRole === 'administratie';
 
   // Gebruikers met een "gesloten" werkplaats-omgeving (geen normale CRM menu's)
   // Werkplaats_chef heeft de VOLLEDIGE operationele omgeving en is dus niet "restricted".
@@ -53,7 +54,8 @@ export const useRoleAccess = () => {
   );
 
   // Directie-cockpit: overal inzicht, nergens mutaties
-  const isDirectieReadOnly = () => isOperationeelDirecteur();
+  // Read-only omgevingen: directie-cockpit én administratie (inzien + downloaden)
+  const isDirectieReadOnly = () => isOperationeelDirecteur() || isAdministratie();
 
   // Mag werkorders goedkeuren / factureren (monteur nadrukkelijk NIET)
   const canApproveWorkOrders = () => canManageWorkOrders();
@@ -173,6 +175,7 @@ export const useRoleAccess = () => {
     isWerkplaatsChef,
     isUitdeukerExtern,
     isOperationeelDirecteur,
+    isAdministratie,
     isDirectieReadOnly,
     isRestrictedWorkshopUser,
     getHomeRoute,
