@@ -198,15 +198,11 @@ const InvoicePreview: React.FC<{ html: string }> = ({ html }) => {
   }, []);
 
   return (
-    <div ref={wrapRef} className="overflow-hidden bg-slate-100 p-2 rounded-lg">
-      <div
-        style={{ width: 794, transform: `scale(${scale})`, transformOrigin: "top left", height: scale ? undefined : 0 }}
-        className="bg-white shadow-sm"
-      >
+    <div ref={wrapRef} className="bg-slate-100 p-2 rounded-lg overflow-hidden">
+      {/* zoom (i.p.v. transform) zodat de containerhoogte meekrimpt */}
+      <div style={{ zoom: scale }} className="bg-white shadow-sm">
         <div dangerouslySetInnerHTML={{ __html: html }} />
       </div>
-      {/* houdt de container op de juiste hoogte na scaling */}
-      <div style={{ height: 0 }} />
     </div>
   );
 };
