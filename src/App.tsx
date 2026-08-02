@@ -1,5 +1,5 @@
 
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import Auth from "@/pages/Auth";
 import ResetPassword from "@/pages/ResetPassword";
@@ -189,13 +189,8 @@ function App() {
             <Warranty />
           </ProtectedRoute>
         } />
-        <Route path="/rapportages" element={
-          <ProtectedRoute>
-            <RoleProtectedRoute requiredAccess="rapportages" fallbackPath="/">
-              <RapportageOmzet />
-            </RoleProtectedRoute>
-          </ProtectedRoute>
-        } />
+        {/* Geen losse landingspagina: /rapportages linkt door naar Omzet */}
+        <Route path="/rapportages" element={<Navigate to="/rapportages/omzet" replace />} />
         <Route path="/rapportages/omzet" element={
           <ProtectedRoute>
             <RoleProtectedRoute requiredAccess="rapportages" fallbackPath="/">
