@@ -80,6 +80,15 @@ export const ADMINISTRATIE_ALLOWED_PREFIXES = [
   "/werkplaats/facturen",
 ];
 
+/**
+ * Verkoper: mag de inname-flow gebruiken, maar het GOEDKEUREN van werk
+ * (na schadeherstel/werkplaats) blijft aftersales-werk.
+ */
+export const VERKOPER_BLOCKED_PREFIXES = ["/werkplaats/goedkeuren"];
+
+/** Inname-routes (lijst + detail/foto-flow). */
+export const INNAME_PREFIXES = ["/werkplaats/inname"];
+
 export const getHomeRouteForRole = (role: Role): string => {
   if (role && CLOSED_ROLE_ROUTES[role]) return CLOSED_ROLE_ROUTES[role];
   if (role === "monteur") return "/werkplaats/mijn-werk";
@@ -100,6 +109,10 @@ export type RouteDecision = { allowed: true } | { allowed: false; redirectTo: st
  * wordt NOOIT geredirect — de aanroeper wacht op roleLoading.
  */
 export const canAccessRoute = (role: Role, pathname: string): RouteDecision => {
+  if (role === "verkoper" && startsWithAny(pathname, VERKOPER_BLOCKED_PREFIXES)) {
+    return { allowed: false, redirectTo: "/werkplaats/inname" };
+  }
+
   if (!role || hasFullAccess(role)) return { allowed: true };
 
   const closed = CLOSED_ROLE_ROUTES[role];
@@ -151,4 +164,11 @@ export const featureAccess: Record<string, (role: Role) => boolean> = {
   settings: (r) => isAdminRole(r),
   taxatie: (r) => isAdminRole(r) || r === "manager" || r === "verkoper",
   rapportages: (r) => isAdminRole(r) || r === "manager" || r === "operationeel_directeur",
+  /** Inname doen: aftersales + werkplaats + verkoop. */
+  inname: (r) =>
+    isAdminRole(r) || r === "manager" || r === "operationeel" || r === "verkoper" ||
+    r === "aftersales_manager" || r === "werkplaats_chef",
+  /** Werk goedkeuren (start interne facturatie): nooit de verkoper. */
+  goedkeuren: (r) =>
+    isAdminRole(r) || r === "manager" || r === "aftersales_manager" || r === "werkplaats_chef",
 };
