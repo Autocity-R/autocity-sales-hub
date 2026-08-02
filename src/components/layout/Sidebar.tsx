@@ -260,7 +260,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 Foto Studio
               </Button>
             </Link>
-            {(isVerkoper || userRole === "owner" || userRole === "admin") && (
+            {(isVerkoper || ((userRole === "owner" || userRole === "admin") && !hasWerkplaatsAccess())) && (
               <Link to="/werkplaats/inname">
                 <Button
                   variant={isActive("/werkplaats/inname") ? "default" : "ghost"}
