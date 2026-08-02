@@ -13,6 +13,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<{ error: any }>;
   isAdmin: boolean;
   userRole: string | null;
+  roleLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,6 +28,7 @@ const defaultAuthContext: AuthContextType = {
   resetPassword: async () => ({ error: new Error("AuthProvider not mounted") }),
   isAdmin: false,
   userRole: null,
+  roleLoading: true,
 };
 
 export const useAuth = () => {
@@ -44,6 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [roleLoading, setRoleLoading] = useState(true);
 
   const checkUserRole = async (userId: string) => {
     try {
@@ -60,6 +63,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Error checking user role:', error);
       setIsAdmin(false);
       setUserRole(null);
+    } finally {
+      setRoleLoading(false);
     }
   };
 
@@ -78,6 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           setIsAdmin(false);
           setUserRole(null);
+          setRoleLoading(false);
         }
         setLoading(false);
       }
@@ -95,6 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.user) {
         checkUserRole(session.user.id);
       } else {
+        setRoleLoading(false);
         // Safari/iPad: try refreshing the session if none found
         console.log('[Auth] No session found, attempting refresh...');
         supabase.auth.refreshSession().then(({ data: refreshData, error: refreshError }) => {
@@ -104,6 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('[Auth] Session refreshed successfully:', refreshData.session.user.id);
             setSession(refreshData.session);
             setUser(refreshData.session.user);
+            setRoleLoading(true);
             checkUserRole(refreshData.session.user.id);
           }
         });
