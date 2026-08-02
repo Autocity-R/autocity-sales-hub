@@ -456,16 +456,9 @@ const DirectieSidebar: React.FC<{
     {
       label: "VERKOOP (INZICHT)",
       entries: [
-        {
-          url: "/inventory", label: "Voorraad", icon: CarIcon, key: "inventory",
-          sub: [
-            { url: "/inventory/online", label: "Online", icon: ShoppingBagIcon },
-            { url: "/inventory/b2b", label: "Verkocht B2B", icon: BoxIcon },
-            { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
-            { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
-          ],
-        } as StdGroup,
+        { url: "/inventory", label: "Voorraad", icon: CarIcon },
         { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
+        { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
       ],
     },
     {
