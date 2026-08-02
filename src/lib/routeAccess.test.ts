@@ -187,3 +187,38 @@ describe("onbekende rol (nog niet geladen)", () => {
     expect(canAccessRoute(null, "/rapportages/omzet")).toEqual({ allowed: true });
   });
 });
+
+describe("prijschecker + handmatige facturen", () => {
+  it("prijslijst is voor leiding, chef, aftersales en verkoper", () => {
+    for (const r of ["owner", "admin", "manager", "aftersales_manager", "werkplaats_chef", "verkoper"]) {
+      expect(featureAccess.prijslijst(r)).toBe(true);
+    }
+  });
+
+  it("vakmannen en administratie krijgen geen prijschecker", () => {
+    for (const r of ["monteur", "schadeherstel", "poetser", "uitdeuker_extern", "administratie", "operationeel_directeur"]) {
+      expect(featureAccess.prijslijst(r)).toBe(false);
+    }
+  });
+
+  it("vakmannen en administratie worden weggeleid van de prijslijst-route", () => {
+    for (const r of ["monteur", "schadeherstel", "poetser", "uitdeuker_extern", "administratie", "operationeel_directeur"]) {
+      expect(canAccessRoute(r, "/werkplaats/prijslijst").allowed).toBe(false);
+    }
+  });
+
+  it("verkoper en chef mogen de prijslijst-route openen", () => {
+    for (const r of ["owner", "admin", "manager", "verkoper", "aftersales_manager", "werkplaats_chef"]) {
+      expect(canAccessRoute(r, "/werkplaats/prijslijst")).toEqual({ allowed: true });
+    }
+  });
+
+  it("handmatige facturen alleen voor owner/admin/aftersales_manager", () => {
+    for (const r of ["owner", "admin", "aftersales_manager"]) {
+      expect(featureAccess["handmatige-facturen"](r)).toBe(true);
+    }
+    for (const r of ["manager", "verkoper", "werkplaats_chef", "monteur", "administratie"]) {
+      expect(featureAccess["handmatige-facturen"](r)).toBe(false);
+    }
+  });
+});
