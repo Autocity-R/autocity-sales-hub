@@ -8,6 +8,7 @@ import { Users, UserPlus, Shield, Mail, Trash2, MoreHorizontal, Building2, Loade
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ROLE_OPTIONS, getRoleLabel } from "@/lib/roles";
 import {
   AlertDialog,
   AlertDialogAction,
