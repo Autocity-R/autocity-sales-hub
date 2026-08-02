@@ -171,4 +171,10 @@ export const featureAccess: Record<string, (role: Role) => boolean> = {
   /** Werk goedkeuren (start interne facturatie): nooit de verkoper. */
   goedkeuren: (r) =>
     isAdminRole(r) || r === "manager" || r === "aftersales_manager" || r === "werkplaats_chef",
+  /** Prijschecker (normuren + arbeidsprijzen): balie/verkoop + leiding, geen vakmannen. */
+  prijslijst: (r) =>
+    isAdminRole(r) || r === "manager" || r === "aftersales_manager" || r === "werkplaats_chef" ||
+    r === "verkoper",
+  /** Handmatige facturen opmaken. */
+  "handmatige-facturen": (r) => isAdminRole(r) || r === "aftersales_manager",
 };
