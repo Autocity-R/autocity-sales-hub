@@ -11,6 +11,8 @@ interface Payload {
   vehicleId: string;
   customerId: string;
   contractType: "b2b" | "b2c";
+  /** GESELECTEERDE verkoper (attributie). Valt terug op de ingelogde gebruiker. */
+  salespersonId?: string | null;
   salePriceEx: number;
   btwType: "marge" | "btw";
   warrantyPackage?: string;
@@ -163,15 +165,18 @@ Deno.serve(async (req) => {
       mainPhotoUrl = (showroomRow as any)?.photo_url || null;
     }
 
-    // Salesperson snapshot
+    // Salesperson snapshot — attributie op de GESELECTEERDE verkoper,
+    // niet op het ingelogde account (kantoren delen computers).
+    const salespersonId = body.salespersonId || userId;
     const { data: prof } = await admin
       .from("profiles")
       .select("first_name, last_name, email")
-      .eq("id", userId)
+      .eq("id", salespersonId)
       .maybeSingle();
     const salespersonName =
       [prof?.first_name, prof?.last_name].filter(Boolean).join(" ") || null;
-    const salespersonEmail = prof?.email || userData.user.email || null;
+    const salespersonEmail =
+      prof?.email || (salespersonId === userId ? userData.user.email : null) || null;
     const signatureSvg = buildSalespersonSignatureSvg(salespersonName);
 
     const customerSnapshot = {
@@ -231,6 +236,8 @@ Deno.serve(async (req) => {
         delivery_date: body.deliveryDate || null,
         salesperson_name: salespersonName,
         salesperson_email: salespersonEmail,
+        salesperson_id: salespersonId,
+        registered_by: userId,
         salesperson_signature_svg: signatureSvg,
         salesperson_signature_png: null,
         created_by: userId,

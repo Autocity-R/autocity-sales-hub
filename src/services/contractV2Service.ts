@@ -4,6 +4,8 @@ export interface ContractV2Input {
   vehicleId: string;
   customerId: string;
   contractType: "b2b" | "b2c";
+  /** GESELECTEERDE verkoper (attributie); leeg = ingelogde gebruiker */
+  salespersonId?: string | null;
   salePriceEx: number;
   btwType: "marge" | "btw";
   warrantyPackage?: string;

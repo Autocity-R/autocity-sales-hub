@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SearchableCustomerSelector } from "@/components/customers/SearchableCustomerSelector";
+import { useSalespeople } from "@/hooks/useSalespeople";
 import { Contact } from "@/types/customer";
 import { supabaseCustomerService } from "@/services/supabaseCustomerService";
 import { supabase } from "@/integrations/supabase/client";
@@ -93,7 +94,9 @@ export default function ContractNew() {
   const [contractType, setContractType] = useState<"b2b" | "b2c">("b2c");
   const [deliveryDate, setDeliveryDate] = useState<string>("");
 
-  // Salesperson (ingelogde verkoper is contractant)
+  // Verkoper-attributie: de GESELECTEERDE verkoper is leidend (kantoren delen
+  // computers). Het ingelogde account wordt apart als registered_by vastgelegd.
+  const [salespersonId, setSalespersonId] = useState<string>("");
   const [salespersonName, setSalespersonName] = useState<string | null>(null);
   const [salespersonEmail, setSalespersonEmail] = useState<string | null>(null);
 
@@ -149,10 +152,11 @@ export default function ContractNew() {
       if (data.customer_id) setCustomerId(data.customer_id);
       setLoading(false);
 
-      // Salesperson (ingelogde gebruiker)
+      // Verkoper vooringevuld met de ingelogde gebruiker (één klik blijft één klik)
       const { data: authData } = await supabase.auth.getUser();
       const uid = authData?.user?.id;
       if (uid) {
+        setSalespersonId((prev) => prev || uid);
         const { data: prof } = await supabase
           .from("profiles")
           .select("first_name, last_name, email")
@@ -238,12 +242,14 @@ export default function ContractNew() {
   const canSave =
     !!vehicle &&
     !!customerId &&
+    !!salespersonId &&
     !!salePriceEx &&
     parseFloat(salePriceEx) > 0 &&
     !saving;
 
   const missingForSend: string[] = [];
   if (!customerId) missingForSend.push("Klant");
+  if (!salespersonId) missingForSend.push("Verkoper");
   if (!salePriceEx || parseFloat(salePriceEx) <= 0) missingForSend.push("Verkoopprijs");
   const canSend = missingForSend.length === 0 && !saving && !sending;
 
@@ -251,6 +257,17 @@ export default function ContractNew() {
     () => buildSalespersonSignatureSvg(salespersonName),
     [salespersonName],
   );
+
+  // Verkoperslijst + naam/e-mail synchroon houden met de selectie
+  const { data: salespeople = [] } = useSalespeople();
+  useEffect(() => {
+    if (!salespersonId || salespeople.length === 0) return;
+    const sp = salespeople.find((s) => s.id === salespersonId);
+    if (sp) {
+      setSalespersonName(sp.name);
+      setSalespersonEmail(sp.email);
+    }
+  }, [salespersonId, salespeople]);
 
   async function handleSave() {
     if (!vehicle) return;
@@ -262,6 +279,7 @@ export default function ContractNew() {
       vehicleId: vehicle.id,
       customerId,
       contractType,
+      salespersonId: salespersonId || null,
       salePriceEx: parseFloat(salePriceEx) || 0,
       btwType,
       warrantyPackage: hasExistingWarranty
@@ -583,6 +601,27 @@ export default function ContractNew() {
                     </label>
                   </RadioGroup>
                 </div>
+                <div>
+                  <Label>Verkoper *</Label>
+                  <Select
+                    value={salespersonId || undefined}
+                    onValueChange={setSalespersonId}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Selecteer verkoper" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {salespeople.map((sp) => (
+                        <SelectItem key={sp.id} value={sp.id}>
+                          {sp.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Dit contract wordt op naam van deze verkoper geregistreerd.
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
@@ -883,6 +922,9 @@ export default function ContractNew() {
                     value={confirmEmail}
                     onChange={(e) => setConfirmEmail(e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Verkoper: <span className="font-medium">{salespersonName || "—"}</span>
+                  </p>
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setConfirmOpen(false)}>

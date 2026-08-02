@@ -1685,8 +1685,10 @@ export type Database = {
           financing_party: string | null
           id: string
           main_photo_url: string | null
+          registered_by: string | null
           sale_price_ex: number | null
           salesperson_email: string | null
+          salesperson_id: string | null
           salesperson_name: string | null
           salesperson_signature_png: string | null
           salesperson_signature_svg: string | null
@@ -1720,8 +1722,10 @@ export type Database = {
           financing_party?: string | null
           id?: string
           main_photo_url?: string | null
+          registered_by?: string | null
           sale_price_ex?: number | null
           salesperson_email?: string | null
+          salesperson_id?: string | null
           salesperson_name?: string | null
           salesperson_signature_png?: string | null
           salesperson_signature_svg?: string | null
@@ -1755,8 +1759,10 @@ export type Database = {
           financing_party?: string | null
           id?: string
           main_photo_url?: string | null
+          registered_by?: string | null
           sale_price_ex?: number | null
           salesperson_email?: string | null
+          salesperson_id?: string | null
           salesperson_name?: string | null
           salesperson_signature_png?: string | null
           salesperson_signature_svg?: string | null
@@ -4515,6 +4521,7 @@ export type Database = {
           showroom_photo_url: string | null
           sold_by_user_id: string | null
           sold_date: string | null
+          sold_registered_by: string | null
           status: string
           supplier_id: string | null
           transporter_id: string | null
@@ -4561,6 +4568,7 @@ export type Database = {
           showroom_photo_url?: string | null
           sold_by_user_id?: string | null
           sold_date?: string | null
+          sold_registered_by?: string | null
           status?: string
           supplier_id?: string | null
           transporter_id?: string | null
@@ -4607,6 +4615,7 @@ export type Database = {
           showroom_photo_url?: string | null
           sold_by_user_id?: string | null
           sold_date?: string | null
+          sold_registered_by?: string | null
           status?: string
           supplier_id?: string | null
           transporter_id?: string | null
