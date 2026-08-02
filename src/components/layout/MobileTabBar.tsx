@@ -51,8 +51,6 @@ export const useMobileTabs = (): { tabs: MobileTab[]; more: MobileTab[] } | null
         { url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
         { url: "/werkplaats/onderdelen", label: "Onderdelen", icon: Package },
         { url: "/inventory", label: "Voorraad", icon: CarIcon, exact: true },
-        { url: "/inventory/online", label: "Online", icon: CarIcon },
-        { url: "/inventory/b2b", label: "Verkocht B2B", icon: Flag },
         { url: "/inventory/consumer", label: "Verkocht B2C", icon: Flag },
         { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
         { url: "/warranty", label: "Garantieclaims", icon: ShieldIcon },
