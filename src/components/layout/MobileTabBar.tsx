@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Wrench, CalendarDays, User, Hammer, Sparkles, PaintBucket, Home,
   GanttChartIcon, ClipboardList, CheckCircle, MoreHorizontal, LogOut,
-  Package, FileText, Users, ShieldIcon, CarIcon, Flag,
+  Package, FileText, Users, ShieldIcon, CarIcon, Flag, BarChart3, Clock,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -39,20 +39,26 @@ export const useMobileTabs = (): { tabs: MobileTab[]; more: MobileTab[] } | null
   if (isOperationeelDirecteur()) {
     return {
       tabs: [
-        { url: "/directie", label: "Directie", icon: Home, exact: true },
+        { url: "/directie", label: "Cockpit", icon: Home, exact: true },
         { url: "/werkplaats/planning", label: "Planning", icon: GanttChartIcon },
-        { url: "/werkplaats/facturen", label: "Facturen", icon: FileText },
-        { url: "/warranty", label: "Garantie", icon: ShieldIcon },
+        { url: "/werkplaats/agenda", label: "Agenda", icon: CalendarDays },
+        { url: "/rapportages/omzet", label: "Omzet", icon: BarChart3 },
       ],
+      // Zelfde categorisering/volgorde als de sidebar
       more: [
-        { url: "/werkplaats/agenda", label: "Werkplaats agenda", icon: CalendarDays },
         { url: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
         { url: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles },
         { url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
         { url: "/werkplaats/onderdelen", label: "Onderdelen", icon: Package },
         { url: "/werkplaats/autos", label: "Auto's", icon: CarIcon },
-        { url: "/customers", label: "Klanten", icon: Users, exact: true },
+        { url: "/werkplaats/facturen", label: "Facturen", icon: FileText },
+        { url: "/inventory", label: "Voorraad", icon: CarIcon, exact: true },
         { url: "/inventory/consumer", label: "Verkocht B2C", icon: Flag },
+        { url: "/customers", label: "Klanten", icon: Users, exact: true },
+        { url: "/warranty", label: "Garantieclaims", icon: ShieldIcon },
+        { url: "/rapportages/performance", label: "Performance", icon: Users },
+        { url: "/rapportages/kpi", label: "KPI-dashboard", icon: GanttChartIcon },
+        { url: "/rapportages/doorlooptijden", label: "Doorlooptijden", icon: Clock },
       ],
     };
   }

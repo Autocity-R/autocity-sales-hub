@@ -449,7 +449,6 @@ const DirectieSidebar: React.FC<{
             { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
           ],
         } as StdGroup,
-        { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
         { url: "/customers", label: "Klanten", icon: UsersIcon },
       ],
     },
