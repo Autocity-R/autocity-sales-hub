@@ -33,6 +33,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { FileText } from "lucide-react";
+import { featureAccess } from "@/lib/routeAccess";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -269,6 +270,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 >
                   <ClipboardList className="mr-2 h-4 w-4" />
                   Inname
+                </Button>
+              </Link>
+            )}
+            {featureAccess.prijslijst(userRole) && (
+              <Link to="/werkplaats/prijslijst">
+                <Button
+                  variant={isActive("/werkplaats/prijslijst") ? "default" : "ghost"}
+                  className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+                  size="sm"
+                >
+                  <Calculator className="mr-2 h-4 w-4" />
+                  Prijslijst
                 </Button>
               </Link>
             )}
@@ -752,6 +765,7 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
           { url: "/reports", label: "Rapportages", icon: BarChart3 },
           { url: "/calendar", label: "Agenda", icon: CalendarIcon },
         ]),
+        { url: "/werkplaats/prijslijst", label: "Prijslijst", icon: Calculator },
         { url: "/werkplaats/facturen", label: "Werkplaats facturen", icon: FileText },
         { url: "/werkplaats/agenda", label: "Werkplaats agenda", icon: CalendarIcon },
       ] as AsNavItem[],
