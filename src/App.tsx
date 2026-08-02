@@ -50,6 +50,7 @@ const WerkplaatsGoedkeuren = lazy(() => import("@/pages/werkplaats/WerkplaatsGoe
 const WerkplaatsOnderdelen = lazy(() => import("@/pages/werkplaats/WerkplaatsOnderdelen"));
 const WerkplaatsPoetsen = lazy(() => import("@/pages/werkplaats/WerkplaatsPoetsen"));
 const WerkplaatsFacturen = lazy(() => import("@/pages/werkplaats/WerkplaatsFacturen"));
+const WerkplaatsPrijslijst = lazy(() => import("@/pages/werkplaats/WerkplaatsPrijslijst"));
 const WerkplaatsAgenda = lazy(() => import("@/pages/werkplaats/WerkplaatsAgenda"));
 const MijnPlanning = lazy(() => import("@/pages/werkplaats/MijnPlanning"));
 const MijnWerk = lazy(() => import("@/pages/werkplaats/MijnWerk"));
@@ -267,6 +268,7 @@ function App() {
         <Route path="/werkplaats/onderdelen" element={<ProtectedRoute><WerkplaatsOnderdelen /></ProtectedRoute>} />
         <Route path="/werkplaats/poetsen" element={<ProtectedRoute><WerkplaatsPoetsen /></ProtectedRoute>} />
         <Route path="/werkplaats/facturen" element={<ProtectedRoute><WerkplaatsFacturen /></ProtectedRoute>} />
+        <Route path="/werkplaats/prijslijst" element={<ProtectedRoute><WerkplaatsPrijslijst /></ProtectedRoute>} />
         <Route path="/werkplaats/agenda" element={<ProtectedRoute><WerkplaatsAgenda /></ProtectedRoute>} />
         {/* Role-specifieke placeholder-startpagina's */}
         <Route path="/werkplaats/mijn-werk" element={<ProtectedRoute><MijnWerk /></ProtectedRoute>} />
