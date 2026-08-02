@@ -235,7 +235,6 @@ const StandardSidebar: React.FC<{
             { url: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles },
             { url: "/werkplaats/uitdeuken", label: "Uitdeuken (extern)", icon: Hammer },
             { url: "/werkplaats/autos", label: "Auto's", icon: CarIcon },
-            { url: "/werkplaats/facturen", label: "Facturen (werkplaats)", icon: FileText },
           ]
         : [],
     },
@@ -250,15 +249,23 @@ const StandardSidebar: React.FC<{
       ],
     },
     {
-      label: "RAPPORTAGES",
-      entries: access.hasRapportagesAccess
-        ? [
-            { url: "/rapportages/omzet", label: "Omzet", icon: BarChart3 },
-            { url: "/rapportages/performance", label: "Performance", icon: UsersIcon },
-            { url: "/rapportages/kpi", label: "KPI-dashboard", icon: GanttChartIcon },
-            { url: "/rapportages/doorlooptijden", label: "Doorlooptijden", icon: Clock },
-          ]
-        : [],
+      label: "FINANCIEEL",
+      entries: [
+        ...(access.hasRapportagesAccess
+          ? [{
+              url: "/rapportages", label: "Rapportages", icon: BarChart3, key: "rapportages",
+              sub: [
+                { url: "/rapportages/omzet", label: "Omzet", icon: BarChart3 },
+                { url: "/rapportages/performance", label: "Performance", icon: UsersIcon },
+                { url: "/rapportages/kpi", label: "KPI-dashboard", icon: GanttChartIcon },
+                { url: "/rapportages/doorlooptijden", label: "Doorlooptijden", icon: Clock },
+              ],
+            } as StdGroup]
+          : []),
+        ...(access.hasWerkplaatsAccess
+          ? [{ url: "/werkplaats/facturen", label: "Facturen (werkplaats)", icon: FileText }]
+          : []),
+      ],
     },
     {
       label: "BEHEER",
@@ -272,10 +279,12 @@ const StandardSidebar: React.FC<{
 
   const inventoryOpenByRoute = getSubActive(inventorySubPaths);
   const customersOpenByRoute = getSubActive(customerSubPaths);
+  const rapportagesOpenByRoute = location.pathname.startsWith("/rapportages");
 
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({
-    inventory: inventoryOpenByRoute,
+    inventory: true,
     customers: customersOpenByRoute,
+    rapportages: rapportagesOpenByRoute,
   });
 
   // Automatisch openklappen wanneer een subroute actief wordt
@@ -284,9 +293,10 @@ const StandardSidebar: React.FC<{
       ...prev,
       inventory: prev.inventory || inventoryOpenByRoute,
       customers: prev.customers || customersOpenByRoute,
+      rapportages: prev.rapportages || rapportagesOpenByRoute,
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inventoryOpenByRoute, customersOpenByRoute]);
+  }, [inventoryOpenByRoute, customersOpenByRoute, rapportagesOpenByRoute]);
 
   return (
     <StyledNav
@@ -415,12 +425,20 @@ const DirectieSidebar: React.FC<{
 }> = ({ className, isActive, getSubActive, location }) => {
   const inventorySubPaths = ["/inventory/online", "/inventory/b2b", "/inventory/consumer", "/inventory/delivered"];
   const inventoryOpenByRoute = getSubActive(inventorySubPaths);
-  const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({ inventory: inventoryOpenByRoute });
+  const rapportagesOpenByRoute = location.pathname.startsWith("/rapportages");
+  const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({
+    inventory: true,
+    rapportages: rapportagesOpenByRoute,
+  });
 
   React.useEffect(() => {
-    setOpenGroups((prev) => ({ ...prev, inventory: prev.inventory || inventoryOpenByRoute }));
+    setOpenGroups((prev) => ({
+      ...prev,
+      inventory: prev.inventory || inventoryOpenByRoute,
+      rapportages: prev.rapportages || rapportagesOpenByRoute,
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inventoryOpenByRoute]);
+  }, [inventoryOpenByRoute, rapportagesOpenByRoute]);
 
   const sections: StdSection[] = [
     { label: null, entries: [{ url: "/directie", label: "Cockpit", icon: HomeIcon }] },
@@ -434,7 +452,6 @@ const DirectieSidebar: React.FC<{
         { url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
         { url: "/werkplaats/onderdelen", label: "Onderdelen", icon: Package },
         { url: "/werkplaats/autos", label: "Auto's", icon: CarIcon },
-        { url: "/werkplaats/facturen", label: "Facturen", icon: FileText },
       ],
     },
     {
@@ -457,12 +474,18 @@ const DirectieSidebar: React.FC<{
       entries: [{ url: "/warranty", label: "Garantieclaims", icon: ShieldIcon }],
     },
     {
-      label: "RAPPORTAGES",
+      label: "FINANCIEEL",
       entries: [
-        { url: "/rapportages/omzet", label: "Omzet", icon: BarChart3 },
-        { url: "/rapportages/performance", label: "Performance", icon: UsersIcon },
-        { url: "/rapportages/kpi", label: "KPI-dashboard", icon: GanttChartIcon },
-        { url: "/rapportages/doorlooptijden", label: "Doorlooptijden", icon: Clock },
+        {
+          url: "/rapportages", label: "Rapportages", icon: BarChart3, key: "rapportages",
+          sub: [
+            { url: "/rapportages/omzet", label: "Omzet", icon: BarChart3 },
+            { url: "/rapportages/performance", label: "Performance", icon: UsersIcon },
+            { url: "/rapportages/kpi", label: "KPI-dashboard", icon: GanttChartIcon },
+            { url: "/rapportages/doorlooptijden", label: "Doorlooptijden", icon: Clock },
+          ],
+        } as StdGroup,
+        { url: "/werkplaats/facturen", label: "Facturen", icon: FileText },
       ],
     },
   ];
@@ -538,14 +561,17 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
       ] as AsNavItem[],
     },
     {
+      label: "FINANCIEEL",
+      items: [
+        // Rapportages buiten de werkplaats niet voor de chef
+        ...(isChef ? [] : [{ url: "/reports", label: "Rapportages", icon: BarChart3 }]),
+        { url: "/werkplaats/facturen", label: "Werkplaats facturen", icon: FileText },
+      ] as AsNavItem[],
+    },
+    {
       label: "OVERIG",
       items: [
-        // Verkoop-onderdelen (rapportages buiten de werkplaats + verkoopagenda) niet voor de chef
-        ...(isChef ? [] : [
-          { url: "/reports", label: "Rapportages", icon: BarChart3 },
-          { url: "/calendar", label: "Agenda", icon: CalendarIcon },
-        ]),
-        { url: "/werkplaats/facturen", label: "Werkplaats facturen", icon: FileText },
+        ...(isChef ? [] : [{ url: "/calendar", label: "Agenda", icon: CalendarIcon }]),
         { url: "/werkplaats/agenda", label: "Werkplaats agenda", icon: CalendarIcon },
       ] as AsNavItem[],
     },
