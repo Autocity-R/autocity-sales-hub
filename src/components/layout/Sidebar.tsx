@@ -451,7 +451,6 @@ const DirectieSidebar: React.FC<{
         { url: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles },
         { url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
         { url: "/werkplaats/onderdelen", label: "Onderdelen", icon: Package },
-        { url: "/werkplaats/autos", label: "Auto's", icon: CarIcon },
       ],
     },
     {
@@ -466,7 +465,7 @@ const DirectieSidebar: React.FC<{
             { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
           ],
         } as StdGroup,
-        { url: "/customers", label: "Klanten", icon: UsersIcon },
+        { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
       ],
     },
     {
