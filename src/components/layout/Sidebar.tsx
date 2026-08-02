@@ -49,7 +49,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     hasWerkplaatsAccess, isRestrictedWorkshopUser, getHomeRoute,
     isSchadeherstel, isMonteur, isUitdeukerExtern, isWerkplaatsChef, isOperationeelDirecteur, isPoetser,
     isAftersalesManager, isAdministratie,
+    userRole,
   } = useRoleAccess();
+
+  const isVerkoper = userRole === "verkoper";
 
   const isActive = (path: string) => {
     if (path === "/") {
@@ -257,6 +260,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 Foto Studio
               </Button>
             </Link>
+            {isVerkoper && (
+              <Link to="/werkplaats/inname">
+                <Button
+                  variant={isActive("/werkplaats/inname") ? "default" : "ghost"}
+                  className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+                  size="sm"
+                >
+                  <ClipboardList className="mr-2 h-4 w-4" />
+                  Inname
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 
