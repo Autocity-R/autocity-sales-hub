@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 import { PartChips } from "@/components/werkplaats/workOrderParts";
+import { MyPerformanceCard } from "@/components/werkplaats/MyPerformanceCard";
 
 interface WO {
   id: string;
@@ -205,6 +206,8 @@ const WerkplaatsSchadeherstel: React.FC = () => {
             Start een auto zodat collega's zien dat je ermee bezig bent. Afgeronde auto's blijven 24 uur zichtbaar.
           </p>
         </div>
+
+        <MyPerformanceCard discipline="spuit" variant="schade" />
 
         {loading ? (
           <div className="flex items-center gap-2 text-slate-500 py-10"><Loader2 className="h-4 w-4 animate-spin" /> Laden…</div>
