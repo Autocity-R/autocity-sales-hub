@@ -54,7 +54,7 @@ const DISCIPLINE_META: Record<WorkOrderDiscipline, {
     bar: "bg-orange-50 border-orange-200",
     roles: ["schadeherstel"],
     needsDiagram: true,
-    multiZone: false,
+    multiZone: true,
     showPhotos: true,
   },
   werkplaats: {
@@ -255,7 +255,7 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
     if (!vehicle) return false;
     if (meta.needsDiagram && zoneIds.length === 0) return false;
     if (!description.trim() && !meta.needsDiagram) return false;
-    if (meta.needsDiagram && zoneIds.length === 1 && !description.trim()) return false;
+    if (meta.needsDiagram && !description.trim()) return false;
     if (discipline === "poets" && poetsType === "aflevering" && !dueDate) return false;
     return !saving;
   }, [vehicle, zoneIds, description, saving, meta, discipline, poetsType, dueDate, externAllowed, mode, ext, plannedAt]);
@@ -289,46 +289,26 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
         return paths;
       };
 
-      if (meta.multiZone && zoneIds.length > 1) {
-        // Uitdeuk: één work_order per zone
-        const photos = await uploadPhotos();
-        let cursor = nextSort;
-        for (const zid of zoneIds) {
-          const zone = DAMAGE_ZONES.find(z => z.id === zid)!;
-          const desc = (zoneNotes[zid] || description).trim() || zone.name;
-          const { error } = await supabase.from("work_orders").insert({
-            vehicle_id: vehicle.id,
-            discipline, part: zone.name, description: desc,
-            photos, status: "ingepland", sort_order: cursor,
-            source: "aftersales", branch: vehicle.branch || "rotterdam",
-            assigned_to: assignedTo || null,
-            is_rush: isRush,
-            due_date: dueDate || null,
-            created_by: userRes.user?.id ?? null,
-          } as any);
-          if (error) throw error;
-          cursor += isRush ? -1 : 10;
-        }
-      } else {
-        const photos = await uploadPhotos();
-        const zone = zoneIds[0] ? DAMAGE_ZONES.find(z => z.id === zoneIds[0]) : null;
-        const desc = description.trim() || (zone?.name ?? "");
-        const { error } = await supabase.from("work_orders").insert({
-          vehicle_id: vehicle.id,
-          discipline,
-          part: zone?.name || null,
-          description: desc,
-          photos, status: "ingepland", sort_order: nextSort,
-          source: "aftersales", branch: vehicle.branch || "rotterdam",
-          assigned_to: assignedTo || null,
-          is_rush: isRush,
-          warranty_claim_id: warrantyClaimId || null,
-          due_date: dueDate || null,
-          poets_type: discipline === "poets" ? poetsType : null,
-          created_by: userRes.user?.id ?? null,
-        } as any);
-        if (error) throw error;
-      }
+      // Eén gebundelde order per auto per discipline — alle gekozen delen in parts (zoals bij Inname)
+      const photos = await uploadPhotos();
+      const partList = zoneNames;
+      const desc = description.trim() || partList.join(" · ");
+      const { error } = await supabase.from("work_orders").insert({
+        vehicle_id: vehicle.id,
+        discipline,
+        part: partList[0] || null,
+        parts: partList.length ? partList : null,
+        description: desc,
+        photos, status: "ingepland", sort_order: nextSort,
+        source: "aftersales", branch: vehicle.branch || "rotterdam",
+        assigned_to: assignedTo || null,
+        is_rush: isRush,
+        warranty_claim_id: warrantyClaimId || null,
+        due_date: dueDate || null,
+        poets_type: discipline === "poets" ? poetsType : null,
+        created_by: userRes.user?.id ?? null,
+      } as any);
+      if (error) throw error;
 
       toast({ title: "Taak aangemaakt" });
       onCreated?.();
