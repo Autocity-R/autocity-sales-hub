@@ -54,7 +54,7 @@ const DISCIPLINE_META: Record<WorkOrderDiscipline, {
     bar: "bg-orange-50 border-orange-200",
     roles: ["schadeherstel"],
     needsDiagram: true,
-    multiZone: false,
+    multiZone: true,
     showPhotos: true,
   },
   werkplaats: {
@@ -255,7 +255,7 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
     if (!vehicle) return false;
     if (meta.needsDiagram && zoneIds.length === 0) return false;
     if (!description.trim() && !meta.needsDiagram) return false;
-    if (meta.needsDiagram && zoneIds.length === 1 && !description.trim()) return false;
+    if (meta.needsDiagram && !description.trim()) return false;
     if (discipline === "poets" && poetsType === "aflevering" && !dueDate) return false;
     return !saving;
   }, [vehicle, zoneIds, description, saving, meta, discipline, poetsType, dueDate, externAllowed, mode, ext, plannedAt]);
@@ -289,46 +289,26 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
         return paths;
       };
 
-      if (meta.multiZone && zoneIds.length > 1) {
-        // Uitdeuk: één work_order per zone
-        const photos = await uploadPhotos();
-        let cursor = nextSort;
-        for (const zid of zoneIds) {
-          const zone = DAMAGE_ZONES.find(z => z.id === zid)!;
-          const desc = (zoneNotes[zid] || description).trim() || zone.name;
-          const { error } = await supabase.from("work_orders").insert({
-            vehicle_id: vehicle.id,
-            discipline, part: zone.name, description: desc,
-            photos, status: "ingepland", sort_order: cursor,
-            source: "aftersales", branch: vehicle.branch || "rotterdam",
-            assigned_to: assignedTo || null,
-            is_rush: isRush,
-            due_date: dueDate || null,
-            created_by: userRes.user?.id ?? null,
-          } as any);
-          if (error) throw error;
-          cursor += isRush ? -1 : 10;
-        }
-      } else {
-        const photos = await uploadPhotos();
-        const zone = zoneIds[0] ? DAMAGE_ZONES.find(z => z.id === zoneIds[0]) : null;
-        const desc = description.trim() || (zone?.name ?? "");
-        const { error } = await supabase.from("work_orders").insert({
-          vehicle_id: vehicle.id,
-          discipline,
-          part: zone?.name || null,
-          description: desc,
-          photos, status: "ingepland", sort_order: nextSort,
-          source: "aftersales", branch: vehicle.branch || "rotterdam",
-          assigned_to: assignedTo || null,
-          is_rush: isRush,
-          warranty_claim_id: warrantyClaimId || null,
-          due_date: dueDate || null,
-          poets_type: discipline === "poets" ? poetsType : null,
-          created_by: userRes.user?.id ?? null,
-        } as any);
-        if (error) throw error;
-      }
+      // Eén gebundelde order per auto per discipline — alle gekozen delen in parts (zoals bij Inname)
+      const photos = await uploadPhotos();
+      const partList = zoneNames;
+      const desc = description.trim() || partList.join(" · ");
+      const { error } = await supabase.from("work_orders").insert({
+        vehicle_id: vehicle.id,
+        discipline,
+        part: partList[0] || null,
+        parts: partList.length ? partList : null,
+        description: desc,
+        photos, status: "ingepland", sort_order: nextSort,
+        source: "aftersales", branch: vehicle.branch || "rotterdam",
+        assigned_to: assignedTo || null,
+        is_rush: isRush,
+        warranty_claim_id: warrantyClaimId || null,
+        due_date: dueDate || null,
+        poets_type: discipline === "poets" ? poetsType : null,
+        created_by: userRes.user?.id ?? null,
+      } as any);
+      if (error) throw error;
 
       toast({ title: "Taak aangemaakt" });
       onCreated?.();
@@ -771,7 +751,23 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
                   />
                 </div>
                 {meta.multiZone && (
-                  <p className="text-[11px] text-slate-400 mt-2 text-center">Klik meerdere zones aan — per zone wordt één taak aangemaakt.</p>
+                  <p className="text-[11px] text-slate-400 mt-2 text-center">
+                    Klik meerdere delen aan — alles komt in één totaalopdracht voor deze auto.
+                  </p>
+                )}
+                {zoneNames.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5 justify-center">
+                    {zoneNames.map((n, i) => (
+                      <button
+                        key={`${n}-${i}`}
+                        type="button"
+                        onClick={() => setZoneIds(prev => prev.filter(id => DAMAGE_ZONES.find(z => z.id === id)?.name !== n))}
+                        className="inline-flex items-center gap-1 rounded-md bg-slate-900 text-white font-semibold px-2.5 py-1 text-[12px]"
+                      >
+                        {n}<X className="h-3 w-3 opacity-70" />
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
