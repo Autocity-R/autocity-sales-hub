@@ -114,8 +114,8 @@ const WerkplaatsOnderdelen: React.FC = () => {
         key={o.id}
         role="button"
         tabIndex={0}
-        onClick={() => setEditOrder(o)}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setEditOrder(o); } }}
+        onClick={() => { if (!readOnly) setEditOrder(o); }}
+        onKeyDown={(e) => { if (!readOnly && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setEditOrder(o); } }}
         className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm cursor-pointer transition-colors hover:border-slate-300 hover:bg-slate-50/60"
       >
         <div className="flex items-start gap-2">
@@ -265,7 +265,7 @@ const WerkplaatsOnderdelen: React.FC = () => {
             aantal: editOrder.aantal,
             inkoopprijs_per_stuk: editOrder.inkoopprijs_per_stuk == null ? null : Number(editOrder.inkoopprijs_per_stuk),
             leverancier: editOrder.leverancier,
-            doorbelast_invoice_id: readOnly ? "readonly" : editOrder.doorbelast_invoice_id,
+            doorbelast_invoice_id: editOrder.doorbelast_invoice_id,
             vehicle: editOrder.vehicle ?? null,
           } : null}
           onUpdated={() => { setEditOrder(null); load(); }}
