@@ -39,6 +39,9 @@ export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, preset
   const [searching, setSearching] = useState(false);
   const [partName, setPartName] = useState("");
   const [note, setNote] = useState("");
+  const [aantal, setAantal] = useState("1");
+  const [inkoop, setInkoop] = useState("");
+  const [leverancier, setLeverancier] = useState("");
   const [saving, setSaving] = useState(false);
   const debounceRef = useRef<number | null>(null);
 
@@ -50,6 +53,9 @@ export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, preset
       setResults([]);
       setPartName("");
       setNote("");
+      setAantal("1");
+      setInkoop("");
+      setLeverancier("");
     }
   }, [open, presetVehicle]);
 
@@ -83,6 +89,9 @@ export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, preset
       part_name: partName.trim(),
       note: note.trim() || null,
       status: "te_bestellen",
+      aantal: Math.max(1, Number(aantal) || 1),
+      inkoopprijs_per_stuk: inkoop.trim() === "" ? null : Number(inkoop.replace(",", ".")) || 0,
+      leverancier: leverancier.trim() || null,
       branch: vehicle.branch || "rotterdam",
       created_by: userRes.user?.id ?? null,
     });
@@ -193,6 +202,26 @@ export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, preset
           </div>
 
           {/* Note */}
+          <div>
+            <Label className="text-[12px] font-semibold text-slate-700">
+              Aantal, inkoopprijs &amp; leverancier <span className="text-slate-400 font-normal">(optioneel)</span>
+            </Label>
+            <div className="mt-1.5 grid grid-cols-3 gap-2">
+              <Input
+                type="number" min="1" step="1" value={aantal}
+                onChange={(e) => setAantal(e.target.value)} placeholder="Aantal"
+              />
+              <Input
+                type="number" step="0.01" min="0" value={inkoop}
+                onChange={(e) => setInkoop(e.target.value)} placeholder="Inkoop p/st ex btw"
+              />
+              <Input
+                value={leverancier}
+                onChange={(e) => setLeverancier(e.target.value)} placeholder="Leverancier"
+              />
+            </div>
+          </div>
+
           <div>
             <Label className="text-[12px] font-semibold text-slate-700">Notitie <span className="text-slate-400 font-normal">(optioneel)</span></Label>
             <Textarea

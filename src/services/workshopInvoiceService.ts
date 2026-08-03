@@ -431,6 +431,8 @@ export interface ManualInvoiceInput {
   lines: InvoiceLine[];
   branch?: string | null;
   vehicle_id?: string | null;
+  /** parts_orders die met deze factuur worden doorbelast (markering tegen dubbel doorbelasten) */
+  parts_order_ids?: string[];
 }
 
 /**
@@ -485,7 +487,31 @@ export const saveManualInvoice = async (
     .single();
   if (error) throw error;
 
+  if (input.parts_order_ids?.length) {
+    await markPartsCharged(data.id, input.parts_order_ids);
+  }
+
   return { id: data.id, invoiceNumber, pdfPath, total };
+};
+
+/** Markeert onderdelen als doorbelast op deze factuur. */
+export const markPartsCharged = async (invoiceId: string, partsOrderIds: string[]): Promise<void> => {
+  const ids = partsOrderIds.filter(Boolean);
+  if (!ids.length) return;
+  const { error } = await (supabase as any)
+    .from("parts_orders")
+    .update({ doorbelast_invoice_id: invoiceId })
+    .in("id", ids);
+  if (error) throw error;
+};
+
+/** Maakt de doorbelasting-koppeling weer leeg (bij intrekken/verwijderen van een factuur). */
+export const releasePartsFromInvoice = async (invoiceId: string): Promise<void> => {
+  const { error } = await (supabase as any)
+    .from("parts_orders")
+    .update({ doorbelast_invoice_id: null })
+    .eq("doorbelast_invoice_id", invoiceId);
+  if (error) throw error;
 };
 
 /** Zet de betaalstatus van een factuur om (open ↔ betaald). */
