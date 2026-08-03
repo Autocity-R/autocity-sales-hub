@@ -15,7 +15,10 @@ type Status = "te_bestellen" | "besteld" | "binnen";
 
 interface PartOrder {
   id: string;
-  vehicle_id: string;
+  vehicle_id: string | null;
+  manual_brand?: string | null;
+  manual_model?: string | null;
+  manual_license?: string | null;
   part_name: string;
   note: string | null;
   status: Status;
@@ -96,7 +99,7 @@ const WerkplaatsOnderdelen: React.FC = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("parts_orders")
-      .select("id, vehicle_id, part_name, note, status, ordered_at, arrived_at, aantal, inkoopprijs_per_stuk, leverancier, doorbelast_invoice_id, branch, created_at, vehicle:vehicles!parts_orders_vehicle_id_fkey(id, brand, model, year, license_number, vin)")
+      .select("id, vehicle_id, manual_brand, manual_model, manual_license, part_name, note, status, ordered_at, arrived_at, aantal, inkoopprijs_per_stuk, leverancier, doorbelast_invoice_id, branch, created_at, vehicle:vehicles!parts_orders_vehicle_id_fkey(id, brand, model, year, license_number, vin)")
       .order("created_at", { ascending: false });
     if (error) toast({ title: "Fout bij laden", description: error.message, variant: "destructive" });
     setOrders((data as any) || []);
@@ -142,7 +145,10 @@ const WerkplaatsOnderdelen: React.FC = () => {
       o.part_name.toLowerCase().includes(q) ||
       (o.vehicle?.brand || "").toLowerCase().includes(q) ||
       (o.vehicle?.model || "").toLowerCase().includes(q) ||
-      (o.vehicle?.license_number || "").toLowerCase().includes(q),
+      (o.vehicle?.license_number || "").toLowerCase().includes(q) ||
+      (o.manual_brand || "").toLowerCase().includes(q) ||
+      (o.manual_model || "").toLowerCase().includes(q) ||
+      (o.manual_license || "").toLowerCase().includes(q),
     ) : orders;
     return {
       te_bestellen: filtered.filter(o => o.status === "te_bestellen"),
@@ -153,18 +159,26 @@ const WerkplaatsOnderdelen: React.FC = () => {
 
   const renderCard = (o: PartOrder) => {
     const v = o.vehicle;
+    const isManual = !o.vehicle_id;
     const tone: any = o.status === "binnen" ? "green" : o.status === "besteld" ? "blue" : "amber";
     const statusLabel = STATUS_META[o.status].label;
     return (
       <div key={o.id} className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
         <div className="flex items-start gap-2">
-          <AsLicensePlate value={v?.license_number} size="sm" />
+          <AsLicensePlate value={isManual ? o.manual_license : v?.license_number} size="sm" />
           <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-semibold text-slate-900 truncate">
-              {v?.brand} {v?.model}
-              {v?.year && <span className="text-slate-500 font-medium"> · {v.year}</span>}
-            </div>
-            {v?.vin && (
+            {isManual ? (
+              <div className="text-[13px] font-semibold text-slate-900 truncate flex items-center gap-1.5">
+                <span className="truncate">{o.manual_brand} {o.manual_model}</span>
+                <AsPill tone="slate">extern</AsPill>
+              </div>
+            ) : (
+              <div className="text-[13px] font-semibold text-slate-900 truncate">
+                {v?.brand} {v?.model}
+                {v?.year && <span className="text-slate-500 font-medium"> · {v.year}</span>}
+              </div>
+            )}
+            {!isManual && v?.vin && (
               <div className="text-[10.5px] font-mono text-slate-500 truncate">VIN {v.vin}</div>
             )}
             <div className="text-[13px] text-slate-900 mt-1.5">
