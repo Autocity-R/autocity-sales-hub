@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { AsLicensePlate } from "@/components/aftersales/ui";
-import { Search, X, Car, Loader2, Plus } from "lucide-react";
+import { Search, X, Car, Loader2, Plus, Save, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface PartOrderVehicle {
@@ -25,6 +25,24 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   presetVehicle?: PartOrderVehicle | null;
   onCreated?: () => void;
+  /** Wanneer gezet: bewerk-modus voor een bestaande bestelling */
+  editOrder?: EditOrder | null;
+  onUpdated?: () => void;
+}
+
+export interface EditOrder {
+  id: string;
+  vehicle_id: string | null;
+  manual_brand?: string | null;
+  manual_model?: string | null;
+  manual_license?: string | null;
+  part_name: string;
+  note: string | null;
+  aantal: number | null;
+  inkoopprijs_per_stuk: number | null;
+  leverancier: string | null;
+  doorbelast_invoice_id?: string | null;
+  vehicle?: PartOrderVehicle | null;
 }
 
 const SUGGESTIONS = [
@@ -32,7 +50,9 @@ const SUGGESTIONS = [
   "Accu", "Banden", "Ruitenwissers", "Anders…",
 ];
 
-export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, presetVehicle, onCreated }) => {
+export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, presetVehicle, onCreated, editOrder, onUpdated }) => {
+  const isEdit = !!editOrder;
+  const locked = !!editOrder?.doorbelast_invoice_id;
   const [vehicle, setVehicle] = useState<PartOrderVehicle | null>(presetVehicle ?? null);
   const [mode, setMode] = useState<"systeem" | "extern">("systeem");
   const [mBrand, setMBrand] = useState("");
@@ -52,6 +72,22 @@ export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, preset
   // reset when dialog opens/closes or preset changes
   useEffect(() => {
     if (open) {
+      if (editOrder) {
+        const ext = !editOrder.vehicle_id;
+        setVehicle(editOrder.vehicle ?? null);
+        setMode(ext ? "extern" : "systeem");
+        setMBrand(editOrder.manual_brand ?? "");
+        setMModel(editOrder.manual_model ?? "");
+        setMLicense(editOrder.manual_license ?? "");
+        setQuery("");
+        setResults([]);
+        setPartName(editOrder.part_name ?? "");
+        setNote(editOrder.note ?? "");
+        setAantal(String(editOrder.aantal ?? 1));
+        setInkoop(editOrder.inkoopprijs_per_stuk == null ? "" : String(editOrder.inkoopprijs_per_stuk));
+        setLeverancier(editOrder.leverancier ?? "");
+        return;
+      }
       setVehicle(presetVehicle ?? null);
       setMode("systeem");
       setMBrand("");
@@ -65,7 +101,7 @@ export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, preset
       setInkoop("");
       setLeverancier("");
     }
-  }, [open, presetVehicle]);
+  }, [open, presetVehicle, editOrder]);
 
   // live search
   useEffect(() => {
@@ -87,10 +123,31 @@ export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, preset
   }, [query, vehicle]);
 
   const canSave = useMemo(() => {
-    if (saving || partName.trim().length === 0) return false;
+    if (saving || locked || partName.trim().length === 0) return false;
     if (mode === "systeem") return !!vehicle;
     return mBrand.trim().length > 0 && mModel.trim().length > 0;
-  }, [vehicle, partName, saving, mode, mBrand, mModel]);
+  }, [vehicle, partName, saving, mode, mBrand, mModel, locked]);
+
+  const submitEdit = async () => {
+    if (!canSave || !editOrder) return;
+    setSaving(true);
+    const { error } = await (supabase as any).from("parts_orders").update({
+      vehicle_id: mode === "systeem" ? vehicle!.id : null,
+      manual_brand: mode === "extern" ? mBrand.trim() : null,
+      manual_model: mode === "extern" ? mModel.trim() : null,
+      manual_license: mode === "extern" ? (mLicense.trim().toUpperCase() || null) : null,
+      part_name: partName.trim(),
+      note: note.trim() || null,
+      aantal: Math.max(1, Number(aantal) || 1),
+      inkoopprijs_per_stuk: inkoop.trim() === "" ? null : Number(inkoop.replace(",", ".")) || 0,
+      leverancier: leverancier.trim() || null,
+    }).eq("id", editOrder.id);
+    setSaving(false);
+    if (error) { toast({ title: "Opslaan mislukt", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Bestelling bijgewerkt" });
+    onUpdated?.();
+    onOpenChange(false);
+  };
 
   const submit = async () => {
     if (!canSave) return;
@@ -121,12 +178,18 @@ export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, preset
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[560px]">
         <DialogHeader>
-          <DialogTitle className="text-[16px]">Onderdeel bestellen</DialogTitle>
+          <DialogTitle className="text-[16px]">{isEdit ? "Bestelling aanpassen" : "Onderdeel bestellen"}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className={cn("space-y-4", locked && "opacity-70 pointer-events-none")}>
+          {locked && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-[12px] text-amber-900">
+              <Lock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>Al doorbelast op factuur — niet meer aanpasbaar.</span>
+            </div>
+          )}
           {/* Mode switch */}
-          {!presetVehicle && (
+          {!presetVehicle && !locked && (
             <div className="flex gap-1.5">
               {([
                 { k: "systeem", label: "Auto uit het systeem" },
@@ -181,7 +244,7 @@ export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, preset
               <div className="mt-1.5 relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
-                  autoFocus
+                  autoFocus={!isEdit}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Zoek op kenteken, merk, model of VIN…"
@@ -284,11 +347,13 @@ export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, preset
         </div>
 
         <DialogFooter className="mt-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Annuleren</Button>
-          <Button onClick={submit} disabled={!canSave} className="bg-blue-600 hover:bg-blue-700 text-white">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
-            Bestelling toevoegen
-          </Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>{locked ? "Sluiten" : "Annuleren"}</Button>
+          {!locked && (
+            <Button onClick={isEdit ? submitEdit : submit} disabled={!canSave} className="bg-blue-600 hover:bg-blue-700 text-white">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : isEdit ? <Save className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+              {isEdit ? "Wijzigingen opslaan" : "Bestelling toevoegen"}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
