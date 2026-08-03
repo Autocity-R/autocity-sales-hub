@@ -485,64 +485,37 @@ const GarantieInbox: React.FC = () => {
                     })}
                   </div>
 
-                  {/* Agent suggestion + Compose */}
+                  {/* Strip + Compose */}
                   <div className="border-t border-slate-100 p-3 bg-white">
-                    <div className="mb-3 rounded-lg border border-violet-200 bg-gradient-to-br from-violet-50 via-white to-blue-50 p-3">
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <div className="text-[11px] font-semibold text-violet-700 uppercase tracking-wide flex items-center gap-1.5">
-                          <Sparkles className="h-3.5 w-3.5" /> Garantie Agent · voorstel
-                          {agentPregenerated && (
-                            <span className="normal-case tracking-normal text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">
-                              AI-concept klaar
-                            </span>
-                          )}
-                          {agentDecision && (
-                            <span className="normal-case tracking-normal text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                              {agentDecision.replace(/_/g, " ")}
-                            </span>
-                          )}
-                        </div>
-                        {!agentSuggestion && !agentLoading && (
-                          <Button size="sm" variant="outline" className="h-7 text-[11px] border-violet-200" onClick={() => fetchSuggestion()}>
-                            <Wand2 className="h-3 w-3 mr-1" /> Voorstel ophalen
-                          </Button>
-                        )}
-                        {agentLoading && (
-                          <div className="text-[11px] text-violet-700 inline-flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Agent denkt na…</div>
-                        )}
-                      </div>
-                      {agentAnalysis && (
-                        <div className="mb-2 text-[11.5px] text-slate-600 bg-white/70 border border-violet-100 rounded-md px-2.5 py-1.5 leading-relaxed">
-                          <span className="font-semibold text-violet-700">Analyse · </span>{agentAnalysis}
-                        </div>
+                    <button
+                      type="button"
+                      onClick={() => setAgentPanelOpen(true)}
+                      className={cn(
+                        "w-full h-9 mb-2 px-3 rounded-md border flex items-center gap-2 text-[12px] transition",
+                        agentSuggestion
+                          ? "border-violet-200 bg-violet-50/70 text-violet-800 hover:bg-violet-50"
+                          : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
                       )}
-                      {agentSuggestion && (
-                        <>
-                          <div className="whitespace-pre-wrap text-[13px] text-slate-800 leading-relaxed bg-white border border-violet-100 rounded-md p-3 max-h-[220px] overflow-auto">
-                            {agentSuggestion}
-                          </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <Button size="sm" className="h-7 text-[11px]" onClick={() => { setReply(agentSuggestion); toast({ title: "Voorstel gebruikt", description: "Bewerk het antwoord en verstuur wanneer klaar." }); }}>
-                              Gebruik voorstel
-                            </Button>
-                            <Input
-                              value={agentHint}
-                              onChange={(e) => setAgentHint(e.target.value)}
-                              placeholder="Bijstelling (bv. 'kort houden, uitnodigen voor bezichtiging')"
-                              className="h-7 text-[11px] flex-1 min-w-[220px]"
-                            />
-                            <Button size="sm" variant="outline" className="h-7 text-[11px]" disabled={agentLoading} onClick={() => fetchSuggestion(agentHint)}>
-                              <RefreshCw className="h-3 w-3 mr-1" /> Herschrijf
-                            </Button>
-                          </div>
-                        </>
+                    >
+                      {agentLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" /> : <Sparkles className="h-3.5 w-3.5 shrink-0" />}
+                      <span className="font-medium truncate">
+                        {agentLoading ? "Agent denkt na…" : agentSuggestion ? "AI-concept klaar" : "Vraag de agent om een voorstel"}
+                      </span>
+                      {agentDecision && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-white border border-violet-200 text-violet-700 shrink-0">
+                          {agentDecision.replace(/_/g, " ")}
+                        </span>
                       )}
-                    </div>
+                      <span className="ml-auto text-[11px] font-semibold underline decoration-dotted shrink-0">
+                        {agentSuggestion ? "Bekijken" : "Openen"}
+                      </span>
+                    </button>
                     <Textarea
+                      ref={replyRef}
                       value={reply}
                       onChange={(e) => setReply(e.target.value)}
                       placeholder="Schrijf een antwoord aan de klant…"
-                      className="min-h-[90px] text-[13px] resize-none border-slate-200"
+                      className="min-h-[90px] max-h-[40vh] text-[13px] resize-none border-slate-200 overflow-y-auto"
                     />
                     <div className="flex items-center justify-between mt-2">
                       <div className="text-[11px] text-slate-400">
