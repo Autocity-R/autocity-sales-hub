@@ -334,11 +334,10 @@ const VehicleLine: React.FC<{
     onClick={(e) => { e.stopPropagation(); onClick?.(); }}
     className="w-full text-left group flex items-center gap-3 py-2.5 px-4 hover:bg-slate-50 transition-colors border-t border-slate-100 first:border-t-0"
   >
-    <AsVehicleThumb src={photo} className="h-11 w-16" />
+    {license ? <AsLicensePlate value={license} size="sm" /> : null}
     <div className="min-w-0 flex-1">
       <div className="text-[13px] font-semibold text-slate-900 truncate">{title}</div>
       <div className="text-[12px] text-slate-500 truncate flex items-center gap-2">
-        {license && <AsMono className="text-slate-700">{license}</AsMono>}
         {vin && <AsMono>· {vin.slice(-8)}</AsMono>}
       </div>
       {meta && <div className="text-[12px] text-slate-600 mt-0.5 truncate">{meta}</div>}
