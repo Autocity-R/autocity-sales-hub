@@ -36,6 +36,8 @@ interface DetailsTabProps {
   handleDamageChange: (field: keyof Vehicle["damage"], value: any) => void;
   readOnly?: boolean;
   showPrices?: boolean;
+  /** Alléén de BPM-vinkjes blijven bewerkbaar (aftersales), ook in read-only modus. */
+  canEditBpm?: boolean;
 }
 
 export const DetailsTab: React.FC<DetailsTabProps> = ({
@@ -43,7 +45,8 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
   handleChange,
   handleDamageChange,
   readOnly = false,
-  showPrices = true
+  showPrices = true,
+  canEditBpm = false
 }) => {
   const { data: salespeople, isLoading: salesLoading } = useSalespeople();
   
