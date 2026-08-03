@@ -173,6 +173,7 @@ const GarantieInbox: React.FC = () => {
     }
     setAgentDecision(concept?.sara_beslissing || "");
     setAgentAnalysis(concept?.sara_analyse || "");
+    setAgentPanelOpen(false);
     setExpandedQuoted({});
     const { data: chats } = await (supabase as any)
       .from("garantie_agent_chats")
