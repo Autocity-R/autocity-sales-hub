@@ -128,6 +128,12 @@ describe("administratie (plat, alleen-lezen menu)", () => {
 });
 
 describe("vakman-rollen houden hun eigen scherm", () => {
+  it("krijgt geen transport-toegang", () => {
+    for (const role of ["poetser", "schadeherstel", "uitdeuker_extern", "monteur"]) {
+      expect(featureAccess.transport(role)).toBe(false);
+    }
+  });
+
   const cases: [string, string][] = [
     ["poetser", "/werkplaats/poetsen"],
     ["schadeherstel", "/werkplaats/schadeherstel"],
