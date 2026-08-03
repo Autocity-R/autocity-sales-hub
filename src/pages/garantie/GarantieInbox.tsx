@@ -599,44 +599,30 @@ const GarantieInbox: React.FC = () => {
                 </div>
               </div>
 
-              {/* Overlegchat met de Garantie Agent */}
-              <div className="flex flex-col flex-1 min-h-[260px] rounded-lg border border-violet-100 bg-gradient-to-br from-violet-50/60 to-white overflow-hidden">
-                <div className="px-3 py-2 border-b border-violet-100 text-[11px] font-semibold text-violet-700 uppercase tracking-wide flex items-center gap-1.5">
+              {/* Overleg met agent — compacte ingang naar de slide-over */}
+              <button
+                type="button"
+                disabled={!selectedThread}
+                onClick={() => { setAgentTab("overleg"); setAgentPanelOpen(true); setChatUnread(0); }}
+                className="w-full text-left rounded-lg border border-violet-100 bg-gradient-to-br from-violet-50/70 to-white p-3 hover:border-violet-300 transition-colors disabled:opacity-60"
+              >
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-700 uppercase tracking-wide">
                   <Sparkles className="h-3.5 w-3.5" /> Overleg met agent
-                </div>
-                <div className="flex-1 overflow-y-auto p-3 space-y-2 text-[12px]">
-                  {selectedThread ? (
-                    agentChat.length === 0 ? (
-                      <div className="text-slate-400 italic text-[12px]">Nog geen overleg — stel hieronder een vraag over deze casus.</div>
-                    ) : (
-                      agentChat.map((m, i) => (
-                        <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
-                          <div className={cn("max-w-[92%] rounded-lg px-2.5 py-1.5 whitespace-pre-wrap break-words leading-relaxed",
-                            m.role === "user" ? "bg-slate-900 text-white" : "bg-white border border-violet-100 text-slate-800")}>
-                            {m.content}
-                          </div>
-                        </div>
-                      ))
-                    )
-                  ) : (
-                    <div className="text-slate-400 italic text-[12px]">Kies een thread.</div>
+                  {chatUnread > 0 && (
+                    <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-violet-600 text-white text-[10px] font-bold">{chatUnread}</span>
                   )}
-                  {agentAsking && <div className="text-[11px] text-violet-500 inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Agent denkt na…</div>}
                 </div>
-                <div className="border-t border-violet-100 p-2 bg-white/60 flex gap-1.5">
-                  <Input
-                    value={agentQuestion}
-                    onChange={(e) => setAgentQuestion(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askAgent(); } }}
-                    placeholder="Vraag de agent…"
-                    className="h-8 text-[12px]"
-                    disabled={!selectedThread || agentAsking}
-                  />
-                  <Button size="sm" className="h-8" disabled={!selectedThread || !agentQuestion.trim() || agentAsking} onClick={askAgent}>
-                    <Send className="h-3.5 w-3.5" />
-                  </Button>
+                <div className="mt-1 text-[12px] text-slate-600">
+                  {agentChat.length > 0 ? (
+                    <>
+                      <span className="text-slate-400">{agentChat.length} bericht{agentChat.length === 1 ? "" : "en"} · </span>
+                      <span className="line-clamp-2">{agentChat[agentChat.length - 1].content}</span>
+                    </>
+                  ) : (
+                    <span className="italic text-slate-400">Nog geen overleg — stel een vraag over deze casus.</span>
+                  )}
                 </div>
-              </div>
+              </button>
               </div>
             </div>
           </div>
