@@ -91,7 +91,24 @@ const GarantieInbox: React.FC = () => {
   const [agentDecision, setAgentDecision] = useState<string>("");
   const [agentAnalysis, setAgentAnalysis] = useState<string>("");
   const [agentPanelOpen, setAgentPanelOpen] = useState(false);
+  const [agentTab, setAgentTab] = useState<"voorstel" | "overleg">("voorstel");
+  const [chatUnread, setChatUnread] = useState(0);
   const replyRef = useRef<HTMLTextAreaElement | null>(null);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const agentViewRef = useRef({ open: false, tab: "voorstel" as "voorstel" | "overleg" });
+
+  useEffect(() => { agentViewRef.current = { open: agentPanelOpen, tab: agentTab }; }, [agentPanelOpen, agentTab]);
+
+  // Autoscroll overlegchat
+  useEffect(() => {
+    if (agentPanelOpen && agentTab === "overleg") {
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ block: "end" }), 60);
+    }
+  }, [agentChat, agentAsking, agentPanelOpen, agentTab]);
+
+  useEffect(() => {
+    if (agentPanelOpen && agentTab === "overleg") setChatUnread(0);
+  }, [agentPanelOpen, agentTab]);
 
   // Auto-resize antwoordveld (min 90px, max 40vh)
   useEffect(() => {
@@ -175,6 +192,8 @@ const GarantieInbox: React.FC = () => {
     setAgentAnalysis(concept?.sara_analyse || "");
     setAgentPanelOpen(false);
     setExpandedQuoted({});
+    setAgentTab("voorstel");
+    setChatUnread(0);
     const { data: chats } = await (supabase as any)
       .from("garantie_agent_chats")
       .select("role, content")
@@ -309,6 +328,8 @@ const GarantieInbox: React.FC = () => {
       if (error) throw error;
       const answer = ((data as any)?.answer || "").trim();
       setAgentChat((prev) => [...prev, { role: "assistant", content: answer }]);
+      const v = agentViewRef.current;
+      if (!(v.open && v.tab === "overleg")) setChatUnread((n) => n + 1);
     } catch (e: any) {
       toast({ title: "Agent-fout", description: e.message, variant: "destructive" });
       setAgentChat((prev) => prev.slice(0, -1));
@@ -489,7 +510,7 @@ const GarantieInbox: React.FC = () => {
                   <div className="border-t border-slate-100 p-3 bg-white">
                     <button
                       type="button"
-                      onClick={() => setAgentPanelOpen(true)}
+                      onClick={() => { setAgentTab("voorstel"); setAgentPanelOpen(true); }}
                       className={cn(
                         "w-full h-9 mb-2 px-3 rounded-md border flex items-center gap-2 text-[12px] transition",
                         agentSuggestion
@@ -578,44 +599,30 @@ const GarantieInbox: React.FC = () => {
                 </div>
               </div>
 
-              {/* Overlegchat met de Garantie Agent */}
-              <div className="flex flex-col flex-1 min-h-[260px] rounded-lg border border-violet-100 bg-gradient-to-br from-violet-50/60 to-white overflow-hidden">
-                <div className="px-3 py-2 border-b border-violet-100 text-[11px] font-semibold text-violet-700 uppercase tracking-wide flex items-center gap-1.5">
+              {/* Overleg met agent — compacte ingang naar de slide-over */}
+              <button
+                type="button"
+                disabled={!selectedThread}
+                onClick={() => { setAgentTab("overleg"); setAgentPanelOpen(true); setChatUnread(0); }}
+                className="w-full text-left rounded-lg border border-violet-100 bg-gradient-to-br from-violet-50/70 to-white p-3 hover:border-violet-300 transition-colors disabled:opacity-60"
+              >
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-700 uppercase tracking-wide">
                   <Sparkles className="h-3.5 w-3.5" /> Overleg met agent
-                </div>
-                <div className="flex-1 overflow-y-auto p-3 space-y-2 text-[12px]">
-                  {selectedThread ? (
-                    agentChat.length === 0 ? (
-                      <div className="text-slate-400 italic text-[12px]">Nog geen overleg — stel hieronder een vraag over deze casus.</div>
-                    ) : (
-                      agentChat.map((m, i) => (
-                        <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
-                          <div className={cn("max-w-[92%] rounded-lg px-2.5 py-1.5 whitespace-pre-wrap break-words leading-relaxed",
-                            m.role === "user" ? "bg-slate-900 text-white" : "bg-white border border-violet-100 text-slate-800")}>
-                            {m.content}
-                          </div>
-                        </div>
-                      ))
-                    )
-                  ) : (
-                    <div className="text-slate-400 italic text-[12px]">Kies een thread.</div>
+                  {chatUnread > 0 && (
+                    <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-violet-600 text-white text-[10px] font-bold">{chatUnread}</span>
                   )}
-                  {agentAsking && <div className="text-[11px] text-violet-500 inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Agent denkt na…</div>}
                 </div>
-                <div className="border-t border-violet-100 p-2 bg-white/60 flex gap-1.5">
-                  <Input
-                    value={agentQuestion}
-                    onChange={(e) => setAgentQuestion(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askAgent(); } }}
-                    placeholder="Vraag de agent…"
-                    className="h-8 text-[12px]"
-                    disabled={!selectedThread || agentAsking}
-                  />
-                  <Button size="sm" className="h-8" disabled={!selectedThread || !agentQuestion.trim() || agentAsking} onClick={askAgent}>
-                    <Send className="h-3.5 w-3.5" />
-                  </Button>
+                <div className="mt-1 text-[12px] text-slate-600">
+                  {agentChat.length > 0 ? (
+                    <>
+                      <span className="text-slate-400">{agentChat.length} bericht{agentChat.length === 1 ? "" : "en"} · </span>
+                      <span className="line-clamp-2">{agentChat[agentChat.length - 1].content}</span>
+                    </>
+                  ) : (
+                    <span className="italic text-slate-400">Nog geen overleg — stel een vraag over deze casus.</span>
+                  )}
                 </div>
-              </div>
+              </button>
               </div>
             </div>
           </div>
@@ -659,6 +666,28 @@ const GarantieInbox: React.FC = () => {
               </SheetDescription>
             </SheetHeader>
 
+            {/* Tabs */}
+            <div className="flex items-center gap-1 px-5 pt-3 pb-2 border-b border-slate-100">
+              {([["voorstel", "Voorstel"], ["overleg", "💬 Overleg"]] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setAgentTab(key)}
+                  className={cn(
+                    "px-3 h-8 rounded-md text-[12.5px] font-medium transition-colors",
+                    agentTab === key ? "bg-violet-100 text-violet-800" : "text-slate-500 hover:bg-slate-50"
+                  )}
+                >
+                  {label}
+                  {key === "overleg" && chatUnread > 0 && agentTab !== "overleg" && (
+                    <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-violet-600 text-white text-[10px] font-bold">{chatUnread}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {agentTab === "voorstel" ? (
+            <>
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               <section>
                 <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">📩 De klacht</div>
@@ -726,6 +755,48 @@ const GarantieInbox: React.FC = () => {
                 </Button>
               )}
             </div>
+            </>
+            ) : (
+            <>
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+              {!selectedThread ? (
+                <div className="text-[13px] italic text-slate-400">Kies een thread.</div>
+              ) : agentChat.length === 0 ? (
+                <div className="text-[13px] italic text-slate-400">Stel een vraag over deze casus, bijv. "valt dit onder BOVAG-garantie?"</div>
+              ) : (
+                agentChat.map((m, i) => (
+                  <div key={`chat-${i}`} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+                    <div className={cn(
+                      "max-w-[88%] rounded-xl px-3.5 py-2.5 text-[13px] leading-[1.65] whitespace-pre-wrap break-words",
+                      m.role === "user" ? "bg-slate-900 text-white" : "bg-white border border-violet-100 text-slate-800 shadow-sm"
+                    )}>
+                      {m.content}
+                    </div>
+                  </div>
+                ))
+              )}
+              {agentAsking && (
+                <div className="text-[12px] text-violet-600 inline-flex items-center gap-1.5">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Agent denkt na…
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+            <div className="border-t border-slate-100 p-3 bg-white flex gap-2">
+              <Input
+                value={agentQuestion}
+                onChange={(e) => setAgentQuestion(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askAgent(); } }}
+                placeholder="Vraag de agent…"
+                className="h-9 text-[13px]"
+                disabled={!selectedThread || agentAsking}
+              />
+              <Button className="h-9 shrink-0" disabled={!selectedThread || !agentQuestion.trim() || agentAsking} onClick={askAgent}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+            </>
+            )}
           </SheetContent>
         </Sheet>
 
