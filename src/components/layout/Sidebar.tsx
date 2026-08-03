@@ -727,6 +727,8 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
             { url: "/inventory", label: "Voorraad", icon: CarIcon, exact: true },
             { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
             { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
+            // Aftersales doet de inname bij aankomst en meldt auto's dus zelf binnen.
+            { url: "/transport", label: "Transport", icon: TruckIcon },
           ],
     },
     {

@@ -128,6 +128,12 @@ describe("administratie (plat, alleen-lezen menu)", () => {
 });
 
 describe("vakman-rollen houden hun eigen scherm", () => {
+  it("krijgt geen transport-toegang", () => {
+    for (const role of ["poetser", "schadeherstel", "uitdeuker_extern", "monteur"]) {
+      expect(featureAccess.transport(role)).toBe(false);
+    }
+  });
+
   const cases: [string, string][] = [
     ["poetser", "/werkplaats/poetsen"],
     ["schadeherstel", "/werkplaats/schadeherstel"],
@@ -148,6 +154,32 @@ describe("werkplaats_chef", () => {
       allowed: false, redirectTo: "/werkplaats",
     });
     expect(featureAccess.rapportages("werkplaats_chef")).toBe(false);
+  });
+});
+
+describe("transport: binnenmelden bij aankomst", () => {
+  it("aftersales_manager mag transport (menu + route)", () => {
+    expect(featureAccess.transport("aftersales_manager")).toBe(true);
+    expect(canAccessRoute("aftersales_manager", "/transport")).toEqual({ allowed: true });
+    expect(routeExists("/transport")).toBe(true);
+  });
+
+  it("bestaande rollen behouden transport", () => {
+    for (const role of ["owner", "admin", "manager", "verkoper", "operationeel", "user"]) {
+      expect(featureAccess.transport(role)).toBe(true);
+    }
+  });
+
+  it("administratie, directie en werkplaats_chef krijgen geen transport", () => {
+    for (const role of ["administratie", "operationeel_directeur", "werkplaats_chef"]) {
+      expect(featureAccess.transport(role)).toBe(false);
+    }
+    expect(canAccessRoute("administratie", "/transport")).toEqual({
+      allowed: false, redirectTo: "/inventory",
+    });
+    expect(canAccessRoute("operationeel_directeur", "/transport")).toEqual({
+      allowed: false, redirectTo: "/directie",
+    });
   });
 });
 

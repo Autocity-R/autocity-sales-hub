@@ -97,6 +97,15 @@ export const useRoleAccess = () => {
 
   const hasTaxatieAccess = () => isAdmin || featureAccess.taxatie(userRole);
 
+  // Transport-overzicht + binnenmelden (aangekomen)
+  const hasTransportAccess = () => isAdmin || featureAccess.transport(userRole);
+
+  // Alléén de BPM-vinkjes mogen door aftersales worden afgevinkt (geen bredere
+  // voertuig-bewerkrechten: prijzen, status en verwijderen blijven ongewijzigd).
+  const canEditBpmFlags = () =>
+    isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
+    userRole === 'aftersales_manager';
+
   const canAssignTasks = () => {
     // Aftersales manager MAG taken toewijzen
     return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
@@ -159,6 +168,8 @@ export const useRoleAccess = () => {
     hasPriceAccess,
     hasTaskManagementAccess,
     hasTaxatieAccess,
+    hasTransportAccess,
+    canEditBpmFlags,
     canAssignTasks,
     isOperationalUser,
     hasCEOAccess,

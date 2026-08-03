@@ -36,6 +36,8 @@ interface DetailsTabProps {
   handleDamageChange: (field: keyof Vehicle["damage"], value: any) => void;
   readOnly?: boolean;
   showPrices?: boolean;
+  /** Alléén de BPM-vinkjes blijven bewerkbaar (aftersales), ook in read-only modus. */
+  canEditBpm?: boolean;
 }
 
 export const DetailsTab: React.FC<DetailsTabProps> = ({
@@ -43,7 +45,8 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
   handleChange,
   handleDamageChange,
   readOnly = false,
-  showPrices = true
+  showPrices = true,
+  canEditBpm = false
 }) => {
   const { data: salespeople, isLoading: salesLoading } = useSalespeople();
   
@@ -816,7 +819,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               onCheckedChange={(checked) => 
                 handleChange('bpmRequested', Boolean(checked))
               }
-              disabled={readOnly}
+              disabled={readOnly && !canEditBpm}
             />
             <Label htmlFor="bpmRequested" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
               BPM Huys aangemeld
@@ -849,7 +852,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
                   handleChange('bpmReportSentDate', new Date());
                 }
               }}
-              disabled={readOnly}
+              disabled={readOnly && !canEditBpm}
             />
             <Label htmlFor="bpmReportSent" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
               BPM Rapport opgestuurd
@@ -866,7 +869,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
                       "w-full justify-start text-left font-normal",
                       !editedVehicle.bpmReportSentDate && "text-muted-foreground"
                     )}
-                    disabled={readOnly}
+                    disabled={readOnly && !canEditBpm}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {editedVehicle.bpmReportSentDate ? format(editedVehicle.bpmReportSentDate, "PPP", { locale: nl }) : <span>Selecteer datum</span>}
