@@ -97,6 +97,26 @@ export const WerkplaatsTarieven: React.FC = () => {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">Marge op onderdelen</CardTitle>
+          <CardDescription>Standaard verkoopmarge op de inkoopprijs bij het doorbelasten van onderdelen.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="marge-pct">Standaard marge op onderdelen (%)</Label>
+            <Input
+              id="marge-pct" type="number" step="1" min="0" max="500" disabled={!mayEdit}
+              value={t.onderdelen_marge_pct}
+              onChange={(e) => setT({ ...t, onderdelen_marge_pct: Number(e.target.value) })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Voorbeeld: inkoop {eur(100)} → verkoopprijs {eur(100 * (1 + (Number(t.onderdelen_marge_pct) || 0) / 100))} (ex btw)
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Milieu-/afvoerkosten</CardTitle>
           <CardDescription>Vast bedrag per factuur, exclusief btw.</CardDescription>
         </CardHeader>
