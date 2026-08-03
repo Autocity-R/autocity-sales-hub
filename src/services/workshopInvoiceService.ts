@@ -487,6 +487,10 @@ export const saveManualInvoice = async (
     .single();
   if (error) throw error;
 
+  if (input.parts_order_ids?.length) {
+    await markPartsCharged(data.id, input.parts_order_ids);
+  }
+
   return { id: data.id, invoiceNumber, pdfPath, total };
 };
 
