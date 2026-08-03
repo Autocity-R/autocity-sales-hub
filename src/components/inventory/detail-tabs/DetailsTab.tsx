@@ -869,7 +869,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
                       "w-full justify-start text-left font-normal",
                       !editedVehicle.bpmReportSentDate && "text-muted-foreground"
                     )}
-                    disabled={readOnly}
+                    disabled={readOnly && !canEditBpm}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {editedVehicle.bpmReportSentDate ? format(editedVehicle.bpmReportSentDate, "PPP", { locale: nl }) : <span>Selecteer datum</span>}
