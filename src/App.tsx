@@ -94,7 +94,9 @@ function App() {
           } />
         <Route path="/transport" element={
           <ProtectedRoute>
-            <Transport />
+            <RoleProtectedRoute requiredAccess="transport">
+              <Transport />
+            </RoleProtectedRoute>
           </ProtectedRoute>
         } />
         <Route path="/inventory" element={
