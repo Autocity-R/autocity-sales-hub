@@ -159,7 +159,6 @@ export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, preset
               </div>
             </div>
           ) : (
-          {/* Vehicle */}
           <div>
             <Label className="text-[12px] font-semibold text-slate-700">Auto koppelen</Label>
             {vehicle ? (
