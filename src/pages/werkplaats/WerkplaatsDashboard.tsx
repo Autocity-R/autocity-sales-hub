@@ -14,7 +14,7 @@ import {
 import { differenceInHours, differenceInDays, format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { AsPage, AsCard, AsPill, AsDot, AsVehicleThumb, AsMono, AsCardHead, AsCardFoot, fmtWait, useLiveTimer } from "@/components/aftersales/ui";
+import { AsPage, AsCard, AsPill, AsDot, AsLicensePlate, AsMono, AsCardHead, AsCardFoot, fmtWait, useLiveTimer } from "@/components/aftersales/ui";
 
 interface WaitingThread {
   id: string;
@@ -555,7 +555,6 @@ const WerkplaatsDashboard: React.FC = () => {
                 <div className="px-4 py-3 border-t border-slate-100 bg-violet-50/40">
                   <div className="text-[11px] uppercase tracking-wide text-violet-700 font-semibold mb-1">Nu bezig</div>
                   <div className="flex items-center gap-3">
-                    <AsVehicleThumb src={data.wpBezig[0].photo} className="h-10 w-14" />
                     <div className="min-w-0 flex-1">
                       <div className="text-[13px] font-semibold truncate">{data.wpBezig[0].vehicle}</div>
                       <div className="text-[12px] text-slate-500 truncate">{data.wpBezig[0].assignee || "—"} · {data.wpBezig[0].description}</div>
@@ -584,7 +583,6 @@ const WerkplaatsDashboard: React.FC = () => {
                 <div className="px-4 py-3 border-t border-slate-100 bg-violet-50/40">
                   <div className="text-[11px] uppercase tracking-wide text-violet-700 font-semibold mb-1">Nu bezig</div>
                   <div className="flex items-center gap-3">
-                    <AsVehicleThumb src={data.spuitBezig[0].photo} className="h-10 w-14" />
                     <div className="min-w-0 flex-1">
                       <div className="text-[13px] font-semibold truncate">{data.spuitBezig[0].vehicle}</div>
                       <div className="text-[12px] text-slate-500 truncate">{data.spuitBezig[0].assignee || "—"} · {data.spuitBezig[0].description}</div>
