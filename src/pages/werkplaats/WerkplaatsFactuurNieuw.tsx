@@ -668,6 +668,7 @@ const WerkplaatsFactuurNieuw: React.FC = () => {
 
               <InvoicePartsPanel
                 vehicleId={vehicleId}
+                licensePlate={vehicle.license_number}
                 margePct={tarieven.onderdelen_marge_pct}
                 usedIds={usedPartIds}
                 onAdd={addFromParts}

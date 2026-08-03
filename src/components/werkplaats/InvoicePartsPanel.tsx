@@ -12,6 +12,10 @@ export interface PartOrderRow {
   aantal: number | null;
   inkoopprijs_per_stuk: number | null;
   leverancier: string | null;
+  vehicle_id?: string | null;
+  manual_brand?: string | null;
+  manual_model?: string | null;
+  manual_license?: string | null;
 }
 
 export interface PartAddPayload {
@@ -24,39 +28,57 @@ export interface PartAddPayload {
 
 interface Props {
   vehicleId: string | null;
+  /** kenteken uit de factuur (ook bij handmatige auto) — matcht op manual_license */
+  licensePlate?: string | null;
   margePct: number;
   /** ids die al als factuurregel in dit concept staan */
   usedIds: string[];
   onAdd: (p: PartAddPayload) => void;
 }
 
+const plateKey = (v?: string | null) => (v || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
 /**
  * "Bestelde onderdelen voor deze auto" — intern hulpblok in de factuurmaker.
  * Inkoopprijzen en marges zijn uitsluitend hier zichtbaar, nooit op de klant-PDF.
  */
-const InvoicePartsPanel: React.FC<Props> = ({ vehicleId, margePct, usedIds, onAdd }) => {
+const InvoicePartsPanel: React.FC<Props> = ({ vehicleId, licensePlate, margePct, usedIds, onAdd }) => {
   const [rows, setRows] = useState<PartOrderRow[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const plate = plateKey(licensePlate);
+
   useEffect(() => {
-    if (!vehicleId) { setRows([]); return; }
+    if (!vehicleId && plate.length < 4) { setRows([]); return; }
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const { data } = await (supabase as any)
+      const base = () => (supabase as any)
         .from("parts_orders")
-        .select("id, part_name, note, status, aantal, inkoopprijs_per_stuk, leverancier")
-        .eq("vehicle_id", vehicleId)
+        .select("id, part_name, note, status, aantal, inkoopprijs_per_stuk, leverancier, vehicle_id, manual_brand, manual_model, manual_license")
         .is("doorbelast_invoice_id", null)
         .order("created_at", { ascending: false });
+
+      const collected: PartOrderRow[] = [];
+      if (vehicleId) {
+        const { data } = await base().eq("vehicle_id", vehicleId);
+        collected.push(...((data as PartOrderRow[]) || []));
+      }
+      if (plate.length >= 4) {
+        const { data } = await base().is("vehicle_id", null).not("manual_license", "is", null);
+        const manual = ((data as PartOrderRow[]) || []).filter((r) => plateKey(r.manual_license) === plate);
+        collected.push(...manual);
+      }
+      const seen = new Set<string>();
+      const unique = collected.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
       if (cancelled) return;
-      setRows((data as PartOrderRow[]) || []);
+      setRows(unique);
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [vehicleId]);
+  }, [vehicleId, plate]);
 
-  if (!vehicleId) return null;
+  if (!vehicleId && plate.length < 4) return null;
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3.5">
@@ -89,6 +111,7 @@ const InvoicePartsPanel: React.FC<Props> = ({ vehicleId, margePct, usedIds, onAd
                     {r.part_name} <span className="text-slate-500 font-medium">× {qty}</span>
                   </div>
                   <div className="text-[11px] text-slate-500">
+                    {!r.vehicle_id && r.manual_license ? `extern ${r.manual_license} · ` : ""}
                     {r.leverancier ? `${r.leverancier} · ` : ""}
                     {inkoop == null
                       ? "inkoopprijs onbekend"

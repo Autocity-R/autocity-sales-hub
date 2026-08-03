@@ -34,6 +34,10 @@ const SUGGESTIONS = [
 
 export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, presetVehicle, onCreated }) => {
   const [vehicle, setVehicle] = useState<PartOrderVehicle | null>(presetVehicle ?? null);
+  const [mode, setMode] = useState<"systeem" | "extern">("systeem");
+  const [mBrand, setMBrand] = useState("");
+  const [mModel, setMModel] = useState("");
+  const [mLicense, setMLicense] = useState("");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PartOrderVehicle[]>([]);
   const [searching, setSearching] = useState(false);
@@ -49,6 +53,10 @@ export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, preset
   useEffect(() => {
     if (open) {
       setVehicle(presetVehicle ?? null);
+      setMode("systeem");
+      setMBrand("");
+      setMModel("");
+      setMLicense("");
       setQuery("");
       setResults([]);
       setPartName("");
@@ -78,21 +86,28 @@ export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, preset
     return () => { if (debounceRef.current) window.clearTimeout(debounceRef.current); };
   }, [query, vehicle]);
 
-  const canSave = useMemo(() => !!vehicle && partName.trim().length > 0 && !saving, [vehicle, partName, saving]);
+  const canSave = useMemo(() => {
+    if (saving || partName.trim().length === 0) return false;
+    if (mode === "systeem") return !!vehicle;
+    return mBrand.trim().length > 0 && mModel.trim().length > 0;
+  }, [vehicle, partName, saving, mode, mBrand, mModel]);
 
   const submit = async () => {
-    if (!vehicle || !partName.trim()) return;
+    if (!canSave) return;
     setSaving(true);
     const { data: userRes } = await supabase.auth.getUser();
-    const { error } = await supabase.from("parts_orders").insert({
-      vehicle_id: vehicle.id,
+    const { error } = await (supabase as any).from("parts_orders").insert({
+      vehicle_id: mode === "systeem" ? vehicle!.id : null,
+      manual_brand: mode === "extern" ? mBrand.trim() : null,
+      manual_model: mode === "extern" ? mModel.trim() : null,
+      manual_license: mode === "extern" ? (mLicense.trim().toUpperCase() || null) : null,
       part_name: partName.trim(),
       note: note.trim() || null,
       status: "te_bestellen",
       aantal: Math.max(1, Number(aantal) || 1),
       inkoopprijs_per_stuk: inkoop.trim() === "" ? null : Number(inkoop.replace(",", ".")) || 0,
       leverancier: leverancier.trim() || null,
-      branch: vehicle.branch || "rotterdam",
+      branch: (mode === "systeem" ? vehicle?.branch : null) || "rotterdam",
       created_by: userRes.user?.id ?? null,
     });
     setSaving(false);
@@ -110,7 +125,40 @@ export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, preset
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Vehicle */}
+          {/* Mode switch */}
+          {!presetVehicle && (
+            <div className="flex gap-1.5">
+              {([
+                { k: "systeem", label: "Auto uit het systeem" },
+                { k: "extern", label: "Extern / handmatig" },
+              ] as const).map((t) => (
+                <button
+                  key={t.k}
+                  type="button"
+                  onClick={() => setMode(t.k)}
+                  className={cn(
+                    "text-[12px] px-3 py-1.5 rounded-lg border transition-colors",
+                    mode === t.k
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50",
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {mode === "extern" && !presetVehicle ? (
+            <div>
+              <Label className="text-[12px] font-semibold text-slate-700">Voertuig (handmatig)</Label>
+              <div className="mt-1.5 grid grid-cols-3 gap-2">
+                <Input value={mBrand} onChange={(e) => setMBrand(e.target.value)} placeholder="Merk" />
+                <Input value={mModel} onChange={(e) => setMModel(e.target.value)} placeholder="Model" />
+                <Input value={mLicense} onChange={(e) => setMLicense(e.target.value)} placeholder="Kenteken (optioneel)" />
+              </div>
+            </div>
+          ) : (
           <div>
             <Label className="text-[12px] font-semibold text-slate-700">Auto koppelen</Label>
             {vehicle ? (
@@ -172,6 +220,7 @@ export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, preset
               </div>
             )}
           </div>
+          )}
 
           {/* Part */}
           <div>

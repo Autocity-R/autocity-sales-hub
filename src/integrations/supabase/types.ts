@@ -3673,11 +3673,14 @@ export type Database = {
           id: string
           inkoopprijs_per_stuk: number | null
           leverancier: string | null
+          manual_brand: string | null
+          manual_license: string | null
+          manual_model: string | null
           note: string | null
           ordered_at: string | null
           part_name: string
           status: string
-          vehicle_id: string
+          vehicle_id: string | null
           work_order_id: string | null
         }
         Insert: {
@@ -3690,11 +3693,14 @@ export type Database = {
           id?: string
           inkoopprijs_per_stuk?: number | null
           leverancier?: string | null
+          manual_brand?: string | null
+          manual_license?: string | null
+          manual_model?: string | null
           note?: string | null
           ordered_at?: string | null
           part_name: string
           status?: string
-          vehicle_id: string
+          vehicle_id?: string | null
           work_order_id?: string | null
         }
         Update: {
@@ -3707,11 +3713,14 @@ export type Database = {
           id?: string
           inkoopprijs_per_stuk?: number | null
           leverancier?: string | null
+          manual_brand?: string | null
+          manual_license?: string | null
+          manual_model?: string | null
           note?: string | null
           ordered_at?: string | null
           part_name?: string
           status?: string
-          vehicle_id?: string
+          vehicle_id?: string | null
           work_order_id?: string | null
         }
         Relationships: [
