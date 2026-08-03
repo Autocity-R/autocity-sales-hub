@@ -14,7 +14,7 @@ import {
 import { differenceInHours, differenceInDays, format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { AsPage, AsCard, AsPill, AsDot, AsVehicleThumb, AsMono, AsCardHead, AsCardFoot, fmtWait, useLiveTimer } from "@/components/aftersales/ui";
+import { AsPage, AsCard, AsPill, AsDot, AsLicensePlate, AsMono, AsCardHead, AsCardFoot, fmtWait, useLiveTimer } from "@/components/aftersales/ui";
 
 interface WaitingThread {
   id: string;
@@ -334,11 +334,10 @@ const VehicleLine: React.FC<{
     onClick={(e) => { e.stopPropagation(); onClick?.(); }}
     className="w-full text-left group flex items-center gap-3 py-2.5 px-4 hover:bg-slate-50 transition-colors border-t border-slate-100 first:border-t-0"
   >
-    <AsVehicleThumb src={photo} className="h-11 w-16" />
+    {license ? <AsLicensePlate value={license} size="sm" /> : null}
     <div className="min-w-0 flex-1">
       <div className="text-[13px] font-semibold text-slate-900 truncate">{title}</div>
       <div className="text-[12px] text-slate-500 truncate flex items-center gap-2">
-        {license && <AsMono className="text-slate-700">{license}</AsMono>}
         {vin && <AsMono>· {vin.slice(-8)}</AsMono>}
       </div>
       {meta && <div className="text-[12px] text-slate-600 mt-0.5 truncate">{meta}</div>}
@@ -556,7 +555,7 @@ const WerkplaatsDashboard: React.FC = () => {
                 <div className="px-4 py-3 border-t border-slate-100 bg-violet-50/40">
                   <div className="text-[11px] uppercase tracking-wide text-violet-700 font-semibold mb-1">Nu bezig</div>
                   <div className="flex items-center gap-3">
-                    <AsVehicleThumb src={data.wpBezig[0].photo} className="h-10 w-14" />
+                    <AsLicensePlate value={data.wpBezig[0].license} size="sm" />
                     <div className="min-w-0 flex-1">
                       <div className="text-[13px] font-semibold truncate">{data.wpBezig[0].vehicle}</div>
                       <div className="text-[12px] text-slate-500 truncate">{data.wpBezig[0].assignee || "—"} · {data.wpBezig[0].description}</div>
@@ -585,7 +584,7 @@ const WerkplaatsDashboard: React.FC = () => {
                 <div className="px-4 py-3 border-t border-slate-100 bg-violet-50/40">
                   <div className="text-[11px] uppercase tracking-wide text-violet-700 font-semibold mb-1">Nu bezig</div>
                   <div className="flex items-center gap-3">
-                    <AsVehicleThumb src={data.spuitBezig[0].photo} className="h-10 w-14" />
+                    <AsLicensePlate value={data.spuitBezig[0].license} size="sm" />
                     <div className="min-w-0 flex-1">
                       <div className="text-[13px] font-semibold truncate">{data.spuitBezig[0].vehicle}</div>
                       <div className="text-[12px] text-slate-500 truncate">{data.spuitBezig[0].assignee || "—"} · {data.spuitBezig[0].description}</div>
