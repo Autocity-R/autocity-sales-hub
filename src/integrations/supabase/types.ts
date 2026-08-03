@@ -4686,6 +4686,13 @@ export type Database = {
           description: string | null
           estimated_amount: number | null
           id: string
+          kosten_arbeid: number | null
+          kosten_ingevuld_door: string | null
+          kosten_ingevuld_op: string | null
+          kosten_notitie: string | null
+          kosten_onderdelen: number | null
+          kosten_totaal: number | null
+          kosten_uren: number | null
           loan_car_assigned: boolean | null
           loan_car_id: string | null
           manual_customer_name: string | null
@@ -4708,6 +4715,13 @@ export type Database = {
           description?: string | null
           estimated_amount?: number | null
           id?: string
+          kosten_arbeid?: number | null
+          kosten_ingevuld_door?: string | null
+          kosten_ingevuld_op?: string | null
+          kosten_notitie?: string | null
+          kosten_onderdelen?: number | null
+          kosten_totaal?: number | null
+          kosten_uren?: number | null
           loan_car_assigned?: boolean | null
           loan_car_id?: string | null
           manual_customer_name?: string | null
@@ -4730,6 +4744,13 @@ export type Database = {
           description?: string | null
           estimated_amount?: number | null
           id?: string
+          kosten_arbeid?: number | null
+          kosten_ingevuld_door?: string | null
+          kosten_ingevuld_op?: string | null
+          kosten_notitie?: string | null
+          kosten_onderdelen?: number | null
+          kosten_totaal?: number | null
+          kosten_uren?: number | null
           loan_car_assigned?: boolean | null
           loan_car_id?: string | null
           manual_customer_name?: string | null
