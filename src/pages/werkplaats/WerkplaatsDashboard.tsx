@@ -555,6 +555,7 @@ const WerkplaatsDashboard: React.FC = () => {
                 <div className="px-4 py-3 border-t border-slate-100 bg-violet-50/40">
                   <div className="text-[11px] uppercase tracking-wide text-violet-700 font-semibold mb-1">Nu bezig</div>
                   <div className="flex items-center gap-3">
+                    <AsLicensePlate value={data.wpBezig[0].license} size="sm" />
                     <div className="min-w-0 flex-1">
                       <div className="text-[13px] font-semibold truncate">{data.wpBezig[0].vehicle}</div>
                       <div className="text-[12px] text-slate-500 truncate">{data.wpBezig[0].assignee || "—"} · {data.wpBezig[0].description}</div>
@@ -583,6 +584,7 @@ const WerkplaatsDashboard: React.FC = () => {
                 <div className="px-4 py-3 border-t border-slate-100 bg-violet-50/40">
                   <div className="text-[11px] uppercase tracking-wide text-violet-700 font-semibold mb-1">Nu bezig</div>
                   <div className="flex items-center gap-3">
+                    <AsLicensePlate value={data.spuitBezig[0].license} size="sm" />
                     <div className="min-w-0 flex-1">
                       <div className="text-[13px] font-semibold truncate">{data.spuitBezig[0].vehicle}</div>
                       <div className="text-[12px] text-slate-500 truncate">{data.spuitBezig[0].assignee || "—"} · {data.spuitBezig[0].description}</div>
