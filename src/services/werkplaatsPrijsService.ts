@@ -9,6 +9,8 @@ export interface WerkplaatsTarieven {
   klein_materiaal_pct: number;
   milieukosten_enabled: boolean;
   milieukosten_bedrag: number;
+  /** Standaard verkoopmarge op inkoopprijs van onderdelen (%) */
+  onderdelen_marge_pct: number;
 }
 
 export const DEFAULT_TARIEVEN: WerkplaatsTarieven = {
@@ -17,6 +19,7 @@ export const DEFAULT_TARIEVEN: WerkplaatsTarieven = {
   klein_materiaal_pct: 3,
   milieukosten_enabled: true,
   milieukosten_bedrag: 7.5,
+  onderdelen_marge_pct: 25,
 };
 
 export const VAT_RATE = 0.21;
@@ -37,6 +40,10 @@ export const fetchTarieven = async (): Promise<WerkplaatsTarieven> => {
     klein_materiaal_pct: Number(data.klein_materiaal_pct) || 0,
     milieukosten_enabled: !!data.milieukosten_enabled,
     milieukosten_bedrag: Number(data.milieukosten_bedrag) || 0,
+    onderdelen_marge_pct:
+      data.onderdelen_marge_pct === null || data.onderdelen_marge_pct === undefined
+        ? DEFAULT_TARIEVEN.onderdelen_marge_pct
+        : Number(data.onderdelen_marge_pct),
   };
 };
 
@@ -47,6 +54,7 @@ export const saveTarieven = async (t: WerkplaatsTarieven): Promise<void> => {
     klein_materiaal_pct: t.klein_materiaal_pct,
     milieukosten_enabled: t.milieukosten_enabled,
     milieukosten_bedrag: t.milieukosten_bedrag,
+    onderdelen_marge_pct: t.onderdelen_marge_pct,
   };
   if (t.id) {
     const { error } = await (supabase as any).from("werkplaats_tarieven").update(row).eq("id", t.id);
@@ -131,6 +139,10 @@ export const berekenArbeid = (uren: number, uurtarief: number, merkFactor: numbe
   round2((Number(uren) || 0) * (Number(uurtarief) || 0) * (Number(merkFactor) || 1));
 
 export const inclBtw = (exBtw: number): number => round2((Number(exBtw) || 0) * (1 + VAT_RATE));
+
+/** Voorgestelde verkoopprijs van een onderdeel: inkoop × (1 + marge%). */
+export const verkoopprijsUitInkoop = (inkoop: number, margePct: number): number =>
+  round2((Number(inkoop) || 0) * (1 + (Number(margePct) || 0) / 100));
 
 export const urenVoorNiveau = (r: Reparatie, niveau: Niveau): number =>
   niveau === "laag" ? Number(r.uren_laag) : niveau === "hoog" ? Number(r.uren_hoog) : Number(r.uren_standaard);
