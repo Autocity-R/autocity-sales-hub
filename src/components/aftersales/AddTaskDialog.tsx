@@ -751,7 +751,23 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
                   />
                 </div>
                 {meta.multiZone && (
-                  <p className="text-[11px] text-slate-400 mt-2 text-center">Klik meerdere zones aan — per zone wordt één taak aangemaakt.</p>
+                  <p className="text-[11px] text-slate-400 mt-2 text-center">
+                    Klik meerdere delen aan — alles komt in één totaalopdracht voor deze auto.
+                  </p>
+                )}
+                {zoneNames.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5 justify-center">
+                    {zoneNames.map((n, i) => (
+                      <button
+                        key={`${n}-${i}`}
+                        type="button"
+                        onClick={() => setZoneIds(prev => prev.filter(id => DAMAGE_ZONES.find(z => z.id === id)?.name !== n))}
+                        className="inline-flex items-center gap-1 rounded-md bg-slate-900 text-white font-semibold px-2.5 py-1 text-[12px]"
+                      >
+                        {n}<X className="h-3 w-3 opacity-70" />
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
