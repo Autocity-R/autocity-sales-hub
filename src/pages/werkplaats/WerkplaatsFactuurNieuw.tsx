@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import InvoicePricePanel, { PriceAddPayload } from "@/components/werkplaats/InvoicePricePanel";
+import InvoicePartsPanel, { PartAddPayload } from "@/components/werkplaats/InvoicePartsPanel";
 import {
   InvoiceLine, calcTotals, eur, getInvoiceSignedUrl, mailInvoiceTo,
   renderInvoiceHtml, saveManualInvoice,
@@ -41,6 +42,9 @@ export interface EditLine {
   /** onderdelen */
   qty?: number;
   unitPrice?: number;
+  /** intern: herkomst en inkoopprijs voor marge-inzicht (nooit op de PDF) */
+  partOrderId?: string;
+  inkoopPerStuk?: number | null;
   amount: number;
 }
 
@@ -178,6 +182,16 @@ export const LineRow: React.FC<LineRowProps> = ({ line, onPatch, onRemove, onDup
           }}
           className="w-[100px] h-8 text-[12px] text-right tabular-nums"
         />
+      </div>
+    )}
+
+    {line.kind === "onderdeel" && line.inkoopPerStuk != null && (
+      <div className="mt-1 pl-0.5 text-[11px] text-slate-500">
+        Intern: inkoop {eur(line.inkoopPerStuk)} p/st ·{" "}
+        marge {eur(round2(((line.unitPrice ?? 0) - line.inkoopPerStuk) * (line.qty ?? 1)))}
+        {line.inkoopPerStuk > 0 &&
+          ` (${Math.round((((line.unitPrice ?? 0) - line.inkoopPerStuk) / line.inkoopPerStuk) * 100)}%)`}
+        <span className="text-slate-400"> — niet zichtbaar voor de klant</span>
       </div>
     )}
   </div>
