@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { WarrantyScheduleAction } from "@/components/warranty/ScheduleWarrantyWorkOrder";
@@ -10,6 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Loader2, Search, Send, Sparkles, CheckCircle2, Phone, MapPin, StickyNote, Shield, Car, ChevronDown, Wand2, RefreshCw, Inbox, MessagesSquare, PanelRight } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -89,6 +90,17 @@ const GarantieInbox: React.FC = () => {
   const [agentPregenerated, setAgentPregenerated] = useState(false);
   const [agentDecision, setAgentDecision] = useState<string>("");
   const [agentAnalysis, setAgentAnalysis] = useState<string>("");
+  const [agentPanelOpen, setAgentPanelOpen] = useState(false);
+  const replyRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Auto-resize antwoordveld (min 90px, max 40vh)
+  useEffect(() => {
+    const el = replyRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const max = Math.round(window.innerHeight * 0.4);
+    el.style.height = `${Math.min(Math.max(el.scrollHeight, 90), max)}px`;
+  }, [reply, selectedId]);
 
   const senderName = useMemo(() => {
     const p = userProfile;
