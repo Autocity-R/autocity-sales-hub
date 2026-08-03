@@ -9,6 +9,7 @@ import { Check, PackageCheck, PackageOpen, Truck, Loader2, Plus, Trash2 } from "
 import { cn } from "@/lib/utils";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { AddPartOrderDialog } from "@/components/aftersales/AddPartOrderDialog";
+import { eur } from "@/services/werkplaatsPrijsService";
 
 type Status = "te_bestellen" | "besteld" | "binnen";
 
@@ -20,6 +21,10 @@ interface PartOrder {
   status: Status;
   ordered_at: string | null;
   arrived_at: string | null;
+  aantal: number | null;
+  inkoopprijs_per_stuk: number | null;
+  leverancier: string | null;
+  doorbelast_invoice_id: string | null;
   branch: string;
   created_at: string;
   vehicle?: {
@@ -34,6 +39,51 @@ const STATUS_META: Record<Status, { label: string; tone: any; icon: any }> = {
   binnen:       { label: "Binnen",       tone: "green", icon: PackageCheck },
 };
 
+/* Moduleniveau: voorkomt remount (en focusverlies) bij elke toetsaanslag. */
+const InkoopEditor: React.FC<{
+  order: PartOrder;
+  disabled?: boolean;
+  onSave: (id: string, patch: { aantal: number; inkoopprijs_per_stuk: number | null; leverancier: string | null }) => void;
+}> = ({ order, disabled, onSave }) => {
+  const [aantal, setAantal] = useState(String(order.aantal ?? 1));
+  const [inkoop, setInkoop] = useState(order.inkoopprijs_per_stuk == null ? "" : String(order.inkoopprijs_per_stuk));
+  const [lev, setLev] = useState(order.leverancier ?? "");
+
+  const commit = () => {
+    if (disabled) return;
+    const next = {
+      aantal: Math.max(1, Number(aantal) || 1),
+      inkoopprijs_per_stuk: inkoop.trim() === "" ? null : Number(inkoop.replace(",", ".")) || 0,
+      leverancier: lev.trim() || null,
+    };
+    const changed =
+      next.aantal !== (order.aantal ?? 1) ||
+      next.inkoopprijs_per_stuk !== (order.inkoopprijs_per_stuk == null ? null : Number(order.inkoopprijs_per_stuk)) ||
+      next.leverancier !== (order.leverancier ?? null);
+    if (changed) onSave(order.id, next);
+  };
+
+  return (
+    <div className="mt-2 grid grid-cols-3 gap-1.5">
+      <Input
+        type="number" min="1" step="1" value={aantal} disabled={disabled}
+        onChange={(e) => setAantal(e.target.value)} onBlur={commit}
+        className="h-8 text-[11.5px] text-right tabular-nums" placeholder="Aantal"
+      />
+      <Input
+        type="number" step="0.01" min="0" value={inkoop} disabled={disabled}
+        onChange={(e) => setInkoop(e.target.value)} onBlur={commit}
+        className="h-8 text-[11.5px] text-right tabular-nums" placeholder="Inkoop p/st"
+      />
+      <Input
+        value={lev} disabled={disabled}
+        onChange={(e) => setLev(e.target.value)} onBlur={commit}
+        className="h-8 text-[11.5px]" placeholder="Leverancier"
+      />
+    </div>
+  );
+};
+
 const WerkplaatsOnderdelen: React.FC = () => {
   const readOnly = useRoleAccess().isDirectieReadOnly();
   const [orders, setOrders] = useState<PartOrder[]>([]);
@@ -46,7 +96,7 @@ const WerkplaatsOnderdelen: React.FC = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("parts_orders")
-      .select("id, vehicle_id, part_name, note, status, ordered_at, arrived_at, branch, created_at, vehicle:vehicles!parts_orders_vehicle_id_fkey(id, brand, model, year, license_number, vin)")
+      .select("id, vehicle_id, part_name, note, status, ordered_at, arrived_at, aantal, inkoopprijs_per_stuk, leverancier, doorbelast_invoice_id, branch, created_at, vehicle:vehicles!parts_orders_vehicle_id_fkey(id, brand, model, year, license_number, vin)")
       .order("created_at", { ascending: false });
     if (error) toast({ title: "Fout bij laden", description: error.message, variant: "destructive" });
     setOrders((data as any) || []);
@@ -68,12 +118,22 @@ const WerkplaatsOnderdelen: React.FC = () => {
   };
 
   const removeOrder = async (id: string) => {
+    if (readOnly) return;
     if (!window.confirm("Onderdeel-bestelling verwijderen?")) return;
     setBusy(id);
     const { error } = await supabase.from("parts_orders").delete().eq("id", id);
     setBusy(null);
     if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
     load();
+  };
+
+  const saveInkoop = async (
+    id: string,
+    patch: { aantal: number; inkoopprijs_per_stuk: number | null; leverancier: string | null },
+  ) => {
+    const { error } = await (supabase as any).from("parts_orders").update(patch).eq("id", id);
+    if (error) { toast({ title: "Opslaan mislukt", description: error.message, variant: "destructive" }); return; }
+    setOrders((os) => os.map((o) => (o.id === id ? { ...o, ...patch } : o)));
   };
 
   const grouped = useMemo(() => {
@@ -109,8 +169,17 @@ const WerkplaatsOnderdelen: React.FC = () => {
             )}
             <div className="text-[13px] text-slate-900 mt-1.5">
               <span className="font-bold">{o.part_name}</span>
+              {(o.aantal ?? 1) > 1 && <span className="text-slate-500 font-medium"> × {o.aantal}</span>}
               {o.note && <span className="text-slate-500 font-normal"> — {o.note}</span>}
             </div>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
+              {o.inkoopprijs_per_stuk != null
+                ? <span>Inkoop {eur(Number(o.inkoopprijs_per_stuk))} p/st ex btw</span>
+                : <span className="text-slate-400">Inkoopprijs onbekend</span>}
+              {o.leverancier && <span>· {o.leverancier}</span>}
+              {o.doorbelast_invoice_id && <AsPill tone="green">Doorbelast</AsPill>}
+            </div>
+            <InkoopEditor order={o} disabled={readOnly} onSave={saveInkoop} />
           </div>
           {!readOnly && <Button size="icon" variant="ghost" onClick={() => removeOrder(o.id)} className="h-7 w-7 text-slate-400 hover:text-red-600">
             <Trash2 className="h-3.5 w-3.5" />
