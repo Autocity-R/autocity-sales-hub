@@ -666,6 +666,28 @@ const GarantieInbox: React.FC = () => {
               </SheetDescription>
             </SheetHeader>
 
+            {/* Tabs */}
+            <div className="flex items-center gap-1 px-5 pt-3 pb-2 border-b border-slate-100">
+              {([["voorstel", "Voorstel"], ["overleg", "💬 Overleg"]] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setAgentTab(key)}
+                  className={cn(
+                    "px-3 h-8 rounded-md text-[12.5px] font-medium transition-colors",
+                    agentTab === key ? "bg-violet-100 text-violet-800" : "text-slate-500 hover:bg-slate-50"
+                  )}
+                >
+                  {label}
+                  {key === "overleg" && chatUnread > 0 && agentTab !== "overleg" && (
+                    <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-violet-600 text-white text-[10px] font-bold">{chatUnread}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {agentTab === "voorstel" ? (
+            <>
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               <section>
                 <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">📩 De klacht</div>
@@ -733,6 +755,48 @@ const GarantieInbox: React.FC = () => {
                 </Button>
               )}
             </div>
+            </>
+            ) : (
+            <>
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+              {!selectedThread ? (
+                <div className="text-[13px] italic text-slate-400">Kies een thread.</div>
+              ) : agentChat.length === 0 ? (
+                <div className="text-[13px] italic text-slate-400">Stel een vraag over deze casus, bijv. "valt dit onder BOVAG-garantie?"</div>
+              ) : (
+                agentChat.map((m, i) => (
+                  <div key={`chat-${i}`} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+                    <div className={cn(
+                      "max-w-[88%] rounded-xl px-3.5 py-2.5 text-[13px] leading-[1.65] whitespace-pre-wrap break-words",
+                      m.role === "user" ? "bg-slate-900 text-white" : "bg-white border border-violet-100 text-slate-800 shadow-sm"
+                    )}>
+                      {m.content}
+                    </div>
+                  </div>
+                ))
+              )}
+              {agentAsking && (
+                <div className="text-[12px] text-violet-600 inline-flex items-center gap-1.5">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Agent denkt na…
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+            <div className="border-t border-slate-100 p-3 bg-white flex gap-2">
+              <Input
+                value={agentQuestion}
+                onChange={(e) => setAgentQuestion(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askAgent(); } }}
+                placeholder="Vraag de agent…"
+                className="h-9 text-[13px]"
+                disabled={!selectedThread || agentAsking}
+              />
+              <Button className="h-9 shrink-0" disabled={!selectedThread || !agentQuestion.trim() || agentAsking} onClick={askAgent}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+            </>
+            )}
           </SheetContent>
         </Sheet>
 
