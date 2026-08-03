@@ -819,7 +819,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               onCheckedChange={(checked) => 
                 handleChange('bpmRequested', Boolean(checked))
               }
-              disabled={readOnly}
+              disabled={readOnly && !canEditBpm}
             />
             <Label htmlFor="bpmRequested" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
               BPM Huys aangemeld
@@ -852,7 +852,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
                   handleChange('bpmReportSentDate', new Date());
                 }
               }}
-              disabled={readOnly}
+              disabled={readOnly && !canEditBpm}
             />
             <Label htmlFor="bpmReportSent" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
               BPM Rapport opgestuurd
