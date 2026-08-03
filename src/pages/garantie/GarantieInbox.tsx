@@ -91,7 +91,24 @@ const GarantieInbox: React.FC = () => {
   const [agentDecision, setAgentDecision] = useState<string>("");
   const [agentAnalysis, setAgentAnalysis] = useState<string>("");
   const [agentPanelOpen, setAgentPanelOpen] = useState(false);
+  const [agentTab, setAgentTab] = useState<"voorstel" | "overleg">("voorstel");
+  const [chatUnread, setChatUnread] = useState(0);
   const replyRef = useRef<HTMLTextAreaElement | null>(null);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const agentViewRef = useRef({ open: false, tab: "voorstel" as "voorstel" | "overleg" });
+
+  useEffect(() => { agentViewRef.current = { open: agentPanelOpen, tab: agentTab }; }, [agentPanelOpen, agentTab]);
+
+  // Autoscroll overlegchat
+  useEffect(() => {
+    if (agentPanelOpen && agentTab === "overleg") {
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ block: "end" }), 60);
+    }
+  }, [agentChat, agentAsking, agentPanelOpen, agentTab]);
+
+  useEffect(() => {
+    if (agentPanelOpen && agentTab === "overleg") setChatUnread(0);
+  }, [agentPanelOpen, agentTab]);
 
   // Auto-resize antwoordveld (min 90px, max 40vh)
   useEffect(() => {
@@ -175,6 +192,8 @@ const GarantieInbox: React.FC = () => {
     setAgentAnalysis(concept?.sara_analyse || "");
     setAgentPanelOpen(false);
     setExpandedQuoted({});
+    setAgentTab("voorstel");
+    setChatUnread(0);
     const { data: chats } = await (supabase as any)
       .from("garantie_agent_chats")
       .select("role, content")
