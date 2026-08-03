@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { Check, PackageCheck, PackageOpen, Truck, Loader2, Plus, Trash2 } from "lucide-react";
+import { Check, PackageCheck, PackageOpen, Truck, Loader2, Plus, Trash2, Pencil, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { AddPartOrderDialog } from "@/components/aftersales/AddPartOrderDialog";
@@ -42,51 +42,6 @@ const STATUS_META: Record<Status, { label: string; tone: any; icon: any }> = {
   binnen:       { label: "Binnen",       tone: "green", icon: PackageCheck },
 };
 
-/* Moduleniveau: voorkomt remount (en focusverlies) bij elke toetsaanslag. */
-const InkoopEditor: React.FC<{
-  order: PartOrder;
-  disabled?: boolean;
-  onSave: (id: string, patch: { aantal: number; inkoopprijs_per_stuk: number | null; leverancier: string | null }) => void;
-}> = ({ order, disabled, onSave }) => {
-  const [aantal, setAantal] = useState(String(order.aantal ?? 1));
-  const [inkoop, setInkoop] = useState(order.inkoopprijs_per_stuk == null ? "" : String(order.inkoopprijs_per_stuk));
-  const [lev, setLev] = useState(order.leverancier ?? "");
-
-  const commit = () => {
-    if (disabled) return;
-    const next = {
-      aantal: Math.max(1, Number(aantal) || 1),
-      inkoopprijs_per_stuk: inkoop.trim() === "" ? null : Number(inkoop.replace(",", ".")) || 0,
-      leverancier: lev.trim() || null,
-    };
-    const changed =
-      next.aantal !== (order.aantal ?? 1) ||
-      next.inkoopprijs_per_stuk !== (order.inkoopprijs_per_stuk == null ? null : Number(order.inkoopprijs_per_stuk)) ||
-      next.leverancier !== (order.leverancier ?? null);
-    if (changed) onSave(order.id, next);
-  };
-
-  return (
-    <div className="mt-2 grid grid-cols-3 gap-1.5">
-      <Input
-        type="number" min="1" step="1" value={aantal} disabled={disabled}
-        onChange={(e) => setAantal(e.target.value)} onBlur={commit}
-        className="h-8 text-[11.5px] text-right tabular-nums" placeholder="Aantal"
-      />
-      <Input
-        type="number" step="0.01" min="0" value={inkoop} disabled={disabled}
-        onChange={(e) => setInkoop(e.target.value)} onBlur={commit}
-        className="h-8 text-[11.5px] text-right tabular-nums" placeholder="Inkoop p/st"
-      />
-      <Input
-        value={lev} disabled={disabled}
-        onChange={(e) => setLev(e.target.value)} onBlur={commit}
-        className="h-8 text-[11.5px]" placeholder="Leverancier"
-      />
-    </div>
-  );
-};
-
 const WerkplaatsOnderdelen: React.FC = () => {
   const readOnly = useRoleAccess().isDirectieReadOnly();
   const [orders, setOrders] = useState<PartOrder[]>([]);
@@ -94,6 +49,7 @@ const WerkplaatsOnderdelen: React.FC = () => {
   const [busy, setBusy] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [editOrder, setEditOrder] = useState<PartOrder | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -130,15 +86,6 @@ const WerkplaatsOnderdelen: React.FC = () => {
     load();
   };
 
-  const saveInkoop = async (
-    id: string,
-    patch: { aantal: number; inkoopprijs_per_stuk: number | null; leverancier: string | null },
-  ) => {
-    const { error } = await (supabase as any).from("parts_orders").update(patch).eq("id", id);
-    if (error) { toast({ title: "Opslaan mislukt", description: error.message, variant: "destructive" }); return; }
-    setOrders((os) => os.map((o) => (o.id === id ? { ...o, ...patch } : o)));
-  };
-
   const grouped = useMemo(() => {
     const q = filter.trim().toLowerCase();
     const filtered = q ? orders.filter(o =>
@@ -163,7 +110,14 @@ const WerkplaatsOnderdelen: React.FC = () => {
     const tone: any = o.status === "binnen" ? "green" : o.status === "besteld" ? "blue" : "amber";
     const statusLabel = STATUS_META[o.status].label;
     return (
-      <div key={o.id} className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+      <div
+        key={o.id}
+        role="button"
+        tabIndex={0}
+        onClick={() => setEditOrder(o)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setEditOrder(o); } }}
+        className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm cursor-pointer transition-colors hover:border-slate-300 hover:bg-slate-50/60"
+      >
         <div className="flex items-start gap-2">
           <AsLicensePlate value={isManual ? o.manual_license : v?.license_number} size="sm" />
           <div className="min-w-0 flex-1">
@@ -193,24 +147,30 @@ const WerkplaatsOnderdelen: React.FC = () => {
               {o.leverancier && <span>· {o.leverancier}</span>}
               {o.doorbelast_invoice_id && <AsPill tone="green">Doorbelast</AsPill>}
             </div>
-            <InkoopEditor order={o} disabled={readOnly} onSave={saveInkoop} />
           </div>
-          {!readOnly && <Button size="icon" variant="ghost" onClick={() => removeOrder(o.id)} className="h-7 w-7 text-slate-400 hover:text-red-600">
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>}
+          <div className="flex items-center gap-0.5 shrink-0">
+            {o.doorbelast_invoice_id
+              ? <Lock className="h-3.5 w-3.5 text-slate-300" />
+              : <Pencil className="h-3.5 w-3.5 text-slate-300" />}
+            {!readOnly && <Button size="icon" variant="ghost"
+              onClick={(e) => { e.stopPropagation(); removeOrder(o.id); }}
+              className="h-7 w-7 text-slate-400 hover:text-red-600">
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>}
+          </div>
         </div>
         <div className="flex items-center gap-1.5 mt-3">
           <AsPill tone={tone}>{statusLabel}</AsPill>
           <div className="ml-auto flex gap-1.5">
           {!readOnly && o.status === "te_bestellen" && (
             <Button size="sm" className="h-8 text-[12px] bg-blue-600 hover:bg-blue-700 text-white"
-                    disabled={busy === o.id} onClick={() => setStatus(o.id, "besteld")}>
+                    disabled={busy === o.id} onClick={(e) => { e.stopPropagation(); setStatus(o.id, "besteld"); }}>
               <Truck className="h-3.5 w-3.5 mr-1" /> Markeer besteld
             </Button>
           )}
           {!readOnly && o.status === "besteld" && (
             <Button size="sm" className="h-8 text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white"
-                    disabled={busy === o.id} onClick={() => setStatus(o.id, "binnen")}>
+                    disabled={busy === o.id} onClick={(e) => { e.stopPropagation(); setStatus(o.id, "binnen"); }}>
               <Check className="h-3.5 w-3.5 mr-1" /> Binnen
             </Button>
           )}
@@ -289,6 +249,26 @@ const WerkplaatsOnderdelen: React.FC = () => {
           open={addOpen}
           onOpenChange={setAddOpen}
           onCreated={() => load()}
+        />
+
+        <AddPartOrderDialog
+          open={!!editOrder}
+          onOpenChange={(v) => { if (!v) setEditOrder(null); }}
+          editOrder={editOrder ? {
+            id: editOrder.id,
+            vehicle_id: editOrder.vehicle_id,
+            manual_brand: editOrder.manual_brand,
+            manual_model: editOrder.manual_model,
+            manual_license: editOrder.manual_license,
+            part_name: editOrder.part_name,
+            note: editOrder.note,
+            aantal: editOrder.aantal,
+            inkoopprijs_per_stuk: editOrder.inkoopprijs_per_stuk == null ? null : Number(editOrder.inkoopprijs_per_stuk),
+            leverancier: editOrder.leverancier,
+            doorbelast_invoice_id: readOnly ? "readonly" : editOrder.doorbelast_invoice_id,
+            vehicle: editOrder.vehicle ?? null,
+          } : null}
+          onUpdated={() => { setEditOrder(null); load(); }}
         />
       </AsPage>
     </DashboardLayout>
