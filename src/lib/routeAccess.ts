@@ -177,4 +177,12 @@ export const featureAccess: Record<string, (role: Role) => boolean> = {
     r === "verkoper",
   /** Handmatige facturen opmaken. */
   "handmatige-facturen": (r) => isAdminRole(r) || r === "aftersales_manager",
+  /**
+   * Transport-overzicht + binnenmelden (aangekomen). Aftersales doet de inname bij
+   * aankomst en mag daarom ook binnenmelden. Vakmanrollen, administratie en de
+   * operationeel directeur krijgen hier géén toegang.
+   */
+  transport: (r) =>
+    isAdminRole(r) || r === "manager" || r === "verkoper" || r === "operationeel" ||
+    r === "user" || r === "aftersales_manager",
 };
