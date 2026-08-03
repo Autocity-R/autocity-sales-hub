@@ -330,6 +330,20 @@ const WerkplaatsFactuurNieuw: React.FC = () => {
     toast({ title: `${p.reparatie.reparatie} toegevoegd`, description: `Niveau ${p.niveau}` });
   }, [panelMerk, panelModel]);
 
+  const addFromParts = useCallback((p: PartAddPayload) => {
+    setLines((ls) => [...ls, {
+      id: newId(),
+      kind: "onderdeel",
+      description: p.description,
+      qty: p.qty,
+      unitPrice: p.unitPrice,
+      partOrderId: p.partOrderId,
+      inkoopPerStuk: p.inkoop,
+      amount: round2(p.qty * p.unitPrice),
+    }]);
+    toast({ title: `${p.description} doorbelast`, description: "Verkoopprijs is aanpasbaar." });
+  }, []);
+
   const addBlank = (k: LineKind) => setLines((ls) => [...ls, {
     id: newId(),
     kind: k,
@@ -429,6 +443,18 @@ const WerkplaatsFactuurNieuw: React.FC = () => {
 
   const totals = useMemo(() => calcTotals(invoiceLines), [invoiceLines]);
 
+  /* intern marge-inzicht — bewust buiten invoiceLines/preview/PDF gehouden */
+  const usedPartIds = useMemo(
+    () => lines.map((l) => l.partOrderId).filter((v): v is string => !!v),
+    [lines],
+  );
+  const partsMargin = useMemo(() => {
+    const rows = lines.filter((l) => l.kind === "onderdeel" && l.inkoopPerStuk != null);
+    const inkoop = round2(rows.reduce((s, l) => s + (l.inkoopPerStuk ?? 0) * (l.qty ?? 1), 0));
+    const verkoop = round2(rows.reduce((s, l) => s + (l.unitPrice ?? 0) * (l.qty ?? 1), 0));
+    return { count: rows.length, inkoop, verkoop, marge: round2(verkoop - inkoop) };
+  }, [lines]);
+
   const previewHtml = useMemo(() => renderInvoiceHtml({
     invoice_number: null,
     customer: { ...customer, name: customer.name || "Nog geen klant" },
@@ -460,6 +486,7 @@ const WerkplaatsFactuurNieuw: React.FC = () => {
         lines: invoiceLines,
         branch: userBranch || "rotterdam",
         vehicle_id: vehicleId,
+        parts_order_ids: usedPartIds,
       });
       setSaved(res);
       toast({ title: `Factuur ${res.invoiceNumber} opgeslagen` });
@@ -639,6 +666,13 @@ const WerkplaatsFactuurNieuw: React.FC = () => {
                 onAdd={addFromPanel}
               />
 
+              <InvoicePartsPanel
+                vehicleId={vehicleId}
+                margePct={tarieven.onderdelen_marge_pct}
+                usedIds={usedPartIds}
+                onAdd={addFromParts}
+              />
+
               <Section
                 icon={<FileText className="h-3.5 w-3.5" />}
                 title="Factuurregels"
@@ -685,6 +719,23 @@ const WerkplaatsFactuurNieuw: React.FC = () => {
                   </div>
                 </div>
               </Section>
+
+              {partsMargin.count > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[12px] text-amber-900">
+                  <div className="font-semibold mb-1">Marge op onderdelen deze factuur (intern)</div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 tabular-nums">
+                    <span>Inkoop: {eur(partsMargin.inkoop)}</span>
+                    <span>Verkoop: {eur(partsMargin.verkoop)}</span>
+                    <span className="font-semibold">
+                      Marge: {eur(partsMargin.marge)}
+                      {partsMargin.inkoop > 0 && ` (${Math.round((partsMargin.marge / partsMargin.inkoop) * 100)}%)`}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-amber-700 mt-1">
+                    Deze gegevens staan niet op de klantfactuur of het voorbeeld.
+                  </div>
+                </div>
+              )}
 
               {showErrors && errors.length > 0 && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-[12.5px] text-red-800">
