@@ -3664,11 +3664,15 @@ export type Database = {
       }
       parts_orders: {
         Row: {
+          aantal: number
           arrived_at: string | null
           branch: string
           created_at: string
           created_by: string | null
+          doorbelast_invoice_id: string | null
           id: string
+          inkoopprijs_per_stuk: number | null
+          leverancier: string | null
           note: string | null
           ordered_at: string | null
           part_name: string
@@ -3677,11 +3681,15 @@ export type Database = {
           work_order_id: string | null
         }
         Insert: {
+          aantal?: number
           arrived_at?: string | null
           branch?: string
           created_at?: string
           created_by?: string | null
+          doorbelast_invoice_id?: string | null
           id?: string
+          inkoopprijs_per_stuk?: number | null
+          leverancier?: string | null
           note?: string | null
           ordered_at?: string | null
           part_name: string
@@ -3690,11 +3698,15 @@ export type Database = {
           work_order_id?: string | null
         }
         Update: {
+          aantal?: number
           arrived_at?: string | null
           branch?: string
           created_at?: string
           created_by?: string | null
+          doorbelast_invoice_id?: string | null
           id?: string
+          inkoopprijs_per_stuk?: number | null
+          leverancier?: string | null
           note?: string | null
           ordered_at?: string | null
           part_name?: string
@@ -3708,6 +3720,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parts_orders_doorbelast_invoice_id_fkey"
+            columns: ["doorbelast_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "workshop_invoices"
             referencedColumns: ["id"]
           },
           {
@@ -4909,6 +4928,7 @@ export type Database = {
           klein_materiaal_pct: number
           milieukosten_bedrag: number
           milieukosten_enabled: boolean
+          onderdelen_marge_pct: number
           updated_at: string
           uurtarief_ex_btw: number
         }
@@ -4919,6 +4939,7 @@ export type Database = {
           klein_materiaal_pct?: number
           milieukosten_bedrag?: number
           milieukosten_enabled?: boolean
+          onderdelen_marge_pct?: number
           updated_at?: string
           uurtarief_ex_btw?: number
         }
@@ -4929,6 +4950,7 @@ export type Database = {
           klein_materiaal_pct?: number
           milieukosten_bedrag?: number
           milieukosten_enabled?: boolean
+          onderdelen_marge_pct?: number
           updated_at?: string
           uurtarief_ex_btw?: number
         }
