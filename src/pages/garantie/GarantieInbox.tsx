@@ -510,7 +510,7 @@ const GarantieInbox: React.FC = () => {
                   <div className="border-t border-slate-100 p-3 bg-white">
                     <button
                       type="button"
-                      onClick={() => setAgentPanelOpen(true)}
+                      onClick={() => { setAgentTab("voorstel"); setAgentPanelOpen(true); }}
                       className={cn(
                         "w-full h-9 mb-2 px-3 rounded-md border flex items-center gap-2 text-[12px] transition",
                         agentSuggestion
