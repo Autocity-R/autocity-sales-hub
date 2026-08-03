@@ -16,6 +16,7 @@ import {
 import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 import { MyPerformanceCard } from "@/components/werkplaats/MyPerformanceCard";
 import { isPlannedInFuture, formatPlannedDay } from "@/components/werkplaats/plannedVisibility";
+import { PartChips } from "@/components/werkplaats/workOrderParts";
 
 interface WorkRow {
   id: string;
@@ -65,8 +66,11 @@ const MijnWerkCard: React.FC<{
         <AsLicensePlate value={w.vehicle?.license_number} size="sm" />
         <span className="text-[15px] font-bold text-slate-900">
           {[w.vehicle?.brand, w.vehicle?.model].filter(Boolean).join(" ") || "Voertuig"}
+          {w.vehicle?.year && <span className="text-slate-500 font-semibold"> · {w.vehicle.year}</span>}
         </span>
       </div>
+
+      <PartChips workOrder={w as any} size="sm" className="-mt-1" />
 
       <div className="flex items-center gap-1.5 flex-wrap">
         {w.planned_at && (
