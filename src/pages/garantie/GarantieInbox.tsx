@@ -328,6 +328,8 @@ const GarantieInbox: React.FC = () => {
       if (error) throw error;
       const answer = ((data as any)?.answer || "").trim();
       setAgentChat((prev) => [...prev, { role: "assistant", content: answer }]);
+      const v = agentViewRef.current;
+      if (!(v.open && v.tab === "overleg")) setChatUnread((n) => n + 1);
     } catch (e: any) {
       toast({ title: "Agent-fout", description: e.message, variant: "destructive" });
       setAgentChat((prev) => prev.slice(0, -1));
