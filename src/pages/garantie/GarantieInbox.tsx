@@ -18,6 +18,8 @@ import { AsPage, AsCard, AsPill, AsMono, fmtWait } from "@/components/aftersales
 import { cn } from "@/lib/utils";
 import { sanitizeMailText, splitQuotedReply } from "@/utils/mailBubble";
 import { buildLmsSignatureHtml } from "@/utils/lmsSignature";
+import { SearchableVehicleSelector } from "@/components/warranty/SearchableVehicleSelector";
+import type { Vehicle } from "@/types/inventory";
 
 type Filter = "action" | "all" | "done";
 
@@ -27,6 +29,7 @@ interface Thread {
   klant_email: string | null;
   onderwerp: string | null;
   voertuig_info: string | null;
+  vehicle_id: string | null;
   warranty_claim_id: string | null;
   eerste_email_op: string | null;
   laatste_email_op: string | null;
@@ -49,6 +52,11 @@ interface Claim {
   vehicle_id: string | null; manual_vehicle_brand: string | null; manual_vehicle_model: string | null;
   manual_license_number: string | null;
   vehicles?: { brand: string; model: string; license_number: string | null; vin: string | null; sold_date: string | null } | null;
+}
+
+interface LinkedVehicle {
+  id: string; brand: string | null; model: string | null; license_number: string | null;
+  vin: string | null; sold_date: string | null; year: number | null; mileage: number | null;
 }
 
 const hoursSince = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60));
@@ -93,6 +101,12 @@ const GarantieInbox: React.FC = () => {
   const [agentPanelOpen, setAgentPanelOpen] = useState(false);
   const [agentTab, setAgentTab] = useState<"voorstel" | "overleg">("voorstel");
   const [chatUnread, setChatUnread] = useState(0);
+  const [linkedVehicle, setLinkedVehicle] = useState<LinkedVehicle | null>(null);
+  const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
+  const [vehicleOptions, setVehicleOptions] = useState<Vehicle[]>([]);
+  const [vehicleOptionsLoading, setVehicleOptionsLoading] = useState(false);
+  const [pickedVehicle, setPickedVehicle] = useState<Vehicle | null>(null);
+  const [savingVehicle, setSavingVehicle] = useState(false);
   const replyRef = useRef<HTMLTextAreaElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const agentViewRef = useRef({ open: false, tab: "voorstel" as "voorstel" | "overleg" });
@@ -129,7 +143,7 @@ const GarantieInbox: React.FC = () => {
     setLoadingList(true);
     const { data: t } = await supabase
       .from("garantie_email_threads")
-      .select("id, klant_naam, klant_email, onderwerp, voertuig_info, warranty_claim_id, eerste_email_op, laatste_email_op, thread_status")
+      .select("id, klant_naam, klant_email, onderwerp, voertuig_info, vehicle_id, warranty_claim_id, eerste_email_op, laatste_email_op, thread_status")
       .order("laatste_email_op", { ascending: false, nullsFirst: false })
       .limit(300);
     const list = (t as Thread[]) || [];
@@ -161,6 +175,17 @@ const GarantieInbox: React.FC = () => {
       Promise.resolve(threads.find((t) => t.id === id) || null),
     ]);
     setEmails((es as Email[]) || []);
+    // Gekoppeld voertuig van de thread
+    if (threadRow?.vehicle_id) {
+      const { data: v } = await supabase
+        .from("vehicles")
+        .select("id, brand, model, license_number, vin, sold_date, year, mileage")
+        .eq("id", threadRow.vehicle_id)
+        .maybeSingle();
+      setLinkedVehicle((v as any) || null);
+    } else {
+      setLinkedVehicle(null);
+    }
     if (threadRow?.warranty_claim_id) {
       const { data: c } = await supabase
         .from("warranty_claims")
@@ -296,6 +321,66 @@ const GarantieInbox: React.FC = () => {
       .eq("id", selectedThread.id);
     toast({ title: "Thread afgerond" });
     await loadList();
+  };
+
+  const openVehicleDialog = async () => {
+    setPickedVehicle(null);
+    setVehicleDialogOpen(true);
+    if (vehicleOptions.length) return;
+    setVehicleOptionsLoading(true);
+    const { data } = await supabase
+      .from("vehicles")
+      .select("id, brand, model, license_number, vin, sold_date, delivery_date, status, customer:contacts!vehicles_customer_id_fkey(first_name, last_name, company_name)")
+      .neq("status", "extern")
+      .order("sold_date", { ascending: false, nullsFirst: false })
+      .limit(2000);
+    setVehicleOptions(
+      ((data as any[]) || []).map((v) => ({
+        id: v.id,
+        brand: v.brand,
+        model: v.model,
+        licenseNumber: v.license_number,
+        vin: v.vin,
+        customerName: v.customer ? (v.customer.company_name || `${v.customer.first_name || ""} ${v.customer.last_name || ""}`.trim()) : undefined,
+        deliveryDate: v.delivery_date || v.sold_date,
+      })) as unknown as Vehicle[]
+    );
+    setVehicleOptionsLoading(false);
+  };
+
+  const saveVehicleLink = async (vehicleId: string | null) => {
+    if (!selectedThread) return;
+    setSavingVehicle(true);
+    try {
+      let info: string | null = null;
+      if (vehicleId) {
+        const v = vehicleOptions.find((x) => x.id === vehicleId);
+        info = v ? `${v.brand || ""} ${v.model || ""}`.trim() + (v.licenseNumber ? ` · ${v.licenseNumber}` : "") : null;
+      }
+      const { error } = await supabase
+        .from("garantie_email_threads")
+        .update({ vehicle_id: vehicleId, ...(vehicleId ? { voertuig_info: info } : {}) } as any)
+        .eq("id", selectedThread.id);
+      if (error) throw error;
+      setThreads((prev) => prev.map((t) => (t.id === selectedThread.id
+        ? { ...t, vehicle_id: vehicleId, voertuig_info: vehicleId ? info : t.voertuig_info }
+        : t)));
+      if (vehicleId) {
+        const { data: v } = await supabase
+          .from("vehicles")
+          .select("id, brand, model, license_number, vin, sold_date, year, mileage")
+          .eq("id", vehicleId).maybeSingle();
+        setLinkedVehicle((v as any) || null);
+      } else {
+        setLinkedVehicle(null);
+      }
+      setVehicleDialogOpen(false);
+      toast({ title: vehicleId ? "Voertuig gekoppeld" : "Voertuig ontkoppeld" });
+    } catch (e: any) {
+      toast({ title: "Opslaan mislukt", description: e.message, variant: "destructive" });
+    } finally {
+      setSavingVehicle(false);
+    }
   };
 
   const fetchSuggestion = async (hint?: string) => {
@@ -565,9 +650,40 @@ const GarantieInbox: React.FC = () => {
               </div>
               <div className="p-4 space-y-3 flex flex-col flex-1 min-h-0">
               <div>
-                <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5"><Car className="h-3.5 w-3.5" />Voertuig</div>
+                <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                  <Car className="h-3.5 w-3.5" />Voertuig
+                  {selectedThread && (
+                    <button
+                      type="button"
+                      onClick={openVehicleDialog}
+                      className="ml-auto text-[10.5px] font-semibold text-blue-600 hover:text-blue-800 normal-case tracking-normal"
+                    >
+                      {linkedVehicle ? "Wijzig" : "Auto koppelen"}
+                    </button>
+                  )}
+                  {linkedVehicle && (
+                    <button
+                      type="button"
+                      onClick={() => saveVehicleLink(null)}
+                      className="text-[10.5px] font-medium text-slate-400 hover:text-red-600 normal-case tracking-normal"
+                    >
+                      Ontkoppel
+                    </button>
+                  )}
+                </div>
                 <div className="bg-white border border-slate-200 rounded-lg p-3 text-[12px] space-y-1">
-                  {selectedThread?.voertuig_info ? (
+                  {linkedVehicle ? (
+                    <>
+                      <div className="text-[13px] font-semibold text-slate-900">
+                        {linkedVehicle.brand} {linkedVehicle.model}{linkedVehicle.year ? ` (${linkedVehicle.year})` : ""}
+                      </div>
+                      {linkedVehicle.license_number && <AsMono className="text-slate-700">{linkedVehicle.license_number}</AsMono>}
+                      {linkedVehicle.vin && <div className="text-slate-500 text-[11px] font-mono truncate">VIN {linkedVehicle.vin}</div>}
+                      {linkedVehicle.sold_date && (
+                        <div className="text-slate-500">verkocht op {format(new Date(linkedVehicle.sold_date), "d MMM yyyy", { locale: nl })}</div>
+                      )}
+                    </>
+                  ) : selectedThread?.voertuig_info ? (
                     <div className="text-slate-800">{selectedThread.voertuig_info}</div>
                   ) : claim?.vehicles ? (
                     <>
@@ -627,6 +743,33 @@ const GarantieInbox: React.FC = () => {
             </div>
           </div>
         </AsCard>
+
+        {/* Voertuig koppelen */}
+        <Dialog open={vehicleDialogOpen} onOpenChange={setVehicleDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Auto koppelen aan deze thread</DialogTitle>
+              <DialogDescription>Zoek op kenteken, merk, model, VIN of klant — ook verkochte auto's.</DialogDescription>
+            </DialogHeader>
+            <SearchableVehicleSelector
+              value={pickedVehicle?.id || linkedVehicle?.id}
+              vehicles={vehicleOptions}
+              loading={vehicleOptionsLoading}
+              onValueChange={(v) => setPickedVehicle(v)}
+              label="Voertuig"
+            />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setVehicleDialogOpen(false)}>Annuleren</Button>
+              <Button
+                onClick={() => pickedVehicle && saveVehicleLink(pickedVehicle.id)}
+                disabled={!pickedVehicle || savingVehicle}
+              >
+                {savingVehicle ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : null}
+                Koppelen
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Event dialog */}
         <Dialog open={eventDialog.open} onOpenChange={(o) => setEventDialog((d) => ({ ...d, open: o }))}>
