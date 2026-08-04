@@ -744,6 +744,33 @@ const GarantieInbox: React.FC = () => {
           </div>
         </AsCard>
 
+        {/* Voertuig koppelen */}
+        <Dialog open={vehicleDialogOpen} onOpenChange={setVehicleDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Auto koppelen aan deze thread</DialogTitle>
+              <DialogDescription>Zoek op kenteken, merk, model, VIN of klant — ook verkochte auto's.</DialogDescription>
+            </DialogHeader>
+            <SearchableVehicleSelector
+              value={pickedVehicle?.id || linkedVehicle?.id}
+              vehicles={vehicleOptions}
+              loading={vehicleOptionsLoading}
+              onValueChange={(v) => setPickedVehicle(v)}
+              label="Voertuig"
+            />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setVehicleDialogOpen(false)}>Annuleren</Button>
+              <Button
+                onClick={() => pickedVehicle && saveVehicleLink(pickedVehicle.id)}
+                disabled={!pickedVehicle || savingVehicle}
+              >
+                {savingVehicle ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : null}
+                Koppelen
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Event dialog */}
         <Dialog open={eventDialog.open} onOpenChange={(o) => setEventDialog((d) => ({ ...d, open: o }))}>
           <DialogContent>
