@@ -61,6 +61,20 @@ export function sanitizeMailText(input: string | null | undefined): string {
     .replace(/&(mdash|ndash);/gi, "—")
     .replace(/&hellip;/gi, "…")
     .replace(/&euro;/gi, "€")
+    // Veelvoorkomende accent-entities (ü, é, ë, …)
+    .replace(/&([aeiouyAEIOUYnNcC])(uml|acute|grave|circ|tilde|cedil|ring|slash);/g, (_m, ch, kind) => {
+      const map: Record<string, Record<string, string>> = {
+        uml: { a: "ä", e: "ë", i: "ï", o: "ö", u: "ü", y: "ÿ", A: "Ä", E: "Ë", I: "Ï", O: "Ö", U: "Ü" },
+        acute: { a: "á", e: "é", i: "í", o: "ó", u: "ú", y: "ý", A: "Á", E: "É", I: "Í", O: "Ó", U: "Ú" },
+        grave: { a: "à", e: "è", i: "ì", o: "ò", u: "ù", A: "À", E: "È", I: "Ì", O: "Ò", U: "Ù" },
+        circ: { a: "â", e: "ê", i: "î", o: "ô", u: "û", A: "Â", E: "Ê", I: "Î", O: "Ô", U: "Û" },
+        tilde: { a: "ã", n: "ñ", o: "õ", N: "Ñ" },
+        cedil: { c: "ç", C: "Ç" },
+        ring: { a: "å", A: "Å" },
+        slash: { o: "ø", O: "Ø" },
+      };
+      return map[kind]?.[ch] ?? _m;
+    })
     .replace(/&#(\d+);/g, (_m, d) => String.fromCharCode(Number(d)))
     .replace(/&#x([0-9a-f]+);/gi, (_m, h) => String.fromCharCode(parseInt(h, 16)));
   // Mojibake
