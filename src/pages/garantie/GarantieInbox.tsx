@@ -175,6 +175,17 @@ const GarantieInbox: React.FC = () => {
       Promise.resolve(threads.find((t) => t.id === id) || null),
     ]);
     setEmails((es as Email[]) || []);
+    // Gekoppeld voertuig van de thread
+    if (threadRow?.vehicle_id) {
+      const { data: v } = await supabase
+        .from("vehicles")
+        .select("id, brand, model, license_number, vin, sold_date, year, mileage")
+        .eq("id", threadRow.vehicle_id)
+        .maybeSingle();
+      setLinkedVehicle((v as any) || null);
+    } else {
+      setLinkedVehicle(null);
+    }
     if (threadRow?.warranty_claim_id) {
       const { data: c } = await supabase
         .from("warranty_claims")
