@@ -609,7 +609,21 @@ serve(async (req) => {
       }
     }
 
-    // ─── Stap 8: Watermerk updaten ───
+    // ─── Stap 8: Verzonden berichten van garantie@ inlezen (richting 'uitgaand') ───
+    const sentAfter = backfillDays > 0
+      ? Math.floor((Date.now() - backfillDays * 86_400_000) / 1000)
+      : afterTimestamp;
+    const sentResult = await syncSentMessages(
+      supabase,
+      gmailHeaders,
+      sentAfter,
+      backfillDays > 0 ? 200 : 40,
+    );
+    console.log(
+      `📤 Verzonden: ${sentResult.stored} nieuw, ${sentResult.matched} gekoppeld aan CRM-antwoord, ${sentResult.skipped} overgeslagen`,
+    );
+
+    // ─── Stap 9: Watermerk updaten ───
     await supabase.from('system_config').upsert({
       key: 'garantie_email_laatste_sync',
       value: new Date().toISOString(),
@@ -618,7 +632,7 @@ serve(async (req) => {
 
     console.log(`🏁 Klaar: ${processed}/${messages.length} emails verwerkt`);
 
-    return new Response(JSON.stringify({ processed, total: messages.length }), {
+    return new Response(JSON.stringify({ processed, total: messages.length, sent: sentResult }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error: any) {
