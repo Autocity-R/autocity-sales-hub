@@ -143,7 +143,7 @@ const GarantieInbox: React.FC = () => {
     setLoadingList(true);
     const { data: t } = await supabase
       .from("garantie_email_threads")
-      .select("id, klant_naam, klant_email, onderwerp, voertuig_info, warranty_claim_id, eerste_email_op, laatste_email_op, thread_status")
+      .select("id, klant_naam, klant_email, onderwerp, voertuig_info, vehicle_id, warranty_claim_id, eerste_email_op, laatste_email_op, thread_status")
       .order("laatste_email_op", { ascending: false, nullsFirst: false })
       .limit(300);
     const list = (t as Thread[]) || [];
