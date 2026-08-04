@@ -557,8 +557,7 @@ const GarantieInbox: React.FC = () => {
                         );
                       }
                       const outgoing = e.richting === "uitgaand";
-                      const cleaned = sanitizeMailText(e.body);
-                      const { main, quoted } = splitQuotedReply(cleaned);
+                      const { main, quoted } = splitMailBubble(e.body);
                       const isOpen = !!expandedQuoted[e.id];
                       return (
                         <div key={e.id} className={cn("flex", outgoing ? "justify-end" : "justify-start")}>
