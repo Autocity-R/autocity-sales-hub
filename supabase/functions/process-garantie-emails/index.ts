@@ -324,6 +324,13 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const serviceAccount: ServiceAccount = JSON.parse(googleSAKey);
 
+    // Optionele eenmalige backfill van verzonden items: { backfillDays: 30 }
+    let backfillDays = 0;
+    try {
+      const raw = req.method === 'POST' ? await req.text() : '';
+      if (raw) backfillDays = Number(JSON.parse(raw)?.backfillDays) || 0;
+    } catch { /* geen body */ }
+
     // ─── Stap 1: Watermerk ophalen ───
     const { data: config } = await supabase
       .from('system_config')
@@ -354,18 +361,6 @@ serve(async (req) => {
     const listData = await listRes.json();
     const messages = listData.messages || [];
     console.log(`📬 ${messages.length} garantie emails gevonden`);
-
-    if (messages.length === 0) {
-      // Update watermerk ook als er geen emails zijn
-      await supabase.from('system_config').upsert({
-        key: 'garantie_email_laatste_sync',
-        value: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
-      return new Response(JSON.stringify({ processed: 0 }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
     let processed = 0;
 
