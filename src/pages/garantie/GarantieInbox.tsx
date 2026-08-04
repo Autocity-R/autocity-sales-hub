@@ -650,9 +650,40 @@ const GarantieInbox: React.FC = () => {
               </div>
               <div className="p-4 space-y-3 flex flex-col flex-1 min-h-0">
               <div>
-                <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5"><Car className="h-3.5 w-3.5" />Voertuig</div>
+                <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                  <Car className="h-3.5 w-3.5" />Voertuig
+                  {selectedThread && (
+                    <button
+                      type="button"
+                      onClick={openVehicleDialog}
+                      className="ml-auto text-[10.5px] font-semibold text-blue-600 hover:text-blue-800 normal-case tracking-normal"
+                    >
+                      {linkedVehicle ? "Wijzig" : "Auto koppelen"}
+                    </button>
+                  )}
+                  {linkedVehicle && (
+                    <button
+                      type="button"
+                      onClick={() => saveVehicleLink(null)}
+                      className="text-[10.5px] font-medium text-slate-400 hover:text-red-600 normal-case tracking-normal"
+                    >
+                      Ontkoppel
+                    </button>
+                  )}
+                </div>
                 <div className="bg-white border border-slate-200 rounded-lg p-3 text-[12px] space-y-1">
-                  {selectedThread?.voertuig_info ? (
+                  {linkedVehicle ? (
+                    <>
+                      <div className="text-[13px] font-semibold text-slate-900">
+                        {linkedVehicle.brand} {linkedVehicle.model}{linkedVehicle.year ? ` (${linkedVehicle.year})` : ""}
+                      </div>
+                      {linkedVehicle.license_number && <AsMono className="text-slate-700">{linkedVehicle.license_number}</AsMono>}
+                      {linkedVehicle.vin && <div className="text-slate-500 text-[11px] font-mono truncate">VIN {linkedVehicle.vin}</div>}
+                      {linkedVehicle.sold_date && (
+                        <div className="text-slate-500">verkocht op {format(new Date(linkedVehicle.sold_date), "d MMM yyyy", { locale: nl })}</div>
+                      )}
+                    </>
+                  ) : selectedThread?.voertuig_info ? (
                     <div className="text-slate-800">{selectedThread.voertuig_info}</div>
                   ) : claim?.vehicles ? (
                     <>
