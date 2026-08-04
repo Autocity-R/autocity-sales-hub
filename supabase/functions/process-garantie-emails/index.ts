@@ -152,7 +152,7 @@ async function syncSentMessages(
 
       // ── Thread bepalen: eerst via References/In-Reply-To, dan via ontvanger ──
       let threadId: string | null = null;
-      const refIds = [...extractEmails(''), ...String(`${inReplyTo} ${references}`).match(/<[^>]+>/g) || []];
+      const refIds: string[] = String(`${inReplyTo} ${references}`).match(/<[^>]+>/g) || [];
       for (const ref of refIds) {
         const { data: refEmail } = await supabase
           .from('garantie_emails')
