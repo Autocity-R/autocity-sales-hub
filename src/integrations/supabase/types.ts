@@ -2773,6 +2773,7 @@ export type Database = {
           sara_beslissing: string | null
           thread_status: string | null
           updated_at: string | null
+          vehicle_id: string | null
           voertuig_info: string | null
           warranty_claim_id: string | null
         }
@@ -2790,6 +2791,7 @@ export type Database = {
           sara_beslissing?: string | null
           thread_status?: string | null
           updated_at?: string | null
+          vehicle_id?: string | null
           voertuig_info?: string | null
           warranty_claim_id?: string | null
         }
@@ -2807,10 +2809,18 @@ export type Database = {
           sara_beslissing?: string | null
           thread_status?: string | null
           updated_at?: string | null
+          vehicle_id?: string | null
           voertuig_info?: string | null
           warranty_claim_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "garantie_email_threads_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "garantie_email_threads_warranty_claim_id_fkey"
             columns: ["warranty_claim_id"]
