@@ -16,7 +16,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { AsPage, AsCard, AsPill, AsMono, fmtWait } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
-import { sanitizeMailText, splitQuotedReply } from "@/utils/mailBubble";
+import { sanitizeMailText, splitQuotedReply, splitMailBubble } from "@/utils/mailBubble";
 import { buildLmsSignatureHtml } from "@/utils/lmsSignature";
 import { SearchableVehicleSelector } from "@/components/warranty/SearchableVehicleSelector";
 import type { Vehicle } from "@/types/inventory";
