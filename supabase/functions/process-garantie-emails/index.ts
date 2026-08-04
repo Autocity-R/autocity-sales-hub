@@ -73,6 +73,199 @@ function getHeader(headers: any[], name: string): string {
   return headers?.find((h: any) => h.name.toLowerCase() === name.toLowerCase())?.value || '';
 }
 
+// ─── Verzonden mail van garantie@ inlezen (richting 'uitgaand') ───
+
+function extractEmails(value: string): string[] {
+  if (!value) return [];
+  const out: string[] = [];
+  const re = /[\w.!#$%&'*+/=?^`{|}~-]+@[\w-]+(?:\.[\w-]+)+/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(value)) !== null) out.push(m[0].toLowerCase());
+  return out;
+}
+
+/** Ruwe HTML/tekst tot leesbare platte tekst (voor vergelijken van duplicaten). */
+function toPlain(s: string): string {
+  return String(s || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+async function syncSentMessages(
+  supabase: any,
+  gmailHeaders: Record<string, string>,
+  afterTimestamp: number,
+  maxResults = 40,
+): Promise<{ stored: number; matched: number; skipped: number }> {
+  const result = { stored: 0, matched: 0, skipped: 0 };
+  const query = `in:sent after:${afterTimestamp}`;
+  const listRes = await fetch(
+    `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=${maxResults}`,
+    { headers: gmailHeaders },
+  );
+  if (!listRes.ok) {
+    console.error(`⚠️ Gmail sent-list mislukt (${listRes.status}): ${await listRes.text()}`);
+    return result;
+  }
+  const sentMessages = (await listRes.json()).messages || [];
+  console.log(`📤 ${sentMessages.length} verzonden berichten gevonden`);
+
+  for (const msg of sentMessages) {
+    try {
+      // Al bekend op Gmail-id? → niets te doen
+      const { data: known } = await supabase
+        .from('garantie_emails')
+        .select('id')
+        .eq('gmail_message_id', msg.id)
+        .maybeSingle();
+      if (known) { result.skipped++; continue; }
+
+      const msgRes = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
+        { headers: gmailHeaders },
+      );
+      if (!msgRes.ok) continue;
+      const msgData = await msgRes.json();
+      const headers = msgData.payload?.headers || [];
+
+      const messageId = getHeader(headers, 'Message-ID');
+      const subject = getHeader(headers, 'Subject');
+      const fromRaw = getHeader(headers, 'From');
+      const dateStr = getHeader(headers, 'Date');
+      const sentAt = dateStr ? new Date(dateStr).toISOString() : new Date().toISOString();
+      const inReplyTo = getHeader(headers, 'In-Reply-To');
+      const references = getHeader(headers, 'References');
+
+      const recipients = [
+        ...extractEmails(getHeader(headers, 'To')),
+        ...extractEmails(getHeader(headers, 'Cc')),
+      ].filter((e) => !e.includes('auto-city.nl'));
+      if (!recipients.length) { result.skipped++; continue; }
+
+      const { plain, html } = decodeEmailBody(msgData.payload);
+      const body = plain || html || '';
+      if (!body.trim()) { result.skipped++; continue; }
+
+      // ── Thread bepalen: eerst via References/In-Reply-To, dan via ontvanger ──
+      let threadId: string | null = null;
+      const refIds = [...extractEmails(''), ...String(`${inReplyTo} ${references}`).match(/<[^>]+>/g) || []];
+      for (const ref of refIds) {
+        const { data: refEmail } = await supabase
+          .from('garantie_emails')
+          .select('thread_id')
+          .eq('message_id', ref)
+          .maybeSingle();
+        if (refEmail?.thread_id) { threadId = refEmail.thread_id; break; }
+      }
+      if (!threadId) {
+        const { data: thread } = await supabase
+          .from('garantie_email_threads')
+          .select('id')
+          .in('klant_email', recipients)
+          .order('laatste_email_op', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (thread) threadId = thread.id;
+      }
+      // Geen bestaande garantie-thread → geen garantiemail, niet aanmaken
+      if (!threadId) { result.skipped++; continue; }
+
+      // ── Duplicaat van een via het CRM verstuurd antwoord? ──
+      if (messageId) {
+        const { data: byMsgId } = await supabase
+          .from('garantie_emails')
+          .select('id')
+          .eq('message_id', messageId)
+          .maybeSingle();
+        if (byMsgId) {
+          await supabase.from('garantie_emails').update({ gmail_message_id: msg.id }).eq('id', byMsgId.id);
+          result.matched++;
+          continue;
+        }
+      }
+      const windowStart = new Date(new Date(sentAt).getTime() - 30 * 60_000).toISOString();
+      const windowEnd = new Date(new Date(sentAt).getTime() + 30 * 60_000).toISOString();
+      const { data: nearby } = await supabase
+        .from('garantie_emails')
+        .select('id, body, gmail_message_id')
+        .eq('thread_id', threadId)
+        .eq('richting', 'uitgaand')
+        .gte('received_at', windowStart)
+        .lte('received_at', windowEnd);
+      const plainNew = toPlain(body);
+      const dup = (nearby || []).find((r: any) => {
+        if (r.gmail_message_id) return false;
+        const a = toPlain(r.body).slice(0, 120);
+        return a.length > 20 && plainNew.includes(a);
+      });
+      if (dup) {
+        await supabase
+          .from('garantie_emails')
+          .update({ gmail_message_id: msg.id, message_id: messageId || undefined })
+          .eq('id', dup.id);
+        result.matched++;
+        continue;
+      }
+
+      // ── Nieuw uitgaand bericht opslaan ──
+      const senderName = fromRaw.replace(/<[^>]+>/, '').replace(/"/g, '').trim() || 'Autocity Garantie';
+      const { error: insErr } = await supabase.from('garantie_emails').insert({
+        thread_id: threadId,
+        message_id: messageId || `gmail-sent-${msg.id}`,
+        gmail_message_id: msg.id,
+        sender: senderName,
+        sender_email: 'garantie@auto-city.nl',
+        subject,
+        body,
+        received_at: sentAt,
+        richting: 'uitgaand',
+        gelezen: true,
+        reactie_status: 'verstuurd',
+        definitieve_reactie: body,
+        verstuurd_op: sentAt,
+        verstuurd_door: senderName,
+      });
+      if (insErr) {
+        if (insErr.code === '23505' || insErr.message?.includes('duplicate')) { result.skipped++; continue; }
+        console.error(`❌ Uitgaand bericht opslaan mislukt: ${insErr.message}`);
+        continue;
+      }
+
+      // ── Klok stopt: thread bijwerken + openstaande inkomende mails afvinken ──
+      const { data: threadRow } = await supabase
+        .from('garantie_email_threads')
+        .select('laatste_email_op')
+        .eq('id', threadId)
+        .maybeSingle();
+      const newest =
+        threadRow?.laatste_email_op && new Date(threadRow.laatste_email_op) > new Date(sentAt)
+          ? threadRow.laatste_email_op
+          : sentAt;
+      await supabase
+        .from('garantie_email_threads')
+        .update({ laatste_email_op: newest, updated_at: new Date().toISOString() })
+        .eq('id', threadId);
+      await supabase
+        .from('garantie_emails')
+        .update({ reactie_status: 'verstuurd', definitieve_reactie: body, verstuurd_op: sentAt })
+        .eq('thread_id', threadId)
+        .eq('richting', 'inkomend')
+        .eq('reactie_status', 'wacht_op_beoordeling')
+        .lte('received_at', sentAt);
+
+      result.stored++;
+      console.log(`✅ Uitgaand opgeslagen: ${subject} → ${recipients.join(', ')}`);
+    } catch (err: any) {
+      console.error(`❌ Fout bij verzonden bericht ${msg.id}: ${err.message}`);
+    }
+  }
+  return result;
+}
+
 // ─── Garantie Specialist Prompt ───
 
 const GARANTIE_SPECIALIST_PROMPT = `
