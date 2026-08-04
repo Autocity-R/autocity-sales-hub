@@ -84,7 +84,7 @@ function dutchGreeting(name?: string | null): string {
 async function loadContext(supabase: any, threadId: string) {
   const { data: thread } = await supabase
     .from("garantie_email_threads")
-    .select("id, klant_naam, klant_email, onderwerp, voertuig_info, warranty_claim_id, eerste_email_op, case_samenvatting, garantie_type")
+    .select("id, klant_naam, klant_email, onderwerp, voertuig_info, vehicle_id, warranty_claim_id, eerste_email_op, case_samenvatting, garantie_type")
     .eq("id", threadId)
     .maybeSingle();
 
@@ -120,8 +120,14 @@ async function loadContext(supabase: any, threadId: string) {
 
   // ── Voertuig: via claim → via kenteken in tekst → via klant ──
   let vehicle: any = null;
+  let vehicleConfirmed = false;
   const vehicleSelect = "id, brand, model, year, mileage, license_number, vin, sold_date, status, customer_id, branch";
-  if (claim?.vehicle_id) {
+  // 1) Handmatig gekoppeld voertuig op de thread = vaststaand feit
+  if (thread?.vehicle_id) {
+    const { data: v } = await supabase.from("vehicles").select(vehicleSelect).eq("id", thread.vehicle_id).maybeSingle();
+    if (v) { vehicle = v; vehicleConfirmed = true; }
+  }
+  if (!vehicle && claim?.vehicle_id) {
     const { data: v } = await supabase.from("vehicles").select(vehicleSelect).eq("id", claim.vehicle_id).maybeSingle();
     vehicle = v;
   }
