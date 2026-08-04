@@ -323,8 +323,67 @@ const GarantieInbox: React.FC = () => {
     await loadList();
   };
 
-  const fetchSuggestion = async (hint?: string) => {
+  const openVehicleDialog = async () => {
+    setPickedVehicle(null);
+    setVehicleDialogOpen(true);
+    if (vehicleOptions.length) return;
+    setVehicleOptionsLoading(true);
+    const { data } = await supabase
+      .from("vehicles")
+      .select("id, brand, model, license_number, vin, sold_date, delivery_date, customer_name, status")
+      .neq("status", "extern")
+      .order("sold_date", { ascending: false, nullsFirst: false })
+      .limit(2000);
+    setVehicleOptions(
+      ((data as any[]) || []).map((v) => ({
+        id: v.id,
+        brand: v.brand,
+        model: v.model,
+        licenseNumber: v.license_number,
+        vin: v.vin,
+        customerName: v.customer_name,
+        deliveryDate: v.delivery_date || v.sold_date,
+      })) as unknown as Vehicle[]
+    );
+    setVehicleOptionsLoading(false);
+  };
 
+  const saveVehicleLink = async (vehicleId: string | null) => {
+    if (!selectedThread) return;
+    setSavingVehicle(true);
+    try {
+      let info: string | null = null;
+      if (vehicleId) {
+        const v = vehicleOptions.find((x) => x.id === vehicleId);
+        info = v ? `${v.brand || ""} ${v.model || ""}`.trim() + (v.licenseNumber ? ` · ${v.licenseNumber}` : "") : null;
+      }
+      const { error } = await supabase
+        .from("garantie_email_threads")
+        .update({ vehicle_id: vehicleId, ...(vehicleId ? { voertuig_info: info } : {}) } as any)
+        .eq("id", selectedThread.id);
+      if (error) throw error;
+      setThreads((prev) => prev.map((t) => (t.id === selectedThread.id
+        ? { ...t, vehicle_id: vehicleId, voertuig_info: vehicleId ? info : t.voertuig_info }
+        : t)));
+      if (vehicleId) {
+        const { data: v } = await supabase
+          .from("vehicles")
+          .select("id, brand, model, license_number, vin, sold_date, year, mileage")
+          .eq("id", vehicleId).maybeSingle();
+        setLinkedVehicle((v as any) || null);
+      } else {
+        setLinkedVehicle(null);
+      }
+      setVehicleDialogOpen(false);
+      toast({ title: vehicleId ? "Voertuig gekoppeld" : "Voertuig ontkoppeld" });
+    } catch (e: any) {
+      toast({ title: "Opslaan mislukt", description: e.message, variant: "destructive" });
+    } finally {
+      setSavingVehicle(false);
+    }
+  };
+
+  const fetchSuggestion = async (hint?: string) => {
     if (!selectedThread) return;
     setAgentLoading(true);
     try {
