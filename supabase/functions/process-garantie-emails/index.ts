@@ -459,6 +459,7 @@ serve(async (req) => {
             {
               thread_id: threadId,
               message_id: messageId || `gmail-${msg.id}`,
+              gmail_message_id: msg.id,
               sender: senderName,
               sender_email: senderEmail,
               subject,
