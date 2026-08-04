@@ -18,6 +18,8 @@ import { AsPage, AsCard, AsPill, AsMono, fmtWait } from "@/components/aftersales
 import { cn } from "@/lib/utils";
 import { sanitizeMailText, splitQuotedReply } from "@/utils/mailBubble";
 import { buildLmsSignatureHtml } from "@/utils/lmsSignature";
+import { SearchableVehicleSelector } from "@/components/warranty/SearchableVehicleSelector";
+import type { Vehicle } from "@/types/inventory";
 
 type Filter = "action" | "all" | "done";
 
@@ -27,6 +29,7 @@ interface Thread {
   klant_email: string | null;
   onderwerp: string | null;
   voertuig_info: string | null;
+  vehicle_id: string | null;
   warranty_claim_id: string | null;
   eerste_email_op: string | null;
   laatste_email_op: string | null;
@@ -49,6 +52,11 @@ interface Claim {
   vehicle_id: string | null; manual_vehicle_brand: string | null; manual_vehicle_model: string | null;
   manual_license_number: string | null;
   vehicles?: { brand: string; model: string; license_number: string | null; vin: string | null; sold_date: string | null } | null;
+}
+
+interface LinkedVehicle {
+  id: string; brand: string | null; model: string | null; license_number: string | null;
+  vin: string | null; sold_date: string | null; year: number | null; mileage: number | null;
 }
 
 const hoursSince = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60));
