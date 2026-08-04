@@ -201,7 +201,7 @@ async function loadContext(supabase: any, threadId: string) {
   })();
 
   const vehicleBlock = vehicle
-    ? `Voertuig: ${vehicle.brand} ${vehicle.model} (${vehicle.year || "?"}) · kenteken ${vehicle.license_number || "-"} · ${vehicle.mileage ?? "?"} km bij verkoop · status ${vehicle.status || "-"}`
+    ? `Voertuig${vehicleConfirmed ? " (HANDMATIG GEKOPPELD DOOR AFTERSALES — dit is een vaststaand feit, ga hier niet van afwijken en zoek zelf geen andere auto)" : " (automatisch herkend — kan onjuist zijn)"}: ${vehicle.brand} ${vehicle.model} (${vehicle.year || "?"}) · kenteken ${vehicle.license_number || "-"} · VIN ${vehicle.vin || "-"} · ${vehicle.mileage ?? "?"} km bij verkoop · status ${vehicle.status || "-"} · verkocht/geleverd op ${vehicle.sold_date || "onbekend"}`
     : thread?.voertuig_info || "Geen voertuiginformatie beschikbaar.";
 
   const customerBlock = contact
