@@ -2836,6 +2836,7 @@ export type Database = {
           created_at: string | null
           definitieve_reactie: string | null
           gelezen: boolean | null
+          gmail_message_id: string | null
           id: string
           message_id: string | null
           reactie_status: string | null
@@ -2856,6 +2857,7 @@ export type Database = {
           created_at?: string | null
           definitieve_reactie?: string | null
           gelezen?: boolean | null
+          gmail_message_id?: string | null
           id?: string
           message_id?: string | null
           reactie_status?: string | null
@@ -2876,6 +2878,7 @@ export type Database = {
           created_at?: string | null
           definitieve_reactie?: string | null
           gelezen?: boolean | null
+          gmail_message_id?: string | null
           id?: string
           message_id?: string | null
           reactie_status?: string | null

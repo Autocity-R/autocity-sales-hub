@@ -187,3 +187,38 @@ export function splitQuotedReply(text: string): { main: string; quoted: string |
 
   return { main, quoted: quoted || null };
 }
+
+/**
+ * Knipt het LMS-handtekeningblok (logo-tabel + "Met vriendelijke groet") uit
+ * ruwe HTML, vóór het strippen van tags. Nodig voor onze eigen uitgaande mails:
+ * die staan als volledige HTML in de database.
+ */
+export function stripHtmlSignature(raw: string | null | undefined): { html: string; signature: string | null } {
+  const s = String(raw || "");
+  if (!/<[a-z][\s\S]*>/i.test(s)) return { html: s, signature: null };
+  const markers = [
+    /margin-top:24px;padding-top:16px;border-top/i,
+    /border-top:1px solid #e5e7eb/i,
+  ];
+  for (const re of markers) {
+    const m = s.match(re);
+    if (m && m.index !== undefined) {
+      const open = s.lastIndexOf("<div", m.index);
+      const cut = open > -1 ? open : m.index;
+      if (cut > 0) return { html: s.slice(0, cut), signature: s.slice(cut) };
+    }
+  }
+  return { html: s, signature: null };
+}
+
+/**
+ * Eén ingang voor een mailbubbel: handtekening-HTML eruit, opschonen en de
+ * geciteerde historie afsplitsen. Werkt voor inkomende én uitgaande berichten.
+ */
+export function splitMailBubble(raw: string | null | undefined): { main: string; quoted: string | null } {
+  const { html, signature } = stripHtmlSignature(raw);
+  const { main, quoted } = splitQuotedReply(sanitizeMailText(html));
+  const sigText = signature ? sanitizeMailText(signature) : "";
+  const tail = [quoted, sigText].filter(Boolean).join("\n\n").trim();
+  return { main, quoted: tail || null };
+}
