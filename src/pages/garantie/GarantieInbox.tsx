@@ -101,6 +101,12 @@ const GarantieInbox: React.FC = () => {
   const [agentPanelOpen, setAgentPanelOpen] = useState(false);
   const [agentTab, setAgentTab] = useState<"voorstel" | "overleg">("voorstel");
   const [chatUnread, setChatUnread] = useState(0);
+  const [linkedVehicle, setLinkedVehicle] = useState<LinkedVehicle | null>(null);
+  const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
+  const [vehicleOptions, setVehicleOptions] = useState<Vehicle[]>([]);
+  const [vehicleOptionsLoading, setVehicleOptionsLoading] = useState(false);
+  const [pickedVehicle, setPickedVehicle] = useState<Vehicle | null>(null);
+  const [savingVehicle, setSavingVehicle] = useState(false);
   const replyRef = useRef<HTMLTextAreaElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const agentViewRef = useRef({ open: false, tab: "voorstel" as "voorstel" | "overleg" });
