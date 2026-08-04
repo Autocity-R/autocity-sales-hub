@@ -330,7 +330,7 @@ const GarantieInbox: React.FC = () => {
     setVehicleOptionsLoading(true);
     const { data } = await supabase
       .from("vehicles")
-      .select("id, brand, model, license_number, vin, sold_date, delivery_date, customer_name, status")
+      .select("id, brand, model, license_number, vin, sold_date, delivery_date, status, customer:contacts!vehicles_customer_id_fkey(first_name, last_name, company_name)")
       .neq("status", "extern")
       .order("sold_date", { ascending: false, nullsFirst: false })
       .limit(2000);
@@ -341,7 +341,7 @@ const GarantieInbox: React.FC = () => {
         model: v.model,
         licenseNumber: v.license_number,
         vin: v.vin,
-        customerName: v.customer_name,
+        customerName: v.customer ? (v.customer.company_name || `${v.customer.first_name || ""} ${v.customer.last_name || ""}`.trim()) : undefined,
         deliveryDate: v.delivery_date || v.sold_date,
       })) as unknown as Vehicle[]
     );
