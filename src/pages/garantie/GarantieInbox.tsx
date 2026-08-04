@@ -324,6 +324,7 @@ const GarantieInbox: React.FC = () => {
   };
 
   const fetchSuggestion = async (hint?: string) => {
+
     if (!selectedThread) return;
     setAgentLoading(true);
     try {
