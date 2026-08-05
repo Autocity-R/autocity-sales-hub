@@ -128,7 +128,6 @@ const createVehicle = async (data: any, permissions: SystemDataAccess) => {
     .from('vehicles')
     .insert(data)
     .select()
-    .neq('status', 'extern')
     .single();
 
   if (error) throw error;
