@@ -20,6 +20,7 @@ export interface TaskDetailWorkOrder {
   part?: string | null;
   parts?: string[] | null;
   status?: string | null;
+  discipline?: string | null;
   is_rush?: boolean | null;
   photos?: string[] | null;
   origin?: string | null;
