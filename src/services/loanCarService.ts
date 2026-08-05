@@ -50,7 +50,6 @@ export const createLoanCar = async (data: {
         }
       })
       .select()
-      .neq('status', 'extern')
       .single();
 
     if (vehicleError) throw vehicleError;

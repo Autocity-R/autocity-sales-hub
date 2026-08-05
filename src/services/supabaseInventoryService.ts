@@ -11,8 +11,7 @@ export class SupabaseInventoryService {
       const { data, error } = await supabase
         .from('vehicles')
         .select('*')
-        .not('status', 'in', '(afgeleverd,leenauto,extern)
-        .neq('status', 'extern')')
+        .not('status', 'in', '(afgeleverd,leenauto,extern)')
         .order('created_at', { ascending: false });
 
       if (error) {
