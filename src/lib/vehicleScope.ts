@@ -41,11 +41,15 @@ export function handelsvoorraadScope<T>(query: T): T {
 /** Alias met expliciete naam voor leesbaarheid op call-sites. */
 export const excludeExternalVehicles = handelsvoorraadScope;
 
-type VehicleLike = {
-  status?: string | null;
-  salesStatus?: string | null;
-  details?: { excludeFromStock?: boolean; externalWorkshop?: boolean } | null;
-} | null | undefined;
+type VehicleLike =
+  | {
+      status?: string | null;
+      salesStatus?: string | null;
+      details?: Record<string, any> | null;
+      [key: string]: any;
+    }
+  | null
+  | undefined;
 
 /** Is dit een externe werkplaats-auto (dus geen handelsvoorraad)? */
 export function isExternalVehicle(vehicle: VehicleLike): boolean {
@@ -57,6 +61,6 @@ export function isExternalVehicle(vehicle: VehicleLike): boolean {
 }
 
 /** Vangnet aan de clientkant: verwijder externe auto's uit een lijst. */
-export function filterHandelsvoorraad<T extends VehicleLike>(rows: T[] | null | undefined): T[] {
-  return (rows ?? []).filter((r) => !isExternalVehicle(r));
+export function filterHandelsvoorraad<T>(rows: T[] | null | undefined): T[] {
+  return (rows ?? []).filter((r) => !isExternalVehicle(r as VehicleLike));
 }
