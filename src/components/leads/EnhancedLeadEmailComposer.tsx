@@ -54,6 +54,7 @@ export const EnhancedLeadEmailComposer: React.FC<EnhancedLeadEmailComposerProps>
       .from('vehicles')
       .select('id, brand, model, year, selling_price, status')
       .eq('status', 'voorraad')
+      .neq('status', 'extern')
       .order('brand', { ascending: true });
     
     if (data) setVehicles(data);
@@ -63,7 +64,8 @@ export const EnhancedLeadEmailComposer: React.FC<EnhancedLeadEmailComposerProps>
     // Load CRM context for Hendrik (limited to 10 items for token efficiency)
     const [leadsData, vehiclesData, appointmentsData] = await Promise.all([
       supabase.from('leads').select('*').eq('id', lead.id).single(),
-      supabase.from('vehicles').select('*').eq('status', 'voorraad').limit(10),
+      supabase.from('vehicles').select('*').eq('status', 'voorraad')
+      .neq('status', 'extern').limit(10),
       supabase.from('appointments').select('*').gte('starttime', new Date().toISOString()).limit(5)
     ]);
 

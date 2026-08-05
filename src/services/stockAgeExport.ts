@@ -26,6 +26,7 @@ export const exportStockAgeToExcel = async (
     .from('vehicles')
     .select('id, brand, model, year, mileage, purchase_price, details, online_since_date, created_at, vin, license_number, branch')
     .eq('status', 'voorraad')
+    .neq('status', 'extern')
     .contains('details', { showroomOnline: true });
   if (branch && branch !== 'all') {
     vq = vq.eq('branch', branch);

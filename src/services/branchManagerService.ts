@@ -48,6 +48,7 @@ class BranchManagerService {
       .from('vehicles')
       .select('*')
       .in('status', ['verkocht_b2c', 'afgeleverd'])
+      .neq('status', 'extern')
       .gte('sold_date', startDate.toISOString())
       .lte('sold_date', endDate.toISOString());
     bq = applyBranchFilter(bq, branch);
@@ -90,6 +91,7 @@ class BranchManagerService {
       .from('vehicles')
       .select('sold_date')
       .eq('status', 'verkocht_b2c')
+      .neq('status', 'extern')
       .not('sold_date', 'is', null);
     pq = applyBranchFilter(pq, branch);
     const { data: pendingVehicles } = await pq;
@@ -107,7 +109,8 @@ class BranchManagerService {
     let pcq = supabase
       .from('vehicles')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'verkocht_b2c');
+      .eq('status', 'verkocht_b2c')
+      .neq('status', 'extern');
     pcq = applyBranchFilter(pcq, branch);
     const { count: pendingCount } = await pcq;
 
@@ -146,6 +149,7 @@ class BranchManagerService {
       .from('vehicles')
       .select('*')
       .in('status', ['verkocht_b2c', 'afgeleverd'])
+      .neq('status', 'extern')
       .gte('sold_date', startDate.toISOString())
       .lte('sold_date', endDate.toISOString());
     vq = applyBranchFilter(vq, branch);
@@ -261,7 +265,8 @@ class BranchManagerService {
     let sq = supabase
       .from('vehicles')
       .select('*')
-      .eq('status', 'voorraad');
+      .eq('status', 'voorraad')
+      .neq('status', 'extern');
     sq = applyBranchFilter(sq, branch);
     const { data: vehicles, error } = await sq;
 
@@ -347,6 +352,7 @@ class BranchManagerService {
       .from('vehicles')
       .select('*')
       .eq('status', 'verkocht_b2c')
+      .neq('status', 'extern')
       .order('sold_date', { ascending: true });
     pq = applyBranchFilter(pq, branch);
     const { data: vehicles, error } = await pq;
@@ -385,6 +391,7 @@ class BranchManagerService {
       .from('vehicles')
       .select('id, brand, model, license_number, vin, sold_date')
       .eq('status', 'verkocht_b2c')
+      .neq('status', 'extern')
       .not('sold_date', 'is', null)
       .order('sold_date', { ascending: true });
     pq = applyBranchFilter(pq, branch);

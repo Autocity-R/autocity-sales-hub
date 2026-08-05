@@ -97,6 +97,7 @@ const DaanDashboardInner: React.FC = () => {
         .from("vehicles")
         .select("id, brand, model, license_number, purchase_price, details, created_at")
         .eq("status", "voorraad")
+        .neq("status", "extern")
         .gt("purchase_price", 0);
       vq = applyBranchFilter(vq, branchFilter);
       const { data, error } = await vq;
@@ -132,6 +133,7 @@ const DaanDashboardInner: React.FC = () => {
         .from("vehicles")
         .select("id, brand, model, status, selling_price, purchase_price, details, sold_date")
         .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"])
+        .neq("status", "extern")
         .gte("sold_date", monthStart);
       vq = applyBranchFilter(vq, branchFilter);
       const { data: soldVehicles, error } = await vq;

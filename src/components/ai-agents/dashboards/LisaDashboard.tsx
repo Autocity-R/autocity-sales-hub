@@ -91,7 +91,8 @@ export const LisaDashboard: React.FC = () => {
       let vq = supabase
         .from("vehicles")
         .select("id, brand, model, license_number, import_status, sold_date, sold_by_user_id, status, details")
-        .eq("status", "verkocht_b2c");
+        .eq("status", "verkocht_b2c")
+        .neq("status", "extern");
       vq = applyBranchFilter(vq, branchFilter);
       let aq = supabase
         .from("appointments")

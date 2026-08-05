@@ -19,6 +19,7 @@ export const useMonthlySalesData = () => {
         .from("vehicles")
         .select("status, sold_date, details")
         .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"])
+        .neq("status", "extern")
         .gte("sold_date", yearStart.toISOString())
         .lte("sold_date", yearEnd.toISOString())
         .not("sold_date", "is", null);

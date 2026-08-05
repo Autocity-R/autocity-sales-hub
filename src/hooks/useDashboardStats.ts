@@ -37,6 +37,7 @@ export const useDashboardStats = () => {
         .from("vehicles")
         .select("*", { count: "exact", head: true })
         .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"])
+        .neq("status", "extern")
         .gte("sold_date", monthStart)
         .lte("sold_date", monthEnd);
 

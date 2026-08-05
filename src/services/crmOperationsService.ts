@@ -128,6 +128,7 @@ const createVehicle = async (data: any, permissions: SystemDataAccess) => {
     .from('vehicles')
     .insert(data)
     .select()
+    .neq('status', 'extern')
     .single();
 
   if (error) throw error;
@@ -219,6 +220,7 @@ const getVehicleAvailability = async (permissions: SystemDataAccess) => {
     .from('vehicles')
     .select('*')
     .eq('status', 'voorraad')
+    .neq('status', 'extern')
     .limit(10);
 
   if (error) throw error;

@@ -176,6 +176,7 @@ export const fetchDeliveredVehiclesForWarranty = async (): Promise<Vehicle[]> =>
       )
     `)
     .in('status', ['afgeleverd', 'verkocht_b2c', 'verkocht_b2b'])
+    .neq('status', 'extern')
     .not('customer_id', 'is', null)
     .order('created_at', { ascending: false });
 
