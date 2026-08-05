@@ -51,6 +51,7 @@ const WerkplaatsGoedkeuren = lazyWithRetry(() => import("@/pages/werkplaats/Werk
 const WerkplaatsOnderdelen = lazyWithRetry(() => import("@/pages/werkplaats/WerkplaatsOnderdelen"));
 const WerkplaatsPoetsen = lazyWithRetry(() => import("@/pages/werkplaats/WerkplaatsPoetsen"));
 const WerkplaatsFacturen = lazyWithRetry(() => import("@/pages/werkplaats/WerkplaatsFacturen"));
+const WerkplaatsKlanten = lazyWithRetry(() => import("@/pages/werkplaats/WerkplaatsKlanten"));
 const WerkplaatsFactuurNieuw = lazyWithRetry(() => import("@/pages/werkplaats/WerkplaatsFactuurNieuw"));
 const WerkplaatsPrijslijst = lazyWithRetry(() => import("@/pages/werkplaats/WerkplaatsPrijslijst"));
 const WerkplaatsAgenda = lazyWithRetry(() => import("@/pages/werkplaats/WerkplaatsAgenda"));
@@ -272,6 +273,7 @@ function App() {
         <Route path="/werkplaats/onderdelen" element={<ProtectedRoute><WerkplaatsOnderdelen /></ProtectedRoute>} />
         <Route path="/werkplaats/poetsen" element={<ProtectedRoute><WerkplaatsPoetsen /></ProtectedRoute>} />
         <Route path="/werkplaats/facturen" element={<ProtectedRoute><WerkplaatsFacturen /></ProtectedRoute>} />
+        <Route path="/werkplaats/klanten" element={<ProtectedRoute><WerkplaatsKlanten /></ProtectedRoute>} />
         <Route path="/werkplaats/facturen/nieuw" element={<ProtectedRoute><WerkplaatsFactuurNieuw /></ProtectedRoute>} />
         <Route path="/werkplaats/prijslijst" element={<ProtectedRoute><WerkplaatsPrijslijst /></ProtectedRoute>} />
         <Route path="/werkplaats/agenda" element={<ProtectedRoute><WerkplaatsAgenda /></ProtectedRoute>} />
