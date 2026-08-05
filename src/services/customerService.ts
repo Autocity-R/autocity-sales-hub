@@ -440,6 +440,7 @@ export const getCustomerPurchasedVehicles = async (customerId: string) => {
       .select('id, brand, model, year, license_number, vin, selling_price, sold_date, status')
       .eq('customer_id', customerId)
       .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
+      .neq('status', 'extern')
       .order('sold_date', { ascending: false });
 
     if (error) throw error;

@@ -168,6 +168,7 @@ export const getPapersAlerts = async (): Promise<CriticalAlert | null> => {
       .from('vehicles')
       .select('id, brand, model, license_number, status, details, created_at')
       .in('status', ['voorraad', 'verkocht_b2b', 'verkocht_b2c'])
+      .neq('status', 'extern')
       .lt('created_at', thresholdDate.toISOString());
 
     if (error) throw error;
@@ -224,7 +225,8 @@ export const getVehiclesNotOnline = async (): Promise<CriticalAlert | null> => {
     const { data: vehicles, error } = await supabase
       .from('vehicles')
       .select('id, brand, model, license_number, details, created_at')
-      .eq('status', 'voorraad');
+      .eq('status', 'voorraad')
+      .neq('status', 'extern');
 
     if (error) throw error;
     if (!vehicles) return null;
@@ -282,6 +284,7 @@ export const getSlowMovers = async (): Promise<CriticalAlert | null> => {
       .from('vehicles')
       .select('id, brand, model, license_number, created_at, selling_price')
       .eq('status', 'voorraad')
+      .neq('status', 'extern')
       .lt('created_at', thresholdDate.toISOString())
       .order('created_at', { ascending: true });
 
@@ -391,7 +394,8 @@ export const getTeamPerformance = async (): Promise<TeamMemberPerformance[]> => 
     const { data: soldVehicles, error: vehiclesError } = await supabase
       .from('vehicles')
       .select('id, status, selling_price, purchase_price, details')
-      .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd']);
+      .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
+      .neq('status', 'extern');
 
     if (vehiclesError) throw vehiclesError;
 
@@ -549,6 +553,7 @@ export const getDailyStats = async () => {
       .from('vehicles')
       .select('id')
       .in('status', ['verkocht_b2b', 'verkocht_b2c'])
+      .neq('status', 'extern')
       .gte('sold_date', today.toISOString());
 
     // Vehicles in transit - check transportStatus = 'onderweg'
@@ -566,7 +571,8 @@ export const getDailyStats = async () => {
     const { data: onStock } = await supabase
       .from('vehicles')
       .select('id, details')
-      .eq('status', 'voorraad');
+      .eq('status', 'voorraad')
+      .neq('status', 'extern');
 
     // Vehicles not online - only those that have arrived (transportStatus = 'aangekomen') but not online
     const notOnline = onStock?.filter(v => {

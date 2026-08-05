@@ -16,6 +16,7 @@ export class SystemReportsService {
       .from('vehicles')
       .select('*')
       .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
+      .neq('status', 'extern')
       .not('sold_date', 'is', null)
       .gte('sold_date', startDate)
       .lte('sold_date', endDate);
@@ -195,7 +196,8 @@ export class SystemReportsService {
    */
   async getInventoryMetrics(branch?: BranchFilter) {
     try {
-      let sq = supabase.from('vehicles').select('*').eq('status', 'voorraad');
+      let sq = supabase.from('vehicles').select('*').eq('status', 'voorraad')
+      .neq('status', 'extern');
       sq = applyBranchFilter(sq, branch);
       const { data: stockVehicles, error: stockError } = await sq;
 
@@ -205,6 +207,7 @@ export class SystemReportsService {
         .from('vehicles')
         .select('*')
         .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
+        .neq('status', 'extern')
         .not('sold_date', 'is', null);
       sdq = applyBranchFilter(sdq, branch);
       const { data: soldVehicles, error: soldError } = await sdq;
@@ -297,6 +300,7 @@ export class SystemReportsService {
         .from('vehicles')
         .select('*')
         .in('status', ['verkocht_b2b', 'verkocht_b2c'])
+        .neq('status', 'extern')
         .eq('location', 'onderweg');
       ovq = applyBranchFilter(ovq, branch);
       const { data: orderedVehicles, error: orderedError } = await ovq;

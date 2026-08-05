@@ -219,6 +219,7 @@ const getVehicleAvailability = async (permissions: SystemDataAccess) => {
     .from('vehicles')
     .select('*')
     .eq('status', 'voorraad')
+    .neq('status', 'extern')
     .limit(10);
 
   if (error) throw error;

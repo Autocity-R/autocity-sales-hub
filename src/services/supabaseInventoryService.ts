@@ -36,6 +36,7 @@ export class SupabaseInventoryService {
         .from('vehicles')
         .select('*')
         .eq('status', status)
+        .neq('status', 'extern')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -59,6 +60,7 @@ export class SupabaseInventoryService {
         .from('vehicles')
         .select('*')
         .eq('status', 'voorraad')
+        .neq('status', 'extern')
         .neq('location', 'onderweg')
         .neq('status', 'leenauto')
         .contains('details', { showroomOnline: true })
@@ -85,6 +87,7 @@ export class SupabaseInventoryService {
         .from('vehicles')
         .select('*')
         .eq('status', 'verkocht_b2b')
+        .neq('status', 'extern')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -110,6 +113,7 @@ export class SupabaseInventoryService {
         .from('vehicles')
         .select('*')
         .eq('status', 'verkocht_b2c')
+        .neq('status', 'extern')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -135,6 +139,7 @@ export class SupabaseInventoryService {
         .from('vehicles')
         .select('*')
         .eq('status', 'afgeleverd')
+        .neq('status', 'extern')
         .order('created_at', { ascending: false });
 
       if (error) {

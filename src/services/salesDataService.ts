@@ -62,6 +62,7 @@ export const salesDataService = {
       .from("vehicles")
       .select("id, brand, model, status, selling_price, sold_date, created_at, details")
       .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"])
+      .neq("status", "extern")
       .order("sold_date", { ascending: false, nullsFirst: false });
     vq = applyBranchFilter(vq, branch);
     const { data: vehicles, error } = await vq;
@@ -241,7 +242,8 @@ export const salesDataService = {
     let vq = supabase
       .from("vehicles")
       .select("status, selling_price, sold_date, created_at, details")
-      .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"]);
+      .in("status", ["verkocht_b2b", "verkocht_b2c", "afgeleverd"])
+      .neq("status", "extern");
     vq = applyBranchFilter(vq, branch);
     const { data: vehicles, error } = await vq;
 

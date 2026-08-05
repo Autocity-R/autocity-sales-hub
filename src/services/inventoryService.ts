@@ -3,6 +3,7 @@ import { Vehicle, PaymentStatus, FileCategory, PaintStatus } from "@/types/inven
 import { ContractOptions } from "@/types/email";
 import { supabaseInventoryService } from "./supabaseInventoryService";
 import { supabase } from "@/integrations/supabase/client";
+import { filterHandelsvoorraad } from "@/lib/vehicleScope";
 
 // Mock data and flag for using mock data
 let isUseMockData = false;
@@ -28,7 +29,7 @@ export const fetchVehicles = async (): Promise<Vehicle[]> => {
 
     // Try Supabase first
     try {
-      const vehicles = await supabaseInventoryService.getAllVehicles();
+      const vehicles = filterHandelsvoorraad(await supabaseInventoryService.getAllVehicles());
       console.log(`Fetched ${vehicles.length} vehicles from Supabase`);
       return vehicles;
     } catch (supabaseError) {
@@ -90,7 +91,7 @@ export const fetchOnlineVehicles = async (): Promise<Vehicle[]> => {
     }
 
     try {
-      const vehicles = await supabaseInventoryService.getOnlineVehicles();
+      const vehicles = filterHandelsvoorraad(await supabaseInventoryService.getOnlineVehicles());
       console.log(`Fetched ${vehicles.length} online vehicles from Supabase`);
       return vehicles;
     } catch (supabaseError) {
@@ -113,7 +114,7 @@ export const fetchB2BVehicles = async (): Promise<Vehicle[]> => {
     }
 
     try {
-      const vehicles = await supabaseInventoryService.getB2BVehicles();
+      const vehicles = filterHandelsvoorraad(await supabaseInventoryService.getB2BVehicles());
       console.log(`Fetched ${vehicles.length} B2B vehicles from Supabase`);
       return vehicles;
     } catch (supabaseError) {
@@ -136,7 +137,7 @@ export const fetchB2CVehicles = async (): Promise<Vehicle[]> => {
     }
 
     try {
-      const vehicles = await supabaseInventoryService.getB2CVehicles();
+      const vehicles = filterHandelsvoorraad(await supabaseInventoryService.getB2CVehicles());
       console.log(`Fetched ${vehicles.length} B2C vehicles from Supabase`);
       return vehicles;
     } catch (supabaseError) {
@@ -159,7 +160,7 @@ export const fetchDeliveredVehicles = async (): Promise<Vehicle[]> => {
     }
 
     try {
-      const vehicles = await supabaseInventoryService.getDeliveredVehicles();
+      const vehicles = filterHandelsvoorraad(await supabaseInventoryService.getDeliveredVehicles());
       console.log(`Fetched ${vehicles.length} delivered vehicles from Supabase`);
       return vehicles;
     } catch (supabaseError) {
@@ -182,7 +183,7 @@ export const fetchTransportVehicles = async (): Promise<Vehicle[]> => {
     }
 
     try {
-      const vehicles = await supabaseInventoryService.getTransportVehicles();
+      const vehicles = filterHandelsvoorraad(await supabaseInventoryService.getTransportVehicles());
       console.log(`Fetched ${vehicles.length} transport vehicles from Supabase`);
       return vehicles;
     } catch (supabaseError) {

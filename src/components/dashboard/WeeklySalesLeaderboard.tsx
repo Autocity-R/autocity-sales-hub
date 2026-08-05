@@ -57,6 +57,7 @@ const WeeklySalesLeaderboard = () => {
           details
         `)
         .in('status', ['verkocht_b2b', 'verkocht_b2c', 'afgeleverd'])
+        .neq('status', 'extern')
         .not('sold_date', 'is', null)
         .not('sold_by_user_id', 'is', null)
         .gte('sold_date', currentWeekStart.toISOString())
