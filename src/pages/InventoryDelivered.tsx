@@ -29,6 +29,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { useCurrentBranch, filterByBranch } from "@/contexts/BranchContext";
+import { buildHaystack, matchesSearch } from "@/lib/searchNormalize";
 
 const InventoryDelivered = () => {
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
@@ -64,17 +65,19 @@ const InventoryDelivered = () => {
   const filteredVehicles = filterByBranch(vehicles, branchFilter).filter((vehicle: Vehicle) => {
     // Search query filtering
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const searchFields = [
+      const c: any = (vehicle as any).customerContact || {};
+      const d: any = (vehicle as any).details || {};
+      const hay = buildHaystack([
         vehicle.brand,
         vehicle.model,
         vehicle.licenseNumber,
-        vehicle.customerName || "",
-        vehicle.salespersonName || "",
-      ];
-      if (!searchFields.some(field => field.toLowerCase().includes(query))) {
-        return false;
-      }
+        vehicle.vin,
+        vehicle.customerName,
+        vehicle.salespersonName,
+        c.name, c.email, c.phone, c.address,
+        d.meldcode, d.meldCode, d.reportCode, d.postalCode, d.street, d.city,
+      ]);
+      if (!matchesSearch(hay, searchQuery)) return false;
     }
     
     // Customer type filtering

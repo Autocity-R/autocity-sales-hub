@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { getContactById, getCustomerHistory, getSupplierHistory, updateContact, getCustomerPurchasedVehicles } from "@/services/customerService";
 import ContactDetailsPanel from "@/components/customers/ContactDetailsPanel";
 import ContactHistory from "@/components/customers/ContactHistory";
@@ -17,11 +17,12 @@ import CustomerWorkshopHistory from "@/components/customers/CustomerWorkshopHist
 const CustomerDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [contact, setContact] = useState<Contact | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [purchasedVehicles, setPurchasedVehicles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("details");
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "details");
 
   useEffect(() => {
     const loadContact = async () => {

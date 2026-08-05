@@ -302,6 +302,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 { url: "/werkplaats/uitdeuken", label: "Uitdeuken (extern)", icon: Hammer },
                 { url: "/werkplaats/goedkeuren", label: "Goedkeuren", icon: CheckCircle },
                 { url: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles },
+                { url: "/werkplaats/klanten", label: "Werkplaatsklanten", icon: UsersIcon },
               ].map((it) => (
                 <Link key={it.url} to={it.url}>
                   <Button
@@ -629,6 +630,7 @@ const DirectieSidebar: React.FC<{
         { url: "/inventory", label: "Voorraad", icon: CarIcon },
         { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
         { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
+        { url: "/werkplaats/klanten", label: "Werkplaatsklanten", icon: UsersIcon },
       ],
     },
     {
@@ -757,6 +759,7 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
           { url: "/customers", label: "Alle klanten", icon: UsersIcon, exact: true },
         ]),
         { url: "/loan-cars", label: "Leenauto beheer", icon: CarIcon },
+        { url: "/werkplaats/klanten", label: "Werkplaatsklanten", icon: UsersIcon },
       ] as AsNavItem[],
     },
     {
