@@ -21,7 +21,7 @@ export const WorkshopInvoiceDialog: React.FC<WorkshopInvoiceDialogProps> = ({ op
   const [customer, setCustomer] = useState({
     name: "", address: "", street: "", house_number: "", postal_code: "", city: "", email: "", phone: "",
   });
-  const [vehicle, setVehicle] = useState({ brand: "", model: "", license_number: "", vin: "" });
+  const [vehicle, setVehicle] = useState({ brand: "", model: "", license_number: "", vin: "", mileage: "", year: "" });
   const [lines, setLines] = useState<InvoiceLine[]>([{ description: "", amount: 0 }]);
   const [busy, setBusy] = useState<null | "concept" | "send">(null);
 
@@ -42,6 +42,8 @@ export const WorkshopInvoiceDialog: React.FC<WorkshopInvoiceDialogProps> = ({ op
       model: initial.vehicle?.model || "",
       license_number: initial.vehicle?.license_number || "",
       vin: initial.vehicle?.vin || "",
+      mileage: initial.vehicle?.mileage != null ? String(initial.vehicle.mileage) : "",
+      year: initial.vehicle?.year != null ? String(initial.vehicle.year) : "",
     });
     setLines(initial.lines?.length ? initial.lines : [{ description: "", amount: 0 }]);
   }, [open, initial]);
@@ -145,6 +147,10 @@ export const WorkshopInvoiceDialog: React.FC<WorkshopInvoiceDialogProps> = ({ op
                   <div>
                     <Label className="text-[12px]">Kenteken</Label>
                     <Input value={vehicle.license_number} onChange={(e) => setVehicle({ ...vehicle, license_number: e.target.value.toUpperCase() })} />
+                  </div>
+                  <div>
+                    <Label className="text-[12px]">Km-stand</Label>
+                    <Input value={vehicle.mileage} onChange={(e) => setVehicle({ ...vehicle, mileage: e.target.value })} placeholder="84120" />
                   </div>
                 </div>
               </AsCard>
