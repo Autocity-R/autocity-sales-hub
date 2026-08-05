@@ -5025,6 +5025,8 @@ export type Database = {
           poets_type: string | null
           reject_note: string | null
           rejected_count: number
+          reminder_for_date: string | null
+          reminder_sent_at: string | null
           result_photos: Json | null
           sort_order: number
           source: string
@@ -5059,6 +5061,8 @@ export type Database = {
           poets_type?: string | null
           reject_note?: string | null
           rejected_count?: number
+          reminder_for_date?: string | null
+          reminder_sent_at?: string | null
           result_photos?: Json | null
           sort_order?: number
           source?: string
@@ -5093,6 +5097,8 @@ export type Database = {
           poets_type?: string | null
           reject_note?: string | null
           rejected_count?: number
+          reminder_for_date?: string | null
+          reminder_sent_at?: string | null
           result_photos?: Json | null
           sort_order?: number
           source?: string
