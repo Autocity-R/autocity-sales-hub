@@ -630,6 +630,7 @@ const DirectieSidebar: React.FC<{
         { url: "/inventory", label: "Voorraad", icon: CarIcon },
         { url: "/inventory/consumer", label: "Verkocht B2C", icon: UsersIcon },
         { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
+        { url: "/werkplaats/klanten", label: "Werkplaatsklanten", icon: UsersIcon },
       ],
     },
     {
