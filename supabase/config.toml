@@ -116,3 +116,6 @@ verify_jwt = true
 
 [functions.contract-sign]
 verify_jwt = false
+
+[functions.werkplaats-afspraak-herinnering]
+verify_jwt = false
