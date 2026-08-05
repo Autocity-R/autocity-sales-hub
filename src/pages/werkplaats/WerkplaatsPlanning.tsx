@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { format, isToday, isTomorrow, isPast, addDays, startOfDay, endOfDay } from "date-fns";
 import { nl } from "date-fns/locale";
-import { AsPage, AsCard, AsCardHead, AsPill, AsMono, AsLicensePlate, AsVehicleThumb, useLiveTimer } from "@/components/aftersales/ui";
+import { AsPage, AsCard, AsCardHead, AsPill, AsMono, AsLicensePlate, useLiveTimer } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
 import { DamageReportDialog, DamageReportPayload } from "@/components/aftersales/DamageReportDialog";
 import { AddTaskBar } from "@/components/aftersales/AddTaskDialog";
@@ -272,7 +272,7 @@ const DoneTodayColumn: React.FC<{ items: WO[]; nameFor: (uid: string | null) => 
         const approved = !!w.approved_at;
         return (
           <div key={w.id} className={cn("rounded-lg border border-slate-200 p-2.5 flex items-center gap-2.5 opacity-80", approved && "bg-emerald-50/40 border-emerald-100")}>
-            <AsVehicleThumb src={w.vehicle?.showroom_photo_url} className="h-9 w-12" />
+            <AsLicensePlate value={w.vehicle?.license_number} size="sm" />
             <div className="min-w-0 flex-1">
               <div className="text-[12px] font-semibold text-slate-800 truncate">{w.vehicle?.brand} {w.vehicle?.model}</div>
               <div className="text-[11px] text-slate-500 truncate">{nameFor(w.assigned_to)}</div>

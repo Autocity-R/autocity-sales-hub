@@ -191,6 +191,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                   <div className="flex items-center gap-2 text-sm text-slate-500">
                     <Timer className="h-4 w-4" /> Werktijd: {fmtSec(w.work_seconds)}
                   </div>
+                  {w.discipline !== "werkplaats" && (
                   <div className="grid gap-3 md:grid-cols-2">
                     <div>
                       <div className="text-[11px] uppercase tracking-wide mb-1 text-slate-500 font-semibold">Opdracht-foto's</div>
@@ -207,6 +208,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                       </div>
                     </div>
                   </div>
+                  )}
                 </div>
               </AsCard>
             ))}
