@@ -78,6 +78,7 @@ const findOffenders = (): Offender[] => {
       const end = rest.indexOf(";");
       const chunk = (end > 0 ? rest.slice(0, end) : rest.slice(0, 800)).replace(/\s+/g, " ");
       if (!chunk.includes(".select(")) continue; // writes zijn niet relevant
+      if (/\.(insert|update|upsert|delete)\(/.test(chunk)) continue; // write-paden
       if (/(eq|in)\((['"])(id|vehicle_id)\2/.test(chunk)) continue; // per-id lookups
       if (/extern/.test(chunk)) continue; // filter aanwezig
       offenders.push({ file, line: src.slice(0, start).split("\n").length });
