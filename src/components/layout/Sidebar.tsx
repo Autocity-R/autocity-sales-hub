@@ -302,6 +302,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 { url: "/werkplaats/uitdeuken", label: "Uitdeuken (extern)", icon: Hammer },
                 { url: "/werkplaats/goedkeuren", label: "Goedkeuren", icon: CheckCircle },
                 { url: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles },
+                { url: "/werkplaats/klanten", label: "Werkplaatsklanten", icon: UsersIcon },
               ].map((it) => (
                 <Link key={it.url} to={it.url}>
                   <Button
