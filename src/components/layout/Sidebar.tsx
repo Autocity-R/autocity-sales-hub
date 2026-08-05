@@ -757,6 +757,7 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
           { url: "/customers", label: "Alle klanten", icon: UsersIcon, exact: true },
         ]),
         { url: "/loan-cars", label: "Leenauto beheer", icon: CarIcon },
+        { url: "/werkplaats/klanten", label: "Werkplaatsklanten", icon: UsersIcon },
       ] as AsNavItem[],
     },
     {
