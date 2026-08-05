@@ -20,6 +20,7 @@ export interface TaskDetailWorkOrder {
   part?: string | null;
   parts?: string[] | null;
   status?: string | null;
+  discipline?: string | null;
   is_rush?: boolean | null;
   photos?: string[] | null;
   origin?: string | null;
@@ -158,7 +159,9 @@ export const TaskDetailSheet: React.FC<Props> = ({ open, onOpenChange, workOrder
   const ext = (workOrder.external_customer || {}) as any;
   const isExtern = workOrder.origin === "extern";
   const phone: string | null = ext.phone || ext.telephone || null;
-  const showDiagram = markers.length > 0 || partZoneIds.length > 0;
+  /** Werkplaats-orders (onderhoud/APK) hebben geen schade-locatie: geen diagram. */
+  const isWerkplaats = (workOrder.discipline || "") === "werkplaats";
+  const showDiagram = !isWerkplaats && (markers.length > 0 || partZoneIds.length > 0);
 
   const specs = [
     typeof v?.mileage === "number" ? `${v.mileage.toLocaleString("nl-NL")} km` : null,

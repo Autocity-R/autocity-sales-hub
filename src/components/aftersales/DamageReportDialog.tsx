@@ -39,6 +39,9 @@ export const DamageReportDialog: React.FC<Props> = ({ open, onOpenChange, report
   const v = report.vehicle;
   const zoneIds = getWorkOrderParts(report).map(p => findZoneByName(p)?.id).filter(Boolean) as string[];
   const marker = zoneIds.map((zoneId, i) => ({ index: i + 1, zoneId }));
+  /** Werkplaats-orders (onderhoud/APK) hebben geen schade-locatie: geen diagram. */
+  const isWerkplaats = (report.discipline || "") === "werkplaats";
+  const hasPhotos = (report.photos?.length || 0) > 0 || (report.result_photos?.length || 0) > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -51,10 +54,12 @@ export const DamageReportDialog: React.FC<Props> = ({ open, onOpenChange, report
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid md:grid-cols-[220px_1fr] gap-5 px-5 pb-5 pt-2">
-          <div className="flex justify-center bg-slate-50 rounded-xl border border-slate-200 py-3">
-            <DamageDiagram markers={marker} selectedZoneIds={zoneIds} interactive={false} className="max-w-[160px]" />
-          </div>
+        <div className={isWerkplaats ? "px-5 pb-5 pt-2" : "grid md:grid-cols-[220px_1fr] gap-5 px-5 pb-5 pt-2"}>
+          {!isWerkplaats && (
+            <div className="flex justify-center bg-slate-50 rounded-xl border border-slate-200 py-3">
+              <DamageDiagram markers={marker} selectedZoneIds={zoneIds} interactive={false} className="max-w-[160px]" />
+            </div>
+          )}
           <div className="min-w-0 space-y-3">
             <PartChips workOrder={report} />
             {report.description && <div className="text-[13.5px] text-slate-800">{report.description}</div>}
@@ -87,7 +92,7 @@ export const DamageReportDialog: React.FC<Props> = ({ open, onOpenChange, report
               </div>
             </div>
           )}
-          {(!report.photos || report.photos.length === 0) && (!report.result_photos || report.result_photos.length === 0) && (
+          {!hasPhotos && !isWerkplaats && (
             <div className="text-[12px] text-slate-400 text-center py-2">Geen foto's toegevoegd.</div>
           )}
         </div>

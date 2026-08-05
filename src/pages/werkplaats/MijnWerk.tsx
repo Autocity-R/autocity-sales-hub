@@ -40,7 +40,7 @@ interface WorkRow {
 }
 
 const SELECT =
-  "id, description, part, parts, photos, status, planned_at, started_at, is_rush, assigned_to, origin, warranty_claim_id, external_customer, branch, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, license_number, year)";
+  "id, description, part, parts, photos, status, discipline, planned_at, started_at, is_rush, assigned_to, origin, warranty_claim_id, external_customer, branch, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, license_number, year)";
 
 const MijnWerkCard: React.FC<{
   w: WorkRow;
