@@ -11,6 +11,7 @@ import { toast } from "@/hooks/use-toast";
 import WorkshopInvoiceDialog from "@/components/werkplaats/WorkshopInvoiceDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { featureAccess } from "@/lib/routeAccess";
+import { buildHaystack, matchesSearch, amountTokens } from "@/lib/searchNormalize";
 import {
   eur, getInvoiceSignedUrl, getInvoicePdfBase64, queueInvoiceEmail, InvoiceDraft,
   dispatchPendingInternalInvoices, resendInternalInvoice, setInvoicePaymentStatus,
@@ -69,10 +70,18 @@ const WerkplaatsFacturen: React.FC = () => {
     const s = q.trim().toLowerCase();
     const base = rows.filter((r) => (r.invoice_kind === "intern" ? "intern" : "extern") === tab);
     if (!s) return base;
-    return base.filter((r) =>
-      [r.invoice_number, r.customer?.name, r.vehicle?.license_number, r.vehicle?.brand, r.vehicle?.model]
-        .filter(Boolean).some((v: string) => String(v).toLowerCase().includes(s)),
-    );
+    return base.filter((r) => {
+      const c = r.customer || {};
+      const v = r.vehicle || {};
+      const hay = buildHaystack([
+        r.invoice_number, r.status, r.payment_status,
+        c.name, c.email, c.phone, c.street, c.house_number, c.postal_code, c.city, c.address,
+        v.license_number, v.brand, v.model, v.vin, v.year, v.mileage,
+        ...amountTokens(r.total), ...amountTokens(r.subtotal),
+        new Date(r.created_at).toLocaleDateString("nl-NL"),
+      ]);
+      return matchesSearch(hay, q);
+    });
   }, [rows, q, tab]);
 
   const monthTotals = useMemo(() => {
