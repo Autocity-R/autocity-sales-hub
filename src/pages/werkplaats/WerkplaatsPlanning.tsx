@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { format, isToday, isTomorrow, isPast, addDays, startOfDay, endOfDay } from "date-fns";
 import { nl } from "date-fns/locale";
-import { AsPage, AsCard, AsCardHead, AsPill, AsMono, AsLicensePlate, AsVehicleThumb, useLiveTimer } from "@/components/aftersales/ui";
+import { AsPage, AsCard, AsCardHead, AsPill, AsMono, AsLicensePlate, useLiveTimer } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
 import { DamageReportDialog, DamageReportPayload } from "@/components/aftersales/DamageReportDialog";
 import { AddTaskBar } from "@/components/aftersales/AddTaskDialog";
