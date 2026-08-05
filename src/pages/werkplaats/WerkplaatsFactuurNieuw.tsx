@@ -52,10 +52,10 @@ interface CustomerForm {
   name: string; street: string; house_number: string; postal_code: string;
   city: string; email: string; phone: string;
 }
-interface VehicleForm { brand: string; model: string; license_number: string; mileage: string }
+interface VehicleForm { brand: string; model: string; license_number: string; mileage: string; year: string; vin: string }
 
 const emptyCustomer: CustomerForm = { name: "", street: "", house_number: "", postal_code: "", city: "", email: "", phone: "" };
-const emptyVehicle: VehicleForm = { brand: "", model: "", license_number: "", mileage: "" };
+const emptyVehicle: VehicleForm = { brand: "", model: "", license_number: "", mileage: "", year: "", vin: "" };
 
 const INTERN_CUSTOMER: CustomerForm = {
   name: "Autocity Automotive Group B.V.",
@@ -383,7 +383,7 @@ const WerkplaatsFactuurNieuw: React.FC = () => {
     if (!s) return;
     const { data } = await (supabase as any)
       .from("vehicles")
-      .select("id, brand, model, license_number, mileage, vin")
+      .select("id, brand, model, license_number, mileage, vin, year")
       .or(`license_number.ilike.%${s}%,brand.ilike.%${s}%,model.ilike.%${s}%`)
       .limit(8);
     setVehResults(data || []);
@@ -395,6 +395,8 @@ const WerkplaatsFactuurNieuw: React.FC = () => {
       model: v.model || "",
       license_number: v.license_number || "",
       mileage: v.mileage ? String(v.mileage) : "",
+      year: v.year ? String(v.year) : "",
+      vin: v.vin || "",
     });
     setVehicleId(v.id);
     setVehResults([]);
@@ -651,6 +653,8 @@ const WerkplaatsFactuurNieuw: React.FC = () => {
                   <Field label="Model" value={vehicle.model} onChange={(v) => setVehicle((x) => ({ ...x, model: v }))} />
                   <Field label="Kenteken" value={vehicle.license_number} onChange={(v) => setVehicle((x) => ({ ...x, license_number: v }))} />
                   <Field label="Km-stand" value={vehicle.mileage} onChange={(v) => setVehicle((x) => ({ ...x, mileage: v }))} />
+                  <Field label="Bouwjaar" value={vehicle.year} onChange={(v) => setVehicle((x) => ({ ...x, year: v }))} />
+                  <Field label="VIN" value={vehicle.vin} onChange={(v) => setVehicle((x) => ({ ...x, vin: v }))} />
                 </div>
               </Section>
 

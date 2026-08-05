@@ -22,7 +22,21 @@ export const customerAddressLines = (c: InvoiceCustomer): string[] => {
   if (lines.length) return lines;
   return String(c.address ?? "").trim() ? [String(c.address).trim()] : [];
 };
-export interface InvoiceVehicle { brand?: string | null; model?: string | null; license_number?: string | null; vin?: string | null }
+export interface InvoiceVehicle {
+  brand?: string | null;
+  model?: string | null;
+  license_number?: string | null;
+  vin?: string | null;
+  mileage?: string | number | null;
+  year?: string | number | null;
+}
+
+/** "84120" -> "84.120 km" */
+export const formatMileage = (m?: string | number | null): string => {
+  const n = Number(String(m ?? "").replace(/[^\d]/g, ""));
+  if (!Number.isFinite(n) || n <= 0) return "";
+  return `${new Intl.NumberFormat("nl-NL").format(n)} km`;
+};
 
 export interface InvoiceDraft {
   id?: string | null;
@@ -106,6 +120,8 @@ export const renderInvoiceHtml = (d: InvoiceDraft & { invoice_date?: string }): 
         <div style="font-size:12.5px;margin-top:6px;line-height:1.6">
           <strong>${esc(d.vehicle.brand)} ${esc(d.vehicle.model)}</strong><br/>
           Kenteken: <strong>${esc(d.vehicle.license_number) || "—"}</strong>
+          ${d.vehicle.year ? `<br/>Bouwjaar: ${esc(String(d.vehicle.year))}` : ""}
+          ${formatMileage(d.vehicle.mileage) ? `<br/>Km-stand: <strong>${esc(formatMileage(d.vehicle.mileage))}</strong>` : ""}
           ${d.vehicle.vin ? `<br/>VIN: ${esc(d.vehicle.vin)}` : ""}
         </div>
       </div>
@@ -427,7 +443,7 @@ export type PaymentStatus = "open" | "betaald" | "nvt";
 export interface ManualInvoiceInput {
   invoice_kind: "intern" | "extern";
   customer: InvoiceCustomer;
-  vehicle: InvoiceVehicle & { mileage?: string | number | null };
+  vehicle: InvoiceVehicle;
   lines: InvoiceLine[];
   branch?: string | null;
   vehicle_id?: string | null;
