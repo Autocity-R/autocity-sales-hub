@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import BranchFilter from "@/components/reports/BranchFilter";
 import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
-import { Flame, Loader2, Hammer, Check, CheckCircle2 } from "lucide-react";
+import { Flame, Loader2, Hammer, Check, CheckCircle2, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { differenceInDays } from "date-fns";
 import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono } from "@/components/aftersales/ui";
@@ -31,6 +31,51 @@ const WerkplaatsUitdeuken: React.FC = () => {
   const [rows, setRows] = useState<WO[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<WO | null>(null);
+  const canReorder = !isExtern && !readOnly;
+
+  const isDone = (w: WO) => (isExtern ? w.status === "afgerond" : w.status === "goedgekeurd");
+  const openSorted = (list: WO[]) =>
+    list.filter(w => !isDone(w)).sort((a, b) =>
+      (Number(b.is_rush) - Number(a.is_rush)) || (a.sort_order - b.sort_order));
+
+  const reorder = async (id: string, dir: -1 | 1) => {
+    const visible = openSorted(rows);
+    const idx = visible.findIndex(w => w.id === id);
+    const target = visible[idx];
+    const swap = visible[idx + dir];
+    if (idx < 0 || !target || !swap) return;
+    if (swap.is_rush !== target.is_rush) {
+      toast({ title: "Kan niet verwisselen", description: "Spoed-taken staan altijd bovenaan.", variant: "destructive" });
+      return;
+    }
+
+    const next = [...visible];
+    next[idx] = swap;
+    next[idx + dir] = target;
+
+    const patches = next.map((w, i) => ({ id: w.id, sort_order: (i + 1) * 10 }));
+    const byId = new Map(patches.map(p => [p.id, p.sort_order]));
+    const prevRows = rows;
+
+    // optimistisch
+    setRows(prev => prev.map(r => byId.has(r.id) ? { ...r, sort_order: byId.get(r.id)! } : r));
+
+    try {
+      const results = await Promise.all(
+        patches
+          .filter(p => (prevRows.find(r => r.id === p.id)?.sort_order ?? null) !== p.sort_order)
+          .map(p => supabase.from("work_orders").update({ sort_order: p.sort_order }).eq("id", p.id).select("id")),
+      );
+      const failed = results.find(r => r.error);
+      if (failed?.error) throw failed.error;
+      if (results.find(r => !r.error && (r.data?.length ?? 0) === 0)) {
+        throw new Error("Geen rechten om de volgorde van deze taak op te slaan.");
+      }
+    } catch (e: any) {
+      toast({ title: "Fout bij volgorde opslaan", description: e.message, variant: "destructive" });
+      load();
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -116,9 +161,10 @@ const WerkplaatsUitdeuken: React.FC = () => {
           <AsCard className="p-10 text-center text-slate-400 text-[13px]"><Hammer className="h-5 w-5 mx-auto mb-2 text-slate-300" />Geen uitdeuk-taken.</AsCard>
         ) : (
           <div className="space-y-3">
-            {rows.map(w => {
+            {[...openSorted(rows), ...rows.filter(w => isDone(w))].map((w, visIdx, arr) => {
               const v = w.vehicle;
-              const done = isExtern ? w.status === "afgerond" : w.status === "goedgekeurd";
+              const done = isDone(w);
+              const openCount = arr.filter(x => !isDone(x)).length;
               const days = differenceInDays(new Date(), new Date(w.created_at));
               return (
                 <AsCard
@@ -139,6 +185,30 @@ const WerkplaatsUitdeuken: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
+                          {canReorder && !done && (
+                            <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                aria-label="Omhoog"
+                                disabled={visIdx === 0}
+                                onClick={() => reorder(w.id, -1)}
+                              >
+                                <ChevronUp className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                aria-label="Omlaag"
+                                disabled={visIdx >= openCount - 1}
+                                onClick={() => reorder(w.id, 1)}
+                              >
+                                <ChevronDown className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
                           {w.is_rush && !done && <AsPill tone="red"><Flame className="h-3 w-3" />Spoed</AsPill>}
                           {done
                             ? <AsPill tone="green"><CheckCircle2 className="h-3 w-3" />{isExtern ? "Vandaag afgerond" : "Gedaan"}</AsPill>
