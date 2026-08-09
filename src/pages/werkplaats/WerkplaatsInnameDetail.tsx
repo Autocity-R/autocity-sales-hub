@@ -14,9 +14,12 @@ import { cn } from "@/lib/utils";
 import { AddPartOrderDialog } from "@/components/aftersales/AddPartOrderDialog";
 
 interface IntakePoint { text: string; photo_paths?: string[]; work_order_id?: string | null; }
+interface DraftEntry { parts: string[]; description: string; photo_paths: string[]; }
+type DraftSelection = Partial<Record<Discipline, DraftEntry>>;
 interface Intake {
   id: string; vehicle_id: string; branch: string | null; status: string; created_at: string;
   points: IntakePoint[];
+  draft_selection?: DraftSelection | null;
   vehicle: {
     id: string; brand: string; model: string; year: number | null; license_number: string | null;
     vin: string | null; mileage: number | null; color: string | null; status?: string | null;
@@ -54,9 +57,20 @@ const WerkplaatsInnameDetail: React.FC = () => {
     setLoading(true);
     const { data } = await supabase
       .from("vehicle_intakes")
-      .select("id, vehicle_id, branch, status, created_at, points, vehicle:vehicles!vehicle_intakes_vehicle_id_fkey(id, brand, model, year, license_number, vin, mileage, color, status)")
+      .select("id, vehicle_id, branch, status, created_at, points, draft_selection, vehicle:vehicles!vehicle_intakes_vehicle_id_fkey(id, brand, model, year, license_number, vin, mileage, color, status)")
       .eq("id", id).single();
-    if (data) setIntake({ ...(data as any), points: Array.isArray((data as any).points) ? (data as any).points : [] });
+    if (data) {
+      const draft = ((data as any).draft_selection || {}) as DraftSelection;
+      setIntake({ ...(data as any), points: Array.isArray((data as any).points) ? (data as any).points : [], draft_selection: draft });
+      setSelection({
+        spuit: draft.spuit?.parts ?? [],
+        uitdeuk: draft.uitdeuk?.parts ?? [],
+      });
+      setDescriptions({
+        spuit: draft.spuit?.description ?? "",
+        uitdeuk: draft.uitdeuk?.description ?? "",
+      });
+    }
     setLoading(false);
   };
   useEffect(() => { load(); /* eslint-disable-line */ }, [id]);
