@@ -8,7 +8,7 @@ const MonthlySalesChart = () => {
 
   if (isLoading) {
     return (
-      <Card className="col-span-2">
+      <Card className="min-w-0 lg:col-span-2">
         <CardHeader>
           <CardTitle>Verkopen per Maand</CardTitle>
         </CardHeader>
@@ -20,7 +20,7 @@ const MonthlySalesChart = () => {
   }
 
   return (
-    <Card className="col-span-2">
+    <Card className="min-w-0 lg:col-span-2">
       <CardHeader>
         <CardTitle>Verkopen per Maand (B2B vs B2C)</CardTitle>
       </CardHeader>

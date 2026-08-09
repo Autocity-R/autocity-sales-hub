@@ -85,7 +85,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 const RecentLeads = () => {
   return (
-    <Card className="col-span-2">
+    <Card className="min-w-0 lg:col-span-2">
       <CardHeader>
         <CardTitle>Recente Leads</CardTitle>
         <CardDescription>Meest recente leads in het systeem</CardDescription>

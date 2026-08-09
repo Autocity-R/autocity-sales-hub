@@ -54,7 +54,7 @@ export const BranchFilter: React.FC<BranchFilterProps> = ({ className }) => {
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1 rounded-lg border bg-card p-1",
+        "inline-flex max-w-full flex-wrap items-center gap-1 rounded-lg border bg-card p-1",
         className,
       )}
     >

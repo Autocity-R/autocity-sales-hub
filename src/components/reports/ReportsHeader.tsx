@@ -62,7 +62,7 @@ export const ReportsHeader: React.FC<ReportsHeaderProps> = ({
             </SelectContent>
           </Select>
           
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 min-w-0">
             <Button 
               variant="secondary" 
               size="sm" 

@@ -173,7 +173,7 @@ const Calendar = () => {
           title="Agenda"
           description="Beheer alle afspraken met Google Calendar Service Account integratie"
         >
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 min-w-0">
             <Button 
               onClick={() => setShowGoogleSync(true)} 
               variant="outline" 
