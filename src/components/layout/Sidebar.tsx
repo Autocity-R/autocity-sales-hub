@@ -273,9 +273,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 </Button>
               </Link>
             )}
-            {featureAccess.prijslijst(userRole) && (
-              <>
-              {featureAccess.onderdelen(userRole) && !hasWerkplaatsAccess() && (
+            {featureAccess.onderdelen(userRole) && !hasWerkplaatsAccess() && (
                 <Link to="/werkplaats/onderdelen">
                   <Button
                     variant={isActive("/werkplaats/onderdelen") ? "default" : "ghost"}
@@ -286,8 +284,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                     Onderdelen
                   </Button>
                 </Link>
-              )}
-              </>
             )}
             {featureAccess.prijslijst(userRole) && (
               <Link to="/werkplaats/prijslijst">
