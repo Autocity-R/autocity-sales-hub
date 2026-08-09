@@ -658,6 +658,14 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
         vehicleBrand={selectedVehicleForDelivery?.brand}
         vehicleModel={selectedVehicleForDelivery?.model}
         isCarDealer={selectedVehicleForDelivery?.customerContact?.isCarDealer}
+        vehicleId={selectedVehicleForDelivery?.id}
+        existingWarranty={selectedVehicleForDelivery ? {
+          package: (selectedVehicleForDelivery.details as any)?.warrantyPackage ?? null,
+          name: (selectedVehicleForDelivery.details as any)?.warrantyPackageName ?? null,
+          price: (selectedVehicleForDelivery.details as any)?.warrantyPackagePrice ?? null,
+          source: (selectedVehicleForDelivery.details as any)?.warrantyPackageSource ?? null,
+          date: (selectedVehicleForDelivery.details as any)?.warrantyPackageDate ?? null,
+        } : null}
       />
 
       <EmailConfirmDialog
