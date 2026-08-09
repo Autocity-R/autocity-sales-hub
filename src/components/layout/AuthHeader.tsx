@@ -2,16 +2,26 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut, User } from "lucide-react";
+import { Bell, LogOut, User } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { PushNotificationToggle } from "@/components/settings/PushNotificationToggle";
 
 export const AuthHeader = () => {
   const { user, signOut, isAdmin } = useAuth();
+  const [pushOpen, setPushOpen] = React.useState(false);
 
   if (!user) return null;
 
@@ -19,7 +29,7 @@ export const AuthHeader = () => {
     <div className="flex items-center gap-4">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="flex items-center gap-2">
+          <Button variant="ghost" className="flex items-center gap-2 h-11 touch-manipulation">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">
               {user.email}
@@ -28,12 +38,29 @@ export const AuthHeader = () => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setPushOpen(true)}>
+            <Bell className="h-4 w-4 mr-2" />
+            Meldingen
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={signOut}>
             <LogOut className="h-4 w-4 mr-2" />
             Uitloggen
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <Dialog open={pushOpen} onOpenChange={setPushOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Meldingen</DialogTitle>
+            <DialogDescription>
+              Zet push-meldingen aan per apparaat. Op de telefoon werkt dit in de app op je beginscherm.
+            </DialogDescription>
+          </DialogHeader>
+          <PushNotificationToggle />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
