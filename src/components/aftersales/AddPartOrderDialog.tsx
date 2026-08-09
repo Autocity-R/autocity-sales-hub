@@ -235,7 +235,7 @@ export const AddPartOrderDialog: React.FC<Props> = ({ open, onOpenChange, preset
                   {vehicle.vin && <div className="text-[11px] text-slate-500 truncate">VIN {vehicle.vin}</div>}
                 </div>
                 {!presetVehicle && (
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setVehicle(null)}>
+                  <Button size="icon" variant="ghost" className="h-10 w-10 sm:h-7 sm:w-7 touch-manipulation" onClick={() => setVehicle(null)}>
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 )}

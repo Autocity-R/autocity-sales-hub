@@ -683,13 +683,13 @@ const WerkplaatsFactuurNieuw: React.FC = () => {
                 title="Factuurregels"
                 right={
                   <div className="flex gap-1.5">
-                    <Button type="button" size="sm" variant="outline" className="h-8 text-[11.5px]" onClick={() => addBlank("arbeid")}>
+                    <Button type="button" size="sm" variant="outline" className="h-10 sm:h-8 text-[11.5px] touch-manipulation" onClick={() => addBlank("arbeid")}>
                       <Wrench className="h-3.5 w-3.5 mr-1" />Arbeid
                     </Button>
-                    <Button type="button" size="sm" variant="outline" className="h-8 text-[11.5px]" onClick={() => addBlank("onderdeel")}>
+                    <Button type="button" size="sm" variant="outline" className="h-10 sm:h-8 text-[11.5px] touch-manipulation" onClick={() => addBlank("onderdeel")}>
                       <Package className="h-3.5 w-3.5 mr-1" />Onderdeel
                     </Button>
-                    <Button type="button" size="sm" variant="outline" className="h-8 text-[11.5px]" onClick={() => addBlank("vrij")}>
+                    <Button type="button" size="sm" variant="outline" className="h-10 sm:h-8 text-[11.5px] touch-manipulation" onClick={() => addBlank("vrij")}>
                       <PenLine className="h-3.5 w-3.5 mr-1" />Vrij / korting
                     </Button>
                   </div>

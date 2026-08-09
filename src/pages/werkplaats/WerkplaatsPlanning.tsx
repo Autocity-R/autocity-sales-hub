@@ -184,8 +184,8 @@ const TaskCard: React.FC<{
         )}
       </div>
       <div className={cn("flex flex-col gap-1 shrink-0", readOnly && "hidden")} onClick={(e) => e.stopPropagation()}>
-        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onReorder(w.id, -1)} title="Omhoog"><ArrowUp className="h-3.5 w-3.5" /></Button>
-        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onReorder(w.id, 1)} title="Omlaag"><ArrowDown className="h-3.5 w-3.5" /></Button>
+        <Button size="icon" variant="outline" className="h-10 w-10 sm:h-7 sm:w-7 touch-manipulation" onClick={() => onReorder(w.id, -1)} title="Omhoog"><ArrowUp className="h-3.5 w-3.5" /></Button>
+        <Button size="icon" variant="outline" className="h-10 w-10 sm:h-7 sm:w-7 touch-manipulation" onClick={() => onReorder(w.id, 1)} title="Omlaag"><ArrowDown className="h-3.5 w-3.5" /></Button>
         <Button
           size="icon"
           variant={w.is_rush ? "default" : "outline"}
@@ -618,11 +618,11 @@ const WerkplaatsPlanning: React.FC = () => {
                         <div className="mt-1.5 text-[12px] text-slate-700 line-clamp-3 whitespace-pre-line">{w.description}</div>
                         {!readOnly && (
                           <div className="mt-2 flex items-center gap-2">
-                            <Button size="sm" variant="outline" className="h-7 text-[12px]"
+                            <Button size="sm" variant="outline" className="h-10 sm:h-7 text-[12px] touch-manipulation"
                                     onClick={() => { setReschedule(w); setNewPlanned(w.planned_at ? format(new Date(w.planned_at), "yyyy-MM-dd'T'HH:mm") : ""); }}>
                               Verzetten
                             </Button>
-                            <Button size="sm" variant="ghost" className="h-7 text-[12px] text-slate-500 hover:text-red-600"
+                            <Button size="sm" variant="ghost" className="h-10 sm:h-7 text-[12px] touch-manipulation text-slate-500 hover:text-red-600"
                                     onClick={() => setConfirmDelete(w)}>
                               <X className="h-3.5 w-3.5 mr-1" />Annuleren
                             </Button>

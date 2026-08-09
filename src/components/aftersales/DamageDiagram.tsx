@@ -253,7 +253,7 @@ export const DamageDiagram: React.FC<Props> = ({
   return (
     <svg
       viewBox="0 0 900 1320"
-      className={cn("w-full h-auto select-none", compact ? "max-w-[220px]" : "", className)}
+      className={cn("w-full h-auto select-none touch-manipulation [-webkit-tap-highlight-color:transparent]", compact ? "max-w-[220px]" : "", className)}
       xmlns="http://www.w3.org/2000/svg"
     >
       {/* ============ SIDE LEFT (boven) ============ */}

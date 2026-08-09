@@ -120,7 +120,7 @@ const InvoicePartsPanel: React.FC<Props> = ({ vehicleId, licensePlate, margePct,
                   </div>
                 </div>
                 <Button
-                  type="button" size="sm" variant="outline" className="h-8 text-[11.5px] shrink-0"
+                  type="button" size="sm" variant="outline" className="h-10 sm:h-8 text-[11.5px] touch-manipulation shrink-0"
                   disabled={used}
                   onClick={() => onAdd({
                     partOrderId: r.id,
