@@ -3806,6 +3806,54 @@ export type Database = {
         }
         Relationships: []
       }
+      push_dedupe: {
+        Row: {
+          created_at: string
+          dedupe_key: string
+        }
+        Insert: {
+          created_at?: string
+          dedupe_key: string
+        }
+        Update: {
+          created_at?: string
+          dedupe_key?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_used_at: string | null
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_used_at?: string | null
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_used_at?: string | null
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       sales_targets: {
         Row: {
           branch: string
