@@ -169,7 +169,7 @@ const WerkplaatsOnderdelen: React.FC = () => {
             {o.doorbelast_invoice_id
               ? <Lock className="h-3.5 w-3.5 text-slate-300" />
               : <Pencil className="h-3.5 w-3.5 text-slate-300" />}
-            {!readOnly && <Button size="icon" variant="ghost"
+            {canMutate(o) && <Button size="icon" variant="ghost"
               onClick={(e) => { e.stopPropagation(); removeOrder(o.id); }}
               className="h-7 w-7 text-slate-400 hover:text-red-600">
               <Trash2 className="h-3.5 w-3.5" />
@@ -179,13 +179,13 @@ const WerkplaatsOnderdelen: React.FC = () => {
         <div className="flex items-center gap-1.5 mt-3">
           <AsPill tone={tone}>{statusLabel}</AsPill>
           <div className="ml-auto flex gap-1.5">
-          {!readOnly && o.status === "te_bestellen" && (
+          {!readOnly && !isVerkoper && o.status === "te_bestellen" && (
             <Button size="sm" className="h-10 sm:h-8 text-[12px] touch-manipulation bg-blue-600 hover:bg-blue-700 text-white"
                     disabled={busy === o.id} onClick={(e) => { e.stopPropagation(); setStatus(o.id, "besteld"); }}>
               <Truck className="h-3.5 w-3.5 mr-1" /> Markeer besteld
             </Button>
           )}
-          {!readOnly && o.status === "besteld" && (
+          {!readOnly && !isVerkoper && o.status === "besteld" && (
             <Button size="sm" className="h-10 sm:h-8 text-[12px] touch-manipulation bg-emerald-600 hover:bg-emerald-700 text-white"
                     disabled={busy === o.id} onClick={(e) => { e.stopPropagation(); setStatus(o.id, "binnen"); }}>
               <Check className="h-3.5 w-3.5 mr-1" /> Binnen
