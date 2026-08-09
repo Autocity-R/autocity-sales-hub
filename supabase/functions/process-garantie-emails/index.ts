@@ -490,6 +490,22 @@ serve(async (req) => {
           continue;
         }
 
+        // ─── Push-melding: nieuwe garantie-mail (faalt stil) ───
+        try {
+          await sendPush(
+            { roles: AFTERSALES_ROLES },
+            {
+              title: "Nieuwe garantie-mail",
+              body: `Van ${senderName || senderEmail}: ${String(subject || "").slice(0, 80)}`,
+              url: `/garantie/inbox?thread=${threadId}`,
+              tag: `garantie-thread-${threadId}`,
+              dedupeKey: `garantie-mail:${emailId}`,
+            },
+          );
+        } catch (pushErr) {
+          console.warn("[push] garantie-melding mislukt:", (pushErr as Error)?.message);
+        }
+
         // ─── Stap 5: Thread context laden ───
         const { data: threadHistory } = await supabase
           .from('garantie_emails')
