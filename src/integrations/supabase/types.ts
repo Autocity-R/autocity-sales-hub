@@ -1671,6 +1671,7 @@ export type Database = {
       contract_documents: {
         Row: {
           accessories: Json
+          administratie_notified_at: string | null
           branch: string
           btw_type: string | null
           company_snapshot: Json
@@ -1711,6 +1712,7 @@ export type Database = {
         }
         Insert: {
           accessories?: Json
+          administratie_notified_at?: string | null
           branch?: string
           btw_type?: string | null
           company_snapshot?: Json
@@ -1751,6 +1753,7 @@ export type Database = {
         }
         Update: {
           accessories?: Json
+          administratie_notified_at?: string | null
           branch?: string
           btw_type?: string | null
           company_snapshot?: Json
