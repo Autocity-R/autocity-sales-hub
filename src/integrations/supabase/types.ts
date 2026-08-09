@@ -5356,6 +5356,17 @@ export type Database = {
       is_admin_user: { Args: { user_id: string }; Returns: boolean }
       mark_contract_opened: { Args: { _token: string }; Returns: undefined }
       next_workshop_invoice_number: { Args: never; Returns: string }
+      push_notify: {
+        Args: {
+          _body: string
+          _dedupe_key: string
+          _preset: string
+          _tag: string
+          _title: string
+          _url: string
+        }
+        Returns: undefined
+      }
       update_weekly_sales:
         | {
             Args: {
