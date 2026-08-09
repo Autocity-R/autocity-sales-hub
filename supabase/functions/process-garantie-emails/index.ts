@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as jose from 'https://deno.land/x/jose@v4.14.4/index.ts';
+import { sendPush, AFTERSALES_ROLES } from "../_shared/push.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -488,6 +489,22 @@ serve(async (req) => {
         if (!emailId) {
           console.log(`⏭️ Email was duplicate (no id returned)`);
           continue;
+        }
+
+        // ─── Push-melding: nieuwe garantie-mail (faalt stil) ───
+        try {
+          await sendPush(
+            { roles: AFTERSALES_ROLES },
+            {
+              title: "Nieuwe garantie-mail",
+              body: `Van ${senderName || senderEmail}: ${String(subject || "").slice(0, 80)}`,
+              url: `/garantie/inbox?thread=${threadId}`,
+              tag: `garantie-thread-${threadId}`,
+              dedupeKey: `garantie-mail:${emailId}`,
+            },
+          );
+        } catch (pushErr) {
+          console.warn("[push] garantie-melding mislukt:", (pushErr as Error)?.message);
         }
 
         // ─── Stap 5: Thread context laden ───

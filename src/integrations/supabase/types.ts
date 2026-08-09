@@ -3806,6 +3806,54 @@ export type Database = {
         }
         Relationships: []
       }
+      push_dedupe: {
+        Row: {
+          created_at: string
+          dedupe_key: string
+        }
+        Insert: {
+          created_at?: string
+          dedupe_key: string
+        }
+        Update: {
+          created_at?: string
+          dedupe_key?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_used_at: string | null
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_used_at?: string | null
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_used_at?: string | null
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       sales_targets: {
         Row: {
           branch: string
@@ -5308,6 +5356,17 @@ export type Database = {
       is_admin_user: { Args: { user_id: string }; Returns: boolean }
       mark_contract_opened: { Args: { _token: string }; Returns: undefined }
       next_workshop_invoice_number: { Args: never; Returns: string }
+      push_notify: {
+        Args: {
+          _body: string
+          _dedupe_key: string
+          _preset: string
+          _tag: string
+          _title: string
+          _url: string
+        }
+        Returns: undefined
+      }
       update_weekly_sales:
         | {
             Args: {

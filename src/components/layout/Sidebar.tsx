@@ -69,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   // Monteur: mobiel-eerst, alleen "Mijn werk"
   if (isMonteur()) {
     return (
-      <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
+      <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800 pt-safe pb-safe", className)}>
         <ScrollArea className="flex-1 px-2 py-3">
           <div className="space-y-1">
             <Link to="/werkplaats/mijn-werk">
@@ -112,7 +112,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
       : "Werkplaats";
     const Icon = isUitdeukerExtern() ? Hammer : isSchadeherstel() ? PaintBucket : isPoetser() ? Sparkles : Wrench;
     return (
-      <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
+      <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800 pt-safe pb-safe", className)}>
         <ScrollArea className="flex-1 px-2 py-3">
           <div className="space-y-1">
             <Link to={home}>
@@ -140,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   }
 
   return (
-    <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
+    <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800 pt-safe pb-safe", className)}>
       <ScrollArea className="flex-1 px-2 py-3">
         <div className="space-y-1">
           <Link to="/">
@@ -557,7 +557,7 @@ const StyledNav: React.FC<{
   };
 
   return (
-    <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
+    <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800 pt-safe pb-safe", className)}>
       <ScrollArea className="flex-1 px-3 py-4">
         <div className="pb-6">
           {note && (
@@ -811,7 +811,7 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
   };
 
   return (
-    <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800", className)}>
+    <div className={cn("flex h-full w-64 flex-col bg-black text-white border-r border-gray-800 pt-safe pb-safe", className)}>
       <ScrollArea className="flex-1 px-3 py-4">
         <div className="space-y-6">
           {sections.map((sec) => (

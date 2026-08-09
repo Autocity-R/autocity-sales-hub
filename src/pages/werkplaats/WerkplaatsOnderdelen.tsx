@@ -163,13 +163,13 @@ const WerkplaatsOnderdelen: React.FC = () => {
           <AsPill tone={tone}>{statusLabel}</AsPill>
           <div className="ml-auto flex gap-1.5">
           {!readOnly && o.status === "te_bestellen" && (
-            <Button size="sm" className="h-8 text-[12px] bg-blue-600 hover:bg-blue-700 text-white"
+            <Button size="sm" className="h-10 sm:h-8 text-[12px] touch-manipulation bg-blue-600 hover:bg-blue-700 text-white"
                     disabled={busy === o.id} onClick={(e) => { e.stopPropagation(); setStatus(o.id, "besteld"); }}>
               <Truck className="h-3.5 w-3.5 mr-1" /> Markeer besteld
             </Button>
           )}
           {!readOnly && o.status === "besteld" && (
-            <Button size="sm" className="h-8 text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white"
+            <Button size="sm" className="h-10 sm:h-8 text-[12px] touch-manipulation bg-emerald-600 hover:bg-emerald-700 text-white"
                     disabled={busy === o.id} onClick={(e) => { e.stopPropagation(); setStatus(o.id, "binnen"); }}>
               <Check className="h-3.5 w-3.5 mr-1" /> Binnen
             </Button>
