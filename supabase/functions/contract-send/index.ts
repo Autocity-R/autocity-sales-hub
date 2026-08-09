@@ -146,6 +146,98 @@ Deno.serve(async (req) => {
       );
     }
 
+    // B2C zonder financieringsvoorbehoud → administratie direct informeren (eenmalig)
+    try {
+      const isB2C = doc.contract_type !== "b2b";
+      const financingConditional = !!(doc as any).financing_conditional;
+      const alreadyNotified = !!(doc as any).administratie_notified_at;
+      if (isB2C && !financingConditional && !alreadyNotified) {
+        const veh = (doc.vehicle_snapshot as any) || {};
+        const downPayment = Number((doc as any).down_payment) || 0;
+        const total = Number(doc.total_price) || 0;
+        const rows: Array<[string, string]> = [
+          ["Contractnummer", doc.contract_number],
+          ["Klant", buyerName],
+          ["E-mail klant", cust.email || "—"],
+          ["Telefoon klant", cust.phone || "—"],
+          [
+            "Adres klant",
+            [
+              [cust.street || cust.address, cust.number].filter(Boolean).join(" "),
+              [cust.zipCode || cust.postal_code || cust.postalCode, cust.city]
+                .filter(Boolean)
+                .join(" "),
+            ]
+              .filter(Boolean)
+              .join(", ") || "—",
+          ],
+          [
+            "Voertuig",
+            [veh.brand, veh.model, veh.year ? `(${veh.year})` : null]
+              .filter(Boolean)
+              .join(" ") || "—",
+          ],
+          ["Kenteken", veh.licenseNumber || veh.license_number || "—"],
+          ["VIN", veh.vin || "—"],
+          ["Verkoopbedrag (kaal)", fmtEur(Number(doc.sale_price_ex) || 0)],
+          ["Totaalbedrag", fmtEur(total)],
+          ["BTW / marge", doc.btw_type === "btw" ? "BTW-voertuig" : "Margevoertuig"],
+          ...(downPayment > 0
+            ? ([
+                ["Aanbetaling", fmtEur(downPayment)],
+                ["Restant bij aflevering", fmtEur(total - downPayment)],
+              ] as Array<[string, string]>)
+            : []),
+          ["Garantiepakket", (doc as any).warranty_package_name || "—"],
+          ["Verkoper", salesName],
+          [
+            "Status",
+            "Contract ligt ter ondertekening bij de klant (geen financieringsvoorbehoud)",
+          ],
+        ];
+        const tableHtml = `<table cellpadding="0" cellspacing="0" border="0" style="width:100%;font-size:13px;color:#333;border-collapse:collapse;margin:0 0 8px;">
+          ${rows
+            .map(
+              ([k, v]) =>
+                `<tr><td style="padding:6px 0;color:#666;width:45%;">${sanitizeText(String(k))}</td><td style="padding:6px 0;font-weight:600;">${sanitizeText(String(v))}</td></tr>`,
+            )
+            .join("")}
+        </table>`;
+        const adminHtml = renderContractEmail({
+          buyerName: "Administratie",
+          intro: `Koopcontract <strong>${doc.contract_number}</strong> is zojuist naar de klant verstuurd ter digitale ondertekening. Er is geen voorbehoud van financiering, dus de factuur kan alvast worden klaargezet. De definitieve (getekende) PDF volgt automatisch zodra de klant heeft ondertekend.`,
+          ctaText: "Contract openen in het CRM",
+          ctaUrl: baseUrl ? `${baseUrl.replace(/\/$/, "")}/voorraad` : "#",
+          salesName: "Auto City CRM",
+          companyName: company,
+          companyPhone,
+          extraHtml: tableHtml,
+        });
+        const { error: aErr } = await admin.from("email_queue").insert({
+          status: "pending",
+          attempts: 0,
+          vehicle_id: doc.vehicle_id ?? null,
+          template_id: "contract_v2_sent_administratie",
+          payload: {
+            senderEmail: "inkoop@auto-city.nl",
+            to: ["administratie@auto-city.nl"],
+            subject: "Koopcontract verstuurd — factuur voorbereiden",
+            htmlBody: adminHtml,
+          },
+        });
+        if (aErr) {
+          console.error("email_queue insert (administratie bij versturen) failed", aErr);
+        } else {
+          await admin
+            .from("contract_documents")
+            .update({ administratie_notified_at: new Date().toISOString() })
+            .eq("id", doc.id);
+        }
+      }
+    } catch (e) {
+      console.warn("administratie mail bij versturen mislukt (non-blocking)", e);
+    }
+
     return json({ ok: true, token, sign_url: signUrl, expires_at: expires });
   } catch (err) {
     console.error(err);
@@ -169,6 +261,10 @@ function sanitizeText(s: string): string {
     .replace(/\u2014/g, "-")
     .replace(/\u2013/g, "-")
     .replace(/\u2011/g, "-");
+}
+
+function fmtEur(n: number): string {
+  return `EUR ${Number(n || 0).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function renderContractEmail(opts: {

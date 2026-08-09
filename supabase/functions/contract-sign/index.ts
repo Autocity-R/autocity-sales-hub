@@ -248,6 +248,12 @@ Deno.serve(async (req) => {
           ["Garantiepakket", (doc as any).warranty_package_name || "—"],
           ["Verkoper", salesName],
           ["Getekend op", now.toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam" })],
+          [
+            "Eerder aangekondigd bij versturen",
+            (doc as any).administratie_notified_at
+              ? `Ja — ${new Date((doc as any).administratie_notified_at).toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam" })}`
+              : "Nee",
+          ],
         ];
         const tableHtml = `<table cellpadding="0" cellspacing="0" border="0" style="width:100%;font-size:13px;color:#333;border-collapse:collapse;margin:0 0 8px;">
           ${rows
