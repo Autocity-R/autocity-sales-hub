@@ -36,7 +36,7 @@ const DashboardLayout = ({
         </>}
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col lg:pl-64 px-px">
+      <div className="flex flex-1 flex-col min-w-0 w-full max-w-full lg:pl-64">
         {/* Top bar */}
         <div className="sticky top-0 z-20 flex min-h-12 md:min-h-16 shrink-0 items-center gap-x-2 md:gap-x-4 border-b border-gray-200 bg-white shadow-sm px-3 md:px-4 lg:px-6 pt-safe">
           {!appShell && <Button variant="ghost" size="sm" className="lg:hidden h-11 w-11 p-0 touch-manipulation" onClick={() => setSidebarOpen(!sidebarOpen)}>
