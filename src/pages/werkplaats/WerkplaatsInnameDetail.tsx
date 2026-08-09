@@ -243,24 +243,52 @@ const WerkplaatsInnameDetail: React.FC = () => {
 
   const finishIntake = async () => {
     if (!intake) return;
-    const { data: userRes } = await supabase.auth.getUser();
-    const { error } = await supabase.from("vehicle_intakes").update({
-      status: "goedgekeurd",
-      approved_by: userRes.user?.id ?? null,
-      approved_at: new Date().toISOString(),
-    }).eq("id", intake.id);
-    if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
-    const { count } = await supabase.from("work_orders")
-      .select("id", { count: "exact", head: true })
-      .eq("vehicle_id", intake.vehicle_id)
-      .in("discipline", ["spuit", "uitdeuk"])
-      .not("status", "in", "(goedgekeurd,geannuleerd)");
-    const isB2B = intake.vehicle?.status === "verkocht_b2b";
-    toast({
-      title: "Auto ingenomen",
-      description: (count ?? 0) > 0 ? "→ Wacht op schadeherstel" : isB2B ? "→ Geen poets (B2B)" : "→ Poetsen",
-    });
-    navigate("/werkplaats/inname");
+    if (intake.status === "goedgekeurd") { navigate("/werkplaats/inname"); return; }
+    setSaving(true);
+    try {
+      // 1) huidige (nog niet opgeslagen) selectie meenemen in het concept
+      const prev = (intake.draft_selection || {}) as DraftSelection;
+      const newPaths = files.length ? await uploadFiles(intake.vehicle_id) : [];
+      const draft: DraftSelection = { ...prev };
+      for (const d of ["spuit", "uitdeuk"] as Discipline[]) {
+        const parts = selection[d];
+        if (parts.length === 0) continue;
+        draft[d] = {
+          parts: [...parts],
+          description: (descriptions[d] || "").trim(),
+          photo_paths: [
+            ...(prev[d]?.photo_paths ?? []),
+            ...(d === discipline ? newPaths : []),
+          ],
+        };
+      }
+
+      // 2) gebundelde orders aanmaken (idempotent)
+      const created = await createOrdersFromDraft(draft);
+
+      // 3) inname afronden → poets-keten via trigger
+      const { data: userRes } = await supabase.auth.getUser();
+      const { error } = await supabase.from("vehicle_intakes").update({
+        status: "goedgekeurd",
+        approved_by: userRes.user?.id ?? null,
+        approved_at: new Date().toISOString(),
+        draft_selection: {} as any,
+      }).eq("id", intake.id);
+      if (error) throw error;
+
+      const hasSpuit = (draft.spuit?.parts?.length ?? 0) > 0;
+      const isB2B = intake.vehicle?.status === "verkocht_b2b";
+      toast({
+        title: "Auto ingenomen",
+        description: `${created > 0 ? `${created} opdracht(en) aangemaakt — ` : ""}${
+          isB2B ? "geen poets (B2B)" : hasSpuit ? "poets volgt na goedkeuring schadeherstel" : "poetsen ingepland"
+        }`,
+      });
+      navigate("/werkplaats/inname");
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: "Fout", description: e.message, variant: "destructive" });
+    } finally { setSaving(false); }
   };
 
   if (loading || !intake) {
