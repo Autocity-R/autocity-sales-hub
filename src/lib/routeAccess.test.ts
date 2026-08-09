@@ -214,6 +214,7 @@ describe("verkoper mag inname doen, maar niet goedkeuren", () => {
 });
 
 describe("onbekende rol (nog niet geladen)", () => {
+  it("placeholder", () => { expect(true).toBe(true); });
   it("veroorzaakt geen redirect", () => {
     expect(canAccessRoute(null, "/inventory")).toEqual({ allowed: true });
     expect(canAccessRoute(null, "/rapportages/omzet")).toEqual({ allowed: true });
