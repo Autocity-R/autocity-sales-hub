@@ -365,7 +365,7 @@ const Reports = () => {
           title="Rapportages"
           description="Uitgebreide analyses en prestatie-indicatoren"
         >
-          <div className="flex gap-2 items-center">
+          <div className="flex flex-wrap gap-2 items-center min-w-0">
             <BranchFilter />
             <Button variant="outline" onClick={handleExportData} className="gap-2">
               <Download className="h-4 w-4" />
