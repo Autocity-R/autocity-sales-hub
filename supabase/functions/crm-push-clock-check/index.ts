@@ -72,5 +72,22 @@ Deno.serve(async (req) => {
   } catch (e: any) {
     console.error("[clock-check] fout:", e?.message);
     return json({ ok: false, error: e?.message ?? "unknown" });
+  } finally {
+    // Opruimen: dedupe-sleutels ouder dan 30 dagen
+    try {
+      await adminClient()
+        .from("push_dedupe")
+        .delete()
+        .lt("created_at", new Date(Date.now() - 30 * 864e5).toISOString());
+    } catch (_e) { /* stil */ }
   }
 });
+
+// (oude afhandeling verwijderd)
+const _unused = async () => {
+  try {
+    return null;
+  } catch (e: any) {
+    return e;
+  }
+};
