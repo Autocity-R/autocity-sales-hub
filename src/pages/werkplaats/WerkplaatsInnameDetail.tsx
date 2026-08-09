@@ -421,9 +421,12 @@ const WerkplaatsInnameDetail: React.FC = () => {
                     placeholder={`Wat & hoe voor: ${selectedParts.join(" · ")}`} />
                 </div>
 
-                <Button className="mt-3 w-full md:w-auto h-11 text-[14px]" onClick={createOpdracht} disabled={saving || !description.trim()}>
-                  <Plus className="h-4 w-4 mr-1" /> {saving ? "Bezig…" : `Opdracht aanmaken (${selectedParts.length} deel/delen)`}
+                <Button className="mt-3 w-full md:w-auto h-11 text-[14px]" onClick={saveSelection} disabled={saving}>
+                  <Plus className="h-4 w-4 mr-1" /> {saving ? "Bezig…" : `Selectie opslaan (${selectedParts.length} deel/delen)`}
                 </Button>
+                <div className="mt-2 text-[12px] text-slate-500">
+                  De opdracht(en) worden automatisch aangemaakt zodra je op "Auto ingenomen" klikt.
+                </div>
               </>
             )}
           </div>
@@ -508,13 +511,15 @@ const WerkplaatsInnameDetail: React.FC = () => {
         {/* Auto ingenomen */}
         <div className="flex items-center justify-end gap-3">
           <span className="text-[12px] text-slate-500">
-            {intake.points.some(p => !!p.work_order_id)
-              ? "→ Wacht op schadeherstel"
-              : intake.vehicle?.status === "verkocht_b2b"
-                ? "→ Geen poets (B2B)"
-                : "→ Poetsen na innemen"}
+            {intake.vehicle?.status === "verkocht_b2b"
+              ? "→ Geen poets (B2B)"
+              : selection.spuit.length > 0 || (intake.draft_selection?.spuit?.parts?.length ?? 0) > 0
+                ? "→ Schadeherstel-order, poets na goedkeuring"
+                : selection.uitdeuk.length > 0 || (intake.draft_selection?.uitdeuk?.parts?.length ?? 0) > 0
+                  ? "→ Uitdeuk-order + direct poetsen"
+                  : "→ Poetsen na innemen"}
           </span>
-          <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={finishIntake}>
+          <Button size="lg" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={finishIntake}>
             <Check className="h-4 w-4 mr-1" /> Auto ingenomen
           </Button>
         </div>
