@@ -14,9 +14,12 @@ import { cn } from "@/lib/utils";
 import { AddPartOrderDialog } from "@/components/aftersales/AddPartOrderDialog";
 
 interface IntakePoint { text: string; photo_paths?: string[]; work_order_id?: string | null; }
+interface DraftEntry { parts: string[]; description: string; photo_paths: string[]; }
+type DraftSelection = Partial<Record<Discipline, DraftEntry>>;
 interface Intake {
   id: string; vehicle_id: string; branch: string | null; status: string; created_at: string;
   points: IntakePoint[];
+  draft_selection?: DraftSelection | null;
   vehicle: {
     id: string; brand: string; model: string; year: number | null; license_number: string | null;
     vin: string | null; mileage: number | null; color: string | null; status?: string | null;
@@ -54,9 +57,20 @@ const WerkplaatsInnameDetail: React.FC = () => {
     setLoading(true);
     const { data } = await supabase
       .from("vehicle_intakes")
-      .select("id, vehicle_id, branch, status, created_at, points, vehicle:vehicles!vehicle_intakes_vehicle_id_fkey(id, brand, model, year, license_number, vin, mileage, color, status)")
+      .select("id, vehicle_id, branch, status, created_at, points, draft_selection, vehicle:vehicles!vehicle_intakes_vehicle_id_fkey(id, brand, model, year, license_number, vin, mileage, color, status)")
       .eq("id", id).single();
-    if (data) setIntake({ ...(data as any), points: Array.isArray((data as any).points) ? (data as any).points : [] });
+    if (data) {
+      const draft = ((data as any).draft_selection || {}) as DraftSelection;
+      setIntake({ ...(data as any), points: Array.isArray((data as any).points) ? (data as any).points : [], draft_selection: draft });
+      setSelection({
+        spuit: draft.spuit?.parts ?? [],
+        uitdeuk: draft.uitdeuk?.parts ?? [],
+      });
+      setDescriptions({
+        spuit: draft.spuit?.description ?? "",
+        uitdeuk: draft.uitdeuk?.description ?? "",
+      });
+    }
     setLoading(false);
   };
   useEffect(() => { load(); /* eslint-disable-line */ }, [id]);
@@ -94,37 +108,82 @@ const WerkplaatsInnameDetail: React.FC = () => {
     .map(n => findZoneByName(n)?.id)
     .filter(Boolean) as string[];
 
-  const createOpdracht = async () => {
+  const uploadFiles = async (vehicleId: string) => {
+    const paths: string[] = [];
+    for (const f of files) {
+      const path = `${vehicleId}/intake/${Date.now()}_${f.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const { error } = await supabase.storage.from("workshop-photos").upload(path, f);
+      if (error) throw error;
+      paths.push(path);
+    }
+    return paths;
+  };
+
+  /** Selectie (delen + omschrijving + foto's) bewaren als concept — nog géén werkorders. */
+  const saveSelection = async () => {
     if (!intake) return;
     if (selectedParts.length === 0) { toast({ title: "Kies minstens één deel op het diagram", variant: "destructive" }); return; }
-    if (!description.trim()) { toast({ title: "Omschrijving is verplicht", variant: "destructive" }); return; }
-    const partList = [...selectedParts];
     setSaving(true);
     try {
-      // upload photos
-      const paths: string[] = [];
-      for (const f of files) {
-        const path = `${intake.vehicle_id}/intake/${Date.now()}_${f.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-        const { error } = await supabase.storage.from("workshop-photos").upload(path, f);
-        if (error) throw error;
-        paths.push(path);
-      }
+      const newPaths = await uploadFiles(intake.vehicle_id);
+      const prev = (intake.draft_selection || {}) as DraftSelection;
+      const draft: DraftSelection = {
+        ...prev,
+        [discipline]: {
+          parts: [...selectedParts],
+          description: description.trim(),
+          photo_paths: [...(prev[discipline]?.photo_paths ?? []), ...newPaths],
+        },
+      };
+      const { error } = await supabase.from("vehicle_intakes")
+        .update({ draft_selection: draft as any }).eq("id", intake.id);
+      if (error) throw error;
+      setFiles([]);
+      toast({ title: "Selectie opgeslagen", description: "Taken worden aangemaakt bij 'Auto ingenomen'." });
+      load();
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: "Fout", description: e.message, variant: "destructive" });
+    } finally { setSaving(false); }
+  };
 
-      // sort_order at back
+  /** Maakt per discipline één gebundelde order — idempotent (geen dubbele inname-orders). */
+  const createOrdersFromDraft = async (draft: DraftSelection) => {
+    if (!intake) return 0;
+    const { data: userRes } = await supabase.auth.getUser();
+    let created = 0;
+    const newPoints: IntakePoint[] = [];
+
+    for (const d of ["spuit", "uitdeuk"] as Discipline[]) {
+      const entry = draft[d];
+      const partList = entry?.parts ?? [];
+      if (partList.length === 0) continue;
+
+      // dedupe: bestaat er al een inname-order voor deze auto + discipline?
+      const { count } = await supabase.from("work_orders")
+        .select("id", { count: "exact", head: true })
+        .eq("vehicle_id", intake.vehicle_id)
+        .eq("discipline", d)
+        .eq("source", "inname")
+        .neq("status", "geannuleerd");
+      if ((count ?? 0) > 0) continue;
+
       const { data: bounds } = await supabase.from("work_orders")
-        .select("sort_order").eq("discipline", discipline)
+        .select("sort_order").eq("discipline", d)
         .in("status", ["ingepland", "bezig"])
         .order("sort_order", { ascending: false }).limit(1);
       const nextSort = ((bounds as any)?.[0]?.sort_order ?? 0) + 10;
 
-      const { data: userRes } = await supabase.auth.getUser();
+      const desc = (entry?.description || "").trim() || partList.join(" · ");
+      const photos = entry?.photo_paths ?? [];
+
       const { data: inserted, error: insErr } = await supabase.from("work_orders").insert({
         vehicle_id: intake.vehicle_id,
-        discipline,
+        discipline: d,
         part: partList[0],
         parts: partList,
-        description: description.trim(),
-        photos: paths,
+        description: desc,
+        photos,
         status: "ingepland",
         sort_order: nextSort,
         source: "inname",
@@ -133,29 +192,20 @@ const WerkplaatsInnameDetail: React.FC = () => {
       }).select("id").single();
       if (insErr) throw insErr;
 
-      // append point + koppel
-      const newPoint: IntakePoint = {
-        text: `${partList.join(" · ")} — ${description.trim()}`,
-        photo_paths: paths,
+      created += 1;
+      newPoints.push({
+        text: `${partList.join(" · ")} — ${desc}`,
+        photo_paths: photos,
         work_order_id: (inserted as any).id,
-      };
-      const newPoints = [...intake.points, newPoint];
-      const { error: upErr } = await supabase.from("vehicle_intakes")
-        .update({ points: newPoints as any }).eq("id", intake.id);
-      if (upErr) throw upErr;
-
-      toast({
-        title: "Opdracht aangemaakt",
-        description: `${partList.length} deel/delen — ${partList.join(" · ")}`,
       });
-      setSelection(prev => ({ ...prev, [discipline]: [] }));
-      setDescriptions(prev => ({ ...prev, [discipline]: "" }));
-      setFiles([]);
-      load();
-    } catch (e: any) {
-      console.error(e);
-      toast({ title: "Fout", description: e.message, variant: "destructive" });
-    } finally { setSaving(false); }
+    }
+
+    if (newPoints.length > 0) {
+      const { error: upErr } = await supabase.from("vehicle_intakes")
+        .update({ points: [...intake.points, ...newPoints] as any }).eq("id", intake.id);
+      if (upErr) throw upErr;
+    }
+    return created;
   };
 
   const removePoint = async (idx: number) => {
@@ -193,24 +243,52 @@ const WerkplaatsInnameDetail: React.FC = () => {
 
   const finishIntake = async () => {
     if (!intake) return;
-    const { data: userRes } = await supabase.auth.getUser();
-    const { error } = await supabase.from("vehicle_intakes").update({
-      status: "goedgekeurd",
-      approved_by: userRes.user?.id ?? null,
-      approved_at: new Date().toISOString(),
-    }).eq("id", intake.id);
-    if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
-    const { count } = await supabase.from("work_orders")
-      .select("id", { count: "exact", head: true })
-      .eq("vehicle_id", intake.vehicle_id)
-      .in("discipline", ["spuit", "uitdeuk"])
-      .not("status", "in", "(goedgekeurd,geannuleerd)");
-    const isB2B = intake.vehicle?.status === "verkocht_b2b";
-    toast({
-      title: "Auto ingenomen",
-      description: (count ?? 0) > 0 ? "→ Wacht op schadeherstel" : isB2B ? "→ Geen poets (B2B)" : "→ Poetsen",
-    });
-    navigate("/werkplaats/inname");
+    if (intake.status === "goedgekeurd") { navigate("/werkplaats/inname"); return; }
+    setSaving(true);
+    try {
+      // 1) huidige (nog niet opgeslagen) selectie meenemen in het concept
+      const prev = (intake.draft_selection || {}) as DraftSelection;
+      const newPaths = files.length ? await uploadFiles(intake.vehicle_id) : [];
+      const draft: DraftSelection = { ...prev };
+      for (const d of ["spuit", "uitdeuk"] as Discipline[]) {
+        const parts = selection[d];
+        if (parts.length === 0) continue;
+        draft[d] = {
+          parts: [...parts],
+          description: (descriptions[d] || "").trim(),
+          photo_paths: [
+            ...(prev[d]?.photo_paths ?? []),
+            ...(d === discipline ? newPaths : []),
+          ],
+        };
+      }
+
+      // 2) gebundelde orders aanmaken (idempotent)
+      const created = await createOrdersFromDraft(draft);
+
+      // 3) inname afronden → poets-keten via trigger
+      const { data: userRes } = await supabase.auth.getUser();
+      const { error } = await supabase.from("vehicle_intakes").update({
+        status: "goedgekeurd",
+        approved_by: userRes.user?.id ?? null,
+        approved_at: new Date().toISOString(),
+        draft_selection: {} as any,
+      }).eq("id", intake.id);
+      if (error) throw error;
+
+      const hasSpuit = (draft.spuit?.parts?.length ?? 0) > 0;
+      const isB2B = intake.vehicle?.status === "verkocht_b2b";
+      toast({
+        title: "Auto ingenomen",
+        description: `${created > 0 ? `${created} opdracht(en) aangemaakt — ` : ""}${
+          isB2B ? "geen poets (B2B)" : hasSpuit ? "poets volgt na goedkeuring schadeherstel" : "poetsen ingepland"
+        }`,
+      });
+      navigate("/werkplaats/inname");
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: "Fout", description: e.message, variant: "destructive" });
+    } finally { setSaving(false); }
   };
 
   if (loading || !intake) {
@@ -343,9 +421,12 @@ const WerkplaatsInnameDetail: React.FC = () => {
                     placeholder={`Wat & hoe voor: ${selectedParts.join(" · ")}`} />
                 </div>
 
-                <Button className="mt-3 w-full md:w-auto h-11 text-[14px]" onClick={createOpdracht} disabled={saving || !description.trim()}>
-                  <Plus className="h-4 w-4 mr-1" /> {saving ? "Bezig…" : `Opdracht aanmaken (${selectedParts.length} deel/delen)`}
+                <Button className="mt-3 w-full md:w-auto h-11 text-[14px]" onClick={saveSelection} disabled={saving}>
+                  <Plus className="h-4 w-4 mr-1" /> {saving ? "Bezig…" : `Selectie opslaan (${selectedParts.length} deel/delen)`}
                 </Button>
+                <div className="mt-2 text-[12px] text-slate-500">
+                  De opdracht(en) worden automatisch aangemaakt zodra je op "Auto ingenomen" klikt.
+                </div>
               </>
             )}
           </div>
@@ -430,13 +511,15 @@ const WerkplaatsInnameDetail: React.FC = () => {
         {/* Auto ingenomen */}
         <div className="flex items-center justify-end gap-3">
           <span className="text-[12px] text-slate-500">
-            {intake.points.some(p => !!p.work_order_id)
-              ? "→ Wacht op schadeherstel"
-              : intake.vehicle?.status === "verkocht_b2b"
-                ? "→ Geen poets (B2B)"
-                : "→ Poetsen na innemen"}
+            {intake.vehicle?.status === "verkocht_b2b"
+              ? "→ Geen poets (B2B)"
+              : selection.spuit.length > 0 || (intake.draft_selection?.spuit?.parts?.length ?? 0) > 0
+                ? "→ Schadeherstel-order, poets na goedkeuring"
+                : selection.uitdeuk.length > 0 || (intake.draft_selection?.uitdeuk?.parts?.length ?? 0) > 0
+                  ? "→ Uitdeuk-order + direct poetsen"
+                  : "→ Poetsen na innemen"}
           </span>
-          <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={finishIntake}>
+          <Button size="lg" disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={finishIntake}>
             <Check className="h-4 w-4 mr-1" /> Auto ingenomen
           </Button>
         </div>
