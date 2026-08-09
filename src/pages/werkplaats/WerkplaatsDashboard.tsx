@@ -93,7 +93,7 @@ async function loadCockpit(branch: BranchFilter): Promise<CockpitData> {
   const { data: threads } = await supabase
     .from("garantie_email_threads")
     .select("id, klant_naam, klant_email, onderwerp, laatste_email_op, thread_status")
-    .neq("thread_status", "gesloten")
+    .not("thread_status", "in", "(afgerond,gesloten)")
     .order("laatste_email_op", { ascending: false })
     .limit(30);
 
