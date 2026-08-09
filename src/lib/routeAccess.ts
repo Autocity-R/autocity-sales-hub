@@ -83,7 +83,8 @@ export const ADMINISTRATIE_ALLOWED_PREFIXES = [
 
 /**
  * Verkoper: mag de inname-flow gebruiken, maar het GOEDKEUREN van werk
- * (na schadeherstel/werkplaats) blijft aftersales-werk.
+ * (na schadeherstel/werkplaats) blijft aftersales-werk. Onderdelen bestellen
+ * mag hij wél: hij zet bestellingen klaar voor aftersales.
  */
 export const VERKOPER_BLOCKED_PREFIXES = ["/werkplaats/goedkeuren"];
 
