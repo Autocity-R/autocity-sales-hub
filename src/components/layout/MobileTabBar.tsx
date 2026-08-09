@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { PushNotificationToggle } from "@/components/settings/PushNotificationToggle";
 
 export type MobileTab = { url: string; label: string; icon: any; exact?: boolean };
 
@@ -177,6 +178,10 @@ export const MobileTabBar: React.FC = () => {
               ))}
             </div>
           )}
+
+          <div className="mt-2 border-t border-slate-100 pt-2">
+            <PushNotificationToggle variant="row" />
+          </div>
 
           <button
             type="button"
