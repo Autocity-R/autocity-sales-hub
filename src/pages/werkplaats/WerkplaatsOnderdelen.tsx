@@ -223,7 +223,7 @@ const WerkplaatsOnderdelen: React.FC = () => {
             <Input
               placeholder="Zoek op onderdeel, merk, model, kenteken…"
               value={filter} onChange={(e) => setFilter(e.target.value)}
-              className="w-72 bg-white"
+              className="w-full sm:w-72 bg-white"
             />
             {!readOnly && (
               <Button onClick={() => setAddOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
