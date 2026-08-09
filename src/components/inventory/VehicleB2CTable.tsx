@@ -131,6 +131,14 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
           vehicleBrand={selectedVehicleForDelivery?.brand}
           vehicleModel={selectedVehicleForDelivery?.model}
           isCarDealer={false}
+          vehicleId={selectedVehicleForDelivery?.id}
+          existingWarranty={selectedVehicleForDelivery ? {
+            package: (selectedVehicleForDelivery.details as any)?.warrantyPackage ?? null,
+            name: (selectedVehicleForDelivery.details as any)?.warrantyPackageName ?? null,
+            price: (selectedVehicleForDelivery.details as any)?.warrantyPackagePrice ?? null,
+            source: (selectedVehicleForDelivery.details as any)?.warrantyPackageSource ?? null,
+            date: (selectedVehicleForDelivery.details as any)?.warrantyPackageDate ?? null,
+          } : null}
         />
       </>
     );
@@ -187,6 +195,14 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
         vehicleBrand={selectedVehicleForDelivery?.brand}
         vehicleModel={selectedVehicleForDelivery?.model}
         isCarDealer={false}
+        vehicleId={selectedVehicleForDelivery?.id}
+        existingWarranty={selectedVehicleForDelivery ? {
+          package: (selectedVehicleForDelivery.details as any)?.warrantyPackage ?? null,
+          name: (selectedVehicleForDelivery.details as any)?.warrantyPackageName ?? null,
+          price: (selectedVehicleForDelivery.details as any)?.warrantyPackagePrice ?? null,
+          source: (selectedVehicleForDelivery.details as any)?.warrantyPackageSource ?? null,
+          date: (selectedVehicleForDelivery.details as any)?.warrantyPackageDate ?? null,
+        } : null}
       />
     </>
   );

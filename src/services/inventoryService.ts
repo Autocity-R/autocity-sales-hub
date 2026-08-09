@@ -331,13 +331,6 @@ export const markVehicleAsDelivered = async (
         "12_maanden_bovag_vervangend": 12
       };
       
-      const warrantyMonths = warrantyMonthsMap[warrantyPackage] ?? 0;
-
-      const warrantyStartDate = warrantyMonths > 0 ? deliveryDate.toISOString() : null;
-      const warrantyEndDate = warrantyMonths > 0 
-        ? new Date(new Date(deliveryDate).setMonth(new Date(deliveryDate).getMonth() + warrantyMonths)).toISOString()
-        : null;
-
     // Fetch current vehicle to preserve existing details and status
     const { data: currentVehicle, error: fetchError } = await supabase
       .from('vehicles')
@@ -353,12 +346,39 @@ export const markVehicleAsDelivered = async (
       const currentDetails = (currentVehicle?.details as Record<string, any>) || {};
       const currentNotes = currentVehicle?.notes || '';
 
+      // GUARD: één garantiepakket-registratie per voertuig.
+      // Staat er al een pakket op het voertuig (bijv. via koopcontract v2), dan blijft dat leidend
+      // en registreert de afleverflow NIET opnieuw (voorkomt dubbele garantie-omzet in rapportages).
+      const alreadyRegistered = !!currentDetails.warrantyPackage;
+      const effectivePackage = alreadyRegistered ? currentDetails.warrantyPackage : warrantyPackage;
+      const effectivePackageName = alreadyRegistered
+        ? (currentDetails.warrantyPackageName || currentDetails.warrantyPackage)
+        : warrantyPackageName;
+      const effectivePackagePrice = alreadyRegistered
+        ? currentDetails.warrantyPackagePrice
+        : warrantyPackagePrice;
+
+      if (alreadyRegistered) {
+        console.log(`Warranty already registered for vehicle ${vehicleId} (${effectivePackage}) - keeping existing registration`);
+      }
+
+      const warrantyMonths = warrantyMonthsMap[effectivePackage] ?? 0;
+
+      const warrantyStartDate = currentDetails.warrantyStartDate
+        ?? (warrantyMonths > 0 ? deliveryDate.toISOString() : null);
+      const warrantyEndDate = currentDetails.warrantyEndDate
+        ?? (warrantyMonths > 0
+          ? new Date(new Date(deliveryDate).setMonth(new Date(deliveryDate).getMonth() + warrantyMonths)).toISOString()
+          : null);
+
     // Prepare updated details with warranty information and original sales status
     const updatedDetails = {
       ...currentDetails,
-      warrantyPackage,
-      warrantyPackageName,
-      warrantyPackagePrice,
+      warrantyPackage: effectivePackage,
+      warrantyPackageName: effectivePackageName,
+      warrantyPackagePrice: effectivePackagePrice,
+      warrantyPackageSource: currentDetails.warrantyPackageSource || 'delivery',
+      warrantyPackageDate: currentDetails.warrantyPackageDate || new Date().toISOString(),
       warrantyStartDate,
       warrantyEndDate,
       deliveryDate: deliveryDate.toISOString(),

@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "lucide-react";
+import { Calendar, ShieldCheck } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DeliveryConfirmationDialogProps {
   open: boolean;
@@ -14,6 +15,16 @@ interface DeliveryConfirmationDialogProps {
   vehicleBrand?: string;
   vehicleModel?: string;
   isCarDealer?: boolean;
+  /** Voertuig-id om het bijbehorende contractnummer op te halen (alleen-lezen weergave) */
+  vehicleId?: string;
+  /** Al geregistreerd garantiepakket op het voertuig/contract — dan NIET opnieuw vragen */
+  existingWarranty?: {
+    package?: string | null;
+    name?: string | null;
+    price?: number | null;
+    source?: string | null;
+    date?: string | null;
+  } | null;
 }
 
 export interface DeliveryData {
@@ -41,7 +52,9 @@ export const DeliveryConfirmationDialog = ({
   onConfirm,
   vehicleBrand,
   vehicleModel,
-  isCarDealer = false
+  isCarDealer = false,
+  vehicleId,
+  existingWarranty = null
 }: DeliveryConfirmationDialogProps) => {
   const [warrantyPackage, setWarrantyPackage] = useState<string>("");
   const [deliveryDate, setDeliveryDate] = useState<string>(
@@ -49,24 +62,72 @@ export const DeliveryConfirmationDialog = ({
   );
   const [customPrice, setCustomPrice] = useState<string>("");
   const [deliveryNotes, setDeliveryNotes] = useState<string>("");
+  const [contractNumber, setContractNumber] = useState<string | null>(null);
+
+  const hasRegisteredWarranty = !!existingWarranty?.package;
+  const registeredName =
+    existingWarranty?.name ||
+    WARRANTY_PACKAGES.find(p => p.value === existingWarranty?.package)?.label ||
+    existingWarranty?.package ||
+    "";
+
+  // Contractnummer ophalen voor de alleen-lezen bevestiging
+  useEffect(() => {
+    if (!open || !hasRegisteredWarranty || !vehicleId) {
+      setContractNumber(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('contract_documents')
+        .select('contract_number, created_at')
+        .eq('vehicle_id', vehicleId)
+        .not('warranty_package', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (!cancelled) setContractNumber(data?.[0]?.contract_number ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [open, hasRegisteredWarranty, vehicleId]);
 
   // Auto-select "geen garantie" for car dealers
   React.useEffect(() => {
-    if (open && isCarDealer) {
+    if (open && hasRegisteredWarranty) {
+      setWarrantyPackage(existingWarranty?.package || "");
+    } else if (open && isCarDealer) {
       setWarrantyPackage("geen_garantie_b2b");
     } else if (open && !isCarDealer) {
       setWarrantyPackage("");
     }
-  }, [open, isCarDealer]);
+  }, [open, isCarDealer, hasRegisteredWarranty, existingWarranty?.package]);
 
   const selectedPackage = WARRANTY_PACKAGES.find(p => p.value === warrantyPackage);
-  const shouldShowCustomPrice = warrantyPackage && !["garantie_wettelijk", "geen_garantie_b2b"].includes(warrantyPackage);
-  const shouldShowWarrantyField = !isCarDealer;
+  const shouldShowCustomPrice = !hasRegisteredWarranty && warrantyPackage && !["garantie_wettelijk", "geen_garantie_b2b"].includes(warrantyPackage);
+  const shouldShowWarrantyField = !hasRegisteredWarranty && !isCarDealer;
 
   const handleConfirm = () => {
+    if (!deliveryDate) return;
+
+    // Al geregistreerd pakket: geen tweede registratie, alleen bevestigen
+    if (hasRegisteredWarranty) {
+      onConfirm({
+        warrantyPackage: existingWarranty!.package!,
+        warrantyPackageName: registeredName,
+        warrantyPackagePrice: existingWarranty?.price ?? undefined,
+        warrantyPackageSource: (existingWarranty?.source as DeliveryData['warrantyPackageSource']) || 'contract',
+        warrantyPackageDate: existingWarranty?.date || undefined,
+        deliveryDate: new Date(deliveryDate),
+        deliveryNotes: deliveryNotes.trim() || undefined
+      });
+      setDeliveryDate(new Date().toISOString().split('T')[0]);
+      setDeliveryNotes("");
+      return;
+    }
+
     // For car dealers, warranty is auto-selected
     // For others, warranty must be manually selected
-    if ((!isCarDealer && !warrantyPackage) || !deliveryDate) {
+    if (!isCarDealer && !warrantyPackage) {
       return;
     }
 
@@ -89,7 +150,7 @@ export const DeliveryConfirmationDialog = ({
     setDeliveryNotes("");
   };
 
-  const isValid = (isCarDealer || warrantyPackage) && deliveryDate;
+  const isValid = (hasRegisteredWarranty || isCarDealer || warrantyPackage) && !!deliveryDate;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -106,6 +167,24 @@ export const DeliveryConfirmationDialog = ({
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
+          {hasRegisteredWarranty && (
+            <div className="grid gap-2">
+              <Label>Garantiepakket</Label>
+              <div className="flex items-start gap-2 rounded-md border bg-muted p-3 text-sm">
+                <ShieldCheck className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                <div>
+                  <p className="font-semibold">
+                    {registeredName}
+                    {typeof existingWarranty?.price === 'number' ? ` — €${existingWarranty.price.toLocaleString('nl-NL')}` : ''}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Al geregistreerd{contractNumber ? ` via contract ${contractNumber}` : existingWarranty?.source === 'contract' ? ' via het koopcontract' : ''}. Deze registratie wordt niet opnieuw vastgelegd.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {shouldShowWarrantyField && (
             <div className="grid gap-2">
               <Label htmlFor="warranty-package">
@@ -126,7 +205,7 @@ export const DeliveryConfirmationDialog = ({
             </div>
           )}
 
-          {isCarDealer && (
+          {isCarDealer && !hasRegisteredWarranty && (
             <div className="grid gap-2">
               <Label>Garantiepakket</Label>
               <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
