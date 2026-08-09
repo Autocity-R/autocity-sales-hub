@@ -234,8 +234,8 @@ export const LoanCarManagement = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
               <CardTitle className="flex items-center gap-2">
                 <Car className="h-5 w-5" />
                 Leenauto Beheer
@@ -317,8 +317,8 @@ export const LoanCarManagement = () => {
           ) : (
             <div className="space-y-4">
               {loanCars.map((car) => (
-                <div key={car.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-4">
+                <div key={car.id} className="flex flex-wrap items-center justify-between gap-3 p-4 border rounded-lg">
+                  <div className="flex min-w-0 items-center gap-4">
                     <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                       <Car className="h-6 w-6 text-blue-600" />
                     </div>
@@ -331,7 +331,7 @@ export const LoanCarManagement = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Badge 
                       variant={car.available ? "default" : "secondary"}
                       className="flex items-center gap-1"

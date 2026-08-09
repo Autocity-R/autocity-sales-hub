@@ -60,7 +60,7 @@ export const B2BInventoryHeader = ({ selectedVehicles, vehicles, onBulkAction }:
         title="Verkocht B2B" 
         description="Beheer uw verkochte voertuigen aan zakelijke klanten"
       >
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             size="sm"

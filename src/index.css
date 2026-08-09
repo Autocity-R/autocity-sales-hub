@@ -133,10 +133,10 @@
 }
 
 @media (max-width: 1023px) {
-  /* Voorkomt dat lange lijsten/tabellen de pagina horizontaal laten schuiven */
-  html,
+  /* Voorkomt dat lange lijsten/tabellen de pagina horizontaal laten schuiven.
+     Alleen op body (niet op html) zodat pinch-zoom + pannen blijft werken. */
   body {
-    overflow-x: hidden;
+    overflow-x: clip;
   }
   /* iOS: geen auto-zoom bij focus op inputs met < 16px font */
   input,

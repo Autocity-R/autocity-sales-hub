@@ -7,11 +7,15 @@ const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
-  <table
-    ref={ref}
-    className={cn("w-full caption-bottom text-sm", className)}
-    {...props}
-  />
+  // Scroll-container zodat brede tabellen op telefoon horizontaal schuiven
+  // in plaats van de hele pagina breder te maken.
+  <div className="relative w-full max-w-full overflow-x-auto">
+    <table
+      ref={ref}
+      className={cn("w-full caption-bottom text-sm", className)}
+      {...props}
+    />
+  </div>
 ))
 Table.displayName = "Table"
 

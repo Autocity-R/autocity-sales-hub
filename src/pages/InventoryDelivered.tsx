@@ -185,7 +185,7 @@ const InventoryDelivered = () => {
           title="Afgeleverd" 
           description="Overzicht van afgeleverde voertuigen aan zakelijke en particuliere klanten"
         >
-          <div className="flex space-x-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={selectedVehicles.length === 0}>
               <FileText className="h-4 w-4 mr-2" />
               Export selectie
