@@ -4303,6 +4303,7 @@ export type Database = {
           branch: string
           created_at: string
           created_by: string | null
+          draft_selection: Json
           id: string
           note: string | null
           points: Json | null
@@ -4315,6 +4316,7 @@ export type Database = {
           branch?: string
           created_at?: string
           created_by?: string | null
+          draft_selection?: Json
           id?: string
           note?: string | null
           points?: Json | null
@@ -4327,6 +4329,7 @@ export type Database = {
           branch?: string
           created_at?: string
           created_by?: string | null
+          draft_selection?: Json
           id?: string
           note?: string | null
           points?: Json | null
