@@ -273,6 +273,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 </Button>
               </Link>
             )}
+            {featureAccess.onderdelen(userRole) && !hasWerkplaatsAccess() && (
+                <Link to="/werkplaats/onderdelen">
+                  <Button
+                    variant={isActive("/werkplaats/onderdelen") ? "default" : "ghost"}
+                    className="w-full justify-start text-white hover:text-white hover:bg-gray-800"
+                    size="sm"
+                  >
+                    <Package className="mr-2 h-4 w-4" />
+                    Onderdelen
+                  </Button>
+                </Link>
+            )}
             {featureAccess.prijslijst(userRole) && (
               <Link to="/werkplaats/prijslijst">
                 <Button

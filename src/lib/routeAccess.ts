@@ -83,7 +83,8 @@ export const ADMINISTRATIE_ALLOWED_PREFIXES = [
 
 /**
  * Verkoper: mag de inname-flow gebruiken, maar het GOEDKEUREN van werk
- * (na schadeherstel/werkplaats) blijft aftersales-werk.
+ * (na schadeherstel/werkplaats) blijft aftersales-werk. Onderdelen bestellen
+ * mag hij wél: hij zet bestellingen klaar voor aftersales.
  */
 export const VERKOPER_BLOCKED_PREFIXES = ["/werkplaats/goedkeuren"];
 
@@ -178,6 +179,13 @@ export const featureAccess: Record<string, (role: Role) => boolean> = {
     r === "verkoper",
   /** Handmatige facturen opmaken. */
   "handmatige-facturen": (r) => isAdminRole(r) || r === "aftersales_manager",
+  /**
+   * Onderdelen bestellen/inzien. Verkoop en owner zetten bestellingen klaar
+   * zodat aftersales ze kan afhandelen; facturatie/goedkeuren blijft gescheiden.
+   */
+  onderdelen: (r) =>
+    isAdminRole(r) || r === "manager" || r === "verkoper" || r === "operationeel" ||
+    r === "aftersales_manager" || r === "werkplaats_chef" || r === "operationeel_directeur",
   /**
    * Transport-overzicht + binnenmelden (aangekomen). Aftersales doet de inname bij
    * aankomst en mag daarom ook binnenmelden. Vakmanrollen, administratie en de

@@ -30,6 +30,7 @@ interface PartOrder {
   doorbelast_invoice_id: string | null;
   branch: string;
   created_at: string;
+  created_by?: string | null;
   vehicle?: {
     id: string; brand: string; model: string; year: number | null;
     license_number: string | null; vin: string | null;
@@ -43,7 +44,10 @@ const STATUS_META: Record<Status, { label: string; tone: any; icon: any }> = {
 };
 
 const WerkplaatsOnderdelen: React.FC = () => {
-  const readOnly = useRoleAccess().isDirectieReadOnly();
+  const { isDirectieReadOnly, userRole } = useRoleAccess();
+  const readOnly = isDirectieReadOnly();
+  const isVerkoper = userRole === "verkoper";
+  const [uid, setUid] = useState<string | null>(null);
   const [orders, setOrders] = useState<PartOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -55,7 +59,7 @@ const WerkplaatsOnderdelen: React.FC = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("parts_orders")
-      .select("id, vehicle_id, manual_brand, manual_model, manual_license, part_name, note, status, ordered_at, arrived_at, aantal, inkoopprijs_per_stuk, leverancier, doorbelast_invoice_id, branch, created_at, vehicle:vehicles!parts_orders_vehicle_id_fkey(id, brand, model, year, license_number, vin)")
+      .select("id, vehicle_id, manual_brand, manual_model, manual_license, part_name, note, status, ordered_at, arrived_at, aantal, inkoopprijs_per_stuk, leverancier, doorbelast_invoice_id, branch, created_at, created_by, vehicle:vehicles!parts_orders_vehicle_id_fkey(id, brand, model, year, license_number, vin)")
       .order("created_at", { ascending: false });
     if (error) toast({ title: "Fout bij laden", description: error.message, variant: "destructive" });
     setOrders((data as any) || []);
@@ -63,6 +67,19 @@ const WerkplaatsOnderdelen: React.FC = () => {
   };
 
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUid(data.user?.id ?? null));
+  }, []);
+
+  /**
+   * Verkoop mag onderdelen klaarzetten, maar alleen de eigen bestelling
+   * aanpassen zolang die nog niet besteld/binnen of doorbelast is (zelfde
+   * grens als de RLS-policies).
+   */
+  const canMutate = (o: PartOrder) =>
+    !readOnly &&
+    (!isVerkoper ||
+      (!!uid && o.created_by === uid && o.status === "te_bestellen" && !o.doorbelast_invoice_id));
 
   const setStatus = async (id: string, next: Status) => {
     setBusy(id);
@@ -114,8 +131,8 @@ const WerkplaatsOnderdelen: React.FC = () => {
         key={o.id}
         role="button"
         tabIndex={0}
-        onClick={() => { if (!readOnly) setEditOrder(o); }}
-        onKeyDown={(e) => { if (!readOnly && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setEditOrder(o); } }}
+        onClick={() => { if (canMutate(o)) setEditOrder(o); }}
+        onKeyDown={(e) => { if (canMutate(o) && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setEditOrder(o); } }}
         className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm cursor-pointer transition-colors hover:border-slate-300 hover:bg-slate-50/60"
       >
         <div className="flex items-start gap-2">
@@ -152,7 +169,7 @@ const WerkplaatsOnderdelen: React.FC = () => {
             {o.doorbelast_invoice_id
               ? <Lock className="h-3.5 w-3.5 text-slate-300" />
               : <Pencil className="h-3.5 w-3.5 text-slate-300" />}
-            {!readOnly && <Button size="icon" variant="ghost"
+            {canMutate(o) && <Button size="icon" variant="ghost"
               onClick={(e) => { e.stopPropagation(); removeOrder(o.id); }}
               className="h-7 w-7 text-slate-400 hover:text-red-600">
               <Trash2 className="h-3.5 w-3.5" />
@@ -162,13 +179,13 @@ const WerkplaatsOnderdelen: React.FC = () => {
         <div className="flex items-center gap-1.5 mt-3">
           <AsPill tone={tone}>{statusLabel}</AsPill>
           <div className="ml-auto flex gap-1.5">
-          {!readOnly && o.status === "te_bestellen" && (
+          {!readOnly && !isVerkoper && o.status === "te_bestellen" && (
             <Button size="sm" className="h-10 sm:h-8 text-[12px] touch-manipulation bg-blue-600 hover:bg-blue-700 text-white"
                     disabled={busy === o.id} onClick={(e) => { e.stopPropagation(); setStatus(o.id, "besteld"); }}>
               <Truck className="h-3.5 w-3.5 mr-1" /> Markeer besteld
             </Button>
           )}
-          {!readOnly && o.status === "besteld" && (
+          {!readOnly && !isVerkoper && o.status === "besteld" && (
             <Button size="sm" className="h-10 sm:h-8 text-[12px] touch-manipulation bg-emerald-600 hover:bg-emerald-700 text-white"
                     disabled={busy === o.id} onClick={(e) => { e.stopPropagation(); setStatus(o.id, "binnen"); }}>
               <Check className="h-3.5 w-3.5 mr-1" /> Binnen
@@ -223,7 +240,7 @@ const WerkplaatsOnderdelen: React.FC = () => {
             <Input
               placeholder="Zoek op onderdeel, merk, model, kenteken…"
               value={filter} onChange={(e) => setFilter(e.target.value)}
-              className="w-72 bg-white"
+              className="w-full sm:w-72 bg-white"
             />
             {!readOnly && (
               <Button onClick={() => setAddOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white">

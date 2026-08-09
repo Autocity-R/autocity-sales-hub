@@ -213,6 +213,40 @@ describe("verkoper mag inname doen, maar niet goedkeuren", () => {
   });
 });
 
+describe("onderdelen bestellen: verkoop + owner", () => {
+  it("verkoper en owner mogen de onderdelen-route", () => {
+    for (const r of ["verkoper", "owner", "admin"]) {
+      expect(featureAccess.onderdelen(r)).toBe(true);
+      expect(canAccessRoute(r, "/werkplaats/onderdelen")).toEqual({ allowed: true });
+    }
+  });
+
+  it("werkplaats/aftersales houden onderdelen-toegang", () => {
+    for (const r of ["manager", "operationeel", "aftersales_manager", "werkplaats_chef", "operationeel_directeur"]) {
+      expect(featureAccess.onderdelen(r)).toBe(true);
+      expect(canAccessRoute(r, "/werkplaats/onderdelen")).toEqual({ allowed: true });
+    }
+  });
+
+  it("vakmannen en administratie krijgen geen onderdelen-menu", () => {
+    for (const r of ["monteur", "schadeherstel", "poetser", "uitdeuker_extern", "administratie"]) {
+      expect(featureAccess.onderdelen(r)).toBe(false);
+    }
+  });
+
+  it("de onderdelen-route wordt niet door de verkoper-blokkade geraakt", () => {
+    expect(canAccessRoute("verkoper", "/werkplaats/onderdelen")).toEqual({ allowed: true });
+    expect(canAccessRoute("verkoper", "/werkplaats/goedkeuren")).toEqual({
+      allowed: false,
+      redirectTo: "/werkplaats/inname",
+    });
+  });
+
+  it("route is geregistreerd", () => {
+    expect(routeExists("/werkplaats/onderdelen")).toBe(true);
+  });
+});
+
 describe("onbekende rol (nog niet geladen)", () => {
   it("veroorzaakt geen redirect", () => {
     expect(canAccessRoute(null, "/inventory")).toEqual({ allowed: true });
