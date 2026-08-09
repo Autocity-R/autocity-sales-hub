@@ -246,7 +246,7 @@ const TaskManagement = () => {
           title="Taken Beheer" 
           description={isAdmin ? "Beheer alle taken voor medewerkers en voertuigen" : "Bekijk en beheer je toegewezen taken"}
         >
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 min-w-0">
             <Button variant="outline" onClick={handleForceRefresh}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Ververs

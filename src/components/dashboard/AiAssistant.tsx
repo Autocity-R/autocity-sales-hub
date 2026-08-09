@@ -53,7 +53,7 @@ const AiAssistant = () => {
   };
 
   return (
-    <Card className="col-span-2 flex flex-col h-full">
+    <Card className="flex min-w-0 flex-col h-full">
       <CardHeader>
         <CardTitle>AI-assistent</CardTitle>
         <CardDescription>

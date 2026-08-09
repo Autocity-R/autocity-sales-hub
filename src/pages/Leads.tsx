@@ -249,7 +249,7 @@ const Leads = () => {
           title="Leads" 
           description="Beheer al je leads efficiënt"
         >
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 min-w-0">
             <Button onClick={handleManualEmailSync} variant="outline" className="gap-2">
               <RefreshCw className="h-4 w-4" />
               Gmail Sync
@@ -314,7 +314,7 @@ const Leads = () => {
         </div>
 
         {/* View Selector */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-6">
           <Button 
             variant={currentView === 'list' ? 'default' : 'outline'}
             onClick={() => setCurrentView('list')}

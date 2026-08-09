@@ -18,6 +18,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { DeliveryConfirmationDialog, type DeliveryData } from "./DeliveryConfirmationDialog";
 import { OnlineStatusBadge } from "./OnlineStatusBadge";
 import { BranchChip } from "@/components/layout/BranchSwitcher";
+import { useIsCompact } from "@/hooks/use-mobile";
+import { MobileCardList, MobileRecordCard } from "@/components/ui/mobile-record-card";
 
 interface VehicleTableProps {
   vehicles: Vehicle[];
@@ -329,6 +331,8 @@ export const VehicleTable = memo<VehicleTableProps>(({
 }) => {
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   const [selectedVehicleForDelivery, setSelectedVehicleForDelivery] = useState<Vehicle | null>(null);
+  const isCompact = useIsCompact();
+  const { hasPriceAccess } = useRoleAccess();
 
   const handleDeliveryClick = (vehicle: Vehicle) => {
     setSelectedVehicleForDelivery(vehicle);
@@ -373,6 +377,51 @@ export const VehicleTable = memo<VehicleTableProps>(({
 
   if (error) {
     return <div className="p-4 text-red-500">Fout bij het laden van voertuigen</div>;
+  }
+
+  // Mobiel/tablet: kaarten in plaats van een 16-koloms tabel
+  if (isCompact) {
+    const fmtPrice = (p?: number) =>
+      p ? new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(p) : "€ -";
+    const days = (createdAt?: string | Date) =>
+      createdAt ? Math.ceil(Math.abs(Date.now() - new Date(createdAt).getTime()) / 86400000) : 0;
+
+    return (
+      <MobileCardList empty="Geen voertuigen gevonden">
+        {vehicles.map((vehicle) => (
+          <MobileRecordCard
+            key={vehicle.id}
+            lead={
+              <Checkbox
+                checked={selectedVehicles.includes(vehicle.id)}
+                onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, checked === true)}
+                aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
+                className="h-5 w-5"
+              />
+            }
+            title={`${vehicle.brand} ${vehicle.model}`}
+            subtitle={vehicle.licenseNumber || vehicle.vin}
+            aside={hasPriceAccess() ? fmtPrice(vehicle.sellingPrice) : undefined}
+            onClick={() => handleSelectVehicle(vehicle)}
+            badges={
+              <>
+                <BranchChip branch={vehicle.branch} />
+                {renderImportStatusBadge(vehicle.importStatus)}
+                <OnlineStatusBadge isOnline={vehicle.showroomOnline} salesStatus={vehicle.salesStatus} />
+                <Badge variant="secondary">{days(vehicle.createdAt)} dagen</Badge>
+              </>
+            }
+            fields={[
+              { label: "Km-stand", value: vehicle.mileage ? `${vehicle.mileage.toLocaleString("nl-NL")} km` : "-" },
+              { label: "Locatie", value: vehicle.transportStatus === "onderweg" ? "Onderweg" : vehicle.location || "-" },
+              { label: "Aangekomen", value: vehicle.arrived ? "Ja" : "Nee" },
+              { label: "Papieren", value: vehicle.papersReceived ? "Ja" : "Nee" },
+              hasPriceAccess() ? { label: "Inkoopprijs", value: fmtPrice(vehicle.purchasePrice) } : null,
+            ]}
+          />
+        ))}
+      </MobileCardList>
+    );
   }
 
   return (

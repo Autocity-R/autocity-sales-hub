@@ -6,7 +6,7 @@ import { Vehicle, PaymentStatus, PaintStatus } from "@/types/inventory";
 import { VehicleB2CTableHeader } from "./b2c-table/VehicleB2CTableHeader";
 import { VehicleB2CTableRow } from "./b2c-table/VehicleB2CTableRow";
 import { VehicleMobileCard } from "./VehicleMobileCard";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsCompact } from "@/hooks/use-mobile";
 import { DeliveryConfirmationDialog, DeliveryData } from "./DeliveryConfirmationDialog";
 
 interface VehicleB2CTableProps {
@@ -60,7 +60,7 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
   showDeliveryDate = false,
   deliveryDates = {}
 }) => {
-  const isMobile = useIsMobile();
+  const isMobile = useIsCompact();
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   const [selectedVehicleForDelivery, setSelectedVehicleForDelivery] = useState<Vehicle | null>(null);
 

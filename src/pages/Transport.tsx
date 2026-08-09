@@ -393,9 +393,9 @@ const Transport = () => {
   return (
     <DashboardLayout>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold tracking-tight">Transport</h2>
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Transport</h2>
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
             {selectedVehicleIds.length > 0 && (
               <>
                 <Button variant="outline" onClick={() => setIsViewSelectionOpen(true)}>

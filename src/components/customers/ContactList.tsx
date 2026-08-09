@@ -17,6 +17,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ContactForm } from "./ContactForm";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { useIsCompact } from "@/hooks/use-mobile";
+import { MobileCardList, MobileRecordCard } from "@/components/ui/mobile-record-card";
+import { Badge } from "@/components/ui/badge";
 
 interface ContactListProps {
   contacts: Contact[];
@@ -29,6 +32,7 @@ const ContactList: React.FC<ContactListProps> = ({ contacts, title, type }) => {
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isCompact = useIsCompact();
   
   const filteredContacts = contacts.filter(contact => {
     const searchFields = [
@@ -60,9 +64,9 @@ const ContactList: React.FC<ContactListProps> = ({ contacts, title, type }) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-semibold">{title}</h2>
-        <Button onClick={() => setIsAddContactOpen(true)}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-xl md:text-2xl font-semibold">{title}</h2>
+        <Button onClick={() => setIsAddContactOpen(true)} className="min-h-11">
           <Plus className="mr-2 h-4 w-4" />
           {type === "supplier" ? "Nieuwe leverancier" : 
            type === "transporter" ? "Nieuwe transporteur" :
@@ -81,6 +85,53 @@ const ContactList: React.FC<ContactListProps> = ({ contacts, title, type }) => {
         />
       </div>
       
+      {isCompact ? (
+        <MobileCardList className="p-0" empty="Geen contacten gevonden">
+          {filteredContacts.map((contact) => (
+            <MobileRecordCard
+              key={contact.id}
+              title={
+                contact.companyName || `${contact.firstName} ${contact.lastName}`.trim() || "Onbekend"
+              }
+              subtitle={
+                contact.companyName
+                  ? `${contact.firstName} ${contact.lastName}`.trim() || undefined
+                  : contact.email || undefined
+              }
+              onClick={() => handleViewDetails(contact.id)}
+              badges={
+                <Badge variant="outline">
+                  {contact.type === "supplier"
+                    ? "Leverancier"
+                    : contact.type === "transporter"
+                    ? "Transporteur"
+                    : contact.type === "b2b"
+                    ? "Zakelijk"
+                    : "Particulier"}
+                </Badge>
+              }
+              fields={[
+                { label: "Plaats", value: contact.address?.city || "-" },
+                {
+                  label: "Telefoon",
+                  value: contact.phone ? (
+                    <a
+                      href={`tel:${contact.phone.replace(/\s/g, "")}`}
+                      className="text-primary underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {contact.phone}
+                    </a>
+                  ) : (
+                    "-"
+                  ),
+                },
+                contact.email ? { label: "E-mail", value: contact.email, wide: true } : null,
+              ]}
+            />
+          ))}
+        </MobileCardList>
+      ) : (
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -134,6 +185,7 @@ const ContactList: React.FC<ContactListProps> = ({ contacts, title, type }) => {
           </TableBody>
         </Table>
       </div>
+      )}
       
       <Dialog open={isAddContactOpen} onOpenChange={setIsAddContactOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden">

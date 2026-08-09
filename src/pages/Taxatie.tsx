@@ -15,7 +15,7 @@ const Taxatie = () => {
     <OptimizedDashboardLayout>
       <div className="space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="bg-muted/50 flex-wrap h-auto gap-1 p-1">
+          <TabsList className="bg-muted/50 flex w-full flex-wrap justify-start h-auto gap-1 p-1">
             <TabsTrigger value="new" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Calculator className="h-4 w-4" />
               Nieuwe Taxatie

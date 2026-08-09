@@ -13,6 +13,8 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Vehicle } from "@/types/inventory";
+import { useIsCompact } from "@/hooks/use-mobile";
+import { MobileCardList, MobileRecordCard } from "@/components/ui/mobile-record-card";
 
 interface TransportVehicleTableProps {
   vehicles: Vehicle[];
@@ -35,7 +37,8 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
   selectedVehicleIds = [],
   onSelectMultiple
 }) => {
-  
+  const isCompact = useIsCompact();
+
   if (isLoading) {
     return (
       <div className="p-8 text-center">
@@ -135,6 +138,61 @@ export const TransportVehicleTable: React.FC<TransportVehicleTableProps> = ({
     
     onSelectMultiple?.(newSelection);
   };
+
+  if (isCompact) {
+    return (
+      <MobileCardList empty="Geen voertuigen in transport gevonden.">
+        {vehicles.map((vehicle) => {
+          const pay = getPaymentStatusBadge(vehicle);
+          const pickup = getPickupStatus(vehicle);
+          return (
+            <MobileRecordCard
+              key={vehicle.id}
+              lead={
+                onSelectMultiple ? (
+                  <Checkbox
+                    checked={selectedVehicleIds.includes(vehicle.id)}
+                    onCheckedChange={(checked) => handleSelectVehicle(vehicle.id, !!checked)}
+                    aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
+                    className="h-5 w-5"
+                  />
+                ) : undefined
+              }
+              title={`${vehicle.brand} ${vehicle.model}`}
+              subtitle={vehicle.licenseNumber || vehicle.vin}
+              onClick={() => onSelectVehicle(vehicle)}
+              badges={
+                <>
+                  <Badge className={pickup.className}>{pickup.label}</Badge>
+                  <Badge className={pay.className}>{pay.label}</Badge>
+                  <Badge variant="secondary" className="bg-gray-100 text-gray-800">
+                    {vehicle.customerName || vehicle.customerContact?.name || "AUTOCITY"}
+                  </Badge>
+                </>
+              }
+              fields={[
+                { label: "Km-stand", value: `${vehicle.mileage?.toLocaleString("nl-NL") ?? "-"} km` },
+                { label: "Inkoopprijs", value: `€${(vehicle.purchasePrice || 0).toLocaleString("nl-NL")}`, strong: true },
+                { label: "Importstatus", value: formatImportStatus(vehicle.importStatus as string) },
+              ]}
+              actions={
+                <>
+                  <Button size="sm" variant="outline" className="min-h-11" onClick={() => onSendPickupDocument(vehicle.id)}>
+                    <FileText className="h-4 w-4 mr-1" />
+                    Pickup versturen
+                  </Button>
+                  <Button size="sm" variant="outline" className="min-h-11" onClick={() => onMarkAsArrived(vehicle.id)}>
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Binnenmelden
+                  </Button>
+                </>
+              }
+            />
+          );
+        })}
+      </MobileCardList>
+    );
+  }
 
   return (
     <div className="w-full overflow-x-auto">

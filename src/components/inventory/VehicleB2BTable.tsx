@@ -46,6 +46,9 @@ import { PurchaserQuickEdit } from "./PurchaserQuickEdit";
 import { EmailConfirmDialog } from "@/components/ui/email-confirm-dialog";
 import { DeliveryConfirmationDialog, DeliveryData } from "./DeliveryConfirmationDialog";
 import { BranchChip } from "@/components/layout/BranchSwitcher";
+import { useIsCompact } from "@/hooks/use-mobile";
+import { MobileCardList, MobileRecordCard } from "@/components/ui/mobile-record-card";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface VehicleB2BTableProps {
   vehicles: Vehicle[];
@@ -170,6 +173,8 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
       <ArrowDown className="ml-1 h-4 w-4 inline" />;
   };
 
+  const isCompact = useIsCompact();
+
   const renderSortableHeader = (field: string, label: string) => {
     return (
       <div 
@@ -187,6 +192,63 @@ export const VehicleB2BTable: React.FC<VehicleB2BTableProps> = ({
 
   if (error) {
     return <div className="p-8 text-center text-destructive">Er is een fout opgetreden bij het laden van de gegevens.</div>;
+  }
+
+  if (isCompact) {
+    const fmt = (p?: number) =>
+      p ? new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(p) : "€ -";
+    return (
+      <MobileCardList empty="Geen voertuigen gevonden">
+        {vehicles.map((vehicle) => (
+          <MobileRecordCard
+            key={vehicle.id}
+            lead={
+              <Checkbox
+                checked={selectedVehicles.includes(vehicle.id)}
+                onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, checked === true)}
+                aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
+                className="h-5 w-5"
+              />
+            }
+            title={vehicle.customerName || "Nog geen klant"}
+            subtitle={`${vehicle.brand} ${vehicle.model}${vehicle.licenseNumber ? ` · ${vehicle.licenseNumber}` : ""}`}
+            aside={fmt(vehicle.sellingPrice)}
+            onClick={() => handleSelectVehicle(vehicle)}
+            badges={
+              <>
+                <BranchChip branch={vehicle.branch} />
+                <Badge variant="outline" className="bg-purple-50 text-purple-800">B2B</Badge>
+                <Badge
+                  variant="outline"
+                  className={
+                    vehicle.paymentStatus === "volledig_betaald"
+                      ? "bg-green-100 text-green-800"
+                      : vehicle.paymentStatus === "aanbetaling"
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-red-100 text-red-800"
+                  }
+                >
+                  {vehicle.paymentStatus === "volledig_betaald"
+                    ? "Betaald"
+                    : vehicle.paymentStatus === "aanbetaling"
+                    ? "Aanbetaling"
+                    : "Niet betaald"}
+                </Badge>
+                {vehicle.deliveryDate && (
+                  <Badge variant="outline" className="bg-green-100 text-green-800">Afgeleverd</Badge>
+                )}
+              </>
+            }
+            fields={[
+              { label: "Bouwjaar", value: vehicle.year || "-" },
+              { label: "Km-stand", value: vehicle.mileage ? `${vehicle.mileage.toLocaleString("nl-NL")} km` : "-" },
+              { label: "Papieren", value: vehicle.papersReceived ? "Ontvangen" : "Nog niet" },
+              { label: "Verkoper", value: vehicle.salespersonName || "-" },
+            ]}
+          />
+        ))}
+      </MobileCardList>
+    );
   }
 
   if (vehicles.length === 0) {
