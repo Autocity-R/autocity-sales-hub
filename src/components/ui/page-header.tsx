@@ -19,7 +19,7 @@ export function PageHeader({
   icon: Icon,
 }: PageHeaderProps) {
   return (
-    <div className={cn("flex flex-col md:flex-row md:items-center md:justify-between mb-4 md:mb-6", className)}>
+    <div className={cn("flex flex-col md:flex-row md:items-center md:justify-between gap-2 min-w-0 max-w-full mb-4 md:mb-6", className)}>
       <div className="min-w-0 flex-1">
         <h1 className="text-lg md:text-2xl font-bold tracking-tight flex items-center gap-2">
           {Icon && <Icon className="h-5 w-5 md:h-6 md:w-6 flex-shrink-0" />}
@@ -30,7 +30,7 @@ export function PageHeader({
         )}
       </div>
       {children && (
-        <div className="mt-3 md:mt-0 flex items-center space-x-2 w-full md:w-auto">
+        <div className="mt-1 md:mt-0 flex min-w-0 max-w-full flex-wrap items-center gap-2 w-full md:w-auto">
           {children}
         </div>
       )}

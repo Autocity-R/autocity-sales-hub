@@ -89,7 +89,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               <CalendarIcon className="h-5 w-5" />
               {format(view.date, 'MMMM yyyy', { locale: nl })}
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
               <Button
                 variant="outline"
                 size="sm"

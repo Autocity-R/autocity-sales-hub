@@ -214,12 +214,12 @@ const WerkplaatsOnderdelen: React.FC = () => {
   return (
     <DashboardLayout>
       <AsPage>
-        <div className="flex items-center justify-between mb-4 gap-3">
+        <div className="flex flex-wrap items-center justify-between mb-4 gap-3 min-w-0">
           <div>
             <div className="text-[18px] font-bold text-slate-900 tracking-tight">Onderdelen</div>
             <div className="text-[12.5px] text-slate-500">Overzicht van bestelde onderdelen per voertuig</div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
             <Input
               placeholder="Zoek op onderdeel, merk, model, kenteken…"
               value={filter} onChange={(e) => setFilter(e.target.value)}

@@ -178,7 +178,7 @@ const SortableTaskCard = memo<{
         onClick={handleCardClick}
       >
         <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between min-w-0">
             <div className="flex items-start gap-2 flex-1 min-w-0">
               {/* Position number and drag handle */}
               <div className="flex items-center gap-1 flex-shrink-0">
@@ -200,13 +200,13 @@ const SortableTaskCard = memo<{
               <div className="space-y-1 min-w-0 flex-1">
                 <div className="flex items-center space-x-2">
                   {getStatusIcon(task.status)}
-                  <h4 className="font-medium truncate">{task.title}</h4>
+                  <h4 className="font-medium truncate min-w-0">{task.title}</h4>
                 </div>
-                <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
+                <p className="text-sm text-muted-foreground line-clamp-2 break-words">{task.description}</p>
               </div>
             </div>
             
-            <div className="flex flex-wrap gap-2 justify-end flex-shrink-0">
+            <div className="flex flex-wrap gap-2 min-w-0 sm:justify-end">
               <Badge variant="outline" className={`${catConfig.bgColor} ${catConfig.color} border`}>
                 <CategoryIcon className="h-3 w-3 mr-1" />
                 {catConfig.label}
@@ -449,7 +449,7 @@ export const DraggableTaskList = memo<DraggableTaskListProps>(({
         </Card>
       ) : isMobile ? (
         // Mobile: no drag, just list
-        <div className="grid gap-3 md:gap-4">
+        <div className="grid grid-cols-1 gap-3 md:gap-4 [&>*]:min-w-0">
           {filteredTasks.map((task, index) => (
             <TaskMobileCard
               key={task.id}
@@ -474,7 +474,7 @@ export const DraggableTaskList = memo<DraggableTaskListProps>(({
             items={filteredTasks.map(t => t.id)}
             strategy={verticalListSortingStrategy}
           >
-            <div className="grid gap-3 md:gap-4">
+            <div className="grid grid-cols-1 gap-3 md:gap-4 [&>*]:min-w-0">
               {filteredTasks.map((task, index) => (
                 <SortableTaskCard
                   key={task.id}

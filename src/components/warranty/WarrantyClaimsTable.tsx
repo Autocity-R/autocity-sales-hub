@@ -21,6 +21,8 @@ import { WarrantyScheduleAction } from "./ScheduleWarrantyWorkOrder";
 import { updateWarrantyClaim, resolveWarrantyClaim, deleteWarrantyClaim } from "@/services/warrantyService";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useIsCompact } from "@/hooks/use-mobile";
+import { MobileCardList, MobileRecordCard } from "@/components/ui/mobile-record-card";
 
 interface WarrantyClaimsTableProps {
   claims: WarrantyClaim[];
@@ -38,6 +40,7 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
   const [selectedClaim, setSelectedClaim] = useState<WarrantyClaim | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const isCompact = useIsCompact();
 
   const formatDate = (date: Date | string) => {
     const dateObj = typeof date === "string" ? new Date(date) : date;
@@ -180,6 +183,54 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
 
   return (
     <>
+      {isCompact ? (
+        <MobileCardList empty="Geen garantieclaims gevonden">
+          {claims.map((claim) => (
+            <MobileRecordCard
+              key={claim.id}
+              title={claim.customerName}
+              subtitle={`${claim.vehicleBrand} ${claim.vehicleModel}${claim.vehicleLicenseNumber ? ` · ${claim.vehicleLicenseNumber}` : ""}`}
+              onClick={() => setSelectedClaim(claim)}
+              badges={
+                <>
+                  {getStatusBadge(claim.status)}
+                  {getPriorityBadge(claim.priority)}
+                  {claim.loanCarAssigned && (
+                    <Badge variant="outline" className="bg-green-100 text-green-800">
+                      Leenauto {claim.loanCarDetails?.licenseNumber || ""}
+                    </Badge>
+                  )}
+                </>
+              }
+              fields={[
+                { label: "Probleem", value: claim.problemDescription, wide: true },
+                { label: "Gemeld", value: formatDate(claim.reportDate) },
+                showResolved
+                  ? { label: "Opgelost", value: claim.resolutionDate ? formatDate(claim.resolutionDate) : "-" }
+                  : { label: "Dagen open", value: `${getDaysInWarranty(claim)} dagen` },
+                showResolved
+                  ? { label: "Kosten", value: formatCurrency(claim.actualCost || claim.estimatedCost), strong: true }
+                  : { label: "Geschatte kosten", value: formatCurrency(claim.estimatedCost), strong: true },
+                {
+                  label: "Afspraak",
+                  value: claim.appointmentDate
+                    ? `${formatDate(claim.appointmentDate)} ${claim.appointmentTime || ""}`.trim()
+                    : "Geen afspraak",
+                },
+              ]}
+              actions={
+                <>
+                  <Button variant="outline" size="sm" className="min-h-11" onClick={() => setSelectedClaim(claim)}>
+                    <Eye className="h-4 w-4 mr-1" />
+                    Details
+                  </Button>
+                  <WarrantyScheduleAction claimId={claim.id} />
+                </>
+              }
+            />
+          ))}
+        </MobileCardList>
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -344,6 +395,7 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
           )}
         </TableBody>
       </Table>
+      )}
 
       {/* Warranty Claim Detail Dialog */}
       {selectedClaim && (

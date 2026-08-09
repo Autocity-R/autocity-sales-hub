@@ -29,7 +29,7 @@ const data = [
 
 const InventoryChart = () => {
   return (
-    <Card className="col-span-2">
+    <Card className="min-w-0 lg:col-span-2">
       <CardHeader>
         <CardTitle>Voorraadoverzicht</CardTitle>
         <CardDescription>

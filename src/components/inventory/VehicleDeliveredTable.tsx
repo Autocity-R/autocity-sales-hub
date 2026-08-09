@@ -10,6 +10,8 @@ import { ChevronUp, ChevronDown, FileText } from "lucide-react";
 import { Vehicle } from "@/types/inventory";
 import { BranchChip } from "@/components/layout/BranchSwitcher";
 import { PurchaserQuickEdit } from "./PurchaserQuickEdit";
+import { useIsCompact } from "@/hooks/use-mobile";
+import { MobileCardList, MobileRecordCard } from "@/components/ui/mobile-record-card";
 
 interface VehicleDeliveredTableProps {
   vehicles: Vehicle[];
@@ -38,6 +40,7 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
   sortDirection,
   onVehicleClick
 }) => {
+  const isCompact = useIsCompact();
   const renderSortIcon = (field: string) => {
     if (sortField !== field) return null;
     return sortDirection === "asc" ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />;
@@ -70,6 +73,56 @@ export const VehicleDeliveredTable: React.FC<VehicleDeliveredTableProps> = ({
 
   if (error) {
     return <div className="p-4 text-red-500">Fout bij het laden van voertuigen</div>;
+  }
+
+  if (isCompact) {
+    return (
+      <MobileCardList empty="Geen afgeleverde voertuigen gevonden">
+        {vehicles.map((vehicle) => {
+          const isB2C =
+            vehicle.details?.originalSalesStatus === "verkocht_b2c" || vehicle.salesStatus === "verkocht_b2c";
+          return (
+            <MobileRecordCard
+              key={vehicle.id}
+              lead={
+                <Checkbox
+                  checked={selectedVehicles.includes(vehicle.id)}
+                  onCheckedChange={(checked) => toggleSelectVehicle(vehicle.id, checked === true)}
+                  aria-label={`Selecteer ${vehicle.brand} ${vehicle.model}`}
+                  className="h-5 w-5"
+                />
+              }
+              title={vehicle.customerName || "Onbekende klant"}
+              subtitle={`${vehicle.brand} ${vehicle.model}${vehicle.licenseNumber ? ` · ${vehicle.licenseNumber}` : ""}`}
+              aside={formatPrice(vehicle.sellingPrice)}
+              onClick={() => onVehicleClick(vehicle)}
+              badges={
+                <>
+                  <BranchChip branch={vehicle.branch} />
+                  <Badge variant="outline" className={isB2C ? "bg-blue-50 text-blue-800" : "bg-purple-50 text-purple-800"}>
+                    {isB2C ? "B2C" : "B2B"}
+                  </Badge>
+                  <Badge variant="outline" className={vehicle.papersReceived ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}>
+                    {vehicle.papersReceived ? "Papieren OK" : "Papieren incompleet"}
+                  </Badge>
+                </>
+              }
+              fields={[
+                { label: "Afgeleverd", value: formatDeliveryDate(vehicle.deliveryDate || vehicle.details?.deliveryDate) },
+                { label: "Km-stand", value: formatMileage(vehicle.mileage) },
+                {
+                  label: "Garantiepakket",
+                  wide: true,
+                  value: vehicle.details?.warrantyPackageName || "Geen",
+                },
+                { label: "Verkoper", value: vehicle.salespersonName || "Onbekend" },
+                { label: "Inkoper", value: vehicle.purchasedByName || "Onbekend" },
+              ]}
+            />
+          );
+        })}
+      </MobileCardList>
+    );
   }
 
   return (

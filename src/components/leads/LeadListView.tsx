@@ -23,7 +23,7 @@ import { nl } from "date-fns/locale";
 import { ArrowUpDown, MoreVertical, UserPlus, Tag, Archive } from "lucide-react";
 import { parseLeadData } from "@/utils/leadParser";
 import { LeadMobileCard } from "./LeadMobileCard";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsCompact } from "@/hooks/use-mobile";
 
 interface LeadListViewProps {
   leads: Lead[];
@@ -154,7 +154,7 @@ export const LeadListView: React.FC<LeadListViewProps> = ({
     </Button>
   );
 
-  const isMobile = useIsMobile();
+  const isMobile = useIsCompact();
 
   // Mobile Card View
   if (isMobile) {

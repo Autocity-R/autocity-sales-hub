@@ -128,12 +128,12 @@ const WerkplaatsFacturen: React.FC = () => {
   return (
     <DashboardLayout>
       <AsPage>
-        <div className="flex items-center justify-between mb-5 gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Werkplaats facturen</h1>
+        <div className="flex flex-wrap items-center justify-between mb-5 gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-slate-900">Werkplaats facturen</h1>
             <p className="text-[13px] text-slate-500 mt-0.5">Facturen van externe werkplaatsopdrachten.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={() => navigate("/werkplaats/prijslijst")}>
               <Calculator className="h-4 w-4 mr-1" />Prijslijst
             </Button>
