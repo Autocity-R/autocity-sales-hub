@@ -263,6 +263,10 @@ function sanitizeText(s: string): string {
     .replace(/\u2011/g, "-");
 }
 
+function fmtEur(n: number): string {
+  return `EUR ${Number(n || 0).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 function renderContractEmail(opts: {
   buyerName: string;
   intro: string;
