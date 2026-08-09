@@ -82,12 +82,3 @@ Deno.serve(async (req) => {
     } catch (_e) { /* stil */ }
   }
 });
-
-// (oude afhandeling verwijderd)
-const _unused = async () => {
-  try {
-    return null;
-  } catch (e: any) {
-    return e;
-  }
-};
