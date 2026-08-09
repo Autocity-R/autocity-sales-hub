@@ -30,6 +30,7 @@ interface PartOrder {
   doorbelast_invoice_id: string | null;
   branch: string;
   created_at: string;
+  created_by?: string | null;
   vehicle?: {
     id: string; brand: string; model: string; year: number | null;
     license_number: string | null; vin: string | null;
@@ -43,7 +44,10 @@ const STATUS_META: Record<Status, { label: string; tone: any; icon: any }> = {
 };
 
 const WerkplaatsOnderdelen: React.FC = () => {
-  const readOnly = useRoleAccess().isDirectieReadOnly();
+  const { isDirectieReadOnly, userRole } = useRoleAccess();
+  const readOnly = isDirectieReadOnly();
+  const isVerkoper = userRole === "verkoper";
+  const [uid, setUid] = useState<string | null>(null);
   const [orders, setOrders] = useState<PartOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -55,7 +59,7 @@ const WerkplaatsOnderdelen: React.FC = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("parts_orders")
-      .select("id, vehicle_id, manual_brand, manual_model, manual_license, part_name, note, status, ordered_at, arrived_at, aantal, inkoopprijs_per_stuk, leverancier, doorbelast_invoice_id, branch, created_at, vehicle:vehicles!parts_orders_vehicle_id_fkey(id, brand, model, year, license_number, vin)")
+      .select("id, vehicle_id, manual_brand, manual_model, manual_license, part_name, note, status, ordered_at, arrived_at, aantal, inkoopprijs_per_stuk, leverancier, doorbelast_invoice_id, branch, created_at, created_by, vehicle:vehicles!parts_orders_vehicle_id_fkey(id, brand, model, year, license_number, vin)")
       .order("created_at", { ascending: false });
     if (error) toast({ title: "Fout bij laden", description: error.message, variant: "destructive" });
     setOrders((data as any) || []);
@@ -63,6 +67,19 @@ const WerkplaatsOnderdelen: React.FC = () => {
   };
 
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUid(data.user?.id ?? null));
+  }, []);
+
+  /**
+   * Verkoop mag onderdelen klaarzetten, maar alleen de eigen bestelling
+   * aanpassen zolang die nog niet besteld/binnen of doorbelast is (zelfde
+   * grens als de RLS-policies).
+   */
+  const canMutate = (o: PartOrder) =>
+    !readOnly &&
+    (!isVerkoper ||
+      (!!uid && o.created_by === uid && o.status === "te_bestellen" && !o.doorbelast_invoice_id));
 
   const setStatus = async (id: string, next: Status) => {
     setBusy(id);
@@ -114,8 +131,8 @@ const WerkplaatsOnderdelen: React.FC = () => {
         key={o.id}
         role="button"
         tabIndex={0}
-        onClick={() => { if (!readOnly) setEditOrder(o); }}
-        onKeyDown={(e) => { if (!readOnly && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setEditOrder(o); } }}
+        onClick={() => { if (canMutate(o)) setEditOrder(o); }}
+        onKeyDown={(e) => { if (canMutate(o) && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setEditOrder(o); } }}
         className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm cursor-pointer transition-colors hover:border-slate-300 hover:bg-slate-50/60"
       >
         <div className="flex items-start gap-2">
