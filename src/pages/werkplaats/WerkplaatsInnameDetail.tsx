@@ -12,6 +12,7 @@ import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
 import { DamageDiagram, DAMAGE_ZONES, findZoneByName, DamageZone } from "@/components/aftersales/DamageDiagram";
 import { cn } from "@/lib/utils";
 import { AddPartOrderDialog } from "@/components/aftersales/AddPartOrderDialog";
+import { PhotoPicker } from "@/components/werkplaats/PhotoPicker";
 
 interface IntakePoint { text: string; photo_paths?: string[]; work_order_id?: string | null; }
 interface DraftEntry { parts: string[]; description: string; photo_paths: string[]; }
@@ -405,14 +406,7 @@ const WerkplaatsInnameDetail: React.FC = () => {
 
                 <div className="mt-3">
                   <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Foto's</div>
-                  <label className="flex items-center gap-2 border border-dashed border-slate-300 rounded-lg p-3 cursor-pointer hover:border-slate-400 bg-white">
-                    <Camera className="h-4 w-4 text-slate-500" />
-                    <span className="text-[12.5px] text-slate-600 flex-1">
-                      {files.length ? `${files.length} foto('s) gekozen` : "Maak of kies foto's"}
-                    </span>
-                    <Input type="file" multiple accept="image/*" capture="environment" className="hidden"
-                      onChange={(e) => setFiles(Array.from(e.target.files || []))} />
-                  </label>
+                  <PhotoPicker files={files} onChange={setFiles} />
                 </div>
 
                 <div className="mt-3">
