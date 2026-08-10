@@ -242,14 +242,7 @@ export const ChecklistAssignDialog: React.FC<Props> = ({
           {needsDiagram && (
             <section>
               <Label className="mb-2 block">Foto's</Label>
-              <label className="flex items-center gap-2 border border-dashed border-slate-300 rounded-lg p-3 cursor-pointer hover:border-slate-400 bg-white">
-                <Camera className="h-4 w-4 text-slate-500" />
-                <span className="text-[12.5px] text-slate-600 flex-1">
-                  {files.length ? `${files.length} foto('s) gekozen` : "Maak of kies foto's"}
-                </span>
-                <Input type="file" multiple accept="image/*" capture="environment" className="hidden"
-                  onChange={(e) => setFiles(Array.from(e.target.files || []))} />
-              </label>
+              <PhotoPicker files={files} onChange={setFiles} />
             </section>
           )}
 
