@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { WorkOrderDiscipline, DISCIPLINE_LABELS } from "./workOrderTypes";
+import { PhotoPicker } from "./PhotoPicker";
 
 interface Props {
   open: boolean;
@@ -144,8 +145,9 @@ export const AddWorkOrderDialog: React.FC<Props> = ({
           </div>
           <div>
             <Label>Foto's</Label>
-            <Input type="file" multiple accept="image/*" onChange={(e) => setFiles(Array.from(e.target.files || []))} />
-            {files.length > 0 && <p className="text-xs text-muted-foreground mt-1">{files.length} bestand(en) geselecteerd</p>}
+            <div className="mt-1.5">
+              <PhotoPicker files={files} onChange={setFiles} />
+            </div>
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <Checkbox checked={isRush} onCheckedChange={(v) => setIsRush(Boolean(v))} />
