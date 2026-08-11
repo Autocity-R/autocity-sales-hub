@@ -359,6 +359,7 @@ async function loadCockpit(branch: BranchFilter): Promise<CockpitData> {
       ageDays: a.finished_at ? differenceInDays(now, new Date(a.finished_at)) : 0,
     })),
     deliveries,
+    nextDelivery,
     intakeOpen: ((intakes as any[]) || []).length,
     intakeLines: ((intakes as any[]) || []).slice(0, 3).map((i: any) => ({
       id: i.id,
