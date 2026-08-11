@@ -175,23 +175,71 @@ async function loadCockpit(branch: BranchFilter): Promise<CockpitData> {
 
   const uitdeukLongest = uitdeukArr[0] ? toLine(uitdeukArr[0]) : undefined;
 
-  // 6) Afleveringen vandaag/morgen
-  const today = new Date();
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  // 6) Afleveringen vandaag/morgen — bron: verkoopagenda (appointments), ALLEEN LEZEN
+  const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+  const dayEndTomorrow = new Date(dayStart);
+  dayEndTomorrow.setDate(dayEndTomorrow.getDate() + 1);
+  dayEndTomorrow.setHours(23, 59, 59, 999);
+  const startOfTomorrow = new Date(dayStart);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
 
-  let dq = supabase
-    .from("vehicles")
-    .select("id, brand, model, license_number, vin, showroom_photo_url, delivery_date, import_status, details")
-    .eq("status", "verkocht_b2c")
-    .in("delivery_date", [iso(today), iso(tomorrow)])
-    .order("delivery_date", { ascending: true });
-  dq = applyBranchFilter(dq, branch);
-  const { data: dv } = await dq;
+  let aq = supabase
+    .from("appointments")
+    .select("id, starttime, customername, vehicleid, vehiclebrand, vehiclemodel, vehiclelicensenumber, branch, status, type")
+    .eq("type", "aflevering")
+    .neq("status", "geannuleerd")
+    .gte("starttime", dayStart.toISOString())
+    .lte("starttime", dayEndTomorrow.toISOString())
+    .order("starttime", { ascending: true });
+  aq = applyBranchFilter(aq, branch);
+  const { data: appts } = await aq;
 
-  // open werkorders per voertuig (voor deze delivery-lijst)
-  const dvIds = ((dv as any[]) || []).map((v) => v.id);
+  // Dedupliceer per auto: eerstvolgende afspraak per voertuig (of per afspraak als geen voertuig)
+  const seen = new Set<string>();
+  const apptList: any[] = [];
+  for (const a of ((appts as any[]) || [])) {
+    const key = a.vehicleid || `appt:${a.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    apptList.push(a);
+  }
+
+  const isUuid = (s: any) =>
+    typeof s === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+  const dvIds = apptList.map((a) => a.vehicleid).filter(isUuid);
+
+  const vehMap = new Map<string, any>();
+  if (dvIds.length) {
+    const { data: dv } = await supabase
+      .from("vehicles")
+      .select("id, brand, model, license_number, vin, showroom_photo_url, import_status, details")
+      .in("id", dvIds);
+    for (const v of ((dv as any[]) || [])) vehMap.set(v.id, v);
+  }
+
+  // Volgende aflevering buiten het venster (voor een niet-lege kaart)
+  let nextDelivery: CockpitData["nextDelivery"] = null;
+  if (apptList.length === 0) {
+    let nq = supabase
+      .from("appointments")
+      .select("id, starttime, customername, vehiclebrand, vehiclemodel")
+      .eq("type", "aflevering")
+      .neq("status", "geannuleerd")
+      .gt("starttime", dayEndTomorrow.toISOString())
+      .order("starttime", { ascending: true })
+      .limit(1);
+    nq = applyBranchFilter(nq, branch);
+    const { data: nd } = await nq;
+    const n = ((nd as any[]) || [])[0];
+    if (n) {
+      nextDelivery = {
+        date: format(new Date(n.starttime), "EEEE d MMMM HH:mm", { locale: nl }),
+        vehicle: `${n.vehiclebrand || ""} ${n.vehiclemodel || ""}`.trim() || "Onbekend voertuig",
+        customer: n.customername || null,
+      };
+    }
+  }
+
   const openWoMap = new Map<string, number>();
   if (dvIds.length) {
     const { data: openW } = await supabase
@@ -204,7 +252,31 @@ async function loadCockpit(branch: BranchFilter): Promise<CockpitData> {
     }
   }
 
-  const deliveries: DeliveryLine[] = ((dv as any[]) || []).map((v) => {
+  const deliveries: DeliveryLine[] = apptList.map((a) => {
+    const v = a.vehicleid ? vehMap.get(a.vehicleid) : undefined;
+    const start = new Date(a.starttime);
+    const when: "vandaag" | "morgen" = start < startOfTomorrow ? "vandaag" : "morgen";
+    const base = {
+      id: a.id,
+      time: format(start, "HH:mm"),
+      customer: a.customername || null,
+      when,
+    };
+
+    if (!v) {
+      return {
+        ...base,
+        vehicle: `${a.vehiclebrand || ""} ${a.vehiclemodel || ""}`.trim() || "Onbekend voertuig",
+        license: a.vehiclelicensenumber || undefined,
+        vin: null,
+        photo: null,
+        ready: false,
+        missing: "",
+        bits: [],
+        hasVehicle: false,
+      };
+    }
+
     const details = v.details || {};
     const cl = details.preDeliveryChecklist || [];
     const total = Array.isArray(cl) ? cl.length : 0;
@@ -217,17 +289,15 @@ async function loadCockpit(branch: BranchFilter): Promise<CockpitData> {
     if (v.import_status !== "ingeschreven") bits.push("nog niet ingeschreven");
     if (openWo > 0) bits.push(`${openWo} werkorder${openWo > 1 ? "s" : ""} open`);
     return {
-      id: v.id,
-      vehicle: `${v.brand} ${v.model}`,
-      license: v.license_number,
+      ...base,
+      vehicle: `${v.brand || a.vehiclebrand || ""} ${v.model || a.vehiclemodel || ""}`.trim(),
+      license: v.license_number || a.vehiclelicensenumber || undefined,
       vin: v.vin || null,
       photo: v.showroom_photo_url || null,
-      time: details.deliveryTime || null,
-      customer: details.customerName || null,
-      when: v.delivery_date === iso(today) ? "vandaag" : "morgen",
       ready,
       missing: ready ? "Gereed voor aflevering" : bits.join(" · "),
       bits,
+      hasVehicle: true,
     };
   });
 
