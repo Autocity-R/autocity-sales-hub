@@ -512,7 +512,13 @@ const WerkplaatsDashboard: React.FC = () => {
                 count={data.deliveries.length}
               />
               {data.deliveries.length === 0 ? (
-                <EmptyState text="Geen afleveringen gepland voor vandaag of morgen." />
+                <EmptyState
+                  text={
+                    data.nextDelivery
+                      ? `Geen afleveringen vandaag of morgen. Volgende aflevering: ${data.nextDelivery.date} — ${data.nextDelivery.vehicle}${data.nextDelivery.customer ? ` (${data.nextDelivery.customer})` : ""}.`
+                      : "Geen afleveringen gepland voor vandaag of morgen."
+                  }
+                />
               ) : (
                 <div>
                   {data.deliveries.map((d) => (
@@ -529,7 +535,9 @@ const WerkplaatsDashboard: React.FC = () => {
                         </span>
                       }
                       right={
-                        d.ready ? (
+                        d.hasVehicle === false ? (
+                          <AsPill tone="slate">geen auto gekoppeld</AsPill>
+                        ) : d.ready ? (
                           <AsPill tone="green"><CheckCircle2 className="h-3 w-3" />Gereed voor levering</AsPill>
                         ) : (
                           <div className="flex items-center gap-1 flex-wrap justify-end max-w-[280px]">
