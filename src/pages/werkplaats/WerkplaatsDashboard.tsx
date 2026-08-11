@@ -48,6 +48,7 @@ interface DeliveryLine {
   ready: boolean;
   missing: string;
   bits: string[];
+  hasVehicle?: boolean;
 }
 
 interface CockpitData {
@@ -64,6 +65,7 @@ interface CockpitData {
   waitApproval: number;
   approvalLines: WoLine[];
   deliveries: DeliveryLine[];
+  nextDelivery?: { date: string; vehicle: string; customer?: string | null } | null;
   intakeOpen: number;
   intakeLines: WoLine[];
   expected: ExpectedLine[];
