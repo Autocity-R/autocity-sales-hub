@@ -333,7 +333,7 @@ async function loadCockpit(branch: BranchFilter): Promise<CockpitData> {
       license: w.vehicles?.license_number || null,
       vin: w.vehicles?.vin || null,
       photo: w.vehicles?.showroom_photo_url || null,
-      when: d.toISOString().slice(0, 10) === iso(today) ? "vandaag" : "morgen",
+      when: d < startOfTomorrow ? "vandaag" : "morgen",
       time: format(d, "HH:mm"),
       customer: (w.external_customer as any)?.name || null,
       extern: w.origin === "extern",
