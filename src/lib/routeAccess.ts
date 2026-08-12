@@ -194,4 +194,10 @@ export const featureAccess: Record<string, (role: Role) => boolean> = {
   transport: (r) =>
     isAdminRole(r) || r === "manager" || r === "verkoper" || r === "operationeel" ||
     r === "user" || r === "aftersales_manager",
+  /**
+   * Kenteken van een voorraadauto invullen/wijzigen. Aftersales registreert het
+   * kenteken van importauto's; verder blijven hun voertuigrechten ongewijzigd.
+   */
+  kenteken: (r) =>
+    isAdminRole(r) || r === "manager" || r === "verkoper" || r === "aftersales_manager",
 };
