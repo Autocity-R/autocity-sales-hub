@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useSalespeople } from "@/hooks/useSalespeople";
+import { normalizeLicensePlate } from "@/lib/licensePlate";
 
 interface DetailsTabProps {
   editedVehicle: Vehicle;
