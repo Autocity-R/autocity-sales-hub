@@ -288,3 +288,17 @@ describe("prijschecker + handmatige facturen", () => {
     }
   });
 });
+
+describe("kenteken bewerken", () => {
+  it("verkoop, leiding en aftersales mogen het kenteken invullen", () => {
+    for (const r of ["owner", "admin", "manager", "verkoper", "aftersales_manager"]) {
+      expect(featureAccess.kenteken(r)).toBe(true);
+    }
+  });
+
+  it("vakmannen, chef, administratie en directie mogen het kenteken niet bewerken", () => {
+    for (const r of ["monteur", "poetser", "schadeherstel", "uitdeuker_extern", "werkplaats_chef", "administratie", "operationeel_directeur", null]) {
+      expect(featureAccess.kenteken(r)).toBe(false);
+    }
+  });
+});

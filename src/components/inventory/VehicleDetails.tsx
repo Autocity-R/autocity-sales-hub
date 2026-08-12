@@ -64,7 +64,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   const hasUserChangesRef = useRef(false);
   
   // Role-based access
-  const { hasPriceAccess, isOperationalUser, canChecklistToggle, isAftersalesManager, canManageChecklists, canEditBpmFlags } = useRoleAccess();
+  const { hasPriceAccess, isOperationalUser, canChecklistToggle, isAftersalesManager, canManageChecklists, canEditBpmFlags, canEditKenteken } = useRoleAccess();
   
   // Voor algemene voertuig editing (details tab, prijzen, etc.) - aftersales_manager krijgt read-only voor details
   const isReadOnly = isOperationalUser() || isAftersalesManager();
@@ -230,6 +230,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                     readOnly={isReadOnly}
                     showPrices={hasPriceAccess()}
                     canEditBpm={canEditBpmFlags()}
+                    canEditKenteken={canEditKenteken()}
                   />
                 </TabsContent>
                 

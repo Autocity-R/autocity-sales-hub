@@ -106,6 +106,10 @@ export const useRoleAccess = () => {
     isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
     userRole === 'aftersales_manager';
 
+  // Kenteken invullen/wijzigen: aftersales registreert het kenteken van importauto's.
+  // Uitsluitend license_number — prijzen/status/verkoopvelden blijven ongewijzigd.
+  const canEditKenteken = () => isAdmin || featureAccess.kenteken(userRole);
+
   const canAssignTasks = () => {
     // Aftersales manager MAG taken toewijzen
     return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
@@ -170,6 +174,7 @@ export const useRoleAccess = () => {
     hasTaxatieAccess,
     hasTransportAccess,
     canEditBpmFlags,
+    canEditKenteken,
     canAssignTasks,
     isOperationalUser,
     hasCEOAccess,
