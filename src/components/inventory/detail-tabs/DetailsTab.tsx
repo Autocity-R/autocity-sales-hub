@@ -38,6 +38,8 @@ interface DetailsTabProps {
   showPrices?: boolean;
   /** Alléén de BPM-vinkjes blijven bewerkbaar (aftersales), ook in read-only modus. */
   canEditBpm?: boolean;
+  /** Alléén het kenteken blijft bewerkbaar (aftersales), ook in read-only modus. */
+  canEditKenteken?: boolean;
 }
 
 export const DetailsTab: React.FC<DetailsTabProps> = ({
@@ -46,7 +48,8 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
   handleDamageChange,
   readOnly = false,
   showPrices = true,
-  canEditBpm = false
+  canEditBpm = false,
+  canEditKenteken = false
 }) => {
   const { data: salespeople, isLoading: salesLoading } = useSalespeople();
   
@@ -211,7 +214,11 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               id="licenseNumber"
               value={editedVehicle.licenseNumber}
               onChange={(e) => handleChange('licenseNumber', e.target.value)}
-              disabled={readOnly}
+              onBlur={(e) => {
+                const normalized = normalizeLicensePlate(e.target.value);
+                if (normalized !== e.target.value) handleChange('licenseNumber', normalized);
+              }}
+              disabled={readOnly && !canEditKenteken}
             />
           </div>
           <div className="space-y-2">
