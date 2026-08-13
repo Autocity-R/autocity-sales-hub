@@ -120,6 +120,44 @@ export async function sendContractV2(
 }
 
 export async function fetchContractByToken(token: string) {
+  return _fetchContractByToken(token);
+}
+
+/** Contract-PDF opslaan zonder digitale ondertekening (klant tekent op papier). */
+export async function storeContractPdfV2(
+  contractId: string,
+  pdfBase64: string,
+): Promise<{
+  ok?: boolean;
+  pdf_path?: string;
+  pdf_url?: string;
+  contract_number?: string;
+  error?: string;
+  detail?: string;
+}> {
+  const { data, error } = await supabase.functions.invoke("contract-store", {
+    body: { contractId, pdf_base64: pdfBase64 },
+  });
+  if (error) return { error: error.message };
+  return data as any;
+}
+
+/** Opgeslagen contract-PDF mailen naar administratie of een eigen ontvanger. */
+export async function sendContractPdfByEmail(params: {
+  contractId: string;
+  mode?: "administratie" | "custom";
+  to?: string[];
+  note?: string;
+}): Promise<{ ok?: boolean; to?: string[]; error?: string; detail?: string }> {
+  const { data, error } = await supabase.functions.invoke(
+    "contract-to-administration",
+    { body: params },
+  );
+  if (error) return { error: error.message };
+  return data as any;
+}
+
+async function _fetchContractByToken(token: string) {
   const { data, error } = await supabase.rpc("get_contract_by_token" as any, {
     _token: token,
   });

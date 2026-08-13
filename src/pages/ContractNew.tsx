@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import html2pdf from "html2pdf.js";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
@@ -23,12 +24,14 @@ import { supabaseCustomerService } from "@/services/supabaseCustomerService";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft, ShieldCheck, Save, Send, Copy, Check, Plus, Trash2,
+  ArrowLeft, ShieldCheck, Save, Send, Copy, Check, Plus, Trash2, FileDown, Mail,
 } from "lucide-react";
 import {
   WARRANTY_PACKAGE_OPTIONS,
   createContractV2,
   sendContractV2,
+  storeContractPdfV2,
+  sendContractPdfByEmail,
 } from "@/services/contractV2Service";
 import {
   ContractDocumentV2,
@@ -112,6 +115,12 @@ export default function ContractNew() {
   const [copied, setCopied] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState("");
+  // Opslaan-als-PDF flow (klant tekent op papier)
+  const [storing, setStoring] = useState(false);
+  const [storedPdfUrl, setStoredPdfUrl] = useState<string | null>(null);
+  const [adminSending, setAdminSending] = useState(false);
+  const [adminSent, setAdminSent] = useState(false);
+  const pdfRef = useRef<HTMLDivElement | null>(null);
 
   const existingWarrantyPrice: number = Number(
     vehicle?.details?.warrantyPackagePrice || 0,
@@ -343,6 +352,100 @@ export default function ContractNew() {
     if (!canSend) return;
     setConfirmEmail(customer?.email || "");
     setConfirmOpen(true);
+  }
+
+  /** Contract als PDF opslaan (klant tekent op papier) */
+  async function handleStorePdf() {
+    if (!vehicle) return;
+    let contract = savedContract;
+    if (!contract) {
+      contract = await handleSave();
+      if (!contract) return;
+    }
+    const el = pdfRef.current;
+    if (!el) return;
+    setStoring(true);
+    try {
+      const rootEl = el.querySelector(".cdv2-root") as HTMLElement | null;
+      rootEl?.classList.add("cdv2-pdf");
+      let pdfBlob: Blob;
+      try {
+        pdfBlob = await html2pdf()
+          .set({
+            margin: 0,
+            filename: `${contract.contract_number}.pdf`,
+            image: { type: "jpeg", quality: 0.95 },
+            html2canvas: {
+              scale: 2,
+              backgroundColor: "#080808",
+              useCORS: true,
+              windowWidth: 794,
+            },
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+            pagebreak: {
+              mode: ["css", "legacy"],
+              avoid: [".cdv2-keep", ".cdv2-sign-grid", ".cdv2-footer"],
+            },
+          } as any)
+          .from(el)
+          .outputPdf("blob");
+      } finally {
+        rootEl?.classList.remove("cdv2-pdf");
+      }
+
+      const b64 = await blobToBase64(pdfBlob);
+      const res = await storeContractPdfV2(contract.id, b64);
+      if (res.error) {
+        toast({
+          title: "Opslaan als PDF mislukt",
+          description: res.detail || res.error,
+          variant: "destructive",
+        });
+        return;
+      }
+      setStoredPdfUrl(res.pdf_url || null);
+      setSavedContract((prev: any) =>
+        prev ? { ...prev, status: "opgeslagen", pdf_path: res.pdf_path } : prev,
+      );
+      toast({
+        title: "Koopcontract opgeslagen",
+        description: `${res.contract_number} staat nu bij de voertuigdocumenten en wordt met facturen meegestuurd.`,
+      });
+    } catch (e) {
+      toast({
+        title: "PDF genereren mislukt",
+        description: String(e),
+        variant: "destructive",
+      });
+    } finally {
+      setStoring(false);
+    }
+  }
+
+  async function handleSendToAdministration() {
+    if (!savedContract) return;
+    setAdminSending(true);
+    const res = await sendContractPdfByEmail({
+      contractId: savedContract.id,
+      mode: "administratie",
+    });
+    setAdminSending(false);
+    if (res.error) {
+      toast({
+        title: "Versturen naar administratie mislukt",
+        description:
+          res.error === "no_pdf_stored"
+            ? "Sla het contract eerst op als PDF."
+            : res.detail || res.error,
+        variant: "destructive",
+      });
+      return;
+    }
+    setAdminSent(true);
+    toast({
+      title: "Naar administratie gestuurd",
+      description: `Contract-PDF verzonden naar ${(res.to || []).join(", ")}.`,
+    });
   }
 
   async function handleSend() {
@@ -900,6 +1003,38 @@ export default function ContractNew() {
                 {saving ? "Opslaan…" : savedContract ? "Opgeslagen" : "Concept opslaan"}
               </Button>
               <Button
+                variant="outline"
+                disabled={
+                  !canSave ||
+                  saving ||
+                  storing ||
+                  savedContract?.status === "getekend"
+                }
+                onClick={handleStorePdf}
+                title="Voor auto's die op papier zijn verkocht: legt het contract als PDF vast bij de voertuigdocumenten"
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                {storing
+                  ? "PDF maken…"
+                  : storedPdfUrl
+                    ? "PDF opnieuw opslaan"
+                    : "Alleen opslaan als PDF"}
+              </Button>
+              {storedPdfUrl && (
+                <Button
+                  variant="outline"
+                  disabled={adminSending}
+                  onClick={handleSendToAdministration}
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  {adminSending
+                    ? "Versturen…"
+                    : adminSent
+                      ? "Opnieuw naar administratie"
+                      : "Naar administratie sturen"}
+                </Button>
+              )}
+              <Button
                 onClick={openSendDialog}
                 disabled={
                   !canSend ||
@@ -986,6 +1121,22 @@ export default function ContractNew() {
 
           {/* ==== PREVIEW ==== */}
           <div className="lg:sticky lg:top-4 h-fit">
+            {storedPdfUrl && (
+              <div className="mb-3 text-sm rounded border p-3 bg-muted/40">
+                <p className="mb-2 text-muted-foreground">
+                  Contract is opgeslagen bij de voertuigdocumenten en wordt
+                  automatisch meegestuurd met een factuuraanvraag.
+                </p>
+                <a
+                  href={storedPdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline"
+                >
+                  Opgeslagen PDF openen
+                </a>
+              </div>
+            )}
             <Card>
               <CardHeader>
                 <CardTitle>Live preview (LMS-stijl)</CardTitle>
@@ -1008,7 +1159,33 @@ export default function ContractNew() {
             </Card>
           </div>
         </div>
+
+        {/* Verborgen full-size render voor PDF-generatie */}
+        <div
+          aria-hidden
+          style={{
+            position: "fixed",
+            left: -10000,
+            top: 0,
+            width: 794,
+            pointerEvents: "none",
+            opacity: 0,
+          }}
+        >
+          <div ref={pdfRef}>
+            {previewData && <ContractDocumentV2 data={previewData} />}
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   );
+}
+async function blobToBase64(blob: Blob): Promise<string> {
+  const buf = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < buf.length; i += chunk) {
+    binary += String.fromCharCode(...buf.subarray(i, i + chunk));
+  }
+  return btoa(binary);
 }
