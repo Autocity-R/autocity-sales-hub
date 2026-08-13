@@ -348,6 +348,100 @@ export default function ContractNew() {
     setConfirmOpen(true);
   }
 
+  /** Contract als PDF opslaan (klant tekent op papier) */
+  async function handleStorePdf() {
+    if (!vehicle) return;
+    let contract = savedContract;
+    if (!contract) {
+      contract = await handleSave();
+      if (!contract) return;
+    }
+    const el = pdfRef.current;
+    if (!el) return;
+    setStoring(true);
+    try {
+      const rootEl = el.querySelector(".cdv2-root") as HTMLElement | null;
+      rootEl?.classList.add("cdv2-pdf");
+      let pdfBlob: Blob;
+      try {
+        pdfBlob = await html2pdf()
+          .set({
+            margin: 0,
+            filename: `${contract.contract_number}.pdf`,
+            image: { type: "jpeg", quality: 0.95 },
+            html2canvas: {
+              scale: 2,
+              backgroundColor: "#080808",
+              useCORS: true,
+              windowWidth: 794,
+            },
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+            pagebreak: {
+              mode: ["css", "legacy"],
+              avoid: [".cdv2-keep", ".cdv2-sign-grid", ".cdv2-footer"],
+            },
+          } as any)
+          .from(el)
+          .outputPdf("blob");
+      } finally {
+        rootEl?.classList.remove("cdv2-pdf");
+      }
+
+      const b64 = await blobToBase64(pdfBlob);
+      const res = await storeContractPdfV2(contract.id, b64);
+      if (res.error) {
+        toast({
+          title: "Opslaan als PDF mislukt",
+          description: res.detail || res.error,
+          variant: "destructive",
+        });
+        return;
+      }
+      setStoredPdfUrl(res.pdf_url || null);
+      setSavedContract((prev: any) =>
+        prev ? { ...prev, status: "opgeslagen", pdf_path: res.pdf_path } : prev,
+      );
+      toast({
+        title: "Koopcontract opgeslagen",
+        description: `${res.contract_number} staat nu bij de voertuigdocumenten en wordt met facturen meegestuurd.`,
+      });
+    } catch (e) {
+      toast({
+        title: "PDF genereren mislukt",
+        description: String(e),
+        variant: "destructive",
+      });
+    } finally {
+      setStoring(false);
+    }
+  }
+
+  async function handleSendToAdministration() {
+    if (!savedContract) return;
+    setAdminSending(true);
+    const res = await sendContractPdfByEmail({
+      contractId: savedContract.id,
+      mode: "administratie",
+    });
+    setAdminSending(false);
+    if (res.error) {
+      toast({
+        title: "Versturen naar administratie mislukt",
+        description:
+          res.error === "no_pdf_stored"
+            ? "Sla het contract eerst op als PDF."
+            : res.detail || res.error,
+        variant: "destructive",
+      });
+      return;
+    }
+    setAdminSent(true);
+    toast({
+      title: "Naar administratie gestuurd",
+      description: `Contract-PDF verzonden naar ${(res.to || []).join(", ")}.`,
+    });
+  }
+
   async function handleSend() {
     setConfirmOpen(false);
     // Save-then-send flow: sla eerst op indien nog geen concept bestaat
