@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import html2pdf from "html2pdf.js";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { PageHeader } from "@/components/ui/page-header";
@@ -23,12 +24,14 @@ import { supabaseCustomerService } from "@/services/supabaseCustomerService";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft, ShieldCheck, Save, Send, Copy, Check, Plus, Trash2,
+  ArrowLeft, ShieldCheck, Save, Send, Copy, Check, Plus, Trash2, FileDown, Mail,
 } from "lucide-react";
 import {
   WARRANTY_PACKAGE_OPTIONS,
   createContractV2,
   sendContractV2,
+  storeContractPdfV2,
+  sendContractPdfByEmail,
 } from "@/services/contractV2Service";
 import {
   ContractDocumentV2,
