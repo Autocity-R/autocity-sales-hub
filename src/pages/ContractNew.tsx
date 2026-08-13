@@ -115,6 +115,12 @@ export default function ContractNew() {
   const [copied, setCopied] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState("");
+  // Opslaan-als-PDF flow (klant tekent op papier)
+  const [storing, setStoring] = useState(false);
+  const [storedPdfUrl, setStoredPdfUrl] = useState<string | null>(null);
+  const [adminSending, setAdminSending] = useState(false);
+  const [adminSent, setAdminSent] = useState(false);
+  const pdfRef = useRef<HTMLDivElement | null>(null);
 
   const existingWarrantyPrice: number = Number(
     vehicle?.details?.warrantyPackagePrice || 0,
