@@ -202,15 +202,12 @@ Deno.serve(async (req) => {
       if (qErr2) console.error("email_queue insert (sales) failed", qErr2);
     }
 
-    // Lange (1 jaar) signed URL voor administratie-mail en LMS-push
+    // Permanente downloadlink (redirect naar een verse signed URL bij elk bezoek)
     let longPdfUrl: string | null = null;
     try {
-      const { data: longSigned } = await admin.storage
-        .from("vehicle-documents")
-        .createSignedUrl(path, 60 * 60 * 24 * 365);
-      longPdfUrl = longSigned?.signedUrl || null;
+      longPdfUrl = await buildContractPdfLink(supabaseUrl, serviceKey, doc.id);
     } catch (e) {
-      console.warn("long signed url failed", e);
+      console.warn("permanent pdf link failed", e);
     }
 
     const isB2C = doc.contract_type !== "b2b";
