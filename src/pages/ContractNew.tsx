@@ -1003,6 +1003,38 @@ export default function ContractNew() {
                 {saving ? "Opslaan…" : savedContract ? "Opgeslagen" : "Concept opslaan"}
               </Button>
               <Button
+                variant="outline"
+                disabled={
+                  !canSave ||
+                  saving ||
+                  storing ||
+                  savedContract?.status === "getekend"
+                }
+                onClick={handleStorePdf}
+                title="Voor auto's die op papier zijn verkocht: legt het contract als PDF vast bij de voertuigdocumenten"
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                {storing
+                  ? "PDF maken…"
+                  : storedPdfUrl
+                    ? "PDF opnieuw opslaan"
+                    : "Alleen opslaan als PDF"}
+              </Button>
+              {storedPdfUrl && (
+                <Button
+                  variant="outline"
+                  disabled={adminSending}
+                  onClick={handleSendToAdministration}
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  {adminSending
+                    ? "Versturen…"
+                    : adminSent
+                      ? "Opnieuw naar administratie"
+                      : "Naar administratie sturen"}
+                </Button>
+              )}
+              <Button
                 onClick={openSendDialog}
                 disabled={
                   !canSend ||
