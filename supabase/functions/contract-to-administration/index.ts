@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { buildContractPdfLink } from "../_shared/contractLink.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,6 +76,12 @@ Deno.serve(async (req) => {
     if (sErr || !signedUrlData?.signedUrl)
       return json({ error: "signed_url_failed", detail: sErr?.message }, 500);
     const pdfUrl = signedUrlData.signedUrl;
+    // Permanente link voor de e-mail-knop (verloopt nooit)
+    const permanentUrl = await buildContractPdfLink(
+      supabaseUrl,
+      serviceKey,
+      doc.id,
+    );
 
     const cust = (doc.customer_snapshot as any) || {};
     const veh = (doc.vehicle_snapshot as any) || {};
@@ -147,7 +154,7 @@ Deno.serve(async (req) => {
           ? `Koopcontract ${doc.contract_number} van ${buyerName} is vastgelegd in het CRM${isSigned ? " en digitaal ondertekend" : " (klant tekent op papier)"}. De PDF is bijgevoegd voor de facturatie.`
           : `Bijgaand koopcontract ${doc.contract_number} als PDF.`,
       ctaText: "Koopcontract downloaden",
-      ctaUrl: pdfUrl,
+      ctaUrl: permanentUrl,
       salesName: "Auto City CRM",
       companyName: company,
       companyPhone,
