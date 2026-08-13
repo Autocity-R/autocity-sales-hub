@@ -1159,6 +1159,23 @@ export default function ContractNew() {
             </Card>
           </div>
         </div>
+
+        {/* Verborgen full-size render voor PDF-generatie */}
+        <div
+          aria-hidden
+          style={{
+            position: "fixed",
+            left: -10000,
+            top: 0,
+            width: 794,
+            pointerEvents: "none",
+            opacity: 0,
+          }}
+        >
+          <div ref={pdfRef}>
+            {previewData && <ContractDocumentV2 data={previewData} />}
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   );
