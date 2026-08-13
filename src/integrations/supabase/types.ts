@@ -1689,6 +1689,7 @@ export type Database = {
           lms_push_status: string | null
           lms_pushed_at: string | null
           main_photo_url: string | null
+          pdf_path: string | null
           registered_by: string | null
           sale_price_ex: number | null
           salesperson_email: string | null
@@ -1700,6 +1701,8 @@ export type Database = {
           signed_at: string | null
           special_terms: string | null
           status: string
+          stored_at: string | null
+          stored_by: string | null
           total_price: number | null
           trade_in_value: number | null
           trade_in_vehicle: Json | null
@@ -1730,6 +1733,7 @@ export type Database = {
           lms_push_status?: string | null
           lms_pushed_at?: string | null
           main_photo_url?: string | null
+          pdf_path?: string | null
           registered_by?: string | null
           sale_price_ex?: number | null
           salesperson_email?: string | null
@@ -1741,6 +1745,8 @@ export type Database = {
           signed_at?: string | null
           special_terms?: string | null
           status?: string
+          stored_at?: string | null
+          stored_by?: string | null
           total_price?: number | null
           trade_in_value?: number | null
           trade_in_vehicle?: Json | null
@@ -1771,6 +1777,7 @@ export type Database = {
           lms_push_status?: string | null
           lms_pushed_at?: string | null
           main_photo_url?: string | null
+          pdf_path?: string | null
           registered_by?: string | null
           sale_price_ex?: number | null
           salesperson_email?: string | null
@@ -1782,6 +1789,8 @@ export type Database = {
           signed_at?: string | null
           special_terms?: string | null
           status?: string
+          stored_at?: string | null
+          stored_by?: string | null
           total_price?: number | null
           trade_in_value?: number | null
           trade_in_vehicle?: Json | null
