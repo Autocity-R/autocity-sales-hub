@@ -1121,6 +1121,22 @@ export default function ContractNew() {
 
           {/* ==== PREVIEW ==== */}
           <div className="lg:sticky lg:top-4 h-fit">
+            {storedPdfUrl && (
+              <div className="mb-3 text-sm rounded border p-3 bg-muted/40">
+                <p className="mb-2 text-muted-foreground">
+                  Contract is opgeslagen bij de voertuigdocumenten en wordt
+                  automatisch meegestuurd met een factuuraanvraag.
+                </p>
+                <a
+                  href={storedPdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline"
+                >
+                  Opgeslagen PDF openen
+                </a>
+              </div>
+            )}
             <Card>
               <CardHeader>
                 <CardTitle>Live preview (LMS-stijl)</CardTitle>
