@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { buildContractPdfLink } from "../_shared/contractLink.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
