@@ -48,39 +48,43 @@ export interface DamageRepairStats {
 export const damageRepairReportsService = {
   async getDamageRepairStats(period: ReportPeriod, branch?: BranchFilter): Promise<DamageRepairStats> {
     try {
-      // Fetch from permanent damage_repair_records table (join vehicles voor branch-filter)
+      // damage_repair_records heeft geen FK naar vehicles → geen embed, branch-filter via losse map
       const wantInner = !!(branch && branch !== 'all');
-      const joinSpec = wantInner
-        ? 'vehicle:vehicles!inner(branch)'
-        : 'vehicle:vehicles(branch)';
-      let dq: any = supabase
+      const { data: records, error } = await supabase
         .from('damage_repair_records')
-        .select(`*, ${joinSpec}`)
+        .select('*')
         .gte('completed_at', period.startDate)
         .lte('completed_at', period.endDate)
         .order('completed_at', { ascending: false });
-      if (wantInner) {
-        dq = dq.eq('vehicle.branch', branch);
-      }
-      const { data: records, error } = await dq;
 
       // Uitbesteed schadeherstel: werkelijke kostprijs van de externe spuiter (work_orders.extern_cost)
-      const wantVehicleJoin = wantInner ? 'vehicle:vehicles!inner(brand,model,vin,license_number,branch)' : 'vehicle:vehicles(brand,model,vin,license_number,branch)';
       let eq: any = supabase
         .from('work_orders')
-        .select(`id,vehicle_id,parts,part,extern_party,extern_cost,approved_at,finished_at,branch,${wantVehicleJoin}`)
+        .select('id,vehicle_id,parts,part,extern_party,extern_cost,approved_at,finished_at,branch,vehicle:vehicles!work_orders_vehicle_id_fkey(brand,model,vin,license_number,branch)')
         .eq('discipline', 'spuit')
         .eq('uitvoering', 'extern')
         .not('extern_cost', 'is', null)
         .gte('approved_at', period.startDate)
         .lte('approved_at', period.endDate);
-      if (wantInner) eq = eq.eq('vehicle.branch', branch);
+      if (wantInner) eq = eq.eq('branch', branch);
       const { data: externOrders } = await eq;
 
       if (error) {
         console.error('Error fetching damage repair records:', error);
         throw error;
       }
+
+      // Vestiging per auto ophalen voor het branch-filter en de labels
+      const recVehicleIds = Array.from(new Set((records || []).map((r: any) => r.vehicle_id).filter(Boolean))) as string[];
+      const branchByVehicle = new Map<string, string | null>();
+      if (recVehicleIds.length > 0) {
+        const { data: vs } = await supabase.from('vehicles').select('id,branch').in('id', recVehicleIds);
+        for (const v of vs || []) branchByVehicle.set(v.id, (v as any).branch ?? null);
+      }
+      const scopedRecords = wantInner
+        ? (records || []).filter((r: any) => !r.vehicle_id || branchByVehicle.get(r.vehicle_id) === branch)
+        : (records || []);
+
 
       // Process the data
       const repairHistory: RepairRecord[] = [];
