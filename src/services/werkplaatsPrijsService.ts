@@ -11,6 +11,8 @@ export interface WerkplaatsTarieven {
   milieukosten_bedrag: number;
   /** Standaard verkoopmarge op inkoopprijs van onderdelen (%) */
   onderdelen_marge_pct: number;
+  /** Heeft het bedrijf een eigen schadeherstel-afdeling? */
+  eigen_schadeherstel: boolean;
 }
 
 export const DEFAULT_TARIEVEN: WerkplaatsTarieven = {
@@ -20,6 +22,7 @@ export const DEFAULT_TARIEVEN: WerkplaatsTarieven = {
   milieukosten_enabled: true,
   milieukosten_bedrag: 7.5,
   onderdelen_marge_pct: 25,
+  eigen_schadeherstel: true,
 };
 
 export const VAT_RATE = 0.21;
@@ -44,6 +47,10 @@ export const fetchTarieven = async (): Promise<WerkplaatsTarieven> => {
       data.onderdelen_marge_pct === null || data.onderdelen_marge_pct === undefined
         ? DEFAULT_TARIEVEN.onderdelen_marge_pct
         : Number(data.onderdelen_marge_pct),
+    eigen_schadeherstel:
+      data.eigen_schadeherstel === null || data.eigen_schadeherstel === undefined
+        ? true
+        : !!data.eigen_schadeherstel,
   };
 };
 
@@ -55,6 +62,7 @@ export const saveTarieven = async (t: WerkplaatsTarieven): Promise<void> => {
     milieukosten_enabled: t.milieukosten_enabled,
     milieukosten_bedrag: t.milieukosten_bedrag,
     onderdelen_marge_pct: t.onderdelen_marge_pct,
+    eigen_schadeherstel: t.eigen_schadeherstel,
   };
   if (t.id) {
     const { error } = await (supabase as any).from("werkplaats_tarieven").update(row).eq("id", t.id);
