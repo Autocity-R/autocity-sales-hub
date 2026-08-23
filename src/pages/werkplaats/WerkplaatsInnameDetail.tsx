@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils";
 import { AddPartOrderDialog } from "@/components/aftersales/AddPartOrderDialog";
 import { PhotoPicker } from "@/components/werkplaats/PhotoPicker";
 import { useEigenSchadeherstel } from "@/hooks/useEigenSchadeherstel";
-import { Input } from "@/components/ui/input";
 import { Truck } from "lucide-react";
 
 interface IntakePoint { text: string; photo_paths?: string[]; work_order_id?: string | null; }
