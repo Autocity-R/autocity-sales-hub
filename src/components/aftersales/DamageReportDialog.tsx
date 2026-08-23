@@ -4,16 +4,8 @@ import { DamageDiagram, findZoneByName } from "./DamageDiagram";
 import { AsLicensePlate, AsMono, AsPill } from "./ui";
 import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
 import { PartChips, getWorkOrderParts } from "@/components/werkplaats/workOrderParts";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Truck } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
-import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 export interface DamageReportPayload {
-  id?: string | null;
   part?: string | null;
   parts?: string[] | null;
   description?: string | null;
@@ -22,9 +14,6 @@ export interface DamageReportPayload {
   discipline?: string | null;
   status?: string | null;
   finish_note?: string | null;
-  uitvoering?: string | null;
-  extern_party?: string | null;
-  extern_cost?: number | null;
   vehicle?: {
     brand?: string; model?: string; year?: number | null;
     license_number?: string | null; vin?: string | null;
@@ -36,8 +25,6 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   report: DamageReportPayload | null;
-  /** Wordt aangeroepen nadat het externe factuurbedrag is opgeslagen. */
-  onCostSaved?: () => void;
 }
 
 const disciplineLabel = (d?: string | null) => {
@@ -47,54 +34,7 @@ const disciplineLabel = (d?: string | null) => {
   return d || "";
 };
 
-/** Klein invulveld voor het factuurbedrag van de externe spuiter (ook ná goedkeuring). */
-const ExternCostEditor: React.FC<{ report: DamageReportPayload; onSaved?: () => void }> = ({ report, onSaved }) => {
-  const [value, setValue] = React.useState(report.extern_cost != null ? String(report.extern_cost) : "");
-  const [saving, setSaving] = React.useState(false);
-  React.useEffect(() => { setValue(report.extern_cost != null ? String(report.extern_cost) : ""); }, [report.id, report.extern_cost]);
-
-  const save = async () => {
-    const raw = value.replace(",", ".").trim();
-    const cost = raw === "" ? null : Number(raw);
-    if (cost !== null && (!isFinite(cost) || cost < 0)) {
-      toast({ title: "Ongeldig bedrag", variant: "destructive" });
-      return;
-    }
-    setSaving(true);
-    const { error } = await supabase.from("work_orders").update({ extern_cost: cost }).eq("id", report.id!);
-    setSaving(false);
-    if (error) toast({ title: "Fout", description: error.message, variant: "destructive" });
-    else {
-      toast({ title: cost === null ? "Bedrag gewist" : "Kosten externe partij opgeslagen" });
-      onSaved?.();
-    }
-  };
-
-  return (
-    <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-3">
-      <div className="text-[12.5px] font-medium text-blue-900 flex items-center gap-1.5">
-        <Truck className="h-3.5 w-3.5" />
-        Uitbesteed{report.extern_party ? ` aan ${report.extern_party}` : ""}
-      </div>
-      <div className="mt-2 flex items-end gap-2 max-w-sm">
-        <div className="flex-1">
-          <Label className="text-[12px] font-semibold text-blue-900">Kosten externe partij invullen (excl. btw)</Label>
-          <Input
-            className="mt-1.5 bg-white" type="number" step="0.01" min="0" inputMode="decimal"
-            placeholder="0,00" value={value} onChange={(e) => setValue(e.target.value)}
-          />
-        </div>
-        <Button size="sm" onClick={save} disabled={saving}>Opslaan</Button>
-      </div>
-      <p className="text-[11px] text-blue-700/80 mt-1.5">
-        Dit bedrag telt als werkelijke kostprijs bij de auto — geen interne doorbelasting van €300.
-      </p>
-    </div>
-  );
-};
-
-export const DamageReportDialog: React.FC<Props> = ({ open, onOpenChange, report, onCostSaved }) => {
-  const { canManageWorkOrders } = useRoleAccess();
+export const DamageReportDialog: React.FC<Props> = ({ open, onOpenChange, report }) => {
   if (!report) return null;
   const v = report.vehicle;
   const zoneIds = getWorkOrderParts(report).map(p => findZoneByName(p)?.id).filter(Boolean) as string[];
@@ -102,8 +42,6 @@ export const DamageReportDialog: React.FC<Props> = ({ open, onOpenChange, report
   /** Werkplaats-orders (onderhoud/APK) hebben geen schade-locatie: geen diagram. */
   const isWerkplaats = (report.discipline || "") === "werkplaats";
   const hasPhotos = (report.photos?.length || 0) > 0 || (report.result_photos?.length || 0) > 0;
-  const showExternCost = !!report.id && report.uitvoering === "extern" && canManageWorkOrders();
-
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -126,8 +64,6 @@ export const DamageReportDialog: React.FC<Props> = ({ open, onOpenChange, report
             <PartChips workOrder={report} />
             {report.description && <div className="text-[13.5px] text-slate-800">{report.description}</div>}
             {report.finish_note && <div className="text-[12.5px] italic text-slate-500">Notitie: {report.finish_note}</div>}
-            {showExternCost && <ExternCostEditor report={report} onSaved={onCostSaved} />}
-
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
               <Spec label="VIN"><AsMono>{v?.vin ? v.vin.slice(-10) : "—"}</AsMono></Spec>
               <Spec label="KM-stand">{v?.mileage ? `${v.mileage.toLocaleString("nl-NL")} km` : "—"}</Spec>

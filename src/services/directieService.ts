@@ -50,7 +50,6 @@ export interface WorkOrderRow {
   assigned_to: string | null; started_at: string | null; finished_at: string | null; approved_at: string | null;
   created_at: string; is_rush: boolean | null; rejected_count: number | null; branch: string | null;
   vehicle_id: string | null; part: string | null; origin: string | null; due_date: string | null;
-  uitvoering?: string | null; extern_party?: string | null; extern_cost?: number | null;
 }
 
 export interface DirectieRaw {
@@ -77,7 +76,7 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
   const sixM = new Date(); sixM.setMonth(sixM.getMonth() - 5); sixM.setDate(1); sixM.setHours(0, 0, 0, 0);
 
   const invSel = "id,invoice_kind,subtotal,total,status,sent_at,created_at,branch,vehicle_id,vehicle,lines,source_work_order_ids,work_order_id";
-  const woSel = "id,discipline,status,work_seconds,assigned_to,started_at,finished_at,approved_at,created_at,is_rush,rejected_count,branch,vehicle_id,part,origin,due_date,uitvoering,extern_party,extern_cost";
+  const woSel = "id,discipline,status,work_seconds,assigned_to,started_at,finished_at,approved_at,created_at,is_rush,rejected_count,branch,vehicle_id,part,origin,due_date";
 
   const [inv, invPrev, inv6m, invOpen, wo, woPrev, woOpen, intakes, claims, loans, parts, profiles] = await Promise.all([
     branchFilter(supabase.from("workshop_invoices").select(invSel).gte("created_at", from.toISOString()).lt("created_at", to.toISOString()), branch),
@@ -134,7 +133,7 @@ export const delta = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / 
 export const hoursOf = (orders: WorkOrderRow[]) =>
   orders.filter(o => ["afgerond", "goedgekeurd"].includes(o.status || "")).reduce((a, o) => a + Number(o.work_seconds || 0), 0) / 3600;
 
-export interface BranchStats { internal: number; external: number; outsourced: number; count: number; avg: number }
+export interface BranchStats { internal: number; external: number; count: number; avg: number }
 
 export function branchStats(invoices: InvoiceRow[], orders: WorkOrderRow[], discipline: string): BranchStats {
   const ids = new Set(orders.filter(o => o.discipline === discipline).map(o => o.id));
@@ -143,11 +142,8 @@ export function branchStats(invoices: InvoiceRow[], orders: WorkOrderRow[], disc
     (Array.isArray(i.source_work_order_ids) && i.source_work_order_ids.some((x: string) => ids.has(x))));
   const internal = sum(rel.filter(i => i.invoice_kind === "intern"));
   const external = sum(rel.filter(i => i.invoice_kind !== "intern"));
-  // Uitbesteed werk krijgt geen interne factuur: de werkelijke kostprijs staat op de werkorder.
-  const outsourcedOrders = orders.filter(o => o.discipline === discipline && o.uitvoering === "extern" && o.extern_cost != null);
-  const outsourced = outsourcedOrders.reduce((a, o) => a + Number(o.extern_cost || 0), 0);
-  const count = rel.length + outsourcedOrders.length;
-  return { internal, external, outsourced, count, avg: count ? (internal + external + outsourced) / count : 0 };
+  const count = rel.length;
+  return { internal, external, count, avg: count ? (internal + external) / count : 0 };
 }
 
 export function monthlyTrend(invoices6m: InvoiceRow[]) {

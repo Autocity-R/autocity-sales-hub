@@ -13,7 +13,6 @@ import { Search, X, Car, Loader2, Plus, PaintBucket, Wrench, Hammer, Sparkles, C
 import { cn } from "@/lib/utils";
 import type { WorkOrderDiscipline } from "@/components/werkplaats/workOrderTypes";
 import { PhotoPicker } from "@/components/werkplaats/PhotoPicker";
-import { useEigenSchadeherstel } from "@/hooks/useEigenSchadeherstel";
 import { buildLmsSignatureHtml, profileFullName, workshopLocationLine } from "@/utils/lmsSignature";
 
 export interface AddTaskVehicle {
@@ -123,11 +122,6 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
     email: "", phone: "",
   });
   const [plannedAt, setPlannedAt] = useState<string>("");
-
-  // Uitvoering schadeherstel: eigen team of uitbesteed aan externe spuiter
-  const { eigen: eigenSchade } = useEigenSchadeherstel();
-  const [uitvoering, setUitvoering] = useState<"intern" | "extern">("intern");
-  const [externParty, setExternParty] = useState("");
   const custTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -147,9 +141,7 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
       email: "", phone: "",
     });
     setPlannedAt("");
-    setUitvoering(discipline === "spuit" && eigenSchade === false ? "extern" : "intern");
-    setExternParty("");
-  }, [open, presetVehicle, discipline, eigenSchade]);
+  }, [open, presetVehicle, discipline]);
 
   // Bij poets/aflevering: due_date default op afleverdatum van auto
   useEffect(() => {
@@ -266,9 +258,8 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
     if (!description.trim() && !meta.needsDiagram) return false;
     if (meta.needsDiagram && !description.trim()) return false;
     if (discipline === "poets" && poetsType === "aflevering" && !dueDate) return false;
-    if (discipline === "spuit" && uitvoering === "extern" && !externParty.trim()) return false;
     return !saving;
-  }, [vehicle, zoneIds, description, saving, meta, discipline, poetsType, dueDate, externAllowed, mode, ext, plannedAt, uitvoering, externParty]);
+  }, [vehicle, zoneIds, description, saving, meta, discipline, poetsType, dueDate, externAllowed, mode, ext, plannedAt]);
 
   const hasDeliveryConflict = !!vehicle?.delivery_date && !!dueDate && new Date(dueDate) > new Date(vehicle.delivery_date);
 
@@ -317,13 +308,6 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
         due_date: dueDate || null,
         poets_type: discipline === "poets" ? poetsType : null,
         created_by: userRes.user?.id ?? null,
-        ...(discipline === "spuit"
-          ? {
-              uitvoering,
-              extern_party: uitvoering === "extern" ? externParty.trim() : null,
-              assigned_to: uitvoering === "extern" ? null : (assignedTo || null),
-            }
-          : {}),
       } as any);
       if (error) throw error;
 
@@ -747,55 +731,6 @@ export const AddTaskDialog: React.FC<Props> = ({ open, onOpenChange, discipline,
                   <Truck className="h-4 w-4" /> Aflevering
                 </button>
               </div>
-            </div>
-          )}
-
-          {/* Uitvoering schadeherstel: eigen team of uitbesteed */}
-          {discipline === "spuit" && (
-            <div>
-              <Label className="text-[12px] font-semibold text-slate-700">
-                Uitvoering <span className="text-red-500">*</span>
-              </Label>
-              <div className="mt-1.5 grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  disabled={eigenSchade === false}
-                  onClick={() => setUitvoering("intern")}
-                  className={cn(
-                    "flex items-center justify-center gap-2 py-3 rounded-lg border text-[13px] font-semibold transition",
-                    uitvoering === "intern"
-                      ? "bg-emerald-50 border-emerald-300 text-emerald-800 ring-2 ring-emerald-200"
-                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50",
-                    eigenSchade === false && "opacity-40 cursor-not-allowed",
-                  )}
-                >
-                  <PaintBucket className="h-4 w-4" /> Eigen team
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUitvoering("extern")}
-                  className={cn(
-                    "flex items-center justify-center gap-2 py-3 rounded-lg border text-[13px] font-semibold transition",
-                    uitvoering === "extern"
-                      ? "bg-blue-50 border-blue-300 text-blue-800 ring-2 ring-blue-200"
-                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50",
-                  )}
-                >
-                  <Truck className="h-4 w-4" /> Uitbesteden
-                </button>
-              </div>
-              {uitvoering === "extern" && (
-                <div className="mt-2">
-                  <Label className="text-[12px] font-semibold text-slate-700">
-                    Externe partij <span className="text-red-500">*</span>
-                  </Label>
-                  <Input className="mt-1.5" value={externParty} onChange={(e) => setExternParty(e.target.value)}
-                         placeholder="Naam spuiter / schadeherstelbedrijf" />
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Geen interne doorbelasting — de werkelijke kosten boek je bij Goedkeuren.
-                  </p>
-                </div>
-              )}
             </div>
           )}
 

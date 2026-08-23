@@ -194,7 +194,6 @@ const DirectieDashboard: React.FC = () => {
                     <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
                       <div><span className="text-slate-500">Intern</span><div className="font-semibold tabular-nums">{eur(s.internal)}</div></div>
                       <div><span className="text-slate-500">Extern</span><div className="font-semibold tabular-nums">{eur(s.external)}</div></div>
-                      <div><span className="text-slate-500">Uitbesteed (kostprijs)</span><div className="font-semibold tabular-nums">{eur(s.outsourced)}</div></div>
                       <div><span className="text-slate-500">Orders</span><div className="font-semibold tabular-nums">{s.count}</div></div>
                       <div><span className="text-slate-500">Gem. per order</span><div className="font-semibold tabular-nums">{eur(s.avg)}</div></div>
                     </div>

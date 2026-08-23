@@ -13,8 +13,6 @@ import { DamageDiagram, DAMAGE_ZONES, findZoneByName, DamageZone } from "@/compo
 import { cn } from "@/lib/utils";
 import { AddPartOrderDialog } from "@/components/aftersales/AddPartOrderDialog";
 import { PhotoPicker } from "@/components/werkplaats/PhotoPicker";
-import { useEigenSchadeherstel } from "@/hooks/useEigenSchadeherstel";
-import { Truck } from "lucide-react";
 
 interface IntakePoint { text: string; photo_paths?: string[]; work_order_id?: string | null; }
 interface DraftEntry { parts: string[]; description: string; photo_paths: string[]; }
@@ -47,9 +45,6 @@ const WerkplaatsInnameDetail: React.FC = () => {
 
   // composer state — één order per discipline met meerdere delen
   const [discipline, setDiscipline] = useState<Discipline>("spuit");
-  const { eigen: eigenSchade } = useEigenSchadeherstel();
-  const [spuitUitvoering, setSpuitUitvoering] = useState<"intern" | "extern">("intern");
-  const [spuitExternParty, setSpuitExternParty] = useState("");
   const [selection, setSelection] = useState<Record<Discipline, string[]>>({ spuit: [], uitdeuk: [] });
   const [descriptions, setDescriptions] = useState<Record<Discipline, string>>({ spuit: "", uitdeuk: "" });
   const [files, setFiles] = useState<File[]>([]);
@@ -195,12 +190,6 @@ const WerkplaatsInnameDetail: React.FC = () => {
         source: "inname",
         branch: intake.branch || "rotterdam",
         created_by: userRes.user?.id ?? null,
-        ...(d === "spuit"
-          ? {
-              uitvoering: spuitUitvoering,
-              extern_party: spuitUitvoering === "extern" ? (spuitExternParty.trim() || null) : null,
-            }
-          : {}),
       }).select("id").single();
       if (insErr) throw insErr;
 
@@ -395,45 +384,6 @@ const WerkplaatsInnameDetail: React.FC = () => {
               />
             </div>
           </div>
-
-          {/* Uitvoering schadeherstel */}
-          {discipline === "spuit" && (
-            <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3 max-w-md">
-              <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Uitvoering schadeherstel</div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  disabled={eigenSchade === false}
-                  onClick={() => setSpuitUitvoering("intern")}
-                  className={cn(
-                    "flex items-center justify-center gap-2 py-2.5 rounded-lg border text-[13px] font-semibold transition",
-                    spuitUitvoering === "intern"
-                      ? "bg-emerald-50 border-emerald-300 text-emerald-800 ring-2 ring-emerald-200"
-                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50",
-                    eigenSchade === false && "opacity-40 cursor-not-allowed",
-                  )}
-                >
-                  <PaintBucket className="h-4 w-4" /> Eigen team
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSpuitUitvoering("extern")}
-                  className={cn(
-                    "flex items-center justify-center gap-2 py-2.5 rounded-lg border text-[13px] font-semibold transition",
-                    spuitUitvoering === "extern"
-                      ? "bg-blue-50 border-blue-300 text-blue-800 ring-2 ring-blue-200"
-                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50",
-                  )}
-                >
-                  <Truck className="h-4 w-4" /> Uitbesteden
-                </button>
-              </div>
-              {spuitUitvoering === "extern" && (
-                <Input className="mt-2" value={spuitExternParty} onChange={(e) => setSpuitExternParty(e.target.value)}
-                       placeholder="Naam externe spuiter (mag later)" />
-              )}
-            </div>
-          )}
 
           {/* Geselecteerde delen + omschrijving */}
           <div className="mt-4">
