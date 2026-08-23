@@ -90,23 +90,29 @@ const WerkplaatsGoedkeuren: React.FC = () => {
   const approve = async (w: WO) => {
     const uitbesteed = isExternUitvoering(w);
     let cost: number | null = null;
+    let costTouched = false;
     if (uitbesteed) {
       const raw = (externCosts[w.id] ?? (w.extern_cost != null ? String(w.extern_cost) : "")).replace(",", ".").trim();
-      cost = raw === "" ? null : Number(raw);
-      if (cost === null || !isFinite(cost) || cost < 0) {
+      if (raw !== "") {
+        cost = Number(raw);
+        if (!isFinite(cost) || cost < 0) {
+          toast({ title: "Ongeldig bedrag", description: "Vul een geldig factuurbedrag in, of laat het veld leeg.", variant: "destructive" });
+          return;
+        }
+        costTouched = true;
+      } else {
         toast({
-          title: "Kosten externe partij invullen",
-          description: "Vul het factuurbedrag van de spuiter in voordat je goedkeurt.",
-          variant: "destructive",
+          title: "Goedgekeurd zonder factuurbedrag",
+          description: "Bedrag later bekend? Vul het dan hier alsnog in via de werkorder-details.",
         });
-        return;
       }
     }
     const { data: userRes } = await supabase.auth.getUser();
     const { error } = await supabase.from("work_orders").update({
       status: "goedgekeurd", approved_by: userRes.user?.id ?? null, approved_at: new Date().toISOString(),
-      ...(uitbesteed ? { extern_cost: cost } : {}),
+      ...(uitbesteed && costTouched ? { extern_cost: cost } : {}),
     }).eq("id", w.id);
+
     if (error) toast({ title: "Fout", description: error.message, variant: "destructive" });
     else {
       removeWorkOrderFromWerkplaatsCalendar(w.id, (w as any).branch || "rotterdam");
@@ -176,9 +182,11 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                 key={w.id}
                 className="overflow-hidden cursor-pointer"
                 onClick={() => setReport({
-                  part: w.part, parts: (w as any).parts, description: w.description, photos: w.photos, result_photos: w.result_photos,
+                  id: w.id, part: w.part, parts: (w as any).parts, description: w.description, photos: w.photos, result_photos: w.result_photos,
                   discipline: w.discipline, status: "afgerond", finish_note: w.finish_note, vehicle: w.vehicle as any,
+                  uitvoering: w.uitvoering, extern_party: w.extern_party, extern_cost: w.extern_cost ?? null,
                 })}
+
               >
                 <AsCardHead
                   tone="teal"
@@ -228,7 +236,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                         {w.extern_returned_at && <span className="text-blue-700/80">· terug {format(new Date(w.extern_returned_at), "d MMM", { locale: nl })}</span>}
                       </div>
                       <div className="mt-2 max-w-xs">
-                        <Label className="text-[12px] font-semibold text-blue-900">Kosten externe partij (excl. btw) *</Label>
+                        <Label className="text-[12px] font-semibold text-blue-900">Kosten externe partij (excl. btw) — optioneel</Label>
                         <Input
                           className="mt-1.5 bg-white"
                           type="number" step="0.01" min="0" inputMode="decimal"
@@ -237,8 +245,10 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                           onChange={(e) => setExternCosts((prev) => ({ ...prev, [w.id]: e.target.value }))}
                         />
                         <p className="text-[11px] text-blue-700/80 mt-1">
-                          Geen interne doorbelasting van €300 — dit bedrag telt als werkelijke kostprijs.
+                          Bedrag later bekend? Vul het dan hier alsnog in — je kunt gewoon goedkeuren zonder bedrag.
+                          Geen interne doorbelasting van €300; dit bedrag telt als werkelijke kostprijs bij de auto.
                         </p>
+
                       </div>
                     </div>
                   )}
@@ -265,7 +275,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
             ))}
           </div>
         )}
-        <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} />
+        <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} onCostSaved={load} />
         <WorkshopInvoiceDialog open={!!invoice} onOpenChange={(v) => !v && setInvoice(null)} initial={invoice} />
       </AsPage>
     </DashboardLayout>

@@ -64,6 +64,19 @@ export const damageRepairReportsService = {
       }
       const { data: records, error } = await dq;
 
+      // Uitbesteed schadeherstel: werkelijke kostprijs van de externe spuiter (work_orders.extern_cost)
+      const wantVehicleJoin = wantInner ? 'vehicle:vehicles!inner(brand,model,vin,license_number,branch)' : 'vehicle:vehicles(brand,model,vin,license_number,branch)';
+      let eq: any = supabase
+        .from('work_orders')
+        .select(`id,vehicle_id,parts,part,extern_party,extern_cost,approved_at,finished_at,branch,${wantVehicleJoin}`)
+        .eq('discipline', 'spuit')
+        .eq('uitvoering', 'extern')
+        .not('extern_cost', 'is', null)
+        .gte('approved_at', period.startDate)
+        .lte('approved_at', period.endDate);
+      if (wantInner) eq = eq.eq('vehicle.branch', branch);
+      const { data: externOrders } = await eq;
+
       if (error) {
         console.error('Error fetching damage repair records:', error);
         throw error;
@@ -125,6 +138,39 @@ export const damageRepairReportsService = {
         }
       }
 
+      // Externe schadeherstel-kosten als kostenregels bij de auto
+      let externCostTotal = 0;
+      for (const o of (externOrders || []) as any[]) {
+        const parts: string[] = Array.isArray(o.parts) ? o.parts : (o.part ? [o.part] : []);
+        const cost = Number(o.extern_cost) || 0;
+        externCostTotal += cost;
+        if (o.vehicle_id) vehicleIds.add(o.vehicle_id);
+        const label = `Extern schadeherstel — ${o.extern_party || 'externe partij'}`;
+        repairHistory.push({
+          taskId: `extern-${o.id}`,
+          vehicleId: o.vehicle_id,
+          vehicleBrand: o.vehicle?.brand || '-',
+          vehicleModel: o.vehicle?.model || '-',
+          vehicleVin: o.vehicle?.vin || '-',
+          vehicleLicenseNumber: o.vehicle?.license_number || '-',
+          branch: o.vehicle?.branch ?? o.branch ?? null,
+          repairedParts: parts,
+          partCount: parts.length,
+          repairCost: cost,
+          completedAt: o.approved_at || o.finished_at,
+          assignedTo: '',
+          employeeName: label,
+        });
+        const stats = employeeStats.get(label) || { employeeId: '', employeeName: label, totalParts: 0, totalRevenue: 0, totalTasks: 0 };
+        stats.totalParts += parts.length;
+        stats.totalRevenue += cost;
+        stats.totalTasks += 1;
+        employeeStats.set(label, stats);
+        for (const part of parts) partStats.set(part, (partStats.get(part) || 0) + 1);
+        totalParts += parts.length;
+      }
+      repairHistory.sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime());
+
       // Convert part stats to array with percentages
       const byPart: PartRepairStats[] = Array.from(partStats.entries())
         .map(([partName, count]) => ({
@@ -138,11 +184,12 @@ export const damageRepairReportsService = {
       const byEmployee = Array.from(employeeStats.values())
         .sort((a, b) => b.totalRevenue - a.totalRevenue);
 
-      const totalRevenue = totalParts * COST_PER_PART;
+      const internalParts = totalParts - ((externOrders || []) as any[]).reduce((n, o) => n + (Array.isArray(o.parts) ? o.parts.length : (o.part ? 1 : 0)), 0);
+      const totalRevenue = internalParts * COST_PER_PART + externCostTotal;
       const totalVehicles = vehicleIds.size;
 
       return {
-        totalTasks: records?.length || 0,
+        totalTasks: (records?.length || 0) + ((externOrders || []) as any[]).length,
         totalParts,
         totalRevenue,
         totalVehicles,
