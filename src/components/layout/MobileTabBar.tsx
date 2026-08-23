@@ -30,7 +30,7 @@ export const useMobileTabs = (): { tabs: MobileTab[]; more: MobileTab[] } | null
     };
   }
   if (isSchadeherstel()) {
-    return { tabs: eigenSchade === false ? [] : [{ url: "/werkplaats/schadeherstel", label: "Schade", icon: PaintBucket }], more: [] };
+    return { tabs: [{ url: "/werkplaats/schadeherstel", label: "Schade", icon: PaintBucket }], more: [] };
   }
   if (isUitdeukerExtern()) {
     return { tabs: [{ url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer }], more: [] };
