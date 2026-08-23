@@ -94,11 +94,11 @@ export const damageRepairReportsService = {
 
       let totalParts = 0;
 
-      for (const record of records || []) {
+      for (const record of scopedRecords) {
         const parts = (record.repaired_parts as string[]) || [];
         const partCount = record.part_count || parts.length;
         totalParts += partCount;
-        const vBranch: string | null = (record as any)?.vehicle?.branch ?? null;
+        const vBranch: string | null = record.vehicle_id ? (branchByVehicle.get(record.vehicle_id) ?? null) : null;
 
         // Track vehicle
         if (record.vehicle_id) {
@@ -193,7 +193,7 @@ export const damageRepairReportsService = {
       const totalVehicles = vehicleIds.size;
 
       return {
-        totalTasks: (records?.length || 0) + ((externOrders || []) as any[]).length,
+        totalTasks: (scopedRecords.length || 0) + ((externOrders || []) as any[]).length,
         totalParts,
         totalRevenue,
         totalVehicles,
