@@ -10,7 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { WorkOrderDiscipline, DISCIPLINE_LABELS } from "./workOrderTypes";
 import { PhotoPicker } from "./PhotoPicker";
-import { useEigenSchadeherstel } from "@/hooks/useEigenSchadeherstel";
 
 interface Props {
   open: boolean;
@@ -35,13 +34,6 @@ export const AddWorkOrderDialog: React.FC<Props> = ({
   const [isRush, setIsRush] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
-  const { eigen: eigenSchade } = useEigenSchadeherstel();
-  const [uitvoering, setUitvoering] = useState<"intern" | "extern">("intern");
-  const [externParty, setExternParty] = useState("");
-
-  React.useEffect(() => {
-    if (eigenSchade === false) setUitvoering("extern");
-  }, [eigenSchade]);
 
   const reset = () => {
     setDiscipline(defaultDiscipline);
@@ -93,9 +85,6 @@ export const AddWorkOrderDialog: React.FC<Props> = ({
           warranty_claim_id: warrantyClaimId,
           branch: branch || "rotterdam",
           created_by: userRes.user?.id ?? null,
-          ...(discipline === "spuit"
-            ? { uitvoering, extern_party: uitvoering === "extern" ? (externParty.trim() || null) : null }
-            : {}),
         })
         .select("id")
         .single();
@@ -150,22 +139,6 @@ export const AddWorkOrderDialog: React.FC<Props> = ({
               </SelectContent>
             </Select>
           </div>
-          {discipline === "spuit" && (
-            <div>
-              <Label>Uitvoering</Label>
-              <Select value={uitvoering} onValueChange={(v) => setUitvoering(v as "intern" | "extern")}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {eigenSchade !== false && <SelectItem value="intern">Eigen team</SelectItem>}
-                  <SelectItem value="extern">Uitbesteden aan externe spuiter</SelectItem>
-                </SelectContent>
-              </Select>
-              {uitvoering === "extern" && (
-                <Input className="mt-2" value={externParty} onChange={(e) => setExternParty(e.target.value)}
-                       placeholder="Naam externe spuiter (mag later)" />
-              )}
-            </div>
-          )}
           <div>
             <Label>Omschrijving</Label>
             <Textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Wat & waar?" />

@@ -2,54 +2,162 @@ import React, { useCallback, useEffect, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, PaintBucket, Check, Play } from "lucide-react";
+import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
+import { Flame, Loader2, PaintBucket, Check, CheckCircle2, Play, Timer } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { AsPage, AsCard } from "@/components/aftersales/ui";
+import { differenceInDays } from "date-fns";
+import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono, useLiveTimer } from "@/components/aftersales/ui";
+import { cn } from "@/lib/utils";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
+import { PartChips } from "@/components/werkplaats/workOrderParts";
 import { MyPerformanceCard } from "@/components/werkplaats/MyPerformanceCard";
 import { isPlannedInFuture, formatPlannedDay } from "@/components/werkplaats/plannedVisibility";
-import { SchadeherstelCard, SchadeWO } from "@/components/werkplaats/SchadeherstelCard";
-import { useEigenSchadeherstel } from "@/hooks/useEigenSchadeherstel";
 
-type WO = SchadeWO & { vehicle_id: string | null };
+interface WO {
+  id: string;
+  description: string;
+  part: string | null;
+  parts?: string[] | null;
+  status: string;
+  is_rush: boolean;
+  sort_order: number;
+  photos: string[] | null;
+  created_at: string;
+  planned_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  assigned_to: string | null;
+  vehicle_id: string | null;
+  vehicle: {
+    brand: string; model: string; year: number | null;
+    license_number: string | null; vin: string | null;
+    mileage: number | null; color: string | null;
+  } | null;
+}
 
 const SELECT =
-  "id, description, part, parts, status, is_rush, sort_order, photos, result_photos, rejected_count, reject_note, created_at, planned_at, started_at, finished_at, assigned_to, vehicle_id, uitvoering, extern_party, extern_dropped_at, extern_returned_at, origin, external_customer, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color, showroom_photo_url)";
+  "id, description, part, parts, status, is_rush, sort_order, photos, created_at, planned_at, started_at, finished_at, assigned_to, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
+
+const Card: React.FC<{
+  w: WO;
+  meName: string;
+  names: Record<string, string>;
+  myId: string | null;
+  onStart: (w: WO) => void;
+  onDone: (w: WO) => void;
+  onOpen?: (w: WO) => void;
+}> = ({ w, names, myId, onStart, onDone, onOpen }) => {
+  const readOnly = useRoleAccess().isDirectieReadOnly();
+  const v = w.vehicle;
+  const done = w.status === "afgerond";
+  const busy = w.status === "bezig";
+  const mine = w.assigned_to === myId;
+  const timer = useLiveTimer(busy ? w.started_at : null);
+  const days = differenceInDays(new Date(), new Date(w.created_at));
+  const specs = [
+    v?.year ? String(v.year) : null,
+    typeof v?.mileage === "number" ? `${v.mileage.toLocaleString("nl-NL")} km` : null,
+    v?.color || null,
+  ].filter(Boolean) as string[];
+
+  return (
+    <AsCard onClick={onOpen ? () => onOpen(w) : undefined} className={cn("p-4 md:p-5", done && "bg-slate-50 border-slate-200 opacity-70")}>
+      <div className="flex items-start gap-4">
+        <div className="pt-0.5"><AsLicensePlate value={v?.license_number} size="lg" /></div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-[15px] font-bold tracking-tight text-slate-900 truncate">
+                {v?.brand} {v?.model}
+              </div>
+              <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                {specs.join(" · ")}
+                {v?.vin && <> · <AsMono>{v.vin.slice(-8)}</AsMono></>}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {w.is_rush && !done && <AsPill tone="red"><Flame className="h-3 w-3" />Spoed</AsPill>}
+              {done
+                ? <AsPill tone="green"><CheckCircle2 className="h-3 w-3" />Vandaag afgerond</AsPill>
+                : <AsPill tone={days > 3 ? "red" : days > 1 ? "amber" : "slate"}>{days}d open</AsPill>}
+            </div>
+          </div>
+
+          <PartChips workOrder={w as any} className="mt-3" />
+          <div className="mt-2 text-[13px] text-slate-700">{w.description}</div>
+
+          {w.photos && w.photos.length > 0 && (
+            <div className="flex gap-2 mt-3 flex-wrap">
+              {w.photos.map((p, i) => <WorkshopPhoto key={i} path={p} className="w-20 h-20" />)}
+            </div>
+          )}
+
+          {busy && (
+            <div className="mt-3 flex items-center gap-2 text-[12.5px]">
+              <AsPill tone="amber"><Timer className="h-3 w-3" />{timer}</AsPill>
+              <span className="text-slate-600 font-medium">
+                Bezig — {mine ? "jij" : (w.assigned_to ? names[w.assigned_to] || "collega" : "collega")}
+              </span>
+            </div>
+          )}
+
+          {!done && !readOnly && (
+            <div className="mt-4" onClick={(e) => e.stopPropagation()}>
+              {!busy ? (
+                <Button
+                  size="lg"
+                  className="w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => onStart(w)}
+                >
+                  <Play className="h-4 w-4 mr-1" /> Start
+                </Button>
+              ) : mine ? (
+                <Button
+                  size="lg"
+                  className="w-full h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => onDone(w)}
+                >
+                  <Check className="h-4 w-4 mr-1" /> Klaar
+                </Button>
+              ) : null}
+            </div>
+          )}
+        </div>
+      </div>
+    </AsCard>
+  );
+};
 
 const WerkplaatsSchadeherstel: React.FC = () => {
   const readOnly = useRoleAccess().isDirectieReadOnly();
-  const { eigen } = useEigenSchadeherstel();
   const [rows, setRows] = useState<WO[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [myId, setMyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [doneTodayCount, setDoneTodayCount] = useState(0);
   const [detail, setDetail] = useState<WO | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     const { data: userRes } = await supabase.auth.getUser();
     setMyId(userRes.user?.id ?? null);
-    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
     const [openRes, doneRes] = await Promise.all([
       supabase.from("work_orders").select(SELECT)
         .eq("discipline", "spuit")
-        .eq("uitvoering", "intern")
         .in("status", ["aangevraagd", "ingepland", "bezig"])
         .order("is_rush", { ascending: false })
         .order("sort_order", { ascending: true }),
-      supabase.from("work_orders").select("id")
+      supabase.from("work_orders").select(SELECT)
         .eq("discipline", "spuit")
-        .eq("uitvoering", "intern")
-        .in("status", ["afgerond", "goedgekeurd"])
-        .gte("finished_at", todayStart.toISOString()),
+        .eq("status", "afgerond")
+        .gte("finished_at", since)
+        .order("finished_at", { ascending: false }),
     ]);
 
-    const all = ((openRes.data as any[]) || []) as WO[];
+    const all = [...((openRes.data as any[]) || []), ...((doneRes.data as any[]) || [])] as WO[];
     setRows(all);
-    setDoneTodayCount(((doneRes.data as any[]) || []).length);
 
     const ids = Array.from(new Set(all.map(r => r.assigned_to).filter(Boolean))) as string[];
     if (ids.length) {
@@ -99,20 +207,8 @@ const WerkplaatsSchadeherstel: React.FC = () => {
   };
 
   // Gepland voor een latere dag = nog niet zichtbaar op de vloer
-  const open = rows.filter(r => !isPlannedInFuture(r.planned_at));
-
-  if (eigen === false) {
-    return (
-      <DashboardLayout>
-        <AsPage>
-          <AsCard className="p-10 text-center text-slate-500 text-[13px] max-w-lg mx-auto">
-            <PaintBucket className="h-5 w-5 mx-auto mb-2 text-slate-300" />
-            Deze onderneming heeft geen eigen schadeherstel-afdeling. Schadeherstel wordt uitbesteed en beheerd in de Planning.
-          </AsCard>
-        </AsPage>
-      </DashboardLayout>
-    );
-  }
+  const open = rows.filter(r => r.status !== "afgerond" && !isPlannedInFuture(r.planned_at));
+  const done = rows.filter(r => r.status === "afgerond");
 
   return (
     <DashboardLayout>
@@ -120,8 +216,7 @@ const WerkplaatsSchadeherstel: React.FC = () => {
         <div className="mb-5">
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Schadeherstel</h1>
           <p className="text-[13px] text-slate-500 mt-0.5">
-            Start een auto zodat collega's zien dat je ermee bezig bent.
-            {doneTodayCount > 0 ? ` Vandaag al ${doneTodayCount} klus${doneTodayCount === 1 ? "" : "sen"} afgerond.` : ""}
+            Start een auto zodat collega's zien dat je ermee bezig bent. Afgeronde auto's blijven 24 uur zichtbaar.
           </p>
         </div>
 
@@ -129,38 +224,18 @@ const WerkplaatsSchadeherstel: React.FC = () => {
 
         {loading ? (
           <div className="flex items-center gap-2 text-slate-500 py-10"><Loader2 className="h-4 w-4 animate-spin" /> Laden…</div>
-        ) : open.length === 0 ? (
+        ) : open.length === 0 && done.length === 0 ? (
           <AsCard className="p-10 text-center text-slate-400 text-[13px]">
             <PaintBucket className="h-5 w-5 mx-auto mb-2 text-slate-300" />Geen schadeherstel-taken.
           </AsCard>
         ) : (
           <div className="space-y-3">
-            {open.map((w, i) => {
-              const busy = w.status === "bezig";
-              const mine = w.assigned_to === myId;
-              return (
-                <SchadeherstelCard
-                  key={w.id}
-                  w={w}
-                  index={i}
-                  assigneeName={busy ? (mine ? "jij" : (w.assigned_to ? names[w.assigned_to] || "collega" : null)) : null}
-                  onOpen={() => setDetail(w)}
-                  actions={!readOnly ? (
-                    !busy ? (
-                      <Button size="lg" className="w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white"
-                              onClick={() => handleStart(w)}>
-                        <Play className="h-4 w-4 mr-1" /> Start
-                      </Button>
-                    ) : mine ? (
-                      <Button size="lg" className="w-full h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
-                              onClick={() => handleDone(w)}>
-                        <Check className="h-4 w-4 mr-1" /> Klaar
-                      </Button>
-                    ) : undefined
-                  ) : undefined}
-                />
-              );
-            })}
+            {open.map(w => (
+              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onOpen={setDetail} />
+            ))}
+            {done.map(w => (
+              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onOpen={setDetail} />
+            ))}
           </div>
         )}
 

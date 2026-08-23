@@ -52,25 +52,6 @@ export const WerkplaatsTarieven: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Schadeherstel</CardTitle>
-          <CardDescription>
-            Heeft deze onderneming een eigen schadeherstel-afdeling? Zo niet, dan wordt schadeherstel altijd uitbesteed aan een externe spuiter.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="eigen-schade">Eigen schadeherstel-afdeling: ja/nee</Label>
-            <Switch
-              id="eigen-schade" checked={t.eigen_schadeherstel} disabled={!mayEdit}
-              onCheckedChange={(v) => setT({ ...t, eigen_schadeherstel: v })}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-
-        <CardHeader>
           <CardTitle className="text-base">Uurtarief</CardTitle>
           <CardDescription>Marktconform tarief voor onafhankelijke garages, exclusief btw.</CardDescription>
         </CardHeader>

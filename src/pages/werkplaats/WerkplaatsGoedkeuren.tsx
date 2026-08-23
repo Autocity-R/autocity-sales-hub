@@ -17,20 +17,12 @@ import WorkshopInvoiceDialog from "@/components/werkplaats/WorkshopInvoiceDialog
 import { InvoiceDraft, dispatchPendingInternalInvoices } from "@/services/workshopInvoiceService";
 import { FileText } from "lucide-react";
 import { PartChips, getWorkOrderParts } from "@/components/werkplaats/workOrderParts";
-import { isExternUitvoering } from "@/components/werkplaats/SchadeherstelCard";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Truck } from "lucide-react";
-import { format } from "date-fns";
-import { nl } from "date-fns/locale";
 
 interface WO {
   id: string; vehicle_id: string; discipline: string; description: string; part: string | null; parts?: string[] | null; is_rush: boolean;
   photos: string[] | null; result_photos: string[] | null;
   work_seconds: number | null; finish_note: string | null; branch: string | null;
   origin: string | null; external_customer: any | null;
-  uitvoering?: string | null; extern_party?: string | null;
-  extern_dropped_at?: string | null; extern_returned_at?: string | null; extern_cost?: number | null;
   vehicle: { brand: string; model: string; year: number | null; license_number: string | null; vin?: string | null } | null;
 }
 
@@ -46,12 +38,11 @@ const WerkplaatsGoedkeuren: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<DamageReportPayload | null>(null);
   const [invoice, setInvoice] = useState<InvoiceDraft | null>(null);
-  const [externCosts, setExternCosts] = useState<Record<string, string>>({});
 
   const load = async () => {
     setLoading(true);
     let q = supabase.from("work_orders")
-      .select("id, vehicle_id, discipline, description, part, parts, is_rush, photos, result_photos, work_seconds, finish_note, branch, origin, external_customer, uitvoering, extern_party, extern_dropped_at, extern_returned_at, extern_cost, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin)")
+      .select("id, vehicle_id, discipline, description, part, parts, is_rush, photos, result_photos, work_seconds, finish_note, branch, origin, external_customer, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin)")
       .eq("status", "afgerond")
       .neq("discipline", "uitdeuk")
       .order("finished_at", { ascending: true });
@@ -88,31 +79,10 @@ const WerkplaatsGoedkeuren: React.FC = () => {
   };
 
   const approve = async (w: WO) => {
-    const uitbesteed = isExternUitvoering(w);
-    let cost: number | null = null;
-    let costTouched = false;
-    if (uitbesteed) {
-      const raw = (externCosts[w.id] ?? (w.extern_cost != null ? String(w.extern_cost) : "")).replace(",", ".").trim();
-      if (raw !== "") {
-        cost = Number(raw);
-        if (!isFinite(cost) || cost < 0) {
-          toast({ title: "Ongeldig bedrag", description: "Vul een geldig factuurbedrag in, of laat het veld leeg.", variant: "destructive" });
-          return;
-        }
-        costTouched = true;
-      } else {
-        toast({
-          title: "Goedgekeurd zonder factuurbedrag",
-          description: "Bedrag later bekend? Vul het dan hier alsnog in via de werkorder-details.",
-        });
-      }
-    }
     const { data: userRes } = await supabase.auth.getUser();
     const { error } = await supabase.from("work_orders").update({
       status: "goedgekeurd", approved_by: userRes.user?.id ?? null, approved_at: new Date().toISOString(),
-      ...(uitbesteed && costTouched ? { extern_cost: cost } : {}),
     }).eq("id", w.id);
-
     if (error) toast({ title: "Fout", description: error.message, variant: "destructive" });
     else {
       removeWorkOrderFromWerkplaatsCalendar(w.id, (w as any).branch || "rotterdam");
@@ -134,7 +104,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
       }
       if (isExtern(w)) setInvoice(invoiceDraftFor(w));
       // interne facturatie tussen de BV's: de DB maakt de factuur aan, hier alleen PDF + mail
-      if (!isExtern(w) && !uitbesteed && ["werkplaats", "spuit"].includes(w.discipline)) {
+      if (!isExtern(w) && ["werkplaats", "spuit"].includes(w.discipline)) {
         dispatchPendingInternalInvoices()
           .then((n) => { if (n > 0) toast({ title: "Interne factuur verstuurd naar administratie" }); })
           .catch(() => toast({ title: "Interne factuur staat klaar als concept", description: "Mailen is niet gelukt, probeer het later opnieuw vanuit Facturen." }));
@@ -182,11 +152,9 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                 key={w.id}
                 className="overflow-hidden cursor-pointer"
                 onClick={() => setReport({
-                  id: w.id, part: w.part, parts: (w as any).parts, description: w.description, photos: w.photos, result_photos: w.result_photos,
+                  part: w.part, parts: (w as any).parts, description: w.description, photos: w.photos, result_photos: w.result_photos,
                   discipline: w.discipline, status: "afgerond", finish_note: w.finish_note, vehicle: w.vehicle as any,
-                  uitvoering: w.uitvoering, extern_party: w.extern_party, extern_cost: w.extern_cost ?? null,
                 })}
-
               >
                 <AsCardHead
                   tone="teal"
@@ -200,11 +168,6 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                           <AsPill tone="blue">EXTERN · {w.external_customer?.name || "klant"}</AsPill>
                           <AsPill tone="amber">Factuur nodig</AsPill>
                         </>
-                      )}
-                      {isExternUitvoering(w) && (
-                        <AsPill tone="blue">
-                          <Truck className="h-3 w-3" />Uitbesteed{w.extern_party ? ` · ${w.extern_party}` : ""}
-                        </AsPill>
                       )}
                     </span>
                   }
@@ -228,30 +191,6 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                   <div className="flex items-center gap-2 text-sm text-slate-500">
                     <Timer className="h-4 w-4" /> Werktijd: {fmtSec(w.work_seconds)}
                   </div>
-                  {isExternUitvoering(w) && (
-                    <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-3" onClick={(e) => e.stopPropagation()}>
-                      <div className="text-[12.5px] text-blue-900 font-medium flex flex-wrap items-center gap-x-2">
-                        Uitbesteed aan {w.extern_party || "externe partij"}
-                        {w.extern_dropped_at && <span className="text-blue-700/80">· weggebracht {format(new Date(w.extern_dropped_at), "d MMM", { locale: nl })}</span>}
-                        {w.extern_returned_at && <span className="text-blue-700/80">· terug {format(new Date(w.extern_returned_at), "d MMM", { locale: nl })}</span>}
-                      </div>
-                      <div className="mt-2 max-w-xs">
-                        <Label className="text-[12px] font-semibold text-blue-900">Kosten externe partij (excl. btw) — optioneel</Label>
-                        <Input
-                          className="mt-1.5 bg-white"
-                          type="number" step="0.01" min="0" inputMode="decimal"
-                          placeholder="0,00"
-                          value={externCosts[w.id] ?? (w.extern_cost != null ? String(w.extern_cost) : "")}
-                          onChange={(e) => setExternCosts((prev) => ({ ...prev, [w.id]: e.target.value }))}
-                        />
-                        <p className="text-[11px] text-blue-700/80 mt-1">
-                          Bedrag later bekend? Vul het dan hier alsnog in — je kunt gewoon goedkeuren zonder bedrag.
-                          Geen interne doorbelasting van €300; dit bedrag telt als werkelijke kostprijs bij de auto.
-                        </p>
-
-                      </div>
-                    </div>
-                  )}
                   {w.discipline !== "werkplaats" && (
                   <div className="grid gap-3 md:grid-cols-2">
                     <div>
@@ -275,7 +214,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
             ))}
           </div>
         )}
-        <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} onCostSaved={load} />
+        <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} />
         <WorkshopInvoiceDialog open={!!invoice} onOpenChange={(v) => !v && setInvoice(null)} initial={invoice} />
       </AsPage>
     </DashboardLayout>
