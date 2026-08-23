@@ -5029,6 +5029,7 @@ export type Database = {
       werkplaats_tarieven: {
         Row: {
           created_at: string
+          eigen_schadeherstel: boolean
           id: string
           klein_materiaal_enabled: boolean
           klein_materiaal_pct: number
@@ -5040,6 +5041,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          eigen_schadeherstel?: boolean
           id?: string
           klein_materiaal_enabled?: boolean
           klein_materiaal_pct?: number
@@ -5051,6 +5053,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          eigen_schadeherstel?: boolean
           id?: string
           klein_materiaal_enabled?: boolean
           klein_materiaal_pct?: number
@@ -5075,6 +5078,10 @@ export type Database = {
           description: string
           discipline: string
           due_date: string | null
+          extern_cost: number | null
+          extern_dropped_at: string | null
+          extern_party: string | null
+          extern_returned_at: string | null
           external_customer: Json | null
           finish_note: string | null
           finished_at: string | null
@@ -5095,6 +5102,7 @@ export type Database = {
           source: string
           started_at: string | null
           status: string
+          uitvoering: string
           vehicle_id: string
           warranty_claim_id: string | null
           work_seconds: number | null
@@ -5111,6 +5119,10 @@ export type Database = {
           description: string
           discipline: string
           due_date?: string | null
+          extern_cost?: number | null
+          extern_dropped_at?: string | null
+          extern_party?: string | null
+          extern_returned_at?: string | null
           external_customer?: Json | null
           finish_note?: string | null
           finished_at?: string | null
@@ -5131,6 +5143,7 @@ export type Database = {
           source?: string
           started_at?: string | null
           status?: string
+          uitvoering?: string
           vehicle_id: string
           warranty_claim_id?: string | null
           work_seconds?: number | null
@@ -5147,6 +5160,10 @@ export type Database = {
           description?: string
           discipline?: string
           due_date?: string | null
+          extern_cost?: number | null
+          extern_dropped_at?: string | null
+          extern_party?: string | null
+          extern_returned_at?: string | null
           external_customer?: Json | null
           finish_note?: string | null
           finished_at?: string | null
@@ -5167,6 +5184,7 @@ export type Database = {
           source?: string
           started_at?: string | null
           status?: string
+          uitvoering?: string
           vehicle_id?: string
           warranty_claim_id?: string | null
           work_seconds?: number | null

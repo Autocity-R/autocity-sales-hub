@@ -20,6 +20,9 @@ import { cn } from "@/lib/utils";
 import { DamageReportDialog, DamageReportPayload } from "@/components/aftersales/DamageReportDialog";
 import { AddTaskBar } from "@/components/aftersales/AddTaskDialog";
 import { PartChips } from "@/components/werkplaats/workOrderParts";
+import { SchadeherstelCard, isExternUitvoering } from "@/components/werkplaats/SchadeherstelCard";
+import { ExternSchadeDialog, ExternMode } from "@/components/werkplaats/ExternSchadeDialog";
+import { Truck, Undo2 } from "lucide-react";
 
 type Discipline = "werkplaats" | "spuit";
 
@@ -44,6 +47,14 @@ interface WO {
   planned_at: string | null;
   origin: string | null;
   external_customer: any | null;
+  uitvoering?: string | null;
+  extern_party?: string | null;
+  extern_dropped_at?: string | null;
+  extern_returned_at?: string | null;
+  photos?: any;
+  result_photos?: any;
+  rejected_count?: number | null;
+  reject_note?: string | null;
   vehicle: {
     id: string;
     brand: string;
@@ -221,7 +232,10 @@ const EmployeeColumn: React.FC<{
   onDrop: (targetId: string) => void;
   onOpen: (w: WO) => void;
   onDelete?: (w: WO) => void;
-}> = ({ profile, items, doneTodayCount, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete }) => (
+  schade?: boolean;
+  onOutsource?: (w: WO) => void;
+  nameFor?: (uid: string | null) => string;
+}> = ({ profile, items, doneTodayCount, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete, schade, onOutsource, nameFor }) => (
   <AsCard className="flex flex-col w-full md:min-w-[320px]">
     <AsCardHead
       tone="slate"
@@ -238,7 +252,23 @@ const EmployeeColumn: React.FC<{
           Geen taken in planning
         </div>
       )}
-      {items.map((w, i) => (
+      {items.map((w, i) => schade ? (
+        <SchadeherstelCard
+          key={w.id}
+          w={w as any}
+          index={i}
+          assigneeName={nameFor ? nameFor(w.assigned_to) : undefined}
+          onOpen={() => onOpen(w)}
+          onMove={(x, dir) => onReorder(x.id, dir)}
+          onToggleRush={() => onToggleRush(w)}
+          onCancel={onDelete ? () => onDelete(w) : undefined}
+          actions={onOutsource ? (
+            <Button variant="outline" size="sm" className="w-full h-10 text-[12.5px]" onClick={() => onOutsource(w)}>
+              <Truck className="h-3.5 w-3.5 mr-1.5" /> Uitbesteden aan externe spuiter
+            </Button>
+          ) : undefined}
+        />
+      ) : (
         <TaskCard
           key={w.id}
           w={w}
@@ -305,6 +335,8 @@ const WerkplaatsPlanning: React.FC = () => {
   const [report, setReport] = useState<DamageReportPayload | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<WO | null>(null);
   const [reschedule, setReschedule] = useState<WO | null>(null);
+  const [externTarget, setExternTarget] = useState<WO | null>(null);
+  const [externMode, setExternMode] = useState<ExternMode>("wegbrengen");
   const [newPlanned, setNewPlanned] = useState<string>("");
   const openReport = (w: WO) => setReport({
     part: w.part, parts: (w as any).parts, description: w.description, photos: (w as any).photos, discipline: w.discipline, status: w.status, vehicle: w.vehicle as any,
@@ -312,12 +344,12 @@ const WerkplaatsPlanning: React.FC = () => {
 
   const load = async () => {
     setLoading(true);
-    const select = "id, discipline, description, part, parts, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, due_date, planned_at, origin, external_customer, photos, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date)";
+    const select = "id, discipline, description, part, parts, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, due_date, planned_at, origin, external_customer, photos, result_photos, rejected_count, reject_note, uitvoering, extern_party, extern_dropped_at, extern_returned_at, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date)";
 
     let q = supabase
       .from("work_orders")
       .select(select)
-      .in("status", ["ingepland", "bezig"])
+      .in("status", discipline === "spuit" ? ["aangevraagd", "ingepland", "bezig"] : ["ingepland", "bezig"])
       .eq("discipline", discipline)
       .order("is_rush", { ascending: false })
       .order("sort_order", { ascending: true });
@@ -355,7 +387,7 @@ const WerkplaatsPlanning: React.FC = () => {
 
   const groups = useMemo(() => {
     const m = new Map<string, WO[]>();
-    for (const w of rows.filter(r => !isFuturePlanned(r))) {
+    for (const w of rows.filter(r => !isFuturePlanned(r) && !isExternUitvoering(r))) {
       const key = w.assigned_to || "__unassigned__";
       if (!m.has(key)) m.set(key, []);
       m.get(key)!.push(w);
@@ -486,9 +518,21 @@ const WerkplaatsPlanning: React.FC = () => {
 
   const nameFor = (uid: string | null) => nameOf(uid ? profiles.get(uid) : undefined);
 
+  /** Uitbesteed schadeherstel — losse status-stroom, geen medewerker-kanban. */
+  const externBuckets = useMemo(() => {
+    const ext = rows.filter(isExternUitvoering);
+    return {
+      wegbrengen: ext.filter(w => !w.extern_dropped_at),
+      bij: ext.filter(w => !!w.extern_dropped_at && !w.extern_returned_at),
+      terug: doneToday.filter(isExternUitvoering),
+    };
+  }, [rows, doneToday]);
+
+  const openExtern = (w: WO, mode: ExternMode) => { setExternTarget(w); setExternMode(mode); };
+
   /** Geplande orders (>1 dag) gegroepeerd per dag. */
   const plannedGroups = useMemo(() => {
-    const future = rows.filter(isFuturePlanned)
+    const future = rows.filter(r => isFuturePlanned(r) && !isExternUitvoering(r))
       .sort((a, b) => new Date(a.planned_at!).getTime() - new Date(b.planned_at!).getTime());
     const m = new Map<string, WO[]>();
     for (const w of future) {
@@ -580,10 +624,66 @@ const WerkplaatsPlanning: React.FC = () => {
                 onDrop={onDrop}
                 onOpen={openReport}
                 onDelete={canDelete && !readOnly ? (w) => setConfirmDelete(w) : undefined}
+                schade={discipline === "spuit"}
+                nameFor={nameFor}
+                onOutsource={discipline === "spuit" && !readOnly ? (w) => openExtern(w, "uitbesteden") : undefined}
               />
             ))}
-            <DoneTodayColumn items={doneToday} nameFor={nameFor} />
+            <DoneTodayColumn items={discipline === "spuit" ? doneToday.filter(w => !isExternUitvoering(w)) : doneToday} nameFor={nameFor} />
           </div>
+        )}
+
+        {/* Uitbesteed schadeherstel */}
+        {!loading && discipline === "spuit" && (
+          <AsCard className="mt-4 overflow-hidden">
+            <AsCardHead
+              tone="blue"
+              icon={<Truck className="h-4 w-4" />}
+              title="Uitbesteed schadeherstel"
+              subtitle="Externe spuiter — geen interne doorbelasting, kosten boek je bij goedkeuren"
+              count={externBuckets.wegbrengen.length + externBuckets.bij.length + externBuckets.terug.length}
+            />
+            <div className="p-3 grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {([
+                { key: "wegbrengen", title: "Nog wegbrengen", items: externBuckets.wegbrengen },
+                { key: "bij", title: "Bij externe partij", items: externBuckets.bij },
+                { key: "terug", title: "Terug — wacht op controle", items: externBuckets.terug },
+              ] as const).map((col) => (
+                <div key={col.key}>
+                  <div className="text-[12px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                    {col.title} · {col.items.length}
+                  </div>
+                  <div className="space-y-2">
+                    {col.items.length === 0 && (
+                      <div className="text-[12px] text-slate-400 px-1 py-4 text-center border border-dashed border-slate-200 rounded-lg">
+                        Niets hier
+                      </div>
+                    )}
+                    {col.items.map((w) => (
+                      <SchadeherstelCard
+                        key={w.id}
+                        w={w as any}
+                        onOpen={() => openReport(w)}
+                        onToggleRush={!readOnly && col.key !== "terug" ? () => toggleRush(w) : undefined}
+                        onCancel={canDelete && !readOnly && col.key !== "terug" ? () => setConfirmDelete(w) : undefined}
+                        actions={readOnly ? undefined : col.key === "wegbrengen" ? (
+                          <Button size="sm" className="w-full h-10 text-[12.5px] bg-blue-600 hover:bg-blue-700 text-white"
+                                  onClick={() => openExtern(w, "wegbrengen")}>
+                            <Truck className="h-3.5 w-3.5 mr-1.5" /> Weggebracht
+                          </Button>
+                        ) : col.key === "bij" ? (
+                          <Button size="sm" className="w-full h-10 text-[12.5px] bg-emerald-600 hover:bg-emerald-700 text-white"
+                                  onClick={() => openExtern(w, "terug")}>
+                            <Undo2 className="h-3.5 w-3.5 mr-1.5" /> Terug van spuiter
+                          </Button>
+                        ) : undefined}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </AsCard>
         )}
 
         {/* Gepland (>1 dag in de toekomst) */}
@@ -658,6 +758,13 @@ const WerkplaatsPlanning: React.FC = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        <ExternSchadeDialog
+          open={!!externTarget}
+          onOpenChange={(v) => !v && setExternTarget(null)}
+          mode={externMode}
+          workOrder={externTarget as any}
+          onDone={load}
+        />
         <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} />
         <AlertDialog open={!!confirmDelete} onOpenChange={(v) => !v && setConfirmDelete(null)}>
           <AlertDialogContent>
