@@ -336,15 +336,18 @@ const WerkplaatsPlanning: React.FC = () => {
   const [confirmDelete, setConfirmDelete] = useState<WO | null>(null);
   const [reschedule, setReschedule] = useState<WO | null>(null);
   const [externTarget, setExternTarget] = useState<WO | null>(null);
+  const [externDone, setExternDone] = useState<WO[]>([]);
   const [externMode, setExternMode] = useState<ExternMode>("wegbrengen");
   const [newPlanned, setNewPlanned] = useState<string>("");
   const openReport = (w: WO) => setReport({
-    part: w.part, parts: (w as any).parts, description: w.description, photos: (w as any).photos, discipline: w.discipline, status: w.status, vehicle: w.vehicle as any,
+    id: w.id, part: w.part, parts: (w as any).parts, description: w.description, photos: (w as any).photos,
+    result_photos: (w as any).result_photos, discipline: w.discipline, status: w.status, vehicle: w.vehicle as any,
+    uitvoering: w.uitvoering, extern_party: w.extern_party, extern_cost: (w as any).extern_cost ?? null,
   });
 
   const load = async () => {
     setLoading(true);
-    const select = "id, discipline, description, part, parts, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, due_date, planned_at, origin, external_customer, photos, result_photos, rejected_count, reject_note, uitvoering, extern_party, extern_dropped_at, extern_returned_at, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date)";
+    const select = "id, discipline, description, part, parts, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, due_date, planned_at, origin, external_customer, photos, result_photos, rejected_count, reject_note, uitvoering, extern_party, extern_dropped_at, extern_returned_at, extern_cost, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date)";
 
     let q = supabase
       .from("work_orders")
@@ -376,6 +379,17 @@ const WerkplaatsPlanning: React.FC = () => {
       const { data: ps } = await supabase.from("profiles").select("id, first_name, last_name").in("id", ids);
       pmap = new Map(((ps as any[]) || []).map(p => [p.id, p as Profile]));
     }
+
+    if (discipline === "spuit") {
+      const since = new Date(); since.setDate(since.getDate() - 60);
+      let gq = supabase.from("work_orders").select(select)
+        .eq("discipline", "spuit").eq("status", "goedgekeurd").eq("uitvoering", "extern")
+        .gte("approved_at", since.toISOString())
+        .order("approved_at", { ascending: false });
+      gq = applyBranchFilter(gq as any, branchFilter);
+      const { data: appr } = await gq;
+      setExternDone(((appr as any) || []) as WO[]);
+    } else setExternDone([]);
 
     setRows(openRows);
     setDoneToday(doneRows);
@@ -641,13 +655,14 @@ const WerkplaatsPlanning: React.FC = () => {
               icon={<Truck className="h-4 w-4" />}
               title="Uitbesteed schadeherstel"
               subtitle="Externe spuiter — geen interne doorbelasting, kosten boek je bij goedkeuren"
-              count={externBuckets.wegbrengen.length + externBuckets.bij.length + externBuckets.terug.length}
+              count={externBuckets.wegbrengen.length + externBuckets.bij.length + externBuckets.terug.length + externDone.length}
             />
-            <div className="p-3 grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="p-3 grid grid-cols-1 lg:grid-cols-4 gap-4">
               {([
                 { key: "wegbrengen", title: "Nog wegbrengen", items: externBuckets.wegbrengen },
                 { key: "bij", title: "Bij externe partij", items: externBuckets.bij },
                 { key: "terug", title: "Terug — wacht op controle", items: externBuckets.terug },
+                { key: "goedgekeurd", title: "Goedgekeurd — kosten invullen", items: externDone },
               ] as const).map((col) => (
                 <div key={col.key}>
                   <div className="text-[12px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
@@ -664,8 +679,8 @@ const WerkplaatsPlanning: React.FC = () => {
                         key={w.id}
                         w={w as any}
                         onOpen={() => openReport(w)}
-                        onToggleRush={!readOnly && col.key !== "terug" ? () => toggleRush(w) : undefined}
-                        onCancel={canDelete && !readOnly && col.key !== "terug" ? () => setConfirmDelete(w) : undefined}
+                        onToggleRush={!readOnly && col.key !== "terug" && col.key !== "goedgekeurd" ? () => toggleRush(w) : undefined}
+                        onCancel={canDelete && !readOnly && col.key !== "terug" && col.key !== "goedgekeurd" ? () => setConfirmDelete(w) : undefined}
                         actions={readOnly ? undefined : col.key === "wegbrengen" ? (
                           <Button size="sm" className="w-full h-10 text-[12.5px] bg-blue-600 hover:bg-blue-700 text-white"
                                   onClick={() => openExtern(w, "wegbrengen")}>
@@ -765,7 +780,7 @@ const WerkplaatsPlanning: React.FC = () => {
           workOrder={externTarget as any}
           onDone={load}
         />
-        <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} />
+        <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} onCostSaved={load} />
         <AlertDialog open={!!confirmDelete} onOpenChange={(v) => !v && setConfirmDelete(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
