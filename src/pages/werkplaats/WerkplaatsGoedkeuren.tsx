@@ -117,7 +117,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
     const note = window.prompt("Waarom terugsturen?");
     if (!note) return;
     const { data: bounds } = await supabase.from("work_orders")
-      .select("sort_order").eq("discipline", w.discipline).in("status", ["ingepland", "bezig"])
+      .select("sort_order").eq("discipline", w.discipline).in("status", ["ingepland", "bezig", "gepauzeerd"])
       .order("sort_order", { ascending: true }).limit(1);
     const minSort = ((bounds as any)?.[0]?.sort_order ?? 10) - 10;
 

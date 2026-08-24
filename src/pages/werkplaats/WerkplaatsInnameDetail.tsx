@@ -171,7 +171,7 @@ const WerkplaatsInnameDetail: React.FC = () => {
 
       const { data: bounds } = await supabase.from("work_orders")
         .select("sort_order").eq("discipline", d)
-        .in("status", ["ingepland", "bezig"])
+        .in("status", ["ingepland", "bezig", "gepauzeerd"])
         .order("sort_order", { ascending: false }).limit(1);
       const nextSort = ((bounds as any)?.[0]?.sort_order ?? 0) + 10;
 

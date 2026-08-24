@@ -142,7 +142,7 @@ async function loadCockpit(branch: BranchFilter): Promise<CockpitData> {
     woBase().eq("discipline", "werkplaats").eq("status", "bezig").limit(20),
     woBase().eq("discipline", "spuit").in("status", ["aangevraagd", "ingepland"]).order("sort_order", { ascending: true }).limit(20),
     woBase().eq("discipline", "spuit").eq("status", "bezig").limit(20),
-    woBase().eq("discipline", "uitdeuk").in("status", ["aangevraagd", "ingepland", "bezig"]).order("created_at", { ascending: true }).limit(50),
+    woBase().eq("discipline", "uitdeuk").in("status", ["aangevraagd", "ingepland", "bezig", "gepauzeerd"]).order("created_at", { ascending: true }).limit(50),
     woBase().eq("status", "afgerond").neq("discipline", "uitdeuk").order("finished_at", { ascending: true }).limit(20),
     supabase.from("profiles").select("id, first_name, last_name"),
   ]);
@@ -317,7 +317,7 @@ async function loadCockpit(branch: BranchFilter): Promise<CockpitData> {
   let pq = supabase
     .from("work_orders")
     .select("id, description, planned_at, origin, external_customer, warranty_claim_id, vehicles:vehicle_id(brand, model, license_number, vin, showroom_photo_url)")
-    .in("status", ["ingepland", "bezig"])
+    .in("status", ["ingepland", "bezig", "gepauzeerd"])
     .not("planned_at", "is", null)
     .gte("planned_at", startToday.toISOString())
     .lte("planned_at", endTomorrow.toISOString())

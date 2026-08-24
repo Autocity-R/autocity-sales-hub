@@ -144,7 +144,7 @@ export const ScheduleWarrantyDialog: React.FC<{
       } else {
         const { data: bounds } = await supabase.from("work_orders")
           .select("sort_order").eq("discipline", "werkplaats")
-          .in("status", ["ingepland", "bezig"])
+          .in("status", ["ingepland", "bezig", "gepauzeerd"])
           .order("sort_order", { ascending: isRush ? true : false }).limit(1);
         const base = ((bounds as any)?.[0]?.sort_order ?? 0);
         const nextSort = isRush ? base - 10 : base + 10;

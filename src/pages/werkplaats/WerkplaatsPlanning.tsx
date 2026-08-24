@@ -317,7 +317,7 @@ const WerkplaatsPlanning: React.FC = () => {
     let q = supabase
       .from("work_orders")
       .select(select)
-      .in("status", ["ingepland", "bezig"])
+      .in("status", ["ingepland", "bezig", "gepauzeerd"])
       .eq("discipline", discipline)
       .order("is_rush", { ascending: false })
       .order("sort_order", { ascending: true });
