@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { AsLicensePlate, AsMono, AsPill } from "@/components/aftersales/ui";
 import { DamageDiagram, findZoneByName, DamageMarker } from "@/components/aftersales/DamageDiagram";
