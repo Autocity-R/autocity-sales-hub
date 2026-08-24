@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
-import { Flame, Loader2, PaintBucket, Check, CheckCircle2, Play, Timer } from "lucide-react";
+import { Flame, Loader2, PaintBucket, Check, CheckCircle2, Play, Timer, Pause } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { differenceInDays } from "date-fns";
 import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono, useLiveTimer } from "@/components/aftersales/ui";
@@ -13,6 +13,8 @@ import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 import { PartChips } from "@/components/werkplaats/workOrderParts";
 import { MyPerformanceCard } from "@/components/werkplaats/MyPerformanceCard";
 import { isPlannedInFuture, formatPlannedDay } from "@/components/werkplaats/plannedVisibility";
+import { OPEN_WO_STATUSES, pauseWorkOrder, resumeFields, finishFields, totalWorkSeconds } from "@/components/werkplaats/workOrderPause";
+import { PauseTaskDialog } from "@/components/werkplaats/PauseTaskDialog";
 
 interface WO {
   id: string;
@@ -27,6 +29,8 @@ interface WO {
   planned_at: string | null;
   started_at: string | null;
   finished_at: string | null;
+  paused_seconds?: number | null;
+  pause_reason?: string | null;
   assigned_to: string | null;
   vehicle_id: string | null;
   vehicle: {
@@ -37,7 +41,7 @@ interface WO {
 }
 
 const SELECT =
-  "id, description, part, parts, status, is_rush, sort_order, photos, created_at, planned_at, started_at, finished_at, assigned_to, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
+  "id, description, part, parts, status, is_rush, sort_order, photos, created_at, planned_at, started_at, finished_at, paused_seconds, pause_reason, assigned_to, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
 
 const Card: React.FC<{
   w: WO;
@@ -46,12 +50,14 @@ const Card: React.FC<{
   myId: string | null;
   onStart: (w: WO) => void;
   onDone: (w: WO) => void;
+  onPause: (w: WO) => void;
   onOpen?: (w: WO) => void;
-}> = ({ w, names, myId, onStart, onDone, onOpen }) => {
+}> = ({ w, names, myId, onStart, onDone, onPause, onOpen }) => {
   const readOnly = useRoleAccess().isDirectieReadOnly();
   const v = w.vehicle;
   const done = w.status === "afgerond";
   const busy = w.status === "bezig";
+  const paused = w.status === "gepauzeerd";
   const mine = w.assigned_to === myId;
   const timer = useLiveTimer(busy ? w.started_at : null);
   const days = differenceInDays(new Date(), new Date(w.created_at));
@@ -93,6 +99,13 @@ const Card: React.FC<{
             </div>
           )}
 
+          {paused && (
+            <div className="mt-3 flex items-center gap-2 text-[12.5px] flex-wrap">
+              <AsPill tone="amber"><Pause className="h-3 w-3" />Gepauzeerd</AsPill>
+              {w.pause_reason && <span className="text-slate-600">{w.pause_reason}</span>}
+            </div>
+          )}
+
           {busy && (
             <div className="mt-3 flex items-center gap-2 text-[12.5px]">
               <AsPill tone="amber"><Timer className="h-3 w-3" />{timer}</AsPill>
@@ -110,16 +123,25 @@ const Card: React.FC<{
                   className="w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white"
                   onClick={() => onStart(w)}
                 >
-                  <Play className="h-4 w-4 mr-1" /> Start
+                  <Play className="h-4 w-4 mr-1" /> {paused ? "Verder" : "Start"}
                 </Button>
               ) : mine ? (
+                <div className="flex gap-2">
                 <Button
                   size="lg"
-                  className="w-full h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="flex-1 h-12 text-base font-semibold bg-amber-500 hover:bg-amber-600 text-white"
+                  onClick={() => onPause(w)}
+                >
+                  <Pause className="h-4 w-4 mr-1" /> Pauze
+                </Button>
+                <Button
+                  size="lg"
+                  className="flex-1 h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
                   onClick={() => onDone(w)}
                 >
                   <Check className="h-4 w-4 mr-1" /> Klaar
                 </Button>
+                </div>
               ) : null}
             </div>
           )}
@@ -136,6 +158,7 @@ const WerkplaatsSchadeherstel: React.FC = () => {
   const [myId, setMyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<WO | null>(null);
+  const [pauseTarget, setPauseTarget] = useState<WO | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -146,7 +169,7 @@ const WerkplaatsSchadeherstel: React.FC = () => {
     const [openRes, doneRes] = await Promise.all([
       supabase.from("work_orders").select(SELECT)
         .eq("discipline", "spuit")
-        .in("status", ["aangevraagd", "ingepland", "bezig"])
+        .in("status", [...OPEN_WO_STATUSES])
         .order("is_rush", { ascending: false })
         .order("sort_order", { ascending: true }),
       supabase.from("work_orders").select(SELECT)
@@ -186,7 +209,7 @@ const WerkplaatsSchadeherstel: React.FC = () => {
     const uid = userRes.user?.id;
     if (!uid) return;
     const { error } = await supabase.from("work_orders")
-      .update({ assigned_to: uid, status: "bezig", started_at: new Date().toISOString() })
+      .update({ assigned_to: uid, ...resumeFields() })
       .eq("id", w.id);
     if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Gestart" });
@@ -195,13 +218,20 @@ const WerkplaatsSchadeherstel: React.FC = () => {
   };
 
   const handleDone = async (w: WO) => {
-    const startedAt = w.started_at ? new Date(w.started_at).getTime() : null;
-    const workSeconds = startedAt ? Math.max(0, Math.round((Date.now() - startedAt) / 1000)) : null;
     const { error } = await supabase.from("work_orders")
-      .update({ status: "afgerond", finished_at: new Date().toISOString(), work_seconds: workSeconds })
+      .update(finishFields(w))
       .eq("id", w.id);
     if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Klaar gemeld" });
+    setDetail(null);
+    load();
+  };
+
+  const handlePause = async (w: WO, reason: string) => {
+    const { error } = await pauseWorkOrder(w, reason);
+    if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Gepauzeerd", description: "De gewerkte tijd is bewaard — je kunt later verdergaan." });
+    setPauseTarget(null);
     setDetail(null);
     load();
   };
@@ -231,10 +261,10 @@ const WerkplaatsSchadeherstel: React.FC = () => {
         ) : (
           <div className="space-y-3">
             {open.map(w => (
-              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onOpen={setDetail} />
+              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onPause={setPauseTarget} onOpen={setDetail} />
             ))}
             {done.map(w => (
-              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onOpen={setDetail} />
+              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onPause={setPauseTarget} onOpen={setDetail} />
             ))}
           </div>
         )}
@@ -247,15 +277,27 @@ const WerkplaatsSchadeherstel: React.FC = () => {
             detail.status !== "bezig" ? (
               <Button size="lg" className="w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white"
                 onClick={() => handleStart(detail)}>
-                <Play className="h-4 w-4 mr-1" /> Start
+                <Play className="h-4 w-4 mr-1" /> {detail.status === "gepauzeerd" ? "Verder" : "Start"}
               </Button>
             ) : detail.assigned_to === myId ? (
-              <Button size="lg" className="w-full h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
-                onClick={() => handleDone(detail)}>
-                <Check className="h-4 w-4 mr-1" /> Klaar
-              </Button>
+              <div className="flex gap-2">
+                <Button size="lg" className="flex-1 h-12 text-base font-semibold bg-amber-500 hover:bg-amber-600 text-white"
+                  onClick={() => setPauseTarget(detail)}>
+                  <Pause className="h-4 w-4 mr-1" /> Pauze
+                </Button>
+                <Button size="lg" className="flex-1 h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => handleDone(detail)}>
+                  <Check className="h-4 w-4 mr-1" /> Klaar
+                </Button>
+              </div>
             ) : null
           ) : null}
+        />
+
+        <PauseTaskDialog
+          open={!!pauseTarget}
+          onOpenChange={(v) => !v && setPauseTarget(null)}
+          onConfirm={(reason) => pauseTarget && handlePause(pauseTarget, reason)}
         />
       </AsPage>
     </DashboardLayout>
