@@ -5083,6 +5083,9 @@ export type Database = {
           origin: string
           part: string | null
           parts: Json
+          pause_reason: string | null
+          paused_at: string | null
+          paused_seconds: number
           photos: Json | null
           planned_at: string | null
           poets_type: string | null
@@ -5119,6 +5122,9 @@ export type Database = {
           origin?: string
           part?: string | null
           parts?: Json
+          pause_reason?: string | null
+          paused_at?: string | null
+          paused_seconds?: number
           photos?: Json | null
           planned_at?: string | null
           poets_type?: string | null
@@ -5155,6 +5161,9 @@ export type Database = {
           origin?: string
           part?: string | null
           parts?: Json
+          pause_reason?: string | null
+          paused_at?: string | null
+          paused_seconds?: number
           photos?: Json | null
           planned_at?: string | null
           poets_type?: string | null
