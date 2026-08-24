@@ -175,6 +175,7 @@ const TaskCard: React.FC<{
             </>
           )}
           {w.status === "bezig" && live && <AsPill tone="violet">● bezig · {live}</AsPill>}
+          {w.status === "gepauzeerd" && <AsPill tone="amber">⏸ gepauzeerd</AsPill>}
           {w.source && <AsPill tone="slate">{w.source}</AsPill>}
         </div>
         {(w.started_at || w.source) && (
@@ -317,7 +318,7 @@ const WerkplaatsPlanning: React.FC = () => {
     let q = supabase
       .from("work_orders")
       .select(select)
-      .in("status", ["ingepland", "bezig"])
+      .in("status", ["ingepland", "bezig", "gepauzeerd"])
       .eq("discipline", discipline)
       .order("is_rush", { ascending: false })
       .order("sort_order", { ascending: true });

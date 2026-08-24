@@ -122,7 +122,7 @@ const WerkplaatsPoetsen: React.FC = () => {
       .from("work_orders")
       .select("id, description, status, poets_type, due_date, created_at, started_at, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, year, mileage, color, vin)")
       .eq("discipline", "poets")
-      .in("status", ["ingepland", "bezig"]);
+      .in("status", ["ingepland", "bezig", "gepauzeerd"]);
     q = applyBranchFilter(q as any, branchFilter);
     const { data, error } = await q;
     if (error) toast({ title: "Fout bij laden", description: error.message, variant: "destructive" });

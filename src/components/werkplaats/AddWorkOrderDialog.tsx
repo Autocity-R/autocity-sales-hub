@@ -62,7 +62,7 @@ export const AddWorkOrderDialog: React.FC<Props> = ({
         .from("work_orders")
         .select("sort_order")
         .eq("discipline", discipline)
-        .in("status", ["ingepland", "bezig"])
+        .in("status", ["ingepland", "bezig", "gepauzeerd"])
         .order("sort_order", { ascending: true });
       const orders = (bounds || []).map((r: any) => Number(r.sort_order) || 0);
       const nextSort = isRush

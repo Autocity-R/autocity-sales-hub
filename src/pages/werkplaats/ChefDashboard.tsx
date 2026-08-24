@@ -64,7 +64,7 @@ interface ChefData {
   monteurs: MonteurCard[];
 }
 
-const OPEN_STATUSES = ["aangevraagd", "ingepland", "bezig"];
+const OPEN_STATUSES = ["aangevraagd", "ingepland", "bezig", "gepauzeerd"];
 const vLabel = (v: any) => (v ? `${v.brand || ""} ${v.model || ""}`.trim() : "Onbekend voertuig");
 const fmtDuration = (s: number) => {
   const h = Math.floor(s / 3600);
@@ -85,7 +85,7 @@ async function loadChef(branch: BranchFilter): Promise<ChefData> {
   const [externRes, openRes, approvalRes, doneRes, rolesRes] = await Promise.all([
     base()
       .eq("origin", "extern")
-      .in("status", ["aangevraagd", "ingepland", "bezig"])
+      .in("status", ["aangevraagd", "ingepland", "bezig", "gepauzeerd"])
       .gte("planned_at", startToday.toISOString())
       .lte("planned_at", endTomorrow.toISOString())
       .order("planned_at", { ascending: true }),
