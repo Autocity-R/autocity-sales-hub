@@ -3,6 +3,7 @@ export type WorkOrderStatus =
   | "aangevraagd"
   | "ingepland"
   | "bezig"
+  | "gepauzeerd"
   | "afgerond"
   | "goedgekeurd"
   | "geannuleerd";
