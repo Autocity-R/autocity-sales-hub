@@ -11,12 +11,15 @@ import {
 } from "@/components/aftersales/ui";
 import {
   Loader2, Play, CheckCircle2, Timer, Clock, HandMetal, CalendarDays, Inbox, Phone, Undo2,
-  RefreshCw,
+  RefreshCw, Pause,
 } from "lucide-react";
 import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 import { MyPerformanceCard } from "@/components/werkplaats/MyPerformanceCard";
 import { isPlannedInFuture, formatPlannedDay } from "@/components/werkplaats/plannedVisibility";
 import { PartChips } from "@/components/werkplaats/workOrderParts";
+
+import { OPEN_WO_STATUSES, pauseWorkOrder, resumeFields, finishFields } from "@/components/werkplaats/workOrderPause";
+import { PauseTaskDialog } from "@/components/werkplaats/PauseTaskDialog";
 
 interface WorkRow {
   id: string;
@@ -27,6 +30,8 @@ interface WorkRow {
   status: string;
   planned_at: string | null;
   started_at: string | null;
+  paused_seconds?: number | null;
+  pause_reason?: string | null;
   is_rush: boolean;
   assigned_to: string | null;
   origin: string | null;
@@ -40,18 +45,19 @@ interface WorkRow {
 }
 
 const SELECT =
-  "id, description, part, parts, photos, status, discipline, planned_at, started_at, is_rush, assigned_to, origin, warranty_claim_id, external_customer, branch, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, license_number, year)";
+  "id, description, part, parts, photos, status, discipline, planned_at, started_at, paused_seconds, pause_reason, is_rush, assigned_to, origin, warranty_claim_id, external_customer, branch, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, license_number, year)";
 
 const MijnWerkCard: React.FC<{
   w: WorkRow;
   mine: boolean;
   onStart: (w: WorkRow) => void;
   onDone: (w: WorkRow) => void;
+  onPause: (w: WorkRow) => void;
   onClaim: (w: WorkRow) => void;
   onRelease: (w: WorkRow) => void;
   busy: boolean;
   onOpen?: (w: WorkRow) => void;
-}> = ({ w, mine, onStart, onDone, onClaim, onRelease, busy, onOpen }) => {
+}> = ({ w, mine, onStart, onDone, onPause, onClaim, onRelease, busy, onOpen }) => {
   const timer = useLiveTimer(w.status === "bezig" ? w.started_at : null);
   const ext = (w.external_customer || {}) as any;
   const isExtern = w.origin === "extern";
@@ -98,6 +104,12 @@ const MijnWerkCard: React.FC<{
         </div>
       )}
 
+      {w.status === "gepauzeerd" && (
+        <div className="inline-flex self-start items-center gap-1.5 px-2.5 py-1 rounded-md border border-amber-200 bg-amber-50 text-amber-800 text-[13px] font-semibold">
+          <Pause className="h-4 w-4" /> Gepauzeerd{w.pause_reason ? ` · ${w.pause_reason}` : ""}
+        </div>
+      )}
+
       <div onClick={(e) => e.stopPropagation()} className="contents">
       {!mine ? (
         <Button onClick={() => onClaim(w)} disabled={busy}
@@ -105,15 +117,21 @@ const MijnWerkCard: React.FC<{
           <HandMetal className="h-5 w-5 mr-2" /> Oppakken
         </Button>
       ) : w.status === "bezig" ? (
-        <Button onClick={() => onDone(w)} disabled={busy}
-          className="h-12 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[15px] font-semibold">
-          <CheckCircle2 className="h-5 w-5 mr-2" /> Klaar
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => onPause(w)} disabled={busy}
+            className="h-12 flex-1 bg-amber-500 hover:bg-amber-600 text-white text-[15px] font-semibold">
+            <Pause className="h-5 w-5 mr-1" /> Pauze
+          </Button>
+          <Button onClick={() => onDone(w)} disabled={busy}
+            className="h-12 flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[15px] font-semibold">
+            <CheckCircle2 className="h-5 w-5 mr-1" /> Klaar
+          </Button>
+        </div>
       ) : (
         <div className="flex flex-col gap-2">
           <Button onClick={() => onStart(w)} disabled={busy}
             className="h-12 w-full bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold">
-            <Play className="h-5 w-5 mr-2" /> Start
+            <Play className="h-5 w-5 mr-2" /> {w.status === "gepauzeerd" ? "Verder" : "Start"}
           </Button>
           <Button onClick={() => onRelease(w)} disabled={busy} variant="outline"
             className="h-10 w-full text-[13.5px] font-medium text-slate-600">
@@ -131,6 +149,7 @@ const MijnWerk: React.FC = () => {
   const [rows, setRows] = useState<WorkRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [pauseTarget, setPauseTarget] = useState<WorkRow | null>(null);
   const [detail, setDetail] = useState<WorkRow | null>(null);
 
   const load = useCallback(async () => {
@@ -143,7 +162,7 @@ const MijnWerk: React.FC = () => {
       .from("work_orders")
       .select(SELECT)
       .eq("discipline", "werkplaats")
-      .in("status", ["aangevraagd", "ingepland", "bezig"])
+      .in("status", [...OPEN_WO_STATUSES])
       .order("planned_at", { ascending: true, nullsFirst: false });
 
     if (error) toast({ title: "Fout bij laden", description: error.message, variant: "destructive" });
@@ -250,21 +269,27 @@ const MijnWerk: React.FC = () => {
 
   const onStart = async (w: WorkRow) => {
     if (blockIfFuture(w)) { setDetail(null); load(); return; }
-    const startedAt = new Date().toISOString();
-    await patch(w.id, { status: "bezig", started_at: startedAt }, { status: "bezig", started_at: startedAt });
+    const fields = resumeFields();
+    await patch(w.id, fields, fields);
     setDetail(null);
   };
 
+  const onPause = async (w: WorkRow, reason: string) => {
+    const { error } = await pauseWorkOrder(w, reason);
+    if (error) {
+      toast({ title: "Kon niet pauzeren", description: error.message, variant: "destructive" });
+      return;
+    }
+    setPauseTarget(null);
+    setDetail(null);
+    toast({ title: "Gepauzeerd", description: "Je tijd is bewaard — pak later weer op." });
+    load();
+  };
+
   const onDone = async (w: WorkRow) => {
-    const started = w.started_at ? new Date(w.started_at).getTime() : null;
-    const workSeconds = started ? Math.max(0, Math.round((Date.now() - started) / 1000)) : null;
     setRows(prev => prev.filter(r => r.id !== w.id));
     setDetail(null);
-    const { error } = await supabase.from("work_orders").update({
-      status: "afgerond",
-      finished_at: new Date().toISOString(),
-      work_seconds: workSeconds,
-    } as any).eq("id", w.id);
+    const { error } = await supabase.from("work_orders").update(finishFields(w)).eq("id", w.id);
     if (error) {
       toast({ title: "Kon niet afronden", description: error.message, variant: "destructive" });
       load();
@@ -293,7 +318,7 @@ const MijnWerk: React.FC = () => {
           </div>
         ) : list.map(w => (
           <MijnWerkCard key={w.id} w={w} mine={!!w.assigned_to}
-            onStart={onStart} onDone={onDone} onClaim={onClaim} onRelease={onRelease} busy={busy} onOpen={setDetail} />
+            onStart={onStart} onDone={onDone} onPause={setPauseTarget} onClaim={onClaim} onRelease={onRelease} busy={busy} onOpen={setDetail} />
         ))}
       </div>
     </AsCard>
@@ -339,17 +364,30 @@ const MijnWerk: React.FC = () => {
                 <HandMetal className="h-5 w-5 mr-2" /> Oppakken
               </Button>
             ) : detail.status === "bezig" ? (
-              <Button onClick={() => onDone(detail)} disabled={busy}
-                className="h-12 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[15px] font-semibold">
-                <CheckCircle2 className="h-5 w-5 mr-2" /> Klaar
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => setPauseTarget(detail)} disabled={busy}
+                  className="h-12 flex-1 bg-amber-500 hover:bg-amber-600 text-white text-[15px] font-semibold">
+                  <Pause className="h-5 w-5 mr-1" /> Pauze
+                </Button>
+                <Button onClick={() => onDone(detail)} disabled={busy}
+                  className="h-12 flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[15px] font-semibold">
+                  <CheckCircle2 className="h-5 w-5 mr-1" /> Klaar
+                </Button>
+              </div>
             ) : (
               <Button onClick={() => onStart(detail)} disabled={busy}
                 className="h-12 w-full bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold">
-                <Play className="h-5 w-5 mr-2" /> Start
+                <Play className="h-5 w-5 mr-2" /> {detail.status === "gepauzeerd" ? "Verder" : "Start"}
               </Button>
             )
           ) : null}
+        />
+
+        <PauseTaskDialog
+          open={!!pauseTarget}
+          onOpenChange={(v) => !v && setPauseTarget(null)}
+          onConfirm={(reason) => pauseTarget && onPause(pauseTarget, reason)}
+          busy={busy}
         />
       </AsPage>
     </DashboardLayout>
