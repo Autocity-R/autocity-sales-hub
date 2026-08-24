@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { AsLicensePlate, AsMono, AsPill } from "@/components/aftersales/ui";
 import { DamageDiagram, findZoneByName, DamageMarker } from "@/components/aftersales/DamageDiagram";
@@ -171,19 +171,32 @@ export const TaskDetailSheet: React.FC<Props> = ({ open, onOpenChange, workOrder
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="h-[95vh] p-0 overflow-y-auto rounded-t-2xl">
-          {/* Voertuigkop */}
-          <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-3 flex items-start gap-3">
-            <AsLicensePlate value={v?.license_number} size="lg" />
-            <div className="min-w-0 flex-1">
-              <div className="text-[15px] font-bold tracking-tight text-slate-900 truncate">
-                {[v?.brand, v?.model].filter(Boolean).join(" ") || "Voertuig"}
-                {v?.year ? <span className="text-slate-500 font-semibold"> · {v.year}</span> : null}
+        <SheetContent side="bottom" hideClose className="h-[95vh] p-0 overflow-y-auto rounded-t-2xl">
+          {/* Drag handle + sluitknop */}
+          <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-3">
+            <div className="flex justify-center mb-2 md:hidden">
+              <div className="w-10 h-1.5 rounded-full bg-slate-300" aria-hidden="true" />
+            </div>
+            <div className="flex items-start gap-3">
+              <AsLicensePlate value={v?.license_number} size="lg" />
+              <div className="min-w-0 flex-1">
+                <div className="text-[15px] font-bold tracking-tight text-slate-900 truncate">
+                  {[v?.brand, v?.model].filter(Boolean).join(" ") || "Voertuig"}
+                  {v?.year ? <span className="text-slate-500 font-semibold"> · {v.year}</span> : null}
+                </div>
+                <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                  {specs.join(" · ")}
+                  {v?.vin && <> {specs.length ? "· " : ""}<AsMono>{v.vin}</AsMono></>}
+                </div>
               </div>
-              <div className="text-[11px] text-slate-500 truncate mt-0.5">
-                {specs.join(" · ")}
-                {v?.vin && <> {specs.length ? "· " : ""}<AsMono>{v.vin}</AsMono></>}
-              </div>
+              <SheetClose
+                asChild
+                className="shrink-0 -mr-2 -mt-1 p-2 rounded-full text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-300"
+              >
+                <button aria-label="Sluiten" className="h-10 w-10 flex items-center justify-center">
+                  <X className="h-5 w-5" />
+                </button>
+              </SheetClose>
             </div>
           </div>
 
