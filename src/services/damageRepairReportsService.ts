@@ -48,31 +48,26 @@ export interface DamageRepairStats {
 export const damageRepairReportsService = {
   async getDamageRepairStats(period: ReportPeriod, branch?: BranchFilter): Promise<DamageRepairStats> {
     try {
-      // damage_repair_records heeft geen FK naar vehicles → geen embed, branch-filter via losse map
+      // Fetch from permanent damage_repair_records table (join vehicles voor branch-filter)
       const wantInner = !!(branch && branch !== 'all');
-      const { data: records, error } = await supabase
+      const joinSpec = wantInner
+        ? 'vehicle:vehicles!inner(branch)'
+        : 'vehicle:vehicles(branch)';
+      let dq: any = supabase
         .from('damage_repair_records')
-        .select('*')
+        .select(`*, ${joinSpec}`)
         .gte('completed_at', period.startDate)
         .lte('completed_at', period.endDate)
         .order('completed_at', { ascending: false });
+      if (wantInner) {
+        dq = dq.eq('vehicle.branch', branch);
+      }
+      const { data: records, error } = await dq;
 
       if (error) {
         console.error('Error fetching damage repair records:', error);
         throw error;
       }
-
-      // Vestiging per auto ophalen voor het branch-filter en de labels
-      const recVehicleIds = Array.from(new Set((records || []).map((r: any) => r.vehicle_id).filter(Boolean))) as string[];
-      const branchByVehicle = new Map<string, string | null>();
-      if (recVehicleIds.length > 0) {
-        const { data: vs } = await supabase.from('vehicles').select('id,branch').in('id', recVehicleIds);
-        for (const v of vs || []) branchByVehicle.set(v.id, (v as any).branch ?? null);
-      }
-      const scopedRecords = wantInner
-        ? (records || []).filter((r: any) => !r.vehicle_id || branchByVehicle.get(r.vehicle_id) === branch)
-        : (records || []);
-
 
       // Process the data
       const repairHistory: RepairRecord[] = [];
@@ -82,11 +77,11 @@ export const damageRepairReportsService = {
 
       let totalParts = 0;
 
-      for (const record of scopedRecords) {
+      for (const record of records || []) {
         const parts = (record.repaired_parts as string[]) || [];
         const partCount = record.part_count || parts.length;
         totalParts += partCount;
-        const vBranch: string | null = record.vehicle_id ? (branchByVehicle.get(record.vehicle_id) ?? null) : null;
+        const vBranch: string | null = (record as any)?.vehicle?.branch ?? null;
 
         // Track vehicle
         if (record.vehicle_id) {
@@ -147,7 +142,7 @@ export const damageRepairReportsService = {
       const totalVehicles = vehicleIds.size;
 
       return {
-        totalTasks: scopedRecords.length,
+        totalTasks: records?.length || 0,
         totalParts,
         totalRevenue,
         totalVehicles,
