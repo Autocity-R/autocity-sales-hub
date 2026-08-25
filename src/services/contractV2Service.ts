@@ -110,10 +110,11 @@ export interface SendContractResult {
 export async function sendContractV2(
   contractId: string,
   overrideEmail?: string | null,
+  resend = false,
 ): Promise<SendContractResult> {
   const publicBaseUrl = window.location.origin;
   const { data, error } = await supabase.functions.invoke("contract-send", {
-    body: { contractId, publicBaseUrl, overrideEmail: overrideEmail ?? null },
+    body: { contractId, publicBaseUrl, overrideEmail: overrideEmail ?? null, resend },
   });
   if (error) return { error: error.message };
   return data as SendContractResult;
