@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, Send, Eye, CheckCircle2, Ban, Download } from "lucide-react";
+import { FileText, Send, Eye, CheckCircle2, Ban, Download, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   cancelContractV2,
   fetchVehicleContractsV2,
+  sendContractV2,
   VehicleContractV2,
 } from "@/services/contractV2Service";
 
@@ -62,6 +63,7 @@ export const VehicleContractStatusList: React.FC<Props> = ({
   const queryClient = useQueryClient();
   const [toCancel, setToCancel] = useState<VehicleContractV2 | null>(null);
   const [busy, setBusy] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   const { data: contracts = [] } = useQuery({
     queryKey: ["contractsV2", vehicleId],
@@ -96,6 +98,34 @@ export const VehicleContractStatusList: React.FC<Props> = ({
     queryClient.invalidateQueries({ queryKey: ["vehicleFiles", vehicleId] });
   };
 
+  const handleResend = async (contract: VehicleContractV2) => {
+    setResendingId(contract.id);
+    const res = await sendContractV2(contract.id, null, true);
+    setResendingId(null);
+
+    if (res.error) {
+      toast({
+        title: "Opnieuw versturen mislukt",
+        description:
+          res.error === "missing_recipient"
+            ? "Er is geen e-mailadres bekend voor deze klant."
+            : res.error === "already_signed"
+              ? "Dit contract is al getekend."
+              : res.error === "cancelled"
+                ? "Dit contract is ingetrokken en kan niet opnieuw verstuurd worden."
+                : res.detail || res.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Tekenlink opnieuw verstuurd",
+      description: "De klant heeft een nieuwe link ontvangen die weer 48 uur geldig is.",
+    });
+    queryClient.invalidateQueries({ queryKey: ["contractsV2", vehicleId] });
+  };
+
   if (contracts.length === 0) return null;
 
   return (
@@ -125,6 +155,21 @@ export const VehicleContractStatusList: React.FC<Props> = ({
                         <Download className="h-3 w-3 mr-1" />
                         Getekende PDF
                       </a>
+                    </Button>
+                  )}
+                  {!readOnly && !signed && c.status !== "opgeslagen" && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleResend(c)}
+                      disabled={resendingId === c.id}
+                    >
+                      {resendingId === c.id ? (
+                        <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                      ) : (
+                        <Send className="h-3 w-3 mr-1" />
+                      )}
+                      Opnieuw versturen
                     </Button>
                   )}
                   {!readOnly && (!signed || isAdmin) && (
