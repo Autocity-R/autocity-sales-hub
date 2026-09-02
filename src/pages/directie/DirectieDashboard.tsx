@@ -2,7 +2,7 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import {
   Download, TrendingUp, TrendingDown, Wrench, Clock, ShieldIcon,
@@ -12,6 +12,10 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono } from "@/components/aftersales/ui";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import {
+  DISCIPLINE_ICON, DISCIPLINE_LABELS, STATUS_LABELS,
+  type WorkOrderDiscipline, type WorkOrderStatus,
+} from "@/components/werkplaats/workOrderTypes";
 import {
   fetchDirectieRaw, buildRange, sent, sum, delta, hoursOf, branchStats, monthlyTrend,
   employeeKpis, flowStats, warrantyStats, topVehicles, wipEstimate, downloadCsv,
@@ -203,15 +207,15 @@ const DirectieDashboard: React.FC = () => {
 
               <div className="mt-4 h-[220px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={m.trend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <BarChart data={m.trend} barGap={4}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `€${Math.round(v / 1000)}k`} />
                     <Tooltip formatter={(v: any) => eur(Number(v))} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Line type="monotone" dataKey="intern" name="Intern" stroke="#2563eb" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="extern" name="Extern" stroke="#059669" strokeWidth={2} dot={false} />
-                  </LineChart>
+                    <Bar dataKey="intern" name="Intern" fill="#2563eb" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                    <Bar dataKey="extern" name="Extern" fill="#059669" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
               <div className="mt-2 text-[11px] text-slate-500">
@@ -296,13 +300,42 @@ const DirectieDashboard: React.FC = () => {
                 <div>
                   <div className="text-slate-500">Oudste open taak</div>
                   <div className="text-[16px] font-bold tabular-nums">{m.flow.oldestDays} d</div>
-                  {m.flow.oldest?.vehicle_id && raw?.vehicles[m.flow.oldest.vehicle_id] && (
-                    <AsLicensePlate size="sm" value={raw.vehicles[m.flow.oldest.vehicle_id].license_number} />
-                  )}
                 </div>
                 <div><div className="text-slate-500">Spoed-aandeel</div><div className="text-[16px] font-bold tabular-nums">{num(m.flow.rushPct, 0)}%</div></div>
                 <div><div className="text-slate-500">Open taken in de pot</div><div className="text-[16px] font-bold tabular-nums">{m.flow.unassigned}</div></div>
               </div>
+
+              {m.flow.oldestList.length > 0 && (
+                <div className="mt-4">
+                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    Oudste open taken — onderbouwing
+                  </div>
+                  <div className="space-y-2">
+                    {m.flow.oldestList.map(t => (
+                      <div key={t.id} className="rounded-xl border border-slate-200 bg-[#f8f9fb] p-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {t.licensePlate && <AsLicensePlate size="sm" value={t.licensePlate} />}
+                          {t.vehicleLabel && <span className="text-[12px] font-semibold text-slate-800">{t.vehicleLabel}</span>}
+                          <AsPill tone="amber">{t.days} d open</AsPill>
+                          {t.isRush && <AsPill tone="red">Spoed</AsPill>}
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-slate-600">
+                          <span className="font-semibold text-slate-800">
+                            {DISCIPLINE_ICON[(t.discipline || "werkplaats") as WorkOrderDiscipline] || "🔧"}{" "}
+                            {DISCIPLINE_LABELS[(t.discipline || "") as WorkOrderDiscipline] || t.discipline || "Onbekende discipline"}
+                          </span>
+                          <span>Status: {STATUS_LABELS[(t.status || "") as WorkOrderStatus] || t.status || "—"}</span>
+                          <span>Werk: {t.part || "niet gespecificeerd"}</span>
+                          <span>Monteur: {t.assignedName || "niet toegewezen"}</span>
+                          <span>Aangemeld: {new Date(t.createdAt).toLocaleDateString("nl-NL")}</span>
+                          {t.dueDate && <span>Deadline: {new Date(t.dueDate).toLocaleDateString("nl-NL")}</span>}
+                          {t.origin && <span>Herkomst: {t.origin}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </Block>
 
             {/* E. Garantie */}

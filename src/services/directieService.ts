@@ -217,12 +217,38 @@ export function flowStats(raw: DirectieRaw) {
   const avgLead = durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
 
   const waitingRepair = new Set(raw.ordersOpen.filter(o => ["spuit", "uitdeuk"].includes(o.discipline || "")).map(o => o.vehicle_id)).size;
-  const oldest = [...raw.ordersOpen].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at))[0];
+  const sortedOpen = [...raw.ordersOpen].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+  const oldest = sortedOpen[0];
   const oldestDays = oldest ? Math.floor((Date.now() - +new Date(oldest.created_at)) / 86400000) : 0;
   const rushPct = raw.orders.length ? (raw.orders.filter(o => o.is_rush).length / raw.orders.length) * 100 : 0;
   const unassigned = raw.ordersOpen.filter(o => !o.assigned_to).length;
 
-  return { avgLead, waitingRepair, oldest, oldestDays, rushPct, unassigned };
+  const profileName = (id: string | null) => {
+    if (!id) return null;
+    const p = raw.profiles.find(x => x.id === id);
+    return p ? `${p.first_name || ""} ${p.last_name || ""}`.trim() || null : null;
+  };
+
+  const oldestList = sortedOpen.slice(0, 5).map(o => {
+    const v = o.vehicle_id ? raw.vehicles[o.vehicle_id] : undefined;
+    return {
+      id: o.id,
+      days: Math.floor((Date.now() - +new Date(o.created_at)) / 86400000),
+      discipline: o.discipline,
+      status: o.status,
+      part: o.part,
+      origin: o.origin,
+      isRush: !!o.is_rush,
+      dueDate: o.due_date,
+      createdAt: o.created_at,
+      assignedName: profileName(o.assigned_to),
+      vehicleId: o.vehicle_id,
+      licensePlate: v?.license_number || null,
+      vehicleLabel: v ? [v.brand, v.model].filter(Boolean).join(" ") : null,
+    };
+  });
+
+  return { avgLead, waitingRepair, oldest, oldestDays, oldestList, rushPct, unassigned };
 }
 
 export function warrantyStats(raw: DirectieRaw) {
