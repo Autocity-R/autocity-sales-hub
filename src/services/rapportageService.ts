@@ -1,12 +1,109 @@
 import { supabase } from "@/integrations/supabase/client";
 import { buildRange, downloadCsv, type DirectiePeriod, type DirectieBranch } from "@/services/directieService";
 
-export type RapPeriod = DirectiePeriod;
+/** Vaste snelkeuzes + "custom" (eigen van–tot bereik). */
+export type RapPeriod = DirectiePeriod | "prev_month" | "prev_quarter" | "prev_year" | "custom";
 export type RapBranch = DirectieBranch;
 export { buildRange, downloadCsv };
 
+/** Keuze zoals die in de URL staat. customFrom/customTo zijn yyyy-MM-dd (inclusief einddag). */
+export interface RapSelection { period: RapPeriod; customFrom?: string | null; customTo?: string | null }
+
+export interface RapResolved {
+  from: Date; to: Date; prevFrom: Date; prevTo: Date;
+  trendFrom: Date; trendTo: Date;
+  label: string; slug: string;
+}
+
+const d2 = (n: number) => String(n).padStart(2, "0");
+const iso = (d: Date) => `${d.getFullYear()}-${d2(d.getMonth() + 1)}-${d2(d.getDate())}`;
+const nlDate = (d: Date) => d.toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit", year: "numeric" });
+const monthStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
+const parseDay = (s?: string | null) => {
+  if (!s) return null;
+  const [y, m, day] = s.split("-").map(Number);
+  if (!y || !m || !day) return null;
+  return new Date(y, m - 1, day);
+};
+
+/** Laatste 6 maanden (voor de vaste periodes), of de maanden rond een eigen bereik (max 12). */
+const trendWindow = (from: Date, to: Date, custom: boolean): { trendFrom: Date; trendTo: Date } => {
+  if (!custom) {
+    const t = new Date(); t.setMonth(t.getMonth() - 5); t.setDate(1); t.setHours(0, 0, 0, 0);
+    const end = new Date(t.getFullYear(), t.getMonth() + 6, 1);
+    return { trendFrom: t, trendTo: end };
+  }
+  const start = monthStart(from);
+  const endExcl = new Date(to.getFullYear(), to.getMonth() + 1, 1);
+  let months = (endExcl.getFullYear() - start.getFullYear()) * 12 + (endExcl.getMonth() - start.getMonth());
+  if (months > 12) return { trendFrom: new Date(endExcl.getFullYear(), endExcl.getMonth() - 12, 1), trendTo: endExcl };
+  return { trendFrom: start, trendTo: endExcl };
+};
+
+/** Maandbuckets [start, next) binnen een venster. */
+export function monthBuckets(trendFrom: Date, trendTo: Date) {
+  const out: { key: string; label: string; from: Date; to: Date }[] = [];
+  let d = monthStart(trendFrom);
+  while (+d < +trendTo && out.length < 24) {
+    const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    out.push({
+      key: `${d.getFullYear()}-${d2(d.getMonth() + 1)}`,
+      label: d.toLocaleDateString("nl-NL", { month: "short", year: "2-digit" }),
+      from: d, to: next,
+    });
+    d = next;
+  }
+  return out;
+}
+
+/** Zet een keuze om in concrete datumvensters. Vaste periodes gebruiken de bestaande buildRange. */
+export function resolveRange(sel: RapSelection, now = new Date()): RapResolved {
+  const p = sel.period;
+  if (p === "custom") {
+    const a = parseDay(sel.customFrom), b = parseDay(sel.customTo);
+    if (a && b) {
+      const from = new Date(a); from.setHours(0, 0, 0, 0);
+      const to = new Date(b); to.setHours(0, 0, 0, 0); to.setDate(to.getDate() + 1); // einddag inclusief
+      const span = +to - +from;
+      const prevTo = from;
+      const prevFrom = new Date(+from - span);
+      const { trendFrom, trendTo } = trendWindow(from, new Date(+to - 1), true);
+      return {
+        from, to, prevFrom, prevTo, trendFrom, trendTo,
+        label: `${nlDate(from)} t/m ${nlDate(new Date(+to - 86400000))}`,
+        slug: `${iso(from)}_${iso(new Date(+to - 86400000))}`,
+      };
+    }
+    // onvolledige keuze → val terug op deze maand
+    return resolveRange({ period: "month" }, now);
+  }
+
+  let base: DirectiePeriod = "month";
+  let ref = now;
+  if (p === "week") base = "week";
+  else if (p === "month") base = "month";
+  else if (p === "quarter") base = "quarter";
+  else if (p === "year") base = "year";
+  else if (p === "prev_month") { base = "month"; ref = new Date(now.getFullYear(), now.getMonth() - 1, 15); }
+  else if (p === "prev_quarter") { base = "quarter"; ref = new Date(now.getFullYear(), now.getMonth() - 3, 15); }
+  else if (p === "prev_year") { base = "year"; ref = new Date(now.getFullYear() - 1, 6, 1); }
+
+  const r = buildRange(base, ref);
+  const { trendFrom, trendTo } = trendWindow(r.from, r.to, false);
+  const labels: Record<string, string> = {
+    week: "Deze week", month: "Deze maand", quarter: "Dit kwartaal", year: "Dit jaar",
+    prev_month: "Vorige maand", prev_quarter: "Vorig kwartaal", prev_year: "Vorig jaar",
+  };
+  return {
+    ...r, trendFrom, trendTo,
+    label: labels[p] || p,
+    slug: `${iso(r.from)}_${iso(new Date(+r.to - 86400000))}`,
+  };
+}
+
 /** Minimaal aantal observaties voordat een gemiddelde eerlijk is. */
 export const MIN_N = 3;
+
 
 export interface RapInvoice {
   id: string; invoice_kind: string | null; subtotal: number | null; total: number | null;
@@ -29,10 +126,13 @@ export interface RapProfile { id: string; first_name: string | null; last_name: 
 
 export interface RapRaw {
   from: Date; to: Date; prevFrom: Date; prevTo: Date; sixM: Date;
+  /** venster voor de maandtrend (sixM == trendFrom, blijft voor compatibiliteit bestaan) */
+  trendFrom: Date; trendTo: Date;
+  rangeLabel: string; rangeSlug: string;
   invoices: RapInvoice[];       // periode
   invoicesPrev: RapInvoice[];   // vorige periode
-  invoices6m: RapInvoice[];     // laatste 6 maanden (trend)
-  orders: RapOrder[];           // laatste 6 maanden (alles, filteren in memory)
+  invoices6m: RapInvoice[];     // trendvenster
+  orders: RapOrder[];           // trendvenster (alles, filteren in memory)
   intakes: RapIntake[];
   vehicles: RapVehicle[];
   vehicleInfo: Record<string, { brand: string | null; model: string | null; license_number: string | null }>;
@@ -41,10 +141,11 @@ export interface RapRaw {
 
 const bf = (q: any, branch: RapBranch) => (branch === "all" ? q : q.eq("branch", branch));
 
-export async function fetchRapportageRaw(period: RapPeriod, branch: RapBranch): Promise<RapRaw> {
-  const { from, to, prevFrom, prevTo } = buildRange(period);
-  const sixM = new Date(); sixM.setMonth(sixM.getMonth() - 5); sixM.setDate(1); sixM.setHours(0, 0, 0, 0);
-  const histStart = new Date(Math.min(sixM.getTime(), prevFrom.getTime()));
+export async function fetchRapportageRaw(sel: RapSelection, branch: RapBranch): Promise<RapRaw> {
+  const { from, to, prevFrom, prevTo, trendFrom, trendTo, label, slug } = resolveRange(sel);
+  const sixM = trendFrom;
+  const histStart = new Date(Math.min(trendFrom.getTime(), prevFrom.getTime(), from.getTime()));
+
 
   const invSel = "id,invoice_kind,subtotal,total,status,created_at,branch,vehicle_id,lines,source_work_order_ids,work_order_id";
   const woSel = "id,vehicle_id,discipline,status,work_seconds,assigned_to,created_at,started_at,finished_at,approved_at,is_rush,rejected_count,branch,origin,part,parts,poets_type";
@@ -69,7 +170,8 @@ export async function fetchRapportageRaw(period: RapPeriod, branch: RapBranch): 
   }
 
   return {
-    from, to, prevFrom, prevTo, sixM,
+    from, to, prevFrom, prevTo, sixM, trendFrom, trendTo, rangeLabel: label, rangeSlug: slug,
+
     invoices: invoices6m.filter(i => inRange(i.created_at, from, to)),
     invoicesPrev: invoices6m.filter(i => inRange(i.created_at, prevFrom, prevTo)),
     invoices6m,
@@ -124,7 +226,7 @@ export interface OmzetGroup {
 export interface OmzetStats {
   schade: OmzetGroup; werkplaats: OmzetGroup; poets: OmzetGroup;
   totaal: number;
-  trend: { month: string; schade: number; werkplaats: number; poets: number }[];
+  trend: { month: string; schade: number; werkplaats: number; poets: number; selected: boolean }[];
 }
 
 const emptyGroup = (): OmzetGroup => ({ intern: 0, extern: 0, total: 0, invoices: 0, parts: 0, avgPerInvoice: 0, avgPerPart: 0 });
@@ -176,22 +278,20 @@ export function omzetStats(raw: RapRaw): OmzetStats {
   const { schade, werkplaats } = omzetGroups(raw.invoices);
   const poets = poetsOmzetGroup(raw);
   const trend: OmzetStats["trend"] = [];
-  const now = new Date();
-  const poetsMonths = poetsStats(raw, raw.sixM, new Date(Date.now() + 86400000)).months;
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  const poetsMonths = poetsStats(raw, raw.trendFrom, raw.trendTo).months;
+  monthBuckets(raw.trendFrom, raw.trendTo).forEach(b => {
     let s = 0, w = 0;
-    revenueInvoices(raw.invoices6m).filter(r => inRange(r.created_at, d, next)).forEach(r => {
+    revenueInvoices(raw.invoices6m).filter(r => inRange(r.created_at, b.from, b.to)).forEach(r => {
       const x = splitInvoice(r); s += x.schade; w += x.werk;
     });
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     trend.push({
-      month: d.toLocaleDateString("nl-NL", { month: "short", year: "2-digit" }),
+      month: b.label,
       schade: s, werkplaats: w,
-      poets: poetsMonths.find(m => m.monthKey === key)?.revenueExcl ?? 0,
+      poets: poetsMonths.find(m => m.monthKey === b.key)?.revenueExcl ?? 0,
+      selected: +b.to > +raw.from && +b.from < +raw.to,
     });
-  }
+  });
+
   return { schade, werkplaats, poets, totaal: schade.total + werkplaats.total + poets.total, trend };
 }
 
@@ -481,7 +581,7 @@ export interface PoetsStats {
   internCars: number; externCars: number; unknownCars: number;
   revenueExcl: number; revenueIncl: number;
   persons: PoetsPerson[];
-  months: { month: string; monthKey: string; intern: number; extern: number; revenueIncl: number; revenueExcl: number }[];
+  months: { month: string; monthKey: string; intern: number; extern: number; revenueIncl: number; revenueExcl: number; selected: boolean }[];
   rows: PoetsTrackRow[];
 }
 
@@ -545,21 +645,17 @@ export function poetsStats(raw: RapRaw, from = raw.from, to = raw.to): PoetsStat
   })).sort((a, b) => b.cars - a.cars);
 
   const months: PoetsStats["months"] = [];
-  const now = new Date();
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-    const m = done.filter(o => inRange(poetsDoneAt(o), d, next));
+  monthBuckets(raw.trendFrom, raw.trendTo).forEach(b => {
+    const m = done.filter(o => inRange(poetsDoneAt(o), b.from, b.to));
     const intern = m.filter(o => typeOf(o.assigned_to) === "intern").length;
     const extern = m.filter(o => typeOf(o.assigned_to) === "extern").length;
     months.push({
-      month: d.toLocaleDateString("nl-NL", { month: "short", year: "2-digit" }),
-      monthKey: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
-      intern, extern,
+      month: b.label, monthKey: b.key, intern, extern,
       revenueIncl: intern * POETS_PRICE_INCL,
       revenueExcl: Math.round(intern * POETS_PRICE_EXCL * 100) / 100,
+      selected: +b.to > +from && +b.from < +to,
     });
-  }
+  });
 
   return {
     internCars, externCars, unknownCars,
@@ -569,8 +665,8 @@ export function poetsStats(raw: RapRaw, from = raw.from, to = raw.to): PoetsStat
   };
 }
 
-/** Tracking-overzicht: alle poetsbeurten van de laatste 6 maanden, voor factuurcontrole. */
+/** Tracking-overzicht: alle poetsbeurten binnen het trendvenster, voor factuurcontrole. */
 export function poetsTracking(raw: RapRaw): PoetsTrackRow[] {
-  const wide = poetsStats(raw, raw.sixM, new Date(Date.now() + 86400000));
+  const wide = poetsStats(raw, raw.trendFrom, new Date(Math.max(+raw.trendTo, +raw.to)));
   return wide.rows;
 }

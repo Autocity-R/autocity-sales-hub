@@ -1,6 +1,6 @@
 import React from "react";
 import { PaintBucket, Wrench, BarChart3, Sparkles, Euro } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RapportagesShell, useRapportageFilters, Block, Stat, eur, num, NoData } from "@/components/rapportages/RapportagesShell";
 import { useRapportageData } from "@/hooks/useRapportageData";
@@ -28,8 +28,8 @@ const GroupBlock: React.FC<{
 );
 
 const RapportageOmzet: React.FC = () => {
-  const { period, branch } = useRapportageFilters();
-  const { data: raw, isLoading } = useRapportageData(period, branch);
+  const { period, branch, selection, rangeSlug, rangeLabel } = useRapportageFilters();
+  const { data: raw, isLoading } = useRapportageData(selection, branch);
 
   const stats = raw ? omzetStats(raw) : null;
   const prev = raw ? omzetGroups(raw.invoicesPrev) : null;
@@ -53,8 +53,8 @@ const RapportageOmzet: React.FC = () => {
             title="🎨 Schadeherstel"
             icon={<PaintBucket className="h-4 w-4 text-pink-600" />}
             cur={stats.schade} prev={prev.schade} showParts
-            onExport={() => downloadCsv(`omzet-schadeherstel-${period}.csv`, [{
-              periode: period, vestiging: branch, intern: stats.schade.intern, extern: stats.schade.extern,
+            onExport={() => downloadCsv(`omzet-schadeherstel-${rangeSlug}.csv`, [{
+              periode: rangeSlug, vestiging: branch, intern: stats.schade.intern, extern: stats.schade.extern,
               totaal: stats.schade.total, orders: stats.schade.invoices, delen: stats.schade.parts,
               gem_per_order: Math.round(stats.schade.avgPerInvoice), gem_per_deel: Math.round(stats.schade.avgPerPart),
             }])}
@@ -63,8 +63,8 @@ const RapportageOmzet: React.FC = () => {
             title="🔧 Werkplaats"
             icon={<Wrench className="h-4 w-4 text-blue-600" />}
             cur={stats.werkplaats} prev={prev.werkplaats} showParts={false}
-            onExport={() => downloadCsv(`omzet-werkplaats-${period}.csv`, [{
-              periode: period, vestiging: branch, intern: stats.werkplaats.intern, extern: stats.werkplaats.extern,
+            onExport={() => downloadCsv(`omzet-werkplaats-${rangeSlug}.csv`, [{
+              periode: rangeSlug, vestiging: branch, intern: stats.werkplaats.intern, extern: stats.werkplaats.extern,
               totaal: stats.werkplaats.total, orders: stats.werkplaats.invoices,
               gem_per_order: Math.round(stats.werkplaats.avgPerInvoice),
             }])}
@@ -73,8 +73,8 @@ const RapportageOmzet: React.FC = () => {
             title="✨ Poetsen"
             icon={<Sparkles className="h-4 w-4 text-cyan-600" />}
             sub={`interne poetsbeurten × ${eur(POETS_PRICE_INCL)} incl. btw — externe beurten leveren geen omzet op`}
-            onExport={() => downloadCsv(`omzet-poetsen-${period}.csv`, [{
-              periode: period, vestiging: branch, beurten_intern: stats.poets.invoices,
+            onExport={() => downloadCsv(`omzet-poetsen-${rangeSlug}.csv`, [{
+              periode: rangeSlug, vestiging: branch, beurten_intern: stats.poets.invoices,
               omzet_ex_btw: stats.poets.total, omzet_incl_btw: stats.poets.invoices * POETS_PRICE_INCL,
             }])}
           >
@@ -86,9 +86,10 @@ const RapportageOmzet: React.FC = () => {
             </div>
           </Block>
           <Block
-            title="Maandtrend (laatste 6 maanden)"
+            title={`Maandtrend — ${rangeLabel}`}
+            sub="volle balken vallen binnen het gekozen bereik, lichte balken erbuiten"
             icon={<BarChart3 className="h-4 w-4 text-slate-600" />}
-            onExport={() => downloadCsv(`omzet-trend-${period}.csv`, stats.trend)}
+            onExport={() => downloadCsv(`omzet-trend-${rangeSlug}.csv`, stats.trend)}
           >
             {stats.trend.every(t => t.schade + t.werkplaats + t.poets === 0) ? (
               <NoData />
@@ -101,9 +102,15 @@ const RapportageOmzet: React.FC = () => {
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `€${Math.round(Number(v) / 1000)}k`} />
                     <Tooltip formatter={(v: any) => eur(Number(v))} />
                     <Legend />
-                    <Bar dataKey="schade" name="Schadeherstel" fill="#db2777" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="werkplaats" name="Werkplaats" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="poets" name="Poetsen" fill="#0891b2" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="schade" name="Schadeherstel" fill="#db2777" radius={[4, 4, 0, 0]}>
+                      {stats.trend.map((t, i) => <Cell key={i} fill="#db2777" fillOpacity={t.selected ? 1 : 0.35} />)}
+                    </Bar>
+                    <Bar dataKey="werkplaats" name="Werkplaats" fill="#2563eb" radius={[4, 4, 0, 0]}>
+                      {stats.trend.map((t, i) => <Cell key={i} fill="#2563eb" fillOpacity={t.selected ? 1 : 0.35} />)}
+                    </Bar>
+                    <Bar dataKey="poets" name="Poetsen" fill="#0891b2" radius={[4, 4, 0, 0]}>
+                      {stats.trend.map((t, i) => <Cell key={i} fill="#0891b2" fillOpacity={t.selected ? 1 : 0.35} />)}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>

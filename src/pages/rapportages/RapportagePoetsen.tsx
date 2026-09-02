@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Sparkles, Users, ClipboardList, BarChart3 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RapportagesShell, useRapportageFilters, Block, Stat, eur, num, NoData } from "@/components/rapportages/RapportagesShell";
 import { useRapportageData } from "@/hooks/useRapportageData";
@@ -9,8 +9,8 @@ import { poetsStats, poetsTracking, downloadCsv, POETS_PRICE_INCL, POETS_PRICE_E
 const dt = (iso: string) => new Date(iso).toLocaleDateString("nl-NL", { day: "2-digit", month: "short", year: "2-digit" });
 
 const RapportagePoetsen: React.FC = () => {
-  const { period, branch } = useRapportageFilters();
-  const { data: raw, isLoading } = useRapportageData(period, branch);
+  const { period, branch, selection, rangeSlug, rangeLabel } = useRapportageFilters();
+  const { data: raw, isLoading } = useRapportageData(selection, branch);
   const [monthKey, setMonthKey] = useState<string>("all");
   const [poetserId, setPoetserId] = useState<string>("all");
 
@@ -47,8 +47,8 @@ const RapportagePoetsen: React.FC = () => {
             icon={<Sparkles className="h-4 w-4 text-emerald-600" />}
             sub={`€ ${POETS_PRICE_EXCL.toFixed(2).replace(".", ",")} ex btw / € ${POETS_PRICE_INCL},00 incl. btw per gepoetste auto`}
             onExport={() =>
-              downloadCsv(`poets-omzet-${period}.csv`, [{
-                periode: period, vestiging: branch,
+              downloadCsv(`poets-omzet-${rangeSlug}.csv`, [{
+                periode: rangeSlug, vestiging: branch,
                 intern_autos: stats.internCars, omzet_ex_btw: stats.revenueExcl, omzet_incl_btw: stats.revenueIncl,
                 extern_autos: stats.externCars, zonder_poetser: stats.unknownCars,
               }])
@@ -68,9 +68,10 @@ const RapportagePoetsen: React.FC = () => {
           </Block>
 
           <Block
-            title="Maandtrend poetsbeurten"
+            title={`Maandtrend poetsbeurten — ${rangeLabel}`}
             icon={<BarChart3 className="h-4 w-4 text-slate-600" />}
-            onExport={() => downloadCsv(`poets-maandtrend.csv`, stats.months)}
+            sub="volle balken vallen binnen het gekozen bereik"
+            onExport={() => downloadCsv(`poets-maandtrend-${rangeSlug}.csv`, stats.months)}
           >
             {stats.months.every((m) => m.intern + m.extern === 0) ? (
               <NoData />
@@ -83,8 +84,12 @@ const RapportagePoetsen: React.FC = () => {
                     <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="intern" name="Intern" fill="#059669" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="extern" name="Extern" fill="#64748b" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="intern" name="Intern" fill="#059669" radius={[4, 4, 0, 0]}>
+                      {stats.months.map((m, i) => <Cell key={i} fill="#059669" fillOpacity={m.selected ? 1 : 0.35} />)}
+                    </Bar>
+                    <Bar dataKey="extern" name="Extern" fill="#64748b" radius={[4, 4, 0, 0]}>
+                      {stats.months.map((m, i) => <Cell key={i} fill="#64748b" fillOpacity={m.selected ? 1 : 0.35} />)}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -94,7 +99,7 @@ const RapportagePoetsen: React.FC = () => {
           <Block
             title="Per poetser"
             icon={<Users className="h-4 w-4 text-blue-600" />}
-            onExport={() => downloadCsv(`poets-per-poetser-${period}.csv`, stats.persons)}
+            onExport={() => downloadCsv(`poets-per-poetser-${rangeSlug}.csv`, stats.persons)}
           >
             {stats.persons.length === 0 ? (
               <NoData label="geen poetsbeurten in deze periode" />
@@ -136,7 +141,7 @@ const RapportagePoetsen: React.FC = () => {
             title="Tracking — welke auto, wanneer, hoe lang"
             icon={<ClipboardList className="h-4 w-4 text-violet-600" />}
             sub="Voor controle van de factuur van het externe poetsbedrijf"
-            onExport={() => downloadCsv(`poets-tracking-${monthKey}.csv`, trackRows)}
+            onExport={() => downloadCsv(`poets-tracking-${monthKey === "all" ? rangeSlug : monthKey}.csv`, trackRows)}
           >
             <div className="mb-3 flex flex-wrap gap-2">
               <select

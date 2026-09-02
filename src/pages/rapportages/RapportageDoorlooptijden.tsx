@@ -9,8 +9,8 @@ import { flowSteps, downloadCsv, MIN_N } from "@/services/rapportageService";
 import { cn } from "@/lib/utils";
 
 const RapportageDoorlooptijden: React.FC = () => {
-  const { period, branch } = useRapportageFilters();
-  const { data: raw, isLoading } = useRapportageData(period, branch);
+  const { period, branch, selection, rangeSlug } = useRapportageFilters();
+  const { data: raw, isLoading } = useRapportageData(selection, branch);
   const flow = raw ? flowSteps(raw) : null;
 
   return (
@@ -53,7 +53,7 @@ const RapportageDoorlooptijden: React.FC = () => {
               title={s.label}
               icon={<Timer className={cn("h-4 w-4", flow.bottleneck === s.key ? "text-amber-600" : "text-slate-600")} />}
               sub={`gemiddeld ${s.n >= MIN_N ? `${num(s.avgDays, 1)} dagen` : "nog onvoldoende data"} in deze periode`}
-              onExport={() => downloadCsv(`doorlooptijd-${s.key}-${period}.csv`, s.weekly.map(w => ({ week: w.week, gem_dagen: num(w.days, 2), aantal: w.n })))}
+              onExport={() => downloadCsv(`doorlooptijd-${s.key}-${rangeSlug}.csv`, s.weekly.map(w => ({ week: w.week, gem_dagen: num(w.days, 2), aantal: w.n })))}
             >
               {s.weekly.every(w => w.n === 0) ? (
                 <NoData />
