@@ -1,12 +1,109 @@
 import { supabase } from "@/integrations/supabase/client";
 import { buildRange, downloadCsv, type DirectiePeriod, type DirectieBranch } from "@/services/directieService";
 
-export type RapPeriod = DirectiePeriod;
+/** Vaste snelkeuzes + "custom" (eigen van–tot bereik). */
+export type RapPeriod = DirectiePeriod | "prev_month" | "prev_quarter" | "prev_year" | "custom";
 export type RapBranch = DirectieBranch;
 export { buildRange, downloadCsv };
 
+/** Keuze zoals die in de URL staat. customFrom/customTo zijn yyyy-MM-dd (inclusief einddag). */
+export interface RapSelection { period: RapPeriod; customFrom?: string | null; customTo?: string | null }
+
+export interface RapResolved {
+  from: Date; to: Date; prevFrom: Date; prevTo: Date;
+  trendFrom: Date; trendTo: Date;
+  label: string; slug: string;
+}
+
+const d2 = (n: number) => String(n).padStart(2, "0");
+const iso = (d: Date) => `${d.getFullYear()}-${d2(d.getMonth() + 1)}-${d2(d.getDate())}`;
+const nlDate = (d: Date) => d.toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit", year: "numeric" });
+const monthStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
+const parseDay = (s?: string | null) => {
+  if (!s) return null;
+  const [y, m, day] = s.split("-").map(Number);
+  if (!y || !m || !day) return null;
+  return new Date(y, m - 1, day);
+};
+
+/** Laatste 6 maanden (voor de vaste periodes), of de maanden rond een eigen bereik (max 12). */
+const trendWindow = (from: Date, to: Date, custom: boolean): { trendFrom: Date; trendTo: Date } => {
+  if (!custom) {
+    const t = new Date(); t.setMonth(t.getMonth() - 5); t.setDate(1); t.setHours(0, 0, 0, 0);
+    const end = new Date(t.getFullYear(), t.getMonth() + 6, 1);
+    return { trendFrom: t, trendTo: end };
+  }
+  const start = monthStart(from);
+  const endExcl = new Date(to.getFullYear(), to.getMonth() + 1, 1);
+  let months = (endExcl.getFullYear() - start.getFullYear()) * 12 + (endExcl.getMonth() - start.getMonth());
+  if (months > 12) return { trendFrom: new Date(endExcl.getFullYear(), endExcl.getMonth() - 12, 1), trendTo: endExcl };
+  return { trendFrom: start, trendTo: endExcl };
+};
+
+/** Maandbuckets [start, next) binnen een venster. */
+export function monthBuckets(trendFrom: Date, trendTo: Date) {
+  const out: { key: string; label: string; from: Date; to: Date }[] = [];
+  let d = monthStart(trendFrom);
+  while (+d < +trendTo && out.length < 24) {
+    const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    out.push({
+      key: `${d.getFullYear()}-${d2(d.getMonth() + 1)}`,
+      label: d.toLocaleDateString("nl-NL", { month: "short", year: "2-digit" }),
+      from: d, to: next,
+    });
+    d = next;
+  }
+  return out;
+}
+
+/** Zet een keuze om in concrete datumvensters. Vaste periodes gebruiken de bestaande buildRange. */
+export function resolveRange(sel: RapSelection, now = new Date()): RapResolved {
+  const p = sel.period;
+  if (p === "custom") {
+    const a = parseDay(sel.customFrom), b = parseDay(sel.customTo);
+    if (a && b) {
+      const from = new Date(a); from.setHours(0, 0, 0, 0);
+      const to = new Date(b); to.setHours(0, 0, 0, 0); to.setDate(to.getDate() + 1); // einddag inclusief
+      const span = +to - +from;
+      const prevTo = from;
+      const prevFrom = new Date(+from - span);
+      const { trendFrom, trendTo } = trendWindow(from, new Date(+to - 1), true);
+      return {
+        from, to, prevFrom, prevTo, trendFrom, trendTo,
+        label: `${nlDate(from)} t/m ${nlDate(new Date(+to - 86400000))}`,
+        slug: `${iso(from)}_${iso(new Date(+to - 86400000))}`,
+      };
+    }
+    // onvolledige keuze → val terug op deze maand
+    return resolveRange({ period: "month" }, now);
+  }
+
+  let base: DirectiePeriod = "month";
+  let ref = now;
+  if (p === "week") base = "week";
+  else if (p === "month") base = "month";
+  else if (p === "quarter") base = "quarter";
+  else if (p === "year") base = "year";
+  else if (p === "prev_month") { base = "month"; ref = new Date(now.getFullYear(), now.getMonth() - 1, 15); }
+  else if (p === "prev_quarter") { base = "quarter"; ref = new Date(now.getFullYear(), now.getMonth() - 3, 15); }
+  else if (p === "prev_year") { base = "year"; ref = new Date(now.getFullYear() - 1, 6, 1); }
+
+  const r = buildRange(base, ref);
+  const { trendFrom, trendTo } = trendWindow(r.from, r.to, false);
+  const labels: Record<string, string> = {
+    week: "Deze week", month: "Deze maand", quarter: "Dit kwartaal", year: "Dit jaar",
+    prev_month: "Vorige maand", prev_quarter: "Vorig kwartaal", prev_year: "Vorig jaar",
+  };
+  return {
+    ...r, trendFrom, trendTo,
+    label: labels[p] || p,
+    slug: `${iso(r.from)}_${iso(new Date(+r.to - 86400000))}`,
+  };
+}
+
 /** Minimaal aantal observaties voordat een gemiddelde eerlijk is. */
 export const MIN_N = 3;
+
 
 export interface RapInvoice {
   id: string; invoice_kind: string | null; subtotal: number | null; total: number | null;
