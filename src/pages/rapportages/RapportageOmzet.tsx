@@ -33,13 +33,22 @@ const RapportageOmzet: React.FC = () => {
 
   const stats = raw ? omzetStats(raw) : null;
   const prev = raw ? omzetGroups(raw.invoicesPrev) : null;
+  const prevPoets = raw ? poetsOmzetGroup(raw, raw.prevFrom, raw.prevTo) : null;
 
   return (
-    <RapportagesShell title="Omzet" subtitle="Schadeherstel en werkplaats apart — intern en extern.">
-      {isLoading || !stats || !prev ? (
+    <RapportagesShell title="Omzet" subtitle="Schadeherstel, werkplaats en poetsen apart — intern en extern.">
+      {isLoading || !stats || !prev || !prevPoets ? (
         <div className="space-y-3"><Skeleton className="h-40 w-full" /><Skeleton className="h-40 w-full" /></div>
       ) : (
         <div className="space-y-4">
+          <Block title="Totale omzet" icon={<Euro className="h-4 w-4 text-emerald-600" />} sub="som van schadeherstel + werkplaats + poetsen (ex btw)">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <Stat label="Totaal" value={eur(stats.totaal)} />
+              <Stat label="Schadeherstel" value={eur(stats.schade.total)} />
+              <Stat label="Werkplaats" value={eur(stats.werkplaats.total)} />
+              <Stat label="Poetsen" value={eur(stats.poets.total)} />
+            </div>
+          </Block>
           <GroupBlock
             title="🎨 Schadeherstel"
             icon={<PaintBucket className="h-4 w-4 text-pink-600" />}
@@ -61,11 +70,27 @@ const RapportageOmzet: React.FC = () => {
             }])}
           />
           <Block
+            title="✨ Poetsen"
+            icon={<Sparkles className="h-4 w-4 text-cyan-600" />}
+            sub={`interne poetsbeurten × ${eur(POETS_PRICE_INCL)} incl. btw — externe beurten leveren geen omzet op`}
+            onExport={() => downloadCsv(`omzet-poetsen-${period}.csv`, [{
+              periode: period, vestiging: branch, beurten_intern: stats.poets.invoices,
+              omzet_ex_btw: stats.poets.total, omzet_incl_btw: stats.poets.invoices * POETS_PRICE_INCL,
+            }])}
+          >
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <Stat label="Omzet (ex btw)" value={eur(stats.poets.total)} pct={delta(stats.poets.total, prevPoets.total)} n={stats.poets.invoices} />
+              <Stat label="Omzet (incl. btw)" value={eur(stats.poets.invoices * POETS_PRICE_INCL)} n={stats.poets.invoices} />
+              <Stat label="Interne poetsbeurten" value={num(stats.poets.invoices, 0)} pct={delta(stats.poets.invoices, prevPoets.invoices)} n={stats.poets.invoices} />
+              <Stat label="Omzet per beurt" value={eur(stats.poets.avgPerInvoice)} n={stats.poets.invoices} />
+            </div>
+          </Block>
+          <Block
             title="Maandtrend (laatste 6 maanden)"
             icon={<BarChart3 className="h-4 w-4 text-slate-600" />}
             onExport={() => downloadCsv(`omzet-trend-${period}.csv`, stats.trend)}
           >
-            {stats.trend.every(t => t.schade + t.werkplaats === 0) ? (
+            {stats.trend.every(t => t.schade + t.werkplaats + t.poets === 0) ? (
               <NoData />
             ) : (
               <div className="h-64">
@@ -78,11 +103,13 @@ const RapportageOmzet: React.FC = () => {
                     <Legend />
                     <Bar dataKey="schade" name="Schadeherstel" fill="#db2777" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="werkplaats" name="Werkplaats" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="poets" name="Poetsen" fill="#0891b2" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             )}
           </Block>
+
           <p className="text-[11px] text-slate-500">
             Perioden met minder dan {MIN_N} observaties tonen "nog onvoldoende data" in plaats van een gemiddelde.
           </p>
