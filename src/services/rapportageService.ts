@@ -126,10 +126,13 @@ export interface RapProfile { id: string; first_name: string | null; last_name: 
 
 export interface RapRaw {
   from: Date; to: Date; prevFrom: Date; prevTo: Date; sixM: Date;
+  /** venster voor de maandtrend (sixM == trendFrom, blijft voor compatibiliteit bestaan) */
+  trendFrom: Date; trendTo: Date;
+  rangeLabel: string; rangeSlug: string;
   invoices: RapInvoice[];       // periode
   invoicesPrev: RapInvoice[];   // vorige periode
-  invoices6m: RapInvoice[];     // laatste 6 maanden (trend)
-  orders: RapOrder[];           // laatste 6 maanden (alles, filteren in memory)
+  invoices6m: RapInvoice[];     // trendvenster
+  orders: RapOrder[];           // trendvenster (alles, filteren in memory)
   intakes: RapIntake[];
   vehicles: RapVehicle[];
   vehicleInfo: Record<string, { brand: string | null; model: string | null; license_number: string | null }>;
@@ -138,10 +141,11 @@ export interface RapRaw {
 
 const bf = (q: any, branch: RapBranch) => (branch === "all" ? q : q.eq("branch", branch));
 
-export async function fetchRapportageRaw(period: RapPeriod, branch: RapBranch): Promise<RapRaw> {
-  const { from, to, prevFrom, prevTo } = buildRange(period);
-  const sixM = new Date(); sixM.setMonth(sixM.getMonth() - 5); sixM.setDate(1); sixM.setHours(0, 0, 0, 0);
-  const histStart = new Date(Math.min(sixM.getTime(), prevFrom.getTime()));
+export async function fetchRapportageRaw(sel: RapSelection, branch: RapBranch): Promise<RapRaw> {
+  const { from, to, prevFrom, prevTo, trendFrom, trendTo, label, slug } = resolveRange(sel);
+  const sixM = trendFrom;
+  const histStart = new Date(Math.min(trendFrom.getTime(), prevFrom.getTime(), from.getTime()));
+
 
   const invSel = "id,invoice_kind,subtotal,total,status,created_at,branch,vehicle_id,lines,source_work_order_ids,work_order_id";
   const woSel = "id,vehicle_id,discipline,status,work_seconds,assigned_to,created_at,started_at,finished_at,approved_at,is_rush,rejected_count,branch,origin,part,parts,poets_type";
