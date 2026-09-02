@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
 type SortKey = keyof Pick<EmployeeRow, "name" | "revenue" | "hours" | "perHour" | "tasks" | "parts">;
 
 const RapportagePerformance: React.FC = () => {
-  const { period, branch } = useRapportageFilters();
-  const { data: raw, isLoading } = useRapportageData(period, branch);
+  const { period, branch, selection, rangeSlug } = useRapportageFilters();
+  const { data: raw, isLoading } = useRapportageData(selection, branch);
   const [sort, setSort] = React.useState<SortKey>("revenue");
   const [asc, setAsc] = React.useState(false);
   const [selected, setSelected] = React.useState<EmployeeRow | null>(null);
@@ -47,7 +47,7 @@ const RapportagePerformance: React.FC = () => {
           title="Per medewerker"
           icon={<Users className="h-4 w-4 text-blue-600" />}
           sub="omzet toegerekend via factuurregels van de eigen orders"
-          onExport={() => downloadCsv(`performance-${period}.csv`, sorted.map(r => ({
+          onExport={() => downloadCsv(`performance-${rangeSlug}.csv`, sorted.map(r => ({
             medewerker: r.name, disciplines: r.disciplines.join("/"), omzet: Math.round(r.revenue),
             uren: num(r.hours, 1), omzet_per_uur: Math.round(r.perHour), taken: r.tasks, delen: r.parts,
           })))}

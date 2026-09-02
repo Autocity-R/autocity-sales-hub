@@ -54,8 +54,8 @@ const KpiGroup: React.FC<{ title: string; icon: React.ReactNode; kpis: Kpi[]; pe
 };
 
 const RapportageKpi: React.FC = () => {
-  const { period, branch } = useRapportageFilters();
-  const { data: raw, isLoading } = useRapportageData(period, branch);
+  const { period, branch, selection, rangeSlug } = useRapportageFilters();
+  const { data: raw, isLoading } = useRapportageData(selection, branch);
   const kpis = raw ? kpiDashboard(raw) : null;
 
   return (
@@ -64,12 +64,12 @@ const RapportageKpi: React.FC = () => {
         <div className="space-y-3"><Skeleton className="h-40 w-full" /><Skeleton className="h-40 w-full" /></div>
       ) : (
         <div className="space-y-4">
-          <KpiGroup title="Monteurs" icon={<Wrench className="h-4 w-4 text-blue-600" />} kpis={kpis.monteurs} period={period}
+          <KpiGroup title="Monteurs" icon={<Wrench className="h-4 w-4 text-blue-600" />} kpis={kpis.monteurs} period={rangeSlug}
             sub="oppaksnelheid = aanmaak → start van de klus (pot-taken)" />
-          <KpiGroup title="Schadeherstel" icon={<PaintBucket className="h-4 w-4 text-pink-600" />} kpis={kpis.schade} period={period} />
+          <KpiGroup title="Schadeherstel" icon={<PaintBucket className="h-4 w-4 text-pink-600" />} kpis={kpis.schade} period={rangeSlug} />
           <div className="grid gap-4 lg:grid-cols-2">
-            <KpiGroup title="Uitdeuker" icon={<Hammer className="h-4 w-4 text-amber-600" />} kpis={kpis.uitdeuk} period={period} />
-            <KpiGroup title="Poetsen" icon={<Sparkles className="h-4 w-4 text-emerald-600" />} kpis={kpis.poets} period={period}
+            <KpiGroup title="Uitdeuker" icon={<Hammer className="h-4 w-4 text-amber-600" />} kpis={kpis.uitdeuk} period={rangeSlug} />
+            <KpiGroup title="Poetsen" icon={<Sparkles className="h-4 w-4 text-emerald-600" />} kpis={kpis.poets} period={rangeSlug}
               sub="alleen aantallen — poetsen is extern, geen persoons-KPI's" />
           </div>
           <p className="text-[11px] text-slate-500">
