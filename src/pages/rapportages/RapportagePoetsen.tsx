@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Sparkles, Users, ClipboardList, BarChart3 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RapportagesShell, useRapportageFilters, Block, Stat, eur, num, NoData } from "@/components/rapportages/RapportagesShell";
 import { useRapportageData } from "@/hooks/useRapportageData";
@@ -70,6 +70,7 @@ const RapportagePoetsen: React.FC = () => {
           <Block
             title={`Maandtrend poetsbeurten — ${rangeLabel}`}
             icon={<BarChart3 className="h-4 w-4 text-slate-600" />}
+            sub="volle balken vallen binnen het gekozen bereik"
             onExport={() => downloadCsv(`poets-maandtrend-${rangeSlug}.csv`, stats.months)}
           >
             {stats.months.every((m) => m.intern + m.extern === 0) ? (
@@ -83,8 +84,12 @@ const RapportagePoetsen: React.FC = () => {
                     <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="intern" name="Intern" fill="#059669" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="extern" name="Extern" fill="#64748b" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="intern" name="Intern" fill="#059669" radius={[4, 4, 0, 0]}>
+                      {stats.months.map((m, i) => <Cell key={i} fill="#059669" fillOpacity={m.selected ? 1 : 0.35} />)}
+                    </Bar>
+                    <Bar dataKey="extern" name="Extern" fill="#64748b" radius={[4, 4, 0, 0]}>
+                      {stats.months.map((m, i) => <Cell key={i} fill="#64748b" fillOpacity={m.selected ? 1 : 0.35} />)}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>

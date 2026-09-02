@@ -1,6 +1,6 @@
 import React from "react";
 import { PaintBucket, Wrench, BarChart3, Sparkles, Euro } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RapportagesShell, useRapportageFilters, Block, Stat, eur, num, NoData } from "@/components/rapportages/RapportagesShell";
 import { useRapportageData } from "@/hooks/useRapportageData";
@@ -87,6 +87,7 @@ const RapportageOmzet: React.FC = () => {
           </Block>
           <Block
             title={`Maandtrend — ${rangeLabel}`}
+            sub="volle balken vallen binnen het gekozen bereik, lichte balken erbuiten"
             icon={<BarChart3 className="h-4 w-4 text-slate-600" />}
             onExport={() => downloadCsv(`omzet-trend-${rangeSlug}.csv`, stats.trend)}
           >
@@ -101,9 +102,15 @@ const RapportageOmzet: React.FC = () => {
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `€${Math.round(Number(v) / 1000)}k`} />
                     <Tooltip formatter={(v: any) => eur(Number(v))} />
                     <Legend />
-                    <Bar dataKey="schade" name="Schadeherstel" fill="#db2777" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="werkplaats" name="Werkplaats" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="poets" name="Poetsen" fill="#0891b2" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="schade" name="Schadeherstel" fill="#db2777" radius={[4, 4, 0, 0]}>
+                      {stats.trend.map((t, i) => <Cell key={i} fill="#db2777" fillOpacity={t.selected ? 1 : 0.35} />)}
+                    </Bar>
+                    <Bar dataKey="werkplaats" name="Werkplaats" fill="#2563eb" radius={[4, 4, 0, 0]}>
+                      {stats.trend.map((t, i) => <Cell key={i} fill="#2563eb" fillOpacity={t.selected ? 1 : 0.35} />)}
+                    </Bar>
+                    <Bar dataKey="poets" name="Poetsen" fill="#0891b2" radius={[4, 4, 0, 0]}>
+                      {stats.trend.map((t, i) => <Cell key={i} fill="#0891b2" fillOpacity={t.selected ? 1 : 0.35} />)}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
