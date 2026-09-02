@@ -170,7 +170,8 @@ export async function fetchRapportageRaw(sel: RapSelection, branch: RapBranch): 
   }
 
   return {
-    from, to, prevFrom, prevTo, sixM,
+    from, to, prevFrom, prevTo, sixM, trendFrom, trendTo, rangeLabel: label, rangeSlug: slug,
+
     invoices: invoices6m.filter(i => inRange(i.created_at, from, to)),
     invoicesPrev: invoices6m.filter(i => inRange(i.created_at, prevFrom, prevTo)),
     invoices6m,
