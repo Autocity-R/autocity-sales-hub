@@ -226,7 +226,7 @@ export interface OmzetGroup {
 export interface OmzetStats {
   schade: OmzetGroup; werkplaats: OmzetGroup; poets: OmzetGroup;
   totaal: number;
-  trend: { month: string; schade: number; werkplaats: number; poets: number }[];
+  trend: { month: string; schade: number; werkplaats: number; poets: number; selected: boolean }[];
 }
 
 const emptyGroup = (): OmzetGroup => ({ intern: 0, extern: 0, total: 0, invoices: 0, parts: 0, avgPerInvoice: 0, avgPerPart: 0 });
@@ -581,7 +581,7 @@ export interface PoetsStats {
   internCars: number; externCars: number; unknownCars: number;
   revenueExcl: number; revenueIncl: number;
   persons: PoetsPerson[];
-  months: { month: string; monthKey: string; intern: number; extern: number; revenueIncl: number; revenueExcl: number }[];
+  months: { month: string; monthKey: string; intern: number; extern: number; revenueIncl: number; revenueExcl: number; selected: boolean }[];
   rows: PoetsTrackRow[];
 }
 
@@ -645,21 +645,17 @@ export function poetsStats(raw: RapRaw, from = raw.from, to = raw.to): PoetsStat
   })).sort((a, b) => b.cars - a.cars);
 
   const months: PoetsStats["months"] = [];
-  const now = new Date();
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-    const m = done.filter(o => inRange(poetsDoneAt(o), d, next));
+  monthBuckets(raw.trendFrom, raw.trendTo).forEach(b => {
+    const m = done.filter(o => inRange(poetsDoneAt(o), b.from, b.to));
     const intern = m.filter(o => typeOf(o.assigned_to) === "intern").length;
     const extern = m.filter(o => typeOf(o.assigned_to) === "extern").length;
     months.push({
-      month: d.toLocaleDateString("nl-NL", { month: "short", year: "2-digit" }),
-      monthKey: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
-      intern, extern,
+      month: b.label, monthKey: b.key, intern, extern,
       revenueIncl: intern * POETS_PRICE_INCL,
       revenueExcl: Math.round(intern * POETS_PRICE_EXCL * 100) / 100,
+      selected: +b.to > +from && +b.from < +to,
     });
-  }
+  });
 
   return {
     internCars, externCars, unknownCars,
@@ -669,8 +665,8 @@ export function poetsStats(raw: RapRaw, from = raw.from, to = raw.to): PoetsStat
   };
 }
 
-/** Tracking-overzicht: alle poetsbeurten van de laatste 6 maanden, voor factuurcontrole. */
+/** Tracking-overzicht: alle poetsbeurten binnen het trendvenster, voor factuurcontrole. */
 export function poetsTracking(raw: RapRaw): PoetsTrackRow[] {
-  const wide = poetsStats(raw, raw.sixM, new Date(Date.now() + 86400000));
+  const wide = poetsStats(raw, raw.trendFrom, new Date(Math.max(+raw.trendTo, +raw.to)));
   return wide.rows;
 }
