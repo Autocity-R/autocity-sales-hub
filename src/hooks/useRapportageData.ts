@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchRapportageRaw, type RapBranch, type RapPeriod } from "@/services/rapportageService";
+import { fetchRapportageRaw, type RapBranch, type RapSelection } from "@/services/rapportageService";
 
-export function useRapportageData(period: RapPeriod, branch: RapBranch) {
+export function useRapportageData(sel: RapSelection, branch: RapBranch) {
   return useQuery({
-    queryKey: ["rapportage-raw", period, branch],
-    queryFn: () => fetchRapportageRaw(period, branch),
+    queryKey: ["rapportage-raw", sel.period, sel.customFrom || "", sel.customTo || "", branch],
+    queryFn: () => fetchRapportageRaw(sel, branch),
     staleTime: 2 * 60 * 1000,
   });
 }
