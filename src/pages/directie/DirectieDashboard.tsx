@@ -296,13 +296,42 @@ const DirectieDashboard: React.FC = () => {
                 <div>
                   <div className="text-slate-500">Oudste open taak</div>
                   <div className="text-[16px] font-bold tabular-nums">{m.flow.oldestDays} d</div>
-                  {m.flow.oldest?.vehicle_id && raw?.vehicles[m.flow.oldest.vehicle_id] && (
-                    <AsLicensePlate size="sm" value={raw.vehicles[m.flow.oldest.vehicle_id].license_number} />
-                  )}
                 </div>
                 <div><div className="text-slate-500">Spoed-aandeel</div><div className="text-[16px] font-bold tabular-nums">{num(m.flow.rushPct, 0)}%</div></div>
                 <div><div className="text-slate-500">Open taken in de pot</div><div className="text-[16px] font-bold tabular-nums">{m.flow.unassigned}</div></div>
               </div>
+
+              {m.flow.oldestList.length > 0 && (
+                <div className="mt-4">
+                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    Oudste open taken — onderbouwing
+                  </div>
+                  <div className="space-y-2">
+                    {m.flow.oldestList.map(t => (
+                      <div key={t.id} className="rounded-xl border border-slate-200 bg-[#f8f9fb] p-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {t.licensePlate && <AsLicensePlate size="sm" value={t.licensePlate} />}
+                          {t.vehicleLabel && <span className="text-[12px] font-semibold text-slate-800">{t.vehicleLabel}</span>}
+                          <AsPill tone="amber">{t.days} d open</AsPill>
+                          {t.isRush && <AsPill tone="red">Spoed</AsPill>}
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-slate-600">
+                          <span className="font-semibold text-slate-800">
+                            {DISCIPLINE_ICON[(t.discipline || "werkplaats") as WorkOrderDiscipline] || "🔧"}{" "}
+                            {DISCIPLINE_LABELS[(t.discipline || "") as WorkOrderDiscipline] || t.discipline || "Onbekende discipline"}
+                          </span>
+                          <span>Status: {STATUS_LABELS[(t.status || "") as WorkOrderStatus] || t.status || "—"}</span>
+                          <span>Werk: {t.part || "niet gespecificeerd"}</span>
+                          <span>Monteur: {t.assignedName || "niet toegewezen"}</span>
+                          <span>Aangemeld: {new Date(t.createdAt).toLocaleDateString("nl-NL")}</span>
+                          {t.dueDate && <span>Deadline: {new Date(t.dueDate).toLocaleDateString("nl-NL")}</span>}
+                          {t.origin && <span>Herkomst: {t.origin}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </Block>
 
             {/* E. Garantie */}
