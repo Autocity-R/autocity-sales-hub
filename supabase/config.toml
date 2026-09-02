@@ -122,3 +122,6 @@ verify_jwt = false
 
 [functions.werkplaats-afspraak-herinnering]
 verify_jwt = false
+
+[functions.poets-maandfactuur]
+verify_jwt = false

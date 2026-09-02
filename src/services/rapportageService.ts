@@ -25,7 +25,7 @@ export interface RapVehicle {
   id: string; branch: string | null; status: string | null; aangekomen_at: string | null;
   sold_date: string | null; delivery_date: string | null; b2b_delivered_at: string | null; details: any;
 }
-export interface RapProfile { id: string; first_name: string | null; last_name: string | null }
+export interface RapProfile { id: string; first_name: string | null; last_name: string | null; poetser_type?: string | null }
 
 export interface RapRaw {
   from: Date; to: Date; prevFrom: Date; prevTo: Date; sixM: Date;
@@ -54,7 +54,7 @@ export async function fetchRapportageRaw(period: RapPeriod, branch: RapBranch): 
     bf(supabase.from("work_orders").select(woSel).gte("created_at", histStart.toISOString()), branch),
     bf(supabase.from("vehicle_intakes").select("id,vehicle_id,created_at,approved_at,status,branch").gte("created_at", histStart.toISOString()), branch),
     bf(supabase.from("vehicles").select("id,branch,status,aangekomen_at,sold_date,delivery_date,b2b_delivered_at,details").gte("updated_at", histStart.toISOString()), branch),
-    supabase.from("profiles").select("id,first_name,last_name"),
+    supabase.from("profiles").select("id,first_name,last_name,poetser_type"),
   ]);
 
   const invoices6m = (inv6m.data || []) as any as RapInvoice[];
@@ -423,4 +423,117 @@ export function flowSteps(raw: RapRaw): FlowResult {
   const eligible = steps.filter(s => s.n >= MIN_N);
   const bottleneck = eligible.length ? eligible.reduce((a, b) => (b.avgDays > a.avgDays ? b : a)).key : null;
   return { steps, bottleneck, onTimePct: onTimeN >= MIN_N ? (onTimeHit / onTimeN) * 100 : null, onTimeN };
+}
+
+/* ------------------------- E. Poets-specificatie ------------------------- */
+
+/** Interne poetsbeurt: € 100,00 incl. btw per auto (= € 82,64 ex btw). */
+export const POETS_PRICE_INCL = 100;
+export const POETS_PRICE_EXCL = 82.64;
+
+export interface PoetsPerson {
+  id: string; name: string; type: "intern" | "extern";
+  cars: number; seconds: number; avgMinutes: number; revenueIncl: number; revenueExcl: number;
+}
+export interface PoetsTrackRow {
+  id: string; date: string; monthKey: string; plate: string; vehicle: string;
+  poetserId: string | null; poetser: string; type: "intern" | "extern" | "onbekend";
+  minutes: number; poetsType: string;
+}
+export interface PoetsStats {
+  internCars: number; externCars: number; unknownCars: number;
+  revenueExcl: number; revenueIncl: number;
+  persons: PoetsPerson[];
+  months: { month: string; monthKey: string; intern: number; extern: number; revenueIncl: number; revenueExcl: number }[];
+  rows: PoetsTrackRow[];
+}
+
+const poetsDoneAt = (o: RapOrder) => o.finished_at || o.approved_at || o.created_at;
+
+export function poetsStats(raw: RapRaw, from = raw.from, to = raw.to): PoetsStats {
+  const profileOf = (id?: string | null) => raw.profiles.find(p => p.id === id);
+  const typeOf = (id?: string | null): "intern" | "extern" | "onbekend" => {
+    if (!id) return "onbekend";
+    const p = profileOf(id);
+    if (!p) return "onbekend";
+    return (p.poetser_type === "extern" ? "extern" : "intern");
+  };
+  const nameOf = (id?: string | null) => {
+    const p = profileOf(id);
+    const n = p ? `${p.first_name || ""} ${p.last_name || ""}`.trim() : "";
+    return n || "Niet toegewezen";
+  };
+
+  const done = raw.orders.filter(o => o.discipline === "poets" && isDone(o));
+  const inPeriod = done.filter(o => inRange(poetsDoneAt(o), from, to));
+
+  const rows: PoetsTrackRow[] = inPeriod
+    .map(o => {
+      const d = new Date(poetsDoneAt(o));
+      const v = o.vehicle_id ? raw.vehicleInfo[o.vehicle_id] : undefined;
+      return {
+        id: o.id,
+        date: d.toISOString(),
+        monthKey: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+        plate: v?.license_number || "—",
+        vehicle: [v?.brand, v?.model].filter(Boolean).join(" ") || "—",
+        poetserId: o.assigned_to,
+        poetser: nameOf(o.assigned_to),
+        type: typeOf(o.assigned_to),
+        minutes: Math.round(Number(o.work_seconds || 0) / 60),
+        poetsType: o.poets_type || "showroom",
+      };
+    })
+    .sort((a, b) => +new Date(b.date) - +new Date(a.date));
+
+  const internCars = rows.filter(r => r.type === "intern").length;
+  const externCars = rows.filter(r => r.type === "extern").length;
+  const unknownCars = rows.filter(r => r.type === "onbekend").length;
+
+  const pm = new Map<string, PoetsPerson>();
+  inPeriod.forEach(o => {
+    const t = typeOf(o.assigned_to);
+    if (t === "onbekend") return;
+    const id = o.assigned_to as string;
+    if (!pm.has(id)) pm.set(id, { id, name: nameOf(id), type: t, cars: 0, seconds: 0, avgMinutes: 0, revenueIncl: 0, revenueExcl: 0 });
+    const e = pm.get(id)!;
+    e.cars += 1;
+    e.seconds += Number(o.work_seconds || 0);
+  });
+  const persons = Array.from(pm.values()).map(e => ({
+    ...e,
+    avgMinutes: div(e.seconds / 60, e.cars),
+    revenueIncl: e.type === "intern" ? e.cars * POETS_PRICE_INCL : 0,
+    revenueExcl: e.type === "intern" ? Math.round(e.cars * POETS_PRICE_EXCL * 100) / 100 : 0,
+  })).sort((a, b) => b.cars - a.cars);
+
+  const months: PoetsStats["months"] = [];
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    const m = done.filter(o => inRange(poetsDoneAt(o), d, next));
+    const intern = m.filter(o => typeOf(o.assigned_to) === "intern").length;
+    const extern = m.filter(o => typeOf(o.assigned_to) === "extern").length;
+    months.push({
+      month: d.toLocaleDateString("nl-NL", { month: "short", year: "2-digit" }),
+      monthKey: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+      intern, extern,
+      revenueIncl: intern * POETS_PRICE_INCL,
+      revenueExcl: Math.round(intern * POETS_PRICE_EXCL * 100) / 100,
+    });
+  }
+
+  return {
+    internCars, externCars, unknownCars,
+    revenueIncl: internCars * POETS_PRICE_INCL,
+    revenueExcl: Math.round(internCars * POETS_PRICE_EXCL * 100) / 100,
+    persons, months, rows,
+  };
+}
+
+/** Tracking-overzicht: alle poetsbeurten van de laatste 6 maanden, voor factuurcontrole. */
+export function poetsTracking(raw: RapRaw): PoetsTrackRow[] {
+  const wide = poetsStats(raw, raw.sixM, new Date(Date.now() + 86400000));
+  return wide.rows;
 }

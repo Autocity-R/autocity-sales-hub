@@ -67,6 +67,7 @@ const RapportageOmzet = lazyWithRetry(() => import("@/pages/rapportages/Rapporta
 const RapportagePerformance = lazyWithRetry(() => import("@/pages/rapportages/RapportagePerformance"));
 const RapportageKpi = lazyWithRetry(() => import("@/pages/rapportages/RapportageKpi"));
 const RapportageDoorlooptijden = lazyWithRetry(() => import("@/pages/rapportages/RapportageDoorlooptijden"));
+const RapportagePoetsen = lazyWithRetry(() => import("@/pages/rapportages/RapportagePoetsen"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -222,6 +223,13 @@ function App() {
           <ProtectedRoute>
             <RoleProtectedRoute requiredAccess="rapportages" fallbackPath="/">
               <RapportageDoorlooptijden />
+            </RoleProtectedRoute>
+          </ProtectedRoute>
+        } />
+        <Route path="/rapportages/poetsen" element={
+          <ProtectedRoute>
+            <RoleProtectedRoute requiredAccess="poets-rapportage" fallbackPath="/">
+              <RapportagePoetsen />
             </RoleProtectedRoute>
           </ProtectedRoute>
         } />

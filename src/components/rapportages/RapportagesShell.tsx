@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
-import { TrendingUp, TrendingDown, Download, Euro, Users, Gauge, Timer, Trophy, AlertTriangle } from "lucide-react";
+import { TrendingUp, TrendingDown, Download, Euro, Users, Gauge, Timer, Trophy, AlertTriangle, Sparkles } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { AsPage, AsCard } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ export const TABS = [
   { to: "/rapportages/performance", label: "Performance", icon: Users },
   { to: "/rapportages/kpi", label: "KPI-dashboard", icon: Gauge },
   { to: "/rapportages/doorlooptijden", label: "Doorlooptijden", icon: Timer },
+  { to: "/rapportages/poetsen", label: "Poetsen", icon: Sparkles },
 ];
 
 /** Periode + vestiging in de URL, zodat het filter meegaat tussen de vier pagina's. */

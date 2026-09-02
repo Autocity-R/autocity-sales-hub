@@ -342,6 +342,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 { url: "/rapportages/performance", label: "Performance", icon: UsersIcon },
                 { url: "/rapportages/kpi", label: "KPI-dashboard", icon: GanttChartIcon },
                 { url: "/rapportages/doorlooptijden", label: "Doorlooptijden", icon: Clock },
+            { url: "/rapportages/poetsen", label: "Poetsen", icon: Sparkles },
               ].map((it) => (
                 <Link key={it.url} to={it.url}>
                   <Button
@@ -659,6 +660,7 @@ const DirectieSidebar: React.FC<{
             { url: "/rapportages/performance", label: "Performance", icon: UsersIcon },
             { url: "/rapportages/kpi", label: "KPI-dashboard", icon: GanttChartIcon },
             { url: "/rapportages/doorlooptijden", label: "Doorlooptijden", icon: Clock },
+            { url: "/rapportages/poetsen", label: "Poetsen", icon: Sparkles },
           ],
         } as StdGroup,
         { url: "/werkplaats/facturen", label: "Facturen", icon: FileText },
@@ -782,6 +784,7 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
           { url: "/reports", label: "Rapportages", icon: BarChart3 },
           { url: "/calendar", label: "Agenda", icon: CalendarIcon },
         ]),
+        { url: "/rapportages/poetsen", label: "Poets-omzet & tracking", icon: Sparkles },
         { url: "/werkplaats/prijslijst", label: "Prijslijst", icon: Calculator },
         { url: "/werkplaats/facturen", label: "Werkplaats facturen", icon: FileText },
         { url: "/werkplaats/agenda", label: "Werkplaats agenda", icon: CalendarIcon },

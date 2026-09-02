@@ -166,6 +166,9 @@ export const featureAccess: Record<string, (role: Role) => boolean> = {
   settings: (r) => isAdminRole(r),
   taxatie: (r) => isAdminRole(r) || r === "manager" || r === "verkoper",
   rapportages: (r) => isAdminRole(r) || r === "manager" || r === "operationeel_directeur",
+  /** Poets-omzet + tracking: directie, leiding en aftersales (factuurcontrole extern poetsbedrijf). */
+  "poets-rapportage": (r) =>
+    isAdminRole(r) || r === "manager" || r === "operationeel_directeur" || r === "aftersales_manager",
   /** Inname doen: aftersales + werkplaats + verkoop. */
   inname: (r) =>
     isAdminRole(r) || r === "manager" || r === "operationeel" || r === "verkoper" ||

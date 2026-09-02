@@ -12,7 +12,8 @@ import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
-import { Play, Timer } from "lucide-react";
+import { Play, Timer, User as UserIcon } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PoetsWO {
   id: string;
@@ -22,6 +23,7 @@ interface PoetsWO {
   due_date: string | null;
   created_at: string;
   started_at: string | null;
+  assigned_to: string | null;
   vehicle: {
     id: string;
     brand: string;
@@ -49,7 +51,8 @@ const PoetsCard: React.FC<{
   onDone: (w: PoetsWO) => void;
   showDeadline: boolean;
   onOpen?: (w: PoetsWO) => void;
-}> = ({ w, onStart, onDone, showDeadline, onOpen }) => {
+  workerName?: string | null;
+}> = ({ w, onStart, onDone, showDeadline, onOpen, workerName }) => {
   const { isDirectieReadOnly } = useRoleAccess();
   const readOnly = isDirectieReadOnly();
   const tone = deadlineTone(w.due_date);
@@ -82,9 +85,16 @@ const PoetsCard: React.FC<{
         </div>
       )}
       <div className="text-[13px] text-slate-700 whitespace-pre-wrap">{w.description || "—"}</div>
-      {w.status === "bezig" && (
-        <div className="inline-flex self-start items-center gap-1.5 px-2.5 py-1 rounded-md border border-violet-200 bg-violet-50 text-violet-700 text-[13px] font-semibold tabular-nums">
-          <Timer className="h-4 w-4" /> {timer ?? "00:00"}
+      {w.status !== "ingepland" && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-violet-200 bg-violet-50 text-violet-700 text-[13px] font-semibold tabular-nums">
+            <Timer className="h-4 w-4" /> {timer ?? "00:00"}
+          </div>
+          {workerName && (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-200 bg-slate-50 text-slate-700 text-[13px] font-semibold">
+              <UserIcon className="h-4 w-4" /> {workerName}
+            </div>
+          )}
         </div>
       )}
       <div onClick={(e) => e.stopPropagation()} className="contents">
@@ -112,6 +122,8 @@ const WerkplaatsPoetsen: React.FC = () => {
   const { isDirectieReadOnly } = useRoleAccess();
   const readOnly = isDirectieReadOnly();
   const { branchFilter } = useCurrentBranch();
+  const { user } = useAuth();
+  const [names, setNames] = useState<Record<string, string>>({});
   const [rows, setRows] = useState<PoetsWO[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<PoetsWO | null>(null);
@@ -120,13 +132,23 @@ const WerkplaatsPoetsen: React.FC = () => {
     setLoading(true);
     let q = supabase
       .from("work_orders")
-      .select("id, description, status, poets_type, due_date, created_at, started_at, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, year, mileage, color, vin)")
+      .select("id, description, status, poets_type, due_date, created_at, started_at, assigned_to, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, year, mileage, color, vin)")
       .eq("discipline", "poets")
       .in("status", ["ingepland", "bezig", "gepauzeerd"]);
     q = applyBranchFilter(q as any, branchFilter);
     const { data, error } = await q;
     if (error) toast({ title: "Fout bij laden", description: error.message, variant: "destructive" });
-    setRows(((data as any) || []) as PoetsWO[]);
+    const list = ((data as any) || []) as PoetsWO[];
+    setRows(list);
+    const ids = Array.from(new Set(list.map(r => r.assigned_to).filter(Boolean))) as string[];
+    if (ids.length) {
+      const { data: profs } = await supabase.from("profiles").select("id, first_name, last_name").in("id", ids);
+      const map: Record<string, string> = {};
+      (profs || []).forEach((pf: any) => {
+        map[pf.id] = `${pf.first_name || ""} ${pf.last_name || ""}`.trim() || "Poetser";
+      });
+      setNames(map);
+    }
     setLoading(false);
   };
 
@@ -147,6 +169,7 @@ const WerkplaatsPoetsen: React.FC = () => {
     const { error } = await supabase.from("work_orders")
       .update({
         status: "goedgekeurd",
+        assigned_to: w.assigned_to || user?.id || null,
         finished_at: new Date().toISOString(),
         approved_at: new Date().toISOString(),
         work_seconds: workSeconds,
@@ -162,9 +185,10 @@ const WerkplaatsPoetsen: React.FC = () => {
 
   const markStarted = async (w: PoetsWO) => {
     const startedAt = new Date().toISOString();
-    setRows(prev => prev.map(r => (r.id === w.id ? { ...r, status: "bezig", started_at: startedAt } : r)));
+    const mine = user?.id || w.assigned_to || null;
+    setRows(prev => prev.map(r => (r.id === w.id ? { ...r, status: "bezig", started_at: startedAt, assigned_to: mine } : r)));
     const { error } = await supabase.from("work_orders")
-      .update({ status: "bezig", started_at: startedAt })
+      .update({ status: "bezig", started_at: startedAt, assigned_to: mine })
       .eq("id", w.id);
     if (error) {
       toast({ title: "Kon niet starten", description: error.message, variant: "destructive" });
@@ -209,7 +233,7 @@ const WerkplaatsPoetsen: React.FC = () => {
                     Geen afleveringen.
                   </div>
                 ) : afleveringen.map(w => (
-                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline onOpen={setDetail} />
+                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} />
                 ))}
               </div>
             </AsCard>
@@ -228,7 +252,7 @@ const WerkplaatsPoetsen: React.FC = () => {
                     Geen showroom-taken.
                   </div>
                 ) : showroom.map(w => (
-                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline={false} onOpen={setDetail} />
+                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline={false} onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} />
                 ))}
               </div>
             </AsCard>
