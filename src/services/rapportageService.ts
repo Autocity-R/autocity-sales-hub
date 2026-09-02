@@ -278,22 +278,20 @@ export function omzetStats(raw: RapRaw): OmzetStats {
   const { schade, werkplaats } = omzetGroups(raw.invoices);
   const poets = poetsOmzetGroup(raw);
   const trend: OmzetStats["trend"] = [];
-  const now = new Date();
-  const poetsMonths = poetsStats(raw, raw.sixM, new Date(Date.now() + 86400000)).months;
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  const poetsMonths = poetsStats(raw, raw.trendFrom, raw.trendTo).months;
+  monthBuckets(raw.trendFrom, raw.trendTo).forEach(b => {
     let s = 0, w = 0;
-    revenueInvoices(raw.invoices6m).filter(r => inRange(r.created_at, d, next)).forEach(r => {
+    revenueInvoices(raw.invoices6m).filter(r => inRange(r.created_at, b.from, b.to)).forEach(r => {
       const x = splitInvoice(r); s += x.schade; w += x.werk;
     });
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     trend.push({
-      month: d.toLocaleDateString("nl-NL", { month: "short", year: "2-digit" }),
+      month: b.label,
       schade: s, werkplaats: w,
-      poets: poetsMonths.find(m => m.monthKey === key)?.revenueExcl ?? 0,
+      poets: poetsMonths.find(m => m.monthKey === b.key)?.revenueExcl ?? 0,
+      selected: +b.to > +raw.from && +b.from < +raw.to,
     });
-  }
+  });
+
   return { schade, werkplaats, poets, totaal: schade.total + werkplaats.total + poets.total, trend };
 }
 
