@@ -203,15 +203,15 @@ const DirectieDashboard: React.FC = () => {
 
               <div className="mt-4 h-[220px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={m.trend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <BarChart data={m.trend} barGap={4}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `€${Math.round(v / 1000)}k`} />
                     <Tooltip formatter={(v: any) => eur(Number(v))} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Line type="monotone" dataKey="intern" name="Intern" stroke="#2563eb" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="extern" name="Extern" stroke="#059669" strokeWidth={2} dot={false} />
-                  </LineChart>
+                    <Bar dataKey="intern" name="Intern" fill="#2563eb" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                    <Bar dataKey="extern" name="Extern" fill="#059669" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
               <div className="mt-2 text-[11px] text-slate-500">
