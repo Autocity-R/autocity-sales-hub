@@ -13,6 +13,10 @@ import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono } from "@/components/aft
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import {
+  DISCIPLINE_ICON, DISCIPLINE_LABELS, STATUS_LABELS,
+  type WorkOrderDiscipline, type WorkOrderStatus,
+} from "@/components/werkplaats/workOrderTypes";
+import {
   fetchDirectieRaw, buildRange, sent, sum, delta, hoursOf, branchStats, monthlyTrend,
   employeeKpis, flowStats, warrantyStats, topVehicles, wipEstimate, downloadCsv,
   type DirectiePeriod, type DirectieBranch, type EmployeeKpi,
