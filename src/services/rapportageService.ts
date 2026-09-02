@@ -121,13 +121,28 @@ export interface OmzetGroup {
   intern: number; extern: number; total: number; invoices: number; parts: number;
   avgPerInvoice: number; avgPerPart: number;
 }
-export interface OmzetStats { schade: OmzetGroup; werkplaats: OmzetGroup; trend: { month: string; schade: number; werkplaats: number }[] }
+export interface OmzetStats {
+  schade: OmzetGroup; werkplaats: OmzetGroup; poets: OmzetGroup;
+  totaal: number;
+  trend: { month: string; schade: number; werkplaats: number; poets: number }[];
+}
 
 const emptyGroup = (): OmzetGroup => ({ intern: 0, extern: 0, total: 0, invoices: 0, parts: 0, avgPerInvoice: 0, avgPerPart: 0 });
 
+/**
+ * BRONKEUZE (leidend, voorkomt dubbeltelling):
+ * - Schadeherstel + werkplaats: workshop_invoices (status 'verstuurd'), regels per discipline.
+ * - Poetsen: de work_orders zelf (afgeronde poets-orders van INTERNE poetsers × POETS_PRICE_EXCL),
+ *   exact dezelfde bron/berekening als /rapportages/poetsen. De maandelijkse interne poetsfactuur
+ *   (invoice_kind 'poets_intern') wordt daarom hier UITGESLOTEN — anders zou poets-omzet twee keer
+ *   meetellen, en zou hij in de factuurmaand vallen i.p.v. de maand van de poetsbeurt.
+ */
+const isPoetsInvoice = (inv: RapInvoice) => (inv as any).invoice_kind === "poets_intern";
+const revenueInvoices = (rows: RapInvoice[]) => sentOnly(rows).filter(r => !isPoetsInvoice(r));
+
 export function omzetGroups(invoices: RapInvoice[]): { schade: OmzetGroup; werkplaats: OmzetGroup } {
   const schade = emptyGroup(), werkplaats = emptyGroup();
-  sentOnly(invoices).forEach(inv => {
+  revenueInvoices(invoices).forEach(inv => {
     const s = splitInvoice(inv);
     if (s.schade > 0) {
       schade[s.kind] += s.schade; schade.total += s.schade; schade.invoices += 1; schade.parts += s.schadeParts;
@@ -143,21 +158,43 @@ export function omzetGroups(invoices: RapInvoice[]): { schade: OmzetGroup; werkp
   return { schade, werkplaats };
 }
 
+/** Poets-omzet als omzetcategorie (ex btw), bron = work_orders (zie BRONKEUZE hierboven). */
+export function poetsOmzetGroup(raw: RapRaw, from = raw.from, to = raw.to): OmzetGroup {
+  const p = poetsStats(raw, from, to);
+  const g = emptyGroup();
+  g.intern = p.revenueExcl;      // interne poetsers = onze omzet
+  g.extern = 0;                  // externe poetsbeurten leveren ons geen omzet op
+  g.total = p.revenueExcl;
+  g.invoices = p.internCars;     // 1 poetsbeurt = 1 "order"
+  g.parts = p.internCars;
+  g.avgPerInvoice = div(g.total, g.invoices);
+  g.avgPerPart = div(g.total, g.parts);
+  return g;
+}
+
 export function omzetStats(raw: RapRaw): OmzetStats {
   const { schade, werkplaats } = omzetGroups(raw.invoices);
+  const poets = poetsOmzetGroup(raw);
   const trend: OmzetStats["trend"] = [];
   const now = new Date();
+  const poetsMonths = poetsStats(raw, raw.sixM, new Date(Date.now() + 86400000)).months;
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
     let s = 0, w = 0;
-    sentOnly(raw.invoices6m).filter(r => inRange(r.created_at, d, next)).forEach(r => {
+    revenueInvoices(raw.invoices6m).filter(r => inRange(r.created_at, d, next)).forEach(r => {
       const x = splitInvoice(r); s += x.schade; w += x.werk;
     });
-    trend.push({ month: d.toLocaleDateString("nl-NL", { month: "short", year: "2-digit" }), schade: s, werkplaats: w });
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    trend.push({
+      month: d.toLocaleDateString("nl-NL", { month: "short", year: "2-digit" }),
+      schade: s, werkplaats: w,
+      poets: poetsMonths.find(m => m.monthKey === key)?.revenueExcl ?? 0,
+    });
   }
-  return { schade, werkplaats, trend };
+  return { schade, werkplaats, poets, totaal: schade.total + werkplaats.total + poets.total, trend };
 }
+
 
 /* --------------------- omzet-toerekening per order --------------------- */
 
