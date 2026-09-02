@@ -10,7 +10,7 @@ export interface UserProfile {
   company: string | null;
   branch: string | null;
   /** Alleen relevant bij rol 'poetser': eigen medewerker of extern poetsbedrijf. */
-  poetser_type: 'intern' | 'extern';
+  poetser_type?: 'intern' | 'extern' | null;
   created_at: string;
   updated_at: string;
 }
@@ -59,7 +59,8 @@ export const getAllUsers = async (): Promise<UserProfile[]> => {
     // Combine profiles with their roles
     return (profiles || []).map(profile => ({
       ...profile,
-      role: rolesMap.get(profile.id) || 'user'
+      role: rolesMap.get(profile.id) || 'user',
+      poetser_type: ((profile as any).poetser_type as 'intern' | 'extern') || 'intern'
     })) as UserProfile[];
   } catch (error) {
     console.error("Failed to fetch users:", error);
