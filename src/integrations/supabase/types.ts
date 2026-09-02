@@ -3788,6 +3788,7 @@ export type Database = {
           first_name: string | null
           id: string
           last_name: string | null
+          poetser_type: string
           signature_png: string | null
           updated_at: string
         }
@@ -3799,6 +3800,7 @@ export type Database = {
           first_name?: string | null
           id: string
           last_name?: string | null
+          poetser_type?: string
           signature_png?: string | null
           updated_at?: string
         }
@@ -3810,6 +3812,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           last_name?: string | null
+          poetser_type?: string
           signature_png?: string | null
           updated_at?: string
         }
@@ -5340,6 +5343,10 @@ export type Database = {
       ensure_showroom_poets_order: {
         Args: { _vehicle_id: string }
         Returns: string
+      }
+      generate_poets_monthly_invoice: {
+        Args: { p_dry_run?: boolean; p_month?: string }
+        Returns: Json
       }
       get_contract_by_token: { Args: { _token: string }; Returns: Json }
       get_valid_exact_online_token: {
