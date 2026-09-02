@@ -342,6 +342,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 { url: "/rapportages/performance", label: "Performance", icon: UsersIcon },
                 { url: "/rapportages/kpi", label: "KPI-dashboard", icon: GanttChartIcon },
                 { url: "/rapportages/doorlooptijden", label: "Doorlooptijden", icon: Clock },
+                { url: "/rapportages/poetsen", label: "Poetsen", icon: Sparkles },
               ].map((it) => (
                 <Link key={it.url} to={it.url}>
                   <Button
@@ -659,6 +660,7 @@ const DirectieSidebar: React.FC<{
             { url: "/rapportages/performance", label: "Performance", icon: UsersIcon },
             { url: "/rapportages/kpi", label: "KPI-dashboard", icon: GanttChartIcon },
             { url: "/rapportages/doorlooptijden", label: "Doorlooptijden", icon: Clock },
+                { url: "/rapportages/poetsen", label: "Poetsen", icon: Sparkles },
           ],
         } as StdGroup,
         { url: "/werkplaats/facturen", label: "Facturen", icon: FileText },
