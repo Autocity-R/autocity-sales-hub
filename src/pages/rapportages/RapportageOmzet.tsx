@@ -1,10 +1,11 @@
 import React from "react";
-import { PaintBucket, Wrench, BarChart3 } from "lucide-react";
+import { PaintBucket, Wrench, BarChart3, Sparkles, Euro } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RapportagesShell, useRapportageFilters, Block, Stat, eur, num, NoData } from "@/components/rapportages/RapportagesShell";
 import { useRapportageData } from "@/hooks/useRapportageData";
-import { omzetStats, omzetGroups, delta, downloadCsv, MIN_N, type OmzetGroup } from "@/services/rapportageService";
+import { omzetStats, omzetGroups, poetsOmzetGroup, delta, downloadCsv, MIN_N, POETS_PRICE_INCL, type OmzetGroup } from "@/services/rapportageService";
+
 
 const GroupBlock: React.FC<{
   title: string; icon: React.ReactNode; cur: OmzetGroup; prev: OmzetGroup; showParts: boolean; onExport: () => void;
