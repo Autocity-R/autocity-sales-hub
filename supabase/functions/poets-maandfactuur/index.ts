@@ -73,21 +73,20 @@ Deno.serve(async (req) => {
     const dryRun = body?.dryRun === true;
 
     const p_month = month ? `${month}-01` : null;
-    const { data, error } = await supabase.rpc("generate_poets_monthly_invoice", { p_month });
+    const { data, error } = await supabase.rpc("generate_poets_monthly_invoice", {
+      p_month,
+      p_dry_run: dryRun,
+    });
     if (error) throw new Error(error.message);
 
     const res: any = data;
+    // Dry-run maakt géén factuur aan en verstuurt geen mail: alleen een voorbeeld van de regels.
     if (!res?.created) {
       return new Response(JSON.stringify({ ...res, mailed: false }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (dryRun) {
-      return new Response(JSON.stringify({ ...res, mailed: false, dryRun: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const { error: qErr } = await supabase.from("email_queue").insert({
       status: "pending",
