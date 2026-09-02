@@ -51,6 +51,28 @@ export function useRapportageFilters() {
     setParams(next, { replace: true });
   };
 
+  // Bewaar de keuze, zodat ook navigatie via de sidebar (zonder querystring) het bereik vasthoudt.
+  const STORE = "rapportage-filters";
+  React.useEffect(() => {
+    if (params.get("period")) {
+      try { sessionStorage.setItem(STORE, JSON.stringify({ period, branch, from: customFrom, to: customTo })); } catch { /* noop */ }
+      return;
+    }
+    try {
+      const raw = sessionStorage.getItem(STORE);
+      if (!raw) return;
+      const v = JSON.parse(raw) as { period?: string; branch?: string; from?: string | null; to?: string | null };
+      if (!v.period) return;
+      const next = new URLSearchParams(params);
+      next.set("period", v.period);
+      if (v.branch) next.set("branch", v.branch);
+      if (v.from) next.set("from", v.from);
+      if (v.to) next.set("to", v.to);
+      setParams(next, { replace: true });
+    } catch { /* noop */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
+
   const selection: RapSelection = { period, customFrom, customTo };
   const resolved = resolveRange(selection);
 
