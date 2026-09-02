@@ -5,7 +5,7 @@ import { featureAccess } from "@/lib/routeAccess";
 
 interface RoleProtectedRouteProps {
   children: React.ReactNode;
-  requiredAccess: 'reports' | 'leads' | 'customers' | 'ai-agents' | 'settings' | 'taxatie' | 'rapportages' | 'transport';
+  requiredAccess: 'reports' | 'leads' | 'customers' | 'ai-agents' | 'settings' | 'taxatie' | 'rapportages' | 'poets-rapportage' | 'transport';
   fallbackPath?: string;
 }
 
