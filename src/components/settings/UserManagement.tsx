@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAllUsers, updateUserRole, updateUsersBranch, UserProfile } from "@/services/userService";
+import { getAllUsers, updateUserRole, updateUsersBranch, updatePoetserType, UserProfile } from "@/services/userService";
 import { useAuth } from "@/contexts/AuthContext";
 import { AddUserDialog } from "./AddUserDialog";
 import { UserActivityIndicator } from "./UserActivityIndicator";
@@ -47,6 +47,18 @@ export const UserManagement = () => {
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ["users"],
     queryFn: getAllUsers,
+  });
+
+  const poetserTypeMutation = useMutation({
+    mutationFn: ({ userId, poetserType }: { userId: string; poetserType: "intern" | "extern" }) =>
+      updatePoetserType(userId, poetserType),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast({ title: "Poetser bijgewerkt", description: "Het poetser-type is aangepast." });
+    },
+    onError: () => {
+      toast({ title: "Fout", description: "Poetser-type kon niet worden aangepast.", variant: "destructive" });
+    },
   });
 
   const updateRoleMutation = useMutation({
@@ -255,6 +267,23 @@ export const UserManagement = () => {
                   <Badge variant={user.role === "admin" || user.role === "owner" ? "default" : "secondary"}>
                     {getRoleLabel(user.role)}
                   </Badge>
+                  {user.role === "poetser" && (
+                    <Select
+                      value={user.poetser_type || "intern"}
+                      onValueChange={(value) =>
+                        poetserTypeMutation.mutate({ userId: user.id, poetserType: value as "intern" | "extern" })
+                      }
+                      disabled={poetserTypeMutation.isPending}
+                    >
+                      <SelectTrigger className="w-28" aria-label="Poetser-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="intern">Intern</SelectItem>
+                        <SelectItem value="extern">Extern</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                   <Select
                     value={user.role}
                     onValueChange={(value) => handleRoleChange(user.id, value)}
