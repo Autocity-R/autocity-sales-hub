@@ -9,9 +9,26 @@ export interface UserProfile {
   role: 'admin' | 'owner' | 'manager' | 'aftersales_manager' | 'verkoper' | 'operationeel' | 'schadeherstel' | 'poetser' | 'user';
   company: string | null;
   branch: string | null;
+  /** Alleen relevant bij rol 'poetser': eigen medewerker of extern poetsbedrijf. */
+  poetser_type: 'intern' | 'extern';
   created_at: string;
   updated_at: string;
 }
+
+export const updatePoetserType = async (
+  userId: string,
+  poetserType: 'intern' | 'extern'
+): Promise<void> => {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ poetser_type: poetserType } as any)
+    .eq('id', userId);
+  if (error) {
+    console.error('Error updating poetser type:', error);
+    throw error;
+  }
+};
+
 
 export const getAllUsers = async (): Promise<UserProfile[]> => {
   try {
