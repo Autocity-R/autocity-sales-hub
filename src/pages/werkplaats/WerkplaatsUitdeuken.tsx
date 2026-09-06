@@ -161,24 +161,15 @@ const WerkplaatsUitdeuken: React.FC = () => {
       load();
       return;
     }
-    if (isExtern) {
-      const { error } = await supabase.from("work_orders").update({
-        status: "afgerond",
-        finished_at: new Date().toISOString(),
-      }).eq("id", w.id);
-      if (error) toast({ title: "Fout", description: error.message, variant: "destructive" });
-      else { toast({ title: "Klaar gemeld" }); setDetail(null); load(); }
-      return;
-    }
     const { data: userRes } = await supabase.auth.getUser();
     const { error } = await supabase.from("work_orders").update({
-      status: "goedgekeurd",
+      status: "afgerond",
       finished_at: new Date().toISOString(),
       approved_at: new Date().toISOString(),
       approved_by: userRes.user?.id ?? null,
     }).eq("id", w.id);
     if (error) toast({ title: "Fout", description: error.message, variant: "destructive" });
-    else { toast({ title: "Uitdeuk-taak gedaan" }); setDetail(null); load(); }
+    else { toast({ title: isExtern ? "Klaar gemeld" : "Uitdeuk-taak gedaan" }); setDetail(null); load(); }
   };
 
   return (
