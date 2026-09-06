@@ -1,19 +1,21 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import BranchFilter from "@/components/reports/BranchFilter";
 import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
-import { Flame, Loader2, Hammer, Check, CheckCircle2, ChevronUp, ChevronDown } from "lucide-react";
+import { Flame, Loader2, Hammer, Check, CheckCircle2, ChevronUp, ChevronDown, Search, History, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { differenceInDays } from "date-fns";
 import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
 import { TaskDetailSheet, TaskDetailWorkOrder } from "@/components/werkplaats/TaskDetailSheet";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
-import { PartChips } from "@/components/werkplaats/workOrderParts";
+import { PartChips, getWorkOrderParts } from "@/components/werkplaats/workOrderParts";
 import { isPlannedInFuture, formatPlannedDay } from "@/components/werkplaats/plannedVisibility";
+import { buildHaystack, matchesSearch } from "@/lib/searchNormalize";
 
 interface WO {
   id: string; description: string; part: string | null; parts?: string[] | null; status: string; is_rush: boolean; sort_order: number;
@@ -23,6 +25,15 @@ interface WO {
   vehicle: { brand: string; model: string; year: number | null; license_number: string | null; vin: string | null; mileage: number | null; color: string | null } | null;
 }
 
+const hay = (w: WO) =>
+  buildHaystack([
+    w.vehicle?.license_number, w.vehicle?.brand, w.vehicle?.model, w.vehicle?.vin,
+    w.vehicle?.year, w.vehicle?.color, w.description, w.part, ...getWorkOrderParts(w as any),
+  ]);
+
+const fmtDateTime = (d?: string | null) =>
+  d ? new Date(d).toLocaleString("nl-NL", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+
 const WerkplaatsUitdeuken: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
   const { isUitdeukerExtern, isDirectieReadOnly } = useRoleAccess();
@@ -31,12 +42,17 @@ const WerkplaatsUitdeuken: React.FC = () => {
   const [rows, setRows] = useState<WO[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<WO | null>(null);
-  const canReorder = !isExtern && !readOnly;
+  const [q, setQ] = useState("");
+  const [tab, setTab] = useState<"open" | "historie">("open");
+  const [history, setHistory] = useState<WO[]>([]);
+  const [histLoading, setHistLoading] = useState(false);
+  const canReorder = !isExtern && !readOnly && !q.trim();
 
   const isDone = (w: WO) => (isExtern ? w.status === "afgerond" : w.status === "goedgekeurd");
   const openSorted = (list: WO[]) =>
     list.filter(w => !isDone(w)).sort((a, b) =>
       (Number(b.is_rush) - Number(a.is_rush)) || (a.sort_order - b.sort_order));
+
 
   const reorder = async (id: string, dir: -1 | 1) => {
     const visible = openSorted(rows);
@@ -109,6 +125,36 @@ const WerkplaatsUitdeuken: React.FC = () => {
   };
   useEffect(() => { load(); /* eslint-disable-line */ }, [branchFilter]);
 
+  /** Volledige uitdeuk-historie (laatste 6 maanden): wat is er wanneer aan welke auto gedaan. */
+  const loadHistory = async () => {
+    setHistLoading(true);
+    const select = "id, description, part, parts, status, is_rush, sort_order, photos, branch, created_at, planned_at, approved_at, finished_at, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
+    const from = new Date(Date.now() - 183 * 24 * 60 * 60 * 1000).toISOString();
+    let qh = supabase.from("work_orders").select(select)
+      .eq("discipline", "uitdeuk")
+      .in("status", ["afgerond", "goedgekeurd"])
+      .gte("finished_at", from)
+      .order("finished_at", { ascending: false })
+      .limit(400);
+    qh = applyBranchFilter(qh as any, branchFilter);
+    const { data } = await qh;
+    setHistory(((data as any[]) || []) as WO[]);
+    setHistLoading(false);
+  };
+  useEffect(() => { if (tab === "historie") loadHistory(); /* eslint-disable-line */ }, [tab, branchFilter]);
+
+  const visibleRows = useMemo(() => {
+    const list = [...openSorted(rows), ...rows.filter(w => isDone(w))];
+    return q.trim() ? list.filter(w => matchesSearch(hay(w), q)) : list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, q, isExtern]);
+
+  const visibleHistory = useMemo(
+    () => (q.trim() ? history.filter(w => matchesSearch(hay(w), q)) : history),
+    [history, q],
+  );
+
+
   const markDone = async (w: WO) => {
     if (isPlannedInFuture(w.planned_at)) {
       toast({
@@ -155,13 +201,105 @@ const WerkplaatsUitdeuken: React.FC = () => {
           {!isExtern && <BranchFilter />}
         </div>
 
-        {loading ? (
+        <div className="flex flex-col sm:flex-row gap-2 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Zoek op kenteken, merk, model, VIN, kleur of omschrijving…"
+              className="pl-9 pr-9 h-11"
+            />
+            {q && (
+              <button
+                type="button"
+                aria-label="Zoekopdracht wissen"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600"
+                onClick={() => setQ("")}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <div className="flex rounded-lg border border-slate-200 bg-white p-1 self-start">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn("h-9", tab === "open" && "bg-slate-900 text-white hover:bg-slate-900 hover:text-white")}
+              onClick={() => setTab("open")}
+            >
+              <Hammer className="h-4 w-4 mr-1" /> Openstaand
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn("h-9", tab === "historie" && "bg-slate-900 text-white hover:bg-slate-900 hover:text-white")}
+              onClick={() => setTab("historie")}
+            >
+              <History className="h-4 w-4 mr-1" /> Historie
+            </Button>
+          </div>
+        </div>
+
+        {tab === "historie" ? (
+          histLoading ? (
+            <div className="flex items-center gap-2 text-slate-500 py-10"><Loader2 className="h-4 w-4 animate-spin" /> Historie laden…</div>
+          ) : visibleHistory.length === 0 ? (
+            <AsCard className="p-10 text-center text-slate-400 text-[13px]">
+              <History className="h-5 w-5 mx-auto mb-2 text-slate-300" />
+              {q ? "Geen afgerond uitdeukwerk gevonden voor deze zoekopdracht." : "Nog geen afgerond uitdeukwerk in de laatste 6 maanden."}
+            </AsCard>
+          ) : (
+            <div className="space-y-3">
+              <div className="text-[12px] text-slate-500">{visibleHistory.length} afgeronde klus(sen) · laatste 6 maanden</div>
+              {visibleHistory.map((w) => {
+                const v = w.vehicle;
+                return (
+                  <AsCard key={w.id} onClick={() => setDetail(w)} className="p-4 md:p-5">
+                    <div className="flex items-start gap-4">
+                      <div className="pt-0.5"><AsLicensePlate value={v?.license_number} size="lg" /></div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-[15px] font-bold tracking-tight text-slate-900 truncate">
+                              {v?.brand} {v?.model} {v?.year && <span className="text-slate-500 font-semibold">· {v.year}</span>}
+                            </div>
+                            <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                              {[v?.mileage ? `${v.mileage.toLocaleString("nl-NL")} km` : null, v?.color, v?.vin ? v.vin.slice(-8) : null]
+                                .filter(Boolean).map((x, i) => <span key={i} className="mr-2">{x}</span>)}
+                            </div>
+                          </div>
+                          <AsPill tone="green"><CheckCircle2 className="h-3 w-3" />Klaar {fmtDateTime(w.finished_at || w.approved_at)}</AsPill>
+                        </div>
+                        <PartChips workOrder={w as any} className="mt-3" />
+                        <div className="mt-2 text-[13px] text-slate-700">{w.description}</div>
+                        <div className="mt-1 text-[11px] text-slate-400">
+                          Aangemeld {fmtDateTime(w.created_at)}
+                          {w.finished_at && ` · doorlooptijd ${Math.max(0, differenceInDays(new Date(w.finished_at), new Date(w.created_at)))} dag(en)`}
+                        </div>
+                        {w.photos && w.photos.length > 0 && (
+                          <div className="flex gap-2 mt-3 flex-wrap">
+                            {w.photos.map((p, i) => <WorkshopPhoto key={i} path={p} className="w-20 h-20" />)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </AsCard>
+                );
+              })}
+            </div>
+          )
+        ) : loading ? (
           <div className="flex items-center gap-2 text-slate-500 py-10"><Loader2 className="h-4 w-4 animate-spin" /> Laden…</div>
-        ) : rows.length === 0 ? (
-          <AsCard className="p-10 text-center text-slate-400 text-[13px]"><Hammer className="h-5 w-5 mx-auto mb-2 text-slate-300" />Geen uitdeuk-taken.</AsCard>
+        ) : visibleRows.length === 0 ? (
+          <AsCard className="p-10 text-center text-slate-400 text-[13px]">
+            <Hammer className="h-5 w-5 mx-auto mb-2 text-slate-300" />
+            {q ? "Geen uitdeuk-taken gevonden voor deze zoekopdracht." : "Geen uitdeuk-taken."}
+          </AsCard>
         ) : (
           <div className="space-y-3">
-            {[...openSorted(rows), ...rows.filter(w => isDone(w))].map((w, visIdx, arr) => {
+            {visibleRows.map((w, visIdx, arr) => {
+
               const v = w.vehicle;
               const done = isDone(w);
               const openCount = arr.filter(x => !isDone(x)).length;
