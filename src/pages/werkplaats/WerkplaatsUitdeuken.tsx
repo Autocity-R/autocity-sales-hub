@@ -48,7 +48,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
   const [histLoading, setHistLoading] = useState(false);
   const canReorder = !isExtern && !readOnly && !q.trim();
 
-  const isDone = (w: WO) => (isExtern ? w.status === "afgerond" : w.status === "goedgekeurd");
+  const isDone = (w: WO) => w.status === "afgerond" || w.status === "goedgekeurd";
   const openSorted = (list: WO[]) =>
     list.filter(w => !isDone(w)).sort((a, b) =>
       (Number(b.is_rush) - Number(a.is_rush)) || (a.sort_order - b.sort_order));
