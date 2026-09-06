@@ -48,7 +48,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
   const [histLoading, setHistLoading] = useState(false);
   const canReorder = !isExtern && !readOnly && !q.trim();
 
-  const isDone = (w: WO) => (isExtern ? w.status === "afgerond" : w.status === "goedgekeurd");
+  const isDone = (w: WO) => w.status === "afgerond" || w.status === "goedgekeurd";
   const openSorted = (list: WO[]) =>
     list.filter(w => !isDone(w)).sort((a, b) =>
       (Number(b.is_rush) - Number(a.is_rush)) || (a.sort_order - b.sort_order));
@@ -98,24 +98,19 @@ const WerkplaatsUitdeuken: React.FC = () => {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const select = "id, description, part, parts, status, is_rush, sort_order, photos, branch, created_at, planned_at, approved_at, finished_at, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
 
+    const openStatuses = isExtern ? ["aangevraagd", "ingepland", "bezig"] : ["ingepland", "bezig"];
     let qOpen = supabase.from("work_orders").select(select)
       .eq("discipline", "uitdeuk")
-      .in("status", isExtern ? ["aangevraagd", "ingepland", "bezig"] : ["ingepland", "bezig", "afgerond"])
+      .in("status", openStatuses)
       .order("is_rush", { ascending: false })
       .order("sort_order", { ascending: true });
     qOpen = applyBranchFilter(qOpen as any, branchFilter);
 
-    let qDone = isExtern
-      ? supabase.from("work_orders").select(select)
-          .eq("discipline", "uitdeuk")
-          .eq("status", "afgerond")
-          .gte("finished_at", since)
-          .order("finished_at", { ascending: false })
-      : supabase.from("work_orders").select(select)
-          .eq("discipline", "uitdeuk")
-          .eq("status", "goedgekeurd")
-          .gte("approved_at", since)
-          .order("approved_at", { ascending: false });
+    let qDone = supabase.from("work_orders").select(select)
+      .eq("discipline", "uitdeuk")
+      .in("status", ["afgerond", "goedgekeurd"])
+      .gte("finished_at", since)
+      .order("finished_at", { ascending: false });
     qDone = applyBranchFilter(qDone as any, branchFilter);
 
     const [{ data: openData }, { data: doneData }] = await Promise.all([qOpen, qDone]);
@@ -132,9 +127,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
     const from = new Date(Date.now() - 183 * 24 * 60 * 60 * 1000).toISOString();
     let qh = supabase.from("work_orders").select(select)
       .eq("discipline", "uitdeuk")
-      // Intern: pas ná goedkeuring historie (status 'afgerond' staat nog in de openstaande lijst
-      // te wachten op goedkeuring). Extern: 'afgerond' is het eindpunt.
-      .in("status", isExtern ? ["afgerond"] : ["goedgekeurd"])
+      .in("status", ["afgerond", "goedgekeurd"])
       .gte("finished_at", from)
       .order("finished_at", { ascending: false })
       .limit(400);
@@ -168,24 +161,15 @@ const WerkplaatsUitdeuken: React.FC = () => {
       load();
       return;
     }
-    if (isExtern) {
-      const { error } = await supabase.from("work_orders").update({
-        status: "afgerond",
-        finished_at: new Date().toISOString(),
-      }).eq("id", w.id);
-      if (error) toast({ title: "Fout", description: error.message, variant: "destructive" });
-      else { toast({ title: "Klaar gemeld" }); setDetail(null); load(); }
-      return;
-    }
     const { data: userRes } = await supabase.auth.getUser();
     const { error } = await supabase.from("work_orders").update({
-      status: "goedgekeurd",
+      status: "afgerond",
       finished_at: new Date().toISOString(),
       approved_at: new Date().toISOString(),
       approved_by: userRes.user?.id ?? null,
     }).eq("id", w.id);
     if (error) toast({ title: "Fout", description: error.message, variant: "destructive" });
-    else { toast({ title: "Uitdeuk-taak gedaan" }); setDetail(null); load(); }
+    else { toast({ title: isExtern ? "Klaar gemeld" : "Uitdeuk-taak gedaan" }); setDetail(null); load(); }
   };
 
   return (
@@ -386,7 +370,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
           open={!!detail}
           onOpenChange={(v) => !v && setDetail(null)}
           workOrder={detail as TaskDetailWorkOrder | null}
-          actions={detail && !readOnly && !(isExtern ? detail.status === "afgerond" : detail.status === "goedgekeurd") ? (
+          actions={detail && !readOnly && detail.status !== "afgerond" && detail.status !== "goedgekeurd" ? (
             <Button
               size="lg"
               className="w-full h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
