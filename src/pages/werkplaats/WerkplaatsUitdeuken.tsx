@@ -386,7 +386,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
           open={!!detail}
           onOpenChange={(v) => !v && setDetail(null)}
           workOrder={detail as TaskDetailWorkOrder | null}
-          actions={detail && !readOnly && !(isExtern ? detail.status === "afgerond" : detail.status === "goedgekeurd") ? (
+          actions={detail && !readOnly && detail.status !== "afgerond" && detail.status !== "goedgekeurd" ? (
             <Button
               size="lg"
               className="w-full h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
