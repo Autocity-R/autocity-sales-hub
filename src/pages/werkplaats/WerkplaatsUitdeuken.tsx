@@ -1,19 +1,21 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import BranchFilter from "@/components/reports/BranchFilter";
 import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
-import { Flame, Loader2, Hammer, Check, CheckCircle2, ChevronUp, ChevronDown } from "lucide-react";
+import { Flame, Loader2, Hammer, Check, CheckCircle2, ChevronUp, ChevronDown, Search, History, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { differenceInDays } from "date-fns";
 import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono } from "@/components/aftersales/ui";
 import { cn } from "@/lib/utils";
 import { TaskDetailSheet, TaskDetailWorkOrder } from "@/components/werkplaats/TaskDetailSheet";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
-import { PartChips } from "@/components/werkplaats/workOrderParts";
+import { PartChips, getWorkOrderParts } from "@/components/werkplaats/workOrderParts";
 import { isPlannedInFuture, formatPlannedDay } from "@/components/werkplaats/plannedVisibility";
+import { buildHaystack, matchesSearch } from "@/lib/searchNormalize";
 
 interface WO {
   id: string; description: string; part: string | null; parts?: string[] | null; status: string; is_rush: boolean; sort_order: number;
@@ -23,6 +25,15 @@ interface WO {
   vehicle: { brand: string; model: string; year: number | null; license_number: string | null; vin: string | null; mileage: number | null; color: string | null } | null;
 }
 
+const hay = (w: WO) =>
+  buildHaystack([
+    w.vehicle?.license_number, w.vehicle?.brand, w.vehicle?.model, w.vehicle?.vin,
+    w.vehicle?.year, w.vehicle?.color, w.description, w.part, ...getWorkOrderParts(w as any),
+  ]);
+
+const fmtDateTime = (d?: string | null) =>
+  d ? new Date(d).toLocaleString("nl-NL", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+
 const WerkplaatsUitdeuken: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
   const { isUitdeukerExtern, isDirectieReadOnly } = useRoleAccess();
@@ -31,12 +42,17 @@ const WerkplaatsUitdeuken: React.FC = () => {
   const [rows, setRows] = useState<WO[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<WO | null>(null);
-  const canReorder = !isExtern && !readOnly;
+  const [q, setQ] = useState("");
+  const [tab, setTab] = useState<"open" | "historie">("open");
+  const [history, setHistory] = useState<WO[]>([]);
+  const [histLoading, setHistLoading] = useState(false);
+  const canReorder = !isExtern && !readOnly && !q.trim();
 
   const isDone = (w: WO) => (isExtern ? w.status === "afgerond" : w.status === "goedgekeurd");
   const openSorted = (list: WO[]) =>
     list.filter(w => !isDone(w)).sort((a, b) =>
       (Number(b.is_rush) - Number(a.is_rush)) || (a.sort_order - b.sort_order));
+
 
   const reorder = async (id: string, dir: -1 | 1) => {
     const visible = openSorted(rows);
