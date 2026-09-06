@@ -125,6 +125,36 @@ const WerkplaatsUitdeuken: React.FC = () => {
   };
   useEffect(() => { load(); /* eslint-disable-line */ }, [branchFilter]);
 
+  /** Volledige uitdeuk-historie (laatste 6 maanden): wat is er wanneer aan welke auto gedaan. */
+  const loadHistory = async () => {
+    setHistLoading(true);
+    const select = "id, description, part, parts, status, is_rush, sort_order, photos, branch, created_at, planned_at, approved_at, finished_at, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
+    const from = new Date(Date.now() - 183 * 24 * 60 * 60 * 1000).toISOString();
+    let qh = supabase.from("work_orders").select(select)
+      .eq("discipline", "uitdeuk")
+      .in("status", ["afgerond", "goedgekeurd"])
+      .gte("finished_at", from)
+      .order("finished_at", { ascending: false })
+      .limit(400);
+    qh = applyBranchFilter(qh as any, branchFilter);
+    const { data } = await qh;
+    setHistory(((data as any[]) || []) as WO[]);
+    setHistLoading(false);
+  };
+  useEffect(() => { if (tab === "historie") loadHistory(); /* eslint-disable-line */ }, [tab, branchFilter]);
+
+  const visibleRows = useMemo(() => {
+    const list = [...openSorted(rows), ...rows.filter(w => isDone(w))];
+    return q.trim() ? list.filter(w => matchesSearch(hay(w), q)) : list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, q, isExtern]);
+
+  const visibleHistory = useMemo(
+    () => (q.trim() ? history.filter(w => matchesSearch(hay(w), q)) : history),
+    [history, q],
+  );
+
+
   const markDone = async (w: WO) => {
     if (isPlannedInFuture(w.planned_at)) {
       toast({
