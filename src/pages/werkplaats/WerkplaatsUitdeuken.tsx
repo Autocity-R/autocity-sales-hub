@@ -132,7 +132,9 @@ const WerkplaatsUitdeuken: React.FC = () => {
     const from = new Date(Date.now() - 183 * 24 * 60 * 60 * 1000).toISOString();
     let qh = supabase.from("work_orders").select(select)
       .eq("discipline", "uitdeuk")
-      .in("status", ["afgerond", "goedgekeurd"])
+      // Intern: pas ná goedkeuring historie (status 'afgerond' staat nog in de openstaande lijst
+      // te wachten op goedkeuring). Extern: 'afgerond' is het eindpunt.
+      .in("status", isExtern ? ["afgerond"] : ["goedgekeurd"])
       .gte("finished_at", from)
       .order("finished_at", { ascending: false })
       .limit(400);
