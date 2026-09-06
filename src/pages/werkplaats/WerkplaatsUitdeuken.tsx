@@ -201,13 +201,105 @@ const WerkplaatsUitdeuken: React.FC = () => {
           {!isExtern && <BranchFilter />}
         </div>
 
-        {loading ? (
+        <div className="flex flex-col sm:flex-row gap-2 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Zoek op kenteken, merk, model, VIN, kleur of omschrijving…"
+              className="pl-9 pr-9 h-11"
+            />
+            {q && (
+              <button
+                type="button"
+                aria-label="Zoekopdracht wissen"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600"
+                onClick={() => setQ("")}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <div className="flex rounded-lg border border-slate-200 bg-white p-1 self-start">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn("h-9", tab === "open" && "bg-slate-900 text-white hover:bg-slate-900 hover:text-white")}
+              onClick={() => setTab("open")}
+            >
+              <Hammer className="h-4 w-4 mr-1" /> Openstaand
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn("h-9", tab === "historie" && "bg-slate-900 text-white hover:bg-slate-900 hover:text-white")}
+              onClick={() => setTab("historie")}
+            >
+              <History className="h-4 w-4 mr-1" /> Historie
+            </Button>
+          </div>
+        </div>
+
+        {tab === "historie" ? (
+          histLoading ? (
+            <div className="flex items-center gap-2 text-slate-500 py-10"><Loader2 className="h-4 w-4 animate-spin" /> Historie laden…</div>
+          ) : visibleHistory.length === 0 ? (
+            <AsCard className="p-10 text-center text-slate-400 text-[13px]">
+              <History className="h-5 w-5 mx-auto mb-2 text-slate-300" />
+              {q ? "Geen afgerond uitdeukwerk gevonden voor deze zoekopdracht." : "Nog geen afgerond uitdeukwerk in de laatste 6 maanden."}
+            </AsCard>
+          ) : (
+            <div className="space-y-3">
+              <div className="text-[12px] text-slate-500">{visibleHistory.length} afgeronde klus(sen) · laatste 6 maanden</div>
+              {visibleHistory.map((w) => {
+                const v = w.vehicle;
+                return (
+                  <AsCard key={w.id} onClick={() => setDetail(w)} className="p-4 md:p-5">
+                    <div className="flex items-start gap-4">
+                      <div className="pt-0.5"><AsLicensePlate value={v?.license_number} size="lg" /></div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-[15px] font-bold tracking-tight text-slate-900 truncate">
+                              {v?.brand} {v?.model} {v?.year && <span className="text-slate-500 font-semibold">· {v.year}</span>}
+                            </div>
+                            <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                              {[v?.mileage ? `${v.mileage.toLocaleString("nl-NL")} km` : null, v?.color, v?.vin ? v.vin.slice(-8) : null]
+                                .filter(Boolean).map((x, i) => <span key={i} className="mr-2">{x}</span>)}
+                            </div>
+                          </div>
+                          <AsPill tone="green"><CheckCircle2 className="h-3 w-3" />Klaar {fmtDateTime(w.finished_at || w.approved_at)}</AsPill>
+                        </div>
+                        <PartChips workOrder={w as any} className="mt-3" />
+                        <div className="mt-2 text-[13px] text-slate-700">{w.description}</div>
+                        <div className="mt-1 text-[11px] text-slate-400">
+                          Aangemeld {fmtDateTime(w.created_at)}
+                          {w.finished_at && ` · doorlooptijd ${Math.max(0, differenceInDays(new Date(w.finished_at), new Date(w.created_at)))} dag(en)`}
+                        </div>
+                        {w.photos && w.photos.length > 0 && (
+                          <div className="flex gap-2 mt-3 flex-wrap">
+                            {w.photos.map((p, i) => <WorkshopPhoto key={i} path={p} className="w-20 h-20" />)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </AsCard>
+                );
+              })}
+            </div>
+          )
+        ) : loading ? (
           <div className="flex items-center gap-2 text-slate-500 py-10"><Loader2 className="h-4 w-4 animate-spin" /> Laden…</div>
-        ) : rows.length === 0 ? (
-          <AsCard className="p-10 text-center text-slate-400 text-[13px]"><Hammer className="h-5 w-5 mx-auto mb-2 text-slate-300" />Geen uitdeuk-taken.</AsCard>
+        ) : visibleRows.length === 0 ? (
+          <AsCard className="p-10 text-center text-slate-400 text-[13px]">
+            <Hammer className="h-5 w-5 mx-auto mb-2 text-slate-300" />
+            {q ? "Geen uitdeuk-taken gevonden voor deze zoekopdracht." : "Geen uitdeuk-taken."}
+          </AsCard>
         ) : (
           <div className="space-y-3">
-            {[...openSorted(rows), ...rows.filter(w => isDone(w))].map((w, visIdx, arr) => {
+            {visibleRows.map((w, visIdx, arr) => {
+
               const v = w.vehicle;
               const done = isDone(w);
               const openCount = arr.filter(x => !isDone(x)).length;
