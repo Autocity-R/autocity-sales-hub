@@ -98,24 +98,19 @@ const WerkplaatsUitdeuken: React.FC = () => {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const select = "id, description, part, parts, status, is_rush, sort_order, photos, branch, created_at, planned_at, approved_at, finished_at, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
 
+    const openStatuses = isExtern ? ["aangevraagd", "ingepland", "bezig"] : ["ingepland", "bezig"];
     let qOpen = supabase.from("work_orders").select(select)
       .eq("discipline", "uitdeuk")
-      .in("status", isExtern ? ["aangevraagd", "ingepland", "bezig"] : ["ingepland", "bezig", "afgerond"])
+      .in("status", openStatuses)
       .order("is_rush", { ascending: false })
       .order("sort_order", { ascending: true });
     qOpen = applyBranchFilter(qOpen as any, branchFilter);
 
-    let qDone = isExtern
-      ? supabase.from("work_orders").select(select)
-          .eq("discipline", "uitdeuk")
-          .eq("status", "afgerond")
-          .gte("finished_at", since)
-          .order("finished_at", { ascending: false })
-      : supabase.from("work_orders").select(select)
-          .eq("discipline", "uitdeuk")
-          .eq("status", "goedgekeurd")
-          .gte("approved_at", since)
-          .order("approved_at", { ascending: false });
+    let qDone = supabase.from("work_orders").select(select)
+      .eq("discipline", "uitdeuk")
+      .in("status", ["afgerond", "goedgekeurd"])
+      .gte("finished_at", since)
+      .order("finished_at", { ascending: false });
     qDone = applyBranchFilter(qDone as any, branchFilter);
 
     const [{ data: openData }, { data: doneData }] = await Promise.all([qOpen, qDone]);
