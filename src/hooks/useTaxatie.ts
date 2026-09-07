@@ -241,7 +241,9 @@ export const useTaxatie = () => {
       }));
 
       // AI analyse - altijd proberen, met fallback in de service
-      const advice = await generateAIAdvice(vehicleWithOptions, portalData, jpData, internalData);
+      const advice = aiProvider === 'claude'
+        ? await generateAIAdviceClaude(vehicleWithOptions, portalData, jpData, internalData)
+        : await generateAIAdvice(vehicleWithOptions, portalData, jpData, internalData);
       setAiAdvice(advice);
 
       setLoading(prev => ({ ...prev, aiAnalysis: false }));
@@ -257,6 +259,7 @@ export const useTaxatie = () => {
         internalComparison: internalData,
         aiAdvice: advice,
         status: 'voltooid',
+        aiModelVersion: aiProvider === 'claude' ? 'claude-sonnet-4-20250514' : 'gpt-4o',
       });
       
       if (savedValuation?.id) {
