@@ -486,6 +486,7 @@ export const saveTaxatieValuation = async (valuation: {
   internalComparison?: InternalComparison | null;
   aiAdvice?: AITaxatieAdvice | null;
   status?: string;
+  aiModelVersion?: string;
 }): Promise<{ id: string } | null> => {
   try {
     console.log('💾 Saving taxatie valuation to database...');
@@ -500,7 +501,7 @@ export const saveTaxatieValuation = async (valuation: {
       jpcars_data: (valuation.jpCarsData || {}) as unknown as Record<string, unknown>,
       internal_comparison: (valuation.internalComparison || {}) as unknown as Record<string, unknown>,
       ai_advice: (valuation.aiAdvice || {}) as unknown as Record<string, unknown>,
-      ai_model_version: 'gpt-4o',
+      ai_model_version: valuation.aiModelVersion || 'gpt-4o',
       status: valuation.status || 'voltooid',
     };
     
