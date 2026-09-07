@@ -58,6 +58,8 @@ export const BulkTaxatieTab = () => {
       rawDataCount={rawData.length}
       inputs={inputs}
       filename={filename}
+      aiProvider={aiProvider}
+      onAiProviderChange={setAiProvider}
       onFileUpload={parseExcelFile}
       onAnalyzeWithAI={analyzeExcelWithAI}
       onStartProcessing={startBulkProcessing}
