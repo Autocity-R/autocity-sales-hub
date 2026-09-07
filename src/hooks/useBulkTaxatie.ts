@@ -246,16 +246,17 @@ export const useBulkTaxatie = () => {
     setState(prev => ({ ...prev, isParsing: true }));
 
     try {
-      // Process in batches of 150 rows (Gemini can handle this within timeout)
+      // Process in batches of 150 rows (Gemini/Claude can handle this within timeout)
       const batchSize = 150;
       const allVehicles: BulkTaxatieInput[] = [];
+      const functionName = aiProvider === 'claude' ? 'analyze-excel-vehicles-claude' : 'analyze-excel-vehicles';
 
       for (let i = 0; i < rawData.length; i += batchSize) {
         const batch = rawData.slice(i, i + batchSize);
         
-        console.log(`📊 Analyzing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(rawData.length / batchSize)}`);
+        console.log(`📊 Analyzing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(rawData.length / batchSize)} with ${aiProvider}`);
 
-        const { data, error } = await supabase.functions.invoke('analyze-excel-vehicles', {
+        const { data, error } = await supabase.functions.invoke(functionName, {
           body: { 
             headers: availableColumns,
             rows: batch,
@@ -313,7 +314,7 @@ export const useBulkTaxatie = () => {
       toast.error('Fout bij AI analyse');
       setState(prev => ({ ...prev, isParsing: false }));
     }
-  }, [state.rawData, state.availableColumns]);
+  }, [state.rawData, state.availableColumns, aiProvider]);
 
   // Process single vehicle with timeouts and cached feedback
   const processSingleVehicle = async (
