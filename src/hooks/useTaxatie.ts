@@ -15,6 +15,7 @@ import {
   fetchJPCarsData,
   fetchInternalComparison,
   generateAIAdvice,
+  generateAIAdviceClaude,
   saveTaxatieValuation,
   saveTaxatieFeedback,
 } from '@/services/taxatieService';
