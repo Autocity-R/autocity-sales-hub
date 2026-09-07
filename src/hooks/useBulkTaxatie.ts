@@ -556,6 +556,8 @@ export const useBulkTaxatie = () => {
 
   return {
     ...state,
+    aiProvider,
+    setAiProvider,
     parseExcelFile,
     analyzeExcelWithAI,
     startBulkProcessing,
