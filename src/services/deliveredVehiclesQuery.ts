@@ -192,12 +192,14 @@ export const fetchDeliveredVehiclesPage = async (
     q = q.or(parts.join(","));
   }
 
+  // De tabel toont B2C alleen bij originalSalesStatus = verkocht_b2c; al het
+  // andere (incl. ontbrekende waarde) wordt als B2B weergegeven.
   if (salesType === "b2c") {
-    q = q.or(
-      "details->>originalSalesStatus.eq.verkocht_b2c,details->>originalSalesStatus.is.null",
-    );
+    q = q.eq("details->>originalSalesStatus", "verkocht_b2c");
   } else if (salesType === "b2b") {
-    q = q.eq("details->>originalSalesStatus", "verkocht_b2b");
+    q = q.or(
+      "details->>originalSalesStatus.eq.verkocht_b2b,details->>originalSalesStatus.is.null",
+    );
   }
 
   if (dateFrom) {
