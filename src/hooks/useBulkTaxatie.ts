@@ -8,6 +8,7 @@ import {
   fetchPortalAnalysis,
   fetchInternalComparison,
   generateAIAdvice,
+  generateAIAdviceClaude,
   saveTaxatieValuation,
   fetchRecentFeedback,
 } from '@/services/taxatieService';
