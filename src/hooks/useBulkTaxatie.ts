@@ -378,7 +378,7 @@ export const useBulkTaxatie = () => {
         internalComparison,
         aiAdvice,
         status: 'voltooid',
-        aiModelVersion: aiProvider === 'claude' ? 'claude-sonnet-4-20250514' : 'gpt-4o',
+        aiModelVersion: aiProvider === 'claude' ? 'claude-sonnet-4-6' : 'gpt-4o',
       });
 
       return {

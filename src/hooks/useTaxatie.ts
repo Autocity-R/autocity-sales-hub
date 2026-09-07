@@ -259,7 +259,7 @@ export const useTaxatie = () => {
         internalComparison: internalData,
         aiAdvice: advice,
         status: 'voltooid',
-        aiModelVersion: aiProvider === 'claude' ? 'claude-sonnet-4-20250514' : 'gpt-4o',
+        aiModelVersion: aiProvider === 'claude' ? 'claude-sonnet-4-6' : 'gpt-4o',
       });
       
       if (savedValuation?.id) {
