@@ -353,6 +353,8 @@ export const useTaxatie = () => {
     taxatieComplete,
     enteredMileage,
     currentValuationId, // Expose for debugging/display
+    aiProvider,
+    setAiProvider,
 
     // Actions
     handleLicensePlateSearch,
