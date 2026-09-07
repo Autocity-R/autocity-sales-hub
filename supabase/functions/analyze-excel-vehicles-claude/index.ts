@@ -209,81 +209,66 @@ ${JSON.stringify(dataForAI, null, 2)}
 
 Analyseer deze data en extraheer de voertuiggegevens. Retourneer ALLEEN een JSON array.`;
 
-    console.log(`🤖 Calling Gemini 2.5 Flash to analyze ${dataForAI.length} vehicles...`);
+    console.log(`🤖 Calling Claude Sonnet to analyze ${dataForAI.length} vehicles...`);
     const startTime = Date.now();
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
+        'x-api-key': anthropicKey,
+        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        max_tokens: 65536,
+        max_tokens: 8192,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+        tools: [parseExcelVehiclesTool],
+        tool_choice: { type: 'tool', name: 'parse_excel_vehicles' },
       }),
     });
 
-    console.log(`⏱️ AI API response in ${Date.now() - startTime}ms, status: ${response.status}`);
+    console.log(`⏱️ Claude API response in ${Date.now() - startTime}ms, status: ${response.status}`);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI API error:', response.status, errorText);
-      
+      console.error('Claude API error:', response.status, errorText);
+
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: 'Rate limit bereikt, probeer het later opnieuw' }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: 'Geen tegoed meer, voeg credits toe' }), {
-          status: 402,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      throw new Error(`AI API error: ${response.status}`);
+      throw new Error(`Claude API error: ${response.status}`);
     }
 
-    const aiResponse = await response.json();
-    const content = aiResponse.choices?.[0]?.message?.content;
-    const finishReason = aiResponse.choices?.[0]?.finish_reason;
+    const data = await response.json();
+    console.log('✅ Claude response received');
 
-    if (!content) {
-      throw new Error('Geen response van AI ontvangen');
-    }
-
-    console.log(`📝 AI response received, finish_reason: ${finishReason}, content length: ${content.length}`);
-
-    // Check if response was truncated
-    if (finishReason === 'length') {
-      console.warn('⚠️ AI response was truncated due to max_tokens limit');
-    }
-
-    // Extract JSON from response (handle markdown code blocks)
-    let jsonStr = content;
-    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[1];
-    }
-
-    // Clean up the string
-    jsonStr = jsonStr.trim();
-    if (!jsonStr.startsWith('[')) {
-      const arrayStart = jsonStr.indexOf('[');
-      if (arrayStart !== -1) {
-        jsonStr = jsonStr.substring(arrayStart);
-      }
-    }
-
+    // Extract tool_use block
+    const toolUse = (data.content || []).find((b: any) => b.type === 'tool_use' && b.name === 'parse_excel_vehicles');
     let vehicles: AnalyzedVehicle[];
+
+    if (toolUse && toolUse.input && Array.isArray(toolUse.input.vehicles)) {
+      vehicles = toolUse.input.vehicles;
+    } else {
+      // Fallback: parse text blocks as JSON
+      const textBlocks = (data.content || []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n');
+      console.warn('⚠️ No tool_use found, attempting text parse');
+      const parsed = parseClaudeResponse(textBlocks);
+      if (Array.isArray(parsed)) {
+        vehicles = parsed;
+      } else if (parsed && Array.isArray(parsed.vehicles)) {
+        vehicles = parsed.vehicles;
+      } else {
+        throw new Error('Geen geldige voertuigen van AI ontvangen');
+      }
+    }
+
     try {
-      vehicles = JSON.parse(jsonStr);
-    } catch (parseError: unknown) {
+      // keep vehicles in scope for downstream validation
       console.error('JSON parse error:', parseError);
       console.log('🔧 Attempting to recover partial JSON...');
       
