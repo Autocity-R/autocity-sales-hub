@@ -267,40 +267,6 @@ Analyseer deze data en extraheer de voertuiggegevens. Retourneer ALLEEN een JSON
       }
     }
 
-    try {
-      // keep vehicles in scope for downstream validation
-      console.error('JSON parse error:', parseError);
-      console.log('🔧 Attempting to recover partial JSON...');
-      
-      // Try to recover partial JSON by finding the last complete object
-      const lastCompleteObject = jsonStr.lastIndexOf('},');
-      if (lastCompleteObject > 0) {
-        const recoveredJson = jsonStr.substring(0, lastCompleteObject + 1) + ']';
-        try {
-          vehicles = JSON.parse(recoveredJson);
-          console.log(`✅ Recovered ${vehicles.length} vehicles from partial JSON`);
-        } catch {
-          // Try finding last complete object without comma
-          const lastObject = jsonStr.lastIndexOf('}');
-          if (lastObject > 0) {
-            const recovered2 = jsonStr.substring(0, lastObject + 1) + ']';
-            try {
-              vehicles = JSON.parse(recovered2);
-              console.log(`✅ Recovered ${vehicles.length} vehicles from partial JSON (method 2)`);
-            } catch {
-              console.error('Content preview:', jsonStr.substring(0, 1000));
-              throw new Error('Kon AI response niet parsen, ook niet na recovery poging');
-            }
-          } else {
-            throw new Error('Kon AI response niet parsen');
-          }
-        }
-      } else {
-        console.error('Content preview:', jsonStr.substring(0, 1000));
-        throw new Error('Kon AI response niet parsen');
-      }
-    }
-
     // Debug: Log alle voertuigen VOOR validatie om te zien wat er mis gaat
     console.log(`\n🔍 DEBUG - Eerste 5 voertuigen RAW van AI:`);
     vehicles.slice(0, 5).forEach((v, i) => {
