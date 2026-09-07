@@ -25,6 +25,8 @@ export const BulkTaxatieUploader = ({
   rawDataCount,
   inputs,
   filename,
+  aiProvider,
+  onAiProviderChange,
   onFileUpload,
   onAnalyzeWithAI,
   onStartProcessing,
