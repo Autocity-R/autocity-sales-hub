@@ -107,6 +107,7 @@ const withRetry = async <T>(
 
 export const useBulkTaxatie = () => {
   const [state, setState] = useState<BulkTaxatieState>(initialState);
+  const [aiProvider, setAiProvider] = useState<'openai' | 'claude'>('openai');
   const feedbackCacheRef = useRef<FeedbackContext[] | null>(null);
 
   // Find the real header row by looking for common column keywords
