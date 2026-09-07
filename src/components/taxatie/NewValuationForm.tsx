@@ -46,6 +46,8 @@ export function NewValuationForm() {
     taxatieStarted,
     taxatieComplete,
     enteredMileage,
+    aiProvider,
+    setAiProvider,
     handleLicensePlateSearch,
     handleManualVehicleSubmit,
     handleJPCarsVehicleSubmit,
@@ -155,7 +157,23 @@ export function NewValuationForm() {
             loading={loading.internalHistory}
           />
 
-          <div className="mt-4">
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center justify-end gap-3 text-sm">
+              <label htmlFor="ai-provider" className="text-muted-foreground">
+                AI taxateur:
+              </label>
+              <select
+                id="ai-provider"
+                value={aiProvider}
+                onChange={(e) => setAiProvider(e.target.value as 'openai' | 'claude')}
+                disabled={taxatieStarted}
+                className="rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="openai">OpenAI GPT-4o</option>
+                <option value="claude">Claude Sonnet</option>
+              </select>
+            </div>
+
             <TaxatieActionButtons
               onStartTaxatie={startTaxatie}
               onSave={handleSave}

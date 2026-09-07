@@ -8,6 +8,7 @@ import {
   fetchPortalAnalysis,
   fetchInternalComparison,
   generateAIAdvice,
+  generateAIAdviceClaude,
   saveTaxatieValuation,
   fetchRecentFeedback,
 } from '@/services/taxatieService';
@@ -106,6 +107,7 @@ const withRetry = async <T>(
 
 export const useBulkTaxatie = () => {
   const [state, setState] = useState<BulkTaxatieState>(initialState);
+  const [aiProvider, setAiProvider] = useState<'openai' | 'claude'>('openai');
   const feedbackCacheRef = useRef<FeedbackContext[] | null>(null);
 
   // Find the real header row by looking for common column keywords
@@ -244,16 +246,17 @@ export const useBulkTaxatie = () => {
     setState(prev => ({ ...prev, isParsing: true }));
 
     try {
-      // Process in batches of 150 rows (Gemini can handle this within timeout)
+      // Process in batches of 150 rows (Gemini/Claude can handle this within timeout)
       const batchSize = 150;
       const allVehicles: BulkTaxatieInput[] = [];
+      const functionName = aiProvider === 'claude' ? 'analyze-excel-vehicles-claude' : 'analyze-excel-vehicles';
 
       for (let i = 0; i < rawData.length; i += batchSize) {
         const batch = rawData.slice(i, i + batchSize);
         
-        console.log(`📊 Analyzing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(rawData.length / batchSize)}`);
+        console.log(`📊 Analyzing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(rawData.length / batchSize)} with ${aiProvider}`);
 
-        const { data, error } = await supabase.functions.invoke('analyze-excel-vehicles', {
+        const { data, error } = await supabase.functions.invoke(functionName, {
           body: { 
             headers: availableColumns,
             rows: batch,
@@ -311,7 +314,7 @@ export const useBulkTaxatie = () => {
       toast.error('Fout bij AI analyse');
       setState(prev => ({ ...prev, isParsing: false }));
     }
-  }, [state.rawData, state.availableColumns]);
+  }, [state.rawData, state.availableColumns, aiProvider]);
 
   // Process single vehicle with timeouts and cached feedback
   const processSingleVehicle = async (
@@ -375,6 +378,7 @@ export const useBulkTaxatie = () => {
         internalComparison,
         aiAdvice,
         status: 'voltooid',
+        aiModelVersion: aiProvider === 'claude' ? 'claude-sonnet-4-6' : 'gpt-4o',
       });
 
       return {
@@ -410,7 +414,8 @@ export const useBulkTaxatie = () => {
     internalComparison: any,
     feedbackContext: FeedbackContext[]
   ) => {
-    const { data, error } = await supabase.functions.invoke('taxatie-ai-advice', {
+    const functionName = aiProvider === 'claude' ? 'taxatie-ai-advice-claude' : 'taxatie-ai-advice';
+    const { data, error } = await supabase.functions.invoke(functionName, {
       body: {
         vehicleData,
         portalAnalysis,
@@ -551,6 +556,8 @@ export const useBulkTaxatie = () => {
 
   return {
     ...state,
+    aiProvider,
+    setAiProvider,
     parseExcelFile,
     analyzeExcelWithAI,
     startBulkProcessing,

@@ -15,6 +15,7 @@ import {
   fetchJPCarsData,
   fetchInternalComparison,
   generateAIAdvice,
+  generateAIAdviceClaude,
   saveTaxatieValuation,
   saveTaxatieFeedback,
 } from '@/services/taxatieService';
@@ -52,6 +53,9 @@ export const useTaxatie = () => {
   
   // Track saved valuation ID for feedback linking
   const [currentValuationId, setCurrentValuationId] = useState<string | null>(null);
+
+  // AI provider toggle: 'openai' | 'claude'
+  const [aiProvider, setAiProvider] = useState<'openai' | 'claude'>('openai');
 
   // RDW lookup (voor Nederlandse kentekens)
   const handleLicensePlateSearch = useCallback(async () => {
@@ -237,7 +241,9 @@ export const useTaxatie = () => {
       }));
 
       // AI analyse - altijd proberen, met fallback in de service
-      const advice = await generateAIAdvice(vehicleWithOptions, portalData, jpData, internalData);
+      const advice = aiProvider === 'claude'
+        ? await generateAIAdviceClaude(vehicleWithOptions, portalData, jpData, internalData)
+        : await generateAIAdvice(vehicleWithOptions, portalData, jpData, internalData);
       setAiAdvice(advice);
 
       setLoading(prev => ({ ...prev, aiAnalysis: false }));
@@ -253,6 +259,7 @@ export const useTaxatie = () => {
         internalComparison: internalData,
         aiAdvice: advice,
         status: 'voltooid',
+        aiModelVersion: aiProvider === 'claude' ? 'claude-sonnet-4-6' : 'gpt-4o',
       });
       
       if (savedValuation?.id) {
@@ -346,6 +353,8 @@ export const useTaxatie = () => {
     taxatieComplete,
     enteredMileage,
     currentValuationId, // Expose for debugging/display
+    aiProvider,
+    setAiProvider,
 
     // Actions
     handleLicensePlateSearch,
