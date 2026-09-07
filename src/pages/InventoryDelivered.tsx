@@ -280,7 +280,36 @@ const InventoryDelivered = () => {
             onVehicleClick={handleVehicleClick}
           />
         </div>
-        
+
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">
+            {total === 0
+              ? "Geen afgeleverde voertuigen gevonden"
+              : `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, total)} van ${total}`}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page === 0}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" /> Vorige
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Pagina {page + 1} van {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page + 1 >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Volgende <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+
         {/* Vehicle Details Modal */}
         {selectedVehicle && (
           <DeliveredVehicleDetails
