@@ -12,6 +12,8 @@ interface BulkTaxatieUploaderProps {
   rawDataCount: number;
   inputs: BulkTaxatieInput[];
   filename: string;
+  aiProvider: 'openai' | 'claude';
+  onAiProviderChange: (provider: 'openai' | 'claude') => void;
   onFileUpload: (file: File) => void;
   onAnalyzeWithAI: () => void;
   onStartProcessing: () => void;
