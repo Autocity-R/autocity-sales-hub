@@ -189,7 +189,7 @@ Analyseer deze data en extraheer de voertuiggegevens. Retourneer ALLEEN een JSON
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'claude-sonnet-4-6',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
