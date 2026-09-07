@@ -124,6 +124,23 @@ export const BulkTaxatieUploader = ({
                 De AI Expert kijkt naar alle {rawDataCount} rijen en herkent automatisch de voertuiggegevens, 
                 ongeacht welke kolomnamen je leverancier gebruikt.
               </p>
+
+              <div className="flex items-center justify-center gap-3 mb-4 text-sm">
+                <label htmlFor="bulk-ai-provider" className="text-muted-foreground">
+                  AI parser:
+                </label>
+                <select
+                  id="bulk-ai-provider"
+                  value={aiProvider}
+                  onChange={(e) => onAiProviderChange(e.target.value as 'openai' | 'claude')}
+                  disabled={isParsing}
+                  className="rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="openai">OpenAI GPT-4o</option>
+                  <option value="claude">Claude Sonnet</option>
+                </select>
+              </div>
+
               <Button
                 onClick={onAnalyzeWithAI}
                 disabled={isParsing}
