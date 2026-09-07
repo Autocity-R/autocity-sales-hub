@@ -13,6 +13,8 @@ export const BulkTaxatieTab = () => {
     inputs,
     results,
     filename,
+    aiProvider,
+    setAiProvider,
     parseExcelFile,
     analyzeExcelWithAI,
     startBulkProcessing,
