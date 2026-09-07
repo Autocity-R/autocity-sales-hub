@@ -11,8 +11,9 @@ export interface Salesperson {
   initials: string;
 }
 
-export const useSalespeople = () => {
+export const useSalespeople = (enabled: boolean = true) => {
   return useQuery({
+    enabled,
     queryKey: ["salespeople"],
     queryFn: async (): Promise<Salesperson[]> => {
       // Step 1: Fetch user roles

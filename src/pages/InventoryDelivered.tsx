@@ -1,9 +1,9 @@
 
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useEffect, useState } from "react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import { FileText, Search, Filter, CalendarIcon } from "lucide-react";
+import { FileText, Search, Filter, CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { VehicleDeliveredTable } from "@/components/inventory/VehicleDeliveredTable";
 import { DeliveredVehicleDetails } from "@/components/inventory/DeliveredVehicleDetails";
@@ -13,7 +13,10 @@ import { Badge } from "@/components/ui/badge";
 import { Vehicle } from "@/types/inventory";
 import { BulkBranchMoveButton } from "@/components/inventory/BulkBranchMoveButton";
 import { PageHeader } from "@/components/ui/page-header";
-import { fetchDeliveredVehicles } from "@/services/inventoryService";
+import {
+  fetchDeliveredVehiclesPage,
+  type DeliveredSortField,
+} from "@/services/deliveredVehiclesQuery";
 import {
   Select,
   SelectContent,
@@ -28,31 +31,66 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { useCurrentBranch, filterByBranch } from "@/contexts/BranchContext";
-import { buildHaystack, matchesSearch } from "@/lib/searchNormalize";
+import { useCurrentBranch } from "@/contexts/BranchContext";
+import { useDebounce } from "@/hooks/useDebounce";
+
+const PAGE_SIZE = 50;
 
 const InventoryDelivered = () => {
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
-  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<DeliveredSortField | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [customerTypeFilter, setCustomerTypeFilter] = useState<string>("all");
   const [dateFromFilter, setDateFromFilter] = useState<Date | null>(null);
   const [dateToFilter, setDateToFilter] = useState<Date | null>(null);
+  const [page, setPage] = useState(0);
   const { branchFilter } = useCurrentBranch();
-  
-  // Fetch delivered vehicles
-  const { data: vehicles = [], isLoading, error } = useQuery({
-    queryKey: ["deliveredVehicles"],
-    queryFn: fetchDeliveredVehicles
+  const debouncedSearch = useDebounce(searchQuery, 350);
+
+  // Terug naar pagina 1 zodra de filters wijzigen
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, customerTypeFilter, dateFromFilter, dateToFilter, branchFilter, sortField, sortDirection]);
+
+  const { data, isLoading, isFetching, error } = useQuery({
+    queryKey: [
+      "deliveredVehicles",
+      page,
+      debouncedSearch,
+      customerTypeFilter,
+      dateFromFilter?.toISOString() ?? null,
+      dateToFilter?.toISOString() ?? null,
+      branchFilter,
+      sortField,
+      sortDirection,
+    ],
+    queryFn: () =>
+      fetchDeliveredVehiclesPage({
+        page,
+        pageSize: PAGE_SIZE,
+        search: debouncedSearch,
+        salesType: customerTypeFilter as "all" | "b2c" | "b2b",
+        dateFrom: dateFromFilter,
+        dateTo: dateToFilter,
+        branch: branchFilter,
+        sortField,
+        sortDirection,
+      }),
+    placeholderData: keepPreviousData,
+    staleTime: 2 * 60 * 1000,
   });
-  
+
+  const sortedVehicles = data?.vehicles ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
   const handleSort = (field: string) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
-      setSortField(field);
+      setSortField(field as DeliveredSortField);
       setSortDirection("asc");
     }
   };
@@ -60,90 +98,7 @@ const InventoryDelivered = () => {
   const handleVehicleClick = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
   };
-  
-  // Filter vehicles based on search query and filters
-  const filteredVehicles = filterByBranch(vehicles, branchFilter).filter((vehicle: Vehicle) => {
-    // Search query filtering
-    if (searchQuery) {
-      const c: any = (vehicle as any).customerContact || {};
-      const d: any = (vehicle as any).details || {};
-      const hay = buildHaystack([
-        vehicle.brand,
-        vehicle.model,
-        vehicle.licenseNumber,
-        vehicle.vin,
-        vehicle.customerName,
-        vehicle.salespersonName,
-        c.name, c.email, c.phone, c.address,
-        d.meldcode, d.meldCode, d.reportCode, d.postalCode, d.street, d.city,
-      ]);
-      if (!matchesSearch(hay, searchQuery)) return false;
-    }
-    
-    // Customer type filtering
-    if (customerTypeFilter !== "all") {
-      if (customerTypeFilter === "b2c" && vehicle.salesStatus !== "verkocht_b2c") {
-        return false;
-      }
-      if (customerTypeFilter === "b2b" && vehicle.salesStatus !== "verkocht_b2b") {
-        return false;
-      }
-    }
-    
-    // Date range filtering
-    if ((dateFromFilter || dateToFilter) && vehicle.deliveryDate) {
-      const deliveryDate = new Date(vehicle.deliveryDate);
-      
-      if (dateFromFilter && deliveryDate < dateFromFilter) {
-        return false;
-      }
-      
-      if (dateToFilter && deliveryDate > dateToFilter) {
-        return false;
-      }
-    }
-    
-    return true;
-  });
-  
-  // Sort vehicles based on sort field and direction
-  const sortedVehicles = [...filteredVehicles].sort((a, b) => {
-    if (!sortField) return 0;
-    
-    // Handle nested fields
-    let aValue: any = a;
-    let bValue: any = b;
-    
-    const fields = sortField.split(".");
-    for (const field of fields) {
-      aValue = aValue?.[field];
-      bValue = bValue?.[field];
-    }
-    
-    if (aValue === undefined || bValue === undefined) return 0;
-    
-    // For dates
-    if (aValue instanceof Date && bValue instanceof Date) {
-      return sortDirection === "asc" 
-        ? aValue.getTime() - bValue.getTime() 
-        : bValue.getTime() - aValue.getTime();
-    }
-    
-    // For numbers
-    if (typeof aValue === "number" && typeof bValue === "number") {
-      return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
-    }
-    
-    // For strings
-    if (typeof aValue === "string" && typeof bValue === "string") {
-      return sortDirection === "asc" 
-        ? aValue.localeCompare(bValue) 
-        : bValue.localeCompare(aValue);
-    }
-    
-    return 0;
-  });
-  
+
   const toggleSelectVehicle = (vehicleId: string, checked: boolean) => {
     setSelectedVehicles(prev => 
       checked 
@@ -310,7 +265,7 @@ const InventoryDelivered = () => {
           </Popover>
         </div>
         
-        <div className="bg-white rounded-md shadow">
+        <div className={cn("bg-white rounded-md shadow transition-opacity", isFetching && !isLoading && "opacity-60")}>
           <VehicleDeliveredTable 
             vehicles={sortedVehicles}
             selectedVehicles={selectedVehicles}
@@ -325,7 +280,36 @@ const InventoryDelivered = () => {
             onVehicleClick={handleVehicleClick}
           />
         </div>
-        
+
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">
+            {total === 0
+              ? "Geen afgeleverde voertuigen gevonden"
+              : `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, total)} van ${total}`}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page === 0}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" /> Vorige
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Pagina {page + 1} van {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page + 1 >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Volgende <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+
         {/* Vehicle Details Modal */}
         {selectedVehicle && (
           <DeliveredVehicleDetails

@@ -21,7 +21,8 @@ export const PurchaserQuickEdit: React.FC<PurchaserQuickEditProps> = ({
   onUpdate
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const { data: salespeople = [] } = useSalespeople();
+  // Alleen ophalen wanneer iemand daadwerkelijk gaat wijzigen (grote lijsten!)
+  const { data: salespeople = [] } = useSalespeople(isEditing);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
