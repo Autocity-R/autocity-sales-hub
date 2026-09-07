@@ -46,6 +46,8 @@ export function NewValuationForm() {
     taxatieStarted,
     taxatieComplete,
     enteredMileage,
+    aiProvider,
+    setAiProvider,
     handleLicensePlateSearch,
     handleManualVehicleSubmit,
     handleJPCarsVehicleSubmit,
