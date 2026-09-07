@@ -54,6 +54,9 @@ export const useTaxatie = () => {
   // Track saved valuation ID for feedback linking
   const [currentValuationId, setCurrentValuationId] = useState<string | null>(null);
 
+  // AI provider toggle: 'openai' | 'claude'
+  const [aiProvider, setAiProvider] = useState<'openai' | 'claude'>('openai');
+
   // RDW lookup (voor Nederlandse kentekens)
   const handleLicensePlateSearch = useCallback(async () => {
     if (!licensePlate.trim()) {
