@@ -40,6 +40,42 @@ interface AnalyzedVehicle {
   options: string[];  // Gedetecteerde opties voor JP Cars
 }
 
+const parseExcelVehiclesTool = {
+  name: 'parse_excel_vehicles',
+  description: 'Parseer voertuigen uit een Excel-export en retourneer een gestructureerde array.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      vehicles: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            rowIndex: { type: 'number' },
+            make: { type: 'string' },
+            model: { type: 'string' },
+            variant: { type: ['string', 'null'] },
+            buildYear: { type: 'number' },
+            mileage: { type: 'number' },
+            fuelType: { type: 'string' },
+            transmission: { type: 'string' },
+            bodyType: { type: ['string', 'null'] },
+            power: { type: ['number', 'null'] },
+            powerSource: { type: ['string', 'null'] },
+            askingPrice: { type: ['number', 'null'] },
+            color: { type: ['string', 'null'] },
+            confidence: { type: 'number' },
+            originalData: { type: 'string' },
+            options: { type: 'array', items: { type: 'string' } }
+          },
+          required: ['rowIndex', 'make', 'model', 'buildYear', 'mileage', 'fuelType', 'transmission', 'confidence', 'originalData', 'options']
+        }
+      }
+    },
+    required: ['vehicles']
+  }
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
