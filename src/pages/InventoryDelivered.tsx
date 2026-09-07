@@ -265,7 +265,7 @@ const InventoryDelivered = () => {
           </Popover>
         </div>
         
-        <div className="bg-white rounded-md shadow">
+        <div className={cn("bg-white rounded-md shadow transition-opacity", isFetching && !isLoading && "opacity-60")}>
           <VehicleDeliveredTable 
             vehicles={sortedVehicles}
             selectedVehicles={selectedVehicles}
