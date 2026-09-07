@@ -413,7 +413,8 @@ export const useBulkTaxatie = () => {
     internalComparison: any,
     feedbackContext: FeedbackContext[]
   ) => {
-    const { data, error } = await supabase.functions.invoke('taxatie-ai-advice', {
+    const functionName = aiProvider === 'claude' ? 'taxatie-ai-advice-claude' : 'taxatie-ai-advice';
+    const { data, error } = await supabase.functions.invoke(functionName, {
       body: {
         vehicleData,
         portalAnalysis,
