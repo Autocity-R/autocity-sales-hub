@@ -400,7 +400,7 @@ export const generateAIAdvice = async (
   internalComparison: InternalComparison
 ): Promise<AITaxatieAdvice> => {
   try {
-    console.log('🤖 Calling taxatie-ai-advice edge function...');
+    console.log('🤖 Calling taxatie-ai-advice edge function (OpenAI)...');
     
     // Fetch recent feedback for learning context
     const recentFeedback = await fetchRecentFeedback(30);
@@ -431,6 +431,48 @@ export const generateAIAdvice = async (
 
   } catch (err) {
     console.error('❌ AI advice generation failed, using fallback:', err);
+    return generateFallbackAdvice(vehicleData, portalAnalysis, jpCarsData);
+  }
+};
+
+export const generateAIAdviceClaude = async (
+  vehicleData: TaxatieVehicleData,
+  portalAnalysis: PortalAnalysis,
+  jpCarsData: JPCarsData,
+  internalComparison: InternalComparison
+): Promise<AITaxatieAdvice> => {
+  try {
+    console.log('🤖 Calling taxatie-ai-advice-claude edge function...');
+    
+    // Fetch recent feedback for learning context
+    const recentFeedback = await fetchRecentFeedback(30);
+    console.log(`📊 Including ${recentFeedback.length} feedback items for Claude AI learning`);
+    
+    const { data, error } = await supabase.functions.invoke('taxatie-ai-advice-claude', {
+      body: {
+        vehicleData,
+        portalAnalysis,
+        jpCarsData,
+        internalComparison,
+        feedbackHistory: recentFeedback, // Pass feedback for learning
+      }
+    });
+
+    if (error) {
+      console.error('❌ Claude edge function error:', error);
+      throw new Error(error.message || 'Claude edge function call failed');
+    }
+
+    if (!data?.success || !data?.advice) {
+      console.error('❌ Invalid response from Claude edge function:', data);
+      throw new Error(data?.error || 'Invalid response from Claude AI');
+    }
+
+    console.log('✅ Claude AI advice received:', data.advice.recommendation);
+    return data.advice;
+
+  } catch (err) {
+    console.error('❌ Claude AI advice generation failed, using fallback:', err);
     return generateFallbackAdvice(vehicleData, portalAnalysis, jpCarsData);
   }
 };
