@@ -212,10 +212,11 @@ export function employeeKpis(raw: DirectieRaw): EmployeeKpi[] {
     const id = o.assigned_to as string;
     if (!map.has(id)) map.set(id, { id, name: nameOf(id), done: 0, hours: 0, revenue: 0, perHour: 0, rejects: 0, rejectPct: 0, avgMinutes: 0 });
     const e = map.get(id)!;
-    if (["afgerond", "goedgekeurd"].includes(o.status || "")) {
+    if (approvedAtOf(o)) {
       e.done += 1;
       e.hours += Number(o.work_seconds || 0) / 3600;
     }
+
     e.rejects += Number(o.rejected_count || 0);
     e.revenue += revenueByOrder.get(o.id) || 0;
   });
