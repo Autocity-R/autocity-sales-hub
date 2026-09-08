@@ -95,13 +95,16 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
   const invSel = "id,invoice_kind,subtotal,total,status,sent_at,created_at,branch,vehicle_id,vehicle,lines,source_work_order_ids,work_order_id";
   const woSel = "id,discipline,status,work_seconds,assigned_to,started_at,finished_at,approved_at,created_at,is_rush,rejected_count,branch,vehicle_id,part,origin,due_date";
 
-  const [inv, invPrev, inv6m, invOpen, wo, woPrev, woOpen, intakes, claims, loans, parts, profiles] = await Promise.all([
+  // Klussen worden over een ruim venster opgehaald en daarna op goedkeurmoment gefilterd,
+  // zodat een klus meetelt in de maand van goedkeuring en niet van toewijzing.
+  const woHistStart = new Date(Math.min(+prevFrom, +sixM));
+
+  const [inv, invPrev, inv6m, invOpen, woAll, woOpen, intakes, claims, loans, parts, profiles] = await Promise.all([
     branchFilter(supabase.from("workshop_invoices").select(invSel).gte("created_at", from.toISOString()).lt("created_at", to.toISOString()), branch),
     branchFilter(supabase.from("workshop_invoices").select(invSel).gte("created_at", prevFrom.toISOString()).lt("created_at", prevTo.toISOString()), branch),
     branchFilter(supabase.from("workshop_invoices").select(invSel).gte("created_at", sixM.toISOString()), branch),
     branchFilter(supabase.from("workshop_invoices").select(invSel).neq("status", "verstuurd"), branch),
-    branchFilter(supabase.from("work_orders").select(woSel).gte("created_at", from.toISOString()).lt("created_at", to.toISOString()), branch),
-    branchFilter(supabase.from("work_orders").select(woSel).gte("created_at", prevFrom.toISOString()).lt("created_at", prevTo.toISOString()), branch),
+    branchFilter(supabase.from("work_orders").select(woSel).gte("created_at", woHistStart.toISOString()), branch),
     branchFilter(supabase.from("work_orders").select(woSel).not("status", "in", '("goedgekeurd","geannuleerd")'), branch),
     branchFilter(supabase.from("vehicle_intakes").select("id,vehicle_id,created_at,approved_at,status,branch").gte("created_at", sixM.toISOString()), branch),
     branchFilter(supabase.from("warranty_claims").select("id,claim_status,claim_amount,estimated_amount,created_at,resolution_date,branch").gte("created_at", from.toISOString()).lt("created_at", to.toISOString()), branch),
@@ -110,9 +113,12 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
     supabase.from("profiles").select("id,first_name,last_name"),
   ]);
 
-  const orders = (wo.data || []) as any as WorkOrderRow[];
+  const ordersAll = (woAll.data || []) as any as WorkOrderRow[];
+  const orders = approvedInRange(ordersAll, from, to);
+  const ordersPrev = approvedInRange(ordersAll, prevFrom, prevTo);
   const ordersOpen = (woOpen.data || []) as any as WorkOrderRow[];
   const invoices = (inv.data || []) as any as InvoiceRow[];
+
 
   const vehicleIds = Array.from(new Set([
     ...orders.map(o => o.vehicle_id), ...ordersOpen.map(o => o.vehicle_id), ...invoices.map(i => i.vehicle_id),
