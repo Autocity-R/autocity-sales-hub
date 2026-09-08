@@ -154,7 +154,8 @@ export const sum = (rows: InvoiceRow[]) => rows.reduce((a, r) => a + Number(r.su
 export const delta = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0);
 
 export const hoursOf = (orders: WorkOrderRow[]) =>
-  orders.filter(o => ["afgerond", "goedgekeurd"].includes(o.status || "")).reduce((a, o) => a + Number(o.work_seconds || 0), 0) / 3600;
+  orders.filter(o => !!approvedAtOf(o)).reduce((a, o) => a + Number(o.work_seconds || 0), 0) / 3600;
+
 
 export interface BranchStats { internal: number; external: number; count: number; avg: number }
 
