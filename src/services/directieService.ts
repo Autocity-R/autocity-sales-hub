@@ -71,6 +71,23 @@ export interface DirectieRaw {
 const branchFilter = <T extends { eq: any }>(q: T, branch: DirectieBranch) =>
   branch === "all" ? q : (q as any).eq("branch", branch);
 
+/**
+ * Moment waarop een klus meetelt in de cijfers: goedkeuring.
+ * Uitdeuken kent geen goedkeurstap meer (klaarmelden is eindstatus),
+ * daar geldt het klaarmeldmoment als goedkeuring.
+ */
+export const approvedAtOf = (o: WorkOrderRow): string | null =>
+  o.discipline === "uitdeuk" ? (o.approved_at || o.finished_at || null) : (o.approved_at || null);
+
+const approvedInRange = (rows: WorkOrderRow[], from: Date, to: Date) =>
+  rows.filter(o => {
+    const at = approvedAtOf(o);
+    if (!at) return false;
+    const t = +new Date(at);
+    return t >= +from && t < +to;
+  });
+
+
 export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieBranch): Promise<DirectieRaw> {
   const { from, to, prevFrom, prevTo } = buildRange(period);
   const sixM = new Date(); sixM.setMonth(sixM.getMonth() - 5); sixM.setDate(1); sixM.setHours(0, 0, 0, 0);
