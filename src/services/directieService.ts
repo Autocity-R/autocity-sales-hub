@@ -71,6 +71,23 @@ export interface DirectieRaw {
 const branchFilter = <T extends { eq: any }>(q: T, branch: DirectieBranch) =>
   branch === "all" ? q : (q as any).eq("branch", branch);
 
+/**
+ * Moment waarop een klus meetelt in de cijfers: goedkeuring.
+ * Uitdeuken kent geen goedkeurstap meer (klaarmelden is eindstatus),
+ * daar geldt het klaarmeldmoment als goedkeuring.
+ */
+export const approvedAtOf = (o: WorkOrderRow): string | null =>
+  o.discipline === "uitdeuk" ? (o.approved_at || o.finished_at || null) : (o.approved_at || null);
+
+const approvedInRange = (rows: WorkOrderRow[], from: Date, to: Date) =>
+  rows.filter(o => {
+    const at = approvedAtOf(o);
+    if (!at) return false;
+    const t = +new Date(at);
+    return t >= +from && t < +to;
+  });
+
+
 export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieBranch): Promise<DirectieRaw> {
   const { from, to, prevFrom, prevTo } = buildRange(period);
   const sixM = new Date(); sixM.setMonth(sixM.getMonth() - 5); sixM.setDate(1); sixM.setHours(0, 0, 0, 0);
@@ -78,13 +95,16 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
   const invSel = "id,invoice_kind,subtotal,total,status,sent_at,created_at,branch,vehicle_id,vehicle,lines,source_work_order_ids,work_order_id";
   const woSel = "id,discipline,status,work_seconds,assigned_to,started_at,finished_at,approved_at,created_at,is_rush,rejected_count,branch,vehicle_id,part,origin,due_date";
 
-  const [inv, invPrev, inv6m, invOpen, wo, woPrev, woOpen, intakes, claims, loans, parts, profiles] = await Promise.all([
+  // Klussen worden over een ruim venster opgehaald en daarna op goedkeurmoment gefilterd,
+  // zodat een klus meetelt in de maand van goedkeuring en niet van toewijzing.
+  const woHistStart = new Date(Math.min(+prevFrom, +sixM));
+
+  const [inv, invPrev, inv6m, invOpen, woAll, woOpen, intakes, claims, loans, parts, profiles] = await Promise.all([
     branchFilter(supabase.from("workshop_invoices").select(invSel).gte("created_at", from.toISOString()).lt("created_at", to.toISOString()), branch),
     branchFilter(supabase.from("workshop_invoices").select(invSel).gte("created_at", prevFrom.toISOString()).lt("created_at", prevTo.toISOString()), branch),
     branchFilter(supabase.from("workshop_invoices").select(invSel).gte("created_at", sixM.toISOString()), branch),
     branchFilter(supabase.from("workshop_invoices").select(invSel).neq("status", "verstuurd"), branch),
-    branchFilter(supabase.from("work_orders").select(woSel).gte("created_at", from.toISOString()).lt("created_at", to.toISOString()), branch),
-    branchFilter(supabase.from("work_orders").select(woSel).gte("created_at", prevFrom.toISOString()).lt("created_at", prevTo.toISOString()), branch),
+    branchFilter(supabase.from("work_orders").select(woSel).gte("created_at", woHistStart.toISOString()), branch),
     branchFilter(supabase.from("work_orders").select(woSel).not("status", "in", '("goedgekeurd","geannuleerd")'), branch),
     branchFilter(supabase.from("vehicle_intakes").select("id,vehicle_id,created_at,approved_at,status,branch").gte("created_at", sixM.toISOString()), branch),
     branchFilter(supabase.from("warranty_claims").select("id,claim_status,claim_amount,estimated_amount,created_at,resolution_date,branch").gte("created_at", from.toISOString()).lt("created_at", to.toISOString()), branch),
@@ -93,9 +113,12 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
     supabase.from("profiles").select("id,first_name,last_name"),
   ]);
 
-  const orders = (wo.data || []) as any as WorkOrderRow[];
+  const ordersAll = (woAll.data || []) as any as WorkOrderRow[];
+  const orders = approvedInRange(ordersAll, from, to);
+  const ordersPrev = approvedInRange(ordersAll, prevFrom, prevTo);
   const ordersOpen = (woOpen.data || []) as any as WorkOrderRow[];
   const invoices = (inv.data || []) as any as InvoiceRow[];
+
 
   const vehicleIds = Array.from(new Set([
     ...orders.map(o => o.vehicle_id), ...ordersOpen.map(o => o.vehicle_id), ...invoices.map(i => i.vehicle_id),
@@ -113,7 +136,7 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
     invoices6m: (inv6m.data || []) as any,
     invoicesOpen: (invOpen.data || []) as any,
     orders,
-    ordersPrev: (woPrev.data || []) as any,
+    ordersPrev,
     ordersOpen,
     intakes: (intakes.data || []) as any,
     claims: (claims.data || []) as any,
@@ -131,7 +154,8 @@ export const sum = (rows: InvoiceRow[]) => rows.reduce((a, r) => a + Number(r.su
 export const delta = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0);
 
 export const hoursOf = (orders: WorkOrderRow[]) =>
-  orders.filter(o => ["afgerond", "goedgekeurd"].includes(o.status || "")).reduce((a, o) => a + Number(o.work_seconds || 0), 0) / 3600;
+  orders.filter(o => !!approvedAtOf(o)).reduce((a, o) => a + Number(o.work_seconds || 0), 0) / 3600;
+
 
 export interface BranchStats { internal: number; external: number; count: number; avg: number }
 
@@ -188,10 +212,11 @@ export function employeeKpis(raw: DirectieRaw): EmployeeKpi[] {
     const id = o.assigned_to as string;
     if (!map.has(id)) map.set(id, { id, name: nameOf(id), done: 0, hours: 0, revenue: 0, perHour: 0, rejects: 0, rejectPct: 0, avgMinutes: 0 });
     const e = map.get(id)!;
-    if (["afgerond", "goedgekeurd"].includes(o.status || "")) {
+    if (approvedAtOf(o)) {
       e.done += 1;
       e.hours += Number(o.work_seconds || 0) / 3600;
     }
+
     e.rejects += Number(o.rejected_count || 0);
     e.revenue += revenueByOrder.get(o.id) || 0;
   });
