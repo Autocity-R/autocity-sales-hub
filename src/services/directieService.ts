@@ -136,7 +136,7 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
     invoices6m: (inv6m.data || []) as any,
     invoicesOpen: (invOpen.data || []) as any,
     orders,
-    ordersPrev: (woPrev.data || []) as any,
+    ordersPrev,
     ordersOpen,
     intakes: (intakes.data || []) as any,
     claims: (claims.data || []) as any,
