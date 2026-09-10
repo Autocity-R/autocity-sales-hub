@@ -101,19 +101,23 @@ const DirectieDashboard: React.FC = () => {
     if (!raw) return null;
     const cur = sent(raw.invoices);
     const prev = sent(raw.invoicesPrev);
-    const total = sum(cur), totalPrev = sum(prev);
-    const intern = sum(cur.filter(i => i.invoice_kind === "intern"));
-    const internPrev = sum(prev.filter(i => i.invoice_kind === "intern"));
+    const poets = poetsStatsDirectie(raw, raw.orders);
+    const poetsPrev = poetsStatsDirectie(raw, raw.ordersPrev);
+    const total = sum(cur) + poets.revenueExcl, totalPrev = sum(prev) + poetsPrev.revenueExcl;
+    const intern = sum(cur.filter(i => i.invoice_kind === "intern")) + poets.revenueExcl;
+    const internPrev = sum(prev.filter(i => i.invoice_kind === "intern")) + poetsPrev.revenueExcl;
     const extern = sum(cur.filter(i => i.invoice_kind !== "intern"));
     const externPrev = sum(prev.filter(i => i.invoice_kind !== "intern"));
     const hours = hoursOf(raw.orders), hoursPrev = hoursOf(raw.ordersPrev);
     return {
-      total, intern, extern, hours,
+      total, intern, extern, hours, poets, poetsPrev,
       dTotal: delta(total, totalPrev), dIntern: delta(intern, internPrev),
       dExtern: delta(extern, externPrev), dHours: delta(hours, hoursPrev),
+      dPoets: delta(poets.revenueExcl, poetsPrev.revenueExcl),
       werkplaats: branchStats(raw.invoices, raw.orders, "werkplaats"),
       schade: branchStats(raw.invoices, raw.orders, "spuit"),
-      trend: monthlyTrend(raw.invoices6m),
+      poetsTak: poetsBranchStats(raw, raw.orders),
+      trend: monthlyTrend(raw.invoices6m, raw),
       wip: wipEstimate(raw),
       employees: employeeKpis(raw),
       flow: flowStats(raw),
@@ -121,6 +125,7 @@ const DirectieDashboard: React.FC = () => {
       top: topVehicles(raw),
     };
   }, [raw]);
+
 
   const bestPerHour = m?.employees.length
     ? m.employees.reduce((a, b) => (b.perHour > a.perHour ? b : a)).id
