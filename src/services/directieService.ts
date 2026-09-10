@@ -50,6 +50,7 @@ export interface WorkOrderRow {
   assigned_to: string | null; started_at: string | null; finished_at: string | null; approved_at: string | null;
   created_at: string; is_rush: boolean | null; rejected_count: number | null; branch: string | null;
   vehicle_id: string | null; part: string | null; origin: string | null; due_date: string | null;
+  poets_type: string | null;
 }
 
 export interface DirectieRaw {
@@ -60,24 +61,31 @@ export interface DirectieRaw {
   orders: WorkOrderRow[];
   ordersPrev: WorkOrderRow[];
   ordersOpen: WorkOrderRow[];
+  /** Ruim historisch venster (min. 6 maanden) — basis voor poets-omzet en trends. */
+  ordersHist: WorkOrderRow[];
   intakes: { id: string; vehicle_id: string | null; created_at: string; approved_at: string | null; status: string | null; branch: string | null }[];
   claims: { id: string; claim_status: string | null; claim_amount: number | null; estimated_amount: number | null; created_at: string; resolution_date: string | null; branch: string | null }[];
   loanCarsOut: number;
   parts: { id: string; status: string | null; part_name: string | null; created_at: string; branch: string | null }[];
-  profiles: { id: string; first_name: string | null; last_name: string | null }[];
+  profiles: { id: string; first_name: string | null; last_name: string | null; poetser_type?: string | null }[];
   vehicles: Record<string, { brand: string | null; model: string | null; license_number: string | null }>;
 }
 
 const branchFilter = <T extends { eq: any }>(q: T, branch: DirectieBranch) =>
   branch === "all" ? q : (q as any).eq("branch", branch);
 
+
 /**
  * Moment waarop een klus meetelt in de cijfers: goedkeuring.
  * Uitdeuken kent geen goedkeurstap meer (klaarmelden is eindstatus),
- * daar geldt het klaarmeldmoment als goedkeuring.
+ * poetsbeurten worden bij "Schoon" direct afgemeld — daar geldt het
+ * klaarmeldmoment als goedkeuring.
  */
 export const approvedAtOf = (o: WorkOrderRow): string | null =>
-  o.discipline === "uitdeuk" ? (o.approved_at || o.finished_at || null) : (o.approved_at || null);
+  o.discipline === "uitdeuk" || o.discipline === "poets"
+    ? (o.approved_at || o.finished_at || null)
+    : (o.approved_at || null);
+
 
 const approvedInRange = (rows: WorkOrderRow[], from: Date, to: Date) =>
   rows.filter(o => {
@@ -93,7 +101,7 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
   const sixM = new Date(); sixM.setMonth(sixM.getMonth() - 5); sixM.setDate(1); sixM.setHours(0, 0, 0, 0);
 
   const invSel = "id,invoice_kind,subtotal,total,status,sent_at,created_at,branch,vehicle_id,vehicle,lines,source_work_order_ids,work_order_id";
-  const woSel = "id,discipline,status,work_seconds,assigned_to,started_at,finished_at,approved_at,created_at,is_rush,rejected_count,branch,vehicle_id,part,origin,due_date";
+  const woSel = "id,discipline,status,work_seconds,assigned_to,started_at,finished_at,approved_at,created_at,is_rush,rejected_count,branch,vehicle_id,part,origin,due_date,poets_type";
 
   // Klussen worden over een ruim venster opgehaald en daarna op goedkeurmoment gefilterd,
   // zodat een klus meetelt in de maand van goedkeuring en niet van toewijzing.
@@ -110,7 +118,7 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
     branchFilter(supabase.from("warranty_claims").select("id,claim_status,claim_amount,estimated_amount,created_at,resolution_date,branch").gte("created_at", from.toISOString()).lt("created_at", to.toISOString()), branch),
     supabase.from("loan_cars").select("id,status").eq("status", "uitgeleend"),
     branchFilter(supabase.from("parts_orders").select("id,status,part_name,created_at,branch").neq("status", "binnen"), branch),
-    supabase.from("profiles").select("id,first_name,last_name"),
+    supabase.from("profiles").select("id,first_name,last_name,poetser_type"),
   ]);
 
   const ordersAll = (woAll.data || []) as any as WorkOrderRow[];
@@ -138,6 +146,8 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
     orders,
     ordersPrev,
     ordersOpen,
+    ordersHist: ordersAll,
+
     intakes: (intakes.data || []) as any,
     claims: (claims.data || []) as any,
     loanCarsOut: (loans.data || []).length,
@@ -149,7 +159,14 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
 
 /* ---------- afgeleide berekeningen ---------- */
 
-export const sent = (rows: InvoiceRow[]) => rows.filter(r => r.status === "verstuurd");
+/**
+ * Verstuurde facturen. De maandelijkse interne poetsfactuur (invoice_kind
+ * 'poets_intern') wordt uitgesloten: poets-omzet wordt uit de poetsbeurten zelf
+ * berekend, zodat hij in de maand van de beurt valt en niet dubbel meetelt.
+ */
+export const sent = (rows: InvoiceRow[]) =>
+  rows.filter(r => r.status === "verstuurd" && r.invoice_kind !== "poets_intern");
+
 export const sum = (rows: InvoiceRow[]) => rows.reduce((a, r) => a + Number(r.subtotal || 0), 0);
 export const delta = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0);
 
@@ -170,8 +187,56 @@ export function branchStats(invoices: InvoiceRow[], orders: WorkOrderRow[], disc
   return { internal, external, count, avg: count ? (internal + external) / count : 0 };
 }
 
-export function monthlyTrend(invoices6m: InvoiceRow[]) {
-  const out: { month: string; intern: number; extern: number }[] = [];
+/* ---------- poetsen ---------- */
+
+/** Interne poetsbeurt: € 100,00 incl. btw per auto (= € 82,64 ex btw). */
+export const POETS_PRICE_INCL = 100;
+export const POETS_PRICE_EXCL = 82.64;
+
+export interface PoetsStats {
+  internCars: number; externCars: number; unknownCars: number;
+  revenueExcl: number; revenueIncl: number; minutesAvg: number;
+}
+
+/**
+ * Poets-omzet komt uit de afgemelde poetsbeurten van INTERNE poetsers,
+ * exact dezelfde bron/berekening als /rapportages/poetsen. Externe beurten
+ * leveren ons geen omzet op en tellen alleen als aantal.
+ */
+export function poetsStatsDirectie(raw: DirectieRaw, orders: WorkOrderRow[]): PoetsStats {
+  const typeOf = (id: string | null): "intern" | "extern" | "onbekend" => {
+    if (!id) return "onbekend";
+    const p = raw.profiles.find(x => x.id === id);
+    if (!p) return "onbekend";
+    return p.poetser_type === "extern" ? "extern" : "intern";
+  };
+  const done = orders.filter(o => o.discipline === "poets" && !!approvedAtOf(o));
+  const internCars = done.filter(o => typeOf(o.assigned_to) === "intern").length;
+  const externCars = done.filter(o => typeOf(o.assigned_to) === "extern").length;
+  const unknownCars = done.filter(o => typeOf(o.assigned_to) === "onbekend").length;
+  const seconds = done.reduce((a, o) => a + Number(o.work_seconds || 0), 0);
+  return {
+    internCars, externCars, unknownCars,
+    revenueExcl: Math.round(internCars * POETS_PRICE_EXCL * 100) / 100,
+    revenueIncl: internCars * POETS_PRICE_INCL,
+    minutesAvg: done.length ? seconds / 60 / done.length : 0,
+  };
+}
+
+/** Poets als "tak": omzet is altijd intern (onze eigen poetsers). */
+export function poetsBranchStats(raw: DirectieRaw, orders: WorkOrderRow[]): BranchStats {
+  const p = poetsStatsDirectie(raw, orders);
+  const count = p.internCars + p.externCars + p.unknownCars;
+  return {
+    internal: p.revenueExcl,
+    external: 0,
+    count,
+    avg: count ? p.revenueExcl / count : 0,
+  };
+}
+
+export function monthlyTrend(invoices6m: InvoiceRow[], raw?: DirectieRaw) {
+  const out: { month: string; intern: number; extern: number; poets: number }[] = [];
   const now = new Date();
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -180,12 +245,15 @@ export function monthlyTrend(invoices6m: InvoiceRow[]) {
       const t = new Date(r.created_at);
       return t >= d && t < next;
     });
+    const poetsOrders = raw ? approvedInRange(raw.ordersHist, d, next) : [];
     out.push({
       month: d.toLocaleDateString("nl-NL", { month: "short" }),
       intern: sum(rows.filter(r => r.invoice_kind === "intern")),
       extern: sum(rows.filter(r => r.invoice_kind !== "intern")),
+      poets: raw ? poetsStatsDirectie(raw, poetsOrders).revenueExcl : 0,
     });
   }
+
   return out;
 }
 
@@ -207,6 +275,14 @@ export function employeeKpis(raw: DirectieRaw): EmployeeKpi[] {
     ids.forEach(id => revenueByOrder.set(id, (revenueByOrder.get(id) || 0) + per));
   });
 
+  // Poetsbeurten van interne poetsers: vaste prijs per auto, geen factuur per order.
+  raw.orders.forEach(o => {
+    if (o.discipline !== "poets" || !o.assigned_to || !approvedAtOf(o)) return;
+    const p = raw.profiles.find(x => x.id === o.assigned_to);
+    if (!p || p.poetser_type === "extern") return;
+    revenueByOrder.set(o.id, (revenueByOrder.get(o.id) || 0) + POETS_PRICE_EXCL);
+  });
+
   const map = new Map<string, EmployeeKpi>();
   raw.orders.filter(o => o.assigned_to).forEach(o => {
     const id = o.assigned_to as string;
@@ -220,6 +296,7 @@ export function employeeKpis(raw: DirectieRaw): EmployeeKpi[] {
     e.rejects += Number(o.rejected_count || 0);
     e.revenue += revenueByOrder.get(o.id) || 0;
   });
+
   return Array.from(map.values()).map(e => ({
     ...e,
     perHour: e.hours > 0 ? e.revenue / e.hours : 0,
