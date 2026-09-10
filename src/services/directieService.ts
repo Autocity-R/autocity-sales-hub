@@ -159,7 +159,14 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
 
 /* ---------- afgeleide berekeningen ---------- */
 
-export const sent = (rows: InvoiceRow[]) => rows.filter(r => r.status === "verstuurd");
+/**
+ * Verstuurde facturen. De maandelijkse interne poetsfactuur (invoice_kind
+ * 'poets_intern') wordt uitgesloten: poets-omzet wordt uit de poetsbeurten zelf
+ * berekend, zodat hij in de maand van de beurt valt en niet dubbel meetelt.
+ */
+export const sent = (rows: InvoiceRow[]) =>
+  rows.filter(r => r.status === "verstuurd" && r.invoice_kind !== "poets_intern");
+
 export const sum = (rows: InvoiceRow[]) => rows.reduce((a, r) => a + Number(r.subtotal || 0), 0);
 export const delta = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0);
 
