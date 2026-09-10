@@ -78,10 +78,14 @@ const branchFilter = <T extends { eq: any }>(q: T, branch: DirectieBranch) =>
 /**
  * Moment waarop een klus meetelt in de cijfers: goedkeuring.
  * Uitdeuken kent geen goedkeurstap meer (klaarmelden is eindstatus),
- * daar geldt het klaarmeldmoment als goedkeuring.
+ * poetsbeurten worden bij "Schoon" direct afgemeld — daar geldt het
+ * klaarmeldmoment als goedkeuring.
  */
 export const approvedAtOf = (o: WorkOrderRow): string | null =>
-  o.discipline === "uitdeuk" ? (o.approved_at || o.finished_at || null) : (o.approved_at || null);
+  o.discipline === "uitdeuk" || o.discipline === "poets"
+    ? (o.approved_at || o.finished_at || null)
+    : (o.approved_at || null);
+
 
 const approvedInRange = (rows: WorkOrderRow[], from: Date, to: Date) =>
   rows.filter(o => {
