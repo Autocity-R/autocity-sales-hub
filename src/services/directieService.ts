@@ -97,7 +97,7 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
   const sixM = new Date(); sixM.setMonth(sixM.getMonth() - 5); sixM.setDate(1); sixM.setHours(0, 0, 0, 0);
 
   const invSel = "id,invoice_kind,subtotal,total,status,sent_at,created_at,branch,vehicle_id,vehicle,lines,source_work_order_ids,work_order_id";
-  const woSel = "id,discipline,status,work_seconds,assigned_to,started_at,finished_at,approved_at,created_at,is_rush,rejected_count,branch,vehicle_id,part,origin,due_date";
+  const woSel = "id,discipline,status,work_seconds,assigned_to,started_at,finished_at,approved_at,created_at,is_rush,rejected_count,branch,vehicle_id,part,origin,due_date,poets_type";
 
   // Klussen worden over een ruim venster opgehaald en daarna op goedkeurmoment gefilterd,
   // zodat een klus meetelt in de maand van goedkeuring en niet van toewijzing.
