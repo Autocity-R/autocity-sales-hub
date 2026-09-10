@@ -114,7 +114,7 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
     branchFilter(supabase.from("warranty_claims").select("id,claim_status,claim_amount,estimated_amount,created_at,resolution_date,branch").gte("created_at", from.toISOString()).lt("created_at", to.toISOString()), branch),
     supabase.from("loan_cars").select("id,status").eq("status", "uitgeleend"),
     branchFilter(supabase.from("parts_orders").select("id,status,part_name,created_at,branch").neq("status", "binnen"), branch),
-    supabase.from("profiles").select("id,first_name,last_name"),
+    supabase.from("profiles").select("id,first_name,last_name,poetser_type"),
   ]);
 
   const ordersAll = (woAll.data || []) as any as WorkOrderRow[];
