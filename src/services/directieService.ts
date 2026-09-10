@@ -275,6 +275,14 @@ export function employeeKpis(raw: DirectieRaw): EmployeeKpi[] {
     ids.forEach(id => revenueByOrder.set(id, (revenueByOrder.get(id) || 0) + per));
   });
 
+  // Poetsbeurten van interne poetsers: vaste prijs per auto, geen factuur per order.
+  raw.orders.forEach(o => {
+    if (o.discipline !== "poets" || !o.assigned_to || !approvedAtOf(o)) return;
+    const p = raw.profiles.find(x => x.id === o.assigned_to);
+    if (!p || p.poetser_type === "extern") return;
+    revenueByOrder.set(o.id, (revenueByOrder.get(o.id) || 0) + POETS_PRICE_EXCL);
+  });
+
   const map = new Map<string, EmployeeKpi>();
   raw.orders.filter(o => o.assigned_to).forEach(o => {
     const id = o.assigned_to as string;
@@ -288,6 +296,7 @@ export function employeeKpis(raw: DirectieRaw): EmployeeKpi[] {
     e.rejects += Number(o.rejected_count || 0);
     e.revenue += revenueByOrder.get(o.id) || 0;
   });
+
   return Array.from(map.values()).map(e => ({
     ...e,
     perHour: e.hours > 0 ? e.revenue / e.hours : 0,
