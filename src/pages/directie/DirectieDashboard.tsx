@@ -182,10 +182,11 @@ const DirectieDashboard: React.FC = () => {
         ) : (
           <div className="space-y-4">
             {/* A. Kerncijfers */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <Stat label="Totale omzet excl. btw" value={eur(m.total)} pct={m.dTotal} />
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+              <Stat label="Totale omzet excl. btw" value={eur(m.total)} pct={m.dTotal} sub="incl. poetsen" />
               <Stat label="Omzet intern" value={eur(m.intern)} pct={m.dIntern} />
               <Stat label="Omzet extern" value={eur(m.extern)} pct={m.dExtern} />
+              <Stat label="Omzet poetsen" value={eur(m.poets.revenueExcl)} pct={m.dPoets} sub={`${m.poets.internCars} auto's`} />
               <Stat label="Geregistreerde uren" value={`${num(m.hours)} u`} pct={m.dHours} />
             </div>
 
@@ -196,10 +197,15 @@ const DirectieDashboard: React.FC = () => {
               onExport={() => downloadCsv("omzet-per-tak.csv", [
                 { tak: "Werkplaats", ...m.werkplaats },
                 { tak: "Schadeherstel", ...m.schade },
+                { tak: "Poetsen", ...m.poetsTak },
               ])}
             >
-              <div className="grid md:grid-cols-2 gap-3">
-                {[{ label: "🔧 Werkplaats", s: m.werkplaats }, { label: "🎨 Schadeherstel", s: m.schade }].map(({ label, s }) => (
+              <div className="grid md:grid-cols-3 gap-3">
+                {[
+                  { label: "🔧 Werkplaats", s: m.werkplaats },
+                  { label: "🎨 Schadeherstel", s: m.schade },
+                  { label: "✨ Poetsen", s: m.poetsTak },
+                ].map(({ label, s }) => (
                   <div key={label} className="rounded-xl border border-slate-200 bg-[#f8f9fb] p-3">
                     <div className="text-[12px] font-semibold text-slate-800">{label}</div>
                     <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
@@ -220,14 +226,18 @@ const DirectieDashboard: React.FC = () => {
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `€${Math.round(v / 1000)}k`} />
                     <Tooltip formatter={(v: any) => eur(Number(v))} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="intern" name="Intern" fill="#2563eb" radius={[4, 4, 0, 0]} maxBarSize={28} />
-                    <Bar dataKey="extern" name="Extern" fill="#059669" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                    <Bar dataKey="intern" name="Intern" fill="#2563eb" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                    <Bar dataKey="extern" name="Extern" fill="#059669" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                    <Bar dataKey="poets" name="Poetsen" fill="#7c3aed" radius={[4, 4, 0, 0]} maxBarSize={24} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
               <div className="mt-2 text-[11px] text-slate-500">
                 Onderhanden werk: {eur(m.wip)} indicatief — facturen blijven de harde basis.
+                Poetsen: € 82,64 excl. btw per interne poetsbeurt, geteld op klaarmeldmoment
+                ({m.poets.internCars} intern · {m.poets.externCars} extern{m.poets.unknownCars ? ` · ${m.poets.unknownCars} onbekend` : ""}).
               </div>
+
             </Block>
 
             {/* C. Medewerker-KPI's */}
