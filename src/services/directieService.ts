@@ -187,8 +187,56 @@ export function branchStats(invoices: InvoiceRow[], orders: WorkOrderRow[], disc
   return { internal, external, count, avg: count ? (internal + external) / count : 0 };
 }
 
-export function monthlyTrend(invoices6m: InvoiceRow[]) {
-  const out: { month: string; intern: number; extern: number }[] = [];
+/* ---------- poetsen ---------- */
+
+/** Interne poetsbeurt: € 100,00 incl. btw per auto (= € 82,64 ex btw). */
+export const POETS_PRICE_INCL = 100;
+export const POETS_PRICE_EXCL = 82.64;
+
+export interface PoetsStats {
+  internCars: number; externCars: number; unknownCars: number;
+  revenueExcl: number; revenueIncl: number; minutesAvg: number;
+}
+
+/**
+ * Poets-omzet komt uit de afgemelde poetsbeurten van INTERNE poetsers,
+ * exact dezelfde bron/berekening als /rapportages/poetsen. Externe beurten
+ * leveren ons geen omzet op en tellen alleen als aantal.
+ */
+export function poetsStatsDirectie(raw: DirectieRaw, orders: WorkOrderRow[]): PoetsStats {
+  const typeOf = (id: string | null): "intern" | "extern" | "onbekend" => {
+    if (!id) return "onbekend";
+    const p = raw.profiles.find(x => x.id === id);
+    if (!p) return "onbekend";
+    return p.poetser_type === "extern" ? "extern" : "intern";
+  };
+  const done = orders.filter(o => o.discipline === "poets" && !!approvedAtOf(o));
+  const internCars = done.filter(o => typeOf(o.assigned_to) === "intern").length;
+  const externCars = done.filter(o => typeOf(o.assigned_to) === "extern").length;
+  const unknownCars = done.filter(o => typeOf(o.assigned_to) === "onbekend").length;
+  const seconds = done.reduce((a, o) => a + Number(o.work_seconds || 0), 0);
+  return {
+    internCars, externCars, unknownCars,
+    revenueExcl: Math.round(internCars * POETS_PRICE_EXCL * 100) / 100,
+    revenueIncl: internCars * POETS_PRICE_INCL,
+    minutesAvg: done.length ? seconds / 60 / done.length : 0,
+  };
+}
+
+/** Poets als "tak": omzet is altijd intern (onze eigen poetsers). */
+export function poetsBranchStats(raw: DirectieRaw, orders: WorkOrderRow[]): BranchStats {
+  const p = poetsStatsDirectie(raw, orders);
+  const count = p.internCars + p.externCars + p.unknownCars;
+  return {
+    internal: p.revenueExcl,
+    external: 0,
+    count,
+    avg: count ? p.revenueExcl / count : 0,
+  };
+}
+
+export function monthlyTrend(invoices6m: InvoiceRow[], raw?: DirectieRaw) {
+  const out: { month: string; intern: number; extern: number; poets: number }[] = [];
   const now = new Date();
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -197,12 +245,15 @@ export function monthlyTrend(invoices6m: InvoiceRow[]) {
       const t = new Date(r.created_at);
       return t >= d && t < next;
     });
+    const poetsOrders = raw ? approvedInRange(raw.ordersHist, d, next) : [];
     out.push({
       month: d.toLocaleDateString("nl-NL", { month: "short" }),
       intern: sum(rows.filter(r => r.invoice_kind === "intern")),
       extern: sum(rows.filter(r => r.invoice_kind !== "intern")),
+      poets: raw ? poetsStatsDirectie(raw, poetsOrders).revenueExcl : 0,
     });
   }
+
   return out;
 }
 
