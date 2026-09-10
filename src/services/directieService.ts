@@ -142,6 +142,8 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
     orders,
     ordersPrev,
     ordersOpen,
+    ordersHist: ordersAll,
+
     intakes: (intakes.data || []) as any,
     claims: (claims.data || []) as any,
     loanCarsOut: (loans.data || []).length,
