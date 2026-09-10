@@ -50,6 +50,7 @@ export interface WorkOrderRow {
   assigned_to: string | null; started_at: string | null; finished_at: string | null; approved_at: string | null;
   created_at: string; is_rush: boolean | null; rejected_count: number | null; branch: string | null;
   vehicle_id: string | null; part: string | null; origin: string | null; due_date: string | null;
+  poets_type: string | null;
 }
 
 export interface DirectieRaw {
@@ -60,16 +61,19 @@ export interface DirectieRaw {
   orders: WorkOrderRow[];
   ordersPrev: WorkOrderRow[];
   ordersOpen: WorkOrderRow[];
+  /** Ruim historisch venster (min. 6 maanden) — basis voor poets-omzet en trends. */
+  ordersHist: WorkOrderRow[];
   intakes: { id: string; vehicle_id: string | null; created_at: string; approved_at: string | null; status: string | null; branch: string | null }[];
   claims: { id: string; claim_status: string | null; claim_amount: number | null; estimated_amount: number | null; created_at: string; resolution_date: string | null; branch: string | null }[];
   loanCarsOut: number;
   parts: { id: string; status: string | null; part_name: string | null; created_at: string; branch: string | null }[];
-  profiles: { id: string; first_name: string | null; last_name: string | null }[];
+  profiles: { id: string; first_name: string | null; last_name: string | null; poetser_type?: string | null }[];
   vehicles: Record<string, { brand: string | null; model: string | null; license_number: string | null }>;
 }
 
 const branchFilter = <T extends { eq: any }>(q: T, branch: DirectieBranch) =>
   branch === "all" ? q : (q as any).eq("branch", branch);
+
 
 /**
  * Moment waarop een klus meetelt in de cijfers: goedkeuring.
