@@ -79,6 +79,8 @@ export const AddWorkOrderDialog: React.FC<Props> = ({
           description: description.trim(),
           is_rush: isRush,
           photos: photoPaths,
+          parts: [],
+          poets_type: discipline === "poets" ? "showroom" : null,
           status: "ingepland",
           sort_order: nextSort,
           source,
