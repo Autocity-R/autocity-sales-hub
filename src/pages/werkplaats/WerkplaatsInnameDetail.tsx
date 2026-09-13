@@ -95,6 +95,40 @@ const WerkplaatsInnameDetail: React.FC = () => {
 
   // add-part flow gebruikt gedeeld AddPartOrderDialog
 
+  /** Slaat de accu-SOH direct op de auto op (leeg = niet gemeten). */
+  const commitSoh = async () => {
+    if (!intake) return;
+    const raw = sohInput.trim().replace(",", ".");
+    let value: number | null = null;
+    if (raw !== "") {
+      const num = Number(raw);
+      if (!Number.isFinite(num) || num < 0 || num > 100) {
+        toast({ title: "Ongeldige SOH", description: "Vul een waarde tussen 0 en 100 in.", variant: "destructive" });
+        return;
+      }
+      value = Math.round(num * 10) / 10;
+      setSohInput(String(value).replace(".", ","));
+    }
+    const current = intake.vehicle?.soh_pct;
+    const currentNum = current === null || current === undefined ? null : Number(current);
+    if (currentNum === value) return;
+    const { error } = await supabase.from("vehicles").update({ soh_pct: value } as any).eq("id", intake.vehicle_id);
+    if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
+    setIntake(prev => (prev ? { ...prev, vehicle: prev.vehicle ? { ...prev.vehicle, soh_pct: value } : prev.vehicle } : prev));
+    toast({ title: value === null ? "Accu SOH gewist" : `Accu SOH opgeslagen (${String(value).replace(".", ",")}%)` });
+  };
+
+  /** Slaat het aantal sleutels direct op de auto op (nogmaals tikken = onbekend). */
+  const commitKeys = async (n: 1 | 2) => {
+    if (!intake) return;
+    const value: 1 | 2 | null = keys === n ? null : n;
+    const { error } = await supabase.from("vehicles").update({ aantal_sleutels: value } as any).eq("id", intake.vehicle_id);
+    if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
+    setKeys(value);
+    setIntake(prev => (prev ? { ...prev, vehicle: prev.vehicle ? { ...prev.vehicle, aantal_sleutels: value } : prev.vehicle } : prev));
+    toast({ title: value === null ? "Aantal sleutels: onbekend" : `${value} ${value === 1 ? "sleutel" : "sleutels"} vastgelegd` });
+  };
+
   const selectedParts = selection[discipline];
   const description = descriptions[discipline];
   const setDescription = (v: string) =>
