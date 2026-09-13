@@ -3,7 +3,7 @@ import React from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import StatCard from "@/components/dashboard/StatCard";
 import MonthlySalesChart from "@/components/dashboard/MonthlySalesChart";
-import AiAssistant from "@/components/dashboard/AiAssistant";
+
 import WeeklySalesLeaderboard from "@/components/dashboard/WeeklySalesLeaderboard";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { Database, Package, Truck, ShieldCheck } from "lucide-react";
@@ -63,8 +63,7 @@ const Index = () => {
         <MonthlySalesChart />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2 mt-6">
-        <AiAssistant />
+      <div className="grid gap-4 md:grid-cols-1 mt-6">
         <WeeklySalesLeaderboard />
       </div>
     </DashboardLayout>
