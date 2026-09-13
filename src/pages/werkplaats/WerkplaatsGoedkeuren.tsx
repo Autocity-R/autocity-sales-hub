@@ -169,8 +169,10 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                 <FileText className="h-4 w-4 mr-1" />Factuur opmaken
               </Button>
             )}
-            <Button size="sm" onClick={() => approve(w)}><Check className="h-4 w-4 mr-1" />Goedkeuren</Button>
-            {allowReject && (
+            {!readOnly && (
+              <Button size="sm" onClick={() => approve(w)}><Check className="h-4 w-4 mr-1" />Goedkeuren</Button>
+            )}
+            {allowReject && !readOnly && (
               <Button size="sm" variant="outline" onClick={() => reject(w)}><Undo2 className="h-4 w-4 mr-1" />Terugsturen</Button>
             )}
           </div>
