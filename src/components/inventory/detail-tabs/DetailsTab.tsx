@@ -1035,6 +1035,35 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
           )}
         </div>
         
+        {/* Aantal sleutels — exact tussen "Papieren binnen" en de notities */}
+        <div className="space-y-2">
+          <Label>Aantal sleutels</Label>
+          {canEditVehicleIntake ? (
+            <div className="grid grid-cols-2 gap-2 max-w-xs">
+              {[1, 2].map((n) => {
+                const active = editedVehicle.aantalSleutels === n;
+                return (
+                  <Button
+                    key={n}
+                    type="button"
+                    variant={active ? 'default' : 'outline'}
+                    className="h-12 text-sm"
+                    onClick={() => handleChange('aantalSleutels' as any, active ? null : (n as 1 | 2))}
+                  >
+                    🔑 {n} {n === 1 ? 'sleutel' : 'sleutels'}
+                  </Button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm">
+              {editedVehicle.aantalSleutels
+                ? `🔑 ${editedVehicle.aantalSleutels} ${editedVehicle.aantalSleutels === 1 ? 'sleutel' : 'sleutels'}`
+                : 'Onbekend'}
+            </p>
+          )}
+        </div>
+
         {/* Notes */}
         <div className="space-y-2">
           <Label className="flex items-center space-x-2">
