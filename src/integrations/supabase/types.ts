@@ -4600,6 +4600,7 @@ export type Database = {
       vehicles: {
         Row: {
           aangekomen_at: string | null
+          aantal_sleutels: number | null
           aanvraag_ontvangen_at: string | null
           b2b_delivered: boolean
           b2b_delivered_at: string | null
@@ -4635,6 +4636,7 @@ export type Database = {
           selling_price: number | null
           showroom_photo_generated_at: string | null
           showroom_photo_url: string | null
+          soh_pct: number | null
           sold_by_user_id: string | null
           sold_date: string | null
           sold_registered_by: string | null
@@ -4647,6 +4649,7 @@ export type Database = {
         }
         Insert: {
           aangekomen_at?: string | null
+          aantal_sleutels?: number | null
           aanvraag_ontvangen_at?: string | null
           b2b_delivered?: boolean
           b2b_delivered_at?: string | null
@@ -4682,6 +4685,7 @@ export type Database = {
           selling_price?: number | null
           showroom_photo_generated_at?: string | null
           showroom_photo_url?: string | null
+          soh_pct?: number | null
           sold_by_user_id?: string | null
           sold_date?: string | null
           sold_registered_by?: string | null
@@ -4694,6 +4698,7 @@ export type Database = {
         }
         Update: {
           aangekomen_at?: string | null
+          aantal_sleutels?: number | null
           aanvraag_ontvangen_at?: string | null
           b2b_delivered?: boolean
           b2b_delivered_at?: string | null
@@ -4729,6 +4734,7 @@ export type Database = {
           selling_price?: number | null
           showroom_photo_generated_at?: string | null
           showroom_photo_url?: string | null
+          soh_pct?: number | null
           sold_by_user_id?: string | null
           sold_date?: string | null
           sold_registered_by?: string | null
