@@ -207,6 +207,10 @@ export interface Vehicle {
   supplierContact?: ContactInfo;    // Leverancier contact informatie  
   transporterContact?: ContactInfo; // Transporteur contact informatie
   year?: number; // Toegevoegd voor email templates
+
+  // Inname-registratie
+  sohPct?: number | null;        // Accu-gezondheid (State of Health) in %, null/undefined = niet gemeten
+  aantalSleutels?: 1 | 2 | null; // Aantal sleutels, null/undefined = onbekend
   
   // Email reminder settings
   emailReminderSettings?: {
