@@ -44,7 +44,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
     let q = supabase.from("work_orders")
       .select("id, vehicle_id, discipline, description, part, parts, is_rush, photos, result_photos, work_seconds, finish_note, branch, origin, external_customer, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin)")
       .eq("status", "afgerond")
-      .neq("discipline", "uitdeuk")
+      .in("discipline", ["werkplaats", "spuit"])
       .order("finished_at", { ascending: true });
     q = applyBranchFilter(q as any, branchFilter);
     const { data } = await q;
@@ -130,6 +130,77 @@ const WerkplaatsGoedkeuren: React.FC = () => {
     else { toast({ title: "Teruggestuurd" }); load(); }
   };
 
+  const workplaatsRows = rows.filter(w => w.discipline === "werkplaats");
+  const schadeRows = rows.filter(w => w.discipline === "spuit");
+
+  const renderOrder = (w: WO, allowReject: boolean) => (
+    <AsCard
+      key={w.id}
+      className="overflow-hidden cursor-pointer"
+      onClick={() => setReport({
+        part: w.part, parts: w.parts, description: w.description, photos: w.photos, result_photos: w.result_photos,
+        discipline: w.discipline, status: "afgerond", finish_note: w.finish_note, vehicle: w.vehicle as any,
+      })}
+    >
+      <AsCardHead
+        tone="teal"
+        icon={<ClipboardCheck className="h-4 w-4" />}
+        title={
+          <span className="flex items-center gap-2">
+            <AsLicensePlate value={w.vehicle?.license_number} size="sm" />
+            <span>{w.vehicle?.brand} {w.vehicle?.model}{w.vehicle?.year ? ` · ${w.vehicle.year}` : ""}</span>
+            {isExtern(w) && (
+              <>
+                <AsPill tone="blue">EXTERN · {w.external_customer?.name || "klant"}</AsPill>
+                <AsPill tone="amber">Factuur nodig</AsPill>
+              </>
+            )}
+          </span>
+        }
+        subtitle={DISCIPLINE_LABELS[w.discipline as WorkOrderDiscipline] || w.discipline}
+        right={
+          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+            {isExtern(w) && (
+              <Button size="sm" variant="outline" onClick={() => setInvoice(invoiceDraftFor(w))}>
+                <FileText className="h-4 w-4 mr-1" />Factuur opmaken
+              </Button>
+            )}
+            <Button size="sm" onClick={() => approve(w)}><Check className="h-4 w-4 mr-1" />Goedkeuren</Button>
+            {allowReject && (
+              <Button size="sm" variant="outline" onClick={() => reject(w)}><Undo2 className="h-4 w-4 mr-1" />Terugsturen</Button>
+            )}
+          </div>
+        }
+      />
+      <div className="px-5 pb-4 pt-4 border-t border-slate-100 space-y-3">
+        <PartChips workOrder={w as any} />
+        <div className="text-sm text-slate-800">{w.description}</div>
+        {w.finish_note && <div className="text-sm italic text-slate-500">Notitie: {w.finish_note}</div>}
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <Timer className="h-4 w-4" /> Werktijd: {fmtSec(w.work_seconds)}
+        </div>
+        {w.discipline !== "werkplaats" && (
+          <div className="grid gap-3 md:grid-cols-2">
+            <div>
+              <div className="text-[11px] uppercase tracking-wide mb-1 text-slate-500 font-semibold">Opdracht-foto's</div>
+              <div className="flex flex-wrap gap-2">
+                {(w.photos || []).length === 0 && <span className="text-xs text-slate-400">—</span>}
+                {(w.photos || []).map((p, i) => <WorkshopPhoto key={i} path={p} className="w-24 h-24" />)}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wide mb-1 text-slate-500 font-semibold">Resultaat-foto's</div>
+              <div className="flex flex-wrap gap-2">
+                {(w.result_photos || []).length === 0 && <span className="text-xs text-slate-400">—</span>}
+                {(w.result_photos || []).map((p, i) => <WorkshopPhoto key={i} path={p} className="w-24 h-24" />)}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </AsCard>
+  );
+
   return (
     <DashboardLayout>
       <AsPage>
@@ -146,72 +217,30 @@ const WerkplaatsGoedkeuren: React.FC = () => {
         ) : rows.length === 0 ? (
           <AsCard className="p-10 text-center text-slate-400 text-[13px]">Geen orders wachten op goedkeuring.</AsCard>
         ) : (
-          <div className="space-y-4">
-            {rows.map(w => (
-              <AsCard
-                key={w.id}
-                className="overflow-hidden cursor-pointer"
-                onClick={() => setReport({
-                  part: w.part, parts: (w as any).parts, description: w.description, photos: w.photos, result_photos: w.result_photos,
-                  discipline: w.discipline, status: "afgerond", finish_note: w.finish_note, vehicle: w.vehicle as any,
-                })}
-              >
-                <AsCardHead
-                  tone="teal"
-                  icon={<ClipboardCheck className="h-4 w-4" />}
-                  title={
-                    <span className="flex items-center gap-2">
-                      <AsLicensePlate value={w.vehicle?.license_number} size="sm" />
-                      <span>{w.vehicle?.brand} {w.vehicle?.model}{w.vehicle?.year ? ` · ${w.vehicle.year}` : ""}</span>
-                      {isExtern(w) && (
-                        <>
-                          <AsPill tone="blue">EXTERN · {w.external_customer?.name || "klant"}</AsPill>
-                          <AsPill tone="amber">Factuur nodig</AsPill>
-                        </>
-                      )}
-                    </span>
-                  }
-                  subtitle={DISCIPLINE_LABELS[w.discipline as WorkOrderDiscipline] || w.discipline}
-                  right={
-                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                      {isExtern(w) && (
-                        <Button size="sm" variant="outline" onClick={() => setInvoice(invoiceDraftFor(w))}>
-                          <FileText className="h-4 w-4 mr-1" />Factuur opmaken
-                        </Button>
-                      )}
-                      <Button size="sm" onClick={() => approve(w)}><Check className="h-4 w-4 mr-1" />Goedkeuren</Button>
-                      <Button size="sm" variant="outline" onClick={() => reject(w)}><Undo2 className="h-4 w-4 mr-1" />Terugsturen</Button>
-                    </div>
-                  }
-                />
-                <div className="px-5 pb-4 pt-4 border-t border-slate-100 space-y-3">
-                  <PartChips workOrder={w as any} />
-                  <div className="text-sm text-slate-800">{w.description}</div>
-                  {w.finish_note && <div className="text-sm italic text-slate-500">Notitie: {w.finish_note}</div>}
-                  <div className="flex items-center gap-2 text-sm text-slate-500">
-                    <Timer className="h-4 w-4" /> Werktijd: {fmtSec(w.work_seconds)}
-                  </div>
-                  {w.discipline !== "werkplaats" && (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div>
-                      <div className="text-[11px] uppercase tracking-wide mb-1 text-slate-500 font-semibold">Opdracht-foto's</div>
-                      <div className="flex flex-wrap gap-2">
-                        {(w.photos || []).length === 0 && <span className="text-xs text-slate-400">—</span>}
-                        {(w.photos || []).map((p, i) => <WorkshopPhoto key={i} path={p} className="w-24 h-24" />)}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[11px] uppercase tracking-wide mb-1 text-slate-500 font-semibold">Resultaat-foto's</div>
-                      <div className="flex flex-wrap gap-2">
-                        {(w.result_photos || []).length === 0 && <span className="text-xs text-slate-400">—</span>}
-                        {(w.result_photos || []).map((p, i) => <WorkshopPhoto key={i} path={p} className="w-24 h-24" />)}
-                      </div>
-                    </div>
-                  </div>
-                  )}
-                </div>
-              </AsCard>
-            ))}
+          <div className="space-y-8">
+            <section>
+              <div className="mb-3 flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-slate-900">Werkplaats</h2>
+                <Badge variant="secondary">{workplaatsRows.length}</Badge>
+              </div>
+              {workplaatsRows.length === 0 ? (
+                <div className="text-sm text-slate-500">Geen werkplaatsopdrachten wachten op goedkeuring.</div>
+              ) : (
+                <div className="space-y-4">{workplaatsRows.map(w => renderOrder(w, false))}</div>
+              )}
+            </section>
+
+            <section>
+              <div className="mb-3 flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-slate-900">Schadeherstel</h2>
+                <Badge variant="secondary">{schadeRows.length}</Badge>
+              </div>
+              {schadeRows.length === 0 ? (
+                <div className="text-sm text-slate-500">Geen schadeherstelopdrachten wachten op goedkeuring.</div>
+              ) : (
+                <div className="space-y-4">{schadeRows.map(w => renderOrder(w, true))}</div>
+              )}
+            </section>
           </div>
         )}
         <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} />
