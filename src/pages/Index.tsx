@@ -63,8 +63,7 @@ const Index = () => {
         <MonthlySalesChart />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2 mt-6">
-        <AiAssistant />
+      <div className="grid gap-4 md:grid-cols-1 mt-6">
         <WeeklySalesLeaderboard />
       </div>
     </DashboardLayout>
