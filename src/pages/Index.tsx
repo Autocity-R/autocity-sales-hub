@@ -3,7 +3,7 @@ import React from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import StatCard from "@/components/dashboard/StatCard";
 import MonthlySalesChart from "@/components/dashboard/MonthlySalesChart";
-import AiAssistant from "@/components/dashboard/AiAssistant";
+
 import WeeklySalesLeaderboard from "@/components/dashboard/WeeklySalesLeaderboard";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { Database, Package, Truck, ShieldCheck } from "lucide-react";
