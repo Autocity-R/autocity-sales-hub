@@ -53,6 +53,33 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
   canEditKenteken = false
 }) => {
   const { data: salespeople, isLoading: salesLoading } = useSalespeople();
+
+  // Inname-velden (SOH + sleutels): zelfde rechten als de BPM-vinkjes (óók aftersales)
+  const canEditVehicleIntake = !readOnly || canEditBpm;
+
+  const formatSoh = (v: number | null | undefined) =>
+    v === null || v === undefined ? '' : String(v).replace('.', ',');
+
+  const [sohInput, setSohInput] = React.useState<string>(formatSoh(editedVehicle.sohPct));
+  React.useEffect(() => {
+    setSohInput(formatSoh(editedVehicle.sohPct));
+  }, [editedVehicle.id, editedVehicle.sohPct]);
+
+  const commitSoh = () => {
+    const raw = sohInput.trim().replace(',', '.');
+    if (raw === '') {
+      if (editedVehicle.sohPct !== null && editedVehicle.sohPct !== undefined) handleChange('sohPct' as any, null);
+      return;
+    }
+    const num = Number(raw);
+    if (!Number.isFinite(num) || num < 0 || num > 100) {
+      setSohInput(formatSoh(editedVehicle.sohPct));
+      return;
+    }
+    const rounded = Math.round(num * 10) / 10;
+    setSohInput(formatSoh(rounded));
+    if (rounded !== editedVehicle.sohPct) handleChange('sohPct' as any, rounded);
+  };
   
   // Local state for manual warranty price input (prevents auto-save on each keystroke)
   const [manualWarrantyPrice, setManualWarrantyPrice] = React.useState<string>('');
@@ -232,7 +259,30 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
             />
           </div>
         </div>
-        
+
+        {/* Accu SOH — exact tussen VIN en transportstatus, alleen tonen als gemeten of bewerkbaar */}
+        {(editedVehicle.sohPct !== null && editedVehicle.sohPct !== undefined) || canEditVehicleIntake ? (
+          <div className="space-y-2">
+            <Label htmlFor="sohPct">Accu SOH (%)</Label>
+            {canEditVehicleIntake ? (
+              <>
+                <Input
+                  id="sohPct"
+                  type="text"
+                  inputMode="decimal"
+                  value={sohInput}
+                  placeholder="bijv. 92,5"
+                  onChange={(e) => setSohInput(e.target.value)}
+                  onBlur={commitSoh}
+                />
+                <p className="text-xs text-muted-foreground">Alleen bij EV/hybride, indien gemeten</p>
+              </>
+            ) : (
+              <p className="text-sm">Accu SOH: {formatSoh(editedVehicle.sohPct)}%</p>
+            )}
+          </div>
+        ) : null}
+
         {/* Transport Status */}
         <div className="space-y-2">
           <Label>Transport status</Label>
@@ -985,6 +1035,35 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
           )}
         </div>
         
+        {/* Aantal sleutels — exact tussen "Papieren binnen" en de notities */}
+        <div className="space-y-2">
+          <Label>Aantal sleutels</Label>
+          {canEditVehicleIntake ? (
+            <div className="grid grid-cols-2 gap-2 max-w-xs">
+              {[1, 2].map((n) => {
+                const active = editedVehicle.aantalSleutels === n;
+                return (
+                  <Button
+                    key={n}
+                    type="button"
+                    variant={active ? 'default' : 'outline'}
+                    className="h-12 text-sm"
+                    onClick={() => handleChange('aantalSleutels' as any, active ? null : (n as 1 | 2))}
+                  >
+                    🔑 {n} {n === 1 ? 'sleutel' : 'sleutels'}
+                  </Button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm">
+              {editedVehicle.aantalSleutels
+                ? `🔑 ${editedVehicle.aantalSleutels} ${editedVehicle.aantalSleutels === 1 ? 'sleutel' : 'sleutels'}`
+                : 'Onbekend'}
+            </p>
+          )}
+        </div>
+
         {/* Notes */}
         <div className="space-y-2">
           <Label className="flex items-center space-x-2">

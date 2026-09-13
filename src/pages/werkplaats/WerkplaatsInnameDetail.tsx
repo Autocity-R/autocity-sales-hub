@@ -24,6 +24,7 @@ interface Intake {
   vehicle: {
     id: string; brand: string; model: string; year: number | null; license_number: string | null;
     vin: string | null; mileage: number | null; color: string | null; status?: string | null;
+    soh_pct?: number | string | null; aantal_sleutels?: number | null;
   } | null;
 }
 
@@ -49,6 +50,10 @@ const WerkplaatsInnameDetail: React.FC = () => {
   const [descriptions, setDescriptions] = useState<Record<Discipline, string>>({ spuit: "", uitdeuk: "" });
   const [files, setFiles] = useState<File[]>([]);
 
+  // Inname-registratie: accu-SOH + aantal sleutels (direct op de auto opgeslagen)
+  const [sohInput, setSohInput] = useState<string>("");
+  const [keys, setKeys] = useState<1 | 2 | null>(null);
+
   // Onderdelen composer
   const [parts, setParts] = useState<Array<{ id: string; part_name: string; note: string | null; status: string }>>([]);
   const [addPartOpen, setAddPartOpen] = useState(false);
@@ -58,11 +63,14 @@ const WerkplaatsInnameDetail: React.FC = () => {
     setLoading(true);
     const { data } = await supabase
       .from("vehicle_intakes")
-      .select("id, vehicle_id, branch, status, created_at, points, draft_selection, vehicle:vehicles!vehicle_intakes_vehicle_id_fkey(id, brand, model, year, license_number, vin, mileage, color, status)")
+      .select("id, vehicle_id, branch, status, created_at, points, draft_selection, vehicle:vehicles!vehicle_intakes_vehicle_id_fkey(id, brand, model, year, license_number, vin, mileage, color, status, soh_pct, aantal_sleutels)")
       .eq("id", id).single();
     if (data) {
       const draft = ((data as any).draft_selection || {}) as DraftSelection;
       setIntake({ ...(data as any), points: Array.isArray((data as any).points) ? (data as any).points : [], draft_selection: draft });
+      const rawSoh = (data as any).vehicle?.soh_pct;
+      setSohInput(rawSoh === null || rawSoh === undefined ? "" : String(rawSoh).replace(".", ","));
+      setKeys(((data as any).vehicle?.aantal_sleutels ?? null) as 1 | 2 | null);
       setSelection({
         spuit: draft.spuit?.parts ?? [],
         uitdeuk: draft.uitdeuk?.parts ?? [],
@@ -86,6 +94,40 @@ const WerkplaatsInnameDetail: React.FC = () => {
   useEffect(() => { if (intake?.vehicle_id) loadParts(intake.vehicle_id); }, [intake?.vehicle_id]);
 
   // add-part flow gebruikt gedeeld AddPartOrderDialog
+
+  /** Slaat de accu-SOH direct op de auto op (leeg = niet gemeten). */
+  const commitSoh = async () => {
+    if (!intake) return;
+    const raw = sohInput.trim().replace(",", ".");
+    let value: number | null = null;
+    if (raw !== "") {
+      const num = Number(raw);
+      if (!Number.isFinite(num) || num < 0 || num > 100) {
+        toast({ title: "Ongeldige SOH", description: "Vul een waarde tussen 0 en 100 in.", variant: "destructive" });
+        return;
+      }
+      value = Math.round(num * 10) / 10;
+      setSohInput(String(value).replace(".", ","));
+    }
+    const current = intake.vehicle?.soh_pct;
+    const currentNum = current === null || current === undefined ? null : Number(current);
+    if (currentNum === value) return;
+    const { error } = await supabase.from("vehicles").update({ soh_pct: value } as any).eq("id", intake.vehicle_id);
+    if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
+    setIntake(prev => (prev ? { ...prev, vehicle: prev.vehicle ? { ...prev.vehicle, soh_pct: value } : prev.vehicle } : prev));
+    toast({ title: value === null ? "Accu SOH gewist" : `Accu SOH opgeslagen (${String(value).replace(".", ",")}%)` });
+  };
+
+  /** Slaat het aantal sleutels direct op de auto op (nogmaals tikken = onbekend). */
+  const commitKeys = async (n: 1 | 2) => {
+    if (!intake) return;
+    const value: 1 | 2 | null = keys === n ? null : n;
+    const { error } = await supabase.from("vehicles").update({ aantal_sleutels: value } as any).eq("id", intake.vehicle_id);
+    if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
+    setKeys(value);
+    setIntake(prev => (prev ? { ...prev, vehicle: prev.vehicle ? { ...prev.vehicle, aantal_sleutels: value } : prev.vehicle } : prev));
+    toast({ title: value === null ? "Aantal sleutels: onbekend" : `${value} ${value === 1 ? "sleutel" : "sleutels"} vastgelegd` });
+  };
 
   const selectedParts = selection[discipline];
   const description = descriptions[discipline];
@@ -334,6 +376,53 @@ const WerkplaatsInnameDetail: React.FC = () => {
                 <SpecCol label="KM-stand">{v?.mileage ? `${v.mileage.toLocaleString("nl-NL")} km` : "—"}</SpecCol>
                 <SpecCol label="Kleur">{v?.color || "—"}</SpecCol>
                 <SpecCol label="Vestiging">{intake.branch || "—"}</SpecCol>
+              </div>
+            </div>
+          </div>
+        </AsCard>
+
+        {/* Conditiegegevens: accu-SOH + aantal sleutels */}
+        <AsCard className="p-5 mb-4">
+          <div className="text-[13px] font-semibold text-slate-900 mb-3">Voertuiggegevens vastleggen</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label htmlFor="intake-soh" className="block text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-2">
+                Accu SOH (%)
+              </label>
+              <Input
+                id="intake-soh"
+                type="text"
+                inputMode="decimal"
+                className="h-12 text-[15px]"
+                placeholder="bijv. 92,5"
+                value={sohInput}
+                onChange={(e) => setSohInput(e.target.value)}
+                onBlur={commitSoh}
+              />
+              <div className="mt-1.5 text-[12px] text-slate-500">Alleen bij EV/hybride, indien gemeten</div>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Aantal sleutels</div>
+              <div className="grid grid-cols-2 gap-2">
+                {([1, 2] as const).map(n => {
+                  const active = keys === n;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => commitKeys(n)}
+                      className={cn(
+                        "border rounded-xl px-3 py-3 min-h-[48px] text-[14px] font-semibold transition-colors",
+                        active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
+                      )}
+                    >
+                      🔑 {n} {n === 1 ? "sleutel" : "sleutels"}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-1.5 text-[12px] text-slate-500">
+                {keys === null ? "Nog onbekend — kies 1 of 2" : "Nogmaals tikken maakt het weer onbekend"}
               </div>
             </div>
           </div>

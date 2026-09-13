@@ -342,6 +342,9 @@ export class SupabaseInventoryService {
        location: locationToSet,
        import_status: vehicle.importStatus,
        notes: vehicle.notes,
+       // Inname-registratie: alleen overschrijven als expliciet meegegeven
+       soh_pct: (vehicle as any).sohPct !== undefined ? (vehicle as any).sohPct : existingVehicle.soh_pct,
+       aantal_sleutels: (vehicle as any).aantalSleutels !== undefined ? (vehicle as any).aantalSleutels : existingVehicle.aantal_sleutels,
        details: details as any,
        email_reminder_settings: emailReminderSettings as any,
         sold_date: soldDate,
@@ -721,6 +724,8 @@ export class SupabaseInventoryService {
       bpmReportSentDate: details.bpmReportSentDate ? new Date(details.bpmReportSentDate) : null,
       papersReceived: details.papersReceived || false,
       papersDate: details.papersDate ? new Date(details.papersDate) : null,
+      sohPct: supabaseVehicle.soh_pct !== null && supabaseVehicle.soh_pct !== undefined ? Number(supabaseVehicle.soh_pct) : null,
+      aantalSleutels: (supabaseVehicle.aantal_sleutels ?? null) as 1 | 2 | null,
       showroomOnline: details.showroomOnline || false,
       paymentStatus: details.paymentStatus || 'niet_betaald',
       
