@@ -381,6 +381,53 @@ const WerkplaatsInnameDetail: React.FC = () => {
           </div>
         </AsCard>
 
+        {/* Conditiegegevens: accu-SOH + aantal sleutels */}
+        <AsCard className="p-5 mb-4">
+          <div className="text-[13px] font-semibold text-slate-900 mb-3">Voertuiggegevens vastleggen</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label htmlFor="intake-soh" className="block text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-2">
+                Accu SOH (%)
+              </label>
+              <Input
+                id="intake-soh"
+                type="text"
+                inputMode="decimal"
+                className="h-12 text-[15px]"
+                placeholder="bijv. 92,5"
+                value={sohInput}
+                onChange={(e) => setSohInput(e.target.value)}
+                onBlur={commitSoh}
+              />
+              <div className="mt-1.5 text-[12px] text-slate-500">Alleen bij EV/hybride, indien gemeten</div>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Aantal sleutels</div>
+              <div className="grid grid-cols-2 gap-2">
+                {([1, 2] as const).map(n => {
+                  const active = keys === n;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => commitKeys(n)}
+                      className={cn(
+                        "border rounded-xl px-3 py-3 min-h-[48px] text-[14px] font-semibold transition-colors",
+                        active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
+                      )}
+                    >
+                      🔑 {n} {n === 1 ? "sleutel" : "sleutels"}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-1.5 text-[12px] text-slate-500">
+                {keys === null ? "Nog onbekend — kies 1 of 2" : "Nogmaals tikken maakt het weer onbekend"}
+              </div>
+            </div>
+          </div>
+        </AsCard>
+
         {/* Schadediagram + puntenlijst */}
         <AsCard className="p-5 mb-4">
           <div className="text-[13px] font-semibold text-slate-900 mb-3">Schaderapport — kies type en tik de delen aan</div>
