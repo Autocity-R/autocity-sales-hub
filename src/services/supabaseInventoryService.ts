@@ -721,6 +721,8 @@ export class SupabaseInventoryService {
       bpmReportSentDate: details.bpmReportSentDate ? new Date(details.bpmReportSentDate) : null,
       papersReceived: details.papersReceived || false,
       papersDate: details.papersDate ? new Date(details.papersDate) : null,
+      sohPct: supabaseVehicle.soh_pct !== null && supabaseVehicle.soh_pct !== undefined ? Number(supabaseVehicle.soh_pct) : null,
+      aantalSleutels: (supabaseVehicle.aantal_sleutels ?? null) as 1 | 2 | null,
       showroomOnline: details.showroomOnline || false,
       paymentStatus: details.paymentStatus || 'niet_betaald',
       
