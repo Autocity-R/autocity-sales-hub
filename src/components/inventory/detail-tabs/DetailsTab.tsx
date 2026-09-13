@@ -232,7 +232,30 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
             />
           </div>
         </div>
-        
+
+        {/* Accu SOH — exact tussen VIN en transportstatus, alleen tonen als gemeten of bewerkbaar */}
+        {(editedVehicle.sohPct !== null && editedVehicle.sohPct !== undefined) || canEditVehicleIntake ? (
+          <div className="space-y-2">
+            <Label htmlFor="sohPct">Accu SOH (%)</Label>
+            {canEditVehicleIntake ? (
+              <>
+                <Input
+                  id="sohPct"
+                  type="text"
+                  inputMode="decimal"
+                  value={sohInput}
+                  placeholder="bijv. 92,5"
+                  onChange={(e) => setSohInput(e.target.value)}
+                  onBlur={commitSoh}
+                />
+                <p className="text-xs text-muted-foreground">Alleen bij EV/hybride, indien gemeten</p>
+              </>
+            ) : (
+              <p className="text-sm">Accu SOH: {formatSoh(editedVehicle.sohPct)}%</p>
+            )}
+          </div>
+        ) : null}
+
         {/* Transport Status */}
         <div className="space-y-2">
           <Label>Transport status</Label>
