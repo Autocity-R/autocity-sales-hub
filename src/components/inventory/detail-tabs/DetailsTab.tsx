@@ -53,6 +53,33 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
   canEditKenteken = false
 }) => {
   const { data: salespeople, isLoading: salesLoading } = useSalespeople();
+
+  // Inname-velden (SOH + sleutels): zelfde rechten als de BPM-vinkjes (óók aftersales)
+  const canEditVehicleIntake = !readOnly || canEditBpm;
+
+  const formatSoh = (v: number | null | undefined) =>
+    v === null || v === undefined ? '' : String(v).replace('.', ',');
+
+  const [sohInput, setSohInput] = React.useState<string>(formatSoh(editedVehicle.sohPct));
+  React.useEffect(() => {
+    setSohInput(formatSoh(editedVehicle.sohPct));
+  }, [editedVehicle.id, editedVehicle.sohPct]);
+
+  const commitSoh = () => {
+    const raw = sohInput.trim().replace(',', '.');
+    if (raw === '') {
+      if (editedVehicle.sohPct !== null && editedVehicle.sohPct !== undefined) handleChange('sohPct' as any, null);
+      return;
+    }
+    const num = Number(raw);
+    if (!Number.isFinite(num) || num < 0 || num > 100) {
+      setSohInput(formatSoh(editedVehicle.sohPct));
+      return;
+    }
+    const rounded = Math.round(num * 10) / 10;
+    setSohInput(formatSoh(rounded));
+    if (rounded !== editedVehicle.sohPct) handleChange('sohPct' as any, rounded);
+  };
   
   // Local state for manual warranty price input (prevents auto-save on each keystroke)
   const [manualWarrantyPrice, setManualWarrantyPrice] = React.useState<string>('');
