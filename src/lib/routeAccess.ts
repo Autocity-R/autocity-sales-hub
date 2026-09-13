@@ -38,6 +38,7 @@ export const DIRECTIE_ALLOWED_PREFIXES = [
   "/werkplaats/agenda",
   "/werkplaats/facturen",
   "/werkplaats/inname",
+  "/werkplaats/goedkeuren",
   "/werkplaats/klanten",
   "/werkplaats/poetsen",
   "/werkplaats/uitdeuken",
