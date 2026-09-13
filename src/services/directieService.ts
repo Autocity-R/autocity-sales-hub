@@ -366,19 +366,6 @@ export function warrantyStats(raw: DirectieRaw) {
   return { total: raw.claims.length, open, inProgress, done, amount, avgDays, loanCarsOut: raw.loanCarsOut };
 }
 
-export function topVehicles(raw: DirectieRaw) {
-  const map = new Map<string, { vehicle_id: string; total: number; parts: number }>();
-  sent(raw.invoices).forEach(inv => {
-    if (!inv.vehicle_id) return;
-    const cur = map.get(inv.vehicle_id) || { vehicle_id: inv.vehicle_id, total: 0, parts: 0 };
-    cur.total += Number(inv.subtotal || 0);
-    cur.parts += Array.isArray(inv.lines) ? inv.lines.length : 0;
-    map.set(inv.vehicle_id, cur);
-  });
-  return Array.from(map.values()).sort((a, b) => b.total - a.total).slice(0, 5)
-    .map(v => ({ ...v, ...(raw.vehicles[v.vehicle_id] || { brand: null, model: null, license_number: null }) }));
-}
-
 /** Indicatief onderhanden werk: goedgekeurde nog niet gefactureerde + lopende interne orders x tarief. */
 export function wipEstimate(raw: DirectieRaw) {
   const invoiced = new Set<string>();

@@ -6,10 +6,10 @@ import {
 } from "recharts";
 import {
   Download, TrendingUp, TrendingDown, Wrench, Clock, ShieldIcon,
-  AlertTriangle, Car, Users, RefreshCw,
+  AlertTriangle, Users, RefreshCw,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono } from "@/components/aftersales/ui";
+import { AsPage, AsCard, AsPill, AsLicensePlate } from "@/components/aftersales/ui";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import {
@@ -18,7 +18,7 @@ import {
 } from "@/components/werkplaats/workOrderTypes";
 import {
   fetchDirectieRaw, buildRange, sent, sum, delta, hoursOf, branchStats, monthlyTrend,
-  employeeKpis, flowStats, warrantyStats, topVehicles, wipEstimate, downloadCsv,
+  employeeKpis, flowStats, warrantyStats, wipEstimate, downloadCsv,
   poetsStatsDirectie, poetsBranchStats,
   type DirectiePeriod, type DirectieBranch, type EmployeeKpi,
 } from "@/services/directieService";
@@ -124,7 +124,6 @@ const DirectieDashboard: React.FC = () => {
       employees: employeeKpis(raw),
       flow: flowStats(raw),
       warranty: warrantyStats(raw),
-      top: topVehicles(raw),
     };
   }, [raw]);
 
@@ -390,32 +389,6 @@ const DirectieDashboard: React.FC = () => {
               </div>
             </Block>
 
-            {/* G. Auto-toplijst */}
-            <Block
-              title="Top 5 auto's — herstel-omzet"
-              icon={<Car className="h-4 w-4 text-slate-500" />}
-              onExport={() => downloadCsv("top-autos.csv", m.top.map(t => ({
-                kenteken: t.license_number, merk: t.brand, model: t.model, totaal: Math.round(t.total), delen: t.parts,
-              })))}
-            >
-              {m.top.length === 0 ? (
-                <div className="text-[12px] text-slate-500">Geen gefactureerde herstel-omzet in deze periode.</div>
-              ) : (
-                <div className="space-y-2">
-                  {m.top.map((t, i) => (
-                    <div key={t.vehicle_id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-[#f8f9fb] p-2.5">
-                      <span className="text-[12px] font-bold text-slate-400 w-4">{i + 1}</span>
-                      <AsLicensePlate size="sm" value={t.license_number} />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[12px] font-semibold text-slate-900 truncate">{t.brand} {t.model}</div>
-                        <AsMono>{t.parts} regels</AsMono>
-                      </div>
-                      <div className="text-[13px] font-bold tabular-nums">{eur(t.total)}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Block>
           </div>
         )}
 
