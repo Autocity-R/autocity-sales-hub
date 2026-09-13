@@ -59,11 +59,14 @@ const WerkplaatsInnameDetail: React.FC = () => {
     setLoading(true);
     const { data } = await supabase
       .from("vehicle_intakes")
-      .select("id, vehicle_id, branch, status, created_at, points, draft_selection, vehicle:vehicles!vehicle_intakes_vehicle_id_fkey(id, brand, model, year, license_number, vin, mileage, color, status)")
+      .select("id, vehicle_id, branch, status, created_at, points, draft_selection, vehicle:vehicles!vehicle_intakes_vehicle_id_fkey(id, brand, model, year, license_number, vin, mileage, color, status, soh_pct, aantal_sleutels)")
       .eq("id", id).single();
     if (data) {
       const draft = ((data as any).draft_selection || {}) as DraftSelection;
       setIntake({ ...(data as any), points: Array.isArray((data as any).points) ? (data as any).points : [], draft_selection: draft });
+      const rawSoh = (data as any).vehicle?.soh_pct;
+      setSohInput(rawSoh === null || rawSoh === undefined ? "" : String(rawSoh).replace(".", ","));
+      setKeys(((data as any).vehicle?.aantal_sleutels ?? null) as 1 | 2 | null);
       setSelection({
         spuit: draft.spuit?.parts ?? [],
         uitdeuk: draft.uitdeuk?.parts ?? [],
