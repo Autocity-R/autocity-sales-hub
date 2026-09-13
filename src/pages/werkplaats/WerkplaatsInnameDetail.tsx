@@ -24,6 +24,7 @@ interface Intake {
   vehicle: {
     id: string; brand: string; model: string; year: number | null; license_number: string | null;
     vin: string | null; mileage: number | null; color: string | null; status?: string | null;
+    soh_pct?: number | string | null; aantal_sleutels?: number | null;
   } | null;
 }
 
