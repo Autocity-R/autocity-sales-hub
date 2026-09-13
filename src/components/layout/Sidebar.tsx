@@ -632,6 +632,7 @@ const DirectieSidebar: React.FC<{
         { url: "/werkplaats/planning", label: "Planning", icon: GanttChartIcon },
         { url: "/werkplaats/agenda", label: "Werkplaats agenda", icon: CalendarIcon },
         { url: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
+        { url: "/werkplaats/goedkeuren", label: "Goedkeuren", icon: ClipboardCheck },
         { url: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles },
         { url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
         { url: "/werkplaats/onderdelen", label: "Onderdelen", icon: Package },

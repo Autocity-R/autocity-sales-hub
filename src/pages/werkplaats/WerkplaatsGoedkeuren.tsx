@@ -17,6 +17,7 @@ import WorkshopInvoiceDialog from "@/components/werkplaats/WorkshopInvoiceDialog
 import { InvoiceDraft, dispatchPendingInternalInvoices } from "@/services/workshopInvoiceService";
 import { FileText } from "lucide-react";
 import { PartChips, getWorkOrderParts } from "@/components/werkplaats/workOrderParts";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface WO {
   id: string; vehicle_id: string; discipline: string; description: string; part: string | null; parts?: string[] | null; is_rush: boolean;
@@ -34,6 +35,9 @@ const fmtSec = (s: number | null) => {
 
 const WerkplaatsGoedkeuren: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
+  // Directie kijkt alleen mee: geen goedkeur-/terugstuur-/factuurknoppen.
+  const { isDirectieReadOnly } = useRoleAccess();
+  const readOnly = isDirectieReadOnly();
   const [rows, setRows] = useState<WO[]>([]);
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<DamageReportPayload | null>(null);
@@ -160,13 +164,15 @@ const WerkplaatsGoedkeuren: React.FC = () => {
         subtitle={DISCIPLINE_LABELS[w.discipline as WorkOrderDiscipline] || w.discipline}
         right={
           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-            {isExtern(w) && (
+            {isExtern(w) && !readOnly && (
               <Button size="sm" variant="outline" onClick={() => setInvoice(invoiceDraftFor(w))}>
                 <FileText className="h-4 w-4 mr-1" />Factuur opmaken
               </Button>
             )}
-            <Button size="sm" onClick={() => approve(w)}><Check className="h-4 w-4 mr-1" />Goedkeuren</Button>
-            {allowReject && (
+            {!readOnly && (
+              <Button size="sm" onClick={() => approve(w)}><Check className="h-4 w-4 mr-1" />Goedkeuren</Button>
+            )}
+            {allowReject && !readOnly && (
               <Button size="sm" variant="outline" onClick={() => reject(w)}><Undo2 className="h-4 w-4 mr-1" />Terugsturen</Button>
             )}
           </div>
