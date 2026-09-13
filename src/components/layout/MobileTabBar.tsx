@@ -63,6 +63,7 @@ export const useMobileTabs = (): { tabs: MobileTab[]; more: MobileTab[] } | null
       // Zelfde categorisering/volgorde als de sidebar
       more: [
         { url: "/werkplaats/inname", label: "Inname", icon: ClipboardList },
+        { url: "/werkplaats/goedkeuren", label: "Goedkeuren", icon: CheckCircle },
         { url: "/werkplaats/poetsen", label: "Poetsen", icon: Sparkles },
         { url: "/werkplaats/uitdeuken", label: "Uitdeuken", icon: Hammer },
         { url: "/werkplaats/onderdelen", label: "Onderdelen", icon: Package },

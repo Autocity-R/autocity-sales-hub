@@ -17,6 +17,7 @@ import WorkshopInvoiceDialog from "@/components/werkplaats/WorkshopInvoiceDialog
 import { InvoiceDraft, dispatchPendingInternalInvoices } from "@/services/workshopInvoiceService";
 import { FileText } from "lucide-react";
 import { PartChips, getWorkOrderParts } from "@/components/werkplaats/workOrderParts";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 interface WO {
   id: string; vehicle_id: string; discipline: string; description: string; part: string | null; parts?: string[] | null; is_rush: boolean;
