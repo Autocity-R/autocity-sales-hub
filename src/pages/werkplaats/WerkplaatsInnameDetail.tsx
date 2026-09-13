@@ -50,6 +50,10 @@ const WerkplaatsInnameDetail: React.FC = () => {
   const [descriptions, setDescriptions] = useState<Record<Discipline, string>>({ spuit: "", uitdeuk: "" });
   const [files, setFiles] = useState<File[]>([]);
 
+  // Inname-registratie: accu-SOH + aantal sleutels (direct op de auto opgeslagen)
+  const [sohInput, setSohInput] = useState<string>("");
+  const [keys, setKeys] = useState<1 | 2 | null>(null);
+
   // Onderdelen composer
   const [parts, setParts] = useState<Array<{ id: string; part_name: string; note: string | null; status: string }>>([]);
   const [addPartOpen, setAddPartOpen] = useState(false);
