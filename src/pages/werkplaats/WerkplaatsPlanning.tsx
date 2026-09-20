@@ -7,7 +7,10 @@ import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import BranchFilter from "@/components/reports/BranchFilter";
 import { toast } from "@/hooks/use-toast";
 import { syncWorkOrderToWerkplaatsCalendar, removeWorkOrderFromWerkplaatsCalendar } from "@/services/werkplaatsCalendarService";
-import { Loader2, Flame, Shield, ArrowUp, ArrowDown, Plus, GripVertical, Wrench, PaintBucket, CheckCircle2, ClipboardCheck, Trash2, AlertTriangle, CalendarClock, Building2, X } from "lucide-react";
+import { Loader2, Flame, Shield, ArrowUp, ArrowDown, Plus, GripVertical, Wrench, PaintBucket, CheckCircle2, ClipboardCheck, Trash2, AlertTriangle, CalendarClock, Building2, X, Pencil, ClipboardList } from "lucide-react";
+import { useVehicleDetailDialog } from "@/hooks/useVehicleDetailDialog";
+import { VehicleDetails } from "@/components/inventory/VehicleDetails";
+import { EditWorkOrderDialog } from "@/components/werkplaats/EditWorkOrderDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -55,6 +58,7 @@ interface WO {
     color: string | null;
     delivery_date: string | null;
     year: number | null;
+    status: string | null;
   } | null;
 }
 
@@ -103,26 +107,29 @@ const ExternBadge: React.FC<{ w: WO }> = ({ w }) => {
 const TaskCard: React.FC<{
   w: WO;
   index: number;
+  canPlan: boolean;
   onReorder: (id: string, dir: -1 | 1) => void;
   onToggleRush: (w: WO) => void;
   onDragStart: (id: string) => void;
   onDrop: (targetId: string) => void;
   onOpen: (w: WO) => void;
   onDelete?: (w: WO) => void;
-}> = ({ w, index, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete }) => {
-  const readOnly = useRoleAccess().isDirectieReadOnly();
+  onOpenChecklist: (vehicleId: string) => void;
+  onEdit?: (w: WO) => void;
+}> = ({ w, index, canPlan, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete, onOpenChecklist, onEdit }) => {
   const live = useLiveTimer(w.status === "bezig" ? w.started_at : null);
   const navigateTo = useNavigate();
   const reason = rushReason(w);
   const v = w.vehicle;
+  const soldB2C = v?.status === "verkocht_b2c";
   const specs = [v?.year, v?.mileage ? `${v.mileage.toLocaleString("nl-NL")} km` : null, v?.color].filter(Boolean).join(" · ");
 
   return (
     <div
-      draggable={!readOnly}
-      onDragStart={() => !readOnly && onDragStart(w.id)}
+      draggable={canPlan}
+      onDragStart={() => canPlan && onDragStart(w.id)}
       onDragOver={(e) => e.preventDefault()}
-      onDrop={() => !readOnly && onDrop(w.id)}
+      onDrop={() => canPlan && onDrop(w.id)}
       onClick={() => onOpen(w)}
       className={cn(
         "bg-white rounded-[12px] border border-slate-200 shadow-sm hover:shadow transition p-3 flex gap-3 items-start cursor-pointer",
@@ -140,6 +147,18 @@ const TaskCard: React.FC<{
           {v?.year && <span className="text-[12px] text-slate-500">· {v.year}</span>}
         </div>
         <div className="text-[11px] text-slate-500 truncate mt-0.5">{specs}</div>
+        {soldB2C && v && (
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <AsPill tone="green">VERKOCHT B2C</AsPill>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onOpenChecklist(v.id); }}
+              className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-[11.5px] font-semibold text-emerald-800 hover:bg-emerald-100 touch-manipulation"
+            >
+              <ClipboardList className="h-3.5 w-3.5" /> Checklist
+            </button>
+          </div>
+        )}
         <PartChips workOrder={w as any} size="sm" className="mt-2" />
         <div className="mt-1.5 text-[12px] text-slate-700 line-clamp-2">{w.description}</div>
         <div className="mt-2 flex flex-wrap gap-1.5 items-center">
@@ -184,13 +203,24 @@ const TaskCard: React.FC<{
           </div>
         )}
       </div>
-      <div className={cn("flex flex-col gap-1 shrink-0", readOnly && "hidden")} onClick={(e) => e.stopPropagation()}>
+      <div className={cn("flex flex-col gap-1 shrink-0", !canPlan && "hidden")} onClick={(e) => e.stopPropagation()}>
         <Button size="icon" variant="outline" className="h-10 w-10 sm:h-7 sm:w-7 touch-manipulation" onClick={() => onReorder(w.id, -1)} title="Omhoog"><ArrowUp className="h-3.5 w-3.5" /></Button>
         <Button size="icon" variant="outline" className="h-10 w-10 sm:h-7 sm:w-7 touch-manipulation" onClick={() => onReorder(w.id, 1)} title="Omlaag"><ArrowDown className="h-3.5 w-3.5" /></Button>
+        {onEdit && (
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-10 w-10 sm:h-7 sm:w-7 touch-manipulation"
+            onClick={() => onEdit(w)}
+            title="Taak bewerken"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        )}
         <Button
           size="icon"
           variant={w.is_rush ? "default" : "outline"}
-          className={cn("h-7 w-7", w.is_rush && "bg-red-500 hover:bg-red-600")}
+          className={cn("h-10 w-10 sm:h-7 sm:w-7 touch-manipulation", w.is_rush && "bg-red-500 hover:bg-red-600")}
           onClick={() => onToggleRush(w)}
           title="Spoed"
         >
@@ -200,7 +230,7 @@ const TaskCard: React.FC<{
           <Button
             size="icon"
             variant="outline"
-            className="h-7 w-7 text-slate-500 hover:text-red-600 hover:border-red-300"
+            className="h-10 w-10 sm:h-7 sm:w-7 touch-manipulation text-slate-500 hover:text-red-600 hover:border-red-300"
             onClick={() => onDelete(w)}
             title="Taak verwijderen"
           >
@@ -216,13 +246,16 @@ const EmployeeColumn: React.FC<{
   profile?: Profile;
   items: WO[];
   doneTodayCount: number;
+  canPlan: boolean;
   onReorder: (id: string, dir: -1 | 1) => void;
   onToggleRush: (w: WO) => void;
   onDragStart: (id: string) => void;
   onDrop: (targetId: string) => void;
   onOpen: (w: WO) => void;
   onDelete?: (w: WO) => void;
-}> = ({ profile, items, doneTodayCount, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete }) => (
+  onOpenChecklist: (vehicleId: string) => void;
+  onEdit?: (w: WO) => void;
+}> = ({ profile, items, doneTodayCount, canPlan, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete, onOpenChecklist, onEdit }) => (
   <AsCard className="flex flex-col w-full md:min-w-[320px]">
     <AsCardHead
       tone="slate"
@@ -244,12 +277,15 @@ const EmployeeColumn: React.FC<{
           key={w.id}
           w={w}
           index={i}
+          canPlan={canPlan}
           onReorder={onReorder}
           onToggleRush={onToggleRush}
           onDragStart={onDragStart}
           onDrop={onDrop}
           onOpen={onOpen}
           onDelete={onDelete}
+          onOpenChecklist={onOpenChecklist}
+          onEdit={onEdit}
         />
       ))}
     </div>
