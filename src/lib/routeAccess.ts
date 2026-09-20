@@ -45,6 +45,7 @@ export const DIRECTIE_ALLOWED_PREFIXES = [
   "/werkplaats/onderdelen",
   "/werkplaats/autos",
   "/warranty",
+  "/garantie",
   "/customers",
   "/inventory",
 ];

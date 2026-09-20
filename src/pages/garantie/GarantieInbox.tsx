@@ -20,6 +20,7 @@ import { sanitizeMailText, splitQuotedReply, splitMailBubble } from "@/utils/mai
 import { buildLmsSignatureHtml } from "@/utils/lmsSignature";
 import { SearchableVehicleSelector } from "@/components/warranty/SearchableVehicleSelector";
 import type { Vehicle } from "@/types/inventory";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 
 type Filter = "action" | "all" | "done";
 
@@ -74,6 +75,8 @@ const renderReplyHtml = (body: string, signatureName: string) => `
 
 const GarantieInbox: React.FC = () => {
   const { user, userProfile } = useAuth() as any;
+  const { isOperationeelDirecteur } = useRoleAccess();
+  const readOnly = isOperationeelDirecteur();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [lastByThread, setLastByThread] = useState<Map<string, Email>>(new Map());
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -530,12 +533,14 @@ const GarantieInbox: React.FC = () => {
                           ⏰ wacht {waitingHours}u op reactie
                         </div>
                       )}
-                      <div className="flex gap-1.5">
-                        <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setEventDialog({ open: true, type: "gebeld" })}><Phone className="h-3 w-3 mr-1" />Gebeld</Button>
-                        <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setEventDialog({ open: true, type: "bezoek" })}><MapPin className="h-3 w-3 mr-1" />Bezoek</Button>
-                        <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setEventDialog({ open: true, type: "notitie" })}><StickyNote className="h-3 w-3 mr-1" />Notitie</Button>
-                        <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={closeThread}><CheckCircle2 className="h-3 w-3 mr-1" />Afronden</Button>
-                      </div>
+                      {!readOnly && (
+                        <div className="flex gap-1.5">
+                          <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setEventDialog({ open: true, type: "gebeld" })}><Phone className="h-3 w-3 mr-1" />Gebeld</Button>
+                          <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setEventDialog({ open: true, type: "bezoek" })}><MapPin className="h-3 w-3 mr-1" />Bezoek</Button>
+                          <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setEventDialog({ open: true, type: "notitie" })}><StickyNote className="h-3 w-3 mr-1" />Notitie</Button>
+                          <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={closeThread}><CheckCircle2 className="h-3 w-3 mr-1" />Afronden</Button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -615,22 +620,26 @@ const GarantieInbox: React.FC = () => {
                         {agentSuggestion ? "Bekijken" : "Openen"}
                       </span>
                     </button>
-                    <Textarea
-                      ref={replyRef}
-                      value={reply}
-                      onChange={(e) => setReply(e.target.value)}
-                      placeholder="Schrijf een antwoord aan de klant…"
-                      className="min-h-[90px] max-h-[40vh] text-[13px] resize-none border-slate-200 overflow-y-auto"
-                    />
-                    <div className="flex items-center justify-between mt-2">
-                      <div className="text-[11px] text-slate-400">
-                        Vanaf <span className="font-mono">garantie@auto-city.nl</span> · handtekening: {senderName}
-                      </div>
-                      <Button size="sm" onClick={sendReply} disabled={!reply.trim() || sending} className="h-8">
-                        {sending ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1" />}
-                        Versturen
-                      </Button>
-                    </div>
+                    {!readOnly && (
+                      <>
+                        <Textarea
+                          ref={replyRef}
+                          value={reply}
+                          onChange={(e) => setReply(e.target.value)}
+                          placeholder="Schrijf een antwoord aan de klant…"
+                          className="min-h-[90px] max-h-[40vh] text-[13px] resize-none border-slate-200 overflow-y-auto"
+                        />
+                        <div className="flex items-center justify-between mt-2">
+                          <div className="text-[11px] text-slate-400">
+                            Vanaf <span className="font-mono">garantie@auto-city.nl</span> · handtekening: {senderName}
+                          </div>
+                          <Button size="sm" onClick={sendReply} disabled={!reply.trim() || sending} className="h-8">
+                            {sending ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1" />}
+                            Versturen
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </>
               )}
@@ -651,7 +660,7 @@ const GarantieInbox: React.FC = () => {
               <div>
                 <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
                   <Car className="h-3.5 w-3.5" />Voertuig
-                  {selectedThread && (
+                  {selectedThread && !readOnly && (
                     <button
                       type="button"
                       onClick={openVehicleDialog}
@@ -660,7 +669,7 @@ const GarantieInbox: React.FC = () => {
                       {linkedVehicle ? "Wijzig" : "Auto koppelen"}
                     </button>
                   )}
-                  {linkedVehicle && (
+                  {linkedVehicle && !readOnly && (
                     <button
                       type="button"
                       onClick={() => saveVehicleLink(null)}
@@ -706,7 +715,7 @@ const GarantieInbox: React.FC = () => {
                         <span className="text-slate-400">· {formatDistanceToNow(new Date(claim.created_at), { addSuffix: true, locale: nl })}</span>
                       </div>
                       <div className="text-slate-700 line-clamp-3">{claim.description}</div>
-                      <div className="pt-1.5"><WarrantyScheduleAction claimId={claim.id} /></div>
+                      {!readOnly && <div className="pt-1.5"><WarrantyScheduleAction claimId={claim.id} /></div>}
                     </div>
                   ) : (
                     <div className="text-slate-400 italic">Nog geen claim gekoppeld.</div>
@@ -864,6 +873,7 @@ const GarantieInbox: React.FC = () => {
               </section>
             </div>
 
+            {!readOnly && (
             <div className="border-t border-slate-100 p-3 bg-white space-y-2">
               {agentSuggestion ? (
                 <>
@@ -897,6 +907,7 @@ const GarantieInbox: React.FC = () => {
                 </Button>
               )}
             </div>
+            )}
             </>
             ) : (
             <>
@@ -924,6 +935,7 @@ const GarantieInbox: React.FC = () => {
               )}
               <div ref={chatEndRef} />
             </div>
+            {!readOnly && (
             <div className="border-t border-slate-100 p-3 bg-white flex gap-2">
               <Input
                 value={agentQuestion}
@@ -937,6 +949,7 @@ const GarantieInbox: React.FC = () => {
                 <Send className="h-4 w-4" />
               </Button>
             </div>
+            )}
             </>
             )}
           </SheetContent>
