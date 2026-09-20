@@ -1,4 +1,4 @@
-# Garantie-inbox voor de operationeel directeur (alleen-lezen)
+# Garantie-inbox voor de operationeel directeur (volledig meelezen)
 
 ## Antwoord op je tweede vraag (spuitdata / medewerkers-KPI)
 
@@ -9,21 +9,20 @@ De medewerkers-KPI's in de cockpit staan **al op het moment van goedkeuren** —
 - Uitdeuken en poetsen kennen geen goedkeurstap; daar geldt het klaarmeldmoment als gelijkwaardig moment.
 - Omzet blijft op factuurdatum staan.
 
-Er is dus niets meer aan te passen; wil je dat ik het toch ergens in de cockpit expliciet benoem ("telt vanaf goedkeuring"), dan doe ik dat erbij.
+Er is dus niets meer aan te passen aan de KPI-telling; wil je dat ik het ergens in de cockpit expliciet benoem ("telt vanaf goedkeuring"), dan doe ik dat erbij.
 
 ## Wat we bouwen
 
-De operationeel directeur krijgt de garantie-mailbox te zien bij Garantie, zodat hij live meekijkt wat er speelt — maar zonder iets te kunnen versturen of wijzigen.
+De operationeel directeur kan de volledige garantie-mailbox teruglezen — gesprekken, gekoppelde auto's, claims én de AI-chat/concepten — zodat hij meekijkt en het team kan trainen. Versturen of wijzigen kan hij niet (dat blijft bij aftersales).
 
 - In zijn menu komt onder **GARANTIE** naast "Garantieclaims" een tweede regel **"Inbox"**, met het ongelezen-bolletje zoals aftersales dat ook heeft.
-- Hij kan gesprekken openen en de volledige mailwisseling per klant en per auto lezen, inclusief gekoppeld voertuig en claim.
-- Alles wat wijzigt is voor hem verborgen: antwoorden versturen, concepten maken/gebruiken, AI-voorstel genereren, afronden/heropenen, voertuig koppelen, claim aanmaken en werkorder inplannen. Hij ziet dus een leesweergave.
-- De AI-chat naast een dossier blijft voor hem dicht (die gegevens zijn afgeschermd voor aftersales/leiding).
+- Hij kan alle gesprekken openen en de volledige mailwisseling per klant en per auto lezen, inclusief gekoppeld voertuig, claim, AI-concepten en de AI-chatgeschiedenis per dossier.
+- Acties die iets veranderen zijn voor hem verborgen: antwoorden versturen, nieuw AI-concept genereren, afronden/heropenen, voertuig koppelen, claim aanmaken en werkorder inplannen. De rest leest hij mee, precies zoals aftersales het ziet.
 
 ## Technische uitvoering
 
 1. `src/lib/routeAccess.ts`: `/garantie` toevoegen aan `DIRECTIE_ALLOWED_PREFIXES`.
-2. `src/components/layout/Sidebar.tsx` (directie-navigatie, GARANTIE-sectie): entry `/warranty` met sub `{ url: "/garantie/inbox", label: "Inbox", badge: garantieUnread }` — zelfde patroon als de aftersales-nav; `useGarantieUnread` is daar al beschikbaar.
-3. `src/pages/garantie/GarantieInbox.tsx`: rol uit `useAuth` lezen en één `readOnly = role === "operationeel_directeur"` afleiden; daarmee de actie-UI verbergen (antwoordveld + Versturen, AI-concept/Wand2, afronden/heropenen, `SearchableVehicleSelector`, `WarrantyScheduleAction`, notitie-opslag) en de AI-chat-tab niet renderen. Geen wijziging in de dataqueries.
-4. RLS is al in orde: `garantie_email_threads` en `garantie_emails` hebben SELECT voor alle ingelogde gebruikers; `garantie_agent_chats` is beperkt tot admin/manager/aftersales_manager, vandaar dat de AI-chat verborgen blijft.
-5. Verificatie: typecheck plus de bestaande route-tests; daarna in de browser inloggen als operationeel directeur, de inbox openen en controleren dat er geen verstuur- of wijzigknoppen staan. Alleen preview, niet publiceren.
+2. `src/components/layout/Sidebar.tsx` (directie-navigatie, GARANTIE-sectie): entry `/warranty` uitbreiden met sub `{ url: "/garantie/inbox", label: "Inbox", badge: garantieUnread }` — zelfde patroon als de aftersales-nav; `useGarantieUnread` is daar al beschikbaar.
+3. **Migratie**: SELECT-policy op `garantie_agent_chats` uitbreiden met `has_role(auth.uid(), 'operationeel_directeur')` zodat hij de AI-chatgeschiedenis kan teruglezen (INSERT/UPDATE/DELETE blijven beperkt tot aftersales/leiding). Geen GRANT of tabelwijzigingen nodig — tabel bestaat al.
+4. `src/pages/garantie/GarantieInbox.tsx`: rol uit `useAuth` lezen en `readOnly = role === "operationeel_directeur"` afleiden; daarmee uitsluitend de wijzig-acties verbergen (antwoordveld + Versturen, AI-concept genereren/Wand2, afronden/heropenen, `SearchableVehicleSelector`, `WarrantyScheduleAction`, notitie-opslag). De AI-chat-tab wél renderen in leesmodus (chat-invoer verbergen). Geen wijziging in de dataqueries; `garantie_email_threads`/`garantie_emails` hebben al SELECT voor alle ingelogden.
+5. Verificatie: typecheck plus de bestaande route-tests; daarna in de browser inloggen als operationeel directeur, de inbox openen en controleren dat mails en AI-chat volledig zichtbaar zijn en er geen verstuur- of wijzigknoppen staan. Alleen preview, niet publiceren.
