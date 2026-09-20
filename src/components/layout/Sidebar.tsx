@@ -607,6 +607,7 @@ const DirectieSidebar: React.FC<{
   getSubActive: (paths: string[]) => boolean;
   location: ReturnType<typeof useLocation>;
 }> = ({ className, isActive, getSubActive, location }) => {
+  const garantieUnread = useGarantieUnread();
   const inventorySubPaths = ["/inventory/online", "/inventory/b2b", "/inventory/consumer", "/inventory/delivered"];
   const inventoryOpenByRoute = getSubActive(inventorySubPaths);
   const rapportagesOpenByRoute = location.pathname.startsWith("/rapportages");
@@ -649,7 +650,10 @@ const DirectieSidebar: React.FC<{
     },
     {
       label: "GARANTIE",
-      entries: [{ url: "/warranty", label: "Garantieclaims", icon: ShieldIcon }],
+      entries: [
+        { url: "/warranty", label: "Garantieclaims", icon: ShieldIcon, exact: true },
+        { url: "/garantie/inbox", label: "Inbox", icon: InboxIcon, badge: garantieUnread },
+      ],
     },
     {
       label: "FINANCIEEL",
