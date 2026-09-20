@@ -53,6 +53,10 @@ export const useRoleAccess = () => {
     userRole === 'werkplaats_chef'
   );
 
+  // Planning beheren: volgorde bepalen, toewijzen aan monteurs, geplande taak bewerken.
+  // De operationeel directeur stuurt de planning mee aan (verwijderen blijft bij de chef).
+  const canPlanWorkOrders = () => canManageWorkOrders() || isOperationeelDirecteur();
+
   // Directie-cockpit: overal inzicht, nergens mutaties
   // Read-only omgevingen: directie-cockpit én administratie (inzien + downloaden)
   const isDirectieReadOnly = () => isOperationeelDirecteur() || isAdministratie();
