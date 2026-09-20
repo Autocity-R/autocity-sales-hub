@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import BranchFilter from "@/components/reports/BranchFilter";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Truck, Home, CheckCircle2, Sparkles } from "lucide-react";
+import { Loader2, Truck, Home, CheckCircle2, Sparkles, Search, X } from "lucide-react";
 import { format, isToday, isPast, isTomorrow } from "date-fns";
 import { nl } from "date-fns/locale";
 import { AsPage, AsCard, AsCardHead, AsLicensePlate, AsMono, useLiveTimer } from "@/components/aftersales/ui";
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { Play, Timer, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { buildHaystack, matchesSearch } from "@/lib/searchNormalize";
 
 interface PoetsWO {
   id: string;
