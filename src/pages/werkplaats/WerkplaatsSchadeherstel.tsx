@@ -167,13 +167,16 @@ const Card: React.FC<{
 };
 
 const WerkplaatsSchadeherstel: React.FC = () => {
-  const readOnly = useRoleAccess().isDirectieReadOnly();
+  const { isDirectieReadOnly, canPlanWorkOrders } = useRoleAccess();
+  const readOnly = isDirectieReadOnly();
+  const canPlan = canPlanWorkOrders();
   const [rows, setRows] = useState<WO[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [myId, setMyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<WO | null>(null);
   const [pauseTarget, setPauseTarget] = useState<WO | null>(null);
+  const [editTarget, setEditTarget] = useState<WO | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -276,12 +279,21 @@ const WerkplaatsSchadeherstel: React.FC = () => {
         ) : (
           <div className="space-y-3">
             {open.map(w => (
-              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onPause={setPauseTarget} onOpen={setDetail} />
+              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onPause={setPauseTarget} onOpen={setDetail} onEdit={canPlan ? setEditTarget : undefined} />
             ))}
             {done.map(w => (
               <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onPause={setPauseTarget} onOpen={setDetail} />
             ))}
           </div>
+        )}
+
+        {editTarget && (
+          <EditWorkOrderDialog
+            open
+            onOpenChange={(v) => { if (!v) setEditTarget(null); }}
+            workOrder={{ ...editTarget, discipline: "spuit" } as any}
+            onSaved={() => { setEditTarget(null); load(); }}
+          />
         )}
 
         <TaskDetailSheet
