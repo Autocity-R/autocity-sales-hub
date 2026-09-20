@@ -217,6 +217,26 @@ const WerkplaatsPoetsen: React.FC = () => {
           <BranchFilter />
         </div>
 
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Zoek op kenteken, merk, model, VIN, kleur of omschrijving…"
+            className="pl-9 pr-9 h-11"
+          />
+          {q && (
+            <button
+              type="button"
+              aria-label="Zoekopdracht wissen"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600"
+              onClick={() => setQ("")}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
         {loading ? (
           <div className="flex items-center gap-2 text-slate-500 py-16 justify-center">
             <Loader2 className="h-4 w-4 animate-spin" /> Laden…
@@ -226,6 +246,11 @@ const WerkplaatsPoetsen: React.FC = () => {
             <Sparkles className="h-10 w-10 text-emerald-500 mx-auto mb-3" />
             <div className="text-[16px] font-semibold text-slate-800">Alles schoon 💪</div>
             <div className="text-[13px] text-slate-500 mt-1">Geen open poets-taken.</div>
+          </AsCard>
+        ) : afleveringen.length === 0 && showroom.length === 0 ? (
+          <AsCard className="p-12 text-center text-slate-400 text-[13px]">
+            <Search className="h-5 w-5 mx-auto mb-2 text-slate-300" />
+            Geen poets-taken gevonden voor deze zoekopdracht.
           </AsCard>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
