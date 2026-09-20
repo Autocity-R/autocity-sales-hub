@@ -164,12 +164,13 @@ const WerkplaatsPoetsen: React.FC = () => {
   useEffect(() => { load(); /* eslint-disable-line */ }, [branchFilter]);
 
   const { afleveringen, showroom } = useMemo(() => {
-    const afl = rows.filter(r => r.poets_type === "aflevering")
+    const filtered = q.trim() ? rows.filter(r => matchesSearch(hay(r), q)) : rows;
+    const afl = filtered.filter(r => r.poets_type === "aflevering")
       .sort((a, b) => (a.due_date || "9999").localeCompare(b.due_date || "9999"));
-    const sh = rows.filter(r => r.poets_type !== "aflevering")
+    const sh = filtered.filter(r => r.poets_type !== "aflevering")
       .sort((a, b) => a.created_at.localeCompare(b.created_at));
     return { afleveringen: afl, showroom: sh };
-  }, [rows]);
+  }, [rows, q]);
 
   const markDone = async (w: PoetsWO) => {
     const startedAt = w.started_at ? new Date(w.started_at).getTime() : null;
