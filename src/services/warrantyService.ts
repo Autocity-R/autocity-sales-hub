@@ -280,12 +280,18 @@ export const updateWarrantyClaim = async (claimId: string, updates: Partial<Warr
 
 export const deleteWarrantyClaim = async (claimId: string): Promise<void> => {
   try {
-    const { error } = await supabase
+    // .select() zodat we zien of er écht een rij is verwijderd. Zonder deze check
+    // verwijdert RLS stilletjes 0 rijen en lijkt het alsof er niets gebeurt.
+    const { data, error } = await supabase
       .from('warranty_claims')
       .delete()
-      .eq('id', claimId);
+      .eq('id', claimId)
+      .select('id');
 
     if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error('Je hebt geen rechten om deze claim te verwijderen, of de claim bestaat niet meer.');
+    }
   } catch (error: any) {
     console.error("Failed to delete warranty claim:", error);
     throw error;
