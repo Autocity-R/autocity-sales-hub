@@ -159,6 +159,13 @@ export const useRoleAccess = () => {
       userRole === 'aftersales_manager';
   };
 
+  // Claim definitief verwijderen — sluit aan op de DELETE-policy op warranty_claims
+  const canDeleteWarrantyClaims = () => {
+    return isAdmin || userRole === 'manager' || userRole === 'aftersales_manager' ||
+      userRole === 'operationeel_directeur';
+  };
+
+
   // Aftersales manager MAG checklisten volledig bewerken (items toevoegen, afvinken, taken toewijzen)
   const canManageChecklists = () => {
     return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
