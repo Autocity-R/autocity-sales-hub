@@ -771,6 +771,25 @@ const WerkplaatsPlanning: React.FC = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        <EditWorkOrderDialog
+          open={!!editTarget}
+          onOpenChange={(v) => { if (!v) setEditTarget(null); }}
+          workOrder={editTarget as any}
+          onSaved={() => { setEditTarget(null); load(); }}
+        />
+        {vehicleDialog.isOpen && vehicleDialog.vehicle && (
+          <VehicleDetails
+            vehicle={vehicleDialog.vehicle}
+            defaultTab={vehicleDialog.defaultTab}
+            onClose={vehicleDialog.closeDialog}
+            onUpdate={saveVehicle}
+            onAutoSave={autoSaveVehicle}
+            onSendEmail={() => {}}
+            onPhotoUpload={() => {}}
+            onRemovePhoto={() => {}}
+            onSetMainPhoto={() => {}}
+          />
+        )}
       </AsPage>
     </DashboardLayout>
   );
