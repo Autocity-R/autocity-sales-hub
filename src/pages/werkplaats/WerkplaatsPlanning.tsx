@@ -352,13 +352,20 @@ const WerkplaatsPlanning: React.FC = () => {
   const openChecklist = (vehicleId: string) => { vehicleDialog.openVehicle(vehicleId, "checklist"); };
 
   /** Voertuig opslaan vanuit de detail-dialoog (checklist-snelkoppeling). */
-  const saveVehicle = async (updated: any) => {
+  const autoSaveVehicle = async (updated: any) => {
     const { error } = await supabase.from("vehicles").update({
       details: updated.details,
       status: updated.salesStatus,
       location: updated.location,
     }).eq("id", updated.id);
-    if (error) toast({ title: "Opslaan mislukt", description: error.message, variant: "destructive" });
+    if (error) {
+      toast({ title: "Opslaan mislukt", description: error.message, variant: "destructive" });
+      return;
+    }
+    vehicleDialog.updateVehicle(updated);
+  };
+  const saveVehicle = async (updated: any) => {
+    await autoSaveVehicle(updated);
   };
 
   const load = async () => {
