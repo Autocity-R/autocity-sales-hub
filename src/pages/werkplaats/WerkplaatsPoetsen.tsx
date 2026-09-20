@@ -135,6 +135,7 @@ const WerkplaatsPoetsen: React.FC = () => {
   const [rows, setRows] = useState<PoetsWO[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<PoetsWO | null>(null);
+  const [q, setQ] = useState("");
 
   const load = async () => {
     setLoading(true);
