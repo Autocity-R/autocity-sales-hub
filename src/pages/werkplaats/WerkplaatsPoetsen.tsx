@@ -38,6 +38,12 @@ interface PoetsWO {
   } | null;
 }
 
+const hay = (w: PoetsWO) =>
+  buildHaystack([
+    w.vehicle?.license_number, w.vehicle?.brand, w.vehicle?.model, w.vehicle?.vin,
+    w.vehicle?.year, w.vehicle?.color, w.description, w.poets_type,
+  ]);
+
 const deadlineTone = (due: string | null): "red" | "amber" | "slate" => {
   if (!due) return "slate";
   const d = new Date(due);
