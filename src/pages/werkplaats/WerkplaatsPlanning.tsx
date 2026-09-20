@@ -330,9 +330,11 @@ const DoneTodayColumn: React.FC<{ items: WO[]; nameFor: (uid: string | null) => 
 const WerkplaatsPlanning: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
   const navigate = useNavigate();
-  const { canManageWorkOrders, isDirectieReadOnly } = useRoleAccess();
+  const { canManageWorkOrders, canPlanWorkOrders, isDirectieReadOnly } = useRoleAccess();
   const readOnly = isDirectieReadOnly();
   const canDelete = canManageWorkOrders();
+  const canPlan = canPlanWorkOrders();
+  const vehicleDialog = useVehicleDetailDialog();
   const [discipline, setDiscipline] = useState<Discipline>("werkplaats");
   const [rows, setRows] = useState<WO[]>([]);
   const [doneToday, setDoneToday] = useState<WO[]>([]);
@@ -343,9 +345,21 @@ const WerkplaatsPlanning: React.FC = () => {
   const [confirmDelete, setConfirmDelete] = useState<WO | null>(null);
   const [reschedule, setReschedule] = useState<WO | null>(null);
   const [newPlanned, setNewPlanned] = useState<string>("");
+  const [editTarget, setEditTarget] = useState<WO | null>(null);
   const openReport = (w: WO) => setReport({
     part: w.part, parts: (w as any).parts, description: w.description, photos: (w as any).photos, discipline: w.discipline, status: w.status, vehicle: w.vehicle as any,
   });
+  const openChecklist = (vehicleId: string) => { vehicleDialog.openVehicle(vehicleId, "checklist"); };
+
+  /** Voertuig opslaan vanuit de detail-dialoog (checklist-snelkoppeling). */
+  const saveVehicle = async (updated: any) => {
+    const { error } = await supabase.from("vehicles").update({
+      details: updated.details,
+      status: updated.salesStatus,
+      location: updated.location,
+    }).eq("id", updated.id);
+    if (error) toast({ title: "Opslaan mislukt", description: error.message, variant: "destructive" });
+  };
 
   const load = async () => {
     setLoading(true);
@@ -611,12 +625,15 @@ const WerkplaatsPlanning: React.FC = () => {
                 profile={uid !== "__unassigned__" ? profiles.get(uid) : undefined}
                 items={items}
                 doneTodayCount={doneByUser.get(uid) || 0}
+                canPlan={canPlan}
                 onReorder={reorder}
                 onToggleRush={toggleRush}
                 onDragStart={setDragId}
                 onDrop={onDrop}
                 onOpen={openReport}
-                onDelete={canDelete && !readOnly ? (w) => setConfirmDelete(w) : undefined}
+                onDelete={canDelete ? (w) => setConfirmDelete(w) : undefined}
+                onOpenChecklist={openChecklist}
+                onEdit={canPlan ? (w) => setEditTarget(w) : undefined}
               />
             ))}
             <DoneTodayColumn items={doneToday} nameFor={nameFor} />
