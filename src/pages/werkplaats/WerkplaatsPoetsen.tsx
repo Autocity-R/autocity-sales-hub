@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import BranchFilter from "@/components/reports/BranchFilter";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Truck, Home, CheckCircle2, Sparkles } from "lucide-react";
+import { Loader2, Truck, Home, CheckCircle2, Sparkles, Search, X } from "lucide-react";
 import { format, isToday, isPast, isTomorrow } from "date-fns";
 import { nl } from "date-fns/locale";
 import { AsPage, AsCard, AsCardHead, AsLicensePlate, AsMono, useLiveTimer } from "@/components/aftersales/ui";
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { Play, Timer, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { buildHaystack, matchesSearch } from "@/lib/searchNormalize";
 
 interface PoetsWO {
   id: string;
@@ -35,6 +37,12 @@ interface PoetsWO {
     vin: string | null;
   } | null;
 }
+
+const hay = (w: PoetsWO) =>
+  buildHaystack([
+    w.vehicle?.license_number, w.vehicle?.brand, w.vehicle?.model, w.vehicle?.vin,
+    w.vehicle?.year, w.vehicle?.color, w.description, w.poets_type,
+  ]);
 
 const deadlineTone = (due: string | null): "red" | "amber" | "slate" => {
   if (!due) return "slate";
@@ -127,6 +135,7 @@ const WerkplaatsPoetsen: React.FC = () => {
   const [rows, setRows] = useState<PoetsWO[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<PoetsWO | null>(null);
+  const [q, setQ] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -155,12 +164,13 @@ const WerkplaatsPoetsen: React.FC = () => {
   useEffect(() => { load(); /* eslint-disable-line */ }, [branchFilter]);
 
   const { afleveringen, showroom } = useMemo(() => {
-    const afl = rows.filter(r => r.poets_type === "aflevering")
+    const filtered = q.trim() ? rows.filter(r => matchesSearch(hay(r), q)) : rows;
+    const afl = filtered.filter(r => r.poets_type === "aflevering")
       .sort((a, b) => (a.due_date || "9999").localeCompare(b.due_date || "9999"));
-    const sh = rows.filter(r => r.poets_type !== "aflevering")
+    const sh = filtered.filter(r => r.poets_type !== "aflevering")
       .sort((a, b) => a.created_at.localeCompare(b.created_at));
     return { afleveringen: afl, showroom: sh };
-  }, [rows]);
+  }, [rows, q]);
 
   const markDone = async (w: PoetsWO) => {
     const startedAt = w.started_at ? new Date(w.started_at).getTime() : null;
@@ -207,6 +217,26 @@ const WerkplaatsPoetsen: React.FC = () => {
           <BranchFilter />
         </div>
 
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Zoek op kenteken, merk, model, VIN, kleur of omschrijving…"
+            className="pl-9 pr-9 h-11"
+          />
+          {q && (
+            <button
+              type="button"
+              aria-label="Zoekopdracht wissen"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600"
+              onClick={() => setQ("")}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
         {loading ? (
           <div className="flex items-center gap-2 text-slate-500 py-16 justify-center">
             <Loader2 className="h-4 w-4 animate-spin" /> Laden…
@@ -216,6 +246,11 @@ const WerkplaatsPoetsen: React.FC = () => {
             <Sparkles className="h-10 w-10 text-emerald-500 mx-auto mb-3" />
             <div className="text-[16px] font-semibold text-slate-800">Alles schoon 💪</div>
             <div className="text-[13px] text-slate-500 mt-1">Geen open poets-taken.</div>
+          </AsCard>
+        ) : afleveringen.length === 0 && showroom.length === 0 ? (
+          <AsCard className="p-12 text-center text-slate-400 text-[13px]">
+            <Search className="h-5 w-5 mx-auto mb-2 text-slate-300" />
+            Geen poets-taken gevonden voor deze zoekopdracht.
           </AsCard>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
