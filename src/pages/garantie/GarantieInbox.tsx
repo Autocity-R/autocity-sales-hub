@@ -715,7 +715,7 @@ const GarantieInbox: React.FC = () => {
                         <span className="text-slate-400">· {formatDistanceToNow(new Date(claim.created_at), { addSuffix: true, locale: nl })}</span>
                       </div>
                       <div className="text-slate-700 line-clamp-3">{claim.description}</div>
-                      <div className="pt-1.5"><WarrantyScheduleAction claimId={claim.id} readOnly={readOnly} /></div>
+                      {!readOnly && <div className="pt-1.5"><WarrantyScheduleAction claimId={claim.id} /></div>}
                     </div>
                   ) : (
                     <div className="text-slate-400 italic">Nog geen claim gekoppeld.</div>
