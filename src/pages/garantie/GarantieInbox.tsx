@@ -907,6 +907,7 @@ const GarantieInbox: React.FC = () => {
                 </Button>
               )}
             </div>
+            )}
             </>
             ) : (
             <>
