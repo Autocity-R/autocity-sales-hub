@@ -688,18 +688,19 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Claim verwijderen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Weet je zeker dat je deze garantieclaim wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.
+              Weet je zeker dat je deze claim definitief wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.
               <br /><br />
               <strong>Claim:</strong> {claim.vehicleBrand} {claim.vehicleModel} - {claim.customerName}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuleren</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDelete}
+            <AlertDialogCancel disabled={deleting}>Annuleren</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDelete(); }}
+              disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Verwijderen
+              {deleting ? "Verwijderen…" : "Definitief verwijderen"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
