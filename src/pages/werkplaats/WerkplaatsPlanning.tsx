@@ -670,16 +670,34 @@ const WerkplaatsPlanning: React.FC = () => {
                           {w.is_rush && <AsPill tone="red"><Flame className="h-3 w-3" />Spoed</AsPill>}
                         </div>
                         <div className="mt-1.5 text-[12px] text-slate-700 line-clamp-3 whitespace-pre-line">{w.description}</div>
-                        {!readOnly && (
-                          <div className="mt-2 flex items-center gap-2">
+                        {w.vehicle?.status === "verkocht_b2c" && w.vehicle && (
+                          <div className="mt-2 flex items-center gap-2 flex-wrap">
+                            <AsPill tone="green">VERKOCHT B2C</AsPill>
+                            <button
+                              type="button"
+                              onClick={() => openChecklist(w.vehicle!.id)}
+                              className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-[11.5px] font-semibold text-emerald-800 hover:bg-emerald-100 touch-manipulation"
+                            >
+                              <ClipboardList className="h-3.5 w-3.5" /> Checklist
+                            </button>
+                          </div>
+                        )}
+                        {canPlan && (
+                          <div className="mt-2 flex items-center gap-2 flex-wrap">
                             <Button size="sm" variant="outline" className="h-10 sm:h-7 text-[12px] touch-manipulation"
                                     onClick={() => { setReschedule(w); setNewPlanned(w.planned_at ? format(new Date(w.planned_at), "yyyy-MM-dd'T'HH:mm") : ""); }}>
                               Verzetten
                             </Button>
-                            <Button size="sm" variant="ghost" className="h-10 sm:h-7 text-[12px] touch-manipulation text-slate-500 hover:text-red-600"
-                                    onClick={() => setConfirmDelete(w)}>
-                              <X className="h-3.5 w-3.5 mr-1" />Annuleren
+                            <Button size="sm" variant="outline" className="h-10 sm:h-7 text-[12px] touch-manipulation"
+                                    onClick={() => setEditTarget(w)}>
+                              <Pencil className="h-3.5 w-3.5 mr-1" />Bewerken
                             </Button>
+                            {canDelete && (
+                              <Button size="sm" variant="ghost" className="h-10 sm:h-7 text-[12px] touch-manipulation text-slate-500 hover:text-red-600"
+                                      onClick={() => setConfirmDelete(w)}>
+                                <X className="h-3.5 w-3.5 mr-1" />Annuleren
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>
