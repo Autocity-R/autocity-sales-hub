@@ -216,11 +216,17 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
     try {
       await deleteWarrantyClaim(claimId);
       queryClient.invalidateQueries({ queryKey: ['warranty-claims'] });
+      queryClient.invalidateQueries({ queryKey: ['warrantyClaims'] });
       queryClient.invalidateQueries({ queryKey: ['aftersales-dashboard'] });
-      toast({ title: "Claim verwijderd", description: "De garantie claim is verwijderd." });
+      toast({ title: "Claim verwijderd", description: "De garantie claim is definitief verwijderd." });
       setSelectedClaim(null);
-    } catch (error) {
-      toast({ title: "Fout", description: "Kon claim niet verwijderen.", variant: "destructive" });
+    } catch (error: any) {
+      toast({
+        title: "Verwijderen mislukt",
+        description: error?.message || "Kon claim niet verwijderen.",
+        variant: "destructive",
+      });
+      throw error;
     }
   };
 

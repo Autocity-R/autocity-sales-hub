@@ -3,7 +3,8 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
-import { Flame, Loader2, PaintBucket, Check, CheckCircle2, Play, Timer, Pause } from "lucide-react";
+import { Flame, Loader2, PaintBucket, Check, CheckCircle2, Play, Timer, Pause, Pencil } from "lucide-react";
+import { EditWorkOrderDialog } from "@/components/werkplaats/EditWorkOrderDialog";
 import { toast } from "@/hooks/use-toast";
 import { differenceInDays } from "date-fns";
 import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono, useLiveTimer } from "@/components/aftersales/ui";
@@ -52,7 +53,8 @@ const Card: React.FC<{
   onDone: (w: WO) => void;
   onPause: (w: WO) => void;
   onOpen?: (w: WO) => void;
-}> = ({ w, names, myId, onStart, onDone, onPause, onOpen }) => {
+  onEdit?: (w: WO) => void;
+}> = ({ w, names, myId, onStart, onDone, onPause, onOpen, onEdit }) => {
   const readOnly = useRoleAccess().isDirectieReadOnly();
   const v = w.vehicle;
   const done = w.status === "afgerond";
@@ -115,6 +117,19 @@ const Card: React.FC<{
             </div>
           )}
 
+          {onEdit && !done && (
+            <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10 text-[12.5px] touch-manipulation"
+                onClick={() => onEdit(w)}
+              >
+                <Pencil className="h-3.5 w-3.5 mr-1" /> Bewerken
+              </Button>
+            </div>
+          )}
+
           {!done && !readOnly && (
             <div className="mt-4" onClick={(e) => e.stopPropagation()}>
               {!busy ? (
@@ -152,13 +167,16 @@ const Card: React.FC<{
 };
 
 const WerkplaatsSchadeherstel: React.FC = () => {
-  const readOnly = useRoleAccess().isDirectieReadOnly();
+  const { isDirectieReadOnly, canPlanWorkOrders } = useRoleAccess();
+  const readOnly = isDirectieReadOnly();
+  const canPlan = canPlanWorkOrders();
   const [rows, setRows] = useState<WO[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
   const [myId, setMyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<WO | null>(null);
   const [pauseTarget, setPauseTarget] = useState<WO | null>(null);
+  const [editTarget, setEditTarget] = useState<WO | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -261,12 +279,21 @@ const WerkplaatsSchadeherstel: React.FC = () => {
         ) : (
           <div className="space-y-3">
             {open.map(w => (
-              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onPause={setPauseTarget} onOpen={setDetail} />
+              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onPause={setPauseTarget} onOpen={setDetail} onEdit={canPlan ? setEditTarget : undefined} />
             ))}
             {done.map(w => (
               <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onPause={setPauseTarget} onOpen={setDetail} />
             ))}
           </div>
+        )}
+
+        {editTarget && (
+          <EditWorkOrderDialog
+            open
+            onOpenChange={(v) => { if (!v) setEditTarget(null); }}
+            workOrder={{ ...editTarget, discipline: "spuit" } as any}
+            onSaved={() => { setEditTarget(null); load(); }}
+          />
         )}
 
         <TaskDetailSheet

@@ -53,6 +53,10 @@ export const useRoleAccess = () => {
     userRole === 'werkplaats_chef'
   );
 
+  // Planning beheren: volgorde bepalen, toewijzen aan monteurs, geplande taak bewerken.
+  // De operationeel directeur stuurt de planning mee aan (verwijderen blijft bij de chef).
+  const canPlanWorkOrders = () => canManageWorkOrders() || isOperationeelDirecteur();
+
   // Directie-cockpit: overal inzicht, nergens mutaties
   // Read-only omgevingen: directie-cockpit én administratie (inzien + downloaden)
   const isDirectieReadOnly = () => isOperationeelDirecteur() || isAdministratie();
@@ -155,6 +159,13 @@ export const useRoleAccess = () => {
       userRole === 'aftersales_manager';
   };
 
+  // Claim definitief verwijderen — sluit aan op de DELETE-policy op warranty_claims
+  const canDeleteWarrantyClaims = () => {
+    return isAdmin || userRole === 'manager' || userRole === 'aftersales_manager' ||
+      userRole === 'operationeel_directeur';
+  };
+
+
   // Aftersales manager MAG checklisten volledig bewerken (items toevoegen, afvinken, taken toewijzen)
   const canManageChecklists = () => {
     return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
@@ -183,6 +194,7 @@ export const useRoleAccess = () => {
     hasGarantieAccess,
     hasGarantieInboxAccess,
     canManageWarrantyClaims,
+    canDeleteWarrantyClaims,
     isAftersalesManager,
     canManageChecklists,
     isSchadeherstel,
@@ -197,6 +209,7 @@ export const useRoleAccess = () => {
     getHomeRoute,
     hasWerkplaatsAccess,
     canManageWorkOrders,
+    canPlanWorkOrders,
     canApproveWorkOrders,
     canInvoiceWorkOrders,
     userRole,

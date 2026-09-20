@@ -7,7 +7,10 @@ import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import BranchFilter from "@/components/reports/BranchFilter";
 import { toast } from "@/hooks/use-toast";
 import { syncWorkOrderToWerkplaatsCalendar, removeWorkOrderFromWerkplaatsCalendar } from "@/services/werkplaatsCalendarService";
-import { Loader2, Flame, Shield, ArrowUp, ArrowDown, Plus, GripVertical, Wrench, PaintBucket, CheckCircle2, ClipboardCheck, Trash2, AlertTriangle, CalendarClock, Building2, X } from "lucide-react";
+import { Loader2, Flame, Shield, ArrowUp, ArrowDown, Plus, GripVertical, Wrench, PaintBucket, CheckCircle2, ClipboardCheck, Trash2, AlertTriangle, CalendarClock, Building2, X, Pencil, ClipboardList } from "lucide-react";
+import { useVehicleDetailDialog } from "@/hooks/useVehicleDetailDialog";
+import { VehicleDetails } from "@/components/inventory/VehicleDetails";
+import { EditWorkOrderDialog } from "@/components/werkplaats/EditWorkOrderDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -55,6 +58,7 @@ interface WO {
     color: string | null;
     delivery_date: string | null;
     year: number | null;
+    status: string | null;
   } | null;
 }
 
@@ -103,26 +107,29 @@ const ExternBadge: React.FC<{ w: WO }> = ({ w }) => {
 const TaskCard: React.FC<{
   w: WO;
   index: number;
+  canPlan: boolean;
   onReorder: (id: string, dir: -1 | 1) => void;
   onToggleRush: (w: WO) => void;
   onDragStart: (id: string) => void;
   onDrop: (targetId: string) => void;
   onOpen: (w: WO) => void;
   onDelete?: (w: WO) => void;
-}> = ({ w, index, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete }) => {
-  const readOnly = useRoleAccess().isDirectieReadOnly();
+  onOpenChecklist: (vehicleId: string) => void;
+  onEdit?: (w: WO) => void;
+}> = ({ w, index, canPlan, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete, onOpenChecklist, onEdit }) => {
   const live = useLiveTimer(w.status === "bezig" ? w.started_at : null);
   const navigateTo = useNavigate();
   const reason = rushReason(w);
   const v = w.vehicle;
+  const soldB2C = v?.status === "verkocht_b2c";
   const specs = [v?.year, v?.mileage ? `${v.mileage.toLocaleString("nl-NL")} km` : null, v?.color].filter(Boolean).join(" · ");
 
   return (
     <div
-      draggable={!readOnly}
-      onDragStart={() => !readOnly && onDragStart(w.id)}
+      draggable={canPlan}
+      onDragStart={() => canPlan && onDragStart(w.id)}
       onDragOver={(e) => e.preventDefault()}
-      onDrop={() => !readOnly && onDrop(w.id)}
+      onDrop={() => canPlan && onDrop(w.id)}
       onClick={() => onOpen(w)}
       className={cn(
         "bg-white rounded-[12px] border border-slate-200 shadow-sm hover:shadow transition p-3 flex gap-3 items-start cursor-pointer",
@@ -140,6 +147,18 @@ const TaskCard: React.FC<{
           {v?.year && <span className="text-[12px] text-slate-500">· {v.year}</span>}
         </div>
         <div className="text-[11px] text-slate-500 truncate mt-0.5">{specs}</div>
+        {soldB2C && v && (
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <AsPill tone="green">VERKOCHT B2C</AsPill>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onOpenChecklist(v.id); }}
+              className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-[11.5px] font-semibold text-emerald-800 hover:bg-emerald-100 touch-manipulation"
+            >
+              <ClipboardList className="h-3.5 w-3.5" /> Checklist
+            </button>
+          </div>
+        )}
         <PartChips workOrder={w as any} size="sm" className="mt-2" />
         <div className="mt-1.5 text-[12px] text-slate-700 line-clamp-2">{w.description}</div>
         <div className="mt-2 flex flex-wrap gap-1.5 items-center">
@@ -184,13 +203,24 @@ const TaskCard: React.FC<{
           </div>
         )}
       </div>
-      <div className={cn("flex flex-col gap-1 shrink-0", readOnly && "hidden")} onClick={(e) => e.stopPropagation()}>
+      <div className={cn("flex flex-col gap-1 shrink-0", !canPlan && "hidden")} onClick={(e) => e.stopPropagation()}>
         <Button size="icon" variant="outline" className="h-10 w-10 sm:h-7 sm:w-7 touch-manipulation" onClick={() => onReorder(w.id, -1)} title="Omhoog"><ArrowUp className="h-3.5 w-3.5" /></Button>
         <Button size="icon" variant="outline" className="h-10 w-10 sm:h-7 sm:w-7 touch-manipulation" onClick={() => onReorder(w.id, 1)} title="Omlaag"><ArrowDown className="h-3.5 w-3.5" /></Button>
+        {onEdit && (
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-10 w-10 sm:h-7 sm:w-7 touch-manipulation"
+            onClick={() => onEdit(w)}
+            title="Taak bewerken"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        )}
         <Button
           size="icon"
           variant={w.is_rush ? "default" : "outline"}
-          className={cn("h-7 w-7", w.is_rush && "bg-red-500 hover:bg-red-600")}
+          className={cn("h-10 w-10 sm:h-7 sm:w-7 touch-manipulation", w.is_rush && "bg-red-500 hover:bg-red-600")}
           onClick={() => onToggleRush(w)}
           title="Spoed"
         >
@@ -200,7 +230,7 @@ const TaskCard: React.FC<{
           <Button
             size="icon"
             variant="outline"
-            className="h-7 w-7 text-slate-500 hover:text-red-600 hover:border-red-300"
+            className="h-10 w-10 sm:h-7 sm:w-7 touch-manipulation text-slate-500 hover:text-red-600 hover:border-red-300"
             onClick={() => onDelete(w)}
             title="Taak verwijderen"
           >
@@ -216,13 +246,16 @@ const EmployeeColumn: React.FC<{
   profile?: Profile;
   items: WO[];
   doneTodayCount: number;
+  canPlan: boolean;
   onReorder: (id: string, dir: -1 | 1) => void;
   onToggleRush: (w: WO) => void;
   onDragStart: (id: string) => void;
   onDrop: (targetId: string) => void;
   onOpen: (w: WO) => void;
   onDelete?: (w: WO) => void;
-}> = ({ profile, items, doneTodayCount, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete }) => (
+  onOpenChecklist: (vehicleId: string) => void;
+  onEdit?: (w: WO) => void;
+}> = ({ profile, items, doneTodayCount, canPlan, onReorder, onToggleRush, onDragStart, onDrop, onOpen, onDelete, onOpenChecklist, onEdit }) => (
   <AsCard className="flex flex-col w-full md:min-w-[320px]">
     <AsCardHead
       tone="slate"
@@ -244,12 +277,15 @@ const EmployeeColumn: React.FC<{
           key={w.id}
           w={w}
           index={i}
+          canPlan={canPlan}
           onReorder={onReorder}
           onToggleRush={onToggleRush}
           onDragStart={onDragStart}
           onDrop={onDrop}
           onOpen={onOpen}
           onDelete={onDelete}
+          onOpenChecklist={onOpenChecklist}
+          onEdit={onEdit}
         />
       ))}
     </div>
@@ -294,9 +330,11 @@ const DoneTodayColumn: React.FC<{ items: WO[]; nameFor: (uid: string | null) => 
 const WerkplaatsPlanning: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
   const navigate = useNavigate();
-  const { canManageWorkOrders, isDirectieReadOnly } = useRoleAccess();
+  const { canManageWorkOrders, canPlanWorkOrders, isDirectieReadOnly } = useRoleAccess();
   const readOnly = isDirectieReadOnly();
   const canDelete = canManageWorkOrders();
+  const canPlan = canPlanWorkOrders();
+  const vehicleDialog = useVehicleDetailDialog();
   const [discipline, setDiscipline] = useState<Discipline>("werkplaats");
   const [rows, setRows] = useState<WO[]>([]);
   const [doneToday, setDoneToday] = useState<WO[]>([]);
@@ -307,13 +345,32 @@ const WerkplaatsPlanning: React.FC = () => {
   const [confirmDelete, setConfirmDelete] = useState<WO | null>(null);
   const [reschedule, setReschedule] = useState<WO | null>(null);
   const [newPlanned, setNewPlanned] = useState<string>("");
+  const [editTarget, setEditTarget] = useState<WO | null>(null);
   const openReport = (w: WO) => setReport({
     part: w.part, parts: (w as any).parts, description: w.description, photos: (w as any).photos, discipline: w.discipline, status: w.status, vehicle: w.vehicle as any,
   });
+  const openChecklist = (vehicleId: string) => { vehicleDialog.openVehicle(vehicleId, "checklist"); };
+
+  /** Voertuig opslaan vanuit de detail-dialoog (checklist-snelkoppeling). */
+  const autoSaveVehicle = async (updated: any) => {
+    const { error } = await supabase.from("vehicles").update({
+      details: updated.details,
+      status: updated.salesStatus,
+      location: updated.location,
+    }).eq("id", updated.id);
+    if (error) {
+      toast({ title: "Opslaan mislukt", description: error.message, variant: "destructive" });
+      return;
+    }
+    vehicleDialog.updateVehicle(updated);
+  };
+  const saveVehicle = async (updated: any) => {
+    await autoSaveVehicle(updated);
+  };
 
   const load = async () => {
     setLoading(true);
-    const select = "id, discipline, description, part, parts, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, due_date, planned_at, origin, external_customer, photos, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date)";
+    const select = "id, discipline, description, part, parts, status, is_rush, sort_order, started_at, finished_at, approved_at, warranty_claim_id, source, branch, assigned_to, created_at, due_date, planned_at, origin, external_customer, photos, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, vin, showroom_photo_url, year, mileage, color, delivery_date, status)";
 
     let q = supabase
       .from("work_orders")
@@ -575,12 +632,15 @@ const WerkplaatsPlanning: React.FC = () => {
                 profile={uid !== "__unassigned__" ? profiles.get(uid) : undefined}
                 items={items}
                 doneTodayCount={doneByUser.get(uid) || 0}
+                canPlan={canPlan}
                 onReorder={reorder}
                 onToggleRush={toggleRush}
                 onDragStart={setDragId}
                 onDrop={onDrop}
                 onOpen={openReport}
-                onDelete={canDelete && !readOnly ? (w) => setConfirmDelete(w) : undefined}
+                onDelete={canDelete ? (w) => setConfirmDelete(w) : undefined}
+                onOpenChecklist={openChecklist}
+                onEdit={canPlan ? (w) => setEditTarget(w) : undefined}
               />
             ))}
             <DoneTodayColumn items={doneToday} nameFor={nameFor} />
@@ -617,16 +677,34 @@ const WerkplaatsPlanning: React.FC = () => {
                           {w.is_rush && <AsPill tone="red"><Flame className="h-3 w-3" />Spoed</AsPill>}
                         </div>
                         <div className="mt-1.5 text-[12px] text-slate-700 line-clamp-3 whitespace-pre-line">{w.description}</div>
-                        {!readOnly && (
-                          <div className="mt-2 flex items-center gap-2">
+                        {w.vehicle?.status === "verkocht_b2c" && w.vehicle && (
+                          <div className="mt-2 flex items-center gap-2 flex-wrap">
+                            <AsPill tone="green">VERKOCHT B2C</AsPill>
+                            <button
+                              type="button"
+                              onClick={() => openChecklist(w.vehicle!.id)}
+                              className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-[11.5px] font-semibold text-emerald-800 hover:bg-emerald-100 touch-manipulation"
+                            >
+                              <ClipboardList className="h-3.5 w-3.5" /> Checklist
+                            </button>
+                          </div>
+                        )}
+                        {canPlan && (
+                          <div className="mt-2 flex items-center gap-2 flex-wrap">
                             <Button size="sm" variant="outline" className="h-10 sm:h-7 text-[12px] touch-manipulation"
                                     onClick={() => { setReschedule(w); setNewPlanned(w.planned_at ? format(new Date(w.planned_at), "yyyy-MM-dd'T'HH:mm") : ""); }}>
                               Verzetten
                             </Button>
-                            <Button size="sm" variant="ghost" className="h-10 sm:h-7 text-[12px] touch-manipulation text-slate-500 hover:text-red-600"
-                                    onClick={() => setConfirmDelete(w)}>
-                              <X className="h-3.5 w-3.5 mr-1" />Annuleren
+                            <Button size="sm" variant="outline" className="h-10 sm:h-7 text-[12px] touch-manipulation"
+                                    onClick={() => setEditTarget(w)}>
+                              <Pencil className="h-3.5 w-3.5 mr-1" />Bewerken
                             </Button>
+                            {canDelete && (
+                              <Button size="sm" variant="ghost" className="h-10 sm:h-7 text-[12px] touch-manipulation text-slate-500 hover:text-red-600"
+                                      onClick={() => setConfirmDelete(w)}>
+                                <X className="h-3.5 w-3.5 mr-1" />Annuleren
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -693,6 +771,25 @@ const WerkplaatsPlanning: React.FC = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        <EditWorkOrderDialog
+          open={!!editTarget}
+          onOpenChange={(v) => { if (!v) setEditTarget(null); }}
+          workOrder={editTarget as any}
+          onSaved={() => { setEditTarget(null); load(); }}
+        />
+        {vehicleDialog.isOpen && vehicleDialog.vehicle && (
+          <VehicleDetails
+            vehicle={vehicleDialog.vehicle}
+            defaultTab={vehicleDialog.defaultTab}
+            onClose={vehicleDialog.closeDialog}
+            onUpdate={saveVehicle}
+            onAutoSave={autoSaveVehicle}
+            onSendEmail={() => {}}
+            onPhotoUpload={() => {}}
+            onRemovePhoto={() => {}}
+            onSetMainPhoto={() => {}}
+          />
+        )}
       </AsPage>
     </DashboardLayout>
   );

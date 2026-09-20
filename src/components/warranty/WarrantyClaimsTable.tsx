@@ -149,15 +149,16 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
       queryClient.invalidateQueries({ queryKey: ["warrantyStats"] });
       toast({
         title: "Claim verwijderd",
-        description: "De garantieclaim is succesvol verwijderd.",
+        description: "De garantieclaim is definitief verwijderd.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting claim:", error);
       toast({
-        title: "Fout bij verwijderen",
-        description: "Er is een fout opgetreden bij het verwijderen van de claim.",
+        title: "Verwijderen mislukt",
+        description: error?.message || "Er is een fout opgetreden bij het verwijderen van de claim.",
         variant: "destructive"
       });
+      throw error;
     }
   };
 
