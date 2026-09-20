@@ -66,7 +66,7 @@ interface WarrantyClaimDetailProps {
     actualCost: number;
     customerSatisfaction: number;
   }) => void;
-  onDelete: (claimId: string) => void;
+  onDelete: (claimId: string) => void | Promise<void>;
 }
 
 export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
@@ -77,12 +77,14 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
   onResolve,
   onDelete
 }) => {
-  const { canManageWarrantyClaims } = useRoleAccess();
+  const { canManageWarrantyClaims, canDeleteWarrantyClaims } = useRoleAccess();
   const canManageClaims = canManageWarrantyClaims();
+  const canDeleteClaims = canDeleteWarrantyClaims();
   const [isEditing, setIsEditing] = useState(false);
   const [editedClaim, setEditedClaim] = useState(claim);
   const [showResolveDialog, setShowResolveDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [selectedLoanCarId, setSelectedLoanCarId] = useState<string>(claim.loanCarId || "");
   const [resolutionData, setResolutionData] = useState({
     resolutionDescription: "",
@@ -177,10 +179,19 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
     });
   };
 
-  const handleDelete = () => {
-    onDelete(claim.id);
-    setShowDeleteDialog(false);
-    onClose();
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await onDelete(claim.id);
+      setShowDeleteDialog(false);
+      onClose();
+    } catch (e) {
+      // De lijst-component toont de foutmelding; dialoog blijft open zodat
+      // duidelijk is dat er niets verwijderd is.
+      setShowDeleteDialog(false);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleSendReadyEmail = async () => {
@@ -635,10 +646,10 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
           )}
 
           {/* Acties */}
-          {canManageClaims && (
-          <div className="flex gap-2 pt-4 justify-between">
-            <div className="flex gap-2">
-              {claim.status !== "opgelost" && (
+          {(canManageClaims || canDeleteClaims) && (
+          <div className="flex gap-2 pt-4 justify-between flex-wrap">
+            <div className="flex gap-2 flex-wrap">
+              {canManageClaims && claim.status !== "opgelost" && (
                 <>
                   <Button onClick={() => setShowResolveDialog(true)} className="bg-green-600 hover:bg-green-700">
                     <CheckCircle className="h-4 w-4 mr-2" />
@@ -650,20 +661,22 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
                   </Button>
                 </>
               )}
-              {claim.status === "opgelost" && (
+              {canManageClaims && claim.status === "opgelost" && (
                 <Button variant="outline" onClick={handleSendHappyCall} className="border-pink-200 text-pink-700 hover:bg-pink-50">
                   <Heart className="h-4 w-4 mr-2" />
                   Happy Call
                 </Button>
               )}
             </div>
-            <Button 
-              variant="destructive" 
-              onClick={() => setShowDeleteDialog(true)}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Verwijder Claim
-            </Button>
+            {canDeleteClaims && (
+              <Button
+                variant="destructive"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Verwijder Claim
+              </Button>
+            )}
           </div>
           )}
         </DialogContent>
