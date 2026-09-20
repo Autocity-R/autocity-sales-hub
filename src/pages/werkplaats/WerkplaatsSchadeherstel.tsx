@@ -3,7 +3,8 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
-import { Flame, Loader2, PaintBucket, Check, CheckCircle2, Play, Timer, Pause } from "lucide-react";
+import { Flame, Loader2, PaintBucket, Check, CheckCircle2, Play, Timer, Pause, Pencil } from "lucide-react";
+import { EditWorkOrderDialog } from "@/components/werkplaats/EditWorkOrderDialog";
 import { toast } from "@/hooks/use-toast";
 import { differenceInDays } from "date-fns";
 import { AsPage, AsCard, AsPill, AsLicensePlate, AsMono, useLiveTimer } from "@/components/aftersales/ui";
@@ -52,7 +53,8 @@ const Card: React.FC<{
   onDone: (w: WO) => void;
   onPause: (w: WO) => void;
   onOpen?: (w: WO) => void;
-}> = ({ w, names, myId, onStart, onDone, onPause, onOpen }) => {
+  onEdit?: (w: WO) => void;
+}> = ({ w, names, myId, onStart, onDone, onPause, onOpen, onEdit }) => {
   const readOnly = useRoleAccess().isDirectieReadOnly();
   const v = w.vehicle;
   const done = w.status === "afgerond";
@@ -112,6 +114,19 @@ const Card: React.FC<{
               <span className="text-slate-600 font-medium">
                 Bezig — {mine ? "jij" : (w.assigned_to ? names[w.assigned_to] || "collega" : "collega")}
               </span>
+            </div>
+          )}
+
+          {onEdit && !done && (
+            <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10 text-[12.5px] touch-manipulation"
+                onClick={() => onEdit(w)}
+              >
+                <Pencil className="h-3.5 w-3.5 mr-1" /> Bewerken
+              </Button>
             </div>
           )}
 
