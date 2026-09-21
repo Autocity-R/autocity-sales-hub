@@ -461,7 +461,7 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
                     <div className="text-xs text-muted-foreground space-y-0.5">
                       {item.completed && item.completedAt ? (
                         <p className="text-green-600 dark:text-green-500">
-                          ✓ Voltooid door {item.completedByName} op {formatDate(item.completedAt)}
+                          ✓ {completionLine(item)} op {formatDate(item.completedAt)}
                         </p>
                       ) : (
                         <p>
