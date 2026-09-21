@@ -79,14 +79,18 @@ const SUBJECT_RULES: Array<{ prefix: string; status: string }> = [
 ];
 
 function inferStatus(subject: string): string | null {
-  let subj = String(subject || '').trim().toLowerCase();
+  let s = String(subject || '').trim().toLowerCase();
   // Re:/Fwd:-voorvoegsels strippen
-  while (/^(re|fw|fwd|aw|antw)\s*:\s*/i.test(subj)) {
-    subj = subj.replace(/^(re|fw|fwd|aw|antw)\s*:\s*/i, '').trim();
+  while (/^(re|fw|fwd|aw|antw)\s*:\s*/i.test(s)) {
+    s = s.replace(/^(re|fw|fwd|aw|antw)\s*:\s*/i, '').trim();
   }
   for (const rule of SUBJECT_RULES) {
-    if (subj.startsWith(rule.prefix)) return rule.status;
+    if (s.startsWith(rule.prefix)) return rule.status;
   }
+  // Uitzonderingen/escalaties
+  if (s.startsWith('verzoek om juiste bestanden van voertuig')) return 'bestanden_gevraagd';
+  if (s.startsWith('afspraak op keuringsstation maken voor voertuig')) return 'keuringsafspraak';
+  if (/^\d+\s+toonplicht\s/.test(s)) return 'toonplicht'; // "23200023612 Toonplicht Volkswagen T-Roc WVGZ…"
   return null;
 }
 
