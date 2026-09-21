@@ -64,7 +64,8 @@ const PoetsCard: React.FC<{
   showDeadline: boolean;
   onOpen?: (w: PoetsWO) => void;
   workerName?: string | null;
-}> = ({ w, onStart, onDone, showDeadline, onOpen, workerName }) => {
+  delivery?: DeliveryMoment | null;
+}> = ({ w, onStart, onDone, showDeadline, onOpen, workerName, delivery }) => {
   const { isDirectieReadOnly } = useRoleAccess();
   const readOnly = isDirectieReadOnly();
   const tone = deadlineTone(w.due_date);
