@@ -1,6 +1,10 @@
 // Leest (ALLEEN LEZEN) de mailbox(en) van Autocity en werkt de import-status van
 // voertuigen bij op basis van Belastingdienst-, RDW- en EU/EVA-mails.
 // Matcht op VIN in onderwerp of body. Verstuurt/verplaatst/verwijdert nooit mail.
+// Uitzonderings-/escalatiestatussen:
+//   E1. "Verzoek om juiste bestanden van voertuig met VIN …" (RDW)          → bestanden_gevraagd  (tussen aangemeld en goedgekeurd)
+//   E2. "Afspraak op keuringsstation maken voor voertuig met VIN …" (RDW)   → keuringsafspraak    (steekproef; tussen aangemeld en goedgekeurd)
+//   E3. "{nr} Toonplicht {merk model} {VIN}" (Domeinen Roerende Zaken)       → toonplicht          (tussen goedgekeurd en bpm_betaald)
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
