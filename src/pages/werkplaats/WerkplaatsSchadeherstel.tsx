@@ -124,6 +124,8 @@ const Card: React.FC<{
             </div>
           </div>
 
+          <DueDateRow due={w.due_date} planned={done ? null : w.planned_at} />
+
           <PartChips workOrder={w as any} className="mt-3" />
           <div className="mt-2 text-[13px] text-slate-700">{w.description}</div>
 
