@@ -11,11 +11,11 @@ import {
 } from "@/components/aftersales/ui";
 import {
   Loader2, Play, CheckCircle2, Timer, Clock, HandMetal, CalendarDays, Inbox, Phone, Undo2,
-  RefreshCw, Pause,
+  RefreshCw, Pause, CalendarClock,
 } from "lucide-react";
 import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 import { MyPerformanceCard } from "@/components/werkplaats/MyPerformanceCard";
-import { isPlannedInFuture, formatPlannedDay } from "@/components/werkplaats/plannedVisibility";
+import { isHiddenFromFloor, formatPlannedDay } from "@/components/werkplaats/plannedVisibility";
 import { PartChips } from "@/components/werkplaats/workOrderParts";
 
 import { OPEN_WO_STATUSES, pauseWorkOrder, resumeFields, finishFields } from "@/components/werkplaats/workOrderPause";
@@ -29,6 +29,7 @@ interface WorkRow {
   photos: string[] | null;
   status: string;
   planned_at: string | null;
+  due_date: string | null;
   started_at: string | null;
   paused_seconds?: number | null;
   pause_reason?: string | null;
@@ -45,7 +46,7 @@ interface WorkRow {
 }
 
 const SELECT =
-  "id, description, part, parts, photos, status, discipline, planned_at, started_at, paused_seconds, pause_reason, is_rush, assigned_to, origin, warranty_claim_id, external_customer, branch, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, license_number, year)";
+  "id, description, part, parts, photos, status, discipline, planned_at, due_date, started_at, paused_seconds, pause_reason, is_rush, assigned_to, origin, warranty_claim_id, external_customer, branch, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, license_number, year)";
 
 const MijnWerkCard: React.FC<{
   w: WorkRow;
@@ -83,6 +84,12 @@ const MijnWerkCard: React.FC<{
           <AsPill tone="blue">
             <Clock className="h-3 w-3" />
             {format(new Date(w.planned_at), isToday(new Date(w.planned_at)) ? "HH:mm" : "d MMM HH:mm", { locale: nl })}
+          </AsPill>
+        )}
+        {w.due_date && (
+          <AsPill tone={w.due_date <= new Date().toISOString().slice(0, 10) ? "red" : "amber"} className="text-[12px] px-2.5 py-1">
+            <CalendarClock className="h-3.5 w-3.5" />
+            Klaar vóór {format(new Date(`${w.due_date}T00:00:00`), "EEE d MMM", { locale: nl })}
           </AsPill>
         )}
         {w.is_rush && <AsPill tone="red">⚡ SPOED</AsPill>}
@@ -192,8 +199,8 @@ const MijnWerk: React.FC = () => {
       (a.planned_at || "9999").localeCompare(b.planned_at || "9999"));
     // Open pot: alles zonder toewijzing (ook toekomstig gepland)
     const openList = rows
-      // Gepland voor een latere dag = auto is er nog niet: nog niet zichtbaar
-      .filter(r => !r.assigned_to && !isPlannedInFuture(r.planned_at))
+      // Alleen EXTERN werk dat later gepland staat blijft verborgen
+      .filter(r => !r.assigned_to && !isHiddenFromFloor(r))
       .sort((a, b) =>
         Number(b.is_rush) - Number(a.is_rush) ||
         (a.planned_at || "9999").localeCompare(b.planned_at || "9999"));
@@ -214,7 +221,7 @@ const MijnWerk: React.FC = () => {
   };
 
   const blockIfFuture = (w: WorkRow) => {
-    if (!isPlannedInFuture(w.planned_at)) return false;
+    if (!isHiddenFromFloor(w)) return false;
     toast({
       title: "Nog niet beschikbaar",
       description: `Deze klus staat gepland voor ${formatPlannedDay(w.planned_at!)} — de auto is er nog niet.`,

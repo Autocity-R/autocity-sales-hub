@@ -14,13 +14,14 @@ import { cn } from "@/lib/utils";
 import { TaskDetailSheet, TaskDetailWorkOrder } from "@/components/werkplaats/TaskDetailSheet";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { PartChips, getWorkOrderParts } from "@/components/werkplaats/workOrderParts";
-import { isPlannedInFuture, formatPlannedDay } from "@/components/werkplaats/plannedVisibility";
+import { isHiddenFromFloor, formatPlannedDay } from "@/components/werkplaats/plannedVisibility";
 import { buildHaystack, matchesSearch } from "@/lib/searchNormalize";
 
 interface WO {
   id: string; description: string; part: string | null; parts?: string[] | null; status: string; is_rush: boolean; sort_order: number;
   photos: string[] | null; branch: string | null; created_at: string; approved_at: string | null; finished_at?: string | null;
   planned_at?: string | null;
+  origin?: string | null;
   vehicle_id?: string | null;
   vehicle: { brand: string; model: string; year: number | null; license_number: string | null; vin: string | null; mileage: number | null; color: string | null } | null;
 }
@@ -96,7 +97,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
   const load = async () => {
     setLoading(true);
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const select = "id, description, part, parts, status, is_rush, sort_order, photos, branch, created_at, planned_at, approved_at, finished_at, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
+    const select = "id, description, part, parts, status, is_rush, sort_order, photos, branch, created_at, planned_at, origin, approved_at, finished_at, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
 
     const openStatuses = isExtern ? ["aangevraagd", "ingepland", "bezig"] : ["ingepland", "bezig"];
     let qOpen = supabase.from("work_orders").select(select)
@@ -114,7 +115,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
     qDone = applyBranchFilter(qDone as any, branchFilter);
 
     const [{ data: openData }, { data: doneData }] = await Promise.all([qOpen, qDone]);
-    const openRows = ((openData as any[]) || []).filter((r: WO) => !isPlannedInFuture(r.planned_at));
+    const openRows = ((openData as any[]) || []).filter((r: WO) => !isHiddenFromFloor(r));
     setRows([...openRows, ...((doneData as any[]) || [])] as WO[]);
     setLoading(false);
   };
@@ -123,7 +124,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
   /** Volledige uitdeuk-historie (laatste 6 maanden): wat is er wanneer aan welke auto gedaan. */
   const loadHistory = async () => {
     setHistLoading(true);
-    const select = "id, description, part, parts, status, is_rush, sort_order, photos, branch, created_at, planned_at, approved_at, finished_at, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
+    const select = "id, description, part, parts, status, is_rush, sort_order, photos, branch, created_at, planned_at, origin, approved_at, finished_at, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
     const from = new Date(Date.now() - 183 * 24 * 60 * 60 * 1000).toISOString();
     let qh = supabase.from("work_orders").select(select)
       .eq("discipline", "uitdeuk")
@@ -151,7 +152,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
 
 
   const markDone = async (w: WO) => {
-    if (isPlannedInFuture(w.planned_at)) {
+    if (isHiddenFromFloor(w)) {
       toast({
         title: "Nog niet beschikbaar",
         description: `Deze klus staat gepland voor ${formatPlannedDay(w.planned_at!)} — de auto is er nog niet.`,

@@ -16,6 +16,8 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { Play, Timer, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { buildHaystack, matchesSearch } from "@/lib/searchNormalize";
+import { useDeliveryMoments, DeliveryMoment } from "@/components/werkplaats/deliveryAppointment";
+import { CalendarClock } from "lucide-react";
 
 interface PoetsWO {
   id: string;
@@ -26,6 +28,7 @@ interface PoetsWO {
   created_at: string;
   started_at: string | null;
   assigned_to: string | null;
+  origin?: string | null;
   vehicle: {
     id: string;
     brand: string;
@@ -35,6 +38,7 @@ interface PoetsWO {
     mileage: number | null;
     color: string | null;
     vin: string | null;
+    status?: string | null;
   } | null;
 }
 
@@ -60,7 +64,8 @@ const PoetsCard: React.FC<{
   showDeadline: boolean;
   onOpen?: (w: PoetsWO) => void;
   workerName?: string | null;
-}> = ({ w, onStart, onDone, showDeadline, onOpen, workerName }) => {
+  delivery?: DeliveryMoment | null;
+}> = ({ w, onStart, onDone, showDeadline, onOpen, workerName, delivery }) => {
   const { isDirectieReadOnly } = useRoleAccess();
   const readOnly = isDirectieReadOnly();
   const tone = deadlineTone(w.due_date);
@@ -87,6 +92,19 @@ const PoetsCard: React.FC<{
         <div className="text-[12.5px] text-slate-600">{specs.length ? specs.join(" · ") : "—"}</div>
         <AsMono className="block mt-0.5">{w.vehicle?.vin || "VIN onbekend"}</AsMono>
       </div>
+      {delivery && (
+        <div
+          className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-[13px] font-bold",
+            delivery.isToday
+              ? "bg-red-50 text-red-700 border-red-300"
+              : "bg-amber-50 text-amber-800 border-amber-200",
+          )}
+        >
+          <CalendarClock className="h-4 w-4 shrink-0" />
+          <span>Aflevering: {delivery.label}</span>
+        </div>
+      )}
       {showDeadline && w.due_date && (
         <div className={cn("inline-flex self-start items-center gap-1.5 px-2.5 py-1 rounded-md border text-[12.5px] font-semibold", toneCls)}>
           Klaar vóór {format(new Date(w.due_date), "EEE d MMM", { locale: nl })}
@@ -141,7 +159,7 @@ const WerkplaatsPoetsen: React.FC = () => {
     setLoading(true);
     let q = supabase
       .from("work_orders")
-      .select("id, description, status, poets_type, due_date, created_at, started_at, assigned_to, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, year, mileage, color, vin)")
+      .select("id, description, status, poets_type, due_date, created_at, started_at, assigned_to, origin, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, year, mileage, color, vin, status)")
       .eq("discipline", "poets")
       .in("status", ["ingepland", "bezig", "gepauzeerd"]);
     q = applyBranchFilter(q as any, branchFilter);
@@ -171,6 +189,13 @@ const WerkplaatsPoetsen: React.FC = () => {
       .sort((a, b) => a.created_at.localeCompare(b.created_at));
     return { afleveringen: afl, showroom: sh };
   }, [rows, q]);
+
+  // Aflevermoment: alleen voor B2C-verkochte auto's, uitsluitend uit appointments gelezen
+  const soldVehicleIds = useMemo(
+    () => rows.filter(r => r.vehicle?.status === "verkocht_b2c" && r.vehicle?.id).map(r => r.vehicle!.id),
+    [rows],
+  );
+  const deliveryMoments = useDeliveryMoments(soldVehicleIds);
 
   const markDone = async (w: PoetsWO) => {
     const startedAt = w.started_at ? new Date(w.started_at).getTime() : null;
@@ -268,7 +293,7 @@ const WerkplaatsPoetsen: React.FC = () => {
                     Geen afleveringen.
                   </div>
                 ) : afleveringen.map(w => (
-                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} />
+                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
                 ))}
               </div>
             </AsCard>
@@ -287,7 +312,7 @@ const WerkplaatsPoetsen: React.FC = () => {
                     Geen showroom-taken.
                   </div>
                 ) : showroom.map(w => (
-                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline={false} onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} />
+                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline={false} onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
                 ))}
               </div>
             </AsCard>

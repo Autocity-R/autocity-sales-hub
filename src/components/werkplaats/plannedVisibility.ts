@@ -1,8 +1,14 @@
 /**
  * Zichtbaarheid van gepland werk voor de uitvoerende rollen (monteur, schadeherstel,
- * uitdeuker): een work_order met planned_at ná vandaag (Europe/Amsterdam) is pas
- * zichtbaar/oppakbaar op de geplande dag zelf. Planning, agenda en chef-cockpit
- * gebruiken dit NIET — daar blijft gepland werk vooruit zichtbaar.
+ * uitdeuker).
+ *
+ * Alleen EXTERN werk (externe klanten, origin='extern') dat gepland staat voor een dag
+ * ná vandaag (Europe/Amsterdam) blijft verborgen uit de werklijsten — die auto's zijn er
+ * simpelweg nog niet en vervuilen de lijst.
+ *
+ * INTERNE auto's met een planning of klaar-voor-datum staan ALTIJD in de werklijst: die
+ * mogen altijd eerder opgepakt worden zodat het personeel vooruit kan werken voor de
+ * afleveringen. Planning, agenda en chef-cockpit filteren niets — daar is alles zichtbaar.
  */
 
 /** Kalenderdatum in Europe/Amsterdam als "YYYY-MM-DD". */
@@ -20,9 +26,14 @@ export const isPlannedInFuture = (plannedAt?: string | null): boolean => {
   return amsDay(plannedAt) > amsDay(new Date());
 };
 
-/** Zichtbaar voor de vakman: geen planning, of gepland op/voor vandaag. */
-export const isReleasedToFloor = <T extends { planned_at?: string | null }>(w: T): boolean =>
-  !isPlannedInFuture(w.planned_at);
+type FloorOrder = { planned_at?: string | null; origin?: string | null };
+
+/** Verborgen op de vloer: uitsluitend extern werk dat later gepland staat. */
+export const isHiddenFromFloor = <T extends FloorOrder>(w: T): boolean =>
+  w.origin === "extern" && isPlannedInFuture(w.planned_at);
+
+/** Zichtbaar voor de vakman: alles behalve toekomstig gepland EXTERN werk. */
+export const isReleasedToFloor = <T extends FloorOrder>(w: T): boolean => !isHiddenFromFloor(w);
 
 /** Nette datumweergave voor de blokkade-toast. */
 export const formatPlannedDay = (plannedAt: string): string =>
