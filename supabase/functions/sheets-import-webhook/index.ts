@@ -1,6 +1,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { applyStatusToVehicle, statusMapping } from "../_shared/importStatus.ts";
+
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,51 +17,8 @@ interface SheetUpdateRequest {
   row_number?: number;
 }
 
-// Status mapping from Google Sheets to database
-const statusMapping: Record<string, string> = {
-  'Niet gestart': 'niet_gestart',
-  'Niet aangemeld': 'niet_aangemeld',
-  'Aangemeld': 'aangemeld',
-  'Aanvraag ontvangen': 'aanvraag_ontvangen',
-  'Aangekomen': 'aangekomen',
-  'Goedgekeurd': 'goedgekeurd',
-  'Transport geregeld': 'transport_geregeld',
-  'Onderweg': 'onderweg',
-  'Afgemeld': 'afgemeld',
-  'BPM betaald': 'bpm_betaald',
-  'BPM Betaald': 'bpm_betaald',
-  'Herkeuring': 'herkeuring',
-  'Ingeschreven': 'ingeschreven'
-};
+// statusMapping / hiërarchie / beschermingen: zie ../_shared/importStatus.ts
 
-// Status hiërarchie: hogere index = verder in het proces
-const statusHierarchy: Record<string, number> = {
-  'niet_gestart': 0,
-  'niet_aangemeld': 1,
-  'aangemeld': 2,
-  'aangekomen': 3,
-  'transport_geregeld': 4,
-  'onderweg': 4,
-  'afgemeld': 4,
-  'aanvraag_ontvangen': 5,
-  'goedgekeurd': 6,
-  'bpm_betaald': 7,
-  'herkeuring': 7,
-  'ingeschreven': 8,
-};
-
-// Reverse lookup: index → status name (voor import_status_highest)
-const statusByIndex: Record<number, string> = {
-  0: 'niet_gestart',
-  1: 'niet_aangemeld',
-  2: 'aangemeld',
-  3: 'aangekomen',
-  4: 'transport_geregeld',
-  5: 'aanvraag_ontvangen',
-  6: 'goedgekeurd',
-  7: 'bpm_betaald',
-  8: 'ingeschreven',
-};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -128,149 +87,61 @@ serve(async (req) => {
       });
     }
 
-    if (vehicles.length > 1) {
-      console.warn('Multiple vehicles found, using first one');
-    }
+    // Dubbele VIN's komen voor: werk ALLE relevante rijen bij (niet extern/afgeleverd),
+    // verkooprijen eerst, zodat de lijst die verkoop ziet altijd klopt.
+    const rank = (s: string | null) =>
+      s === 'verkocht_b2c' ? 0 : s === 'verkocht_b2b' ? 1 : s === 'voorraad' ? 2 : 3;
+    const targets = vehicles
+      .filter((v: any) => v.status !== 'afgeleverd')
+      .sort(
+        (a: any, b: any) =>
+          rank(a.status) - rank(b.status) ||
+          String(b.updated_at || '').localeCompare(String(a.updated_at || '')),
+      );
 
-    const vehicle = vehicles[0];
-    const oldStatus = vehicle.import_status;
-    const details = vehicle.details || {};
-
-    // === EARLY RETURN: Status unchanged ===
-    if (mappedStatus === oldStatus) {
-      console.log(`⏭️ Status unchanged for vehicle ${vehicle.id}: ${oldStatus} — skipping`);
+    if (targets.length === 0) {
       return new Response(JSON.stringify({
         success: true,
         skipped: true,
-        reason: 'Status unchanged',
-        vehicle_id: vehicle.id,
-        current_status: oldStatus,
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        reason: 'Alleen afgeleverde/externe voertuigen gevonden',
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (targets.length > 1) {
+      console.warn(`⚠️ ${targets.length} voertuigen met dezelfde identificatie — alle rijen worden bijgewerkt`);
+    }
+
+    const externalReference =
+      updateRequest.external_reference || updateRequest.row_number?.toString() || null;
+
+    const results = [] as any[];
+    for (const vehicle of targets) {
+      const r = await applyStatusToVehicle(supabase, vehicle, mappedStatus, {
+        source: 'google_sheets',
+        externalReference,
       });
+      console.log(
+        r.updated
+          ? `✅ ${vehicle.id}: ${r.old_status} → ${mappedStatus}`
+          : `⏭️ ${vehicle.id} overgeslagen: ${r.reason}`,
+      );
+      results.push(r);
     }
 
-    // === BESCHERMING 1: Leenauto skip ===
-    // Trade-ins worden NIET meer geblokkeerd: als de Sheet een update stuurt
-    // voor een inruilauto, betekent het dat deze ook een importauto is.
-    if (vehicle.status === 'leenauto') {
-      console.log(`⏭️ Skipping loan car: vehicle ${vehicle.id}`);
-      return new Response(JSON.stringify({
-        success: true,
-        skipped: true,
-        reason: 'Vehicle is loan car — import sync skipped',
-        vehicle_id: vehicle.id,
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const anyUpdated = results.some((r) => r.updated);
 
-    // === BESCHERMING 2: RDW protected ===
-    if (vehicle.rdw_protected === true) {
-      console.log(`🔒 RDW protected: vehicle ${vehicle.id} — status not overwritten`);
-      return new Response(JSON.stringify({
-        success: true,
-        skipped: true,
-        reason: 'Vehicle is RDW protected — import status locked',
-        vehicle_id: vehicle.id,
-        current_status: oldStatus,
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // === BESCHERMING 3: Transport check ===
-    if (details.transportStatus === 'onderweg' && mappedStatus !== 'niet_aangemeld') {
-      console.log(`🚛 Transport check: vehicle ${vehicle.id} is onderweg — only niet_aangemeld allowed`);
-      return new Response(JSON.stringify({
-        success: true,
-        skipped: true,
-        reason: 'Vehicle is in transport — only niet_aangemeld status allowed',
-        vehicle_id: vehicle.id,
-        current_status: oldStatus,
-        attempted_status: mappedStatus,
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // === BESCHERMING 4: Status hiërarchie check met override-detectie ===
-    const currentIndex = statusHierarchy[oldStatus] ?? -1;
-    const newIndex = statusHierarchy[mappedStatus] ?? -1;
-    const highestReached = statusHierarchy[vehicle.import_status_highest] ?? -1;
-
-    // Detecteer handmatige reset: huidige DB-status is lager dan hoogst bereikte
-    const wasManuallyReset = highestReached >= 0 && currentIndex >= 0 && currentIndex < highestReached;
-
-    if (newIndex >= 0 && currentIndex >= 0 && newIndex <= currentIndex && !wasManuallyReset) {
-      console.log(`📊 Hierarchy check: vehicle ${vehicle.id} — cannot go from ${oldStatus}(${currentIndex}) to ${mappedStatus}(${newIndex})`);
-      return new Response(JSON.stringify({
-        success: true,
-        skipped: true,
-        reason: `Status downgrade not allowed: ${oldStatus} → ${mappedStatus}`,
-        vehicle_id: vehicle.id,
-        current_status: oldStatus,
-        attempted_status: mappedStatus,
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (wasManuallyReset) {
-      console.log(`🔄 Manual reset detected for vehicle ${vehicle.id}: current=${oldStatus}(${currentIndex}), highest=${vehicle.import_status_highest}(${highestReached}). Allowing Sheet override to ${mappedStatus}(${newIndex}).`);
-    }
-
-    // Calculate new highest status
-    const newHighestIndex = Math.max(newIndex, highestReached);
-    const newHighestStatus = statusByIndex[newHighestIndex] || vehicle.import_status_highest || mappedStatus;
-
-    // Update vehicle import status + highest tracking
-    const { error: updateError } = await supabase
-      .from('vehicles')
-      .update({
-        import_status: mappedStatus,
-        import_updated_at: new Date().toISOString(),
-        import_status_highest: newHighestStatus,
-        import_status_locked_at: new Date().toISOString(),
-        external_sheet_reference: updateRequest.external_reference || updateRequest.row_number?.toString() || vehicle.external_sheet_reference
-      })
-      .eq('id', vehicle.id);
-
-    if (updateError) {
-      console.error('Error updating vehicle:', updateError);
-      return new Response(JSON.stringify({ error: 'Failed to update vehicle', details: updateError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Log the status change
-    const { error: logError } = await supabase
-      .from('vehicle_import_logs')
-      .insert({
-        vehicle_id: vehicle.id,
-        old_status: oldStatus,
-        new_status: mappedStatus,
-        changed_by: 'google_sheets',
-        external_reference: updateRequest.external_reference || updateRequest.row_number?.toString()
-      });
-
-    if (logError) {
-      console.error('Error logging status change:', logError);
-    }
-
-    console.log(`✅ Successfully updated vehicle ${vehicle.id} from ${oldStatus} to ${mappedStatus}${wasManuallyReset ? ' (manual reset override)' : ''}`);
-
-    return new Response(JSON.stringify({ 
-      success: true, 
-      vehicle_id: vehicle.id,
-      old_status: oldStatus,
+    return new Response(JSON.stringify({
+      success: true,
+      skipped: !anyUpdated,
       new_status: mappedStatus,
-      manual_reset_override: wasManuallyReset,
-      message: 'Import status updated successfully'
+      matched_vehicles: targets.length,
+      updated_vehicles: results.filter((r) => r.updated).length,
+      results,
+      message: anyUpdated ? 'Import status updated successfully' : 'Geen enkele rij bijgewerkt',
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
 
   } catch (error) {
     console.error('Error in sheets-import-webhook:', error);

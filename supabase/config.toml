@@ -125,3 +125,6 @@ verify_jwt = false
 
 [functions.poets-maandfactuur]
 verify_jwt = false
+
+[functions.import-status-from-email]
+verify_jwt = false
