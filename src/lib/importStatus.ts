@@ -47,6 +47,7 @@ export const IMPORT_STATUS_OPTIONS: string[] = [
   "goedgekeurd",
   "toonplicht",
   "bpm_betaald",
+  "herkeuring",
   "ingeschreven",
 ];
 
@@ -61,6 +62,7 @@ export function importStatusBadgeClass(status?: string | null): string {
   switch (status) {
     case "bestanden_gevraagd":
     case "keuringsafspraak":
+    case "herkeuring":
       return "bg-amber-100 text-amber-900 border-amber-300";
     case "toonplicht":
       return "bg-red-100 text-red-800 border-red-300";

@@ -330,6 +330,7 @@ export const DetailsTab: React.FC<DetailsTabProps> = ({
               <SelectItem value="goedgekeurd">Goedgekeurd</SelectItem>
               <SelectItem value="toonplicht">Toonplicht</SelectItem>
               <SelectItem value="bpm_betaald">BPM Betaald</SelectItem>
+              <SelectItem value="herkeuring">Herkeuring</SelectItem>
               <SelectItem value="ingeschreven">Ingeschreven</SelectItem>
             </SelectContent>
           </Select>
