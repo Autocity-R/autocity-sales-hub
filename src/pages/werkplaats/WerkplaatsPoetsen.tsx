@@ -293,7 +293,7 @@ const WerkplaatsPoetsen: React.FC = () => {
                     Geen afleveringen.
                   </div>
                 ) : afleveringen.map(w => (
-                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} />
+                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
                 ))}
               </div>
             </AsCard>
@@ -312,7 +312,7 @@ const WerkplaatsPoetsen: React.FC = () => {
                     Geen showroom-taken.
                   </div>
                 ) : showroom.map(w => (
-                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline={false} onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} />
+                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline={false} onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
                 ))}
               </div>
             </AsCard>
