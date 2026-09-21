@@ -10,7 +10,7 @@ import {
 describe("importStatus", () => {
   it("heeft Nederlandse labels voor de drie uitzonderingsstatussen", () => {
     expect(IMPORT_STATUS_LABELS.bestanden_gevraagd).toBe("Verzoek juiste bestanden");
-    expect(IMPORT_STATUS_LABELS.keuringsafspraak).toBe("Keuringsafspraak (steekproef)");
+    expect(IMPORT_STATUS_LABELS.keuringsafspraak).toBe("Keuringsafspraak / herkeuring");
     expect(IMPORT_STATUS_LABELS.toonplicht).toBe("Toonplicht");
   });
 
@@ -36,17 +36,14 @@ describe("importStatus", () => {
       "goedgekeurd",
       "toonplicht",
       "bpm_betaald",
-      "herkeuring",
       "ingeschreven",
     ]);
     const ranks = IMPORT_STATUS_OPTIONS.map((s) => IMPORT_STATUS_RANK[s]);
     expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
   });
 
-  it("biedt herkeuring handmatig aan, tussen bpm_betaald en ingeschreven", () => {
-    expect(IMPORT_STATUS_OPTIONS.indexOf("herkeuring")).toBe(
-      IMPORT_STATUS_OPTIONS.indexOf("bpm_betaald") + 1,
-    );
+  it("houdt herkeuring als legacy-vangnet maar biedt het niet handmatig aan", () => {
+    expect(IMPORT_STATUS_OPTIONS).not.toContain("herkeuring");
     expect(IMPORT_STATUS_LABELS.herkeuring).toBe("Herkeuring");
     expect(IMPORT_STATUS_RANK.herkeuring).toBe(IMPORT_STATUS_RANK.bpm_betaald);
     expect(importStatusBadgeClass("herkeuring")).toContain("amber");
