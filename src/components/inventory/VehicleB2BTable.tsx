@@ -1,6 +1,7 @@
 
 import React, { useState } from "react";
 import { Vehicle, ImportStatus, PaymentStatus } from "@/types/inventory";
+import { getImportStatusLabel, importStatusBadgeClass } from "@/lib/importStatus";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { 
   CircleCheck, 
