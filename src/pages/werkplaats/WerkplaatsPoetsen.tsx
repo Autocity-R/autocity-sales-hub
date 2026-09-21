@@ -159,7 +159,7 @@ const WerkplaatsPoetsen: React.FC = () => {
     setLoading(true);
     let q = supabase
       .from("work_orders")
-      .select("id, description, status, poets_type, due_date, created_at, started_at, assigned_to, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, year, mileage, color, vin)")
+      .select("id, description, status, poets_type, due_date, created_at, started_at, assigned_to, origin, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, year, mileage, color, vin, status)")
       .eq("discipline", "poets")
       .in("status", ["ingepland", "bezig", "gepauzeerd"]);
     q = applyBranchFilter(q as any, branchFilter);
