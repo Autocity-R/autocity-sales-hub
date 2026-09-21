@@ -83,6 +83,12 @@ export interface ChecklistItem {
   completedAt?: string;
   completedBy?: string;
   completedByName?: string;
+  /** 'werkorder' als het item automatisch is afgevinkt door een afgeronde werkorder */
+  completedVia?: string;
+  /** Werkorder die dit item afvinkte */
+  completedWorkOrderId?: string;
+  /** Werkorder waaraan dit item is toegewezen */
+  linkedWorkOrderId?: string;
   linkedTaskId?: string; // Reference to task created from this checklist item
   [key: string]: any; // Make compatible with Json type
 }
