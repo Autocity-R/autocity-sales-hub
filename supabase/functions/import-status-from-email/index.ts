@@ -85,35 +85,44 @@ function extractVins(text: string): string[] {
 }
 
 /**
- * Leidt de import-status af uit onderwerp + body.
- * Robuust: meerdere onderwerpvarianten, altijd op kleine letters vergeleken.
+ * Leidt de import-status ONDERWERP-GESTUURD af (v6).
+ * Reden: de RDW-mail "Aanvraag EU/EVA-voertuig registreren…" beschrijft in de body
+ * het hele vervolgproces (incl. "kentekenbewijs"), waardoor auto's bij de allereerste
+ * aanvraag-mail direct op 'ingeschreven' sprongen. Hoge statussen (ingeschreven,
+ * goedgekeurd) komen daarom UITSLUITEND uit de onderwerpregel; de body is alleen
+ * een fallback voor veilige statussen (bpm_betaald, aanvraag_ontvangen).
  */
 function inferStatus(subject: string, body: string): string | null {
-  const s = `${subject}\n${body}`.toLowerCase();
+  const subj = String(subject || '').toLowerCase();
+  const bod = String(body || '').toLowerCase();
 
   // Ontkenningen: mails die juist melden dat iets NIET gelukt/ontvangen is
-  const negated = /niet ontvangen|nog niet ontvangen|niet ingeschreven|afgewezen|afgekeurd|kan niet worden/.test(s);
+  const negatedSubj = /niet ontvangen|nog niet ontvangen|niet ingeschreven|afgewezen|afgekeurd|kan niet worden/.test(subj);
 
-  // Ingeschreven / tenaamstelling (hoogste)
-  if (!negated && /kentekenbewijs|tenaamstelling|voertuig is ingeschreven|inschrijving voertuig (is )?(voltooid|gereed)/.test(s))
-    return 'ingeschreven';
+  // Aanvraag-/afspraak-onderwerpen mogen NOOIT tot ingeschreven/goedgekeurd leiden
+  const isRequestSubject = /aanvraag|aanvragen|registreren|besteld|bestellen|afspraak|maken/.test(subj);
 
-  // BPM betaald
-  if (/betaalbericht bpm|bpm.{0,20}betaald|betaling bpm (is )?ontvangen|aangifte bpm.{0,30}betaald/.test(s))
-    return 'bpm_betaald';
+  // Keuringsafspraak: géén statuswijziging
+  if (/afspraak op keuringsstation|keuringsafspraak/.test(subj)) return null;
 
-  // Herkeuring
-  if (/herkeuring|opnieuw ter keuring/.test(s)) return 'herkeuring';
+  // BPM betaald (onderwerp, daarna veilige body-fallback)
+  if (/betaalbericht bpm|bpm.{0,20}betaald/.test(subj)) return 'bpm_betaald';
+  if (/betaalbericht bpm|betaling bpm is ontvangen/.test(bod)) return 'bpm_betaald';
 
-  // Goedgekeurd door RDW
-  if (!negated && /goedgekeurd|keuringsrapport|voertuig is (definitief )?goedgekeurd/.test(s)) return 'goedgekeurd';
+  // Hoge statussen: UITSLUITEND uit het onderwerp, nooit bij aanvraag-/afspraakmails
+  if (!negatedSubj && !isRequestSubject) {
+    if (/kentekenbewijs|tenaamstelling|voertuig is ingeschreven|inschrijving voertuig (is )?(voltooid|gereed)/.test(subj))
+      return 'ingeschreven';
+    if (/goedgekeurd|keuringsrapport|voertuig is (definitief )?goedgekeurd/.test(subj)) return 'goedgekeurd';
+  }
 
-  // Aanvraag ontvangen / in behandeling bij Belastingdienst
-  if (/aanvraag (is )?(ontvangen|in behandeling)|ontvangstbevestiging|wij hebben uw aangifte ontvangen/.test(s))
+  // Aanvraag ontvangen / in behandeling (onderwerp, daarna veilige body-fallback)
+  if (/bevestiging van uw aanvraag|ontvangstbevestiging|aanvraag (is )?(ontvangen|in behandeling)/.test(subj))
     return 'aanvraag_ontvangen';
+  if (/wij hebben uw aangifte ontvangen/.test(bod)) return 'aanvraag_ontvangen';
 
-  // Aanmelding EU/EVA-voertuig
-  if (/eu\/eva|eu-eva|eva-voertuig|voertuig registreren|aanvraag .*registreren|aangifte bpm/.test(s))
+  // EU/EVA-aanvraagmail → aangemeld
+  if (/eu\/eva|eu-eva|eva-voertuig/.test(subj) && /aanvraag|registreren/.test(subj))
     return 'aangemeld';
 
   return null;
