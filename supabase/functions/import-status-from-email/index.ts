@@ -19,6 +19,7 @@ interface ServiceAccount {
 }
 
 const DEFAULT_MAILBOXES = [
+  'import@auto-city.nl',
   'inkoop@auto-city.nl',
   'verkoop@auto-city.nl',
   'info@auto-city.nl',
