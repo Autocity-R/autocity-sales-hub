@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { Vehicle, ImportStatus } from "@/types/inventory";
+import { getImportStatusLabel, importStatusBadgeClass } from "@/lib/importStatus";
 import { Avatar } from "@/components/ui/avatar";
 import { DeliveryConfirmationDialog, type DeliveryData } from "./DeliveryConfirmationDialog";
 import { OnlineStatusBadge } from "./OnlineStatusBadge";
