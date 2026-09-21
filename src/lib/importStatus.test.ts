@@ -36,10 +36,20 @@ describe("importStatus", () => {
       "goedgekeurd",
       "toonplicht",
       "bpm_betaald",
+      "herkeuring",
       "ingeschreven",
     ]);
     const ranks = IMPORT_STATUS_OPTIONS.map((s) => IMPORT_STATUS_RANK[s]);
     expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+  });
+
+  it("biedt herkeuring handmatig aan, tussen bpm_betaald en ingeschreven", () => {
+    expect(IMPORT_STATUS_OPTIONS.indexOf("herkeuring")).toBe(
+      IMPORT_STATUS_OPTIONS.indexOf("bpm_betaald") + 1,
+    );
+    expect(IMPORT_STATUS_LABELS.herkeuring).toBe("Herkeuring");
+    expect(IMPORT_STATUS_RANK.herkeuring).toBe(IMPORT_STATUS_RANK.bpm_betaald);
+    expect(importStatusBadgeClass("herkeuring")).toContain("amber");
   });
 
   it("geeft amber voor acties en rood voor toonplicht", () => {
