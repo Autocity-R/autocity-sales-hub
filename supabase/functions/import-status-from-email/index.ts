@@ -49,29 +49,11 @@ async function getAccessToken(sa: ServiceAccount, mailbox: string): Promise<stri
   return (await res.json()).access_token;
 }
 
-function decodeBody(payload: any): string {
-  let out = '';
-  const walk = (part: any) => {
-    if (!part) return;
-    if ((part.mimeType === 'text/plain' || part.mimeType === 'text/html') && part.body?.data) {
-      try {
-        out += atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/')) + '\n';
-      } catch { /* negeren */ }
-    }
-    if (part.parts) part.parts.forEach(walk);
-  };
-  walk(payload);
-  return out
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/gi, ' ');
-}
-
 function getHeader(headers: any[], name: string): string {
   return headers?.find((h: any) => h.name?.toLowerCase() === name.toLowerCase())?.value || '';
 }
 
-/** Alle VIN-kandidaten (17 tekens, geen I/O/Q) uit onderwerp + body. */
+/** Alle VIN-kandidaten (17 tekens, geen I/O/Q) uit onderwerp + snippet. */
 function extractVins(text: string): string[] {
   const found = new Set<string>();
   const re = /\b[A-HJ-NPR-Z0-9]{17}\b/gi;
@@ -85,46 +67,26 @@ function extractVins(text: string): string[] {
 }
 
 /**
- * Leidt de import-status ONDERWERP-GESTUURD af (v6).
- * Reden: de RDW-mail "Aanvraag EU/EVA-voertuig registreren…" beschrijft in de body
- * het hele vervolgproces (incl. "kentekenbewijs"), waardoor auto's bij de allereerste
- * aanvraag-mail direct op 'ingeschreven' sprongen. Hoge statussen (ingeschreven,
- * goedgekeurd) komen daarom UITSLUITEND uit de onderwerpregel; de body is alleen
- * een fallback voor veilige statussen (bpm_betaald, aanvraag_ontvangen).
+ * v8: 100% DETERMINISTISCH. Alleen een exacte onderwerp-match op de vier
+ * standaardmails van RDW/Belastingdienst. Alle andere onderwerpen → null.
+ * Geen body-interpretatie, geen fuzzy varianten.
  */
-function inferStatus(subject: string, body: string): string | null {
-  const subj = String(subject || '').toLowerCase();
-  const bod = String(body || '').toLowerCase();
+const SUBJECT_RULES: Array<{ prefix: string; status: string }> = [
+  { prefix: 'bevestiging van inschrijving voor voertuig', status: 'ingeschreven' },
+  { prefix: 'belastingdienst betaalbericht bpm', status: 'bpm_betaald' },
+  { prefix: 'bevestiging van uw aanvraag eu/eva-voertuig registreren', status: 'aangemeld' },
+  { prefix: 'aanvraag eu/eva-voertuig registreren voor voertuig', status: 'goedgekeurd' },
+];
 
-  // Ontkenningen: mails die juist melden dat iets NIET gelukt/ontvangen is
-  const negatedSubj = /niet ontvangen|nog niet ontvangen|niet ingeschreven|afgewezen|afgekeurd|kan niet worden/.test(subj);
-
-  // Aanvraag-/afspraak-onderwerpen mogen NOOIT tot ingeschreven/goedgekeurd leiden
-  const isRequestSubject = /aanvraag|aanvragen|registreren|besteld|bestellen|afspraak|maken/.test(subj);
-
-  // Keuringsafspraak: géén statuswijziging
-  if (/afspraak op keuringsstation|keuringsafspraak/.test(subj)) return null;
-
-  // BPM betaald (onderwerp, daarna veilige body-fallback)
-  if (/betaalbericht bpm|bpm.{0,20}betaald/.test(subj)) return 'bpm_betaald';
-  if (/betaalbericht bpm|betaling bpm is ontvangen/.test(bod)) return 'bpm_betaald';
-
-  // Hoge statussen: UITSLUITEND uit het onderwerp, nooit bij aanvraag-/afspraakmails
-  if (!negatedSubj && !isRequestSubject) {
-    if (/kentekenbewijs|tenaamstelling|voertuig is ingeschreven|inschrijving voertuig (is )?(voltooid|gereed)/.test(subj))
-      return 'ingeschreven';
-    if (/goedgekeurd|keuringsrapport|voertuig is (definitief )?goedgekeurd/.test(subj)) return 'goedgekeurd';
+function inferStatus(subject: string): string | null {
+  let subj = String(subject || '').trim().toLowerCase();
+  // Re:/Fwd:-voorvoegsels strippen
+  while (/^(re|fw|fwd|aw|antw)\s*:\s*/i.test(subj)) {
+    subj = subj.replace(/^(re|fw|fwd|aw|antw)\s*:\s*/i, '').trim();
   }
-
-  // Aanvraag ontvangen / in behandeling (onderwerp, daarna veilige body-fallback)
-  if (/bevestiging van uw aanvraag|ontvangstbevestiging|aanvraag (is )?(ontvangen|in behandeling)/.test(subj))
-    return 'aanvraag_ontvangen';
-  if (/wij hebben uw aangifte ontvangen/.test(bod)) return 'aanvraag_ontvangen';
-
-  // EU/EVA-aanvraagmail → aangemeld
-  if (/eu\/eva|eu-eva|eva-voertuig/.test(subj) && /aanvraag|registreren/.test(subj))
-    return 'aangemeld';
-
+  for (const rule of SUBJECT_RULES) {
+    if (subj.startsWith(rule.prefix)) return rule.status;
+  }
   return null;
 }
 
@@ -194,18 +156,18 @@ serve(async (req) => {
       for (const msg of messages) {
         scanned++;
         const msgRes = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject`,
           { headers },
         );
         if (!msgRes.ok) continue;
         const data = await msgRes.json();
         const hdrs = data.payload?.headers || [];
         const subject = getHeader(hdrs, 'Subject');
-        const body = decodeBody(data.payload) + '\n' + (data.snippet || '');
+        const snippet = String(data.snippet || '');
 
-        const vins = extractVins(`${subject} ${body}`);
+        const vins = extractVins(`${subject} ${snippet}`);
         if (vins.length === 0) continue;
-        const status = inferStatus(subject, body);
+        const status = inferStatus(subject);
         if (!status) continue;
 
         for (const vin of vins) {
