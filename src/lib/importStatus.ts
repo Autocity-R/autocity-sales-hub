@@ -11,7 +11,7 @@ export const IMPORT_STATUS_LABELS: Record<string, string> = {
   afgemeld: "Afgemeld",
   aanvraag_ontvangen: "Aanvraag ontvangen",
   bestanden_gevraagd: "Verzoek juiste bestanden",
-  keuringsafspraak: "Keuringsafspraak (steekproef)",
+  keuringsafspraak: "Keuringsafspraak / herkeuring",
   goedgekeurd: "Goedgekeurd",
   toonplicht: "Toonplicht",
   bpm_betaald: "BPM betaald",
@@ -47,7 +47,6 @@ export const IMPORT_STATUS_OPTIONS: string[] = [
   "goedgekeurd",
   "toonplicht",
   "bpm_betaald",
-  "herkeuring",
   "ingeschreven",
 ];
 

@@ -11,7 +11,7 @@ export const renderImportStatus = (status: string) => {
     case "bestanden_gevraagd":
       return <Badge variant="outline" className="bg-amber-100 text-amber-900 border-amber-300">Verzoek juiste bestanden</Badge>;
     case "keuringsafspraak":
-      return <Badge variant="outline" className="bg-amber-100 text-amber-900 border-amber-300">Keuringsafspraak (steekproef)</Badge>;
+      return <Badge variant="outline" className="bg-amber-100 text-amber-900 border-amber-300">Keuringsafspraak / herkeuring</Badge>;
     case "goedgekeurd":
       return <Badge variant="outline" className="bg-green-100 text-green-800">Goedgekeurd</Badge>;
     case "toonplicht":

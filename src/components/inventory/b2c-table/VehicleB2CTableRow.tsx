@@ -36,7 +36,7 @@ const renderImportStatusBadge = (status: ImportStatus | undefined) => {
     niet_aangemeld: { label: "Niet aangemeld", variant: "outline" },
     aanvraag_ontvangen: { label: "Aanvraag ontvangen", variant: "outline" },
     bestanden_gevraagd: { label: "Verzoek juiste bestanden", variant: "outline" },
-    keuringsafspraak: { label: "Keuringsafspraak (steekproef)", variant: "outline" },
+    keuringsafspraak: { label: "Keuringsafspraak / herkeuring", variant: "outline" },
     goedgekeurd: { label: "Goedgekeurd", variant: "secondary" },
     toonplicht: { label: "Toonplicht", variant: "outline" },
     bpm_betaald: { label: "BPM betaald", variant: "default" },
