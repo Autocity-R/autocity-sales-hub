@@ -8,8 +8,14 @@ export const renderImportStatus = (status: string) => {
       return <Badge variant="outline" className="bg-gray-100">Niet gestart</Badge>;
     case "aanvraag_ontvangen":
       return <Badge variant="outline" className="bg-blue-100 text-blue-800">Aanvraag ontvangen</Badge>;
+    case "bestanden_gevraagd":
+      return <Badge variant="outline" className="bg-amber-100 text-amber-900 border-amber-300">Verzoek juiste bestanden</Badge>;
+    case "keuringsafspraak":
+      return <Badge variant="outline" className="bg-amber-100 text-amber-900 border-amber-300">Keuringsafspraak (steekproef)</Badge>;
     case "goedgekeurd":
       return <Badge variant="outline" className="bg-green-100 text-green-800">Goedgekeurd</Badge>;
+    case "toonplicht":
+      return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">Toonplicht</Badge>;
     case "bpm_betaald":
       return <Badge variant="outline" className="bg-purple-100 text-purple-800">BPM Betaald</Badge>;
     case "herkeuring":

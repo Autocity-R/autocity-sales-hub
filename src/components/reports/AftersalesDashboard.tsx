@@ -271,7 +271,10 @@ export const AftersalesDashboard: React.FC<AftersalesDashboardProps> = ({ onView
       'niet_aangemeld': { label: 'Niet aangemeld', className: 'bg-red-500 hover:bg-red-600 text-white border-transparent' },
       'aangekomen': { label: 'Aangekomen', className: 'bg-red-500 hover:bg-red-600 text-white border-transparent' },
       'aanvraag_ontvangen': { label: 'Aanvraag ontvangen', className: 'bg-yellow-500 hover:bg-yellow-600 text-white border-transparent' },
+      'bestanden_gevraagd': { label: 'Verzoek juiste bestanden', className: 'bg-amber-500 hover:bg-amber-600 text-white border-transparent' },
+      'keuringsafspraak': { label: 'Keuringsafspraak (steekproef)', className: 'bg-amber-500 hover:bg-amber-600 text-white border-transparent' },
       'goedgekeurd': { label: 'Goedgekeurd', className: 'bg-blue-500 hover:bg-blue-600 text-white border-transparent' },
+      'toonplicht': { label: 'Toonplicht', className: 'bg-red-600 hover:bg-red-700 text-white border-transparent' },
       'bpm_betaald': { label: 'BPM betaald', className: 'bg-blue-500 hover:bg-blue-600 text-white border-transparent' },
       'ingeschreven': { label: 'Ingeschreven', className: 'bg-green-500 hover:bg-green-600 text-white border-transparent' },
     };

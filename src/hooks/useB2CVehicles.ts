@@ -44,9 +44,12 @@ export const useB2CVehicles = ({
         const importStatusOrder: Record<string, number> = {
           "niet_aangemeld": 1,
           "aanvraag_ontvangen": 2,
-          "goedgekeurd": 3,
-          "bpm_betaald": 4,
-          "ingeschreven": 5
+          "bestanden_gevraagd": 3,
+          "keuringsafspraak": 3,
+          "goedgekeurd": 4,
+          "toonplicht": 5,
+          "bpm_betaald": 6,
+          "ingeschreven": 7
         };
         const aOrder = importStatusOrder[a.importStatus || ""] || 0;
         const bOrder = importStatusOrder[b.importStatus || ""] || 0;
