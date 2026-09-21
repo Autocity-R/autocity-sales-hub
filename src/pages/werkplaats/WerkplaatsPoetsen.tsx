@@ -190,6 +190,13 @@ const WerkplaatsPoetsen: React.FC = () => {
     return { afleveringen: afl, showroom: sh };
   }, [rows, q]);
 
+  // Aflevermoment: alleen voor B2C-verkochte auto's, uitsluitend uit appointments gelezen
+  const soldVehicleIds = useMemo(
+    () => rows.filter(r => r.vehicle?.status === "verkocht_b2c" && r.vehicle?.id).map(r => r.vehicle!.id),
+    [rows],
+  );
+  const deliveryMoments = useDeliveryMoments(soldVehicleIds);
+
   const markDone = async (w: PoetsWO) => {
     const startedAt = w.started_at ? new Date(w.started_at).getTime() : null;
     const workSeconds = startedAt ? Math.max(0, Math.round((Date.now() - startedAt) / 1000)) : null;
