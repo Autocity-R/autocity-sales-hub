@@ -126,7 +126,7 @@ serve(async (req) => {
 
     const after = Math.floor((Date.now() - days * 86400_000) / 1000);
     const query =
-      `after:${after} (belastingdienst OR rdw OR bpm OR "eu/eva" OR "EU/EVA-voertuig" OR betaalbericht OR kentekenbewijs)`;
+      `after:${after} (belastingdienst OR rdw OR bpm OR "eu/eva" OR "EU/EVA-voertuig" OR betaalbericht OR inschrijving OR toonplicht OR "juiste bestanden" OR keuringsstation)`;
 
     const results: any[] = [];
     let scanned = 0;
