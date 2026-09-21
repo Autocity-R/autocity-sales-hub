@@ -92,6 +92,19 @@ const PoetsCard: React.FC<{
         <div className="text-[12.5px] text-slate-600">{specs.length ? specs.join(" · ") : "—"}</div>
         <AsMono className="block mt-0.5">{w.vehicle?.vin || "VIN onbekend"}</AsMono>
       </div>
+      {delivery && (
+        <div
+          className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-[13px] font-bold",
+            delivery.isToday
+              ? "bg-red-50 text-red-700 border-red-300"
+              : "bg-amber-50 text-amber-800 border-amber-200",
+          )}
+        >
+          <CalendarClock className="h-4 w-4 shrink-0" />
+          <span>Aflevering: {delivery.label}</span>
+        </div>
+      )}
       {showDeadline && w.due_date && (
         <div className={cn("inline-flex self-start items-center gap-1.5 px-2.5 py-1 rounded-md border text-[12.5px] font-semibold", toneCls)}>
           Klaar vóór {format(new Date(w.due_date), "EEE d MMM", { locale: nl })}
