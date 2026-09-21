@@ -47,7 +47,34 @@ interface WO {
 }
 
 const SELECT =
-  "id, description, part, parts, status, is_rush, sort_order, photos, created_at, planned_at, started_at, finished_at, paused_seconds, pause_reason, assigned_to, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
+  "id, description, part, parts, status, is_rush, sort_order, photos, created_at, planned_at, due_date, origin, started_at, finished_at, paused_seconds, pause_reason, assigned_to, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
+
+/** Klaar-voor-datum: altijd op een eigen regel, ook op 390px (nooit wegtruncaten). */
+const DueDateRow: React.FC<{ due: string | null; planned?: string | null }> = ({ due, planned }) => {
+  if (!due && !planned) return null;
+  const d = due ? new Date(`${due}T00:00:00`) : null;
+  const tone = !d ? "slate" : (isPast(d) && !isToday(d)) || isToday(d) ? "red" : isTomorrow(d) ? "amber" : "slate";
+  const cls =
+    tone === "red" ? "bg-red-50 text-red-700 border-red-300"
+    : tone === "amber" ? "bg-amber-50 text-amber-800 border-amber-200"
+    : "bg-slate-50 text-slate-700 border-slate-200";
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {d && (
+        <div className={cn("flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-[13px] font-bold whitespace-nowrap", cls)}>
+          <CalendarClock className="h-4 w-4 shrink-0" />
+          Klaar vóór {format(d, "EEE d MMM", { locale: nl })}
+        </div>
+      )}
+      {planned && (
+        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-blue-200 bg-blue-50 text-blue-700 text-[13px] font-semibold whitespace-nowrap">
+          <Clock className="h-4 w-4 shrink-0" />
+          Gepland {format(new Date(planned), "EEE d MMM HH:mm", { locale: nl })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Card: React.FC<{
   w: WO;
@@ -218,7 +245,7 @@ const WerkplaatsSchadeherstel: React.FC = () => {
   useEffect(() => { load(); }, [load]);
 
   const handleStart = async (w: WO) => {
-    if (isPlannedInFuture(w.planned_at)) {
+    if (isHiddenFromFloor(w)) {
       toast({
         title: "Nog niet beschikbaar",
         description: `Deze klus staat gepland voor ${formatPlannedDay(w.planned_at!)} — de auto is er nog niet.`,
@@ -259,8 +286,13 @@ const WerkplaatsSchadeherstel: React.FC = () => {
     load();
   };
 
-  // Gepland voor een latere dag = nog niet zichtbaar op de vloer
-  const open = rows.filter(r => r.status !== "afgerond" && !isPlannedInFuture(r.planned_at));
+  // Alleen EXTERN werk dat later gepland staat blijft verborgen; interne auto's altijd tonen
+  const open = rows
+    .filter(r => r.status !== "afgerond" && !isHiddenFromFloor(r))
+    .sort((a, b) =>
+      Number(b.is_rush) - Number(a.is_rush) ||
+      (a.due_date || "9999-12-31").localeCompare(b.due_date || "9999-12-31") ||
+      (a.sort_order ?? 0) - (b.sort_order ?? 0));
   const done = rows.filter(r => r.status === "afgerond");
 
   return (
