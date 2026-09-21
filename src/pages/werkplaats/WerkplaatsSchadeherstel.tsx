@@ -13,7 +13,10 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { TaskDetailSheet } from "@/components/werkplaats/TaskDetailSheet";
 import { PartChips } from "@/components/werkplaats/workOrderParts";
 import { MyPerformanceCard } from "@/components/werkplaats/MyPerformanceCard";
-import { isPlannedInFuture, formatPlannedDay } from "@/components/werkplaats/plannedVisibility";
+import { isHiddenFromFloor, formatPlannedDay } from "@/components/werkplaats/plannedVisibility";
+import { CalendarClock, Clock } from "lucide-react";
+import { format, isToday, isTomorrow, isPast } from "date-fns";
+import { nl } from "date-fns/locale";
 import { OPEN_WO_STATUSES, pauseWorkOrder, resumeFields, finishFields, totalWorkSeconds } from "@/components/werkplaats/workOrderPause";
 import { PauseTaskDialog } from "@/components/werkplaats/PauseTaskDialog";
 
@@ -28,6 +31,8 @@ interface WO {
   photos: string[] | null;
   created_at: string;
   planned_at: string | null;
+  due_date: string | null;
+  origin: string | null;
   started_at: string | null;
   finished_at: string | null;
   paused_seconds?: number | null;
