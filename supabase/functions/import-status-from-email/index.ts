@@ -1,6 +1,10 @@
 // Leest (ALLEEN LEZEN) de mailbox(en) van Autocity en werkt de import-status van
 // voertuigen bij op basis van Belastingdienst-, RDW- en EU/EVA-mails.
 // Matcht op VIN in onderwerp of body. Verstuurt/verplaatst/verwijdert nooit mail.
+// Uitzonderings-/escalatiestatussen:
+//   E1. "Verzoek om juiste bestanden van voertuig met VIN …" (RDW)          → bestanden_gevraagd  (tussen aangemeld en goedgekeurd)
+//   E2. "Afspraak op keuringsstation maken voor voertuig met VIN …" (RDW)   → keuringsafspraak    (steekproef; tussen aangemeld en goedgekeurd)
+//   E3. "{nr} Toonplicht {merk model} {VIN}" (Domeinen Roerende Zaken)       → toonplicht          (tussen goedgekeurd en bpm_betaald)
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -79,14 +83,18 @@ const SUBJECT_RULES: Array<{ prefix: string; status: string }> = [
 ];
 
 function inferStatus(subject: string): string | null {
-  let subj = String(subject || '').trim().toLowerCase();
+  let s = String(subject || '').trim().toLowerCase();
   // Re:/Fwd:-voorvoegsels strippen
-  while (/^(re|fw|fwd|aw|antw)\s*:\s*/i.test(subj)) {
-    subj = subj.replace(/^(re|fw|fwd|aw|antw)\s*:\s*/i, '').trim();
+  while (/^(re|fw|fwd|aw|antw)\s*:\s*/i.test(s)) {
+    s = s.replace(/^(re|fw|fwd|aw|antw)\s*:\s*/i, '').trim();
   }
   for (const rule of SUBJECT_RULES) {
-    if (subj.startsWith(rule.prefix)) return rule.status;
+    if (s.startsWith(rule.prefix)) return rule.status;
   }
+  // Uitzonderingen/escalaties
+  if (s.startsWith('verzoek om juiste bestanden van voertuig')) return 'bestanden_gevraagd';
+  if (s.startsWith('afspraak op keuringsstation maken voor voertuig')) return 'keuringsafspraak';
+  if (/^\d+\s+toonplicht\s/.test(s)) return 'toonplicht'; // "23200023612 Toonplicht Volkswagen T-Roc WVGZ…"
   return null;
 }
 
@@ -122,7 +130,7 @@ serve(async (req) => {
 
     const after = Math.floor((Date.now() - days * 86400_000) / 1000);
     const query =
-      `after:${after} (belastingdienst OR rdw OR bpm OR "eu/eva" OR "EU/EVA-voertuig" OR betaalbericht OR kentekenbewijs)`;
+      `after:${after} (belastingdienst OR rdw OR bpm OR "eu/eva" OR "EU/EVA-voertuig" OR betaalbericht OR inschrijving OR toonplicht OR "juiste bestanden" OR keuringsstation)`;
 
     const results: any[] = [];
     let scanned = 0;

@@ -7,7 +7,10 @@ export type TransportStatus =
 export type ImportStatus = 
   | "niet_aangemeld" 
   | "aanvraag_ontvangen"
+  | "bestanden_gevraagd"
+  | "keuringsafspraak"
   | "goedgekeurd"
+  | "toonplicht"
   | "bpm_betaald"
   | "ingeschreven";
 

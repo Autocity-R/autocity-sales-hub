@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { CustomCheckbox } from "@/components/ui/custom-checkbox";
 import { VehicleActionsDropdown } from "./VehicleActionsDropdown";
 import { Vehicle, ImportStatus, WorkshopStatus } from "@/types/inventory";
+import { getImportStatusLabel, importStatusBadgeClass } from "@/lib/importStatus";
 import { Car, CheckCircle2, CalendarCheck } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { PurchaserQuickEdit } from "../PurchaserQuickEdit";
@@ -34,16 +35,19 @@ const renderImportStatusBadge = (status: ImportStatus | undefined) => {
   const statusMap: Record<ImportStatus, { label: string, variant: "default" | "outline" | "secondary" | "destructive" }> = {
     niet_aangemeld: { label: "Niet aangemeld", variant: "outline" },
     aanvraag_ontvangen: { label: "Aanvraag ontvangen", variant: "outline" },
+    bestanden_gevraagd: { label: "Verzoek juiste bestanden", variant: "outline" },
+    keuringsafspraak: { label: "Keuringsafspraak (steekproef)", variant: "outline" },
     goedgekeurd: { label: "Goedgekeurd", variant: "secondary" },
+    toonplicht: { label: "Toonplicht", variant: "outline" },
     bpm_betaald: { label: "BPM betaald", variant: "default" },
     ingeschreven: { label: "Ingeschreven", variant: "default" }
   };
 
   // Handle unknown status values with fallback
   const normalized = (status ?? "niet_aangemeld") as ImportStatus;
-  const statusInfo = statusMap[normalized] || { label: (normalized as string).replace(/_/g, ' ').toUpperCase() || "ONBEKEND", variant: "outline" as const };
+  const statusInfo = statusMap[normalized] || { label: getImportStatusLabel(normalized), variant: "outline" as const };
   const { label, variant } = statusInfo;
-  return <Badge variant={variant}>{label}</Badge>;
+  return <Badge variant={variant} className={importStatusBadgeClass(normalized)}>{label}</Badge>;
 };
 
 const renderWorkshopStatusBadge = (status: WorkshopStatus) => {

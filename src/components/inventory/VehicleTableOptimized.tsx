@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { Vehicle, ImportStatus } from "@/types/inventory";
+import { getImportStatusLabel, importStatusBadgeClass } from "@/lib/importStatus";
 import { Avatar } from "@/components/ui/avatar";
 import { DeliveryConfirmationDialog, type DeliveryData } from "./DeliveryConfirmationDialog";
 import { OnlineStatusBadge } from "./OnlineStatusBadge";
@@ -47,18 +48,17 @@ interface VehicleTableProps {
 }
 
 const renderImportStatusBadge = (status: ImportStatus) => {
-  const statusMap: Record<ImportStatus, { label: string, variant: "default" | "outline" | "secondary" | "destructive" }> = {
-    niet_aangemeld: { label: "Niet aangemeld", variant: "outline" },
-    aanvraag_ontvangen: { label: "Aanvraag ontvangen", variant: "outline" },
-    goedgekeurd: { label: "Goedgekeurd", variant: "secondary" },
-    bpm_betaald: { label: "BPM betaald", variant: "default" },
-    ingeschreven: { label: "Ingeschreven", variant: "default" }
+  const variantMap: Partial<Record<ImportStatus, "default" | "outline" | "secondary" | "destructive">> = {
+    goedgekeurd: "secondary",
+    bpm_betaald: "default",
+    ingeschreven: "default",
   };
-  
-  // Handle unknown status values with fallback
-  const statusInfo = statusMap[status] || { label: status.replace(/_/g, ' ').toUpperCase(), variant: "outline" as const };
-  const { label, variant } = statusInfo;
-  return <Badge variant={variant}>{label}</Badge>;
+  const variant = variantMap[status] || "outline";
+  return (
+    <Badge variant={variant} className={importStatusBadgeClass(status)}>
+      {getImportStatusLabel(status)}
+    </Badge>
+  );
 };
 
 // Memoized row component to prevent unnecessary re-renders

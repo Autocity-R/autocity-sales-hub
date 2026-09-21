@@ -376,7 +376,10 @@ export const VehicleForm: React.FC<VehicleFormProps> = ({
               <SelectContent>
                 <SelectItem value="niet_aangemeld">Niet aangemeld</SelectItem>
                 <SelectItem value="aanvraag_ontvangen">Aanvraag ontvangen</SelectItem>
+                <SelectItem value="bestanden_gevraagd">Verzoek juiste bestanden</SelectItem>
+                <SelectItem value="keuringsafspraak">Keuringsafspraak (steekproef)</SelectItem>
                 <SelectItem value="goedgekeurd">Goedgekeurd</SelectItem>
+                <SelectItem value="toonplicht">Toonplicht</SelectItem>
                 <SelectItem value="bpm_betaald">BPM Betaald</SelectItem>
                 <SelectItem value="ingeschreven">Ingeschreven</SelectItem>
               </SelectContent>

@@ -1,6 +1,6 @@
 // Gedeelde logica voor het bijwerken van vehicles.import_status
 // Gebruikt door sheets-import-webhook (Google Sheets) en
-// import-status-from-email (Belastingdienst/RDW/EU-EVA mails).
+// import-status-from-email (RDW/Belastingdienst/Domeinen-mails).
 
 export const statusMapping: Record<string, string> = {
   'Niet gestart': 'niet_gestart',
@@ -8,7 +8,10 @@ export const statusMapping: Record<string, string> = {
   'Aangemeld': 'aangemeld',
   'Aanvraag ontvangen': 'aanvraag_ontvangen',
   'Aangekomen': 'aangekomen',
+  'Verzoek juiste bestanden': 'bestanden_gevraagd',
+  'Keuringsafspraak': 'keuringsafspraak',
   'Goedgekeurd': 'goedgekeurd',
+  'Toonplicht': 'toonplicht',
   'Transport geregeld': 'transport_geregeld',
   'Onderweg': 'onderweg',
   'Afgemeld': 'afgemeld',
@@ -18,6 +21,9 @@ export const statusMapping: Record<string, string> = {
   'Ingeschreven': 'ingeschreven',
 };
 
+// Rangorde in de importflow. Uitzonderingsstatussen (bestanden_gevraagd,
+// keuringsafspraak, toonplicht) zitten tussen de hoofdstatussen in, zodat de
+// flow er wel naartoe kan en er daarna gewoon overheen kan (nooit terug).
 export const statusHierarchy: Record<string, number> = {
   niet_gestart: 0,
   niet_aangemeld: 1,
@@ -27,10 +33,13 @@ export const statusHierarchy: Record<string, number> = {
   onderweg: 4,
   afgemeld: 4,
   aanvraag_ontvangen: 5,
-  goedgekeurd: 6,
-  bpm_betaald: 7,
-  herkeuring: 7,
-  ingeschreven: 8,
+  bestanden_gevraagd: 6,   // RDW keurt bestanden/foto's af — actie nodig
+  keuringsafspraak: 6,     // steekproef: fysiek langs het keuringsstation
+  goedgekeurd: 7,
+  toonplicht: 8,           // Belastingdienst/Domeinen roept op om de auto te tonen
+  bpm_betaald: 9,
+  herkeuring: 9,
+  ingeschreven: 10,
 };
 
 export const statusByIndex: Record<number, string> = {
@@ -40,9 +49,11 @@ export const statusByIndex: Record<number, string> = {
   3: 'aangekomen',
   4: 'transport_geregeld',
   5: 'aanvraag_ontvangen',
-  6: 'goedgekeurd',
-  7: 'bpm_betaald',
-  8: 'ingeschreven',
+  6: 'keuringsafspraak',
+  7: 'goedgekeurd',
+  8: 'toonplicht',
+  9: 'bpm_betaald',
+  10: 'ingeschreven',
 };
 
 export interface VehicleRow {
