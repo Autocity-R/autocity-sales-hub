@@ -194,18 +194,18 @@ serve(async (req) => {
       for (const msg of messages) {
         scanned++;
         const msgRes = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject`,
           { headers },
         );
         if (!msgRes.ok) continue;
         const data = await msgRes.json();
         const hdrs = data.payload?.headers || [];
         const subject = getHeader(hdrs, 'Subject');
-        const body = decodeBody(data.payload) + '\n' + (data.snippet || '');
+        const snippet = String(data.snippet || '');
 
-        const vins = extractVins(`${subject} ${body}`);
+        const vins = extractVins(`${subject} ${snippet}`);
         if (vins.length === 0) continue;
-        const status = inferStatus(subject, body);
+        const status = inferStatus(subject);
         if (!status) continue;
 
         for (const vin of vins) {
