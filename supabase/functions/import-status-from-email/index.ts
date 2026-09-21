@@ -85,8 +85,8 @@ const SUBJECT_RULES: Array<{ prefix: string; status: string }> = [
 function inferStatus(subject: string): string | null {
   let s = String(subject || '').trim().toLowerCase();
   // Re:/Fwd:-voorvoegsels strippen
-  while (/^(re|fw|fwd|aw|antw)\s*:\s*/i.test(s)) {
-    s = s.replace(/^(re|fw|fwd|aw|antw)\s*:\s*/i, '').trim();
+  while (/^(re|fw|fwd|aw|antw|doorgest\w*|doorst\w*)\s*[.:]*\s*:\s*/i.test(s)) {
+    s = s.replace(/^(re|fw|fwd|aw|antw|doorgest\w*|doorst\w*)\s*[.:]*\s*:\s*/i, '').trim();
   }
   for (const rule of SUBJECT_RULES) {
     if (s.startsWith(rule.prefix)) return rule.status;
