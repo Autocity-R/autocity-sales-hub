@@ -691,7 +691,10 @@ const getImportStatusLabel = (status: ImportStatus): string => {
   const statusLabels: Record<ImportStatus, string> = {
     'niet_aangemeld': 'Niet aangemeld',
     'aanvraag_ontvangen': 'Aanvraag ontvangen',
+    'bestanden_gevraagd': 'Verzoek juiste bestanden',
+    'keuringsafspraak': 'Keuringsafspraak (steekproef)',
     'goedgekeurd': 'Goedgekeurd',
+    'toonplicht': 'Toonplicht',
     'bpm_betaald': 'BPM Betaald',
     'ingeschreven': 'Ingeschreven'
   };
