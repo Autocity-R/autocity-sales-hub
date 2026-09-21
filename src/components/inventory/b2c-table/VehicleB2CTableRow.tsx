@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { CustomCheckbox } from "@/components/ui/custom-checkbox";
 import { VehicleActionsDropdown } from "./VehicleActionsDropdown";
 import { Vehicle, ImportStatus, WorkshopStatus } from "@/types/inventory";
+import { getImportStatusLabel, importStatusBadgeClass } from "@/lib/importStatus";
 import { Car, CheckCircle2, CalendarCheck } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { PurchaserQuickEdit } from "../PurchaserQuickEdit";
