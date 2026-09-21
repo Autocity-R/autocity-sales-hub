@@ -16,6 +16,8 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { Play, Timer, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { buildHaystack, matchesSearch } from "@/lib/searchNormalize";
+import { useDeliveryMoments, DeliveryMoment } from "@/components/werkplaats/deliveryAppointment";
+import { CalendarClock } from "lucide-react";
 
 interface PoetsWO {
   id: string;
@@ -26,6 +28,7 @@ interface PoetsWO {
   created_at: string;
   started_at: string | null;
   assigned_to: string | null;
+  origin?: string | null;
   vehicle: {
     id: string;
     brand: string;
@@ -35,6 +38,7 @@ interface PoetsWO {
     mileage: number | null;
     color: string | null;
     vin: string | null;
+    status?: string | null;
   } | null;
 }
 
