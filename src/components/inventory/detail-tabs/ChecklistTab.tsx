@@ -44,24 +44,60 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
   const checklist = vehicle.details?.preDeliveryChecklist || [];
 
   // Werkorder-status voor gekoppelde items
-  const linkedWorkOrderIds = checklist
-    .filter((i: any) => i.linkedWorkOrderId)
-    .map((i: any) => i.linkedWorkOrderId as string);
+  const linkedWorkOrderIds = Array.from(new Set(
+    checklist
+      .filter((i: any) => i.linkedWorkOrderId || i.completedWorkOrderId)
+      .map((i: any) => (i.completedWorkOrderId || i.linkedWorkOrderId) as string),
+  ));
   const { data: workOrderStatusMap = {} } = useQuery({
     queryKey: ["checklist-workorders", linkedWorkOrderIds],
     queryFn: async () => {
       if (linkedWorkOrderIds.length === 0) return {};
       const { data } = await supabase
         .from("work_orders")
-        .select("id, status, discipline")
+        .select("id, status, discipline, assigned_to, approved_by")
         .in("id", linkedWorkOrderIds);
-      const map: Record<string, { status: string; discipline: string }> = {};
-      (data || []).forEach((r: any) => { map[r.id] = { status: r.status, discipline: r.discipline }; });
+      const rows = data || [];
+      const userIds = Array.from(new Set(
+        rows.flatMap((r: any) => [r.assigned_to, r.approved_by]).filter(Boolean),
+      )) as string[];
+      const nameById: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles").select("id, first_name, last_name").in("id", userIds);
+        (profs || []).forEach((p: any) => {
+          const full = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
+          if (full) nameById[p.id] = full;
+        });
+      }
+      const map: Record<string, { status: string; discipline: string; workerName: string | null }> = {};
+      rows.forEach((r: any) => {
+        map[r.id] = {
+          status: r.status,
+          discipline: r.discipline,
+          workerName: nameById[r.assigned_to] || nameById[r.approved_by] || null,
+        };
+      });
       return map;
     },
     enabled: linkedWorkOrderIds.length > 0,
     staleTime: 30000,
   });
+
+  /** Wie heeft het item afgevinkt — bij werkorder-items de naam van de monteur. */
+  const completionLine = (item: any): string => {
+    const viaWorkOrder = item.completedVia === "werkorder"
+      || (item.completedByName || "").toLowerCase().includes("werkorder");
+    const woId = item.completedWorkOrderId || item.linkedWorkOrderId;
+    const derived = woId ? (workOrderStatusMap as any)[woId]?.workerName : null;
+    if (viaWorkOrder) {
+      const naam = (item.completedByName && !item.completedByName.toLowerCase().includes("werkorder")
+        ? item.completedByName
+        : null) || derived;
+      return naam ? `Voltooid via werkorder — ${naam}` : "Voltooid via werkorder";
+    }
+    return `Voltooid door ${item.completedByName || derived || "onbekend"}`;
+  };
   const completedCount = checklist.filter(item => item.completed).length;
   const totalCount = checklist.length;
   const progressPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
