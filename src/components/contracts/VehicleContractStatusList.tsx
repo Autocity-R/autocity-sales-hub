@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileText, Send, Eye, CheckCircle2, Ban, Download, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PdfViewer } from "@/components/contracts/PdfViewer";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,6 +66,7 @@ export const VehicleContractStatusList: React.FC<Props> = ({
   const [toCancel, setToCancel] = useState<VehicleContractV2 | null>(null);
   const [busy, setBusy] = useState(false);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [toView, setToView] = useState<VehicleContractV2 | null>(null);
 
   const { data: contracts = [] } = useQuery({
     queryKey: ["contractsV2", vehicleId],
@@ -149,12 +152,10 @@ export const VehicleContractStatusList: React.FC<Props> = ({
                   </Badge>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  {c.pdf_url && (
-                    <Button size="sm" variant="ghost" asChild>
-                      <a href={c.pdf_url} target="_blank" rel="noopener noreferrer">
-                        <Download className="h-3 w-3 mr-1" />
-                        Getekende PDF
-                      </a>
+                  {(c.pdf_path || c.pdf_url) && (
+                    <Button size="sm" variant="ghost" onClick={() => setToView(c)}>
+                      <Download className="h-3 w-3 mr-1" />
+                      Getekende PDF
                     </Button>
                   )}
                   {!readOnly && !signed && c.status !== "opgeslagen" && (
@@ -241,6 +242,20 @@ export const VehicleContractStatusList: React.FC<Props> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={Boolean(toView)} onOpenChange={(open) => !open && setToView(null)}>
+        <DialogContent className="flex h-[calc(100dvh-1.5rem)] max-h-[95dvh] max-w-6xl flex-col overflow-hidden">
+          <DialogHeader className="pr-10">
+            <DialogTitle>{toView?.contract_number || "Koopcontract"}</DialogTitle>
+            <DialogDescription>Bekijk het getekende koopcontract.</DialogDescription>
+          </DialogHeader>
+          <PdfViewer
+            url={toView?.pdf_url}
+            fileName={`${toView?.contract_number || "koopcontract"}.pdf`}
+            className="flex-1"
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

@@ -307,11 +307,9 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
                       <Eye className="h-4 w-4 mr-2" />
                       Bekijk Contract
                     </Button>
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={contract.url} target="_blank" rel="noopener noreferrer" className="flex items-center">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download PDF
-                      </a>
+                    <Button variant="outline" size="sm" onClick={() => setShowContractViewer(true)}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Open PDF
                     </Button>
                   </div>
                 </div>

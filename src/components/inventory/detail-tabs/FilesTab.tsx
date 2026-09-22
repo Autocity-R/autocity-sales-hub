@@ -9,6 +9,7 @@ import { SavedContractMetadata, deleteContractFromVehicle } from "@/services/con
 import { useToast } from "@/hooks/use-toast";
 import { IntakeInspectionList } from "@/components/inventory/intake/IntakeInspectionList";
 import { VehicleContractStatusList } from "@/components/contracts/VehicleContractStatusList";
+import { ContractViewer } from "@/components/contracts/ContractViewer";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +52,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contractToDelete, setContractToDelete] = useState<VehicleFile | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [contractToView, setContractToView] = useState<VehicleFile | null>(null);
   
   const contractFiles = files.filter(
     f =>
@@ -167,9 +169,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Button size="sm" variant="ghost" asChild>
-                          <a href={file.url || "#"} target="_blank" rel="noopener noreferrer">Bekijk</a>
-                          </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setContractToView(file)}>
+                          Bekijk
+                        </Button>
                         {!readOnly && (
                           <Button 
                             size="sm" 
@@ -463,6 +465,9 @@ export const FilesTab: React.FC<FilesTabProps> = ({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+      {contractToView && (
+        <ContractViewer contract={contractToView} onClose={() => setContractToView(null)} />
+      )}
     </>
   );
 };
