@@ -16,7 +16,9 @@ import { useB2CVehicles } from "@/hooks/useB2CVehicles";
 import { InventoryBulkActions } from "@/components/inventory/InventoryBulkActions";
 import { BulkBranchMoveButton } from "@/components/inventory/BulkBranchMoveButton";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { useDeliveryMoments } from "@/components/werkplaats/deliveryAppointment";
+import { getChecklistProgress, sortB2CVehicles } from "@/lib/checklistProgress";
 import { Vehicle } from "@/types/inventory";
 import { ContractOptions } from "@/types/email";
 import { useToast } from "@/hooks/use-toast";
@@ -84,41 +86,14 @@ const InventoryB2C = () => {
     return Array.from(new Set(names)).sort();
   }, [vehicles]);
 
-  // Helper: check if vehicle checklist is 100%
-  const getChecklistProgress = (vehicle: Vehicle) => {
-    const checklist = vehicle.details?.preDeliveryChecklist || [];
-    if (checklist.length === 0) return 0;
-    const completed = checklist.filter((item: { completed?: boolean }) => item.completed).length;
-    return Math.round((completed / checklist.length) * 100);
-  };
-
-  // Fetch delivery dates from appointments table
-  const appointmentIds = useMemo(() => {
-    return vehicles
-      .map(v => v.details?.deliveryAppointmentId)
-      .filter((id): id is string => Boolean(id));
-  }, [vehicles]);
-
-  const { data: deliveryDatesMap = {} } = useQuery({
-    queryKey: ['deliveryAppointments', appointmentIds],
-    queryFn: async () => {
-      if (appointmentIds.length === 0) return {};
-      const { data } = await supabase
-        .from('appointments')
-        .select('id, starttime, vehicleid, status')
-        .in('id', appointmentIds)
-        .neq('status', 'geannuleerd');
-      
-      const map: Record<string, string> = {};
-      data?.forEach(apt => {
-        if (apt.vehicleid) {
-          map[apt.vehicleid] = apt.starttime;
-        }
-      });
-      return map;
-    },
-    enabled: appointmentIds.length > 0,
-  });
+  // Aflevermoment: zelfde bron als het poets-menu (appointments, alleen lezen)
+  const vehicleIds = useMemo(() => vehicles.map(v => v.id), [vehicles]);
+  const deliveryMoments = useDeliveryMoments(vehicleIds);
+  const deliveryDatesMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    Object.values(deliveryMoments).forEach(d => { m[d.vehicleId] = d.startTime; });
+    return m;
+  }, [deliveryMoments]);
 
   // Filter vehicles by salesperson + delivery status
   const displayVehicles = useMemo(() => {
@@ -131,26 +106,27 @@ const InventoryB2C = () => {
     if (deliveryFilter === "ready") {
       filtered = filtered.filter(v => {
         const progress = getChecklistProgress(v);
-        return progress === 100 && v.importStatus === 'ingeschreven';
+        return progress.hasItems && progress.percentage === 100 && v.importStatus === 'ingeschreven';
+      });
+    } else if (deliveryFilter === "not_ready") {
+      filtered = filtered.filter(v => {
+        const progress = getChecklistProgress(v);
+        return !(progress.hasItems && progress.percentage === 100 && v.importStatus === 'ingeschreven');
       });
     } else if (deliveryFilter === "scheduled") {
       filtered = filtered.filter(v => !!deliveryDatesMap[v.id]);
     }
 
-    // Sort by delivery date ascending when delivery filter active
-    if (deliveryFilter === "ready" || deliveryFilter === "scheduled") {
-      filtered = [...filtered].sort((a, b) => {
-        const dateA = deliveryDatesMap[a.id] || '';
-        const dateB = deliveryDatesMap[b.id] || '';
-        if (!dateA && !dateB) return 0;
-        if (!dateA) return 1;
-        if (!dateB) return -1;
-        return new Date(dateA).getTime() - new Date(dateB).getTime();
-      });
+    // Gekozen kolom écht toepassen; zonder expliciete keuze bij afleverfilter op afleverdatum
+    const userSorted = sortField && sortField !== "created_at";
+    if (userSorted) {
+      filtered = sortB2CVehicles(filtered, sortField, sortDirection, deliveryDatesMap);
+    } else if (deliveryFilter === "ready" || deliveryFilter === "scheduled") {
+      filtered = sortB2CVehicles(filtered, "deliveryDate", "asc", deliveryDatesMap);
     }
 
     return filtered;
-  }, [vehicles, salespersonFilter, deliveryFilter, deliveryDatesMap, branchFilter]);
+  }, [vehicles, salespersonFilter, deliveryFilter, deliveryDatesMap, branchFilter, sortField, sortDirection]);
 
   // Properly fetch files for selected vehicle using our hook
   const { vehicleFiles } = useVehicleFiles(selectedVehicle);

@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.guard_directeur_vehicle_update() FROM PUBLIC, anon, authenticated;

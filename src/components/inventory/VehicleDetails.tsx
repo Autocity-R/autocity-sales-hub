@@ -28,6 +28,8 @@ import { cn } from "@/lib/utils";
 import { useVehicleFiles } from "@/hooks/useVehicleFiles";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { supabase } from "@/integrations/supabase/client";
+import { toast as toastFn } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 
 interface VehicleDetailsProps {
@@ -64,7 +66,18 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   const hasUserChangesRef = useRef(false);
   
   // Role-based access
-  const { hasPriceAccess, isOperationalUser, canChecklistToggle, isAftersalesManager, canManageChecklists, canEditBpmFlags, canEditKenteken } = useRoleAccess();
+  const { hasPriceAccess, isOperationalUser, canChecklistToggle, isAftersalesManager, canManageChecklists, canEditBpmFlags, canEditKenteken, isOperationeelDirecteur } = useRoleAccess();
+
+  // Operationeel directeur: uitsluitend de aflever-checklist opslaan (server-side, atomisch)
+  const checklistOnly = isOperationeelDirecteur();
+  const saveChecklistOnly = async (v: Vehicle) => {
+    const { error } = await (supabase as any).rpc("set_vehicle_checklist", {
+      p_vehicle_id: v.id,
+      p_checklist: (v.details as any)?.preDeliveryChecklist || [],
+    });
+    if (error) toastFn({ title: "Checklist niet opgeslagen", description: error.message, variant: "destructive" });
+  };
+  const effectiveAutoSave = checklistOnly ? saveChecklistOnly : onAutoSave;
   
   // Voor algemene voertuig editing (details tab, prijzen, etc.) - aftersales_manager krijgt read-only voor details
   const isReadOnly = isOperationalUser() || isAftersalesManager();
@@ -93,7 +106,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
   
   // Auto-save when user makes changes (debounced)
   useEffect(() => {
-    if (onAutoSave && hasUserChangesRef.current && debouncedVehicle.id === initialVehicleRef.current.id) {
+    if (effectiveAutoSave && hasUserChangesRef.current && debouncedVehicle.id === initialVehicleRef.current.id) {
       // Check if there are actual changes from initial state
       const hasChanges = JSON.stringify(debouncedVehicle) !== JSON.stringify(initialVehicleRef.current);
       
@@ -114,12 +127,12 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
       
       if (hasChanges) {
         console.log('Auto-saving vehicle changes...');
-        onAutoSave(debouncedVehicle);
+        effectiveAutoSave(debouncedVehicle);
         // Update initial reference to prevent re-saving the same changes
         initialVehicleRef.current = debouncedVehicle;
       }
     }
-  }, [debouncedVehicle, onAutoSave]); // Removed 'vehicle' dependency to prevent infinite loops
+  }, [debouncedVehicle, effectiveAutoSave]); // Removed 'vehicle' dependency to prevent infinite loops
   
   const handleChange = (field: keyof Vehicle, value: any) => {
     hasUserChangesRef.current = true; // Mark that user has made changes
@@ -167,6 +180,10 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
       return;
     }
     
+    if (checklistOnly) {
+      saveChecklistOnly(editedVehicle).then(onClose);
+      return;
+    }
     onUpdate(editedVehicle);
   };
 
@@ -276,7 +293,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                         hasUserChangesRef.current = true;
                         setEditedVehicle(updatedVehicle);
                       }}
-                      onAutoSave={onAutoSave}
+                      onAutoSave={effectiveAutoSave}
                       readOnly={checklistReadOnly}
                       canToggleOnly={checklistCanToggleOnly}
                     />

@@ -16,6 +16,9 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { PartChips, getWorkOrderParts } from "@/components/werkplaats/workOrderParts";
 import { isHiddenFromFloor, formatPlannedDay } from "@/components/werkplaats/plannedVisibility";
 import { buildHaystack, matchesSearch } from "@/lib/searchNormalize";
+import { useDeliveryMoments } from "@/components/werkplaats/deliveryAppointment";
+import { EditWorkOrderDialog } from "@/components/werkplaats/EditWorkOrderDialog";
+import { CalendarClock, Pencil } from "lucide-react";
 
 interface WO {
   id: string; description: string; part: string | null; parts?: string[] | null; status: string; is_rush: boolean; sort_order: number;
@@ -23,7 +26,8 @@ interface WO {
   planned_at?: string | null;
   origin?: string | null;
   vehicle_id?: string | null;
-  vehicle: { brand: string; model: string; year: number | null; license_number: string | null; vin: string | null; mileage: number | null; color: string | null } | null;
+  assigned_to?: string | null;
+  vehicle: { id?: string; status?: string | null; brand: string; model: string; year: number | null; license_number: string | null; vin: string | null; mileage: number | null; color: string | null } | null;
 }
 
 const hay = (w: WO) =>
@@ -37,9 +41,12 @@ const fmtDateTime = (d?: string | null) =>
 
 const WerkplaatsUitdeuken: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
-  const { isUitdeukerExtern, isDirectieReadOnly } = useRoleAccess();
+  const { isUitdeukerExtern, isDirectieReadOnly, canPlanWorkOrders } = useRoleAccess();
   const isExtern = isUitdeukerExtern();
   const readOnly = isDirectieReadOnly();
+  // Bewerken + ▲/▼-prioriteit: planners (incl. operationeel directeur); afronden blijft bij readOnly verborgen
+  const canPlan = canPlanWorkOrders() && !isExtern;
+  const [editTarget, setEditTarget] = useState<WO | null>(null);
   const [rows, setRows] = useState<WO[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<WO | null>(null);
@@ -47,7 +54,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
   const [tab, setTab] = useState<"open" | "historie">("open");
   const [history, setHistory] = useState<WO[]>([]);
   const [histLoading, setHistLoading] = useState(false);
-  const canReorder = !isExtern && !readOnly && !q.trim();
+  const canReorder = canPlan && !q.trim();
 
   const isDone = (w: WO) => w.status === "afgerond" || w.status === "goedgekeurd";
   const openSorted = (list: WO[]) =>
@@ -97,7 +104,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
   const load = async () => {
     setLoading(true);
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const select = "id, description, part, parts, status, is_rush, sort_order, photos, branch, created_at, planned_at, origin, approved_at, finished_at, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
+    const select = "id, description, part, parts, status, is_rush, sort_order, photos, branch, created_at, planned_at, origin, approved_at, finished_at, vehicle_id, assigned_to, vehicle:vehicles!work_orders_vehicle_id_fkey(id, status, brand, model, year, license_number, vin, mileage, color)";
 
     const openStatuses = isExtern ? ["aangevraagd", "ingepland", "bezig"] : ["ingepland", "bezig"];
     let qOpen = supabase.from("work_orders").select(select)
@@ -124,7 +131,7 @@ const WerkplaatsUitdeuken: React.FC = () => {
   /** Volledige uitdeuk-historie (laatste 6 maanden): wat is er wanneer aan welke auto gedaan. */
   const loadHistory = async () => {
     setHistLoading(true);
-    const select = "id, description, part, parts, status, is_rush, sort_order, photos, branch, created_at, planned_at, origin, approved_at, finished_at, vehicle_id, vehicle:vehicles!work_orders_vehicle_id_fkey(brand, model, year, license_number, vin, mileage, color)";
+    const select = "id, description, part, parts, status, is_rush, sort_order, photos, branch, created_at, planned_at, origin, approved_at, finished_at, vehicle_id, assigned_to, vehicle:vehicles!work_orders_vehicle_id_fkey(id, status, brand, model, year, license_number, vin, mileage, color)";
     const from = new Date(Date.now() - 183 * 24 * 60 * 60 * 1000).toISOString();
     let qh = supabase.from("work_orders").select(select)
       .eq("discipline", "uitdeuk")
@@ -138,6 +145,13 @@ const WerkplaatsUitdeuken: React.FC = () => {
     setHistLoading(false);
   };
   useEffect(() => { if (tab === "historie") loadHistory(); /* eslint-disable-line */ }, [tab, branchFilter]);
+
+  // Aflevermoment (alleen lezen uit appointments) voor B2C-verkochte auto's
+  const soldIds = useMemo(
+    () => rows.filter(r => r.vehicle?.status === "verkocht_b2c" && r.vehicle?.id).map(r => r.vehicle!.id!),
+    [rows],
+  );
+  const deliveryMoments = useDeliveryMoments(soldIds);
 
   const visibleRows = useMemo(() => {
     const list = [...openSorted(rows), ...rows.filter(w => isDone(w))];
@@ -341,11 +355,35 @@ const WerkplaatsUitdeuken: React.FC = () => {
                         </div>
                       </div>
 
+                      {v?.status === "verkocht_b2c" && (() => {
+                        const dm = v.id ? deliveryMoments[v.id] : undefined;
+                        return (
+                          <div className="mt-2 flex items-center gap-2 flex-wrap">
+                            <AsPill tone="green">VERKOCHT B2C</AsPill>
+                            {dm && (
+                              <span className={cn(
+                                "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-[12px] font-bold",
+                                dm.isUrgent ? "bg-red-50 text-red-700 border-red-300" : "bg-amber-50 text-amber-800 border-amber-200",
+                              )}>
+                                <CalendarClock className="h-3.5 w-3.5" /> Aflevering {dm.label}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                       <PartChips workOrder={w as any} className="mt-3" />
                       <div className="mt-2 text-[13px] text-slate-700">{w.description}</div>
                       {w.photos && w.photos.length > 0 && (
                         <div className="flex gap-2 mt-3 flex-wrap">
                           {w.photos.map((p, i) => <WorkshopPhoto key={i} path={p} className="w-20 h-20" />)}
+                        </div>
+                      )}
+
+                      {!done && canPlan && (
+                        <div className="flex items-center gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" variant="outline" onClick={() => setEditTarget(w)}>
+                            <Pencil className="h-3.5 w-3.5 mr-1" /> Bewerken
+                          </Button>
                         </div>
                       )}
 
@@ -367,6 +405,12 @@ const WerkplaatsUitdeuken: React.FC = () => {
             })}
           </div>
         )}
+        <EditWorkOrderDialog
+          open={!!editTarget}
+          onOpenChange={(v) => { if (!v) setEditTarget(null); }}
+          workOrder={editTarget ? { ...editTarget, discipline: "uitdeuk", assigned_to: editTarget.assigned_to ?? null, planned_at: editTarget.planned_at ?? null } as any : null}
+          onSaved={() => { setEditTarget(null); load(); }}
+        />
         <TaskDetailSheet
           open={!!detail}
           onOpenChange={(v) => !v && setDetail(null)}

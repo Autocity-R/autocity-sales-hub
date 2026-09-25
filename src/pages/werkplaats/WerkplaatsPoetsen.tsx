@@ -17,6 +17,7 @@ import { Play, Timer, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { buildHaystack, matchesSearch } from "@/lib/searchNormalize";
 import { useDeliveryMoments, DeliveryMoment } from "@/components/werkplaats/deliveryAppointment";
+import { splitPoetsRows, poetsDeadline } from "@/components/werkplaats/poetsDeadline";
 import { CalendarClock } from "lucide-react";
 
 interface PoetsWO {
@@ -69,6 +70,7 @@ const PoetsCard: React.FC<{
   const { isDirectieReadOnly } = useRoleAccess();
   const readOnly = isDirectieReadOnly();
   const tone = deadlineTone(w.due_date);
+  const deadline = poetsDeadline(w, delivery ?? undefined);
   const timer = useLiveTimer(w.status === "bezig" ? w.started_at : null);
   const toneCls =
     tone === "red" ? "bg-red-50 text-red-700 border-red-200"
@@ -96,7 +98,7 @@ const PoetsCard: React.FC<{
         <div
           className={cn(
             "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-[13px] font-bold",
-            delivery.isToday
+            delivery.isUrgent
               ? "bg-red-50 text-red-700 border-red-300"
               : "bg-amber-50 text-amber-800 border-amber-200",
           )}
@@ -105,9 +107,12 @@ const PoetsCard: React.FC<{
           <span>Aflevering: {delivery.label}</span>
         </div>
       )}
-      {showDeadline && w.due_date && (
-        <div className={cn("inline-flex self-start items-center gap-1.5 px-2.5 py-1 rounded-md border text-[12.5px] font-semibold", toneCls)}>
-          Klaar vóór {format(new Date(w.due_date), "EEE d MMM", { locale: nl })}
+      {showDeadline && deadline && (
+        <div className={cn(
+          "inline-flex self-start items-center gap-1.5 px-2.5 py-1 rounded-md border text-[12.5px] font-semibold",
+          deadline.urgent ? "bg-red-50 text-red-700 border-red-300" : toneCls,
+        )}>
+          Klaar vóór {deadline.label}
         </div>
       )}
       <div className="text-[13px] text-slate-700 whitespace-pre-wrap">{w.description || "—"}</div>
@@ -181,21 +186,18 @@ const WerkplaatsPoetsen: React.FC = () => {
 
   useEffect(() => { load(); /* eslint-disable-line */ }, [branchFilter]);
 
-  const { afleveringen, showroom } = useMemo(() => {
-    const filtered = q.trim() ? rows.filter(r => matchesSearch(hay(r), q)) : rows;
-    const afl = filtered.filter(r => r.poets_type === "aflevering")
-      .sort((a, b) => (a.due_date || "9999").localeCompare(b.due_date || "9999"));
-    const sh = filtered.filter(r => r.poets_type !== "aflevering")
-      .sort((a, b) => a.created_at.localeCompare(b.created_at));
-    return { afleveringen: afl, showroom: sh };
-  }, [rows, q]);
-
-  // Aflevermoment: alleen voor B2C-verkochte auto's, uitsluitend uit appointments gelezen
-  const soldVehicleIds = useMemo(
-    () => rows.filter(r => r.vehicle?.status === "verkocht_b2c" && r.vehicle?.id).map(r => r.vehicle!.id),
+  // Aflevermoment uit appointments (alleen lezen) voor álle voertuigen in de lijst
+  const vehicleIds = useMemo(
+    () => rows.map(r => r.vehicle?.id).filter(Boolean) as string[],
     [rows],
   );
-  const deliveryMoments = useDeliveryMoments(soldVehicleIds);
+  const deliveryMoments = useDeliveryMoments(vehicleIds);
+
+  const { afleveringen, showroom } = useMemo(() => {
+    const filtered = q.trim() ? rows.filter(r => matchesSearch(hay(r), q)) : rows;
+    const { afleveringen: afl, showroom: sh } = splitPoetsRows(filtered, deliveryMoments);
+    return { afleveringen: afl, showroom: sh };
+  }, [rows, q, deliveryMoments]);
 
   const markDone = async (w: PoetsWO) => {
     const startedAt = w.started_at ? new Date(w.started_at).getTime() : null;

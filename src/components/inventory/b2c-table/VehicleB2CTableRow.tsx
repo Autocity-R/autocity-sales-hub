@@ -10,9 +10,8 @@ import { Car, CheckCircle2, CalendarCheck } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { PurchaserQuickEdit } from "../PurchaserQuickEdit";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
-import { Progress } from "@/components/ui/progress";
-import { format } from "date-fns";
-import { nl } from "date-fns/locale";
+import { getChecklistProgress } from "@/lib/checklistProgress";
+import { formatDeliveryMoment } from "@/components/werkplaats/deliveryAppointment";
 import { BranchChip } from "@/components/layout/BranchSwitcher";
 import { useOpenWorkOrdersMap, summariseWOs } from "@/hooks/useOpenWorkOrdersMap";
 
@@ -65,13 +64,6 @@ const renderWorkshopStatusBadge = (status: WorkshopStatus) => {
   const statusInfo = statusMap[status] || { label: status?.replace(/_/g, ' ').toUpperCase() || "Onbekend", variant: "outline" as const };
   const { label, variant } = statusInfo;
   return <Badge variant={variant}>{label}</Badge>;
-};
-
-const getChecklistProgress = (vehicle: Vehicle) => {
-  const checklist = vehicle.details?.preDeliveryChecklist || [];
-  if (checklist.length === 0) return { percentage: 0, hasItems: false };
-  const completed = checklist.filter((item: { completed?: boolean }) => item.completed).length;
-  return { percentage: Math.round((completed / checklist.length) * 100), hasItems: true };
 };
 
 const getProgressColor = (percentage: number) => {
@@ -204,30 +196,26 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
       </TableCell>
       <TableCell className="align-middle">
         {(() => {
-          const { percentage, hasItems } = getChecklistProgress(vehicle);
-          if (!hasItems) {
-            return <span className="text-muted-foreground text-sm">—</span>;
-          }
+          const { percentage, hasItems, completed, total } = getChecklistProgress(vehicle);
           return (
             <div className="flex flex-col gap-1 min-w-24">
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full transition-all ${getProgressColor(percentage)}`}
-                    style={{ width: `${percentage}%` }}
-                  />
+              {hasItems ? (
+                <div className="flex items-center gap-2" title={`${completed}/${total} afgevinkt`}>
+                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all ${getProgressColor(percentage)}`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-medium w-8 text-right">{percentage}%</span>
                 </div>
-                <span className="text-xs font-medium w-8 text-right">{percentage}%</span>
-              </div>
-              {hasActiveDeliveryAppointment ? (
-                  <Badge className="text-xs bg-blue-500 text-white border-blue-600 hover:bg-blue-600 w-fit font-semibold">
+              ) : (
+                <span className="text-muted-foreground text-sm">—</span>
+              )}
+              {hasActiveDeliveryAppointment && deliveryDate ? (
+                  <Badge className="text-xs bg-blue-500 text-white border-blue-600 hover:bg-blue-600 w-fit font-semibold whitespace-nowrap">
                     <CalendarCheck className="h-3 w-3 mr-1" />
-                    {deliveryDate ? (
-                      <span className="flex flex-col leading-tight">
-                        <span>{format(new Date(deliveryDate), "d MMMM", { locale: nl })}</span>
-                        <span>{format(new Date(deliveryDate), "HH:mm", { locale: nl })}</span>
-                      </span>
-                    ) : "Afspraak gepland"}
+                    Aflevering {formatDeliveryMoment(deliveryDate)}
                   </Badge>
                 ) : readyForDelivery ? (
                   <Badge className="text-xs bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600 w-fit font-semibold animate-pulse">
@@ -243,7 +231,7 @@ const VehicleB2CTableRowComponent: React.FC<VehicleB2CTableRowProps> = ({
         <TableCell className="align-middle">
           {deliveryDate ? (
             <span className="text-sm font-medium">
-              {format(new Date(deliveryDate), "EEE d MMM HH:mm", { locale: nl })}
+              {formatDeliveryMoment(deliveryDate)}
             </span>
           ) : (
             <span className="text-muted-foreground text-sm">—</span>

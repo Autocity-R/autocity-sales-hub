@@ -1,5 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { featureAccess } from "@/lib/routeAccess";
+import { featureAccess, canManageChecklistsRole, canAssignTasksRole } from "@/lib/routeAccess";
 
 export const useRoleAccess = () => {
   const { userRole, isAdmin, roleLoading } = useAuth();
@@ -114,11 +114,8 @@ export const useRoleAccess = () => {
   // Uitsluitend license_number — prijzen/status/verkoopvelden blijven ongewijzigd.
   const canEditKenteken = () => isAdmin || featureAccess.kenteken(userRole);
 
-  const canAssignTasks = () => {
-    // Aftersales manager MAG taken toewijzen
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
-      userRole === 'aftersales_manager' || userRole === 'werkplaats_chef';
-  };
+  // Aftersales manager + operationeel directeur MOGEN taken toewijzen
+  const canAssignTasks = () => isAdmin || canAssignTasksRole(userRole);
 
   const isOperationalUser = () => {
     return userRole === 'user' || userRole === 'operationeel';
@@ -167,10 +164,7 @@ export const useRoleAccess = () => {
 
 
   // Aftersales manager MAG checklisten volledig bewerken (items toevoegen, afvinken, taken toewijzen)
-  const canManageChecklists = () => {
-    return isAdmin || userRole === 'manager' || userRole === 'verkoper' ||
-      userRole === 'aftersales_manager' || userRole === 'werkplaats_chef';
-  };
+  const canManageChecklists = () => isAdmin || canManageChecklistsRole(userRole);
 
   return {
     hasReportsAccess,
