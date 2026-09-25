@@ -64,7 +64,7 @@ const WerkplaatsAgenda: React.FC = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { branchFilter } = useCurrentBranch();
-  const { isMonteur, canManageWorkOrders } = useRoleAccess();
+  const { isMonteur, canPlanWorkOrders } = useRoleAccess();
   const { user } = useAuth();
   const readOnly = isMonteur();
 
@@ -270,7 +270,7 @@ const WerkplaatsAgenda: React.FC = () => {
               </Button>
             </div>
             <BranchFilter />
-            {!readOnly && canManageWorkOrders() && (
+            {!readOnly && canPlanWorkOrders() && (
               <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)} aria-label="Agenda-instellingen">
                 <SettingsIcon className="h-4 w-4" />
               </Button>
