@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { CheckCircle2, Circle, AlertTriangle, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { getVehicleByToken } from "@/services/checklistAccessService";
+import { getVehicleByToken, toggleChecklistItemByToken } from "@/services/checklistAccessService";
+import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -42,9 +43,8 @@ const ChecklistView: React.FC = () => {
         return;
       }
 
-      setVehicle(data);
-      const items = (data.details as any)?.preDeliveryChecklist || [];
-      setChecklist(items);
+      setVehicle({ ...data, id: data.vehicle_id });
+      setChecklist(Array.isArray(data.checklist) ? data.checklist : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Onbekende fout");
     } finally {
@@ -57,36 +57,14 @@ const ChecklistView: React.FC = () => {
     setToggling(itemId);
 
     try {
-      const updatedChecklist = checklist.map((item) => {
-        if (item.id === itemId) {
-          const nowCompleted = !item.completed;
-          return {
-            ...item,
-            completed: nowCompleted,
-            completedAt: nowCompleted ? new Date().toISOString() : undefined,
-            completedByName: nowCompleted ? "Medewerker (via QR)" : undefined,
-          };
-        }
-        return item;
-      });
-
-      // Update in database
-      const updatedDetails = {
-        ...(vehicle.details || {}),
-        preDeliveryChecklist: updatedChecklist,
-      };
-
-      const { error: updateError } = await supabase
-        .from("vehicles")
-        .update({ details: updatedDetails })
-        .eq("id", vehicle.id);
-
-      if (updateError) throw updateError;
-
-      setChecklist(updatedChecklist);
-      setVehicle({ ...vehicle, details: updatedDetails });
+      const current = checklist.find((i) => i.id === itemId);
+      const updated = await toggleChecklistItemByToken(token!, itemId, !current?.completed);
+      setChecklist(updated);
     } catch (err) {
       console.error("Toggle error:", err);
+      const msg = err instanceof Error ? err.message : "Onbekende fout";
+      if (msg.includes("Link verlopen")) setError("expired");
+      else toast.error("Afvinken mislukt", { description: msg });
     } finally {
       setToggling(null);
     }
