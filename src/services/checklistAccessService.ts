@@ -45,38 +45,43 @@ export const getOrCreateChecklistToken = async (vehicleId: string): Promise<stri
 };
 
 /**
- * Get vehicle data by checklist access token (public, no auth required)
+ * Get checklist data by access token (public, no auth required) via SECURITY DEFINER RPC.
+ * Returns only basic vehicle fields + checklist (no prices / customer data).
  */
 export const getVehicleByToken = async (token: string) => {
-  // First get the vehicle_id from the token
-  const { data: tokenData, error: tokenError } = await supabase
-    .from('checklist_access_tokens')
-    .select('vehicle_id')
-    .eq('token', token)
-    .single();
-
-  if (tokenError || !tokenData) {
-    throw new Error('Ongeldige link');
+  const { data, error } = await (supabase as any).rpc('get_checklist_by_token', { p_token: token });
+  if (error || !data) {
+    throw new Error(error?.message?.includes('Ongeldige link') ? 'Ongeldige link' : (error?.message || 'Voertuig niet gevonden'));
   }
-
-  // Get vehicle data
-  const { data: vehicle, error: vehicleError } = await supabase
-    .from('vehicles')
-    .select('*')
-    .eq('id', tokenData.vehicle_id)
-    .single();
-
-  if (vehicleError || !vehicle) {
-    throw new Error('Voertuig niet gevonden');
-  }
-
-  return vehicle;
+  return data as {
+    vehicle_id: string; brand: string | null; model: string | null; license_number: string | null;
+    color: string | null; vin: string | null; year: number | null; status: string | null;
+    import_status: string | null; checklist: any[];
+  };
 };
+
+/** Toggle one checklist item atomically via RPC; returns the updated checklist. */
+export const toggleChecklistItemByToken = async (token: string, itemId: string, completed: boolean) => {
+  const { data, error } = await (supabase as any).rpc('toggle_checklist_item_by_token', {
+    p_token: token, p_item_id: itemId, p_completed: completed,
+  });
+  if (error) throw new Error(error.message || 'Afvinken mislukt');
+  return (data || []) as any[];
+};
+
+/**
+ * Production domain for printed QR codes. Source: Lovable project settings —
+ * custom domain https://autocity-crm.nl (published fallback: autocity-sales-hub.lovable.app).
+ */
+export const PRODUCTION_ORIGIN = 'https://autocity-crm.nl';
+
+const isPreviewHost = (host: string) =>
+  host.includes('lovable.app') || host.includes('lovableproject.com') || host.includes('localhost');
 
 /**
  * Build the checklist URL for a given token
  */
 export const buildChecklistUrl = (token: string): string => {
-  const baseUrl = window.location.origin;
+  const baseUrl = isPreviewHost(window.location.hostname) ? PRODUCTION_ORIGIN : window.location.origin;
   return `${baseUrl}/checklist/view/${token}`;
 };

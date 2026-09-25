@@ -5354,6 +5354,7 @@ export type Database = {
         Args: { p_dry_run?: boolean; p_month?: string }
         Returns: Json
       }
+      get_checklist_by_token: { Args: { p_token: string }; Returns: Json }
       get_contract_by_token: { Args: { _token: string }; Returns: Json }
       get_valid_exact_online_token: {
         Args: { user_uuid: string }
@@ -5397,6 +5398,10 @@ export type Database = {
           _url: string
         }
         Returns: undefined
+      }
+      toggle_checklist_item_by_token: {
+        Args: { p_completed: boolean; p_item_id: string; p_token: string }
+        Returns: Json
       }
       update_weekly_sales:
         | {
