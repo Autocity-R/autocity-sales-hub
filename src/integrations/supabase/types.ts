@@ -3546,6 +3546,134 @@ export type Database = {
           },
         ]
       }
+      leenauto_uitlening_wijzigingen: {
+        Row: {
+          actie: string
+          gewijzigd_door: string | null
+          gewijzigd_op: string
+          id: string
+          nieuwe_waarden: Json | null
+          oude_waarden: Json | null
+          uitlening_id: string
+        }
+        Insert: {
+          actie: string
+          gewijzigd_door?: string | null
+          gewijzigd_op?: string
+          id?: string
+          nieuwe_waarden?: Json | null
+          oude_waarden?: Json | null
+          uitlening_id: string
+        }
+        Update: {
+          actie?: string
+          gewijzigd_door?: string | null
+          gewijzigd_op?: string
+          id?: string
+          nieuwe_waarden?: Json | null
+          oude_waarden?: Json | null
+          uitlening_id?: string
+        }
+        Relationships: []
+      }
+      leenauto_uitleningen: {
+        Row: {
+          contact_id: string | null
+          created_at: string
+          id: string
+          ingeleverd_op: string | null
+          ingenomen_door: string | null
+          klant_adres: string | null
+          klant_email: string | null
+          klant_naam: string
+          klant_plaats: string | null
+          klant_postcode: string | null
+          klant_telefoon: string | null
+          loan_car_id: string
+          notities: string | null
+          reden: string
+          uitgeleend_door: string | null
+          uitgeleend_op: string
+          updated_at: string
+          vehicle_id: string | null
+          verwacht_terug_op: string | null
+          warranty_claim_id: string | null
+        }
+        Insert: {
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          ingeleverd_op?: string | null
+          ingenomen_door?: string | null
+          klant_adres?: string | null
+          klant_email?: string | null
+          klant_naam: string
+          klant_plaats?: string | null
+          klant_postcode?: string | null
+          klant_telefoon?: string | null
+          loan_car_id: string
+          notities?: string | null
+          reden?: string
+          uitgeleend_door?: string | null
+          uitgeleend_op: string
+          updated_at?: string
+          vehicle_id?: string | null
+          verwacht_terug_op?: string | null
+          warranty_claim_id?: string | null
+        }
+        Update: {
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          ingeleverd_op?: string | null
+          ingenomen_door?: string | null
+          klant_adres?: string | null
+          klant_email?: string | null
+          klant_naam?: string
+          klant_plaats?: string | null
+          klant_postcode?: string | null
+          klant_telefoon?: string | null
+          loan_car_id?: string
+          notities?: string | null
+          reden?: string
+          uitgeleend_door?: string | null
+          uitgeleend_op?: string
+          updated_at?: string
+          vehicle_id?: string | null
+          verwacht_terug_op?: string | null
+          warranty_claim_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leenauto_uitleningen_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leenauto_uitleningen_loan_car_id_fkey"
+            columns: ["loan_car_id"]
+            isOneToOne: false
+            referencedRelation: "loan_cars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leenauto_uitleningen_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leenauto_uitleningen_warranty_claim_id_fkey"
+            columns: ["warranty_claim_id"]
+            isOneToOne: false
+            referencedRelation: "warranty_claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lms_sync_log: {
         Row: {
           contract_number: string | null
@@ -5386,6 +5514,62 @@ export type Database = {
       }
       is_admin_or_owner: { Args: never; Returns: boolean }
       is_admin_user: { Args: { user_id: string }; Returns: boolean }
+      leenauto_innemen: {
+        Args: {
+          p_ingeleverd_op?: string
+          p_notities?: string
+          p_uitlening_id: string
+        }
+        Returns: undefined
+      }
+      leenauto_mag_lezen: { Args: never; Returns: boolean }
+      leenauto_mag_schrijven: { Args: never; Returns: boolean }
+      leenauto_uitlenen: {
+        Args: {
+          p_contact_id?: string
+          p_klant_adres?: string
+          p_klant_email?: string
+          p_klant_naam?: string
+          p_klant_plaats?: string
+          p_klant_postcode?: string
+          p_klant_telefoon?: string
+          p_loan_car_id: string
+          p_notities?: string
+          p_reden?: string
+          p_uitgeleend_op?: string
+          p_verwacht_terug_op?: string
+          p_warranty_claim_id?: string
+        }
+        Returns: string
+      }
+      leenauto_vrijgeven_zonder_registratie: {
+        Args: { p_loan_car_id: string }
+        Returns: undefined
+      }
+      leenauto_wie_reed: {
+        Args: { p_kenteken: string; p_moment: string }
+        Returns: {
+          ingeleverd_op: string
+          ingenomen_door_naam: string
+          kenteken: string
+          klant_adres: string
+          klant_email: string
+          klant_naam: string
+          klant_plaats: string
+          klant_postcode: string
+          klant_telefoon: string
+          loan_car_id: string
+          merk: string
+          model: string
+          notities: string
+          reden: string
+          uitgeleend_door_naam: string
+          uitgeleend_op: string
+          uitlening_id: string
+          verwacht_terug_op: string
+          warranty_claim_id: string
+        }[]
+      }
       mark_contract_opened: { Args: { _token: string }; Returns: undefined }
       next_workshop_invoice_number: { Args: never; Returns: string }
       push_notify: {

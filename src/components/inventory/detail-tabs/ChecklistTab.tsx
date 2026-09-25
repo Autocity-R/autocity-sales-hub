@@ -38,7 +38,7 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
   const [assignDialog, setAssignDialog] = useState<{ item: ChecklistItem; discipline: "werkplaats" | "spuit" | "uitdeuk" } | null>(null);
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { canManageChecklists } = useRoleAccess();
+  const { canManageChecklists, isOperationeelDirecteur } = useRoleAccess();
   const canAssignWorkshop = canManageChecklists();
 
   const checklist = vehicle.details?.preDeliveryChecklist || [];
@@ -325,7 +325,7 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
       </Card>
 
       {/* Delivery Appointment Card - shown for any B2C sold vehicle */}
-      {!hasDeliveryAppointment && !readOnly && (
+      {!hasDeliveryAppointment && !readOnly && !isOperationeelDirecteur() && (
         <DeliveryAppointmentCard
           vehicle={vehicle}
           onAppointmentCreated={handleDeliveryAppointmentCreated}
@@ -341,7 +341,7 @@ export const ChecklistTab: React.FC<ChecklistTabProps> = ({ vehicle, onUpdate, o
                 <CalendarCheck className="h-5 w-5" />
                 <span className="font-medium">Afleverafspraak is ingepland</span>
               </div>
-              {!readOnly && (
+              {!readOnly && !isOperationeelDirecteur() && (
                 <Button
                   variant="outline"
                   size="sm"

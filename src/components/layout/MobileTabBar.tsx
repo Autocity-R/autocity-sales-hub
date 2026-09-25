@@ -49,6 +49,7 @@ export const useMobileTabs = (): { tabs: MobileTab[]; more: MobileTab[] } | null
         { url: "/inventory/b2b", label: "Verkocht B2B", icon: CarIcon },
         { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
         { url: "/customers", label: "Klanten & Leveranciers", icon: Users, exact: true },
+        { url: "/loan-cars/historie", label: "Leenauto historie", icon: CarIcon },
       ],
     };
   }
@@ -95,6 +96,7 @@ export const useMobileTabs = (): { tabs: MobileTab[]; more: MobileTab[] } | null
         { url: "/customers", label: "Alle klanten", icon: Users, exact: true },
         { url: "/inventory/consumer", label: "Verkocht B2C", icon: Flag },
         { url: "/loan-cars", label: "Leenauto beheer", icon: CarIcon },
+        { url: "/loan-cars/historie", label: "Leenauto historie", icon: CarIcon },
       ],
     };
   }

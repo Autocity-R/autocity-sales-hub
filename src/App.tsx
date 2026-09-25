@@ -20,6 +20,7 @@ const InventoryB2C = lazyWithRetry(() => import("@/pages/InventoryB2C"));
 const InventoryDelivered = lazyWithRetry(() => import("@/pages/InventoryDelivered"));
 const InventoryOnline = lazyWithRetry(() => import("@/pages/InventoryOnline"));
 const LoanCars = lazyWithRetry(() => import("@/pages/LoanCars"));
+const LoanCarHistory = lazyWithRetry(() => import("@/pages/LoanCarHistory"));
 const AIAgents = lazyWithRetry(() => import("@/pages/AIAgents"));
 const Leads = lazyWithRetry(() => import("@/pages/Leads"));
 const Calendar = lazyWithRetry(() => import("@/pages/Calendar"));
@@ -135,6 +136,11 @@ function App() {
         <Route path="/loan-cars" element={
           <ProtectedRoute>
             <LoanCars />
+          </ProtectedRoute>
+        } />
+        <Route path="/loan-cars/historie" element={
+          <ProtectedRoute>
+            <LoanCarHistory />
           </ProtectedRoute>
         } />
         <Route path="/ai-agents" element={

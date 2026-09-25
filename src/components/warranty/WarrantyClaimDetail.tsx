@@ -55,6 +55,8 @@ import { useToast } from "@/hooks/use-toast";
 import { fetchLoanCars } from "@/services/warrantyService";
 import { WarrantyScheduleAction } from "./ScheduleWarrantyWorkOrder";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { useQueryClient } from "@tanstack/react-query";
+import { ClaimLeenautoSection, ResolveLeenautoGuard, useOpenClaimUitlening } from "@/components/leenauto/ClaimLeenauto";
 
 interface WarrantyClaimDetailProps {
   claim: WarrantyClaim;
@@ -155,7 +157,25 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
     });
   };
 
-  const handleResolve = () => {
+  const qc = useQueryClient();
+  const { data: openUitlening, refetch: refetchOpenUitlening } = useOpenClaimUitlening(claim);
+  const [showLeenGuard, setShowLeenGuard] = useState(false);
+
+  const handleResolve = async () => {
+    // Verplichte leenauto-vraag: niet stil overslaan als er een open uitlening is.
+    const { data: fresh } = await refetchOpenUitlening();
+    if (fresh) {
+      setShowLeenGuard(true);
+      return;
+    }
+    doResolve();
+  };
+
+  const doResolve = () => {
+    setShowLeenGuard(false);
+    qc.invalidateQueries({ queryKey: ["claimUitlening", claim.id] });
+    qc.invalidateQueries({ queryKey: ["leenautoUitleningen"] });
+    qc.invalidateQueries({ queryKey: ["loanCars"] });
     onResolve(claim.id, resolutionData);
     setShowResolveDialog(false);
     onClose();
@@ -544,41 +564,7 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm text-muted-foreground">Leenauto toewijzen</label>
-                <div className="flex gap-2 mt-2">
-                  <Select
-                    value={selectedLoanCarId || "none"}
-                    onValueChange={(value) => setSelectedLoanCarId(value === "none" ? "" : value)}
-                    disabled={loanCarsLoading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecteer leenauto..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Geen leenauto</SelectItem>
-                      {availableLoanCars.map((car: LoanCar) => (
-                        <SelectItem key={car.id} value={car.id}>
-                          {car.brand} {car.model} - {car.licenseNumber}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button 
-                    onClick={handleAssignLoanCar}
-                    disabled={selectedLoanCarId === (claim.loanCarId || "")}
-                  >
-                    Toewijzen
-                  </Button>
-                </div>
-                {claim.loanCarAssigned && claim.loanCarDetails && (
-                  <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-md">
-                    <p className="text-sm text-green-800">
-                      <strong>Huidige leenauto:</strong> {claim.loanCarDetails.brand} {claim.loanCarDetails.model} - {claim.loanCarDetails.licenseNumber}
-                    </p>
-                  </div>
-                )}
-              </div>
+              <ClaimLeenautoSection claim={claim} canManage={canManageClaims} />
             </CardContent>
           </Card>
 
@@ -776,6 +762,12 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ResolveLeenautoGuard
+        open={showLeenGuard}
+        uitlening={openUitlening ?? null}
+        onCancel={() => setShowLeenGuard(false)}
+        onProceed={doResolve}
+      />
     </>
   );
 };

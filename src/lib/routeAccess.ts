@@ -77,6 +77,7 @@ export const WERKPLAATS_CHEF_ALLOWED_PREFIXES = [
 
 /** Administratie: plat, alleen-lezen inzicht in voorraad, klanten en facturen. */
 export const ADMINISTRATIE_ALLOWED_PREFIXES = [
+  "/loan-cars/historie",
   "/inventory",
   "/customers",
   "/suppliers",
@@ -222,3 +223,11 @@ export const canManageWorkOrdersRole = (role: Role): boolean =>
   !!role && (ADMIN_ROLES.includes(role) || WORK_ORDER_MANAGERS.includes(role));
 export const canPlanWorkOrdersRole = (role: Role): boolean =>
   canManageWorkOrdersRole(role) || role === "operationeel_directeur";
+
+
+/** Leenauto's uitlenen/innemen — gelijk aan public.leenauto_mag_schrijven(). */
+export const LEENAUTO_WRITE_ROLES = ["owner", "admin", "manager", "aftersales_manager", "werkplaats_chef", "verkoper", "operationeel"];
+/** Leenauto-historie lezen — gelijk aan public.leenauto_mag_lezen(). */
+export const LEENAUTO_READ_ROLES = [...LEENAUTO_WRITE_ROLES, "administratie", "operationeel_directeur"];
+export const canWriteLeenautoRole = (role: Role) => !!role && LEENAUTO_WRITE_ROLES.includes(role);
+export const canReadLeenautoRole = (role: Role) => !!role && LEENAUTO_READ_ROLES.includes(role);
