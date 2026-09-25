@@ -446,6 +446,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                 Leen auto beheer
               </Button>
             </Link>
+            <Link to="/loan-cars/historie">
+              <Button
+                variant={isActive("/loan-cars/historie") ? "default" : "ghost"}
+                className="w-full justify-start text-white hover:text-white hover:bg-gray-800 pl-8"
+                size="sm"
+              >
+                Leenauto historie
+              </Button>
+            </Link>
             <Link to="/calendar">
               <Button
                 variant={isActive("/calendar") ? "default" : "ghost"}
@@ -705,6 +714,7 @@ const AdministratieSidebar: React.FC<{
         { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
         { url: "/customers", label: "Klanten & Leveranciers", icon: UsersIcon, exact: true },
         { url: "/werkplaats/facturen", label: "Werkplaats Facturen", icon: FileText },
+        { url: "/loan-cars/historie", label: "Leenauto historie", icon: CarIcon },
       ],
     },
   ];
@@ -777,7 +787,8 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
           },
           { url: "/customers", label: "Alle klanten", icon: UsersIcon, exact: true },
         ]),
-        { url: "/loan-cars", label: "Leenauto beheer", icon: CarIcon },
+        { url: "/loan-cars", label: "Leenauto beheer", icon: CarIcon, exact: true,
+          sub: [{ url: "/loan-cars/historie", label: "Leenauto historie", icon: CarIcon }] },
         { url: "/werkplaats/klanten", label: "Werkplaatsklanten", icon: UsersIcon },
       ] as AsNavItem[],
     },

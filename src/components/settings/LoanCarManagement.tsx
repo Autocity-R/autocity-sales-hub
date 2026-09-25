@@ -16,6 +16,12 @@ import {
   setLoanCarAvailability 
 } from "@/services/loanCarService";
 import { LoanCar } from "@/types/warranty";
+import { LoanCarRow } from "@/components/leenauto/LoanCarRow";
+import { fetchUitleningen } from "@/services/leenautoService";
+import { useAuth } from "@/contexts/AuthContext";
+import { canWriteLeenautoRole } from "@/lib/routeAccess";
+import { Link } from "react-router-dom";
+import { History } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +51,18 @@ export const LoanCarManagement = () => {
     model: "",
     licenseNumber: ""
   });
+
+  const { userRole } = useAuth();
+  // Uitlenen/innemen: zelfde rollen als de database (leenauto_mag_schrijven)
+  const canWriteLoans = canWriteLeenautoRole(userRole);
+  const { data: uitleningen = [] } = useQuery({
+    queryKey: ["leenautoUitleningen"],
+    queryFn: () => fetchUitleningen(),
+  });
+  const refreshLoans = () => {
+    queryClient.invalidateQueries({ queryKey: ["loanCars"] });
+    queryClient.invalidateQueries({ queryKey: ["leenautoUitleningen"] });
+  };
 
   // Fetch loan cars
   const { data: loanCars = [], isLoading } = useQuery({
@@ -244,6 +262,10 @@ export const LoanCarManagement = () => {
                 Beheer alle leenauto's en hun beschikbaarheid
               </CardDescription>
             </div>
+            <div className="flex flex-wrap gap-2">
+            <Button variant="outline" asChild>
+              <Link to="/loan-cars/historie"><History className="h-4 w-4 mr-2" />Leenauto historie</Link>
+            </Button>
             <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
               <DialogTrigger asChild>
                 <Button onClick={() => resetForm()}>
@@ -302,6 +324,7 @@ export const LoanCarManagement = () => {
                 </div>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -317,44 +340,13 @@ export const LoanCarManagement = () => {
           ) : (
             <div className="space-y-4">
               {loanCars.map((car) => (
-                <div key={car.id} className="flex flex-wrap items-center justify-between gap-3 p-4 border rounded-lg">
-                  <div className="flex min-w-0 items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <Car className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium">
-                        {car.brand} {car.model}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        Kenteken: {car.licenseNumber}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge 
-                      variant={car.available ? "default" : "secondary"}
-                      className="flex items-center gap-1"
-                    >
-                      {car.available ? (
-                        <>
-                          <CheckCircle className="h-3 w-3" />
-                          Beschikbaar
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="h-3 w-3" />
-                          Uitgeleend
-                        </>
-                      )}
-                    </Badge>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => toggleAvailability(car)}
-                    >
-                      {car.available ? "Markeer als Uitgeleend" : "Markeer als Beschikbaar"}
-                    </Button>
+                <LoanCarRow
+                  key={car.id}
+                  car={car}
+                  uitleningen={uitleningen.filter((u) => u.loan_car_id === car.id)}
+                  canWrite={canWriteLoans}
+                  onChanged={refreshLoans}
+                  actions={<>
                     <Button
                       variant="outline"
                       size="sm"
@@ -372,13 +364,13 @@ export const LoanCarManagement = () => {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Leenauto Verwijderen</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Weet je zeker dat je {car.brand} {car.model} ({car.licenseNumber}) wilt verwijderen? 
-                            Deze actie kan niet ongedaan worden gemaakt.
+                            Weet je zeker dat je {car.brand} {car.model} ({car.licenseNumber}) wilt verwijderen?
+                            Een leenauto met uitleenhistorie kan niet verwijderd worden.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                          <AlertDialogAction 
+                          <AlertDialogAction
                             onClick={() => handleDeleteCar(car)}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
@@ -387,8 +379,8 @@ export const LoanCarManagement = () => {
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-                  </div>
-                </div>
+                  </>}
+                />
               ))}
             </div>
           )}

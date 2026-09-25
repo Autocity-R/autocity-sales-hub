@@ -175,13 +175,8 @@ export const createWarrantyClaim = async (claim: Omit<WarrantyClaim, 'id' | 'cre
       .select()
       .single();
     
-    // Update loan car status if assigned
-    if (claim.loanCarId && claim.loanCarAssigned) {
-      await supabase
-        .from('loan_cars')
-        .update({ status: 'uitgeleend' })
-        .eq('id', claim.loanCarId);
-    }
+    // Leenauto-status wordt NIET meer hier gezet: uitlenen gaat uitsluitend via
+    // leenauto_uitlenen (registreert klant + tijden en vult loan_car_id).
 
     if (error) throw error;
 
@@ -220,40 +215,8 @@ export const updateWarrantyClaim = async (claimId: string, updates: Partial<Warr
     if (updates.loanCarAssigned !== undefined) updateData.loan_car_assigned = updates.loanCarAssigned;
     if (updates.appointmentId !== undefined) updateData.appointment_id = updates.appointmentId || null;
 
-    // STAP 3: Handle leen auto wijzigingen VOOR de claim update
-    const newLoanCarId = updateData.loan_car_id;
-    const newLoanCarAssigned = updateData.loan_car_assigned ?? oldClaim.loan_car_assigned ?? false;
-    const oldLoanCarId = oldClaim.loan_car_id;
-    const oldLoanCarAssigned = oldClaim.loan_car_assigned ?? false;
-
-    // Als leen auto wijzigt (van X naar Y, of van X naar none, of van none naar Y)
-    if (newLoanCarId !== undefined && (newLoanCarId !== oldLoanCarId || newLoanCarAssigned !== oldLoanCarAssigned)) {
-      // Vrijgeven oude leen auto (als die er was)
-      if (oldLoanCarId && oldLoanCarAssigned) {
-        await supabase
-          .from('loan_cars')
-          .update({ 
-            status: 'beschikbaar',
-            customer_id: null,
-            start_date: null,
-            end_date: null,
-            notes: null
-          })
-          .eq('id', oldLoanCarId);
-        
-        console.log(`✅ Oude leen auto ${oldLoanCarId} vrijgegeven (claim update)`);
-      }
-
-      // Toewijzen nieuwe leen auto (als die er is)
-      if (newLoanCarId && newLoanCarAssigned) {
-        await supabase
-          .from('loan_cars')
-          .update({ status: 'uitgeleend' })
-          .eq('id', newLoanCarId);
-        
-        console.log(`✅ Nieuwe leen auto ${newLoanCarId} toegewezen (claim update)`);
-      }
-    }
+    // STAP 3: leenauto_cars wordt hier niet meer aangeraakt — uitlenen/innemen
+    // loopt via leenauto_uitlenen / leenauto_innemen (registratie + historie).
 
     // STAP 4: Update de claim
     const { data, error } = await supabase
@@ -329,28 +292,8 @@ export const resolveWarrantyClaim = async (claimId: string, resolutionData: {
 
     if (error) throw error;
 
-    // STAP 3: Als er een leen auto was toegewezen, zet deze terug op "beschikbaar"
-    if (existingClaim.loan_car_id && existingClaim.loan_car_assigned) {
-      console.log(`✅ Claim opgelost - leen auto ${existingClaim.loan_car_id} vrijgeven`);
-      
-      const { error: loanCarError } = await supabase
-        .from('loan_cars')
-        .update({ 
-          status: 'beschikbaar',
-          customer_id: null,
-          start_date: null,
-          end_date: null,
-          notes: null
-        })
-        .eq('id', existingClaim.loan_car_id);
-
-      if (loanCarError) {
-        console.error("Kon leen auto niet vrijgeven:", loanCarError);
-        // Don't throw - claim is already resolved, just log the error
-      } else {
-        console.log(`✅ Leen auto ${existingClaim.loan_car_id} is weer beschikbaar`);
-      }
-    }
+    // STAP 3: De leenauto wordt NIET stil vrijgegeven. De afwikkel-popup vraagt
+    // of hij is ingeleverd en roept dan leenauto_innemen aan.
 
     // STAP 4: Fetch full claim with relations
     const claims = await fetchWarrantyClaims();
