@@ -195,7 +195,7 @@ export const LeenautoUitleenDialog: React.FC<UitleenDialogProps> = ({
             {!lockClaim && (
               <div className="space-y-1">
                 <Label>Garantieclaim (optioneel)</Label>
-                <Select value={claimId} onValueChange={setClaimId}>
+                <Select value={claimId} onValueChange={(v) => { setClaimId(v); if (v !== "none" && reden === "overig") setReden("garantie"); }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Geen claim</SelectItem>
