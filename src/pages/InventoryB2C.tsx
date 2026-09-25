@@ -108,6 +108,11 @@ const InventoryB2C = () => {
         const progress = getChecklistProgress(v);
         return progress.hasItems && progress.percentage === 100 && v.importStatus === 'ingeschreven';
       });
+    } else if (deliveryFilter === "not_ready") {
+      filtered = filtered.filter(v => {
+        const progress = getChecklistProgress(v);
+        return !(progress.hasItems && progress.percentage === 100 && v.importStatus === 'ingeschreven');
+      });
     } else if (deliveryFilter === "scheduled") {
       filtered = filtered.filter(v => !!deliveryDatesMap[v.id]);
     }
