@@ -98,7 +98,7 @@ const PoetsCard: React.FC<{
         <div
           className={cn(
             "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-[13px] font-bold",
-            delivery.isToday
+            delivery.isUrgent
               ? "bg-red-50 text-red-700 border-red-300"
               : "bg-amber-50 text-amber-800 border-amber-200",
           )}
