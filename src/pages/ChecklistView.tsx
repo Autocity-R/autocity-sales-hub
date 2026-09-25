@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { CheckCircle2, Circle, AlertTriangle, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { getVehicleByToken, toggleChecklistItemByToken } from "@/services/checklistAccessService";
-import { toast } from "sonner";
+import { toast as uiToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -64,7 +63,7 @@ const ChecklistView: React.FC = () => {
       console.error("Toggle error:", err);
       const msg = err instanceof Error ? err.message : "Onbekende fout";
       if (msg.includes("Link verlopen")) setError("expired");
-      else toast.error("Afvinken mislukt", { description: msg });
+      else uiToast({ title: "Afvinken mislukt", description: msg, variant: "destructive" });
     } finally {
       setToggling(null);
     }
