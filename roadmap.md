@@ -6,3 +6,5 @@
 - [x] Bouwstap 2: A poets-afleveringen via afspraak, B voortgang-sortering, C B2C aflevermoment/checklist-%, D uitdeuk VERKOCHT B2C, E rechten directeur
 - [x] Correctie stap 2: "Afleverafspraak inplannen" verborgen voor operationeel directeur
 - [x] Bouwstap 3: leenauto-uitleenregistratie, historie + "Wie reed er?", claim-koppeling en verplichte inleveren-vraag
+
+- [x] Bouwstap 4: operationeel_directeur krijgt Leenauto beheer/historie + werkplaats-agenda (niet gepubliceerd)
