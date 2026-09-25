@@ -662,6 +662,8 @@ const DirectieSidebar: React.FC<{
       entries: [
         { url: "/warranty", label: "Garantieclaims", icon: ShieldIcon, exact: true },
         { url: "/garantie/inbox", label: "Inbox", icon: InboxIcon, badge: garantieUnread },
+        { url: "/loan-cars", label: "Leenauto beheer", icon: CarIcon, exact: true },
+        { url: "/loan-cars/historie", label: "Leenauto historie", icon: CarIcon },
       ],
     },
     {
@@ -690,7 +692,7 @@ const DirectieSidebar: React.FC<{
       location={location}
       openGroups={openGroups}
       toggleGroup={(key) => setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }))}
-      note="Directie · alleen-lezen"
+      note="Directie"
     />
   );
 };

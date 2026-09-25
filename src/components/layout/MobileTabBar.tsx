@@ -72,6 +72,8 @@ export const useMobileTabs = (): { tabs: MobileTab[]; more: MobileTab[] } | null
         { url: "/inventory/consumer", label: "Verkocht B2C", icon: Flag },
         { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
         { url: "/warranty", label: "Garantieclaims", icon: ShieldIcon },
+        { url: "/loan-cars", label: "Leenauto beheer", icon: CarIcon, exact: true },
+        { url: "/loan-cars/historie", label: "Leenauto historie", icon: CarIcon },
         { url: "/rapportages/performance", label: "Performance", icon: Users },
         { url: "/rapportages/kpi", label: "KPI-dashboard", icon: GanttChartIcon },
         { url: "/rapportages/doorlooptijden", label: "Doorlooptijden", icon: Clock },

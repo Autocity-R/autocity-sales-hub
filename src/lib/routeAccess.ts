@@ -36,6 +36,7 @@ export const DIRECTIE_ALLOWED_PREFIXES = [
   "/rapportages",
   "/werkplaats/planning",
   "/werkplaats/agenda",
+  "/loan-cars",
   "/werkplaats/facturen",
   "/werkplaats/inname",
   "/werkplaats/goedkeuren",
@@ -226,8 +227,8 @@ export const canPlanWorkOrdersRole = (role: Role): boolean =>
 
 
 /** Leenauto's uitlenen/innemen — gelijk aan public.leenauto_mag_schrijven(). */
-export const LEENAUTO_WRITE_ROLES = ["owner", "admin", "manager", "aftersales_manager", "werkplaats_chef", "verkoper", "operationeel"];
+export const LEENAUTO_WRITE_ROLES = ["owner", "admin", "manager", "aftersales_manager", "werkplaats_chef", "verkoper", "operationeel", "operationeel_directeur"];
 /** Leenauto-historie lezen — gelijk aan public.leenauto_mag_lezen(). */
-export const LEENAUTO_READ_ROLES = [...LEENAUTO_WRITE_ROLES, "administratie", "operationeel_directeur"];
+export const LEENAUTO_READ_ROLES = [...LEENAUTO_WRITE_ROLES, "administratie"];
 export const canWriteLeenautoRole = (role: Role) => !!role && LEENAUTO_WRITE_ROLES.includes(role);
 export const canReadLeenautoRole = (role: Role) => !!role && LEENAUTO_READ_ROLES.includes(role);
