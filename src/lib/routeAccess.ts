@@ -206,3 +206,19 @@ export const featureAccess: Record<string, (role: Role) => boolean> = {
   kenteken: (r) =>
     isAdminRole(r) || r === "manager" || r === "verkoper" || r === "aftersales_manager",
 };
+
+/**
+ * Actie-rechten (pure functies, gedeeld met useRoleAccess en unit-tests).
+ * operationeel_directeur heeft dezelfde checklist-/toewijs-/planrechten als aftersales_manager.
+ */
+const ADMIN_ROLES = ["admin", "owner"];
+const CHECKLIST_MANAGERS = ["manager", "verkoper", "aftersales_manager", "werkplaats_chef", "operationeel_directeur"];
+const WORK_ORDER_MANAGERS = ["manager", "aftersales_manager", "werkplaats_chef"];
+
+export const canManageChecklistsRole = (role: Role): boolean =>
+  !!role && (ADMIN_ROLES.includes(role) || CHECKLIST_MANAGERS.includes(role));
+export const canAssignTasksRole = canManageChecklistsRole;
+export const canManageWorkOrdersRole = (role: Role): boolean =>
+  !!role && (ADMIN_ROLES.includes(role) || WORK_ORDER_MANAGERS.includes(role));
+export const canPlanWorkOrdersRole = (role: Role): boolean =>
+  canManageWorkOrdersRole(role) || role === "operationeel_directeur";
