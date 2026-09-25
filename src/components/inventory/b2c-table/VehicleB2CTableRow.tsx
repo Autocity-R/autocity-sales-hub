@@ -12,8 +12,6 @@ import { PurchaserQuickEdit } from "../PurchaserQuickEdit";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { getChecklistProgress } from "@/lib/checklistProgress";
 import { formatDeliveryMoment } from "@/components/werkplaats/deliveryAppointment";
-import { format } from "date-fns";
-import { nl } from "date-fns/locale";
 import { BranchChip } from "@/components/layout/BranchSwitcher";
 import { useOpenWorkOrdersMap, summariseWOs } from "@/hooks/useOpenWorkOrdersMap";
 

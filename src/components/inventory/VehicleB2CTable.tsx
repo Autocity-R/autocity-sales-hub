@@ -119,6 +119,8 @@ export const VehicleB2CTable: React.FC<VehicleB2CTableProps> = ({
                 onDeliveryConfirm={() => handleDeliveryClick(vehicle)}
                 onOpenContractConfig={onOpenContractConfig}
                 onInvoiceRequest={onInvoiceRequest}
+                deliveryAppointment={deliveryDates[vehicle.id]}
+                showChecklist
               />
             ))
           )}

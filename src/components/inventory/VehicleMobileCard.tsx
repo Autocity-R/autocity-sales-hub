@@ -10,7 +10,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Mail, FileText, Truck, CheckCircle2 } from "lucide-react";
+import { MoreVertical, Mail, FileText, Truck, CheckCircle2, CalendarCheck } from "lucide-react";
+import { getChecklistProgress } from "@/lib/checklistProgress";
+import { formatDeliveryMoment } from "@/components/werkplaats/deliveryAppointment";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 
@@ -22,6 +24,10 @@ interface VehicleMobileCardProps {
   onDeliveryConfirm: (vehicleId: string) => void;
   onOpenContractConfig?: (vehicle: Vehicle, contractType: "b2b" | "b2c") => void;
   onInvoiceRequest?: (vehicle: Vehicle) => void;
+  /** Eerstvolgende afleverafspraak (ISO), uit useDeliveryMoments */
+  deliveryAppointment?: string;
+  /** Checklist-voortgang tonen (Verkocht B2C) */
+  showChecklist?: boolean;
 }
 
 export const VehicleMobileCard: React.FC<VehicleMobileCardProps> = ({
@@ -31,8 +37,11 @@ export const VehicleMobileCard: React.FC<VehicleMobileCardProps> = ({
   onChangeStatus,
   onDeliveryConfirm,
   onOpenContractConfig,
-  onInvoiceRequest
+  onInvoiceRequest,
+  deliveryAppointment,
+  showChecklist = false,
 }) => {
+  const progress = getChecklistProgress(vehicle);
   const getPaymentStatusBadge = (status: PaymentStatus | undefined) => {
     if (!status || status === 'niet_betaald') return null;
     
@@ -126,6 +135,31 @@ export const VehicleMobileCard: React.FC<VehicleMobileCardProps> = ({
       </CardHeader>
       
       <CardContent className="pt-0">
+        {(deliveryAppointment || showChecklist) && (
+          <div className="flex flex-col gap-2 mb-3">
+            {deliveryAppointment && (
+              <Badge className="text-xs bg-blue-500 text-white border-blue-600 hover:bg-blue-600 w-fit font-semibold">
+                <CalendarCheck className="h-3 w-3 mr-1" />
+                Aflevering {formatDeliveryMoment(deliveryAppointment)}
+              </Badge>
+            )}
+            {showChecklist && (
+              <div className="flex items-center gap-2" data-testid="mobile-checklist-progress">
+                <span className="text-xs font-medium whitespace-nowrap">
+                  {progress.hasItems
+                    ? `Checklist ${progress.percentage}% (${progress.completed}/${progress.total})`
+                    : "Checklist —"}
+                </span>
+                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${progress.percentage === 100 ? "bg-emerald-500" : progress.percentage >= 50 ? "bg-blue-500" : progress.percentage > 0 ? "bg-orange-500" : "bg-muted"}`}
+                    style={{ width: `${progress.percentage}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
           {vehicle.sellingPrice && (
             <>
