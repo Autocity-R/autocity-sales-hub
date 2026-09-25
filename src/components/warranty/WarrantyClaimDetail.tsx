@@ -55,6 +55,7 @@ import { useToast } from "@/hooks/use-toast";
 import { fetchLoanCars } from "@/services/warrantyService";
 import { WarrantyScheduleAction } from "./ScheduleWarrantyWorkOrder";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { canWriteLeenautoRole } from "@/lib/routeAccess";
 import { useQueryClient } from "@tanstack/react-query";
 import { ClaimLeenautoSection, ResolveLeenautoGuard, useOpenClaimUitlening } from "@/components/leenauto/ClaimLeenauto";
 
@@ -79,7 +80,8 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
   onResolve,
   onDelete
 }) => {
-  const { canManageWarrantyClaims, canDeleteWarrantyClaims } = useRoleAccess();
+  const { canManageWarrantyClaims, canDeleteWarrantyClaims, userRole, isAdmin } = useRoleAccess();
+  const canLendLoanCar = isAdmin || canWriteLeenautoRole(userRole);
   const canManageClaims = canManageWarrantyClaims();
   const canDeleteClaims = canDeleteWarrantyClaims();
   const [isEditing, setIsEditing] = useState(false);
@@ -564,7 +566,7 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ClaimLeenautoSection claim={claim} canManage={canManageClaims} />
+              <ClaimLeenautoSection claim={claim} canManage={canLendLoanCar} />
             </CardContent>
           </Card>
 

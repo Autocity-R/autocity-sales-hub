@@ -1,13 +1,21 @@
 import { describe, it, expect } from "vitest";
-import { canAccessRoute, canReadLeenautoRole, canWriteLeenautoRole } from "@/lib/routeAccess";
+import { canAccessRoute, canReadLeenautoRole, canWriteLeenautoRole, LEENAUTO_WRITE_ROLES, LEENAUTO_READ_ROLES } from "@/lib/routeAccess";
 import { fromLocalInput, isTeLaat, plateKey, toLocalInput } from "@/services/leenautoService";
 
 describe("leenauto rechten", () => {
-  it("administratie en directeur lezen, maar lenen niet uit", () => {
-    for (const r of ["administratie", "operationeel_directeur"]) {
-      expect(canReadLeenautoRole(r)).toBe(true);
-      expect(canWriteLeenautoRole(r)).toBe(false);
-    }
+  it("administratie leest alleen", () => {
+    expect(canReadLeenautoRole("administratie")).toBe(true);
+    expect(canWriteLeenautoRole("administratie")).toBe(false);
+  });
+  it("directeur leest en leent uit, opent beheer, historie en werkplaats-agenda", () => {
+    expect(canReadLeenautoRole("operationeel_directeur")).toBe(true);
+    expect(canWriteLeenautoRole("operationeel_directeur")).toBe(true);
+    for (const u of ["/loan-cars", "/loan-cars/historie", "/werkplaats/agenda"])
+      expect(canAccessRoute("operationeel_directeur", u).allowed).toBe(true);
+  });
+  it("overige rollen: leenautorechten ongewijzigd", () => {
+    expect([...LEENAUTO_WRITE_ROLES].sort()).toEqual(["admin","aftersales_manager","manager","operationeel","operationeel_directeur","owner","verkoper","werkplaats_chef"]);
+    expect([...LEENAUTO_READ_ROLES].sort()).toEqual(["admin","administratie","aftersales_manager","manager","operationeel","operationeel_directeur","owner","verkoper","werkplaats_chef"]);
   });
   it("aftersales, chef en owner mogen uitlenen", () => {
     for (const r of ["aftersales_manager", "werkplaats_chef", "owner", "admin", "manager", "verkoper"]) {
