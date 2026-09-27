@@ -1,1 +1,2 @@
 - Werktijden (werkplaats_werktijden) zijn de enige bron voor gewerkte tijd: src/lib/workHours.ts knipt intervallen af en werkplaats_auto_pauze (cron elke 15 min) pauzeert op de eindtijd — zo tellen doorgelopen timers niet als uren.
+- Poets-werkorders worden door werkplaats_auto_pauze alleen automatisch gepauzeerd als system_config.werkplaats_auto_pauze_poets = 'aan' (standaard 'uit'): de gepubliceerde app heeft nog geen Hervatten-knop voor poetsers, dus auto-pauze zou ze vastzetten. Zet de sleutel op 'aan' zodra er gepubliceerd is met de poets-pauze.
