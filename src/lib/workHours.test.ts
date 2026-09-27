@@ -36,7 +36,7 @@ describe("afknippen op werktijden (ma–za 08–18 NL)", () => {
       started_at: "2026-09-24T11:37:42Z", finished_at: "2026-09-25T05:51:48Z", work_seconds: 65646 };
     const t = orderTime(o);
     expect(h(t.registered)).toBe(18.24);
-    expect(h(t.counted)).toBe(2.37); // 13:37:42 → 18:00 NL
+    expect(h(t.counted)).toBe(4.37); // do 13:37:42 → 18:00 NL; vr 07:51 NL valt vóór 08:00
     expect(fairSeconds([o])).toBeCloseTo(t.counted, 0);
   });
 });
