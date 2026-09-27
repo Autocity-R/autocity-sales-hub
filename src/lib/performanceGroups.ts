@@ -24,6 +24,7 @@ export interface BillableOrder {
   discipline: string | null;
   status: string | null;
   origin?: string | null;
+  external_customer?: unknown;
   part?: string | null;
   parts?: unknown;
 }
@@ -45,7 +46,7 @@ export const billablePartCount = (order: BillableOrder): number =>
 
 /** Trigger-equivalent indicatie: goedgekeurd intern werk dat nog in geen enkele interne factuur zit. */
 export function pendingInvoiceAmount(order: BillableOrder, invoices: OrderInvoiceLink[]): number {
-  if (order.status !== "goedgekeurd" || (order.origin || "intern") !== "intern") return 0;
+  if (order.status !== "goedgekeurd" || (order.origin || "intern") !== "intern" || order.external_customer != null) return 0;
   if (!['spuit', 'werkplaats'].includes(order.discipline || "")) return 0;
   const alreadyInvoiced = invoices.some(invoice => invoice.invoice_kind === "intern" && linkedIds(invoice).includes(order.id));
   return alreadyInvoiced ? 0 : billablePartCount(order) * 300;

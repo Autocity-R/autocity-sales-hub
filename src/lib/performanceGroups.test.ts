@@ -80,6 +80,7 @@ describe("nog te factureren", () => {
     expect(pendingInvoiceAmount({ ...order, id: "invoiced" }, invoices)).toBe(0);
     expect(pendingInvoiceAmount({ ...order, status: "afgerond" }, invoices)).toBe(0);
     expect(pendingInvoiceAmount({ ...order, origin: "extern" }, invoices)).toBe(0);
+    expect(pendingInvoiceAmount({ ...order, external_customer: { name: "Klant" } }, invoices)).toBe(0);
   });
 
   it("herkent een externe factuur alleen via de directe work_order-koppeling", () => {

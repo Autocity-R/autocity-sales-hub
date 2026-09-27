@@ -53,6 +53,8 @@ export const PerformanceGroupCards: React.FC<Props> = ({ raw, groups, revenue, n
           const sib = openSiblings(g);
           const blockers = blockingOrders(g);
           const external = g.orders.some(o => o.origin === "extern");
+          const externalOrder = g.orders.find(o => o.origin === "extern");
+          const externalInvoice = externalOrder ? linkedExternalInvoice(externalOrder.id, raw.invoices6m) : null;
           return (
             <button key={g.key} type="button" onClick={() => setOpen(g)}
               className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left hover:border-blue-300 hover:bg-blue-50/30">
@@ -95,6 +97,7 @@ export const PerformanceGroupCards: React.FC<Props> = ({ raw, groups, revenue, n
                   Factuur volgt zodra alle onderdelen van deze auto goedgekeurd zijn. Nog open: {blockers.map(partsOf).join(", ")}.
                 </div>
               )}
+              {external && <div className="mt-1.5 text-[11px] text-slate-500">{externalInvoice ? `Gekoppelde externe factuur · ${externalInvoice.status || "status onbekend"}` : "Externe factuur niet aan werkorder gekoppeld"}</div>}
             </button>
           );
         })}
@@ -113,7 +116,7 @@ const GroupDetailDialog: React.FC<{
     enabled: ids.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase.from("work_orders")
-        .select("id,vehicle_id,discipline,part,parts,description,created_by,created_at,source,origin,photos,result_photos,reject_note,finish_note,rejected_count,paused_seconds,started_at,finished_at,status,approved_by,approved_at,work_seconds")
+        .select("id,vehicle_id,discipline,part,parts,description,created_by,created_at,source,origin,external_customer,photos,result_photos,reject_note,finish_note,rejected_count,paused_seconds,started_at,finished_at,status,approved_by,approved_at,work_seconds")
         .in("id", ids);
       if (error) throw error;
       const rows = (data || []) as any[];
