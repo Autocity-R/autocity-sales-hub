@@ -4,12 +4,13 @@
  * TIJDREGEL (timer: work_seconds = paused_seconds + (finished_at − started_at); bij pauze wordt de
  * lopende sessie bij paused_seconds opgeteld en started_at leeggemaakt, bij hervatten opnieuw gezet):
  *  - laatste sessie exact: [started_at, finished_at] (als dat klopt met work_seconds − paused_seconds);
- *  - eerdere sessies (paused_seconds) achterwaarts in werktijd vóór started_at geplaatst;
+ *  - eerdere sessies (paused_seconds): exact moment niet bewaard → aaneengesloten direct vóór started_at
+ *    geplaatst (en dus ook afgeknipt; een doorgelopen timer vóór een pauze telt zo niet als werktijd);
  *  - anders benadering [finished_at − work_seconds, finished_at].
  * Daarna afgeknipt op de werktijden (werkplaats_werktijden) en per medewerker als unie geteld.
  * Orders zonder finished_at tellen met hun work_seconds los mee.
  */
-import { getWorkSchedule, placeBackward, workWindows, type WorkSchedule } from "@/lib/workHours";
+import { getWorkSchedule, workWindows, type WorkSchedule } from "@/lib/workHours";
 
 export interface TimedOrder {
   id: string;
@@ -77,7 +78,8 @@ export function rawIntervals(o: TimedOrder, sched: WorkSchedule = getWorkSchedul
     const last = (end - st) / 1000;
     if (last >= 0 && Math.abs(ws - ps - last) <= 120) {
       const out: Interval[] = last > 0 ? [[st, end]] : [];
-      return [...placeBackward(st, Math.min(ps, ws), sched) as Interval[], ...out];
+      const prev = Math.min(ps, ws) * 1000;
+      return [...(prev > 0 ? [[st - prev, st] as Interval] : []), ...out];
     }
   }
   return [[end - ws * 1000, end]];

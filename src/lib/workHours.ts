@@ -81,25 +81,6 @@ export function workWindows(from: number, to: number, s: WorkSchedule = current)
 export const secondsWithinWork = (from: number, to: number, s: WorkSchedule = current) =>
   workWindows(from, to, s).reduce((a, [x, y]) => a + (y - x), 0) / 1000;
 
-/**
- * Plaats `seconds` werktijd achterwaarts vóór `end`, alleen in werkvensters (max 60 dagen terug).
- * Gebruikt voor eerder opgebouwde sessies (paused_seconds) waarvan het exacte tijdstip niet bewaard is.
- */
-export function placeBackward(end: number, seconds: number, s: WorkSchedule = current): [number, number][] {
-  const out: [number, number][] = [];
-  let left = seconds * 1000;
-  if (left <= 0) return out;
-  const wins = workWindows(end - 60 * 86400000, end, s).reverse();
-  for (const [a, b] of wins) {
-    const take = Math.min(left, b - a);
-    out.push([b - take, b]);
-    left -= take;
-    if (left <= 0) break;
-  }
-  if (left > 0) { const e = out.length ? out[out.length - 1][0] : end; out.push([e - left, e]); }
-  return out;
-}
-
 /** Spiegel van de DB-functie: tijdstip waarop een lopende timer automatisch gepauzeerd wordt. */
 export function autoPauseAt(startedAt: number, s: WorkSchedule = current): number {
   const p = localParts(startedAt);

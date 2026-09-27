@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { secondsWithinWork, autoPauseAt, DEFAULT_SCHEDULE, placeBackward, nlToUtc } from "./workHours";
+import { secondsWithinWork, autoPauseAt, DEFAULT_SCHEDULE, nlToUtc } from "./workHours";
 import { orderTime, fairSeconds } from "./performanceGroups";
 import { poetserMayTogglePause } from "@/components/werkplaats/workOrderPause";
 
@@ -26,10 +26,10 @@ describe("afknippen op werktijden (ma–za 08–18 NL)", () => {
     const o = { id: "p", vehicle_id: "v", discipline: "spuit", status: "goedgekeurd", created_at: "", work_seconds: 7200, paused_seconds: 3600,
       started_at: new Date(nl("2026-09-24 14:00")).toISOString(), finished_at: new Date(nl("2026-09-24 15:00")).toISOString() };
     expect(orderTime(o)).toEqual({ registered: 7200, counted: 7200, clipped: 0 });
-    // eerdere sessie wordt achterwaarts in werktijd geplaatst (niet in de nacht)
-    const back = placeBackward(nl("2026-09-24 09:00"), 7200);
-    expect(back[0]).toEqual([nl("2026-09-24 08:00"), nl("2026-09-24 09:00")]);
-    expect(back[1]).toEqual([nl("2026-09-23 17:00"), nl("2026-09-23 18:00")]);
+    // doorgelopen timer vóór een pauze (44 u opgebouwd, hervat 09:30) telt niet als werktijd
+    const r = { ...o, work_seconds: 44 * 3600 + 3600, paused_seconds: 44 * 3600,
+      started_at: new Date(nl("2026-09-24 09:30")).toISOString(), finished_at: new Date(nl("2026-09-24 10:30")).toISOString() };
+    expect(h(orderTime(r).counted)).toBeLessThan(25);
   });
   it("Kia-geval: 18,2 u geregistreerd → alleen binnen werktijd", () => {
     const o = { id: "k", vehicle_id: "v", discipline: "spuit", status: "afgerond", created_at: "", paused_seconds: 0,
