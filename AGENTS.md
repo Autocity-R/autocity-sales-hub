@@ -1,0 +1,1 @@
+- Werktijden (werkplaats_werktijden) zijn de enige bron voor gewerkte tijd: src/lib/workHours.ts knipt intervallen af en werkplaats_auto_pauze (cron elke 15 min) pauzeert op de eindtijd — zo tellen doorgelopen timers niet als uren.

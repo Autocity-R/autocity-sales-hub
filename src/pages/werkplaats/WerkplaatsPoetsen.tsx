@@ -18,7 +18,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { buildHaystack, matchesSearch } from "@/lib/searchNormalize";
 import { useDeliveryMoments, DeliveryMoment } from "@/components/werkplaats/deliveryAppointment";
 import { splitPoetsRows, poetsDeadline } from "@/components/werkplaats/poetsDeadline";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, Pause } from "lucide-react";
+import { PauseTaskDialog } from "@/components/werkplaats/PauseTaskDialog";
+import { pauseWorkOrder, resumeFields, totalWorkSeconds, poetserMayTogglePause } from "@/components/werkplaats/workOrderPause";
 
 interface PoetsWO {
   id: string;
@@ -28,6 +30,8 @@ interface PoetsWO {
   due_date: string | null;
   created_at: string;
   started_at: string | null;
+  paused_seconds?: number | null;
+  pause_reason?: string | null;
   assigned_to: string | null;
   origin?: string | null;
   vehicle: {
@@ -49,6 +53,12 @@ const hay = (w: PoetsWO) =>
     w.vehicle?.year, w.vehicle?.color, w.description, w.poets_type,
   ]);
 
+const fmtSeconds = (sec: number) => {
+  const s = Math.max(0, Math.floor(sec));
+  const hh = Math.floor(s / 3600), mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0"), ss = String(s % 60).padStart(2, "0");
+  return hh > 0 ? `${hh}:${mm}:${ss}` : `${mm}:${ss}`;
+};
+
 const deadlineTone = (due: string | null): "red" | "amber" | "slate" => {
   if (!due) return "slate";
   const d = new Date(due);
@@ -62,16 +72,24 @@ const PoetsCard: React.FC<{
   w: PoetsWO;
   onStart: (w: PoetsWO) => void;
   onDone: (w: PoetsWO) => void;
+  onPause: (w: PoetsWO) => void;
+  onResume: (w: PoetsWO) => void;
   showDeadline: boolean;
   onOpen?: (w: PoetsWO) => void;
   workerName?: string | null;
   delivery?: DeliveryMoment | null;
-}> = ({ w, onStart, onDone, showDeadline, onOpen, workerName, delivery }) => {
+}> = ({ w, onStart, onDone, onPause, onResume, showDeadline, onOpen, workerName, delivery }) => {
   const { isDirectieReadOnly } = useRoleAccess();
   const readOnly = isDirectieReadOnly();
   const tone = deadlineTone(w.due_date);
   const deadline = poetsDeadline(w, delivery ?? undefined);
-  const timer = useLiveTimer(w.status === "bezig" ? w.started_at : null);
+  const { user, userRole } = useAuth();
+  const canToggle = userRole !== "poetser" || poetserMayTogglePause(userRole, w, user?.id);
+  const paused = w.status === "gepauzeerd";
+  const liveFrom = w.status === "bezig" && w.started_at
+    ? new Date(new Date(w.started_at).getTime() - Number(w.paused_seconds || 0) * 1000).toISOString() : null;
+  const live = useLiveTimer(liveFrom);
+  const timer = paused ? fmtSeconds(Number(w.paused_seconds || 0)) : live;
   const toneCls =
     tone === "red" ? "bg-red-50 text-red-700 border-red-200"
     : tone === "amber" ? "bg-amber-50 text-amber-800 border-amber-200"
@@ -116,10 +134,14 @@ const PoetsCard: React.FC<{
         </div>
       )}
       <div className="text-[13px] text-slate-700 whitespace-pre-wrap">{w.description || "—"}</div>
+      {paused && w.pause_reason && (
+        <div className="text-[12.5px] text-amber-800">Pauze: {w.pause_reason}</div>
+      )}
       {w.status !== "ingepland" && (
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-violet-200 bg-violet-50 text-violet-700 text-[13px] font-semibold tabular-nums">
-            <Timer className="h-4 w-4" /> {timer ?? "00:00"}
+          <div className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[13px] font-semibold tabular-nums",
+            paused ? "border-amber-200 bg-amber-50 text-amber-800" : "border-violet-200 bg-violet-50 text-violet-700")}>
+            {paused ? <Pause className="h-4 w-4" /> : <Timer className="h-4 w-4" />} {timer ?? "00:00"}{paused && " · Gepauzeerd"}
           </div>
           {workerName && (
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-slate-200 bg-slate-50 text-slate-700 text-[13px] font-semibold">
@@ -137,12 +159,25 @@ const PoetsCard: React.FC<{
           <Play className="h-5 w-5 mr-2" /> Gestart
         </Button>
       ) : (
-        <Button
-          onClick={() => onDone(w)}
-          className="h-12 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[15px] font-semibold"
-        >
-          <CheckCircle2 className="h-5 w-5 mr-2" /> Schoon
-        </Button>
+        <div className={cn("grid gap-2", canToggle ? "grid-cols-2" : "grid-cols-1")}>
+          {!canToggle ? null : paused ? (
+            <Button onClick={() => onResume(w)}
+              className="h-12 w-full bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold">
+              <Play className="h-5 w-5 mr-2" /> Hervatten
+            </Button>
+          ) : (
+            <Button onClick={() => onPause(w)} variant="outline"
+              className="h-12 w-full border-amber-300 text-amber-800 hover:bg-amber-50 text-[15px] font-semibold">
+              <Pause className="h-5 w-5 mr-2" /> Pauze
+            </Button>
+          )}
+          <Button
+            onClick={() => onDone(w)}
+            className="h-12 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-[15px] font-semibold"
+          >
+            <CheckCircle2 className="h-5 w-5 mr-2" /> Schoon
+          </Button>
+        </div>
       )}
       </div>
     </div>
@@ -159,12 +194,14 @@ const WerkplaatsPoetsen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<PoetsWO | null>(null);
   const [q, setQ] = useState("");
+  const [pauseTarget, setPauseTarget] = useState<PoetsWO | null>(null);
+  const [pauseBusy, setPauseBusy] = useState(false);
 
   const load = async () => {
     setLoading(true);
     let q = supabase
       .from("work_orders")
-      .select("id, description, status, poets_type, due_date, created_at, started_at, assigned_to, origin, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, year, mileage, color, vin, status)")
+      .select("id, description, status, poets_type, due_date, created_at, started_at, paused_seconds, pause_reason, assigned_to, origin, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, year, mileage, color, vin, status)")
       .eq("discipline", "poets")
       .in("status", ["ingepland", "bezig", "gepauzeerd"]);
     q = applyBranchFilter(q as any, branchFilter);
@@ -200,8 +237,8 @@ const WerkplaatsPoetsen: React.FC = () => {
   }, [rows, q, deliveryMoments]);
 
   const markDone = async (w: PoetsWO) => {
-    const startedAt = w.started_at ? new Date(w.started_at).getTime() : null;
-    const workSeconds = startedAt ? Math.max(0, Math.round((Date.now() - startedAt) / 1000)) : null;
+    // zelfde regel als andere disciplines: eerder opgebouwde tijd + lopende sessie (pauzes tellen niet)
+    const workSeconds = totalWorkSeconds(w) || null;
     setRows(prev => prev.filter(r => r.id !== w.id));
     const { error } = await supabase.from("work_orders")
       .update({
@@ -210,7 +247,8 @@ const WerkplaatsPoetsen: React.FC = () => {
         finished_at: new Date().toISOString(),
         approved_at: new Date().toISOString(),
         work_seconds: workSeconds,
-      })
+        paused_at: null,
+      } as any)
       .eq("id", w.id);
     if (error) {
       toast({ title: "Kon niet opslaan", description: error.message, variant: "destructive" });
@@ -231,6 +269,27 @@ const WerkplaatsPoetsen: React.FC = () => {
       toast({ title: "Kon niet starten", description: error.message, variant: "destructive" });
       load();
     }
+  };
+
+  const confirmPause = async (reason: string) => {
+    const w = pauseTarget;
+    if (!w) return;
+    setPauseBusy(true);
+    const mine = w.assigned_to || user?.id || null;
+    const secs = totalWorkSeconds(w);
+    setRows(prev => prev.map(r => (r.id === w.id ? { ...r, status: "gepauzeerd", started_at: null, paused_seconds: secs, pause_reason: reason.trim() || null } : r)));
+    const { error } = await pauseWorkOrder({ ...w, assigned_to: mine } as any, reason);
+    setPauseBusy(false);
+    setPauseTarget(null);
+    if (error) { toast({ title: "Kon niet pauzeren", description: error.message, variant: "destructive" }); load(); return; }
+    toast({ title: "Gepauzeerd", description: "De gewerkte tijd is bewaard." });
+  };
+
+  const markResumed = async (w: PoetsWO) => {
+    const fields = resumeFields();
+    setRows(prev => prev.map(r => (r.id === w.id ? { ...r, status: "bezig", started_at: fields.started_at } : r)));
+    const { error } = await supabase.from("work_orders").update(fields).eq("id", w.id);
+    if (error) { toast({ title: "Kon niet hervatten", description: error.message, variant: "destructive" }); load(); }
   };
 
   return (
@@ -295,7 +354,7 @@ const WerkplaatsPoetsen: React.FC = () => {
                     Geen afleveringen.
                   </div>
                 ) : afleveringen.map(w => (
-                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
+                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} onPause={setPauseTarget} onResume={markResumed} showDeadline onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
                 ))}
               </div>
             </AsCard>
@@ -314,12 +373,14 @@ const WerkplaatsPoetsen: React.FC = () => {
                     Geen showroom-taken.
                   </div>
                 ) : showroom.map(w => (
-                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} showDeadline={false} onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
+                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} onPause={setPauseTarget} onResume={markResumed} showDeadline={false} onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
                 ))}
               </div>
             </AsCard>
           </div>
         )}
+
+        <PauseTaskDialog open={!!pauseTarget} onOpenChange={(v) => !v && setPauseTarget(null)} onConfirm={confirmPause} busy={pauseBusy} />
 
         <TaskDetailSheet
           open={!!detail}
@@ -330,6 +391,11 @@ const WerkplaatsPoetsen: React.FC = () => {
               <Button onClick={() => { markStarted(detail); setDetail(null); }}
                 className="h-12 w-full bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold">
                 <Play className="h-5 w-5 mr-2" /> Gestart
+              </Button>
+            ) : detail.status === "gepauzeerd" ? (
+              <Button onClick={() => { markResumed(detail); setDetail(null); }}
+                className="h-12 w-full bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold">
+                <Play className="h-5 w-5 mr-2" /> Hervatten
               </Button>
             ) : (
               <Button onClick={() => { markDone(detail); setDetail(null); }}

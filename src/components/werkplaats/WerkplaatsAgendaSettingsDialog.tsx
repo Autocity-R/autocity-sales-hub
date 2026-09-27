@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { AsPill } from "@/components/aftersales/ui";
 import { Copy, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import WerktijdenSettings from "@/components/werkplaats/WerktijdenSettings";
 import {
   WERKPLAATS_SERVICE_ACCOUNT_EMAIL,
   fetchWerkplaatsCalendarSettings,
@@ -67,7 +68,7 @@ export const WerkplaatsAgendaSettingsDialog: React.FC<Props> = ({ open, onOpenCh
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Google Agenda — Werkplaats</DialogTitle>
           <DialogDescription>Synchronisatie-instellingen voor de werkplaatsagenda</DialogDescription>
@@ -127,6 +128,8 @@ export const WerkplaatsAgendaSettingsDialog: React.FC<Props> = ({ open, onOpenCh
             {settings?.last_sync_at && <AsPill tone="green">Laatste sync: {new Date(settings.last_sync_at).toLocaleString("nl-NL")}</AsPill>}
             {settings?.last_error && <AsPill tone="red">Laatste fout: {settings.last_error}</AsPill>}
           </div>
+
+          <WerktijdenSettings />
         </div>
       </DialogContent>
     </Dialog>

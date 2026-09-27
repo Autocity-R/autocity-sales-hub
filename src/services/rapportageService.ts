@@ -1,4 +1,5 @@
 import { fairSeconds, fairSecondsByAssignee } from "@/lib/performanceGroups";
+import { loadWorkSchedule } from "@/lib/workHours";
 import { supabase } from "@/integrations/supabase/client";
 import { buildRange, downloadCsv, type DirectiePeriod, type DirectieBranch } from "@/services/directieService";
 
@@ -113,7 +114,7 @@ export interface RapInvoice {
 }
 export interface RapOrder {
   id: string; vehicle_id: string | null; discipline: string | null; status: string | null;
-  work_seconds: number | null; assigned_to: string | null; created_at: string;
+  work_seconds: number | null; paused_seconds?: number | null; assigned_to: string | null; created_at: string;
   started_at: string | null; finished_at: string | null; approved_at: string | null;
   is_rush: boolean | null; rejected_count: number | null; branch: string | null;
   origin: string | null; external_customer: any; part: string | null; parts: any; poets_type: string | null;
@@ -149,7 +150,7 @@ export async function fetchRapportageRaw(sel: RapSelection, branch: RapBranch): 
 
 
   const invSel = "id,invoice_kind,subtotal,total,status,created_at,branch,vehicle_id,lines,source_work_order_ids,work_order_id";
-  const woSel = "id,vehicle_id,discipline,status,work_seconds,assigned_to,created_at,started_at,finished_at,approved_at,is_rush,rejected_count,branch,origin,external_customer,part,parts,poets_type";
+  const woSel = "id,vehicle_id,discipline,status,work_seconds,paused_seconds,assigned_to,created_at,started_at,finished_at,approved_at,is_rush,rejected_count,branch,origin,external_customer,part,parts,poets_type";
 
   const [inv6m, wo, intakes, veh, profiles] = await Promise.all([
     bf(supabase.from("workshop_invoices").select(invSel).gte("created_at", histStart.toISOString()), branch),
@@ -157,6 +158,7 @@ export async function fetchRapportageRaw(sel: RapSelection, branch: RapBranch): 
     bf(supabase.from("vehicle_intakes").select("id,vehicle_id,created_at,approved_at,status,branch").gte("created_at", histStart.toISOString()), branch),
     bf(supabase.from("vehicles").select("id,branch,status,aangekomen_at,sold_date,delivery_date,b2b_delivered_at,details").gte("updated_at", histStart.toISOString()), branch),
     supabase.from("profiles").select("id,first_name,last_name,poetser_type"),
+    loadWorkSchedule(),
   ]);
 
   const invoices6m = (inv6m.data || []) as any as RapInvoice[];

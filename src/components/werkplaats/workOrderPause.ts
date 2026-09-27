@@ -52,3 +52,17 @@ export const finishFields = (w: PausableWorkOrder, extra: Record<string, any> = 
   paused_at: null,
   ...extra,
 } as any);
+
+/**
+ * Spiegel van de RLS voor poetsers (wo_update_poetser_pauze): een poetser mag alleen zijn EIGEN
+ * poetsbeurt pauzeren (bezig → gepauzeerd) en hervatten (gepauzeerd → bezig). Andere rollen: via bestaande regels.
+ */
+export const poetserMayTogglePause = (
+  role: string | null | undefined,
+  w: { discipline?: string | null; status?: string | null; assigned_to?: string | null },
+  uid: string | null | undefined,
+): boolean => {
+  if (role !== "poetser") return false;
+  if ((w.discipline ?? "poets") !== "poets" || !uid || w.assigned_to !== uid) return false;
+  return w.status === "bezig" || w.status === "gepauzeerd";
+};

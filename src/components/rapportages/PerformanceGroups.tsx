@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AsLicensePlate, AsPill } from "@/components/aftersales/ui";
 import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
 import { eur, num, NoData } from "@/components/rapportages/RapportagesShell";
-import { cleanDescription, linkedExternalInvoice, pendingInvoiceAmount, possibleDuplicates, suspiciousTimer, type OrderGroup } from "@/lib/performanceGroups";
+import { cleanDescription, linkedExternalInvoice, pendingInvoiceAmount, possibleDuplicates, suspiciousTimer, orderTime, type OrderGroup } from "@/lib/performanceGroups";
 import type { RapOrder, RapRaw } from "@/services/rapportageService";
 
 type Vehicle = { brand: string | null; model: string | null; license_number: string | null } | undefined;
@@ -85,6 +85,9 @@ export const PerformanceGroupCards: React.FC<Props> = ({ raw, groups, revenue, n
                     <AlertTriangle className="h-3.5 w-3.5" />Timer liep door ({num(Math.max(...g.suspicious.map(s => s.hours)), 1)} u)
                   </span>
                 )}
+                {g.clippedSeconds > 60 && (
+                  <span className="text-amber-700">{hrs(g.clippedSeconds)} buiten werktijd niet meegeteld</span>
+                )}
                 {external && <AsPill tone="slate">Externe klus</AsPill>}
                 {notCounted > 0 && <span className="text-slate-400">{notCounted} nog niet geteld</span>}
               </div>
@@ -156,6 +159,7 @@ const GroupDetailDialog: React.FC<{
             const external = r.origin === "extern";
             const externalInvoice = external ? linkedExternalInvoice(r.id, raw.invoices6m) : null;
             const sus = suspiciousTimer(r);
+            const t = orderTime(r);
             const before = photoPaths(r.photos), after = photoPaths(r.result_photos);
             return (
               <div key={r.id} className="rounded-xl border border-slate-200 p-3 text-[12.5px]">
@@ -172,7 +176,7 @@ const GroupDetailDialog: React.FC<{
                   <Row k="Bron" v={SOURCE[r.source] || r.source || "—"} />
                   <Row k="Start / stop" v={`${dt(r.started_at)} → ${dt(r.finished_at)}`} />
                   <Row k="Gepauzeerd" v={r.paused_seconds ? `${Math.round(r.paused_seconds / 60)} min` : "—"} />
-                  <Row k="Gewerkte tijd" v={r.work_seconds ? hrs(r.work_seconds) : "—"} />
+                  <Row k="Gewerkte tijd" v={r.work_seconds ? `geregistreerd ${hrs(t.registered)}, waarvan ${hrs(t.counted)} binnen werktijd geteld` : "—"} />
                   <Row k="Goedgekeurd" v={r.approved_at ? `${nameOf(r.approved_by)} · ${dt(r.approved_at)}` : "—"} />
                   <Row k="Afgekeurd" v={r.rejected_count ? `${r.rejected_count}×${r.reject_note ? ` — ${r.reject_note}` : ""}` : "0×"} />
                   <Row k="Afrondnotitie" v={r.finish_note || "—"} />
@@ -186,7 +190,7 @@ const GroupDetailDialog: React.FC<{
                       : "Externe factuur niet aan werkorder gekoppeld."}
                   </div>
                 )}
-                {sus != null && <div className="mt-2 inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700"><AlertTriangle className="h-3 w-3" />Timer liep door ({num(sus, 1)} u)</div>}
+                {sus != null && <div className="mt-2 inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700"><AlertTriangle className="h-3 w-3" />Timer liep door ({num(sus, 1)} u){t.clipped > 60 ? ` · ${hrs(t.clipped)} niet meegeteld` : ""}</div>}
                 {(before.length > 0 || after.length > 0) && (
                   <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {[["Vóór", before], ["Na", after]].map(([l, ps]) => (ps as string[]).length > 0 && (
