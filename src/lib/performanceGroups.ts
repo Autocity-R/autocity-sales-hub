@@ -1,11 +1,15 @@
 /**
  * Performance-pagina: werkorders per medewerker groeperen en tijd eerlijk tellen.
  *
- * TIJDREGEL: elk afgerond werkorder krijgt het interval [finished_at − work_seconds, finished_at]
- * (work_seconds is de geregistreerde netto werktijd, pauzes al verrekend). Overlappende intervallen
- * van dezelfde medewerker tellen één keer (unie), zodat parallel lopende timers de uren niet opblazen.
+ * TIJDREGEL (timer: work_seconds = paused_seconds + (finished_at − started_at); bij pauze wordt de
+ * lopende sessie bij paused_seconds opgeteld en started_at leeggemaakt, bij hervatten opnieuw gezet):
+ *  - laatste sessie exact: [started_at, finished_at] (als dat klopt met work_seconds − paused_seconds);
+ *  - eerdere sessies (paused_seconds) achterwaarts in werktijd vóór started_at geplaatst;
+ *  - anders benadering [finished_at − work_seconds, finished_at].
+ * Daarna afgeknipt op de werktijden (werkplaats_werktijden) en per medewerker als unie geteld.
  * Orders zonder finished_at tellen met hun work_seconds los mee.
  */
+import { getWorkSchedule, placeBackward, workWindows, type WorkSchedule } from "@/lib/workHours";
 
 export interface TimedOrder {
   id: string;
@@ -17,6 +21,7 @@ export interface TimedOrder {
   created_at: string;
   started_at: string | null;
   finished_at: string | null;
+  paused_seconds?: number | null;
 }
 
 export interface BillableOrder {
@@ -60,12 +65,42 @@ export type Interval = [number, number];
 const NL_DAY = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam", year: "numeric", month: "2-digit", day: "2-digit" });
 export const nlDay = (iso: string) => NL_DAY.format(new Date(iso));
 
-export function intervalOf(o: TimedOrder): Interval | null {
-  if (!o.finished_at) return null;
+/** Ruwe (geregistreerde) intervallen van een afgerond werkorder. */
+export function rawIntervals(o: TimedOrder, sched: WorkSchedule = getWorkSchedule()): Interval[] {
+  if (!o.finished_at) return [];
   const end = +new Date(o.finished_at);
   const ws = Math.max(0, Number(o.work_seconds || 0));
-  if (!ws) return null;
-  return [end - ws * 1000, end];
+  if (!ws) return [];
+  const ps = Math.max(0, Number(o.paused_seconds || 0));
+  if (o.started_at) {
+    const st = +new Date(o.started_at);
+    const last = (end - st) / 1000;
+    if (last >= 0 && Math.abs(ws - ps - last) <= 120) {
+      const out: Interval[] = last > 0 ? [[st, end]] : [];
+      return [...placeBackward(st, Math.min(ps, ws), sched) as Interval[], ...out];
+    }
+  }
+  return [[end - ws * 1000, end]];
+}
+
+/** Omhullende van de ruwe intervallen (voor groepering op dag/overlap). */
+export function intervalOf(o: TimedOrder): Interval | null {
+  const iv = rawIntervals(o);
+  if (!iv.length) return null;
+  return [Math.min(...iv.map(i => i[0])), Math.max(...iv.map(i => i[1]))];
+}
+
+/** Intervallen afgeknipt op werktijd. */
+export function countedIntervals(o: TimedOrder, sched: WorkSchedule = getWorkSchedule()): Interval[] {
+  return rawIntervals(o, sched).flatMap(([a, b]) => workWindows(a, b, sched) as Interval[]);
+}
+
+/** Geregistreerd vs. binnen werktijd geteld (seconden) voor één werkorder. */
+export function orderTime(o: TimedOrder, sched: WorkSchedule = getWorkSchedule()) {
+  const registered = Math.max(0, Number(o.work_seconds || 0));
+  if (!rawIntervals(o, sched).length) return { registered, counted: registered, clipped: 0 };
+  const counted = unionSeconds(countedIntervals(o, sched));
+  return { registered, counted, clipped: Math.max(0, registered - counted) };
 }
 
 /** Lengte (seconden) van de unie van intervallen (ms). */
@@ -81,10 +116,10 @@ export function unionSeconds(intervals: Interval[]): number {
 }
 
 /** Eerlijke tijd voor een set orders: unie van intervallen + losse orders zonder interval. */
-export function fairSeconds(orders: TimedOrder[]): number {
+export function fairSeconds(orders: TimedOrder[], sched: WorkSchedule = getWorkSchedule()): number {
   const iv: Interval[] = [];
   let loose = 0;
-  orders.forEach(o => { const i = intervalOf(o); if (i) iv.push(i); else loose += Number(o.work_seconds || 0); });
+  orders.forEach(o => { if (rawIntervals(o, sched).length) iv.push(...countedIntervals(o, sched)); else loose += Number(o.work_seconds || 0); });
   return unionSeconds(iv) + loose;
 }
 
@@ -118,6 +153,8 @@ export interface OrderGroup<T extends TimedOrder> {
   /** > 1 order waarvan de timers gelijktijdig liepen */
   parallel: boolean;
   suspicious: { id: string; hours: number }[];
+  /** seconden die door afknippen op werktijd niet zijn meegeteld */
+  clippedSeconds: number;
   latest: number;
 }
 
@@ -157,6 +194,7 @@ export function groupOrders<T extends TimedOrder>(orders: T[]): OrderGroup<T>[] 
         fairSeconds: fair,
         sumSeconds: sum,
         parallel: c.length > 1 && sum - fair > 60,
+        clippedSeconds: c.reduce((a, o) => a + orderTime(o).clipped, 0),
         suspicious: c.map(o => ({ id: o.id, hours: suspiciousTimer(o) })).filter(x => x.hours != null) as { id: string; hours: number }[],
         latest: Math.max(...c.map(o => +new Date(o.finished_at || o.started_at || o.created_at))),
       });

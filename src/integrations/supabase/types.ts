@@ -5061,6 +5061,50 @@ export type Database = {
         }
         Relationships: []
       }
+      werkplaats_auto_pauze_log: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          discipline: string | null
+          id: string
+          paused_at: string
+          run_at: string
+          seconds_added: number
+          started_at: string
+          work_order_id: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          discipline?: string | null
+          id?: string
+          paused_at: string
+          run_at?: string
+          seconds_added: number
+          started_at: string
+          work_order_id: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          discipline?: string | null
+          id?: string
+          paused_at?: string
+          run_at?: string
+          seconds_added?: number
+          started_at?: string
+          work_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "werkplaats_auto_pauze_log_work_order_id_fkey"
+            columns: ["work_order_id"]
+            isOneToOne: false
+            referencedRelation: "work_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       werkplaats_calendar_settings: {
         Row: {
           branch: string
@@ -5196,6 +5240,36 @@ export type Database = {
           onderdelen_marge_pct?: number
           updated_at?: string
           uurtarief_ex_btw?: number
+        }
+        Relationships: []
+      }
+      werkplaats_werktijden: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          end_time: string
+          start_time: string
+          updated_at: string
+          updated_by: string | null
+          weekday: number
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          end_time?: string
+          start_time?: string
+          updated_at?: string
+          updated_by?: string | null
+          weekday: number
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          end_time?: string
+          start_time?: string
+          updated_at?: string
+          updated_by?: string | null
+          weekday?: number
         }
         Relationships: []
       }
@@ -5620,6 +5694,17 @@ export type Database = {
           agents_webhook_url: string
           is_synchronized: boolean
           webhooks_count: number
+        }[]
+      }
+      werkplaats_auto_pauze: {
+        Args: { p_dry_run?: boolean; p_now?: string }
+        Returns: {
+          assigned_to: string
+          discipline: string
+          pause_at: string
+          seconds_added: number
+          started_at: string
+          work_order_id: string
         }[]
       }
       werkplaats_rol: { Args: never; Returns: string }

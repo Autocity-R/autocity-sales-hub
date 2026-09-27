@@ -128,9 +128,9 @@ const RapportagePerformance: React.FC = () => {
           {periodStats && (
             <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[12.5px] text-slate-700">
               <div>Uren {raw?.rangeLabel}: <b>{num(periodStats.fair, 1)} u</b>
-                {periodStats.sum - periodStats.fair > 0.05 && <span className="text-slate-500"> (som losse timers {num(periodStats.sum, 1)} u — overlap 1× geteld)</span>}</div>
+                {periodStats.sum - periodStats.fair > 0.05 && <span className="text-slate-500"> (geregistreerd {num(periodStats.sum, 1)} u — overlap 1× geteld, alleen binnen werktijd)</span>}</div>
               {periodStats.suspicious > 0 && (
-                <div className="mt-1 font-medium text-amber-700">⚠ {periodStats.suspicious} verdachte {periodStats.suspicious === 1 ? "timer" : "timers"} (liep door over de nacht of &gt; 10 uur) — uren tellen mee zoals geregistreerd</div>
+                <div className="mt-1 font-medium text-amber-700">⚠ {periodStats.suspicious} verdachte {periodStats.suspicious === 1 ? "timer" : "timers"} (liep door over de nacht of &gt; 10 uur) — alleen de uren binnen werktijd tellen mee</div>
               )}
               <div className="mt-1">Nog te factureren: <b>{eur(detail.filter(o => doneInPeriod(o, raw.from, raw.to)).reduce((total, order) => total + pendingInvoiceAmount(order, raw.invoices6m), 0))}</b> <span className="text-slate-500">(apart van gefactureerde omzet)</span></div>
             </div>

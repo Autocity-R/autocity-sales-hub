@@ -12,3 +12,4 @@
 - [x] Bouwstap 5: Performance-cards per auto/discipline/werkdag groeperen, tijd als unie, verdachte timers, detail + omzet per onderdeel (niet gepubliceerd)
 - [x] Onderzoek €0 afgerond: KVH-62-D wacht volgens factuurtrigger op alle interne spuitdelen; J-847-RR is extern
 - [x] Vervolg Performance: gefactureerd, nog te factureren en externe klus apart tonen + testen (niet gepubliceerd)
+- [ ] Bouwstap 6: werktijden-instelling, auto-pauze (cron), uren afknippen op werktijd, pauzeren voor poetsers (niet gepubliceerd)
