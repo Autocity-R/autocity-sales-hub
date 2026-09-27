@@ -20,7 +20,7 @@ import { useDeliveryMoments, DeliveryMoment } from "@/components/werkplaats/deli
 import { splitPoetsRows, poetsDeadline } from "@/components/werkplaats/poetsDeadline";
 import { CalendarClock, Pause } from "lucide-react";
 import { PauseTaskDialog } from "@/components/werkplaats/PauseTaskDialog";
-import { pauseWorkOrder, resumeFields, totalWorkSeconds } from "@/components/werkplaats/workOrderPause";
+import { pauseWorkOrder, resumeFields, totalWorkSeconds, poetserMayTogglePause } from "@/components/werkplaats/workOrderPause";
 
 interface PoetsWO {
   id: string;
@@ -83,6 +83,8 @@ const PoetsCard: React.FC<{
   const readOnly = isDirectieReadOnly();
   const tone = deadlineTone(w.due_date);
   const deadline = poetsDeadline(w, delivery ?? undefined);
+  const { user, userRole } = useAuth();
+  const canToggle = userRole !== "poetser" || poetserMayTogglePause(userRole, w, user?.id);
   const paused = w.status === "gepauzeerd";
   const liveFrom = w.status === "bezig" && w.started_at
     ? new Date(new Date(w.started_at).getTime() - Number(w.paused_seconds || 0) * 1000).toISOString() : null;
@@ -157,8 +159,8 @@ const PoetsCard: React.FC<{
           <Play className="h-5 w-5 mr-2" /> Gestart
         </Button>
       ) : (
-        <div className="grid grid-cols-2 gap-2">
-          {paused ? (
+        <div className={cn("grid gap-2", canToggle ? "grid-cols-2" : "grid-cols-1")}>
+          {!canToggle ? null : paused ? (
             <Button onClick={() => onResume(w)}
               className="h-12 w-full bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold">
               <Play className="h-5 w-5 mr-2" /> Hervatten
