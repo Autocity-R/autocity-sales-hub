@@ -132,8 +132,8 @@ const RapportagePerformance: React.FC = () => {
               {periodStats.suspicious > 0 && (
                 <div className="mt-1 font-medium text-amber-700">⚠ {periodStats.suspicious} verdachte {periodStats.suspicious === 1 ? "timer" : "timers"} (liep door over de nacht of &gt; 10 uur) — uren tellen mee zoals geregistreerd</div>
               )}
-            </div>
               <div className="mt-1">Nog te factureren: <b>{eur(detail.filter(o => doneInPeriod(o, raw.from, raw.to)).reduce((total, order) => total + pendingInvoiceAmount(order, raw.invoices6m), 0))}</b> <span className="text-slate-500">(apart van gefactureerde omzet)</span></div>
+            </div>
           )}
           <div className="mt-4">
             {raw && <PerformanceGroupCards raw={raw} groups={groups} revenue={revenue} nameOf={nameOf} />}
