@@ -21,6 +21,7 @@ const partsOf = (o: { part: string | null; parts: any }) => {
   return p.length ? p.join(", ") : (o.part || "Onbekend onderdeel");
 };
 const photoPaths = (p: any): string[] => Array.isArray(p) ? p.map((x: any) => typeof x === "string" ? x : x?.path || x?.url).filter(Boolean) : [];
+const nParts = (g: OrderGroup<GOrder>) => g.orders.reduce((a, o) => a + (Array.isArray(o.parts) && o.parts.length ? o.parts.length : 1), 0);
 export const isCounted = (o: RapOrder) => o.status === "goedgekeurd";
 
 interface Props {
@@ -51,7 +52,7 @@ export const PerformanceGroupCards: React.FC<Props> = ({ raw, groups, revenue, n
               className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left hover:border-blue-300 hover:bg-blue-50/30">
               <div className="flex items-center justify-between gap-2">
                 <AsPill tone={g.discipline === "spuit" ? "pink" : "blue"}>
-                  {DISC[g.discipline || ""] || g.discipline} · {g.orders.length} {g.orders.length === 1 ? "onderdeel" : "onderdelen"}
+                  {DISC[g.discipline || ""] || g.discipline} · {nParts(g)} {nParts(g) === 1 ? "onderdeel" : "onderdelen"}
                 </AsPill>
                 <span className="text-[11px] font-semibold text-slate-500">{new Date(g.day).toLocaleDateString("nl-NL")}</span>
               </div>
