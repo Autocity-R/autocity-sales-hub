@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AsLicensePlate, AsPill } from "@/components/aftersales/ui";
 import { WorkshopPhoto } from "@/components/werkplaats/WorkshopPhoto";
 import { eur, num, NoData } from "@/components/rapportages/RapportagesShell";
-import { cleanDescription, possibleDuplicates, suspiciousTimer, type OrderGroup } from "@/lib/performanceGroups";
+import { cleanDescription, linkedExternalInvoice, pendingInvoiceAmount, possibleDuplicates, suspiciousTimer, type OrderGroup } from "@/lib/performanceGroups";
 import type { RapOrder, RapRaw } from "@/services/rapportageService";
 
 type Vehicle = { brand: string | null; model: string | null; license_number: string | null } | undefined;
@@ -37,6 +37,9 @@ export const PerformanceGroupCards: React.FC<Props> = ({ raw, groups, revenue, n
     o.vehicle_id && o.vehicle_id === g.vehicle_id && o.discipline === g.discipline
     && !["afgerond", "goedgekeurd", "geannuleerd"].includes(o.status || "")
     && !g.orders.some(x => x.id === o.id));
+  const blockingOrders = (g: OrderGroup<GOrder>) => raw.orders.filter(o =>
+    o.vehicle_id && o.vehicle_id === g.vehicle_id && o.discipline === g.discipline
+    && (o.origin || "intern") === "intern" && !["goedgekeurd", "geannuleerd"].includes(o.status || ""));
 
   return (
     <>
@@ -45,8 +48,13 @@ export const PerformanceGroupCards: React.FC<Props> = ({ raw, groups, revenue, n
         {groups.map(g => {
           const v = g.orders[0].vehicle;
           const rev = g.orders.reduce((a, o) => a + (isCounted(o) ? revenue.get(o.id) || 0 : 0), 0);
+          const pending = g.orders.reduce((a, o) => a + pendingInvoiceAmount(o, raw.invoices6m), 0);
           const notCounted = g.orders.filter(o => !isCounted(o)).length;
           const sib = openSiblings(g);
+          const blockers = blockingOrders(g);
+          const external = g.orders.some(o => o.origin === "extern");
+          const externalOrder = g.orders.find(o => o.origin === "extern");
+          const externalInvoice = externalOrder ? linkedExternalInvoice(externalOrder.id, raw.invoices6m) : null;
           return (
             <button key={g.key} type="button" onClick={() => setOpen(g)}
               className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left hover:border-blue-300 hover:bg-blue-50/30">
@@ -77,28 +85,38 @@ export const PerformanceGroupCards: React.FC<Props> = ({ raw, groups, revenue, n
                     <AlertTriangle className="h-3.5 w-3.5" />Timer liep door ({num(Math.max(...g.suspicious.map(s => s.hours)), 1)} u)
                   </span>
                 )}
-                <span className="ml-auto font-bold tabular-nums text-slate-900">{eur(rev)}</span>
+                {external && <AsPill tone="slate">Externe klus</AsPill>}
                 {notCounted > 0 && <span className="text-slate-400">{notCounted} nog niet geteld</span>}
               </div>
+              <div className="mt-2 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2 text-[11.5px]">
+                <span className="text-slate-500">Gefactureerd <b className="ml-1 tabular-nums text-slate-900">{eur(rev)}</b></span>
+                {!external && <span className="text-slate-500">Nog te factureren <b className="ml-1 tabular-nums text-amber-700">{eur(pending)}</b></span>}
+              </div>
+              {!external && pending > 0 && g.discipline === "spuit" && blockers.length > 0 && (
+                <div className="mt-1.5 text-[11px] leading-4 text-amber-700">
+                  Factuur volgt zodra alle onderdelen van deze auto goedgekeurd zijn. Nog open: {blockers.map(partsOf).join(", ")}.
+                </div>
+              )}
+              {external && <div className="mt-1.5 text-[11px] text-slate-500">{externalInvoice ? `Gekoppelde externe factuur · ${externalInvoice.status || "status onbekend"}` : "Externe factuur niet aan werkorder gekoppeld"}</div>}
             </button>
           );
         })}
       </div>
-      <GroupDetailDialog group={open} onClose={() => setOpen(null)} revenue={revenue} nameOf={nameOf} />
+      <GroupDetailDialog raw={raw} group={open} onClose={() => setOpen(null)} revenue={revenue} nameOf={nameOf} />
     </>
   );
 };
 
 const GroupDetailDialog: React.FC<{
-  group: OrderGroup<GOrder> | null; onClose: () => void; revenue: Map<string, number>; nameOf: Props["nameOf"];
-}> = ({ group, onClose, revenue, nameOf }) => {
+  raw: RapRaw; group: OrderGroup<GOrder> | null; onClose: () => void; revenue: Map<string, number>; nameOf: Props["nameOf"];
+}> = ({ raw, group, onClose, revenue, nameOf }) => {
   const ids = group?.orders.map(o => o.id) || [];
   const { data, isLoading } = useQuery({
     queryKey: ["perf-group-detail", ids.join(",")],
     enabled: ids.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase.from("work_orders")
-        .select("id,vehicle_id,discipline,part,parts,description,created_by,created_at,source,origin,photos,result_photos,reject_note,finish_note,rejected_count,paused_seconds,started_at,finished_at,status,approved_by,approved_at,work_seconds")
+        .select("id,vehicle_id,discipline,part,parts,description,created_by,created_at,source,origin,external_customer,photos,result_photos,reject_note,finish_note,rejected_count,paused_seconds,started_at,finished_at,status,approved_by,approved_at,work_seconds")
         .in("id", ids);
       if (error) throw error;
       const rows = (data || []) as any[];
@@ -115,6 +133,9 @@ const GroupDetailDialog: React.FC<{
   });
   const v = group?.orders[0].vehicle;
   const total = group ? group.orders.reduce((a, o) => a + (isCounted(o) ? revenue.get(o.id) || 0 : 0), 0) : 0;
+  const pendingTotal = group ? group.orders.reduce((a, o) => a + pendingInvoiceAmount(o, raw.invoices6m), 0) : 0;
+  const blockers = group ? raw.orders.filter(o => o.vehicle_id === group.vehicle_id && o.discipline === group.discipline
+    && (o.origin || "intern") === "intern" && !["goedgekeurd", "geannuleerd"].includes(o.status || "")) : [];
   const rows = (data?.rows || []).sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
 
   return (
@@ -129,9 +150,11 @@ const GroupDetailDialog: React.FC<{
         {isLoading && <div className="text-[12px] text-slate-500">laden…</div>}
         <div className="space-y-3">
           {rows.map(r => {
-            const o = group!.orders.find(x => x.id === r.id)!;
             const counted = isCounted(r);
             const rev = revenue.get(r.id) || 0;
+            const pending = pendingInvoiceAmount(r, raw.invoices6m);
+            const external = r.origin === "extern";
+            const externalInvoice = external ? linkedExternalInvoice(r.id, raw.invoices6m) : null;
             const sus = suspiciousTimer(r);
             const before = photoPaths(r.photos), after = photoPaths(r.result_photos);
             return (
@@ -153,8 +176,16 @@ const GroupDetailDialog: React.FC<{
                   <Row k="Goedgekeurd" v={r.approved_at ? `${nameOf(r.approved_by)} · ${dt(r.approved_at)}` : "—"} />
                   <Row k="Afgekeurd" v={r.rejected_count ? `${r.rejected_count}×${r.reject_note ? ` — ${r.reject_note}` : ""}` : "0×"} />
                   <Row k="Afrondnotitie" v={r.finish_note || "—"} />
-                  <Row k="Omzet" v={counted ? (rev ? eur(rev) : "€ 0 — geen verstuurde factuur gevonden") : "nog niet geteld"} strong />
+                  <Row k="Gefactureerd" v={counted ? eur(rev) : "nog niet geteld"} strong />
+                  {!external && <Row k="Nog te factureren" v={counted ? eur(pending) : "nog niet geteld"} strong />}
                 </dl>
+                {external && (
+                  <div className="mt-2 rounded border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11.5px] text-slate-700">
+                    <b>Externe klus.</b> {externalInvoice
+                      ? (externalInvoice.status === "verstuurd" ? `Gekoppelde externe factuur · ${eur(rev)} gefactureerd.` : `Gekoppelde externe factuur · status ${externalInvoice.status || "onbekend"}.`)
+                      : "Externe factuur niet aan werkorder gekoppeld."}
+                  </div>
+                )}
                 {sus != null && <div className="mt-2 inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700"><AlertTriangle className="h-3 w-3" />Timer liep door ({num(sus, 1)} u)</div>}
                 {(before.length > 0 || after.length > 0) && (
                   <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -168,16 +199,22 @@ const GroupDetailDialog: React.FC<{
                     ))}
                   </div>
                 )}
-                {!o && null}
               </div>
             );
           })}
         </div>
         {group && (
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 p-3 text-[13px]">
+          <div className="mt-2 rounded-xl bg-slate-50 p-3 text-[13px]">
+            <div className="flex flex-wrap items-center justify-between gap-2">
             <span>Groepstotaal · tijd <b>{hrs(group.fairSeconds)}</b>
               {group.parallel && <span className="text-slate-500"> (som timers {hrs(group.sumSeconds)}, overlap 1× geteld)</span>}</span>
-            <span className="font-bold">{eur(total)}</span>
+              <span className="text-right"><span className="text-slate-500">Gefactureerd</span> <b>{eur(total)}</b>{!group.orders.some(o => o.origin === "extern") && <><br /><span className="text-slate-500">Nog te factureren</span> <b className="text-amber-700">{eur(pendingTotal)}</b></>}</span>
+            </div>
+            {!group.orders.some(o => o.origin === "extern") && pendingTotal > 0 && group.discipline === "spuit" && blockers.length > 0 && (
+              <div className="mt-2 border-t border-slate-200 pt-2 text-[11.5px] text-amber-700">
+                Factuur volgt zodra alle onderdelen van deze auto goedgekeurd zijn. Nog open: {blockers.map(partsOf).join(", ")}.
+              </div>
+            )}
           </div>
         )}
       </DialogContent>

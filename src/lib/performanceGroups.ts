@@ -19,6 +19,42 @@ export interface TimedOrder {
   finished_at: string | null;
 }
 
+export interface BillableOrder {
+  id: string;
+  discipline: string | null;
+  status: string | null;
+  origin?: string | null;
+  external_customer?: unknown;
+  part?: string | null;
+  parts?: unknown;
+}
+
+export interface OrderInvoiceLink {
+  invoice_kind: string | null;
+  status?: string | null;
+  work_order_id: string | null;
+  source_work_order_ids: unknown;
+}
+
+const linkedIds = (invoice: OrderInvoiceLink): string[] => {
+  if (Array.isArray(invoice.source_work_order_ids)) return invoice.source_work_order_ids.filter((id): id is string => typeof id === "string" && id.length > 0);
+  return invoice.work_order_id ? [invoice.work_order_id] : [];
+};
+
+export const billablePartCount = (order: BillableOrder): number =>
+  order.discipline === "spuit" && Array.isArray(order.parts) && order.parts.length > 0 ? order.parts.length : 1;
+
+/** Trigger-equivalent indicatie: goedgekeurd intern werk dat nog in geen enkele interne factuur zit. */
+export function pendingInvoiceAmount(order: BillableOrder, invoices: OrderInvoiceLink[]): number {
+  if (order.status !== "goedgekeurd" || (order.origin || "intern") !== "intern" || order.external_customer != null) return 0;
+  if (!['spuit', 'werkplaats'].includes(order.discipline || "")) return 0;
+  const alreadyInvoiced = invoices.some(invoice => invoice.invoice_kind === "intern" && linkedIds(invoice).includes(order.id));
+  return alreadyInvoiced ? 0 : billablePartCount(order) * 300;
+}
+
+export const linkedExternalInvoice = (orderId: string, invoices: OrderInvoiceLink[]) =>
+  invoices.find(invoice => invoice.invoice_kind !== "intern" && invoice.work_order_id === orderId) || null;
+
 export type Interval = [number, number];
 
 const NL_DAY = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam", year: "numeric", month: "2-digit", day: "2-digit" });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { unionSeconds, fairSeconds, groupOrders, suspiciousTimer, possibleDuplicates, cleanDescription, fairSecondsByAssignee } from "./performanceGroups";
+import { unionSeconds, fairSeconds, groupOrders, suspiciousTimer, possibleDuplicates, cleanDescription, fairSecondsByAssignee, pendingInvoiceAmount, linkedExternalInvoice } from "./performanceGroups";
 
 const o = (id: string, start: string, end: string, extra: any = {}) => ({
   id, vehicle_id: "v1", discipline: "spuit", status: "goedgekeurd", assigned_to: "u1",
@@ -64,5 +64,28 @@ describe("dubbel + omschrijving", () => {
   });
   it("haalt ingepland-regels weg", () => {
     expect(cleanDescription("Blanke lak\n[ingepland op wo 23/9 10:00]")).toBe("Blanke lak");
+  });
+});
+
+describe("nog te factureren", () => {
+  const invoices = [{ invoice_kind: "intern", status: "concept", work_order_id: null, source_work_order_ids: ["invoiced"] }];
+  const order = { id: "spuit", discipline: "spuit", status: "goedgekeurd", origin: "intern", part: "bumper", parts: ["bumper", "portier", "motorkap"] };
+
+  it("rekent €300 per spuitdeel en €300 per werkplaatsorder", () => {
+    expect(pendingInvoiceAmount(order, invoices)).toBe(900);
+    expect(pendingInvoiceAmount({ ...order, id: "werk", discipline: "werkplaats", parts: ["a", "b"] }, invoices)).toBe(300);
+  });
+
+  it("sluit reeds gefactureerd, niet-goedgekeurd en extern werk uit", () => {
+    expect(pendingInvoiceAmount({ ...order, id: "invoiced" }, invoices)).toBe(0);
+    expect(pendingInvoiceAmount({ ...order, status: "afgerond" }, invoices)).toBe(0);
+    expect(pendingInvoiceAmount({ ...order, origin: "extern" }, invoices)).toBe(0);
+    expect(pendingInvoiceAmount({ ...order, external_customer: { name: "Klant" } }, invoices)).toBe(0);
+  });
+
+  it("herkent een externe factuur alleen via de directe work_order-koppeling", () => {
+    const external = { invoice_kind: "extern", status: "verstuurd", work_order_id: "extern-order", source_work_order_ids: [] };
+    expect(linkedExternalInvoice("extern-order", [external])?.status).toBe("verstuurd");
+    expect(linkedExternalInvoice("ander", [external])).toBeNull();
   });
 });

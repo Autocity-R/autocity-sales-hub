@@ -116,7 +116,7 @@ export interface RapOrder {
   work_seconds: number | null; assigned_to: string | null; created_at: string;
   started_at: string | null; finished_at: string | null; approved_at: string | null;
   is_rush: boolean | null; rejected_count: number | null; branch: string | null;
-  origin: string | null; part: string | null; parts: any; poets_type: string | null;
+  origin: string | null; external_customer: any; part: string | null; parts: any; poets_type: string | null;
 }
 export interface RapIntake { id: string; vehicle_id: string | null; created_at: string; approved_at: string | null; status: string | null; branch: string | null }
 export interface RapVehicle {
@@ -149,7 +149,7 @@ export async function fetchRapportageRaw(sel: RapSelection, branch: RapBranch): 
 
 
   const invSel = "id,invoice_kind,subtotal,total,status,created_at,branch,vehicle_id,lines,source_work_order_ids,work_order_id";
-  const woSel = "id,vehicle_id,discipline,status,work_seconds,assigned_to,created_at,started_at,finished_at,approved_at,is_rush,rejected_count,branch,origin,part,parts,poets_type";
+  const woSel = "id,vehicle_id,discipline,status,work_seconds,assigned_to,created_at,started_at,finished_at,approved_at,is_rush,rejected_count,branch,origin,external_customer,part,parts,poets_type";
 
   const [inv6m, wo, intakes, veh, profiles] = await Promise.all([
     bf(supabase.from("workshop_invoices").select(invSel).gte("created_at", histStart.toISOString()), branch),
