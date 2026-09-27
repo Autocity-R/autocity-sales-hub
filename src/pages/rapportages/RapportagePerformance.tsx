@@ -2,10 +2,12 @@ import React from "react";
 import { Users, ArrowUpDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { AsLicensePlate, AsPill } from "@/components/aftersales/ui";
+import { AsPill } from "@/components/aftersales/ui";
 import { RapportagesShell, useRapportageFilters, Block, eur, num, NoData } from "@/components/rapportages/RapportagesShell";
 import { useRapportageData } from "@/hooks/useRapportageData";
-import { employeeRows, employeeOrders, downloadCsv, type EmployeeRow } from "@/services/rapportageService";
+import { employeeRows, employeeOrders, downloadCsv, revenueByOrder, doneInPeriod, type EmployeeRow } from "@/services/rapportageService";
+import { groupOrders, suspiciousTimer, fairSeconds } from "@/lib/performanceGroups";
+import { PerformanceGroupCards } from "@/components/rapportages/PerformanceGroups";
 import { cn } from "@/lib/utils";
 
 type SortKey = keyof Pick<EmployeeRow, "name" | "revenue" | "hours" | "perHour" | "tasks" | "parts">;
@@ -28,6 +30,21 @@ const RapportagePerformance: React.FC = () => {
   }, [rows, sort, asc]);
 
   const detail = React.useMemo(() => (raw && selected ? employeeOrders(raw, selected.id) : []), [raw, selected]);
+  const groups = React.useMemo(() => groupOrders(detail), [detail]);
+  const revenue = React.useMemo(() => (raw ? revenueByOrder(raw, raw.invoices6m) : new Map<string, number>()), [raw]);
+  const periodStats = React.useMemo(() => {
+    if (!raw) return null;
+    const done = detail.filter(o => doneInPeriod(o, raw.from, raw.to));
+    return {
+      fair: fairSeconds(done) / 3600,
+      sum: done.reduce((a, o) => a + Number(o.work_seconds || 0), 0) / 3600,
+      suspicious: done.filter(o => suspiciousTimer(o) != null).length,
+    };
+  }, [raw, detail]);
+  const nameOf = React.useCallback((id?: string | null) => {
+    const p = raw?.profiles.find(x => x.id === id);
+    return p ? `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Onbekend" : "Onbekend";
+  }, [raw]);
 
   const th = (key: SortKey, label: string, right = false) => (
     <th
@@ -95,25 +112,19 @@ const RapportagePerformance: React.FC = () => {
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>{selected?.name} — recente taken</SheetTitle>
+            <SheetTitle>{selected?.name} — recent werk</SheetTitle>
           </SheetHeader>
-          <div className="mt-4 space-y-2">
-            {detail.length === 0 && <NoData label="Geen taken gevonden" />}
-            {detail.map(o => (
-              <div key={o.id} className="rounded-xl border border-slate-200 bg-white p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <AsPill tone={o.discipline === "spuit" ? "pink" : "blue"}>{o.discipline === "spuit" ? "Schadeherstel" : "Werkplaats"}</AsPill>
-                  <span className="text-[11px] font-semibold text-slate-500">{new Date(o.created_at).toLocaleDateString("nl-NL")}</span>
-                </div>
-                <div className="mt-2 flex items-center gap-2">
-                  <AsLicensePlate value={o.vehicle?.license_number} size="sm" />
-                  <span className="truncate text-[12.5px] text-slate-700">{o.vehicle?.brand} {o.vehicle?.model}</span>
-                </div>
-                <div className="mt-1 text-[11.5px] text-slate-500">
-                  status {o.status} · {o.work_seconds ? `${num(Number(o.work_seconds) / 3600, 1)} uur` : "geen tijd geregistreerd"}
-                </div>
-              </div>
-            ))}
+          {periodStats && (
+            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[12.5px] text-slate-700">
+              <div>Uren {raw?.rangeLabel}: <b>{num(periodStats.fair, 1)} u</b>
+                {periodStats.sum - periodStats.fair > 0.05 && <span className="text-slate-500"> (som losse timers {num(periodStats.sum, 1)} u — overlap 1× geteld)</span>}</div>
+              {periodStats.suspicious > 0 && (
+                <div className="mt-1 font-medium text-amber-700">⚠ {periodStats.suspicious} verdachte {periodStats.suspicious === 1 ? "timer" : "timers"} (liep door over de nacht of &gt; 10 uur) — uren tellen mee zoals geregistreerd</div>
+              )}
+            </div>
+          )}
+          <div className="mt-4">
+            {raw && <PerformanceGroupCards raw={raw} groups={groups} revenue={revenue} nameOf={nameOf} />}
           </div>
         </SheetContent>
       </Sheet>

@@ -8,3 +8,6 @@
 - [x] Bouwstap 3: leenauto-uitleenregistratie, historie + "Wie reed er?", claim-koppeling en verplichte inleveren-vraag
 
 - [x] Bouwstap 4: operationeel_directeur krijgt Leenauto beheer/historie + werkplaats-agenda (niet gepubliceerd)
+
+- [x] Bouwstap 5: Performance-cards per auto/discipline/werkdag groeperen, tijd als unie, verdachte timers, detail + omzet per onderdeel (niet gepubliceerd)
+- [ ] Onderzoeken: goedgekeurde spuit-orders KVH-62-D (3x) en J-847-RR hebben geen interne factuur → €0 omzet

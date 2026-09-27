@@ -1,3 +1,4 @@
+import { fairSeconds, fairSecondsByAssignee } from "@/lib/performanceGroups";
 import { supabase } from "@/integrations/supabase/client";
 import { buildRange, downloadCsv, type DirectiePeriod, type DirectieBranch } from "@/services/directieService";
 
@@ -337,6 +338,7 @@ export function employeeRows(raw: RapRaw, from = raw.from, to = raw.to): Employe
     return p ? `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Onbekend" : "Onbekend";
   };
   const map = new Map<string, EmployeeRow>();
+  const ordersBy = new Map<string, RapOrder[]>();
   raw.orders
     // poetsen is extern → nooit een persoons-KPI
     .filter(o => o.assigned_to && ["werkplaats", "spuit"].includes(o.discipline || ""))
@@ -347,11 +349,13 @@ export function employeeRows(raw: RapRaw, from = raw.from, to = raw.to): Employe
       const e = map.get(id)!;
       if (o.discipline && !e.disciplines.includes(o.discipline)) e.disciplines.push(o.discipline);
       e.tasks += 1;
-      e.hours += Number(o.work_seconds || 0) / 3600;
+      ordersBy.set(id, [...(ordersBy.get(id) || []), o]);
       e.revenue += rev.get(o.id) || 0;
       e.rejects += Number(o.rejected_count || 0);
       if (o.discipline === "spuit") e.parts += partCount(o);
     });
+  // uren = unie van timer-intervallen per medewerker (parallelle timers één keer)
+  map.forEach(e => { e.hours = fairSeconds(ordersBy.get(e.id) || []) / 3600; });
   return Array.from(map.values()).map(e => ({
     ...e,
     perHour: div(e.revenue, e.hours),
@@ -359,9 +363,9 @@ export function employeeRows(raw: RapRaw, from = raw.from, to = raw.to): Employe
   })).sort((a, b) => b.revenue - a.revenue);
 }
 
-export function employeeOrders(raw: RapRaw, employeeId: string, limit = 15) {
+export function employeeOrders(raw: RapRaw, employeeId: string, limit = 60) {
   return raw.orders
-    .filter(o => o.assigned_to === employeeId)
+    .filter(o => o.assigned_to === employeeId && o.status !== "geannuleerd")
     .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
     .slice(0, limit)
     .map(o => ({ ...o, vehicle: o.vehicle_id ? raw.vehicleInfo[o.vehicle_id] : undefined }));
@@ -379,7 +383,7 @@ const weeksIn = (a: Date, b: Date) => Math.max(1, (+b - +a) / (7 * 86400000));
 function monteurBlock(raw: RapRaw, from: Date, to: Date) {
   const done = raw.orders.filter(o => o.discipline === "werkplaats" && doneInPeriod(o, from, to));
   const created = raw.orders.filter(o => o.discipline === "werkplaats" && inRange(o.created_at, from, to));
-  const hours = done.reduce((a, o) => a + Number(o.work_seconds || 0) / 3600, 0);
+  const hours = fairSecondsByAssignee(done) / 3600;
   const rev = revenueByOrder(raw, raw.invoices6m.filter(i => inRange(i.created_at, from, to)));
   const revenue = done.reduce((a, o) => a + (rev.get(o.id) || 0), 0);
   const pickup = created.filter(o => o.started_at).map(o => (+new Date(o.started_at as string) - +new Date(o.created_at)) / 3600000).filter(x => x >= 0);
@@ -394,7 +398,7 @@ function monteurBlock(raw: RapRaw, from: Date, to: Date) {
 
 function schadeBlock(raw: RapRaw, from: Date, to: Date) {
   const done = raw.orders.filter(o => o.discipline === "spuit" && doneInPeriod(o, from, to));
-  const hours = done.reduce((a, o) => a + Number(o.work_seconds || 0) / 3600, 0);
+  const hours = fairSecondsByAssignee(done) / 3600;
   const parts = done.reduce((a, o) => a + partCount(o), 0);
   const rev = revenueByOrder(raw, raw.invoices6m.filter(i => inRange(i.created_at, from, to)));
   const revenue = done.reduce((a, o) => a + (rev.get(o.id) || 0), 0);
