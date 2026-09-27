@@ -6,11 +6,12 @@ import { AsPill } from "@/components/aftersales/ui";
 import { RapportagesShell, useRapportageFilters, Block, eur, num, NoData } from "@/components/rapportages/RapportagesShell";
 import { useRapportageData } from "@/hooks/useRapportageData";
 import { employeeRows, employeeOrders, downloadCsv, revenueByOrder, doneInPeriod, type EmployeeRow } from "@/services/rapportageService";
-import { groupOrders, suspiciousTimer, fairSeconds } from "@/lib/performanceGroups";
+import { groupOrders, suspiciousTimer, fairSeconds, pendingInvoiceAmount } from "@/lib/performanceGroups";
 import { PerformanceGroupCards } from "@/components/rapportages/PerformanceGroups";
 import { cn } from "@/lib/utils";
 
-type SortKey = keyof Pick<EmployeeRow, "name" | "revenue" | "hours" | "perHour" | "tasks" | "parts">;
+type PerformanceRow = EmployeeRow & { pendingRevenue: number };
+type SortKey = keyof Pick<PerformanceRow, "name" | "revenue" | "pendingRevenue" | "hours" | "perHour" | "tasks" | "parts">;
 
 const RapportagePerformance: React.FC = () => {
   const { period, branch, selection, rangeSlug } = useRapportageFilters();
@@ -19,7 +20,15 @@ const RapportagePerformance: React.FC = () => {
   const [asc, setAsc] = React.useState(false);
   const [selected, setSelected] = React.useState<EmployeeRow | null>(null);
 
-  const rows = React.useMemo(() => (raw ? employeeRows(raw) : []), [raw]);
+  const rows = React.useMemo<PerformanceRow[]>(() => {
+    if (!raw) return [];
+    return employeeRows(raw).map(row => ({
+      ...row,
+      pendingRevenue: raw.orders
+        .filter(order => order.assigned_to === row.id && doneInPeriod(order, raw.from, raw.to))
+        .reduce((total, order) => total + pendingInvoiceAmount(order, raw.invoices6m), 0),
+    }));
+  }, [raw]);
   const sorted = React.useMemo(() => {
     const out = [...rows].sort((a, b) => {
       const va = a[sort], vb = b[sort];
@@ -65,7 +74,7 @@ const RapportagePerformance: React.FC = () => {
           icon={<Users className="h-4 w-4 text-blue-600" />}
           sub="omzet toegerekend via factuurregels van de eigen orders"
           onExport={() => downloadCsv(`performance-${rangeSlug}.csv`, sorted.map(r => ({
-            medewerker: r.name, disciplines: r.disciplines.join("/"), omzet: Math.round(r.revenue),
+             medewerker: r.name, disciplines: r.disciplines.join("/"), gefactureerd: Math.round(r.revenue), nog_te_factureren: Math.round(r.pendingRevenue),
             uren: num(r.hours, 1), omzet_per_uur: Math.round(r.perHour), taken: r.tasks, delen: r.parts,
           })))}
         >
@@ -77,7 +86,8 @@ const RapportagePerformance: React.FC = () => {
                 <thead className="border-b border-slate-200 bg-slate-50/60">
                   <tr>
                     {th("name", "Medewerker")}
-                    {th("revenue", "Omzet", true)}
+                     {th("revenue", "Gefactureerd", true)}
+                     {th("pendingRevenue", "Nog te factureren", true)}
                     {th("hours", "Uren", true)}
                     {th("perHour", "Omzet/uur", true)}
                     {th("tasks", "Taken", true)}
@@ -96,6 +106,7 @@ const RapportagePerformance: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-3 py-2.5 text-right text-[13px] font-bold tabular-nums">{eur(r.revenue)}</td>
+                      <td className="px-3 py-2.5 text-right text-[13px] font-semibold tabular-nums text-amber-700">{eur(r.pendingRevenue)}</td>
                       <td className="px-3 py-2.5 text-right text-[13px] tabular-nums">{r.hours > 0 ? num(r.hours, 1) : <NoData label="—" />}</td>
                       <td className="px-3 py-2.5 text-right text-[13px] tabular-nums">{r.hours > 0 ? eur(r.perHour) : <NoData label="geen uren" />}</td>
                       <td className="px-3 py-2.5 text-right text-[13px] tabular-nums">{num(r.tasks, 0)}</td>
@@ -122,6 +133,7 @@ const RapportagePerformance: React.FC = () => {
                 <div className="mt-1 font-medium text-amber-700">⚠ {periodStats.suspicious} verdachte {periodStats.suspicious === 1 ? "timer" : "timers"} (liep door over de nacht of &gt; 10 uur) — uren tellen mee zoals geregistreerd</div>
               )}
             </div>
+              <div className="mt-1">Nog te factureren: <b>{eur(detail.filter(o => doneInPeriod(o, raw.from, raw.to)).reduce((total, order) => total + pendingInvoiceAmount(order, raw.invoices6m), 0))}</b> <span className="text-slate-500">(apart van gefactureerde omzet)</span></div>
           )}
           <div className="mt-4">
             {raw && <PerformanceGroupCards raw={raw} groups={groups} revenue={revenue} nameOf={nameOf} />}
