@@ -5,7 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import BranchFilter from "@/components/reports/BranchFilter";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Truck, Home, CheckCircle2, Sparkles, Search, X } from "lucide-react";
+import { Loader2, Truck, Home, CheckCircle2, Sparkles, Search, X, Trash2 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { format, isToday, isPast, isTomorrow } from "date-fns";
 import { nl } from "date-fns/locale";
 import { AsPage, AsCard, AsCardHead, AsLicensePlate, AsMono, useLiveTimer } from "@/components/aftersales/ui";
@@ -74,17 +78,19 @@ const PoetsCard: React.FC<{
   onDone: (w: PoetsWO) => void;
   onPause: (w: PoetsWO) => void;
   onResume: (w: PoetsWO) => void;
+  onDelete?: (w: PoetsWO) => void;
   showDeadline: boolean;
   onOpen?: (w: PoetsWO) => void;
   workerName?: string | null;
   delivery?: DeliveryMoment | null;
-}> = ({ w, onStart, onDone, onPause, onResume, showDeadline, onOpen, workerName, delivery }) => {
+}> = ({ w, onStart, onDone, onPause, onResume, onDelete, showDeadline, onOpen, workerName, delivery }) => {
   const { isDirectieReadOnly } = useRoleAccess();
   const readOnly = isDirectieReadOnly();
   const tone = deadlineTone(w.due_date);
   const deadline = poetsDeadline(w, delivery ?? undefined);
   const { user, userRole } = useAuth();
   const canToggle = userRole !== "poetser" || poetserMayTogglePause(userRole, w, user?.id);
+  const canDelete = !!onDelete && !readOnly && ["owner", "admin", "manager", "aftersales_manager", "werkplaats_chef"].includes(userRole || "");
   const paused = w.status === "gepauzeerd";
   const liveFrom = w.status === "bezig" && w.started_at
     ? new Date(new Date(w.started_at).getTime() - Number(w.paused_seconds || 0) * 1000).toISOString() : null;
@@ -107,6 +113,16 @@ const PoetsCard: React.FC<{
       <div className="flex items-center gap-2 flex-wrap">
         <AsLicensePlate value={w.vehicle?.license_number} size="sm" />
         <span className="text-[14px] font-bold text-slate-900 truncate">{w.vehicle?.brand} {w.vehicle?.model}</span>
+        {canDelete && (
+          <button
+            type="button"
+            aria-label="Poets-taak verwijderen"
+            onClick={(e) => { e.stopPropagation(); onDelete!(w); }}
+            className="ml-auto p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
       </div>
       <div className="-mt-1.5">
         <div className="text-[12.5px] text-slate-600">{specs.length ? specs.join(" · ") : "—"}</div>
@@ -196,6 +212,8 @@ const WerkplaatsPoetsen: React.FC = () => {
   const [q, setQ] = useState("");
   const [pauseTarget, setPauseTarget] = useState<PoetsWO | null>(null);
   const [pauseBusy, setPauseBusy] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<PoetsWO | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -292,6 +310,21 @@ const WerkplaatsPoetsen: React.FC = () => {
     if (error) { toast({ title: "Kon niet hervatten", description: error.message, variant: "destructive" }); load(); }
   };
 
+  const confirmDelete = async () => {
+    const w = deleteTarget;
+    if (!w) return;
+    setDeleteBusy(true);
+    const { error } = await supabase.from("work_orders").delete().eq("id", w.id);
+    setDeleteBusy(false);
+    setDeleteTarget(null);
+    if (error) {
+      toast({ title: "Kon niet verwijderen", description: error.message, variant: "destructive" });
+      return;
+    }
+    setRows(prev => prev.filter(r => r.id !== w.id));
+    toast({ title: "Poets-taak verwijderd", description: `${w.vehicle?.brand ?? ""} ${w.vehicle?.model ?? ""}`.trim() });
+  };
+
   return (
     <DashboardLayout>
       <AsPage>
@@ -354,7 +387,7 @@ const WerkplaatsPoetsen: React.FC = () => {
                     Geen afleveringen.
                   </div>
                 ) : afleveringen.map(w => (
-                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} onPause={setPauseTarget} onResume={markResumed} showDeadline onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
+                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} onPause={setPauseTarget} onResume={markResumed} onDelete={setDeleteTarget} showDeadline onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
                 ))}
               </div>
             </AsCard>
@@ -373,7 +406,7 @@ const WerkplaatsPoetsen: React.FC = () => {
                     Geen showroom-taken.
                   </div>
                 ) : showroom.map(w => (
-                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} onPause={setPauseTarget} onResume={markResumed} showDeadline={false} onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
+                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} onPause={setPauseTarget} onResume={markResumed} onDelete={setDeleteTarget} showDeadline={false} onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
                 ))}
               </div>
             </AsCard>
@@ -381,6 +414,29 @@ const WerkplaatsPoetsen: React.FC = () => {
         )}
 
         <PauseTaskDialog open={!!pauseTarget} onOpenChange={(v) => !v && setPauseTarget(null)} onConfirm={confirmPause} busy={pauseBusy} />
+
+        <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && !deleteBusy && setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Poets-taak verwijderen?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {deleteTarget
+                  ? `${deleteTarget.vehicle?.brand ?? ""} ${deleteTarget.vehicle?.model ?? ""} (${deleteTarget.vehicle?.license_number ?? "geen kenteken"}) — de poets-taak wordt definitief verwijderd. Dit kan niet ongedaan worden.`
+                  : ""}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteBusy}>Annuleren</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => { e.preventDefault(); confirmDelete(); }}
+                disabled={deleteBusy}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {deleteBusy ? "Verwijderen…" : "Verwijderen"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <TaskDetailSheet
           open={!!detail}
