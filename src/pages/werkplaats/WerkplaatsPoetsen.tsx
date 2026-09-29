@@ -212,6 +212,8 @@ const WerkplaatsPoetsen: React.FC = () => {
   const [q, setQ] = useState("");
   const [pauseTarget, setPauseTarget] = useState<PoetsWO | null>(null);
   const [pauseBusy, setPauseBusy] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<PoetsWO | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const load = async () => {
     setLoading(true);
