@@ -310,6 +310,21 @@ const WerkplaatsPoetsen: React.FC = () => {
     if (error) { toast({ title: "Kon niet hervatten", description: error.message, variant: "destructive" }); load(); }
   };
 
+  const confirmDelete = async () => {
+    const w = deleteTarget;
+    if (!w) return;
+    setDeleteBusy(true);
+    const { error } = await supabase.from("work_orders").delete().eq("id", w.id);
+    setDeleteBusy(false);
+    setDeleteTarget(null);
+    if (error) {
+      toast({ title: "Kon niet verwijderen", description: error.message, variant: "destructive" });
+      return;
+    }
+    setRows(prev => prev.filter(r => r.id !== w.id));
+    toast({ title: "Poets-taak verwijderd", description: `${w.vehicle?.brand ?? ""} ${w.vehicle?.model ?? ""}`.trim() });
+  };
+
   return (
     <DashboardLayout>
       <AsPage>
