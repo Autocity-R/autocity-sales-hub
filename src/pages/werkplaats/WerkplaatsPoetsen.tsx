@@ -113,6 +113,16 @@ const PoetsCard: React.FC<{
       <div className="flex items-center gap-2 flex-wrap">
         <AsLicensePlate value={w.vehicle?.license_number} size="sm" />
         <span className="text-[14px] font-bold text-slate-900 truncate">{w.vehicle?.brand} {w.vehicle?.model}</span>
+        {canDelete && (
+          <button
+            type="button"
+            aria-label="Poets-taak verwijderen"
+            onClick={(e) => { e.stopPropagation(); onDelete!(w); }}
+            className="ml-auto p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
       </div>
       <div className="-mt-1.5">
         <div className="text-[12.5px] text-slate-600">{specs.length ? specs.join(" · ") : "—"}</div>
