@@ -5,7 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import BranchFilter from "@/components/reports/BranchFilter";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Truck, Home, CheckCircle2, Sparkles, Search, X } from "lucide-react";
+import { Loader2, Truck, Home, CheckCircle2, Sparkles, Search, X, Trash2 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { format, isToday, isPast, isTomorrow } from "date-fns";
 import { nl } from "date-fns/locale";
 import { AsPage, AsCard, AsCardHead, AsLicensePlate, AsMono, useLiveTimer } from "@/components/aftersales/ui";
