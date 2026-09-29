@@ -90,7 +90,7 @@ const PoetsCard: React.FC<{
   const deadline = poetsDeadline(w, delivery ?? undefined);
   const { user, userRole } = useAuth();
   const canToggle = userRole !== "poetser" || poetserMayTogglePause(userRole, w, user?.id);
-  const canDelete = !!onDelete && !readOnly && ["owner", "admin", "manager", "aftersales_manager", "werkplaats_chef"].includes(userRole || "");
+  const canDelete = !!onDelete && !readOnly && ["owner", "admin", "manager", "aftersales_manager", "werkplaats_chef", "operationeel_directeur"].includes(userRole || "");
   const paused = w.status === "gepauzeerd";
   const liveFrom = w.status === "bezig" && w.started_at
     ? new Date(new Date(w.started_at).getTime() - Number(w.paused_seconds || 0) * 1000).toISOString() : null;
