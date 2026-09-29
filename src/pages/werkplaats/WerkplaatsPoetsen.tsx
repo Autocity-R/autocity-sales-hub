@@ -387,7 +387,7 @@ const WerkplaatsPoetsen: React.FC = () => {
                     Geen afleveringen.
                   </div>
                 ) : afleveringen.map(w => (
-                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} onPause={setPauseTarget} onResume={markResumed} showDeadline onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
+                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} onPause={setPauseTarget} onResume={markResumed} onDelete={setDeleteTarget} showDeadline onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
                 ))}
               </div>
             </AsCard>
@@ -406,7 +406,7 @@ const WerkplaatsPoetsen: React.FC = () => {
                     Geen showroom-taken.
                   </div>
                 ) : showroom.map(w => (
-                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} onPause={setPauseTarget} onResume={markResumed} showDeadline={false} onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
+                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} onPause={setPauseTarget} onResume={markResumed} onDelete={setDeleteTarget} showDeadline={false} onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
                 ))}
               </div>
             </AsCard>
@@ -414,6 +414,29 @@ const WerkplaatsPoetsen: React.FC = () => {
         )}
 
         <PauseTaskDialog open={!!pauseTarget} onOpenChange={(v) => !v && setPauseTarget(null)} onConfirm={confirmPause} busy={pauseBusy} />
+
+        <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && !deleteBusy && setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Poets-taak verwijderen?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {deleteTarget
+                  ? `${deleteTarget.vehicle?.brand ?? ""} ${deleteTarget.vehicle?.model ?? ""} (${deleteTarget.vehicle?.license_number ?? "geen kenteken"}) — de poets-taak wordt definitief verwijderd. Dit kan niet ongedaan worden.`
+                  : ""}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteBusy}>Annuleren</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => { e.preventDefault(); confirmDelete(); }}
+                disabled={deleteBusy}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {deleteBusy ? "Verwijderen…" : "Verwijderen"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <TaskDetailSheet
           open={!!detail}
