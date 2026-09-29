@@ -78,17 +78,19 @@ const PoetsCard: React.FC<{
   onDone: (w: PoetsWO) => void;
   onPause: (w: PoetsWO) => void;
   onResume: (w: PoetsWO) => void;
+  onDelete?: (w: PoetsWO) => void;
   showDeadline: boolean;
   onOpen?: (w: PoetsWO) => void;
   workerName?: string | null;
   delivery?: DeliveryMoment | null;
-}> = ({ w, onStart, onDone, onPause, onResume, showDeadline, onOpen, workerName, delivery }) => {
+}> = ({ w, onStart, onDone, onPause, onResume, onDelete, showDeadline, onOpen, workerName, delivery }) => {
   const { isDirectieReadOnly } = useRoleAccess();
   const readOnly = isDirectieReadOnly();
   const tone = deadlineTone(w.due_date);
   const deadline = poetsDeadline(w, delivery ?? undefined);
   const { user, userRole } = useAuth();
   const canToggle = userRole !== "poetser" || poetserMayTogglePause(userRole, w, user?.id);
+  const canDelete = !!onDelete && !readOnly && ["owner", "admin", "manager", "aftersales_manager", "werkplaats_chef"].includes(userRole || "");
   const paused = w.status === "gepauzeerd";
   const liveFrom = w.status === "bezig" && w.started_at
     ? new Date(new Date(w.started_at).getTime() - Number(w.paused_seconds || 0) * 1000).toISOString() : null;
