@@ -5661,6 +5661,7 @@ export type Database = {
         Args: { p_checklist: Json; p_vehicle_id: string }
         Returns: undefined
       }
+      spuit_overnemen: { Args: { p_id: string }; Returns: undefined }
       toggle_checklist_item_by_token: {
         Args: { p_completed: boolean; p_item_id: string; p_token: string }
         Returns: Json

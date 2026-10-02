@@ -19,6 +19,8 @@ import { format, isToday, isTomorrow, isPast } from "date-fns";
 import { nl } from "date-fns/locale";
 import { OPEN_WO_STATUSES, pauseWorkOrder, resumeFields, finishFields, totalWorkSeconds } from "@/components/werkplaats/workOrderPause";
 import { PauseTaskDialog } from "@/components/werkplaats/PauseTaskDialog";
+import { spuitActionFor, type SpuitAction } from "@/components/werkplaats/spuitActions";
+import { UserPlus } from "lucide-react";
 
 interface WO {
   id: string;
@@ -76,6 +78,33 @@ const DueDateRow: React.FC<{ due: string | null; planned?: string | null }> = ({
   );
 };
 
+const SpuitButtons: React.FC<{
+  action: SpuitAction;
+  onStart: () => void; onPause: () => void; onDone: () => void; onTakeover: () => void;
+}> = ({ action, onStart, onPause, onDone, onTakeover }) => {
+  if (action === "geen") return null;
+  if (action === "start" || action === "verder") return (
+    <Button size="lg" className="mt-4 w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white" onClick={onStart}>
+      <Play className="h-4 w-4 mr-1" /> {action === "verder" ? "Verder" : "Start"}
+    </Button>
+  );
+  if (action === "overnemen") return (
+    <Button size="lg" variant="outline" className="mt-4 w-full h-12 text-base font-semibold" onClick={onTakeover}>
+      <UserPlus className="h-4 w-4 mr-1" /> Overnemen
+    </Button>
+  );
+  return (
+    <div className="mt-4 flex gap-2">
+      <Button size="lg" className="flex-1 h-12 text-base font-semibold bg-amber-500 hover:bg-amber-600 text-white" onClick={onPause}>
+        <Pause className="h-4 w-4 mr-1" /> Pauze
+      </Button>
+      <Button size="lg" className="flex-1 h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onDone}>
+        <Check className="h-4 w-4 mr-1" /> Klaar
+      </Button>
+    </div>
+  );
+};
+
 const Card: React.FC<{
   w: WO;
   meName: string;
@@ -84,9 +113,10 @@ const Card: React.FC<{
   onStart: (w: WO) => void;
   onDone: (w: WO) => void;
   onPause: (w: WO) => void;
+  onTakeover: (w: WO) => void;
   onOpen?: (w: WO) => void;
   onEdit?: (w: WO) => void;
-}> = ({ w, names, myId, onStart, onDone, onPause, onOpen, onEdit }) => {
+}> = ({ w, names, myId, onStart, onDone, onPause, onTakeover, onOpen, onEdit }) => {
   const readOnly = useRoleAccess().isDirectieReadOnly();
   const v = w.vehicle;
   const done = w.status === "afgerond";
@@ -138,6 +168,9 @@ const Card: React.FC<{
           {paused && (
             <div className="mt-3 flex items-center gap-2 text-[12.5px] flex-wrap">
               <AsPill tone="amber"><Pause className="h-3 w-3" />Gepauzeerd</AsPill>
+              <span className="text-slate-600 font-medium">
+                — {mine ? "jij" : (w.assigned_to ? names[w.assigned_to] || "collega" : "niemand")}
+              </span>
               {w.pause_reason && <span className="text-slate-600">{w.pause_reason}</span>}
             </div>
           )}
@@ -148,6 +181,12 @@ const Card: React.FC<{
               <span className="text-slate-600 font-medium">
                 Bezig — {mine ? "jij" : (w.assigned_to ? names[w.assigned_to] || "collega" : "collega")}
               </span>
+            </div>
+          )}
+
+          {!busy && !paused && !done && w.assigned_to && !mine && (
+            <div className="mt-3 text-[12.5px] text-slate-600 font-medium">
+              Op naam van {names[w.assigned_to] || "collega"}
             </div>
           )}
 
@@ -164,34 +203,10 @@ const Card: React.FC<{
             </div>
           )}
 
-          {!done && !readOnly && (
-            <div className="mt-4" onClick={(e) => e.stopPropagation()}>
-              {!busy ? (
-                <Button
-                  size="lg"
-                  className="w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white"
-                  onClick={() => onStart(w)}
-                >
-                  <Play className="h-4 w-4 mr-1" /> {paused ? "Verder" : "Start"}
-                </Button>
-              ) : mine ? (
-                <div className="flex gap-2">
-                <Button
-                  size="lg"
-                  className="flex-1 h-12 text-base font-semibold bg-amber-500 hover:bg-amber-600 text-white"
-                  onClick={() => onPause(w)}
-                >
-                  <Pause className="h-4 w-4 mr-1" /> Pauze
-                </Button>
-                <Button
-                  size="lg"
-                  className="flex-1 h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
-                  onClick={() => onDone(w)}
-                >
-                  <Check className="h-4 w-4 mr-1" /> Klaar
-                </Button>
-                </div>
-              ) : null}
+          {!readOnly && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <SpuitButtons action={spuitActionFor(w, myId)} onStart={() => onStart(w)} onPause={() => onPause(w)}
+                onDone={() => onDone(w)} onTakeover={() => onTakeover(w)} />
             </div>
           )}
         </div>
@@ -208,6 +223,7 @@ const WerkplaatsSchadeherstel: React.FC = () => {
   const [names, setNames] = useState<Record<string, string>>({});
   const [myId, setMyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"alles" | "mijn" | "vrij">("alles");
   const [detail, setDetail] = useState<WO | null>(null);
   const [pauseTarget, setPauseTarget] = useState<WO | null>(null);
   const [editTarget, setEditTarget] = useState<WO | null>(null);
@@ -260,42 +276,67 @@ const WerkplaatsSchadeherstel: React.FC = () => {
     const { data: userRes } = await supabase.auth.getUser();
     const uid = userRes.user?.id;
     if (!uid) return;
-    const { error } = await supabase.from("work_orders")
+    const { data, error } = await supabase.from("work_orders")
       .update({ assigned_to: uid, ...resumeFields() })
-      .eq("id", w.id);
-    if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
-    toast({ title: "Gestart" });
+      .eq("id", w.id).select("id");
+    if (failed(error, data)) return;
+    toast({ title: w.status === "gepauzeerd" ? "Verder gegaan" : "Gestart" });
     setDetail(null);
     load();
   };
 
+  const failed = (error: any, data: any[] | null) => {
+    if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return true; }
+    if (!data || data.length === 0) {
+      toast({ title: "Lukt niet", description: "Deze klus staat op naam van een collega of is net gewijzigd. De lijst is ververst.", variant: "destructive" });
+      load();
+      return true;
+    }
+    return false;
+  };
+
   const handleDone = async (w: WO) => {
-    const { error } = await supabase.from("work_orders")
+    const { data, error } = await supabase.from("work_orders")
       .update(finishFields(w))
-      .eq("id", w.id);
-    if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
+      .eq("id", w.id).select("id");
+    if (failed(error, data)) return;
     toast({ title: "Klaar gemeld" });
     setDetail(null);
     load();
   };
 
   const handlePause = async (w: WO, reason: string) => {
-    const { error } = await pauseWorkOrder(w, reason);
-    if (error) { toast({ title: "Fout", description: error.message, variant: "destructive" }); return; }
+    const { data, error } = await supabase.from("work_orders")
+      .update({
+        status: "gepauzeerd", paused_seconds: totalWorkSeconds(w), paused_at: new Date().toISOString(),
+        pause_reason: reason?.trim() ? reason.trim() : null, started_at: null,
+      } as any)
+      .eq("id", w.id).select("id");
+    if (failed(error, data)) return;
     toast({ title: "Gepauzeerd", description: "De gewerkte tijd is bewaard — je kunt later verdergaan." });
     setPauseTarget(null);
     setDetail(null);
     load();
   };
 
+  const handleTakeover = async (w: WO) => {
+    const { error } = await (supabase.rpc as any)("spuit_overnemen", { p_id: w.id });
+    if (error) { toast({ title: "Overnemen lukt niet", description: error.message, variant: "destructive" }); load(); return; }
+    toast({ title: "Overgenomen", description: "De klus staat nu op jouw naam. Druk op Verder om te beginnen." });
+    setDetail(null);
+    load();
+  };
+
   // Alleen EXTERN werk dat later gepland staat blijft verborgen; interne auto's altijd tonen
+  const matchesFilter = (r: WO) =>
+    filter === "alles" ? true : filter === "mijn" ? r.assigned_to === myId : !r.assigned_to;
   const open = rows
-    .filter(r => r.status !== "afgerond" && !isHiddenFromFloor(r))
+    .filter(r => r.status !== "afgerond" && !isHiddenFromFloor(r) && matchesFilter(r))
     .sort((a, b) =>
       Number(b.is_rush) - Number(a.is_rush) ||
       (a.due_date || "9999-12-31").localeCompare(b.due_date || "9999-12-31") ||
       (a.sort_order ?? 0) - (b.sort_order ?? 0));
-  const done = rows.filter(r => r.status === "afgerond");
+  const done = rows.filter(r => r.status === "afgerond" && matchesFilter(r));
 
   return (
     <DashboardLayout>
@@ -309,6 +350,13 @@ const WerkplaatsSchadeherstel: React.FC = () => {
 
         <MyPerformanceCard discipline="spuit" variant="schade" />
 
+        <div className="flex gap-2 mb-3">
+          {([["alles", "Alles"], ["mijn", "Mijn klussen"], ["vrij", "Vrij"]] as const).map(([k, label]) => (
+            <Button key={k} size="sm" variant={filter === k ? "default" : "outline"} className="h-10 touch-manipulation"
+              onClick={() => setFilter(k)}>{label}</Button>
+          ))}
+        </div>
+
         {loading ? (
           <div className="flex items-center gap-2 text-slate-500 py-10"><Loader2 className="h-4 w-4 animate-spin" /> Laden…</div>
         ) : open.length === 0 && done.length === 0 ? (
@@ -318,10 +366,10 @@ const WerkplaatsSchadeherstel: React.FC = () => {
         ) : (
           <div className="space-y-3">
             {open.map(w => (
-              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onPause={setPauseTarget} onOpen={setDetail} onEdit={canPlan ? setEditTarget : undefined} />
+              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onPause={setPauseTarget} onTakeover={handleTakeover} onOpen={setDetail} onEdit={canPlan ? setEditTarget : undefined} />
             ))}
             {done.map(w => (
-              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onPause={setPauseTarget} onOpen={setDetail} />
+              <Card key={w.id} w={w} meName="" names={names} myId={myId} onStart={handleStart} onDone={handleDone} onPause={setPauseTarget} onTakeover={handleTakeover} onOpen={setDetail} />
             ))}
           </div>
         )}
@@ -339,26 +387,12 @@ const WerkplaatsSchadeherstel: React.FC = () => {
           open={!!detail}
           onOpenChange={(v) => !v && setDetail(null)}
           workOrder={detail as any}
-          actions={detail && !readOnly && detail.status !== "afgerond" ? (
-            detail.status !== "bezig" ? (
-              <Button size="lg" className="w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={() => handleStart(detail)}>
-                <Play className="h-4 w-4 mr-1" /> {detail.status === "gepauzeerd" ? "Verder" : "Start"}
-              </Button>
-            ) : detail.assigned_to === myId ? (
-              <div className="flex gap-2">
-                <Button size="lg" className="flex-1 h-12 text-base font-semibold bg-amber-500 hover:bg-amber-600 text-white"
-                  onClick={() => setPauseTarget(detail)}>
-                  <Pause className="h-4 w-4 mr-1" /> Pauze
-                </Button>
-                <Button size="lg" className="flex-1 h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
-                  onClick={() => handleDone(detail)}>
-                  <Check className="h-4 w-4 mr-1" /> Klaar
-                </Button>
-              </div>
-            ) : null
+          actions={detail && !readOnly ? (
+            <SpuitButtons action={spuitActionFor(detail, myId)} onStart={() => handleStart(detail)}
+              onPause={() => setPauseTarget(detail)} onDone={() => handleDone(detail)} onTakeover={() => handleTakeover(detail)} />
           ) : null}
         />
+
 
         <PauseTaskDialog
           open={!!pauseTarget}
