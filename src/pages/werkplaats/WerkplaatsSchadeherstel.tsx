@@ -19,6 +19,8 @@ import { format, isToday, isTomorrow, isPast } from "date-fns";
 import { nl } from "date-fns/locale";
 import { OPEN_WO_STATUSES, pauseWorkOrder, resumeFields, finishFields, totalWorkSeconds } from "@/components/werkplaats/workOrderPause";
 import { PauseTaskDialog } from "@/components/werkplaats/PauseTaskDialog";
+import { spuitActionFor, type SpuitAction } from "@/components/werkplaats/spuitActions";
+import { UserPlus } from "lucide-react";
 
 interface WO {
   id: string;
@@ -76,6 +78,33 @@ const DueDateRow: React.FC<{ due: string | null; planned?: string | null }> = ({
   );
 };
 
+const SpuitButtons: React.FC<{
+  action: SpuitAction;
+  onStart: () => void; onPause: () => void; onDone: () => void; onTakeover: () => void;
+}> = ({ action, onStart, onPause, onDone, onTakeover }) => {
+  if (action === "geen") return null;
+  if (action === "start" || action === "verder") return (
+    <Button size="lg" className="mt-4 w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white" onClick={onStart}>
+      <Play className="h-4 w-4 mr-1" /> {action === "verder" ? "Verder" : "Start"}
+    </Button>
+  );
+  if (action === "overnemen") return (
+    <Button size="lg" variant="outline" className="mt-4 w-full h-12 text-base font-semibold" onClick={onTakeover}>
+      <UserPlus className="h-4 w-4 mr-1" /> Overnemen
+    </Button>
+  );
+  return (
+    <div className="mt-4 flex gap-2">
+      <Button size="lg" className="flex-1 h-12 text-base font-semibold bg-amber-500 hover:bg-amber-600 text-white" onClick={onPause}>
+        <Pause className="h-4 w-4 mr-1" /> Pauze
+      </Button>
+      <Button size="lg" className="flex-1 h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onDone}>
+        <Check className="h-4 w-4 mr-1" /> Klaar
+      </Button>
+    </div>
+  );
+};
+
 const Card: React.FC<{
   w: WO;
   meName: string;
@@ -84,9 +113,10 @@ const Card: React.FC<{
   onStart: (w: WO) => void;
   onDone: (w: WO) => void;
   onPause: (w: WO) => void;
+  onTakeover: (w: WO) => void;
   onOpen?: (w: WO) => void;
   onEdit?: (w: WO) => void;
-}> = ({ w, names, myId, onStart, onDone, onPause, onOpen, onEdit }) => {
+}> = ({ w, names, myId, onStart, onDone, onPause, onTakeover, onOpen, onEdit }) => {
   const readOnly = useRoleAccess().isDirectieReadOnly();
   const v = w.vehicle;
   const done = w.status === "afgerond";
@@ -138,6 +168,9 @@ const Card: React.FC<{
           {paused && (
             <div className="mt-3 flex items-center gap-2 text-[12.5px] flex-wrap">
               <AsPill tone="amber"><Pause className="h-3 w-3" />Gepauzeerd</AsPill>
+              <span className="text-slate-600 font-medium">
+                — {mine ? "jij" : (w.assigned_to ? names[w.assigned_to] || "collega" : "niemand")}
+              </span>
               {w.pause_reason && <span className="text-slate-600">{w.pause_reason}</span>}
             </div>
           )}
@@ -148,6 +181,12 @@ const Card: React.FC<{
               <span className="text-slate-600 font-medium">
                 Bezig — {mine ? "jij" : (w.assigned_to ? names[w.assigned_to] || "collega" : "collega")}
               </span>
+            </div>
+          )}
+
+          {!busy && !paused && !done && w.assigned_to && !mine && (
+            <div className="mt-3 text-[12.5px] text-slate-600 font-medium">
+              Op naam van {names[w.assigned_to] || "collega"}
             </div>
           )}
 
@@ -164,34 +203,10 @@ const Card: React.FC<{
             </div>
           )}
 
-          {!done && !readOnly && (
-            <div className="mt-4" onClick={(e) => e.stopPropagation()}>
-              {!busy ? (
-                <Button
-                  size="lg"
-                  className="w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white"
-                  onClick={() => onStart(w)}
-                >
-                  <Play className="h-4 w-4 mr-1" /> {paused ? "Verder" : "Start"}
-                </Button>
-              ) : mine ? (
-                <div className="flex gap-2">
-                <Button
-                  size="lg"
-                  className="flex-1 h-12 text-base font-semibold bg-amber-500 hover:bg-amber-600 text-white"
-                  onClick={() => onPause(w)}
-                >
-                  <Pause className="h-4 w-4 mr-1" /> Pauze
-                </Button>
-                <Button
-                  size="lg"
-                  className="flex-1 h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
-                  onClick={() => onDone(w)}
-                >
-                  <Check className="h-4 w-4 mr-1" /> Klaar
-                </Button>
-                </div>
-              ) : null}
+          {!readOnly && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <SpuitButtons action={spuitActionFor(w, myId)} onStart={() => onStart(w)} onPause={() => onPause(w)}
+                onDone={() => onDone(w)} onTakeover={() => onTakeover(w)} />
             </div>
           )}
         </div>
