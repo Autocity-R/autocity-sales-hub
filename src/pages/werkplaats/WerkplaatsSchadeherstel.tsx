@@ -306,7 +306,12 @@ const WerkplaatsSchadeherstel: React.FC = () => {
   };
 
   const handlePause = async (w: WO, reason: string) => {
-    const { data, error } = await pauseWorkOrder(w, reason).select("id");
+    const { data, error } = await supabase.from("work_orders")
+      .update({
+        status: "gepauzeerd", paused_seconds: totalWorkSeconds(w), paused_at: new Date().toISOString(),
+        pause_reason: reason?.trim() ? reason.trim() : null, started_at: null,
+      } as any)
+      .eq("id", w.id).select("id");
     if (failed(error, data)) return;
     toast({ title: "Gepauzeerd", description: "De gewerkte tijd is bewaard — je kunt later verdergaan." });
     setPauseTarget(null);
