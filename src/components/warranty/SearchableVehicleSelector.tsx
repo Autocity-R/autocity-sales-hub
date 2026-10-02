@@ -43,23 +43,16 @@ export const SearchableVehicleSelector: React.FC<SearchableVehicleSelectorProps>
   }, [value, vehicles]);
 
   // Filter vehicles based on search term
+  // Kenteken/VIN zonder streepjes of spaties vergelijken: "hzr63x" vindt "HZR-63-X".
+  const squash = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   const filteredVehicles = vehicles.filter(vehicle => {
     if (!searchTerm) return true;
-    
-    const searchLower = searchTerm.toLowerCase();
-    const brand = vehicle.brand?.toLowerCase() || '';
-    const model = vehicle.model?.toLowerCase() || '';
-    const license = vehicle.licenseNumber?.toLowerCase() || '';
-    const vin = vehicle.vin?.toLowerCase() || '';
-    const customer = vehicle.customerName?.toLowerCase() || '';
-    
-    return (
-      brand.includes(searchLower) ||
-      model.includes(searchLower) ||
-      license.includes(searchLower) ||
-      vin.includes(searchLower) ||
-      customer.includes(searchLower)
-    );
+    const q = searchTerm.toLowerCase().trim();
+    const qs = squash(q);
+    const text = [vehicle.brand, vehicle.model, vehicle.licenseNumber, vehicle.vin, vehicle.customerName]
+      .map(v => (v || '').toLowerCase()).join(' ');
+    if (text.includes(q)) return true;
+    return !!qs && (squash(vehicle.licenseNumber || '').includes(qs) || squash(vehicle.vin || '').includes(qs));
   });
 
   const handleSelectVehicle = (vehicle: Vehicle) => {

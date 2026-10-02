@@ -331,12 +331,13 @@ const GarantieInbox: React.FC = () => {
     setVehicleDialogOpen(true);
     if (vehicleOptions.length) return;
     setVehicleOptionsLoading(true);
-    const { data } = await supabase
+    const data = await fetchAllPages<any>((from, to) => supabase
       .from("vehicles")
       .select("id, brand, model, license_number, vin, sold_date, delivery_date, status, customer:contacts!vehicles_customer_id_fkey(first_name, last_name, company_name)")
       .neq("status", "extern")
       .order("sold_date", { ascending: false, nullsFirst: false })
-      .limit(2000);
+      .order("id", { ascending: true })
+      .range(from, to)).catch(() => [] as any[]);
     setVehicleOptions(
       ((data as any[]) || []).map((v) => ({
         id: v.id,

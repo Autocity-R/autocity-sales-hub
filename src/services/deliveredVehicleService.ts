@@ -161,26 +161,28 @@ export const deliveredVehicleService = new DeliveredVehicleService();
  * Fetch all delivered vehicles for warranty claims
  */
 export const fetchDeliveredVehiclesForWarranty = async (): Promise<Vehicle[]> => {
-  const { data, error } = await supabase
-    .from('vehicles')
-    .select(`
-      *,
-      customerContact:contacts!vehicles_customer_id_fkey(
-        id,
-        first_name,
-        last_name,
-        email,
-        phone,
-        company_name,
-        type
-      )
-    `)
-    .in('status', ['afgeleverd', 'verkocht_b2c', 'verkocht_b2b'])
-    .neq('status', 'extern')
-    .not('customer_id', 'is', null)
-    .order('created_at', { ascending: false });
-
-  if (error) {
+  let data: any[] = [];
+  try {
+    data = await fetchAllPages<any>((from, to) => supabase
+      .from('vehicles')
+      .select(`
+        *,
+        customerContact:contacts!vehicles_customer_id_fkey(
+          id,
+          first_name,
+          last_name,
+          email,
+          phone,
+          company_name,
+          type
+        )
+      `)
+      .in('status', ['afgeleverd', 'verkocht_b2c', 'verkocht_b2b'])
+      .not('customer_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
+      .range(from, to));
+  } catch (error) {
     console.error('Error fetching delivered vehicles:', error);
     throw new Error('Failed to fetch delivered vehicles');
   }
