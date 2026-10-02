@@ -1,20 +1,35 @@
-# Performance-omzet uitsplitsen
+# Twee schadeherstellers: Start / Pauze / Klaar per persoon
 
-## Resultaat
-- Performance-cards en details tonen afzonderlijk **Gefactureerd** en **Nog te factureren**.
-- Alleen goedgekeurde interne werkplaats- en spuitorders zonder interne factuur tellen als nog te factureren: werkplaats €300 per order, spuitwerk €300 per onderdeel.
-- Bij wachtend spuitwerk wordt vermeld dat de factuur volgt na goedkeuring van alle onderdelen, inclusief de nog openstaande onderdelen van dezelfde auto.
-- Externe klussen krijgen een duidelijk label. Een gekoppelde verstuurde externe factuur wordt getoond; zonder koppeling wordt geen bedrag geschat.
-- De medewerkerstabel krijgt **Nog te factureren** als aparte waarde naast de bestaande omzet; bestaande omzetrapportages en KPI-berekeningen blijven ongewijzigd.
+## Wat er nu misgaat
+- Mehmet Senses (nieuw, rol schadeherstel) en Yousry werken in hetzelfde menu Schadeherstel.
+- De database-regels voor schadeherstel kennen de status "gepauzeerd" niet. Een gepauzeerde klus kan een schadehersteller dus niet zien en niet hervatten. Alleen beheerders kunnen dat nu.
+- Een klus die op naam van een collega staat (nu 2 gepauzeerde klussen van Yousry) mag de ander niet starten. De app laat de Start-knop toch zien. Klik je erop, dan gebeurt er niets en krijg je ook geen melding. Dat is precies wat Mehmet ziet.
+- Er staan 10 ingeplande klussen zonder naam. Die kan iedereen starten.
 
-## Technische uitvoering
-- Voeg in de gedeelde performance-logica een geteste omzetclassificatie toe op basis van orderstatus, discipline, origin, parts en factuurkoppelingen.
-- Gebruik dezelfde classificatie in de medewerkerstabel, cards en detailweergave.
-- Verrijk openstaande onderdelen vanuit de reeds geladen werkorders van hetzelfde voertuig en dezelfde discipline.
-- Voeg unit-tests toe voor €300 per werkplaatsorder, €300 per spuitdeel, uitsluiting van reeds gefactureerde en niet-goedgekeurde orders, en externe klussen.
+## Wat we bouwen
+1. **Eén klik per persoon.** Elke schadehersteller ziet bij elke kaart:
+   - **Start** bij een vrije klus. De klus komt dan op jouw naam.
+   - **Pauze** en **Klaar** bij je eigen lopende klus.
+   - **Verder** bij je eigen gepauzeerde klus.
+2. **Klussen van een collega.** Die tonen "Bezig — Yousry" of "Gepauzeerd — Yousry", zonder Start-knop. Zo kan niemand meer op een knop drukken die niets doet.
+3. **Overnemen (optioneel, zie vraag).** Een knop "Overnemen" bij een gepauzeerde klus van een collega. De al gewerkte tijd blijft bewaard.
+4. **Filter bovenaan:** "Mijn klussen" / "Vrij" / "Alles".
+5. **Duidelijke melding.** Lukt een actie niet door rechten, dan komt er een melding in beeld in plaats van stilte.
+6. **Rechten in de database aanpassen:**
+   - Een schadehersteller mag zijn eigen klus pauzeren en hervatten.
+   - Hij ziet ook de gepauzeerde klussen van collega's.
+   - Hij kan geen klussen van anderen wijzigen, behalve via Overnemen als we dat bouwen.
+7. **Test met twee testaccounts:**
+   - Mehmet start een klus, pauzeert, gaat verder en meldt Klaar.
+   - Yousry kan Mehmets lopende klus niet bedienen.
+   - De uren worden per persoon goed geteld.
 
-## Verificatie
-- Controleer in de preview dat KVH-62-D €0 gefactureerd en €900 nog te factureren toont met open onderdelen.
-- Controleer dat J-847-RR als externe klus verschijnt zonder verzonnen omzet.
-- Draai typecheck en tests; de bekende bestaande fout in `deliveredVehiclesQuery.ts:171` mag als enige blijven.
-- Geen databasewijzigingen en niet publiceren.
+## Technisch
+- Migratie: in de beleidsregels `wo_select` en `wo_update` komt `gepauzeerd` erbij voor de rol schadeherstel. Bijwerken mag alleen bij `assigned_to = auth.uid()` of bij een vrije klus. Overnemen loopt via een security-definer functie `spuit_overnemen(id)`, alleen voor gepauzeerde klussen.
+- `WerkplaatsSchadeherstel.tsx`:
+  - De knoplogica kijkt naar `mine` / vrij / collega.
+  - Updates controleren met `.select()` dat er een rij is gewijzigd. Is dat niet zo, dan verschijnt een melding.
+  - Het filter wordt toegevoegd.
+- Unit-test voor de knoplogica (welke knop zie je in welke situatie).
+- De poets-verwijderknop voor de operationeel directeur blijft openstaan. De database-wijziging daarvoor is nog niet uitgevoerd en kan in dezelfde migratie mee.
+- Niet publiceren.
