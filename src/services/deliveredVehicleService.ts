@@ -1,3 +1,4 @@
+import { fetchAllPages } from "@/lib/fetchAllPages";
 import { supabase } from "@/integrations/supabase/client";
 import { Vehicle } from "@/types/inventory";
 
