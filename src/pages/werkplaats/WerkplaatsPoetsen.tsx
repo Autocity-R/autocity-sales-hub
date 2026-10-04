@@ -27,6 +27,8 @@ import { PauseTaskDialog } from "@/components/werkplaats/PauseTaskDialog";
 import { pauseWorkOrder, resumeFields, totalWorkSeconds, poetserMayTogglePause } from "@/components/werkplaats/workOrderPause";
 
 interface PoetsWO {
+  sort_order?: number | null;
+  sort_manual?: boolean | null;
   id: string;
   description: string;
   status: string;
