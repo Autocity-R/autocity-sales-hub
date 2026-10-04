@@ -1,3 +1,4 @@
+import { DeliveryChecklistHistory } from "./DeliveryChecklistHistory";
 
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
@@ -405,6 +406,10 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
             )}
           </div>
           
+          <div className="border-t pt-4 mt-2">
+            <DeliveryChecklistHistory vehicleId={vehicle.id} deliveredAt={vehicle.deliveryDate as any} />
+          </div>
+
           {/* Close button */}
           <Button
             size="icon"
