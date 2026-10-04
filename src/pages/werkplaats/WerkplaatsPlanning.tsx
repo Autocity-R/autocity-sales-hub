@@ -330,9 +330,10 @@ const DoneTodayColumn: React.FC<{ items: WO[]; nameFor: (uid: string | null) => 
 const WerkplaatsPlanning: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
   const navigate = useNavigate();
-  const { canManageWorkOrders, canPlanWorkOrders, isDirectieReadOnly } = useRoleAccess();
+  const { canCancelWorkOrders, canPlanWorkOrders, isDirectieReadOnly } = useRoleAccess();
   const readOnly = isDirectieReadOnly();
-  const canDelete = canManageWorkOrders();
+  // "Verwijderen" in de planning = annuleren (status geannuleerd); ook de operationeel directeur.
+  const canDelete = canCancelWorkOrders();
   const canPlan = canPlanWorkOrders();
   const vehicleDialog = useVehicleDetailDialog();
   const [discipline, setDiscipline] = useState<Discipline>("werkplaats");

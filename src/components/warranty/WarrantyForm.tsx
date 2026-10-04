@@ -29,7 +29,9 @@ import { Vehicle } from "@/types/inventory";
 import { WarrantyClaim } from "@/types/warranty";
 import { createWarrantyClaim, updateWarrantyClaim } from "@/services/warrantyService";
 import { fetchDeliveredVehiclesForWarranty } from "@/services/deliveredVehicleService";
-import { createAppointment } from "@/services/calendarService";
+import { createWarrantyWorkOrder } from "./ScheduleWarrantyWorkOrder";
+import { syncWorkOrderToWerkplaatsCalendar } from "@/services/werkplaatsCalendarService";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { SearchableVehicleSelector } from "./SearchableVehicleSelector";
 
@@ -62,7 +64,6 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
   const [scheduleAppointment, setScheduleAppointment] = useState(false);
   const [appointmentDate, setAppointmentDate] = useState<Date>();
   const [appointmentTime, setAppointmentTime] = useState("");
-  const [appointmentType, setAppointmentType] = useState<string>("onderhoud");
   const [appointmentNotes, setAppointmentNotes] = useState("");
 
   const queryClient = useQueryClient();
@@ -175,42 +176,32 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         const startTime = new Date(appointmentDate);
         startTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
         
-        const endTime = new Date(startTime);
-        endTime.setHours(startTime.getHours() + 1); // Default 1 hour appointment
 
-        const vehicleBrand = inputMode === "existing" && selectedVehicle ? selectedVehicle.brand : manualBrand;
-        const vehicleModel = inputMode === "existing" && selectedVehicle ? selectedVehicle.model : manualModel;
-        const customerName = inputMode === "existing" && selectedVehicle ? selectedVehicle.customerName : manualCustomerName;
-
-        const appointmentData = {
-          title: `Garantie reparatie: ${vehicleBrand} ${vehicleModel}`,
-          description: `Garantieclaim: ${problemDescription}`,
-          startTime,
-          endTime,
-          type: appointmentType as any,
-          status: "gepland" as any,
-          customerId: inputMode === "existing" && selectedVehicle ? selectedVehicle.customerId : undefined,
-          customerName: customerName || "Onbekend",
-          customerEmail: inputMode === "existing" && selectedVehicle ? undefined : undefined,
-          customerPhone: inputMode === "manual" ? manualCustomerPhone || undefined : undefined,
-          vehicleId: inputMode === "existing" && selectedVehicle ? selectedVehicle.id : undefined,
-          vehicleBrand,
-          vehicleModel,
-          vehicleLicenseNumber: inputMode === "existing" && selectedVehicle ? selectedVehicle.licenseNumber : manualLicenseNumber || "Onbekend",
-          location: "Werkplaats",
-          notes: `Garantieclaim ID: ${createdClaim.id}${appointmentNotes ? `\n${appointmentNotes}` : ''}`,
-          createdBy: "Garantieafdeling",
-          assignedTo: assignedTo || undefined
-        };
-
-        const createdAppointment = await createAppointment(appointmentData);
-        
-        // Update claim with appointment ID
-        await updateWarrantyClaim(createdClaim.id, { appointmentId: createdAppointment.id });
+        // Reparatieafspraak = werkplaats-order (werkplaats-agenda), NIET de verkoop-agenda (appointments).
+        const branch = (inputMode === "existing" && selectedVehicle?.branch) || "rotterdam";
+        const { data: userRes } = await supabase.auth.getUser();
+        try {
+          const woId = await createWarrantyWorkOrder({
+            claimId: createdClaim.id,
+            vehicleId: inputMode === "existing" && selectedVehicle ? selectedVehicle.id : null,
+            description: `Garantie: ${problemDescription}${appointmentNotes ? `\n${appointmentNotes}` : ""}`,
+            plannedAt: startTime,
+            branch,
+            createdBy: userRes.user?.id ?? null,
+          });
+          syncWorkOrderToWerkplaatsCalendar(woId, branch);
+        } catch (e: any) {
+          console.error("Werkplaats-afspraak aanmaken mislukt:", e);
+          toast({ title: "Claim opgeslagen, afspraak niet", description: `Plan de reparatie in via de claim. (${e.message})`, variant: "destructive" });
+          queryClient.invalidateQueries({ queryKey: ["warrantyClaims"] });
+          onClose();
+          return;
+        }
+        queryClient.invalidateQueries({ queryKey: ["werkplaats"] });
         
         toast({
           title: "Succesvol",
-          description: "Garantieclaim en afspraak zijn aangemaakt"
+          description: "Garantieclaim aangemaakt en ingepland in de werkplaats-agenda"
         });
       } else {
         toast({
@@ -529,21 +520,6 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
                     onChange={(e) => setAppointmentTime(e.target.value)}
                   />
                 </div>
-              </div>
-
-              <div>
-                <Label htmlFor="appointmentType">Type Afspraak</Label>
-                <Select value={appointmentType} onValueChange={setAppointmentType}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="onderhoud">Onderhoud</SelectItem>
-                    <SelectItem value="intake">Intake</SelectItem>
-                    <SelectItem value="bezichtiging">Bezichtiging</SelectItem>
-                    <SelectItem value="overig">Overig</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
 
               <div>

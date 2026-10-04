@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentBranch, applyBranchFilter } from "@/contexts/BranchContext";
 import BranchFilter from "@/components/reports/BranchFilter";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Truck, Home, CheckCircle2, Sparkles, Search, X, Trash2 } from "lucide-react";
+import { Loader2, Truck, Home, CheckCircle2, Sparkles, Search, X, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -27,6 +27,8 @@ import { PauseTaskDialog } from "@/components/werkplaats/PauseTaskDialog";
 import { pauseWorkOrder, resumeFields, totalWorkSeconds, poetserMayTogglePause } from "@/components/werkplaats/workOrderPause";
 
 interface PoetsWO {
+  sort_order?: number | null;
+  sort_manual?: boolean | null;
   id: string;
   description: string;
   status: string;
@@ -79,18 +81,24 @@ const PoetsCard: React.FC<{
   onPause: (w: PoetsWO) => void;
   onResume: (w: PoetsWO) => void;
   onDelete?: (w: PoetsWO) => void;
+  onMove?: (w: PoetsWO, dir: -1 | 1) => void;
+  isFirst?: boolean;
+  isLast?: boolean;
   showDeadline: boolean;
   onOpen?: (w: PoetsWO) => void;
   workerName?: string | null;
   delivery?: DeliveryMoment | null;
-}> = ({ w, onStart, onDone, onPause, onResume, onDelete, showDeadline, onOpen, workerName, delivery }) => {
+}> = ({ w, onStart, onDone, onPause, onResume, onDelete, onMove, isFirst, isLast, showDeadline, onOpen, workerName, delivery }) => {
   const { isDirectieReadOnly } = useRoleAccess();
   const readOnly = isDirectieReadOnly();
   const tone = deadlineTone(w.due_date);
   const deadline = poetsDeadline(w, delivery ?? undefined);
   const { user, userRole } = useAuth();
   const canToggle = userRole !== "poetser" || poetserMayTogglePause(userRole, w, user?.id);
-  const canDelete = !!onDelete && !readOnly && ["owner", "admin", "manager", "aftersales_manager", "werkplaats_chef", "operationeel_directeur"].includes(userRole || "");
+  const { canManagePoets } = useRoleAccess();
+  // Annuleren + volgorde: aftersales/directeur/beheer — poetsers niet.
+  const canDelete = !!onDelete && canManagePoets();
+  const canMove = !!onMove && canManagePoets();
   const paused = w.status === "gepauzeerd";
   const liveFrom = w.status === "bezig" && w.started_at
     ? new Date(new Date(w.started_at).getTime() - Number(w.paused_seconds || 0) * 1000).toISOString() : null;
@@ -113,15 +121,27 @@ const PoetsCard: React.FC<{
       <div className="flex items-center gap-2 flex-wrap">
         <AsLicensePlate value={w.vehicle?.license_number} size="sm" />
         <span className="text-[14px] font-bold text-slate-900 truncate">{w.vehicle?.brand} {w.vehicle?.model}</span>
-        {canDelete && (
-          <button
-            type="button"
-            aria-label="Poets-taak verwijderen"
-            onClick={(e) => { e.stopPropagation(); onDelete!(w); }}
-            className="ml-auto p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+        {(canMove || canDelete) && (
+          <div className="ml-auto flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            {canMove && (
+              <>
+                <button type="button" aria-label="Omhoog" disabled={isFirst} onClick={() => onMove!(w, -1)}
+                  className="h-9 w-9 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30">
+                  <ChevronUp className="h-4 w-4" />
+                </button>
+                <button type="button" aria-label="Omlaag" disabled={isLast} onClick={() => onMove!(w, 1)}
+                  className="h-9 w-9 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30">
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </>
+            )}
+            {canDelete && (
+              <button type="button" aria-label="Poets-taak verwijderen" onClick={() => onDelete!(w)}
+                className="h-9 w-9 flex items-center justify-center rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50">
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         )}
       </div>
       <div className="-mt-1.5">
@@ -219,7 +239,7 @@ const WerkplaatsPoetsen: React.FC = () => {
     setLoading(true);
     let q = supabase
       .from("work_orders")
-      .select("id, description, status, poets_type, due_date, created_at, started_at, paused_seconds, pause_reason, assigned_to, origin, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, year, mileage, color, vin, status)")
+      .select("id, description, status, sort_order, sort_manual, poets_type, due_date, created_at, started_at, paused_seconds, pause_reason, assigned_to, origin, vehicle:vehicles!work_orders_vehicle_id_fkey(id, brand, model, license_number, year, mileage, color, vin, status)")
       .eq("discipline", "poets")
       .in("status", ["ingepland", "bezig", "gepauzeerd"]);
     q = applyBranchFilter(q as any, branchFilter);
@@ -314,7 +334,15 @@ const WerkplaatsPoetsen: React.FC = () => {
     const w = deleteTarget;
     if (!w) return;
     setDeleteBusy(true);
-    const { error } = await supabase.from("work_orders").delete().eq("id", w.id);
+    // "Verwijderen" = annuleren: verdwijnt uit de lijst, historie blijft en blokkeert het verwijderen van een auto niet.
+    const { data: upd, error } = await supabase.from("work_orders")
+      .update({ status: "geannuleerd" } as any).eq("id", w.id).select("id");
+    if (!error && (!upd || upd.length === 0)) {
+      setDeleteBusy(false); setDeleteTarget(null);
+      toast({ title: "Kon niet verwijderen", description: "Geen rechten of de taak is al gewijzigd.", variant: "destructive" });
+      load();
+      return;
+    }
     setDeleteBusy(false);
     setDeleteTarget(null);
     if (error) {
@@ -323,6 +351,24 @@ const WerkplaatsPoetsen: React.FC = () => {
     }
     setRows(prev => prev.filter(r => r.id !== w.id));
     toast({ title: "Poets-taak verwijderd", description: `${w.vehicle?.brand ?? ""} ${w.vehicle?.model ?? ""}`.trim() });
+  };
+
+  const moveCard = async (w: PoetsWO, dir: -1 | 1) => {
+    const column = afleveringen.some(r => r.id === w.id) ? afleveringen : showroom;
+    const order = [...column];
+    const i = order.findIndex(r => r.id === w.id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= order.length) return;
+    [order[i], order[j]] = [order[j], order[i]];
+    const patch = new Map(order.map((r, k) => [r.id, (k + 1) * 10]));
+    setRows(prev => prev.map(r => patch.has(r.id) ? { ...r, sort_order: patch.get(r.id)!, sort_manual: true } as any : r));
+    const results = await Promise.all(order.map((r, k) =>
+      supabase.from("work_orders").update({ sort_order: (k + 1) * 10, sort_manual: true } as any).eq("id", r.id).select("id")));
+    const failed = results.find(r => r.error || !r.data?.length);
+    if (failed) {
+      toast({ title: "Volgorde niet opgeslagen", description: failed.error?.message ?? "Geen rechten.", variant: "destructive" });
+      load();
+    }
   };
 
   return (
@@ -386,8 +432,8 @@ const WerkplaatsPoetsen: React.FC = () => {
                   <div className="text-[12.5px] text-slate-400 px-1 py-6 text-center border border-dashed border-slate-200 rounded-lg">
                     Geen afleveringen.
                   </div>
-                ) : afleveringen.map(w => (
-                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} onPause={setPauseTarget} onResume={markResumed} onDelete={setDeleteTarget} showDeadline onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
+                ) : afleveringen.map((w, i) => (
+                  <PoetsCard key={w.id} w={w} onMove={moveCard} isFirst={i === 0} isLast={i === afleveringen.length - 1} onStart={markStarted} onDone={markDone} onPause={setPauseTarget} onResume={markResumed} onDelete={setDeleteTarget} showDeadline onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
                 ))}
               </div>
             </AsCard>
@@ -405,8 +451,8 @@ const WerkplaatsPoetsen: React.FC = () => {
                   <div className="text-[12.5px] text-slate-400 px-1 py-6 text-center border border-dashed border-slate-200 rounded-lg">
                     Geen showroom-taken.
                   </div>
-                ) : showroom.map(w => (
-                  <PoetsCard key={w.id} w={w} onStart={markStarted} onDone={markDone} onPause={setPauseTarget} onResume={markResumed} onDelete={setDeleteTarget} showDeadline={false} onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
+                ) : showroom.map((w, i) => (
+                  <PoetsCard key={w.id} w={w} onMove={moveCard} isFirst={i === 0} isLast={i === showroom.length - 1} onStart={markStarted} onDone={markDone} onPause={setPauseTarget} onResume={markResumed} onDelete={setDeleteTarget} showDeadline={false} onOpen={setDetail} workerName={w.assigned_to ? names[w.assigned_to] : null} delivery={w.vehicle?.id ? deliveryMoments[w.vehicle.id] : null} />
                 ))}
               </div>
             </AsCard>
@@ -421,7 +467,7 @@ const WerkplaatsPoetsen: React.FC = () => {
               <AlertDialogTitle>Poets-taak verwijderen?</AlertDialogTitle>
               <AlertDialogDescription>
                 {deleteTarget
-                  ? `${deleteTarget.vehicle?.brand ?? ""} ${deleteTarget.vehicle?.model ?? ""} (${deleteTarget.vehicle?.license_number ?? "geen kenteken"}) — de poets-taak wordt definitief verwijderd. Dit kan niet ongedaan worden.`
+                  ? `${deleteTarget.vehicle?.brand ?? ""} ${deleteTarget.vehicle?.model ?? ""} (${deleteTarget.vehicle?.license_number ?? "geen kenteken"}) — de poets-taak wordt geannuleerd en verdwijnt uit de lijst. De historie blijft bewaard.`
                   : ""}
               </AlertDialogDescription>
             </AlertDialogHeader>

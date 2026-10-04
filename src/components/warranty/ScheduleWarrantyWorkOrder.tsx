@@ -51,6 +51,37 @@ export async function fetchLinkedWorkOrder(claimId: string): Promise<LinkedWorkO
   return ((data as any[]) || [])[0] ?? null;
 }
 
+
+/** Maakt de werkplaats-order (de reparatieafspraak) voor een garantieclaim aan. Geeft het id terug. */
+export async function createWarrantyWorkOrder(p: {
+  claimId: string; vehicleId: string | null; description: string; plannedAt: Date;
+  assignedTo?: string | null; isRush?: boolean; branch: string; createdBy: string | null;
+}): Promise<string> {
+  const isRush = !!p.isRush;
+  const { data: bounds } = await supabase.from("work_orders")
+    .select("sort_order").eq("discipline", "werkplaats")
+    .in("status", ["ingepland", "bezig", "gepauzeerd"])
+    .order("sort_order", { ascending: isRush }).limit(1);
+  const base = ((bounds as any)?.[0]?.sort_order ?? 0);
+  const { data: created, error } = await supabase.from("work_orders").insert({
+    vehicle_id: p.vehicleId,
+    discipline: "werkplaats",
+    description: p.description.trim(),
+    status: "ingepland",
+    sort_order: isRush ? base - 10 : base + 10,
+    source: "garantie",
+    origin: "intern",
+    warranty_claim_id: p.claimId,
+    planned_at: p.plannedAt.toISOString(),
+    assigned_to: p.assignedTo || null,
+    is_rush: isRush,
+    branch: p.branch,
+    created_by: p.createdBy,
+  } as any).select("id").single();
+  if (error) throw error;
+  return (created as any).id;
+}
+
 const toLocalInput = (iso: string | null) =>
   iso ? format(new Date(iso), "yyyy-MM-dd'T'HH:mm") : "";
 
@@ -142,30 +173,10 @@ export const ScheduleWarrantyDialog: React.FC<{
         } as any).eq("id", workOrderId);
         if (error) throw error;
       } else {
-        const { data: bounds } = await supabase.from("work_orders")
-          .select("sort_order").eq("discipline", "werkplaats")
-          .in("status", ["ingepland", "bezig", "gepauzeerd"])
-          .order("sort_order", { ascending: isRush ? true : false }).limit(1);
-        const base = ((bounds as any)?.[0]?.sort_order ?? 0);
-        const nextSort = isRush ? base - 10 : base + 10;
-
-        const { data: created, error } = await supabase.from("work_orders").insert({
-          vehicle_id: claim?.vehicle_id || null,
-          discipline: "werkplaats",
-          description: description.trim(),
-          status: "ingepland",
-          sort_order: nextSort,
-          source: "garantie",
-          origin: "intern",
-          warranty_claim_id: claimId,
-          planned_at: new Date(plannedAt).toISOString(),
-          assigned_to: assignedTo || null,
-          is_rush: isRush,
-          branch,
-          created_by: userRes.user?.id ?? null,
-        } as any).select("id").single();
-        if (error) throw error;
-        workOrderId = (created as any).id;
+        workOrderId = await createWarrantyWorkOrder({
+          claimId, vehicleId: claim?.vehicle_id || null, description, plannedAt: new Date(plannedAt),
+          assignedTo: assignedTo || null, isRush, branch, createdBy: userRes.user?.id ?? null,
+        });
       }
 
       if (workOrderId) syncWorkOrderToWerkplaatsCalendar(workOrderId, branch);

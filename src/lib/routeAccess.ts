@@ -224,6 +224,13 @@ export const canManageWorkOrdersRole = (role: Role): boolean =>
   !!role && (ADMIN_ROLES.includes(role) || WORK_ORDER_MANAGERS.includes(role));
 export const canPlanWorkOrdersRole = (role: Role): boolean =>
   canManageWorkOrdersRole(role) || role === "operationeel_directeur";
+/** Geplande order annuleren (status 'geannuleerd'): beheerders + operationeel directeur. Hard verwijderen NIET. */
+export const canCancelWorkOrdersRole = canPlanWorkOrdersRole;
+/** Poets-volgorde aanpassen + poets-card annuleren. */
+export const canManagePoetsRole = (role: Role): boolean =>
+  !!role && ["owner", "admin", "manager", "aftersales_manager", "werkplaats_chef", "operationeel_directeur"].includes(role);
+/** Goedkeuren / terugsturen in het Goedkeuren-menu. */
+export const canApproveWorkOrdersRole = canPlanWorkOrdersRole;
 
 
 /** Leenauto's uitlenen/innemen — gelijk aan public.leenauto_mag_schrijven(). */

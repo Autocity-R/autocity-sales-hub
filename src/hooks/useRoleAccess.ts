@@ -1,5 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { featureAccess, canManageChecklistsRole, canAssignTasksRole } from "@/lib/routeAccess";
+import { featureAccess, canManageChecklistsRole, canAssignTasksRole, canCancelWorkOrdersRole, canManagePoetsRole, canApproveWorkOrdersRole } from "@/lib/routeAccess";
 
 export const useRoleAccess = () => {
   const { userRole, isAdmin, roleLoading } = useAuth();
@@ -62,7 +62,12 @@ export const useRoleAccess = () => {
   const isDirectieReadOnly = () => isOperationeelDirecteur() || isAdministratie();
 
   // Mag werkorders goedkeuren / factureren (monteur nadrukkelijk NIET)
-  const canApproveWorkOrders = () => canManageWorkOrders();
+  // Goedkeuren/terugsturen: ook de operationeel directeur (factureren blijft bij beheer)
+  const canApproveWorkOrders = () => isAdmin || canApproveWorkOrdersRole(userRole);
+  // Geplande order annuleren (status geannuleerd) — directeur mag dit, hard verwijderen niet
+  const canCancelWorkOrders = () => isAdmin || canCancelWorkOrdersRole(userRole);
+  // Poets-volgorde + poets-card annuleren
+  const canManagePoets = () => isAdmin || canManagePoetsRole(userRole);
   const canInvoiceWorkOrders = () => canManageWorkOrders();
 
   // Zelfde bron als de route-guards, zodat menu en guard nooit uit elkaar lopen.
@@ -205,6 +210,8 @@ export const useRoleAccess = () => {
     canManageWorkOrders,
     canPlanWorkOrders,
     canApproveWorkOrders,
+    canCancelWorkOrders,
+    canManagePoets,
     canInvoiceWorkOrders,
     userRole,
     isAdmin,
