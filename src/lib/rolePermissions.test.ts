@@ -25,3 +25,29 @@ describe("rechten operationeel_directeur (bouwstap 2E)", () => {
     }
   });
 });
+
+import { canCancelWorkOrdersRole, canManagePoetsRole, canApproveWorkOrdersRole } from "./routeAccess";
+
+describe("bouwstap 7: directeur annuleren / poets beheren / goedkeuren", () => {
+  const MANAGERS = ["admin","owner","manager","aftersales_manager","werkplaats_chef"];
+  it("directeur mag annuleren, poets ordenen/annuleren en goedkeuren", () => {
+    expect(canCancelWorkOrdersRole("operationeel_directeur")).toBe(true);
+    expect(canManagePoetsRole("operationeel_directeur")).toBe(true);
+    expect(canApproveWorkOrdersRole("operationeel_directeur")).toBe(true);
+  });
+  it("directeur mag NIET hard verwijderen (beheren)", () => {
+    expect(canManageWorkOrdersRole("operationeel_directeur")).toBe(false);
+  });
+  it("andere rollen krijgen er niets bij", () => {
+    for (const r of ALL) {
+      if (r === "operationeel_directeur") continue;
+      const expected = MANAGERS.includes(r as string);
+      expect(canCancelWorkOrdersRole(r)).toBe(expected);
+      expect(canManagePoetsRole(r)).toBe(expected);
+      expect(canApproveWorkOrdersRole(r)).toBe(expected);
+    }
+  });
+  it("poetser kan niets hiervan", () => {
+    expect(canManagePoetsRole("poetser")).toBe(false);
+  });
+});
