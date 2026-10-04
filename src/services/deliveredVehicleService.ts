@@ -200,6 +200,7 @@ export const fetchDeliveredVehiclesForWarranty = async (): Promise<Vehicle[]> =>
       year: vehicleData.year,
       color: vehicleData.color,
       licenseNumber: vehicleData.license_number,
+      branch: (vehicleData as any).branch,
       vin: vehicleData.vin,
       mileage: vehicleData.mileage,
       purchasePrice: details.purchase_price || 0,
