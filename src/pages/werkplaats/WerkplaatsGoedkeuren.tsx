@@ -36,8 +36,10 @@ const fmtSec = (s: number | null) => {
 const WerkplaatsGoedkeuren: React.FC = () => {
   const { branchFilter } = useCurrentBranch();
   // Directie kijkt alleen mee: geen goedkeur-/terugstuur-/factuurknoppen.
-  const { isDirectieReadOnly } = useRoleAccess();
+  const { isDirectieReadOnly, canApproveWorkOrders } = useRoleAccess();
   const readOnly = isDirectieReadOnly();
+  // Operationeel directeur mag goedkeuren/terugsturen (zelfde knoppen als aftersales); factuur opmaken niet.
+  const canApprove = canApproveWorkOrders();
   const [rows, setRows] = useState<WO[]>([]);
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<DamageReportPayload | null>(null);
@@ -169,10 +171,10 @@ const WerkplaatsGoedkeuren: React.FC = () => {
                 <FileText className="h-4 w-4 mr-1" />Factuur opmaken
               </Button>
             )}
-            {!readOnly && (
+            {canApprove && (
               <Button size="sm" onClick={() => approve(w)}><Check className="h-4 w-4 mr-1" />Goedkeuren</Button>
             )}
-            {allowReject && !readOnly && (
+            {allowReject && canApprove && (
               <Button size="sm" variant="outline" onClick={() => reject(w)}><Undo2 className="h-4 w-4 mr-1" />Terugsturen</Button>
             )}
           </div>
