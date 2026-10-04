@@ -5305,6 +5305,7 @@ export type Database = {
           reminder_for_date: string | null
           reminder_sent_at: string | null
           result_photos: Json | null
+          sort_manual: boolean
           sort_order: number
           source: string
           started_at: string | null
@@ -5344,6 +5345,7 @@ export type Database = {
           reminder_for_date?: string | null
           reminder_sent_at?: string | null
           result_photos?: Json | null
+          sort_manual?: boolean
           sort_order?: number
           source?: string
           started_at?: string | null
@@ -5383,6 +5385,7 @@ export type Database = {
           reminder_for_date?: string | null
           reminder_sent_at?: string | null
           result_photos?: Json | null
+          sort_manual?: boolean
           sort_order?: number
           source?: string
           started_at?: string | null
