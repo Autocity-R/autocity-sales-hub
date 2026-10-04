@@ -64,7 +64,6 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
   const [scheduleAppointment, setScheduleAppointment] = useState(false);
   const [appointmentDate, setAppointmentDate] = useState<Date>();
   const [appointmentTime, setAppointmentTime] = useState("");
-  const [appointmentType, setAppointmentType] = useState<string>("onderhoud");
   const [appointmentNotes, setAppointmentNotes] = useState("");
 
   const queryClient = useQueryClient();
@@ -177,8 +176,6 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
         const startTime = new Date(appointmentDate);
         startTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
         
-        const endTime = new Date(startTime);
-        endTime.setHours(startTime.getHours() + 1); // Default 1 hour appointment
 
         // Reparatieafspraak = werkplaats-order (werkplaats-agenda), NIET de verkoop-agenda (appointments).
         const branch = (inputMode === "existing" && selectedVehicle?.branch) || "rotterdam";
@@ -523,21 +520,6 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
                     onChange={(e) => setAppointmentTime(e.target.value)}
                   />
                 </div>
-              </div>
-
-              <div>
-                <Label htmlFor="appointmentType">Type Afspraak</Label>
-                <Select value={appointmentType} onValueChange={setAppointmentType}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="onderhoud">Onderhoud</SelectItem>
-                    <SelectItem value="intake">Intake</SelectItem>
-                    <SelectItem value="bezichtiging">Bezichtiging</SelectItem>
-                    <SelectItem value="overig">Overig</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
 
               <div>
