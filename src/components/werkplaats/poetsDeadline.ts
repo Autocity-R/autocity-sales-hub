@@ -52,11 +52,18 @@ export const poetsDeadline = (w: PoetsDeadlineInput, delivery?: DeliveryMoment, 
 export const isPoetsAflevering = (w: PoetsDeadlineInput, moments: Record<string, DeliveryMoment>) =>
   w.poets_type === "aflevering" || Boolean(w.vehicle?.id && moments[w.vehicle.id]);
 
-export function splitPoetsRows<T extends PoetsDeadlineInput>(rows: T[], moments: Record<string, DeliveryMoment>, now: Date = new Date()) {
+export function splitPoetsRows<T extends PoetsDeadlineInput & { sort_manual?: boolean | null; sort_order?: number | null }>(rows: T[], moments: Record<string, DeliveryMoment>, now: Date = new Date()) {
   const dl = (w: T) => poetsDeadline(w, w.vehicle?.id ? moments[w.vehicle.id] : undefined, now)?.at ?? Number.POSITIVE_INFINITY;
+  // Handmatig geordende kaarten (aftersales/directeur via ▲/▼) staan bovenaan in die volgorde; de rest volgt de standaardregel.
+  const manualFirst = (a: T, b: T) => {
+    const ma = !!a.sort_manual, mb = !!b.sort_manual;
+    if (ma !== mb) return ma ? -1 : 1;
+    if (ma && mb) return Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0);
+    return 0;
+  };
   const afleveringen = rows.filter(w => isPoetsAflevering(w, moments))
-    .sort((a, b) => (dl(a) - dl(b)) || a.created_at.localeCompare(b.created_at));
+    .sort((a, b) => manualFirst(a, b) || (dl(a) - dl(b)) || a.created_at.localeCompare(b.created_at));
   const showroom = rows.filter(w => !isPoetsAflevering(w, moments))
-    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+    .sort((a, b) => manualFirst(a, b) || a.created_at.localeCompare(b.created_at));
   return { afleveringen, showroom };
 }
