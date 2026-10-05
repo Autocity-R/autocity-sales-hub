@@ -26,7 +26,7 @@ export const useOpenClaimUitlening = (claim: Pick<WarrantyClaim, "id" | "loanCar
 export const ClaimLeenautoSection: React.FC<{ claim: WarrantyClaim; canManage: boolean }> = ({ claim, canManage }) => {
   const qc = useQueryClient();
   const { data: open } = useOpenClaimUitlening(claim);
-  const { data: cars = [] } = useQuery({ queryKey: ["loanCars"], queryFn: fetchLoanCars });
+  const { data: cars = [] } = useQuery({ queryKey: ["loanCars"], queryFn: () => fetchLoanCars() });
   const available = cars.filter((c: LoanCar) => c.available);
   const [carId, setCarId] = useState("");
   const [uitleenOpen, setUitleenOpen] = useState(false);
