@@ -75,6 +75,7 @@ export const LoanCarManagement = () => {
   const refreshLoans = () => {
     queryClient.invalidateQueries({ queryKey: ["loanCars"] });
     queryClient.invalidateQueries({ queryKey: ["leenautoUitleningen"] });
+    queryClient.invalidateQueries({ queryKey: ["tijdelijkeLeenautos"] });
   };
 
   // Fetch loan cars

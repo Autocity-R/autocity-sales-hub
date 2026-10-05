@@ -53,3 +53,14 @@ describe("leenauto helpers", () => {
     expect(isTeLaat({ verwacht_terug_op: null, ingeleverd_op: null }, now)).toBe(false);
   });
 });
+
+import { canManageLeenautoRole, LEENAUTO_MANAGE_ROLES } from "@/lib/routeAccess";
+describe("leenauto toevoegen/beheren (bouwstap 8)", () => {
+  it("aftersales en directeur mogen leenauto's toevoegen; owner/admin/manager blijven", () => {
+    for (const r of ["aftersales_manager", "operationeel_directeur", "owner", "admin", "manager"]) expect(canManageLeenautoRole(r)).toBe(true);
+  });
+  it("verkoper, monteur, poetser, chef e.a. niet", () => {
+    for (const r of ["verkoper", "monteur", "poetser", "werkplaats_chef", "operationeel", "administratie", "schadeherstel", null]) expect(canManageLeenautoRole(r as any)).toBe(false);
+    expect([...LEENAUTO_MANAGE_ROLES].sort()).toEqual(["admin","aftersales_manager","manager","operationeel_directeur","owner"]);
+  });
+});
