@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Search, X } from "lucide-react";
+import { Search, X, UserPlus } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   LeenReden,
   REDEN_LABELS,
@@ -17,6 +18,8 @@ import {
   fromLocalInput,
   leenautoInnemen,
   leenautoUitlenen,
+  leenautoKlantZoeken,
+  leenautoKlantOpslaan,
   toLocalInput,
 } from "@/services/leenautoService";
 
@@ -60,10 +63,14 @@ export const LeenautoUitleenDialog: React.FC<UitleenDialogProps> = ({
   const [terug, setTerug] = useState("");
   const [notities, setNotities] = useState("");
   const [busy, setBusy] = useState(false);
+  const [handmatig, setHandmatig] = useState(false);
+  const [opslaanCrm, setOpslaanCrm] = useState(true);
+  const [bedrijf, setBedrijf] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setSearch("");
+    setHandmatig(false); setOpslaanCrm(true); setBedrijf("");
     setContactId(defaults?.contactId || null);
     setNaam(defaults?.klantNaam || "");
     setTel(defaults?.klantTelefoon || "");
@@ -80,15 +87,7 @@ export const LeenautoUitleenDialog: React.FC<UitleenDialogProps> = ({
   const { data: contacts = [] } = useQuery({
     queryKey: ["leenauto-contact-search", search],
     enabled: open && search.trim().length >= 2,
-    queryFn: async () => {
-      const s = search.trim().replace(/[,%()]/g, " ");
-      const { data } = await supabase
-        .from("contacts")
-        .select("id, first_name, last_name, company_name, phone, email, address_street, address_number, address_postal_code, address_city")
-        .or(`first_name.ilike.%${s}%,last_name.ilike.%${s}%,company_name.ilike.%${s}%,email.ilike.%${s}%,phone.ilike.%${s}%`)
-        .limit(8);
-      return data || [];
-    },
+    queryFn: () => leenautoKlantZoeken(search),
   });
 
   const { data: claims = [] } = useQuery({
@@ -106,13 +105,14 @@ export const LeenautoUitleenDialog: React.FC<UitleenDialogProps> = ({
   });
 
   const pickContact = (c: any) => {
-    setContactId(c.id);
-    setNaam(`${c.first_name || ""} ${c.last_name || ""}`.trim() || c.company_name || "");
-    setTel(c.phone || "");
+    setContactId(c.contact_id || null);
+    setNaam(c.naam || "");
+    setTel(c.telefoon || "");
     setMail(c.email || "");
-    setAdres(`${c.address_street || ""} ${c.address_number || ""}`.trim());
-    setPc(c.address_postal_code || "");
-    setPlaats(c.address_city || "");
+    setAdres(c.adres || "");
+    setPc(c.postcode || "");
+    setPlaats(c.plaats || "");
+    setHandmatig(false);
     setSearch("");
   };
 
@@ -124,8 +124,13 @@ export const LeenautoUitleenDialog: React.FC<UitleenDialogProps> = ({
     const terugDate = fromLocalInput(terug);
     setBusy(true);
     try {
+      let cid = contactId;
+      if (!cid && handmatig && opslaanCrm) {
+        cid = await leenautoKlantOpslaan({ naam, telefoon: tel, email: mail, adres, postcode: pc, plaats, bedrijf });
+        setContactId(cid);
+      }
       await leenautoUitlenen({
-        loanCarId, contactId, klantNaam: naam, klantTelefoon: tel, klantEmail: mail,
+        loanCarId, contactId: cid, klantNaam: naam, klantTelefoon: tel, klantEmail: mail,
         klantAdres: adres, klantPostcode: pc, klantPlaats: plaats,
         warrantyClaimId: claimId === "none" ? null : claimId,
         reden, uitgeleendOp: uitDate, verwachtTerugOp: terugDate, notities,
@@ -149,19 +154,41 @@ export const LeenautoUitleenDialog: React.FC<UitleenDialogProps> = ({
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
-            <Label>Klant zoeken in contacten</Label>
+            <Label htmlFor="lk-zoek">Klant zoeken</Label>
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input className="pl-8" placeholder="Naam, telefoon of e-mail…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input id="lk-zoek" className="pl-8" placeholder="Naam, telefoon, e-mail, kenteken, merk/model of VIN…" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
+            {search.trim().length >= 2 && contacts.length === 0 && (
+              <p className="text-xs text-muted-foreground">Geen klant gevonden.</p>
+            )}
             {contacts.length > 0 && (
               <div className="rounded-md border divide-y max-h-48 overflow-y-auto">
-                {contacts.map((c: any) => (
-                  <button key={c.id} type="button" onClick={() => pickContact(c)} className="w-full text-left px-3 py-2 text-sm hover:bg-muted">
-                    <div className="font-medium">{`${c.first_name || ""} ${c.last_name || ""}`.trim() || c.company_name}</div>
-                    <div className="text-xs text-muted-foreground">{[c.phone, c.email, c.address_city].filter(Boolean).join(" · ")}</div>
+                {contacts.map((c: any, i: number) => (
+                  <button key={(c.contact_id || "x") + i} type="button" onClick={() => pickContact(c)} className="w-full text-left px-3 py-2 text-sm hover:bg-muted">
+                    <div className="font-medium">{c.naam || "—"}{!c.contact_id && <span className="text-xs text-muted-foreground font-normal"> · werkplaatsklant</span>}</div>
+                    <div className="text-xs text-muted-foreground">{[c.telefoon, c.email, c.plaats].filter(Boolean).join(" · ")}</div>
+                    {(c.autos || []).length > 0 && (
+                      <div className="text-xs text-foreground/80 mt-0.5">{(c.autos as string[]).slice(0, 3).join(" · ")}</div>
+                    )}
                   </button>
                 ))}
+              </div>
+            )}
+            {!contactId && !handmatig && (
+              <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => { setHandmatig(true); setSearch(""); }}>
+                <UserPlus className="h-4 w-4 mr-2" /> Klant niet gevonden? Handmatig invoeren
+              </Button>
+            )}
+            {handmatig && !contactId && (
+              <div className="rounded-md border p-2 space-y-2 bg-muted/40">
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox id="lk-crm" checked={opslaanCrm} onCheckedChange={(v) => setOpslaanCrm(!!v)} />
+                  Ook als klant opslaan in het CRM
+                </label>
+                {opslaanCrm && (
+                  <div className="space-y-1"><Label htmlFor="lk-bedrijf">Bedrijfsnaam (alleen bij zakelijke klant)</Label><Input id="lk-bedrijf" value={bedrijf} onChange={(e) => setBedrijf(e.target.value)} /></div>
+                )}
               </div>
             )}
             {contactId && (
