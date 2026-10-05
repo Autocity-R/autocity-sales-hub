@@ -88,6 +88,7 @@ export const searchStockVehicles = async (q: string) => {
     .from('vehicles')
     .select('id, brand, model, license_number, status')
     .in('status', ['voorraad', 'onderweg', 'transport'])
+    .neq('status', 'extern')
     .or(`brand.ilike.%${s}%,model.ilike.%${s}%,license_number.ilike.%${s}%,license_number.ilike.%${dashed}%`)
     .limit(10);
   return (data || []) as { id: string; brand: string; model: string; license_number: string | null; status: string }[];
