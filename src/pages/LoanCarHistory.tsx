@@ -53,7 +53,7 @@ const WieReed: React.FC = () => {
       const rows = await leenautoWieReed(kenteken, moment);
       setResult(rows);
       if (rows.length === 0) {
-        const cars = await fetchLoanCars();
+        const cars = await fetchLoanCars(true);
         const car = cars.find((c) => plateKey(c.licenseNumber) === plateKey(kenteken));
         if (!car) {
           setWarning("Dit kenteken is geen bekende leenauto.");

@@ -1,3 +1,4 @@
+import { TijdelijkLeenautoBadge } from "@/components/leenauto/TijdelijkLeenautoBadge";
 import React, { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -206,8 +207,9 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
         <div className="flex flex-col h-full overflow-hidden">
           {/* Sticky header */}
           <DialogHeader className="sticky top-0 z-10 bg-background p-6 pb-2 border-b">
-            <DialogTitle>
+            <DialogTitle className="flex flex-wrap items-center gap-2">
               {vehicle.brand} {vehicle.model}
+              <TijdelijkLeenautoBadge vehicleId={vehicle.id} showDetail />
             </DialogTitle>
             <DialogDescription>
               Details van voertuig bekijken en bewerken.

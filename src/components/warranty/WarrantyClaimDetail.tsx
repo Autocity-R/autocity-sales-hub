@@ -99,7 +99,7 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
 
   const { data: loanCars = [], isLoading: loanCarsLoading } = useQuery({
     queryKey: ["loanCars"],
-    queryFn: fetchLoanCars
+    queryFn: () => fetchLoanCars()
   });
 
   const availableLoanCars = loanCars.filter((car: LoanCar) => car.available);

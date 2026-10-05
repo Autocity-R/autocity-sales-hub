@@ -3718,6 +3718,8 @@ export type Database = {
       }
       loan_cars: {
         Row: {
+          actief: boolean
+          bron: string
           created_at: string
           customer_id: string | null
           end_date: string | null
@@ -3729,6 +3731,8 @@ export type Database = {
           vehicle_id: string | null
         }
         Insert: {
+          actief?: boolean
+          bron?: string
           created_at?: string
           customer_id?: string | null
           end_date?: string | null
@@ -3740,6 +3744,8 @@ export type Database = {
           vehicle_id?: string | null
         }
         Update: {
+          actief?: boolean
+          bron?: string
           created_at?: string
           customer_id?: string | null
           end_date?: string | null
@@ -5591,6 +5597,19 @@ export type Database = {
       }
       is_admin_or_owner: { Args: never; Returns: boolean }
       is_admin_user: { Args: { user_id: string }; Returns: boolean }
+      leenauto_bijwerken: {
+        Args: {
+          p_brand: string
+          p_kenteken: string
+          p_loan_car_id: string
+          p_model: string
+        }
+        Returns: undefined
+      }
+      leenauto_deactiveren: {
+        Args: { p_loan_car_id: string }
+        Returns: undefined
+      }
       leenauto_innemen: {
         Args: {
           p_ingeleverd_op?: string
@@ -5599,8 +5618,43 @@ export type Database = {
         }
         Returns: undefined
       }
+      leenauto_klant_opslaan: {
+        Args: {
+          p_adres?: string
+          p_bedrijf?: string
+          p_email?: string
+          p_naam: string
+          p_plaats?: string
+          p_postcode?: string
+          p_telefoon?: string
+        }
+        Returns: string
+      }
+      leenauto_klant_zoeken: {
+        Args: { p_q: string }
+        Returns: {
+          adres: string
+          autos: string[]
+          contact_id: string
+          email: string
+          naam: string
+          plaats: string
+          postcode: string
+          telefoon: string
+        }[]
+      }
+      leenauto_mag_beheren: { Args: never; Returns: boolean }
       leenauto_mag_lezen: { Args: never; Returns: boolean }
       leenauto_mag_schrijven: { Args: never; Returns: boolean }
+      leenauto_toevoegen: {
+        Args: {
+          p_brand?: string
+          p_kenteken?: string
+          p_model?: string
+          p_vehicle_id?: string
+        }
+        Returns: string
+      }
       leenauto_uitlenen: {
         Args: {
           p_contact_id?: string

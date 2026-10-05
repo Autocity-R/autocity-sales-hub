@@ -238,4 +238,7 @@ export const LEENAUTO_WRITE_ROLES = ["owner", "admin", "manager", "aftersales_ma
 /** Leenauto-historie lezen — gelijk aan public.leenauto_mag_lezen(). */
 export const LEENAUTO_READ_ROLES = [...LEENAUTO_WRITE_ROLES, "administratie"];
 export const canWriteLeenautoRole = (role: Role) => !!role && LEENAUTO_WRITE_ROLES.includes(role);
+/** Leenauto toevoegen/bewerken/uit gebruik nemen — gelijk aan database leenauto_mag_beheren(). */
+export const LEENAUTO_MANAGE_ROLES = ["owner", "admin", "manager", "aftersales_manager", "operationeel_directeur"];
+export const canManageLeenautoRole = (role: Role) => !!role && LEENAUTO_MANAGE_ROLES.includes(role);
 export const canReadLeenautoRole = (role: Role) => !!role && LEENAUTO_READ_ROLES.includes(role);

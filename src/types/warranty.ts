@@ -5,6 +5,9 @@ export interface LoanCar {
   licenseNumber: string;
   available: boolean;
   vehicleId?: string;
+  /** 'eigen' = eigen leenauto; 'voorraad' = voorraadauto die tijdelijk als leenauto dient */
+  bron?: "eigen" | "voorraad";
+  actief?: boolean;
 }
 
 export interface WarrantyStats {

@@ -212,3 +212,35 @@ export const fromLocalInput = (v: string): Date | null => {
   const asUtc = new Date(new Date(guess).toLocaleString("en-US", { timeZone: "UTC" })).getTime();
   return new Date(guess - (asAms - asUtc));
 };
+
+export interface KlantZoekResultaat {
+  contact_id: string | null;
+  naam: string | null;
+  telefoon: string | null;
+  email: string | null;
+  adres: string | null;
+  postcode: string | null;
+  plaats: string | null;
+  /** bijv. "Kocht: Tesla Model 3 KTH-91-J" of "Werkplaats: …" */
+  autos: string[];
+}
+
+/** Server-side klant zoeken: naam/telefoon/e-mail én kenteken/merk/model/VIN van gekochte of werkplaats-auto's. */
+export const leenautoKlantZoeken = async (q: string): Promise<KlantZoekResultaat[]> => {
+  if (q.trim().length < 2) return [];
+  const { data, error } = await db.rpc("leenauto_klant_zoeken", { p_q: q.trim() });
+  if (error) throw cleanError(error);
+  return (data || []) as KlantZoekResultaat[];
+};
+
+/** Handmatig ingevoerde klant ook als CRM-contact opslaan (b2c, of b2b met bedrijfsnaam). */
+export const leenautoKlantOpslaan = async (k: {
+  naam: string; telefoon?: string; email?: string; adres?: string; postcode?: string; plaats?: string; bedrijf?: string;
+}): Promise<string> => {
+  const { data, error } = await db.rpc("leenauto_klant_opslaan", {
+    p_naam: k.naam, p_telefoon: k.telefoon || null, p_email: k.email || null,
+    p_adres: k.adres || null, p_postcode: k.postcode || null, p_plaats: k.plaats || null, p_bedrijf: k.bedrijf || null,
+  });
+  if (error) throw cleanError(error);
+  return data as string;
+};
