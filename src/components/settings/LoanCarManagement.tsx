@@ -6,20 +6,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Car, Plus, Trash2, Edit, CheckCircle, XCircle } from "lucide-react";
+import { Car, Plus, Trash2, Edit, Ban, Search } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { 
   fetchLoanCars, 
   createLoanCar, 
   updateLoanCar, 
   deleteLoanCar, 
-  setLoanCarAvailability 
+  setLoanCarAvailability,
+  addStockCarAsLoanCar,
+  deactivateLoanCar,
+  searchStockVehicles,
 } from "@/services/loanCarService";
 import { LoanCar } from "@/types/warranty";
 import { LoanCarRow } from "@/components/leenauto/LoanCarRow";
 import { fetchUitleningen } from "@/services/leenautoService";
 import { useAuth } from "@/contexts/AuthContext";
-import { canWriteLeenautoRole } from "@/lib/routeAccess";
+import { canWriteLeenautoRole, canManageLeenautoRole } from "@/lib/routeAccess";
 import { Link } from "react-router-dom";
 import { History } from "lucide-react";
 import {
@@ -52,7 +56,16 @@ export const LoanCarManagement = () => {
     licenseNumber: ""
   });
 
-  const { userRole } = useAuth();
+  const { userRole, isAdmin } = useAuth();
+  const canManage = isAdmin || canManageLeenautoRole(userRole);
+  const [showInactive, setShowInactive] = useState(false);
+  const [mode, setMode] = useState<"eigen" | "voorraad">("eigen");
+  const [stockQ, setStockQ] = useState("");
+  const { data: stockResults = [] } = useQuery({
+    queryKey: ["leenauto-stock-search", stockQ],
+    enabled: showAddForm && mode === "voorraad" && stockQ.trim().length >= 2,
+    queryFn: () => searchStockVehicles(stockQ),
+  });
   // Uitlenen/innemen: zelfde rollen als de database (leenauto_mag_schrijven)
   const canWriteLoans = canWriteLeenautoRole(userRole);
   const { data: uitleningen = [] } = useQuery({
@@ -66,8 +79,8 @@ export const LoanCarManagement = () => {
 
   // Fetch loan cars
   const { data: loanCars = [], isLoading } = useQuery({
-    queryKey: ["loanCars"],
-    queryFn: fetchLoanCars
+    queryKey: ["loanCars", showInactive],
+    queryFn: () => fetchLoanCars(showInactive)
   });
 
   // Mutations
@@ -110,6 +123,28 @@ export const LoanCarManagement = () => {
         variant: "destructive"
       });
     }
+  });
+
+  const stockMutation = useMutation({
+    mutationFn: addStockCarAsLoanCar,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loanCars"] });
+      queryClient.invalidateQueries({ queryKey: ["tijdelijkeLeenautos"] });
+      toast({ title: "Voorraadauto toegevoegd als leenauto", description: "De auto blijft gewoon in de voorraad." });
+      resetForm();
+      setShowAddForm(false);
+    },
+    onError: (error: any) => toast({ title: "Toevoegen mislukt", description: error.message, variant: "destructive" }),
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: (id: string) => deactivateLoanCar(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["loanCars"] });
+      queryClient.invalidateQueries({ queryKey: ["tijdelijkeLeenautos"] });
+      toast({ title: "Niet meer als leenauto", description: "De historie blijft bewaard in Leenauto historie." });
+    },
+    onError: (error: any) => toast({ title: "Lukt niet", description: error.message, variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
@@ -189,6 +224,8 @@ export const LoanCarManagement = () => {
       licenseNumber: ""
     });
     setEditingCar(null);
+    setMode("eigen");
+    setStockQ("");
   };
 
   const handleAddCar = () => {
@@ -266,6 +303,7 @@ export const LoanCarManagement = () => {
             <Button variant="outline" asChild>
               <Link to="/loan-cars/historie"><History className="h-4 w-4 mr-2" />Leenauto historie</Link>
             </Button>
+            {canManage && (
             <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
               <DialogTrigger asChild>
                 <Button onClick={() => resetForm()}>
@@ -279,6 +317,36 @@ export const LoanCarManagement = () => {
                     {editingCar ? "Leenauto Bewerken" : "Nieuwe Leenauto Toevoegen"}
                   </DialogTitle>
                 </DialogHeader>
+                {!editingCar && (
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <Button type="button" variant={mode === "eigen" ? "default" : "outline"} onClick={() => setMode("eigen")}>Nieuwe eigen leenauto</Button>
+                    <Button type="button" variant={mode === "voorraad" ? "default" : "outline"} onClick={() => setMode("voorraad")}>Auto uit voorraad</Button>
+                  </div>
+                )}
+                {!editingCar && mode === "voorraad" ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">De auto blijft in de voorraad en op de website; hij krijgt alleen het label "Tijdelijk leenauto".</p>
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input id="stock-search" className="pl-8" placeholder="Kenteken, merk of model…" value={stockQ} onChange={(e) => setStockQ(e.target.value)} />
+                    </div>
+                    <div className="rounded-md border divide-y max-h-64 overflow-y-auto">
+                      {stockQ.trim().length < 2 ? (
+                        <p className="p-3 text-sm text-muted-foreground">Typ minstens 2 tekens.</p>
+                      ) : stockResults.length === 0 ? (
+                        <p className="p-3 text-sm text-muted-foreground">Geen voorraadauto gevonden.</p>
+                      ) : stockResults.map((v) => (
+                        <button key={v.id} type="button" disabled={stockMutation.isPending}
+                          onClick={() => stockMutation.mutate(v.id)}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
+                          data-testid={`stock-pick-${v.license_number}`}>
+                          <div className="font-medium">{v.brand} {v.model}</div>
+                          <div className="text-xs text-muted-foreground">{v.license_number || "—"} · {v.status}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="brand">Merk</Label>
@@ -322,12 +390,18 @@ export const LoanCarManagement = () => {
                     </Button>
                   </div>
                 </div>
+                )}
               </DialogContent>
             </Dialog>
+            )}
             </div>
           </div>
         </CardHeader>
         <CardContent>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+            <Checkbox checked={showInactive} onCheckedChange={(v) => setShowInactive(!!v)} />
+            Toon ook leenauto's die niet meer gebruikt worden
+          </label>
           {isLoading ? (
             <div className="text-center py-8">
               <div className="text-gray-500">Leenauto's laden...</div>
@@ -346,15 +420,36 @@ export const LoanCarManagement = () => {
                   uitleningen={uitleningen.filter((u) => u.loan_car_id === car.id)}
                   canWrite={canWriteLoans}
                   onChanged={refreshLoans}
-                  actions={<>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditCar(car)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
+                  actions={!canManage ? null : car.actief === false ? (
+                    <Badge variant="secondary">Niet meer in gebruik</Badge>
+                  ) : <>
+                    {car.bron === "voorraad" && <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800">Tijdelijk (voorraad)</Badge>}
+                    {car.bron !== "voorraad" && (
+                      <Button variant="outline" size="sm" onClick={() => handleEditCar(car)} title="Bewerken">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
                     <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" title="Niet meer als leenauto gebruiken" data-testid={`deactivate-${car.licenseNumber}`}>
+                          <Ban className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Niet meer als leenauto gebruiken?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {car.brand} {car.model} ({car.licenseNumber}) verdwijnt uit dit overzicht. De uitleenhistorie blijft bewaard en vindbaar in Leenauto historie en "Wie reed er?".
+                            {car.bron === "voorraad" ? " De auto blijft gewoon in de voorraad." : ""}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deactivateMutation.mutate(car.id)}>Niet meer gebruiken</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    {isAdmin && car.bron !== "voorraad" && (<AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="outline" size="sm">
                           <Trash2 className="h-4 w-4" />
@@ -378,7 +473,7 @@ export const LoanCarManagement = () => {
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
-                    </AlertDialog>
+                    </AlertDialog>)}
                   </>}
                 />
               ))}
