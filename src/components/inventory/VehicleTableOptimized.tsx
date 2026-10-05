@@ -18,6 +18,7 @@ import { getImportStatusLabel, importStatusBadgeClass } from "@/lib/importStatus
 import { Avatar } from "@/components/ui/avatar";
 import { DeliveryConfirmationDialog, type DeliveryData } from "./DeliveryConfirmationDialog";
 import { OnlineStatusBadge } from "./OnlineStatusBadge";
+import { TijdelijkLeenautoBadge } from "@/components/leenauto/TijdelijkLeenautoBadge";
 import { BranchChip } from "@/components/layout/BranchSwitcher";
 import { useIsCompact } from "@/hooks/use-mobile";
 import { MobileCardList, MobileRecordCard } from "@/components/ui/mobile-record-card";
@@ -158,6 +159,7 @@ const VehicleRow = memo<{
       </TableCell>
       <TableCell className="align-middle">
         {vehicle.licenseNumber}
+        <div><TijdelijkLeenautoBadge vehicleId={vehicle.id} /></div>
       </TableCell>
       <TableCell className="align-middle truncate max-w-32">
         {vehicle.vin}
@@ -408,6 +410,7 @@ export const VehicleTable = memo<VehicleTableProps>(({
                 <BranchChip branch={vehicle.branch} />
                 {renderImportStatusBadge(vehicle.importStatus)}
                 <OnlineStatusBadge isOnline={vehicle.showroomOnline} salesStatus={vehicle.salesStatus} />
+                <TijdelijkLeenautoBadge vehicleId={vehicle.id} />
                 <Badge variant="secondary">{days(vehicle.createdAt)} dagen</Badge>
               </>
             }
