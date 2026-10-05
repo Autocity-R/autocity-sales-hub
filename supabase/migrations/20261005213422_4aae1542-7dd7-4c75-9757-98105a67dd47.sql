@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.leenauto_guard_actief() FROM PUBLIC, anon, authenticated;
