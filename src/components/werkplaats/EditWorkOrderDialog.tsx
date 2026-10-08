@@ -27,11 +27,12 @@ export interface EditableWorkOrder {
   vehicle?: { brand?: string; model?: string; license_number?: string | null } | null;
 }
 
+// Aftersales helpt vaak mee en is daarom bij elke discipline toe te wijzen.
 const ROLES_FOR_DISCIPLINE: Record<string, string[]> = {
-  werkplaats: ["monteur", "werkplaats_chef"],
-  spuit: ["schadeherstel"],
-  uitdeuk: ["uitdeuker_extern"],
-  poets: ["poetser"],
+  werkplaats: ["monteur", "werkplaats_chef", "aftersales_manager"],
+  spuit: ["schadeherstel", "aftersales_manager"],
+  uitdeuk: ["uitdeuker_extern", "aftersales_manager"],
+  poets: ["poetser", "aftersales_manager"],
 };
 
 /** Geplande taak achteraf aanpassen: omschrijving, tijd, monteur, spoed en panelen. */
