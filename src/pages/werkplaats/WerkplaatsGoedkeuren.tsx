@@ -234,7 +234,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
               {workplaatsRows.length === 0 ? (
                 <div className="text-sm text-slate-500">Geen werkplaatsopdrachten wachten op goedkeuring.</div>
               ) : (
-                <div className="space-y-4">{workplaatsRows.map(w => renderOrder(w, false))}</div>
+                <div className="space-y-4">{workplaatsRows.map(w => renderOrder(w, true))}</div>
               )}
             </section>
 
