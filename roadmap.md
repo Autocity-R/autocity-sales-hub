@@ -13,3 +13,5 @@
 - [x] Onderzoek €0 afgerond: KVH-62-D wacht volgens factuurtrigger op alle interne spuitdelen; J-847-RR is extern
 - [x] Vervolg Performance: gefactureerd, nog te factureren en externe klus apart tonen + testen (niet gepubliceerd)
 - [x] Bouwstap 6: werktijden-instelling, auto-pauze (cron), uren afknippen op werktijd, pauzeren voor poetsers (niet gepubliceerd)
+- [x] Bouwstap 9: medewerkers uit dienst zetten i.p.v. hard verwijderen (niet gepubliceerd)
+- [ ] Website-reservering edge function — plan klaar, wacht op akkoord eigenaar
