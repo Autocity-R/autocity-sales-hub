@@ -105,7 +105,7 @@ export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieB
   const [bron, ordersAll, ordersOpen, intakes, claims, loans, parts, profiles] = await Promise.all([
     fetchOmzetBron(histStart, histEnd, branch),
     fetchAllPages<WorkOrderRow>((a, b) => branchFilter(supabase.from("work_orders").select(woSel).gte("created_at", woStart.toISOString()), branch).order("id").range(a, b)),
-    fetchAllPages<WorkOrderRow>((a, b) => branchFilter(supabase.from("work_orders").select(woSel).not("status", "in", '("goedgekeurd","geannuleerd","afgerond")'), branch).order("id").range(a, b)),
+    fetchAllPages<WorkOrderRow>((a, b) => branchFilter(supabase.from("work_orders").select(woSel).not("status", "in", '("goedgekeurd","geannuleerd")'), branch).order("id").range(a, b)),
     fetchAllPages<any>((a, b) => branchFilter(supabase.from("vehicle_intakes").select("id,vehicle_id,created_at,approved_at,status,branch").gte("created_at", sixM.toISOString()), branch).order("id").range(a, b)),
     fetchAllPages<any>((a, b) => branchFilter(supabase.from("warranty_claims").select("id,claim_status,claim_amount,estimated_amount,created_at,resolution_date,branch").gte("created_at", from.toISOString()).lt("created_at", to.toISOString()), branch).order("id").range(a, b)),
     supabase.from("loan_cars").select("id,status").eq("status", "uitgeleend"),
