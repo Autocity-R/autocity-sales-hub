@@ -124,17 +124,18 @@ export interface RapVehicle {
   id: string; branch: string | null; status: string | null; aangekomen_at: string | null;
   sold_date: string | null; delivery_date: string | null; b2b_delivered_at: string | null; details: any;
 }
-export interface RapProfile { id: string; first_name: string | null; last_name: string | null; poetser_type?: string | null }
+export interface RapProfile { id: string; first_name: string | null; last_name: string | null; poetser_type?: string | null; actief?: boolean | null }
 
 export interface RapRaw {
   from: Date; to: Date; prevFrom: Date; prevTo: Date; sixM: Date;
   /** venster voor de maandtrend (sixM == trendFrom, blijft voor compatibiliteit bestaan) */
   trendFrom: Date; trendTo: Date;
   rangeLabel: string; rangeSlug: string;
-  invoices: RapInvoice[];       // periode
-  invoicesPrev: RapInvoice[];   // vorige periode
-  invoices6m: RapInvoice[];     // trendvenster
-  orders: RapOrder[];           // trendvenster (alles, filteren in memory)
+  /** Eén bron voor omzet (RPC omzet_regels) over het hele venster. */
+  bron: OmzetBron;
+  /** Facturen (lichte kolommen) — alleen voor koppelingen, niet voor omzetbedragen. */
+  invoices6m: InvoiceLink[];
+  orders: RapOrder[];           // venster (alles, filteren in memory)
   intakes: RapIntake[];
   vehicles: RapVehicle[];
   vehicleInfo: Record<string, { brand: string | null; model: string | null; license_number: string | null }>;
@@ -147,40 +148,35 @@ export async function fetchRapportageRaw(sel: RapSelection, branch: RapBranch): 
   const { from, to, prevFrom, prevTo, trendFrom, trendTo, label, slug } = resolveRange(sel);
   const sixM = trendFrom;
   const histStart = new Date(Math.min(trendFrom.getTime(), prevFrom.getTime(), from.getTime()));
+  const histEnd = new Date(Math.max(+to, +trendTo));
+  // orders ruim terug: een order kan lang vóór goedkeuring zijn aangemaakt
+  const woStart = new Date(+histStart - 180 * 86400000);
 
-
-  const invSel = "id,invoice_kind,subtotal,total,status,created_at,branch,vehicle_id,lines,source_work_order_ids,work_order_id";
   const woSel = "id,vehicle_id,discipline,status,work_seconds,paused_seconds,assigned_to,created_at,started_at,finished_at,approved_at,is_rush,rejected_count,branch,origin,external_customer,part,parts,poets_type";
 
-  const [inv6m, wo, intakes, veh, profiles] = await Promise.all([
-    bf(supabase.from("workshop_invoices").select(invSel).gte("created_at", histStart.toISOString()), branch),
-    bf(supabase.from("work_orders").select(woSel).gte("created_at", histStart.toISOString()), branch),
-    bf(supabase.from("vehicle_intakes").select("id,vehicle_id,created_at,approved_at,status,branch").gte("created_at", histStart.toISOString()), branch),
-    bf(supabase.from("vehicles").select("id,branch,status,aangekomen_at,sold_date,delivery_date,b2b_delivered_at,details").gte("updated_at", histStart.toISOString()), branch),
-    supabase.from("profiles").select("id,first_name,last_name,poetser_type"),
+  const [bron, orders, intakes, vehicles, profiles] = await Promise.all([
+    fetchOmzetBron(histStart, histEnd, branch),
+    fetchAllPages<RapOrder>((a, b) => bf(supabase.from("work_orders").select(woSel).gte("created_at", woStart.toISOString()), branch).order("id").range(a, b)),
+    fetchAllPages<RapIntake>((a, b) => bf(supabase.from("vehicle_intakes").select("id,vehicle_id,created_at,approved_at,status,branch").gte("created_at", histStart.toISOString()), branch).order("id").range(a, b)),
+    fetchAllPages<RapVehicle>((a, b) => bf(supabase.from("vehicles").select("id,branch,status,aangekomen_at,sold_date,delivery_date,b2b_delivered_at,details").gte("updated_at", histStart.toISOString()), branch).order("id").range(a, b)),
+    supabase.from("profiles").select("id,first_name,last_name,poetser_type,actief"),
     loadWorkSchedule(),
   ]);
 
-  const invoices6m = (inv6m.data || []) as any as RapInvoice[];
-  const orders = (wo.data || []) as any as RapOrder[];
-  const inRange = (iso: string, a: Date, b: Date) => { const t = +new Date(iso); return t >= +a && t < +b; };
-
   const vehicleIds = Array.from(new Set(orders.map(o => o.vehicle_id).filter(Boolean))) as string[];
   const vehicleInfo: RapRaw["vehicleInfo"] = {};
-  if (vehicleIds.length) {
-    const { data } = await supabase.from("vehicles").select("id,brand,model,license_number").in("id", vehicleIds.slice(0, 800));
+  for (let i = 0; i < vehicleIds.length; i += 300) {
+    const { data } = await supabase.from("vehicles").select("id,brand,model,license_number").in("id", vehicleIds.slice(i, i + 300));
     (data || []).forEach((v: any) => { vehicleInfo[v.id] = { brand: v.brand, model: v.model, license_number: v.license_number }; });
   }
 
   return {
     from, to, prevFrom, prevTo, sixM, trendFrom, trendTo, rangeLabel: label, rangeSlug: slug,
-
-    invoices: invoices6m.filter(i => inRange(i.created_at, from, to)),
-    invoicesPrev: invoices6m.filter(i => inRange(i.created_at, prevFrom, prevTo)),
-    invoices6m,
+    bron,
+    invoices6m: bron.links,
     orders,
-    intakes: (intakes.data || []) as any,
-    vehicles: (veh.data || []) as any,
+    intakes,
+    vehicles,
     vehicleInfo,
     profiles: (profiles.data || []) as any,
   };
