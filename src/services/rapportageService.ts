@@ -2,7 +2,7 @@ import { fairSeconds, fairSecondsByAssignee } from "@/lib/performanceGroups";
 import { loadWorkSchedule } from "@/lib/workHours";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
-import { nlDate, inPeriod, takDetails, takTotals, byEmployee, byOrder, aansluiting, type TakDetail } from "@/lib/omzet";
+import { nlDate as nlDayOf, inPeriod, takDetails, takTotals, byEmployee, byOrder, aansluiting, type TakDetail } from "@/lib/omzet";
 import { fetchOmzetBron, poetsNogOpMaandfactuur, dayStr, type OmzetBron, type InvoiceLink } from "@/services/omzetService";
 import { buildRange, downloadCsv, type DirectiePeriod, type DirectieBranch } from "@/services/directieService";
 
@@ -580,7 +580,7 @@ export function poetsStats(raw: RapRaw, from = raw.from, to = raw.to): PoetsStat
   };
 
   const done = raw.orders.filter(o => o.discipline === "poets" && isDone(o));
-  const inDays = (o: RapOrder, a: Date, b: Date) => { const d = nlDate(poetsDoneAt(o)); return d >= dayStr(a) && d < dayStr(b); };
+  const inDays = (o: RapOrder, a: Date, b: Date) => { const d = nlDayOf(poetsDoneAt(o)); return d >= dayStr(a) && d < dayStr(b); };
   const inPeriod = done.filter(o => inDays(o, from, to));
 
   const rows: PoetsTrackRow[] = inPeriod
