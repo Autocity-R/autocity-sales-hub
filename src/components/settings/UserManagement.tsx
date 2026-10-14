@@ -26,6 +26,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { AddUserDialog } from "./AddUserDialog";
 import { UserActivityIndicator } from "./UserActivityIndicator";
 import { DeleteUserDialog } from "./DeleteUserDialog";
+import { UitDienstDialog, HeractiverenDialog } from "./UitDienstDialog";
+import { getUserHistory } from "@/services/userService";
+import { UserX, UserCheck } from "lucide-react";
 
 type Branch = "rotterdam" | "heerhugowaard";
 const BRANCH_LABEL: Record<Branch, string> = {
@@ -44,9 +47,28 @@ export const UserManagement = () => {
   const [branchTarget, setBranchTarget] = useState<Branch | null>(null);
   const [isMovingBranch, setIsMovingBranch] = useState(false);
 
-  const { data: users = [], isLoading, error } = useQuery({
+  const { data: allUsers = [], isLoading, error } = useQuery({
     queryKey: ["users"],
     queryFn: getAllUsers,
+  });
+  const [tab, setTab] = useState<"actief" | "uit_dienst">("actief");
+  const [uitDienstUser, setUitDienstUser] = useState<UserProfile | null>(null);
+  const [heractiverenUser, setHeractiverenUser] = useState<UserProfile | null>(null);
+  const activeUsers = allUsers.filter((u: UserProfile) => u.actief !== false);
+  const inactiveUsers = allUsers.filter((u: UserProfile) => u.actief === false);
+  const users = tab === "actief" ? activeUsers : inactiveUsers;
+
+  // Historie per medewerker: alleen zonder historie mag hard verwijderen
+  const { data: historyMap = {} } = useQuery({
+    queryKey: ["users", "historie", allUsers.map((u: UserProfile) => u.id).join(",")],
+    enabled: allUsers.length > 0,
+    queryFn: async () => {
+      const entries = await Promise.all(allUsers.map(async (u: UserProfile) => {
+        try { return [u.id, Object.keys(await getUserHistory(u.id)).length > 0] as const; }
+        catch { return [u.id, true] as const; }
+      }));
+      return Object.fromEntries(entries) as Record<string, boolean>;
+    },
   });
 
   const poetserTypeMutation = useMutation({
@@ -171,7 +193,7 @@ export const UserManagement = () => {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Gebruikersbeheer ({users.length})
+                Gebruikersbeheer ({activeUsers.length})
               </CardTitle>
               <CardDescription>
                 Beheer alle gebruikers in het systeem en hun toegangsrechten
@@ -212,7 +234,15 @@ export const UserManagement = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {users.length > 0 && (
+            <div className="flex gap-2" role="tablist">
+              <Button size="sm" role="tab" aria-selected={tab === "actief"} variant={tab === "actief" ? "default" : "outline"} onClick={() => { setTab("actief"); setSelectedUserIds([]); }}>
+                Actief ({activeUsers.length})
+              </Button>
+              <Button size="sm" role="tab" aria-selected={tab === "uit_dienst"} variant={tab === "uit_dienst" ? "default" : "outline"} onClick={() => { setTab("uit_dienst"); setSelectedUserIds([]); }}>
+                Uit dienst ({inactiveUsers.length})
+              </Button>
+            </div>
+            {tab === "actief" && users.length > 0 && (
               <div className="flex items-center gap-2 px-2 text-sm text-muted-foreground">
                 <Checkbox
                   checked={
@@ -230,12 +260,12 @@ export const UserManagement = () => {
             {users.map((user: UserProfile) => (
               <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex items-center gap-3">
-                  <Checkbox
+                  {tab === "actief" && <Checkbox
                     checked={selectedUserIds.includes(user.id)}
                     onCheckedChange={(v) =>
                       toggleSelectUser(user.id, Boolean(v))
                     }
-                  />
+                  />}
                   <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                     <span className="text-blue-600 font-medium">
                       {(user.first_name?.[0] || '') + (user.last_name?.[0] || '')}
@@ -251,9 +281,18 @@ export const UserManagement = () => {
                     </div>
                     <div className="text-xs text-gray-400">
                       Aangemaakt: {new Date(user.created_at).toLocaleDateString('nl-NL')}
+                      {user.uit_dienst_sinds && ` · uit dienst sinds ${new Date(user.uit_dienst_sinds).toLocaleDateString('nl-NL')}`}
                     </div>
                   </div>
                 </div>
+                {tab === "uit_dienst" ? (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">Uit dienst</Badge>
+                    <Button size="sm" variant="outline" onClick={() => setHeractiverenUser(user)}>
+                      <UserCheck className="h-4 w-4 mr-1" />Heractiveren
+                    </Button>
+                  </div>
+                ) : (
                 <div className="flex items-center gap-2">
                   <UserActivityIndicator user={user} />
                   <Badge variant="outline" className="flex items-center gap-1">
@@ -307,17 +346,23 @@ export const UserManagement = () => {
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuItem onClick={() => setUitDienstUser(user)}>
+                        <UserX className="h-4 w-4 mr-2" />
+                        Uit dienst zetten
+                      </DropdownMenuItem>
                       <DropdownMenuItem
+                        disabled={historyMap[user.id] !== false}
                         onClick={() => handleDeleteUser(user)}
                         className="text-red-600 focus:text-red-600 focus:bg-red-50"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Gebruiker Verwijderen
+                        {historyMap[user.id] === false ? "Gebruiker Verwijderen" : "Verwijderen (heeft historie)"}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
+                )}
               </div>
             ))}
             
@@ -334,6 +379,9 @@ export const UserManagement = () => {
         open={showAddUserDialog}
         onClose={() => setShowAddUserDialog(false)}
       />
+
+      <UitDienstDialog user={uitDienstUser} colleagues={activeUsers} onClose={() => setUitDienstUser(null)} />
+      <HeractiverenDialog user={heractiverenUser} onClose={() => setHeractiverenUser(null)} />
 
       <DeleteUserDialog
         open={showDeleteUserDialog}

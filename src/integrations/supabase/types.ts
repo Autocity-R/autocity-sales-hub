@@ -3915,6 +3915,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          actief: boolean
           branch: string
           company: string | null
           created_at: string
@@ -3924,9 +3925,11 @@ export type Database = {
           last_name: string | null
           poetser_type: string
           signature_png: string | null
+          uit_dienst_sinds: string | null
           updated_at: string
         }
         Insert: {
+          actief?: boolean
           branch?: string
           company?: string | null
           created_at?: string
@@ -3936,9 +3939,11 @@ export type Database = {
           last_name?: string | null
           poetser_type?: string
           signature_png?: string | null
+          uit_dienst_sinds?: string | null
           updated_at?: string
         }
         Update: {
+          actief?: boolean
           branch?: string
           company?: string | null
           created_at?: string
@@ -3948,6 +3953,7 @@ export type Database = {
           last_name?: string | null
           poetser_type?: string
           signature_png?: string | null
+          uit_dienst_sinds?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -5702,6 +5708,11 @@ export type Database = {
         }[]
       }
       mark_contract_opened: { Args: { _token: string }; Returns: undefined }
+      medewerker_historie: { Args: { p_user_id: string }; Returns: Json }
+      medewerker_sessies_beeindigen: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
       next_workshop_invoice_number: { Args: never; Returns: string }
       push_notify: {
         Args: {
