@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllPages } from "@/lib/fetchAllPages";
+import { countsAsRevenue } from "@/lib/omzet";
 
 /**
  * Werkplaatsklanten = elke klant die ooit in de werkplaats is geweest:
@@ -24,7 +26,10 @@ export interface WorkshopCustomerRow {
   vehicles: WorkshopCustomerVehicle[];
   visits: number;
   lastVisit: string | null;
+  /** excl. btw (subtotal) — zelfde basis als alle omzetschermen */
   totalSpent: number;
+  /** incl. btw, alleen extra info */
+  totalSpentIncl: number;
   invoiceCount: number;
 }
 
@@ -34,29 +39,28 @@ const nameOf = (c: any): string =>
 const plateKey = (p?: string | null) => (p || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 
 export const getWorkshopCustomers = async (): Promise<WorkshopCustomerRow[]> => {
-  const [woRes, invRes, vehRes] = await Promise.all([
-    supabase
+  const [orders, invoicesAll, extVehicles] = await Promise.all([
+    fetchAllPages<any>((a, b) => supabase
       .from("work_orders")
       .select("id, planned_at, created_at, vehicle_id, external_customer, source, origin")
       .or("source.eq.extern,origin.eq.extern")
       .order("created_at", { ascending: false })
-      .limit(3000),
-    supabase
+      .range(a, b)),
+    fetchAllPages<any>((a, b) => (supabase as any)
       .from("workshop_invoices")
-      .select("id, created_at, total, customer, vehicle, vehicle_id, work_order_id")
+      .select("id, created_at, total, subtotal, status, invoice_kind, telt_niet_mee, customer, vehicle, vehicle_id, work_order_id")
       .eq("invoice_kind", "extern")
       .order("created_at", { ascending: false })
-      .limit(3000),
-    supabase
+      .range(a, b)),
+    fetchAllPages<any>((a, b) => supabase
       .from("vehicles")
       .select("id, brand, model, license_number, customer_id")
       .eq("status", "extern")
-      .limit(3000),
+      .order("id")
+      .range(a, b)),
   ]);
-
-  const orders = (woRes.data as any[]) || [];
-  const invoices = (invRes.data as any[]) || [];
-  const extVehicles = (vehRes.data as any[]) || [];
+  // zelfde telregel als de omzetschermen (geen handmatige concepten, geen testfacturen)
+  const invoices = invoicesAll.filter((i) => countsAsRevenue(i));
 
   // contacten ophalen voor nette naam/adresgegevens
   const contactIds = new Set<string>();
@@ -112,6 +116,7 @@ export const getWorkshopCustomers = async (): Promise<WorkshopCustomerRow[]> => 
         visits: 0,
         lastVisit: null,
         totalSpent: 0,
+        totalSpentIncl: 0,
         invoiceCount: 0,
       };
       rows.set(key, row);
@@ -167,7 +172,8 @@ export const getWorkshopCustomers = async (): Promise<WorkshopCustomerRow[]> => 
       city: c.city,
     });
     if (!row) continue;
-    row.totalSpent += Number(inv.total) || 0;
+    row.totalSpent += Number(inv.subtotal) || 0;
+    row.totalSpentIncl += Number(inv.total) || 0;
     row.invoiceCount += 1;
     if (inv.created_at && (!row.lastVisit || new Date(inv.created_at) > new Date(row.lastVisit))) {
       row.lastVisit = inv.created_at;
