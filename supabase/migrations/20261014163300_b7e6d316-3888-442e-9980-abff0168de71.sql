@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.workshop_invoice_fill_omzet() FROM PUBLIC, anon, authenticated;
