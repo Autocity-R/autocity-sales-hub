@@ -31,7 +31,7 @@ export const OmzetControle: React.FC<{ bron: OmzetBron; van: string; tot: string
   );
 
   return (
-    <AsCard className="p-4" data-testid="omzet-controle">
+    <div data-testid="omzet-controle"><AsCard className="p-4">
       <div className="mb-3 text-[13px] font-semibold text-slate-900">Controle — {label}</div>
       <div className={a.sluit ? "rounded-lg border border-emerald-200 bg-emerald-50 p-3" : "rounded-lg border border-red-200 bg-red-50 p-3"}>
         <div className="flex items-center gap-2 text-[12.5px] font-semibold">
@@ -64,6 +64,6 @@ export const OmzetControle: React.FC<{ bron: OmzetBron; van: string; tot: string
           </List>
         )}
       </div>
-    </AsCard>
+    </AsCard></div>
   );
 };
