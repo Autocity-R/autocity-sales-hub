@@ -109,8 +109,32 @@ serve(async (req) => {
       );
     }
 
+    // === VEILIGHEID: medewerkers met historie nooit hard verwijderen ===
+    // (tasks/task_history staan op ON DELETE CASCADE en zouden stil verdwijnen)
+    const { data: historie, error: histErr } = await supabaseAdmin.rpc('medewerker_historie', { p_user_id: userId });
+    if (histErr) {
+      console.error('Historie-check mislukt:', histErr);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Kon de historie niet controleren; er is niets verwijderd.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (historie && Object.keys(historie).length > 0) {
+      console.log(`Delete geweigerd voor ${userToDelete.email}: historie ${JSON.stringify(historie)}`);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Deze medewerker heeft historie in het CRM. Zet hem op 'Uit dienst' zodat zijn naam bij oude orders/taken blijft staan.",
+          historie,
+        }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // === CLEANUP: Set references to NULL or DELETE related records ===
     console.log(`Starting cleanup for user ${userId}...`);
+
+    await supabaseAdmin.from('checklist_access_tokens').update({ created_by: null }).eq('created_by', userId);
 
     // 1. Vehicle files - keep files but remove uploader reference
     const { error: vehicleFilesError } = await supabaseAdmin
