@@ -2,7 +2,7 @@ import { fairSeconds, fairSecondsByAssignee } from "@/lib/performanceGroups";
 import { loadWorkSchedule } from "@/lib/workHours";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
-import { inPeriod, takDetails, takTotals, byEmployee, byOrder, aansluiting, type TakDetail } from "@/lib/omzet";
+import { nlDate, inPeriod, takDetails, takTotals, byEmployee, byOrder, aansluiting, type TakDetail } from "@/lib/omzet";
 import { fetchOmzetBron, poetsNogOpMaandfactuur, dayStr, type OmzetBron, type InvoiceLink } from "@/services/omzetService";
 import { buildRange, downloadCsv, type DirectiePeriod, type DirectieBranch } from "@/services/directieService";
 
@@ -549,9 +549,11 @@ export interface PoetsTrackRow {
 }
 export interface PoetsStats {
   internCars: number; externCars: number; unknownCars: number;
+  /** omzet excl. btw = gefactureerd (poets-maandfactuur) + nog op maandfactuur */
   revenueExcl: number; revenueIncl: number;
+  invoicedExcl: number; openExcl: number; openCount: number;
   persons: PoetsPerson[];
-  months: { month: string; monthKey: string; intern: number; extern: number; revenueIncl: number; revenueExcl: number; selected: boolean }[];
+  months: { month: string; monthKey: string; intern: number; extern: number; revenueIncl: number; revenueExcl: number; invoicedExcl: number; openExcl: number; selected: boolean }[];
   rows: PoetsTrackRow[];
 }
 
@@ -578,7 +580,8 @@ export function poetsStats(raw: RapRaw, from = raw.from, to = raw.to): PoetsStat
   };
 
   const done = raw.orders.filter(o => o.discipline === "poets" && isDone(o));
-  const inPeriod = done.filter(o => inRange(poetsDoneAt(o), from, to));
+  const inDays = (o: RapOrder, a: Date, b: Date) => { const d = nlDate(poetsDoneAt(o)); return d >= dayStr(a) && d < dayStr(b); };
+  const inPeriod = done.filter(o => inDays(o, from, to));
 
   const rows: PoetsTrackRow[] = inPeriod
     .map(o => {
@@ -622,21 +625,23 @@ export function poetsStats(raw: RapRaw, from = raw.from, to = raw.to): PoetsStat
 
   const months: PoetsStats["months"] = [];
   monthBuckets(raw.trendFrom, raw.trendTo).forEach(b => {
-    const m = done.filter(o => inRange(poetsDoneAt(o), b.from, b.to));
+    const m = done.filter(o => inDays(o, b.from, b.to));
     const intern = m.filter(o => typeOf(o.assigned_to) === "intern").length;
     const extern = m.filter(o => typeOf(o.assigned_to) === "extern").length;
+    const pr = poetsRevenue(raw, b.from, b.to);
     months.push({
       month: b.label, monthKey: b.key, intern, extern,
-      revenueIncl: intern * POETS_PRICE_INCL,
-      revenueExcl: Math.round(intern * POETS_PRICE_EXCL * 100) / 100,
+      revenueIncl: Math.round(pr.total / POETS_PRICE_EXCL) * POETS_PRICE_INCL,
+      revenueExcl: pr.total, invoicedExcl: pr.invoiced, openExcl: pr.open,
       selected: +b.to > +from && +b.from < +to,
     });
   });
 
+  const pr = poetsRevenue(raw, from, to);
   return {
     internCars, externCars, unknownCars,
-    revenueIncl: internCars * POETS_PRICE_INCL,
-    revenueExcl: Math.round(internCars * POETS_PRICE_EXCL * 100) / 100,
+    revenueIncl: Math.round(pr.total / POETS_PRICE_EXCL) * POETS_PRICE_INCL,
+    revenueExcl: pr.total, invoicedExcl: pr.invoiced, openExcl: pr.open, openCount: pr.openCount,
     persons, months, rows,
   };
 }
