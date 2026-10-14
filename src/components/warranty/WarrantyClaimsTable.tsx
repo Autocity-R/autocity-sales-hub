@@ -38,6 +38,15 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
   showResolved = false
 }) => {
   const [selectedClaim, setSelectedClaim] = useState<WarrantyClaim | null>(null);
+  // Deeplink ?claim=<id> (bijv. vanuit de werkhistorie bij Afgeleverd): alleen openen, niets wijzigen
+  const [deepLinkDone, setDeepLinkDone] = useState(false);
+  React.useEffect(() => {
+    if (deepLinkDone || !claims.length) return;
+    const id = new URLSearchParams(window.location.search).get("claim");
+    if (!id) { setDeepLinkDone(true); return; }
+    const c = claims.find((x) => x.id === id);
+    if (c) { setSelectedClaim(c); setDeepLinkDone(true); }
+  }, [claims, deepLinkDone]);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const isCompact = useIsCompact();
