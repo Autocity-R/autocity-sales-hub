@@ -49,15 +49,15 @@ const RapportagePoetsen: React.FC = () => {
             onExport={() =>
               downloadCsv(`poets-omzet-${rangeSlug}.csv`, [{
                 periode: rangeSlug, vestiging: branch,
-                intern_autos: stats.internCars, omzet_ex_btw: stats.revenueExcl, omzet_incl_btw: stats.revenueIncl,
+                intern_autos: stats.internCars, gefactureerd_ex_btw: stats.invoicedExcl, nog_op_maandfactuur_ex_btw: stats.openExcl, omzet_ex_btw: stats.revenueExcl, omzet_incl_btw: stats.revenueIncl,
                 extern_autos: stats.externCars, zonder_poetser: stats.unknownCars,
               }])
             }
           >
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <Stat label="Intern gepoetst" value={num(stats.internCars, 0)} sub="auto's" />
-              <Stat label="Omzet ex btw" value={eur(stats.revenueExcl)} />
-              <Stat label="Omzet incl. btw" value={eur(stats.revenueIncl)} />
+              <Stat label="Gefactureerd ex btw" value={eur(stats.invoicedExcl)} sub="poets-maandfactuur" />
+              <Stat label="Nog op maandfactuur" value={eur(stats.openExcl)} sub={`${stats.openCount} beurten × € 82,64`} />
               <Stat label="Extern gepoetst" value={num(stats.externCars, 0)} sub="alleen aantallen — extern factureert zelf" />
             </div>
             {stats.unknownCars > 0 && (
