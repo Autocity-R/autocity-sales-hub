@@ -1,6 +1,9 @@
 import { fairSeconds, fairSecondsByAssignee } from "@/lib/performanceGroups";
 import { loadWorkSchedule } from "@/lib/workHours";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllPages } from "@/lib/fetchAllPages";
+import { inPeriod, takDetails, takTotals, byEmployee, byOrder, aansluiting, type TakDetail } from "@/lib/omzet";
+import { fetchOmzetBron, poetsNogOpMaandfactuur, dayStr, type OmzetBron, type InvoiceLink } from "@/services/omzetService";
 import { buildRange, downloadCsv, type DirectiePeriod, type DirectieBranch } from "@/services/directieService";
 
 /** Vaste snelkeuzes + "custom" (eigen van–tot bereik). */
@@ -184,7 +187,6 @@ export async function fetchRapportageRaw(sel: RapSelection, branch: RapBranch): 
 
 /* ------------------------------ helpers ------------------------------ */
 
-export const sentOnly = (rows: RapInvoice[]) => rows.filter(r => r.status === "verstuurd");
 export const delta = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0);
 export const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 export const div = (a: number, b: number) => (b > 0 ? a / b : 0);
@@ -193,28 +195,18 @@ export const inRange = (iso?: string | null, a?: Date, b?: Date) => {
   const t = +new Date(iso);
   return t >= +a && t < +b;
 };
+/** "Klaar" overal hetzelfde: afgerond/goedgekeurd; datum = approved_at, finished_at alleen als approved_at leeg is. */
 export const isDone = (o: RapOrder) => ["afgerond", "goedgekeurd"].includes(o.status || "");
-const doneAt = (o: RapOrder) => o.finished_at || o.approved_at || o.created_at;
+export const doneAt = (o: { approved_at: string | null; finished_at: string | null }) => o.approved_at || o.finished_at || null;
 export const doneInPeriod = (o: RapOrder, a: Date, b: Date) => isDone(o) && inRange(doneAt(o), a, b);
 export const partCount = (o: RapOrder) => {
   const p = o.parts;
   if (Array.isArray(p) && p.length) return p.length;
-  return o.part ? 1 : 1;
+  return 1;
 };
-const lineAmount = (l: any) => Number(l?.amount ?? l?.total ?? 0);
-const isSchadeLine = (l: any) => String(l?.description || "").toLowerCase().startsWith("schadeherstel");
 
-/** Bedragen per discipline binnen één factuur (op basis van de factuurregels). */
-export function splitInvoice(inv: RapInvoice) {
-  const lines: any[] = Array.isArray(inv.lines) ? inv.lines : [];
-  let schade = 0, schadeParts = 0, werk = 0;
-  lines.forEach(l => {
-    if (isSchadeLine(l)) { schade += lineAmount(l); schadeParts += 1; }
-    else werk += lineAmount(l);
-  });
-  if (!lines.length) werk = Number(inv.subtotal || 0);
-  return { schade, schadeParts, werk, kind: inv.invoice_kind === "intern" ? "intern" : "extern" as "intern" | "extern" };
-}
+/** Meetellende omzetregels in [from, to) op omzet_datum. */
+export const regelsIn = (raw: RapRaw, from: Date, to: Date) => inPeriod(raw.bron.regels, dayStr(from), dayStr(to));
 
 /* ------------------------------ A. Omzet ------------------------------ */
 
@@ -224,101 +216,50 @@ export interface OmzetGroup {
 }
 export interface OmzetStats {
   schade: OmzetGroup; werkplaats: OmzetGroup; poets: OmzetGroup;
+  /** gefactureerd (schade + werkplaats + poets-facturen) */
   totaal: number;
-  trend: { month: string; schade: number; werkplaats: number; poets: number; selected: boolean }[];
+  /** interne poetsbeurten die nog niet op een maandfactuur staan — apart, niet in totaal */
+  poetsOpen: { count: number; bedrag: number };
+  trend: { month: string; schade: number; werkplaats: number; poets: number; poetsOpen: number; selected: boolean }[];
 }
 
-const emptyGroup = (): OmzetGroup => ({ intern: 0, extern: 0, total: 0, invoices: 0, parts: 0, avgPerInvoice: 0, avgPerPart: 0 });
+const toGroup = (d: TakDetail): OmzetGroup => ({
+  intern: d.intern, extern: d.extern, total: d.total, invoices: d.invoices, parts: d.parts,
+  avgPerInvoice: div(d.total, d.invoices), avgPerPart: div(d.total, d.parts),
+});
 
 /**
- * BRONKEUZE (leidend, voorkomt dubbeltelling):
- * - Schadeherstel + werkplaats: workshop_invoices (status 'verstuurd'), regels per discipline.
- * - Poetsen: de work_orders zelf (afgeronde poets-orders van INTERNE poetsers × POETS_PRICE_EXCL),
- *   exact dezelfde bron/berekening als /rapportages/poetsen. De maandelijkse interne poetsfactuur
- *   (invoice_kind 'poets_intern') wordt daarom hier UITGESLOTEN — anders zou poets-omzet twee keer
- *   meetellen, en zou hij in de factuurmaand vallen i.p.v. de maand van de poetsbeurt.
+ * BRON: public.omzet_regels (één bron voor alle schermen). Gegroepeerd op omzet_datum (NL),
+ * tak per factuur. Poets = gefactureerde poetsregels; afgeronde interne beurten die nog niet op
+ * een maandfactuur staan worden apart getoond als "nog op maandfactuur".
  */
-const isPoetsInvoice = (inv: RapInvoice) => (inv as any).invoice_kind === "poets_intern";
-const revenueInvoices = (rows: RapInvoice[]) => sentOnly(rows).filter(r => !isPoetsInvoice(r));
-
-export function omzetGroups(invoices: RapInvoice[]): { schade: OmzetGroup; werkplaats: OmzetGroup } {
-  const schade = emptyGroup(), werkplaats = emptyGroup();
-  revenueInvoices(invoices).forEach(inv => {
-    const s = splitInvoice(inv);
-    if (s.schade > 0) {
-      schade[s.kind] += s.schade; schade.total += s.schade; schade.invoices += 1; schade.parts += s.schadeParts;
-    }
-    if (s.werk > 0) {
-      werkplaats[s.kind] += s.werk; werkplaats.total += s.werk; werkplaats.invoices += 1; werkplaats.parts += 1;
-    }
-  });
-  [schade, werkplaats].forEach(g => {
-    g.avgPerInvoice = div(g.total, g.invoices);
-    g.avgPerPart = div(g.total, g.parts);
-  });
-  return { schade, werkplaats };
-}
-
-/** Poets-omzet als omzetcategorie (ex btw), bron = work_orders (zie BRONKEUZE hierboven). */
-export function poetsOmzetGroup(raw: RapRaw, from = raw.from, to = raw.to): OmzetGroup {
-  const p = poetsStats(raw, from, to);
-  const g = emptyGroup();
-  g.intern = p.revenueExcl;      // interne poetsers = onze omzet
-  g.extern = 0;                  // externe poetsbeurten leveren ons geen omzet op
-  g.total = p.revenueExcl;
-  g.invoices = p.internCars;     // 1 poetsbeurt = 1 "order"
-  g.parts = p.internCars;
-  g.avgPerInvoice = div(g.total, g.invoices);
-  g.avgPerPart = div(g.total, g.parts);
-  return g;
+export function omzetGroups(raw: RapRaw, from: Date, to: Date): { schade: OmzetGroup; werkplaats: OmzetGroup; poets: OmzetGroup } {
+  const d = takDetails(regelsIn(raw, from, to));
+  return { schade: toGroup(d.schadeherstel), werkplaats: toGroup(d.werkplaats), poets: toGroup(d.poets) };
 }
 
 export function omzetStats(raw: RapRaw): OmzetStats {
-  const { schade, werkplaats } = omzetGroups(raw.invoices);
-  const poets = poetsOmzetGroup(raw);
-  const trend: OmzetStats["trend"] = [];
-  const poetsMonths = poetsStats(raw, raw.trendFrom, raw.trendTo).months;
-  monthBuckets(raw.trendFrom, raw.trendTo).forEach(b => {
-    let s = 0, w = 0;
-    revenueInvoices(raw.invoices6m).filter(r => inRange(r.created_at, b.from, b.to)).forEach(r => {
-      const x = splitInvoice(r); s += x.schade; w += x.werk;
-    });
-    trend.push({
-      month: b.label,
-      schade: s, werkplaats: w,
-      poets: poetsMonths.find(m => m.monthKey === b.key)?.revenueExcl ?? 0,
+  const { schade, werkplaats, poets } = omzetGroups(raw, raw.from, raw.to);
+  const po = poetsNogOpMaandfactuur(raw.bron, dayStr(raw.from), dayStr(raw.to));
+  const trend: OmzetStats["trend"] = monthBuckets(raw.trendFrom, raw.trendTo).map(b => {
+    const t = takTotals(regelsIn(raw, b.from, b.to));
+    return {
+      month: b.label, schade: t.schadeherstel, werkplaats: t.werkplaats, poets: t.poets,
+      poetsOpen: poetsNogOpMaandfactuur(raw.bron, dayStr(b.from), dayStr(b.to)).bedrag,
       selected: +b.to > +raw.from && +b.from < +raw.to,
-    });
+    };
   });
-
-  return { schade, werkplaats, poets, totaal: schade.total + werkplaats.total + poets.total, trend };
+  return {
+    schade, werkplaats, poets, totaal: Math.round((schade.total + werkplaats.total + poets.total) * 100) / 100,
+    poetsOpen: { count: po.count, bedrag: po.bedrag }, trend,
+  };
 }
-
 
 /* --------------------- omzet-toerekening per order --------------------- */
 
-export function revenueByOrder(raw: RapRaw, invoices: RapInvoice[]) {
-  const byId = new Map(raw.orders.map(o => [o.id, o]));
-  const map = new Map<string, number>();
-  const add = (id: string, v: number) => map.set(id, (map.get(id) || 0) + v);
-  sentOnly(invoices).forEach(inv => {
-    const ids: string[] = Array.isArray(inv.source_work_order_ids)
-      ? inv.source_work_order_ids.filter(Boolean)
-      : (inv.work_order_id ? [inv.work_order_id] : []);
-    if (!ids.length) return;
-    const s = splitInvoice(inv);
-    const schadeIds = ids.filter(id => byId.get(id)?.discipline === "spuit");
-    const werkIds = ids.filter(id => byId.get(id)?.discipline === "werkplaats");
-    if (s.schade > 0) {
-      const t = schadeIds.length ? schadeIds : ids;
-      t.forEach(id => add(id, s.schade / t.length));
-    }
-    if (s.werk > 0) {
-      const t = werkIds.length ? werkIds : ids;
-      t.forEach(id => add(id, s.werk / t.length));
-    }
-  });
-  return map;
+/** Omzet per werkorder (alle meetellende regels in het venster). */
+export function revenueByOrder(raw: RapRaw, from: Date = raw.trendFrom, to: Date = new Date(Math.max(+raw.trendTo, +raw.to))) {
+  return byOrder(regelsIn(raw, from, to));
 }
 
 /* ------------------- B. Performance medewerkers ------------------- */
@@ -329,36 +270,63 @@ export interface EmployeeRow {
   tasks: number; parts: number; rejects: number; avgMinutes: number;
 }
 
+const PERF_DISC = ["werkplaats", "spuit", "uitdeuk"];
+
+/**
+ * Omzet per medewerker = toerekening uit omzet_regels (op omzet_datum), los van wanneer de order klaar was.
+ * Uren/taken = eigen orders die in de periode klaar waren (fairSeconds). Uitdeuken: alleen uren/aantallen.
+ * Poets-omzet staat niet per persoon in Performance (zie performanceAansluiting).
+ */
 export function employeeRows(raw: RapRaw, from = raw.from, to = raw.to): EmployeeRow[] {
-  const rev = revenueByOrder(raw, raw.invoices6m.filter(i => inRange(i.created_at, from, to)));
+  const regels = regelsIn(raw, from, to).filter(r => r.tak !== "poets");
+  const rev = byEmployee(regels);
   const nameOf = (id: string) => {
     const p = raw.profiles.find(x => x.id === id);
     return p ? `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Onbekend" : "Onbekend";
   };
   const map = new Map<string, EmployeeRow>();
+  const ensure = (id: string) => {
+    if (!map.has(id)) map.set(id, { id, name: nameOf(id), disciplines: [], revenue: 0, hours: 0, perHour: 0, tasks: 0, parts: 0, rejects: 0, avgMinutes: 0 });
+    return map.get(id)!;
+  };
   const ordersBy = new Map<string, RapOrder[]>();
   raw.orders
-    // poetsen is extern → nooit een persoons-KPI
-    .filter(o => o.assigned_to && ["werkplaats", "spuit"].includes(o.discipline || ""))
+    .filter(o => o.assigned_to && PERF_DISC.includes(o.discipline || ""))
     .filter(o => doneInPeriod(o, from, to))
     .forEach(o => {
-      const id = o.assigned_to as string;
-      if (!map.has(id)) map.set(id, { id, name: nameOf(id), disciplines: [], revenue: 0, hours: 0, perHour: 0, tasks: 0, parts: 0, rejects: 0, avgMinutes: 0 });
-      const e = map.get(id)!;
+      const e = ensure(o.assigned_to as string);
       if (o.discipline && !e.disciplines.includes(o.discipline)) e.disciplines.push(o.discipline);
       e.tasks += 1;
-      ordersBy.set(id, [...(ordersBy.get(id) || []), o]);
-      e.revenue += rev.get(o.id) || 0;
+      ordersBy.set(e.id, [...(ordersBy.get(e.id) || []), o]);
       e.rejects += Number(o.rejected_count || 0);
       if (o.discipline === "spuit") e.parts += partCount(o);
     });
-  // uren = unie van timer-intervallen per medewerker (parallelle timers één keer)
+  rev.forEach((v, id) => {
+    if (!id) return;
+    const e = ensure(id);
+    e.revenue += v;
+    regels.filter(r => r.medewerker_id === id && r.discipline).forEach(r => { if (!e.disciplines.includes(r.discipline!)) e.disciplines.push(r.discipline!); });
+  });
   map.forEach(e => { e.hours = fairSeconds(ordersBy.get(e.id) || []) / 3600; });
   return Array.from(map.values()).map(e => ({
     ...e,
-    perHour: div(e.revenue, e.hours),
+    revenue: Math.round(e.revenue * 100) / 100,
+    // uitdeuken levert geen omzet op → omzet/uur alleen over uren met omzet-disciplines
+    perHour: div(e.revenue, fairSeconds((ordersBy.get(e.id) || []).filter(o => o.discipline !== "uitdeuk")) / 3600),
     avgMinutes: div(e.hours * 60, e.tasks),
   })).sort((a, b) => b.revenue - a.revenue);
+}
+
+/** Aansluiting Performance ↔ maandtotaal: medewerkers + niet toegewezen + poetsen = totaal. */
+export function performanceAansluiting(raw: RapRaw, from = raw.from, to = raw.to) {
+  const regels = regelsIn(raw, from, to);
+  const emp = byEmployee(regels.filter(r => r.tak !== "poets"));
+  const medewerkers = Array.from(emp.entries()).filter(([k]) => k).reduce((a, [, v]) => a + v, 0);
+  const nietToegewezen = emp.get(null) || 0;
+  const poets = takTotals(regels).poets;
+  const a = aansluiting(regels);
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  return { medewerkers: r2(medewerkers), nietToegewezen: r2(nietToegewezen), poets, totaal: a.totaal, sluit: Math.abs(a.totaal - medewerkers - nietToegewezen - poets) < 0.01 };
 }
 
 export function employeeOrders(raw: RapRaw, employeeId: string, limit = 60) {
