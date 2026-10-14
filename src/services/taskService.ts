@@ -10,13 +10,18 @@ type ProfileRow = {
 };
 const profileToEmployee = (profile: ProfileRow): Employee => ({
   id: profile.id,
-  name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+  name: (`${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email) +
+    ((profile as any).actief === false ? ' · uit dienst' : ''),
   role: 'user', // Default role
   email: profile.email,
   phone: undefined, // Not available in profiles
   department: 'verkoop', // Default department
   active: true
 });
+
+/** Uit-dienst-medewerker blijft met naam zichtbaar bij historie: "Lloyd Mahabier · uit dienst". */
+const markUitDienst = (p: any) =>
+  p && p.actief === false ? { ...p, last_name: `${p.last_name || ''} · uit dienst` } : p;
 
 export const fetchTasks = async (filters?: any): Promise<Task[]> => {
   try {
@@ -44,8 +49,8 @@ export const fetchTasks = async (filters?: any): Promise<Task[]> => {
       .from('tasks')
       .select(`
         *,
-        assigned_to_profile:profiles!tasks_assigned_to_fkey(id, first_name, last_name, email),
-        assigned_by_profile:profiles!tasks_assigned_by_fkey(id, first_name, last_name, email),
+        assigned_to_profile:profiles!tasks_assigned_to_fkey(id, first_name, last_name, email, actief),
+        assigned_by_profile:profiles!tasks_assigned_by_fkey(id, first_name, last_name, email, actief),
         vehicle:vehicles!tasks_vehicle_id_fkey(id, brand, model, license_number, vin)
       `)
       .order('sort_order', { ascending: true })
@@ -95,7 +100,7 @@ export const fetchTasks = async (filters?: any): Promise<Task[]> => {
       createdAt: task.created_at,
       updatedAt: task.updated_at,
       // Pass through the joined profile data
-      assigned_to_profile: task.assigned_to_profile,
+      assigned_to_profile: markUitDienst(task.assigned_to_profile),
       assigned_by_profile: task.assigned_by_profile,
       vehicle: task.vehicle
     }));
@@ -117,7 +122,7 @@ export const fetchEmployees = async (): Promise<Employee[]> => {
       return [];
     }
 
-    return (data || []).map(profileToEmployee);
+    return (data || []).filter((p: any) => p.actief !== false).map(profileToEmployee);
   } catch (error: any) {
     console.error("Failed to fetch employees:", error);
     return [];
@@ -138,7 +143,7 @@ export const fetchActiveEmployees = async (): Promise<Employee[]> => {
     }
 
     // All users with profiles are considered active
-    return (data || []).map(profileToEmployee);
+    return (data || []).filter((p: any) => p.actief !== false).map(profileToEmployee);
   } catch (error: any) {
     console.error("Failed to fetch active employees:", error);
     return [];
@@ -408,7 +413,7 @@ export const updateTaskStatus = async (taskId: string, status: TaskStatus): Prom
       .from('tasks')
       .select(`
         *,
-        assigned_to_profile:profiles!tasks_assigned_to_fkey(id, first_name, last_name, email)
+        assigned_to_profile:profiles!tasks_assigned_to_fkey(id, first_name, last_name, email, actief)
       `)
       .eq('id', taskId)
       .single();
