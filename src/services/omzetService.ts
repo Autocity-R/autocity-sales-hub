@@ -125,3 +125,41 @@ export function controle(bron: OmzetBron, van: string, tot: string): Controle {
     poetsZonderUitvoerder: poetsZonderUitvoerder(bron, van, tot),
   };
 }
+
+/* ---------------- handmatige factuur: koppel-suggesties ---------------- */
+
+export type ExternOpenOrder = ExternOpen & { match?: boolean };
+
+/** Goedgekeurde externe werkorders zonder gekoppelde factuur (alleen lezen). */
+export async function fetchExternOrdersZonderFactuur(): Promise<ExternOpenOrder[]> {
+  const [links, ext] = await Promise.all([
+    fetchAllPages<any>((a, b) => (supabase as any).from("workshop_invoices").select("id,work_order_id,source_work_order_ids").order("id").range(a, b)),
+    fetchAllPages<any>((a, b) => (supabase as any).from("work_orders")
+      .select("id,approved_at,discipline,external_customer,vehicle_id,branch,assigned_to")
+      .eq("status", "goedgekeurd").or("origin.eq.extern,external_customer.not.is.null").order("id").range(a, b)),
+  ]);
+  const linked = new Set<string>();
+  links.forEach((i: any) => linkedOrderIds(i.source_work_order_ids, i.work_order_id).forEach(id => linked.add(id)));
+  const open = ext.filter((o: any) => !linked.has(o.id));
+  const vIds = Array.from(new Set(open.map((o: any) => o.vehicle_id).filter(Boolean))) as string[];
+  const plates = new Map<string, string>();
+  if (vIds.length) {
+    const { data } = await supabase.from("vehicles").select("id,license_number").in("id", vIds);
+    (data || []).forEach((v: any) => plates.set(v.id, v.license_number));
+  }
+  return open.map((o: any) => ({
+    id: o.id, approved_at: o.approved_at, discipline: o.discipline,
+    klant: o.external_customer?.name || o.external_customer?.company || null,
+    vehicle_id: o.vehicle_id, kenteken: o.vehicle_id ? plates.get(o.vehicle_id) || null : null,
+    branch: o.branch, assigned_to: o.assigned_to,
+  }));
+}
+
+const norm = (s?: string | null) => (s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+/** Suggesties: match op kenteken of klantnaam bovenaan. */
+export function rankOrderSuggestions(list: ExternOpen[], plate?: string | null, name?: string | null): ExternOpenOrder[] {
+  const p = norm(plate), n = norm(name);
+  return list
+    .map(o => ({ ...o, match: (!!p && norm(o.kenteken) === p) || (n.length >= 3 && norm(o.klant).includes(n)) }))
+    .sort((a, b) => Number(b.match) - Number(a.match) || +new Date(b.approved_at || 0) - +new Date(a.approved_at || 0));
+}

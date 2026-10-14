@@ -441,6 +441,10 @@ export const resendInternalInvoice = async (inv: {
 export type PaymentStatus = "open" | "betaald" | "nvt";
 
 export interface ManualInvoiceInput {
+  /** verplicht in het formulier: werkplaats of schadeherstel */
+  tak?: "werkplaats" | "schadeherstel" | null;
+  /** optioneel: gekoppelde goedgekeurde externe werkorder */
+  work_order_id?: string | null;
   invoice_kind: "intern" | "extern";
   customer: InvoiceCustomer;
   vehicle: InvoiceVehicle;
@@ -484,7 +488,9 @@ export const saveManualInvoice = async (
     .insert({
       invoice_number: invoiceNumber,
       invoice_kind: input.invoice_kind,
-      work_order_id: null,
+      work_order_id: input.work_order_id ?? null,
+      source_work_order_ids: input.work_order_id ? [input.work_order_id] : [],
+      tak: input.tak ?? null,
       vehicle_id: input.vehicle_id ?? null,
       customer: input.customer as any,
       vehicle: input.vehicle as any,
