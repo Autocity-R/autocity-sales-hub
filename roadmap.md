@@ -14,4 +14,5 @@
 - [x] Vervolg Performance: gefactureerd, nog te factureren en externe klus apart tonen + testen (niet gepubliceerd)
 - [x] Bouwstap 6: werktijden-instelling, auto-pauze (cron), uren afknippen op werktijd, pauzeren voor poetsers (niet gepubliceerd)
 - [x] Bouwstap 9: medewerkers uit dienst zetten i.p.v. hard verwijderen (niet gepubliceerd)
+- [x] Bouwstap 10: volledige werkhistorie per afgeleverde auto (niet gepubliceerd)
 - [ ] Website-reservering edge function — plan klaar, wacht op akkoord eigenaar

@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import { CheckCircle2, XCircle, Loader2, Wrench } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Wrench, ShieldCheck, ExternalLink } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { STATUS_LABELS, WorkOrderStatus } from "@/components/werkplaats/workOrderTypes";
+import {
+  splitWorkOrdersByDelivery, sortAfter, sourceLabel, claimStatusLabel, isOpenClaim, fmtHours, OPEN_STATUSES,
+} from "@/lib/workHistory";
 import { supabase } from "@/integrations/supabase/client";
 import { checklistHistory } from "@/lib/deliveryChecklistHistory";
 import { DISCIPLINE_LABELS, WorkOrderDiscipline } from "@/components/werkplaats/workOrderTypes";
@@ -15,35 +20,28 @@ export const DeliveryChecklistHistory: React.FC<{ vehicleId: string; deliveredAt
   const [loading, setLoading] = useState(true);
   const [checklist, setChecklist] = useState<unknown>(null);
   const [orders, setOrders] = useState<any[]>([]);
-  const [names, setNames] = useState<Record<string, string>>({});
+  const [claims, setClaims] = useState<any[]>([]);
+  const [showCancelled, setShowCancelled] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     let alive = true;
     (async () => {
       setLoading(true);
-      const [{ data: v }, { data: wo }] = await Promise.all([
+      // Twee queries: checklist + volledige werkhistorie (RPC, RLS van de gebruiker blijft gelden)
+      const [{ data: v }, { data: h, error: hErr }] = await Promise.all([
         supabase.from("vehicles").select("details").eq("id", vehicleId).maybeSingle(),
-        supabase.from("work_orders")
-          .select("id, discipline, part, parts, description, status, assigned_to, approved_by, created_at, finished_at, approved_at")
-          .eq("vehicle_id", vehicleId).neq("status", "geannuleerd")
-          .order("created_at", { ascending: true }),
+        supabase.rpc("voertuig_werkhistorie" as any, { p_vehicle_id: vehicleId } as any),
       ]);
       if (!alive) return;
       setChecklist((v as any)?.details?.preDeliveryChecklist ?? null);
-      const d = deliveredAt ? new Date(deliveredAt).getTime() : Infinity;
-      const before = ((wo as any[]) || []).filter(o => new Date(o.created_at).getTime() <= d);
-      setOrders(before);
-      const ids = Array.from(new Set(before.flatMap(o => [o.assigned_to, o.approved_by]).filter(Boolean)));
-      if (ids.length) {
-        const { data: ps } = await supabase.from("profiles").select("id, first_name, last_name").in("id", ids);
-        const m: Record<string, string> = {};
-        (ps || []).forEach((p: any) => { m[p.id] = [p.first_name, p.last_name].filter(Boolean).join(" ") || "Medewerker"; });
-        if (alive) setNames(m);
-      }
-      if (alive) setLoading(false);
+      // Geen leesrecht of fout → dat deel gewoon leeg laten
+      setOrders(hErr ? [] : ((h as any)?.orders || []));
+      setClaims(hErr ? [] : ((h as any)?.claims || []));
+      setLoading(false);
     })();
     return () => { alive = false; };
-  }, [vehicleId, deliveredAt]);
+  }, [vehicleId]);
 
   if (loading) return <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Checklist laden…</div>;
 
@@ -90,28 +88,132 @@ export const DeliveryChecklistHistory: React.FC<{ vehicleId: string; deliveredAt
         )}
       </div>
 
-      <div>
-        <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Wrench className="h-4 w-4" /> Werkorders vóór aflevering</h3>
-        {orders.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Geen werkorders.</p>
-        ) : (
-          <ul className="space-y-2">
-            {orders.map(o => (
-              <li key={o.id} className="rounded-md border p-3 text-sm">
-                <div className="font-medium">
-                  {DISCIPLINE_LABELS[o.discipline as WorkOrderDiscipline] || o.discipline}
-                  {getWorkOrderParts(o).length > 0 && <> · {getWorkOrderParts(o).join(", ")}</>}
-                  <span className="text-muted-foreground font-normal"> · {o.status}</span>
-                </div>
-                {o.description && <div className="text-muted-foreground break-words">{o.description}</div>}
-                <div className="text-xs text-muted-foreground mt-1">
-                  Door: {o.assigned_to ? names[o.assigned_to] || "Medewerker" : "—"} · Afgerond: {fmt(o.finished_at)} · Goedgekeurd: {fmt(o.approved_at)}{o.approved_by ? ` (${names[o.approved_by] || "Medewerker"})` : ""}
-                </div>
-              </li>
-            ))}
-          </ul>
+      <WorkOrderHistory
+        orders={orders} claims={claims} deliveredAt={deliveredAt ?? null}
+        showCancelled={showCancelled} setShowCancelled={setShowCancelled}
+        onOpenClaim={(id) => navigate(`/warranty?claim=${id}`)}
+      />
+    </div>
+  );
+};
+
+const statusLabel = (s: string) => STATUS_LABELS[s as WorkOrderStatus] || s;
+const name = (n?: string | null, actief?: boolean | null) => (n ? `${n}${actief === false ? " · uit dienst" : ""}` : "—");
+const day = (s?: string | null) => (s ? format(new Date(s), "d MMM yyyy", { locale: nl }) : "—");
+
+const OrderCard: React.FC<{ o: any; after?: boolean; onOpenClaim: (id: string) => void }> = ({ o, after, onOpenClaim }) => {
+  const open = OPEN_STATUSES.includes(o.status);
+  const garantie = o.source === "garantie" || !!o.warranty_claim_id;
+  const parts = getWorkOrderParts(o);
+  return (
+    <li className={cn("rounded-md border p-3 text-sm", open && after && "border-amber-300 bg-amber-50/50", o.status === "geannuleerd" && "opacity-60")}>
+      <div className="flex flex-wrap items-center gap-1.5 font-medium">
+        {after && <span className="text-muted-foreground font-normal">{day(o.created_at)} ·</span>}
+        <span>{DISCIPLINE_LABELS[o.discipline as WorkOrderDiscipline] || o.discipline}</span>
+        {parts.length > 0 && <span>· {parts.join(", ")}</span>}
+        <span className={cn("text-xs px-1.5 py-0.5 rounded border font-normal", open ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-muted text-muted-foreground border-border")}>
+          {open ? `Open · ${statusLabel(o.status)}` : statusLabel(o.status)}
+        </span>
+        {after && o.source && <span className="text-xs text-muted-foreground font-normal">Bron: {sourceLabel(o.source)}</span>}
+        {garantie && (
+          <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded border bg-blue-50 text-blue-800 border-blue-200 font-normal">
+            <ShieldCheck className="h-3 w-3" />Garantie{o.warranty_claim_id ? ` · ${claimStatusLabel(o.claim_status)}` : ""}
+          </span>
+        )}
+        {o.via_ander_record && (
+          <span className="text-xs px-1.5 py-0.5 rounded border bg-slate-50 text-slate-600 border-slate-200 font-normal">via ander record (status {o.record_status || "?"})</span>
         )}
       </div>
-    </div>
+      {o.description && <div className="text-muted-foreground break-words">{o.description}</div>}
+      <div className="text-xs text-muted-foreground mt-1">
+        Door: {name(o.assigned_name, o.assigned_actief)}
+        {after && o.started_at && <> · Gestart: {fmt(o.started_at)}</>}
+        {" "}· Afgerond: {fmt(o.finished_at)} · Goedgekeurd: {fmt(o.approved_at)}{o.approved_name ? ` (${o.approved_name})` : ""}
+        {after && <> · Gewerkt: {fmtHours(o.work_seconds)} u</>}
+        {after && !o.started_at && o.planned_at && <> · Ingepland: {fmt(o.planned_at)}</>}
+      </div>
+      {o.warranty_claim_id && (
+        <button type="button" onClick={() => onOpenClaim(o.warranty_claim_id)} className="mt-1 inline-flex items-center gap-1 text-xs text-blue-700 hover:underline">
+          <ExternalLink className="h-3 w-3" />Open claim in garantiemenu
+        </button>
+      )}
+    </li>
+  );
+};
+
+const WorkOrderHistory: React.FC<{
+  orders: any[]; claims: any[]; deliveredAt: string | Date | null;
+  showCancelled: boolean; setShowCancelled: (v: boolean) => void; onOpenClaim: (id: string) => void;
+}> = ({ orders, claims, deliveredAt, showCancelled, setShowCancelled, onOpenClaim }) => {
+  const visible = orders.filter(o => showCancelled || o.status !== "geannuleerd");
+  const { before, after: afterRaw } = splitWorkOrdersByDelivery(visible, deliveredAt);
+  const after = sortAfter(afterRaw);
+  const hasCancelled = orders.some(o => o.status === "geannuleerd");
+  const linked = new Set(orders.map(o => o.warranty_claim_id).filter(Boolean));
+  const looseClaims = claims.filter(c => !linked.has(c.id));
+  const openClaims = claims.filter(c => isOpenClaim(c.claim_status)).length;
+  const garantieCount = after.filter(o => o.source === "garantie" || o.warranty_claim_id).length;
+  const lastDates = [...after.map(o => o.created_at), ...claims.map(c => c.created_at)].sort();
+  const last = lastDates[lastDates.length - 1];
+
+  const summary = after.length === 0 && claims.length === 0
+    ? "Na aflevering is er nog niets aan deze auto gedaan."
+    : [
+        `Na aflevering: ${after.length} werkorder${after.length === 1 ? "" : "s"}${garantieCount ? ` (${garantieCount} garantie)` : ""}`,
+        claims.length ? `${claims.length} claim${claims.length === 1 ? "" : "s"}${openClaims ? ` (${openClaims} open)` : ""}` : null,
+        last ? `laatst op ${day(last)}` : null,
+      ].filter(Boolean).join(", ");
+
+  return (
+    <>
+      <div>
+        <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Wrench className="h-4 w-4" /> Werkorders vóór aflevering</h3>
+        {before.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Geen werkorders.</p>
+        ) : (
+          <ul className="space-y-2">{before.map(o => <OrderCard key={o.id} o={o} onOpenClaim={onOpenClaim} />)}</ul>
+        )}
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+          <h3 className="text-lg font-semibold flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Na aflevering (garantie &amp; nazorg)</h3>
+          {hasCancelled && (
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+              <input type="checkbox" checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} />
+              toon geannuleerd
+            </label>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground mb-2" data-testid="nazorg-samenvatting">{summary}</p>
+        {after.length > 0 && (
+          <ul className="space-y-2" data-testid="na-aflevering">{after.map(o => <OrderCard key={o.id} o={o} after onOpenClaim={onOpenClaim} />)}</ul>
+        )}
+        {looseClaims.length > 0 && (
+          <div className="mt-3">
+            <div className="text-sm font-semibold mb-1">Garantieclaims</div>
+            <ul className="space-y-2" data-testid="claims">
+              {looseClaims.map(c => (
+                <li key={c.id} className="rounded-md border p-3 text-sm">
+                  <div className="flex flex-wrap items-center gap-1.5 font-medium">
+                    <span className="text-muted-foreground font-normal">{day(c.created_at)} ·</span>
+                    <span className={cn("text-xs px-1.5 py-0.5 rounded border font-normal", isOpenClaim(c.claim_status) ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-muted text-muted-foreground border-border")}>
+                      {claimStatusLabel(c.claim_status)}
+                    </span>
+                    {c.kosten_totaal != null && <span className="text-xs font-normal">Kosten: €{Number(c.kosten_totaal).toLocaleString("nl-NL")}</span>}
+                    <span className="text-xs text-muted-foreground font-normal">Geen werkorder</span>
+                    {!c.vehicle_id && <span className="text-xs text-muted-foreground font-normal">(op kenteken {c.manual_license_number})</span>}
+                  </div>
+                  {c.description && <div className="text-muted-foreground break-words">{c.description}</div>}
+                  <button type="button" onClick={() => onOpenClaim(c.id)} className="mt-1 inline-flex items-center gap-1 text-xs text-blue-700 hover:underline">
+                    <ExternalLink className="h-3 w-3" />Open claim in garantiemenu
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </>
   );
 };
