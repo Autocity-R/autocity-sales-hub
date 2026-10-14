@@ -5447,6 +5447,7 @@ export type Database = {
           invoice_kind: string
           invoice_number: string
           lines: Json
+          omzet_datum: string | null
           paid_at: string | null
           payment_status: string
           pdf_path: string | null
@@ -5454,6 +5455,9 @@ export type Database = {
           source_work_order_ids: Json
           status: string
           subtotal: number
+          tak: string | null
+          telt_niet_mee: boolean
+          telt_niet_mee_reden: string | null
           total: number
           vat: number
           vehicle: Json
@@ -5469,6 +5473,7 @@ export type Database = {
           invoice_kind?: string
           invoice_number: string
           lines?: Json
+          omzet_datum?: string | null
           paid_at?: string | null
           payment_status?: string
           pdf_path?: string | null
@@ -5476,6 +5481,9 @@ export type Database = {
           source_work_order_ids?: Json
           status?: string
           subtotal?: number
+          tak?: string | null
+          telt_niet_mee?: boolean
+          telt_niet_mee_reden?: string | null
           total?: number
           vat?: number
           vehicle: Json
@@ -5491,6 +5499,7 @@ export type Database = {
           invoice_kind?: string
           invoice_number?: string
           lines?: Json
+          omzet_datum?: string | null
           paid_at?: string | null
           payment_status?: string
           pdf_path?: string | null
@@ -5498,6 +5507,9 @@ export type Database = {
           source_work_order_ids?: Json
           status?: string
           subtotal?: number
+          tak?: string | null
+          telt_niet_mee?: boolean
+          telt_niet_mee_reden?: string | null
           total?: number
           vat?: number
           vehicle?: Json
@@ -5600,6 +5612,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      invoice_order_ids: {
+        Args: { p_src: Json; p_wo: string }
+        Returns: string[]
       }
       is_admin_or_owner: { Args: never; Returns: boolean }
       is_admin_user: { Args: { user_id: string }; Returns: boolean }
@@ -5714,6 +5730,32 @@ export type Database = {
         Returns: number
       }
       next_workshop_invoice_number: { Args: never; Returns: string }
+      omzet_regels: {
+        Args: { p_branch?: string; p_tot: string; p_van: string }
+        Returns: {
+          aandeel_delen: number
+          bedrag: number
+          branch: string
+          created_at: string
+          discipline: string
+          gekoppeld: boolean
+          invoice_id: string
+          invoice_kind: string
+          invoice_number: string
+          kenteken: string
+          klant: string
+          medewerker_id: string
+          omzet_datum: string
+          status: string
+          subtotal: number
+          tak: string
+          telt_mee: boolean
+          telt_niet_mee: boolean
+          telt_niet_mee_reden: string
+          total: number
+          work_order_id: string
+        }[]
+      }
       push_notify: {
         Args: {
           _body: string
