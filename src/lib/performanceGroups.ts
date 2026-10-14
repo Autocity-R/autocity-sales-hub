@@ -10,6 +10,7 @@
  * Daarna afgeknipt op de werktijden (werkplaats_werktijden) en per medewerker als unie geteld.
  * Orders zonder finished_at tellen met hun work_seconds los mee.
  */
+import { linkedOrderIds } from "@/lib/omzet";
 import { getWorkSchedule, workWindows, type WorkSchedule } from "@/lib/workHours";
 
 export interface TimedOrder {
@@ -42,10 +43,8 @@ export interface OrderInvoiceLink {
   source_work_order_ids: unknown;
 }
 
-const linkedIds = (invoice: OrderInvoiceLink): string[] => {
-  if (Array.isArray(invoice.source_work_order_ids)) return invoice.source_work_order_ids.filter((id): id is string => typeof id === "string" && id.length > 0);
-  return invoice.work_order_id ? [invoice.work_order_id] : [];
-};
+/** Koppel-fallback: lege source_work_order_ids ([] = kolom-default) → work_order_id. */
+const linkedIds = (invoice: OrderInvoiceLink): string[] => linkedOrderIds(invoice.source_work_order_ids, invoice.work_order_id);
 
 export const billablePartCount = (order: BillableOrder): number =>
   order.discipline === "spuit" && Array.isArray(order.parts) && order.parts.length > 0 ? order.parts.length : 1;
@@ -59,7 +58,7 @@ export function pendingInvoiceAmount(order: BillableOrder, invoices: OrderInvoic
 }
 
 export const linkedExternalInvoice = (orderId: string, invoices: OrderInvoiceLink[]) =>
-  invoices.find(invoice => invoice.invoice_kind !== "intern" && invoice.work_order_id === orderId) || null;
+  invoices.find(invoice => invoice.invoice_kind !== "intern" && linkedIds(invoice).includes(orderId)) || null;
 
 export type Interval = [number, number];
 
