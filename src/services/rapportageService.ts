@@ -350,8 +350,8 @@ function monteurBlock(raw: RapRaw, from: Date, to: Date) {
   const done = raw.orders.filter(o => o.discipline === "werkplaats" && doneInPeriod(o, from, to));
   const created = raw.orders.filter(o => o.discipline === "werkplaats" && inRange(o.created_at, from, to));
   const hours = fairSecondsByAssignee(done) / 3600;
-  const rev = revenueByOrder(raw, raw.invoices6m.filter(i => inRange(i.created_at, from, to)));
-  const revenue = done.reduce((a, o) => a + (rev.get(o.id) || 0), 0);
+  // omzet = tak werkplaats op omzet_datum (zelfde bron als Rapportages > Omzet)
+  const revenue = takTotals(regelsIn(raw, from, to)).werkplaats;
   const pickup = created.filter(o => o.started_at).map(o => (+new Date(o.started_at as string) - +new Date(o.created_at)) / 3600000).filter(x => x >= 0);
   return {
     revenue, hours, perHour: div(revenue, hours), done: done.length,
@@ -366,8 +366,8 @@ function schadeBlock(raw: RapRaw, from: Date, to: Date) {
   const done = raw.orders.filter(o => o.discipline === "spuit" && doneInPeriod(o, from, to));
   const hours = fairSecondsByAssignee(done) / 3600;
   const parts = done.reduce((a, o) => a + partCount(o), 0);
-  const rev = revenueByOrder(raw, raw.invoices6m.filter(i => inRange(i.created_at, from, to)));
-  const revenue = done.reduce((a, o) => a + (rev.get(o.id) || 0), 0);
+  // omzet = tak schadeherstel; uren alleen spuit (uitdeuken levert geen omzet op)
+  const revenue = takTotals(regelsIn(raw, from, to)).schadeherstel;
   const rejects = done.reduce((a, o) => a + Number(o.rejected_count || 0), 0);
   const lead = done.filter(o => o.finished_at).map(o => (+new Date(o.finished_at as string) - +new Date(o.created_at)) / 86400000).filter(x => x >= 0);
   return {
@@ -556,6 +556,12 @@ export interface PoetsStats {
 }
 
 const poetsDoneAt = (o: RapOrder) => o.finished_at || o.approved_at || o.created_at;
+/** Poets-omzet in [a,b): gefactureerde poetsregels + interne beurten nog op maandfactuur. */
+const poetsRevenue = (raw: RapRaw, a: Date, b: Date) => {
+  const inv = takTotals(regelsIn(raw, a, b)).poets;
+  const open = poetsNogOpMaandfactuur(raw.bron, dayStr(a), dayStr(b));
+  return { invoiced: inv, open: open.bedrag, openCount: open.count, total: Math.round((inv + open.bedrag) * 100) / 100 };
+};
 
 export function poetsStats(raw: RapRaw, from = raw.from, to = raw.to): PoetsStats {
   const profileOf = (id?: string | null) => raw.profiles.find(p => p.id === id);
