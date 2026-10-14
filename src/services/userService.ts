@@ -11,6 +11,9 @@ export interface UserProfile {
   branch: string | null;
   /** Alleen relevant bij rol 'poetser': eigen medewerker of extern poetsbedrijf. */
   poetser_type?: 'intern' | 'extern' | null;
+  /** false = uit dienst (geblokkeerd, geen rollen). */
+  actief?: boolean;
+  uit_dienst_sinds?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -60,6 +63,7 @@ export const getAllUsers = async (): Promise<UserProfile[]> => {
     return (profiles || []).map(profile => ({
       ...profile,
       role: rolesMap.get(profile.id) || 'user',
+      actief: (profile as any).actief !== false,
       poetser_type: ((profile as any).poetser_type as 'intern' | 'extern') || 'intern'
     })) as UserProfile[];
   } catch (error) {
@@ -168,8 +172,10 @@ export const deleteUser = async (userId: string): Promise<{ success: boolean; er
     });
 
     if (error) {
+      // 409 (historie) e.d.: lees de NL-melding uit het antwoord
+      const msg = await readFunctionError(error);
       console.error('Edge function error:', error);
-      return { success: false, error: 'Er is een fout opgetreden bij het verwijderen van de gebruiker' };
+      return { success: false, error: msg || 'Er is een fout opgetreden bij het verwijderen van de gebruiker' };
     }
 
     if (!data.success) {
@@ -213,4 +219,35 @@ export const updateUsersBranch = async (
     }
   }
   return { ok, fail };
+};
+
+const readFunctionError = async (error: any): Promise<string | null> => {
+  try {
+    const body = await error?.context?.json?.();
+    return body?.error || null;
+  } catch {
+    return null;
+  }
+};
+
+/** Aantallen historie per bron; leeg object = geen historie (hard verwijderen toegestaan). */
+export const getUserHistory = async (userId: string): Promise<Record<string, number>> => {
+  const { data, error } = await supabase.rpc('medewerker_historie' as any, { p_user_id: userId } as any);
+  if (error) throw error;
+  return (data as Record<string, number>) || {};
+};
+
+export type OpenWerkKeuze = 'overdragen' | 'afsluiten' | 'laten';
+
+export const setUserActive = async (params: {
+  userId: string;
+  actie: 'deactiveren' | 'heractiveren';
+  rol?: string;
+  openWerk?: OpenWerkKeuze;
+  overdragenAan?: string;
+}): Promise<{ success: boolean; error?: string; message?: string }> => {
+  const { data, error } = await supabase.functions.invoke('user-deactiveren', { body: params });
+  if (error) return { success: false, error: (await readFunctionError(error)) || 'Er is een fout opgetreden' };
+  if (!data?.success) return { success: false, error: data?.error || 'Onbekende fout' };
+  return { success: true, message: data.message };
 };
