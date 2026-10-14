@@ -5709,6 +5709,10 @@ export type Database = {
       }
       mark_contract_opened: { Args: { _token: string }; Returns: undefined }
       medewerker_historie: { Args: { p_user_id: string }; Returns: Json }
+      medewerker_sessies_beeindigen: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
       next_workshop_invoice_number: { Args: never; Returns: string }
       push_notify: {
         Args: {
