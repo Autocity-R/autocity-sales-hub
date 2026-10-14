@@ -63,6 +63,10 @@ export const DamageRepairAnalytics: React.FC<DamageRepairAnalyticsProps> = ({ pe
         <h2 className="text-2xl font-bold">Schadeherstel Dashboard</h2>
         <Badge variant="outline">{period.label}</Badge>
       </div>
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" data-testid="schade-archief-label">
+        <b>Archief t/m april 2026 (oude registratie).</b> Deze cijfers komen uit de oude schaderegistratie en worden niet gemengd met de facturen.
+        Voor de omzet vanaf mei 2026 zie <a href="/rapportages/omzet" className="font-semibold underline">Rapportages &gt; Omzet</a>.
+      </div>
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
