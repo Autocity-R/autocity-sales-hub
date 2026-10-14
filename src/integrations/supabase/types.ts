@@ -5765,6 +5765,7 @@ export type Database = {
           webhooks_count: number
         }[]
       }
+      voertuig_werkhistorie: { Args: { p_vehicle_id: string }; Returns: Json }
       werkplaats_auto_pauze: {
         Args: { p_dry_run?: boolean; p_now?: string }
         Returns: {
