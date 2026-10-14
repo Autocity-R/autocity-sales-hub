@@ -1,4 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllPages } from "@/lib/fetchAllPages";
+import { fairSeconds, fairSecondsByAssignee, pendingInvoiceAmount } from "@/lib/performanceGroups";
+import { inPeriod, takDetails, takTotals, byEmployee, type Tak } from "@/lib/omzet";
+import { fetchOmzetBron, poetsNogOpMaandfactuur, dayStr, POETS_PRICE_EXCL, type OmzetBron, type InvoiceLink } from "@/services/omzetService";
 
 export type DirectiePeriod = "week" | "month" | "quarter" | "year";
 export type DirectieBranch = "all" | "rotterdam" | "heerhugowaard";
@@ -42,26 +46,26 @@ export const buildRange = (period: DirectiePeriod, now = new Date()): DirectieRa
 
 export interface InvoiceRow {
   id: string; invoice_kind: string | null; subtotal: number | null; total: number | null;
-  status: string | null; sent_at: string | null; created_at: string; branch: string | null;
-  vehicle_id: string | null; vehicle: any; lines: any; source_work_order_ids: any; work_order_id: string | null;
+  status: string | null; created_at: string; work_order_id: string | null; source_work_order_ids: any;
 }
 export interface WorkOrderRow {
   id: string; discipline: string | null; status: string | null; work_seconds: number | null;
   assigned_to: string | null; started_at: string | null; finished_at: string | null; approved_at: string | null;
   created_at: string; is_rush: boolean | null; rejected_count: number | null; branch: string | null;
-  vehicle_id: string | null; part: string | null; origin: string | null; due_date: string | null;
-  poets_type: string | null;
+  vehicle_id: string | null; part: string | null; parts?: any; origin: string | null; due_date: string | null;
+  poets_type: string | null; paused_seconds?: number | null; external_customer?: any;
 }
 
 export interface DirectieRaw {
-  invoices: InvoiceRow[];
-  invoicesPrev: InvoiceRow[];
-  invoices6m: InvoiceRow[];
-  invoicesOpen: InvoiceRow[];
+  from: Date; to: Date; prevFrom: Date; prevTo: Date; sixM: Date;
+  /** Eén bron voor omzet (RPC omzet_regels). */
+  bron: OmzetBron;
+  /** Handmatige concepten (niet verstuurd) */
+  invoicesOpen: InvoiceLink[];
   orders: WorkOrderRow[];
   ordersPrev: WorkOrderRow[];
   ordersOpen: WorkOrderRow[];
-  /** Ruim historisch venster (min. 6 maanden) — basis voor poets-omzet en trends. */
+  /** Ruim historisch venster — basis voor trends en onderhanden werk. */
   ordersHist: WorkOrderRow[];
   intakes: { id: string; vehicle_id: string | null; created_at: string; approved_at: string | null; status: string | null; branch: string | null }[];
   claims: { id: string; claim_status: string | null; claim_amount: number | null; estimated_amount: number | null; created_at: string; resolution_date: string | null; branch: string | null }[];
@@ -74,18 +78,12 @@ export interface DirectieRaw {
 const branchFilter = <T extends { eq: any }>(q: T, branch: DirectieBranch) =>
   branch === "all" ? q : (q as any).eq("branch", branch);
 
-
 /**
- * Moment waarop een klus meetelt in de cijfers: goedkeuring.
- * Uitdeuken kent geen goedkeurstap meer (klaarmelden is eindstatus),
- * poetsbeurten worden bij "Schoon" direct afgemeld — daar geldt het
- * klaarmeldmoment als goedkeuring.
+ * "Klaar" overal hetzelfde (zelfde als Rapportages): status afgerond/goedgekeurd,
+ * datum = approved_at, finished_at alleen als approved_at leeg is.
  */
 export const approvedAtOf = (o: WorkOrderRow): string | null =>
-  o.discipline === "uitdeuk" || o.discipline === "poets"
-    ? (o.approved_at || o.finished_at || null)
-    : (o.approved_at || null);
-
+  ["afgerond", "goedgekeurd"].includes(o.status || "") ? (o.approved_at || o.finished_at || null) : null;
 
 const approvedInRange = (rows: WorkOrderRow[], from: Date, to: Date) =>
   rows.filter(o => {
@@ -95,114 +93,93 @@ const approvedInRange = (rows: WorkOrderRow[], from: Date, to: Date) =>
     return t >= +from && t < +to;
   });
 
-
 export async function fetchDirectieRaw(period: DirectiePeriod, branch: DirectieBranch): Promise<DirectieRaw> {
   const { from, to, prevFrom, prevTo } = buildRange(period);
   const sixM = new Date(); sixM.setMonth(sixM.getMonth() - 5); sixM.setDate(1); sixM.setHours(0, 0, 0, 0);
+  const histStart = new Date(Math.min(+prevFrom, +sixM));
+  const histEnd = new Date(Math.max(+to, new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).getTime()));
+  const woSel = "id,discipline,status,work_seconds,paused_seconds,assigned_to,started_at,finished_at,approved_at,created_at,is_rush,rejected_count,branch,vehicle_id,part,parts,origin,external_customer,due_date,poets_type";
+  // orders ruim terug: een order kan lang vóór goedkeuring zijn aangemaakt
+  const woStart = new Date(+histStart - 180 * 86400000);
 
-  const invSel = "id,invoice_kind,subtotal,total,status,sent_at,created_at,branch,vehicle_id,vehicle,lines,source_work_order_ids,work_order_id";
-  const woSel = "id,discipline,status,work_seconds,assigned_to,started_at,finished_at,approved_at,created_at,is_rush,rejected_count,branch,vehicle_id,part,origin,due_date,poets_type";
-
-  // Klussen worden over een ruim venster opgehaald en daarna op goedkeurmoment gefilterd,
-  // zodat een klus meetelt in de maand van goedkeuring en niet van toewijzing.
-  const woHistStart = new Date(Math.min(+prevFrom, +sixM));
-
-  const [inv, invPrev, inv6m, invOpen, woAll, woOpen, intakes, claims, loans, parts, profiles] = await Promise.all([
-    branchFilter(supabase.from("workshop_invoices").select(invSel).gte("created_at", from.toISOString()).lt("created_at", to.toISOString()), branch),
-    branchFilter(supabase.from("workshop_invoices").select(invSel).gte("created_at", prevFrom.toISOString()).lt("created_at", prevTo.toISOString()), branch),
-    branchFilter(supabase.from("workshop_invoices").select(invSel).gte("created_at", sixM.toISOString()), branch),
-    branchFilter(supabase.from("workshop_invoices").select(invSel).neq("status", "verstuurd"), branch),
-    branchFilter(supabase.from("work_orders").select(woSel).gte("created_at", woHistStart.toISOString()), branch),
-    branchFilter(supabase.from("work_orders").select(woSel).not("status", "in", '("goedgekeurd","geannuleerd")'), branch),
-    branchFilter(supabase.from("vehicle_intakes").select("id,vehicle_id,created_at,approved_at,status,branch").gte("created_at", sixM.toISOString()), branch),
-    branchFilter(supabase.from("warranty_claims").select("id,claim_status,claim_amount,estimated_amount,created_at,resolution_date,branch").gte("created_at", from.toISOString()).lt("created_at", to.toISOString()), branch),
+  const [bron, ordersAll, ordersOpen, intakes, claims, loans, parts, profiles] = await Promise.all([
+    fetchOmzetBron(histStart, histEnd, branch),
+    fetchAllPages<WorkOrderRow>((a, b) => branchFilter(supabase.from("work_orders").select(woSel).gte("created_at", woStart.toISOString()), branch).order("id").range(a, b)),
+    fetchAllPages<WorkOrderRow>((a, b) => branchFilter(supabase.from("work_orders").select(woSel).not("status", "in", '("goedgekeurd","geannuleerd")'), branch).order("id").range(a, b)),
+    fetchAllPages<any>((a, b) => branchFilter(supabase.from("vehicle_intakes").select("id,vehicle_id,created_at,approved_at,status,branch").gte("created_at", sixM.toISOString()), branch).order("id").range(a, b)),
+    fetchAllPages<any>((a, b) => branchFilter(supabase.from("warranty_claims").select("id,claim_status,claim_amount,estimated_amount,created_at,resolution_date,branch").gte("created_at", from.toISOString()).lt("created_at", to.toISOString()), branch).order("id").range(a, b)),
     supabase.from("loan_cars").select("id,status").eq("status", "uitgeleend"),
-    branchFilter(supabase.from("parts_orders").select("id,status,part_name,created_at,branch").neq("status", "binnen"), branch),
+    fetchAllPages<any>((a, b) => branchFilter(supabase.from("parts_orders").select("id,status,part_name,created_at,branch").neq("status", "binnen"), branch).order("id").range(a, b)),
     supabase.from("profiles").select("id,first_name,last_name,poetser_type"),
   ]);
 
-  const ordersAll = (woAll.data || []) as any as WorkOrderRow[];
   const orders = approvedInRange(ordersAll, from, to);
   const ordersPrev = approvedInRange(ordersAll, prevFrom, prevTo);
-  const ordersOpen = (woOpen.data || []) as any as WorkOrderRow[];
-  const invoices = (inv.data || []) as any as InvoiceRow[];
 
-
-  const vehicleIds = Array.from(new Set([
-    ...orders.map(o => o.vehicle_id), ...ordersOpen.map(o => o.vehicle_id), ...invoices.map(i => i.vehicle_id),
-  ].filter(Boolean))) as string[];
-
+  const vehicleIds = Array.from(new Set([...orders.map(o => o.vehicle_id), ...ordersOpen.map(o => o.vehicle_id)].filter(Boolean))) as string[];
   const vehicles: DirectieRaw["vehicles"] = {};
-  if (vehicleIds.length) {
-    const { data } = await supabase.from("vehicles").select("id,brand,model,license_number").in("id", vehicleIds.slice(0, 500));
+  for (let i = 0; i < vehicleIds.length; i += 300) {
+    const { data } = await supabase.from("vehicles").select("id,brand,model,license_number").in("id", vehicleIds.slice(i, i + 300));
     (data || []).forEach((v: any) => { vehicles[v.id] = { brand: v.brand, model: v.model, license_number: v.license_number }; });
   }
 
   return {
-    invoices,
-    invoicesPrev: (invPrev.data || []) as any,
-    invoices6m: (inv6m.data || []) as any,
-    invoicesOpen: (invOpen.data || []) as any,
-    orders,
-    ordersPrev,
-    ordersOpen,
-    ordersHist: ordersAll,
-
-    intakes: (intakes.data || []) as any,
-    claims: (claims.data || []) as any,
+    from, to, prevFrom, prevTo, sixM, bron,
+    invoicesOpen: bron.links.filter(i => i.status !== "verstuurd" && !["intern", "poets_intern"].includes(i.invoice_kind || "") && !i.telt_niet_mee),
+    orders, ordersPrev, ordersOpen, ordersHist: ordersAll,
+    intakes, claims,
     loanCarsOut: (loans.data || []).length,
-    parts: (parts.data || []) as any,
+    parts,
     profiles: (profiles.data || []) as any,
     vehicles,
   };
 }
 
-/* ---------- afgeleide berekeningen ---------- */
+/* ---------- afgeleide berekeningen (bron: omzet_regels) ---------- */
 
-/**
- * Verstuurde facturen. De maandelijkse interne poetsfactuur (invoice_kind
- * 'poets_intern') wordt uitgesloten: poets-omzet wordt uit de poetsbeurten zelf
- * berekend, zodat hij in de maand van de beurt valt en niet dubbel meetelt.
- */
-export const sent = (rows: InvoiceRow[]) =>
-  rows.filter(r => r.status === "verstuurd" && r.invoice_kind !== "poets_intern");
-
-export const sum = (rows: InvoiceRow[]) => rows.reduce((a, r) => a + Number(r.subtotal || 0), 0);
+export const regelsIn = (raw: DirectieRaw, from: Date, to: Date) => inPeriod(raw.bron.regels, dayStr(from), dayStr(to));
 export const delta = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : 0);
 
+/** Uren = fairSeconds per medewerker (interval-unie, alleen binnen werktijd) van klaar-gemelde orders. */
 export const hoursOf = (orders: WorkOrderRow[]) =>
-  orders.filter(o => !!approvedAtOf(o)).reduce((a, o) => a + Number(o.work_seconds || 0), 0) / 3600;
-
+  fairSecondsByAssignee(orders.filter(o => !!approvedAtOf(o)) as any) / 3600;
 
 export interface BranchStats { internal: number; external: number; count: number; avg: number }
 
-export function branchStats(invoices: InvoiceRow[], orders: WorkOrderRow[], discipline: string): BranchStats {
-  const ids = new Set(orders.filter(o => o.discipline === discipline).map(o => o.id));
-  const rel = sent(invoices).filter(i =>
-    (i.work_order_id && ids.has(i.work_order_id)) ||
-    (Array.isArray(i.source_work_order_ids) && i.source_work_order_ids.some((x: string) => ids.has(x))));
-  const internal = sum(rel.filter(i => i.invoice_kind === "intern"));
-  const external = sum(rel.filter(i => i.invoice_kind !== "intern"));
-  const count = rel.length;
-  return { internal, external, count, avg: count ? (internal + external) / count : 0 };
+/** Omzet per tak (excl. btw, op omzet_datum). */
+export function branchStats(raw: DirectieRaw, from: Date, to: Date, tak: Tak): BranchStats {
+  const d = takDetails(regelsIn(raw, from, to))[tak];
+  return { internal: d.intern, external: d.extern, count: d.invoices, avg: d.invoices ? d.total / d.invoices : 0 };
 }
 
-/* ---------- poetsen ---------- */
+export interface KernCijfers {
+  total: number; intern: number; extern: number;
+  schade: number; werkplaats: number; poets: number;
+  poetsOpen: { count: number; bedrag: number };
+}
+export function kernCijfers(raw: DirectieRaw, from: Date, to: Date): KernCijfers {
+  const regels = regelsIn(raw, from, to);
+  const t = takTotals(regels);
+  const d = takDetails(regels);
+  const po = poetsNogOpMaandfactuur(raw.bron, dayStr(from), dayStr(to));
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  return {
+    total: t.totaal,
+    intern: r2(d.schadeherstel.intern + d.werkplaats.intern + d.poets.intern),
+    extern: r2(d.schadeherstel.extern + d.werkplaats.extern + d.poets.extern),
+    schade: t.schadeherstel, werkplaats: t.werkplaats, poets: t.poets,
+    poetsOpen: { count: po.count, bedrag: po.bedrag },
+  };
+}
 
 /** Interne poetsbeurt: € 100,00 incl. btw per auto (= € 82,64 ex btw). */
 export const POETS_PRICE_INCL = 100;
-export const POETS_PRICE_EXCL = 82.64;
+export { POETS_PRICE_EXCL };
 
 export interface PoetsStats {
-  internCars: number; externCars: number; unknownCars: number;
-  revenueExcl: number; revenueIncl: number; minutesAvg: number;
+  internCars: number; externCars: number; unknownCars: number; minutesAvg: number;
 }
-
-/**
- * Poets-omzet komt uit de afgemelde poetsbeurten van INTERNE poetsers,
- * exact dezelfde bron/berekening als /rapportages/poetsen. Externe beurten
- * leveren ons geen omzet op en tellen alleen als aantal.
- */
+/** Aantallen poetsbeurten (omzet komt uit omzet_regels + "nog op maandfactuur"). */
 export function poetsStatsDirectie(raw: DirectieRaw, orders: WorkOrderRow[]): PoetsStats {
   const typeOf = (id: string | null): "intern" | "extern" | "onbekend" => {
     if (!id) return "onbekend";
@@ -211,49 +188,28 @@ export function poetsStatsDirectie(raw: DirectieRaw, orders: WorkOrderRow[]): Po
     return p.poetser_type === "extern" ? "extern" : "intern";
   };
   const done = orders.filter(o => o.discipline === "poets" && !!approvedAtOf(o));
-  const internCars = done.filter(o => typeOf(o.assigned_to) === "intern").length;
-  const externCars = done.filter(o => typeOf(o.assigned_to) === "extern").length;
-  const unknownCars = done.filter(o => typeOf(o.assigned_to) === "onbekend").length;
   const seconds = done.reduce((a, o) => a + Number(o.work_seconds || 0), 0);
   return {
-    internCars, externCars, unknownCars,
-    revenueExcl: Math.round(internCars * POETS_PRICE_EXCL * 100) / 100,
-    revenueIncl: internCars * POETS_PRICE_INCL,
+    internCars: done.filter(o => typeOf(o.assigned_to) === "intern").length,
+    externCars: done.filter(o => typeOf(o.assigned_to) === "extern").length,
+    unknownCars: done.filter(o => typeOf(o.assigned_to) === "onbekend").length,
     minutesAvg: done.length ? seconds / 60 / done.length : 0,
   };
 }
 
-/** Poets als "tak": omzet is altijd intern (onze eigen poetsers). */
-export function poetsBranchStats(raw: DirectieRaw, orders: WorkOrderRow[]): BranchStats {
-  const p = poetsStatsDirectie(raw, orders);
-  const count = p.internCars + p.externCars + p.unknownCars;
-  return {
-    internal: p.revenueExcl,
-    external: 0,
-    count,
-    avg: count ? p.revenueExcl / count : 0,
-  };
-}
-
-export function monthlyTrend(invoices6m: InvoiceRow[], raw?: DirectieRaw) {
-  const out: { month: string; intern: number; extern: number; poets: number }[] = [];
+export function monthlyTrend(raw: DirectieRaw) {
+  const out: { month: string; schade: number; werkplaats: number; poets: number; poetsOpen: number }[] = [];
   const now = new Date();
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-    const rows = sent(invoices6m).filter(r => {
-      const t = new Date(r.created_at);
-      return t >= d && t < next;
-    });
-    const poetsOrders = raw ? approvedInRange(raw.ordersHist, d, next) : [];
+    const t = takTotals(regelsIn(raw, d, next));
     out.push({
       month: d.toLocaleDateString("nl-NL", { month: "short" }),
-      intern: sum(rows.filter(r => r.invoice_kind === "intern")),
-      extern: sum(rows.filter(r => r.invoice_kind !== "intern")),
-      poets: raw ? poetsStatsDirectie(raw, poetsOrders).revenueExcl : 0,
+      schade: t.schadeherstel, werkplaats: t.werkplaats, poets: t.poets,
+      poetsOpen: poetsNogOpMaandfactuur(raw.bron, dayStr(d), dayStr(next)).bedrag,
     });
   }
-
   return out;
 }
 
@@ -261,48 +217,39 @@ export interface EmployeeKpi {
   id: string; name: string; done: number; hours: number; revenue: number;
   perHour: number; rejects: number; rejectPct: number; avgMinutes: number;
 }
+export const NIET_TOEGEWEZEN = "__niet_toegewezen";
 
+/** Omzet per medewerker uit omzet_regels (som + niet toegewezen = totaal); uren = fairSeconds. */
 export function employeeKpis(raw: DirectieRaw): EmployeeKpi[] {
   const nameOf = (id: string) => {
     const p = raw.profiles.find(x => x.id === id);
     return p ? `${p.first_name || ""} ${p.last_name || ""}`.trim() || "Onbekend" : "Onbekend";
   };
-  const revenueByOrder = new Map<string, number>();
-  sent(raw.invoices).forEach(inv => {
-    const ids: string[] = Array.isArray(inv.source_work_order_ids) ? inv.source_work_order_ids : (inv.work_order_id ? [inv.work_order_id] : []);
-    if (!ids.length) return;
-    const per = Number(inv.subtotal || 0) / ids.length;
-    ids.forEach(id => revenueByOrder.set(id, (revenueByOrder.get(id) || 0) + per));
-  });
-
-  // Poetsbeurten van interne poetsers: vaste prijs per auto, geen factuur per order.
-  raw.orders.forEach(o => {
-    if (o.discipline !== "poets" || !o.assigned_to || !approvedAtOf(o)) return;
-    const p = raw.profiles.find(x => x.id === o.assigned_to);
-    if (!p || p.poetser_type === "extern") return;
-    revenueByOrder.set(o.id, (revenueByOrder.get(o.id) || 0) + POETS_PRICE_EXCL);
-  });
-
+  const rev = byEmployee(regelsIn(raw, raw.from, raw.to));
   const map = new Map<string, EmployeeKpi>();
+  const ensure = (id: string, name: string) => {
+    if (!map.has(id)) map.set(id, { id, name, done: 0, hours: 0, revenue: 0, perHour: 0, rejects: 0, rejectPct: 0, avgMinutes: 0 });
+    return map.get(id)!;
+  };
+  const byPerson = new Map<string, WorkOrderRow[]>();
   raw.orders.filter(o => o.assigned_to).forEach(o => {
-    const id = o.assigned_to as string;
-    if (!map.has(id)) map.set(id, { id, name: nameOf(id), done: 0, hours: 0, revenue: 0, perHour: 0, rejects: 0, rejectPct: 0, avgMinutes: 0 });
-    const e = map.get(id)!;
-    if (approvedAtOf(o)) {
-      e.done += 1;
-      e.hours += Number(o.work_seconds || 0) / 3600;
-    }
-
+    const e = ensure(o.assigned_to as string, nameOf(o.assigned_to as string));
+    e.done += 1;
     e.rejects += Number(o.rejected_count || 0);
-    e.revenue += revenueByOrder.get(o.id) || 0;
+    byPerson.set(e.id, [...(byPerson.get(e.id) || []), o]);
   });
-
-  return Array.from(map.values()).map(e => ({
-    ...e,
-    perHour: e.hours > 0 ? e.revenue / e.hours : 0,
-    rejectPct: e.done > 0 ? (e.rejects / e.done) * 100 : 0,
-    avgMinutes: e.done > 0 ? (e.hours * 60) / e.done : 0,
-  })).sort((a, b) => b.revenue - a.revenue);
+  rev.forEach((v, id) => { ensure(id || NIET_TOEGEWEZEN, id ? nameOf(id) : "Niet toegewezen").revenue += v; });
+  return Array.from(map.values()).map(e => {
+    const hours = fairSeconds((byPerson.get(e.id) || []) as any) / 3600;
+    // uitdeuken levert geen omzet op → niet in omzet/uur
+    const revHours = fairSeconds((byPerson.get(e.id) || []).filter(o => o.discipline !== "uitdeuk") as any) / 3600;
+    return {
+      ...e, hours, revenue: Math.round(e.revenue * 100) / 100,
+      perHour: revHours > 0 ? e.revenue / revHours : 0,
+      rejectPct: e.done > 0 ? (e.rejects / e.done) * 100 : 0,
+      avgMinutes: e.done > 0 ? (hours * 60) / e.done : 0,
+    };
+  }).sort((a, b) => b.revenue - a.revenue);
 }
 
 export function flowStats(raw: DirectieRaw) {
@@ -366,19 +313,14 @@ export function warrantyStats(raw: DirectieRaw) {
   return { total: raw.claims.length, open, inProgress, done, amount, avgDays, loanCarsOut: raw.loanCarsOut };
 }
 
-/** Indicatief onderhanden werk: goedgekeurde nog niet gefactureerde + lopende interne orders x tarief. */
+/**
+ * Onderhanden werk / nog te factureren — alleen schatting, NOOIT bij omzet opgeteld.
+ * - interne spuit/werkplaats-orders goedgekeurd zonder interne factuur → € 300 per deel;
+ * - goedgekeurde externe orders zonder gekoppelde factuur → aantal + lijst, geen bedrag.
+ */
 export function wipEstimate(raw: DirectieRaw) {
-  const invoiced = new Set<string>();
-  raw.invoices6m.forEach(i => {
-    if (i.work_order_id) invoiced.add(i.work_order_id);
-    if (Array.isArray(i.source_work_order_ids)) i.source_work_order_ids.forEach((x: string) => invoiced.add(x));
-  });
-  const TARIFF = 300;
-  const candidates = raw.orders.concat(raw.ordersOpen)
-    .filter(o => (o.origin || "intern") === "intern" && ["werkplaats", "spuit"].includes(o.discipline || ""))
-    .filter(o => !invoiced.has(o.id));
-  const unique = new Map(candidates.map(o => [o.id, o]));
-  return unique.size * TARIFF;
+  const intern = raw.ordersHist.reduce((a, o) => a + pendingInvoiceAmount(o as any, raw.bron.links as any), 0);
+  return { internBedrag: intern, externZonderFactuur: raw.bron.externZonderFactuur };
 }
 
 export function toCsv(rows: Record<string, any>[]): string {

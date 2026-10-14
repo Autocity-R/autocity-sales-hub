@@ -11,6 +11,8 @@ import { toast } from "@/hooks/use-toast";
 import WorkshopInvoiceDialog from "@/components/werkplaats/WorkshopInvoiceDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { featureAccess } from "@/lib/routeAccess";
+import { fetchAllPages } from "@/lib/fetchAllPages";
+import { countsAsRevenue, nlDate } from "@/lib/omzet";
 import { buildHaystack, matchesSearch, amountTokens } from "@/lib/searchNormalize";
 import {
   eur, getInvoiceSignedUrl, getInvoicePdfBase64, queueInvoiceEmail, InvoiceDraft,
@@ -22,6 +24,7 @@ interface InvoiceRow {
   customer: any; vehicle: any; lines: any; total: number; pdf_path: string | null; branch: string | null;
   work_order_id: string | null; invoice_kind: string | null; subtotal: number | null;
   payment_status: string | null;
+  omzet_datum: string | null; telt_niet_mee: boolean | null; tak: string | null;
 }
 
 const WerkplaatsFacturen: React.FC = () => {
@@ -37,13 +40,17 @@ const WerkplaatsFacturen: React.FC = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await (supabase as any)
-      .from("workshop_invoices")
-      .select("id, invoice_number, created_at, status, customer, vehicle, lines, total, subtotal, pdf_path, branch, work_order_id, invoice_kind, payment_status")
-      .order("created_at", { ascending: false })
-      .limit(300);
-    if (error) toast({ title: "Fout", description: error.message, variant: "destructive" });
-    setRows((data as any) || []);
+    try {
+      const data = await fetchAllPages<InvoiceRow>((a, b) => (supabase as any)
+        .from("workshop_invoices")
+        .select("id, invoice_number, created_at, status, customer, vehicle, lines, total, subtotal, pdf_path, branch, work_order_id, invoice_kind, payment_status, omzet_datum, telt_niet_mee, tak")
+        .order("created_at", { ascending: false })
+        .range(a, b));
+      setRows(data);
+    } catch (error: any) {
+      toast({ title: "Fout", description: error.message, variant: "destructive" });
+      setRows([]);
+    }
     setLoading(false);
   };
   useEffect(() => {
@@ -84,16 +91,18 @@ const WerkplaatsFacturen: React.FC = () => {
     });
   }, [rows, q, tab]);
 
+  // Maandtotalen op omzetdatum (NL) met dezelfde telregel als alle omzetschermen
   const monthTotals = useMemo(() => {
-    const now = new Date();
-    const inMonth = (d: string) => {
-      const dt = new Date(d);
-      return dt.getMonth() === now.getMonth() && dt.getFullYear() === now.getFullYear();
+    const month = nlDate(new Date()).slice(0, 7);
+    const inMonth = (r: InvoiceRow) => (r.omzet_datum || nlDate(r.created_at)).slice(0, 7) === month;
+    const counted = rows.filter((r) => inMonth(r) && countsAsRevenue(r));
+    const sum = (xs: InvoiceRow[]) => xs.reduce((s, r) => s + (Number(r.subtotal) || 0), 0);
+    return {
+      intern: sum(counted.filter((r) => r.invoice_kind === "intern")),
+      extern: sum(counted.filter((r) => !["intern", "poets_intern"].includes(r.invoice_kind || ""))),
+      poets: sum(counted.filter((r) => r.invoice_kind === "poets_intern")),
+      concepten: rows.filter((r) => r.status === "concept" && !["intern", "poets_intern"].includes(r.invoice_kind || "") && !r.telt_niet_mee),
     };
-    const sum = (kind: string) => rows
-      .filter((r) => inMonth(r.created_at) && (r.invoice_kind === "intern" ? "intern" : "extern") === kind)
-      .reduce((s, r) => s + (Number(r.subtotal) || 0), 0);
-    return { intern: sum("intern"), extern: sum("extern") };
   }, [rows]);
 
   const openPdf = async (r: InvoiceRow) => {
@@ -145,16 +154,20 @@ const WerkplaatsFacturen: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-              <div className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">Intern deze maand (excl. btw)</div>
-              <div className="text-lg font-semibold tabular-nums text-slate-900">{eur(monthTotals.intern)}</div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          {[
+            { label: "Intern deze maand (excl. btw)", v: eur(monthTotals.intern) },
+            { label: "Extern deze maand (excl. btw)", v: eur(monthTotals.extern) },
+            { label: "Poets deze maand (excl. btw)", v: eur(monthTotals.poets) },
+            { label: "Handmatige concepten (tellen niet mee)", v: `${monthTotals.concepten.length} · ${eur(monthTotals.concepten.reduce((s, r) => s + (Number(r.subtotal) || 0), 0))}` },
+          ].map((x) => (
+            <div key={x.label} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">{x.label}</div>
+              <div className="text-lg font-semibold tabular-nums text-slate-900">{x.v}</div>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-              <div className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">Extern deze maand (excl. btw)</div>
-              <div className="text-lg font-semibold tabular-nums text-slate-900">{eur(monthTotals.extern)}</div>
-            </div>
+          ))}
         </div>
+        <p className="-mt-2 mb-4 text-[11px] text-slate-500">Geteld op omzetdatum: interne facturen op de goedkeuringsdag, poets op de werkdag van de beurten, overige op factuurdatum.</p>
 
         <AsCard>
           <AsCardHead

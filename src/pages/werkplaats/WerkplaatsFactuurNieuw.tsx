@@ -1,3 +1,4 @@
+import { fetchExternOrdersZonderFactuur, rankOrderSuggestions, type ExternOpenOrder } from "@/services/omzetService";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -252,6 +253,9 @@ const WerkplaatsFactuurNieuw: React.FC = () => {
   const [panelMerk, setPanelMerk] = useState("");
   const [panelModel, setPanelModel] = useState("");
 
+  const [tak, setTak] = useState<"werkplaats" | "schadeherstel" | null>(null);
+  const [linkOrder, setLinkOrder] = useState<ExternOpenOrder | null>(null);
+  const [openOrders, setOpenOrders] = useState<ExternOpenOrder[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<{ id: string; invoiceNumber: string; pdfPath: string; total: number } | null>(null);
   const [mailCustomer, setMailCustomer] = useState(true);
@@ -465,13 +469,28 @@ const WerkplaatsFactuurNieuw: React.FC = () => {
     branch: userBranch,
   }), [customer, vehicle, invoiceLines, userBranch]);
 
+  // Goedgekeurde externe werkorders zonder factuur (alleen lezen), voor "Koppel aan werkorder"
+  useEffect(() => { fetchExternOrdersZonderFactuur().then(setOpenOrders).catch(() => setOpenOrders([])); }, []);
+  const orderSuggestions = useMemo(
+    () => rankOrderSuggestions(openOrders, vehicle.license_number, customer.name),
+    [openOrders, vehicle.license_number, customer.name],
+  );
+  const pickOrder = (o: ExternOpenOrder | null) => {
+    setLinkOrder(o);
+    if (o) {
+      setTak(o.discipline === "spuit" ? "schadeherstel" : "werkplaats");
+      if (o.vehicle_id) setVehicleId(o.vehicle_id);
+    }
+  };
+
   const errors = useMemo(() => {
     const e: string[] = [];
+    if (!tak) e.push("Kies de tak (Werkplaats of Schadeherstel).");
     if (!customer.name.trim()) e.push("Vul een klantnaam in.");
     if (!invoiceLines.some((l) => l.description.trim() || l.amount)) e.push("Voeg minimaal één factuurregel toe.");
     if (lines.some((l) => !l.description.trim())) e.push("Elke factuurregel heeft een omschrijving nodig.");
     return e;
-  }, [customer.name, invoiceLines, lines]);
+  }, [customer.name, invoiceLines, lines, tak]);
 
   const save = async () => {
     if (errors.length) {
@@ -486,8 +505,10 @@ const WerkplaatsFactuurNieuw: React.FC = () => {
         customer,
         vehicle,
         lines: invoiceLines,
-        branch: userBranch || "rotterdam",
-        vehicle_id: vehicleId,
+        branch: linkOrder?.branch || userBranch || "rotterdam",
+        vehicle_id: linkOrder?.vehicle_id || vehicleId,
+        tak,
+        work_order_id: linkOrder?.id ?? null,
         parts_order_ids: usedPartIds,
       });
       setSaved(res);
@@ -597,6 +618,31 @@ const WerkplaatsFactuurNieuw: React.FC = () => {
                   Intern (tussen BV's)
                 </Button>
               </div>
+
+              <Section icon={<Search className="h-3.5 w-3.5" />} title="Tak en werkorder">
+                <div className="flex flex-wrap items-center gap-2" data-testid="tak-keuze">
+                  <span className={`text-[12px] font-semibold ${showErrors && !tak ? "text-red-600" : "text-slate-700"}`}>Tak *</span>
+                  <Button type="button" size="sm" variant={tak === "werkplaats" ? "default" : "outline"} onClick={() => setTak("werkplaats")}>Werkplaats</Button>
+                  <Button type="button" size="sm" variant={tak === "schadeherstel" ? "default" : "outline"} onClick={() => setTak("schadeherstel")}>Schadeherstel</Button>
+                </div>
+                <div className="mt-2.5 text-[12px] text-slate-600">Koppel aan werkorder (optioneel) — goedgekeurde externe orders zonder factuur:</div>
+                {linkOrder ? (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12.5px]">
+                    <b>{linkOrder.kenteken || "—"}</b><span>{linkOrder.klant || "—"}</span><span>{linkOrder.discipline === "spuit" ? "Schadeherstel" : "Werkplaats"}</span>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => pickOrder(null)}>Ontkoppelen</Button>
+                  </div>
+                ) : orderSuggestions.length === 0 ? (
+                  <div className="mt-1 text-[12px] text-slate-400">Geen openstaande externe werkorders.</div>
+                ) : (
+                  <div className="mt-1.5 rounded-md border border-slate-200 divide-y" data-testid="koppel-suggesties">
+                    {orderSuggestions.slice(0, 5).map((o) => (
+                      <button type="button" key={o.id} onClick={() => pickOrder(o)} className="w-full text-left px-3 py-2 text-[12.5px] hover:bg-slate-50">
+                        {o.match && <span className="mr-1 text-emerald-700">★</span>}{o.kenteken || "—"} · {o.klant || "—"} · {o.discipline === "spuit" ? "Schadeherstel" : "Werkplaats"}{o.approved_at ? ` · goedgekeurd ${new Date(o.approved_at).toLocaleDateString("nl-NL")}` : ""}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </Section>
 
               <Section icon={<Search className="h-3.5 w-3.5" />} title="Klant">
                 <div className="flex gap-2 mb-2.5">

@@ -5,10 +5,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { AsPill } from "@/components/aftersales/ui";
 import { RapportagesShell, useRapportageFilters, Block, eur, num, NoData } from "@/components/rapportages/RapportagesShell";
 import { useRapportageData } from "@/hooks/useRapportageData";
-import { employeeRows, employeeOrders, downloadCsv, revenueByOrder, doneInPeriod, type EmployeeRow } from "@/services/rapportageService";
+import { employeeRows, employeeOrders, downloadCsv, revenueByOrder, doneInPeriod, performanceAansluiting, type EmployeeRow } from "@/services/rapportageService";
 import { groupOrders, suspiciousTimer, fairSeconds, pendingInvoiceAmount } from "@/lib/performanceGroups";
 import { PerformanceGroupCards } from "@/components/rapportages/PerformanceGroups";
 import { cn } from "@/lib/utils";
+import { eur2 } from "@/components/rapportages/OmzetControle";
 
 type PerformanceRow = EmployeeRow & { pendingRevenue: number };
 type SortKey = keyof Pick<PerformanceRow, "name" | "revenue" | "pendingRevenue" | "hours" | "perHour" | "tasks" | "parts">;
@@ -40,7 +41,8 @@ const RapportagePerformance: React.FC = () => {
 
   const detail = React.useMemo(() => (raw && selected ? employeeOrders(raw, selected.id) : []), [raw, selected]);
   const groups = React.useMemo(() => groupOrders(detail), [detail]);
-  const revenue = React.useMemo(() => (raw ? revenueByOrder(raw, raw.invoices6m) : new Map<string, number>()), [raw]);
+  const revenue = React.useMemo(() => (raw ? revenueByOrder(raw) : new Map<string, number>()), [raw]);
+  const aans = React.useMemo(() => (raw ? performanceAansluiting(raw) : null), [raw]);
   const periodStats = React.useMemo(() => {
     if (!raw) return null;
     const done = detail.filter(o => doneInPeriod(o, raw.from, raw.to));
@@ -65,14 +67,14 @@ const RapportagePerformance: React.FC = () => {
   );
 
   return (
-    <RapportagesShell title="Performance medewerkers" subtitle="Monteurs en schadeherstellers — poetsen is extern en staat hier niet in.">
+    <RapportagesShell title="Performance medewerkers" subtitle="Monteurs, schadeherstellers en uitdeuken (uitdeuken: alleen uren en aantallen, geen omzet). Poetsen staat als één regel onderaan.">
       {isLoading || !raw ? (
         <Skeleton className="h-64 w-full" />
       ) : (
         <Block
           title="Per medewerker"
           icon={<Users className="h-4 w-4 text-blue-600" />}
-          sub="omzet toegerekend via factuurregels van de eigen orders"
+          sub="omzet (excl. btw) toegerekend vanuit de facturen op omzetdatum — telt op tot het maandtotaal"
           onExport={() => downloadCsv(`performance-${rangeSlug}.csv`, sorted.map(r => ({
              medewerker: r.name, disciplines: r.disciplines.join("/"), gefactureerd: Math.round(r.revenue), nog_te_factureren: Math.round(r.pendingRevenue),
             uren: num(r.hours, 1), omzet_per_uur: Math.round(r.perHour), taken: r.tasks, delen: r.parts,
@@ -101,7 +103,7 @@ const RapportagePerformance: React.FC = () => {
                         <div className="text-[13px] font-semibold text-slate-900">{r.name}</div>
                         <div className="mt-0.5 flex gap-1">
                           {r.disciplines.map(d => (
-                            <AsPill key={d} tone={d === "spuit" ? "pink" : "blue"}>{d === "spuit" ? "Schadeherstel" : "Werkplaats"}</AsPill>
+                            <AsPill key={d} tone={d === "spuit" ? "pink" : d === "uitdeuk" ? "slate" : "blue"}>{d === "spuit" ? "Schadeherstel" : d === "uitdeuk" ? "Uitdeuken" : "Werkplaats"}</AsPill>
                           ))}
                         </div>
                       </td>
@@ -114,6 +116,13 @@ const RapportagePerformance: React.FC = () => {
                     </tr>
                   ))}
                 </tbody>
+                {aans && (
+                  <tfoot className="text-[12.5px]" data-testid="perf-aansluiting">
+                    <tr className="border-t border-slate-200 text-slate-600"><td className="px-3 py-2">Niet toegewezen (factuur zonder uitvoerder)</td><td className="px-3 py-2 text-right tabular-nums">{eur2(aans.nietToegewezen)}</td><td colSpan={5} /></tr>
+                    <tr className="text-slate-600"><td className="px-3 py-2">Poetsen (maandfactuur)</td><td className="px-3 py-2 text-right tabular-nums">{eur2(aans.poets)}</td><td colSpan={5} /></tr>
+                    <tr className="border-t border-slate-300 font-bold text-slate-900"><td className="px-3 py-2">Totaal = maandtotaal omzet {aans.sluit ? "✓" : "✗"}</td><td className="px-3 py-2 text-right tabular-nums" data-testid="perf-totaal">{eur2(aans.medewerkers + aans.nietToegewezen + aans.poets)}</td><td colSpan={5} className="px-3 py-2 text-[11px] font-normal text-slate-500">medewerkers {eur2(aans.medewerkers)} · facturen {eur2(aans.totaal)}</td></tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           )}

@@ -17,11 +17,13 @@ import {
   type WorkOrderDiscipline, type WorkOrderStatus,
 } from "@/components/werkplaats/workOrderTypes";
 import {
-  fetchDirectieRaw, buildRange, sent, sum, delta, hoursOf, branchStats, monthlyTrend,
-  employeeKpis, flowStats, warrantyStats, wipEstimate, downloadCsv,
-  poetsStatsDirectie, poetsBranchStats,
+  fetchDirectieRaw, buildRange, delta, hoursOf, branchStats, monthlyTrend, kernCijfers,
+  employeeKpis, flowStats, warrantyStats, wipEstimate, downloadCsv, NIET_TOEGEWEZEN,
+  poetsStatsDirectie,
   type DirectiePeriod, type DirectieBranch, type EmployeeKpi,
 } from "@/services/directieService";
+import { OmzetControle, eur2 } from "@/components/rapportages/OmzetControle";
+import { dayStr } from "@/services/omzetService";
 
 
 const eur = (n: number) =>
@@ -101,25 +103,19 @@ const DirectieDashboard: React.FC = () => {
 
   const m = React.useMemo(() => {
     if (!raw) return null;
-    const cur = sent(raw.invoices);
-    const prev = sent(raw.invoicesPrev);
+    const k = kernCijfers(raw, raw.from, raw.to);
+    const kp = kernCijfers(raw, raw.prevFrom, raw.prevTo);
     const poets = poetsStatsDirectie(raw, raw.orders);
-    const poetsPrev = poetsStatsDirectie(raw, raw.ordersPrev);
-    const total = sum(cur) + poets.revenueExcl, totalPrev = sum(prev) + poetsPrev.revenueExcl;
-    const intern = sum(cur.filter(i => i.invoice_kind === "intern")) + poets.revenueExcl;
-    const internPrev = sum(prev.filter(i => i.invoice_kind === "intern")) + poetsPrev.revenueExcl;
-    const extern = sum(cur.filter(i => i.invoice_kind !== "intern"));
-    const externPrev = sum(prev.filter(i => i.invoice_kind !== "intern"));
     const hours = hoursOf(raw.orders), hoursPrev = hoursOf(raw.ordersPrev);
     return {
-      total, intern, extern, hours, poets, poetsPrev,
-      dTotal: delta(total, totalPrev), dIntern: delta(intern, internPrev),
-      dExtern: delta(extern, externPrev), dHours: delta(hours, hoursPrev),
-      dPoets: delta(poets.revenueExcl, poetsPrev.revenueExcl),
-      werkplaats: branchStats(raw.invoices, raw.orders, "werkplaats"),
-      schade: branchStats(raw.invoices, raw.orders, "spuit"),
-      poetsTak: poetsBranchStats(raw, raw.orders),
-      trend: monthlyTrend(raw.invoices6m, raw),
+      total: k.total, intern: k.intern, extern: k.extern, hours, poets, k,
+      dTotal: delta(k.total, kp.total), dIntern: delta(k.intern, kp.intern),
+      dExtern: delta(k.extern, kp.extern), dHours: delta(hours, hoursPrev),
+      dPoets: delta(k.poets, kp.poets),
+      werkplaats: branchStats(raw, raw.from, raw.to, "werkplaats"),
+      schade: branchStats(raw, raw.from, raw.to, "schadeherstel"),
+      poetsTak: branchStats(raw, raw.from, raw.to, "poets"),
+      trend: monthlyTrend(raw),
       wip: wipEstimate(raw),
       employees: employeeKpis(raw),
       flow: flowStats(raw),
@@ -182,11 +178,11 @@ const DirectieDashboard: React.FC = () => {
           <div className="space-y-4">
             {/* A. Kerncijfers */}
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-              <Stat label="Totale omzet excl. btw" value={eur(m.total)} pct={m.dTotal} sub="incl. poetsen" />
-              <Stat label="Omzet intern" value={eur(m.intern)} pct={m.dIntern} />
-              <Stat label="Omzet extern" value={eur(m.extern)} pct={m.dExtern} />
-              <Stat label="Omzet poetsen" value={eur(m.poets.revenueExcl)} pct={m.dPoets} sub={`${m.poets.internCars} auto's`} />
-              <Stat label="Geregistreerde uren" value={`${num(m.hours)} u`} pct={m.dHours} />
+              <Stat label="Totale omzet excl. btw" value={eur2(m.total)} pct={m.dTotal} sub="gefactureerd, op omzetdatum" />
+              <Stat label="Omzet intern" value={eur2(m.intern)} pct={m.dIntern} />
+              <Stat label="Omzet extern" value={eur2(m.extern)} pct={m.dExtern} />
+              <Stat label="Omzet poetsen" value={eur2(m.k.poets)} pct={m.dPoets} sub={m.k.poetsOpen.count ? `+ ${eur2(m.k.poetsOpen.bedrag)} nog op maandfactuur` : "gefactureerd"} />
+              <Stat label="Gewerkte uren" value={`${num(m.hours)} u`} pct={m.dHours} sub="binnen werktijd, overlap 1×" />
             </div>
 
             {/* B. Omzet per tak */}
@@ -225,16 +221,17 @@ const DirectieDashboard: React.FC = () => {
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `€${Math.round(v / 1000)}k`} />
                     <Tooltip formatter={(v: any) => eur(Number(v))} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="intern" name="Intern" fill="#2563eb" radius={[4, 4, 0, 0]} maxBarSize={24} />
-                    <Bar dataKey="extern" name="Extern" fill="#059669" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                    <Bar dataKey="schade" name="Schadeherstel" fill="#db2777" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                    <Bar dataKey="werkplaats" name="Werkplaats" fill="#2563eb" radius={[4, 4, 0, 0]} maxBarSize={24} />
                     <Bar dataKey="poets" name="Poetsen" fill="#7c3aed" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                    <Bar dataKey="poetsOpen" name="Poets nog op maandfactuur" fill="#c4b5fd" radius={[4, 4, 0, 0]} maxBarSize={24} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
               <div className="mt-2 text-[11px] text-slate-500">
-                Onderhanden werk: {eur(m.wip)} indicatief — facturen blijven de harde basis.
-                Poetsen: € 82,64 excl. btw per interne poetsbeurt, geteld op klaarmeldmoment
-                ({m.poets.internCars} intern · {m.poets.externCars} extern{m.poets.unknownCars ? ` · ${m.poets.unknownCars} onbekend` : ""}).
+                Onderhanden werk (schatting, niet in omzet): {eur(m.wip.internBedrag)} interne delen nog te factureren (€ 300 per deel)
+                · {m.wip.externZonderFactuur.length} goedgekeurde externe {m.wip.externZonderFactuur.length === 1 ? "order" : "orders"} zonder factuur.
+                Poetsbeurten: {m.poets.internCars} intern · {m.poets.externCars} extern{m.poets.unknownCars ? ` · ${m.poets.unknownCars} onbekend` : ""}.
               </div>
 
             </Block>
@@ -267,7 +264,7 @@ const DirectieDashboard: React.FC = () => {
                       </thead>
                       <tbody>
                         {m.employees.map(e => (
-                          <tr key={e.id} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => setEmployee(e)}>
+                          <tr key={e.id} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => e.id !== NIET_TOEGEWEZEN && setEmployee(e)}>
                             <td className="py-2 font-medium text-slate-900">
                               {e.id === bestPerHour && <span className="mr-1">🏆</span>}{e.name}
                             </td>
@@ -389,6 +386,7 @@ const DirectieDashboard: React.FC = () => {
               </div>
             </Block>
 
+            <OmzetControle bron={raw!.bron} van={dayStr(raw!.from)} tot={dayStr(raw!.to)} label={`${range.from.toLocaleDateString("nl-NL")} t/m ${new Date(range.to.getTime() - 1).toLocaleDateString("nl-NL")}`} />
           </div>
         )}
 
