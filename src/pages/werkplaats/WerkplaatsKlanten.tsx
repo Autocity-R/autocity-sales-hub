@@ -52,7 +52,7 @@ const WerkplaatsKlanten: React.FC = () => {
   }, [data, q, recency]);
 
   const exportCsv = () => {
-    const head = ["Naam", "E-mail", "Telefoon", "Postcode", "Plaats", "Auto's", "Laatste bezoek", "Bezoeken", "Facturen", "Totaal besteed"];
+    const head = ["Naam", "E-mail", "Telefoon", "Postcode", "Plaats", "Auto's", "Laatste bezoek", "Bezoeken", "Facturen", "Totaal excl. btw", "Totaal incl. btw"];
     const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const lines = [head.map(esc).join(";")];
     filtered.forEach((r) => {
@@ -60,7 +60,7 @@ const WerkplaatsKlanten: React.FC = () => {
         r.name, r.email || "", r.phone || "", r.postalCode || "", r.city || "",
         r.vehicles.map((v) => `${v.plate || "?"} ${v.brand || ""} ${v.model || ""}`.trim()).join(" / "),
         r.lastVisit ? new Date(r.lastVisit).toLocaleDateString("nl-NL") : "",
-        r.visits, r.invoiceCount, (r.totalSpent || 0).toFixed(2).replace(".", ","),
+        r.visits, r.invoiceCount, (r.totalSpent || 0).toFixed(2).replace(".", ","), (r.totalSpentIncl || 0).toFixed(2).replace(".", ","),
       ].map(esc).join(";"));
     });
     const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
@@ -155,6 +155,7 @@ const WerkplaatsKlanten: React.FC = () => {
                   <AsPill tone="slate">{r.visits} bezoek{r.visits === 1 ? "" : "en"}</AsPill>
                   <div className="md:w-[100px] md:text-right text-[13px] font-semibold tabular-nums">
                     {eur(r.totalSpent || 0)}
+                    <div className="text-[10.5px] font-normal text-slate-400">excl. btw · {eur(r.totalSpentIncl || 0)} incl.</div>
                   </div>
                 </div>
               ))}
