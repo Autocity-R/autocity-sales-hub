@@ -5028,6 +5028,42 @@ export type Database = {
           },
         ]
       }
+      website_reservering_log: {
+        Row: {
+          betaling_id: string | null
+          contact_id: string | null
+          created_at: string
+          fout: string | null
+          http_status: number
+          id: string
+          payload: Json | null
+          resultaat: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          betaling_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          fout?: string | null
+          http_status: number
+          id?: string
+          payload?: Json | null
+          resultaat: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          betaling_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          fout?: string | null
+          http_status?: number
+          id?: string
+          payload?: Json | null
+          resultaat?: string
+          vehicle_id?: string | null
+        }
+        Relationships: []
+      }
       weekly_sales: {
         Row: {
           b2b_sales: number
