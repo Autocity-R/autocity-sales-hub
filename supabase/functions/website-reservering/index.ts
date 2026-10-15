@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
       if (uErr) {
         const msg = uErr.message ?? String(uErr);
         const inkoop = msg.includes("purchase_price");
-        return fail(inkoop ? 409 : 500, inkoop ? "al_verkocht" === "" ? "fout" : "fout" : "fout", inkoop ? "inkoopprijs_ontbreekt" : msg, vehicle.id);
+        return fail(inkoop ? 409 : 500, inkoop ? "inkoopprijs_ontbreekt" : "fout", inkoop ? "inkoopprijs_ontbreekt" : msg, vehicle.id);
       }
       return fail(409, "al_verkocht", "al_verkocht", vehicle.id);
     }
