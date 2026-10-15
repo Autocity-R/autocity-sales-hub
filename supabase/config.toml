@@ -128,3 +128,6 @@ verify_jwt = false
 
 [functions.import-status-from-email]
 verify_jwt = false
+
+[functions.website-reservering]
+verify_jwt = false
