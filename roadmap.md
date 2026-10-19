@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Vestiging B2C: 50 verkopen en €200.000 marge inclusief garantie; overige targets behouden (niet publiceren)
+- [x] Vestiging B2C: 50 verkopen en €200.000 marge inclusief garantie; overige targets behouden (niet publiceren)
 
 - [x] Goedkeuren-menu splitsen in Werkplaats en Schadeherstel; Werkplaats zonder terugsturen
 - [x] LMS-koopcontracten tonen in één robuuste PDF-viewer in alle contractschermen
