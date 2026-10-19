@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { B2C_TARGET_DEFAULTS, b2cMarginIncludingWarranty } from '@/lib/b2cTargets';
 import { ReportPeriod } from "@/types/reports";
 import { applyBranchFilter, type BranchFilter } from "@/contexts/BranchContext";
 import {
@@ -118,8 +119,8 @@ class BranchManagerService {
     const periodKey = format(startDate, 'yyyy-MM');
     const targets = await this.getTargets(period, branch);
     
-    const b2cUnitsTarget = targets.find(t => t.target_type === 'b2c_units' && !t.salesperson_id)?.target_value || 40;
-    const b2cRevenueTarget = targets.find(t => t.target_type === 'b2c_revenue' && !t.salesperson_id)?.target_value || 120000;
+    const b2cUnitsTarget = targets.find(t => t.target_type === 'b2c_units' && !t.salesperson_id)?.target_value ?? B2C_TARGET_DEFAULTS.b2c_units;
+    const b2cRevenueTarget = targets.find(t => t.target_type === 'b2c_revenue' && !t.salesperson_id)?.target_value ?? B2C_TARGET_DEFAULTS.b2c_revenue;
     const b2cMarginTarget = targets.find(t => t.target_type === 'b2c_margin_percent' && !t.salesperson_id)?.target_value || 15;
     const upsalesTarget = targets.find(t => t.target_type === 'upsales_revenue' && !t.salesperson_id)?.target_value || 5000;
 
@@ -129,7 +130,7 @@ class BranchManagerService {
     return {
       b2cSalesCount: b2cOnly.length,
       b2cSalesTarget: b2cUnitsTarget,
-      b2cRevenue: totalMargin, // This is actually total margin for B2C
+      b2cRevenue: b2cMarginIncludingWarranty(totalMargin, upsalesRevenue),
       b2cRevenueTarget: b2cRevenueTarget,
       b2cMarginPercent: marginPercent,
       b2cMarginTarget: b2cMarginTarget,
@@ -499,8 +500,8 @@ class BranchManagerService {
       console.error('Error fetching targets:', error);
       // Return default targets
       return [
-        { id: 'default-1', target_type: 'b2c_units', target_period: periodKey, target_value: 40, salesperson_id: null, created_at: '', updated_at: '', created_by: null, notes: null },
-        { id: 'default-2', target_type: 'b2c_revenue', target_period: periodKey, target_value: 120000, salesperson_id: null, created_at: '', updated_at: '', created_by: null, notes: null },
+        { id: 'default-1', target_type: 'b2c_units', target_period: periodKey, target_value: B2C_TARGET_DEFAULTS.b2c_units, salesperson_id: null, created_at: '', updated_at: '', created_by: null, notes: null },
+        { id: 'default-2', target_type: 'b2c_revenue', target_period: periodKey, target_value: B2C_TARGET_DEFAULTS.b2c_revenue, salesperson_id: null, created_at: '', updated_at: '', created_by: null, notes: null },
         { id: 'default-3', target_type: 'b2c_margin_percent', target_period: periodKey, target_value: 15, salesperson_id: null, created_at: '', updated_at: '', created_by: null, notes: null }
       ];
     }
