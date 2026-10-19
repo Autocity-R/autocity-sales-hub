@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Save } from 'lucide-react';
 import { SalesTarget } from '@/types/branchManager';
+import { B2C_TARGET_DEFAULTS } from '@/lib/b2cTargets';
 import { ReportPeriod } from '@/types/reports';
 import { branchManagerService } from '@/services/branchManagerService';
 import { toast } from 'sonner';
@@ -47,15 +48,15 @@ export const TargetsManager: React.FC<TargetsManagerProps> = ({
       !t.salesperson_id &&
       ((t as any).branch ?? 'rotterdam') === forBranch
     );
-    return target?.target_value || getDefaultValue(type);
+    return target?.target_value ?? getDefaultValue(type);
   };
 
   const getDefaultValue = (type: string): number => {
     switch (type) {
-      case 'b2c_units': return 40;
-      case 'b2c_revenue': return 120000;
-      case 'b2c_margin_percent': return 15;
-      case 'upsales_revenue': return 5000;
+      case 'b2c_units': return B2C_TARGET_DEFAULTS.b2c_units;
+      case 'b2c_revenue': return B2C_TARGET_DEFAULTS.b2c_revenue;
+      case 'b2c_margin_percent': return B2C_TARGET_DEFAULTS.b2c_margin_percent;
+      case 'upsales_revenue': return B2C_TARGET_DEFAULTS.upsales_revenue;
       default: return 0;
     }
   };
@@ -173,7 +174,7 @@ export const TargetsManager: React.FC<TargetsManagerProps> = ({
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="b2c_revenue" className="text-right">
-              B2C Marge (€)
+              Marge incl. garantie (€)
             </Label>
             <Input
               id="b2c_revenue"

@@ -55,7 +55,7 @@ export const B2CKPICards: React.FC<B2CKPICardsProps> = ({ kpis, tradeIns, onView
       suffix: `/ ${kpis.b2cSalesTarget}`
     },
     {
-      title: 'Totale B2C Marge',
+      title: 'B2C Marge incl. garantie',
       icon: DollarSign,
       current: kpis.b2cRevenue,
       target: kpis.b2cRevenueTarget,
