@@ -24,7 +24,7 @@ import { branchManagerService } from './branchManagerService';
 describe('B2C dashboard calculation', () => {
   it('uses the new targets and adds warranty once without changing vehicle margin percentage', async () => {
     const kpis = await branchManagerService.getB2CKPIs({
-      startDate: '2026-10-01T00:00:00Z', endDate: '2026-10-31T23:59:59Z', type: 'month',
+      startDate: '2026-10-01T00:00:00Z', endDate: '2026-10-31T23:59:59Z', type: 'month', label: 'Oktober 2026',
     });
     expect(kpis.b2cSalesTarget).toBe(50);
     expect(kpis.b2cRevenueTarget).toBe(200000);
