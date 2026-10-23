@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Aftersales en operationeel directeur: bestaande klantgegevens kunnen aanpassen; rechten testen (niet publiceren)
+
 - [x] Vestiging B2C: 50 verkopen en €200.000 marge inclusief garantie; overige targets behouden (niet publiceren)
 
 - [x] Goedkeuren-menu splitsen in Werkplaats en Schadeherstel; Werkplaats zonder terugsturen
