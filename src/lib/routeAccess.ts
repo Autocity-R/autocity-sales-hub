@@ -162,7 +162,7 @@ export const featureAccess: Record<string, (role: Role) => boolean> = {
   reports: (r) => isAdminRole(r) || r === "manager" || r === "aftersales_manager",
   leads: (r) => isAdminRole(r) || r === "manager" || r === "verkoper",
   customers: (r) =>
-    isAdminRole(r) || r === "manager" || r === "verkoper" || r === "werkplaats_chef" ||
+    isAdminRole(r) || r === "manager" || r === "verkoper" || r === "aftersales_manager" || r === "werkplaats_chef" ||
     r === "operationeel_directeur" || r === "administratie",
   "ai-agents": (r) =>
     isAdminRole(r) || r === "manager" || r === "verkoper" || r === "operationeel" ||

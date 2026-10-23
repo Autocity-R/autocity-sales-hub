@@ -289,6 +289,26 @@ describe("prijschecker + handmatige facturen", () => {
   });
 });
 
+describe("aftersales klantgegevens", () => {
+  it("aftersales_manager heeft toegang tot klanten en klantdetail", () => {
+    expect(featureAccess.customers("aftersales_manager")).toBe(true);
+    expect(canAccessRoute("aftersales_manager", "/customers")).toEqual({ allowed: true });
+    expect(canAccessRoute("aftersales_manager", "/customers/123")).toEqual({ allowed: true });
+  });
+
+  it("operationeel_directeur behoudt klanttoegang", () => {
+    expect(featureAccess.customers("operationeel_directeur")).toBe(true);
+    expect(canAccessRoute("operationeel_directeur", "/customers/123")).toEqual({ allowed: true });
+  });
+
+  it("overige rollen behouden exact hun bestaande klanttoegang", () => {
+    const allowed = ["owner", "admin", "manager", "verkoper", "werkplaats_chef", "administratie"];
+    for (const role of [...allowed, "operationeel", "user", "monteur", "schadeherstel", "poetser", "uitdeuker_extern", null]) {
+      expect(featureAccess.customers(role)).toBe(allowed.includes(role as string));
+    }
+  });
+});
+
 describe("kenteken bewerken", () => {
   it("verkoop, leiding en aftersales mogen het kenteken invullen", () => {
     for (const r of ["owner", "admin", "manager", "verkoper", "aftersales_manager"]) {
