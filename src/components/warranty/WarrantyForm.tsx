@@ -123,6 +123,7 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
     try {
       const claimData = inputMode === "existing" && selectedVehicle ? {
         vehicleId: selectedVehicle.id,
+        branch: selectedVehicle.branch || "rotterdam",
         customerId: selectedVehicle.customerId || "",
         customerName: selectedVehicle.customerName || "Onbekend",
         vehicleBrand: selectedVehicle.brand,

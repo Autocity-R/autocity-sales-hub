@@ -1,6 +1,7 @@
 import { WarrantyClaim, WarrantyStats, LoanCar, ActiveWarrantyVehicle, ActiveWarrantyStats } from "@/types/warranty";
 import { supabase } from "@/integrations/supabase/client";
 import { applyBranchFilter, type BranchFilter } from "@/contexts/BranchContext";
+import { warrantyCustomer } from "@/lib/warrantyCustomer";
 
 // Import from deliveredVehicleService instead
 export { fetchDeliveredVehiclesForWarranty } from "./deliveredVehicleService";
@@ -50,6 +51,7 @@ export const fetchWarrantyClaims = async (branch?: BranchFilter): Promise<Warran
       .from('warranty_claims')
       .select(`
         *,
+        customerContact:contacts!warranty_claims_customer_id_fkey (company_name, first_name, last_name, email, phone),
         vehicles!warranty_claims_vehicle_id_fkey (
           brand,
           model,
@@ -91,14 +93,7 @@ export const fetchWarrantyClaims = async (branch?: BranchFilter): Promise<Warran
     return (data || []).map((claim: any) => ({
       id: claim.id,
       vehicleId: claim.vehicle_id,
-      customerId: claim.vehicles?.customer_id || '',
-      customerName: claim.vehicle_id 
-        ? `${claim.vehicles?.customerContact?.first_name || ''} ${claim.vehicles?.customerContact?.last_name || ''}`.trim()
-        : (claim.manual_customer_name || 'Onbekend'),
-      customerEmail: claim.vehicles?.customerContact?.email,
-      customerPhone: claim.vehicle_id
-        ? claim.vehicles?.customerContact?.phone
-        : claim.manual_customer_phone,
+      ...warrantyCustomer(claim),
       vehicleBrand: claim.vehicle_id
         ? claim.vehicles?.brand || ''
         : (claim.manual_vehicle_brand || ''),
@@ -159,6 +154,8 @@ export const createWarrantyClaim = async (claim: Omit<WarrantyClaim, 'id' | 'cre
       .from('warranty_claims')
       .insert({
         vehicle_id: claim.vehicleId || null,
+        customer_id: claim.customerId || null,
+        branch: claim.branch || undefined,
         description: claim.problemDescription,
         claim_status: claim.status ? mapUiStatusToDb(claim.status as any) : 'pending',
         estimated_amount: claim.estimatedCost,
