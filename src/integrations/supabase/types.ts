@@ -5615,6 +5615,17 @@ export type Database = {
         Args: { _vehicle_id: string }
         Returns: string
       }
+      garantie_werkorder_inplannen: {
+        Args: {
+          p_assigned_to?: string
+          p_claim_id: string
+          p_customer_id?: string
+          p_description: string
+          p_is_rush?: boolean
+          p_planned_at: string
+        }
+        Returns: string
+      }
       generate_poets_monthly_invoice: {
         Args: { p_dry_run?: boolean; p_month?: string }
         Returns: Json

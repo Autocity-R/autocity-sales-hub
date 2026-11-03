@@ -23,6 +23,7 @@ export interface WarrantyClaim {
   id: string;
   vehicleId: string;
   customerId: string;
+  branch?: string;
   customerName: string;
   customerEmail?: string;
   customerPhone?: string;

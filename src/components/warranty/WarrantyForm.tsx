@@ -34,6 +34,7 @@ import { syncWorkOrderToWerkplaatsCalendar } from "@/services/werkplaatsCalendar
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { SearchableVehicleSelector } from "./SearchableVehicleSelector";
+import { SearchableCustomerSelector } from "@/components/customers/SearchableCustomerSelector";
 
 interface WarrantyFormProps {
   onClose: () => void;
@@ -49,6 +50,7 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
   const [manualCustomerName, setManualCustomerName] = useState("");
   const [manualCustomerPhone, setManualCustomerPhone] = useState("");
   const [manualLicenseNumber, setManualLicenseNumber] = useState("");
+  const [manualCustomerId, setManualCustomerId] = useState("");
   
   const [problemDescription, setProblemDescription] = useState("");
   const [priority, setPriority] = useState<string>("normaal");
@@ -121,6 +123,7 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
     try {
       const claimData = inputMode === "existing" && selectedVehicle ? {
         vehicleId: selectedVehicle.id,
+        branch: selectedVehicle.branch || "rotterdam",
         customerId: selectedVehicle.customerId || "",
         customerName: selectedVehicle.customerName || "Onbekend",
         vehicleBrand: selectedVehicle.brand,
@@ -142,7 +145,7 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
       } : {
         // Manual input mode
         vehicleId: null, // No vehicle ID for manual entries
-        customerId: null,
+        customerId: manualCustomerId || null,
         customerName: manualCustomerName,
         customerPhone: manualCustomerPhone || undefined,
         vehicleBrand: manualBrand,
@@ -188,6 +191,7 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
             plannedAt: startTime,
             branch,
             createdBy: userRes.user?.id ?? null,
+            customerId: createdClaim.customerId || manualCustomerId || null,
           });
           syncWorkOrderToWerkplaatsCalendar(woId, branch);
         } catch (e: any) {
@@ -344,6 +348,17 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
                   />
                 </div>
               </div>
+
+              <SearchableCustomerSelector
+                value={manualCustomerId}
+                customerType="customer"
+                label="CRM-klant"
+                onValueChange={(id, customer) => {
+                  setManualCustomerId(id);
+                  setManualCustomerName(customer.companyName || `${customer.firstName} ${customer.lastName}`.trim());
+                  setManualCustomerPhone(customer.phone || "");
+                }}
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
