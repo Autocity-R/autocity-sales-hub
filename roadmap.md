@@ -1,6 +1,7 @@
 # Roadmap
 
-- [ ] Garantieclaim HKN-61-B: oorzaak mislukte werkplaatsplanning bij later toegevoegde klant herstellen en testen (niet publiceren)
+- [x] Garantieclaim HKN-61-B: ontbrekende autokoppeling hersteld voor handmatige claims; CRM-keuze, atomische planning, 6 tests en SQL-rolproef geslaagd; testdata volledig teruggedraaid (niet gepubliceerd)
+- [ ] Garantieplanning ingelogd klikken: niet beschikbaar bij externe Supabase; HKN-61-B niet daadwerkelijk ingepland zonder gekozen datum/klant
 
 - [x] Aftersales en operationeel directeur: bestaande B2B/B2C-klantgegevens aanpassen; 216 roltests geslaagd, beleid bevestigd (niet gepubliceerd)
 - [ ] Klantrechten: SQL-praktijktest wacht op toestemming (test afgewezen); ingelogde kliktest niet beschikbaar bij externe Supabase
