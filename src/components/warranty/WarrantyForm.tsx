@@ -349,6 +349,17 @@ export const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose }) => {
                 </div>
               </div>
 
+              <SearchableCustomerSelector
+                value={manualCustomerId}
+                customerType="customer"
+                label="CRM-klant"
+                onValueChange={(id, customer) => {
+                  setManualCustomerId(id);
+                  setManualCustomerName(customer.companyName || `${customer.firstName} ${customer.lastName}`.trim());
+                  setManualCustomerPhone(customer.phone || "");
+                }}
+              />
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="manualCustomerName">Klantnaam *</Label>
