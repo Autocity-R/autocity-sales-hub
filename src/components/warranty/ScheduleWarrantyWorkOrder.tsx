@@ -15,11 +15,15 @@ import { cn } from "@/lib/utils";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { AsLicensePlate } from "@/components/aftersales/ui";
 import { syncWorkOrderToWerkplaatsCalendar } from "@/services/werkplaatsCalendarService";
+import { createWarrantyWorkOrder } from "@/services/warrantyPlanningService";
+import { SearchableCustomerSelector } from "@/components/customers/SearchableCustomerSelector";
+export { createWarrantyWorkOrder } from "@/services/warrantyPlanningService";
 
 interface ClaimRow {
   id: string;
   description: string | null;
   vehicle_id: string | null;
+  customer_id: string | null;
   branch: string | null;
   loan_car_id: string | null;
   manual_license_number: string | null;
@@ -53,35 +57,6 @@ export async function fetchLinkedWorkOrder(claimId: string): Promise<LinkedWorkO
 
 
 /** Maakt de werkplaats-order (de reparatieafspraak) voor een garantieclaim aan. Geeft het id terug. */
-export async function createWarrantyWorkOrder(p: {
-  claimId: string; vehicleId: string | null; description: string; plannedAt: Date;
-  assignedTo?: string | null; isRush?: boolean; branch: string; createdBy: string | null;
-}): Promise<string> {
-  const isRush = !!p.isRush;
-  const { data: bounds } = await supabase.from("work_orders")
-    .select("sort_order").eq("discipline", "werkplaats")
-    .in("status", ["ingepland", "bezig", "gepauzeerd"])
-    .order("sort_order", { ascending: isRush }).limit(1);
-  const base = ((bounds as any)?.[0]?.sort_order ?? 0);
-  const { data: created, error } = await supabase.from("work_orders").insert({
-    vehicle_id: p.vehicleId,
-    discipline: "werkplaats",
-    description: p.description.trim(),
-    status: "ingepland",
-    sort_order: isRush ? base - 10 : base + 10,
-    source: "garantie",
-    origin: "intern",
-    warranty_claim_id: p.claimId,
-    planned_at: p.plannedAt.toISOString(),
-    assigned_to: p.assignedTo || null,
-    is_rush: isRush,
-    branch: p.branch,
-    created_by: p.createdBy,
-  } as any).select("id").single();
-  if (error) throw error;
-  return (created as any).id;
-}
-
 const toLocalInput = (iso: string | null) =>
   iso ? format(new Date(iso), "yyyy-MM-dd'T'HH:mm") : "";
 
@@ -103,18 +78,28 @@ export const ScheduleWarrantyDialog: React.FC<{
   const [isRush, setIsRush] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [customerId, setCustomerId] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setLoading(true);
+    setLoadError("");
+    setClaim(null);
     (async () => {
-      const { data: c } = await supabase
+      const { data: c, error: claimError } = await supabase
         .from("warranty_claims")
-        .select("id, description, vehicle_id, branch, loan_car_id, manual_license_number, manual_vehicle_brand, manual_vehicle_model, manual_customer_name, vehicles:vehicle_id(id, brand, model, license_number, year, branch)")
+        .select("id, description, vehicle_id, customer_id, branch, loan_car_id, manual_license_number, manual_vehicle_brand, manual_vehicle_model, manual_customer_name, vehicles:vehicle_id(id, brand, model, license_number, year, branch)")
         .eq("id", claimId)
         .maybeSingle();
+      if (claimError || !c) {
+        setLoadError(claimError?.message || "Garantieclaim niet beschikbaar");
+        setLoading(false);
+        return;
+      }
       const row = (c as any as ClaimRow) || null;
       setClaim(row);
+      setCustomerId(row?.customer_id || "");
       setDescription(existing?.description ?? row?.description ?? "");
       setPlannedAt(toLocalInput(existing?.planned_at ?? null));
       setAssignedTo(existing?.assigned_to ?? "");
@@ -157,6 +142,7 @@ export const ScheduleWarrantyDialog: React.FC<{
   const branch = claim?.branch || claim?.vehicles?.branch || "rotterdam";
 
   const submit = async () => {
+    if (!claim) { toast({ title: "Garantieclaim niet geladen", variant: "destructive" }); return; }
     if (!plannedAt) { toast({ title: "Datum & tijd verplicht", variant: "destructive" }); return; }
     if (!description.trim()) { toast({ title: "Werkzaamheden verplicht", variant: "destructive" }); return; }
     setSaving(true);
@@ -176,6 +162,7 @@ export const ScheduleWarrantyDialog: React.FC<{
         workOrderId = await createWarrantyWorkOrder({
           claimId, vehicleId: claim?.vehicle_id || null, description, plannedAt: new Date(plannedAt),
           assignedTo: assignedTo || null, isRush, branch, createdBy: userRes.user?.id ?? null,
+          customerId: customerId || null,
         });
       }
 
@@ -205,6 +192,8 @@ export const ScheduleWarrantyDialog: React.FC<{
           <div className="py-10 text-center text-slate-400 text-sm">
             <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" /> Laden…
           </div>
+        ) : loadError ? (
+          <p role="alert" className="text-destructive">{loadError}</p>
         ) : (
           <div className="space-y-4">
             {/* Voertuigblok (read-only) */}
@@ -223,6 +212,15 @@ export const ScheduleWarrantyDialog: React.FC<{
                 </div>
               )}
             </div>
+
+            {!existing && (
+              <SearchableCustomerSelector
+                value={customerId}
+                customerType="customer"
+                label="CRM-klant"
+                onValueChange={(id) => setCustomerId(id)}
+              />
+            )}
 
             <div>
               <Label className="text-xs">Werkzaamheden</Label>
@@ -260,7 +258,7 @@ export const ScheduleWarrantyDialog: React.FC<{
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Annuleren</Button>
-          <Button onClick={submit} disabled={saving || loading}>
+          <Button onClick={submit} disabled={saving || loading || !claim}>
             {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {existing ? "Opslaan & verzetten" : "Inplannen"}
           </Button>
