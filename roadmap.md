@@ -1,6 +1,7 @@
 # Roadmap
 
-- [ ] Aftersales en operationeel directeur: bestaande klantgegevens kunnen aanpassen; rechten testen (niet publiceren)
+- [x] Aftersales en operationeel directeur: bestaande B2B/B2C-klantgegevens aanpassen; 216 roltests geslaagd, beleid bevestigd (niet gepubliceerd)
+- [ ] Klantrechten: SQL-praktijktest wacht op toestemming (test afgewezen); ingelogde kliktest niet beschikbaar bij externe Supabase
 
 - [x] Vestiging B2C: 50 verkopen en €200.000 marge inclusief garantie; overige targets behouden (niet publiceren)
 
