@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Garantieclaim HKN-61-B: oorzaak mislukte werkplaatsplanning bij later toegevoegde klant herstellen en testen (niet publiceren)
+
 - [x] Aftersales en operationeel directeur: bestaande B2B/B2C-klantgegevens aanpassen; 216 roltests geslaagd, beleid bevestigd (niet gepubliceerd)
 - [ ] Klantrechten: SQL-praktijktest wacht op toestemming (test afgewezen); ingelogde kliktest niet beschikbaar bij externe Supabase
 
