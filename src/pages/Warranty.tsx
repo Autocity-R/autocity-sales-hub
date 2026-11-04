@@ -20,6 +20,7 @@ import {
   CheckCircle
 } from "lucide-react";
 import { WarrantyClaim, WarrantyStats } from "@/types/warranty";
+import { claimNumberMatches } from '@/lib/claimNumber';
 import { fetchWarrantyClaims, getWarrantyStats } from "@/services/warrantyService";
 import { WarrantyClaimsTable } from "@/components/warranty/WarrantyClaimsTable";
 import { WarrantyForm } from "@/components/warranty/WarrantyForm";
@@ -79,7 +80,7 @@ const Warranty = () => {
         claim.vehicleLicenseNumber,
         claim.problemDescription
       ];
-      if (!searchFields.some(field => field.toLowerCase().includes(query))) {
+      if (!searchFields.some(field => field.toLowerCase().includes(query)) && !claimNumberMatches(claim.claimNummer, query)) {
         return false;
       }
     }

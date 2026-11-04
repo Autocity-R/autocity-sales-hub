@@ -92,6 +92,7 @@ export const fetchWarrantyClaims = async (branch?: BranchFilter): Promise<Warran
 
     return (data || []).map((claim: any) => ({
       id: claim.id,
+      claimNummer: claim.claim_nummer,
       vehicleId: claim.vehicle_id,
       ...warrantyCustomer(claim),
       vehicleBrand: claim.vehicle_id
@@ -180,6 +181,7 @@ export const createWarrantyClaim = async (claim: Omit<WarrantyClaim, 'id' | 'cre
     return {
       ...claim,
       id: data.id,
+      claimNummer: data.claim_nummer,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     } as WarrantyClaim;

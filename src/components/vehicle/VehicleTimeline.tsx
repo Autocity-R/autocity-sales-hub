@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, History } from "lucide-react";
+import { VehicleOpenPoints } from './VehicleOpenPoints';
+import { ClaimNumber } from '@/components/warranty/ClaimNumber';
 import {
   CATEGORIE_LABELS, CATEGORIE_VOLGORDE, TijdlijnCategorie, TijdlijnEvent,
   filterOpCategorie, formatEventTs, groupPerDag, dagenTussen, nlDateSafe,
@@ -62,6 +64,7 @@ export const VehicleTimeline: React.FC<VehicleTimelineProps> = ({ vehicleId, cre
 
   return (
     <div className="space-y-4">
+      <VehicleOpenPoints vehicleId={vehicleId} />
       {/* Samenvatting */}
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-[13px] text-slate-600">
         {createdAt && <span>Binnen sinds <strong className="text-slate-900">{formatEventTs(createdAt, false)}</strong></span>}
@@ -113,6 +116,7 @@ export const VehicleTimeline: React.FC<VehicleTimelineProps> = ({ vehicleId, cre
                     </div>
                     <div className="min-w-0 flex-1">
                       <span className="text-slate-900">{e.titel}</span>
+                      {e.bron_tabel === 'warranty_claims' && <ClaimNumber number={e.titel.match(/GC-\d{4}-\d{4}/)?.[0]} claimId={e.bron_id} />}
                       {e.door_naam && <span className="text-slate-500"> · door {e.door_naam}</span>}
                       {e.via_ander_record && (
                         <Badge variant="outline" className="ml-1.5 text-[10px] px-1 py-0 align-middle">via ander record</Badge>

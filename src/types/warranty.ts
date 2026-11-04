@@ -21,6 +21,7 @@ export interface WarrantyStats {
 
 export interface WarrantyClaim {
   id: string;
+  claimNummer?: string;
   vehicleId: string;
   customerId: string;
   branch?: string;
