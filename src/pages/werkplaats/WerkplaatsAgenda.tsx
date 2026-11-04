@@ -158,7 +158,7 @@ const WerkplaatsAgenda: React.FC = () => {
     return (
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {w.is_rush && <AsPill tone="red"><Flame className="h-3 w-3" />⚡ SPOED</AsPill>}
-        {w.warranty_claim_id && <AsPill tone="violet"><Shield className="h-3 w-3" />🛡️ GARANTIE</AsPill>}
+        {w.warranty_claim_id && <AsPill tone="violet"><Shield className="h-3 w-3" /><ClaimNumber claimId={w.warranty_claim_id} /></AsPill>}
         {w.origin === "extern" && (
           <AsPill tone="amber"><Building2 className="h-3 w-3" />EXTERN{ext ? ` · ${ext}` : ""}</AsPill>
         )}

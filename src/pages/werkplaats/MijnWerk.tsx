@@ -93,7 +93,7 @@ const MijnWerkCard: React.FC<{
           </AsPill>
         )}
         {w.is_rush && <AsPill tone="red">⚡ SPOED</AsPill>}
-        {w.warranty_claim_id && <AsPill tone="violet">🛡️ GARANTIE</AsPill>}
+        {w.warranty_claim_id && <AsPill tone="violet">🛡️ <ClaimNumber claimId={w.warranty_claim_id} /></AsPill>}
         {isExtern && <AsPill tone="amber">EXTERN{ext.name ? ` · ${ext.name}` : ""}</AsPill>}
       </div>
 

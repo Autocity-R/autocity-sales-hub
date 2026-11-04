@@ -112,7 +112,7 @@ const WieReed: React.FC = () => {
               <div><span className="text-muted-foreground">Reden: </span>{REDEN_LABELS[u.reden]}</div>
               <div><span className="text-muted-foreground">Uitgegeven: </span>{formatNL(u.uitgeleend_op)}{u.uitgeleend_door_naam ? ` door ${u.uitgeleend_door_naam}` : ""}</div>
               <div><span className="text-muted-foreground">Ingeleverd: </span>{u.ingeleverd_op ? formatNL(u.ingeleverd_op) : "nog niet ingeleverd"}{u.ingenomen_door_naam ? ` bij ${u.ingenomen_door_naam}` : ""}</div>
-              <div><span className="text-muted-foreground">Garantieclaim: </span>{u.warranty_claim_id ? u.warranty_claim_id.slice(0, 8) : "—"}</div>
+              <div><span className="text-muted-foreground">Garantieclaim: </span>{u.warranty_claim_id ? <ClaimNumber claimId={u.warranty_claim_id} /> : "—"}</div>
               {u.notities && <div className="sm:col-span-2 whitespace-pre-line"><span className="text-muted-foreground">Notities: </span>{u.notities}</div>}
             </div>
           </div>
