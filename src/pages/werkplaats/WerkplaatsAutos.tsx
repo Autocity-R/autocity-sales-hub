@@ -143,7 +143,7 @@ const WerkplaatsAutos: React.FC = () => {
                   {v.work_orders.map(w => (
                     <Badge key={w.id} variant="outline" className={STATUS_COLORS[w.status as WorkOrderStatus] || ""}>
                       {DISCIPLINE_ICON[w.discipline as WorkOrderDiscipline] || "•"} {DISCIPLINE_LABELS[w.discipline as WorkOrderDiscipline] || w.discipline} · {w.status}
-                      {w.warranty_claim_id ? " · 🛡" : ""}
+                      {w.warranty_claim_id && <ClaimNumber claimId={w.warranty_claim_id} />}
                     </Badge>
                   ))}
                 </div>

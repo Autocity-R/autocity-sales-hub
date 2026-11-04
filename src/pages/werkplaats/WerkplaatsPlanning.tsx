@@ -183,7 +183,7 @@ const TaskCard: React.FC<{
           })()}
           {w.warranty_claim_id && (
             <>
-              <AsPill tone="violet"><Shield className="h-3 w-3" />🛡️ GARANTIE</AsPill>
+              <AsPill tone="violet"><Shield className="h-3 w-3" /><ClaimNumber claimId={w.warranty_claim_id} /></AsPill>
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); navigateTo("/warranty"); }}
@@ -674,7 +674,7 @@ const WerkplaatsPlanning: React.FC = () => {
                         <div className="mt-1.5 flex flex-wrap gap-1.5 items-center">
                           <AsPill tone="slate"><CalendarClock className="h-3 w-3" />{format(new Date(w.planned_at!), "EEE d MMM · HH:mm", { locale: nl })}</AsPill>
                           <ExternBadge w={w} />
-                          {w.warranty_claim_id && <AsPill tone="pink"><Shield className="h-3 w-3" />Garantie</AsPill>}
+                          {w.warranty_claim_id && <AsPill tone="pink"><Shield className="h-3 w-3" /><ClaimNumber claimId={w.warranty_claim_id} /></AsPill>}
                           {w.is_rush && <AsPill tone="red"><Flame className="h-3 w-3" />Spoed</AsPill>}
                         </div>
                         <div className="mt-1.5 text-[12px] text-slate-700 line-clamp-3 whitespace-pre-line">{w.description}</div>
