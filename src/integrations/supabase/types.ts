@@ -4960,6 +4960,13 @@ export type Database = {
             referencedRelation: "warranty_claims"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "warranty_claim_wijzigingen_door_fkey"
+            columns: ["door"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       warranty_claims: {
