@@ -3,7 +3,8 @@ import { DeliveryChecklistHistory } from "./DeliveryChecklistHistory";
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
-import { X, Car, User, Euro, Calendar, FileText, Download, Eye, Undo2, Shield, Truck } from "lucide-react";
+import { X, Car, User, Euro, Calendar, FileText, Download, Eye, Undo2, Shield, Truck, History, ChevronDown, ChevronRight } from "lucide-react";
+import { VehicleTimeline } from "@/components/vehicle/VehicleTimeline";
 import { Vehicle } from "@/types/inventory";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +48,7 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
   const [isMovingBack, setIsMovingBack] = useState(false);
   const [showMoveToTransportDialog, setShowMoveToTransportDialog] = useState(false);
   const [isMovingToTransport, setIsMovingToTransport] = useState(false);
+  const [showHistorie, setShowHistorie] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -407,7 +409,28 @@ export const DeliveredVehicleDetails: React.FC<DeliveredVehicleDetailsProps> = (
           </div>
           
           <div className="border-t pt-4 mt-2">
-            <DeliveryChecklistHistory vehicleId={vehicle.id} deliveredAt={vehicle.deliveryDate as any} />
+             <DeliveryChecklistHistory vehicleId={vehicle.id} deliveredAt={vehicle.deliveryDate as any} />
+          </div>
+
+          <div className="border-t pt-4 mt-2">
+            <button
+              type="button"
+              className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 hover:text-slate-900"
+              onClick={() => setShowHistorie(v => !v)}
+            >
+              {showHistorie ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <History className="h-4 w-4" /> Volledige historie
+            </button>
+            {showHistorie && (
+              <div className="mt-3">
+                <VehicleTimeline
+                  vehicleId={vehicle.id}
+                  createdAt={vehicle.createdAt as any}
+                  soldDate={(vehicle as any).soldDate || null}
+                  deliveryDate={vehicle.deliveryDate as any}
+                />
+              </div>
+            )}
           </div>
 
           {/* Close button */}

@@ -5335,6 +5335,10 @@ export type Database = {
           discipline: string
           due_date: string | null
           external_customer: Json | null
+          factuur_niet_nodig: boolean
+          factuur_niet_nodig_door: string | null
+          factuur_niet_nodig_op: string | null
+          factuur_niet_nodig_reden: string | null
           finish_note: string | null
           finished_at: string | null
           id: string
@@ -5375,6 +5379,10 @@ export type Database = {
           discipline: string
           due_date?: string | null
           external_customer?: Json | null
+          factuur_niet_nodig?: boolean
+          factuur_niet_nodig_door?: string | null
+          factuur_niet_nodig_op?: string | null
+          factuur_niet_nodig_reden?: string | null
           finish_note?: string | null
           finished_at?: string | null
           id?: string
@@ -5415,6 +5423,10 @@ export type Database = {
           discipline?: string
           due_date?: string | null
           external_customer?: Json | null
+          factuur_niet_nodig?: boolean
+          factuur_niet_nodig_door?: string | null
+          factuur_niet_nodig_op?: string | null
+          factuur_niet_nodig_reden?: string | null
           finish_note?: string | null
           finished_at?: string | null
           id?: string
@@ -5595,6 +5607,8 @@ export type Database = {
       }
     }
     Functions: {
+      _discipline_label: { Args: { s: string }; Returns: string }
+      _import_label: { Args: { s: string }; Returns: string }
       can_assign_tasks: { Args: { user_id: string }; Returns: boolean }
       can_manage_task: {
         Args: { task_id: string; user_id: string }
@@ -5615,6 +5629,7 @@ export type Database = {
         Args: { _vehicle_id: string }
         Returns: string
       }
+      extern_facturen_open_aantal: { Args: never; Returns: number }
       garantie_werkorder_inplannen: {
         Args: {
           p_assigned_to?: string
@@ -5854,7 +5869,34 @@ export type Database = {
           webhooks_count: number
         }[]
       }
+      voertuig_tijdlijn: {
+        Args: { p_toon_geannuleerd?: boolean; p_vehicle_id: string }
+        Returns: {
+          bron_id: string
+          bron_tabel: string
+          categorie: string
+          detail: string
+          door_naam: string
+          heeft_tijd: boolean
+          titel: string
+          ts: string
+          type: string
+          via_ander_record: boolean
+        }[]
+      }
       voertuig_werkhistorie: { Args: { p_vehicle_id: string }; Returns: Json }
+      werkorder_factuur_niet_nodig: {
+        Args: {
+          p_reden: string
+          p_toelichting?: string
+          p_work_order_id: string
+        }
+        Returns: undefined
+      }
+      werkorder_toch_factureren: {
+        Args: { p_work_order_id: string }
+        Returns: undefined
+      }
       werkplaats_auto_pauze: {
         Args: { p_dry_run?: boolean; p_now?: string }
         Returns: {

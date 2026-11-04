@@ -52,7 +52,8 @@ export async function fetchOmzetBron(from: Date, to: Date, branch: string): Prom
     }),
     fetchAllPages<any>((a, b) => {
       let q = (supabase as any).from("work_orders").select("id,approved_at,discipline,external_customer,vehicle_id,branch,assigned_to,origin")
-        .eq("status", "goedgekeurd").or("origin.eq.extern,external_customer.not.is.null");
+        .eq("status", "goedgekeurd").or("origin.eq.extern,external_customer.not.is.null")
+        .eq("factuur_niet_nodig", false);
       if (pBranch) q = q.eq("branch", pBranch);
       return q.order("id").range(a, b);
     }),
@@ -137,7 +138,8 @@ export async function fetchExternOrdersZonderFactuur(): Promise<ExternOpenOrder[
     fetchAllPages<any>((a, b) => (supabase as any).from("workshop_invoices").select("id,work_order_id,source_work_order_ids").order("id").range(a, b)),
     fetchAllPages<any>((a, b) => (supabase as any).from("work_orders")
       .select("id,approved_at,discipline,external_customer,vehicle_id,branch,assigned_to")
-      .eq("status", "goedgekeurd").or("origin.eq.extern,external_customer.not.is.null").order("id").range(a, b)),
+      .eq("status", "goedgekeurd").or("origin.eq.extern,external_customer.not.is.null")
+      .eq("factuur_niet_nodig", false).order("id").range(a, b)),
   ]);
   const linked = new Set<string>();
   links.forEach((i: any) => linkedOrderIds(i.source_work_order_ids, i.work_order_id).forEach(id => linked.add(id)));

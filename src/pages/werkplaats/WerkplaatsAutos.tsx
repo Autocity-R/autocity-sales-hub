@@ -13,6 +13,8 @@ import BranchFilter from "@/components/reports/BranchFilter";
 import { AddWorkOrderDialog } from "@/components/werkplaats/AddWorkOrderDialog";
 import { DISCIPLINE_ICON, DISCIPLINE_LABELS, STATUS_COLORS, WorkOrderDiscipline, WorkOrderStatus } from "@/components/werkplaats/workOrderTypes";
 import { Car, Loader2, Plus } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { VehicleTimeline } from "@/components/vehicle/VehicleTimeline";
 
 type TabKey = "voorraad" | "verkocht_b2c" | "afgeleverd";
 
@@ -24,6 +26,8 @@ interface Row {
   status: string;
   branch: string | null;
   delivery_date: string | null;
+  created_at?: string | null;
+  sold_date?: string | null;
   main_photo?: string | null;
   work_orders: { id: string; discipline: string; status: string; warranty_claim_id: string | null }[];
 }
@@ -38,6 +42,7 @@ const WerkplaatsAutos: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const { branchFilter } = useCurrentBranch();
   const [addFor, setAddFor] = useState<Row | null>(null);
+  const [historieVoor, setHistorieVoor] = useState<Row | null>(null);
 
   useEffect(() => { setParams({ tab }, { replace: true }); }, [tab]);
 
@@ -50,7 +55,7 @@ const WerkplaatsAutos: React.FC = () => {
 
       let q1 = supabase
         .from("vehicles")
-        .select("id, brand, model, license_number, status, branch, delivery_date, details")
+        .select("id, brand, model, license_number, status, branch, delivery_date, created_at, sold_date, details")
         .in("status", statusFilter)
         .order("created_at", { ascending: false })
         .limit(300);
@@ -74,7 +79,8 @@ const WerkplaatsAutos: React.FC = () => {
       setRows(((vehs as any[]) || []).map(v => ({
         id: v.id, brand: v.brand, model: v.model,
         license_number: v.license_number, status: v.status, branch: v.branch,
-        delivery_date: v.delivery_date, main_photo: v.details?.mainPhoto ?? null,
+        delivery_date: v.delivery_date, created_at: v.created_at, sold_date: v.sold_date,
+        main_photo: v.details?.mainPhoto ?? null,
         work_orders: grouped[v.id] || [],
       })));
     } finally { setLoading(false); }
@@ -117,7 +123,11 @@ const WerkplaatsAutos: React.FC = () => {
       ) : (
         <div className="space-y-2">
           {filtered.map(v => (
-            <Card key={v.id}>
+            <Card
+              key={v.id}
+              className="cursor-pointer hover:border-slate-300 transition-colors"
+              onClick={() => setHistorieVoor(v)}
+            >
               <CardContent className="p-3 flex items-center gap-4">
                 <div className="w-16 h-12 rounded bg-muted overflow-hidden flex items-center justify-center">
                   {v.main_photo ? <img src={v.main_photo} alt="" className="w-full h-full object-cover" /> : <Car className="h-5 w-5 text-muted-foreground" />}
@@ -138,7 +148,7 @@ const WerkplaatsAutos: React.FC = () => {
                   ))}
                 </div>
                 {!readOnly && (
-                  <Button size="sm" onClick={() => setAddFor(v)}>
+                  <Button size="sm" onClick={(e) => { e.stopPropagation(); setAddFor(v); }}>
                     <Plus className="h-4 w-4 mr-1" /> Taak toewijzen
                   </Button>
                 )}
@@ -158,6 +168,27 @@ const WerkplaatsAutos: React.FC = () => {
           onCreated={load}
         />
       )}
+
+      <Sheet open={!!historieVoor} onOpenChange={(v) => { if (!v) setHistorieVoor(null); }}>
+        <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>
+              {historieVoor?.brand} {historieVoor?.model}
+              {historieVoor?.license_number ? ` · ${historieVoor.license_number}` : ""}
+            </SheetTitle>
+          </SheetHeader>
+          {historieVoor && (
+            <div className="mt-4">
+              <VehicleTimeline
+                vehicleId={historieVoor.id}
+                createdAt={historieVoor.created_at}
+                soldDate={historieVoor.sold_date}
+                deliveryDate={historieVoor.delivery_date}
+              />
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </DashboardLayout>
   );
 };

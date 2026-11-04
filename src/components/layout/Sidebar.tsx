@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { FileText } from "lucide-react";
 import { featureAccess } from "@/lib/routeAccess";
+import { useFacturenOpen } from "@/hooks/useFacturenOpen";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -617,6 +618,7 @@ const DirectieSidebar: React.FC<{
   location: ReturnType<typeof useLocation>;
 }> = ({ className, isActive, getSubActive, location }) => {
   const garantieUnread = useGarantieUnread();
+  const facturenOpen = useFacturenOpen();
   const inventorySubPaths = ["/inventory/online", "/inventory/b2b", "/inventory/consumer", "/inventory/delivered"];
   const inventoryOpenByRoute = getSubActive(inventorySubPaths);
   const rapportagesOpenByRoute = location.pathname.startsWith("/rapportages");
@@ -680,7 +682,7 @@ const DirectieSidebar: React.FC<{
             { url: "/rapportages/poetsen", label: "Poetsen", icon: Sparkles },
           ],
         } as StdGroup,
-        { url: "/werkplaats/facturen", label: "Facturen", icon: FileText },
+        { url: "/werkplaats/facturen", label: "Facturen", icon: FileText, badge: facturenOpen },
       ],
     },
   ];
@@ -707,6 +709,7 @@ const AdministratieSidebar: React.FC<{
   isActive: (p: string) => boolean;
   location: ReturnType<typeof useLocation>;
 }> = ({ className, isActive, location }) => {
+  const facturenOpen = useFacturenOpen();
   const sections: StdSection[] = [
     {
       label: null,
@@ -716,7 +719,7 @@ const AdministratieSidebar: React.FC<{
         { url: "/inventory/b2b", label: "Verkocht B2B", icon: BoxIcon },
         { url: "/inventory/delivered", label: "Afgeleverd", icon: Flag },
         { url: "/customers", label: "Klanten & Leveranciers", icon: UsersIcon, exact: true },
-        { url: "/werkplaats/facturen", label: "Werkplaats Facturen", icon: FileText },
+        { url: "/werkplaats/facturen", label: "Werkplaats Facturen", icon: FileText, badge: facturenOpen },
         { url: "/loan-cars/historie", label: "Leenauto historie", icon: CarIcon },
       ],
     },
@@ -743,6 +746,7 @@ type AsNavSection = { label: string; items: AsNavItem[] };
 
 const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) => boolean; location: ReturnType<typeof useLocation>; variant?: "aftersales" | "chef" }> = ({ className, isActive, location, variant = "aftersales" }) => {
   const garantieUnread = useGarantieUnread();
+  const facturenOpen = useFacturenOpen();
   const isChef = variant === "chef";
 
   const allSections: AsNavSection[] = [
@@ -805,7 +809,7 @@ const AftersalesSidebar: React.FC<{ className?: string; isActive: (p: string) =>
         ]),
         { url: "/rapportages/poetsen", label: "Poets-omzet & tracking", icon: Sparkles },
         { url: "/werkplaats/prijslijst", label: "Prijslijst", icon: Calculator },
-        { url: "/werkplaats/facturen", label: "Werkplaats facturen", icon: FileText },
+        { url: "/werkplaats/facturen", label: "Werkplaats facturen", icon: FileText, badge: facturenOpen },
         { url: "/werkplaats/agenda", label: "Werkplaats agenda", icon: CalendarIcon },
       ] as AsNavItem[],
     },

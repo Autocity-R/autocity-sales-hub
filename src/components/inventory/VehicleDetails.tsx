@@ -23,6 +23,7 @@ import { PhotosTab } from "@/components/inventory/detail-tabs/PhotosTab";
 import { FilesTab } from "@/components/inventory/detail-tabs/FilesTab";
 import { ContactsTab } from "@/components/inventory/detail-tabs/ContactsTab";
 import { EmailHistoryTab } from "@/components/inventory/detail-tabs/EmailHistoryTab";
+import { VehicleTimeline } from "@/components/vehicle/VehicleTimeline";
 import { ChecklistTab } from "@/components/inventory/detail-tabs/ChecklistTab";
 import { ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -222,7 +223,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
               <div className="px-6 py-2 bg-background sticky top-0 z-[5]">
                 <TabsList className={cn(
                   "w-full grid",
-                  vehicle.salesStatus === 'verkocht_b2c' ? "grid-cols-7" : "grid-cols-6"
+                  vehicle.salesStatus === 'verkocht_b2c' ? "grid-cols-8" : "grid-cols-7"
                 )}>
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="contacts">Contacten</TabsTrigger>
@@ -235,7 +236,8 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                     </TabsTrigger>
                   )}
                   <TabsTrigger value="emails">Emails</TabsTrigger>
-                  <TabsTrigger value="history">Verzonden</TabsTrigger>
+                  <TabsTrigger value="historie">Historie</TabsTrigger>
+                  <TabsTrigger value="verzonden">Verzonden</TabsTrigger>
                 </TabsList>
                 <Separator className="mt-2" />
               </div>
@@ -320,7 +322,16 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({
                   )}
                 </TabsContent>
                 
-                <TabsContent value="history" className="h-full mt-0 p-0">
+                <TabsContent value="historie" className="h-full mt-0 p-0">
+                  <VehicleTimeline
+                    vehicleId={vehicle.id}
+                    createdAt={vehicle.createdAt as any}
+                    soldDate={(vehicle as any).soldDate || null}
+                    deliveryDate={(vehicle as any).deliveryDate || null}
+                  />
+                </TabsContent>
+
+                <TabsContent value="verzonden" className="h-full mt-0 p-0">
                   <EmailHistoryTab vehicleId={vehicle.id} />
                 </TabsContent>
                 
