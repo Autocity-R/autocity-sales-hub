@@ -16,7 +16,7 @@ import { AsPill } from "@/components/aftersales/ui";
 import WorkshopInvoiceDialog from "@/components/werkplaats/WorkshopInvoiceDialog";
 import { InvoiceDraft, dispatchPendingInternalInvoices } from "@/services/workshopInvoiceService";
 import { FileText } from "lucide-react";
-import { PartChips, getWorkOrderParts } from "@/components/werkplaats/workOrderParts";
+import { PartChips } from "@/components/werkplaats/workOrderParts";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { NogTeFacturerenExtern } from "@/components/werkplaats/NogTeFacturerenExtern";
 import { externInvoiceDraft } from "@/lib/externFactuur";

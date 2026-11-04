@@ -39,7 +39,7 @@ const fmtDatum = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString
  * "Nog te factureren (extern)" — goedgekeurde externe klussen zonder factuur (BOUWSTAP 13B).
  * Knoppen alleen voor owner/admin/aftersales_manager; OD en werkplaats_chef zien alleen-lezen.
  */
-export const NogTeFacturerenExtern: React.FC<{ onChanged?: () => void }> = ({ onChanged }) => {
+export const NogTeFacturerenExtern: React.FC<{ onChanged?: () => void; refreshKey?: number }> = ({ onChanged, refreshKey }) => {
   const { userRole, isAdmin } = useAuth();
   const mayEdit = isAdmin || featureAccess["handmatige-facturen"](userRole);
 
@@ -81,7 +81,7 @@ export const NogTeFacturerenExtern: React.FC<{ onChanged?: () => void }> = ({ on
     }
     setLoading(false);
   };
-  useEffect(() => { load(); /* eslint-disable-line */ }, []);
+  useEffect(() => { load(); /* eslint-disable-line */ }, [refreshKey]);
 
   const markeer = async () => {
     if (!markeren || !reden) return;
