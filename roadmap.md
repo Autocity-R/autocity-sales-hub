@@ -29,5 +29,5 @@
 - [x] Bouwstap 10: volledige werkhistorie per afgeleverde auto (niet gepubliceerd)
 - [x] Bouwstap 11: omzet uit één bron (niet gepubliceerd)
 - [ ] Website-reservering edge function — plan klaar, wacht op akkoord eigenaar
-- [ ] Bouwstap 13A: Historie-tijdlijn per auto (RPC voertuig_tijdlijn + tabblad in detail, werkplaats-sheet, afgeleverd-link)
-- [ ] Bouwstap 13B: Nog te factureren (extern) blok + factuur_niet_nodig RPC + badge
+- [x] Bouwstap 13A: Historie-tijdlijn per auto (RPC voertuig_tijdlijn + tabblad in detail, werkplaats-sheet, afgeleverd-link) (niet gepubliceerd)
+- [x] Bouwstap 13B: Nog te factureren (extern) blok + factuur_niet_nodig RPC + badge (niet gepubliceerd)
