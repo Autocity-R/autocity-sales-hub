@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { fairSeconds, fairSecondsByAssignee, pendingInvoiceAmount } from "@/lib/performanceGroups";
-import { inPeriod, nlDayStart, takDetails, takTotals, byEmployee, type Tak } from "@/lib/omzet";
+import { inPeriod, nlDate, nlDayStart, takDetails, takTotals, byEmployee, type Tak } from "@/lib/omzet";
 import { fetchOmzetBron, poetsNogOpMaandfactuur, omzetLiveRegels, dayStr, POETS_PRICE_EXCL, type OmzetBron, type InvoiceLink } from "@/services/omzetService";
 
 export type DirectiePeriod = "week" | "month" | "quarter" | "year";
@@ -87,6 +87,10 @@ export const approvedAtOf = (o: WorkOrderRow): string | null =>
 
 const approvedInRange = (rows: WorkOrderRow[], from: Date, to: Date) =>
   rows.filter(o => {
+    if (o.discipline === "poets") {
+      const at = ["afgerond", "goedgekeurd"].includes(o.status || "") ? o.finished_at || o.approved_at : null;
+      return !!at && nlDate(at) >= dayStr(from) && nlDate(at) < dayStr(to);
+    }
     const at = approvedAtOf(o);
     if (!at) return false;
     const t = +new Date(at);
