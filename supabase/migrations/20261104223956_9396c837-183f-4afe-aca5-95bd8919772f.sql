@@ -1,0 +1,1 @@
+CREATE POLICY warranty_tellers_service ON public.warranty_claim_tellers FOR ALL TO service_role USING(true) WITH CHECK(true);
