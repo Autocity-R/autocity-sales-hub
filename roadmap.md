@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Bouwstap 12A: Alle klanten voor operationeel directeur, bestaande klantrechten behouden; alleen-lezen controle
+- [ ] Bouwstap 12B: live interne poetsomzet in rapportages/cockpit/performance, facturen apart; tests en maandcontrole (niet publiceren)
+
 - [x] Garantieclaim HKN-61-B: ontbrekende autokoppeling hersteld voor handmatige claims; CRM-keuze, atomische planning, 6 tests en SQL-rolproef geslaagd; testdata volledig teruggedraaid (niet gepubliceerd)
 - [ ] Garantieplanning ingelogd klikken: niet beschikbaar bij externe Supabase; HKN-61-B niet daadwerkelijk ingepland zonder gekozen datum/klant
 
