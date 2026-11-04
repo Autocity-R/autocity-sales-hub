@@ -5004,7 +5004,7 @@ export type Database = {
           claim_contact_email?: string | null
           claim_contact_naam?: string | null
           claim_contact_telefoon?: string | null
-          claim_nummer: string
+          claim_nummer?: string
           claim_status?: string
           created_at?: string
           customer_id?: string | null
