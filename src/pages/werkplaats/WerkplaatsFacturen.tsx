@@ -14,6 +14,7 @@ import { featureAccess } from "@/lib/routeAccess";
 import { fetchAllPages } from "@/lib/fetchAllPages";
 import { countsAsRevenue, nlDate } from "@/lib/omzet";
 import { fetchOmzetBron, poetsNogOpMaandfactuur, dayStr } from "@/services/omzetService";
+import { NogTeFacturerenExtern } from "@/components/werkplaats/NogTeFacturerenExtern";
 import { buildHaystack, matchesSearch, amountTokens } from "@/lib/searchNormalize";
 import {
   eur, getInvoiceSignedUrl, getInvoicePdfBase64, queueInvoiceEmail, InvoiceDraft,
@@ -177,6 +178,10 @@ const WerkplaatsFacturen: React.FC = () => {
           ))}
         </div>
         <p className="-mt-2 mb-4 text-[11px] text-slate-500">Geteld op omzetdatum: interne facturen op de goedkeuringsdag, poets op de werkdag van de beurten, overige op factuurdatum.</p>
+
+        <div className="mb-4">
+          <NogTeFacturerenExtern onChanged={load} />
+        </div>
 
         <AsCard>
           <AsCardHead
