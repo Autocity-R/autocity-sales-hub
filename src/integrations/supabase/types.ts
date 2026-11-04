@@ -4909,11 +4909,68 @@ export type Database = {
           },
         ]
       }
+      warranty_claim_tellers: {
+        Row: {
+          jaar: number
+          laatste: number
+          updated_at: string
+        }
+        Insert: {
+          jaar: number
+          laatste?: number
+          updated_at?: string
+        }
+        Update: {
+          jaar?: number
+          laatste?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      warranty_claim_wijzigingen: {
+        Row: {
+          claim_id: string
+          created_at: string
+          door: string | null
+          id: string
+          nieuw: Json
+          oud: Json
+        }
+        Insert: {
+          claim_id: string
+          created_at?: string
+          door?: string | null
+          id?: string
+          nieuw: Json
+          oud: Json
+        }
+        Update: {
+          claim_id?: string
+          created_at?: string
+          door?: string | null
+          id?: string
+          nieuw?: Json
+          oud?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_claim_wijzigingen_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "warranty_claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       warranty_claims: {
         Row: {
           appointment_id: string | null
           branch: string
           claim_amount: number | null
+          claim_contact_email: string | null
+          claim_contact_naam: string | null
+          claim_contact_telefoon: string | null
+          claim_nummer: string
           claim_status: string
           created_at: string
           customer_id: string | null
@@ -4929,6 +4986,7 @@ export type Database = {
           kosten_uren: number | null
           loan_car_assigned: boolean | null
           loan_car_id: string | null
+          manual_customer_email: string | null
           manual_customer_name: string | null
           manual_customer_phone: string | null
           manual_license_number: string | null
@@ -4943,6 +5001,10 @@ export type Database = {
           appointment_id?: string | null
           branch?: string
           claim_amount?: number | null
+          claim_contact_email?: string | null
+          claim_contact_naam?: string | null
+          claim_contact_telefoon?: string | null
+          claim_nummer: string
           claim_status?: string
           created_at?: string
           customer_id?: string | null
@@ -4958,6 +5020,7 @@ export type Database = {
           kosten_uren?: number | null
           loan_car_assigned?: boolean | null
           loan_car_id?: string | null
+          manual_customer_email?: string | null
           manual_customer_name?: string | null
           manual_customer_phone?: string | null
           manual_license_number?: string | null
@@ -4972,6 +5035,10 @@ export type Database = {
           appointment_id?: string | null
           branch?: string
           claim_amount?: number | null
+          claim_contact_email?: string | null
+          claim_contact_naam?: string | null
+          claim_contact_telefoon?: string | null
+          claim_nummer?: string
           claim_status?: string
           created_at?: string
           customer_id?: string | null
@@ -4987,6 +5054,7 @@ export type Database = {
           kosten_uren?: number | null
           loan_car_assigned?: boolean | null
           loan_car_id?: string | null
+          manual_customer_email?: string | null
           manual_customer_name?: string | null
           manual_customer_phone?: string | null
           manual_license_number?: string | null
@@ -5630,6 +5698,17 @@ export type Database = {
         Returns: string
       }
       extern_facturen_open_aantal: { Args: never; Returns: number }
+      garantie_contact_wijzigen: {
+        Args: {
+          p_claim_id: string
+          p_customer_id: string
+          p_email: string
+          p_klantkaart?: boolean
+          p_naam: string
+          p_telefoon: string
+        }
+        Returns: undefined
+      }
       garantie_werkorder_inplannen: {
         Args: {
           p_assigned_to?: string
@@ -5869,6 +5948,7 @@ export type Database = {
           webhooks_count: number
         }[]
       }
+      voertuig_open_punten: { Args: { p_vehicle_id: string }; Returns: Json }
       voertuig_tijdlijn: {
         Args: { p_toon_geannuleerd?: boolean; p_vehicle_id: string }
         Returns: {
