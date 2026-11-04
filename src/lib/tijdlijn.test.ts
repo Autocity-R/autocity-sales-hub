@@ -12,8 +12,8 @@ const ev = (over: Partial<TijdlijnEvent>): TijdlijnEvent => ({
 
 describe("formatEventTs (Europe/Amsterdam)", () => {
   it("toont dd-mm-jjjj uu:mm in NL-tijd", () => {
-    // 12:43 UTC = 14:43 NL (zomertijd)
-    expect(formatEventTs("2026-09-07T10:43:17Z", true)).toBe("07-09-2026 14:43");
+    // 10:43 UTC = 12:43 NL (zomertijd, UTC+2)
+    expect(formatEventTs("2026-09-07T10:43:17Z", true)).toBe("07-09-2026 12:43");
   });
 
   it("randgeval 23:30: 21:30 UTC valt nog op dezelfde NL-dag", () => {
