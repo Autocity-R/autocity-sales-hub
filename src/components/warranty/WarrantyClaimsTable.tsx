@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { WarrantyClaim } from "@/types/warranty";
 import { WarrantyClaimDetail } from "./WarrantyClaimDetail";
+import { ClaimNumber } from './ClaimNumber';
 import { WarrantyScheduleAction } from "./ScheduleWarrantyWorkOrder";
 import { updateWarrantyClaim, resolveWarrantyClaim, deleteWarrantyClaim } from "@/services/warrantyService";
 import { useQueryClient } from "@tanstack/react-query";
@@ -198,7 +199,7 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
           {claims.map((claim) => (
             <MobileRecordCard
               key={claim.id}
-              title={claim.customerName}
+              title={`${claim.claimNummer || 'Garantieclaim'} · ${claim.customerName}`}
               subtitle={`${claim.vehicleBrand} ${claim.vehicleModel}${claim.vehicleLicenseNumber ? ` · ${claim.vehicleLicenseNumber}` : ""}`}
               onClick={() => setSelectedClaim(claim)}
               badges={
@@ -244,6 +245,7 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>Claimnummer</TableHead>
             <TableHead>Voertuig</TableHead>
             <TableHead>Klant</TableHead>
             <TableHead>Probleem</TableHead>
@@ -271,7 +273,7 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
         <TableBody>
           {claims.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={showResolved ? 13 : 11} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={showResolved ? 14 : 12} className="text-center py-8 text-muted-foreground">
                 Geen garantieclaims gevonden
               </TableCell>
             </TableRow>
@@ -282,6 +284,7 @@ export const WarrantyClaimsTable: React.FC<WarrantyClaimsTableProps> = ({
                 className="hover:bg-muted/50 cursor-pointer"
                 onClick={() => setSelectedClaim(claim)}
               >
+                <TableCell><ClaimNumber number={claim.claimNummer} claimId={claim.id} /></TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Car className="h-4 w-4 text-blue-600" />
