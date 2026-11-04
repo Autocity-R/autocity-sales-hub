@@ -1,8 +1,9 @@
 # Roadmap
 
-- [ ] Bouwstap 14A: claimnummer, backfill, zoeken en e-mailmatching (niet publiceren)
-- [ ] Bouwstap 14B: contactwijzigingen in elke claimstatus met audit en werkplaatskoppeling
-- [ ] Bouwstap 14C: gedeelde Nog open-lijst, SQL-/unit-tests en alleen-lezen controles
+- [x] Bouwstap 14A: claimnummer, 234 claims backfill, zoeken en e-mailmatching (niet gepubliceerd)
+- [x] Bouwstap 14B: contactwijzigingen in elke claimstatus met audit en werkplaatskoppeling; rollbacktest geslaagd
+- [x] Bouwstap 14C: gedeelde Nog open-lijst; KJD-68-H 10 punten, G-437-PX 1 punt; SQL/unit-tests
+- [ ] Bouwstap 14 ingelogde preview: external_unmanaged, /warranty redirect naar /auth; geen testsessie beschikbaar
 
 - [x] Bouwstap 12A: Alle klanten voor operationeel directeur, bestaande B2B/B2C-klantrechten; geen RLS-wijzigingen
 - [x] Bouwstap 12B: gedeelde live poetsomzet, facturen apart; unit-tests en SQL-maandcontrole (niet gepubliceerd)

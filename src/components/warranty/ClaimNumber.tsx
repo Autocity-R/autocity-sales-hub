@@ -3,6 +3,7 @@ import { Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+const numberCache = new Map<string, Promise<string | null>>();
 
 export function ClaimNumber({ number, claimId }: { number?: string | null; claimId?: string | null }) {
   const [loaded, setLoaded] = useState<string | null>(null);
@@ -10,9 +11,17 @@ export function ClaimNumber({ number, claimId }: { number?: string | null; claim
   useEffect(() => {
     let cancelled = false;
     setLoaded(null);
-    if (!number && claimId) supabase.from('warranty_claims').select('claim_nummer').eq('id', claimId).maybeSingle().then(({ data }) => {
-      if (!cancelled) setLoaded(data?.claim_nummer || null);
-    });
+    if (!number && claimId) {
+      let request = numberCache.get(claimId);
+      if (!request) {
+        request = Promise.resolve(supabase.from('warranty_claims').select('claim_nummer').eq('id', claimId).maybeSingle()).then(({data,error}) => {
+          if (error) numberCache.delete(claimId);
+          return data?.claim_nummer || null;
+        });
+        numberCache.set(claimId,request);
+      }
+      request.then(value => { if (!cancelled) setLoaded(value); });
+    }
     return () => { cancelled = true; };
   }, [number, claimId]);
   const value = number || loaded;
