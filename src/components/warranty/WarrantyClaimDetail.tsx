@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ClaimNumber } from './ClaimNumber';
 import { ClaimContactEditor } from './ClaimContactEditor';
 import { useQuery } from "@tanstack/react-query";
@@ -83,6 +83,7 @@ export const WarrantyClaimDetail: React.FC<WarrantyClaimDetailProps> = ({
   onDelete
 }) => {
   const [contactUpdates, setContactUpdates] = useState<Partial<WarrantyClaim>>({});
+  useEffect(() => { setContactUpdates({}); }, [originalClaim.id]);
   const claim = { ...originalClaim, ...contactUpdates };
   const { canManageWarrantyClaims, canDeleteWarrantyClaims, userRole, isAdmin } = useRoleAccess();
   const canLendLoanCar = isAdmin || canWriteLeenautoRole(userRole);
