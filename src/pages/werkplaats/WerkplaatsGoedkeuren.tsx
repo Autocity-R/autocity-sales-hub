@@ -46,6 +46,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<DamageReportPayload | null>(null);
   const [invoice, setInvoice] = useState<InvoiceDraft | null>(null);
+  const [facturenRefresh, setFacturenRefresh] = useState(0);
   // Of het factuurvenster na goedkeuren automatisch opende en of er opgeslagen is
   const invoiceAutoRef = React.useRef(false);
   const invoiceSavedRef = React.useRef(false);
@@ -250,7 +251,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
           </div>
         )}
         <section className="mt-8">
-          <NogTeFacturerenExtern onChanged={load} />
+          <NogTeFacturerenExtern onChanged={load} refreshKey={facturenRefresh} />
         </section>
 
         <DamageReportDialog open={!!report} onOpenChange={(v) => !v && setReport(null)} report={report} />
@@ -258,7 +259,7 @@ const WerkplaatsGoedkeuren: React.FC = () => {
           open={!!invoice}
           onOpenChange={(v) => !v && closeInvoice()}
           initial={invoice}
-          onSaved={() => { invoiceSavedRef.current = true; }}
+          onSaved={() => { invoiceSavedRef.current = true; setFacturenRefresh(n => n + 1); }}
         />
       </AsPage>
     </DashboardLayout>
